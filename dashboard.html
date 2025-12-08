@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Superadmin Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- === HEAD: FONTS & STYLES ======================================= -->
+
+  <!-- Optional: schöne Schrift -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="menyra.css" />
+</head>
+<body>
+  <div class="m-app">
+
+    <!-- === TOPBAR ==================================================== -->
+
+    <header class="m-topbar">
+      <div class="m-topbar-left">
+        <div class="m-logo">MENYRA</div>
+        <span class="m-env-badge" data-i18n-key="env.superadmin">Superadmin</span>
+      </div>
+
+      <div class="m-topbar-center">
+        <div class="m-search">
+          <span class="m-search-icon">🔍</span>
+          <input
+            type="text"
+            id="topSearch"
+            class="m-search-input"
+            data-i18n-placeholder="search.global.placeholder"
+            placeholder="Suche in MENYRA (Restaurants, Inhaber, Städte)…"
+          />
+        </div>
+      </div>
+
+      <div class="m-topbar-right">
+        <!-- Sprache -->
+        <select id="langSelect" class="m-select m-select--topbar">
+          <option value="de">DE</option>
+          <option value="en">EN</option>
+          <option value="sq">SQ</option>
+          <option value="sr">SR</option>
+          <option value="tr">TR</option>
+        </select>
+
+        <button id="themeToggle" class="m-icon-btn" type="button" title="Theme wechseln">
+          🌓
+        </button>
+
+        <div class="m-profile">
+          <span class="m-profile-name">Albert</span>
+          <img
+            class="m-profile-avatar"
+            src="https://i.postimg.cc/5NzhwrQH/IMG-0143.jpg"
+            alt="Superadmin Avatar"
+          />
+        </div>
+      </div>
+    </header>
+
+    <!-- === LAYOUT: SIDEBAR + MAIN ==================================== -->
+
+    <div class="m-layout">
+
+      <!-- === SIDEBAR ================================================= -->
+
+      <aside class="m-sidebar">
+        <div class="m-sidebar-inner">
+          <div class="m-sidebar-section m-sidebar-section--label" data-i18n-key="sidebar.navigation">Navigation</div>
+          <nav>
+            <ul class="m-sidebar-nav">
+
+              <!-- Dashboard -->
+              <li>
+                <a href="#" class="is-active" data-section="dashboard" data-label="nav.dashboard">
+                  <span class="m-nav-icon">
+                    <img
+                      src="icons/dashboard-icon.png"
+                      alt=""
+                      class="m-nav-icon-img"
+                    />
+                  </span>
+                  <span class="m-nav-label" data-i18n-key="nav.dashboard">Dashboard</span>
+                </a>
+              </li>
+
+              <!-- Kunden / Restaurants -->
+              <li>
+                <a href="#" data-section="restaurants" data-label="nav.restaurants">
+                  <span class="m-nav-icon">
+                    <img
+                      src="icons/restaurant-icon.png"
+                      alt=""
+                      class="m-nav-icon-img"
+                    />
+                  </span>
+                  <span class="m-nav-label" data-i18n-key="nav.restaurants">Restaurants</span>
+                </a>
+              </li>
+
+              <!-- Offers / Fokus -->
+              <li>
+                <a href="#" data-section="offers" data-label="nav.offers">
+                  <span class="m-nav-icon">
+                    <img
+                      src="icons/focus-icon.png"
+                      alt=""
+                      class="m-nav-icon-img"
+                    />
+                  </span>
+                  <span class="m-nav-label" data-i18n-key="nav.offers">Angebote</span>
+                </a>
+              </li>
+
+              <!-- Abrechnung / Rechnungen -->
+              <li>
+                <a href="#" data-section="billing" data-label="nav.billing">
+                  <span class="m-nav-icon">
+                    <img
+                      src="icons/rechnung-icon.png"
+                      alt=""
+                      class="m-nav-icon-img"
+                    />
+                  </span>
+                  <span class="m-nav-label" data-i18n-key="nav.billing">Abrechnung</span>
+                </a>
+              </li>
+
+              <!-- Benutzer / User -->
+              <li>
+                <a href="#" data-section="users" data-label="nav.users">
+                  <span class="m-nav-icon">
+                    <img
+                      src="icons/user-icon.png"
+                      alt=""
+                      class="m-nav-icon-img"
+                    />
+                  </span>
+                  <span class="m-nav-label" data-i18n-key="nav.users">Benutzer</span>
+                </a>
+              </li>
+
+              <!-- System-Logs (Icon kannst du später als systemlogs-icon.png anlegen) -->
+              <li>
+                <a href="#" data-section="logs" data-label="nav.logs">
+                  <span class="m-nav-icon">
+                    <img
+                      src="icons/systemlogs-icon.png"
+                      alt=""
+                      class="m-nav-icon-img"
+                    />
+                  </span>
+                  <span class="m-nav-label" data-i18n-key="nav.logs">System-Logs</span>
+                </a>
+              </li>
+
+              <!-- Einstellungen -->
+              <li>
+                <a href="#" data-section="settings" data-label="nav.settings">
+                  <span class="m-nav-icon">
+                    <img
+                      src="icons/einstellungen-icon.png"
+                      alt=""
+                      class="m-nav-icon-img"
+                    />
+                  </span>
+                  <span class="m-nav-label" data-i18n-key="nav.settings">Einstellungen</span>
+                </a>
+              </li>
+
+            </ul>
+          </nav>
+
+          <div class="m-sidebar-section m-sidebar-section--label" data-i18n-key="sidebar.system">System</div>
+          <div class="m-sidebar-footer">
+            <button class="m-ghost-btn" type="button" id="logoutButton" data-i18n-key="btn.logout">
+              ⏻ Logout
+            </button>
+            <div class="m-sidebar-meta">
+              <div class="m-sidebar-meta-line">v2.0 · MENYRA Cloud</div>
+              <div class="m-sidebar-meta-line">
+                Status: <span class="m-dot m-dot--green"></span> Online
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+
+      <!-- === MAIN AREA =============================================== -->
+
+      <main class="m-main">
+        <div class="m-shell">
+
+          <!-- ========================================================= -->
+          <!-- === VIEW: DASHBOARD ===================================== -->
+          <!-- ========================================================= -->
+
+          <div class="m-view" data-view="dashboard">
+
+            <!-- --- DASHBOARD: HEADER --------------------------------- -->
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title page-title" data-i18n-key="nav.dashboard">Dashboard</h1>
+                <p class="m-page-subtitle" data-i18n-key="page.subtitle">
+                  Überblick über alle Kunden, Umsätze, Bestellungen und Systemaktivität der MENYRA-Plattform.
+                </p>
+              </div>
+              <div class="m-page-actions">
+                <button class="m-btn m-btn--ghost" type="button" data-i18n-key="btn.csvExport">
+                  CSV Export
+                </button>
+                <button class="m-btn" type="button" data-i18n-key="btn.newRestaurant">
+                  + Neues Restaurant
+                </button>
+              </div>
+            </div>
+
+            <!-- --- DASHBOARD: STAT CARDS ----------------------------- -->
+            <section class="m-section">
+              <div class="m-cards-grid">
+                <!-- Aktive Kunden -->
+                <article class="m-card m-stat-card">
+                  <div class="m-stat-top">
+                    <span class="m-stat-label" data-i18n-key="stat.activeRestaurants">Aktive Kunden</span>
+                    <span class="m-stat-pill">Basis</span>
+                  </div>
+                  <div class="m-stat-value-row">
+                    <span class="m-stat-value" id="statActiveCustomers">0</span>
+                    <span class="m-stat-trend m-stat-trend--up">+0</span>
+                  </div>
+                  <p class="m-stat-hint" id="statActiveCustomersHint">
+                    Aktive Kunden: 0 von 0 gesamt. Jahresumsatz (brutto): 0 €.
+                  </p>
+                </article>
+
+                <!-- Bestellungen heute -->
+                <article class="m-card m-stat-card">
+                  <div class="m-stat-top">
+                    <span class="m-stat-label" data-i18n-key="stat.ordersToday">Bestellungen heute</span>
+                    <span class="m-stat-pill" data-i18n-key="stat.period.live">Live</span>
+                  </div>
+                  <div class="m-stat-value-row">
+                    <span class="m-stat-value" id="statOrdersToday">0</span>
+                    <span class="m-stat-trend m-stat-trend--up">+0%</span>
+                  </div>
+                  <p class="m-stat-hint" id="statOrdersTodayHint">
+                    Noch keine Bestellungen heute.
+                  </p>
+                </article>
+
+                <!-- Jährlicher Umsatz -->
+                <article class="m-card m-stat-card">
+                  <div class="m-stat-top">
+                    <span class="m-stat-label" data-i18n-key="stat.yearRevenue">Jährlicher Umsatz</span>
+                    <span class="m-stat-pill">Brutto</span>
+                  </div>
+                  <div class="m-stat-value-row">
+                    <span class="m-stat-value" id="statYearRevenue">0</span>
+                    <span class="m-stat-trend m-stat-trend--neutral">€</span>
+                  </div>
+                  <p class="m-stat-hint">
+                    Brutto-Jahresumsatz aller aktiven Kunden.
+                  </p>
+                </article>
+
+                <!-- Monatliche Einnahmen -->
+                <article class="m-card m-stat-card">
+                  <div class="m-stat-top">
+                    <span class="m-stat-label" data-i18n-key="stat.monthRevenue">Monatliche Einnahmen</span>
+                    <span class="m-stat-pill">pro Monat</span>
+                  </div>
+                  <div class="m-stat-value-row">
+                    <span class="m-stat-value" id="statMonthRevenue">0</span>
+                    <span class="m-stat-trend m-stat-trend--neutral">€</span>
+                  </div>
+                  <p class="m-stat-hint">
+                    Jahresumsatz geteilt durch 12 Monate.
+                  </p>
+                </article>
+
+                <!-- Tägliche Einnahmen -->
+                <article class="m-card m-stat-card">
+                  <div class="m-stat-top">
+                    <span class="m-stat-label" data-i18n-key="stat.dayRevenue">Tägliche Einnahmen</span>
+                    <span class="m-stat-pill">pro Tag</span>
+                  </div>
+                  <div class="m-stat-value-row">
+                    <span class="m-stat-value" id="statDayRevenue">0</span>
+                    <span class="m-stat-trend m-stat-trend--neutral">€</span>
+                  </div>
+                  <p class="m-stat-hint">
+                    Jahresumsatz geteilt durch 365 Tage (Durchschnitt).
+                  </p>
+                </article>
+
+                <!-- Gesamt User -->
+                <article class="m-card m-stat-card">
+                  <div class="m-stat-top">
+                    <span class="m-stat-label" data-i18n-key="stat.usersTotal">Gesamt User</span>
+                    <span class="m-stat-pill">Profile</span>
+                  </div>
+                  <div class="m-stat-value-row">
+                    <span class="m-stat-value" id="statUsersTotal">0</span>
+                    <span class="m-stat-trend m-stat-trend--up">+0</span>
+                  </div>
+                  <p class="m-stat-hint" id="statUsersHint">
+                    Noch keine registrierten User.
+                  </p>
+                </article>
+
+                <!-- System-Status -->
+                <article class="m-card m-stat-card">
+                  <div class="m-stat-top">
+                    <span class="m-stat-label" data-i18n-key="stat.systemStatus">System status</span>
+                    <span class="m-stat-pill m-stat-pill--green" data-i18n-key="stat.status.normal">Normal</span>
+                  </div>
+                  <div class="m-stat-value-row">
+                    <span class="m-stat-value">99.97%</span>
+                    <span class="m-stat-trend m-stat-trend--neutral" data-i18n-key="stat.period.30days">30 days</span>
+                  </div>
+                  <p class="m-stat-hint">
+                    Firestore-Latenz &lt; <strong>120 ms</strong> in allen Regionen.
+                  </p>
+                </article>
+              </div>
+            </section>
+
+            <!-- --- DASHBOARD: ACTIVITY & SYSTEM ----------------------- -->
+            <section class="m-section m-section--split">
+              <div class="m-card m-activity-card">
+                <h2 class="m-section-title" data-i18n-key="section.activity.title">Letzte Aktivität</h2>
+                <ul class="m-activity-list">
+                  <li>
+                    <span class="m-activity-dot m-activity-dot--green"></span>
+                    <div class="m-activity-main">
+                      <div class="m-activity-title">Neues Restaurant angelegt</div>
+                      <div class="m-activity-sub">„Bistro Dritare“ · Tirana, Albanien (Beispiel)</div>
+                    </div>
+                    <span class="m-activity-time">vor 12 Min</span>
+                  </li>
+                  <li>
+                    <span class="m-activity-dot m-activity-dot--blue"></span>
+                    <div class="m-activity-main">
+                      <div class="m-activity-title">Planwechsel auf Premium</div>
+                      <div class="m-activity-sub">„Sea View Lounge“ · 520 €/Monat (Beispiel)</div>
+                    </div>
+                    <span class="m-activity-time">vor 1 Std</span>
+                  </li>
+                  <li>
+                    <span class="m-activity-dot m-activity-dot--orange"></span>
+                    <div class="m-activity-main">
+                      <div class="m-activity-title">API-Limit Warnung</div>
+                      <div class="m-activity-sub">Bestellungen aus Wien · 80% Kontingent</div>
+                    </div>
+                    <span class="m-activity-time">vor 3 Std</span>
+                  </li>
+                  <li>
+                    <span class="m-activity-dot m-activity-dot--gray"></span>
+                    <div class="m-activity-main">
+                      <div class="m-activity-title">Login als Kunden-Admin</div>
+                      <div class="m-activity-sub">Du hast „Trattoria Roma“ geöffnet (Beispiel)</div>
+                    </div>
+                    <span class="m-activity-time">gestern</span>
+                  </li>
+                </ul>
+                <!-- PLATZHALTER: Später echte Aktivitäten aus Logs/Events laden. -->
+              </div>
+
+              <div class="m-card m-system-card">
+                <h2 class="m-section-title" data-i18n-key="section.system.title">System-Überblick</h2>
+                <div class="m-system-row">
+                  <span>Firestore</span>
+                  <span class="m-system-status">
+                    <span class="m-dot m-dot--green"></span> stabil
+                  </span>
+                </div>
+                <div class="m-system-row">
+                  <span>Cloud Functions</span>
+                  <span class="m-system-status">
+                    <span class="m-dot m-dot--green"></span> on
+                  </span>
+                </div>
+                <div class="m-system-row">
+                  <span>Bild-CDN</span>
+                  <span class="m-system-status">
+                    <span class="m-dot m-dot--orange"></span> leicht verzögert
+                  </span>
+                </div>
+                <div class="m-system-row">
+                  <span>E-Mail-Service</span>
+                  <span class="m-system-status">
+                    <span class="m-dot m-dot--green"></span> OK
+                  </span>
+                </div>
+                <p class="m-system-note">
+                  Detail-Logs und Fehler kannst du später in einem eigenen System-Log-Tab ausgeben.
+                </p>
+              </div>
+            </section>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- === VIEW: RESTAURANTS / CUSTOMERS ======================= -->
+          <!-- ========================================================= -->
+
+          <div class="m-view" data-view="restaurants" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title page-title" data-i18n-key="nav.restaurants">Restaurants</h1>
+                <p class="m-page-subtitle" data-i18n-key="section.customers.subtitle">
+                  Verwalte alle angebundenen Restaurants, Abos und Zugänge in einem Blick.
+                </p>
+              </div>
+              <div class="m-page-actions">
+                <button class="m-btn" type="button" data-i18n-key="btn.newRestaurant">
+                  + Neues Restaurant
+                </button>
+              </div>
+            </div>
+
+            <section class="m-section">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title" data-i18n-key="section.customers.title">Kunden & Restaurants</h2>
+                  <p class="m-section-subtitle" data-i18n-key="section.customers.subtitle">
+                    Verwalte alle angebundenen Restaurants, Abos und Zugänge in einem Blick.
+                  </p>
+                </div>
+                <div class="m-section-toolbar">
+                  <select class="m-select" id="statusFilter">
+                    <option value="all" data-i18n-key="filter.status.all">Alle Status</option>
+                    <option value="active" data-i18n-key="filter.status.active">Aktiv</option>
+                    <option value="trial" data-i18n-key="filter.status.trial">Testphase</option>
+                    <option value="paused" data-i18n-key="filter.status.paused">Pausiert</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="m-card m-table-card">
+                <div class="m-table-toolbar">
+                  <div class="m-search m-search--small">
+                    <span class="m-search-icon">🔍</span>
+                    <input
+                      type="text"
+                      id="restaurantSearch"
+                      class="m-search-input"
+                      data-i18n-placeholder="search.restaurants.placeholder"
+                      placeholder="Restaurants nach Name, Stadt oder Inhaber filtern…"
+                    />
+                  </div>
+                  <span class="m-table-meta" id="restaurantsMeta" data-i18n-key="table.meta">
+                    0 Einträge · sortiert nach Name
+                  </span>
+                </div>
+
+                <div class="m-table">
+                  <div class="m-table-row m-table-row--header">
+                    <div data-i18n-key="table.header.restaurant">Restaurant</div>
+                    <div data-i18n-key="table.header.owner">Inhaber</div>
+                    <div data-i18n-key="table.header.city">Stadt</div>
+                    <div data-i18n-key="table.header.plan">Plan</div>
+                    <div data-i18n-key="table.header.status">Status</div>
+                    <div class="m-table-col-actions" data-i18n-key="table.header.action">Aktion</div>
+                  </div>
+
+                  <div id="restaurantsTableBody">
+                    <!-- Wird dynamisch aus Firestore befüllt -->
+                  </div>
+                </div>
+
+                <div class="m-table-footer">
+                  <button class="m-ghost-btn" type="button" data-i18n-key="table.footer.previous">
+                    ‹ Zurück
+                  </button>
+                  <span class="m-table-meta" id="restaurantsPageInfo" data-i18n-key="table.footer.pageInfo">
+                    Seite 1 von 1
+                  </span>
+                  <button class="m-ghost-btn" type="button" data-i18n-key="table.footer.next">
+                    Weiter ›
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- === VIEW: OFFERS ======================================== -->
+          <!-- ========================================================= -->
+
+          <div class="m-view" data-view="offers" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title page-title" data-i18n-key="nav.offers">Angebote</h1>
+                <p class="m-page-subtitle">
+                  Hier kannst du später alle QR-Angebote / „Sot në fokus“ für Restaurants verwalten.
+                </p>
+              </div>
+              <div class="m-page-actions">
+                <button class="m-btn" type="button">
+                  + Neues Angebot
+                </button>
+              </div>
+            </div>
+
+            <section class="m-section">
+              <div class="m-card">
+                <h2 class="m-section-title">Offers-Verwaltung</h2>
+                <p class="m-section-subtitle">
+                  Platzhalter – später können wir hier Firestore-Listen aus <code>restaurants/{id}/offers</code> anzeigen.
+                </p>
+                <!-- ===== PLATZHALTER: OFFERS-UI START ===== -->
+                <!-- Hier später: Tabelle/Slider für Angebote, Filter nach Restaurant, Status, Zeitraum -->
+                <!-- ===== PLATZHALTER: OFFERS-UI ENDE ===== -->
+              </div>
+            </section>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- === VIEW: BILLING ======================================= -->
+          <!-- ========================================================= -->
+
+          <div class="m-view" data-view="billing" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title page-title" data-i18n-key="nav.billing">Abrechnung</h1>
+                <p class="m-page-subtitle">
+                  Übersicht über Pläne, Laufzeiten und Rechnungsstatus deiner MENYRA-Kunden.
+                </p>
+              </div>
+            </div>
+
+            <section class="m-section">
+              <div class="m-card">
+                <h2 class="m-section-title">Billing-Übersicht</h2>
+                <p class="m-section-subtitle">
+                  Hier können wir später Stripe/PayPal oder eigene Abrechnungsdaten anbinden.
+                </p>
+                <!-- ===== PLATZHALTER: BILLING-UI START ===== -->
+                <!-- Hier später: Jahres-/Monatsübersicht, offene Rechnungen, Zahlungsstatus, Export -->
+                <!-- ===== PLATZHALTER: BILLING-UI ENDE ===== -->
+              </div>
+            </section>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- === VIEW: USERS ========================================= -->
+          <!-- ========================================================= -->
+
+          <div class="m-view" data-view="users" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title page-title" data-i18n-key="nav.users">Benutzer</h1>
+                <p class="m-page-subtitle">
+                  Verwalte Superadmins, Restaurant-Admins und Kellner-Logins für MENYRA.
+                </p>
+              </div>
+            </div>
+
+            <section class="m-section">
+              <div class="m-card">
+                <h2 class="m-section-title">Benutzerverwaltung</h2>
+                <p class="m-section-subtitle">
+                  Platzhalter – später kommen hier Rollen, Berechtigungen und Passwort-Resets.
+                </p>
+                <!-- ===== PLATZHALTER: USERS-UI START ===== -->
+                <!-- Hier später: Liste aller Benutzer, Rollen, Länder-Zuordnung, Partner-CEOs -->
+                <!-- ===== PLATZHALTER: USERS-UI ENDE ===== -->
+              </div>
+            </section>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- === VIEW: LOGS ========================================== -->
+          <!-- ========================================================= -->
+
+          <div class="m-view" data-view="logs" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title page-title" data-i18n-key="nav.logs">System-Logs</h1>
+                <p class="m-page-subtitle">
+                  Technische Ereignisse, Fehler und wichtige Systemmeldungen der MENYRA-Plattform.
+                </p>
+              </div>
+            </div>
+
+            <section class="m-section">
+              <div class="m-card">
+                <h2 class="m-section-title">Log-Ansicht</h2>
+                <p class="m-section-subtitle">
+                  Hier können wir später Firestore- und Function-Logs gefiltert anzeigen.
+                </p>
+                <!-- ===== PLATZHALTER: SYSTEM-LOGS-UI START ===== -->
+                <!-- Später: Filter (Datum, Severity, Kunde), Log-Tabelle, Export-Button -->
+                <!-- ===== PLATZHALTER: SYSTEM-LOGS-UI ENDE ===== -->
+              </div>
+            </section>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- === VIEW: SETTINGS ====================================== -->
+          <!-- ========================================================= -->
+
+          <div class="m-view" data-view="settings" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title page-title" data-i18n-key="nav.settings">Einstellungen</h1>
+                <p class="m-page-subtitle">
+                  Globale Einstellungen für MENYRA, Sprache, Branding und Standard-Tarife.
+                </p>
+              </div>
+            </div>
+
+            <section class="m-section">
+              <div class="m-card">
+                <h2 class="m-section-title">Plattform-Einstellungen</h2>
+                <p class="m-section-subtitle">
+                  Hier kannst du später Logos, Farben, Systemtexte und Standardpreise verwalten.
+                </p>
+                <!-- ===== PLATZHALTER: PLATFORM-SETTINGS START ===== -->
+                <!-- Branding, Standardpreise, Steuerprofil etc. bauen wir später hier rein. -->
+                <!-- ===== PLATZHALTER: PLATFORM-SETTINGS ENDE ===== -->
+              </div>
+
+              <div class="m-card">
+                <div class="m-section-header">
+                  <div>
+                    <h2 class="m-section-title">Superadmins & Icons</h2>
+                    <p class="m-section-subtitle">
+                      Alle Superadmin-Accounts mit Name, Login und Profilbild-URL.
+                    </p>
+                  </div>
+                  <div class="m-page-actions">
+                    <button class="m-btn" type="button" id="addSuperadminBtn">
+                      + Superadmin
+                    </button>
+                  </div>
+                </div>
+
+                <div class="m-table">
+                  <div class="m-table-row m-table-row--header">
+                    <div>Name</div>
+                    <div>Login / E-Mail</div>
+                    <div>Icon</div>
+                    <div class="m-table-col-actions">Aktion</div>
+                  </div>
+                  <div id="superadminsTableBody">
+                    <!-- Superadmins werden per JS gerendert -->
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- === MODAL: RESTAURANT-FORMULAR ========================== -->
+          <!-- ========================================================= -->
+
+          <div id="restaurantFormOverlay" class="m-modal-overlay is-hidden">
+            <div class="m-modal">
+              <div class="m-modal-header">
+                <h2 id="restaurantFormTitle" class="m-modal-title">Restaurant</h2>
+                <button type="button" class="m-icon-btn m-modal-close" id="restaurantFormClose">✕</button>
+              </div>
+              <form id="restaurantForm" class="m-modal-body">
+                <input type="hidden" id="restaurantId" />
+
+                <div class="m-input-group">
+                  <label for="restaurantName">Name des Restaurants</label>
+                  <input id="restaurantName" type="text" required />
+                </div>
+
+                <div class="m-input-row">
+                  <div class="m-input-group">
+                    <label for="restaurantOwnerName">Inhaber / Kontakt</label>
+                    <input id="restaurantOwnerName" type="text" />
+                  </div>
+                  <div class="m-input-group">
+                    <label for="restaurantOwnerPhone">Telefon</label>
+                    <input id="restaurantOwnerPhone" type="tel" />
+                  </div>
+                </div>
+
+                <div class="m-input-row">
+                  <div class="m-input-group">
+                    <label for="restaurantCity">Stadt</label>
+                    <input id="restaurantCity" type="text" />
+                  </div>
+                  <div class="m-input-group">
+                    <label for="restaurantCountry">Land</label>
+                    <input id="restaurantCountry" type="text" placeholder="z.B. Kosovo" />
+                  </div>
+                </div>
+
+                <div class="m-input-row">
+                  <div class="m-input-group">
+                    <label for="restaurantPlanName">Plan</label>
+                    <input id="restaurantPlanName" type="text" placeholder="Standard / Premium …" />
+                  </div>
+                  <div class="m-input-group">
+                    <label for="restaurantPriceMonth">Monatspreis (€)</label>
+                    <input id="restaurantPriceMonth" type="number" step="0.01" min="0" required />
+                  </div>
+                </div>
+
+                <div class="m-input-row">
+                  <div class="m-input-group">
+                    <label for="restaurantStatus">Status</label>
+                    <select id="restaurantStatus">
+                      <option value="active">Aktiv</option>
+                      <option value="trial">Testphase</option>
+                      <option value="paused">Pausiert</option>
+                    </select>
+                  </div>
+                  <div class="m-input-group">
+                    <label for="restaurantExpensesYear">Jahresausgaben (€)</label>
+                    <input id="restaurantExpensesYear" type="number" step="0.01" min="0" value="0" />
+                    <p class="m-input-hint">
+                      Druck, Domain, Hosting, Fahrtkosten usw. für diesen Kunden pro Jahr.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="m-modal-footer">
+                  <button type="button" class="m-ghost-btn" id="restaurantFormCancel">Abbrechen</button>
+                  <button type="submit" class="m-btn">Speichern</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- ========================================================= -->
+          <!-- === MODAL: SUPERADMIN-FORMULAR ========================== -->
+          <!-- ========================================================= -->
+
+          <div id="superadminFormOverlay" class="m-modal-overlay is-hidden">
+            <div class="m-modal">
+              <div class="m-modal-header">
+                <h2 id="superadminFormTitle" class="m-modal-title">Superadmin</h2>
+                <button type="button" class="m-icon-btn m-modal-close" id="superadminFormClose">✕</button>
+              </div>
+              <form id="superadminForm" class="m-modal-body">
+                <input type="hidden" id="superadminId" />
+
+                <div class="m-input-group">
+                  <label for="superadminName">Name</label>
+                  <input id="superadminName" type="text" required />
+                </div>
+
+                <div class="m-input-group">
+                  <label for="superadminEmail">Login / E-Mail</label>
+                  <input id="superadminEmail" type="email" required />
+                </div>
+
+                <div class="m-input-group">
+                  <label for="superadminAvatarUrl">Icon / Profilbild-URL</label>
+                  <input id="superadminAvatarUrl" type="url" placeholder="https://…" />
+                  <p class="m-input-hint">
+                    Hier kannst du einen Bild-Link für das Superadmin-Icon hinterlegen.
+                  </p>
+                </div>
+
+                <div class="m-modal-footer">
+                  <button type="button" class="m-ghost-btn" id="superadminFormCancel">Abbrechen</button>
+                  <button type="submit" class="m-btn">Speichern</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- === SCRIPTS ==================================================== -->
+  <!-- Wichtig: als Modul laden (weil du firebase-config importierst) -->
+  <script type="module" src="menyra.js"></script>
+</body>
+</html>
