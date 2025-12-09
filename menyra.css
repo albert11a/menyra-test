@@ -47,11 +47,13 @@ html,
 body {
   margin: 0;
   padding: 0;
+  height: 100%;
 }
 
 /* Hintergrund-Verlauf direkt auf HTML,
-   damit auch die Safe-Areas oben/unten den Verlauf zeigen */
+   damit auch Overscroll & Ränder denselben Look haben */
 html {
+  background-color: #eef0ff; /* Fallback-Farbe */
   background:
     radial-gradient(circle at top, #eef0ff 0, var(--bg) 45%, var(--bg) 100%);
 }
@@ -64,17 +66,18 @@ body {
   color: var(--text-main);
 }
 
-/* App shell: Fläche innerhalb der Safe Areas */
+/* App shell: füllt die Seite innerhalb des Viewports */
 .m-app {
-  min-height: 100vh;
+  min-height: 100%;
 }
 
-/* iOS / moderne Browser: Safe Areas oben & unten respektieren */
+/* iOS / moderne Browser: Safe Areas oben & unten respektieren
+   → Inhalt wird verschoben, Hintergrund bleibt gleich */
 @supports (padding: env(safe-area-inset-top)) {
   body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
-    /* optional:
+    /* optional, falls du links/rechts auch anpassen willst:
        padding-left: env(safe-area-inset-left);
        padding-right: env(safe-area-inset-right);
     */
@@ -82,12 +85,10 @@ body {
 
   .m-app {
     min-height: calc(
-      100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+      100% - env(safe-area-inset-top) - env(safe-area-inset-bottom)
     );
   }
 }
-
-
 
 /* ==========================================================================
    3. TOPBAR & GLOBAL UI-ELEMENTE
@@ -1125,4 +1126,5 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
 
