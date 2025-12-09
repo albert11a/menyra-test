@@ -49,30 +49,29 @@ body {
   padding: 0;
 }
 
-/* Body: bekommt jetzt den gleichen Verlauf wie die App,
-   damit Safe Areas (oben/unten) exakt gleich aussehen */
+/* Body: sehr sanfter Verlauf, oben leicht heller, unten fast einfarbig.
+   Safe Areas (oben/unten) bekommen exakt denselben Hintergrund. */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background:
-    radial-gradient(circle at top, #eef0ff 0, var(--bg) 45%, var(--bg) 100%);
+    radial-gradient(circle at top, #f8f9ff 0, #f3f5ff 35%, var(--bg) 85%, var(--bg) 100%);
   color: var(--text-main);
 }
 
-/* App shell: nur noch die Fläche, die innerhalb der Safe Areas liegt */
+/* App shell: nur noch die Fläche innerhalb der Safe Areas */
 .m-app {
   min-height: 100vh;
 }
 
-/* iOS / moderne Browser: Safe Areas oben & unten respektieren
-   → wir schieben den Inhalt nach unten/oben, Verlauf bleibt identisch */
+/* iOS / moderne Browser: Safe Areas oben & unten respektieren.
+   → Inhalt rutscht in den "sicheren" Bereich, Hintergrund bleibt überall gleich. */
 @supports (padding: env(safe-area-inset-top)) {
   body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
-    /* optional, falls du links/rechts auch ausgleichen willst:
-       padding-left: env(safe-area-inset-left);
-       padding-right: env(safe-area-inset-right);
-    */
+    /* wenn du magst, auch links/rechts: */
+    /* padding-left: env(safe-area-inset-left);
+       padding-right: env(safe-area-inset-right); */
   }
 
   .m-app {
@@ -81,6 +80,7 @@ body {
     );
   }
 }
+
 
 
 
@@ -1159,3 +1159,4 @@ body.theme-dark .m-sidebar {
       );
   }
 }
+
