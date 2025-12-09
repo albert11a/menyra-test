@@ -22,9 +22,9 @@ export const translations = {
     "btn.newRestaurant": "+ Neuer Kunde",
 
     // Stats
-    "stat.activeRestaurants": "Aktive Kunden",       // Label für erste Card
+    "stat.activeRestaurants": "Aktive Kunden",
     "stat.ordersToday": "Bestellungen heute",
-    "stat.mrrTotal": "Umsatz",                       // falls du es noch irgendwo nutzt
+    "stat.mrrTotal": "Umsatz",
     "stat.systemStatus": "System-Status",
     "stat.yearRevenue": "Jährlicher Umsatz",
     "stat.monthRevenue": "Monatliche Einnahmen",
@@ -43,14 +43,38 @@ export const translations = {
     "section.activity.title": "Letzte Aktivität",
     "section.system.title": "System-Überblick",
 
+    // Status-Filter
     "filter.status.all": "Alle Status",
     "filter.status.active": "Aktiv",
     "filter.status.trial": "Testphase",
     "filter.status.paused": "Pausiert",
+    "filter.status.setup": "Aufbauphase",
+    "filter.status.demo": "Demo",
 
+    // Kunden-Typ-Filter
+    "filter.type.all": "Alle Typen",
+    "filter.type.cafe": "Cafés",
+    "filter.type.restaurant": "Restaurants",
+    "filter.type.hotel": "Hotels",
+    "filter.type.ecommerce": "E-Commerce",
+    "filter.type.rentacar": "Rent a Car",
+    "filter.type.club": "Clubs",
+
+    // Status-Labels
     "status.active": "Aktiv",
     "status.trial": "Testphase",
     "status.paused": "Pausiert",
+    "status.setup": "Aufbauphase",
+    "status.demo": "Demo",
+
+    // Typ-Labels (für Tabelle, Zeile unter dem Namen)
+    "type.cafe": "Café / Coffee-Bar",
+    "type.restaurant": "Restaurant",
+    "type.hotel": "Hotel",
+    "type.ecommerce": "E-Commerce / Online-Shop",
+    "type.rentacar": "Rent a Car",
+    "type.club": "Club / Nightlife",
+    "type.other": "Sonstige",
 
     "search.global.placeholder":
       "Suche in MENYRA (Kunden, Inhaber, Städte)…",
@@ -109,14 +133,38 @@ export const translations = {
     "section.activity.title": "Latest activity",
     "section.system.title": "System overview",
 
+    // Status filter
     "filter.status.all": "All statuses",
     "filter.status.active": "Active",
     "filter.status.trial": "Trial",
     "filter.status.paused": "Paused",
+    "filter.status.setup": "Setup phase",
+    "filter.status.demo": "Demo",
 
+    // Type filter
+    "filter.type.all": "All types",
+    "filter.type.cafe": "Cafés",
+    "filter.type.restaurant": "Restaurants",
+    "filter.type.hotel": "Hotels",
+    "filter.type.ecommerce": "E-commerce",
+    "filter.type.rentacar": "Rent a Car",
+    "filter.type.club": "Clubs",
+
+    // Status labels
     "status.active": "Active",
     "status.trial": "Trial",
     "status.paused": "Paused",
+    "status.setup": "Setup phase",
+    "status.demo": "Demo",
+
+    // Type labels
+    "type.cafe": "Café / coffee bar",
+    "type.restaurant": "Restaurant",
+    "type.hotel": "Hotel",
+    "type.ecommerce": "E-commerce / online shop",
+    "type.rentacar": "Rent a Car",
+    "type.club": "Club / nightlife",
+    "type.other": "Other",
 
     "search.global.placeholder":
       "Search in MENYRA (customers, owners, cities)…",
@@ -175,14 +223,38 @@ export const translations = {
     "section.activity.title": "Aktiviteti i fundit",
     "section.system.title": "Përmbledhje e sistemit",
 
+    // Status filter
     "filter.status.all": "Të gjithë statuset",
     "filter.status.active": "Aktiv",
     "filter.status.trial": "Provë",
     "filter.status.paused": "Pezulluar",
+    "filter.status.setup": "Faza e ndërtimit",
+    "filter.status.demo": "Demo",
 
+    // Type filter
+    "filter.type.all": "Të gjithë tipet",
+    "filter.type.cafe": "Cafè",
+    "filter.type.restaurant": "Restorante",
+    "filter.type.hotel": "Hotele",
+    "filter.type.ecommerce": "E-commerce",
+    "filter.type.rentacar": "Rent a Car",
+    "filter.type.club": "Clube / nightlife",
+
+    // Status labels
     "status.active": "Aktiv",
     "status.trial": "Provë",
     "status.paused": "Pezulluar",
+    "status.setup": "Faza e ndërtimit",
+    "status.demo": "Demo",
+
+    // Type labels
+    "type.cafe": "Cafè / coffee-bar",
+    "type.restaurant": "Restorant",
+    "type.hotel": "Hotel",
+    "type.ecommerce": "Dyqan online / e-commerce",
+    "type.rentacar": "Rent a Car",
+    "type.club": "Club nate",
+    "type.other": "Të tjera",
 
     "search.global.placeholder":
       "Kërko në MENYRA (klientë, pronarë, qytete)…",
@@ -241,14 +313,38 @@ export const translations = {
     "section.activity.title": "Poslednja aktivnost",
     "section.system.title": "Pregled sistema",
 
+    // Status filter
     "filter.status.all": "Svi statusi",
     "filter.status.active": "Aktivan",
     "filter.status.trial": "Probni",
     "filter.status.paused": "Pauziran",
+    "filter.status.setup": "U fazi postavljanja",
+    "filter.status.demo": "Demo",
 
+    // Type filter
+    "filter.type.all": "Svi tipovi",
+    "filter.type.cafe": "Kafići",
+    "filter.type.restaurant": "Restorani",
+    "filter.type.hotel": "Hoteli",
+    "filter.type.ecommerce": "E-commerce",
+    "filter.type.rentacar": "Rent a car",
+    "filter.type.club": "Clubovi",
+
+    // Status labels
     "status.active": "Aktivan",
     "status.trial": "Probni",
     "status.paused": "Pauziran",
+    "status.setup": "U fazi postavljanja",
+    "status.demo": "Demo",
+
+    // Type labels
+    "type.cafe": "Kafić / coffee-bar",
+    "type.restaurant": "Restoran",
+    "type.hotel": "Hotel",
+    "type.ecommerce": "Online prodavnica / e-commerce",
+    "type.rentacar": "Rent a car",
+    "type.club": "Noćni klub",
+    "type.other": "Ostalo",
 
     "search.global.placeholder":
       "Pretraži u MENYRA (klijenti, vlasnici, gradovi)…",
@@ -307,14 +403,38 @@ export const translations = {
     "section.activity.title": "Son aktiviteler",
     "section.system.title": "Sistem özeti",
 
+    // Status filter
     "filter.status.all": "Tüm durumlar",
     "filter.status.active": "Aktif",
     "filter.status.trial": "Deneme",
     "filter.status.paused": "Durduruldu",
+    "filter.status.setup": "Kurulum aşaması",
+    "filter.status.demo": "Demo",
 
+    // Type filter
+    "filter.type.all": "Tüm türler",
+    "filter.type.cafe": "Kafeler",
+    "filter.type.restaurant": "Restoranlar",
+    "filter.type.hotel": "Oteller",
+    "filter.type.ecommerce": "E-ticaret",
+    "filter.type.rentacar": "Rent a car",
+    "filter.type.club": "Kulüpler",
+
+    // Status labels
     "status.active": "Aktif",
     "status.trial": "Deneme",
     "status.paused": "Durduruldu",
+    "status.setup": "Kurulum aşaması",
+    "status.demo": "Demo",
+
+    // Type labels
+    "type.cafe": "Kafe / coffee-bar",
+    "type.restaurant": "Restoran",
+    "type.hotel": "Otel",
+    "type.ecommerce": "Online mağaza / e-ticaret",
+    "type.rentacar": "Rent a car",
+    "type.club": "Gece kulübü",
+    "type.other": "Diğer",
 
     "search.global.placeholder":
       "MENYRA içinde ara (müşteriler, sahipler, şehirler)…",
