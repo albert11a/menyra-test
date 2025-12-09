@@ -52,38 +52,57 @@ html,
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
 }
 
-/* EXAKT wie bei „Karte“:
-   - Ein durchgehender Hintergrund (#f3f4f6)
-   - Safe-Areas oben/unten bekommen genau diese Farbe */
+/* Body: immer weißer Hintergrund -> saubere Safe-Areas (DESKTOP/STANDARD) */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background-color: #f3f4f6;
+  background: #ffffff;
   color: var(--text-main);
 }
 
-/* App-Shell füllt die Höhe und hat denselben Hintergrund
-   → keine andere Farbe hinter den Safe Areas */
+/* App shell: dein bisheriger Verlauf (Desktop-Optik bleibt gleich) */
 .m-app {
   min-height: 100vh;
-  background-color: #f3f4f6;
+  background:
+    radial-gradient(circle at top, #eef0ff 0, var(--bg) 45%, var(--bg) 100%);
 }
 
+/* iOS / moderne Browser: Safe Areas oben & unten respektieren
+   -> weißer Rand oben/unten, darunter startet dein Gradient */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    /* optional, falls du links/rechts auch ausgleichen willst:
+       padding-left: env(safe-area-inset-left);
+       padding-right: env(safe-area-inset-right);
+    */
+  }
+
+  .m-app {
+    min-height: calc(
+      100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
+  }
+}
 
 
 /* ==========================================================================
    3. TOPBAR & GLOBAL UI-ELEMENTE
    ========================================================================== */
 
-/* Topbar: fester Hintergrund wie Body/Safe-Areas */
+/* Topbar – DESKTOP/Standard: dein alter Verlauf bleibt */
 .m-topbar {
   position: sticky;
   top: 0;
   z-index: 50;
   backdrop-filter: blur(16px);
-  background-color: #f3f4f6;  /* gleiche Farbe wie Body */
+  background: linear-gradient(
+    120deg,
+    rgba(248, 250, 252, 0.92),
+    rgba(238, 242, 255, 0.96)
+  );
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -219,194 +238,70 @@ body.theme-dark .m-profile {
   opacity: 0.9;
 }
 
+/* =============================================================
+   MOBILE TOPBAR & BURGER-MENÜ (Layout wie du es schon hattest)
+   ============================================================= */
 
-
-/* ------------------------------------------------------------------
-   MOBILE & TABLET: Topbar-Background an Safari-Weiß anpassen
-   ------------------------------------------------------------------ */
-@media (max-width: 959px) {
-  .m-topbar {
-    background: linear-gradient(
-      180deg,
-      #ffffff 0%,
-      #f6f7ff 35%,
-      #eef0ff 100%
-    );
-  }
-
-  body.theme-dark .m-topbar {
-    background: linear-gradient(
-      180deg,
-      #020617 0%,
-      #020617 40%,
-      #0b1220 100%
-    );
-  }
-}
-
-/* ==========================================================================
-   4. LAYOUT-GRID & SIDEBAR
-   ========================================================================== */
-
-/* Layout */
-.m-layout {
-  display: block;
+/* Burger-Button: nur auf Mobile/Tablet zeigen */
+.m-burger-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
 }
 
 @media (min-width: 960px) {
-  .m-layout {
-    display: grid;
-    grid-template-columns: 240px minmax(0, 1fr);
-    align-items: stretch;
-  }
-}
-
-/* Sidebar */
-.m-sidebar {
-  border-right: 1px solid var(--border-subtle);
-  background: radial-gradient(circle at top left, rgba(248, 250, 252, 0.98), var(--bg));
-}
-
-body.theme-dark .m-sidebar {
-  background: radial-gradient(circle at top left, #020617, #020617);
-}
-
-.m-sidebar-inner {
-  padding: 14px 14px 22px;
-  position: sticky;
-  top: 56px;
-}
-
-/* Mobile & Tablet: Sidebar komplett ausblenden,
-   Layout einspaltig – Navigation läuft nur über Burger-Menu/Drawer */
-@media (max-width: 959px) {
-  .m-sidebar {
+  .m-burger-btn {
     display: none;
   }
+}
 
-  .m-layout {
-    display: block;
+/* Auf Mobile: Logo zentrieren, rechte Topbar-Seite ausblenden */
+@media (max-width: 959px) {
+  .m-topbar {
+    justify-content: center;
   }
 
-  .m-sidebar-inner {
-    position: static;
-    top: auto;
+  .m-topbar-center {
+    display: none; /* Suche oben wird im Drawer gezeigt */
+  }
+
+  .m-topbar-right {
+    display: none; /* Sprache, Theme, Profil wandern in Drawer */
+  }
+
+  .m-topbar-left {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .m-topbar-left .m-logo {
+    margin: 0 auto;
   }
 }
 
-.m-sidebar-section--label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-  margin-top: 6px;
-}
+/* ------------------------------------------------------------------
+   MOBILE & TABLET: Safe-Area-Farbe anpassen (NUR < 960px)
+   - Ziel: oben & unten gleiche Farbe wie Topbar
+   - Unter der Topbar darf der Verlauf weiterlaufen
+   ------------------------------------------------------------------ */
+@media (max-width: 959px) {
+  /* Farbe wie bei deiner Gäste-Karte (#f3f4f6) */
+  body {
+    background-color: #f3f4f6;
+  }
 
-.m-sidebar-nav {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
+  /* Topbar ohne Verlauf, gleiche Farbe wie Safe Area */
+  .m-topbar {
+    background: #f3f4f6;
+  }
 
-.m-sidebar-nav li + li {
-  margin-top: 3px;
+  /* Verlauf startet unterhalb optisch aus derselben Farbe */
+  .m-app {
+    background:
+      radial-gradient(circle at top, #f3f4f6 0, var(--bg) 45%, var(--bg) 100%);
+  }
 }
-
-.m-sidebar-nav a {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: 999px;
-  text-decoration: none;
-  font-size: 13px;
-  color: var(--text-muted);
-  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.m-sidebar-nav a:hover {
-  background: rgba(148, 163, 184, 0.08);
-  color: var(--text-main);
-}
-
-.m-sidebar-nav a.is-active {
-  background: var(--accent);
-  color: #ffffff;
-  box-shadow: var(--shadow-small);
-  transform: translateY(-1px);
-}
-
-.m-nav-icon {
-  width: 18px;
-  text-align: center;
-  font-size: 14px;
-}
-
-.m-nav-icon-img {
-  width: 18px;
-  height: 18px;
-  display: block;
-  object-fit: contain;
-}
-
-.m-nav-label {
-  flex: 1;
-}
-
-/* Sidebar Footer */
-.m-sidebar-footer {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--border-subtle);
-}
-
-.m-ghost-btn {
-  border-radius: 999px;
-  border: 1px solid var(--border-subtle);
-  background: transparent;
-  padding: 6px 12px;
-  font-size: 12px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--text-muted);
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
-}
-
-.m-ghost-btn:hover {
-  background: rgba(148, 163, 184, 0.08);
-  color: var(--text-main);
-  transform: translateY(-1px);
-}
-
-.m-sidebar-meta {
-  margin-top: 10px;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.m-sidebar-meta-line + .m-sidebar-meta-line {
-  margin-top: 2px;
-}
-
-/* Dot */
-.m-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-}
-
-.m-dot--green {
-  background: var(--success);
-}
-
-.m-dot--orange {
-  background: var(--warning);
-}
-
 
 /* ==========================================================================
    5. MAIN-BEREICH, SEITENKOPF & BUTTONS
@@ -1130,6 +1025,7 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
 
 
 
