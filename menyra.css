@@ -82,7 +82,7 @@ body {
    3. TOPBAR & GLOBAL UI-ELEMENTE
    ========================================================================== */
 
-/* Topbar */
+/* Topbar – Standard (Desktop) */
 .m-topbar {
   position: sticky;
   top: 0;
@@ -226,6 +226,29 @@ body.theme-dark .m-profile {
 .m-icon-btn:active {
   transform: translateY(0);
   opacity: 0.9;
+}
+
+/* ------------------------------------------------------------------
+   MOBILE & TABLET: Topbar-Background an Safari-Weiß anpassen
+   ------------------------------------------------------------------ */
+@media (max-width: 959px) {
+  .m-topbar {
+    background: linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #f6f7ff 35%,
+      #eef0ff 100%
+    );
+  }
+
+  body.theme-dark .m-topbar {
+    background: linear-gradient(
+      180deg,
+      #020617 0%,
+      #020617 40%,
+      #0b1220 100%
+    );
+  }
 }
 
 /* ==========================================================================
@@ -1114,6 +1137,7 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
 
 
 
