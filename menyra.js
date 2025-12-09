@@ -971,7 +971,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadSavedLang();
   applyTranslations();
 
-  // Views
+  // --- Views -------------------------------------------------------
   const views = document.querySelectorAll(".m-view");
   function showView(name) {
     views.forEach((view) => {
@@ -983,63 +983,190 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Default: Dashboard
-  showView("dashboard");
+  // --- Elemente Topbar / Suche / Sidebar --------------------------
+  const topSearch = document.getElementById("topSearch");
+  const restaurantSearch = document.getElementById("restaurantSearch");
 
-  // Language Select
+  const sidebarNav = document.querySelector(".m-sidebar-nav");
+  const mobileMenu = document.getElementById("mobileMenu");
+  const mobileMenuOverlay = document.getElementById("mobileMenuOverlay");
+  const burgerToggle = document.getElementById("burgerToggle");
+  const mobileMenuClose = document.getElementById("mobileMenuClose");
+  const mobileTopSearch = document.getElementById("mobileTopSearch");
+  const mobileMenuInner = document.querySelector(".m-mobile-menu-inner");
+
+  const themeToggle = document.getElementById("themeToggle");
+  const mobileThemeToggle = document.getElementById("mobileThemeToggle");
+
   const langSelect = document.getElementById("langSelect");
-  if (langSelect) {
-    const lang = getCurrentLang();
-    if (translations[lang]) langSelect.value = lang;
+  const mobileLangSelect = document.getElementById("mobileLangSelect");
 
-    langSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      if (translations[value]) {
-        setCurrentLang(value);
-        applyTranslations();
-        renderRestaurantsTable(); // Status-Labels etc. aktualisieren
-        renderSuperadminsTable();
+  const logoutButton = document.getElementById("logoutButton");
+
+  // --- Navigation (Desktop + Mobile) -------------------------------
+  let desktopNavLinks = [];
+  let mobileNavLinks = [];
+  let allNavLinks = [];
+
+  if (sidebarNav) {
+    desktopNavLinks = sidebarNav.querySelectorAll("a[data-section]");
+    allNavLinks = [...desktopNavLinks];
+  }
+
+  // Sidebar-Navigation ins Mobile-Menü klonen
+  if (sidebarNav && mobileMenuInner) {
+    const mobileNavSection = document.createElement("div");
+    mobileNavSection.className = "m-mobile-menu-section m-mobile-menu-nav";
+
+    const clonedNav = sidebarNav.cloneNode(true);
+    mobileNavSection.appendChild(clonedNav);
+    mobileMenuInner.appendChild(mobileNavSection);
+
+    mobileNavLinks = mobileNavSection.querySelectorAll("a[data-section]");
+    allNavLinks = [...allNavLinks, ...mobileNavLinks];
+  }
+
+  function setActiveSection(name) {
+    showView(name);
+    allNavLinks.forEach((link) => {
+      const section = link.dataset.section || "";
+      if (section === name) {
+        link.classList.add("is-active");
+      } else {
+        link.classList.remove("is-active");
       }
     });
   }
 
-  // Sidebar Navigation
-  const navLinks = document.querySelectorAll(".m-sidebar-nav a[data-section]");
-  navLinks.forEach((link) => {
-    link.addEventListener("click", (event) => {
-      event.preventDefault();
-      navLinks.forEach((l) => l.classList.remove("is-active"));
-      link.classList.add("is-active");
+  function handleDesktopNavClick(event) {
+    event.preventDefault();
+    const link = event.currentTarget;
+    const sectionName = link.dataset.section || "dashboard";
+    setActiveSection(sectionName);
+  }
 
-      const sectionName = link.dataset.section || "dashboard";
-      showView(sectionName);
-    });
+  function handleMobileNavClick(event) {
+    event.preventDefault();
+    const link = event.currentTarget;
+    const sectionName = link.dataset.section || "dashboard";
+    setActiveSection(sectionName);
+    closeMobileMenu();
+  }
+
+  desktopNavLinks.forEach((link) => {
+    link.addEventListener("click", handleDesktopNavClick);
   });
 
-  // Theme toggle
-  const themeToggle = document.getElementById("themeToggle");
-  if (themeToggle) {
-    themeToggle.addEventListener("click", () => {
-      const isDark = body.classList.toggle("theme-dark");
-      try {
-        window.localStorage.setItem("menyraTheme", isDark ? "dark" : "light");
-      } catch {
-        // ignore
+  mobileNavLinks.forEach((link) => {
+    link.addEventListener("click", handleMobileNavClick);
+  });
+
+  // Default: Dashboard
+  setActiveSection("dashboard");
+
+  // --- Mobile Drawer Menü ------------------------------------------
+  function openMobileMenu() {
+    if (!mobileMenu || !mobileMenuOverlay) return;
+    mobileMenu.classList.add("is-open");
+    mobileMenu.setAttribute("aria-hidden", "false");
+    mobileMenuOverlay.classList.add("is-visible");
+
+    // Suche synchronisieren
+    if (topSearch && mobileTopSearch) {
+      mobileTopSearch.value = topSearch.value || "";
+    }
+
+    // Sprache synchronisieren
+    const lang = getCurrentLang();
+    if (mobileLangSelect && translations[lang]) {
+      mobileLangSelect.value = lang;
+    }
+  }
+
+  function closeMobileMenu() {
+    if (!mobileMenu || !mobileMenuOverlay) return;
+    mobileMenu.classList.remove("is-open");
+    mobileMenu.setAttribute("aria-hidden", "true");
+    mobileMenuOverlay.classList.remove("is-visible");
+  }
+
+  if (burgerToggle && mobileMenu && mobileMenuOverlay) {
+    burgerToggle.addEventListener("click", openMobileMenu);
+  }
+  if (mobileMenuClose) {
+    mobileMenuClose.addEventListener("click", closeMobileMenu);
+  }
+  if (mobileMenuOverlay) {
+    mobileMenuOverlay.addEventListener("click", (e) => {
+      if (e.target === mobileMenuOverlay) {
+        closeMobileMenu();
       }
     });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeMobileMenu();
+    }
+  });
 
+  // --- Theme (Desktop + Mobile) -----------------------------------
+  function toggleTheme() {
+    const isDark = body.classList.toggle("theme-dark");
     try {
-      const savedTheme = window.localStorage.getItem("menyraTheme");
-      if (savedTheme === "dark") {
-        body.classList.add("theme-dark");
-      }
+      window.localStorage.setItem("menyraTheme", isDark ? "dark" : "light");
     } catch {
       // ignore
     }
   }
 
-  // Logout (simple Redirect – später mit Auth)
-  const logoutButton = document.getElementById("logoutButton");
+  if (themeToggle) {
+    themeToggle.addEventListener("click", toggleTheme);
+  }
+  if (mobileThemeToggle) {
+    mobileThemeToggle.addEventListener("click", toggleTheme);
+  }
+
+  try {
+    const savedTheme = window.localStorage.getItem("menyraTheme");
+    if (savedTheme === "dark") {
+      body.classList.add("theme-dark");
+    }
+  } catch {
+    // ignore
+  }
+
+  // --- Sprache (Desktop + Mobile) ---------------------------------
+  function handleLanguageChange(value) {
+    if (!translations[value]) return;
+    setCurrentLang(value);
+    applyTranslations();
+    renderRestaurantsTable();
+    renderSuperadminsTable();
+
+    if (langSelect) langSelect.value = value;
+    if (mobileLangSelect) mobileLangSelect.value = value;
+  }
+
+  const currentLang = getCurrentLang();
+  if (langSelect && translations[currentLang]) {
+    langSelect.value = currentLang;
+  }
+  if (mobileLangSelect && translations[currentLang]) {
+    mobileLangSelect.value = currentLang;
+  }
+
+  if (langSelect) {
+    langSelect.addEventListener("change", (e) => {
+      handleLanguageChange(e.target.value);
+    });
+  }
+  if (mobileLangSelect) {
+    mobileLangSelect.addEventListener("change", (e) => {
+      handleLanguageChange(e.target.value);
+    });
+  }
+
+  // --- Logout ------------------------------------------------------
   if (logoutButton) {
     logoutButton.addEventListener("click", () => {
       try {
@@ -1051,8 +1178,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Restaurant-Suche
-  const restaurantSearch = document.getElementById("restaurantSearch");
+  // --- Suche (Desktop + Mobile) -----------------------------------
   if (restaurantSearch) {
     restaurantSearch.addEventListener("input", () => {
       restaurantSearchTerm = restaurantSearch.value.trim().toLowerCase();
@@ -1061,7 +1187,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // Topbar-Suche spiegelt Restaurant-Suche
-  const topSearch = document.getElementById("topSearch");
   if (topSearch && restaurantSearch) {
     topSearch.addEventListener("input", () => {
       restaurantSearch.value = topSearch.value;
@@ -1069,7 +1194,17 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Status-Filter
+  // Mobile-Suche spiegelt Topbar & Restaurant-Suche
+  if (mobileTopSearch && restaurantSearch) {
+    mobileTopSearch.addEventListener("input", () => {
+      const val = mobileTopSearch.value;
+      if (topSearch) topSearch.value = val;
+      restaurantSearch.value = val;
+      restaurantSearch.dispatchEvent(new Event("input"));
+    });
+  }
+
+  // --- Status-Filter ----------------------------------------------
   const statusFilter = document.getElementById("statusFilter");
   if (statusFilter) {
     statusFilter.addEventListener("change", () => {
@@ -1078,7 +1213,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Buttons: Neues Restaurant (Dashboard + Restaurants-View)
+  // --- Buttons: Neues Restaurant ----------------------------------
   const newRestaurantButtons = document.querySelectorAll(
     '[data-i18n-key="btn.newRestaurant"]'
   );
@@ -1086,7 +1221,7 @@ document.addEventListener("DOMContentLoaded", () => {
     btn.addEventListener("click", () => openRestaurantForm(null));
   });
 
-  // CSV Export (im Dashboard)
+  // --- CSV Export (im Dashboard) ----------------------------------
   const csvExportButton = document.querySelector(
     '[data-i18n-key="btn.csvExport"]'
   );
@@ -1094,7 +1229,7 @@ document.addEventListener("DOMContentLoaded", () => {
     csvExportButton.addEventListener("click", handleCsvExport);
   }
 
-  // Restaurant-Formular Events
+  // --- Restaurant-Formular Events ---------------------------------
   const restaurantForm = document.getElementById("restaurantForm");
   const restaurantFormClose = document.getElementById("restaurantFormClose");
   const restaurantFormCancel = document.getElementById("restaurantFormCancel");
@@ -1117,7 +1252,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Superadmin-Formular Events
+  // --- Superadmin-Formular Events --------------------------------
   const addSuperadminBtn = document.getElementById("addSuperadminBtn");
   if (addSuperadminBtn) {
     addSuperadminBtn.addEventListener("click", () => openSuperadminForm(null));
@@ -1145,13 +1280,13 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Firestore-Daten laden
+  // --- Firestore-Daten laden --------------------------------------
   subscribeRestaurants();
   subscribeSuperadmins();
   subscribeOrdersToday();
   subscribeUsers();
 
-  // Initial leeres UI setzen
+  // Initial Karten updaten
   updateOrdersCardUI();
   updateUsersCardUI();
 });
