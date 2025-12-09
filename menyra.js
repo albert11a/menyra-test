@@ -24,9 +24,11 @@ import {
 
 let restaurants = [];
 let restaurantStatusFilter = "all";
+let customerTypeFilter = "all";
 let restaurantSearchTerm = "";
 
 let superadmins = [];
+let leads = [];
 
 // Dashboard-Stats
 let ordersTodayCount = 0;
@@ -36,8 +38,8 @@ let usersTotalCount = 0;
 let usersActiveCount = 0;
 
 
-
 // --- Mapping: Restaurants ------------------------------------------
+
 
 function mapRestaurantDoc(docSnap) {
   const data = docSnap.data() || {};
@@ -49,11 +51,11 @@ function mapRestaurantDoc(docSnap) {
   const city = data.city || "";
   const country = data.country || "";
 
-  // Status
-  let status = (data.status || "active").toString().toLowerCase().trim();
-  if (status === "aktiv") status = "active"; // falls du irgendwo "aktiv" gespeichert hast
+  const customerType = data.customerType || "restaurant";
+  const billingModel = data.billingModel || "yearly";
 
-  // >>> PREIS-MAPPING – versucht alle typischen Varianten abzufangen <<<
+  let status = (data.status || "active").toString().toLowerCase().trim();
+  if (status === "aktiv") status = "active";
 
   // Kandidaten für Jahrespreis:
   let rawYear =
@@ -72,18 +74,14 @@ function mapRestaurantDoc(docSnap) {
     data.monatspreis ??
     null;
 
-  // Falls nur "price" existiert:
   if (rawYear == null && rawMonth == null && data.price != null) {
     if (Number(data.price) > 1000) {
-      // z.B. 4440 → eher Jahrespreis
       rawYear = data.price;
     } else {
-      // z.B. 370 → eher Monatspreis
       rawMonth = data.price;
     }
   }
 
-  // In Zahlen umwandeln
   let priceYear = 0;
   let priceMonth = 0;
 
@@ -94,7 +92,6 @@ function mapRestaurantDoc(docSnap) {
     priceMonth = Number(rawMonth);
   }
 
-  // Fallbacks, falls nur eins der beiden gesetzt ist
   if (!priceYear && priceMonth) {
     priceYear = priceMonth * 12;
   }
@@ -102,17 +99,11 @@ function mapRestaurantDoc(docSnap) {
     priceMonth = priceYear / 12;
   }
 
-  // Letzter Fallback: wenn wirklich gar nichts da ist → 0 €
   if (!priceYear) priceYear = 0;
   if (!priceMonth) priceMonth = 0;
 
-  // Ausgaben pro Jahr für diesen Kunden (frei eintragbar)
   const expensesYear = Number(data.expensesYear || 0);
-
   const planName = data.planName || data.plan || "Standard";
-
-  // Wenn du debuggen willst, kannst du das kurz aktivieren:
-  // console.log("Restaurant mapped:", { id, name, status, priceYear, priceMonth, raw: data });
 
   return {
     id,
@@ -122,6 +113,8 @@ function mapRestaurantDoc(docSnap) {
     city,
     country,
     status,
+    customerType,
+    billingModel,
     planName,
     priceYear,
     priceMonth,
@@ -130,9 +123,8 @@ function mapRestaurantDoc(docSnap) {
   };
 }
 
+
 // --- Mapping: Superadmins ------------------------------------------
-
-
 
 function mapSuperadminDoc(docSnap) {
   const data = docSnap.data() || {};
@@ -144,12 +136,50 @@ function mapSuperadminDoc(docSnap) {
   };
 }
 
+
+// --- Mapping: Leads ------------------------------------------
+
+function mapLeadDoc(docSnap) {
+  const data = docSnap.data() || {};
+  const id = docSnap.id;
+
+  const customerType = (data.customerType || data.type || "restaurant").toLowerCase();
+  const businessName = data.businessName || data.name || "Unbenannt";
+  const instagram = data.instagram || data.instagramHandle || "";
+  const phone = data.phone || data.phoneNumber || "";
+  const statusRaw = (data.status || "new").toLowerCase();
+  const note = data.note || data.notes || "";
+
+  const createdAt = data.createdAt || data.created_at || null;
+  const updatedAt = data.updatedAt || data.updated_at || null;
+
+  return {
+    id,
+    customerType,
+    businessName,
+    instagram,
+    phone,
+    status: statusRaw,
+    note,
+    createdAt,
+    updatedAt,
+    raw: data
+  };
+}
+
+
 // --- Finanz-Berechnungen -------------------------------------------
+
 
 // „Steuerprofil“ – später aus Firestore, vorerst fix
 const TAX_RATE = 10;    // 10 % Steuer
 const OTHER_RATE = 5;   // 5 % sonstige Abgaben
 const TRAVEL_YEAR = 0;  // Reisekosten/Jahr – kannst du später dynamisch machen
+
+function safeNumber(val) {
+  const n = Number(val || 0);
+  return Number.isNaN(n) ? 0 : n;
+}
 
 function computeFinanceTotals() {
   // Nur aktive Kunden für Umsatz
@@ -159,8 +189,7 @@ function computeFinanceTotals() {
 
   // Jahresumsatz = Summe aller Jahrespreise der aktiven Kunden
   const revenueYear = active.reduce((sum, r) => {
-    const v = Number(r.priceYear || 0);
-    return sum + (Number.isNaN(v) ? 0 : v);
+    return sum + safeNumber(r.priceYear);
   }, 0);
 
   // Monatlich & täglich daraus ableiten
@@ -169,8 +198,7 @@ function computeFinanceTotals() {
 
   // Jahresausgaben (manuell gepflegt pro Kunde)
   const expensesYear = active.reduce((sum, r) => {
-    const v = Number(r.expensesYear || 0);
-    return sum + (Number.isNaN(v) ? 0 : v);
+    return sum + safeNumber(r.expensesYear);
   }, 0);
 
   const grossProfit = revenueYear - expensesYear;
@@ -179,7 +207,38 @@ function computeFinanceTotals() {
   const otherAmount = (grossProfit * OTHER_RATE) / 100;
   const netProfit = grossProfit - taxAmount - otherAmount - TRAVEL_YEAR;
 
-  // Debug, falls du mal checken willst:
+  // Breakdown nach Kundentyp
+  const typeKeys = ["cafe", "restaurant", "hotel", "ecommerce", "rentacar", "club"];
+  const activeByType = {};
+  const revenueYearByType = {};
+
+  typeKeys.forEach((t) => {
+    activeByType[t] = 0;
+    revenueYearByType[t] = 0;
+  });
+  activeByType.other = 0;
+  revenueYearByType.other = 0;
+
+  // MRR (monatliche Einnahmen) für Kunden mit billingModel = "monthly"
+  let mrrMonthly = 0;
+
+  active.forEach((r) => {
+    const tRaw = (r.customerType || "restaurant").toLowerCase();
+    const typeKey = typeKeys.includes(tRaw) ? tRaw : "other";
+
+    activeByType[typeKey] = (activeByType[typeKey] || 0) + 1;
+
+    const y = safeNumber(r.priceYear);
+    revenueYearByType[typeKey] = (revenueYearByType[typeKey] || 0) + y;
+
+    if ((r.billingModel || "").toLowerCase() === "monthly") {
+      // Bevorzugt priceMonth/planPrice, sonst aus Jahrespreis abgeleitet
+      const m = safeNumber(r.priceMonth || r.planPrice || y / 12);
+      mrrMonthly += m;
+    }
+  });
+
+  // Debug bei Bedarf:
   // console.log("Finance totals:", {
   //   activeCount,
   //   totalCount,
@@ -190,7 +249,10 @@ function computeFinanceTotals() {
   //   grossProfit,
   //   taxAmount,
   //   otherAmount,
-  //   netProfit
+  //   netProfit,
+  //   activeByType,
+  //   revenueYearByType,
+  //   mrrMonthly
   // });
 
   return {
@@ -203,13 +265,17 @@ function computeFinanceTotals() {
     grossProfit,
     taxAmount,
     otherAmount,
-    netProfit
+    netProfit,
+    activeByType,
+    revenueYearByType,
+    mrrMonthly
   };
 }
 
+
+
+
 // --- Dashboard-Rendering -------------------------------------------
-
-
 
 function updateDashboardFromRestaurants() {
   const totals = computeFinanceTotals();
@@ -222,9 +288,38 @@ function updateDashboardFromRestaurants() {
     elActive.textContent = String(totals.activeCount);
   }
   if (elActiveHint) {
+    const t = totals;
+    const byType = t.activeByType || {};
+
+    const cafes = byType.cafe || 0;
+    const restaurantsCount = byType.restaurant || 0;
+    const hotels = byType.hotel || 0;
+    const ecommerce = byType.ecommerce || 0;
+    const rentacar = byType.rentacar || 0;
+    const clubs = byType.club || 0;
+    const others = byType.other || 0;
+
+    const gastro = cafes + restaurantsCount + clubs;
+
+    const parts = [];
+    if (gastro) parts.push(`Gastro: ${gastro}`);
+    if (hotels) parts.push(`Hotels: ${hotels}`);
+    if (ecommerce) parts.push(`E-Commerce: ${ecommerce}`);
+    if (rentacar) parts.push(`Rent a Car: ${rentacar}`);
+    if (others) parts.push(`Sonstige: ${others}`);
+
+    const breakdown = parts.length ? ` · Verteilung: ${parts.join(" · ")}` : "";
+
+    const mrrText =
+      t.mrrMonthly && t.mrrMonthly > 0
+        ? ` · Monatliche E-Commerce / Rent a Car Einnahmen: ${t.mrrMonthly.toFixed(2)} €`
+        : "";
+
     elActiveHint.textContent =
-      `Aktive Kunden: ${totals.activeCount} von ${totals.totalCount} gesamt. ` +
-      `Jahresumsatz (brutto): ${totals.revenueYear.toFixed(0)} €`;
+      `Aktive Kunden: ${t.activeCount} von ${t.totalCount} gesamt. ` +
+      `Jahresumsatz (brutto): ${t.revenueYear.toFixed(0)} €` +
+      breakdown +
+      mrrText;
   }
 
   // Jährlicher Umsatz (alle aktiven Kunden)
@@ -245,19 +340,87 @@ function updateDashboardFromRestaurants() {
     elDay.textContent = totals.revenueDay.toFixed(1);
   }
 
-  // Abrechnungs-View Kurzfassung
+  // Abrechnungs-View Kurzfassung (Subtitle)
   const billingSubtitle = document.querySelector(
     '.m-view[data-view="billing"] .m-section-subtitle'
   );
   if (billingSubtitle) {
-    billingSubtitle.textContent =
-      `Jahresumsatz aktiv: ${totals.revenueYear.toFixed(
-        0
-      )} € · Ausgaben: ${totals.expensesYear.toFixed(
-        0
-      )} € · Netto: ca. ${totals.netProfit.toFixed(0)} € / Jahr`;
+    const t = totals;
+    const baseText =
+      `Jahresumsatz aktiv: ${t.revenueYear.toFixed(0)} € · ` +
+      `Ausgaben: ${t.expensesYear.toFixed(0)} € · ` +
+      `Netto: ca. ${t.netProfit.toFixed(0)} € / Jahr`;
+
+    const mrrText =
+      t.mrrMonthly && t.mrrMonthly > 0
+        ? ` · Monatliche E-Commerce / Rent a Car Einnahmen: ${t.mrrMonthly.toFixed(2)} €`
+        : "";
+
+    billingSubtitle.textContent = baseText + mrrText;
+  }
+
+  // Detail-Billing-View (Tab „Abrechnung“)
+  renderBillingView(totals);
+}
+
+
+function renderBillingView(totals) {
+  const yearEl = document.getElementById("billingYearRevenue");
+  const expEl = document.getElementById("billingExpensesYear");
+  const netEl = document.getElementById("billingNetProfit");
+  const mrrEl = document.getElementById("billingMrrMonthly");
+  const breakdownContainer = document.getElementById("billingTypeBreakdown");
+
+  if (yearEl) yearEl.textContent = `${totals.revenueYear.toFixed(0)} €`;
+  if (expEl) expEl.textContent = `${totals.expensesYear.toFixed(0)} €`;
+  if (netEl) netEl.textContent = `${totals.netProfit.toFixed(0)} €`;
+  if (mrrEl) mrrEl.textContent = `${totals.mrrMonthly.toFixed(2)} €`;
+
+  if (!breakdownContainer) return;
+
+  const byTypeActive = totals.activeByType || {};
+  const byTypeRevenue = totals.revenueYearByType || {};
+
+  const rows = [
+    { key: "cafe", label: "Cafés" },
+    { key: "restaurant", label: "Restaurants" },
+    { key: "hotel", label: "Hotels" },
+    { key: "ecommerce", label: "E-Commerce" },
+    { key: "rentacar", label: "Rent a Car" },
+    { key: "club", label: "Clubs / Nightlife" },
+    { key: "other", label: "Sonstige" }
+  ];
+
+  breakdownContainer.innerHTML = "";
+
+  rows.forEach((row) => {
+    const count = byTypeActive[row.key] || 0;
+    const rev = byTypeRevenue[row.key] || 0;
+
+    // Nur anzeigen, wenn wirklich etwas da ist
+    if (!count && !rev) return;
+
+    const div = document.createElement("div");
+    div.className = "m-system-row";
+    div.innerHTML = `
+      <span>${row.label}</span>
+      <span class="m-system-status">
+        <span>${count} aktiv</span>
+        <span>·</span>
+        <span>${rev.toFixed(0)} € / Jahr</span>
+      </span>
+    `;
+    breakdownContainer.appendChild(div);
+  });
+
+  if (!breakdownContainer.children.length) {
+    const empty = document.createElement("p");
+    empty.className = "m-system-note";
+    empty.textContent = "Noch keine aktiven Kunden mit Umsatz.";
+    breakdownContainer.appendChild(empty);
   }
 }
+
 
 // --- Orders- & User-UI ---------------------------------------------
 
@@ -304,7 +467,334 @@ function updateUsersCardUI() {
   }
 }
 
+
+// --- Leads-UI (Dashboard + Zusammenfassung) ------------------------
+
+function computeLeadStats() {
+  const stats = {
+    total: leads.length,
+    new: 0,
+    contacted: 0,
+    waiting: 0,
+    interested: 0,
+    noInterest: 0,
+    other: 0
+  };
+
+  leads.forEach((lead) => {
+    const s = (lead.status || "").toLowerCase();
+
+    if (s === "new") {
+      stats.new++;
+    } else if (s === "contacted") {
+      stats.contacted++;
+    } else if (s === "waiting") {
+      stats.waiting++;
+    } else if (s === "interested") {
+      stats.interested++;
+    } else if (s === "no_interest" || s === "no-interest" || s === "kein_interesse") {
+      stats.noInterest++;
+    } else {
+      stats.other++;
+    }
+  });
+
+  return stats;
+}
+
+function updateLeadsCardUI() {
+  const totalEl = document.getElementById("statLeadsTotal");
+  const hintEl = document.getElementById("statLeadsHint");
+
+  // Wenn Dashboard-Card nicht existiert, trotzdem nichts crashen
+  if (!totalEl && !hintEl) return;
+
+  const s = computeLeadStats();
+
+  if (totalEl) {
+    totalEl.textContent = String(s.total);
+  }
+
+  if (!hintEl) return;
+
+  if (!s.total) {
+    hintEl.textContent = "Noch keine Leads erfasst.";
+    return;
+  }
+
+  const parts = [];
+  if (s.new) parts.push(`Offen: ${s.new}`);
+  if (s.contacted || s.waiting) {
+    parts.push(`Kontaktiert / Warten: ${s.contacted + s.waiting}`);
+  }
+  if (s.interested) parts.push(`Interesse: ${s.interested}`);
+  if (s.noInterest) parts.push(`Kein Interesse: ${s.noInterest}`);
+  if (s.other) parts.push(`Sonstige: ${s.other}`);
+
+  hintEl.textContent =
+    `Leads gesamt: ${s.total}` +
+    (parts.length ? " · " + parts.join(" · ") : "");
+}
+
+function renderLeadsSummary() {
+  const stats = computeLeadStats();
+
+  const openEl = document.getElementById("leadsSummaryOpen");
+  const contactedEl = document.getElementById("leadsSummaryContacted");
+  const interestedEl = document.getElementById("leadsSummaryInterested");
+  const noInterestEl = document.getElementById("leadsSummaryNoInterest");
+
+  if (openEl) {
+    openEl.textContent = `Offen: ${stats.new}`;
+  }
+  if (contactedEl) {
+    contactedEl.textContent = `Kontaktiert / Warten: ${stats.contacted + stats.waiting}`;
+  }
+  if (interestedEl) {
+    interestedEl.textContent = `Interesse: ${stats.interested}`;
+  }
+  if (noInterestEl) {
+    noInterestEl.textContent = `Kein Interesse: ${stats.noInterest}`;
+  }
+}
+
+
+// --- Leads-Tabelle rendern ----------------------------------------
+
+function renderLeadsTable() {
+  const body = document.getElementById("leadsTableBody");
+  const meta = document.getElementById("leadsMeta");
+  const pageInfo = document.getElementById("leadsPageInfo");
+
+  if (!body) return;
+
+  body.innerHTML = "";
+
+  // nach Datum sortieren (neueste zuerst)
+  const sorted = [...leads].sort((a, b) => {
+    const getTime = (l) => {
+      const ts = l.createdAt;
+      if (ts && typeof ts.toMillis === "function") return ts.toMillis();
+      if (ts instanceof Date) return ts.getTime();
+      return 0;
+    };
+    return getTime(b) - getTime(a);
+  });
+
+  const typeLabelMap = {
+    cafe: "Café",
+    restaurant: "Restaurant",
+    hotel: "Hotel",
+    ecommerce: "E-Commerce",
+    rentacar: "Rent a Car",
+    club: "Club / Nightlife"
+  };
+
+  const typeIconMap = {
+    cafe: "☕",
+    restaurant: "🍽",
+    hotel: "🏨",
+    ecommerce: "🛒",
+    rentacar: "🚗",
+    club: "🎧"
+  };
+
+  const statusLabelMap = {
+    new: "Offen",
+    contacted: "Kontaktiert",
+    waiting: "Warten",
+    interested: "Interesse",
+    "no_interest": "Kein Interesse",
+    "no-interest": "Kein Interesse",
+    "kein_interesse": "Kein Interesse"
+  };
+
+  sorted.forEach((lead) => {
+    const row = document.createElement("div");
+    row.className = "m-table-row";
+    row.setAttribute("data-lead-id", lead.id);
+
+    const typeKey = (lead.customerType || "restaurant").toLowerCase();
+    const typeLabel = typeLabelMap[typeKey] || "Sonstiges";
+    const typeIcon = typeIconMap[typeKey] || "🏪";
+
+    const sKey = (lead.status || "new").toLowerCase();
+    const statusLabel = statusLabelMap[sKey] || "Sonstiges";
+
+    const ts = lead.createdAt;
+    let dateLabel = "";
+    if (ts) {
+      let d = ts;
+      if (typeof ts.toDate === "function") d = ts.toDate();
+      if (d instanceof Date) {
+        dateLabel = d.toLocaleDateString("de-DE", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "2-digit"
+        });
+      }
+    }
+
+    const instagramDisplay = lead.instagram
+      ? (lead.instagram.startsWith("@") ? lead.instagram : "@" + lead.instagram)
+      : "-";
+
+    let statusClass = "m-status-badge--paused";
+    if (sKey === "new") statusClass = "m-status-badge--trial";
+    if (sKey === "contacted" || sKey === "waiting") statusClass = "m-status-badge--paused";
+    if (sKey === "interested") statusClass = "m-status-badge--active";
+    if (sKey === "no_interest" || sKey === "no-interest" || sKey === "kein_interesse") {
+      statusClass = "m-status-badge--paused";
+    }
+
+    const shortNote =
+      (lead.note || "").length > 80
+        ? lead.note.slice(0, 77) + "…"
+        : (lead.note || "");
+
+    row.innerHTML = `
+      <div>
+        <div class="m-table-main">
+          <span class="m-table-main-type-icon">${typeIcon}</span>
+          ${lead.businessName}
+        </div>
+        <div class="m-table-sub">
+          ${typeLabel}${dateLabel ? " · " + dateLabel : ""}
+        </div>
+      </div>
+      <div>
+        <div class="m-table-main">Instagram: ${instagramDisplay}</div>
+        <div class="m-table-sub">${lead.phone || ""}</div>
+      </div>
+      <div>
+        <span class="m-status-badge ${statusClass}">${statusLabel}</span>
+      </div>
+      <div>
+        <div class="m-table-sub">${shortNote || "-"}</div>
+      </div>
+      <div class="m-table-actions">
+        <button class="m-icon-btn js-lead-to-customer" type="button" title="Zu Kunde machen">
+          🏷
+        </button>
+        <button class="m-icon-btn js-lead-edit" type="button" title="Lead bearbeiten">
+          ✏️
+        </button>
+        <button class="m-icon-btn js-lead-delete" type="button" title="Lead löschen">
+          🗑
+        </button>
+      </div>
+    `;
+
+    body.appendChild(row);
+  });
+
+  if (meta) {
+    meta.textContent = `${sorted.length} Leads · sortiert nach Datum (neueste zuerst)`;
+  }
+  if (pageInfo) {
+    pageInfo.textContent = "Seite 1 von 1";
+  }
+
+  attachLeadActionHandlers();
+}
+
+function attachLeadActionHandlers() {
+  const body = document.getElementById("leadsTableBody");
+  if (!body) return;
+
+  // Zu Kunde machen
+  body.querySelectorAll(".js-lead-to-customer").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const row = btn.closest("[data-lead-id]");
+      const id = row?.getAttribute("data-lead-id");
+      if (!id) return;
+      handleLeadToCustomer(id);
+    });
+  });
+
+  // Edit
+  body.querySelectorAll(".js-lead-edit").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const row = btn.closest("[data-lead-id]");
+      const id = row?.getAttribute("data-lead-id");
+      if (!id) return;
+      const lead = leads.find((l) => l.id === id);
+      if (!lead) return;
+      openLeadForm(lead);
+    });
+  });
+
+  // Delete
+  body.querySelectorAll(".js-lead-delete").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const row = btn.closest("[data-lead-id]");
+      const id = row?.getAttribute("data-lead-id");
+      if (!id) return;
+
+      const ok = window.confirm("Diesen Lead wirklich löschen?");
+      if (!ok) return;
+
+      try {
+        await deleteDoc(doc(db, "leads", id));
+      } catch (err) {
+        console.error("Fehler beim Löschen des Leads:", err);
+        alert("Fehler beim Löschen. Siehe Konsole.");
+      }
+    });
+  });
+}
+
+// Lead → Kundenformular (vorbefüllt)
+function handleLeadToCustomer(leadId) {
+  const lead = leads.find((l) => l.id === leadId);
+  if (!lead) {
+    alert("Lead nicht gefunden.");
+    return;
+  }
+
+  // Kundentyp-Mapping:
+  // cafe -> cafe
+  // restaurant -> restaurant
+  // hotel -> hotel
+  // ecommerce -> ecommerce
+  // rentacar -> ecommerce
+  // club/nightlife -> cafe
+  let sourceType = (lead.customerType || "restaurant").toLowerCase();
+  let customerType = "restaurant";
+
+  if (sourceType === "cafe") customerType = "cafe";
+  else if (sourceType === "restaurant") customerType = "restaurant";
+  else if (sourceType === "hotel") customerType = "hotel";
+  else if (sourceType === "ecommerce") customerType = "ecommerce";
+  else if (sourceType === "rentacar") customerType = "ecommerce";
+  else if (sourceType === "club") customerType = "cafe";
+
+  // Erst normales "Neuer Kunde"-Formular öffnen
+  openRestaurantForm(null);
+
+  // Danach Felder mit Daten aus Lead befüllen
+  const customerTypeSelect = document.getElementById("customerType");
+  const nameInput = document.getElementById("restaurantName");
+  const ownerPhoneInput = document.getElementById("restaurantOwnerPhone");
+
+  if (customerTypeSelect) {
+    customerTypeSelect.value = customerType;
+  }
+  if (nameInput) {
+    nameInput.value = lead.businessName || "";
+  }
+  if (ownerPhoneInput && lead.phone) {
+    ownerPhoneInput.value = lead.phone;
+  }
+
+  // City/Country lassen wir absichtlich leer,
+  // damit du das beim Kunden-Termin sauber einträgst.
+}
+
+
 // --- Restaurants-Tabelle rendern -----------------------------------
+
+
 
 function renderRestaurantsTable() {
   const bodyContainer = document.getElementById("restaurantsTableBody");
@@ -316,10 +806,17 @@ function renderRestaurantsTable() {
 
   let filtered = [...restaurants];
 
+  // Status-Filter
   if (restaurantStatusFilter !== "all") {
     filtered = filtered.filter((r) => r.status === restaurantStatusFilter);
   }
 
+  // Typ-Filter (cafe, restaurant, hotel, ecommerce, rentacar, club)
+  if (customerTypeFilter !== "all") {
+    filtered = filtered.filter((r) => (r.customerType || "restaurant") === customerTypeFilter);
+  }
+
+  // Textsuche
   if (restaurantSearchTerm) {
     const t = restaurantSearchTerm.toLowerCase();
     filtered = filtered.filter((r) => {
@@ -334,12 +831,30 @@ function renderRestaurantsTable() {
   const lang = getCurrentLang();
   const dict = translations[lang] || translations.de;
 
+  // Hilfsfunktion für Typ-Icon & Label
+  function getTypeConfig(customerType) {
+    const type = customerType || "restaurant";
+    const iconMap = {
+      cafe: "☕",
+      restaurant: "🍽",
+      hotel: "🏨",
+      ecommerce: "🛒",
+      rentacar: "🚗",
+      club: "🎧"
+    };
+    const icon = iconMap[type] || "🏪";
+    const labelKey = "type." + type;
+    const label = dict[labelKey] || type;
+    return { icon, label };
+  }
+
   filtered.forEach((r) => {
     const row = document.createElement("div");
     row.className = "m-table-row";
     row.setAttribute("data-restaurant-row", "");
     row.setAttribute("data-status", r.status);
     row.setAttribute("data-id", r.id);
+    row.setAttribute("data-type", r.customerType || "restaurant");
 
     const statusKey =
       r.status === "trial"
@@ -349,12 +864,22 @@ function renderRestaurantsTable() {
         : "status.active";
 
     const statusLabel = dict[statusKey] || r.status;
+
     const planLabel = `${r.planName} · ${r.priceYear.toFixed(0)} €`;
+
+    const typeConfig = getTypeConfig(r.customerType);
+    const typeLabel = typeConfig.label;
+    const typeIcon = typeConfig.icon;
 
     row.innerHTML = `
       <div>
-        <div class="m-table-main">${r.name}</div>
-        <div class="m-table-sub">#${r.id}</div>
+        <div class="m-table-main">
+          <span class="m-table-main-type-icon">${typeIcon}</span>
+          ${r.name}
+        </div>
+        <div class="m-table-sub">
+          ${typeLabel ? typeLabel + " · " : ""}#${r.id}
+        </div>
       </div>
       <div>
         <div class="m-table-main">${r.ownerName || "-"}</div>
@@ -412,6 +937,7 @@ function renderRestaurantsTable() {
 
   attachRestaurantActionHandlers();
 }
+
 
 // --- Superadmins rendern -------------------------------------------
 
@@ -541,42 +1067,126 @@ function openRestaurantForm(restaurant) {
   const title = document.getElementById("restaurantFormTitle");
 
   const idInput = document.getElementById("restaurantId");
+  const customerTypeSelect = document.getElementById("customerType");
   const nameInput = document.getElementById("restaurantName");
+
+  const billingModelSelect = document.getElementById("billingModel");
+  const priceGroup = document.getElementById("priceGroup");
+  const priceInput = document.getElementById("priceValue");
+
+  const statusSelect = document.getElementById("restaurantStatus");
+
   const ownerNameInput = document.getElementById("restaurantOwnerName");
   const ownerPhoneInput = document.getElementById("restaurantOwnerPhone");
   const cityInput = document.getElementById("restaurantCity");
   const countryInput = document.getElementById("restaurantCountry");
   const planNameInput = document.getElementById("restaurantPlanName");
-  const priceMonthInput = document.getElementById("restaurantPriceMonth");
-  const statusSelect = document.getElementById("restaurantStatus");
   const expensesInput = document.getElementById("restaurantExpensesYear");
+
+  const advancedBlock = document.getElementById("restaurantAdvancedBlock");
 
   if (!overlay) return;
 
   if (restaurant) {
-    title.textContent = "Restaurant bearbeiten";
+    // === BEARBEITEN ================================================
+    title.textContent = "Kunde bearbeiten";
     idInput.value = restaurant.id;
+
+    if (customerTypeSelect) {
+      customerTypeSelect.value = restaurant.customerType || "restaurant";
+    }
+
     nameInput.value = restaurant.name || "";
-    ownerNameInput.value = restaurant.ownerName || "";
-    ownerPhoneInput.value = restaurant.ownerPhone || "";
-    cityInput.value = restaurant.city || "";
-    countryInput.value = restaurant.country || "";
-    planNameInput.value = restaurant.planName || "Standard";
-    priceMonthInput.value = restaurant.priceMonth || "";
-    statusSelect.value = restaurant.status || "active";
-    expensesInput.value = restaurant.expensesYear || 0;
+
+    const billingModel = restaurant.billingModel || "yearly";
+    if (billingModelSelect) {
+      billingModelSelect.value = billingModel;
+    }
+
+    if (priceInput) {
+      if (billingModel === "monthly") {
+        priceInput.value =
+          typeof restaurant.priceMonth === "number" &&
+          !Number.isNaN(restaurant.priceMonth)
+            ? restaurant.priceMonth
+            : "";
+      } else {
+        priceInput.value =
+          typeof restaurant.priceYear === "number" &&
+          !Number.isNaN(restaurant.priceYear)
+            ? restaurant.priceYear
+            : "";
+      }
+    }
+
+    if (statusSelect) {
+      statusSelect.value = restaurant.status || "aufbauphase";
+    }
+
+    if (ownerNameInput) ownerNameInput.value = restaurant.ownerName || "";
+    if (ownerPhoneInput) ownerPhoneInput.value = restaurant.ownerPhone || "";
+    if (cityInput) cityInput.value = restaurant.city || "";
+    if (countryInput) countryInput.value = restaurant.country || "";
+    if (planNameInput) planNameInput.value = restaurant.planName || "Standard";
+
+    if (expensesInput) {
+      expensesInput.value =
+        typeof restaurant.expensesYear === "number" &&
+        !Number.isNaN(restaurant.expensesYear)
+          ? restaurant.expensesYear
+          : 0;
+    }
+
+    if (advancedBlock) {
+      // beim Bearbeiten: erweiterte Angaben anzeigen
+      advancedBlock.style.display = "";
+    }
+    if (priceGroup && billingModelSelect) {
+      if (
+        billingModelSelect.value === "yearly" ||
+        billingModelSelect.value === "monthly"
+      ) {
+        priceGroup.style.display = "";
+      } else {
+        priceGroup.style.display = "none";
+      }
+    }
   } else {
-    title.textContent = "Neues Restaurant";
+    // === NEUER KUNDE ===============================================
+    title.textContent = "Neuer Kunde";
     idInput.value = "";
+
+    if (customerTypeSelect) {
+      customerTypeSelect.value = "restaurant";
+    }
+
     nameInput.value = "";
-    ownerNameInput.value = "";
-    ownerPhoneInput.value = "";
-    cityInput.value = "";
-    countryInput.value = "";
-    planNameInput.value = "Standard";
-    priceMonthInput.value = "370";
-    statusSelect.value = "active";
-    expensesInput.value = "0";
+
+    if (billingModelSelect) {
+      billingModelSelect.value = "";
+    }
+    if (priceInput) {
+      priceInput.value = "";
+    }
+    if (priceGroup) {
+      priceGroup.style.display = "none";
+    }
+
+    if (statusSelect) {
+      statusSelect.value = "aufbauphase";
+    }
+
+    if (ownerNameInput) ownerNameInput.value = "";
+    if (ownerPhoneInput) ownerPhoneInput.value = "";
+    if (cityInput) cityInput.value = "";
+    if (countryInput) countryInput.value = "";
+    if (planNameInput) planNameInput.value = "Standard";
+    if (expensesInput) expensesInput.value = "";
+
+    if (advancedBlock) {
+      // beim Erstellen: erweiterte Angaben erstmal verstecken
+      advancedBlock.style.display = "none";
+    }
   }
 
   overlay.classList.remove("is-hidden");
@@ -596,52 +1206,83 @@ async function saveRestaurantFromForm(e) {
   e.preventDefault();
 
   const idInput = document.getElementById("restaurantId");
+  const customerTypeSelect = document.getElementById("customerType");
   const nameInput = document.getElementById("restaurantName");
+
+  const billingModelSelect = document.getElementById("billingModel");
+  const priceInput = document.getElementById("priceValue");
+  const statusSelect = document.getElementById("restaurantStatus");
+
   const ownerNameInput = document.getElementById("restaurantOwnerName");
   const ownerPhoneInput = document.getElementById("restaurantOwnerPhone");
   const cityInput = document.getElementById("restaurantCity");
   const countryInput = document.getElementById("restaurantCountry");
   const planNameInput = document.getElementById("restaurantPlanName");
-  const priceMonthInput = document.getElementById("restaurantPriceMonth");
-  const statusSelect = document.getElementById("restaurantStatus");
   const expensesInput = document.getElementById("restaurantExpensesYear");
 
   const id = idInput.value || null;
+  const customerType = normalizeCustomerType(customerTypeSelect.value);
   const name = nameInput.value.trim();
-  const ownerName = ownerNameInput.value.trim();
-  const ownerPhone = ownerPhoneInput.value.trim();
-  const city = cityInput.value.trim();
-  const country = countryInput.value.trim();
-  const planName = planNameInput.value.trim() || "Standard";
-  const priceMonth = Number(
-    (priceMonthInput.value || "0").toString().replace(",", ".")
-  );
-  const status = (statusSelect.value || "active").toLowerCase();
-  const expensesYear = Number(
-    (expensesInput.value || "0").toString().replace(",", ".")
-  );
+
+  const billingModel = normalizeBillingModel(billingModelSelect.value);
+  const rawPrice = (priceInput.value || "").toString().replace(",", ".");
+
+  let priceYear = 0;
+  let priceMonth = 0;
 
   if (!name) {
-    alert("Bitte einen Restaurant-Namen eingeben.");
+    alert("Bitte einen Namen für den Betrieb eingeben.");
     return;
   }
-  if (!priceMonth || Number.isNaN(priceMonth)) {
-    alert("Bitte einen gültigen Monatspreis eingeben.");
+
+  if (!billingModel || (billingModel !== "yearly" && billingModel !== "monthly")) {
+    alert("Bitte ein Abrechnungsmodell wählen.");
     return;
   }
+
+  const numericPrice = Number(rawPrice);
+  if (!numericPrice || Number.isNaN(numericPrice)) {
+    alert("Bitte einen gültigen Preis eingeben.");
+    return;
+  }
+
+  if (billingModel === "yearly") {
+    priceYear = numericPrice;
+    priceMonth = numericPrice / 12;
+  } else {
+    priceMonth = numericPrice;
+    priceYear = numericPrice * 12;
+  }
+
+  priceYear = Math.round(priceYear * 100) / 100;
+  priceMonth = Math.round(priceMonth * 100) / 100;
+
+  const status = normalizeStatus(statusSelect.value || "aufbauphase");
+
+  const ownerName = (ownerNameInput?.value || "").trim();
+  const ownerPhone = (ownerPhoneInput?.value || "").trim();
+  const city = (cityInput?.value || "").trim();
+  const country = (countryInput?.value || "").trim();
+  const planName = (planNameInput?.value || "Standard").trim();
+
+  const expensesYear = Number(
+    (expensesInput?.value || "0").toString().replace(",", ".")
+  );
 
   try {
     const payload = {
+      customerType,        // "cafe" | "restaurant" | "hotel" | "ecommerce" | "rentacar" | "club"
       name,
       ownerName,
       ownerPhone,
       city,
       country,
       planName,
+      billingModel,        // "yearly" | "monthly"
       priceMonth,
-      priceYear: priceMonth * 12,
+      priceYear,
       expensesYear: Number.isNaN(expensesYear) ? 0 : expensesYear,
-      status
+      status              // "aufbauphase" | "demo" | "trial" | "active" | "paused"
     };
 
     if (id) {
@@ -656,7 +1297,7 @@ async function saveRestaurantFromForm(e) {
 
     closeRestaurantForm();
   } catch (err) {
-    console.error("Fehler beim Speichern des Restaurants:", err);
+    console.error("Fehler beim Speichern des Kunden:", err);
     alert("Fehler beim Speichern. Siehe Konsole.");
   }
 }
@@ -664,11 +1305,128 @@ async function saveRestaurantFromForm(e) {
 function handleEditRestaurant(id) {
   const r = restaurants.find((x) => x.id === id);
   if (!r) {
-    alert("Restaurant nicht gefunden.");
+    alert("Kunde nicht gefunden.");
     return;
   }
   openRestaurantForm(r);
 }
+
+// --- Lead-Formular (UI) --------------------------------------------
+
+function openLeadForm(lead) {
+  const overlay = document.getElementById("leadFormOverlay");
+  const title = document.getElementById("leadFormTitle");
+
+  const idInput = document.getElementById("leadId");
+  const typeSelect = document.getElementById("leadCustomerType");
+  const nameInput = document.getElementById("leadBusinessName");
+  const instaInput = document.getElementById("leadInstagram");
+  const phoneInput = document.getElementById("leadPhone");
+  const statusSelect = document.getElementById("leadStatus");
+  const noteInput = document.getElementById("leadNote");
+
+  if (!overlay) return;
+
+  if (lead) {
+    // Bearbeiten
+    title.textContent = "Lead bearbeiten";
+    idInput.value = lead.id;
+
+    if (typeSelect) {
+      typeSelect.value = (lead.customerType || "restaurant").toLowerCase();
+    }
+    if (nameInput) nameInput.value = lead.businessName || "";
+    if (instaInput) instaInput.value = lead.instagram || "";
+    if (phoneInput) phoneInput.value = lead.phone || "";
+    if (statusSelect) statusSelect.value = (lead.status || "new").toLowerCase();
+    if (noteInput) noteInput.value = lead.note || "";
+  } else {
+    // Neuer Lead
+    title.textContent = "Neuer Lead";
+    if (idInput) idInput.value = "";
+    if (typeSelect) typeSelect.value = "restaurant";
+    if (nameInput) nameInput.value = "";
+    if (instaInput) instaInput.value = "";
+    if (phoneInput) phoneInput.value = "";
+    if (statusSelect) statusSelect.value = "new";
+    if (noteInput) noteInput.value = "";
+  }
+
+  overlay.classList.remove("is-hidden");
+}
+
+function closeLeadForm() {
+  const overlay = document.getElementById("leadFormOverlay");
+  const form = document.getElementById("leadForm");
+  const idInput = document.getElementById("leadId");
+  if (!overlay || !form) return;
+  overlay.classList.add("is-hidden");
+  form.reset();
+  if (idInput) idInput.value = "";
+}
+
+async function saveLeadFromForm(e) {
+  e.preventDefault();
+
+  const idInput = document.getElementById("leadId");
+  const typeSelect = document.getElementById("leadCustomerType");
+  const nameInput = document.getElementById("leadBusinessName");
+  const instaInput = document.getElementById("leadInstagram");
+  const phoneInput = document.getElementById("leadPhone");
+  const statusSelect = document.getElementById("leadStatus");
+  const noteInput = document.getElementById("leadNote");
+
+  const id = idInput.value || null;
+  const customerType = (typeSelect.value || "restaurant").toLowerCase();
+  const businessName = (nameInput.value || "").trim();
+  let instagram = (instaInput.value || "").trim();
+  const phone = (phoneInput.value || "").trim();
+  let status = (statusSelect.value || "new").toLowerCase();
+  const note = (noteInput.value || "").trim();
+
+  if (!businessName) {
+    alert("Bitte einen Namen für den Betrieb eingeben.");
+    return;
+  }
+
+  if (instagram.startsWith("https://") || instagram.startsWith("http://")) {
+    // Link lassen wie er ist
+  } else if (instagram && !instagram.startsWith("@")) {
+    instagram = "@" + instagram;
+  }
+
+  // Status auf unsere Codes normalisieren
+  if (status === "no-interest") status = "no_interest";
+  if (status === "kein_interesse") status = "no_interest";
+
+  try {
+    const payload = {
+      customerType,
+      businessName,
+      instagram,
+      phone,
+      status,
+      note,
+      updatedAt: serverTimestamp()
+    };
+
+    if (id) {
+      const ref = doc(db, "leads", id);
+      await updateDoc(ref, payload);
+    } else {
+      await addDoc(collection(db, "leads"), {
+        ...payload,
+        createdAt: serverTimestamp()
+      });
+    }
+
+    closeLeadForm();
+  } catch (err) {
+    console.error("Fehler beim Speichern des Leads:", err);
+    alert("Fehler beim Speichern. Siehe Konsole.");
+  }
+}
+
 
 // --- Superadmin-Formular (UI) --------------------------------------
 
@@ -856,9 +1614,32 @@ function subscribeSuperadmins() {
         console.error("Fehler beim Laden der Superadmins:", err);
       }
     );
-    console.log("MENYRA Superadmin – Firestore verbunden (superadmins).");
+  console.log("MENYRA Superadmin – Firestore verbunden (superadmins).");
   } catch (e) {
     console.error("Firestore-Verbindung (superadmins) fehlgeschlagen:", e);
+  }
+}
+
+// Leads (Akquise / Vertrieb)
+function subscribeLeads() {
+  try {
+    const colRef = collection(db, "leads");
+    onSnapshot(
+      colRef,
+      (snapshot) => {
+        leads = snapshot.docs.map(mapLeadDoc);
+        updateLeadsCardUI();
+        renderLeadsSummary();
+        renderLeadsTable();
+        console.log("Leads geladen:", leads.length);
+      },
+      (err) => {
+        console.error("Fehler beim Laden der Leads:", err);
+      }
+    );
+    console.log("MENYRA Superadmin – Firestore verbunden (leads).");
+  } catch (e) {
+    console.error("Firestore-Verbindung (leads) fehlgeschlagen:", e);
   }
 }
 
@@ -866,7 +1647,7 @@ function subscribeSuperadmins() {
 function subscribeOrdersToday() {
   try {
     const ordersGroupRef = collectionGroup(db, "orders");
-
+  
     onSnapshot(
       ordersGroupRef,
       (snapshot) => {
@@ -1213,6 +1994,16 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+    // --- Typ-Filter (Café, Restaurant, Hotel, E-Commerce, Rent a Car, Club) ---
+  const typeFilter = document.getElementById("typeFilter");
+  if (typeFilter) {
+    typeFilter.addEventListener("change", () => {
+      customerTypeFilter = typeFilter.value;
+      renderRestaurantsTable();
+    });
+  }
+
+
   // --- Buttons: Neues Restaurant ----------------------------------
   const newRestaurantButtons = document.querySelectorAll(
     '[data-i18n-key="btn.newRestaurant"]'
@@ -1252,6 +2043,34 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // --- Lead-Formular Events ---------------------------------------
+  const addLeadBtn = document.getElementById("addLeadBtn");
+  if (addLeadBtn) {
+    addLeadBtn.addEventListener("click", () => openLeadForm(null));
+  }
+
+  const leadForm = document.getElementById("leadForm");
+  const leadFormClose = document.getElementById("leadFormClose");
+  const leadFormCancel = document.getElementById("leadFormCancel");
+  const leadOverlay = document.getElementById("leadFormOverlay");
+
+  if (leadForm) {
+    leadForm.addEventListener("submit", saveLeadFromForm);
+  }
+  if (leadFormClose) {
+    leadFormClose.addEventListener("click", closeLeadForm);
+  }
+  if (leadFormCancel) {
+    leadFormCancel.addEventListener("click", closeLeadForm);
+  }
+  if (leadOverlay) {
+    leadOverlay.addEventListener("click", (e) => {
+      if (e.target === leadOverlay) {
+        closeLeadForm();
+      }
+    });
+  }
+
   // --- Superadmin-Formular Events --------------------------------
   const addSuperadminBtn = document.getElementById("addSuperadminBtn");
   if (addSuperadminBtn) {
@@ -1280,13 +2099,39 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+    // --- Abrechnungsmodell: Preis-Feld ein-/ausblenden --------------
+  const billingModelSelect = document.getElementById("billingModel");
+  const priceGroup = document.getElementById("priceGroup");
+
+  if (billingModelSelect && priceGroup) {
+    const updatePriceVisibility = () => {
+      if (
+        billingModelSelect.value === "yearly" ||
+        billingModelSelect.value === "monthly"
+      ) {
+        priceGroup.style.display = "";
+      } else {
+        priceGroup.style.display = "none";
+      }
+    };
+
+    billingModelSelect.addEventListener("change", updatePriceVisibility);
+    updatePriceVisibility();
+  }
+
   // --- Firestore-Daten laden --------------------------------------
   subscribeRestaurants();
   subscribeSuperadmins();
+  subscribeLeads();
   subscribeOrdersToday();
   subscribeUsers();
 
   // Initial Karten updaten
   updateOrdersCardUI();
   updateUsersCardUI();
+  updateLeadsCardUI();
+  renderLeadsSummary();
+  renderLeadsTable();
 });
+
+
