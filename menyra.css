@@ -50,8 +50,8 @@ body {
   height: 100%;
 }
 
-/* Body bekommt den kompletten Verlauf – der liegt auch hinter den Safe Areas.
-   Beim normalen Scrollen siehst du also nirgends Weiß. */
+/* Dein Farbverlauf für die komplette Seite (inkl. Safe-Areas, soweit der Browser
+   sie aus deiner Seite rendert) */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background:
@@ -59,19 +59,22 @@ body {
   color: var(--text-main);
 }
 
-/* App-Shell: füllt den Viewport und sorgt dafür, dass
-   MENYRA-Topbar & Content immer innerhalb der Safe-Areas liegen. */
+/* App-Shell füllt den Screen und rückt den Inhalt in die Safe-Areas */
 .m-app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: env(safe-area-inset-top, 0px)
-           env(safe-area-inset-right, 0px)
-           env(safe-area-inset-bottom, 0px)
-           env(safe-area-inset-left, 0px);
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
 }
 
-
+/* Overscroll-Verhalten etwas zähmen (kein extra „Gummi“ in deiner Seite) */
+html, body {
+  overscroll-behavior: none;
+}
 
 
 /* ==========================================================================
@@ -1110,6 +1113,7 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
 
 
 
