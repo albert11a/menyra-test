@@ -56,15 +56,21 @@ body {
    → Browser-Weiß beim Overscroll passt optisch dazu */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background:
-    radial-gradient(circle at top,
-      #ffffff 0%,      /* ganz oben: reines Weiß */
-      #f3f4ff 18%,     /* leichter Übergang */
-      var(--bg) 55%,   /* dein bisheriger Grundton */
-      var(--bg) 100%
-    );
+
+  /* Perfekter iOS-Gradient: oben echtes Safari-Weiß → weich in deine Farbe */
+  background: linear-gradient(
+    to bottom,
+    #ffffff 0%,
+    #fafbff 8%,
+    #f2f4ff 20%,
+    #eef0ff 35%,
+    var(--bg) 60%,
+    var(--bg) 100%
+  );
+
   color: var(--text-main);
 }
+
 
 /* App-Shell normal, kein Safe-Area-Padding, kein Scroll-Lock mehr */
 .m-app {
@@ -1108,6 +1114,7 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
 
 
 
