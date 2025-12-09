@@ -2,13 +2,13 @@
   <meta charset="UTF-8" />
   <title>MENYRA – Superadmin Dashboard</title>
 
-  <!-- Wichtig für Notch & Safe Areas -->
+  <!-- Wichtig: Safe Areas gehören voll zur Seite -->
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
 
-  <!-- Statusbar / Notch-Farbe = Anfang deines Verlaufs (#eef0ff) -->
+  <!-- Statusbar / Notch-Farbe = Start deines Verlaufs (#eef0ff) -->
   <meta
     name="theme-color"
     content="#eef0ff"
@@ -19,13 +19,17 @@
     content="#050816"
     media="(prefers-color-scheme: dark)"
   />
-  <!-- Fallback -->
+  <!-- Fallback für Browser ohne prefers-color-scheme -->
   <meta name="theme-color" content="#eef0ff" />
 
-  <!-- === HEAD: FONTS & STYLES ======================================= -->
+  <!-- Optional: für „Zum Homescreen hinzufügen“ auf iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <!-- "default" = helle Statusbar, Hintergrund kommt von theme-color -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <!-- === HEAD: FONTS & STYLES ======================================= -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
     rel="stylesheet"
@@ -860,5 +864,6 @@
   <script type="module" src="menyra.js"></script>
 </body>
 </html>
+
 
 
