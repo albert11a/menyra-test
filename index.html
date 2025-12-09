@@ -131,7 +131,21 @@
                       class="m-nav-icon-img"
                     />
                   </span>
-                  <span class="m-nav-label" data-i18n-key="nav.restaurants">Restaurants</span>
+                  <span class="m-nav-label" data-i18n-key="nav.restaurants">Kunden</span>
+                </a>
+              </li>
+
+              <!-- Leads -->
+              <li>
+                <a href="#" data-section="leads" data-label="nav.leads">
+                  <span class="m-nav-icon">
+                    <img
+                      src="icons/leads-icon.png"
+                      alt=""
+                      class="m-nav-icon-img"
+                    />
+                  </span>
+                  <span class="m-nav-label" data-i18n-key="nav.leads">Leads</span>
                 </a>
               </li>
 
@@ -222,6 +236,7 @@
           </div>
         </div>
       </aside>
+
 
 
       <!-- === MAIN AREA =============================================== -->
@@ -346,6 +361,21 @@
                   </p>
                 </article>
 
+                <!-- Leads -->
+                <article class="m-card m-stat-card">
+                  <div class="m-stat-top">
+                    <span class="m-stat-label">Leads</span>
+                    <span class="m-stat-pill">Akquise</span>
+                  </div>
+                  <div class="m-stat-value-row">
+                    <span class="m-stat-value" id="statLeadsTotal">0</span>
+                    <span class="m-stat-trend m-stat-trend--neutral">gesamt</span>
+                  </div>
+                  <p class="m-stat-hint" id="statLeadsHint">
+                    Noch keine Leads erfasst.
+                  </p>
+                </article>
+
                 <!-- System-Status -->
                 <article class="m-card m-stat-card">
                   <div class="m-stat-top">
@@ -364,6 +394,7 @@
             </section>
 
             <!-- --- DASHBOARD: ACTIVITY & SYSTEM ----------------------- -->
+
             <section class="m-section m-section--split">
               <div class="m-card m-activity-card">
                 <h2 class="m-section-title" data-i18n-key="section.activity.title">Letzte Aktivität</h2>
@@ -443,14 +474,14 @@
           <div class="m-view" data-view="restaurants" style="display:none;">
             <div class="m-page-header">
               <div>
-                <h1 class="m-page-title page-title" data-i18n-key="nav.restaurants">Restaurants</h1>
+                <h1 class="m-page-title page-title" data-i18n-key="nav.restaurants">Kunden</h1>
                 <p class="m-page-subtitle" data-i18n-key="section.customers.subtitle">
                   Verwalte alle angebundenen Restaurants, Abos und Zugänge in einem Blick.
                 </p>
               </div>
               <div class="m-page-actions">
                 <button class="m-btn" type="button" data-i18n-key="btn.newRestaurant">
-                  + Neues Restaurant
+                  + Neuer Kunde
                 </button>
               </div>
             </div>
@@ -464,11 +495,23 @@
                   </p>
                 </div>
                 <div class="m-section-toolbar">
+                  <!-- Status-Filter -->
                   <select class="m-select" id="statusFilter">
                     <option value="all" data-i18n-key="filter.status.all">Alle Status</option>
                     <option value="active" data-i18n-key="filter.status.active">Aktiv</option>
                     <option value="trial" data-i18n-key="filter.status.trial">Testphase</option>
                     <option value="paused" data-i18n-key="filter.status.paused">Pausiert</option>
+                  </select>
+
+                  <!-- Typ-Filter (Café, Restaurant, Hotel, E-Commerce, Rent a Car, Club) -->
+                  <select class="m-select" id="typeFilter">
+                    <option value="all" data-i18n-key="filter.type.all">Alle Typen</option>
+                    <option value="cafe" data-i18n-key="filter.type.cafe">Cafés</option>
+                    <option value="restaurant" data-i18n-key="filter.type.restaurant">Restaurants</option>
+                    <option value="hotel" data-i18n-key="filter.type.hotel">Hotels</option>
+                    <option value="ecommerce" data-i18n-key="filter.type.ecommerce">E-Commerce</option>
+                    <option value="rentacar" data-i18n-key="filter.type.rentacar">Rent a Car</option>
+                    <option value="club" data-i18n-key="filter.type.club">Clubs</option>
                   </select>
                 </div>
               </div>
@@ -482,7 +525,7 @@
                       id="restaurantSearch"
                       class="m-search-input"
                       data-i18n-placeholder="search.restaurants.placeholder"
-                      placeholder="Restaurants nach Name, Stadt oder Inhaber filtern…"
+                      placeholder="Kunden nach Name, Stadt oder Inhaber filtern…"
                     />
                   </div>
                   <span class="m-table-meta" id="restaurantsMeta" data-i18n-key="table.meta">
@@ -492,7 +535,7 @@
 
                 <div class="m-table">
                   <div class="m-table-row m-table-row--header">
-                    <div data-i18n-key="table.header.restaurant">Restaurant</div>
+                    <div data-i18n-key="table.header.restaurant">Kunde</div>
                     <div data-i18n-key="table.header.owner">Inhaber</div>
                     <div data-i18n-key="table.header.city">Stadt</div>
                     <div data-i18n-key="table.header.plan">Plan</div>
@@ -521,8 +564,81 @@
           </div>
 
           <!-- ========================================================= -->
+          <!-- === VIEW: LEADS ========================================= -->
+          <!-- ========================================================= -->
+
+          <div class="m-view" data-view="leads" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title page-title" data-i18n-key="nav.leads">Leads</h1>
+                <p class="m-page-subtitle" data-i18n-key="section.leads.subtitle">
+                  Alle angesprochenen Cafés, Restaurants, Hotels, E-Commerce &amp; Rent-a-Car Betriebe im Überblick.
+                </p>
+              </div>
+              <div class="m-page-actions">
+                <button class="m-btn" type="button" id="addLeadBtn">
+                  + Neuer Lead
+                </button>
+              </div>
+            </div>
+
+            <section class="m-section">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title" data-i18n-key="section.leads.title">Akquise & Leads</h2>
+                  <p class="m-section-subtitle" data-i18n-key="section.leads.subtitle">
+                    Sieh auf einen Blick, wie viele Leads offen, kontaktiert oder mit Interesse sind.
+                  </p>
+                </div>
+                <div class="m-section-toolbar">
+                  <span class="m-chip" id="leadsSummaryOpen">Offen: 0</span>
+                  <span class="m-chip m-chip--soft" id="leadsSummaryContacted">Kontaktiert / Warten: 0</span>
+                  <span class="m-chip m-chip--soft" id="leadsSummaryInterested">Interesse: 0</span>
+                  <span class="m-chip m-chip--soft" id="leadsSummaryNoInterest">Kein Interesse: 0</span>
+                </div>
+              </div>
+
+              <div class="m-card m-table-card">
+                <div class="m-table-toolbar">
+                  <span class="m-table-meta" id="leadsMeta">
+                    0 Leads · sortiert nach Datum (neueste zuerst)
+                  </span>
+                </div>
+
+                <div class="m-table">
+                  <div class="m-table-row m-table-row--header">
+                    <div>Lead / Betrieb</div>
+                    <div>Kanal</div>
+                    <div>Status</div>
+                    <div>Notiz</div>
+                    <div class="m-table-col-actions">Aktion</div>
+                  </div>
+
+                  <div id="leadsTableBody">
+                    <!-- Leads werden dynamisch gerendert -->
+                  </div>
+                </div>
+
+                <div class="m-table-footer">
+                  <button class="m-ghost-btn" type="button">
+                    ‹ Zurück
+                  </button>
+                  <span class="m-table-meta" id="leadsPageInfo">
+                    Seite 1 von 1
+                  </span>
+                  <button class="m-ghost-btn" type="button">
+                    Weiter ›
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- ========================================================= -->
           <!-- === VIEW: OFFERS ======================================== -->
           <!-- ========================================================= -->
+
+
 
           <div class="m-view" data-view="offers" style="display:none;">
             <div class="m-page-header">
@@ -567,11 +683,46 @@
               <div class="m-card">
                 <h2 class="m-section-title">Billing-Übersicht</h2>
                 <p class="m-section-subtitle">
-                  Hier können wir später Stripe/PayPal oder eigene Abrechnungsdaten anbinden.
+                  Kennzahlen basierend auf allen aktiven Kunden (Gastro, Hotels, E-Commerce, Rent a Car, Clubs).
                 </p>
+
+                <!-- Gesamt-Finanzübersicht -->
+                <div class="m-section" style="margin-top: 10px;">
+                  <div class="m-system-row">
+                    <span>Jahresumsatz (brutto)</span>
+                    <span id="billingYearRevenue">0 €</span>
+                  </div>
+                  <div class="m-system-row">
+                    <span>Jahresausgaben</span>
+                    <span id="billingExpensesYear">0 €</span>
+                  </div>
+                  <div class="m-system-row">
+                    <span>Nettoergebnis / Jahr (nach Steuern)</span>
+                    <span id="billingNetProfit">0 €</span>
+                  </div>
+                  <div class="m-system-row">
+                    <span>Monatliche E-Commerce / Rent a Car Einnahmen</span>
+                    <span id="billingMrrMonthly">0 €</span>
+                  </div>
+                </div>
+
+                <hr style="border:none;border-top:1px dashed var(--border-subtle);margin:12px 0;" />
+
+                <!-- Breakdown nach Kundentyp -->
+                <h3 class="m-section-title" style="font-size:14px;margin-top:0;">
+                  Aufteilung nach Kundentyp
+                </h3>
+                <p class="m-section-subtitle">
+                  Aktive Kunden & Jahresumsatz je Kategorie (Café, Restaurant, Hotel, E-Commerce, Rent a Car, Club).
+                </p>
+
+                <div id="billingTypeBreakdown" style="margin-top:6px;">
+                  <!-- Wird per JS gefüllt -->
+                </div>
               </div>
             </section>
           </div>
+
 
           <!-- ========================================================= -->
           <!-- === VIEW: USERS ========================================= -->
@@ -673,27 +824,89 @@
             </section>
           </div>
 
-          <!-- ========================================================= -->
-          <!-- === MODAL: RESTAURANT-FORMULAR ========================== -->
-          <!-- ========================================================= -->
+        <!-- ========================================================= -->
+        <!-- === MODAL: RESTAURANT-FORMULAR ========================== -->
+        <!-- ========================================================= -->
 
-          <div id="restaurantFormOverlay" class="m-modal-overlay is-hidden">
-            <div class="m-modal">
-              <div class="m-modal-header">
-                <h2 id="restaurantFormTitle" class="m-modal-title">Restaurant</h2>
-                <button type="button" class="m-icon-btn m-modal-close" id="restaurantFormClose">✕</button>
+        <div id="restaurantFormOverlay" class="m-modal-overlay is-hidden">
+          <div class="m-modal">
+            <div class="m-modal-header">
+              <h2 id="restaurantFormTitle" class="m-modal-title">Neuer Kunde</h2>
+              <button
+                type="button"
+                class="m-icon-btn m-modal-close"
+                id="restaurantFormClose"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form id="restaurantForm" class="m-modal-body">
+              <input type="hidden" id="restaurantId" />
+
+              <!-- 1. KUNDENTYP ---------------------------------------- -->
+              <div class="m-input-group">
+                <label for="customerType">Kundentyp</label>
+                <select id="customerType" required>
+                  <option value="cafe">Café / Coffee-Bar</option>
+                  <option value="restaurant">Restaurant</option>
+                  <option value="hotel">Hotel</option>
+                  <option value="ecommerce">Online-Shop / Rent-a-Car</option>
+                </select>
               </div>
-              <form id="restaurantForm" class="m-modal-body">
-                <input type="hidden" id="restaurantId" />
 
-                <div class="m-input-group">
-                  <label for="restaurantName">Name des Restaurants</label>
-                  <input id="restaurantName" type="text" required />
-                </div>
+              <!-- 2. NAME DES BETRIEBS -------------------------------- -->
+              <div class="m-input-group">
+                <label for="restaurantName">Name des Betriebs</label>
+                <input
+                  id="restaurantName"
+                  type="text"
+                  required
+                />
+              </div>
 
+              <!-- 3. ABRECHNUNGSMODELL + PREIS ------------------------ -->
+              <div class="m-input-group">
+                <label for="billingModel">Abrechnungsmodell</label>
+                <select id="billingModel" required>
+                  <option value="">Bitte wählen</option>
+                  <option value="yearly">Jährlich</option>
+                  <option value="monthly">Monatlich</option>
+                </select>
+              </div>
+
+              <div class="m-input-group" id="priceGroup" style="display:none;">
+                <label for="priceValue">Preis (brutto)</label>
+                <input
+                  id="priceValue"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  required
+                />
+              </div>
+
+              <!-- 4. STATUS ------------------------------------------- -->
+              <div class="m-input-group">
+                <label for="restaurantStatus">Status</label>
+                <select id="restaurantStatus">
+                  <option value="aufbauphase">Aufbauphase</option>
+                  <option value="demo">Demo</option>
+                  <option value="trial">Testphase</option>
+                  <option value="active">Aktiv</option>
+                  <option value="paused">Pausiert</option>
+                </select>
+              </div>
+
+              <!-- ERWEITERTE ANGABEN – NUR BEI BEARBEITEN ------------- -->
+              <div
+                id="restaurantAdvancedBlock"
+                class="m-input-group"
+                style="margin-top:16px; border-top:1px solid var(--border-subtle); padding-top:12px;"
+              >
                 <div class="m-input-row">
                   <div class="m-input-group">
-                    <label for="restaurantOwnerName">Inhaber / Kontakt</label>
+                    <label for="restaurantOwnerName">Kontaktperson / Inhaber</label>
                     <input id="restaurantOwnerName" type="text" />
                   </div>
                   <div class="m-input-group">
@@ -709,89 +922,184 @@
                   </div>
                   <div class="m-input-group">
                     <label for="restaurantCountry">Land</label>
-                    <input id="restaurantCountry" type="text" placeholder="z.B. Kosovo" />
+                    <input id="restaurantCountry" type="text" />
                   </div>
                 </div>
 
                 <div class="m-input-row">
                   <div class="m-input-group">
-                    <label for="restaurantPlanName">Plan</label>
-                    <input id="restaurantPlanName" type="text" placeholder="Standard / Premium …" />
-                  </div>
-                  <div class="m-input-group">
-                    <label for="restaurantPriceMonth">Monatspreis (€)</label>
-                    <input id="restaurantPriceMonth" type="number" step="0.01" min="0" required />
-                  </div>
-                </div>
-
-                <div class="m-input-row">
-                  <div class="m-input-group">
-                    <label for="restaurantStatus">Status</label>
-                    <select id="restaurantStatus">
-                      <option value="active">Aktiv</option>
-                      <option value="trial">Testphase</option>
-                      <option value="paused">Pausiert</option>
-                    </select>
+                    <label for="restaurantPlanName">Plan-Name (intern)</label>
+                    <input
+                      id="restaurantPlanName"
+                      type="text"
+                    />
                   </div>
                   <div class="m-input-group">
                     <label for="restaurantExpensesYear">Jahresausgaben (€)</label>
-                    <input id="restaurantExpensesYear" type="number" step="0.01" min="0" value="0" />
-                    <p class="m-input-hint">
-                      Druck, Domain, Hosting, Fahrtkosten usw. für diesen Kunden pro Jahr.
-                    </p>
+                    <input
+                      id="restaurantExpensesYear"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                    />
                   </div>
                 </div>
-
-                <div class="m-modal-footer">
-                  <button type="button" class="m-ghost-btn" id="restaurantFormCancel">Abbrechen</button>
-                  <button type="submit" class="m-btn">Speichern</button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <!-- ========================================================= -->
-          <!-- === MODAL: SUPERADMIN-FORMULAR ========================== -->
-          <!-- ========================================================= -->
-
-          <div id="superadminFormOverlay" class="m-modal-overlay is-hidden">
-            <div class="m-modal">
-              <div class="m-modal-header">
-                <h2 id="superadminFormTitle" class="m-modal-title">Superadmin</h2>
-                <button type="button" class="m-icon-btn m-modal-close" id="superadminFormClose">✕</button>
               </div>
-              <form id="superadminForm" class="m-modal-body">
-                <input type="hidden" id="superadminId" />
 
-                <div class="m-input-group">
-                  <label for="superadminName">Name</label>
-                  <input id="superadminName" type="text" required />
-                </div>
-
-                <div class="m-input-group">
-                  <label for="superadminEmail">Login / E-Mail</label>
-                  <input id="superadminEmail" type="email" required />
-                </div>
-
-                <div class="m-input-group">
-                  <label for="superadminAvatarUrl">Icon / Profilbild-URL</label>
-                  <input id="superadminAvatarUrl" type="url" placeholder="https://…" />
-                  <p class="m-input-hint">
-                    Hier kannst du einen Bild-Link für das Superadmin-Icon hinterlegen.
-                  </p>
-                </div>
-
-                <div class="m-modal-footer">
-                  <button type="button" class="m-ghost-btn" id="superadminFormCancel">Abbrechen</button>
-                  <button type="submit" class="m-btn">Speichern</button>
-                </div>
-              </form>
-            </div>
+              <div class="m-modal-footer">
+                <button
+                  type="button"
+                  class="m-ghost-btn"
+                  id="restaurantFormCancel"
+                >
+                  Abbrechen
+                </button>
+                <button type="submit" class="m-btn">Speichern</button>
+              </div>
+            </form>
           </div>
-
         </div>
-      </main>
-    </div>
+
+
+        <!-- ========================================================= -->
+        <!-- === MODAL: LEAD-FORMULAR ================================ -->
+        <!-- ========================================================= -->
+
+        <div id="leadFormOverlay" class="m-modal-overlay is-hidden">
+          <div class="m-modal">
+            <div class="m-modal-header">
+              <h2 id="leadFormTitle" class="m-modal-title">Neuer Lead</h2>
+              <button
+                type="button"
+                class="m-icon-btn m-modal-close"
+                id="leadFormClose"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form id="leadForm" class="m-modal-body">
+              <input type="hidden" id="leadId" />
+
+              <!-- 1. KUNDENTYP ---------------------------------------- -->
+              <div class="m-input-group">
+                <label for="leadCustomerType">Kundentyp</label>
+                <select id="leadCustomerType" required>
+                  <option value="cafe">Café / Coffee-Bar</option>
+                  <option value="restaurant">Restaurant</option>
+                  <option value="hotel">Hotel</option>
+                  <option value="ecommerce">E-Commerce / Online-Shop</option>
+                  <option value="rentacar">Rent a Car</option>
+                  <option value="club">Club / Nightlife</option>
+                </select>
+              </div>
+
+              <!-- 2. NAME DES BETRIEBS -------------------------------- -->
+              <div class="m-input-group">
+                <label for="leadBusinessName">Name des Betriebs</label>
+                <input
+                  id="leadBusinessName"
+                  type="text"
+                  required
+                />
+              </div>
+
+              <!-- 3. INSTAGRAM & TELEFON ------------------------------ -->
+              <div class="m-input-row">
+                <div class="m-input-group">
+                  <label for="leadInstagram">Instagram</label>
+                  <input
+                    id="leadInstagram"
+                    type="text"
+                    placeholder="@accountname oder Link"
+                  />
+                </div>
+                <div class="m-input-group">
+                  <label for="leadPhone">Telefon (optional)</label>
+                  <input
+                    id="leadPhone"
+                    type="tel"
+                    placeholder="+383 …"
+                  />
+                </div>
+              </div>
+
+              <!-- 4. STATUS ------------------------------------------- -->
+              <div class="m-input-group">
+                <label for="leadStatus">Status</label>
+                <select id="leadStatus" required>
+                  <option value="new">Offen (nicht kontaktiert)</option>
+                  <option value="contacted">Kontaktiert</option>
+                  <option value="waiting">Warten auf Rückmeldung</option>
+                  <option value="interested">Interesse</option>
+                  <option value="no_interest">Kein Interesse</option>
+                </select>
+              </div>
+
+              <!-- 5. NOTIZ -------------------------------------------- -->
+              <div class="m-input-group">
+                <label for="leadNote">Notiz</label>
+                <textarea
+                  id="leadNote"
+                  rows="3"
+                  placeholder="Kurz notieren, was der Kunde beim Gespräch gesagt hat…"
+                ></textarea>
+              </div>
+
+              <div class="m-modal-footer">
+                <button
+                  type="button"
+                  class="m-ghost-btn"
+                  id="leadFormCancel"
+                >
+                  Abbrechen
+                </button>
+                <button type="submit" class="m-btn">Speichern</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+
+        <!-- ========================================================= -->
+        <!-- === MODAL: SUPERADMIN-FORMULAR ========================== -->
+        <!-- ========================================================= -->
+
+        <div id="superadminFormOverlay" class="m-modal-overlay is-hidden">
+          <div class="m-modal">
+            <div class="m-modal-header">
+              <h2 id="superadminFormTitle" class="m-modal-title">Superadmin</h2>
+              <button type="button" class="m-icon-btn m-modal-close" id="superadminFormClose">✕</button>
+            </div>
+            <form id="superadminForm" class="m-modal-body">
+              <input type="hidden" id="superadminId" />
+
+              <div class="m-input-group">
+                <label for="superadminName">Name</label>
+                <input id="superadminName" type="text" required />
+              </div>
+
+              <div class="m-input-group">
+                <label for="superadminEmail">Login / E-Mail</label>
+                <input id="superadminEmail" type="email" required />
+              </div>
+
+              <div class="m-input-group">
+                <label for="superadminAvatarUrl">Icon / Profilbild-URL</label>
+                <input id="superadminAvatarUrl" type="url" placeholder="https://…" />
+                <p class="m-input-hint">
+                  Hier kannst du einen Bild-Link für das Superadmin-Icon hinterlegen.
+                </p>
+              </div>
+
+              <div class="m-modal-footer">
+                <button type="button" class="m-ghost-btn" id="superadminFormCancel">Abbrechen</button>
+                <button type="submit" class="m-btn">Speichern</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
 
     <!-- =============================================================== -->
     <!-- === MOBILE MENU: OVERLAY + DRAWER (nur Mobile/Tablet) ========= -->
@@ -864,6 +1172,5 @@
   <script type="module" src="menyra.js"></script>
 </body>
 </html>
-
 
 
