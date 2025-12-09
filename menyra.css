@@ -266,7 +266,17 @@ body.theme-dark .m-sidebar {
   top: 56px;
 }
 
+/* Mobile & Tablet: Sidebar komplett ausblenden,
+   Layout einspaltig – Navigation läuft nur über Burger-Menu/Drawer */
 @media (max-width: 959px) {
+  .m-sidebar {
+    display: none;
+  }
+
+  .m-layout {
+    display: block;
+  }
+
   .m-sidebar-inner {
     position: static;
     top: auto;
@@ -385,6 +395,7 @@ body.theme-dark .m-sidebar {
 .m-dot--orange {
   background: var(--warning);
 }
+
 
 /* ==========================================================================
    5. MAIN-BEREICH, SEITENKOPF & BUTTONS
@@ -967,4 +978,144 @@ body.theme-dark .m-sidebar {
   border-radius: 999px;
   object-fit: cover;
   border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+/* ============================================================= */
+/* === MOBILE TOPBAR & BURGER-MENÜ ============================= */
+/* ============================================================= */
+
+/* Burger-Button: nur auf Mobile/Tablet zeigen */
+.m-burger-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 6px;
+}
+
+@media (min-width: 960px) {
+  .m-burger-btn {
+    display: none;
+  }
+}
+
+/* Auf Mobile: Logo zentrieren, rechte Topbar-Seite ausblenden */
+@media (max-width: 959px) {
+  .m-topbar {
+    justify-content: center;
+  }
+
+  .m-topbar-center {
+    display: none; /* Suche oben wird im Drawer gezeigt */
+  }
+
+  .m-topbar-right {
+    display: none; /* Sprache, Theme, Profil wandern in Drawer */
+  }
+
+  .m-topbar-left {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .m-topbar-left .m-logo {
+    margin: 0 auto;
+  }
+}
+
+/* ============================================================= */
+/* === MOBILE DRAWER MENU ====================================== */
+/* ============================================================= */
+
+.m-mobile-menu-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--transition-fast);
+  z-index: 80;
+}
+
+.m-mobile-menu-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Drawer nimmt auf Mobile & Tablet die volle Bildschirmbreite ein */
+.m-mobile-menu {
+  position: fixed;
+  inset: 0;                  /* oben, rechts, unten, links = 0 */
+  width: 100%;               /* volle Breite */
+  transform: translateX(-100%);
+  transition: transform 0.25s ease-out;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-soft);
+  z-index: 90;
+  border-radius: 0;          /* keine abgerundete rechte Kante mehr */
+  display: flex;
+  flex-direction: column;
+}
+
+.m-mobile-menu.is-open {
+  transform: translateX(0);
+}
+
+/* Auf Desktop Drawer & Overlay ausblenden */
+@media (min-width: 960px) {
+  .m-mobile-menu,
+  .m-mobile-menu-overlay {
+    display: none;
+  }
+}
+
+
+/* Inhalt im Drawer */
+.m-mobile-menu-inner {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px 18px;
+  gap: 14px;
+}
+
+.m-mobile-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.m-mobile-menu-title {
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 14px;
+}
+
+.m-mobile-menu-close {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.m-mobile-menu-section {
+  margin-top: 4px;
+}
+
+.m-mobile-menu-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Suche-Variante im Drawer */
+.m-search.m-search--mobile {
+  box-shadow: none;
+  background: var(--bg-elevated-soft);
+}
+
+/* Profil kompakter im Drawer */
+.m-profile--mobile {
+  background: rgba(15, 23, 42, 0.05);
 }
