@@ -1122,36 +1122,40 @@ body.theme-dark .m-sidebar {
 }
 
 /* ==========================================================================
-   12. MOBILE/TABLET SAFE-AREAS & TOPBAR-FARBE ANGLEICHEN
+   12. MOBILE/TABLET SAFE-AREAS & WEICHER VERLAUF
    ========================================================================== */
 
-/* Nur auf Mobile & Tablet:
-   - Safe-Area-Hintergrund (html/body) = #f3f4f6
-   - Topbar = #f3f4f6 (ohne Verlauf)
-   - Verlauf läuft in .m-app weiter, damit es nicht platt aussieht
-*/
+/* Mobile & Tablet: sehr sanfter Verlauf,
+   Safe Areas (html/body + Topbar) = exakt gleiche Startfarbe */
 @media (max-width: 959px) {
+  /* Safe Areas oben/unten */
   html,
   body {
-    background-color: #f3f4f6;
-    background-image: none;
-    background: #f3f4f6;
+    background: #f4f5ff;      /* sehr weiches Lila-Grau */
   }
 
-  /* Topbar gleiche Farbe wie Safe Area */
+  /* Topbar gleiche Farbe wie Safe Areas */
   .m-topbar {
-    background: #f3f4f6;
+    background: #f4f5ff;
   }
 
-  /* Dark-Theme Mobile: dunkle Topbar */
+  /* Dark-Theme Mobile: dunkle Topbar & Safe Areas */
+  body.theme-dark {
+    background: #020617;
+  }
   body.theme-dark .m-topbar {
     background: #020617;
   }
 
-  /* Verlauf unterhalb im App-Container starten */
+  /* Verlauf nur im App-Bereich, sehr sanft */
   .m-app {
     min-height: 100vh;
     background:
-      radial-gradient(circle at top, #f3f4f6 0, var(--bg) 45%, var(--bg) 100%);
+      radial-gradient(
+        circle at top,
+        #f4f5ff 0,      /* Start = exakt wie Safe Area & Topbar */
+        #f6f7fb 55%,
+        #f6f7fb 100%
+      );
   }
 }
