@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#ffffff" />
 
-
   <!-- === HEAD: FONTS & STYLES ======================================= -->
 
   <!-- Optional: schöne Schrift -->
@@ -23,6 +22,16 @@
 
     <header class="m-topbar">
       <div class="m-topbar-left">
+        <!-- Burger-Button (nur Mobile sichtbar via CSS) -->
+        <button
+          class="m-icon-btn m-burger-btn"
+          id="burgerToggle"
+          type="button"
+          aria-label="Menü öffnen"
+        >
+          ☰
+        </button>
+
         <div class="m-logo">MENYRA</div>
         <span class="m-env-badge" data-i18n-key="env.superadmin">Superadmin</span>
       </div>
@@ -147,7 +156,7 @@
                 </a>
               </li>
 
-              <!-- System-Logs (Icon kannst du später als systemlogs-icon.png anlegen) -->
+              <!-- System-Logs -->
               <li>
                 <a href="#" data-section="logs" data-label="nav.logs">
                   <span class="m-nav-icon">
@@ -371,7 +380,6 @@
                     <span class="m-activity-time">gestern</span>
                   </li>
                 </ul>
-                <!-- PLATZHALTER: Später echte Aktivitäten aus Logs/Events laden. -->
               </div>
 
               <div class="m-card m-system-card">
@@ -516,9 +524,6 @@
                 <p class="m-section-subtitle">
                   Platzhalter – später können wir hier Firestore-Listen aus <code>restaurants/{id}/offers</code> anzeigen.
                 </p>
-                <!-- ===== PLATZHALTER: OFFERS-UI START ===== -->
-                <!-- Hier später: Tabelle/Slider für Angebote, Filter nach Restaurant, Status, Zeitraum -->
-                <!-- ===== PLATZHALTER: OFFERS-UI ENDE ===== -->
               </div>
             </section>
           </div>
@@ -543,9 +548,6 @@
                 <p class="m-section-subtitle">
                   Hier können wir später Stripe/PayPal oder eigene Abrechnungsdaten anbinden.
                 </p>
-                <!-- ===== PLATZHALTER: BILLING-UI START ===== -->
-                <!-- Hier später: Jahres-/Monatsübersicht, offene Rechnungen, Zahlungsstatus, Export -->
-                <!-- ===== PLATZHALTER: BILLING-UI ENDE ===== -->
               </div>
             </section>
           </div>
@@ -570,9 +572,6 @@
                 <p class="m-section-subtitle">
                   Platzhalter – später kommen hier Rollen, Berechtigungen und Passwort-Resets.
                 </p>
-                <!-- ===== PLATZHALTER: USERS-UI START ===== -->
-                <!-- Hier später: Liste aller Benutzer, Rollen, Länder-Zuordnung, Partner-CEOs -->
-                <!-- ===== PLATZHALTER: USERS-UI ENDE ===== -->
               </div>
             </section>
           </div>
@@ -597,9 +596,6 @@
                 <p class="m-section-subtitle">
                   Hier können wir später Firestore- und Function-Logs gefiltert anzeigen.
                 </p>
-                <!-- ===== PLATZHALTER: SYSTEM-LOGS-UI START ===== -->
-                <!-- Später: Filter (Datum, Severity, Kunde), Log-Tabelle, Export-Button -->
-                <!-- ===== PLATZHALTER: SYSTEM-LOGS-UI ENDE ===== -->
               </div>
             </section>
           </div>
@@ -624,9 +620,6 @@
                 <p class="m-section-subtitle">
                   Hier kannst du später Logos, Farben, Systemtexte und Standardpreise verwalten.
                 </p>
-                <!-- ===== PLATZHALTER: PLATFORM-SETTINGS START ===== -->
-                <!-- Branding, Standardpreise, Steuerprofil etc. bauen wir später hier rein. -->
-                <!-- ===== PLATZHALTER: PLATFORM-SETTINGS ENDE ===== -->
               </div>
 
               <div class="m-card">
@@ -778,10 +771,75 @@
         </div>
       </main>
     </div>
+
+    <!-- =============================================================== -->
+    <!-- === MOBILE MENU: OVERLAY + DRAWER (nur Mobile/Tablet) ========= -->
+    <!-- =============================================================== -->
+
+    <div class="m-mobile-menu-overlay" id="mobileMenuOverlay"></div>
+
+    <aside class="m-mobile-menu" id="mobileMenu" aria-hidden="true">
+      <div class="m-mobile-menu-inner">
+        <div class="m-mobile-menu-header">
+          <div class="m-mobile-menu-title">MENYRA</div>
+          <button
+            class="m-mobile-menu-close"
+            type="button"
+            id="mobileMenuClose"
+            aria-label="Menü schließen"
+          >
+            ✕
+          </button>
+        </div>
+
+        <!-- Suche im Mobile-Menü -->
+        <div class="m-mobile-menu-section">
+          <div class="m-search m-search--mobile">
+            <span class="m-search-icon">🔍</span>
+            <input
+              type="text"
+              id="mobileTopSearch"
+              class="m-search-input"
+              data-i18n-placeholder="search.global.placeholder"
+              placeholder="Suche in MENYRA (Restaurants, Inhaber, Städte)…"
+            />
+          </div>
+        </div>
+
+        <!-- Theme, Sprache, Account im Mobile-Menü -->
+        <div class="m-mobile-menu-section m-mobile-menu-row">
+          <button
+            id="mobileThemeToggle"
+            class="m-icon-btn"
+            type="button"
+            title="Theme wechseln"
+          >
+            🌓
+          </button>
+
+          <select id="mobileLangSelect" class="m-select">
+            <option value="de">DE</option>
+            <option value="en">EN</option>
+            <option value="sq">SQ</option>
+            <option value="sr">SR</option>
+            <option value="tr">TR</option>
+          </select>
+
+          <div class="m-profile m-profile--mobile">
+            <span class="m-profile-name">Albert</span>
+            <img
+              class="m-profile-avatar"
+              src="https://i.postimg.cc/5NzhwrQH/IMG-0143.jpg"
+              alt="Superadmin Avatar"
+            />
+          </div>
+        </div>
+      </div>
+    </aside>
+
   </div>
 
   <!-- === SCRIPTS ==================================================== -->
-  <!-- Wichtig: als Modul laden (weil du firebase-config importierst) -->
   <script type="module" src="menyra.js"></script>
 </body>
 </html>
