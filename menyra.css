@@ -43,41 +43,35 @@ body.theme-dark {
   box-sizing: border-box;
 }
 
-html,
+/* html = komplette Leinwand inkl. Bounce-Bereich & Safe Areas */
+html {
+  margin: 0;
+  padding: 0;
+  background:
+    radial-gradient(circle at top, #eef0ff 0, var(--bg) 35%, var(--bg) 100%);
+}
+
+/* body liegt oben drauf, aber ist transparent,
+   damit überall der gleiche Verlauf durchscheint */
 body {
   margin: 0;
   padding: 0;
-}
-
-/* WICHTIG:
-   - Der Verlauf liegt auf html → auch Bounce-Bereich/Safe Area sieht gleich aus
-   - body ist transparent und liegt nur als Inhaltsebene oben drauf
-*/
-html {
-  min-height: 100%;
-  background:
-    radial-gradient(circle at top, #f8f9ff 0, #f3f5ff 35%, var(--bg) 85%, var(--bg) 100%);
-}
-
-body {
-  min-height: 100%;
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: transparent;
   color: var(--text-main);
 }
 
-/* App shell: Fläche innerhalb der Safe Areas */
+/* App shell: Inhalt innerhalb der Safe Areas */
 .m-app {
   min-height: 100vh;
 }
 
-/* iOS / moderne Browser: Safe Areas oben & unten respektieren.
-   Der Verlauf bleibt aber überall identisch, weil er auf html liegt. */
+/* iOS / moderne Browser: Safe Areas oben & unten respektieren */
 @supports (padding: env(safe-area-inset-top)) {
   body {
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
-    /* falls du links/rechts auch ausgleichen willst:
+    /* optional, falls du links/rechts auch angleichen willst:
        padding-left: env(safe-area-inset-left);
        padding-right: env(safe-area-inset-right);
     */
@@ -89,9 +83,6 @@ body {
     );
   }
 }
-
-
-
 
 
 /* ==========================================================================
@@ -1169,5 +1160,6 @@ body.theme-dark .m-sidebar {
       );
   }
 }
+
 
 
