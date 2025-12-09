@@ -1120,3 +1120,38 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
+/* ==========================================================================
+   12. MOBILE/TABLET SAFE-AREAS & TOPBAR-FARBE ANGLEICHEN
+   ========================================================================== */
+
+/* Nur auf Mobile & Tablet:
+   - Safe-Area-Hintergrund (html/body) = #f3f4f6
+   - Topbar = #f3f4f6 (ohne Verlauf)
+   - Verlauf läuft in .m-app weiter, damit es nicht platt aussieht
+*/
+@media (max-width: 959px) {
+  html,
+  body {
+    background-color: #f3f4f6;
+    background-image: none;
+    background: #f3f4f6;
+  }
+
+  /* Topbar gleiche Farbe wie Safe Area */
+  .m-topbar {
+    background: #f3f4f6;
+  }
+
+  /* Dark-Theme Mobile: dunkle Topbar */
+  body.theme-dark .m-topbar {
+    background: #020617;
+  }
+
+  /* Verlauf unterhalb im App-Container starten */
+  .m-app {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at top, #f3f4f6 0, var(--bg) 45%, var(--bg) 100%);
+  }
+}
