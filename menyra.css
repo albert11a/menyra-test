@@ -50,30 +50,25 @@ body {
   height: 100%;
 }
 
-/* Dein Farbverlauf für die komplette Seite (inkl. Safe-Areas, soweit der Browser
-   sie aus deiner Seite rendert) */
+/* Body:
+   - oben ganz weiß (#ffffff)
+   - dann weicher Übergang in deinen bisherigen Verlauf
+   → Browser-Weiß beim Overscroll passt optisch dazu */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background:
-    radial-gradient(circle at top, #eef0ff 0, var(--bg) 45%, var(--bg) 100%);
+    radial-gradient(circle at top,
+      #ffffff 0%,      /* ganz oben: reines Weiß */
+      #f3f4ff 18%,     /* leichter Übergang */
+      var(--bg) 55%,   /* dein bisheriger Grundton */
+      var(--bg) 100%
+    );
   color: var(--text-main);
 }
 
-/* App-Shell füllt den Screen und rückt den Inhalt in die Safe-Areas */
+/* App-Shell normal, kein Safe-Area-Padding, kein Scroll-Lock mehr */
 .m-app {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  padding:
-    env(safe-area-inset-top, 0px)
-    env(safe-area-inset-right, 0px)
-    env(safe-area-inset-bottom, 0px)
-    env(safe-area-inset-left, 0px);
-}
-
-/* Overscroll-Verhalten etwas zähmen (kein extra „Gummi“ in deiner Seite) */
-html, body {
-  overscroll-behavior: none;
 }
 
 
@@ -1113,6 +1108,7 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
 
 
 
