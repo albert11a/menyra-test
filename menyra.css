@@ -55,46 +55,35 @@ body {
   height: 100%;
 }
 
-/* Body:
-   - Einheitliche Hintergrundfarbe = wie Topbar & Safe Areas
-   - Safe Areas (oben/unten) zeigen also dieselbe Farbe */
+/* EXAKT wie bei „Karte“:
+   - Ein durchgehender Hintergrund (#f3f4f6)
+   - Safe-Areas oben/unten bekommen genau diese Farbe */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--topbar-bg);
+  background-color: #f3f4f6;
   color: var(--text-main);
 }
 
-/* App shell:
-   - Füllt die Höhe
-   - Sanfter Verlauf von der Topbar-Farbe in dein bisheriges BG */
+/* App-Shell füllt die Höhe und hat denselben Hintergrund
+   → keine andere Farbe hinter den Safe Areas */
 .m-app {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top, var(--topbar-bg) 0, var(--bg) 45%, var(--bg) 100%);
+  background-color: #f3f4f6;
 }
 
-
-
-/* App-Shell normal, kein Safe-Area-Padding, kein Scroll-Lock mehr */
-.m-app {
-  min-height: 100vh;
-}
 
 
 /* ==========================================================================
    3. TOPBAR & GLOBAL UI-ELEMENTE
    ========================================================================== */
 
-/* Topbar */
+/* Topbar: fester Hintergrund wie Body/Safe-Areas */
 .m-topbar {
   position: sticky;
   top: 0;
   z-index: 50;
   backdrop-filter: blur(16px);
-
-  /* KEIN Verlauf mehr – feste Farbe wie Safe Areas */
-  background: var(--topbar-bg);
-
+  background-color: #f3f4f6;  /* gleiche Farbe wie Body */
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -229,6 +218,7 @@ body.theme-dark .m-profile {
   transform: translateY(0);
   opacity: 0.9;
 }
+
 
 
 /* ------------------------------------------------------------------
@@ -1140,6 +1130,7 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
 
 
 
