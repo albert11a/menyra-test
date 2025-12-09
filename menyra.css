@@ -50,45 +50,29 @@ body {
   height: 100%;
 }
 
-/* Hintergrund-Verlauf direkt auf HTML,
-   damit auch Overscroll & Ränder denselben Look haben */
-html {
-  background-color: #eef0ff; /* Fallback-Farbe */
-  background:
-    radial-gradient(circle at top, #eef0ff 0, var(--bg) 45%, var(--bg) 100%);
-}
-
-/* Body: transparent über dem html-Verlauf,
-   nur für Schrift & Layout zuständig */
+/* Body bekommt den kompletten Verlauf – der liegt auch hinter den Safe Areas.
+   Beim normalen Scrollen siehst du also nirgends Weiß. */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: transparent;
+  background:
+    radial-gradient(circle at top, #eef0ff 0, var(--bg) 45%, var(--bg) 100%);
   color: var(--text-main);
 }
 
-/* App shell: füllt die Seite innerhalb des Viewports */
+/* App-Shell: füllt den Viewport und sorgt dafür, dass
+   MENYRA-Topbar & Content immer innerhalb der Safe-Areas liegen. */
 .m-app {
-  min-height: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: env(safe-area-inset-top, 0px)
+           env(safe-area-inset-right, 0px)
+           env(safe-area-inset-bottom, 0px)
+           env(safe-area-inset-left, 0px);
 }
 
-/* iOS / moderne Browser: Safe Areas oben & unten respektieren
-   → Inhalt wird verschoben, Hintergrund bleibt gleich */
-@supports (padding: env(safe-area-inset-top)) {
-  body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    /* optional, falls du links/rechts auch anpassen willst:
-       padding-left: env(safe-area-inset-left);
-       padding-right: env(safe-area-inset-right);
-    */
-  }
 
-  .m-app {
-    min-height: calc(
-      100% - env(safe-area-inset-top) - env(safe-area-inset-bottom)
-    );
-  }
-}
+
 
 /* ==========================================================================
    3. TOPBAR & GLOBAL UI-ELEMENTE
@@ -1126,5 +1110,6 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
 
 
