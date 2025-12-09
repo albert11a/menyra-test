@@ -1,3 +1,7 @@
+/* ==========================================================================
+   1. DESIGN-TOKENS & THEME
+   ========================================================================== */
+
 :root {
   --bg: #f6f7fb;
   --bg-elevated: #ffffff;
@@ -29,7 +33,10 @@ body.theme-dark {
   --shadow-small: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
-/* Reset & Base */
+/* ==========================================================================
+   2. RESET & BASE
+   ========================================================================== */
+
 *,
 *::before,
 *::after {
@@ -42,17 +49,43 @@ body {
   padding: 0;
 }
 
+/* Body: immer weißer Hintergrund -> saubere Safe-Areas */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background:
-    radial-gradient(circle at top, #eef0ff 0, var(--bg) 45%, var(--bg) 100%);
+  background: #ffffff;
   color: var(--text-main);
 }
 
-/* App shell */
+/* App shell: dein bisheriger Verlauf (Desktop-Optik bleibt gleich) */
 .m-app {
   min-height: 100vh;
+  background:
+    radial-gradient(circle at top, #eef0ff 0, var(--bg) 45%, var(--bg) 100%);
 }
+
+/* iOS / moderne Browser: Safe Areas oben & unten respektieren
+   -> weißer Rand oben/unten, darunter startet dein Gradient */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    /* optional, falls du links/rechts auch ausgleichen willst:
+       padding-left: env(safe-area-inset-left);
+       padding-right: env(safe-area-inset-right);
+    */
+  }
+
+  .m-app {
+    min-height: calc(
+      100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom)
+    );
+  }
+}
+
+
+/* ==========================================================================
+   3. TOPBAR & GLOBAL UI-ELEMENTE
+   ========================================================================== */
 
 /* Topbar */
 .m-topbar {
@@ -200,6 +233,10 @@ body.theme-dark .m-profile {
   opacity: 0.9;
 }
 
+/* ==========================================================================
+   4. LAYOUT-GRID & SIDEBAR
+   ========================================================================== */
+
 /* Layout */
 .m-layout {
   display: block;
@@ -292,7 +329,6 @@ body.theme-dark .m-sidebar {
   object-fit: contain;
 }
 
-
 .m-nav-label {
   flex: 1;
 }
@@ -349,6 +385,10 @@ body.theme-dark .m-sidebar {
 .m-dot--orange {
   background: var(--warning);
 }
+
+/* ==========================================================================
+   5. MAIN-BEREICH, SEITENKOPF & BUTTONS
+   ========================================================================== */
 
 /* Main */
 .m-main {
@@ -480,6 +520,10 @@ body.theme-dark .m-sidebar {
   box-shadow: var(--shadow-small);
 }
 
+/* ==========================================================================
+   6. CARDS, STATS & KOMPONENTEN
+   ========================================================================== */
+
 /* Cards & stats */
 .m-card {
   background: var(--bg-elevated);
@@ -570,7 +614,10 @@ body.theme-dark .m-sidebar {
   color: var(--text-muted);
 }
 
-/* Table */
+/* ==========================================================================
+   7. TABELLE (KUNDEN / RESTAURANTS)
+   ========================================================================== */
+
 .m-table-card {
   margin-top: 4px;
 }
@@ -684,6 +731,10 @@ body.theme-dark .m-sidebar {
   align-items: center;
 }
 
+/* ==========================================================================
+   8. ACTIVITY & SYSTEM-CARDS
+   ========================================================================== */
+
 /* Activity */
 .m-activity-card {
   min-height: 220px;
@@ -767,7 +818,10 @@ body.theme-dark .m-sidebar {
   margin-top: 12px;
 }
 
-/* Responsive: Mobile table */
+/* ==========================================================================
+   9. RESPONSIVE – MOBILE TABLE
+   ========================================================================== */
+
 @media (max-width: 800px) {
   .m-table-row {
     grid-template-columns: 1.8fr 1.4fr;
@@ -793,7 +847,9 @@ body.theme-dark .m-sidebar {
   }
 }
 
-/* === Modal & Formular UI === */
+/* ==========================================================================
+   10. MODAL & FORMULAR-UI
+   ========================================================================== */
 
 .m-modal-overlay {
   position: fixed;
@@ -894,7 +950,10 @@ body.theme-dark .m-sidebar {
   }
 }
 
-/* Superadmin-Icon in Tabelle */
+/* ==========================================================================
+   11. SUPERADMIN-ICON IN TABELLEN
+   ========================================================================== */
+
 .m-superadmin-icon {
   display: inline-flex;
   align-items: center;
