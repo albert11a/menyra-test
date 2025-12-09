@@ -930,17 +930,25 @@ body.theme-dark .m-sidebar {
 }
 
 .m-input-group input,
-.m-input-group select {
+.m-input-group select,
+.m-input-group textarea {
   border-radius: 12px;
   border: 1px solid var(--border-subtle);
   padding: 7px 10px;
   font-size: 13px;
   background: var(--bg-elevated-soft);
   color: var(--text-main);
+  font-family: inherit;
+}
+
+.m-input-group textarea {
+  min-height: 70px;
+  resize: vertical;
 }
 
 .m-input-group input:focus,
-.m-input-group select:focus {
+.m-input-group select:focus,
+.m-input-group textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 1px rgba(105, 108, 255, 0.3);
@@ -962,6 +970,7 @@ body.theme-dark .m-sidebar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
 
 /* ==========================================================================
    11. SUPERADMIN-ICON IN TABELLEN
@@ -1160,6 +1169,5 @@ body.theme-dark .m-sidebar {
       );
   }
 }
-
 
 
