@@ -14,6 +14,10 @@
   --danger: #ef4444;
   --success: #22c55e;
   --warning: #f97316;
+
+  /* NEU: feste Topbar-/Safe-Area-Farbe (hell lila/blau) */
+  --topbar-bg: #eef0ff;
+
   --radius-card: 18px;
   --radius-pill: 999px;
   --shadow-soft: 0 14px 30px rgba(15, 23, 42, 0.12);
@@ -33,6 +37,7 @@ body.theme-dark {
   --shadow-small: 0 10px 30px rgba(0, 0, 0, 0.6);
 }
 
+
 /* ==========================================================================
    2. RESET & BASE
    ========================================================================== */
@@ -51,25 +56,23 @@ body {
 }
 
 /* Body:
-   - oben ganz weiß (#ffffff)
-   - dann weicher Übergang in deinen bisherigen Verlauf
-   → Browser-Weiß beim Overscroll passt optisch dazu */
+   - Einheitliche Hintergrundfarbe = wie Topbar & Safe Areas
+   - Safe Areas (oben/unten) zeigen also dieselbe Farbe */
 body {
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-
-  /* Perfekter iOS-Gradient: oben echtes Safari-Weiß → weich in deine Farbe */
-  background: linear-gradient(
-    to bottom,
-    #ffffff 0%,
-    #fafbff 8%,
-    #f2f4ff 20%,
-    #eef0ff 35%,
-    var(--bg) 60%,
-    var(--bg) 100%
-  );
-
+  background: var(--topbar-bg);
   color: var(--text-main);
 }
+
+/* App shell:
+   - Füllt die Höhe
+   - Sanfter Verlauf von der Topbar-Farbe in dein bisheriges BG */
+.m-app {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, var(--topbar-bg) 0, var(--bg) 45%, var(--bg) 100%);
+}
+
 
 
 /* App-Shell normal, kein Safe-Area-Padding, kein Scroll-Lock mehr */
@@ -82,17 +85,16 @@ body {
    3. TOPBAR & GLOBAL UI-ELEMENTE
    ========================================================================== */
 
-/* Topbar – Standard (Desktop) */
+/* Topbar */
 .m-topbar {
   position: sticky;
   top: 0;
   z-index: 50;
   backdrop-filter: blur(16px);
-  background: linear-gradient(
-    120deg,
-    rgba(248, 250, 252, 0.92),
-    rgba(238, 242, 255, 0.96)
-  );
+
+  /* KEIN Verlauf mehr – feste Farbe wie Safe Areas */
+  background: var(--topbar-bg);
+
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
@@ -227,6 +229,7 @@ body.theme-dark .m-profile {
   transform: translateY(0);
   opacity: 0.9;
 }
+
 
 /* ------------------------------------------------------------------
    MOBILE & TABLET: Topbar-Background an Safari-Weiß anpassen
@@ -1137,6 +1140,7 @@ body.theme-dark .m-sidebar {
 .m-profile--mobile {
   background: rgba(15, 23, 42, 0.05);
 }
+
 
 
 
