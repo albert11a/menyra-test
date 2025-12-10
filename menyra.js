@@ -1,5 +1,11 @@
 // menyra.js – Superadmin UI + Firebase + Sprachen + Finanzen + Superadmins + Dashboard-Stats
 
+// menyra.js – Superadmin UI + Firebase + Sprachen + Finanzen + Superadmins + Dashboard-Stats
+
+// menyra.js – Superadmin UI + Firebase + Sprachen + Finanzen + Superadmins + Dashboard-Stats
+
+// 💠 ABSCHNITT 1 – Imports & globaler State (ANFANG) -----------------------
+
 import {
   db,
   collection,
@@ -22,24 +28,35 @@ import {
 
 // --- State ---------------------------------------------------------
 
+// Kunden / Restaurants
 let restaurants = [];
 let restaurantStatusFilter = "all";
 let customerTypeFilter = "all";
 let restaurantSearchTerm = "";
 
+// NEU: Kundensegment-Chip (Kernkunden, Test, Demo, Vertragsende, Gekündigte, Alle)
+let customerSegment = "core"; // "core" | "trial" | "demo" | "contract_end" | "cancelled" | "all"
+
+// Superadmins
 let superadmins = [];
+
+// Leads / Akquise
 let leads = [];
 
-// Dashboard-Stats
+// Dashboard-Stats (Bestellungen, User)
 let ordersTodayCount = 0;
 let topRestaurantToday = null;
 
 let usersTotalCount = 0;
 let usersActiveCount = 0;
 
+// 💠 ABSCHNITT 1 – Imports & globaler State (ENDE) -------------------------
+
+
+
+// 💠 ABSCHNITT 2 – Mapping & Finanz-Basis (ANFANG) -------------------------
 
 // --- Mapping: Restaurants ------------------------------------------
-
 
 function mapRestaurantDoc(docSnap) {
   const data = docSnap.data() || {};
@@ -51,29 +68,20 @@ function mapRestaurantDoc(docSnap) {
   const city = data.city || "";
   const country = data.country || "";
 
-  const customerType = data.customerType || "restaurant";
-  const billingModel = data.billingModel || "yearly";
-
-  let status = (data.status || "active").toString().toLowerCase().trim();
-  if (status === "aktiv") status = "active";
+  // Einheitliche Normalisierung
+  const customerType = normalizeCustomerType(data.customerType || "restaurant");
+  const billingModel = normalizeBillingModel(data.billingModel || "yearly");
+  const status = normalizeStatus(data.status || "active");
 
   // Kandidaten für Jahrespreis:
   let rawYear =
-    data.priceYear ??
-    data.planPriceYear ??
-    data.yearPrice ??
-    data.jahresPreis ??
-    data.jahrespreis ??
-    null;
+    data.priceYear ?? data.planPriceYear ?? data.yearPrice ?? data.jahresPreis ?? data.jahrespreis ?? null;
 
   // Kandidaten für Monatspreis:
   let rawMonth =
-    data.priceMonth ??
-    data.planPrice ??
-    data.monthPrice ??
-    data.monatspreis ??
-    null;
+    data.priceMonth ?? data.planPrice ?? data.monthPrice ?? data.monatspreis ?? null;
 
+  // Fallback: altes Feld "price"
   if (rawYear == null && rawMonth == null && data.price != null) {
     if (Number(data.price) > 1000) {
       rawYear = data.price;
@@ -92,6 +100,7 @@ function mapRestaurantDoc(docSnap) {
     priceMonth = Number(rawMonth);
   }
 
+  // ineinander ableiten
   if (!priceYear && priceMonth) {
     priceYear = priceMonth * 12;
   }
@@ -112,9 +121,9 @@ function mapRestaurantDoc(docSnap) {
     ownerPhone,
     city,
     country,
-    status,
-    customerType,
-    billingModel,
+    status, // "active" | "trial" | "demo" | "aufbauphase" | "contract_end" | "cancelled" | "paused"
+    customerType, // "restaurant" | "cafe" | "club" | "hotel" | "motel" | "onlineshop" | "service"
+    billingModel, // "yearly" | "monthly"
     planName,
     priceYear,
     priceMonth,
@@ -122,7 +131,6 @@ function mapRestaurantDoc(docSnap) {
     raw: data
   };
 }
-
 
 // --- Mapping: Superadmins ------------------------------------------
 
@@ -136,14 +144,15 @@ function mapSuperadminDoc(docSnap) {
   };
 }
 
-
-// --- Mapping: Leads ------------------------------------------
+// --- Mapping: Leads ------------------------------------------------
 
 function mapLeadDoc(docSnap) {
   const data = docSnap.data() || {};
   const id = docSnap.id;
 
-  const customerType = (data.customerType || data.type || "restaurant").toLowerCase();
+  const rawCustomerType = data.customerType || data.type || "restaurant";
+  const customerType = normalizeCustomerType(rawCustomerType);
+
   const businessName = data.businessName || data.name || "Unbenannt";
   const instagram = data.instagram || data.instagramHandle || "";
   const phone = data.phone || data.phoneNumber || "";
@@ -167,14 +176,12 @@ function mapLeadDoc(docSnap) {
   };
 }
 
-
 // --- Finanz-Berechnungen -------------------------------------------
 
-
 // „Steuerprofil“ – später aus Firestore, vorerst fix
-const TAX_RATE = 10;    // 10 % Steuer
-const OTHER_RATE = 5;   // 5 % sonstige Abgaben
-const TRAVEL_YEAR = 0;  // Reisekosten/Jahr – kannst du später dynamisch machen
+const TAX_RATE = 10; // 10 % Steuer
+const OTHER_RATE = 5; // 5 % sonstige Abgaben
+const TRAVEL_YEAR = 0; // Reisekosten/Jahr – kannst du später dynamisch machen
 
 function safeNumber(val) {
   const n = Number(val || 0);
@@ -182,10 +189,15 @@ function safeNumber(val) {
 }
 
 function computeFinanceTotals() {
-  // Nur aktive Kunden für Umsatz
-  const active = restaurants.filter((r) => r.status === "active");
+  // Nur Kunden in Umsetzung & aktiv gelten als Kundenbasis
+  const customerBase = restaurants.filter(
+    (r) => r.status === "active" || r.status === "aufbauphase"
+  );
+
+  // Umsatz nur mit aktiven Kunden
+  const active = customerBase.filter((r) => r.status === "active");
   const activeCount = active.length;
-  const totalCount = restaurants.length;
+  const totalCount = customerBase.length;
 
   // Jahresumsatz = Summe aller Jahrespreise der aktiven Kunden
   const revenueYear = active.reduce((sum, r) => {
@@ -196,7 +208,7 @@ function computeFinanceTotals() {
   const revenueMonth = revenueYear / 12;
   const revenueDay = revenueYear / 365;
 
-  // Jahresausgaben (manuell gepflegt pro Kunde)
+  // Jahresausgaben (manuell gepflegt pro Kunde – nur aktive)
   const expensesYear = active.reduce((sum, r) => {
     return sum + safeNumber(r.expensesYear);
   }, 0);
@@ -208,7 +220,8 @@ function computeFinanceTotals() {
   const netProfit = grossProfit - taxAmount - otherAmount - TRAVEL_YEAR;
 
   // Breakdown nach Kundentyp
-  const typeKeys = ["cafe", "restaurant", "hotel", "ecommerce", "rentacar", "club"];
+  const typeKeys = ["cafe", "restaurant", "hotel", "motel", "onlineshop", "service", "club"];
+
   const activeByType = {};
   const revenueYearByType = {};
 
@@ -238,23 +251,6 @@ function computeFinanceTotals() {
     }
   });
 
-  // Debug bei Bedarf:
-  // console.log("Finance totals:", {
-  //   activeCount,
-  //   totalCount,
-  //   revenueYear,
-  //   revenueMonth,
-  //   revenueDay,
-  //   expensesYear,
-  //   grossProfit,
-  //   taxAmount,
-  //   otherAmount,
-  //   netProfit,
-  //   activeByType,
-  //   revenueYearByType,
-  //   mrrMonthly
-  // });
-
   return {
     activeCount,
     totalCount,
@@ -272,8 +268,11 @@ function computeFinanceTotals() {
   };
 }
 
+// 💠 ABSCHNITT 2 – Mapping & Finanz-Basis (ENDE) ---------------------------
 
 
+
+// 💠 ABSCHNITT 3 – Dashboard, Stat-Karten & Billing (ANFANG) ---------------
 
 // --- Dashboard-Rendering -------------------------------------------
 
@@ -294,25 +293,29 @@ function updateDashboardFromRestaurants() {
     const cafes = byType.cafe || 0;
     const restaurantsCount = byType.restaurant || 0;
     const hotels = byType.hotel || 0;
-    const ecommerce = byType.ecommerce || 0;
-    const rentacar = byType.rentacar || 0;
+    const motels = byType.motel || 0;
+    const onlineshop = byType.onlineshop || 0;
+    const service = byType.service || 0;
     const clubs = byType.club || 0;
     const others = byType.other || 0;
 
     const gastro = cafes + restaurantsCount + clubs;
+    const stay = hotels + motels;
 
     const parts = [];
     if (gastro) parts.push(`Gastro: ${gastro}`);
-    if (hotels) parts.push(`Hotels: ${hotels}`);
-    if (ecommerce) parts.push(`E-Commerce: ${ecommerce}`);
-    if (rentacar) parts.push(`Rent a Car: ${rentacar}`);
+    if (stay) parts.push(`Hotels/Motels: ${stay}`);
+    if (onlineshop) parts.push(`Online-Shops: ${onlineshop}`);
+    if (service) parts.push(`Dienstleistung: ${service}`);
     if (others) parts.push(`Sonstige: ${others}`);
 
     const breakdown = parts.length ? ` · Verteilung: ${parts.join(" · ")}` : "";
 
     const mrrText =
       t.mrrMonthly && t.mrrMonthly > 0
-        ? ` · Monatliche E-Commerce / Rent a Car Einnahmen: ${t.mrrMonthly.toFixed(2)} €`
+        ? ` · Monatliche E-Commerce / Rent a Car Einnahmen: ${t.mrrMonthly.toFixed(
+            2
+          )} €`
         : "";
 
     elActiveHint.textContent =
@@ -353,7 +356,9 @@ function updateDashboardFromRestaurants() {
 
     const mrrText =
       t.mrrMonthly && t.mrrMonthly > 0
-        ? ` · Monatliche E-Commerce / Rent a Car Einnahmen: ${t.mrrMonthly.toFixed(2)} €`
+        ? ` · Monatliche E-Commerce / Rent a Car Einnahmen: ${t.mrrMonthly.toFixed(
+            2
+          )} €`
         : "";
 
     billingSubtitle.textContent = baseText + mrrText;
@@ -362,7 +367,6 @@ function updateDashboardFromRestaurants() {
   // Detail-Billing-View (Tab „Abrechnung“)
   renderBillingView(totals);
 }
-
 
 function renderBillingView(totals) {
   const yearEl = document.getElementById("billingYearRevenue");
@@ -385,8 +389,9 @@ function renderBillingView(totals) {
     { key: "cafe", label: "Cafés" },
     { key: "restaurant", label: "Restaurants" },
     { key: "hotel", label: "Hotels" },
-    { key: "ecommerce", label: "E-Commerce" },
-    { key: "rentacar", label: "Rent a Car" },
+    { key: "motel", label: "Motels" },
+    { key: "onlineshop", label: "Online-Shops / E-Commerce / Rent a Car" },
+    { key: "service", label: "Dienstleistung" },
     { key: "club", label: "Clubs / Nightlife" },
     { key: "other", label: "Sonstige" }
   ];
@@ -420,7 +425,6 @@ function renderBillingView(totals) {
     breakdownContainer.appendChild(empty);
   }
 }
-
 
 // --- Orders- & User-UI ---------------------------------------------
 
@@ -467,6 +471,136 @@ function updateUsersCardUI() {
   }
 }
 
+// --- Dashboard-Aktivität („Letzte Aktivität“) ----------------------
+
+function formatActivityTime(date) {
+  if (!(date instanceof Date)) return "";
+  return date.toLocaleString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+function rebuildActivityList() {
+  const listEl = document.getElementById("activityList");
+  const metaEl = document.getElementById("activityMeta");
+  if (!listEl) return; // Falls HTML noch nicht angepasst ist: nichts tun
+
+  const events = [];
+
+  // 1) Kunden (Restaurants) – nur wenn createdAt existiert
+  restaurants.forEach((r) => {
+    const raw = r.raw || {};
+    const createdAt = raw.createdAt;
+    if (createdAt && typeof createdAt.toDate === "function") {
+      const d = createdAt.toDate();
+      events.push({
+        ts: d,
+        type: "customer_created",
+        title: `Neuer Kunde: ${r.name}`,
+        sub: r.city ? `${r.city}${r.country ? " · " + r.country : ""}` : r.country || ""
+      });
+    }
+  });
+
+  // 2) Leads – Neu & Updates
+  leads.forEach((lead) => {
+    // Neu
+    const createdAt = lead.createdAt;
+    if (createdAt && typeof createdAt.toDate === "function") {
+      const d = createdAt.toDate();
+      events.push({
+        ts: d,
+        type: "lead_created",
+        title: `Neuer Lead: ${lead.businessName}`,
+        sub: lead.instagram || lead.phone || ""
+      });
+    }
+
+    // Update (wenn updatedAt vorhanden und später als createdAt)
+    const updatedAt = lead.updatedAt;
+    if (updatedAt && typeof updatedAt.toDate === "function") {
+      const dUpdated = updatedAt.toDate();
+      let dCreated = null;
+      if (createdAt && typeof createdAt.toDate === "function") {
+        dCreated = createdAt.toDate();
+      }
+      const isRealUpdate = !dCreated || dUpdated.getTime() > dCreated.getTime() + 1000;
+
+      if (isRealUpdate) {
+        events.push({
+          ts: dUpdated,
+          type: "lead_updated",
+          title: `Lead aktualisiert: ${lead.businessName}`,
+          sub: lead.status ? `Status: ${lead.status}` : ""
+        });
+      }
+    }
+  });
+
+  // Sortieren: neueste zuerst
+  events.sort((a, b) => b.ts.getTime() - a.ts.getTime());
+
+  // Nur die letzten 10–12 Einträge anzeigen
+  const limited = events.slice(0, 12);
+
+  listEl.innerHTML = "";
+
+  if (!limited.length) {
+    const li = document.createElement("li");
+    li.className = "m-activity-empty";
+    li.textContent = "Noch keine Aktivität erfasst.";
+    listEl.appendChild(li);
+
+    if (metaEl) {
+      metaEl.textContent = "";
+    }
+    return;
+  }
+
+  limited.forEach((event) => {
+    const li = document.createElement("li");
+    li.className = "m-activity-item";
+
+    let dotClass = "m-activity-dot--gray";
+    if (event.type === "customer_created") dotClass = "m-activity-dot--green";
+    if (event.type === "lead_created") dotClass = "m-activity-dot--blue";
+    if (event.type === "lead_updated") dotClass = "m-activity-dot--orange";
+
+    const timeLabel = formatActivityTime(event.ts);
+
+    li.innerHTML = `
+      <span class="m-activity-dot ${dotClass}"></span>
+      <div>
+        <div class="m-activity-title">${event.title}</div>
+        ${
+          event.sub
+            ? `<div class="m-activity-sub">${event.sub}</div>`
+            : ""
+        }
+      </div>
+      <div class="m-activity-time">${timeLabel}</div>
+    `;
+
+    listEl.appendChild(li);
+  });
+
+  if (metaEl) {
+    metaEl.textContent = `${limited.length} Ereignisse · basierend auf Kunden & Leads`;
+  }
+}
+
+// 💠 ABSCHNITT 3 – Dashboard, Stat-Karten & Billing (ENDE) ------------------
+
+
+
+// 💠 ABSCHNITT 4 – Leads-Dashboard, Tabelle & Akquise (ANFANG) --------------
+
+/**
+ * Leads: Statistik, Cards & Tabelle
+ */
 
 // --- Leads-UI (Dashboard + Zusammenfassung) ------------------------
 
@@ -558,7 +692,6 @@ function renderLeadsSummary() {
   }
 }
 
-
 // --- Leads-Tabelle rendern ----------------------------------------
 
 function renderLeadsTable() {
@@ -582,21 +715,23 @@ function renderLeadsTable() {
   });
 
   const typeLabelMap = {
-    cafe: "Café",
     restaurant: "Restaurant",
+    cafe: "Café",
+    club: "Club / Nightlife",
     hotel: "Hotel",
-    ecommerce: "E-Commerce",
-    rentacar: "Rent a Car",
-    club: "Club / Nightlife"
+    motel: "Motel",
+    onlineshop: "Online-Shop",
+    service: "Dienstleistung"
   };
 
   const typeIconMap = {
-    cafe: "☕",
     restaurant: "🍽",
+    cafe: "☕",
+    club: "🎧",
     hotel: "🏨",
-    ecommerce: "🛒",
-    rentacar: "🚗",
-    club: "🎧"
+    motel: "🏩",
+    onlineshop: "🛒",
+    service: "🛎️"
   };
 
   const statusLabelMap = {
@@ -604,9 +739,9 @@ function renderLeadsTable() {
     contacted: "Kontaktiert",
     waiting: "Warten",
     interested: "Interesse",
-    "no_interest": "Kein Interesse",
+    no_interest: "Kein Interesse",
     "no-interest": "Kein Interesse",
-    "kein_interesse": "Kein Interesse"
+    kein_interesse: "Kein Interesse"
   };
 
   sorted.forEach((lead) => {
@@ -614,7 +749,7 @@ function renderLeadsTable() {
     row.className = "m-table-row";
     row.setAttribute("data-lead-id", lead.id);
 
-    const typeKey = (lead.customerType || "restaurant").toLowerCase();
+    const typeKey = normalizeCustomerType(lead.customerType || "restaurant");
     const typeLabel = typeLabelMap[typeKey] || "Sonstiges";
     const typeIcon = typeIconMap[typeKey] || "🏪";
 
@@ -636,7 +771,9 @@ function renderLeadsTable() {
     }
 
     const instagramDisplay = lead.instagram
-      ? (lead.instagram.startsWith("@") ? lead.instagram : "@" + lead.instagram)
+      ? lead.instagram.startsWith("@")
+        ? lead.instagram
+        : "@" + lead.instagram
       : "-";
 
     let statusClass = "m-status-badge--paused";
@@ -648,9 +785,7 @@ function renderLeadsTable() {
     }
 
     const shortNote =
-      (lead.note || "").length > 80
-        ? lead.note.slice(0, 77) + "…"
-        : (lead.note || "");
+      (lead.note || "").length > 80 ? lead.note.slice(0, 77) + "…" : lead.note || "";
 
     row.innerHTML = `
       <div>
@@ -752,22 +887,8 @@ function handleLeadToCustomer(leadId) {
     return;
   }
 
-  // Kundentyp-Mapping:
-  // cafe -> cafe
-  // restaurant -> restaurant
-  // hotel -> hotel
-  // ecommerce -> ecommerce
-  // rentacar -> ecommerce
-  // club/nightlife -> cafe
-  let sourceType = (lead.customerType || "restaurant").toLowerCase();
-  let customerType = "restaurant";
-
-  if (sourceType === "cafe") customerType = "cafe";
-  else if (sourceType === "restaurant") customerType = "restaurant";
-  else if (sourceType === "hotel") customerType = "hotel";
-  else if (sourceType === "ecommerce") customerType = "ecommerce";
-  else if (sourceType === "rentacar") customerType = "ecommerce";
-  else if (sourceType === "club") customerType = "cafe";
+  // Kundentyp auf unsere 7 Standard-Typen normalisieren
+  const customerType = normalizeCustomerType(lead.customerType || "restaurant");
 
   // Erst normales "Neuer Kunde"-Formular öffnen
   openRestaurantForm(null);
@@ -791,10 +912,13 @@ function handleLeadToCustomer(leadId) {
   // damit du das beim Kunden-Termin sauber einträgst.
 }
 
+// 💠 ABSCHNITT 4 – Leads-Dashboard, Tabelle & Akquise (ENDE) ----------------
+
+
+
+// 💠 ABSCHNITT 5 – Restaurant- & Superadmin-Tabellen + Actions (ANFANG) -----
 
 // --- Restaurants-Tabelle rendern -----------------------------------
-
-
 
 function renderRestaurantsTable() {
   const bodyContainer = document.getElementById("restaurantsTableBody");
@@ -806,22 +930,40 @@ function renderRestaurantsTable() {
 
   let filtered = [...restaurants];
 
-  // Status-Filter
+  // NEU: Segment-Filter (Kundengruppen)
+  // core = "normale Kunden" (In Umsetzung + Aktiv)
+  if (customerSegment === "core") {
+    filtered = filtered.filter(
+      (r) => r.status === "active" || r.status === "aufbauphase"
+    );
+  } else if (customerSegment === "trial") {
+    filtered = filtered.filter((r) => r.status === "trial");
+  } else if (customerSegment === "demo") {
+    filtered = filtered.filter((r) => r.status === "demo");
+  } else if (customerSegment === "contract_end") {
+    filtered = filtered.filter((r) => r.status === "contract_end");
+  } else if (customerSegment === "cancelled") {
+    filtered = filtered.filter((r) => r.status === "cancelled");
+  }
+  // customerSegment === "all" => kein zusätzlicher Filter
+
+  // Status-Filter (Dropdown)
   if (restaurantStatusFilter !== "all") {
     filtered = filtered.filter((r) => r.status === restaurantStatusFilter);
   }
 
-  // Typ-Filter (cafe, restaurant, hotel, ecommerce, rentacar, club)
+  // Typ-Filter (Restaurant, Café, Club, Hotel, Motel, Online-Shop, Dienstleistung)
   if (customerTypeFilter !== "all") {
-    filtered = filtered.filter((r) => (r.customerType || "restaurant") === customerTypeFilter);
+    filtered = filtered.filter(
+      (r) => (r.customerType || "restaurant") === customerTypeFilter
+    );
   }
 
   // Textsuche
   if (restaurantSearchTerm) {
     const t = restaurantSearchTerm.toLowerCase();
     filtered = filtered.filter((r) => {
-      const combined =
-        `${r.name} ${r.ownerName} ${r.city} ${r.country}`.toLowerCase();
+      const combined = `${r.name} ${r.ownerName} ${r.city} ${r.country}`.toLowerCase();
       return combined.includes(t);
     });
   }
@@ -835,12 +977,13 @@ function renderRestaurantsTable() {
   function getTypeConfig(customerType) {
     const type = customerType || "restaurant";
     const iconMap = {
-      cafe: "☕",
       restaurant: "🍽",
+      cafe: "☕",
+      club: "🎧",
       hotel: "🏨",
-      ecommerce: "🛒",
-      rentacar: "🚗",
-      club: "🎧"
+      motel: "🏩",
+      onlineshop: "🛒",
+      service: "🛎️"
     };
     const icon = iconMap[type] || "🏪";
     const labelKey = "type." + type;
@@ -856,14 +999,24 @@ function renderRestaurantsTable() {
     row.setAttribute("data-id", r.id);
     row.setAttribute("data-type", r.customerType || "restaurant");
 
-    const statusKey =
-      r.status === "trial"
-        ? "status.trial"
-        : r.status === "paused"
-        ? "status.paused"
-        : "status.active";
+    // Status-Label & Farbe
+    let statusKey = "status.active";
+    if (r.status === "trial") statusKey = "status.trial";
+    else if (r.status === "paused") statusKey = "status.paused";
+    else if (r.status === "demo") statusKey = "status.demo";
+    else if (r.status === "aufbauphase" || r.status === "setup") {
+      statusKey = "status.setup";
+    } else if (r.status === "contract_end") {
+      statusKey = "status.contract_end";
+    } else if (r.status === "cancelled") {
+      statusKey = "status.cancelled";
+    }
 
     const statusLabel = dict[statusKey] || r.status;
+
+    let statusClass = "m-status-badge--paused";
+    if (r.status === "active") statusClass = "m-status-badge--active";
+    else if (r.status === "trial") statusClass = "m-status-badge--trial";
 
     const planLabel = `${r.planName} · ${r.priceYear.toFixed(0)} €`;
 
@@ -893,28 +1046,16 @@ function renderRestaurantsTable() {
         <span class="m-chip">${planLabel}</span>
       </div>
       <div>
-        <span class="m-status-badge ${
-          r.status === "active"
-            ? "m-status-badge--active"
-            : r.status === "trial"
-            ? "m-status-badge--trial"
-            : "m-status-badge--paused"
-        }">${statusLabel}</span>
+        <span class="m-status-badge ${statusClass}">${statusLabel}</span>
       </div>
       <div class="m-table-actions">
-        <button class="m-icon-btn js-restaurant-login" type="button" data-id="${
-          r.id
-        }" title="Superadmin Login">
+        <button class="m-icon-btn js-restaurant-login" type="button" data-id="${r.id}" title="Superadmin Login">
           🔑
         </button>
-        <button class="m-icon-btn js-restaurant-edit" type="button" data-id="${
-          r.id
-        }" title="Bearbeiten">
+        <button class="m-icon-btn js-restaurant-edit" type="button" data-id="${r.id}" title="Bearbeiten">
           ✏️
         </button>
-        <button class="m-icon-btn js-restaurant-qr" type="button" data-id="${
-          r.id
-        }" title="QR-Links">
+        <button class="m-icon-btn js-restaurant-qr" type="button" data-id="${r.id}" title="QR-Links">
           🔗
         </button>
       </div>
@@ -923,6 +1064,7 @@ function renderRestaurantsTable() {
     bodyContainer.appendChild(row);
   });
 
+  // Meta & Paging-Info
   if (meta) {
     const langDict = translations[getCurrentLang()] || translations.de;
     const template = langDict["table.meta"] || "0 Einträge · sortiert nach Name";
@@ -931,13 +1073,11 @@ function renderRestaurantsTable() {
 
   if (pageInfo) {
     const langDict = translations[getCurrentLang()] || translations.de;
-    pageInfo.textContent =
-      langDict["table.footer.pageInfo"] || "Seite 1 von 1";
+    pageInfo.textContent = langDict["table.footer.pageInfo"] || "Seite 1 von 1";
   }
 
   attachRestaurantActionHandlers();
 }
-
 
 // --- Superadmins rendern -------------------------------------------
 
@@ -969,14 +1109,10 @@ function renderSuperadminsTable() {
         </div>
       </div>
       <div class="m-table-actions">
-        <button class="m-icon-btn js-superadmin-edit" type="button" data-id="${
-          s.id
-        }" title="Bearbeiten">
+        <button class="m-icon-btn js-superadmin-edit" type="button" data-id="${s.id}" title="Bearbeiten">
           ✏️
         </button>
-        <button class="m-icon-btn js-superadmin-delete" type="button" data-id="${
-          s.id
-        }" title="Löschen">
+        <button class="m-icon-btn js-superadmin-delete" type="button" data-id="${s.id}" title="Löschen">
           🗑
         </button>
       </div>
@@ -1060,6 +1196,12 @@ function attachSuperadminActionHandlers() {
   });
 }
 
+// 💠 ABSCHNITT 5 – Restaurant- & Superadmin-Tabellen + Actions (ENDE) ------
+
+
+
+// 💠 ABSCHNITT 6 – Restaurant-Formular & Speichern (ANFANG) -----------------
+
 // --- Restaurant-Formular (UI) --------------------------------------
 
 function openRestaurantForm(restaurant) {
@@ -1106,14 +1248,12 @@ function openRestaurantForm(restaurant) {
     if (priceInput) {
       if (billingModel === "monthly") {
         priceInput.value =
-          typeof restaurant.priceMonth === "number" &&
-          !Number.isNaN(restaurant.priceMonth)
+          typeof restaurant.priceMonth === "number" && !Number.isNaN(restaurant.priceMonth)
             ? restaurant.priceMonth
             : "";
       } else {
         priceInput.value =
-          typeof restaurant.priceYear === "number" &&
-          !Number.isNaN(restaurant.priceYear)
+          typeof restaurant.priceYear === "number" && !Number.isNaN(restaurant.priceYear)
             ? restaurant.priceYear
             : "";
       }
@@ -1131,8 +1271,7 @@ function openRestaurantForm(restaurant) {
 
     if (expensesInput) {
       expensesInput.value =
-        typeof restaurant.expensesYear === "number" &&
-        !Number.isNaN(restaurant.expensesYear)
+        typeof restaurant.expensesYear === "number" && !Number.isNaN(restaurant.expensesYear)
           ? restaurant.expensesYear
           : 0;
     }
@@ -1202,6 +1341,105 @@ function closeRestaurantForm() {
   if (idInput) idInput.value = "";
 }
 
+/**
+ * Hilfsfunktionen zur Normalisierung
+ * ----------------------------------
+ * Sorgt dafür, dass überall die gleichen Keys im Code ankommen.
+ */
+
+function normalizeCustomerType(value) {
+  const v = (value || "").toString().toLowerCase().trim();
+  if (!v) return "restaurant";
+
+  // Gastro
+  if (["restaurant", "resto"].includes(v)) return "restaurant";
+  if (["cafe", "kafe", "coffee"].includes(v)) return "cafe";
+  if (["club", "nightlife", "club/nightlife"].includes(v)) return "club";
+
+  // Übernachtung
+  if (["hotel"].includes(v)) return "hotel";
+  if (["motel"].includes(v)) return "motel";
+
+  // Online / digitale Kunden (E-Commerce, Rent a Car, etc.)
+  if (
+    [
+      "ecommerce",
+      "e-commerce",
+      "shop",
+      "online-shop",
+      "onlineshop",
+      "online_shop",
+      "eshop",
+      "e-shop",
+      "rentacar",
+      "rent-a-car",
+      "rentalcar"
+    ].includes(v)
+  ) {
+    // In Phase 1 fassen wir alles als Online-Shop zusammen
+    return "onlineshop";
+  }
+
+  // Dienstleistung / Agentur / Sonstiges
+  if (
+    [
+      "service",
+      "dienstleistung",
+      "agency",
+      "agentur",
+      "büro",
+      "buero",
+      "office",
+      "studio",
+      "salon"
+    ].includes(v)
+  ) {
+    return "service";
+  }
+
+  // Fallback
+  return "restaurant";
+}
+
+function normalizeBillingModel(value) {
+  const v = (value || "").toString().toLowerCase().trim();
+  if (["monthly", "monatlich", "month"].includes(v)) return "monthly";
+  if (["yearly", "jährlich", "jaehrlich", "year", "jahr"].includes(v)) return "yearly";
+
+  // Fallback: Jahresabo
+  return "yearly";
+}
+
+function normalizeStatus(value) {
+  const v = (value || "").toString().toLowerCase().trim();
+  if (!v) return "active";
+
+  if (["active", "aktiv"].includes(v)) return "active";
+  if (["trial", "test", "testphase"].includes(v)) return "trial";
+  if (["paused", "pause", "pausiert"].includes(v)) return "paused";
+  if (["demo"].includes(v)) return "demo";
+  if (["setup", "aufbauphase", "building", "in_umsetzung", "in-umsetzung"].includes(v))
+    return "aufbauphase";
+  if (
+    [
+      "contract_end",
+      "contract-end",
+      "vertragsende",
+      "vertrag_ende",
+      "vertrag-geendet"
+    ].includes(v)
+  )
+    return "contract_end";
+  if (
+    ["cancelled", "canceled", "gekündigt", "gekuendigt", "kuendigung", "kündigung"].includes(
+      v
+    )
+  )
+    return "cancelled";
+
+  return "active";
+}
+
 async function saveRestaurantFromForm(e) {
   e.preventDefault();
 
@@ -1265,24 +1503,22 @@ async function saveRestaurantFromForm(e) {
   const country = (countryInput?.value || "").trim();
   const planName = (planNameInput?.value || "Standard").trim();
 
-  const expensesYear = Number(
-    (expensesInput?.value || "0").toString().replace(",", ".")
-  );
+  const expensesYear = Number((expensesInput?.value || "0").toString().replace(",", "."));
 
   try {
     const payload = {
-      customerType,        // "cafe" | "restaurant" | "hotel" | "ecommerce" | "rentacar" | "club"
+      customerType, // "restaurant" | "cafe" | "club" | "hotel" | "motel" | "onlineshop" | "service"
       name,
       ownerName,
       ownerPhone,
       city,
       country,
       planName,
-      billingModel,        // "yearly" | "monthly"
+      billingModel, // "yearly" | "monthly"
       priceMonth,
       priceYear,
       expensesYear: Number.isNaN(expensesYear) ? 0 : expensesYear,
-      status              // "aufbauphase" | "demo" | "trial" | "active" | "paused"
+      status // "aufbauphase" | "demo" | "trial" | "active" | "contract_end" | "cancelled"
     };
 
     if (id) {
@@ -1310,6 +1546,12 @@ function handleEditRestaurant(id) {
   }
   openRestaurantForm(r);
 }
+
+// 💠 ABSCHNITT 6 – Restaurant-Formular & Speichern (ENDE) -------------------
+
+
+
+// 💠 ABSCHNITT 7 – Lead-Formular (UI & Speichern) (ANFANG) ------------------
 
 // --- Lead-Formular (UI) --------------------------------------------
 
@@ -1346,7 +1588,7 @@ function openLeadForm(lead) {
     if (idInput) idInput.value = "";
     if (typeSelect) typeSelect.value = "restaurant";
     if (nameInput) nameInput.value = "";
-    if (instaInput) instaInput.value = "";
+    if (instaInput) instaInput.value = ""; // ✅ FIX: richtiges Feld leeren
     if (phoneInput) phoneInput.value = "";
     if (statusSelect) statusSelect.value = "new";
     if (noteInput) noteInput.value = "";
@@ -1377,7 +1619,9 @@ async function saveLeadFromForm(e) {
   const noteInput = document.getElementById("leadNote");
 
   const id = idInput.value || null;
-  const customerType = (typeSelect.value || "restaurant").toLowerCase();
+  const customerType = normalizeCustomerType(
+    (typeSelect.value || "restaurant").toLowerCase()
+  );
   const businessName = (nameInput.value || "").trim();
   let instagram = (instaInput.value || "").trim();
   const phone = (phoneInput.value || "").trim();
@@ -1427,6 +1671,11 @@ async function saveLeadFromForm(e) {
   }
 }
 
+// 💠 ABSCHNITT 7 – Lead-Formular (UI & Speichern) (ENDE) --------------------
+
+
+
+// 💠 ABSCHNITT 8 – Superadmin-Formular (UI & Speichern) (ANFANG) -----------
 
 // --- Superadmin-Formular (UI) --------------------------------------
 
@@ -1514,6 +1763,12 @@ async function saveSuperadminFromForm(e) {
   }
 }
 
+// 💠 ABSCHNITT 8 – Superadmin-Formular (UI & Speichern) (ENDE) -------------
+
+
+
+// 💠 ABSCHNITT 9 – CSV-Export (ANFANG) -------------------------------------
+
 // --- CSV Export ----------------------------------------------------
 
 function handleCsvExport() {
@@ -1579,6 +1834,12 @@ function handleCsvExport() {
   URL.revokeObjectURL(url);
 }
 
+// 💠 ABSCHNITT 9 – CSV-Export (ENDE) ---------------------------------------
+
+
+
+// 💠 ABSCHNITT 10 – Firestore-Subscriptions (ANFANG) -----------------------
+
 // --- Firestore-Subscription ----------------------------------------
 
 function subscribeRestaurants() {
@@ -1590,6 +1851,7 @@ function subscribeRestaurants() {
         restaurants = snapshot.docs.map(mapRestaurantDoc);
         updateDashboardFromRestaurants();
         renderRestaurantsTable();
+        rebuildActivityList(); // Dashboard-Aktivität aktualisieren
       },
       (err) => {
         console.error("Fehler beim Laden der Restaurants:", err);
@@ -1614,7 +1876,7 @@ function subscribeSuperadmins() {
         console.error("Fehler beim Laden der Superadmins:", err);
       }
     );
-  console.log("MENYRA Superadmin – Firestore verbunden (superadmins).");
+    console.log("MENYRA Superadmin – Firestore verbunden (superadmins).");
   } catch (e) {
     console.error("Firestore-Verbindung (superadmins) fehlgeschlagen:", e);
   }
@@ -1631,6 +1893,7 @@ function subscribeLeads() {
         updateLeadsCardUI();
         renderLeadsSummary();
         renderLeadsTable();
+        rebuildActivityList(); // Dashboard-Aktivität aktualisieren
         console.log("Leads geladen:", leads.length);
       },
       (err) => {
@@ -1647,7 +1910,7 @@ function subscribeLeads() {
 function subscribeOrdersToday() {
   try {
     const ordersGroupRef = collectionGroup(db, "orders");
-  
+
     onSnapshot(
       ordersGroupRef,
       (snapshot) => {
@@ -1673,8 +1936,7 @@ function subscribeOrdersToday() {
             const parent = docSnap.ref.parent.parent;
             const restaurantId =
               data.restaurantId || (parent ? parent.id : "unknown");
-            perRestaurant[restaurantId] =
-              (perRestaurant[restaurantId] || 0) + 1;
+            perRestaurant[restaurantId] = (perRestaurant[restaurantId] || 0) + 1;
           }
         });
 
@@ -1706,7 +1968,7 @@ function subscribeOrdersToday() {
   }
 }
 
-// Registrierte User (für Social / Profile etc.)
+// Registrierte User ( für Social / Profile etc.)
 function subscribeUsers() {
   try {
     const usersRef = collection(db, "users");
@@ -1743,7 +2005,11 @@ function subscribeUsers() {
   }
 }
 
-// --- UI / LOGIK ----------------------------------------------------
+// 💠 ABSCHNITT 10 – Firestore-Subscriptions (ENDE) --------------------------
+
+
+
+// 💠 ABSCHNITT 11 – DOMContentLoaded & UI-Wiring (ANFANG) -------------------
 
 document.addEventListener("DOMContentLoaded", () => {
   const body = document.body;
@@ -1862,10 +2128,23 @@ document.addEventListener("DOMContentLoaded", () => {
     if (mobileLangSelect && translations[lang]) {
       mobileLangSelect.value = lang;
     }
+
+    // Optional: Fokus ins Menü setzen (z.B. auf Schließen-Button)
+    if (mobileMenuClose) {
+      mobileMenuClose.focus();
+    }
   }
 
   function closeMobileMenu() {
     if (!mobileMenu || !mobileMenuOverlay) return;
+
+    // Fokus zuerst zurück auf Burger-Button holen
+    if (burgerToggle) {
+      burgerToggle.focus();
+    } else {
+      document.activeElement?.blur?.();
+    }
+
     mobileMenu.classList.remove("is-open");
     mobileMenu.setAttribute("aria-hidden", "true");
     mobileMenuOverlay.classList.remove("is-visible");
@@ -1955,7 +2234,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch {
         // ignore
       }
-      window.location.href = "login.html"; // kannst du anpassen
+      window.location.href = "login.html";
     });
   }
 
@@ -1994,7 +2273,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-    // --- Typ-Filter (Café, Restaurant, Hotel, E-Commerce, Rent a Car, Club) ---
+  // --- Typ-Filter (Restaurant, Café, Club, Hotel, Motel, Online-Shop, Dienstleistung) ---
   const typeFilter = document.getElementById("typeFilter");
   if (typeFilter) {
     typeFilter.addEventListener("change", () => {
@@ -2003,6 +2282,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // --- Kunden-Segmente (Chips in der Kunden-View) -----------------
+  const segmentChips = document.querySelectorAll("[data-customer-segment]");
+  if (segmentChips.length) {
+    segmentChips.forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const segment = chip.getAttribute("data-customer-segment") || "core";
+        customerSegment = segment;
+
+        segmentChips.forEach((c) => c.classList.remove("is-active"));
+        chip.classList.add("is-active");
+
+        renderRestaurantsTable();
+      });
+    });
+  }
 
   // --- Buttons: Neues Restaurant ----------------------------------
   const newRestaurantButtons = document.querySelectorAll(
@@ -2099,7 +2393,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-    // --- Abrechnungsmodell: Preis-Feld ein-/ausblenden --------------
+  // --- Abrechnungsmodell: Preis-Feld ein-/ausblenden --------------
   const billingModelSelect = document.getElementById("billingModel");
   const priceGroup = document.getElementById("priceGroup");
 
@@ -2134,4 +2428,4 @@ document.addEventListener("DOMContentLoaded", () => {
   renderLeadsTable();
 });
 
-
+// 💠 ABSCHNITT 11 – DOMContentLoaded & UI-Wiring (ENDE) ---------------------
