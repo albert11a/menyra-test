@@ -2,6 +2,9 @@
 // Nur für den MENYRA Superadmin (Dashboard, Restaurants, usw.)
 
 export const translations = {
+  // ============================================================
+  // DEUTSCH
+  // ============================================================
   de: {
     "env.superadmin": "Superadmin",
     "sidebar.navigation": "Navigation",
@@ -10,6 +13,7 @@ export const translations = {
 
     "nav.dashboard": "Dashboard",
     "nav.restaurants": "Kunden",
+    "nav.leads": "Leads",
     "nav.offers": "Angebote",
     "nav.billing": "Abrechnung",
     "nav.users": "Benutzer",
@@ -17,7 +21,7 @@ export const translations = {
     "nav.settings": "Einstellungen",
 
     "page.subtitle":
-      "Überblick über alle Kunden, Abos und Systemaktivität der MENYRA-Plattform.",
+      "Überblick über alle Kunden, Umsätze, Bestellungen und Systemaktivität der MENYRA-Plattform.",
     "btn.csvExport": "CSV Export",
     "btn.newRestaurant": "+ Neuer Kunde",
 
@@ -43,38 +47,57 @@ export const translations = {
     "section.activity.title": "Letzte Aktivität",
     "section.system.title": "System-Überblick",
 
+    // Leads-View
+    "section.leads.title": "Akquise & Leads",
+    "section.leads.subtitle":
+      "Alle angesprochenen Cafés, Restaurants, Hotels, E-Commerce & Rent-a-Car Betriebe im Überblick.",
+
     // Status-Filter
     "filter.status.all": "Alle Status",
     "filter.status.active": "Aktiv",
     "filter.status.trial": "Testphase",
     "filter.status.paused": "Pausiert",
-    "filter.status.setup": "Aufbauphase",
+    "filter.status.setup": "In Umsetzung",
     "filter.status.demo": "Demo",
+    "filter.status.contract_end": "Vertragsende",
+    "filter.status.cancelled": "Gekündigt",
 
-    // Kunden-Typ-Filter
+    // Typ-Filter (Phase 1)
     "filter.type.all": "Alle Typen",
-    "filter.type.cafe": "Cafés",
     "filter.type.restaurant": "Restaurants",
-    "filter.type.hotel": "Hotels",
-    "filter.type.ecommerce": "E-Commerce",
-    "filter.type.rentacar": "Rent a Car",
+    "filter.type.cafe": "Cafés",
     "filter.type.club": "Clubs",
+    "filter.type.hotel": "Hotels",
+    "filter.type.motel": "Motels",
+    "filter.type.onlineshop": "Online-Shops",
+    "filter.type.service": "Dienstleistung",
 
-    // Status-Labels
+    // Status-Badges
     "status.active": "Aktiv",
     "status.trial": "Testphase",
     "status.paused": "Pausiert",
-    "status.setup": "Aufbauphase",
+    "status.setup": "In Umsetzung",
     "status.demo": "Demo",
+    "status.contract_end": "Vertragsende",
+    "status.cancelled": "Gekündigt",
 
-    // Typ-Labels (für Tabelle, Zeile unter dem Namen)
-    "type.cafe": "Café / Coffee-Bar",
+    // Typ-Labels für Kunden (werden in JS genutzt)
     "type.restaurant": "Restaurant",
+    "type.cafe": "Café",
+    "type.club": "Club",
     "type.hotel": "Hotel",
-    "type.ecommerce": "E-Commerce / Online-Shop",
-    "type.rentacar": "Rent a Car",
-    "type.club": "Club / Nightlife",
-    "type.other": "Sonstige",
+    "type.motel": "Motel",
+    "type.onlineshop": "Online-Shop",
+    "type.service": "Dienstleistung",
+    "type.other": "Sonstiges",
+
+    // Kundensegmente (Chips)
+    "customers.segment.core": "Kunden (aktiv + Umsetzung)",
+    "customers.segment.trial": "Testkunden",
+    "customers.segment.demo": "Demo-Kunden",
+    "customers.segment.contract_end": "Vertragsende",
+    "customers.segment.cancelled": "Gekündigte Kunden",
+    "customers.segment.all": "Alle Kunden",
 
     "search.global.placeholder":
       "Suche in MENYRA (Kunden, Inhaber, Städte)…",
@@ -93,6 +116,9 @@ export const translations = {
     "table.footer.pageInfo": "Seite 1 von 1"
   },
 
+  // ============================================================
+  // ENGLISH
+  // ============================================================
   en: {
     "env.superadmin": "Superadmin",
     "sidebar.navigation": "Navigation",
@@ -101,6 +127,7 @@ export const translations = {
 
     "nav.dashboard": "Dashboard",
     "nav.restaurants": "Customers",
+    "nav.leads": "Leads",
     "nav.offers": "Offers",
     "nav.billing": "Billing",
     "nav.users": "Users",
@@ -108,7 +135,7 @@ export const translations = {
     "nav.settings": "Settings",
 
     "page.subtitle":
-      "Overview of all customers, subscriptions and system activity of the MENYRA platform.",
+      "Overview of all customers, revenue, orders and system activity of the MENYRA platform.",
     "btn.csvExport": "CSV Export",
     "btn.newRestaurant": "+ New customer",
 
@@ -133,38 +160,51 @@ export const translations = {
     "section.activity.title": "Latest activity",
     "section.system.title": "System overview",
 
-    // Status filter
+    "section.leads.title": "Acquisition & leads",
+    "section.leads.subtitle":
+      "All contacted cafés, restaurants, hotels, e-commerce and rent-a-car businesses at a glance.",
+
     "filter.status.all": "All statuses",
     "filter.status.active": "Active",
     "filter.status.trial": "Trial",
     "filter.status.paused": "Paused",
-    "filter.status.setup": "Setup phase",
+    "filter.status.setup": "In implementation",
     "filter.status.demo": "Demo",
+    "filter.status.contract_end": "Contract end",
+    "filter.status.cancelled": "Cancelled",
 
-    // Type filter
     "filter.type.all": "All types",
-    "filter.type.cafe": "Cafés",
     "filter.type.restaurant": "Restaurants",
-    "filter.type.hotel": "Hotels",
-    "filter.type.ecommerce": "E-commerce",
-    "filter.type.rentacar": "Rent a Car",
+    "filter.type.cafe": "Cafés",
     "filter.type.club": "Clubs",
+    "filter.type.hotel": "Hotels",
+    "filter.type.motel": "Motels",
+    "filter.type.onlineshop": "Online shops",
+    "filter.type.service": "Service business",
 
-    // Status labels
     "status.active": "Active",
     "status.trial": "Trial",
     "status.paused": "Paused",
-    "status.setup": "Setup phase",
+    "status.setup": "In implementation",
     "status.demo": "Demo",
+    "status.contract_end": "Contract end",
+    "status.cancelled": "Cancelled",
 
-    // Type labels
-    "type.cafe": "Café / coffee bar",
     "type.restaurant": "Restaurant",
+    "type.cafe": "Café",
+    "type.club": "Club",
     "type.hotel": "Hotel",
-    "type.ecommerce": "E-commerce / online shop",
-    "type.rentacar": "Rent a Car",
-    "type.club": "Club / nightlife",
+    "type.motel": "Motel",
+    "type.onlineshop": "Online shop",
+    "type.service": "Service business",
     "type.other": "Other",
+
+    "customers.segment.core": "Customers (active + setup)",
+    "customers.segment.trial": "Trial customers",
+    "customers.segment.demo": "Demo customers",
+    "customers.segment.contract_end": "Contract end",
+    "customers.segment.cancelled": "Cancelled customers",
+    "customers.segment.all": "All customers",
 
     "search.global.placeholder":
       "Search in MENYRA (customers, owners, cities)…",
@@ -183,6 +223,9 @@ export const translations = {
     "table.footer.pageInfo": "Page 1 of 1"
   },
 
+  // ============================================================
+  // SHQIP (ALBANISCH)
+  // ============================================================
   sq: {
     "env.superadmin": "Superadmin",
     "sidebar.navigation": "Navigimi",
@@ -191,6 +234,7 @@ export const translations = {
 
     "nav.dashboard": "Paneli",
     "nav.restaurants": "Klientët",
+    "nav.leads": "Leads",
     "nav.offers": "Ofertat",
     "nav.billing": "Faturimi",
     "nav.users": "Përdoruesit",
@@ -198,7 +242,7 @@ export const translations = {
     "nav.settings": "Cilësimet",
 
     "page.subtitle":
-      "Përmbledhje e të gjithë klientëve, abonimeve dhe aktivitetit të sistemit në MENYRA.",
+      "Përmbledhje e të gjithë klientëve, të ardhurave, porosive dhe aktivitetit të sistemit në MENYRA.",
     "btn.csvExport": "Eksport CSV",
     "btn.newRestaurant": "+ Klient i ri",
 
@@ -223,38 +267,51 @@ export const translations = {
     "section.activity.title": "Aktiviteti i fundit",
     "section.system.title": "Përmbledhje e sistemit",
 
-    // Status filter
+    "section.leads.title": "Akvizim & Leads",
+    "section.leads.subtitle":
+      "Të gjitha kafenetë, restorantet, hotelet, e-commerce dhe rent-a-car që ke kontaktuar.",
+
     "filter.status.all": "Të gjithë statuset",
     "filter.status.active": "Aktiv",
     "filter.status.trial": "Provë",
     "filter.status.paused": "Pezulluar",
-    "filter.status.setup": "Faza e ndërtimit",
+    "filter.status.setup": "Në implementim",
     "filter.status.demo": "Demo",
+    "filter.status.contract_end": "Fund kontrate",
+    "filter.status.cancelled": "Anuluar",
 
-    // Type filter
-    "filter.type.all": "Të gjithë tipet",
-    "filter.type.cafe": "Cafè",
+    "filter.type.all": "Të gjithë tipat",
     "filter.type.restaurant": "Restorante",
+    "filter.type.cafe": "Kafe",
+    "filter.type.club": "Klube",
     "filter.type.hotel": "Hotele",
-    "filter.type.ecommerce": "E-commerce",
-    "filter.type.rentacar": "Rent a Car",
-    "filter.type.club": "Clube / nightlife",
+    "filter.type.motel": "Motele",
+    "filter.type.onlineshop": "Dyqane online",
+    "filter.type.service": "Shërbime",
 
-    // Status labels
     "status.active": "Aktiv",
     "status.trial": "Provë",
     "status.paused": "Pezulluar",
-    "status.setup": "Faza e ndërtimit",
+    "status.setup": "Në implementim",
     "status.demo": "Demo",
+    "status.contract_end": "Fund kontrate",
+    "status.cancelled": "Anuluar",
 
-    // Type labels
-    "type.cafe": "Cafè / coffee-bar",
-    "type.restaurant": "Restorant",
+    "type.restaurant": "Restaurant",
+    "type.cafe": "Kafe",
+    "type.club": "Club",
     "type.hotel": "Hotel",
-    "type.ecommerce": "Dyqan online / e-commerce",
-    "type.rentacar": "Rent a Car",
-    "type.club": "Club nate",
-    "type.other": "Të tjera",
+    "type.motel": "Motel",
+    "type.onlineshop": "Dyqan online",
+    "type.service": "Shërbim",
+    "type.other": "Tjetër",
+
+    "customers.segment.core": "Klientë (aktiv + në implementim)",
+    "customers.segment.trial": "Klientë në provë",
+    "customers.segment.demo": "Klientë demo",
+    "customers.segment.contract_end": "Fund kontrate",
+    "customers.segment.cancelled": "Klientë të anuluar",
+    "customers.segment.all": "Të gjithë klientët",
 
     "search.global.placeholder":
       "Kërko në MENYRA (klientë, pronarë, qytete)…",
@@ -273,6 +330,9 @@ export const translations = {
     "table.footer.pageInfo": "Faqja 1 nga 1"
   },
 
+  // ============================================================
+  // SRPSKI (SERBISCH)
+  // ============================================================
   sr: {
     "env.superadmin": "Superadmin",
     "sidebar.navigation": "Navigacija",
@@ -281,6 +341,7 @@ export const translations = {
 
     "nav.dashboard": "Kontrolna tabla",
     "nav.restaurants": "Klijenti",
+    "nav.leads": "Leads",
     "nav.offers": "Ponude",
     "nav.billing": "Naplate",
     "nav.users": "Korisnici",
@@ -288,7 +349,7 @@ export const translations = {
     "nav.settings": "Podešavanja",
 
     "page.subtitle":
-      "Pregled svih klijenata, pretplata i aktivnosti sistema na MENYRA platformi.",
+      "Pregled svih klijenata, prihoda, porudžbina i aktivnosti sistema na MENYRA platformi.",
     "btn.csvExport": "CSV izvoz",
     "btn.newRestaurant": "+ Novi klijent",
 
@@ -313,38 +374,51 @@ export const translations = {
     "section.activity.title": "Poslednja aktivnost",
     "section.system.title": "Pregled sistema",
 
-    // Status filter
+    "section.leads.title": "Akvizicija & Leads",
+    "section.leads.subtitle":
+      "Svi kontakti sa kafićima, restoranima, hotelima, e-commerce i rent-a-car biznisima.",
+
     "filter.status.all": "Svi statusi",
     "filter.status.active": "Aktivan",
     "filter.status.trial": "Probni",
     "filter.status.paused": "Pauziran",
-    "filter.status.setup": "U fazi postavljanja",
+    "filter.status.setup": "U fazi implementacije",
     "filter.status.demo": "Demo",
+    "filter.status.contract_end": "Isticanje ugovora",
+    "filter.status.cancelled": "Otkazano",
 
-    // Type filter
     "filter.type.all": "Svi tipovi",
-    "filter.type.cafe": "Kafići",
     "filter.type.restaurant": "Restorani",
+    "filter.type.cafe": "Kafići",
+    "filter.type.club": "Klubovi",
     "filter.type.hotel": "Hoteli",
-    "filter.type.ecommerce": "E-commerce",
-    "filter.type.rentacar": "Rent a car",
-    "filter.type.club": "Clubovi",
+    "filter.type.motel": "Moteli",
+    "filter.type.onlineshop": "Online prodavnice",
+    "filter.type.service": "Servisne delatnosti",
 
-    // Status labels
     "status.active": "Aktivan",
     "status.trial": "Probni",
     "status.paused": "Pauziran",
-    "status.setup": "U fazi postavljanja",
+    "status.setup": "U fazi implementacije",
     "status.demo": "Demo",
+    "status.contract_end": "Isticanje ugovora",
+    "status.cancelled": "Otkazano",
 
-    // Type labels
-    "type.cafe": "Kafić / coffee-bar",
     "type.restaurant": "Restoran",
+    "type.cafe": "Kafić",
+    "type.club": "Klub",
     "type.hotel": "Hotel",
-    "type.ecommerce": "Online prodavnica / e-commerce",
-    "type.rentacar": "Rent a car",
-    "type.club": "Noćni klub",
+    "type.motel": "Motel",
+    "type.onlineshop": "Online prodavnica",
+    "type.service": "Servisna delatnost",
     "type.other": "Ostalo",
+
+    "customers.segment.core": "Klijenti (aktivni + u pripremi)",
+    "customers.segment.trial": "Probni klijenti",
+    "customers.segment.demo": "Demo klijenti",
+    "customers.segment.contract_end": "Isticanje ugovora",
+    "customers.segment.cancelled": "Otkazani klijenti",
+    "customers.segment.all": "Svi klijenti",
 
     "search.global.placeholder":
       "Pretraži u MENYRA (klijenti, vlasnici, gradovi)…",
@@ -363,6 +437,9 @@ export const translations = {
     "table.footer.pageInfo": "Strana 1 od 1"
   },
 
+  // ============================================================
+  // TÜRKÇE
+  // ============================================================
   tr: {
     "env.superadmin": "Süper admin",
     "sidebar.navigation": "Navigasyon",
@@ -371,6 +448,7 @@ export const translations = {
 
     "nav.dashboard": "Panel",
     "nav.restaurants": "Müşteriler",
+    "nav.leads": "Leads",
     "nav.offers": "Kampanyalar",
     "nav.billing": "Faturalama",
     "nav.users": "Kullanıcılar",
@@ -378,7 +456,7 @@ export const translations = {
     "nav.settings": "Ayarlar",
 
     "page.subtitle":
-      "MENYRA platformundaki tüm müşteriler, abonelikler ve sistem aktivitelerinin özeti.",
+      "MENYRA platformundaki tüm müşteriler, gelirler, siparişler ve sistem aktivitelerinin özeti.",
     "btn.csvExport": "CSV dışa aktar",
     "btn.newRestaurant": "+ Yeni müşteri",
 
@@ -403,38 +481,51 @@ export const translations = {
     "section.activity.title": "Son aktiviteler",
     "section.system.title": "Sistem özeti",
 
-    // Status filter
+    "section.leads.title": "Satış & Leads",
+    "section.leads.subtitle":
+      "Tüm kafeler, restoranlar, oteller, e-ticaret ve rent-a-car işletmeleri tek listede.",
+
     "filter.status.all": "Tüm durumlar",
     "filter.status.active": "Aktif",
     "filter.status.trial": "Deneme",
     "filter.status.paused": "Durduruldu",
     "filter.status.setup": "Kurulum aşaması",
     "filter.status.demo": "Demo",
+    "filter.status.contract_end": "Sözleşme bitişi",
+    "filter.status.cancelled": "İptal edildi",
 
-    // Type filter
     "filter.type.all": "Tüm türler",
-    "filter.type.cafe": "Kafeler",
     "filter.type.restaurant": "Restoranlar",
-    "filter.type.hotel": "Oteller",
-    "filter.type.ecommerce": "E-ticaret",
-    "filter.type.rentacar": "Rent a car",
+    "filter.type.cafe": "Kafeler",
     "filter.type.club": "Kulüpler",
+    "filter.type.hotel": "Oteller",
+    "filter.type.motel": "Moteller",
+    "filter.type.onlineshop": "Online mağazalar",
+    "filter.type.service": "Hizmet",
 
-    // Status labels
     "status.active": "Aktif",
     "status.trial": "Deneme",
     "status.paused": "Durduruldu",
     "status.setup": "Kurulum aşaması",
     "status.demo": "Demo",
+    "status.contract_end": "Sözleşme bitişi",
+    "status.cancelled": "İptal edildi",
 
-    // Type labels
-    "type.cafe": "Kafe / coffee-bar",
     "type.restaurant": "Restoran",
+    "type.cafe": "Kafe",
+    "type.club": "Kulüp",
     "type.hotel": "Otel",
-    "type.ecommerce": "Online mağaza / e-ticaret",
-    "type.rentacar": "Rent a car",
-    "type.club": "Gece kulübü",
+    "type.motel": "Motel",
+    "type.onlineshop": "Online mağaza",
+    "type.service": "Hizmet",
     "type.other": "Diğer",
+
+    "customers.segment.core": "Müşteriler (aktif + kurulum)",
+    "customers.segment.trial": "Deneme müşterileri",
+    "customers.segment.demo": "Demo müşterileri",
+    "customers.segment.contract_end": "Sözleşme bitişi",
+    "customers.segment.cancelled": "İptal edilmiş müşteriler",
+    "customers.segment.all": "Tüm müşteriler",
 
     "search.global.placeholder":
       "MENYRA içinde ara (müşteriler, sahipler, şehirler)…",
