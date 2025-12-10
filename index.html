@@ -8,6 +8,11 @@
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
 
+  <!-- PWA / Web-App-Fähigkeit -->
+  <meta name="mobile-web-app-capable" content="yes" />
+  <!-- Für ältere iOS-Versionen kannst du das Apple-Tag trotzdem lassen -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+
   <!-- Statusbar / Notch-Farbe = Start deines Verlaufs (#eef0ff) -->
   <meta
     name="theme-color"
@@ -22,11 +27,6 @@
   <!-- Fallback für Browser ohne prefers-color-scheme -->
   <meta name="theme-color" content="#eef0ff" />
 
-  <!-- Optional: für „Zum Homescreen hinzufügen“ auf iOS -->
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <!-- "default" = helle Statusbar, Hintergrund kommt von theme-color -->
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-
   <!-- === HEAD: FONTS & STYLES ======================================= -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -37,6 +37,7 @@
 
   <link rel="stylesheet" href="menyra.css" />
 </head>
+
 
 
     <!-- === TOPBAR ==================================================== -->
@@ -398,7 +399,8 @@
             <section class="m-section m-section--split">
               <div class="m-card m-activity-card">
                 <h2 class="m-section-title" data-i18n-key="section.activity.title">Letzte Aktivität</h2>
-                <ul class="m-activity-list">
+                <!-- WICHTIG: ID für JS-Logik, Inhalt wird per JS überschrieben -->
+                <ul class="m-activity-list" id="activityList">
                   <li>
                     <span class="m-activity-dot m-activity-dot--green"></span>
                     <div class="m-activity-main">
@@ -432,6 +434,8 @@
                     <span class="m-activity-time">gestern</span>
                   </li>
                 </ul>
+                <!-- Meta-Zeile, die von JS gesetzt werden kann (z. B. "Letzte 20 Events") -->
+                <p class="m-system-note" id="activityMeta"></p>
               </div>
 
               <div class="m-card m-system-card">
@@ -467,6 +471,7 @@
             </section>
           </div>
 
+
           <!-- ========================================================= -->
           <!-- === VIEW: RESTAURANTS / CUSTOMERS ======================= -->
           <!-- ========================================================= -->
@@ -498,20 +503,24 @@
                   <!-- Status-Filter -->
                   <select class="m-select" id="statusFilter">
                     <option value="all" data-i18n-key="filter.status.all">Alle Status</option>
+                    <option value="aufbauphase" data-i18n-key="filter.status.setup">In Umsetzung</option>
                     <option value="active" data-i18n-key="filter.status.active">Aktiv</option>
                     <option value="trial" data-i18n-key="filter.status.trial">Testphase</option>
-                    <option value="paused" data-i18n-key="filter.status.paused">Pausiert</option>
+                    <option value="demo" data-i18n-key="filter.status.demo">Demo</option>
+                    <option value="contract_end" data-i18n-key="filter.status.contract_end">Vertragsende</option>
+                    <option value="cancelled" data-i18n-key="filter.status.cancelled">Gekündigt</option>
                   </select>
 
-                  <!-- Typ-Filter (Café, Restaurant, Hotel, E-Commerce, Rent a Car, Club) -->
+                  <!-- Typ-Filter (Restaurant, Café, Club, Hotel, Motel, Online-Shop, Dienstleistung) -->
                   <select class="m-select" id="typeFilter">
                     <option value="all" data-i18n-key="filter.type.all">Alle Typen</option>
-                    <option value="cafe" data-i18n-key="filter.type.cafe">Cafés</option>
                     <option value="restaurant" data-i18n-key="filter.type.restaurant">Restaurants</option>
-                    <option value="hotel" data-i18n-key="filter.type.hotel">Hotels</option>
-                    <option value="ecommerce" data-i18n-key="filter.type.ecommerce">E-Commerce</option>
-                    <option value="rentacar" data-i18n-key="filter.type.rentacar">Rent a Car</option>
+                    <option value="cafe" data-i18n-key="filter.type.cafe">Cafés</option>
                     <option value="club" data-i18n-key="filter.type.club">Clubs</option>
+                    <option value="hotel" data-i18n-key="filter.type.hotel">Hotels</option>
+                    <option value="motel" data-i18n-key="filter.type.motel">Motels</option>
+                    <option value="onlineshop" data-i18n-key="filter.type.onlineshop">Online-Shops</option>
+                    <option value="service" data-i18n-key="filter.type.service">Dienstleistung</option>
                   </select>
                 </div>
               </div>
@@ -848,10 +857,13 @@
               <div class="m-input-group">
                 <label for="customerType">Kundentyp</label>
                 <select id="customerType" required>
-                  <option value="cafe">Café / Coffee-Bar</option>
                   <option value="restaurant">Restaurant</option>
+                  <option value="cafe">Café</option>
+                  <option value="club">Club</option>
                   <option value="hotel">Hotel</option>
-                  <option value="ecommerce">Online-Shop / Rent-a-Car</option>
+                  <option value="motel">Motel</option>
+                  <option value="onlineshop">Online-Shop</option>
+                  <option value="service">Dienstleistung</option>
                 </select>
               </div>
 
@@ -890,11 +902,12 @@
               <div class="m-input-group">
                 <label for="restaurantStatus">Status</label>
                 <select id="restaurantStatus">
-                  <option value="aufbauphase">Aufbauphase</option>
-                  <option value="demo">Demo</option>
-                  <option value="trial">Testphase</option>
+                  <option value="aufbauphase">In Umsetzung</option>
                   <option value="active">Aktiv</option>
-                  <option value="paused">Pausiert</option>
+                  <option value="trial">Testphase (Probemonat)</option>
+                  <option value="demo">Demo</option>
+                  <option value="contract_end">Vertragsende</option>
+                  <option value="cancelled">Gekündigt</option>
                 </select>
               </div>
 
@@ -985,12 +998,13 @@
               <div class="m-input-group">
                 <label for="leadCustomerType">Kundentyp</label>
                 <select id="leadCustomerType" required>
-                  <option value="cafe">Café / Coffee-Bar</option>
                   <option value="restaurant">Restaurant</option>
+                  <option value="cafe">Café</option>
+                  <option value="club">Club</option>
                   <option value="hotel">Hotel</option>
-                  <option value="ecommerce">E-Commerce / Online-Shop</option>
-                  <option value="rentacar">Rent a Car</option>
-                  <option value="club">Club / Nightlife</option>
+                  <option value="motel">Motel</option>
+                  <option value="onlineshop">Online-Shop</option>
+                  <option value="service">Dienstleistung</option>
                 </select>
               </div>
 
@@ -1172,5 +1186,3 @@
   <script type="module" src="menyra.js"></script>
 </body>
 </html>
-
-
