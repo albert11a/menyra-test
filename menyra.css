@@ -719,6 +719,11 @@ body.theme-dark .m-sidebar {
   color: var(--text-muted);
 }
 
+.m-status-badge--danger {
+  background: rgba(239, 68, 68, 0.16);
+  color: #ef4444;
+}
+
 /* Chips */
 .m-chip {
   display: inline-flex;
@@ -736,13 +741,56 @@ body.theme-dark .m-sidebar {
   color: var(--text-main);
 }
 
-/* Table footer */
-.m-table-footer {
-  padding: 10px 6px 0;
+/* NEU: Chips als Filter (Kundensegmente) */
+.m-section-toolbar--chips {
+  margin: 4px 0 10px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
+
+.m-chip--filter {
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: rgba(148, 163, 184, 0.12);
+}
+
+.m-chip--filter.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: var(--shadow-small);
+}
+
+
+/* ==========================================================================
+   9. RESPONSIVE – MOBILE TABLE
+   ========================================================================== */
+
+@media (max-width: 800px) {
+  .m-table-row {
+    grid-template-columns: 1.8fr 1.4fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .m-table-row > :nth-child(3),
+  .m-table-row > :nth-child(4),
+  .m-table-row > :nth-child(5) {
+    display: none;
+  }
+
+  .m-table-row--header {
+    display: none;
+  }
+
+  .m-table-actions {
+    justify-content: flex-start;
+  }
+
+  .m-table {
+    border-radius: 14px;
+  }
+}
+
 
 /* ==========================================================================
    8. ACTIVITY & SYSTEM-CARDS
@@ -831,34 +879,6 @@ body.theme-dark .m-sidebar {
   margin-top: 12px;
 }
 
-/* ==========================================================================
-   9. RESPONSIVE – MOBILE TABLE
-   ========================================================================== */
-
-@media (max-width: 800px) {
-  .m-table-row {
-    grid-template-columns: 1.8fr 1.4fr;
-    grid-template-rows: auto auto auto;
-  }
-
-  .m-table-row > :nth-child(3),
-  .m-table-row > :nth-child(4),
-  .m-table-row > :nth-child(5) {
-    display: none;
-  }
-
-  .m-table-row--header {
-    display: none;
-  }
-
-  .m-table-actions {
-    justify-content: flex-start;
-  }
-
-  .m-table {
-    border-radius: 14px;
-  }
-}
 
 /* ==========================================================================
    10. MODAL & FORMULAR-UI
