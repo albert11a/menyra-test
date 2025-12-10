@@ -928,26 +928,10 @@ function renderRestaurantsTable() {
 
   bodyContainer.innerHTML = "";
 
+  // Basis: alle Restaurants aus Firestore
   let filtered = [...restaurants];
 
-  // NEU: Segment-Filter (Kundengruppen)
-  // core = "normale Kunden" (In Umsetzung + Aktiv)
-  if (customerSegment === "core") {
-    filtered = filtered.filter(
-      (r) => r.status === "active" || r.status === "aufbauphase"
-    );
-  } else if (customerSegment === "trial") {
-    filtered = filtered.filter((r) => r.status === "trial");
-  } else if (customerSegment === "demo") {
-    filtered = filtered.filter((r) => r.status === "demo");
-  } else if (customerSegment === "contract_end") {
-    filtered = filtered.filter((r) => r.status === "contract_end");
-  } else if (customerSegment === "cancelled") {
-    filtered = filtered.filter((r) => r.status === "cancelled");
-  }
-  // customerSegment === "all" => kein zusätzlicher Filter
-
-  // Status-Filter (Dropdown)
+  // Status-Filter (Select oben in der Kunden-View)
   if (restaurantStatusFilter !== "all") {
     filtered = filtered.filter((r) => r.status === restaurantStatusFilter);
   }
@@ -959,7 +943,7 @@ function renderRestaurantsTable() {
     );
   }
 
-  // Textsuche
+  // Textsuche (Name, Inhaber, Stadt, Land)
   if (restaurantSearchTerm) {
     const t = restaurantSearchTerm.toLowerCase();
     filtered = filtered.filter((r) => {
@@ -968,6 +952,7 @@ function renderRestaurantsTable() {
     });
   }
 
+  // Alphabetisch nach Name sortieren
   filtered.sort((a, b) => a.name.localeCompare(b.name));
 
   const lang = getCurrentLang();
@@ -986,8 +971,11 @@ function renderRestaurantsTable() {
       service: "🛎️"
     };
     const icon = iconMap[type] || "🏪";
-    const labelKey = "type." + type;
-    const label = dict[labelKey] || type;
+    const labelKey = "filter.type." + type; // z.B. filter.type.restaurant
+    const label =
+      dict[labelKey] ||
+      dict["filter.type.restaurant"] ||
+      type;
     return { icon, label };
   }
 
@@ -1007,9 +995,9 @@ function renderRestaurantsTable() {
     else if (r.status === "aufbauphase" || r.status === "setup") {
       statusKey = "status.setup";
     } else if (r.status === "contract_end") {
-      statusKey = "status.contract_end";
+      statusKey = "filter.status.contract_end"; // Fallback: Text aus Filter
     } else if (r.status === "cancelled") {
-      statusKey = "status.cancelled";
+      statusKey = "filter.status.cancelled";
     }
 
     const statusLabel = dict[statusKey] || r.status;
@@ -1064,13 +1052,15 @@ function renderRestaurantsTable() {
     bodyContainer.appendChild(row);
   });
 
-  // Meta & Paging-Info
+  // Meta-Text unten links
   if (meta) {
     const langDict = translations[getCurrentLang()] || translations.de;
     const template = langDict["table.meta"] || "0 Einträge · sortiert nach Name";
+    // ersetzt nur die führende 0 zu Beginn durch die echte Anzahl
     meta.textContent = template.replace(/^0/, String(filtered.length));
   }
 
+  // Seiten-Info unten rechts
   if (pageInfo) {
     const langDict = translations[getCurrentLang()] || translations.de;
     pageInfo.textContent = langDict["table.footer.pageInfo"] || "Seite 1 von 1";
