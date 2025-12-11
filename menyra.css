@@ -719,11 +719,6 @@ body.theme-dark .m-sidebar {
   color: var(--text-muted);
 }
 
-.m-status-badge--danger {
-  background: rgba(239, 68, 68, 0.16);
-  color: #ef4444;
-}
-
 /* Chips */
 .m-chip {
   display: inline-flex;
@@ -741,26 +736,51 @@ body.theme-dark .m-sidebar {
   color: var(--text-main);
 }
 
-/* NEU: Chips als Filter (Kundensegmente) */
-.m-section-toolbar--chips {
-  margin: 4px 0 10px;
+/* Table footer */
+.m-table-footer {
+  padding: 10px 6px 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  justify-content: space-between;
+  align-items: center;
 }
 
-.m-chip--filter {
-  cursor: pointer;
-  border: 1px solid transparent;
-  background: rgba(148, 163, 184, 0.12);
+/* Spezielles Grid für Offers-View (5 Spalten, Gruppenzeilen) */
+.m-view[data-view="offers"] .m-table-row {
+  grid-template-columns: 1.7fr 1.9fr 1.4fr 0.9fr 0.7fr;
 }
 
-.m-chip--filter.is-active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  box-shadow: var(--shadow-small);
+.m-view[data-view="offers"] .m-table-row--header {
+  font-size: 11px;
 }
 
+/* Versteckte Zeilen (z.B. Detailgruppen) */
+.m-table-row.is-hidden {
+  display: none;
+}
+
+/* Detailzeile für Offers-Gruppen: eine Spalte über volle Breite */
+.m-view[data-view="offers"] .m-table-row--group-detail {
+  grid-template-columns: 1fr;
+  background: var(--bg-elevated-soft);
+}
+
+.m-table-group-detail {
+  grid-column: 1 / -1;
+}
+
+.m-table-group-detail-header {
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+}
+
+.m-table-group-detail-list {
+  padding-top: 4px;
+  border-top: 1px dashed var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 
 /* ==========================================================================
    9. RESPONSIVE – MOBILE TABLE
