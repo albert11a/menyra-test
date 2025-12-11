@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MENYRA Superadmin – Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: radial-gradient(circle at top left, #4f46e5 0, #020617 55%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .login-wrapper {
+        width: 100%;
+        max-width: 400px;
+        padding: 16px;
+      }
+      .login-card {
+        background: #0b1120;
+        color: #e5e7eb;
+        border-radius: 16px;
+        padding: 24px 24px 20px;
+        box-shadow: 0 18px 45px rgba(15, 23, 42, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.3);
+      }
+      .login-header {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+      .login-title {
+        font-size: 1.4rem;
+        margin: 0 0 4px;
+      }
+      .login-subtitle {
+        margin: 0;
+        font-size: 0.9rem;
+        color: #9ca3af;
+      }
+      .form-row {
+        margin-bottom: 14px;
+      }
+      .form-label {
+        display: block;
+        font-size: 0.85rem;
+        margin-bottom: 4px;
+        color: #9ca3af;
+      }
+      .form-input {
+        width: 100%;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.5);
+        background: #020617;
+        color: #e5e7eb;
+        padding: 9px 14px;
+        font-size: 0.95rem;
+        outline: none;
+      }
+      .form-input:focus {
+        border-color: #4f46e5;
+        box-shadow: 0 0 0 1px #4f46e5;
+      }
+      .login-btn {
+        width: 100%;
+        margin-top: 6px;
+        border: none;
+        border-radius: 999px;
+        padding: 10px 16px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        background: linear-gradient(to right, #4f46e5, #6366f1);
+        color: #f9fafb;
+      }
+      .login-btn:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+      .login-error {
+        min-height: 18px;
+        margin-top: 8px;
+        font-size: 0.8rem;
+        color: #f97373;
+      }
+      .login-help {
+        margin-top: 10px;
+        font-size: 0.8rem;
+        color: #9ca3af;
+        text-align: center;
+      }
+      .login-help strong {
+        color: #e5e7eb;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-wrapper">
+      <div class="login-card">
+        <div class="login-header">
+          <h1 class="login-title">MENYRA Superadmin</h1>
+          <p class="login-subtitle">
+            Login mit deiner Admin-E-Mail und 4-stelliger PIN.
+          </p>
+        </div>
+
+        <form id="loginForm" autocomplete="off">
+          <div class="form-row">
+            <label class="form-label" for="loginEmail">E-Mail</label>
+            <input
+              type="email"
+              id="loginEmail"
+              class="form-input"
+              placeholder="z.B. deine.admin@mail.com"
+              autocomplete="username"
+            />
+          </div>
+
+          <div class="form-row">
+            <label class="form-label" for="loginPassword">PIN (4-stellig)</label>
+            <input
+              type="password"
+              id="loginPassword"
+              class="form-input"
+              placeholder="z.B. 1992"
+              inputmode="numeric"
+              maxlength="4"
+              autocomplete="current-password"
+            />
+          </div>
+
+          <button type="submit" class="login-btn" id="loginButton">
+            Einloggen
+          </button>
+
+          <div class="login-error" id="loginError"></div>
+
+          <div class="login-help">
+            Standard-Logins (DEV): <br />
+            <strong>albert.hoti@menyra.com / 1992</strong><br />
+            <strong>milan.nikolic@menyra.com / 1993</strong><br />
+            <strong>drilon.hoti@menyra.com / 1998</strong>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script type="module">
+      import {
+        db,
+        collection,
+        onSnapshot,
+        addDoc,
+        updateDoc,
+        serverTimestamp
+      } from "./firebase-config.js";
+
+      const SUPERADMIN_TOKEN_KEY = "menyraSuperadminToken";
+
+      // Deine 3 Standard-Accounts (Fallback + Migration)
+      const staticAccounts = {
+        "albert.hoti@menyra.com": {
+          name: "Albert Hoti",
+          password: "1992",
+          role: "ceo",
+          country: "ALL",
+          avatarUrl:
+            "https://ui-avatars.com/api/?name=Albert+Hoti&background=4f46e5&color=ffffff"
+        },
+        "milan.nikolic@menyra.com": {
+          name: "Milan Nikolic",
+          password: "1993",
+          role: "admin",
+          country: "XK",
+          avatarUrl:
+            "https://ui-avatars.com/api/?name=Milan+Nikolic&background=db2777&color=ffffff"
+        },
+        "drilon.hoti@menyra.com": {
+          name: "Drilon Hoti",
+          password: "1998",
+          role: "admin",
+          country: "XK",
+          avatarUrl:
+            "https://ui-avatars.com/api/?name=Drilon+Hoti&background=059669&color=ffffff"
+        }
+      };
+
+      function deriveNameFromEmail(email) {
+        if (!email) return "";
+        const atIndex = String(email).indexOf("@");
+        if (atIndex === -1) return String(email);
+        return String(email).slice(0, atIndex);
+      }
+
+      /**
+       * Liest einmalig alle Superadmins via onSnapshot
+       * und findet passenden Eintrag für email + PIN.
+       * Falls nicht vorhanden, aber statischer Default-Account →
+       * wird ein neuer Eintrag in "superadmins" angelegt.
+       */
+      async function findSuperadminByEmailAndPassword(email, password) {
+        const colRef = collection(db, "superadmins");
+        const staticAcc = staticAccounts[email];
+
+        return new Promise((resolve, reject) => {
+          try {
+            const unsubscribe = onSnapshot(
+              colRef,
+              async (snapshot) => {
+                // Nur erstes Mal ausführen
+                unsubscribe();
+
+                let matchDoc = null;
+
+                snapshot.forEach((docSnap) => {
+                  const data = docSnap.data() || {};
+                  const mail = (data.email || "").toLowerCase();
+                  if (mail !== email) return;
+
+                  const existingPassword = (data.password || "").toString();
+
+                  // Fall 1: Passwort im Firestore existiert
+                  if (existingPassword) {
+                    if (existingPassword === password) {
+                      matchDoc = docSnap;
+                    }
+                    return;
+                  }
+
+                  // Fall 2: Kein Passwort im Firestore, aber statischer Account passt
+                  if (staticAcc && staticAcc.password === password) {
+                    (async () => {
+                      try {
+                        await updateDoc(docSnap.ref, { password });
+                        console.log(
+                          "Passwort-Migration für",
+                          email,
+                          "durchgeführt."
+                        );
+                      } catch (err) {
+                        console.error(
+                          "Fehler bei Passwort-Migration für",
+                          email,
+                          err
+                        );
+                      }
+                    })();
+                    matchDoc = docSnap;
+                  }
+                });
+
+                if (matchDoc) {
+                  resolve(matchDoc);
+                  return;
+                }
+
+                // Kein Dokument gefunden → evtl. statischer Default-Account
+                if (staticAcc && staticAcc.password === password) {
+                  try {
+                    const payload = {
+                      name: staticAcc.name,
+                      email,
+                      avatarUrl: staticAcc.avatarUrl || "",
+                      role: staticAcc.role,
+                      country: staticAcc.country,
+                      password: staticAcc.password,
+                      createdAt: serverTimestamp()
+                    };
+                    const newRef = await addDoc(colRef, payload);
+                    console.log(
+                      "Standard-Superadmin angelegt:",
+                      email,
+                      newRef.id
+                    );
+
+                    // Pseudo-DocSnap zurückgeben
+                    resolve({
+                      id: newRef.id,
+                      data: () => payload
+                    });
+                    return;
+                  } catch (err) {
+                    console.error(
+                      "Fehler beim Anlegen eines Standard-Superadmins:",
+                      err
+                    );
+                    resolve(null);
+                    return;
+                  }
+                }
+
+                // Kein Treffer
+                resolve(null);
+              },
+              (err) => {
+                console.error("Fehler beim Lesen der Superadmins:", err);
+                reject(err);
+              }
+            );
+          } catch (err) {
+            reject(err);
+          }
+        });
+      }
+
+      const form = document.getElementById("loginForm");
+      const emailInput = document.getElementById("loginEmail");
+      const passwordInput = document.getElementById("loginPassword");
+      const errorEl = document.getElementById("loginError");
+      const loginBtn = document.getElementById("loginButton");
+
+      function setError(msg) {
+        if (errorEl) {
+          errorEl.textContent = msg || "";
+        }
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        setError("");
+        if (loginBtn) loginBtn.disabled = true;
+
+        const emailRaw = (emailInput.value || "").trim().toLowerCase();
+        const passwordRaw = (passwordInput.value || "").trim();
+
+        if (!emailRaw || !passwordRaw) {
+          setError("Bitte E-Mail und PIN eingeben.");
+          if (loginBtn) loginBtn.disabled = false;
+          return;
+        }
+
+        if (!/^\d{4}$/.test(passwordRaw)) {
+          setError("Die PIN muss 4 Ziffern haben.");
+          if (loginBtn) loginBtn.disabled = false;
+          return;
+        }
+
+        try {
+          const docSnap = await findSuperadminByEmailAndPassword(
+            emailRaw,
+            passwordRaw
+          );
+
+          if (!docSnap) {
+            setError("Login fehlgeschlagen. E-Mail oder PIN ist falsch.");
+            if (loginBtn) loginBtn.disabled = false;
+            return;
+          }
+
+          const data = docSnap.data() || {};
+
+          const tokenPayload = {
+            email: (data.email || emailRaw || "").toLowerCase(),
+            name: data.name || deriveNameFromEmail(emailRaw),
+            avatarUrl: data.avatarUrl || "",
+            role:
+              (data.role ||
+                (emailRaw === "albert.hoti@menyra.com" ? "ceo" : "admin"))
+                .toString()
+                .toLowerCase(),
+            country: data.country || "",
+            loginAt: new Date().toISOString()
+          };
+
+          try {
+            window.localStorage.setItem(
+              SUPERADMIN_TOKEN_KEY,
+              JSON.stringify(tokenPayload)
+            );
+          } catch (err) {
+            console.warn("Konnte Token nicht in localStorage schreiben:", err);
+          }
+
+          // Weiter ins Dashboard
+          window.location.href = "dashboard.html";
+        } catch (err) {
+          console.error("Technischer Fehler beim Login:", err);
+          setError(
+            "Technischer Fehler beim Login. Bitte später erneut versuchen."
+          );
+          if (loginBtn) loginBtn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>
