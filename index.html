@@ -1,3 +1,5 @@
+<!DOCTYPE html>
+<html lang="de">
 <head>
   <meta charset="UTF-8" />
   <title>MENYRA – Superadmin Dashboard</title>
@@ -37,8 +39,7 @@
 
   <link rel="stylesheet" href="menyra.css" />
 </head>
-
-
+<body>
 
     <!-- === TOPBAR ==================================================== -->
 
@@ -647,29 +648,43 @@
           <!-- === VIEW: OFFERS ======================================== -->
           <!-- ========================================================= -->
 
-
-
-          <div class="m-view" data-view="offers" style="display:none;">
+          <div class="m-view" data-view="offers">
             <div class="m-page-header">
               <div>
-                <h1 class="m-page-title page-title" data-i18n-key="nav.offers">Angebote</h1>
+                <h1 class="m-page-title" data-i18n-key="nav.offers">Angebote</h1>
                 <p class="m-page-subtitle">
-                  Hier kannst du später alle QR-Angebote / „Sot në fokus“ für Restaurants verwalten.
+                  Alle aktiven und geplanten Aktionen deiner Kunden im Überblick.
                 </p>
               </div>
               <div class="m-page-actions">
-                <button class="m-btn" type="button">
+                <button class="m-btn" type="button" id="addOfferBtn">
                   + Neues Angebot
                 </button>
               </div>
             </div>
 
             <section class="m-section">
-              <div class="m-card">
-                <h2 class="m-section-title">Offers-Verwaltung</h2>
-                <p class="m-section-subtitle">
-                  Platzhalter – später können wir hier Firestore-Listen aus <code>restaurants/{id}/offers</code> anzeigen.
-                </p>
+              <div class="m-card m-table-card">
+                <div class="m-table-toolbar">
+                  <div class="m-table-meta" id="offersMeta">
+                    0 Angebote · aus allen Kunden
+                  </div>
+                </div>
+
+                <div class="m-table">
+                  <div class="m-table-row m-table-row--header">
+                    <div>Kunde</div>
+                    <div>Angebote</div>
+                    <div>Letztes Angebot</div>
+                    <div>Status</div>
+                    <div class="m-table-col-actions">Aktion</div>
+                  </div>
+                  <div id="offersTableBody"></div>
+                </div>
+
+                <div class="m-table-footer">
+                  <span class="m-table-meta" id="offersPageInfo">Seite 1 von 1</span>
+                </div>
               </div>
             </section>
           </div>
@@ -681,81 +696,167 @@
           <div class="m-view" data-view="billing" style="display:none;">
             <div class="m-page-header">
               <div>
-                <h1 class="m-page-title page-title" data-i18n-key="nav.billing">Abrechnung</h1>
+                <h1 class="m-page-title" data-i18n-key="nav.billing">Abrechnung</h1>
                 <p class="m-page-subtitle">
-                  Übersicht über Pläne, Laufzeiten und Rechnungsstatus deiner MENYRA-Kunden.
+                  Übersicht über Umsätze, Ausgaben, Nettoergebnis und Kundenbasis.
                 </p>
               </div>
             </div>
 
-            <section class="m-section">
-              <div class="m-card">
-                <h2 class="m-section-title">Billing-Übersicht</h2>
+            <!-- --- BILLING: KENNZAHLEN -------------------------------- -->
+            <section class="m-section m-section--split">
+              <article class="m-card">
+                <h2 class="m-section-title">Finanz-Überblick</h2>
                 <p class="m-section-subtitle">
-                  Kennzahlen basierend auf allen aktiven Kunden (Gastro, Hotels, E-Commerce, Rent a Car, Clubs).
+                  Basierend auf allen aktiven Kunden mit laufendem Abo.
                 </p>
 
-                <!-- Gesamt-Finanzübersicht -->
-                <div class="m-section" style="margin-top: 10px;">
-                  <div class="m-system-row">
-                    <span>Jahresumsatz (brutto)</span>
-                    <span id="billingYearRevenue">0 €</span>
+                <div class="m-system-row">
+                  <span>Aktive Kunden (für Umsatz)</span>
+                  <span id="billingActiveCustomers">0</span>
+                </div>
+                <div class="m-system-row">
+                  <span>Jahresumsatz (brutto)</span>
+                  <span id="billingYearRevenue">0&nbsp;€</span>
+                </div>
+                <div class="m-system-row">
+                  <span>Monatliche Einnahmen</span>
+                  <span id="billingMonthRevenue">0&nbsp;€</span>
+                </div>
+                <div class="m-system-row">
+                  <span>Tägliche Einnahmen</span>
+                  <span id="billingDayRevenue">0&nbsp;€</span>
+                </div>
+                <div class="m-system-row">
+                  <span>Jahresausgaben</span>
+                  <span id="billingExpensesYear">0&nbsp;€</span>
+                </div>
+                <div class="m-system-row">
+                  <span>Nettoergebnis / Jahr</span>
+                  <span id="billingNetProfit">0&nbsp;€</span>
+                </div>
+                <div class="m-system-row">
+                  <span>MRR (E-Commerce / Rent a Car)</span>
+                  <span id="billingMrrMonthly">0.00&nbsp;€</span>
+                </div>
+
+                <p class="m-system-note">
+                  Steuer &amp; sonstige Abgaben werden pauschal laut Steuerprofil berechnet.
+                </p>
+              </article>
+
+              <article class="m-card">
+                <h2 class="m-section-title">Verteilung nach Kundentyp</h2>
+                <p class="m-section-subtitle">
+                  Wie viele Kunden pro Typ aktiv sind und wie viel Umsatz sie bringen.
+                </p>
+
+                <div id="billingTypeBreakdown">
+                  <p class="m-system-note">
+                    Noch keine Daten geladen.
+                  </p>
+                </div>
+              </article>
+            </section>
+
+            <!-- --- BILLING: DETAILTABELLE ----------------------------- -->
+            <section class="m-section">
+              <div class="m-card m-table-card">
+                <div class="m-section-header">
+                  <div>
+                    <h2 class="m-section-title">Kunden &amp; Abrechnungsmodelle</h2>
+                    <p class="m-section-subtitle">
+                      Alle Kunden in Umsetzung &amp; Aktiv mit Modell, Preis und Jahresumsatz.
+                    </p>
                   </div>
-                  <div class="m-system-row">
-                    <span>Jahresausgaben</span>
-                    <span id="billingExpensesYear">0 €</span>
-                  </div>
-                  <div class="m-system-row">
-                    <span>Nettoergebnis / Jahr (nach Steuern)</span>
-                    <span id="billingNetProfit">0 €</span>
-                  </div>
-                  <div class="m-system-row">
-                    <span>Monatliche E-Commerce / Rent a Car Einnahmen</span>
-                    <span id="billingMrrMonthly">0 €</span>
+                  <div class="m-section-toolbar">
+                    <span class="m-table-meta" id="billingTableMeta">
+                      0 Kunden · nur „In Umsetzung“ &amp; „Aktiv“
+                    </span>
                   </div>
                 </div>
 
-                <hr style="border:none;border-top:1px dashed var(--border-subtle);margin:12px 0;" />
+                <div class="m-table">
+                  <div class="m-table-row m-table-row--header">
+                    <div>Kunde</div>
+                    <div>Typ / Plan</div>
+                    <div>Modell</div>
+                    <div>Preis</div>
+                    <div>Jahresumsatz</div>
+                    <div>Status</div>
+                  </div>
+                  <div id="billingTableBody"></div>
+                </div>
 
-                <!-- Breakdown nach Kundentyp -->
-                <h3 class="m-section-title" style="font-size:14px;margin-top:0;">
-                  Aufteilung nach Kundentyp
-                </h3>
-                <p class="m-section-subtitle">
-                  Aktive Kunden & Jahresumsatz je Kategorie (Café, Restaurant, Hotel, E-Commerce, Rent a Car, Club).
-                </p>
-
-                <div id="billingTypeBreakdown" style="margin-top:6px;">
-                  <!-- Wird per JS gefüllt -->
+                <div class="m-table-footer">
+                  <span class="m-table-meta" id="billingTablePageInfo">
+                    Seite 1 von 1
+                  </span>
                 </div>
               </div>
             </section>
           </div>
-
 
           <!-- ========================================================= -->
           <!-- === VIEW: USERS ========================================= -->
           <!-- ========================================================= -->
 
           <div class="m-view" data-view="users" style="display:none;">
-            <div class="m-page-header">
+            <!-- Page Header -->
+            <header class="m-page-header">
               <div>
-                <h1 class="m-page-title page-title" data-i18n-key="nav.users">Benutzer</h1>
+                <!-- Titel nutzt direkt den Nav-Übersetzungs-Key -->
+                <h1 class="m-page-title" data-i18n-key="nav.users">Benutzer</h1>
                 <p class="m-page-subtitle">
-                  Verwalte Superadmins, Restaurant-Admins und Kellner-Logins für MENYRA.
+                  Übersicht über alle registrierten Benutzer, ihre Zuordnung zu Kunden und ihren Aktivitätsstatus.
                 </p>
               </div>
-            </div>
+              <div class="m-page-actions">
+                <!-- Platzhalter für später (z.B. Neuer Benutzer, Invite-Link, etc.) -->
+                <!-- <button class="m-btn m-btn--ghost" type="button">+ Neuer Benutzer</button> -->
+              </div>
+            </header>
 
+            <!-- Users-Tabelle -->
             <section class="m-section">
-              <div class="m-card">
-                <h2 class="m-section-title">Benutzerverwaltung</h2>
-                <p class="m-section-subtitle">
-                  Platzhalter – später kommen hier Rollen, Berechtigungen und Passwort-Resets.
-                </p>
+              <div class="m-card m-table-card">
+                <div class="m-table-toolbar">
+                  <div id="usersMeta" class="m-table-meta">
+                    0 Benutzer · sortiert nach Name
+                  </div>
+                  <div class="m-table-meta" id="usersToolbarRight">
+                    <!-- Platzhalter für spätere Filter/Buttons -->
+                  </div>
+                </div>
+
+                <div class="m-table">
+                  <div class="m-table-row m-table-row--header">
+                    <div>Benutzer</div>
+                    <div>Kontakt</div>
+                    <div>Kunde</div>
+                    <div>Aktivität</div>
+                    <div>Status</div>
+                    <div class="m-table-col-actions">Aktion</div>
+                  </div>
+
+                  <!-- Hier rendert renderUsersTable() seine Rows -->
+                  <div id="usersTableBody"></div>
+                </div>
+
+                <div class="m-table-footer">
+                  <div class="m-table-meta" id="usersFooterLeft">
+                    <!-- Optional: später z.B. Filter-Info -->
+                  </div>
+                  <div class="m-table-meta" id="usersPageInfo">
+                    Seite 1 von 1
+                  </div>
+                </div>
               </div>
             </section>
           </div>
+
+<!-- VIEW: USERS (ENDE) -->
+
 
           <!-- ========================================================= -->
           <!-- === VIEW: LOGS ========================================== -->
@@ -772,11 +873,31 @@
             </div>
 
             <section class="m-section">
-              <div class="m-card">
-                <h2 class="m-section-title">Log-Ansicht</h2>
-                <p class="m-section-subtitle">
-                  Hier können wir später Firestore- und Function-Logs gefiltert anzeigen.
-                </p>
+              <div class="m-card m-table-card">
+                <div class="m-table-toolbar">
+                  <span class="m-table-meta" id="logsMeta">
+                    0 Einträge · sortiert nach Zeit (neueste zuerst)
+                  </span>
+                </div>
+
+                <div class="m-table">
+                  <div class="m-table-row m-table-row--header">
+                    <div>Zeit</div>
+                    <div>Level</div>
+                    <div>Quelle</div>
+                    <div>Nachricht</div>
+                  </div>
+
+                  <div id="logsTableBody">
+                    <!-- System-Logs werden dynamisch gerendert -->
+                  </div>
+                </div>
+
+                <div class="m-table-footer">
+                  <span class="m-table-meta" id="logsPageInfo">
+                    Seite 1 von 1
+                  </span>
+                </div>
               </div>
             </section>
           </div>
@@ -796,6 +917,7 @@
             </div>
 
             <section class="m-section">
+              <!-- Plattform-Einstellungen Card (unverändert) -->
               <div class="m-card">
                 <h2 class="m-section-title">Plattform-Einstellungen</h2>
                 <p class="m-section-subtitle">
@@ -803,12 +925,15 @@
                 </p>
               </div>
 
+              <!-- 🔹 Superadmins & Länder – NEUER BLOCK -->
               <div class="m-card">
                 <div class="m-section-header">
                   <div>
-                    <h2 class="m-section-title">Superadmins & Icons</h2>
+                    <h2 class="m-section-title">Superadmins &amp; Länder</h2>
                     <p class="m-section-subtitle">
-                      Alle Superadmin-Accounts mit Name, Login und Profilbild-URL.
+                      Du als Inhaber (Albert) siehst alle Superadmins und kannst sie verwalten.
+                      Normale Superadmins bekommen eine Rolle &amp; ein Land und sehen später nur
+                      ihre eigenen Kunden.
                     </p>
                   </div>
                   <div class="m-page-actions">
@@ -822,9 +947,11 @@
                   <div class="m-table-row m-table-row--header">
                     <div>Name</div>
                     <div>Login / E-Mail</div>
-                    <div>Icon</div>
+                    <div>Avatar</div>
+                    <div>Rolle &amp; Land</div>
                     <div class="m-table-col-actions">Aktion</div>
                   </div>
+
                   <div id="superadminsTableBody">
                     <!-- Superadmins werden per JS gerendert -->
                   </div>
@@ -832,6 +959,7 @@
               </div>
             </section>
           </div>
+
 
         <!-- ========================================================= -->
         <!-- === MODAL: RESTAURANT-FORMULAR ========================== -->
@@ -1074,6 +1202,97 @@
           </div>
         </div>
 
+        <!-- ========================================================= -->
+        <!-- === MODAL: OFFER-FORMULAR =============================== -->
+        <!-- ========================================================= -->
+
+        <div id="offerFormOverlay" class="m-modal-overlay is-hidden">
+          <div class="m-modal">
+            <div class="m-modal-header">
+              <h2 id="offerFormTitle" class="m-modal-title">Neues Angebot</h2>
+              <button
+                type="button"
+                class="m-icon-btn m-modal-close"
+                id="offerFormClose"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form id="offerForm" class="m-modal-body">
+              <input type="hidden" id="offerId" />
+              <input type="hidden" id="offerRestaurantId" />
+
+              <div class="m-input-group">
+                <label for="offerRestaurantSelect">Kunde</label>
+                <select id="offerRestaurantSelect" required>
+                  <option value="">Bitte Kunden wählen</option>
+                </select>
+                <p class="m-input-hint">
+                  Wähle den Kunden, für den dieses Angebot gilt.
+                </p>
+              </div>
+
+              <div class="m-input-group">
+                <label for="offerTitle">Titel des Angebots</label>
+                <input
+                  id="offerTitle"
+                  type="text"
+                  required
+                  placeholder="z.B. Happy Hour Cocktails -30 %"
+                />
+              </div>
+
+              <div class="m-input-row">
+                <div class="m-input-group">
+                  <label for="offerPrice">Preis (optional)</label>
+                  <input
+                    id="offerPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="z.B. 9.90"
+                  />
+                  <p class="m-input-hint">
+                    Leer lassen, wenn das Angebot keinen festen Preis hat.
+                  </p>
+                </div>
+                <div class="m-input-group">
+                  <label for="offerActive">Status</label>
+                  <input
+                    id="offerActive"
+                    type="checkbox"
+                    checked
+                  />
+                  <span>Aktiv</span>
+                </div>
+              </div>
+
+              <div class="m-input-row">
+                <div class="m-input-group">
+                  <label for="offerFrom">Gültig ab (optional)</label>
+                  <input id="offerFrom" type="date" />
+                </div>
+                <div class="m-input-group">
+                  <label for="offerTo">Gültig bis (optional)</label>
+                  <input id="offerTo" type="date" />
+                </div>
+              </div>
+
+              <div class="m-modal-footer">
+                <button
+                  type="button"
+                  class="m-ghost-btn"
+                  id="offerFormCancel"
+                >
+                  Abbrechen
+                </button>
+                <button type="submit" class="m-btn">Speichern</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
 
         <!-- ========================================================= -->
         <!-- === MODAL: SUPERADMIN-FORMULAR ========================== -->
@@ -1106,6 +1325,29 @@
                 </p>
               </div>
 
+              <div class="m-input-row">
+                <div class="m-input-group">
+                  <label for="superadminRole">Rolle</label>
+                  <select id="superadminRole">
+                    <option value="admin">Admin</option>
+                    <option value="ceo">CEO (volle Rechte)</option>
+                  </select>
+                </div>
+                <div class="m-input-group">
+                  <label for="superadminCountry">Land</label>
+                  <input
+                    id="superadminCountry"
+                    type="text"
+                    placeholder="z.B. Kosovo, Albanien"
+                  />
+                </div>
+              </div>
+
+              <p class="m-input-hint">
+                Hinweis: Nur du als CEO kannst neue Superadmins anlegen und Rollen/Länder anderer
+                Accounts ändern. Normale Superadmins sehen später nur ihre eigenen Kunden im zugewiesenen Land.
+              </p>
+
               <div class="m-modal-footer">
                 <button type="button" class="m-ghost-btn" id="superadminFormCancel">Abbrechen</button>
                 <button type="submit" class="m-btn">Speichern</button>
@@ -1115,13 +1357,13 @@
         </div>
 
 
-    <!-- =============================================================== -->
-    <!-- === MOBILE MENU: OVERLAY + DRAWER (nur Mobile/Tablet) ========= -->
-    <!-- =============================================================== -->
+        <!-- =============================================================== -->
+        <!-- === MOBILE MENU: OVERLAY + DRAWER (nur Mobile/Tablet) ========= -->
+        <!-- =============================================================== -->
 
     <div class="m-mobile-menu-overlay" id="mobileMenuOverlay"></div>
 
-    <aside class="m-mobile-menu" id="mobileMenu" aria-hidden="true">
+     <aside class="m-mobile-menu" id="mobileMenu" aria-hidden="true">
       <div class="m-mobile-menu-inner">
         <div class="m-mobile-menu-header">
           <div class="m-mobile-menu-title">MENYRA</div>
