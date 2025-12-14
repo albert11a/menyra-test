@@ -2,207 +2,54 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>MENYRA – Restaurant Admin</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MENYRA – Owner Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#f3f4f6" />
+
   <link rel="stylesheet" href="../shared/styles.css">
+
+  <style>
+    .login-wrap{
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .login-card{ width: min(520px, 100%); }
+    .login-row{ display:flex; gap:10px; margin-top:10px; }
+    .login-row > *{ flex:1; }
+    .login-status{ margin-top:10px; font-size:13px; }
+  </style>
 </head>
+
 <body>
-  <main class="page">
-    <!-- HEADER -->
-    <header class="header">
-      <div>
-        <div class="header-title">MENYRA</div>
-        <div class="header-sub">Restaurant Admin – Speisekarte & Bestellungen</div>
-      </div>
-    </header>
+  <div class="login-wrap">
+    <section class="card login-card">
+      <h2>Owner Login</h2>
+      <p class="info">Bitte mit Email & Passwort einloggen.</p>
 
-    <!-- =========================================================
-         ABSCHNITT 1 — AUTH (EMAIL / PASSWORT)
-         ========================================================= -->
-    <section class="card" id="authCard">
-      <h2>Login</h2>
-      <p class="info">
-        Bitte mit <strong>Email</strong> und <strong>Passwort</strong> anmelden.
-        Danach kannst du dein Restaurant öffnen und Speisekarte/Bestellungen verwalten.
-      </p>
-
-      <div id="authForm">
+      <form id="loginForm">
         <label style="display:block; margin-top:8px;">
           <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Email</span>
-          <input id="authEmailInput" class="input" placeholder="z.B. owner@restaurant.com" autocomplete="username" />
+          <input id="email" class="input" type="email" autocomplete="username" required />
         </label>
 
         <label style="display:block; margin-top:8px;">
           <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Passwort</span>
-          <input id="authPassInput" class="input" type="password" placeholder="••••••••" autocomplete="current-password" />
+          <input id="pass" class="input" type="password" autocomplete="current-password" required />
         </label>
 
-        <button type="button" class="btn btn-primary" id="authLoginBtn" style="margin-top:10px;">
-          Einloggen
-        </button>
-      </div>
+        <div class="login-row">
+          <button class="btn btn-primary" type="submit">Login</button>
+          <button class="btn btn-ghost" type="button" id="logoutBtn">Logout</button>
+        </div>
 
-      <div id="authLoggedIn" style="display:none;">
-        <p class="info" style="margin-top:8px;">
-          Eingeloggt als: <strong id="authUserLabel"></strong>
-        </p>
-        <button type="button" class="btn btn-ghost" id="authLogoutBtn" style="margin-top:8px;">
-          Logout
-        </button>
-      </div>
-
-      <p id="authStatus" class="status-text"></p>
+        <div class="status-text login-status" id="status"></div>
+      </form>
     </section>
+  </div>
 
-    <!-- =========================================================
-         ABSCHNITT 2 — RESTAURANT ÖFFNEN
-         ========================================================= -->
-    <section class="card" id="openRestaurantCard" style="display:none;">
-      <h2>Restaurant öffnen</h2>
-      <p class="info">
-        Gib die <strong>Restaurant-ID</strong> ein (das ist die Document-ID in Firestore, z.B. „abc123...“).
-        Tipp: Du kannst auch direkt mit Link öffnen:
-        <code>admin.html?r=DEINE_ID</code>
-      </p>
-
-      <label style="display:block; margin-top:8px;">
-        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Restaurant-ID</span>
-        <input id="adminRestIdInput" class="input" placeholder="z.B. abc123xyz" />
-      </label>
-
-      <button type="button" class="btn btn-primary" id="adminOpenRestBtn" style="margin-top:10px;">
-        Öffnen
-      </button>
-
-      <p id="adminOpenStatus" class="status-text"></p>
-    </section>
-
-    <!-- PRODUKT-EDITOR (Speisekarte & Getränke) -->
-    <section class="card" id="menuEditorCard" style="display:none;">
-      <h2>Produkt hinzufügen / bearbeiten</h2>
-      <p class="info">
-        Restaurant: <strong id="adminRestLabel"></strong>
-      </p>
-
-      <!-- Typ-Umschalter: Speisekarte / Getränke -->
-      <div class="tab-row" style="margin-top:10px; margin-bottom:10px;">
-        <button
-          type="button"
-          class="tab-btn tab-btn-active type-toggle-btn"
-          data-type="food"
-          id="typeFoodBtn"
-        >
-          Speisekarte
-        </button>
-        <button
-          type="button"
-          class="tab-btn type-toggle-btn"
-          data-type="drink"
-          id="typeDrinkBtn"
-        >
-          Getränke
-        </button>
-      </div>
-
-      <!-- Kategorie-Auswahl -->
-      <label style="display:block; margin-top:4px;">
-        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Kategorie (Auswahl)</span>
-        <select id="itemCategorySelect" class="input"></select>
-      </label>
-
-      <label style="display:block; margin-top:8px;">
-        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Eigene Kategorie (optional)</span>
-        <input
-          id="itemCategoryCustomInput"
-          class="input"
-          placeholder="Eigene Kategorie, z.B. &quot;Vegan&quot;"
-        />
-      </label>
-
-      <!-- Produktdaten -->
-      <label style="display:block; margin-top:10px;">
-        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Produktname</span>
-        <input id="itemNameInput" class="input" placeholder="z.B. Burger Special" />
-      </label>
-
-      <!-- lange Beschreibung -->
-      <label style="display:block; margin-top:8px;">
-        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">
-          Beschreibung (lang, optional)
-        </span>
-        <textarea
-          id="itemLongDescInput"
-          class="input input-textarea"
-          placeholder="Lange Beschreibung, Story, Hinweise"
-        ></textarea>
-      </label>
-
-      <!-- Beschreibung kurz = Zutaten -->
-      <label style="display:block; margin-top:8px;">
-        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Zutaten (optional)</span>
-        <textarea
-          id="itemDescInput"
-          class="input input-textarea"
-          placeholder="Zutaten, Allergene, Extras"
-        ></textarea>
-      </label>
-
-      <label style="display:block; margin-top:8px;">
-        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Preis (€)</span>
-        <input
-          id="itemPriceInput"
-          class="input"
-          type="number"
-          step="0.01"
-          min="0"
-          placeholder="z.B. 7.90"
-        />
-      </label>
-
-      <!-- Mehrere Bild-URLs -->
-      <label style="display:block; margin-top:8px;">
-        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">
-          Bild-URLs (optional, eine pro Zeile)
-        </span>
-        <textarea
-          id="itemImagesInput"
-          class="input input-textarea"
-          placeholder="https://bild1.jpg&#10;https://bild2.jpg"
-        ></textarea>
-      </label>
-
-      <div class="cart-actions" style="margin-top:12px;">
-        <button type="button" class="btn btn-ghost" id="itemResetBtn">Zurücksetzen</button>
-        <button type="button" class="btn btn-primary" id="itemSaveBtn">
-          Produkt speichern
-        </button>
-      </div>
-
-      <p id="adminItemStatus" class="status-text"></p>
-    </section>
-
-    <!-- PRODUKT-LISTE -->
-    <section class="card" id="menuListCard" style="display:none;">
-      <h2>Produkte (Speisen & Getränke)</h2>
-      <div class="list" id="itemList"></div>
-      <p class="info">
-        Tippe auf <strong>Bearbeiten</strong>, um ein Produkt anzupassen, oder auf
-        <strong>Verfügbar</strong>, um es ein-/auszublenden.
-      </p>
-    </section>
-
-    <!-- HEUTIGE BESTELLUNGEN -->
-    <section class="card" id="ordersCard" style="display:none;">
-      <h2>Heutige Bestellungen</h2>
-      <div class="list" id="adminOrdersList"></div>
-      <p class="info">
-        Bestellungen von heute aus
-        <code>restaurants/&lt;ID&gt;/orders</code>.
-      </p>
-    </section>
-  </main>
-
-  <script type="module" src="admin.js"></script>
+  <script type="module" src="./login.js"></script>
 </body>
 </html>
