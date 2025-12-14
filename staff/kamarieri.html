@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Kamarieri</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f3f4f6" />
+<link rel="stylesheet" href="../shared/styles.css">
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <div class="header-title">MENYRA</div>
+        <div class="header-sub">Kellner · Bestellungen</div>
+      </div>
+      <div class="header-sub" id="kRestLabel"></div>
+    </header>
+
+    <section class="card" id="waiterLoginCard">
+      <h2>Kellner-Code</h2>
+      <p class="info">
+        Bitte Kellner-Code eingeben, den dein Chef dir gegeben hat.
+      </p>
+      <input class="input" id="waiterCodeInput" placeholder="Kellner-Code (z.B. 123456)" />
+      <button class="btn btn-primary" id="waiterLoginBtn" style="margin-top:8px;">
+        Einloggen
+      </button>
+      <div class="status-text" id="waiterLoginStatus"></div>
+    </section>
+
+    <section class="card" id="orderCard" style="display:none;">
+      <h2>Eingehende Bestellungen</h2>
+
+      <div class="list" id="statusFilterRow">
+        <div class="list-item-row" style="align-items:flex-start;">
+          <span class="info">Ansicht:</span>
+          <span style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="btn btn-small btn-primary" data-filter="open">Offen</button>
+            <button class="btn btn-small btn-ghost" data-filter="new">Neu</button>
+            <button class="btn btn-small btn-ghost" data-filter="in_progress">In Arbeit</button>
+            <button class="btn btn-small btn-ghost" data-filter="archive">Archiv (Serviert)</button>
+          </span>
+        </div>
+      </div>
+
+      <div class="list" id="orderList" style="margin-top:10px;"></div>
+
+      <div style="display:flex; gap:8px; align-items:center; margin-top:10px;">
+        <button class="btn btn-ghost btn-small" id="archiveLoadMoreBtn" style="display:none;">Mehr laden</button>
+        <span class="info" id="archiveMeta" style="display:none;"></span>
+      </div>
+
+      <p class="info" style="margin-top:10px;">
+        <strong>Offen</strong> wird live geladen (max. 50) – damit bleibt es schnell und günstig.
+        <strong>Archiv</strong> wird nur auf Anfrage seitenweise geladen.
+      </p>
+    </section>
+  </main>
+
+  <script type="module" src="kamarieri.js"></script>
+</body>
+</html>
