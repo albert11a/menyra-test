@@ -1,77 +1,102 @@
-// login.js (Owner) — normaler Login + Redirect
-// Wichtig: Diese Zeile initialisiert Firebase App (auch wenn wir db hier nicht nutzen!)
-import "../shared/firebase-config.js";
+// owner/login.js — Auth Login + Owner Role Check (NO redirect loop)
 
+import { db } from "../shared/firebase-config.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
   getAuth,
   onAuthStateChanged,
   signInWithEmailAndPassword,
-  signOut,
   setPersistence,
   browserLocalPersistence,
+  signOut,
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 const auth = getAuth();
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 const form = document.getElementById("loginForm");
-const email = document.getElementById("email");
-const pass = document.getElementById("pass");
-const statusEl = document.getElementById("status");
-const logoutBtn = document.getElementById("logoutBtn");
+const emailEl = document.getElementById("emailInput");
+const passEl = document.getElementById("passwordInput");
+const statusEl = document.getElementById("loginStatus");
 
-function setStatus(msg, kind) {
-  if (!statusEl) return;
-  statusEl.textContent = msg || "";
-  statusEl.className = "status-text login-status";
-  if (kind === "ok") statusEl.classList.add("status-ok");
-  if (kind === "err") statusEl.classList.add("status-err");
+const params = new URLSearchParams(location.search);
+const restaurantId = params.get("r") || "";
+
+function setStatus(msg) {
+  if (statusEl) statusEl.textContent = msg || "";
 }
 
-function nextUrlOrDefault() {
-  const p = new URLSearchParams(location.search);
-  const next = p.get("next");
-  return next || "./admin.html";
+function adminUrl() {
+  const url = new URL("./admin.html", location.href);
+  url.searchParams.set("r", restaurantId);
+  return url.toString();
 }
 
-function goAdmin() {
-  location.replace(nextUrlOrDefault());
+async function hasOwnerAccess(uid) {
+  if (!restaurantId) return false;
+  const snap = await getDoc(doc(db, "restaurants", restaurantId, "staff", uid));
+  if (!snap.exists()) return false;
+  const role = String((snap.data() || {}).role || "").toLowerCase();
+  return role === "owner" || role === "admin" || role === "manager";
 }
 
-(async () => {
-  try {
-    await setPersistence(auth, browserLocalPersistence);
-  } catch (e) {
-    console.error(e);
-    setStatus("❌ Persistence Fehler: " + (e?.message || String(e)), "err");
+// Auto-check: wenn schon eingeloggt → prüfen → ggf. weiter
+onAuthStateChanged(auth, async (user) => {
+  if (!restaurantId) {
+    setStatus("❌ Fehlender Parameter: ?r=restaurantId");
+    return; // WICHTIG: kein redirect!
   }
+  if (!user) return;
 
-  // Wenn schon eingeloggt -> direkt weiter
-  onAuthStateChanged(auth, (user) => {
-    if (user) return goAdmin();
-    setStatus("");
-  });
+  setStatus("Checking access…");
+  try {
+    const ok = await hasOwnerAccess(user.uid);
+    if (!ok) {
+      setStatus("❌ Kein Owner-Zugriff für dieses Restaurant.");
+      await signOut(auth);
+      return; // WICHTIG: kein redirect → kein loop
+    }
+    location.replace(adminUrl());
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ Fehler (Rules/Permission?): " + (err?.message || String(err)));
+    try { await signOut(auth); } catch {}
+  }
+});
 
-  form?.addEventListener("submit", async (e) => {
+if (form) {
+  form.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    if (!restaurantId) {
+      setStatus("❌ Fehlender Parameter: ?r=restaurantId");
+      return;
+    }
+
+    const email = String(emailEl?.value || "").trim();
+    const pass = String(passEl?.value || "");
+
+    if (!email || !pass) {
+      setStatus("Bitte Email & Passwort eingeben.");
+      return;
+    }
+
+    setStatus("Signing in…");
+
     try {
-      setStatus("Login…");
-      const mail = (email?.value || "").trim();
-      const pw = pass?.value || "";
-      await signInWithEmailAndPassword(auth, mail, pw);
-      // Redirect passiert über onAuthStateChanged
+      const cred = await signInWithEmailAndPassword(auth, email, pass);
+
+      const ok = await hasOwnerAccess(cred.user.uid);
+      if (!ok) {
+        setStatus("❌ Kein Owner-Zugriff für dieses Restaurant.");
+        await signOut(auth);
+        return;
+      }
+
+      location.replace(adminUrl());
     } catch (err) {
       console.error(err);
-      setStatus("❌ " + (err?.message || String(err)), "err");
+      setStatus("❌ Login fehlgeschlagen: " + (err?.message || String(err)));
     }
   });
-
-  logoutBtn?.addEventListener("click", async () => {
-    try {
-      await signOut(auth);
-      setStatus("Ausgeloggt.", "ok");
-    } catch (e) {
-      console.error(e);
-      setStatus("❌ Logout Fehler: " + (e?.message || String(e)), "err");
-    }
-  });
-})();
+}
