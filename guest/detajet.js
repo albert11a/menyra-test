@@ -428,14 +428,15 @@ async function loadItem() {
   }
 
   try {
-    // ✅ 1) Erst versuchen: Public-Menu (1 Doc) – dann Item daraus finden
+
+    // ✅ Public-Menu (1 Doc) zuerst versuchen (günstiger als menuItems Read)
     try {
       const publicMenuRef = doc(db, "restaurants", restaurantId, "public", "menu");
-      const pubSnap = await getDoc(publicMenuRef);
-      if (pubSnap.exists()) {
-        const pd = pubSnap.data() || {};
-        const arr = Array.isArray(pd.items) ? pd.items : [];
-        const found = arr.find((x) => x && x.id === itemId);
+      const publicMenuSnap = await getDoc(publicMenuRef);
+      if (publicMenuSnap.exists()) {
+        const pd = publicMenuSnap.data() || {};
+        const list = Array.isArray(pd.items) ? pd.items : [];
+        const found = list.find((x) => x && x.id === itemId && x.available !== false);
         if (found) {
           const gallery = Array.isArray(found.imageUrls)
             ? found.imageUrls.filter((u) => typeof u === "string" && u.trim() !== "")
@@ -457,11 +458,10 @@ async function loadItem() {
           return;
         }
       }
-    } catch {
-      // ignore -> fallback unten
+    } catch (err) {
+      // Fallback auf menuItems
     }
 
-    // ✅ 2) Fallback: alte Struktur (einzelnes menuItems-Dokument)
     const itemRef = doc(db, "restaurants", restaurantId, "menuItems", itemId);
     const itemSnap = await getDoc(itemRef);
 
