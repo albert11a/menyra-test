@@ -5,7 +5,7 @@
   <title>MENYRA – Restaurant Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f3f4f6" />
-<link rel="stylesheet" href="../shared/styles.css">
+  <link rel="stylesheet" href="../shared/styles.css">
 </head>
 <body>
   <main class="page">
@@ -17,33 +17,65 @@
       </div>
     </header>
 
-    <!-- LOGIN -->
-    <section class="card" id="adminLoginCard">
-      <h2>Restaurant auswählen</h2>
+    <!-- =========================================================
+         ABSCHNITT 1 — AUTH (EMAIL / PASSWORT)
+         ========================================================= -->
+    <section class="card" id="authCard">
+      <h2>Login</h2>
       <p class="info">
-        Melde dich mit deiner <strong>Restaurant-ID</strong> oder mit deinem
-        <strong>Besitzer-Code</strong> an.
+        Bitte mit <strong>Email</strong> und <strong>Passwort</strong> anmelden.
+        Danach kannst du dein Restaurant öffnen und Speisekarte/Bestellungen verwalten.
+      </p>
+
+      <div id="authForm">
+        <label style="display:block; margin-top:8px;">
+          <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Email</span>
+          <input id="authEmailInput" class="input" placeholder="z.B. owner@restaurant.com" autocomplete="username" />
+        </label>
+
+        <label style="display:block; margin-top:8px;">
+          <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Passwort</span>
+          <input id="authPassInput" class="input" type="password" placeholder="••••••••" autocomplete="current-password" />
+        </label>
+
+        <button type="button" class="btn btn-primary" id="authLoginBtn" style="margin-top:10px;">
+          Einloggen
+        </button>
+      </div>
+
+      <div id="authLoggedIn" style="display:none;">
+        <p class="info" style="margin-top:8px;">
+          Eingeloggt als: <strong id="authUserLabel"></strong>
+        </p>
+        <button type="button" class="btn btn-ghost" id="authLogoutBtn" style="margin-top:8px;">
+          Logout
+        </button>
+      </div>
+
+      <p id="authStatus" class="status-text"></p>
+    </section>
+
+    <!-- =========================================================
+         ABSCHNITT 2 — RESTAURANT ÖFFNEN
+         ========================================================= -->
+    <section class="card" id="openRestaurantCard" style="display:none;">
+      <h2>Restaurant öffnen</h2>
+      <p class="info">
+        Gib die <strong>Restaurant-ID</strong> ein (das ist die Document-ID in Firestore, z.B. „abc123...“).
+        Tipp: Du kannst auch direkt mit Link öffnen:
+        <code>admin.html?r=DEINE_ID</code>
       </p>
 
       <label style="display:block; margin-top:8px;">
         <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Restaurant-ID</span>
-        <input id="adminRestIdInput" class="input" placeholder="z.B. shpija-e-vjeter" />
+        <input id="adminRestIdInput" class="input" placeholder="z.B. abc123xyz" />
       </label>
-      <button type="button" class="btn btn-primary" id="adminLoginBtn" style="margin-top:8px;">
-        Mit ID anmelden
+
+      <button type="button" class="btn btn-primary" id="adminOpenRestBtn" style="margin-top:10px;">
+        Öffnen
       </button>
 
-      <p class="info" style="margin-top:12px; margin-bottom:4px;">oder Besitzer-Code:</p>
-
-      <label style="display:block;">
-        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Besitzer-Code</span>
-        <input id="adminCodeInput" class="input" placeholder="z.B. ABC123" />
-      </label>
-      <button type="button" class="btn btn-primary" id="adminCodeLoginBtn" style="margin-top:8px;">
-        Mit Code anmelden
-      </button>
-
-      <p id="adminLoginStatus" class="status-text"></p>
+      <p id="adminOpenStatus" class="status-text"></p>
     </section>
 
     <!-- PRODUKT-EDITOR (Speisekarte & Getränke) -->
@@ -94,7 +126,7 @@
         <input id="itemNameInput" class="input" placeholder="z.B. Burger Special" />
       </label>
 
-      <!-- NEU: lange Beschreibung -->
+      <!-- lange Beschreibung -->
       <label style="display:block; margin-top:8px;">
         <span style="font-size:0.8rem; display:block; margin-bottom:4px;">
           Beschreibung (lang, optional)
@@ -128,7 +160,7 @@
         />
       </label>
 
-      <!-- NEU: Mehrere Bild-URLs -->
+      <!-- Mehrere Bild-URLs -->
       <label style="display:block; margin-top:8px;">
         <span style="font-size:0.8rem; display:block; margin-bottom:4px;">
           Bild-URLs (optional, eine pro Zeile)
