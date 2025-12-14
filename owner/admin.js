@@ -1,8 +1,8 @@
 /* =========================================================
-   ABSCHNITT 0 — IMPORTS
+   OWNER ADMIN — CLEAN + LOOP-SAFE (Auth + staff-role)
    ========================================================= */
 
-import { db } from "../shared/firebase-config.js";
+import { db, auth } from "../shared/firebase-config.js";
 import {
   collection,
   doc,
@@ -20,31 +20,68 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 import {
-  getAuth,
   onAuthStateChanged,
   signOut,
   setPersistence,
   browserLocalPersistence,
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
-/* =========================================================
-   ABSCHNITT 0.5 — AUTH GATE (Owner)
-   ========================================================= */
-
-const firebaseAuth = getAuth();                 // <-- umbenannt (kein "auth" mehr)
-setPersistence(firebaseAuth, browserLocalPersistence).catch(() => {});
-
+/* =========================
+   PARAMS
+   ========================= */
 const params = new URLSearchParams(location.search);
 const restaurantId = params.get("r") || "";
 
-// Anti-Loop (pro Tab)
-const OWNER_LOCK = "menyra_owner_gate_lock_v1";
+/* =========================
+   DOM
+   ========================= */
+const appGate = document.getElementById("appGate");
+const appGateMsg = document.getElementById("appGateMsg");
 
+const ownerUserLabel = document.getElementById("ownerUserLabel");
+const ownerLogoutBtn = document.getElementById("ownerLogoutBtn");
+
+const menuEditorCard = document.getElementById("menuEditorCard");
+const menuListCard = document.getElementById("menuListCard");
+const ordersCard = document.getElementById("ordersCard");
+const adminRestLabel = document.getElementById("adminRestLabel");
+
+const typeFoodBtn = document.getElementById("typeFoodBtn");
+const typeDrinkBtn = document.getElementById("typeDrinkBtn");
+const typeToggleButtons = document.querySelectorAll(".type-toggle-btn");
+
+const itemCategorySelect = document.getElementById("itemCategorySelect");
+const itemCategoryCustomInput = document.getElementById("itemCategoryCustomInput");
+const itemNameInput = document.getElementById("itemNameInput");
+const itemLongDescInput = document.getElementById("itemLongDescInput");
+const itemDescInput = document.getElementById("itemDescInput");
+const itemPriceInput = document.getElementById("itemPriceInput");
+const itemImagesInput = document.getElementById("itemImagesInput");
+const itemSaveBtn = document.getElementById("itemSaveBtn");
+const itemResetBtn = document.getElementById("itemResetBtn");
+const adminItemStatus = document.getElementById("adminItemStatus");
+
+const itemList = document.getElementById("itemList");
+const adminOrdersList = document.getElementById("adminOrdersList");
+
+/* =========================
+   UI HELPERS
+   ========================= */
+function showGate(msg = "Checking session…") {
+  if (appGate) appGate.style.display = "flex";
+  if (appGateMsg) appGateMsg.textContent = msg;
+}
+function hideGate() {
+  if (appGate) appGate.style.display = "none";
+}
+function setStatus(el, text, kind) {
+  if (!el) return;
+  el.textContent = text || "";
+  el.className = "status-text";
+  if (kind === "ok") el.classList.add("status-ok");
+  if (kind === "err") el.classList.add("status-err");
+}
 function goLogin(reason = "") {
-  // verhindert refresh-loop
-  if (sessionStorage.getItem(OWNER_LOCK) === "1") return;
-  sessionStorage.setItem(OWNER_LOCK, "1");
-
   const url = new URL("./login.html", location.href);
   if (restaurantId) url.searchParams.set("r", restaurantId);
   if (reason) url.searchParams.set("err", reason);
@@ -59,232 +96,20 @@ async function hasOwnerAccess(uid) {
   return role === "owner" || role === "admin" || role === "manager";
 }
 
-let __gateDone = false;
-
-onAuthStateChanged(firebaseAuth, async (user) => {
-  if (__gateDone) return;
-  __gateDone = true;
-
-  // wir sind im admin -> lock weg
-  sessionStorage.removeItem(OWNER_LOCK);
-
-  if (!restaurantId) return goLogin("missing_r");
-  if (!user) return goLogin("signed_out");
-
-  try {
-    const ok = await hasOwnerAccess(user.uid);
-    if (!ok) {
-      try { await signOut(firebaseAuth); } catch {}
-      return goLogin("no_access");
-    }
-
-    // ✅ Gate OK — ab hier läuft dein normaler Code
-    window.__MENYRA_OWNER__ = { restaurantId, uid: user.uid };
-
-  } catch (err) {
-    console.error(err);
-    try { await signOut(firebaseAuth); } catch {}
-    return goLogin("gate_error");
-  }
-});
-
-
-/* =========================================================
-   ABSCHNITT 1 — DOM
-   ========================================================= */
-
-
-// Gate
-const appGate = document.getElementById("appGate");
-const appGateMsg = document.getElementById("appGateMsg");
-
-// Header
-const ownerUserLabel = document.getElementById("ownerUserLabel");
-const ownerLogoutBtn = document.getElementById("ownerLogoutBtn");
-
-// Editor & Listen
-const menuEditorCard = document.getElementById("menuEditorCard");
-const menuListCard = document.getElementById("menuListCard");
-const ordersCard = document.getElementById("ordersCard");
-const adminRestLabel = document.getElementById("adminRestLabel");
-
-// Typ-Umschalter
-const typeFoodBtn = document.getElementById("typeFoodBtn");
-const typeDrinkBtn = document.getElementById("typeDrinkBtn");
-const typeToggleButtons = document.querySelectorAll(".type-toggle-btn");
-
-// Formular-Felder
-const itemCategorySelect = document.getElementById("itemCategorySelect");
-const itemCategoryCustomInput = document.getElementById("itemCategoryCustomInput");
-const itemNameInput = document.getElementById("itemNameInput");
-const itemLongDescInput = document.getElementById("itemLongDescInput");
-const itemDescInput = document.getElementById("itemDescInput");
-const itemPriceInput = document.getElementById("itemPriceInput");
-const itemImagesInput = document.getElementById("itemImagesInput");
-const itemSaveBtn = document.getElementById("itemSaveBtn");
-const itemResetBtn = document.getElementById("itemResetBtn");
-const adminItemStatus = document.getElementById("adminItemStatus");
-
-// Listen-Ausgabe
-const itemList = document.getElementById("itemList");
-const adminOrdersList = document.getElementById("adminOrdersList");
-
-/* =========================================================
-   ABSCHNITT 2 — STATE
-   ========================================================= */
-
-const auth = getAuth();
-let currentUser = null;
-let currentRestaurantId = null;
+/* =========================
+   STATE
+   ========================= */
 let currentItems = [];
 let currentEditItemId = null;
 let currentProductType = "food";
 
-/* =========================================================
-   ABSCHNITT 3 — GATE + STATUS
-   ========================================================= */
-
-function showGate(msg = "Checking session…") {
-  if (appGate) appGate.style.display = "flex";
-  if (appGateMsg) appGateMsg.textContent = msg;
-}
-function hideGate() {
-  if (appGate) appGate.style.display = "none";
-}
-
-function setStatus(el, text, kind) {
-  if (!el) return;
-  el.textContent = text || "";
-  el.className = "status-text";
-  if (kind === "ok") el.classList.add("status-ok");
-  if (kind === "err") el.classList.add("status-err");
-}
-
-/* =========================================================
-   ABSCHNITT 4 — SESSION (Restaurant)
-   ========================================================= */
-
-function saveOwnerSession(restaurantId) {
-  localStorage.setItem("menyra_owner_restaurantId", restaurantId);
-}
-function loadOwnerSession() {
-  return localStorage.getItem("menyra_owner_restaurantId");
-}
-function clearOwnerSession() {
-  localStorage.removeItem("menyra_owner_restaurantId");
-}
-
-async function resolveRestaurantIdForUser(user) {
-  // 1) URL ?r=...
-  const p = new URLSearchParams(window.location.search);
-  const ridFromUrl = p.get("r");
-  if (ridFromUrl) return ridFromUrl;
-
-  // 2) alte Session
-  const ridFromSession = loadOwnerSession();
-  if (ridFromSession) return ridFromSession;
-
-  // 3) users/{uid} mit restaurantId
-  try {
-    const uSnap = await getDoc(doc(db, "users", user.uid));
-    if (uSnap.exists()) {
-      const u = uSnap.data() || {};
-      const rid = u.restaurantId || u.restaurant || u.assignedRestaurantId;
-      if (rid) return rid;
-    }
-  } catch {}
-
-  // 4) restaurants where ownerUid == uid
-  try {
-    const q1 = query(
-      collection(db, "restaurants"),
-      where("ownerUid", "==", user.uid),
-      limit(1)
-    );
-    const s1 = await getDocs(q1);
-    if (!s1.empty) return s1.docs[0].id;
-  } catch {}
-
-  // 5) restaurants where ownerEmail == email
-  try {
-    if (user.email) {
-      const q2 = query(
-        collection(db, "restaurants"),
-        where("ownerEmail", "==", user.email),
-        limit(1)
-      );
-      const s2 = await getDocs(q2);
-      if (!s2.empty) return s2.docs[0].id;
-    }
-  } catch {}
-
-  return null;
-}
-
-
-/* =========================================================
-   ABSCHNITT 5 — LOGIN ROUTE
-   ========================================================= */
-
-function goLogin() {
-  const loginUrl = new URL("./login.html", window.location.href);
-  loginUrl.searchParams.set("next", window.location.pathname + window.location.search);
-  location.replace(loginUrl.toString());
-}
-
-async function doLogout() {
-  try { await signOut(auth); } catch {}
-  clearOwnerSession();
-  goLogin();
-}
-
-ownerLogoutBtn?.addEventListener("click", doLogout);
-
-/* =========================================================
-   ABSCHNITT 6 — AUTO: RestaurantId finden (NORMAL LOGIN FLOW)
-   ========================================================= */
-
-async function resolveRestaurantIdForOwner(user) {
-  // 1) Session (fast, 0 reads)
-  const ridSession = loadOwnerSession();
-  if (ridSession) return ridSession;
-
-  // 2) Mapping doc: owners/{uid} (NORMAL, 1 read)
-  try {
-    const snap = await getDoc(doc(db, "owners", user.uid));
-    if (snap.exists()) {
-      const d = snap.data() || {};
-      if (d.restaurantId) return String(d.restaurantId);
-    }
-  } catch {}
-
-  // 3) Fallback: restaurant has ownerUid / ownerEmail (Query = 1 read)
-  try {
-    const q1 = query(collection(db, "restaurants"), where("ownerUid", "==", user.uid), limit(1));
-    const s1 = await getDocs(q1);
-    if (!s1.empty) return s1.docs[0].id;
-  } catch {}
-
-  if (user.email) {
-    try {
-      const q2 = query(collection(db, "restaurants"), where("ownerEmail", "==", user.email), limit(1));
-      const s2 = await getDocs(q2);
-      if (!s2.empty) return s2.docs[0].id;
-    } catch {}
-  }
-
-  return null;
-}
-
-/* =========================================================
-   ABSCHNITT 7 — STANDARD-KATEGORIEN
-   ========================================================= */
-
+/* =========================
+   CATEGORIES
+   ========================= */
 const defaultFoodCategories = [
   "Mengjesi","Supat","Paragjellat","Sandwich","Burger","Rizoto","Sallatat",
   "Pasta","Pizza","Tava","Mish Pule","Mishrat","Deti","Antipasta","Desert",
 ];
-
 const defaultDrinkCategories = [
   "Kafe & Espresso","Cappuccino & Latte","Çaj i ngrohtë","Çaj i ftohtë","Ujë i thjeshtë",
   "Ujë i gazuar","Lëngje frutash","Pije të gazuara","Freskuese","Smoothie",
@@ -319,23 +144,17 @@ function setProductType(type) {
   fillCategorySelect();
 }
 
-/* =========================================================
-   ABSCHNITT 8 — RESTAURANT ÖFFNEN (nur automatisch)
-   ========================================================= */
-
-async function openRestaurantById(rid) {
-  const refRest = doc(db, "restaurants", rid);
-  const snap = await getDoc(refRest);
-
+/* =========================
+   RESTAURANT OPEN
+   ========================= */
+async function openRestaurantById() {
+  const restRef = doc(db, "restaurants", restaurantId);
+  const snap = await getDoc(restRef);
   if (!snap.exists()) throw new Error("Restaurant nicht gefunden.");
 
-  currentRestaurantId = rid;
-  saveOwnerSession(rid);
-
   const data = snap.data() || {};
-  if (adminRestLabel) adminRestLabel.textContent = data.restaurantName || rid;
+  if (adminRestLabel) adminRestLabel.textContent = data.restaurantName || restaurantId;
 
-  // UI an
   if (menuEditorCard) menuEditorCard.style.display = "block";
   if (menuListCard) menuListCard.style.display = "block";
   if (ordersCard) ordersCard.style.display = "block";
@@ -344,10 +163,9 @@ async function openRestaurantById(rid) {
   await loadTodayOrders();
 }
 
-/* =========================================================
-   ABSCHNITT 9 — MENÜ LADEN & PUBLIC-MENU SYNC
-   ========================================================= */
-
+/* =========================
+   MENU + PUBLIC SYNC
+   ========================= */
 function inferTypeForItem(item) {
   if (item.type === "food" || item.type === "drink") return item.type;
   if (defaultDrinkCategories.includes(item.category)) return "drink";
@@ -376,21 +194,16 @@ function buildPublicMenuPayload(items) {
 }
 
 async function syncPublicMenuFromCurrentItems() {
-  if (!currentRestaurantId) return;
   try {
     const payload = buildPublicMenuPayload(currentItems);
-    const publicMenuRef = doc(db, "restaurants", currentRestaurantId, "public", "menu");
-    await setDoc(publicMenuRef, payload, { merge: true });
+    await setDoc(doc(db, "restaurants", restaurantId, "public", "menu"), payload, { merge: true });
   } catch (err) {
     console.error("Public menu sync failed:", err);
   }
 }
 
 async function loadMenuItems() {
-  if (!currentRestaurantId) return;
-
-  const restRef = doc(db, "restaurants", currentRestaurantId);
-  const menuCol = collection(restRef, "menuItems");
+  const menuCol = collection(doc(db, "restaurants", restaurantId), "menuItems");
   const snap = await getDocs(menuCol);
 
   currentItems = [];
@@ -519,15 +332,15 @@ function resetForm() {
   currentEditItemId = null;
   setStatus(adminItemStatus, "", null);
 
-  itemCategoryCustomInput.value = "";
-  itemNameInput.value = "";
-  itemLongDescInput.value = "";
-  itemDescInput.value = "";
-  itemPriceInput.value = "";
-  itemImagesInput.value = "";
+  if (itemCategoryCustomInput) itemCategoryCustomInput.value = "";
+  if (itemNameInput) itemNameInput.value = "";
+  if (itemLongDescInput) itemLongDescInput.value = "";
+  if (itemDescInput) itemDescInput.value = "";
+  if (itemPriceInput) itemPriceInput.value = "";
+  if (itemImagesInput) itemImagesInput.value = "";
 
   setProductType("food");
-  itemSaveBtn.textContent = "Produkt speichern";
+  if (itemSaveBtn) itemSaveBtn.textContent = "Produkt speichern";
 }
 
 function startEditItem(item) {
@@ -540,38 +353,37 @@ function startEditItem(item) {
   const categories = type === "drink" ? defaultDrinkCategories : defaultFoodCategories;
 
   if (item.category && categories.includes(item.category)) {
-    itemCategorySelect.value = item.category;
-    itemCategoryCustomInput.value = "";
+    if (itemCategorySelect) itemCategorySelect.value = item.category;
+    if (itemCategoryCustomInput) itemCategoryCustomInput.value = "";
   } else {
-    itemCategorySelect.value = "";
-    itemCategoryCustomInput.value = item.category || "";
+    if (itemCategorySelect) itemCategorySelect.value = "";
+    if (itemCategoryCustomInput) itemCategoryCustomInput.value = item.category || "";
   }
 
-  itemNameInput.value = item.name || "";
-  itemLongDescInput.value = item.longDescription || "";
-  itemDescInput.value = item.description || "";
-  itemPriceInput.value = typeof item.price === "number" ? String(item.price) : "";
+  if (itemNameInput) itemNameInput.value = item.name || "";
+  if (itemLongDescInput) itemLongDescInput.value = item.longDescription || "";
+  if (itemDescInput) itemDescInput.value = item.description || "";
+  if (itemPriceInput) itemPriceInput.value = typeof item.price === "number" ? String(item.price) : "";
 
   const images = Array.isArray(item.imageUrls) ? item.imageUrls : [];
-  itemImagesInput.value = images.length ? images.join("\n") : (item.imageUrl || "");
+  if (itemImagesInput) itemImagesInput.value = images.length ? images.join("\n") : (item.imageUrl || "");
 
-  itemSaveBtn.textContent = "Produkt aktualisieren";
+  if (itemSaveBtn) itemSaveBtn.textContent = "Produkt aktualisieren";
 }
 
 async function saveItem() {
-  if (!currentRestaurantId) return;
-
   setStatus(adminItemStatus, "", null);
 
-  const selectedCat = itemCategorySelect.value || "";
-  const customCat = (itemCategoryCustomInput.value || "").trim();
+  const selectedCat = itemCategorySelect?.value || "";
+  const customCat = (itemCategoryCustomInput?.value || "").trim();
   const category = customCat || selectedCat;
 
-  const name = (itemNameInput.value || "").trim();
-  const longDesc = (itemLongDescInput.value || "").trim();
-  const desc = (itemDescInput.value || "").trim();
-  const priceStr = (itemPriceInput.value || "").trim();
-  const imagesRaw = (itemImagesInput.value || "")
+  const name = (itemNameInput?.value || "").trim();
+  const longDesc = (itemLongDescInput?.value || "").trim();
+  const desc = (itemDescInput?.value || "").trim();
+  const priceStr = (itemPriceInput?.value || "").trim();
+
+  const imagesRaw = (itemImagesInput?.value || "")
     .split("\n")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
@@ -583,9 +395,8 @@ async function saveItem() {
   if (isNaN(price)) return setStatus(adminItemStatus, "Bitte einen gültigen Preis eingeben.", "err");
 
   const primaryImageUrl = imagesRaw[0] || "";
-  const restRef = doc(db, "restaurants", currentRestaurantId);
-  const menuCol = collection(restRef, "menuItems");
 
+  const menuCol = collection(doc(db, "restaurants", restaurantId), "menuItems");
   const data = {
     type: currentProductType,
     category,
@@ -599,7 +410,7 @@ async function saveItem() {
   };
 
   try {
-    itemSaveBtn.disabled = true;
+    if (itemSaveBtn) itemSaveBtn.disabled = true;
 
     if (currentEditItemId) {
       await updateDoc(doc(menuCol, currentEditItemId), data);
@@ -615,15 +426,13 @@ async function saveItem() {
     console.error(err);
     setStatus(adminItemStatus, "Fehler: " + (err?.message || String(err)), "err");
   } finally {
-    itemSaveBtn.disabled = false;
+    if (itemSaveBtn) itemSaveBtn.disabled = false;
   }
 }
 
 async function toggleItemAvailability(itemId, currentlyAvailable) {
-  if (!currentRestaurantId || !itemId) return;
   try {
-    const restRef = doc(db, "restaurants", currentRestaurantId);
-    const menuCol = collection(restRef, "menuItems");
+    const menuCol = collection(doc(db, "restaurants", restaurantId), "menuItems");
     await updateDoc(doc(menuCol, itemId), { available: !currentlyAvailable });
     await loadMenuItems();
   } catch (err) {
@@ -632,12 +441,9 @@ async function toggleItemAvailability(itemId, currentlyAvailable) {
 }
 
 async function deleteItem(itemId) {
-  if (!currentRestaurantId || !itemId) return;
   if (!window.confirm("Produkt wirklich löschen?")) return;
-
   try {
-    const restRef = doc(db, "restaurants", currentRestaurantId);
-    const menuCol = collection(restRef, "menuItems");
+    const menuCol = collection(doc(db, "restaurants", restaurantId), "menuItems");
     await deleteDoc(doc(menuCol, itemId));
     await loadMenuItems();
   } catch (err) {
@@ -645,12 +451,10 @@ async function deleteItem(itemId) {
   }
 }
 
-/* =========================================================
-   ABSCHNITT 10 — HEUTIGE BESTELLUNGEN
-   ========================================================= */
-
+/* =========================
+   TODAY ORDERS
+   ========================= */
 async function loadTodayOrders() {
-  if (!currentRestaurantId) return;
   if (adminOrdersList) adminOrdersList.innerHTML = "";
 
   const start = new Date();
@@ -658,9 +462,7 @@ async function loadTodayOrders() {
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
 
-  const restRef = doc(db, "restaurants", currentRestaurantId);
-  const ordersCol = collection(restRef, "orders");
-
+  const ordersCol = collection(doc(db, "restaurants", restaurantId), "orders");
   const qy = query(
     ordersCol,
     where("createdAt", ">=", start),
@@ -670,7 +472,6 @@ async function loadTodayOrders() {
   );
 
   const snap = await getDocs(qy);
-
   const ordersToday = [];
   snap.forEach((d) => ordersToday.push({ id: d.id, ...(d.data() || {}) }));
 
@@ -678,7 +479,7 @@ async function loadTodayOrders() {
     const p = document.createElement("p");
     p.className = "info";
     p.textContent = "Heute noch keine Bestellungen.";
-    adminOrdersList.appendChild(p);
+    adminOrdersList?.appendChild(p);
     return;
   }
 
@@ -702,7 +503,6 @@ async function loadTodayOrders() {
     title.textContent = `Tisch ${order.table || order.tableId || "?"} – ${timeStr}`;
 
     const itemsStr = (order.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ") || "Keine Artikel";
-
     const itemsSpan = document.createElement("span");
     itemsSpan.style.fontSize = "0.78rem";
     itemsSpan.textContent = itemsStr;
@@ -713,90 +513,51 @@ async function loadTodayOrders() {
     const right = document.createElement("div");
     right.style.fontSize = "0.82rem";
     right.style.fontWeight = "600";
-
     const total = (order.items || []).reduce((sum, i) => sum + (i.price || 0) * (i.qty || 0), 0);
     right.textContent = total.toFixed(2) + " €";
 
     row.appendChild(left);
     row.appendChild(right);
-
-    adminOrdersList.appendChild(row);
+    adminOrdersList?.appendChild(row);
   });
 }
 
-/* =========================================================
-   ABSCHNITT 11 — EVENTS
-   ========================================================= */
+/* =========================
+   LOGOUT
+   ========================= */
+async function doLogout() {
+  try { await signOut(auth); } catch {}
+  goLogin("signed_out");
+}
+ownerLogoutBtn?.addEventListener("click", doLogout);
 
+/* =========================
+   EVENTS
+   ========================= */
 typeFoodBtn?.addEventListener("click", () => setProductType("food"));
 typeDrinkBtn?.addEventListener("click", () => setProductType("drink"));
-
 itemSaveBtn?.addEventListener("click", saveItem);
 itemResetBtn?.addEventListener("click", resetForm);
 
-/* =========================================================
-   ABSCHNITT 12 — INIT (NORMAL LOGIN)
-   ========================================================= */
-
+/* =========================
+   INIT (ONE SINGLE FLOW)
+   ========================= */
 setProductType("food");
 showGate("Checking session…");
 
-await setPersistence(auth, browserLocalPersistence);
+setPersistence(auth, browserLocalPersistence).catch(() => {});
 
 onAuthStateChanged(auth, async (user) => {
   try {
-    if (!user) return goLogin();
+    if (!restaurantId) return goLogin("missing_r");
+    if (!user) return goLogin("signed_out");
 
-    currentUser = user;
-
-    if (ownerUserLabel) {
-      ownerUserLabel.style.display = "inline-flex";
-      ownerUserLabel.textContent = user.email || user.uid;
+    showGate("Checking access…");
+    const ok = await hasOwnerAccess(user.uid);
+    if (!ok) {
+      try { await signOut(auth); } catch {}
+      return goLogin("no_access");
     }
-    if (ownerLogoutBtn) ownerLogoutBtn.style.display = "inline-block";
-
-    showGate("Loading restaurant…");
-
-    const rid = await resolveRestaurantIdForOwner(user);
-    if (!rid) {
-      showGate("❌ Kein Restaurant zugeordnet. (owners/{uid}.restaurantId fehlt)");
-      // optional: nach 2s logout, damit es sauber ist
-      setTimeout(() => doLogout(), 1800);
-      return;
-    }
-
-    await openRestaurantById(rid);
-
-    hideGate();
-  } catch (err) {
-    console.error(err);
-    showGate("❌ Fehler: " + (err?.message || String(err)));
-  }
-});
-
-/* =========================================================
-   ABSCHNITT 13 — INIT (Single Auth Check) — LOOP-SAFE + AUTO-REST
-   ========================================================= */
-
-setProductType("food");
-showGate("Checking session…");
-hideRestaurantArea();
-
-await setPersistence(auth, browserLocalPersistence);
-
-onAuthStateChanged(auth, async (user) => {
-  try {
-    // LOOP-SAFE: manchmal kommt kurz null -> wir warten kurz und prüfen nochmal
-    if (!user) {
-      await new Promise((r) => setTimeout(r, 400));
-      if (!auth.currentUser) {
-        goLogin();
-        return;
-      }
-      user = auth.currentUser;
-    }
-
-    currentUser = user;
 
     if (ownerUserLabel) {
       ownerUserLabel.style.display = "inline-flex";
@@ -805,21 +566,8 @@ onAuthStateChanged(auth, async (user) => {
     if (ownerLogoutBtn) ownerLogoutBtn.style.display = "inline-block";
 
     showGate("Loading…");
-
-    // AUTO: Restaurant des Users finden (kein Restaurant-ID Formular)
-    const rid = await resolveRestaurantIdForUser(user);
-
-    if (rid) {
-      if (adminRestIdInput) adminRestIdInput.value = rid;
-      await openRestaurantById(rid);
-      hideGate();
-      return;
-    }
-
-    // Fallback: nur wenn wir wirklich nix finden
-    showRestaurantPicker();
+    await openRestaurantById();
     hideGate();
-    setStatus(adminOpenStatus, "⚠️ Kein Restaurant zugeordnet. Bitte Restaurant-ID setzen.", "err");
   } catch (err) {
     console.error(err);
     showGate("❌ Fehler: " + (err?.message || String(err)));
