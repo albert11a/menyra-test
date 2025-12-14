@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Owner Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f3f4f6" />
+
+  <link rel="stylesheet" href="../shared/styles.css">
+
+  <style>
+    .login-wrap{
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .login-card{ width: min(520px, 100%); }
+    .login-row{ display:flex; gap:10px; margin-top:10px; }
+    .login-row > *{ flex:1; }
+    .login-status{ margin-top:10px; font-size:13px; }
+  </style>
+</head>
+
+<body>
+  <div class="login-wrap">
+    <section class="card login-card">
+      <h2>Owner Login</h2>
+      <p class="info">Bitte mit Email & Passwort einloggen.</p>
+
+      <form id="loginForm">
+        <label style="display:block; margin-top:8px;">
+          <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Email</span>
+          <input id="email" class="input" type="email" autocomplete="username" required />
+        </label>
+
+        <label style="display:block; margin-top:8px;">
+          <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Passwort</span>
+          <input id="pass" class="input" type="password" autocomplete="current-password" required />
+        </label>
+
+        <div class="login-row">
+          <button class="btn btn-primary" type="submit">Login</button>
+          <button class="btn btn-ghost" type="button" id="logoutBtn">Logout</button>
+        </div>
+
+        <div class="status-text login-status" id="status"></div>
+      </form>
+    </section>
+  </div>
+
+  <script type="module" src="./login.js"></script>
+</body>
+</html>
