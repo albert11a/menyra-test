@@ -13,9 +13,9 @@
 
   <link rel="stylesheet" href="./menyra.css" />
 
-  <!-- Mini CSS nur für Login-Overlay (ohne menyra.css anzufassen) -->
+  <!-- Gate (nur Loading/Guard – KEIN Login hier) -->
   <style>
-    .m-auth-overlay{
+    .m-gate{
       position:fixed; inset:0;
       display:flex; align-items:center; justify-content:center;
       background: rgba(2,6,23,0.55);
@@ -23,13 +23,7 @@
       padding: 16px;
       backdrop-filter: blur(6px);
     }
-    .m-auth-card{
-      width: min(460px, 100%);
-    }
-    .m-auth-row{ display:flex; gap:10px; margin-top:10px; }
-    .m-auth-row > *{ flex:1; }
-    .m-auth-hint{ font-size:12px; opacity:0.8; margin-top:8px; }
-    .m-auth-code{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .m-gate-card{ width: min(460px, 100%); }
   </style>
 </head>
 
@@ -37,42 +31,16 @@
   <div class="m-app">
 
     <!-- =========================================================
-         AUTH OVERLAY (NEU)
+         APP GATE (NEU) – zeigt nur “Checking session…”
          ========================================================= -->
-    <div class="m-auth-overlay" id="authOverlay">
-      <div class="m-card m-auth-card">
+    <div class="m-gate" id="appGate">
+      <div class="m-card m-gate-card">
         <div class="m-section-header">
           <div>
-            <h2 class="m-section-title">Platform Login</h2>
-            <p class="m-section-subtitle m-muted">
-              Nur Superadmin darf Customers/Leads/Offers verwalten.
-            </p>
+            <h2 class="m-section-title">MENYRA</h2>
+            <p class="m-section-subtitle m-muted" id="appGateMsg">Checking session…</p>
           </div>
         </div>
-
-        <form id="authForm">
-          <div class="m-input-group">
-            <label for="authEmail">Email</label>
-            <input id="authEmail" class="m-input" type="email" autocomplete="email" placeholder="dein@email.com" required />
-          </div>
-
-          <div class="m-input-group" style="margin-top:10px;">
-            <label for="authPass">Passwort</label>
-            <input id="authPass" class="m-input" type="password" autocomplete="current-password" placeholder="••••••••" required />
-          </div>
-
-          <div class="m-auth-row">
-            <button class="m-btn" type="submit">Login</button>
-            <button class="m-btn m-btn--ghost" type="button" id="authLogoutBtn">Logout</button>
-          </div>
-
-          <div class="m-muted" id="authStatus" style="margin-top:10px;"></div>
-
-          <div class="m-auth-hint m-muted">
-            Dein UID (für Firestore <span class="m-auth-code">superadmins/{uid}</span>):<br/>
-            <span class="m-auth-code" id="authUid">—</span>
-          </div>
-        </form>
       </div>
     </div>
 
@@ -694,7 +662,6 @@
 
   </div>
 
-  <!-- ✅ korrekt: gleiche Ebene (platform/) -->
   <script type="module" src="./menyra.js"></script>
 </body>
 </html>
