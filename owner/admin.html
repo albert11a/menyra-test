@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Restaurant Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f3f4f6" />
+<link rel="stylesheet" href="../shared/styles.css">
+</head>
+<body>
+  <main class="page">
+    <!-- HEADER -->
+    <header class="header">
+      <div>
+        <div class="header-title">MENYRA</div>
+        <div class="header-sub">Restaurant Admin – Speisekarte & Bestellungen</div>
+      </div>
+    </header>
+
+    <!-- LOGIN -->
+    <section class="card" id="adminLoginCard">
+      <h2>Restaurant auswählen</h2>
+      <p class="info">
+        Melde dich mit deiner <strong>Restaurant-ID</strong> oder mit deinem
+        <strong>Besitzer-Code</strong> an.
+      </p>
+
+      <label style="display:block; margin-top:8px;">
+        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Restaurant-ID</span>
+        <input id="adminRestIdInput" class="input" placeholder="z.B. shpija-e-vjeter" />
+      </label>
+      <button type="button" class="btn btn-primary" id="adminLoginBtn" style="margin-top:8px;">
+        Mit ID anmelden
+      </button>
+
+      <p class="info" style="margin-top:12px; margin-bottom:4px;">oder Besitzer-Code:</p>
+
+      <label style="display:block;">
+        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Besitzer-Code</span>
+        <input id="adminCodeInput" class="input" placeholder="z.B. ABC123" />
+      </label>
+      <button type="button" class="btn btn-primary" id="adminCodeLoginBtn" style="margin-top:8px;">
+        Mit Code anmelden
+      </button>
+
+      <p id="adminLoginStatus" class="status-text"></p>
+    </section>
+
+    <!-- PRODUKT-EDITOR (Speisekarte & Getränke) -->
+    <section class="card" id="menuEditorCard" style="display:none;">
+      <h2>Produkt hinzufügen / bearbeiten</h2>
+      <p class="info">
+        Restaurant: <strong id="adminRestLabel"></strong>
+      </p>
+
+      <!-- Typ-Umschalter: Speisekarte / Getränke -->
+      <div class="tab-row" style="margin-top:10px; margin-bottom:10px;">
+        <button
+          type="button"
+          class="tab-btn tab-btn-active type-toggle-btn"
+          data-type="food"
+          id="typeFoodBtn"
+        >
+          Speisekarte
+        </button>
+        <button
+          type="button"
+          class="tab-btn type-toggle-btn"
+          data-type="drink"
+          id="typeDrinkBtn"
+        >
+          Getränke
+        </button>
+      </div>
+
+      <!-- Kategorie-Auswahl -->
+      <label style="display:block; margin-top:4px;">
+        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Kategorie (Auswahl)</span>
+        <select id="itemCategorySelect" class="input"></select>
+      </label>
+
+      <label style="display:block; margin-top:8px;">
+        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Eigene Kategorie (optional)</span>
+        <input
+          id="itemCategoryCustomInput"
+          class="input"
+          placeholder="Eigene Kategorie, z.B. &quot;Vegan&quot;"
+        />
+      </label>
+
+      <!-- Produktdaten -->
+      <label style="display:block; margin-top:10px;">
+        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Produktname</span>
+        <input id="itemNameInput" class="input" placeholder="z.B. Burger Special" />
+      </label>
+
+      <!-- NEU: lange Beschreibung -->
+      <label style="display:block; margin-top:8px;">
+        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">
+          Beschreibung (lang, optional)
+        </span>
+        <textarea
+          id="itemLongDescInput"
+          class="input input-textarea"
+          placeholder="Lange Beschreibung, Story, Hinweise"
+        ></textarea>
+      </label>
+
+      <!-- Beschreibung kurz = Zutaten -->
+      <label style="display:block; margin-top:8px;">
+        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Zutaten (optional)</span>
+        <textarea
+          id="itemDescInput"
+          class="input input-textarea"
+          placeholder="Zutaten, Allergene, Extras"
+        ></textarea>
+      </label>
+
+      <label style="display:block; margin-top:8px;">
+        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">Preis (€)</span>
+        <input
+          id="itemPriceInput"
+          class="input"
+          type="number"
+          step="0.01"
+          min="0"
+          placeholder="z.B. 7.90"
+        />
+      </label>
+
+      <!-- NEU: Mehrere Bild-URLs -->
+      <label style="display:block; margin-top:8px;">
+        <span style="font-size:0.8rem; display:block; margin-bottom:4px;">
+          Bild-URLs (optional, eine pro Zeile)
+        </span>
+        <textarea
+          id="itemImagesInput"
+          class="input input-textarea"
+          placeholder="https://bild1.jpg&#10;https://bild2.jpg"
+        ></textarea>
+      </label>
+
+      <div class="cart-actions" style="margin-top:12px;">
+        <button type="button" class="btn btn-ghost" id="itemResetBtn">Zurücksetzen</button>
+        <button type="button" class="btn btn-primary" id="itemSaveBtn">
+          Produkt speichern
+        </button>
+      </div>
+
+      <p id="adminItemStatus" class="status-text"></p>
+    </section>
+
+    <!-- PRODUKT-LISTE -->
+    <section class="card" id="menuListCard" style="display:none;">
+      <h2>Produkte (Speisen & Getränke)</h2>
+      <div class="list" id="itemList"></div>
+      <p class="info">
+        Tippe auf <strong>Bearbeiten</strong>, um ein Produkt anzupassen, oder auf
+        <strong>Verfügbar</strong>, um es ein-/auszublenden.
+      </p>
+    </section>
+
+    <!-- HEUTIGE BESTELLUNGEN -->
+    <section class="card" id="ordersCard" style="display:none;">
+      <h2>Heutige Bestellungen</h2>
+      <div class="list" id="adminOrdersList"></div>
+      <p class="info">
+        Bestellungen von heute aus
+        <code>restaurants/&lt;ID&gt;/orders</code>.
+      </p>
+    </section>
+  </main>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
