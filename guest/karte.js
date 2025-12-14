@@ -40,10 +40,6 @@ const MENU_CACHE_KEY = `menyra_cache_menu_${restaurantId}`;
 const OFFERS_CACHE_KEY = `menyra_cache_offers_${restaurantId}`;
 const REST_CACHE_KEY = `menyra_cache_rest_${restaurantId}`;
 
-// ✅ Public Docs (1 Read statt N Dokumente)
-const PUBLIC_MENU_REF = doc(db, "restaurants", restaurantId, "public", "menu");
-const PUBLIC_OFFERS_REF = doc(db, "restaurants", restaurantId, "public", "offers");
-
 const MENU_CACHE_TTL_MS = 5 * 60 * 1000;   // 5 Minuten
 const OFFERS_CACHE_TTL_MS = 2 * 60 * 1000; // 2 Minuten
 const REST_CACHE_TTL_MS = 5 * 60 * 1000;   // 5 Minuten (für schnellere Header-Anzeige)
@@ -303,24 +299,26 @@ async function loadOffersForRestaurant(restaurantRef, restData) {
     return;
   }
 
-  // ✅ 1) Erst versuchen: Public-Offers (1 Doc)
+
+  // ✅ Public-Offers (1 Doc) zuerst versuchen → massiv weniger Reads bei viel Traffic
   try {
-    const pubSnap = await getDoc(PUBLIC_OFFERS_REF);
-    if (pubSnap.exists()) {
-      const pd = pubSnap.data() || {};
-      const offersArr = Array.isArray(pd.offers) ? pd.offers : [];
-      const activeOffers = offersArr.filter((o) => o && o.active !== false).slice(0, 10);
-      if (activeOffers.length) {
-        setCachedOffers(activeOffers);
-        renderOffersSlider(activeOffers);
+    const publicOffersRef = doc(db, "restaurants", restaurantId, "public", "offers");
+    const publicOffersSnap = await getDoc(publicOffersRef);
+    if (publicOffersSnap.exists()) {
+      const pd = publicOffersSnap.data() || {};
+      const list = Array.isArray(pd.offers) ? pd.offers : [];
+      const activeOnly = list.filter((o) => o && o.active !== false);
+      if (activeOnly.length) {
+        const capped = activeOnly.slice(0, 10);
+        setCachedOffers(capped);
+        renderOffersSlider(capped);
         return;
       }
     }
-  } catch (e) {
-    // fallback unten
+  } catch (err) {
+    // Fallback auf alte Offers-Collection
   }
 
-  // ✅ 2) Fallback: alte Struktur (Subcollection offers)
   const offersCol = collection(restaurantRef, "offers");
   const snap = await getDocs(offersCol);
 
@@ -563,23 +561,19 @@ async function loadRestaurantAndMenu() {
       return;
     }
 
-    // ✅ Wenn Cache frisch ist: keine Menü-Reads mehr (spart massiv bei Wiederaufrufen)
-    const stillCachedMenu = getCachedMenu();
-    if (stillCachedMenu && stillCachedMenu.length) {
-      await loadOffersForRestaurant(restaurantRef, data);
-      return;
-    }
-
-    let items = [];
-
-    // ✅ 1) Erst versuchen: Public-Menu (1 Doc statt N docs)
+    // ✅ Wenn wir oben bereits Cache gerendert haben, brauchen wir nicht zwingend sofort neu laden
+    // Aber wir refreshen trotzdem (damit Änderungen schnell sichtbar sind).
+    // ✅ 3A) Public-Menu (1 Doc) zuerst versuchen → bei hohem Traffic extrem günstiger
+    let items = null;
     try {
-      const pubMenuSnap = await getDoc(PUBLIC_MENU_REF);
-      if (pubMenuSnap.exists()) {
-        const pd = pubMenuSnap.data() || {};
-        const arr = Array.isArray(pd.items) ? pd.items : [];
-        items = arr
-          .map((d) => ({
+      const publicMenuRef = doc(db, "restaurants", restaurantId, "public", "menu");
+      const publicMenuSnap = await getDoc(publicMenuRef);
+      if (publicMenuSnap.exists()) {
+        const pd = publicMenuSnap.data() || {};
+        const list = Array.isArray(pd.items) ? pd.items : [];
+        const availableOnly = list.filter((it) => it && it.available !== false);
+        if (availableOnly.length) {
+          items = availableOnly.map((d) => ({
             id: d.id,
             name: d.name || "Produkt",
             description: d.description || "",
@@ -594,15 +588,15 @@ async function loadRestaurantAndMenu() {
             commentCount: Number(d.commentCount) || 0,
             ratingCount: Number(d.ratingCount) || 0,
             ratingSum: Number(d.ratingSum) || 0,
-          }))
-          .filter((it) => it && it.id && it.available);
+          }));
+        }
       }
-    } catch (e) {
-      // fallback unten
+    } catch (err) {
+      // Fallback auf alte menuItems-Collection
     }
 
-    // ✅ 2) Fallback (wenn public/menu noch nicht existiert): alte Struktur lesen
-    if (!items.length) {
+    // ✅ 3B) Fallback (alt): menuItems Subcollection laden (mehr Reads)
+    if (!items) {
       const menuCol = collection(restaurantRef, "menuItems");
       const snap = await getDocs(menuCol);
 
