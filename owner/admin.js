@@ -1,4 +1,9 @@
-// admin.js – Restaurant Admin: Login, Speisekarte & Getränke, Bestellübersicht
+// admin.js – Restaurant Admin: AUTH (Email/Pass) + Speisekarte + Bestellungen
+// Hinweis: Dieses File ist kompatibel mit sicheren Firestore Rules (Staff/Owner müssen eingeloggt sein).
+
+/* =========================================================
+   ABSCHNITT 0 — IMPORTS
+   ========================================================= */
 
 import { db } from "../shared/firebase-config.js";
 import {
@@ -10,147 +15,40 @@ import {
   where,
   getDoc,
   updateDoc,
-  setDoc,
   deleteDoc,
   orderBy,
   limit,
+  setDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
-/* =========================
-   PUBLIC DOCS (GUEST-OPTIMIERUNG)
-   =========================
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
-   Ziel: Gäste sollen nicht mehr N einzelne menuItems-Dokumente lesen müssen.
-   Stattdessen schreiben wir für jedes Restaurant 1 Public-Dokument:
+/* =========================================================
+   ABSCHNITT 1 — DOM-REFERENZEN
+   ========================================================= */
 
-   restaurants/{restaurantId}/public/menu   -> { updatedAt, items:[...] }
-   (optional später: restaurants/{restaurantId}/public/offers)
+// AUTH
+const authCard = document.getElementById("authCard");
+const authForm = document.getElementById("authForm");
+const authEmailInput = document.getElementById("authEmailInput");
+const authPassInput = document.getElementById("authPassInput");
+const authLoginBtn = document.getElementById("authLoginBtn");
+const authLoggedIn = document.getElementById("authLoggedIn");
+const authUserLabel = document.getElementById("authUserLabel");
+const authLogoutBtn = document.getElementById("authLogoutBtn");
+const authStatus = document.getElementById("authStatus");
 
-   Diese Datei aktualisiert public/menu automatisch nach jeder Änderung.
-*/
-
-const PUBLIC_MENU_DOC_ID = "menu";
-
-function buildPublicMenuItems(items) {
-  // 🔒 Doc-Size schützen: keep payload schlank
-  // (du kannst Limits später anpassen)
-  const MAX_IMAGES = 6;
-
-  return (Array.isArray(items) ? items : [])
-    .map((it) => {
-      const imageUrls = Array.isArray(it.imageUrls) ? it.imageUrls : [];
-      const safeImages = imageUrls
-        .filter((u) => typeof u === "string" && u.trim() !== "")
-        .slice(0, MAX_IMAGES);
-
-      const primary =
-        (typeof it.imageUrl === "string" && it.imageUrl.trim() !== ""
-          ? it.imageUrl
-          : safeImages[0]) || null;
-
-      return {
-        id: it.id,
-        type: it.type || null,
-        category: it.category || "Sonstiges",
-        name: it.name || "Produkt",
-        description: it.description || "",
-        longDescription: it.longDescription || "",
-        price: typeof it.price === "number" ? it.price : Number(it.price) || 0,
-        available: it.available !== false,
-        imageUrl: primary,
-        imageUrls: safeImages,
-        // Counts (optional) – Gäste-UI nutzt 0 als Default
-        likeCount: Number(it.likeCount) || 0,
-        commentCount: Number(it.commentCount) || 0,
-        ratingCount: Number(it.ratingCount) || 0,
-        ratingSum: Number(it.ratingSum) || 0,
-      };
-    })
-    .filter((it) => it.available);
-}
-
-function computePublicMenuSig(items) {
-  // Sehr leichte Signatur, um unnötige Writes zu vermeiden
-  try {
-    const stable = (Array.isArray(items) ? items : [])
-      .slice()
-      .sort((a, b) => String(a.id).localeCompare(String(b.id)))
-      .map((it) =>
-        [
-          it.id,
-          it.type,
-          it.category,
-          it.name,
-          it.description,
-          it.longDescription,
-          it.price,
-          it.available,
-          it.imageUrl,
-          Array.isArray(it.imageUrls) ? it.imageUrls.join("|") : "",
-        ].join("::")
-      )
-      .join("\n");
-
-    // simple hash
-    let h = 0;
-    for (let i = 0; i < stable.length; i++) {
-      h = (h << 5) - h + stable.charCodeAt(i);
-      h |= 0;
-    }
-    return String(h);
-  } catch {
-    return String(Date.now());
-  }
-}
-
-async function syncPublicMenuIfChanged() {
-  if (!currentRestaurantId) return;
-
-  const publicItems = buildPublicMenuItems(currentItems);
-  const sig = computePublicMenuSig(publicItems);
-  const sigKey = `menyra_public_menu_sig_${currentRestaurantId}`;
-
-  try {
-    const prev = localStorage.getItem(sigKey);
-    if (prev && prev === sig) return; // nichts geändert
-
-    const publicMenuRef = doc(
-      db,
-      "restaurants",
-      currentRestaurantId,
-      "public",
-      PUBLIC_MENU_DOC_ID
-    );
-
-    await setDoc(
-      publicMenuRef,
-      {
-        updatedAt: serverTimestamp(),
-        version: 1,
-        items: publicItems,
-      },
-      { merge: true }
-    );
-
-    localStorage.setItem(sigKey, sig);
-  } catch (err) {
-    // Nicht blockieren – Admin soll trotzdem weiterarbeiten.
-    console.warn("Public menu sync failed:", err);
-  }
-}
-
-/* =========================
-   DOM-REFERENZEN
-   ========================= */
-
-// Login
-const adminLoginCard = document.getElementById("adminLoginCard");
+// Restaurant öffnen
+const openRestaurantCard = document.getElementById("openRestaurantCard");
 const adminRestIdInput = document.getElementById("adminRestIdInput");
-const adminLoginBtn = document.getElementById("adminLoginBtn");
-const adminCodeInput = document.getElementById("adminCodeInput");
-const adminCodeLoginBtn = document.getElementById("adminCodeLoginBtn");
-const adminLoginStatus = document.getElementById("adminLoginStatus");
+const adminOpenRestBtn = document.getElementById("adminOpenRestBtn");
+const adminOpenStatus = document.getElementById("adminOpenStatus");
 
 // Editor & Listen
 const menuEditorCard = document.getElementById("menuEditorCard");
@@ -179,18 +77,21 @@ const adminItemStatus = document.getElementById("adminItemStatus");
 const itemList = document.getElementById("itemList");
 const adminOrdersList = document.getElementById("adminOrdersList");
 
-/* =========================
-   GLOBALER STATE
-   ========================= */
+/* =========================================================
+   ABSCHNITT 2 — GLOBALER STATE
+   ========================================================= */
+
+const auth = getAuth();
+let currentUser = null;
 
 let currentRestaurantId = null;
 let currentItems = [];           // [{id, ...}]
 let currentEditItemId = null;    // null = neues Produkt
 let currentProductType = "food"; // "food" (Speisekarte) oder "drink" (Getränke)
 
-/* =========================
-   STANDARD-KATEGORIEN
-   ========================= */
+/* =========================================================
+   ABSCHNITT 3 — STANDARD-KATEGORIEN
+   ========================================================= */
 
 // Speisekarte – wie gewünscht
 const defaultFoodCategories = [
@@ -233,9 +134,9 @@ const defaultDrinkCategories = [
   "Energjike",
 ];
 
-/* =========================
-   SESSION-HILFSFUNKTIONEN
-   ========================= */
+/* =========================================================
+   ABSCHNITT 4 — SESSION
+   ========================================================= */
 
 function saveOwnerSession(restaurantId) {
   localStorage.setItem("menyra_owner_restaurantId", restaurantId);
@@ -245,9 +146,109 @@ function loadOwnerSession() {
   return localStorage.getItem("menyra_owner_restaurantId");
 }
 
-/* =========================
-   TYP-UMSCHALTER & KATEGORIEN
-   ========================= */
+function clearOwnerSession() {
+  localStorage.removeItem("menyra_owner_restaurantId");
+}
+
+/* =========================================================
+   ABSCHNITT 5 — UI HELPERS
+   ========================================================= */
+
+function setStatus(el, text, kind) {
+  if (!el) return;
+  el.textContent = text || "";
+  el.className = "status-text";
+  if (kind === "ok") el.classList.add("status-ok");
+  if (kind === "err") el.classList.add("status-err");
+}
+
+function hideRestaurantArea() {
+  openRestaurantCard.style.display = "none";
+  menuEditorCard.style.display = "none";
+  menuListCard.style.display = "none";
+  ordersCard.style.display = "none";
+  currentRestaurantId = null;
+}
+
+function showRestaurantPicker() {
+  openRestaurantCard.style.display = "block";
+}
+
+/* =========================================================
+   ABSCHNITT 6 — AUTH FLOW
+   ========================================================= */
+
+async function doLogin() {
+  const email = (authEmailInput.value || "").trim();
+  const pass = (authPassInput.value || "").trim();
+
+  setStatus(authStatus, "", null);
+
+  if (!email || !pass) {
+    setStatus(authStatus, "Bitte Email und Passwort eingeben.", "err");
+    return;
+  }
+
+  try {
+    authLoginBtn.disabled = true;
+    await signInWithEmailAndPassword(auth, email, pass);
+    // onAuthStateChanged übernimmt UI
+  } catch (err) {
+    console.error(err);
+    setStatus(authStatus, "Login fehlgeschlagen: " + (err?.message || err), "err");
+  } finally {
+    authLoginBtn.disabled = false;
+  }
+}
+
+async function doLogout() {
+  try {
+    await signOut(auth);
+    clearOwnerSession();
+    hideRestaurantArea();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function applyAuthUI(user) {
+  if (!user) {
+    currentUser = null;
+    authForm.style.display = "block";
+    authLoggedIn.style.display = "none";
+    hideRestaurantArea();
+    showRestaurantPicker(); // bleibt verborgen bis login
+    openRestaurantCard.style.display = "none";
+    return;
+  }
+
+  currentUser = user;
+  authForm.style.display = "none";
+  authLoggedIn.style.display = "block";
+  authUserLabel.textContent = user.email || user.uid;
+
+  showRestaurantPicker();
+
+  // Auto-fill Restaurant-ID (URL ?r=... oder Session)
+  const params = new URLSearchParams(window.location.search);
+  const ridFromUrl = params.get("r");
+  const ridFromSession = loadOwnerSession();
+  const rid = ridFromUrl || ridFromSession;
+
+  if (rid) {
+    adminRestIdInput.value = rid;
+    // Auto-open
+    openRestaurantById(rid);
+  }
+}
+
+onAuthStateChanged(auth, (user) => {
+  applyAuthUI(user);
+});
+
+/* =========================================================
+   ABSCHNITT 7 — TYP / KATEGORIEN
+   ========================================================= */
 
 function fillCategorySelect() {
   const cats =
@@ -276,101 +277,89 @@ function setProductType(type) {
   if (type !== "food" && type !== "drink") return;
   currentProductType = type;
 
-  // Buttons visuell updaten
   typeToggleButtons.forEach((btn) => {
     const t = btn.dataset.type;
-    if (t === type) {
-      btn.classList.add("tab-btn-active");
-    } else {
-      btn.classList.remove("tab-btn-active");
-    }
+    if (t === type) btn.classList.add("tab-btn-active");
+    else btn.classList.remove("tab-btn-active");
   });
 
   fillCategorySelect();
 }
 
-/* =========================
-   LOGIN / RESTAURANT LADEN
-   ========================= */
+/* =========================================================
+   ABSCHNITT 8 — RESTAURANT ÖFFNEN
+   ========================================================= */
 
-async function setRestaurantBySnapshot(id, data) {
-  currentRestaurantId = id;
-  saveOwnerSession(currentRestaurantId);
+async function openRestaurantById(id) {
+  setStatus(adminOpenStatus, "", null);
 
-  adminRestLabel.textContent = data.restaurantName || currentRestaurantId;
-  adminLoginCard.style.display = "none";
-  menuEditorCard.style.display = "block";
-  menuListCard.style.display = "block";
-  ordersCard.style.display = "block";
+  if (!currentUser) {
+    setStatus(adminOpenStatus, "Bitte zuerst einloggen.", "err");
+    return;
+  }
 
-  adminLoginStatus.textContent = "";
-  adminLoginStatus.className = "status-text";
-
-  await loadMenuItems();
-  await loadTodayOrders();
-}
-
-async function loginWithRestaurantId() {
-  adminLoginStatus.textContent = "";
-  adminLoginStatus.className = "status-text";
-
-  const id = (adminRestIdInput.value || "").trim();
-  if (!id) {
-    adminLoginStatus.textContent = "Bitte Restaurant-ID eingeben.";
-    adminLoginStatus.classList.add("status-err");
+  const rid = (id || "").trim();
+  if (!rid) {
+    setStatus(adminOpenStatus, "Bitte Restaurant-ID eingeben.", "err");
     return;
   }
 
   try {
-    const refRest = doc(db, "restaurants", id);
+    adminOpenRestBtn.disabled = true;
+
+    // Restaurant doc lesen (allow read: true)
+    const refRest = doc(db, "restaurants", rid);
     const snap = await getDoc(refRest);
+
     if (!snap.exists()) {
-      adminLoginStatus.textContent = "Lokal mit dieser ID existiert nicht.";
-      adminLoginStatus.classList.add("status-err");
-      return;
-    }
-    await setRestaurantBySnapshot(id, snap.data());
-  } catch (err) {
-    console.error(err);
-    adminLoginStatus.textContent = "Fehler: " + err.message;
-    adminLoginStatus.classList.add("status-err");
-  }
-}
-
-async function loginWithCode() {
-  adminLoginStatus.textContent = "";
-  adminLoginStatus.className = "status-text";
-
-  const code = (adminCodeInput.value || "").trim();
-  if (!code) {
-    adminLoginStatus.textContent = "Bitte Besitzer-Code eingeben.";
-    adminLoginStatus.classList.add("status-err");
-    return;
-  }
-
-  try {
-    const restCol = collection(db, "restaurants");
-    const q = query(restCol, where("ownerCode", "==", code));
-    const snap = await getDocs(q);
-
-    if (snap.empty) {
-      adminLoginStatus.textContent = "Kein Restaurant mit diesem Besitzer-Code gefunden.";
-      adminLoginStatus.classList.add("status-err");
+      setStatus(adminOpenStatus, "Restaurant nicht gefunden.", "err");
       return;
     }
 
-    const docSnap = snap.docs[0];
-    await setRestaurantBySnapshot(docSnap.id, docSnap.data());
+    currentRestaurantId = rid;
+    saveOwnerSession(rid);
+
+    const data = snap.data() || {};
+    adminRestLabel.textContent = data.restaurantName || rid;
+
+    openRestaurantCard.style.display = "none";
+    menuEditorCard.style.display = "block";
+    menuListCard.style.display = "block";
+    ordersCard.style.display = "block";
+
+    // Ab hier: Reads auf menuItems/orders erfordern Staff-Rechte.
+    await loadMenuItems();      // wenn nicht freigeschaltet -> Permission denied
+    await loadTodayOrders();
+
+    setStatus(adminOpenStatus, "", null);
   } catch (err) {
     console.error(err);
-    adminLoginStatus.textContent = "Fehler: " + err.message;
-    adminLoginStatus.classList.add("status-err");
+    const msg = err?.message || String(err);
+
+    if (msg.toLowerCase().includes("permission") || msg.toLowerCase().includes("missing")) {
+      setStatus(
+        adminOpenStatus,
+        "Keine Berechtigung. Dieser User ist noch nicht als Staff/Owner für dieses Restaurant freigeschaltet.",
+        "err"
+      );
+    } else {
+      setStatus(adminOpenStatus, "Fehler: " + msg, "err");
+    }
+
+    // UI zurück
+    menuEditorCard.style.display = "none";
+    menuListCard.style.display = "none";
+    ordersCard.style.display = "none";
+    openRestaurantCard.style.display = "block";
+    currentRestaurantId = null;
+  } finally {
+    adminOpenRestBtn.disabled = false;
   }
 }
 
-/* =========================
-   MENÜ LADEN & RENDERN
-   ========================= */
+/* =========================================================
+   ABSCHNITT 9 — MENÜ LADEN & PUBLIC-MENU SYNC
+   ========================================================= */
 
 function inferTypeForItem(item) {
   if (item.type === "food" || item.type === "drink") return item.type;
@@ -378,11 +367,53 @@ function inferTypeForItem(item) {
   return "food";
 }
 
+function buildPublicMenuPayload(items) {
+  // Für Gäste nur das Nötigste – klein halten (Egress-Kosten!)
+  // Struktur: { items: [...], updatedAt }
+  const cleaned = (items || []).map((it) => {
+    const type = inferTypeForItem(it);
+    const imgs = Array.isArray(it.imageUrls) ? it.imageUrls : (it.imageUrl ? [it.imageUrl] : []);
+    return {
+      id: it.id,
+      type,
+      category: it.category || "",
+      name: it.name || "",
+      price: typeof it.price === "number" ? it.price : null,
+      imageUrl: it.imageUrl || (imgs[0] || null),
+      imageUrls: imgs.slice(0, 6),
+      available: it.available !== false,
+      // optional: short/long nur wenn du es brauchst:
+      description: it.description || "",
+      longDescription: it.longDescription || "",
+    };
+  });
+
+  return {
+    version: 1,
+    items: cleaned,
+    updatedAt: serverTimestamp(),
+  };
+}
+
+async function syncPublicMenuFromCurrentItems() {
+  if (!currentRestaurantId) return;
+
+  try {
+    const payload = buildPublicMenuPayload(currentItems);
+    const publicMenuRef = doc(db, "restaurants", currentRestaurantId, "public", "menu");
+    await setDoc(publicMenuRef, payload, { merge: true });
+  } catch (err) {
+    // Nicht blockieren – Admin soll weiter arbeiten können.
+    console.error("Public menu sync failed:", err);
+  }
+}
+
 async function loadMenuItems() {
   if (!currentRestaurantId) return;
 
   const restRef = doc(db, "restaurants", currentRestaurantId);
   const menuCol = collection(restRef, "menuItems");
+
   const snap = await getDocs(menuCol);
 
   currentItems = [];
@@ -396,8 +427,8 @@ async function loadMenuItems() {
 
   renderItemList();
 
-  // ✅ Nach jedem Laden/Ändern: Public-Doc aktualisieren (für günstige Gäste-Reads)
-  await syncPublicMenuIfChanged();
+  // Public Menu aktualisieren (1 Doc write)
+  await syncPublicMenuFromCurrentItems();
 }
 
 function renderItemList() {
@@ -411,14 +442,13 @@ function renderItemList() {
     return;
   }
 
-  // Alle Items mit sicherem type
   const itemsWithType = currentItems.map((item) => ({
     ...item,
     type: inferTypeForItem(item),
   }));
 
-  const foodMap = new Map();   // category -> [items]
-  const drinkMap = new Map();  // category -> [items]
+  const foodMap = new Map();
+  const drinkMap = new Map();
 
   itemsWithType.forEach((item) => {
     const cat = item.category || "Ohne Kategorie";
@@ -427,7 +457,6 @@ function renderItemList() {
     map.get(cat).push(item);
   });
 
-  // Helper zum Erzeugen einer Produktzeile (Card)
   function createRow(item) {
     const row = document.createElement("div");
     row.className = "menu-item";
@@ -452,11 +481,8 @@ function renderItemList() {
 
     const priceEl = document.createElement("div");
     priceEl.className = "menu-item-price";
-    if (typeof item.price === "number") {
-      priceEl.textContent = item.price.toFixed(2) + " €";
-    } else {
-      priceEl.textContent = "";
-    }
+    if (typeof item.price === "number") priceEl.textContent = item.price.toFixed(2) + " €";
+    else priceEl.textContent = "";
 
     header.appendChild(left);
     header.appendChild(priceEl);
@@ -482,9 +508,7 @@ function renderItemList() {
     availBtn.className = "btn btn-ghost btn-small";
     availBtn.textContent = available ? "Verfügbar" : "Ausgeblendet";
     availBtn.style.opacity = available ? "1" : "0.6";
-    availBtn.addEventListener("click", () =>
-      toggleItemAvailability(item.id, available)
-    );
+    availBtn.addEventListener("click", () => toggleItemAvailability(item.id, available));
 
     const editBtn = document.createElement("button");
     editBtn.className = "btn btn-primary btn-small";
@@ -501,7 +525,6 @@ function renderItemList() {
     actions.appendChild(delBtn);
 
     row.appendChild(actions);
-
     return row;
   }
 
@@ -515,10 +538,7 @@ function renderItemList() {
     groupTitle.textContent = label;
     itemList.appendChild(groupTitle);
 
-    const sortedCats = Array.from(map.keys()).sort((a, b) =>
-      a.localeCompare(b, "de")
-    );
-
+    const sortedCats = Array.from(map.keys()).sort((a, b) => a.localeCompare(b, "de"));
     sortedCats.forEach((cat) => {
       const catLabel = document.createElement("div");
       catLabel.className = "info";
@@ -526,26 +546,21 @@ function renderItemList() {
       catLabel.textContent = cat;
       itemList.appendChild(catLabel);
 
-      map.get(cat).forEach((item) => {
-        const row = createRow(item);
-        itemList.appendChild(row);
-      });
+      map.get(cat).forEach((item) => itemList.appendChild(createRow(item)));
     });
   }
 
-  // Erst Speisekarte, dann Getränke
   renderGroup("Speisekarte", foodMap);
   renderGroup("Getränke", drinkMap);
 }
 
-/* =========================
-   PRODUKT SPEICHERN / BEARBEITEN
-   ========================= */
+/* =========================================================
+   ABSCHNITT 10 — PRODUKT SPEICHERN / BEARBEITEN
+   ========================================================= */
 
 function resetForm() {
   currentEditItemId = null;
-  adminItemStatus.textContent = "";
-  adminItemStatus.className = "status-text";
+  setStatus(adminItemStatus, "", null);
 
   itemCategoryCustomInput.value = "";
   itemNameInput.value = "";
@@ -560,14 +575,12 @@ function resetForm() {
 
 function startEditItem(item) {
   currentEditItemId = item.id;
-  adminItemStatus.textContent = "Bearbeitung eines Produkts.";
-  adminItemStatus.className = "status-text";
+  setStatus(adminItemStatus, "Bearbeitung eines Produkts.", null);
 
   const type = inferTypeForItem(item);
   setProductType(type);
 
-  const categories =
-    type === "drink" ? defaultDrinkCategories : defaultFoodCategories;
+  const categories = type === "drink" ? defaultDrinkCategories : defaultFoodCategories;
 
   if (item.category && categories.includes(item.category)) {
     itemCategorySelect.value = item.category;
@@ -580,18 +593,12 @@ function startEditItem(item) {
   itemNameInput.value = item.name || "";
   itemLongDescInput.value = item.longDescription || "";
   itemDescInput.value = item.description || "";
-  itemPriceInput.value =
-    typeof item.price === "number" ? item.price.toString() : "";
+  itemPriceInput.value = typeof item.price === "number" ? item.price.toString() : "";
 
-  // Bilder: imageUrls[] oder fallback auf imageUrl
   const images = Array.isArray(item.imageUrls) ? item.imageUrls : [];
-  if (images.length) {
-    itemImagesInput.value = images.join("\n");
-  } else if (item.imageUrl) {
-    itemImagesInput.value = item.imageUrl;
-  } else {
-    itemImagesInput.value = "";
-  }
+  if (images.length) itemImagesInput.value = images.join("\n");
+  else if (item.imageUrl) itemImagesInput.value = item.imageUrl;
+  else itemImagesInput.value = "";
 
   itemSaveBtn.textContent = "Produkt aktualisieren";
 }
@@ -599,8 +606,7 @@ function startEditItem(item) {
 async function saveItem() {
   if (!currentRestaurantId) return;
 
-  adminItemStatus.textContent = "";
-  adminItemStatus.className = "status-text";
+  setStatus(adminItemStatus, "", null);
 
   const selectedCat = itemCategorySelect.value || "";
   const customCat = (itemCategoryCustomInput.value || "").trim();
@@ -610,39 +616,24 @@ async function saveItem() {
   const longDesc = (itemLongDescInput.value || "").trim();
   const desc = (itemDescInput.value || "").trim();
   const priceStr = (itemPriceInput.value || "").trim();
-  const imagesRaw = (itemImagesInput.value || "")
-    .split("\n")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
+  const imagesRaw = (itemImagesInput.value || "").split("\n").map((s) => s.trim()).filter((s) => s.length > 0);
 
-  if (!category) {
-    adminItemStatus.textContent = "Bitte eine Kategorie wählen oder eingeben.";
-    adminItemStatus.classList.add("status-err");
-    return;
-  }
-  if (!name) {
-    adminItemStatus.textContent = "Bitte Produktname eingeben.";
-    adminItemStatus.classList.add("status-err");
-    return;
-  }
+  if (!category) return setStatus(adminItemStatus, "Bitte eine Kategorie wählen oder eingeben.", "err");
+  if (!name) return setStatus(adminItemStatus, "Bitte Produktname eingeben.", "err");
+
   const price = parseFloat(priceStr.replace(",", "."));
-  if (isNaN(price)) {
-    adminItemStatus.textContent = "Bitte einen gültigen Preis eingeben.";
-    adminItemStatus.classList.add("status-err");
-    return;
-  }
+  if (isNaN(price)) return setStatus(adminItemStatus, "Bitte einen gültigen Preis eingeben.", "err");
 
   const primaryImageUrl = imagesRaw[0] || "";
-
   const restRef = doc(db, "restaurants", currentRestaurantId);
   const menuCol = collection(restRef, "menuItems");
 
   const data = {
-    type: currentProductType, // "food" oder "drink"
+    type: currentProductType,
     category,
     name,
-    description: desc,         // kurz = Zutaten
-    longDescription: longDesc, // lang
+    description: desc,
+    longDescription: longDesc,
     price,
     imageUrl: primaryImageUrl || null,
     imageUrls: imagesRaw.length ? imagesRaw : [],
@@ -654,20 +645,18 @@ async function saveItem() {
 
     if (currentEditItemId) {
       await updateDoc(doc(menuCol, currentEditItemId), data);
-      adminItemStatus.textContent = "Produkt aktualisiert.";
-      adminItemStatus.classList.add("status-ok");
+      setStatus(adminItemStatus, "Produkt aktualisiert.", "ok");
     } else {
       await addDoc(menuCol, data);
-      adminItemStatus.textContent = "Produkt gespeichert.";
-      adminItemStatus.classList.add("status-ok");
+      setStatus(adminItemStatus, "Produkt gespeichert.", "ok");
     }
 
-    await loadMenuItems();
+    await loadMenuItems(); // lädt + synced public/menu
     resetForm();
   } catch (err) {
     console.error(err);
-    adminItemStatus.textContent = "Fehler: " + err.message;
-    adminItemStatus.classList.add("status-err");
+    const msg = err?.message || String(err);
+    setStatus(adminItemStatus, "Fehler: " + msg, "err");
   } finally {
     itemSaveBtn.disabled = false;
   }
@@ -675,14 +664,11 @@ async function saveItem() {
 
 async function toggleItemAvailability(itemId, currentlyAvailable) {
   if (!currentRestaurantId || !itemId) return;
-
   try {
     const restRef = doc(db, "restaurants", currentRestaurantId);
     const menuCol = collection(restRef, "menuItems");
-    await updateDoc(doc(menuCol, itemId), {
-      available: !currentlyAvailable,
-    });
-    await loadMenuItems();
+    await updateDoc(doc(menuCol, itemId), { available: !currentlyAvailable });
+    await loadMenuItems(); // synced
   } catch (err) {
     console.error(err);
   }
@@ -690,29 +676,27 @@ async function toggleItemAvailability(itemId, currentlyAvailable) {
 
 async function deleteItem(itemId) {
   if (!currentRestaurantId || !itemId) return;
-  const confirmDelete = window.confirm("Produkt wirklich löschen?");
-  if (!confirmDelete) return;
+  if (!window.confirm("Produkt wirklich löschen?")) return;
 
   try {
     const restRef = doc(db, "restaurants", currentRestaurantId);
     const menuCol = collection(restRef, "menuItems");
     await deleteDoc(doc(menuCol, itemId));
-    await loadMenuItems();
+    await loadMenuItems(); // synced
   } catch (err) {
     console.error(err);
   }
 }
 
-/* =========================
-   HEUTIGE BESTELLUNGEN
-   ========================= */
+/* =========================================================
+   ABSCHNITT 11 — HEUTIGE BESTELLUNGEN
+   ========================================================= */
 
 async function loadTodayOrders() {
   if (!currentRestaurantId) return;
 
   adminOrdersList.innerHTML = "";
 
-  // Günstig: nur "heute" aus Firestore holen (nicht alle Orders laden)
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   const end = new Date(start);
@@ -720,6 +704,7 @@ async function loadTodayOrders() {
 
   const restRef = doc(db, "restaurants", currentRestaurantId);
   const ordersCol = collection(restRef, "orders");
+
   const q = query(
     ordersCol,
     where("createdAt", ">=", start),
@@ -731,10 +716,7 @@ async function loadTodayOrders() {
   const snap = await getDocs(q);
 
   const ordersToday = [];
-  snap.forEach((docSnap) => {
-    const data = docSnap.data();
-    ordersToday.push({ id: docSnap.id, ...data });
-  });
+  snap.forEach((docSnap) => ordersToday.push({ id: docSnap.id, ...docSnap.data() }));
 
   if (!ordersToday.length) {
     const p = document.createElement("p");
@@ -745,87 +727,61 @@ async function loadTodayOrders() {
   }
 
   ordersToday.forEach((order) => {
-      const row = document.createElement("div");
-      row.className = "list-item-row";
+    const row = document.createElement("div");
+    row.className = "list-item-row";
 
-      const left = document.createElement("div");
-      left.style.display = "flex";
-      left.style.flexDirection = "column";
+    const left = document.createElement("div");
+    left.style.display = "flex";
+    left.style.flexDirection = "column";
 
-      const title = document.createElement("span");
-      title.style.fontSize = "0.85rem";
-      title.style.FontWeight = "600";
-      const timeStr =
-        order.createdAt && order.createdAt.toDate
-          ? order.createdAt.toDate().toLocaleTimeString("de-AT", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-          : "";
-      title.textContent = `Tisch ${order.table || "?"} – ${timeStr}`;
+    const title = document.createElement("span");
+    title.style.fontSize = "0.85rem";
+    title.style.fontWeight = "600";
 
-      const itemsStr =
-        (order.items || [])
-          .map((i) => `${i.qty}× ${i.name}`)
-          .join(", ") || "Keine Artikel";
+    const timeStr =
+      order.createdAt && order.createdAt.toDate
+        ? order.createdAt.toDate().toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" })
+        : "";
 
-      const itemsSpan = document.createElement("span");
-      itemsSpan.style.fontSize = "0.78rem";
-      itemsSpan.textContent = itemsStr;
+    title.textContent = `Tisch ${order.table || order.tableId || "?"} – ${timeStr}`;
 
-      left.appendChild(title);
-      left.appendChild(itemsSpan);
+    const itemsStr = (order.items || []).map((i) => `${i.qty}× ${i.name}`).join(", ") || "Keine Artikel";
 
-      const right = document.createElement("div");
-      right.style.fontSize = "0.82rem";
-      right.style.fontWeight = "600";
+    const itemsSpan = document.createElement("span");
+    itemsSpan.style.fontSize = "0.78rem";
+    itemsSpan.textContent = itemsStr;
 
-      const total = (order.items || []).reduce(
-        (sum, i) => sum + (i.price || 0) * (i.qty || 0),
-        0
-      );
-      right.textContent = total.toFixed(2) + " €";
+    left.appendChild(title);
+    left.appendChild(itemsSpan);
 
-      row.appendChild(left);
-      row.appendChild(right);
+    const right = document.createElement("div");
+    right.style.fontSize = "0.82rem";
+    right.style.fontWeight = "600";
 
-      adminOrdersList.appendChild(row);
-    });
+    const total = (order.items || []).reduce((sum, i) => sum + (i.price || 0) * (i.qty || 0), 0);
+    right.textContent = total.toFixed(2) + " €";
+
+    row.appendChild(left);
+    row.appendChild(right);
+
+    adminOrdersList.appendChild(row);
+  });
 }
 
-/* =========================
-   EVENTS
-   ========================= */
+/* =========================================================
+   ABSCHNITT 12 — EVENTS & INIT
+   ========================================================= */
 
-// Login
-adminLoginBtn.addEventListener("click", loginWithRestaurantId);
-adminCodeLoginBtn.addEventListener("click", loginWithCode);
+authLoginBtn.addEventListener("click", doLogin);
+authLogoutBtn.addEventListener("click", doLogout);
 
-// Typ-Umschalter
+adminOpenRestBtn.addEventListener("click", () => openRestaurantById(adminRestIdInput.value || ""));
+
 typeFoodBtn.addEventListener("click", () => setProductType("food"));
 typeDrinkBtn.addEventListener("click", () => setProductType("drink"));
 
-// Speichern / Reset
 itemSaveBtn.addEventListener("click", saveItem);
 itemResetBtn.addEventListener("click", resetForm);
 
-/* =========================
-   INIT
-   ========================= */
-
+// init
 setProductType("food");
-
-const savedId = loadOwnerSession();
-if (savedId) {
-  (async () => {
-    try {
-      const refRest = doc(db, "restaurants", savedId);
-      const snap = await getDoc(refRest);
-      if (snap.exists()) {
-        await setRestaurantBySnapshot(savedId, snap.data());
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  })();
-}
