@@ -1,102 +1,89 @@
-// owner/login.js — Auth Login + Owner Role Check (NO redirect loop)
+// owner/login.js — SIMPLE LOGIN (no ?r needed) + brute restaurant resolve
 
-import { db } from "../shared/firebase-config.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { db, auth } from "../shared/firebase-config.js";
+import { collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
-  getAuth,
-  onAuthStateChanged,
   signInWithEmailAndPassword,
   setPersistence,
   browserLocalPersistence,
   signOut,
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
-const auth = getAuth();
-setPersistence(auth, browserLocalPersistence).catch(() => {});
-
-const form = document.getElementById("loginForm");
-const emailEl = document.getElementById("emailInput");
-const passEl = document.getElementById("passwordInput");
-const statusEl = document.getElementById("loginStatus");
+const emailEl = document.getElementById("email");
+const passEl  = document.getElementById("pass");
+const btnEl   = document.getElementById("loginBtn");
+const statusEl= document.getElementById("status");
 
 const params = new URLSearchParams(location.search);
-const restaurantId = params.get("r") || "";
 
 function setStatus(msg) {
   if (statusEl) statusEl.textContent = msg || "";
 }
 
-function adminUrl() {
+function adminUrl(rid) {
   const url = new URL("./admin.html", location.href);
-  url.searchParams.set("r", restaurantId);
+  url.searchParams.set("r", rid);
   return url.toString();
 }
 
-async function hasOwnerAccess(uid) {
-  if (!restaurantId) return false;
-  const snap = await getDoc(doc(db, "restaurants", restaurantId, "staff", uid));
+async function hasOwnerAccess(rid, uid) {
+  const snap = await getDoc(doc(db, "restaurants", rid, "staff", uid));
   if (!snap.exists()) return false;
   const role = String((snap.data() || {}).role || "").toLowerCase();
   return role === "owner" || role === "admin" || role === "manager";
 }
 
-// Auto-check: wenn schon eingeloggt → prüfen → ggf. weiter
-onAuthStateChanged(auth, async (user) => {
-  if (!restaurantId) {
-    setStatus("❌ Fehlender Parameter: ?r=restaurantId");
-    return; // WICHTIG: kein redirect!
-  }
-  if (!user) return;
+// ✅ SIMPLE: r from URL -> localStorage -> brute scan
+async function resolveRestaurantId(uid) {
+  const ridFromUrl = params.get("r");
+  if (ridFromUrl) return ridFromUrl;
 
-  setStatus("Checking access…");
+  const ridFromLocal = localStorage.getItem("menyra_owner_last_rid") || "";
+  if (ridFromLocal) {
+    const ok = await hasOwnerAccess(ridFromLocal, uid).catch(() => false);
+    if (ok) return ridFromLocal;
+  }
+
+  // brute scan: restaurants/* -> check staff/{uid}
+  const snap = await getDocs(collection(db, "restaurants"));
+  for (const r of snap.docs) {
+    const rid = r.id;
+    const ok = await hasOwnerAccess(rid, uid).catch(() => false);
+    if (ok) return rid;
+  }
+  return "";
+}
+
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+btnEl?.addEventListener("click", async () => {
+  const email = String(emailEl?.value || "").trim();
+  const pass  = String(passEl?.value || "");
+  if (!email || !pass) return setStatus("Bitte Email & Passwort eingeben.");
+
   try {
-    const ok = await hasOwnerAccess(user.uid);
-    if (!ok) {
-      setStatus("❌ Kein Owner-Zugriff für dieses Restaurant.");
-      await signOut(auth);
-      return; // WICHTIG: kein redirect → kein loop
-    }
-    location.replace(adminUrl());
-  } catch (err) {
-    console.error(err);
-    setStatus("❌ Fehler (Rules/Permission?): " + (err?.message || String(err)));
-    try { await signOut(auth); } catch {}
-  }
-});
-
-if (form) {
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    if (!restaurantId) {
-      setStatus("❌ Fehlender Parameter: ?r=restaurantId");
-      return;
-    }
-
-    const email = String(emailEl?.value || "").trim();
-    const pass = String(passEl?.value || "");
-
-    if (!email || !pass) {
-      setStatus("Bitte Email & Passwort eingeben.");
-      return;
-    }
-
+    btnEl.disabled = true;
     setStatus("Signing in…");
 
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
 
-      const ok = await hasOwnerAccess(cred.user.uid);
-      if (!ok) {
-        setStatus("❌ Kein Owner-Zugriff für dieses Restaurant.");
-        await signOut(auth);
-        return;
-      }
+    setStatus("Finding restaurant…");
+    const rid = await resolveRestaurantId(cred.user.uid);
 
-      location.replace(adminUrl());
-    } catch (err) {
-      console.error(err);
-      setStatus("❌ Login fehlgeschlagen: " + (err?.message || String(err)));
+    if (!rid) {
+      setStatus("❌ Kein Restaurant für diesen User gefunden (staff-doc nicht lesbar oder fehlt).");
+      try { await signOut(auth); } catch {}
+      return;
     }
-  });
-}
+
+    localStorage.setItem("menyra_owner_last_rid", rid);
+
+    setStatus("✅ OK…");
+    location.replace(adminUrl(rid));
+  } catch (e) {
+    console.error(e);
+    setStatus("❌ " + (e?.message || String(e)));
+  } finally {
+    btnEl.disabled = false;
+  }
+});
