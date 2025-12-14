@@ -1,5 +1,7 @@
-import { db } from "../shared/firebase-config.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+// login.js (Owner) — normaler Login + Redirect
+// Wichtig: Diese Zeile initialisiert Firebase App (auch wenn wir db hier nicht nutzen!)
+import "../shared/firebase-config.js";
+
 import {
   getAuth,
   onAuthStateChanged,
@@ -28,72 +30,48 @@ function setStatus(msg, kind) {
 function nextUrlOrDefault() {
   const p = new URLSearchParams(location.search);
   const next = p.get("next");
-  if (next) return next;
-  // Standard: owner/admin.html
-  return "./admin.html" + location.search.replace(/^\?/, "?");
+  return next || "./admin.html";
 }
 
 function goAdmin() {
-  const url = nextUrlOrDefault();
-  location.replace(url);
+  location.replace(nextUrlOrDefault());
 }
 
-// Optionaler Access-Check: wenn ?r=... vorhanden ist, probieren wir restaurants/{r} zu lesen.
-// Wenn Firestore Rules den Zugriff verweigern -> kein Zugriff.
-async function canAccessRestaurantFromUrl() {
-  const p = new URLSearchParams(location.search);
-  const rid = p.get("r");
-  if (!rid) return true; // kein Restaurant gewählt -> ok, Admin öffnet dann per Input
+(async () => {
   try {
-    const snap = await getDoc(doc(db, "restaurants", rid));
-    return snap.exists(); // exists + readable => Zugriff ok
-  } catch {
-    return false;
-  }
-}
-
-await setPersistence(auth, browserLocalPersistence);
-
-// Wenn schon eingeloggt: sofort weiter (kein Login-Flicker)
-onAuthStateChanged(auth, async (user) => {
-  try {
-    if (!user) {
-      setStatus("");
-      return;
-    }
-
-    setStatus("Checking access…");
-
-    const ok = await canAccessRestaurantFromUrl();
-    if (ok) return goAdmin();
-
-    setStatus("❌ Kein Zugriff auf dieses Restaurant.", "err");
-    await signOut(auth);
+    await setPersistence(auth, browserLocalPersistence);
   } catch (e) {
     console.error(e);
-    setStatus("❌ Fehler: " + (e?.message || String(e)), "err");
+    setStatus("❌ Persistence Fehler: " + (e?.message || String(e)), "err");
   }
-});
 
-// Login
-form?.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  try {
-    setStatus("Login…");
-    await signInWithEmailAndPassword(auth, (email.value || "").trim(), pass.value || "");
-    // Redirect passiert über onAuthStateChanged
-  } catch (err) {
-    console.error(err);
-    setStatus("❌ " + (err?.message || String(err)), "err");
-  }
-});
+  // Wenn schon eingeloggt -> direkt weiter
+  onAuthStateChanged(auth, (user) => {
+    if (user) return goAdmin();
+    setStatus("");
+  });
 
-// Logout
-logoutBtn?.addEventListener("click", async () => {
-  try {
-    await signOut(auth);
-    setStatus("Ausgeloggt.", "ok");
-  } catch (e) {
-    setStatus("❌ Logout Fehler.", "err");
-  }
-});
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    try {
+      setStatus("Login…");
+      const mail = (email?.value || "").trim();
+      const pw = pass?.value || "";
+      await signInWithEmailAndPassword(auth, mail, pw);
+      // Redirect passiert über onAuthStateChanged
+    } catch (err) {
+      console.error(err);
+      setStatus("❌ " + (err?.message || String(err)), "err");
+    }
+  });
+
+  logoutBtn?.addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+      setStatus("Ausgeloggt.", "ok");
+    } catch (e) {
+      console.error(e);
+      setStatus("❌ Logout Fehler: " + (e?.message || String(e)), "err");
+    }
+  });
+})();
