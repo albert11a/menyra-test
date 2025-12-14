@@ -1,22 +1,63 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MENYRA – Owner Login</title>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eef0ff" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#050816" media="(prefers-color-scheme: dark)" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./menyra.css" />
+
+  <style>
+    .login-wrap{
+      min-height: 100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+    }
+    .login-card{ width: min(460px, 100%); }
+    .login-row{ display:flex; gap:10px; margin-top:10px; }
+    .login-row > *{ flex:1; }
+    .login-status{ margin-top:10px; font-size:13px; }
+  </style>
 </head>
+
 <body>
-  <h2>Owner Login</h2>
+  <div class="login-wrap">
+    <div class="m-card login-card">
+      <div class="m-section-header">
+        <div>
+          <h2 class="m-section-title">Platform Login</h2>
+          <p class="m-section-subtitle m-muted">Bitte einloggen.</p>
+        </div>
+      </div>
 
-  <input id="rid" placeholder="Restaurant ID (z.B. cafe-x)" />
-  <br><br>
-  <input id="email" type="email" placeholder="Email" />
-  <br><br>
-  <input id="pass" type="password" placeholder="Passwort" />
-  <br><br>
+      <form id="loginForm">
+        <div class="m-input-group">
+          <label for="email">Email</label>
+          <input id="email" class="m-input" type="email" autocomplete="email" required />
+        </div>
 
-  <button id="loginBtn">Login</button>
-  <p id="status"></p>
+        <div class="m-input-group" style="margin-top:10px;">
+          <label for="pass">Passwort</label>
+          <input id="pass" class="m-input" type="password" autocomplete="current-password" required />
+        </div>
+
+        <div class="login-row">
+          <button class="m-btn" type="submit">Login</button>
+          <button class="m-btn m-btn--ghost" type="button" id="logoutBtn">Logout</button>
+        </div>
+
+        <div class="m-muted login-status" id="status"></div>
+      </form>
+    </div>
+  </div>
 
   <script type="module" src="./login.js"></script>
 </body>
