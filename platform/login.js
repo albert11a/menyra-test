@@ -1,45 +1,71 @@
-import "../shared/firebase-config.js";
-import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { db } from "../shared/firebase-config.js";
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 const auth = getAuth();
-const db = getFirestore();
 
-const ridEl = document.getElementById("rid");
-const emailEl = document.getElementById("email");
-const passEl = document.getElementById("pass");
-const btn = document.getElementById("loginBtn");
+const form = document.getElementById("loginForm");
+const email = document.getElementById("email");
+const pass = document.getElementById("pass");
 const statusEl = document.getElementById("status");
+const logoutBtn = document.getElementById("logoutBtn");
 
-// optional: wenn du owner/login.html?r=XYZ öffnest
-const params = new URLSearchParams(window.location.search);
-const ridFromUrl = params.get("r");
-if (ridFromUrl) ridEl.value = ridFromUrl;
+function setStatus(msg) {
+  if (statusEl) statusEl.textContent = msg || "";
+}
 
-btn.addEventListener("click", async () => {
-  statusEl.textContent = "Login...";
-  btn.disabled = true;
+function goAdmin() {
+  location.replace("./menyra.html" + location.search);
+}
 
+async function isSuperadmin(uid) {
+  const s = await getDoc(doc(db, "superadmins", uid));
+  return s.exists();
+}
+
+// Wenn schon eingeloggt -> sofort weiter (ohne “Login kurz anzeigen”)
+onAuthStateChanged(auth, async (user) => {
   try {
-    const rid = (ridEl.value || "").trim();
-    const email = (emailEl.value || "").trim();
-    const pass = (passEl.value || "").trim();
+    if (!user) {
+      setStatus("");
+      return;
+    }
+    setStatus("Checking access…");
+    const ok = await isSuperadmin(user.uid);
+    if (ok) return goAdmin();
 
-    if (!rid) throw new Error("Restaurant ID fehlt.");
-    if (!email || !pass) throw new Error("Email & Passwort eingeben.");
-
-    const cred = await signInWithEmailAndPassword(auth, email, pass);
-
-    // Zugriff prüfen: restaurants/{rid}/staff/{uid} muss existieren
-    const uid = cred.user.uid;
-    const staffSnap = await getDoc(doc(db, "restaurants", rid, "staff", uid));
-    if (!staffSnap.exists()) throw new Error("Kein Zugriff für dieses Restaurant.");
-
-    statusEl.textContent = "OK ✅";
-    window.location.href = `./admin.html?r=${encodeURIComponent(rid)}`;
+    setStatus("❌ Kein Superadmin-Zugriff.");
+    await signOut(auth);
   } catch (e) {
     console.error(e);
-    statusEl.textContent = "Fehler: " + (e?.message || String(e));
-    btn.disabled = false;
+    setStatus("❌ Fehler: " + (e?.message || String(e)));
+  }
+});
+
+// Login
+form?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    setStatus("Login…");
+    await signInWithEmailAndPassword(auth, (email.value || "").trim(), pass.value || "");
+    // Redirect passiert über onAuthStateChanged
+  } catch (err) {
+    console.error(err);
+    setStatus("❌ " + (err?.message || String(err)));
+  }
+});
+
+// Logout
+logoutBtn?.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    setStatus("Ausgeloggt.");
+  } catch (e) {
+    setStatus("❌ Logout Fehler.");
   }
 });
