@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Detajet e produktit</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f3f4f6" />
+
+  <!-- =========================================================
+       ABSCHNITT 0 — PERFORMANCE BASICS
+       ========================================================= -->
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+
+  <!-- Mini-Critical CSS gegen “weißes Flashen” -->
+  <style>
+    html, body { height: 100%; background: #f3f4f6; }
+    body { margin: 0; color: #0f172a; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    .page { width: 100%; max-width: 480px; margin: 0 auto; min-height: 100vh; padding: 16px 16px 32px; box-sizing: border-box; }
+  </style>
+
+  <!-- =========================================================
+       ABSCHNITT 1 — STYLES (non-blocking)
+       ========================================================= -->
+
+  <link rel="preload" href="../shared/styles.css?v=2025-12-14" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="../shared/styles.css?v=2025-12-14"></noscript>
+
+
+<body>
+  <!-- =========================================================
+       ABSCHNITT 2 — PAGE WRAPPER
+       ========================================================= -->
+
+  <main class="page page--karte">
+
+    <!-- =========================================================
+         ABSCHNITT 3 — HEADER: BACK + TITLE + TABLE BADGE
+         ========================================================= -->
+
+    <header class="header">
+      <button type="button" id="backBtn" class="btn btn-ghost btn-small">
+        ← Mbrapa
+      </button>
+
+      <div class="header-title">
+        Detajet
+      </div>
+
+      <span class="badge" id="detailTableBadge">
+        Tavolina
+      </span>
+    </header>
+
+    <!-- =========================================================
+         ABSCHNITT 4 — PRODUCT CARD (DETAILS + SLIDER)
+         ========================================================= -->
+
+    <section class="card" id="detailProductCard">
+      <div class="drawer-image-wrap">
+        <div class="detail-slider" id="detailSliderWrapper">
+          <button
+            type="button"
+            class="detail-slider-arrow detail-slider-arrow--left"
+            id="detailSliderPrev"
+            aria-label="Previous image"
+          >
+            ‹
+          </button>
+
+          <div class="detail-slider-viewport" id="detailSliderViewport">
+            <div class="detail-slider-track" id="detailSliderTrack"></div>
+          </div>
+
+          <button
+            type="button"
+            class="detail-slider-arrow detail-slider-arrow--right"
+            id="detailSliderNext"
+            aria-label="Next image"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      <div class="drawer-title-row">
+        <h3 id="detailName">Emri i produktit</h3>
+        <span id="detailPrice">0.00 €</span>
+      </div>
+
+      <div class="drawer-meta-row">
+        <div class="drawer-rating" id="detailRating">
+          ⭐️ 0.0 · 0 vlerësime
+        </div>
+        <button type="button" class="drawer-like-btn" id="detailLikeBtn">
+          ❤️ Pëlqeje
+        </button>
+      </div>
+
+      <p class="drawer-long-desc" id="detailLongDesc">
+        Këtu do të shfaqet përshkrimi i plotë i produktit.
+      </p>
+
+      <p class="drawer-zutaten" id="detailZutaten">
+        Përbërësit: —
+      </p>
+
+      <div class="drawer-qty-row">
+        <button type="button" class="btn btn-ghost" id="detailQtyMinus">−</button>
+        <span id="detailQtyValue">1</span>
+        <button type="button" class="btn btn-primary" id="detailQtyPlus">+</button>
+
+        <button type="button" class="btn btn-primary drawer-add-btn" id="detailAddBtn">
+          Shto në porosi
+        </button>
+      </div>
+
+      <button type="button" class="btn btn-primary drawer-cart-btn" id="detailViewCartBtn">
+        Shiko porosin
+      </button>
+    </section>
+  </main>
+
+  <!-- =========================================================
+       ABSCHNITT 5 — FLOATING CART BUTTON
+       ========================================================= -->
+
+  <button class="cart-fab" id="cartFab" type="button">
+    <span class="cart-fab-icon"></span>
+    <span class="cart-fab-label" id="cartFabLabel">Shiko porosin</span>
+    <span class="cart-fab-badge" id="cartBadge">0</span>
+  </button>
+
+  <!-- =========================================================
+       ABSCHNITT 6 — SCRIPTS
+       ========================================================= -->
+
+  <script type="module" src="detajet.js"></script>
+</body>
+</html>
