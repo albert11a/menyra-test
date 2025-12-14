@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f3f4f6" />
+  <link rel="stylesheet" href="../shared/styles.css">
+</head>
+<body>
+  <main class="page">
+    <header class="header">
+      <div>
+        <div class="header-title">MENYRA</div>
+        <div class="header-sub">Superadmin – Kunden & QR-Codes</div>
+      </div>
+    </header>
+
+    <!-- Tabs: Kunden / Angebote -->
+    <section class="card">
+      <div class="tab-row">
+        <button type="button" class="tab-btn tab-btn-active" data-tab-target="customersTab">
+          Kunden
+        </button>
+        <button type="button" class="tab-btn" data-tab-target="offersTab">
+          Angebote
+        </button>
+      </div>
+    </section>
+
+    <!-- TAB: KUNDEN -->
+    <div id="customersTab">
+      <!-- Neues Lokal/Kunde anlegen -->
+      <section class="card">
+        <h2>Neuen Kunden anlegen</h2>
+        <p class="info">
+          Schritt 1: Lokal/Restaurant eintragen. Das Abo läuft automatisch
+          <strong>1 Jahr</strong> ab heute. QR-Codes & Admin/Kellner-Codes werden
+          automatisch erstellt.
+        </p>
+
+        <input class="input" id="restNameInput" placeholder="Restaurant / Lokalname" />
+        <input class="input" id="ownerNameInput" placeholder="Inhabername" />
+        <input class="input" id="restCityInput" placeholder="Ort (Stadt, z.B. Prishtina)" />
+        <input class="input" id="tableCountInput" placeholder="Anzahl Tische (z.B. 20)" />
+        <input class="input" id="yearPriceInput" placeholder="Preis pro Jahr in € (z.B. 370)" />
+        <input class="input" id="phoneInput" placeholder="Telefonnummer (optional)" />
+        <input class="input" id="logoUrlInput" placeholder="Logo URL (optional, für Gäste-Karte)" />
+
+        <button class="btn btn-primary" id="createRestBtn" style="margin-top:8px;">
+          Kunden/Lokal erstellen
+        </button>
+
+        <div class="status-text" id="adminStatus"></div>
+      </section>
+
+      <!-- Alle Kunden anzeigen -->
+      <section class="card">
+        <h2>Kunden & Lokale</h2>
+
+        <input class="input" id="searchInput" placeholder="Suche nach Lokal, Inhaber oder Ort..." />
+
+        <div class="list" style="margin-top:6px;">
+          <label class="info" style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="filterActive" checked />
+            Nur aktive anzeigen
+          </label>
+        </div>
+
+        <div class="list" id="restList" style="margin-top:10px;"></div>
+
+        <p class="info">
+          Beispiele:<br />
+          Gäste (QR): <code>../guest/karte.html?r=ID&t=T1</code><br />
+          Kellner: <code>../staff/kamarieri.html</code> (LogIn per Kellner-Code)<br />
+          Admin (Owner): <code>../owner/admin.html</code> (LogIn per Admin-Code oder direkt mit <code>?r=ID</code>)
+        </p>
+      </section>
+    </div>
+
+    <!-- TAB: ANGEBOTE -->
+    <div id="offersTab" style="display:none;">
+      <!-- Auswahl Lokal + globaler Angebots-Schalter -->
+      <section class="card">
+        <h2>Angebote verwalten</h2>
+        <p class="info">
+          Wähle ein Lokal aus, um dessen Angebote zu sehen und zu bearbeiten.
+        </p>
+
+        <select class="input" id="offerRestaurantSelect">
+          <option value="">Lokal wählen...</option>
+        </select>
+
+        <label class="offer-flag-label">
+          <input type="checkbox" id="offersEnabledInput" checked />
+          <span>Angebote in der Gäste-Karte dieses Lokals anzeigen</span>
+        </label>
+      </section>
+
+      <!-- Angebot bearbeiten / neu -->
+      <section class="card" id="offerEditorCard" style="display:none;">
+        <div class="list-item-row">
+          <h2 style="margin-bottom:0;">Angebot bearbeiten / neu</h2>
+          <button class="btn btn-ghost btn-small" id="offerNewBtn">Neues Angebot</button>
+        </div>
+
+        <input class="input" id="offerTitleInput" placeholder="Titel (z.B. Pica Shpija Special)" />
+        <input class="input" id="offerPriceInput" placeholder="Preis in € (optional, z.B. 7.10)" />
+        <input class="input" id="offerImageInput" placeholder="Bild-URL (optional)" />
+        <textarea
+          class="input input-textarea"
+          id="offerDescInput"
+          placeholder="Beschreibung, z.B. Zutaten, Hinweise..."
+        ></textarea>
+
+        <label class="offer-flag-label">
+          <input type="checkbox" id="offerActiveInput" checked />
+          <span>Dieses Angebot im Slider anzeigen</span>
+        </label>
+
+        <label class="offer-flag-label">
+          <input type="checkbox" id="offerAddToCartInput" checked />
+          <span>Bestellbar (Buttons in Karte anzeigen)</span>
+        </label>
+
+        <p class="info">
+          Optional kannst du ein Gericht aus der Speisekarte verknüpfen. Wenn kein Preis
+          angegeben ist, wird der Preis aus der Speisekarte genutzt.
+        </p>
+        <select class="input" id="offerMenuItemSelect">
+          <option value="">Ohne Verknüpfung – freies Angebot / Werbung</option>
+        </select>
+
+        <button class="btn btn-primary" id="offerSaveBtn" style="margin-top:8px;">
+          Angebot speichern
+        </button>
+
+        <div class="status-text" id="offerStatus"></div>
+      </section>
+
+      <!-- Liste der Angebote des Lokals -->
+      <section class="card" id="offerListCard" style="display:none;">
+        <h2>Angebote dieses Lokals</h2>
+        <div class="list" id="offerList"></div>
+        <p class="info">
+          Du kannst Angebote deaktivieren (werden nicht angezeigt), bearbeiten oder löschen.
+        </p>
+      </section>
+    </div>
+  </main>
+
+  <script type="module" src="menyra.js"></script>
+</body>
+</html>
