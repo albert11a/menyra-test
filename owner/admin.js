@@ -1,5 +1,3 @@
-// admin.js – Owner Admin: Speisekarte + Bestellungen (Auto Restaurant Resolve + Gate)
-
 /* =========================================================
    ABSCHNITT 0 — IMPORTS
    ========================================================= */
@@ -30,8 +28,71 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 /* =========================================================
+   ABSCHNITT 0.5 — AUTH GATE (Owner)
+   ========================================================= */
+
+const firebaseAuth = getAuth();                 // <-- umbenannt (kein "auth" mehr)
+setPersistence(firebaseAuth, browserLocalPersistence).catch(() => {});
+
+const params = new URLSearchParams(location.search);
+const restaurantId = params.get("r") || "";
+
+// Anti-Loop (pro Tab)
+const OWNER_LOCK = "menyra_owner_gate_lock_v1";
+
+function goLogin(reason = "") {
+  // verhindert refresh-loop
+  if (sessionStorage.getItem(OWNER_LOCK) === "1") return;
+  sessionStorage.setItem(OWNER_LOCK, "1");
+
+  const url = new URL("./login.html", location.href);
+  if (restaurantId) url.searchParams.set("r", restaurantId);
+  if (reason) url.searchParams.set("err", reason);
+  location.replace(url.toString());
+}
+
+async function hasOwnerAccess(uid) {
+  if (!restaurantId) return false;
+  const snap = await getDoc(doc(db, "restaurants", restaurantId, "staff", uid));
+  if (!snap.exists()) return false;
+  const role = String((snap.data() || {}).role || "").toLowerCase();
+  return role === "owner" || role === "admin" || role === "manager";
+}
+
+let __gateDone = false;
+
+onAuthStateChanged(firebaseAuth, async (user) => {
+  if (__gateDone) return;
+  __gateDone = true;
+
+  // wir sind im admin -> lock weg
+  sessionStorage.removeItem(OWNER_LOCK);
+
+  if (!restaurantId) return goLogin("missing_r");
+  if (!user) return goLogin("signed_out");
+
+  try {
+    const ok = await hasOwnerAccess(user.uid);
+    if (!ok) {
+      try { await signOut(firebaseAuth); } catch {}
+      return goLogin("no_access");
+    }
+
+    // ✅ Gate OK — ab hier läuft dein normaler Code
+    window.__MENYRA_OWNER__ = { restaurantId, uid: user.uid };
+
+  } catch (err) {
+    console.error(err);
+    try { await signOut(firebaseAuth); } catch {}
+    return goLogin("gate_error");
+  }
+});
+
+
+/* =========================================================
    ABSCHNITT 1 — DOM
    ========================================================= */
+
 
 // Gate
 const appGate = document.getElementById("appGate");
@@ -112,6 +173,54 @@ function loadOwnerSession() {
 function clearOwnerSession() {
   localStorage.removeItem("menyra_owner_restaurantId");
 }
+
+async function resolveRestaurantIdForUser(user) {
+  // 1) URL ?r=...
+  const p = new URLSearchParams(window.location.search);
+  const ridFromUrl = p.get("r");
+  if (ridFromUrl) return ridFromUrl;
+
+  // 2) alte Session
+  const ridFromSession = loadOwnerSession();
+  if (ridFromSession) return ridFromSession;
+
+  // 3) users/{uid} mit restaurantId
+  try {
+    const uSnap = await getDoc(doc(db, "users", user.uid));
+    if (uSnap.exists()) {
+      const u = uSnap.data() || {};
+      const rid = u.restaurantId || u.restaurant || u.assignedRestaurantId;
+      if (rid) return rid;
+    }
+  } catch {}
+
+  // 4) restaurants where ownerUid == uid
+  try {
+    const q1 = query(
+      collection(db, "restaurants"),
+      where("ownerUid", "==", user.uid),
+      limit(1)
+    );
+    const s1 = await getDocs(q1);
+    if (!s1.empty) return s1.docs[0].id;
+  } catch {}
+
+  // 5) restaurants where ownerEmail == email
+  try {
+    if (user.email) {
+      const q2 = query(
+        collection(db, "restaurants"),
+        where("ownerEmail", "==", user.email),
+        limit(1)
+      );
+      const s2 = await getDocs(q2);
+      if (!s2.empty) return s2.docs[0].id;
+    }
+  } catch {}
+
+  return null;
+}
+
 
 /* =========================================================
    ABSCHNITT 5 — LOGIN ROUTE
@@ -659,6 +768,58 @@ onAuthStateChanged(auth, async (user) => {
     await openRestaurantById(rid);
 
     hideGate();
+  } catch (err) {
+    console.error(err);
+    showGate("❌ Fehler: " + (err?.message || String(err)));
+  }
+});
+
+/* =========================================================
+   ABSCHNITT 13 — INIT (Single Auth Check) — LOOP-SAFE + AUTO-REST
+   ========================================================= */
+
+setProductType("food");
+showGate("Checking session…");
+hideRestaurantArea();
+
+await setPersistence(auth, browserLocalPersistence);
+
+onAuthStateChanged(auth, async (user) => {
+  try {
+    // LOOP-SAFE: manchmal kommt kurz null -> wir warten kurz und prüfen nochmal
+    if (!user) {
+      await new Promise((r) => setTimeout(r, 400));
+      if (!auth.currentUser) {
+        goLogin();
+        return;
+      }
+      user = auth.currentUser;
+    }
+
+    currentUser = user;
+
+    if (ownerUserLabel) {
+      ownerUserLabel.style.display = "inline-flex";
+      ownerUserLabel.textContent = user.email || user.uid;
+    }
+    if (ownerLogoutBtn) ownerLogoutBtn.style.display = "inline-block";
+
+    showGate("Loading…");
+
+    // AUTO: Restaurant des Users finden (kein Restaurant-ID Formular)
+    const rid = await resolveRestaurantIdForUser(user);
+
+    if (rid) {
+      if (adminRestIdInput) adminRestIdInput.value = rid;
+      await openRestaurantById(rid);
+      hideGate();
+      return;
+    }
+
+    // Fallback: nur wenn wir wirklich nix finden
+    showRestaurantPicker();
+    hideGate();
+    setStatus(adminOpenStatus, "⚠️ Kein Restaurant zugeordnet. Bitte Restaurant-ID setzen.", "err");
   } catch (err) {
     console.error(err);
     showGate("❌ Fehler: " + (err?.message || String(err)));
