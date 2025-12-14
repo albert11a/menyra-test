@@ -1,6 +1,3 @@
-// menyra.js – Platform Admin (Customers + Offers + Leads) – FAST & SAFE
-// Struktur-Regel: Wir arbeiten ab jetzt immer in GANZEN ABSCHNITTEN (START..END).
-
 // --- START: ABSCHNITT 0 — IMPORTS ---
 import { db } from "../shared/firebase-config.js";
 import {
@@ -21,10 +18,10 @@ import {
 import {
   getAuth,
   onAuthStateChanged,
-  signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 // --- END: ABSCHNITT 0 — IMPORTS ---
+
 
 
 /* =========================================================
@@ -47,9 +44,6 @@ function buildUrl(relativePath, params = {}) {
 }
 // --- END: ABSCHNITT 1 — ROUTES ---
 
-/* =========================================================
-   ABSCHNITT 2 — DOM
-   ========================================================= */
 // --- START: ABSCHNITT 2 — DOM ---
 const sidebarNav = document.getElementById("sidebarNav");
 const mobileNav = document.getElementById("mobileNav");
@@ -67,14 +61,9 @@ const mobileMenuClose = document.getElementById("mobileMenuClose");
 const themeToggle = document.getElementById("themeToggle");
 const mobileThemeToggle = document.getElementById("mobileThemeToggle");
 
-// ✅ AUTH (NEU)
-const authOverlay = document.getElementById("authOverlay");
-const authForm = document.getElementById("authForm");
-const authEmail = document.getElementById("authEmail");
-const authPass = document.getElementById("authPass");
-const authStatus = document.getElementById("authStatus");
-const authUid = document.getElementById("authUid");
-const authLogoutBtn = document.getElementById("authLogoutBtn");
+// ✅ APP GATE (NEU)
+const appGate = document.getElementById("appGate");
+const appGateMsg = document.getElementById("appGateMsg");
 
 // Sidebar logout
 const logoutButton = document.getElementById("logoutButton");
@@ -184,6 +173,7 @@ const leadPhone = document.getElementById("leadPhone");
 const leadStatus = document.getElementById("leadStatus");
 const leadNote = document.getElementById("leadNote");
 // --- END: ABSCHNITT 2 — DOM ---
+
 
 /* =========================================================
    ABSCHNITT 3 — GLOBAL STATE
@@ -1532,9 +1522,10 @@ if (topSearch) topSearch.addEventListener("input", handleGlobalSearchInput);
 if (mobileTopSearch) mobileTopSearch.addEventListener("input", handleGlobalSearchInput);
 // --- END: ABSCHNITT 12 — GLOBAL SEARCH (Topbar) ---
 
-/* =========================================================
-   ABSCHNITT 13 — INIT
-   ========================================================= */
+
+
+
+
 // --- START: ABSCHNITT 13 — INIT ---
 initTheme();
 ensureOffersDefaultsOnInit();
@@ -1542,81 +1533,58 @@ setActiveView("dashboard");
 
 const auth = getAuth();
 
-function showAuth(msg = "") {
-  if (authOverlay) authOverlay.style.display = "flex";
-  if (authStatus) authStatus.textContent = msg || "";
+function setGate(msg = "Checking session…") {
+  if (appGateMsg) appGateMsg.textContent = msg;
+}
+function showGate(msg) {
+  if (appGate) appGate.style.display = "flex";
+  setGate(msg || "Checking session…");
+}
+function hideGate() {
+  if (appGate) appGate.style.display = "none";
 }
 
-function hideAuth() {
-  if (authOverlay) authOverlay.style.display = "none";
-  if (authStatus) authStatus.textContent = "";
+function goLogin() {
+  location.replace("./login.html" + location.search);
 }
 
 async function isSuperadminUser(uid) {
-  // superadmins/{uid} muss existieren
   const s = await getDoc(doc(db, "superadmins", uid));
   return s.exists();
 }
 
-// Login form
-if (authForm) {
-  authForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    try {
-      if (authStatus) authStatus.textContent = "Login…";
-      await signInWithEmailAndPassword(auth, (authEmail?.value || "").trim(), authPass?.value || "");
-    } catch (err) {
-      console.error(err);
-      if (authStatus) authStatus.textContent = "❌ " + (err?.message || String(err));
-    }
-  });
-}
+// Gate sofort zeigen (kein “unseriöses” Warten)
+showGate("Checking session…");
 
-// Logout buttons
-async function doLogout() {
-  try { await signOut(auth); } catch {}
-}
-if (logoutButton) logoutButton.addEventListener("click", doLogout);
-if (authLogoutBtn) authLogoutBtn.addEventListener("click", doLogout);
-
-// Dashboard shortcuts
-if (dashRestaurantQuickSelect) {
-  dashRestaurantQuickSelect.addEventListener("change", () => {
-    const id = dashRestaurantQuickSelect.value || "";
-    if (id && offersStatus) offersStatus.textContent = `Ausgewählt: ${id}`;
-  });
-}
-
-// Auth state
 onAuthStateChanged(auth, async (user) => {
   try {
     if (!user) {
-      if (authUid) authUid.textContent = "—";
-      showAuth("Bitte einloggen.");
+      goLogin();
       return;
     }
 
-    if (authUid) authUid.textContent = user.uid;
-
+    showGate("Checking access…");
     const ok = await isSuperadminUser(user.uid);
     if (!ok) {
-      showAuth(
-        "❌ Kein Superadmin-Zugriff. Erstelle in Firestore eine Collection 'superadmins' und ein Doc mit ID = deinem UID."
-      );
+      showGate("❌ Kein Superadmin-Zugriff.");
+      try { await signOut(auth); } catch {}
+      goLogin();
       return;
     }
 
-    hideAuth();
-
-    // parallel load (fast)
+    showGate("Loading…");
     await Promise.all([loadRestaurants(), loadLeads()]);
+    hideGate();
   } catch (err) {
     console.error(err);
-    alert("Init Fehler: " + (err?.message || String(err)));
-    showAuth("❌ Init Fehler (siehe Console).");
+    showGate("❌ Fehler: " + (err?.message || String(err)));
   }
 });
 
-// Direkt beim Laden Overlay zeigen
-showAuth("Bitte einloggen.");
+// Logout Button (oben in Sidebar)
+async function doLogout() {
+  try { await signOut(auth); } catch {}
+  goLogin();
+}
+if (logoutButton) logoutButton.addEventListener("click", doLogout);
 // --- END: ABSCHNITT 13 — INIT ---
