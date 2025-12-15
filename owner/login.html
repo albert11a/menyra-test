@@ -2,118 +2,59 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>MENYRA – Owner/Admin Login</title>
+  <title>MENYRA – Owner Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#f3f4f6" />
-
   <link rel="stylesheet" href="../shared/styles.css" />
-
   <style>
-    body{
-      margin:0;
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background:#f3f4f6;
-      padding:18px;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-    }
-    .m-card{
-      width:100%;
-      max-width:430px;
-      background:#fff;
-      border-radius:18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.08);
-      padding:18px;
-    }
-    .m-h{
-      font-size:18px;
-      font-weight:800;
-      margin:0 0 6px;
-    }
-    .m-p{
-      margin:0 0 14px;
-      color:#6b7280;
-      font-size:13px;
-      line-height:1.35;
-    }
-    .m-row{ display:flex; flex-direction:column; gap:10px; }
-    label{ font-size:12px; color:#6b7280; }
-    input{
-      width:100%;
-      padding:12px 12px;
-      border:1px solid #e5e7eb;
-      border-radius:12px;
-      font-size:14px;
-      outline:none;
-      background:#fff;
-    }
-    input:focus{
-      border-color:#c7d2fe;
-      box-shadow:0 0 0 4px rgba(99,102,241,.12);
-    }
-    .m-btn{
-      width:100%;
-      padding:12px;
-      border:0;
-      border-radius:12px;
-      background:#111827;
-      color:#fff;
-      font-weight:800;
-      cursor:pointer;
-    }
-    .m-btn:disabled{ opacity:.6; cursor:not-allowed; }
-    .m-meta{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      justify-content:space-between;
-      flex-wrap:wrap;
-      margin-bottom:8px;
-    }
-    .m-badge{
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      background: rgba(148,163,184,0.18);
-      color:#0f172a;
-    }
-    .m-status{ margin-top:10px; font-size:13px; min-height:18px; }
-    .m-ok{ color:#059669; }
-    .m-err{ color:#dc2626; }
-    .m-muted{ color:#6b7280; font-size:12px; margin-top:10px; line-height:1.35; }
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f3f4f6;padding:18px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial}
+    .card{width:100%;max-width:520px;background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:18px}
+    .h{font-size:18px;font-weight:900;margin:0 0 6px}
+    .p{margin:0 0 14px;color:#6b7280;font-size:13px;line-height:1.35}
+    label{font-size:12px;color:#6b7280}
+    input{width:100%;padding:12px;border:1px solid #e5e7eb;border-radius:12px;font-size:14px;outline:none;background:#fff}
+    input:focus{border-color:#c7d2fe;box-shadow:0 0 0 4px rgba(99,102,241,.12)}
+    .row{display:flex;flex-direction:column;gap:10px}
+    .row2{display:grid;grid-template-columns:1fr;gap:10px}
+    @media(min-width:560px){.row2{grid-template-columns:1fr 1fr}}
+    .btn{width:100%;padding:12px;border:0;border-radius:12px;background:#111827;color:#fff;font-weight:900;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .status{margin-top:10px;font-size:13px}
+    .ok{color:#059669}
+    .err{color:#dc2626}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace}
+    .hint{font-size:12px;color:#6b7280;line-height:1.35;margin-top:6px}
   </style>
 </head>
 
 <body>
-  <div class="m-card">
-    <div class="m-meta">
-      <h1 class="m-h">Restaurant Admin Login</h1>
-      <span class="m-badge" id="ownerRestBadge" style="display:none;"></span>
-    </div>
-
-    <p class="m-p">
-      Melde dich mit deiner E-Mail & deinem Passwort an.
-      Dieser Login gilt nur für <b>ein</b> Restaurant (Link enthält <code>?r=restaurantId</code>).
+  <div class="card">
+    <h1 class="h">Owner / Admin Login</h1>
+    <p class="p">
+      Bitte logge dich ein und gib die <b>Restaurant-ID</b> an (Firestore Document-ID unter <span class="mono">restaurants/{rid}</span>).
     </p>
 
-    <form id="ownerLoginForm" class="m-row" autocomplete="on">
+    <div class="row">
       <div>
-        <label for="ownerEmail">E-Mail</label>
-        <input id="ownerEmail" type="email" autocomplete="email" placeholder="owner@restaurant.com" required />
+        <label for="rid">Restaurant-ID (rid)</label>
+        <input id="rid" type="text" placeholder="z.B. shpja-e-vjetr" />
+        <div class="hint">Tipp: Wenn du über einen Link kommst, ist das Feld automatisch gefüllt.</div>
       </div>
 
-      <div>
-        <label for="ownerPass">Passwort</label>
-        <input id="ownerPass" type="password" autocomplete="current-password" placeholder="••••••••" required />
+      <div class="row2">
+        <div>
+          <label for="email">E-Mail</label>
+          <input id="email" type="email" autocomplete="email" placeholder="owner@lokal.com" />
+        </div>
+        <div>
+          <label for="pass">Passwort</label>
+          <input id="pass" type="password" autocomplete="current-password" placeholder="••••••••" />
+        </div>
       </div>
 
-      <button id="ownerLoginBtn" class="m-btn" type="submit">Einloggen</button>
-      <div id="ownerStatus" class="m-status"></div>
-
-      <div class="m-muted" id="ownerHint"></div>
-    </form>
+      <button id="loginBtn" class="btn" type="button">Einloggen</button>
+      <div id="status" class="status"></div>
+    </div>
   </div>
 
   <script type="module" src="./login.js"></script>

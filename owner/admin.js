@@ -43,8 +43,6 @@ function goLogin(reason = "") {
   sessionStorage.setItem(OWNER_LOCK, "1");
 
   const url = new URL("./login.html", location.href);
-  // optional: nach Login zurück in dieses Admin
-  url.searchParams.set("next", new URL("./admin.html", location.href).toString());
   if (restaurantId) url.searchParams.set("r", restaurantId);
   if (reason) url.searchParams.set("err", reason);
   location.replace(url.toString());
@@ -598,7 +596,7 @@ onAuthStateChanged(auth, async (user) => {
   // wir sind im admin -> lock weg
   sessionStorage.removeItem(OWNER_LOCK);
 
-  if (!currentRestaurantId) return goLogin("missing_r");
+  if (!restaurantId) return goLogin("missing_r");
   if (!user) return goLogin("signed_out");
 
   try {
