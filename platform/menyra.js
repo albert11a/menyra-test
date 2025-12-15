@@ -1,5 +1,14 @@
+/* =========================================================
+   MENYRA — Platform Admin (menyra.js)
+   Clean + Stable Auth Guard (Firebase)
+   ========================================================= */
+
+/* =========================================================
+   ABSCHNITT 0 — IMPORTS
+   ========================================================= */
 // --- START: ABSCHNITT 0 — IMPORTS ---
-import { db } from "../shared/firebase-config.js";
+import { db, auth } from "../shared/firebase-config.js";
+
 import {
   collection,
   doc,
@@ -16,12 +25,10 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 import {
-  getAuth,
   onAuthStateChanged,
   signOut,
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 // --- END: ABSCHNITT 0 — IMPORTS ---
-
 
 
 /* =========================================================
@@ -1524,15 +1531,17 @@ if (mobileTopSearch) mobileTopSearch.addEventListener("input", handleGlobalSearc
 
 
 
-
-
-// --- START: ABSCHNITT 13 — INIT ---
+/* =========================================================
+   ABSCHNITT 13 — INIT + AUTH GUARD (Firebase Auth)
+   ========================================================= */
+// --- START: ABSCHNITT 13 — INIT + AUTH GUARD ---
 initTheme();
 ensureOffersDefaultsOnInit();
 setActiveView("dashboard");
 
-const auth = getAuth();
-
+/**
+ * Gate helpers
+ */
 function setGate(msg = "Checking session…") {
   if (appGateMsg) appGateMsg.textContent = msg;
 }
@@ -1544,17 +1553,29 @@ function hideGate() {
   if (appGate) appGate.style.display = "none";
 }
 
+/**
+ * Redirect to Platform Login and preserve current URL as ?next=
+ */
 function goLogin() {
-  location.replace("./login.html" + location.search);
+  const u = new URL("./login.html", window.location.href);
+  // return to the current page after login
+  const next = window.location.pathname + window.location.search + window.location.hash;
+  u.searchParams.set("next", next);
+  window.location.replace(u.toString());
 }
 
-async function isSuperadminUser(uid) {
-  const s = await getDoc(doc(db, "superadmins", uid));
-  return s.exists();
+/**
+ * Access check (1 read) – Platform/Superadmin
+ */
+async function isSuperadmin(uid) {
+  const snap = await getDoc(doc(db, "superadmins", uid));
+  return snap.exists();
 }
 
-// Gate sofort zeigen (kein “unseriöses” Warten)
+// Gate sofort zeigen
 showGate("Checking session…");
+
+let __booted = false;
 
 onAuthStateChanged(auth, async (user) => {
   try {
@@ -1564,15 +1585,21 @@ onAuthStateChanged(auth, async (user) => {
     }
 
     showGate("Checking access…");
-    const ok = await isSuperadminUser(user.uid);
+    const ok = await isSuperadmin(user.uid);
+
     if (!ok) {
-      showGate("❌ Kein Superadmin-Zugriff.");
       try { await signOut(auth); } catch {}
       goLogin();
       return;
     }
 
-    showGate("Loading…");
+    if (__booted) {
+      hideGate();
+      return;
+    }
+    __booted = true;
+
+    showGate("Loading data…");
     await Promise.all([loadRestaurants(), loadLeads()]);
     hideGate();
   } catch (err) {
@@ -1581,10 +1608,10 @@ onAuthStateChanged(auth, async (user) => {
   }
 });
 
-// Logout Button (oben in Sidebar)
+// Logout (Sidebar)
 async function doLogout() {
   try { await signOut(auth); } catch {}
   goLogin();
 }
 if (logoutButton) logoutButton.addEventListener("click", doLogout);
-// --- END: ABSCHNITT 13 — INIT ---
+// --- END: ABSCHNITT 13 — INIT + AUTH GUARD ---

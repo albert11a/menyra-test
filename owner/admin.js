@@ -1,5 +1,5 @@
 /* =========================================================
-   OWNER ADMIN — CLEAN + LOOP-SAFE (Auth + staff-role)
+   ABSCHNITT 0 — IMPORTS
    ========================================================= */
 
 import { db, auth } from "../shared/firebase-config.js";
@@ -26,15 +26,42 @@ import {
   browserLocalPersistence,
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
-/* =========================
-   PARAMS
-   ========================= */
+/* =========================================================
+   ABSCHNITT 1 — PARAMS & AUTH GATE (Owner/Admin/Manager)
+   ========================================================= */
+
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+
 const params = new URLSearchParams(location.search);
 const restaurantId = params.get("r") || "";
 
-/* =========================
-   DOM
-   ========================= */
+// anti redirect loop (pro Tab)
+const OWNER_LOCK = "menyra_owner_gate_lock_v2";
+
+function goLogin(reason = "") {
+  if (sessionStorage.getItem(OWNER_LOCK) === "1") return;
+  sessionStorage.setItem(OWNER_LOCK, "1");
+
+  const url = new URL("./login.html", location.href);
+  // optional: nach Login zurück in dieses Admin
+  url.searchParams.set("next", new URL("./admin.html", location.href).toString());
+  if (restaurantId) url.searchParams.set("r", restaurantId);
+  if (reason) url.searchParams.set("err", reason);
+  location.replace(url.toString());
+}
+
+async function hasOwnerAccess(uid) {
+  if (!restaurantId) return false;
+  const snap = await getDoc(doc(db, "restaurants", restaurantId, "staff", uid));
+  if (!snap.exists()) return false;
+  const role = String((snap.data() || {}).role || "").toLowerCase();
+  return role === "owner" || role === "admin" || role === "manager";
+}
+
+/* =========================================================
+   ABSCHNITT 2 — DOM
+   ========================================================= */
+
 const appGate = document.getElementById("appGate");
 const appGateMsg = document.getElementById("appGateMsg");
 
@@ -48,7 +75,6 @@ const adminRestLabel = document.getElementById("adminRestLabel");
 
 const typeFoodBtn = document.getElementById("typeFoodBtn");
 const typeDrinkBtn = document.getElementById("typeDrinkBtn");
-const typeToggleButtons = document.querySelectorAll(".type-toggle-btn");
 
 const itemCategorySelect = document.getElementById("itemCategorySelect");
 const itemCategoryCustomInput = document.getElementById("itemCategoryCustomInput");
@@ -64,9 +90,10 @@ const adminItemStatus = document.getElementById("adminItemStatus");
 const itemList = document.getElementById("itemList");
 const adminOrdersList = document.getElementById("adminOrdersList");
 
-/* =========================
-   UI HELPERS
-   ========================= */
+/* =========================================================
+   ABSCHNITT 3 — UI HELPERS
+   ========================================================= */
+
 function showGate(msg = "Checking session…") {
   if (appGate) appGate.style.display = "flex";
   if (appGateMsg) appGateMsg.textContent = msg;
@@ -74,6 +101,7 @@ function showGate(msg = "Checking session…") {
 function hideGate() {
   if (appGate) appGate.style.display = "none";
 }
+
 function setStatus(el, text, kind) {
   if (!el) return;
   el.textContent = text || "";
@@ -81,91 +109,79 @@ function setStatus(el, text, kind) {
   if (kind === "ok") el.classList.add("status-ok");
   if (kind === "err") el.classList.add("status-err");
 }
-function goLogin(reason = "") {
-  const url = new URL("./login.html", location.href);
-  if (restaurantId) url.searchParams.set("r", restaurantId);
-  if (reason) url.searchParams.set("err", reason);
-  location.replace(url.toString());
+
+function showCards(on) {
+  const d = on ? "block" : "none";
+  if (menuEditorCard) menuEditorCard.style.display = d;
+  if (menuListCard) menuListCard.style.display = d;
+  if (ordersCard) ordersCard.style.display = d;
 }
 
-async function hasOwnerAccess(uid) {
-  if (!restaurantId) return false;
-  const snap = await getDoc(doc(db, "restaurants", restaurantId, "staff", uid));
-  if (!snap.exists()) return false;
-  const role = String((snap.data() || {}).role || "").toLowerCase();
-  return role === "owner" || role === "admin" || role === "manager";
-}
+/* =========================================================
+   ABSCHNITT 4 — STATE
+   ========================================================= */
 
-/* =========================
-   STATE
-   ========================= */
+let currentRestaurantId = restaurantId;
 let currentItems = [];
 let currentEditItemId = null;
 let currentProductType = "food";
 
-/* =========================
-   CATEGORIES
-   ========================= */
 const defaultFoodCategories = [
-  "Mengjesi","Supat","Paragjellat","Sandwich","Burger","Rizoto","Sallatat",
-  "Pasta","Pizza","Tava","Mish Pule","Mishrat","Deti","Antipasta","Desert",
+  "Alle", "Burger", "Pizza", "Pasta", "Salate", "Dessert", "Beilagen", "Saucen"
 ];
 const defaultDrinkCategories = [
-  "Kafe & Espresso","Cappuccino & Latte","Çaj i ngrohtë","Çaj i ftohtë","Ujë i thjeshtë",
-  "Ujë i gazuar","Lëngje frutash","Pije të gazuara","Freskuese","Smoothie",
-  "Milkshake","Birra","Verë e bardhë","Verë e kuqe","Rose","Koktej",
-  "Pije alkoolike të forta","Energjike",
+  "Alle", "Kaffee", "Softdrinks", "Säfte", "Eistee", "Energy", "Wasser", "Bier", "Wein"
 ];
 
-function fillCategorySelect() {
-  const cats = currentProductType === "drink" ? defaultDrinkCategories : defaultFoodCategories;
-  if (!itemCategorySelect) return;
-
-  itemCategorySelect.innerHTML = "";
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.textContent = "Kategorie wählen…";
-  placeholder.disabled = true;
-  placeholder.selected = true;
-  itemCategorySelect.appendChild(placeholder);
-
-  cats.forEach((cat) => {
-    const opt = document.createElement("option");
-    opt.value = cat;
-    opt.textContent = cat;
-    itemCategorySelect.appendChild(opt);
-  });
-}
-
 function setProductType(type) {
-  if (type !== "food" && type !== "drink") return;
-  currentProductType = type;
-  typeToggleButtons.forEach((btn) => btn.classList.toggle("tab-btn-active", btn.dataset.type === type));
-  fillCategorySelect();
+  currentProductType = type === "drink" ? "drink" : "food";
+
+  if (typeFoodBtn && typeDrinkBtn) {
+    typeFoodBtn.classList.toggle("tab-btn-active", currentProductType === "food");
+    typeDrinkBtn.classList.toggle("tab-btn-active", currentProductType === "drink");
+  }
+
+  const cats = currentProductType === "drink" ? defaultDrinkCategories : defaultFoodCategories;
+
+  if (itemCategorySelect) {
+    itemCategorySelect.innerHTML = "";
+    const optEmpty = document.createElement("option");
+    optEmpty.value = "";
+    optEmpty.textContent = "Kategorie wählen…";
+    itemCategorySelect.appendChild(optEmpty);
+
+    cats
+      .filter((c) => c !== "Alle")
+      .forEach((c) => {
+        const o = document.createElement("option");
+        o.value = c;
+        o.textContent = c;
+        itemCategorySelect.appendChild(o);
+      });
+  }
 }
 
-/* =========================
-   RESTAURANT OPEN
-   ========================= */
-async function openRestaurantById() {
-  const restRef = doc(db, "restaurants", restaurantId);
-  const snap = await getDoc(restRef);
+/* =========================================================
+   ABSCHNITT 5 — RESTAURANT LADEN
+   ========================================================= */
+
+async function openRestaurantById(rid) {
+  const refRest = doc(db, "restaurants", rid);
+  const snap = await getDoc(refRest);
   if (!snap.exists()) throw new Error("Restaurant nicht gefunden.");
 
   const data = snap.data() || {};
-  if (adminRestLabel) adminRestLabel.textContent = data.restaurantName || restaurantId;
+  if (adminRestLabel) adminRestLabel.textContent = data.restaurantName || rid;
 
-  if (menuEditorCard) menuEditorCard.style.display = "block";
-  if (menuListCard) menuListCard.style.display = "block";
-  if (ordersCard) ordersCard.style.display = "block";
-
+  showCards(true);
   await loadMenuItems();
   await loadTodayOrders();
 }
 
-/* =========================
-   MENU + PUBLIC SYNC
-   ========================= */
+/* =========================================================
+   ABSCHNITT 6 — PUBLIC MENU SYNC
+   ========================================================= */
+
 function inferTypeForItem(item) {
   if (item.type === "food" || item.type === "drink") return item.type;
   if (defaultDrinkCategories.includes(item.category)) return "drink";
@@ -194,16 +210,25 @@ function buildPublicMenuPayload(items) {
 }
 
 async function syncPublicMenuFromCurrentItems() {
+  if (!currentRestaurantId) return;
   try {
     const payload = buildPublicMenuPayload(currentItems);
-    await setDoc(doc(db, "restaurants", restaurantId, "public", "menu"), payload, { merge: true });
+    const publicMenuRef = doc(db, "restaurants", currentRestaurantId, "public", "menu");
+    await setDoc(publicMenuRef, payload, { merge: true });
   } catch (err) {
     console.error("Public menu sync failed:", err);
   }
 }
 
+/* =========================================================
+   ABSCHNITT 7 — MENÜ LADEN / RENDER
+   ========================================================= */
+
 async function loadMenuItems() {
-  const menuCol = collection(doc(db, "restaurants", restaurantId), "menuItems");
+  if (!currentRestaurantId) return;
+
+  const restRef = doc(db, "restaurants", currentRestaurantId);
+  const menuCol = collection(restRef, "menuItems");
   const snap = await getDocs(menuCol);
 
   currentItems = [];
@@ -276,40 +301,38 @@ function renderItemList() {
     const actions = document.createElement("div");
     actions.className = "menu-item-actions";
 
-    const available = item.available !== false;
+    const btnEdit = document.createElement("button");
+    btnEdit.className = "btn btn-ghost";
+    btnEdit.type = "button";
+    btnEdit.textContent = "Bearbeiten";
+    btnEdit.addEventListener("click", () => startEditItem(item));
 
-    const availBtn = document.createElement("button");
-    availBtn.className = "btn btn-ghost btn-small";
-    availBtn.textContent = available ? "Verfügbar" : "Ausgeblendet";
-    availBtn.style.opacity = available ? "1" : "0.6";
-    availBtn.addEventListener("click", () => toggleItemAvailability(item.id, available));
+    const btnAvail = document.createElement("button");
+    btnAvail.className = "btn btn-ghost";
+    btnAvail.type = "button";
+    btnAvail.textContent = item.available === false ? "Nicht verfügbar" : "Verfügbar";
+    btnAvail.addEventListener("click", () => toggleItemAvailability(item.id, item.available !== false));
 
-    const editBtn = document.createElement("button");
-    editBtn.className = "btn btn-primary btn-small";
-    editBtn.textContent = "Bearbeiten";
-    editBtn.addEventListener("click", () => startEditItem(item));
+    const btnDel = document.createElement("button");
+    btnDel.className = "btn btn-ghost";
+    btnDel.type = "button";
+    btnDel.textContent = "Löschen";
+    btnDel.addEventListener("click", () => deleteItem(item.id));
 
-    const delBtn = document.createElement("button");
-    delBtn.className = "btn btn-ghost btn-small";
-    delBtn.textContent = "Löschen";
-    delBtn.addEventListener("click", () => deleteItem(item.id));
-
-    actions.appendChild(availBtn);
-    actions.appendChild(editBtn);
-    actions.appendChild(delBtn);
-
+    actions.appendChild(btnEdit);
+    actions.appendChild(btnAvail);
+    actions.appendChild(btnDel);
     row.appendChild(actions);
+
     return row;
   }
 
-  function renderGroup(label, map) {
-    if (!map || map.size === 0) return;
+  function renderGroup(title, map) {
+    if (!map.size) return;
 
-    const groupTitle = document.createElement("div");
-    groupTitle.className = "info";
-    groupTitle.style.fontWeight = "600";
-    groupTitle.style.marginTop = itemList.children.length ? "16px" : "0";
-    groupTitle.textContent = label;
+    const groupTitle = document.createElement("h3");
+    groupTitle.style.margin = "14px 0 6px";
+    groupTitle.textContent = title;
     itemList.appendChild(groupTitle);
 
     const sortedCats = Array.from(map.keys()).sort((a, b) => a.localeCompare(b, "de"));
@@ -328,19 +351,23 @@ function renderItemList() {
   renderGroup("Getränke", drinkMap);
 }
 
+/* =========================================================
+   ABSCHNITT 8 — CRUD
+   ========================================================= */
+
 function resetForm() {
   currentEditItemId = null;
   setStatus(adminItemStatus, "", null);
 
-  if (itemCategoryCustomInput) itemCategoryCustomInput.value = "";
-  if (itemNameInput) itemNameInput.value = "";
-  if (itemLongDescInput) itemLongDescInput.value = "";
-  if (itemDescInput) itemDescInput.value = "";
-  if (itemPriceInput) itemPriceInput.value = "";
-  if (itemImagesInput) itemImagesInput.value = "";
+  itemCategoryCustomInput.value = "";
+  itemNameInput.value = "";
+  itemLongDescInput.value = "";
+  itemDescInput.value = "";
+  itemPriceInput.value = "";
+  itemImagesInput.value = "";
 
   setProductType("food");
-  if (itemSaveBtn) itemSaveBtn.textContent = "Produkt speichern";
+  itemSaveBtn.textContent = "Produkt speichern";
 }
 
 function startEditItem(item) {
@@ -353,37 +380,38 @@ function startEditItem(item) {
   const categories = type === "drink" ? defaultDrinkCategories : defaultFoodCategories;
 
   if (item.category && categories.includes(item.category)) {
-    if (itemCategorySelect) itemCategorySelect.value = item.category;
-    if (itemCategoryCustomInput) itemCategoryCustomInput.value = "";
+    itemCategorySelect.value = item.category;
+    itemCategoryCustomInput.value = "";
   } else {
-    if (itemCategorySelect) itemCategorySelect.value = "";
-    if (itemCategoryCustomInput) itemCategoryCustomInput.value = item.category || "";
+    itemCategorySelect.value = "";
+    itemCategoryCustomInput.value = item.category || "";
   }
 
-  if (itemNameInput) itemNameInput.value = item.name || "";
-  if (itemLongDescInput) itemLongDescInput.value = item.longDescription || "";
-  if (itemDescInput) itemDescInput.value = item.description || "";
-  if (itemPriceInput) itemPriceInput.value = typeof item.price === "number" ? String(item.price) : "";
+  itemNameInput.value = item.name || "";
+  itemLongDescInput.value = item.longDescription || "";
+  itemDescInput.value = item.description || "";
+  itemPriceInput.value = typeof item.price === "number" ? String(item.price) : "";
 
   const images = Array.isArray(item.imageUrls) ? item.imageUrls : [];
-  if (itemImagesInput) itemImagesInput.value = images.length ? images.join("\n") : (item.imageUrl || "");
+  itemImagesInput.value = images.length ? images.join("\n") : (item.imageUrl || "");
 
-  if (itemSaveBtn) itemSaveBtn.textContent = "Produkt aktualisieren";
+  itemSaveBtn.textContent = "Produkt aktualisieren";
 }
 
 async function saveItem() {
+  if (!currentRestaurantId) return;
+
   setStatus(adminItemStatus, "", null);
 
-  const selectedCat = itemCategorySelect?.value || "";
-  const customCat = (itemCategoryCustomInput?.value || "").trim();
+  const selectedCat = itemCategorySelect.value || "";
+  const customCat = (itemCategoryCustomInput.value || "").trim();
   const category = customCat || selectedCat;
 
-  const name = (itemNameInput?.value || "").trim();
-  const longDesc = (itemLongDescInput?.value || "").trim();
-  const desc = (itemDescInput?.value || "").trim();
-  const priceStr = (itemPriceInput?.value || "").trim();
-
-  const imagesRaw = (itemImagesInput?.value || "")
+  const name = (itemNameInput.value || "").trim();
+  const longDesc = (itemLongDescInput.value || "").trim();
+  const desc = (itemDescInput.value || "").trim();
+  const priceStr = (itemPriceInput.value || "").trim();
+  const imagesRaw = (itemImagesInput.value || "")
     .split("\n")
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
@@ -395,8 +423,9 @@ async function saveItem() {
   if (isNaN(price)) return setStatus(adminItemStatus, "Bitte einen gültigen Preis eingeben.", "err");
 
   const primaryImageUrl = imagesRaw[0] || "";
+  const restRef = doc(db, "restaurants", currentRestaurantId);
+  const menuCol = collection(restRef, "menuItems");
 
-  const menuCol = collection(doc(db, "restaurants", restaurantId), "menuItems");
   const data = {
     type: currentProductType,
     category,
@@ -410,7 +439,7 @@ async function saveItem() {
   };
 
   try {
-    if (itemSaveBtn) itemSaveBtn.disabled = true;
+    itemSaveBtn.disabled = true;
 
     if (currentEditItemId) {
       await updateDoc(doc(menuCol, currentEditItemId), data);
@@ -426,13 +455,15 @@ async function saveItem() {
     console.error(err);
     setStatus(adminItemStatus, "Fehler: " + (err?.message || String(err)), "err");
   } finally {
-    if (itemSaveBtn) itemSaveBtn.disabled = false;
+    itemSaveBtn.disabled = false;
   }
 }
 
 async function toggleItemAvailability(itemId, currentlyAvailable) {
+  if (!currentRestaurantId || !itemId) return;
   try {
-    const menuCol = collection(doc(db, "restaurants", restaurantId), "menuItems");
+    const restRef = doc(db, "restaurants", currentRestaurantId);
+    const menuCol = collection(restRef, "menuItems");
     await updateDoc(doc(menuCol, itemId), { available: !currentlyAvailable });
     await loadMenuItems();
   } catch (err) {
@@ -441,9 +472,12 @@ async function toggleItemAvailability(itemId, currentlyAvailable) {
 }
 
 async function deleteItem(itemId) {
+  if (!currentRestaurantId || !itemId) return;
   if (!window.confirm("Produkt wirklich löschen?")) return;
+
   try {
-    const menuCol = collection(doc(db, "restaurants", restaurantId), "menuItems");
+    const restRef = doc(db, "restaurants", currentRestaurantId);
+    const menuCol = collection(restRef, "menuItems");
     await deleteDoc(doc(menuCol, itemId));
     await loadMenuItems();
   } catch (err) {
@@ -451,10 +485,12 @@ async function deleteItem(itemId) {
   }
 }
 
-/* =========================
-   TODAY ORDERS
-   ========================= */
+/* =========================================================
+   ABSCHNITT 9 — HEUTIGE BESTELLUNGEN
+   ========================================================= */
+
 async function loadTodayOrders() {
+  if (!currentRestaurantId) return;
   if (adminOrdersList) adminOrdersList.innerHTML = "";
 
   const start = new Date();
@@ -462,7 +498,9 @@ async function loadTodayOrders() {
   const end = new Date(start);
   end.setDate(end.getDate() + 1);
 
-  const ordersCol = collection(doc(db, "restaurants", restaurantId), "orders");
+  const restRef = doc(db, "restaurants", currentRestaurantId);
+  const ordersCol = collection(restRef, "orders");
+
   const qy = query(
     ordersCol,
     where("createdAt", ">=", start),
@@ -472,6 +510,7 @@ async function loadTodayOrders() {
   );
 
   const snap = await getDocs(qy);
+
   const ordersToday = [];
   snap.forEach((d) => ordersToday.push({ id: d.id, ...(d.data() || {}) }));
 
@@ -485,18 +524,15 @@ async function loadTodayOrders() {
 
   ordersToday.forEach((order) => {
     const row = document.createElement("div");
-    row.className = "list-item-row";
+    row.className = "menu-item";
 
     const left = document.createElement("div");
-    left.style.display = "flex";
-    left.style.flexDirection = "column";
 
-    const title = document.createElement("span");
-    title.style.fontSize = "0.85rem";
-    title.style.fontWeight = "600";
+    const title = document.createElement("div");
+    title.className = "menu-item-name";
 
     const timeStr =
-      order.createdAt && order.createdAt.toDate
+      order.createdAt?.toDate
         ? order.createdAt.toDate().toLocaleTimeString("de-AT", { hour: "2-digit", minute: "2-digit" })
         : "";
 
@@ -513,45 +549,59 @@ async function loadTodayOrders() {
     const right = document.createElement("div");
     right.style.fontSize = "0.82rem";
     right.style.fontWeight = "600";
+
     const total = (order.items || []).reduce((sum, i) => sum + (i.price || 0) * (i.qty || 0), 0);
     right.textContent = total.toFixed(2) + " €";
 
     row.appendChild(left);
     row.appendChild(right);
+
     adminOrdersList?.appendChild(row);
   });
 }
 
-/* =========================
-   LOGOUT
-   ========================= */
+/* =========================================================
+   ABSCHNITT 10 — LOGOUT
+   ========================================================= */
+
 async function doLogout() {
   try { await signOut(auth); } catch {}
   goLogin("signed_out");
 }
-ownerLogoutBtn?.addEventListener("click", doLogout);
 
-/* =========================
-   EVENTS
-   ========================= */
+/* =========================================================
+   ABSCHNITT 11 — EVENTS
+   ========================================================= */
+
 typeFoodBtn?.addEventListener("click", () => setProductType("food"));
 typeDrinkBtn?.addEventListener("click", () => setProductType("drink"));
+
 itemSaveBtn?.addEventListener("click", saveItem);
 itemResetBtn?.addEventListener("click", resetForm);
 
-/* =========================
-   INIT (ONE SINGLE FLOW)
-   ========================= */
+ownerLogoutBtn?.addEventListener("click", doLogout);
+
+/* =========================================================
+   ABSCHNITT 12 — BOOT (ein einziges Gate, kein Chaos)
+   ========================================================= */
+
 setProductType("food");
+showCards(false);
 showGate("Checking session…");
 
-setPersistence(auth, browserLocalPersistence).catch(() => {});
+let gateDone = false;
 
 onAuthStateChanged(auth, async (user) => {
-  try {
-    if (!restaurantId) return goLogin("missing_r");
-    if (!user) return goLogin("signed_out");
+  if (gateDone) return;
+  gateDone = true;
 
+  // wir sind im admin -> lock weg
+  sessionStorage.removeItem(OWNER_LOCK);
+
+  if (!currentRestaurantId) return goLogin("missing_r");
+  if (!user) return goLogin("signed_out");
+
+  try {
     showGate("Checking access…");
     const ok = await hasOwnerAccess(user.uid);
     if (!ok) {
@@ -565,8 +615,9 @@ onAuthStateChanged(auth, async (user) => {
     }
     if (ownerLogoutBtn) ownerLogoutBtn.style.display = "inline-block";
 
-    showGate("Loading…");
-    await openRestaurantById();
+    showGate("Loading restaurant…");
+    await openRestaurantById(currentRestaurantId);
+
     hideGate();
   } catch (err) {
     console.error(err);

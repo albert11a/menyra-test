@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>MENYRA – QR Menü & Bestellungen</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="stylesheet" href="../shared/styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f3f4f6" />
+  <link rel="stylesheet" href="./shared/styles.css">
 </head>
 <body>
   <main class="page">
@@ -15,7 +16,6 @@
       </div>
     </header>
 
-    <!-- Hero / Vorstellung -->
     <section class="card">
       <h1>Eine App – alle Bestellungen im Griff</h1>
       <p>
@@ -33,123 +33,45 @@
       </p>
     </section>
 
-    <!-- NEU: System-Zugänge & Buttons -->
     <section class="card">
       <h2>MENYRA Bereiche</h2>
       <p class="info">
         Hier kommst du direkt in alle wichtigen Bereiche des Systems.
-        Später kannst du diese Links als eigene Buttons oder Menü nutzen.
       </p>
 
       <div class="list" style="margin-top:10px;">
-        <!-- Superadmin -->
         <div class="list-item-row">
           <span>
             <strong>MENYRA Admin (Superadmin)</strong><br />
-            <span class="info">Hier legst du Kunden/Lokale an, siehst QR-Links & Codes.</span>
+            <span class="info">Kunden/Lokale anlegen, QR-Links & Codes.</span>
           </span>
-          <a href="menyra.html" class="btn btn-primary btn-small">
-            Öffnen
-          </a>
+          <a href="menyra.html" class="btn btn-primary btn-small">Öffnen</a>
         </div>
 
-        <!-- Restaurant-Admin -->
         <div class="list-item-row">
           <span>
             <strong>Restaurant Admin</strong><br />
-            <span class="info">
-              Bereich für deine Kunden (Inhaber), um die Speisekarte zu pflegen.
-            </span>
+            <span class="info">Für Kunden (Inhaber) – Speisekarte pflegen.</span>
           </span>
-          <a href="admin.html" class="btn btn-ghost btn-small">
-            Öffnen
-          </a>
+          <a href="admin.html" class="btn btn-ghost btn-small">Öffnen</a>
         </div>
 
-        <!-- Kellner / Kamarieri -->
         <div class="list-item-row">
           <span>
             <strong>Kamarieri / Kellner</strong><br />
-            <span class="info">
-              Kellner melden sich mit Kellner-Code an und sehen alle Bestellungen in Echtzeit.
-            </span>
+            <span class="info">Bestellungen live sehen.</span>
           </span>
-          <a href="kamarieri.html" class="btn btn-ghost btn-small">
-            Öffnen
-          </a>
+          <a href="kamarieri.html" class="btn btn-ghost btn-small">Öffnen</a>
         </div>
 
-        <!-- Gäste / QR Demo -->
         <div class="list-item-row">
           <span>
             <strong>Gäste-Ansicht (QR-Demo)</strong><br />
-            <span class="info">
-              Beispiel-Link für Gäste. In echt wird dieser Link im QR-Code verwendet.
-            </span>
+            <span class="info">Beispiel-Link für Gäste (QR).</span>
           </span>
-          <!-- Demo mit Beispiel-Parametern – ID & Tisch kannst du später anpassen -->
-          <a href="karte.html?r=demo-lokal&t=T1" class="btn btn-ghost btn-small">
-            Demo öffnen
-          </a>
+          <a href="karte.html?r=demo-lokal&t=T1" class="btn btn-ghost btn-small">Demo öffnen</a>
         </div>
       </div>
-    </section>
-
-    <!-- Wie funktioniert MENYRA? -->
-    <section class="card">
-      <h2>Wie funktioniert MENYRA?</h2>
-      <div class="list">
-        <div>1️⃣ Du legst das Lokal im MENYRA Admin an.</div>
-        <div>2️⃣ MENYRA erzeugt QR-Links für jeden Tisch.</div>
-        <div>3️⃣ Gäste scannen den QR und bestellen direkt vom Handy.</div>
-        <div>4️⃣ Kellner sehen live alle Bestellungen und den Tisch.</div>
-        <div>5️⃣ Der Chef ändert jederzeit Preise & Speisekarte.</div>
-      </div>
-    </section>
-
-    <!-- Für Gäste -->
-    <section class="card">
-      <h2>Für deine Gäste</h2>
-      <p>Moderne, mobile Speisekarte – ohne App-Download.</p>
-      <div class="list">
-        <div>📱 Klar strukturierte Karte mit Kategorien</div>
-        <div>🛒 Bestellung in wenigen Klicks</div>
-        <div>🧾 Tischnummer automatisch in der Bestellung</div>
-      </div>
-    </section>
-
-    <!-- Für Kellner -->
-    <section class="card">
-      <h2>Für deine Kellner</h2>
-      <p>Kellner melden sich mit einem Code an und sehen:</p>
-      <div class="list">
-        <div>🔔 Neue Bestellungen in Echtzeit</div>
-        <div>🧍 Tisch & Uhrzeit jeder Bestellung</div>
-        <div>⚙️ Status: neu · in Arbeit · serviert</div>
-      </div>
-    </section>
-
-    <!-- Für Betreiber -->
-    <section class="card">
-      <h2>Für dich als Betreiber</h2>
-      <p>Als MENYRA-Betreiber hast du ein eigenes Admin-Panel:</p>
-      <div class="list">
-        <div>🏪 Lokale anlegen & Codes generieren</div>
-        <div>🧾 QR-Links für Tische erzeugen</div>
-        <div>📂 Speisekarten-Verwaltung für deine Kunden</div>
-      </div>
-    </section>
-
-    <!-- Kontakt -->
-    <section class="card">
-      <h2>Kontakt</h2>
-      <p>
-        Interesse an MENYRA für dein Lokal? Du kannst später hier noch ein
-        Kontaktformular einbauen – aktuell reicht z.B. eine E-Mail-Adresse oder WhatsApp.
-      </p>
-      <p class="info">
-        Beispiel: „Schreib uns auf WhatsApp: +383 …“ – Text kannst du später selbst anpassen.
-      </p>
     </section>
   </main>
 </body>
