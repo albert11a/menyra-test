@@ -175,6 +175,9 @@
               <div class="m-page-title">Meine Kunden</div>
               <div class="m-page-sub">Liste deiner zugewiesenen Kunden (Dummy).</div>
             </div>
+            <div class="m-page-actions">
+              <button id="staffCustomersNewBtn" class="m-btn" type="button">+ Neuer Kunde</button>
+            </div>
           </div>
 
           <div class="m-card">
@@ -186,10 +189,10 @@
               <div class="m-input-group">
                 <label>Status</label>
                 <select id="staffCustomersStatusFilter" class="m-select">
-                  <option value="all">Alle</option>
-                  <option value="Setup">Setup</option>
-                  <option value="Aktiv">Aktiv</option>
-                  <option value="Test">Test</option>
+                  <option>Alle</option>
+                  <option>In Umsetzung</option>
+                  <option>Aktiv</option>
+                  <option>Pause</option>
                 </select>
               </div>
             </div>
@@ -558,6 +561,47 @@
   </div>
 
 
-  <script type="module" src="./staff-app.js"></script>
+  
+
+  <!-- MODAL: CUSTOMER CREATE (Dummy) -->
+  <div id="staffCustomerCreateOverlay" class="m-overlay is-hidden">
+    <div class="m-modal">
+      <div class="m-modal-head">
+        <div>
+          <div class="m-modal-title">Neuer Kunde (Draft)</div>
+          <div class="m-modal-sub">Wird als „In Umsetzung“ gespeichert und ist sofort im CEO sichtbar (Dummy: localStorage).</div>
+        </div>
+        <button id="staffCustomerCreateClose" class="m-ghost-btn" type="button">✕</button>
+      </div>
+      <div class="m-modal-body">
+        <div class="m-form-grid">
+          <div class="m-input-group" style="grid-column:1/-1">
+            <label>Name</label>
+            <input id="staffCustomerCreateName" class="m-input" placeholder="z.B. Café Aroma"/>
+          </div>
+          <div class="m-input-group">
+            <label>Typ</label>
+            <select id="staffCustomerCreateType" class="m-select">
+              <option value="gastro">Gastro (Restaurant/Café/Club)</option>
+              <option value="fastfood">Fastfood (Pickup)</option>
+              <option value="hotel">Hotel</option>
+              <option value="motel">Motel</option>
+              <option value="ecommerce">E-Commerce Shop</option>
+              <option value="service">Dienstleistung</option>
+            </select>
+          </div>
+          <div class="m-input-group">
+            <label>Stadt</label>
+            <input id="staffCustomerCreateCity" class="m-input" placeholder="z.B. Prishtina"/>
+          </div>
+        </div>
+      </div>
+      <div class="m-modal-footer">
+        <button id="staffCustomerCreateSave" class="m-btn" type="button">Kunde erstellen</button>
+        <button id="staffCustomerCreateCancel" class="m-ghost-btn" type="button">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+<script type="module" src="./staff-app.js"></script>
 </body>
 </html>

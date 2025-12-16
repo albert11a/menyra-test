@@ -3,6 +3,8 @@
    Step: DUMMY-P1.4 — Leads CRM Screens (Dummy)
    ========================================================= */
 
+import { bootDashboard } from "../shared/ui.js";
+
 function $(id){ return document.getElementById(id); }
 function showOverlay(el){ if (el) el.classList.remove("is-hidden"); }
 function hideOverlay(el){ if (el) el.classList.add("is-hidden"); }
@@ -34,95 +36,6 @@ const DUMMY_LEADS = [
   { id:"lead_009", name:"Restaurant N’Klinë", type:"restaurant", city:"Peja", phone:"+383 44 909 808", note:"Küche Panel wichtig", status:"demo", next:"Sa 15:00 Follow-up", ownerType:"staff", ownerId:"staff_001", updatedAt: 2 },
   { id:"lead_010", name:"Hotel CityLine", type:"hotel", city:"Prishtina", phone:"+383 45 222 111", note:"Multi-Location später", status:"new", next:"Di 16:00 Nachricht", ownerType:"staff", ownerId:"staff_002", updatedAt: 1 },
 ];
-
-
-/* =========================================================
-   DUMMY STORAGE — Leads + Customer Assignments (P1.6)
-   ========================================================= */
-
-const LEADS_STORE_KEY = "menyra_dummy_leads_v1";
-const CUSTOMERS_STORE_KEY = "menyra_dummy_customers_v1";
-const CUSTOMER_ASSIGN_KEY = "menyra_dummy_customer_assignments_v1";
-
-function hydrateLeadsFromStorage(){
-  try{
-    const raw = localStorage.getItem(LEADS_STORE_KEY);
-    if (!raw){
-      // Seed store once so Staff/Admin share the same dataset
-      persistLeadsToStorage();
-      return;
-    }
-    const arr = JSON.parse(raw);
-    if (!Array.isArray(arr)) return;
-    DUMMY_LEADS.splice(0, DUMMY_LEADS.length, ...arr);
-  }catch(_){}
-}
-function persistLeadsToStorage(){
-  try{ localStorage.setItem(LEADS_STORE_KEY, JSON.stringify(DUMMY_LEADS)); }catch(_){}
-}
-
-function loadCustomerAssignments(){
-  try{ return JSON.parse(localStorage.getItem(CUSTOMER_ASSIGN_KEY) || "{}") || {}; }
-  catch(_){ return {}; }
-}
-function persistCustomerAssignments(map){
-  try{ localStorage.setItem(CUSTOMER_ASSIGN_KEY, JSON.stringify(map||{})); }catch(_){}
-}
-function setCustomerAssignment(customerId, staffIdOrNone){
-  if (!customerId) return;
-  const map = loadCustomerAssignments();
-  if (!staffIdOrNone || staffIdOrNone === "none") delete map[customerId];
-  else map[customerId] = staffIdOrNone;
-  persistCustomerAssignments(map);
-}
-function getCustomerAssignedStaffId(customerId){
-  const map = loadCustomerAssignments();
-  return map[customerId] || "none";
-}
-
-function bootstrapCustomersFromTable(){
-  const out = [];
-  document.querySelectorAll('section.m-view[data-view="customers"] table.m-table tbody tr').forEach(tr=>{
-    const btn = tr.querySelector('[data-view-target="customer_detail"]');
-    if (!btn) return;
-    const c = parseCustomerFromRow(btn);
-    if (c && c.id && !out.some(x=>x.id===c.id)) out.push(c);
-  });
-  try{ localStorage.setItem(CUSTOMERS_STORE_KEY, JSON.stringify(out)); }catch(_){}
-}
-
-function updateCustomerAssignmentUI(){
-  const c = loadSelectedCustomer();
-  if (!c) return;
-
-  const staffId = getCustomerAssignedStaffId(c.id);
-  const staffObj = state.staff.find(s=>s.id===staffId);
-  const label = staffObj ? staffObj.name : (staffId === "none" ? "—" : staffId);
-
-  $("cdAssignedStaff") && ($("cdAssignedStaff").textContent = label);
-
-  const sel = $("cdAssignStaffSelect");
-  if (!sel) return;
-
-  const opts = ['<option value="none">— (nicht zugewiesen)</option>']
-    .concat(state.staff.map(s =>
-      `<option value="${escapeAttr(s.id)}">${escapeHtml(s.name)} (${escapeHtml(s.region||"")})</option>`
-    ));
-
-  sel.innerHTML = opts.join("");
-  sel.value = staffId;
-
-  if (!sel.dataset.bound){
-    sel.dataset.bound = "1";
-    sel.addEventListener("change", ()=>{
-      const cc = loadSelectedCustomer();
-      if (!cc) return;
-      setCustomerAssignment(cc.id, sel.value || "none");
-      updateCustomerAssignmentUI();
-    });
-  }
-}
-
 
 const DUMMY_DEMOS = [
   { id:"demo_001", rid:"demo_cafe", name:"Café Aroma – Demo", type:"cafe", city:"Prishtina", status:"active", lang:"de", clicks: 128, updatedAt: 10 },
@@ -309,6 +222,142 @@ function bindStaffView(){
 }
 
 /* =========================================================
+   GLOBAL STORE: CUSTOMERS + ASSIGNMENTS (Dummy localStorage)
+   - wird später 1:1 durch Firestore ersetzt
+   ========================================================= */
+
+const CUSTOMERS_STORE_KEY = "menyra_dummy_customers_store_v1";
+const CUSTOMER_ASSIGN_KEY = "menyra_dummy_assignments_customers_v1";
+
+const SEED_CUSTOMERS = [
+  { id:"demo_gastro", name:"Shpija e Vjetër", type:"gastro", city:"Prishtinë", status:"Aktiv", createdByType:"ceo", createdById:"ceo" },
+  { id:"demo_fastfood", name:"HEBS Fastfood", type:"fastfood", city:"Prizren", status:"Aktiv", createdByType:"ceo", createdById:"ceo" },
+  { id:"demo_hotel", name:"Hotel Center", type:"hotel", city:"Tirana", status:"Test", createdByType:"ceo", createdById:"ceo" },
+  { id:"demo_motel", name:"Motel Secret", type:"motel", city:"Ferizaj", status:"Test", createdByType:"ceo", createdById:"ceo" },
+  { id:"demo_shop", name:"Shop Beauty", type:"ecommerce", city:"Prishtinë", status:"Test", createdByType:"ceo", createdById:"ceo" },
+];
+
+function loadCustomersStore(){
+  try{ return JSON.parse(localStorage.getItem(CUSTOMERS_STORE_KEY) || "[]"); }catch(_){ return []; }
+}
+function saveCustomersStore(list){
+  localStorage.setItem(CUSTOMERS_STORE_KEY, JSON.stringify(list || []));
+}
+function loadCustomerAssignments(){
+  try{ return JSON.parse(localStorage.getItem(CUSTOMER_ASSIGN_KEY) || "{}"); }catch(_){ return {}; }
+}
+function saveCustomerAssignments(map){
+  localStorage.setItem(CUSTOMER_ASSIGN_KEY, JSON.stringify(map || {}));
+}
+
+function ensureSeedCustomers(){
+  const cur = loadCustomersStore();
+  if (cur.length) return;
+  saveCustomersStore(SEED_CUSTOMERS);
+  // Seed assignments (nur Dummy, damit Staff auch was sieht)
+  const seedAssign = { demo_gastro:"staff_001", demo_fastfood:"staff_001", demo_hotel:"staff_002" };
+  saveCustomerAssignments(seedAssign);
+}
+
+function customerTypeLabel(t){
+  const map = { gastro:"Gastro", restaurant:"Restaurant", cafe:"Café", club:"Club", fastfood:"Pickup", hotel:"Hotel", motel:"Motel", ecommerce:"Online Shop", service:"Dienstleistung" };
+  return map[t] || t || "—";
+}
+
+function findCustomerById(id){
+  if (!id) return null;
+  ensureSeedCustomers();
+  const list = loadCustomersStore();
+  return list.find(c => c.id === id) || null;
+}
+
+function getAssignedStaffId(customerId){
+  const map = loadCustomerAssignments();
+  return map[customerId] || null;
+}
+
+function setAssignedStaffId(customerId, staffId){
+  if (!customerId) return;
+  const map = loadCustomerAssignments();
+  if (staffId) map[customerId] = staffId; else delete map[customerId];
+  saveCustomerAssignments(map);
+
+  // keep it also inside customer doc (nice for later Firestore)
+  const list = loadCustomersStore();
+  const idx = list.findIndex(c => c.id === customerId);
+  if (idx !== -1){
+    list[idx].assignedStaffId = staffId || null;
+    saveCustomersStore(list);
+  }
+}
+
+function staffNameById(staffId){
+  if (!staffId) return "—";
+  const s = (state.staff || []).find(x => x.id === staffId);
+  return s ? s.name : staffId;
+}
+
+function createdByLabel(c){
+  if (!c) return "—";
+  if (c.createdByType === "ceo") return "CEO";
+  if (c.createdByType === "staff") return staffNameById(c.createdById);
+  return c.createdById || "—";
+}
+
+function statusBadgeHtml(s){
+  const v = String(s||"").toLowerCase();
+  if (v in {aktiv:1, active:1}) return '<span class="m-status m-status--ok">Aktiv</span>';
+  if (v in {pause:1, pausiert:1}) return '<span class="m-status m-status--bad">Pause</span>';
+  if (v in {test:1, demo:1}) return '<span class="m-status m-status--muted">Test</span>';
+  return '<span class="m-status">In Umsetzung</span>';
+}
+
+function collectCustomerIdsFromTable(tbody){
+  const ids = new Set();
+  if (!tbody) return ids;
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    const did = tr.getAttribute('data-customer-id');
+    if (did) ids.add(did);
+    const meta = tr.querySelector('.m-table-meta')?.textContent || '';
+    const parts = meta.split('•');
+    const id = (parts.length>=2 ? parts[1] : meta).trim();
+    if (id) ids.add(id);
+  });
+  return ids;
+}
+
+function renderStoredCustomersIntoCeoTable(){
+  ensureSeedCustomers();
+  const tbody = document.querySelector('[data-view="customers"] table.m-table tbody');
+  if (!tbody) return;
+
+  const existing = collectCustomerIdsFromTable(tbody);
+  const list = loadCustomersStore();
+  const extras = list.filter(c => c && c.id && !existing.has(c.id));
+  if (!extras.length) return;
+
+  const rowsHtml = extras.map(c=>{
+    const meta = `${escapeHtml(c.city||"—")} • ${escapeHtml(c.id)}`;
+    return `
+      <tr data-customer-id="${escapeAttr(c.id)}">
+        <td><b>${escapeHtml(c.name||"—")}</b><div class="m-table-meta">${meta}</div></td>
+        <td>${escapeHtml(customerTypeLabel(c.type))}</td>
+        <td>${escapeHtml(c.status||"In Umsetzung")}</td>
+        <td><span class="m-badge">—</span></td>
+        <td><span class="m-badge">—</span></td>
+        <td style="text-align:right">
+          <button class="m-ghost-btn" type="button" data-view-target="customer_detail" data-customer-id="${escapeAttr(c.id)}">Öffnen</button>
+        </td>
+      </tr>`;
+  }).join('');
+
+  tbody.insertAdjacentHTML('afterbegin', rowsHtml);
+  // open buttons need binding
+  bindCustomerOpenButtons();
+}
+
+
+/* =========================================================
    CUSTOMER SELECT (Dummy)
    ========================================================= */
 
@@ -319,26 +368,25 @@ function parseCustomerFromRow(btn){
   const tds = tr.querySelectorAll("td");
   const name = (tds[0]?.querySelector("b")?.textContent || tds[0]?.textContent || "—").trim();
   const type = (tds[1]?.textContent || "—").trim();
-  const statusText = (tds[2]?.textContent || "—").trim();
 
   const meta = tds[0]?.querySelector(".m-table-meta")?.textContent || "";
   // Format: "City • demo_id"
+  const dataId = tr.getAttribute("data-customer-id") || btn.getAttribute("data-customer-id");
   let id = "—";
-  let city = "—";
-  const parts = meta.split("•").map(x=>x.trim()).filter(Boolean);
-  if (parts.length >= 2){
-    city = parts[0] || "—";
-    id = parts[1] || "—";
-  }else if (parts.length === 1){
-    city = parts[0] || "—";
-  }
+  const parts = meta.split("•");
+  if (parts.length >= 2) id = parts[1].trim();
+  else if (meta.trim()) id = meta.trim();
 
-  return { id, name, type, city, status: statusText };
+  if (dataId) id = dataId;
+
+  return { id, name, type };
 }
 
 function saveSelectedCustomer(c){
   if (!c) return;
-  localStorage.setItem("menyra_dummy_selected_customer", JSON.stringify(c));
+  // If we have a richer object in the store, save that instead
+  const full = findCustomerById(c.id) || c;
+  localStorage.setItem("menyra_dummy_selected_customer", JSON.stringify(full));
 }
 
 function loadSelectedCustomer(){
@@ -356,9 +404,44 @@ function applyCustomerDetailHeader(){
   $("cdName") && ($("cdName").textContent = c.name || "—");
   $("cdId") && ($("cdId").textContent = c.id || "—");
   $("cdType") && ($("cdType").textContent = c.type || "—");
-  updateCustomerAssignmentUI();
+  // createdBy + assignment (Dummy)
+  const full = findCustomerById(c.id) || c;
+  const createdByText = createdByLabel(full);
+  const assignedId = getAssignedStaffId(c.id) || full.assignedStaffId || null;
+  const assignedText = assignedId ? staffNameById(assignedId) : "—";
+
+  $("cdCreatedBy") && ($("cdCreatedBy").textContent = createdByText);
+  $("cdAssignedStaff") && ($("cdAssignedStaff").textContent = assignedText);
+
+  // fill assignment select
+  const sel = $("cdAssignStaffSelect");
+  if (sel){
+    const curVal = assignedId || "";
+    // build options only once
+    if (!sel.dataset.filled){
+      sel.innerHTML = '<option value="">—</option>' + state.staff.map(s=>`<option value="${escapeAttr(s.id)}">${escapeHtml(s.name)}</option>`).join('');
+      sel.dataset.filled = "1";
+    }
+    sel.value = curVal;
+  }
+
 }
 
+
+
+function bindCustomerAssignmentSelect(){
+  const sel = $("cdAssignStaffSelect");
+  if (!sel || sel.dataset.bound) return;
+  sel.dataset.bound = "1";
+
+  sel.addEventListener("change", ()=>{
+    const c = loadSelectedCustomer();
+    if (!c || !c.id) return;
+    const staffId = sel.value || null;
+    setAssignedStaffId(c.id, staffId);
+    applyCustomerDetailHeader();
+  });
+}
 function bindCustomerOpenButtons(){
   // On Kunden-Tabelle: "Öffnen"
   document.querySelectorAll('[data-view-target="customer_detail"]').forEach(btn=>{
@@ -379,6 +462,7 @@ function bindCustomerOpenButtons(){
   });
 
   // initial apply (if user refreshes)
+  bindCustomerAssignmentSelect();
   applyCustomerDetailHeader();
 }
 
@@ -895,7 +979,6 @@ function saveLeadCreateDummy(){
     ownerId:"ceo",
     updatedAt: (DUMMY_LEADS[0]?.updatedAt||10) + 1
   });
-  persistLeadsToStorage();
   closeLeadCreate();
   renderLeadsKPIs();
   renderLeadsTable();
@@ -930,10 +1013,7 @@ function saveLeadDetailDummy(){
   lead.note = $("leadDetailNote")?.value || lead.note;
 
   const assign = $("leadDetailAssign")?.value || "none";
-  if (assign === "none"){
-    lead.ownerType = "ceo";
-    lead.ownerId = "ceo";
-  } else {
+  if (assign !== "none"){
     lead.ownerType = "staff";
     lead.ownerId = assign;
   }
@@ -987,10 +1067,24 @@ function bindLeadsView(){
    ========================================================= */
 
 window.addEventListener("DOMContentLoaded", ()=>{
-  hydrateLeadsFromStorage();
+  bootDashboard("./login.html");
   bindStaffView();
   bindCustomerOpenButtons();
-  bootstrapCustomersFromTable();
+  renderStoredCustomersIntoCeoTable();
+
+  // keep CEO list fresh when coming back to the tab
+  window.addEventListener("focus", renderStoredCustomersIntoCeoTable);
+
+  // assignment select change
+  $("cdAssignStaffSelect")?.addEventListener("change", ()=>{
+    const c = loadSelectedCustomer();
+    if (!c) return;
+    const staffId = $("cdAssignStaffSelect").value || "";
+    setAssignedStaffId(c.id, staffId || null);
+    // update header text
+    const assignedText = staffId ? staffNameById(staffId) : "—";
+    $("cdAssignedStaff") && ($("cdAssignedStaff").textContent = assignedText);
+  });
   bindDemoView();
   bindLeadsView();
   // Safety: if current view is already customer_detail (reload), apply header

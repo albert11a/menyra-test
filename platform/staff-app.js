@@ -14,6 +14,8 @@
    - Staff sieht nur Leads/Kunden mit assignedStaffId === uid
    ========================================================= */
 
+import { bootDashboard } from "../shared/ui.js";
+
 (function staffDummyGate(){
   const ok = localStorage.getItem("menyra_dummy_staff_logged_in") === "1";
   if (!ok){
@@ -41,37 +43,6 @@ function escapeHtml(s){
 }
 function escapeAttr(s){ return escapeHtml(s); }
 
-/* =========================================================
-   P1.6 — Global Shared Stores (CEO ↔ Staff)
-   ========================================================= */
-
-const GLOBAL_LEADS_KEY = "menyra_dummy_leads_v1";
-const GLOBAL_CUSTOMERS_KEY = "menyra_dummy_customers_v1";
-const CUSTOMER_ASSIGN_KEY = "menyra_dummy_customer_assignments_v1";
-
-function loadGlobalLeads(){
-  try{
-    const raw = localStorage.getItem(GLOBAL_LEADS_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
-  }catch(_){ return []; }
-}
-function saveGlobalLeads(arr){
-  try{ localStorage.setItem(GLOBAL_LEADS_KEY, JSON.stringify(arr||[])); }catch(_){}
-}
-
-function loadGlobalCustomers(){
-  try{
-    const raw = localStorage.getItem(GLOBAL_CUSTOMERS_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
-  }catch(_){ return []; }
-}
-function loadCustomerAssignmentsMap(){
-  try{ return JSON.parse(localStorage.getItem(CUSTOMER_ASSIGN_KEY) || "{}") || {}; }
-  catch(_){ return {}; }
-}
-
 const STAFF_DUMMY_LEADS_BASE = [
   { id:"slead_001", name:"Café Aroma", type:"cafe", city:"Prishtina", phone:"+383 44 000 111", note:"Will Demo sehen", status:"new", next:"Heute 17:00 Anruf", ownerId:"staff_001", updatedAt: 10 },
   { id:"slead_002", name:"Restaurant Te Kodra", type:"restaurant", city:"Prizren", phone:"+383 49 222 333", note:"Interesse an Ads", status:"contacted", next:"Mi 11:00 Meeting", ownerId:"staff_002", updatedAt: 9 },
@@ -85,24 +56,169 @@ function getStaffId(){
 }
 function getStoreKey(){ return "menyra_dummy_staff_leads_" + getStaffId(); }
 
-function loadMyLeads(){
-  const staffId = getStaffId();
-  const global = loadGlobalLeads();
 
-  // If no global store exists yet, fall back to local base list
-  if (!global.length){
-    return STAFF_DUMMY_LEADS_BASE.filter(l => (l.ownerId === staffId));
+/* =========================================================
+   STAFF CUSTOMERS VIEW — Dummy Store (shared with CEO)
+   ========================================================= */
+
+const CUSTOMERS_STORE_KEY = "menyra_dummy_customers_store_v1";
+const CUSTOMER_ASSIGN_KEY = "menyra_dummy_assignments_customers_v1";
+
+const SEED_CUSTOMERS = [
+  { id:"demo_gastro", name:"Shpija e Vjetër", type:"gastro", city:"Prishtinë", status:"Aktiv", createdByType:"ceo", createdById:"ceo" },
+  { id:"demo_fastfood", name:"HEBS Fastfood", type:"fastfood", city:"Prizren", status:"Aktiv", createdByType:"ceo", createdById:"ceo" },
+  { id:"demo_hotel", name:"Hotel Center", type:"hotel", city:"Tirana", status:"Test", createdByType:"ceo", createdById:"ceo" },
+  { id:"demo_motel", name:"Motel Secret", type:"motel", city:"Ferizaj", status:"Test", createdByType:"ceo", createdById:"ceo" },
+  { id:"demo_shop", name:"Shop Beauty", type:"ecommerce", city:"Prishtinë", status:"Test", createdByType:"ceo", createdById:"ceo" },
+];
+
+function loadCustomersStore(){
+  try{ return JSON.parse(localStorage.getItem(CUSTOMERS_STORE_KEY) || "[]"); }catch(_){ return []; }
+}
+function saveCustomersStore(list){
+  localStorage.setItem(CUSTOMERS_STORE_KEY, JSON.stringify(list || []));
+}
+function loadCustomerAssignments(){
+  try{ return JSON.parse(localStorage.getItem(CUSTOMER_ASSIGN_KEY) || "{}"); }catch(_){ return {}; }
+}
+function saveCustomerAssignments(map){
+  localStorage.setItem(CUSTOMER_ASSIGN_KEY, JSON.stringify(map || {}));
+}
+function ensureSeedCustomers(){
+  const cur = loadCustomersStore();
+  if (cur.length) return;
+  saveCustomersStore(SEED_CUSTOMERS);
+  // Seed assignments so Staff sieht etwas
+  const seedAssign = { demo_gastro:"staff_001", demo_fastfood:"staff_001", demo_hotel:"staff_002" };
+  saveCustomerAssignments(seedAssign);
+}
+
+function customerTypeLabel(t){
+  const map = { gastro:"Gastro", restaurant:"Restaurant", cafe:"Café", club:"Club", fastfood:"Pickup", hotel:"Hotel", motel:"Motel", ecommerce:"Online Shop", service:"Dienstleistung" };
+  return map[t] || t || "—";
+}
+function statusBadge(s){
+  const v = String(s||"").toLowerCase();
+  if (v in {aktiv:1, active:1}) return '<span class="m-status m-status--ok">Aktiv</span>';
+  if (v in {pause:1, pausiert:1}) return '<span class="m-status m-status--bad">Pause</span>';
+  if (v in {test:1, demo:1}) return '<span class="m-status m-status--muted">Test</span>';
+  return '<span class="m-status">In Umsetzung</span>';
+}
+
+function getFilteredMyCustomers(list){
+  const q = ($("staffCustomersSearch")?.value || "").toLowerCase().trim();
+  const st = $("staffCustomersStatusFilter")?.value || "Alle";
+
+  let arr = [...list];
+  if (st && st !== "Alle"){
+    arr = arr.filter(c => String(c.status||"") === st);
+  }
+  if (q){
+    arr = arr.filter(c => (
+      (c.name||"").toLowerCase().includes(q) ||
+      (c.city||"").toLowerCase().includes(q) ||
+      customerTypeLabel(c.type).toLowerCase().includes(q) ||
+      (c.id||"").toLowerCase().includes(q)
+    ));
+  }
+  return arr;
+}
+
+function renderMyCustomers(){
+  ensureSeedCustomers();
+  const staffId = getStaffId();
+  const assignments = loadCustomerAssignments();
+  const all = loadCustomersStore();
+  const mine = all.filter(c => (assignments[c.id] === staffId) || (c.assignedStaffId === staffId));
+  const filtered = getFilteredMyCustomers(mine);
+
+  const tbody = $("staffCustomersTbody");
+  if (!tbody) return;
+
+  if (!filtered.length){
+    tbody.innerHTML = `<tr><td colspan="5"><div class="m-table-meta">Keine Kunden zugewiesen (Dummy).</div></td></tr>`;
+    return;
   }
 
-  return global
-    .filter(l => (l.ownerType ? l.ownerType === "staff" : true))
-    .filter(l => (l.ownerId === staffId))
-    .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  tbody.innerHTML = filtered.map(c=>{
+    return `<tr>
+      <td><b>${escapeHtml(c.name||"—")}</b><div class="m-table-meta">${escapeHtml(c.id||"—")}</div></td>
+      <td>${escapeHtml(customerTypeLabel(c.type))}</td>
+      <td>${escapeHtml(c.city||"—")}</td>
+      <td>${statusBadge(c.status)}</td>
+      <td><button class="m-mini-btn" type="button" disabled>Öffnen</button></td>
+    </tr>`;
+  }).join("");
+}
+
+function openStaffCustomerCreate(){
+  showOverlay($("staffCustomerCreateOverlay"));
+  ["staffCustomerCreateName","staffCustomerCreateCity"].forEach(id=>{ if ($(id)) $(id).value = ""; });
+  if ($("staffCustomerCreateType")) $("staffCustomerCreateType").value = "gastro";
+}
+function closeStaffCustomerCreate(){ hideOverlay($("staffCustomerCreateOverlay")); }
+
+function saveStaffCustomerCreateDummy(){
+  ensureSeedCustomers();
+  const staffId = getStaffId();
+  const name = $("staffCustomerCreateName")?.value?.trim() || "Neuer Kunde";
+  const type = $("staffCustomerCreateType")?.value || "gastro";
+  const city = $("staffCustomerCreateCity")?.value?.trim() || "—";
+
+  const id = "cust_" + String(Math.floor(Math.random()*90000)+10000);
+
+  const list = loadCustomersStore();
+  list.unshift({
+    id,
+    name,
+    type,
+    city,
+    status: "In Umsetzung",
+    createdByType: "staff",
+    createdById: staffId,
+    assignedStaffId: staffId,
+    createdAt: Date.now()
+  });
+  saveCustomersStore(list);
+
+  const assignments = loadCustomerAssignments();
+  assignments[id] = staffId;
+  saveCustomerAssignments(assignments);
+
+  closeStaffCustomerCreate();
+  renderMyCustomers();
+}
+
+function bindStaffCustomersView(){
+  $("staffCustomersNewBtn")?.addEventListener("click", openStaffCustomerCreate);
+  $("staffCustomerCreateClose")?.addEventListener("click", closeStaffCustomerCreate);
+  $("staffCustomerCreateCancel")?.addEventListener("click", closeStaffCustomerCreate);
+  $("staffCustomerCreateSave")?.addEventListener("click", saveStaffCustomerCreateDummy);
+
+  ["staffCustomersSearch","staffCustomersStatusFilter"].forEach(id=>{
+    $(id)?.addEventListener("input", renderMyCustomers);
+    $(id)?.addEventListener("change", renderMyCustomers);
+  });
+
+  // click outside closes
+  const ov = $("staffCustomerCreateOverlay");
+  if (ov) ov.addEventListener("click", (e)=>{ if (e.target === ov) hideOverlay(ov); });
+
+  renderMyCustomers();
+}
+
+function loadMyLeads(){
+  const staffId = getStaffId();
+  const base = STAFF_DUMMY_LEADS_BASE.filter(l => l.ownerId === staffId);
+  let extra = [];
+  try{
+    extra = JSON.parse(localStorage.getItem(getStoreKey()) || "[]");
+  }catch(e){}
+  return [...extra, ...base];
 }
 
 function saveMyLeads(list){
-  // list is full global leads array in the new model (shared with CEO)
-  saveGlobalLeads(list);
+  localStorage.setItem(getStoreKey(), JSON.stringify(list));
 }
 
 const staffLeadsState = { chip:"all", selectedId:null };
@@ -204,31 +320,32 @@ function openStaffLeadCreate(){
 function closeStaffLeadCreate(){ hideOverlay($("staffLeadCreateOverlay")); }
 
 function saveStaffLeadCreateDummy(){
-  const global = loadGlobalLeads();
-
+  const list = loadMyLeads();
   const name = $("staffLeadCreateName")?.value?.trim() || "Neuer Lead (Dummy)";
   const type = $("staffLeadCreateType")?.value || "restaurant";
   const city = $("staffLeadCreateCity")?.value?.trim() || "—";
   const phone = $("staffLeadCreatePhone")?.value?.trim() || "";
   const note = $("staffLeadCreateNote")?.value?.trim() || "";
 
-  const id = "lead_s_" + Date.now();
+  const id = "slead_" + String(Math.floor(Math.random()*900)+100);
   const lead = {
     id, name, type, city, phone, note,
     status:"new",
     next:"—",
-    ownerType:"staff",
     ownerId: getStaffId(),
-    updatedAt: (global[0]?.updatedAt||10) + 1
+    updatedAt: (list[0]?.updatedAt||10) + 1
   };
 
-  global.unshift(lead);
-  saveGlobalLeads(global);
+  // store only extra leads (so base list stays base)
+  const extrasKey = getStoreKey();
+  let extras = [];
+  try{ extras = JSON.parse(localStorage.getItem(extrasKey) || "[]"); }catch(e){}
+  extras.unshift(lead);
+  localStorage.setItem(extrasKey, JSON.stringify(extras));
 
   closeStaffLeadCreate();
   renderMyLeads();
 }
-
 
 function openStaffLeadDetail(id){
   const list = loadMyLeads();
@@ -252,27 +369,24 @@ function saveStaffLeadDetailDummy(){
   const id = staffLeadsState.selectedId;
   if (!id) return;
 
-  const staffId = getStaffId();
-  const global = loadGlobalLeads();
-  const idx = global.findIndex(l=>l.id===id && l.ownerId===staffId);
-  if (idx === -1){
-    closeStaffLeadDetail();
-    renderMyLeads();
-    return;
+  // update only extras
+  const extrasKey = getStoreKey();
+  let extras = [];
+  try{ extras = JSON.parse(localStorage.getItem(extrasKey) || "[]"); }catch(e){ extras=[]; }
+
+  const idx = extras.findIndex(l=>l.id===id);
+  if (idx !== -1){
+    extras[idx].status = $("staffLeadDetailStatus")?.value || extras[idx].status;
+    extras[idx].next = $("staffLeadDetailNext")?.value || extras[idx].next;
+    extras[idx].phone = $("staffLeadDetailPhone")?.value || extras[idx].phone;
+    extras[idx].note = $("staffLeadDetailNote")?.value || extras[idx].note;
+    extras[idx].updatedAt = (extras[0]?.updatedAt||10) + 1;
+    localStorage.setItem(extrasKey, JSON.stringify(extras));
   }
-
-  global[idx].status = $("staffLeadDetailStatus")?.value || global[idx].status;
-  global[idx].next = $("staffLeadDetailNext")?.value || global[idx].next;
-  global[idx].phone = $("staffLeadDetailPhone")?.value || global[idx].phone;
-  global[idx].note = $("staffLeadDetailNote")?.value || global[idx].note;
-  global[idx].updatedAt = (global[0]?.updatedAt||10) + 1;
-
-  saveGlobalLeads(global);
 
   closeStaffLeadDetail();
   renderMyLeads();
 }
-
 
 function bindStaffLeadsView(){
   $("staffLeadsNewBtn")?.addEventListener("click", openStaffLeadCreate);
@@ -302,74 +416,8 @@ function bindStaffLeadsView(){
   renderMyLeads();
 }
 
-/* =========================================================
-   P1.6 — Meine Kunden (assignedStaffId) — Shared Dummy Store
-   ========================================================= */
-
-function matchesCustomerFilter(c, q, status){
-  const qq = (q||"").toLowerCase().trim();
-  if (qq){
-    const blob = `${c.name||""} ${c.city||""} ${c.type||""} ${c.id||""}`.toLowerCase();
-    if (!blob.includes(qq)) return false;
-  }
-  if (status && status !== "all"){
-    const st = (c.status||"").trim();
-    if (st !== status) return false;
-  }
-  return true;
-}
-
-function renderMyCustomers(){
-  const tbody = $("staffCustomersTbody");
-  if (!tbody) return;
-
-  const staffId = getStaffId();
-  const q = $("staffCustomersSearch")?.value || "";
-  const status = $("staffCustomersStatusFilter")?.value || "all";
-
-  const customers = loadGlobalCustomers();
-  const map = loadCustomerAssignmentsMap();
-
-  if (!customers.length){
-    tbody.innerHTML = `<tr><td colspan="5"><div class="m-table-meta">
-      Keine Kundenliste gefunden. Öffne im CEO-Panel einmal den Kunden-Tab (Dummy bootstrap).
-    </div></td></tr>`;
-    return;
-  }
-
-  const mine = customers
-    .filter(c => (map[c.id] || "none") === staffId)
-    .filter(c => matchesCustomerFilter(c, q, status));
-
-  if (!mine.length){
-    tbody.innerHTML = `<tr><td colspan="5"><div class="m-table-meta">Keine zugewiesenen Kunden (Dummy).</div></td></tr>`;
-    return;
-  }
-
-  tbody.innerHTML = mine.map(c=>{
-    const badge = (c.status||"") === "Aktiv"
-      ? '<span class="m-status m-status--ok">Aktiv</span>'
-      : '<span class="m-status m-status--muted">'+escapeHtml(c.status||"—")+'</span>';
-
-    return `<tr>
-      <td><b>${escapeHtml(c.name||"—")}</b><div class="m-table-meta">${escapeHtml(c.id||"—")}</div></td>
-      <td>${escapeHtml(c.type||"—")}</td>
-      <td>${escapeHtml(c.city||"—")}</td>
-      <td>${badge}</td>
-      <td><a class="m-mini-btn" href="../public/main.html?r=${escapeAttr(c.id||"")}" target="_blank" rel="noopener">Main</a></td>
-    </tr>`;
-  }).join("");
-}
-
-function bindMyCustomersView(){
-  $("staffCustomersSearch")?.addEventListener("input", renderMyCustomers);
-  $("staffCustomersStatusFilter")?.addEventListener("change", renderMyCustomers);
-  renderMyCustomers();
-}
-
-
 window.addEventListener("DOMContentLoaded", ()=>{
+  bootDashboard("./staff-login.html");
+  bindStaffCustomersView();
   bindStaffLeadsView();
-  bindMyCustomersView();
-  });
-
+});

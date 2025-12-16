@@ -309,7 +309,7 @@
       <button class="m-btn m-btn--ghost" type="button" data-view-target="customers">← Zur Kundenliste</button>
       <div>
         <div class="m-page-title">Kundendetails: <span id="cdName">—</span></div>
-        <div class="m-page-sub" style="margin-top:2px;">ID: <b id="cdId">—</b> • Typ: <b id="cdType">—</b> • Staff: <b id="cdAssignedStaff">—</b></div>
+        <div class="m-page-sub" style="margin-top:2px;">ID: <b id="cdId">—</b> • Typ: <b id="cdType">—</b> • Erstellt von: <b id="cdCreatedBy">—</b> • Zuständig: <b id="cdAssignedStaff">—</b></div>
         <div class="m-page-sub">
           Hier werden später alle Daten gespeichert, die du beim Kunden vor Ort abfragst (Onboarding-Fragen).
           <b>Dummy:</b> Formular + Links + Module + QR – ohne Logik.
@@ -346,7 +346,7 @@
           </div>
           <div class="m-input-group">
             <label>Status</label>
-            <select class="m-select">
+            <select id="cdStatusSelect" class="m-select">
               <option>Setup</option>
               <option selected>Aktiv</option>
               <option>Pausiert</option>
@@ -355,12 +355,12 @@
             <div class="m-input-hint">Später: Umsatz zählt nur bei „Aktiv“.</div>
           </div>
           <div class="m-input-group">
-  <label>Zuweisen (Staff)</label>
-  <select id="cdAssignStaffSelect" class="m-select">
-    <option value="none">— (nicht zugewiesen)</option>
-  </select>
-  <div class="m-input-hint">Dummy: wird lokal im Browser gespeichert.</div>
-</div>
+            <label>Staff zuständig</label>
+            <select id="cdAssignStaffSelect" class="m-select">
+              <option value="">—</option>
+            </select>
+            <div class="m-input-hint">Dummy: Zuweisung speichern wir lokal (später Firestore).</div>
+          </div>
         </div>
 
         <div style="height:10px"></div>
