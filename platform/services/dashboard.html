@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>Services Admin – MENYRA (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
+  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
+</head>
+<body>
+  <!-- Mobile Drawer -->
+  <div id="drawerBackdrop" class="m-drawer-backdrop"></div>
+  <aside id="drawer" class="m-drawer" aria-label="Mobile Menü">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+      <div style="font-weight:1000;">MENYRA</div>
+      <button id="drawerCloseBtn" class="m-ghost-btn" type="button">✕</button>
+    </div>
+    <div class="m-side-group">
+      <button class="m-side-link" data-view-target="dashboard"><span class="m-nav-icon">🧰</span><span class="m-nav-label" data-i18n="nav_dashboard"></span></button>
+<button class="m-side-link" data-view-target="profile"><span class="m-nav-icon">🪪</span><span class="m-nav-label" data-i18n="nav_profile"></span></button>
+<button class="m-side-link" data-view-target="services"><span class="m-nav-icon">🛠️</span><span class="m-nav-label" data-i18n="nav_services"></span></button>
+<button class="m-side-link" data-view-target="inquiries"><span class="m-nav-icon">📩</span><span class="m-nav-label" data-i18n="nav_inquiries"></span></button>
+<button class="m-side-link" data-view-target="reviews"><span class="m-nav-icon">⭐</span><span class="m-nav-label" data-i18n="nav_reviews"></span></button>
+<button class="m-side-link" data-view-target="ads"><span class="m-nav-icon">📣</span><span class="m-nav-label" data-i18n="nav_ads"></span></button>
+    </div>
+    <div style="margin-top:12px;">
+      <a href="../index.html" style="text-decoration:none; font-weight:900;">← Zur Startseite</a>
+    </div>
+  </aside>
+
+  <header class="m-topbar">
+    <div class="m-topbar-left">
+      <button id="drawerOpenBtn" class="m-ghost-btn m-burger-btn" type="button" aria-label="Menü">☰</button>
+      <div style="display:flex; flex-direction:column; line-height:1.1;">
+        <div style="font-weight:1000;">MENYRA</div>
+        <div style="font-size:12px; color: rgba(15,23,42,0.55);">Services Admin</div>
+      </div>
+    </div>
+
+    <div class="m-topbar-right" style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+      <button id="logoutBtn" class="m-btn m-btn--ghost" type="button" data-i18n="logout"></button>
+    </div>
+  </header>
+
+  <div class="m-layout">
+    <aside class="m-sidebar">
+      <div class="m-sidebar-inner">
+        <div class="m-sidebar-section--label">Navigation</div>
+        <div class="m-side-group">
+          <button class="m-side-link" data-view-target="dashboard"><span class="m-nav-icon">🧰</span><span class="m-nav-label" data-i18n="nav_dashboard"></span></button>
+<button class="m-side-link" data-view-target="profile"><span class="m-nav-icon">🪪</span><span class="m-nav-label" data-i18n="nav_profile"></span></button>
+<button class="m-side-link" data-view-target="services"><span class="m-nav-icon">🛠️</span><span class="m-nav-label" data-i18n="nav_services"></span></button>
+<button class="m-side-link" data-view-target="inquiries"><span class="m-nav-icon">📩</span><span class="m-nav-label" data-i18n="nav_inquiries"></span></button>
+<button class="m-side-link" data-view-target="reviews"><span class="m-nav-icon">⭐</span><span class="m-nav-label" data-i18n="nav_reviews"></span></button>
+<button class="m-side-link" data-view-target="ads"><span class="m-nav-icon">📣</span><span class="m-nav-label" data-i18n="nav_ads"></span></button>
+        </div>
+
+        <div class="m-sidebar-footer">
+          <a href="../index.html" style="text-decoration:none; font-weight:900;">← Zur Startseite</a>
+          <div class="m-sidebar-meta">
+            <div class="m-sidebar-meta-line"><span>•</span><span>Dummy UI (ohne Firebase)</span></div>
+            <div class="m-sidebar-meta-line"><span>•</span><span>Sprache: Dropdown</span></div>
+            <div class="m-sidebar-meta-line"><span>•</span><span>Hintergrund: wie Guest</span></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="m-main">
+      <div class="m-shell">
+        
+<section class="m-view" data-view="dashboard">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Dashboard</div>
+      <div class="m-page-sub">Dienstleistung Überblick (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-cards-grid">
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Neue Anfragen</div><div class="m-badge">Dummy</div></div><div class="m-stat-value">7</div><div class="m-stat-sub">Heute</div></div>
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Bewertungen</div><div class="m-badge">Dummy</div></div><div class="m-stat-value">4.8</div><div class="m-stat-sub">Google</div></div>
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Ads</div><div class="m-badge">später</div></div><div class="m-stat-value">€ 0</div><div class="m-stat-sub">Platzhalter</div></div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="profile">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Profil</div>
+      <div class="m-page-sub">Kontakt, Öffnungszeiten, Maps/Reviews (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card">
+  <div class="m-input-row">
+    <div class="m-input-group"><label>Name</label><input class="m-input" value="Auto Detailing (Dummy)"/></div>
+    <div class="m-input-group"><label>WhatsApp</label><input class="m-input" value="+383..." /></div>
+  </div>
+  <div style="height:10px"></div>
+  <div class="m-input-row">
+    <div class="m-input-group"><label>Google Reviews</label><input class="m-input" value="https://..." /></div>
+    <div class="m-input-group"><label>Adresse</label><input class="m-input" value="..." /></div>
+  </div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="services">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Leistungen</div>
+      <div class="m-page-sub">Service-Liste (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card m-table-card">
+  <div class="m-table-toolbar"><div class="m-table-title">Leistungen</div><div class="m-table-actions"><button class="m-btn">+ Leistung</button></div></div>
+  <div style="overflow:auto">
+    <table class="m-table">
+      <thead><tr><th>Leistung</th><th>Preis</th><th>Dauer</th></tr></thead>
+      <tbody>
+        <tr><td>Innenreinigung</td><td>20€</td><td>45 min</td></tr>
+        <tr><td>Polieren</td><td>70€</td><td>2h</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="inquiries">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Anfragen</div>
+      <div class="m-page-sub">Kontaktformular/WhatsApp Leads (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card m-table-card">
+  <div class="m-table-toolbar"><div class="m-table-title">Anfragen</div></div>
+  <div style="overflow:auto">
+    <table class="m-table">
+      <thead><tr><th>Zeit</th><th>Name</th><th>Nachricht</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>11:02</td><td>Ardian</td><td>Preis für Polieren?</td><td>Neu</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="reviews">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Reviews & Google</div>
+      <div class="m-page-sub">Mehrwert auf Public Page.</div>
+    </div>
+  </div>
+  
+<div class="m-card"><b>Platzhalter:</b> Google Reviews einbetten / Link + „Bewerte uns“ Flow.</div>
+
+</section>
+
+
+<section class="m-view" data-view="ads">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Werbung (Ads)</div>
+      <div class="m-page-sub">Kampagnen für Region/Budget (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card"><b>Platzhalter:</b> Ads erstellen wie im Owner Admin.</div>
+
+</section>
+
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { bootDashboard } from "../shared/ui.js";
+    import { applyI18n } from "../shared/i18n.js";
+    bootDashboard("./login.html");
+    applyI18n(document);
+  </script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

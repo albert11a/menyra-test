@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>E-Commerce Admin – MENYRA (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
+  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
+</head>
+<body>
+  <!-- Mobile Drawer -->
+  <div id="drawerBackdrop" class="m-drawer-backdrop"></div>
+  <aside id="drawer" class="m-drawer" aria-label="Mobile Menü">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+      <div style="font-weight:1000;">MENYRA</div>
+      <button id="drawerCloseBtn" class="m-ghost-btn" type="button">✕</button>
+    </div>
+    <div class="m-side-group">
+      <button class="m-side-link" data-view-target="dashboard"><span class="m-nav-icon">🏠</span><span class="m-nav-label" data-i18n="nav_dashboard"></span></button>
+<button class="m-side-link" data-view-target="profile"><span class="m-nav-icon">🪪</span><span class="m-nav-label" data-i18n="nav_profile"></span></button>
+<button class="m-side-link" data-view-target="products"><span class="m-nav-icon">📦</span><span class="m-nav-label" data-i18n="nav_shop_products"></span></button>
+<button class="m-side-link" data-view-target="variants"><span class="m-nav-icon">🧩</span><span class="m-nav-label" data-i18n="nav_shop_variants"></span></button>
+<button class="m-side-link" data-view-target="orders"><span class="m-nav-icon">🧾</span><span class="m-nav-label" data-i18n="nav_orders"></span></button>
+<button class="m-side-link" data-view-target="discounts"><span class="m-nav-icon">🏷️</span><span class="m-nav-label" data-i18n="nav_shop_discounts"></span></button>
+<button class="m-side-link" data-view-target="loyalty"><span class="m-nav-icon">🎟️</span><span class="m-nav-label" data-i18n="nav_loyalty"></span></button>
+<button class="m-side-link" data-view-target="referrals"><span class="m-nav-icon">🔗</span><span class="m-nav-label" data-i18n="nav_referrals"></span></button>
+<button class="m-side-link" data-view-target="ads"><span class="m-nav-icon">📣</span><span class="m-nav-label" data-i18n="nav_ads"></span></button>
+<button class="m-side-link" data-view-target="social"><span class="m-nav-icon">💬</span><span class="m-nav-label" data-i18n="nav_social"></span></button>
+<button class="m-side-link" data-view-target="shipping"><span class="m-nav-icon">🚚</span><span class="m-nav-label" data-i18n="nav_shop_shipping"></span></button>
+    </div>
+    <div style="margin-top:12px;">
+      <a href="../index.html" style="text-decoration:none; font-weight:900;">← Zur Startseite</a>
+    </div>
+  </aside>
+
+  <header class="m-topbar">
+    <div class="m-topbar-left">
+      <button id="drawerOpenBtn" class="m-ghost-btn m-burger-btn" type="button" aria-label="Menü">☰</button>
+      <div style="display:flex; flex-direction:column; line-height:1.1;">
+        <div style="font-weight:1000;">MENYRA</div>
+        <div style="font-size:12px; color: rgba(15,23,42,0.55);">E-Commerce Admin</div>
+      </div>
+    </div>
+
+    <div class="m-topbar-right" style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+      <button id="logoutBtn" class="m-btn m-btn--ghost" type="button" data-i18n="logout"></button>
+    </div>
+  </header>
+
+  <div class="m-layout">
+    <aside class="m-sidebar">
+      <div class="m-sidebar-inner">
+        <div class="m-sidebar-section--label">Navigation</div>
+        <div class="m-side-group">
+          <button class="m-side-link" data-view-target="dashboard"><span class="m-nav-icon">🏠</span><span class="m-nav-label" data-i18n="nav_dashboard"></span></button>
+<button class="m-side-link" data-view-target="profile"><span class="m-nav-icon">🪪</span><span class="m-nav-label" data-i18n="nav_profile"></span></button>
+<button class="m-side-link" data-view-target="products"><span class="m-nav-icon">📦</span><span class="m-nav-label" data-i18n="nav_shop_products"></span></button>
+<button class="m-side-link" data-view-target="variants"><span class="m-nav-icon">🧩</span><span class="m-nav-label" data-i18n="nav_shop_variants"></span></button>
+<button class="m-side-link" data-view-target="orders"><span class="m-nav-icon">🧾</span><span class="m-nav-label" data-i18n="nav_orders"></span></button>
+<button class="m-side-link" data-view-target="discounts"><span class="m-nav-icon">🏷️</span><span class="m-nav-label" data-i18n="nav_shop_discounts"></span></button>
+<button class="m-side-link" data-view-target="loyalty"><span class="m-nav-icon">🎟️</span><span class="m-nav-label" data-i18n="nav_loyalty"></span></button>
+<button class="m-side-link" data-view-target="referrals"><span class="m-nav-icon">🔗</span><span class="m-nav-label" data-i18n="nav_referrals"></span></button>
+<button class="m-side-link" data-view-target="ads"><span class="m-nav-icon">📣</span><span class="m-nav-label" data-i18n="nav_ads"></span></button>
+<button class="m-side-link" data-view-target="social"><span class="m-nav-icon">💬</span><span class="m-nav-label" data-i18n="nav_social"></span></button>
+<button class="m-side-link" data-view-target="shipping"><span class="m-nav-icon">🚚</span><span class="m-nav-label" data-i18n="nav_shop_shipping"></span></button>
+        </div>
+
+        <div class="m-sidebar-footer">
+          <a href="../index.html" style="text-decoration:none; font-weight:900;">← Zur Startseite</a>
+          <div class="m-sidebar-meta">
+            <div class="m-sidebar-meta-line"><span>•</span><span>Dummy UI (ohne Firebase)</span></div>
+            <div class="m-sidebar-meta-line"><span>•</span><span>Sprache: Dropdown</span></div>
+            <div class="m-sidebar-meta-line"><span>•</span><span>Hintergrund: wie Guest</span></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="m-main">
+      <div class="m-shell">
+        
+<section class="m-view" data-view="dashboard">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Dashboard</div>
+      <div class="m-page-sub">Shop Überblick (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-cards-grid">
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Heute</div><div class="m-badge">Dummy</div></div><div class="m-stat-value">19 Bestellungen</div><div class="m-stat-sub">Cash / Pay at delivery</div></div>
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Top Produkt</div><div class="m-badge">Dummy</div></div><div class="m-stat-value">BPO 5%</div><div class="m-stat-sub">Conversion stark</div></div>
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Ads</div><div class="m-badge">später</div></div><div class="m-stat-value">€ 0</div><div class="m-stat-sub">ab 50–100 Kunden</div></div>
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Social</div><div class="m-badge">Dummy</div></div><div class="m-stat-value">+120 Follows</div><div class="m-stat-sub">diese Woche</div></div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="profile">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Shop Profil</div>
+      <div class="m-page-sub">Branding, Kontakt, Policies (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card">
+  <div class="m-input-row">
+    <div class="m-input-group"><label>Shop Name</label><input class="m-input" value="Shop Beauty (Dummy)"/></div>
+    <div class="m-input-group"><label>Support</label><input class="m-input" value="WhatsApp +383..." /></div>
+  </div>
+  <div style="height:10px"></div>
+  <button class="m-btn">Speichern (später)</button>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="products">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Produkte</div>
+      <div class="m-page-sub">Produktliste (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card m-table-card">
+  <div class="m-table-toolbar"><div class="m-table-title">Produkte</div><div class="m-table-actions"><button class="m-btn">+ Produkt</button></div></div>
+  <div style="overflow:auto">
+    <table class="m-table">
+      <thead><tr><th>Name</th><th>Preis</th><th>Lager</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>LIFESKIN – BPO 5%</td><td>19.90€</td><td>42</td><td>Aktiv</td></tr>
+        <tr><td>LIFESKIN – Pore Control</td><td>17.90€</td><td>10</td><td>Aktiv</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="variants">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Varianten & Lager</div>
+      <div class="m-page-sub">Sizes, Colors, SKU, Bestand (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card">
+  <b>Beispiele:</b>
+  <ul style="margin:10px 0 0 18px;">
+    <li>SKU: BPO-30ML – 30ml – Bestand 42</li>
+    <li>SKU: PC-30ML – 30ml – Bestand 10</li>
+  </ul>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="orders">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Bestellungen</div>
+      <div class="m-page-sub">Orders + Status (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card m-table-card">
+  <div class="m-table-toolbar"><div class="m-table-title">Orders</div><div class="m-table-actions"><button class="m-ghost-btn">Export</button></div></div>
+  <div style="overflow:auto">
+    <table class="m-table">
+      <thead><tr><th>#</th><th>Kunde</th><th>Total</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>1021</td><td>Arta</td><td>19.90€</td><td>Neu</td></tr>
+        <tr><td>1020</td><td>Besim</td><td>37.80€</td><td>Versandt (später)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="discounts">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Rabatte</div>
+      <div class="m-page-sub">Coupons/Deals (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card">
+  <div class="m-input-row">
+    <div class="m-input-group"><label>Code</label><input class="m-input" value="WELCOME10"/></div>
+    <div class="m-input-group"><label>Rabatt</label><input class="m-input" value="10%"/></div>
+  </div>
+  <div style="height:10px"></div>
+  <button class="m-btn">Aktivieren (später)</button>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="loyalty">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Loyalty</div>
+      <div class="m-page-sub">Stempel / Punkte auch für Shops.</div>
+    </div>
+  </div>
+  
+<div class="m-card"><b>Platzhalter:</b> 5 Bestellungen → 10% Gutschein</div>
+
+</section>
+
+
+<section class="m-view" data-view="referrals">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Referrals</div>
+      <div class="m-page-sub">Einladungscode für Neukunden.</div>
+    </div>
+  </div>
+  
+<div class="m-card"><b>Platzhalter:</b> Code teilen → beide bekommen Vorteil.</div>
+
+</section>
+
+
+<section class="m-view" data-view="ads">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Werbung (Ads)</div>
+      <div class="m-page-sub">Wie Facebook: Region/Budget/Interessen (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card">
+  <b>Interessen Tracking (später):</b> Skincare, Food, Nightlife, Hotels, etc.<br/>
+  <div class="m-page-sub" style="margin-top:8px;">Erstmal nur Platzhalter – später: Event Logging + Segmente.</div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="social">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Social</div>
+      <div class="m-page-sub">Shop Posts, Influencer, Live Launch (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card"><b>Platzhalter:</b> Feed-Posts, Stories, Live, Gifts.</div>
+
+</section>
+
+
+<section class="m-view" data-view="shipping">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Versand (später)</div>
+      <div class="m-page-sub">Versandprofile, Tracking, Returns – noch Platzhalter.</div>
+    </div>
+  </div>
+  
+<div class="m-card"><b>Platzhalter:</b> Lokale Lieferpartner / Delivery.</div>
+
+</section>
+
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { bootDashboard } from "../shared/ui.js";
+    import { applyI18n } from "../shared/i18n.js";
+    bootDashboard("./login.html");
+    applyI18n(document);
+  </script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

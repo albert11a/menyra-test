@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Staff Login – MENYRA (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <div class="auth-title">Staff Login</div>
+    <div class="auth-sub">Ein Login → Rolle wählen (Dummy). Später: echte Rollen (staff/{uid}.role).</div>
+
+    <div class="auth-row">
+      <label style="font-weight:900; font-size:12px;">Code / E-Mail</label>
+      <input id="email" class="m-input" placeholder="z.B. staff@kunde.com"/>
+      <label style="font-weight:900; font-size:12px;">Passwort</label>
+      <input id="pass" class="m-input" type="password" placeholder="••••••••"/>
+      <div id="err" class="auth-error">Bitte ausfüllen.</div>
+    </div>
+
+    <div class="auth-actions" style="justify-content:flex-end;">
+      <button id="loginBtn" class="m-btn" type="button">Weiter</button>
+    </div>
+
+    <div id="roleBox" style="display:none; margin-top:12px;">
+      <div class="auth-hint" style="margin-bottom:10px;">Rolle auswählen:</div>
+      <div class="hub-links">
+        <a href="./gastro.html">Gastro Orders</a>
+        <a href="./pickup.html">Pickup Counter</a>
+        <a href="./housekeeping.html">Housekeeping</a>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <a href="../index.html" style="text-decoration:none; font-weight:900;">← Startseite</a>
+    </div>
+  </div>
+
+  <script>
+    const btn = document.getElementById("loginBtn");
+    const err = document.getElementById("err");
+    const roleBox = document.getElementById("roleBox");
+    btn.addEventListener("click", ()=>{
+      const e = document.getElementById("email").value.trim();
+      const p = document.getElementById("pass").value.trim();
+      if (!e || !p){ err.style.display="block"; return; }
+      err.style.display="none";
+      roleBox.style.display="block";
+    });
+  </script>
+</body>
+</html>

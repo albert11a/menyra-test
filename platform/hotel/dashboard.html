@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>Hotel / Motel Admin – MENYRA (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
+  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
+</head>
+<body>
+  <!-- Mobile Drawer -->
+  <div id="drawerBackdrop" class="m-drawer-backdrop"></div>
+  <aside id="drawer" class="m-drawer" aria-label="Mobile Menü">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+      <div style="font-weight:1000;">MENYRA</div>
+      <button id="drawerCloseBtn" class="m-ghost-btn" type="button">✕</button>
+    </div>
+    <div class="m-side-group">
+      <button class="m-side-link" data-view-target="dashboard"><span class="m-nav-icon">🏨</span><span class="m-nav-label" data-i18n="nav_dashboard"></span></button>
+<button class="m-side-link" data-view-target="profile"><span class="m-nav-icon">🪪</span><span class="m-nav-label" data-i18n="nav_profile"></span></button>
+<button class="m-side-link" data-view-target="rooms"><span class="m-nav-icon">🛏️</span><span class="m-nav-label" data-i18n="nav_rooms"></span></button>
+<button class="m-side-link" data-view-target="requests"><span class="m-nav-icon">🎫</span><span class="m-nav-label" data-i18n="nav_requests"></span></button>
+<button class="m-side-link" data-view-target="housekeeping"><span class="m-nav-icon">🧹</span><span class="m-nav-label" data-i18n="nav_housekeeping"></span></button>
+<button class="m-side-link" data-view-target="offers"><span class="m-nav-icon">⚡</span><span class="m-nav-label" data-i18n="nav_offers"></span></button>
+<button class="m-side-link" data-view-target="ads"><span class="m-nav-icon">📣</span><span class="m-nav-label" data-i18n="nav_ads"></span></button>
+<button class="m-side-link" data-view-target="social"><span class="m-nav-icon">💬</span><span class="m-nav-label" data-i18n="nav_social"></span></button>
+    </div>
+    <div style="margin-top:12px;">
+      <a href="../index.html" style="text-decoration:none; font-weight:900;">← Zur Startseite</a>
+    </div>
+  </aside>
+
+  <header class="m-topbar">
+    <div class="m-topbar-left">
+      <button id="drawerOpenBtn" class="m-ghost-btn m-burger-btn" type="button" aria-label="Menü">☰</button>
+      <div style="display:flex; flex-direction:column; line-height:1.1;">
+        <div style="font-weight:1000;">MENYRA</div>
+        <div style="font-size:12px; color: rgba(15,23,42,0.55);">Hotel / Motel Admin</div>
+      </div>
+    </div>
+
+    <div class="m-topbar-right" style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+      <button id="logoutBtn" class="m-btn m-btn--ghost" type="button" data-i18n="logout"></button>
+    </div>
+  </header>
+
+  <div class="m-layout">
+    <aside class="m-sidebar">
+      <div class="m-sidebar-inner">
+        <div class="m-sidebar-section--label">Navigation</div>
+        <div class="m-side-group">
+          <button class="m-side-link" data-view-target="dashboard"><span class="m-nav-icon">🏨</span><span class="m-nav-label" data-i18n="nav_dashboard"></span></button>
+<button class="m-side-link" data-view-target="profile"><span class="m-nav-icon">🪪</span><span class="m-nav-label" data-i18n="nav_profile"></span></button>
+<button class="m-side-link" data-view-target="rooms"><span class="m-nav-icon">🛏️</span><span class="m-nav-label" data-i18n="nav_rooms"></span></button>
+<button class="m-side-link" data-view-target="requests"><span class="m-nav-icon">🎫</span><span class="m-nav-label" data-i18n="nav_requests"></span></button>
+<button class="m-side-link" data-view-target="housekeeping"><span class="m-nav-icon">🧹</span><span class="m-nav-label" data-i18n="nav_housekeeping"></span></button>
+<button class="m-side-link" data-view-target="offers"><span class="m-nav-icon">⚡</span><span class="m-nav-label" data-i18n="nav_offers"></span></button>
+<button class="m-side-link" data-view-target="ads"><span class="m-nav-icon">📣</span><span class="m-nav-label" data-i18n="nav_ads"></span></button>
+<button class="m-side-link" data-view-target="social"><span class="m-nav-icon">💬</span><span class="m-nav-label" data-i18n="nav_social"></span></button>
+        </div>
+
+        <div class="m-sidebar-footer">
+          <a href="../index.html" style="text-decoration:none; font-weight:900;">← Zur Startseite</a>
+          <div class="m-sidebar-meta">
+            <div class="m-sidebar-meta-line"><span>•</span><span>Dummy UI (ohne Firebase)</span></div>
+            <div class="m-sidebar-meta-line"><span>•</span><span>Sprache: Dropdown</span></div>
+            <div class="m-sidebar-meta-line"><span>•</span><span>Hintergrund: wie Guest</span></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="m-main">
+      <div class="m-shell">
+        
+<section class="m-view" data-view="dashboard">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Dashboard</div>
+      <div class="m-page-sub">Hotel/Motel Überblick (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-cards-grid">
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Belegung</div><div class="m-badge">Dummy</div></div><div class="m-stat-value">68%</div><div class="m-stat-sub">Heute</div></div>
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Requests</div><div class="m-badge">Dummy</div></div><div class="m-stat-value">14</div><div class="m-stat-sub">Offen</div></div>
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Housekeeping</div><div class="m-badge">Dummy</div></div><div class="m-stat-value">6 Zimmer</div><div class="m-stat-sub">To-Do</div></div>
+  <div class="m-card m-stat-card"><div class="m-stat-top"><div class="m-stat-label">Motel Mode</div><div class="m-badge">Dummy</div></div><div class="m-stat-value">Diskret</div><div class="m-stat-sub">Minimal Logs (später)</div></div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="profile">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Hotel Profil</div>
+      <div class="m-page-sub">Infos, Reviews, Spa/Restaurant, Check-in Regeln (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card">
+  <div class="m-input-row">
+    <div class="m-input-group"><label>Name</label><input class="m-input" value="Hotel Center (Dummy)"/></div>
+    <div class="m-input-group"><label>Services</label><input class="m-input" value="Spa, Restaurant, Room-Service"/></div>
+  </div>
+  <div style="height:10px"></div>
+  <div class="m-input-row">
+    <div class="m-input-group"><label>Google Reviews Link</label><input class="m-input" value="https://..." /></div>
+    <div class="m-input-group"><label>WhatsApp</label><input class="m-input" value="+383..." /></div>
+  </div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="rooms">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Zimmer & QR</div>
+      <div class="m-page-sub">Room QR: Menu/Requests/Info. (Dummy)</div>
+    </div>
+  </div>
+  
+<div class="m-card m-table-card">
+  <div class="m-table-toolbar"><div class="m-table-title">Zimmerliste</div><div class="m-table-actions"><button class="m-btn">+ Zimmer</button></div></div>
+  <div style="overflow:auto">
+    <table class="m-table">
+      <thead><tr><th>Zimmer</th><th>Typ</th><th>QR</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>204</td><td>Double</td><td><a href="../guest/room.html?r=demo_hotel&room=204">Open</a></td><td>Clean</td></tr>
+        <tr><td>205</td><td>Suite</td><td><a href="../guest/room.html?r=demo_hotel&room=205">Open</a></td><td>Dirty</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+<div style="height:12px"></div>
+<div class="m-card"><b>Motel-Privacy Mode (Idee):</b><div class="m-page-sub">Minimales Tracking, neutraler Screen, diskrete Requests.</div></div>
+
+</section>
+
+
+<section class="m-view" data-view="requests">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Requests / Tickets</div>
+      <div class="m-page-sub">Gäste können Service anfordern: Handtücher, Reinigung, Spa, Taxi (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card m-table-card">
+  <div class="m-table-toolbar"><div class="m-table-title">Offene Requests</div></div>
+  <div style="overflow:auto">
+    <table class="m-table">
+      <thead><tr><th>Zeit</th><th>Zimmer</th><th>Typ</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>09:44</td><td>204</td><td>Handtücher</td><td>Neu</td></tr>
+        <tr><td>10:01</td><td>205</td><td>Room Service</td><td>In Arbeit</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="housekeeping">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Housekeeping</div>
+      <div class="m-page-sub">To-Do, Clean/Dirty, Checklisten (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card">
+  <b>Checkliste (Platzhalter):</b>
+  <ul style="margin:10px 0 0 18px;">
+    <li>Bett</li>
+    <li>Bad</li>
+    <li>Handtücher</li>
+    <li>Minibar</li>
+  </ul>
+</div>
+
+</section>
+
+
+<section class="m-view" data-view="offers">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Angebote</div>
+      <div class="m-page-sub">Spa Deal, Frühstück, Late Checkout (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card"><b>Beispiele:</b> -15% Spa • Late Checkout 10€ • Breakfast Combo</div>
+
+</section>
+
+
+<section class="m-view" data-view="ads">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Werbung (Ads)</div>
+      <div class="m-page-sub">Hotel kann Ads schalten (z.B. Spa + Restaurant).</div>
+    </div>
+  </div>
+  
+<div class="m-card"><b>Platzhalter:</b> Kampagnen-Manager wie Owner Admin.</div>
+
+</section>
+
+
+<section class="m-view" data-view="social">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Social</div>
+      <div class="m-page-sub">Gäste-Profil optional, Chat/Live optional (Dummy).</div>
+    </div>
+  </div>
+  
+<div class="m-card"><b>Platzhalter:</b> Social in Hotels optional aktivieren/deaktivieren.</div>
+
+</section>
+
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { bootDashboard } from "../shared/ui.js";
+    import { applyI18n } from "../shared/i18n.js";
+    bootDashboard("./login.html");
+    applyI18n(document);
+  </script>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
