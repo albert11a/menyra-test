@@ -1,112 +1,80 @@
 # README_STATUS — MENYRA (aktueller Stand)
 
 **Datum:** 2025-12-16  
-**Zielphase:** TEIL 1 — Dummy komplett (UI-only)  
-**Letzter Mini-Step:** **DUMMY-P1.2 ✅** (Kundenliste + Kundendetail UI)  
-**Nächster Mini-Step:** **DUMMY-P1.3** (Mitarbeiter/Staff-Admin Screens)
+**Zielphase:** TEIL 1 — Dummy komplett (UI-only, keine Firebase-Logik)  
+**Letzter Mini-Step:** **DUMMY-P1.3.2 ✅** (Staff Admin „wie CEO“: Schnellaktionen + Stat-Cards + Aktivität + neue Views Demos/Content)  
+**Nächster Mini-Step:** **DUMMY-P1.4** (Leads CRM Screens sauber ausbauen: Liste/Detail/Notes/Next-Action/Pipeline)
 
 ---
 
-## 1) Was ist MENYRA (Kurz)
-MENYRA ist eine Plattform für **Gastro (Restaurant/Café/Club)**, **Fastfood/Pickup**, **Hotels/Motels**, **E-Commerce Shops** und **Dienstleistungen**.
-
-- **Guest**: QR-Menu, Bestellen (später Logik), Like/Comment (nur mit Account), Presence („Wer ist gerade hier“) blurred ohne Account
-- **Public/Main Page**: teilbar wie Website (Öffnungszeiten, Reviews, Offers, Kontakt)
-- **Owner Admin**: Kunde verwaltet seinen Betrieb (Menu/Shop/Hotel-Setup)
-- **Staff Panels**: Kellner, Küche, Housekeeping (je nach Modul)
-- **Platform (CEO + Staff Admin)**: Kunden/Leads/Stats/Ads/Moderation
-
-**Wichtig:** Wir bauen zuerst **nur Dummy/Platzhalter-UI**, damit alles sichtbar ist. Danach kommt die Logik in Mini-Schritten.
+## 0) Wichtig (damit du richtig testest)
+- Das ist **Dummy/UI-only**: Buttons zeigen Views, Formulare speichern noch nichts.
+- Logins sind **Dummy-Gates** (localStorage), damit die Bereiche getrennt sind.
+- Später ersetzen wir Dummy-Gates durch **Firebase Auth + Firestore Role-Checks**.
 
 ---
 
-## 2) Was ist im Dummy bereits drin (funktioniert als UI)
-### Plattform (CEO Admin) — `platform/`
-- Login (Dummy: irgendeine Email/Pass reicht)
-- Dashboard (Schnellaktionen, Stat-Cards, Activity Tabelle – alles Platzhalter)
-- Kundenliste (Dummy)
-- Kundendetail (Dummy) — Formular, Module-Toggles, Links/QR-Preview, Multi-Location, Accounts, Notizen
-- Accounts (Platzhalter-Liste)
-- Module (Platzhalter-Liste)
-- Ads Review / Moderation / Analytics / Settings (Platzhalter-Screens)
-
-### Guest / Public / Social (Dummy-Frontends)
-- Guest Seiten (Karte/Fastfood/Shop/Room) als Platzhalter
-- Public Main Page als Platzhalter
-- Social Index (Explore/Feed/Profile etc.) als Platzhalter
-
-### PWA Basis
-- `manifest.json`, `sw.js`, `offline.html` (Dummy/PWA Grundgerüst)
+## 1) Projektstruktur (Ordner)
+- `platform/` – **CEO Platform Admin** + **Staff Admin**
+- `owner/` – **Kunden-Admin** (Restaurant/Café/Hotel/Service)
+- `staff/` – **Kellner** und später **Küche / Housekeeping**
+- `guest/` – **QR-Karte / Menü / Bestellung**
+- `public/` – **Main Pages** (Website-ähnlich, teilbar)
+- `ecommerce/` – **Shop Frontend**
+- `social/` – **Social Feed + Profile (Dummy)**
+- `shared/` – Shared CSS/JS (Design-System, i18n, UI-Helper)
+- Root: `index.html`, `manifest.json`, `sw.js`, `offline.html` (PWA Dummy)
 
 ---
 
-## 3) Was war neu in DUMMY-P1.2
-### Platform → Kunden
-- Kundenliste wurde **erweitert**:
-  - mehr Kundentypen (Gastro, Pickup, Hotel, Motel, Shop, Dienstleistung)
-  - „Öffnen“ führt zur neuen **Kundendetail-Ansicht**
-- Neue View: **Kundendetails**
-  - Onboarding-Formular (Name, Typ, Stadt, Kontakt, Beschreibung)
-  - RestaurantId/Slug Bereich inkl. **„ID Migration“ (später)** als Platzhalter
-  - Links & QR Bereiche (Main/QR/Room/Shop) + „QR Export“ Buttons (später)
-  - Sprachen-Toggles (Liste deiner Zielsprachen)
-  - Multi-Location Tabelle (Filialen)
-  - Accounts/Rollen (Owner/Staff/Küche/Housekeeping) Platzhalter
-  - Content & Design Buttons (Menu Builder, Page Builder, Shop Builder, Guest Karte Builder – kommen in P2/P3)
-  - Interne Notizen (CEO/Staff)
+## 2) Was im Dummy bereits funktioniert (UI)
+### 2.1 Platform (CEO) — `platform/dashboard.html`
+- Sidebar-Navigation + Mobile Drawer
+- Views: Dashboard, Kunden, Leads, Demos, Mitarbeiter, Accounts, Module, Ads Freigabe, Moderation, Analytics, Einstellungen
+- Sprach-Dropdown (i18n System vorbereitet)
 
-### CSS (klein, aber wichtig)
-- `shared/unified.css` hat kleine Helper-Klassen bekommen (Toggle-Chips + KV-Listen), damit Detailseiten sauber aussehen.
+### 2.2 Platform Staff Admin — `platform/staff.html`
+- Gleiches Layout wie CEO (Shell/Spacing konsistent)
+- Views: Dashboard, Meine Kunden, Meine Leads, **Demos**, **Content**, Einstellungen
+- Dashboard hat jetzt:
+  - Schnellaktionen (Tiles)
+  - Stat-Cards (Meine Kunden/Leads/Won/Provision)
+  - „Meine letzte Aktivität“ Tabelle (Dummy)
 
----
+### 2.3 Owner Admin — `owner/`
+- Dummy-Login getrennt von Admin-UI
+- Views (Dummy): Überblick, Menü/Produkte, Bilder/Medien, Offers, Team/Staff, QR & Tische, Einstellungen
 
-## 4) Was uns im Dummy noch fehlt (große Checkliste)
-Wir arbeiten **Mini-Step für Mini-Step**. Kein großer Sprung, damit es stabil bleibt.
+### 2.4 Staff Panels — `staff/`
+- Kellner Panel (Dummy): Orders-Liste, Status-Chips, Detail Drawer/Modal (später Logik)
+- Küche/Hauskeeping sind als Richtung vorbereitet (Dummy/Platzhaltertexte)
 
-### DUMMY-P1 (Platform Basis)
-- **P1.3** Mitarbeiter/Staff Admin Screens (Liste/Detail/Zuweisung/Provision/Stats)
-- **P1.4** Leads CRM Screens (Liste/Pipeline/Detail/Convert)
-- **P1.5** Demo Generator Screens (Templates + Share Links)
-- **P1.6** Assignments (Lead/Kunde zu Staff)
-
-### DUMMY-P2 (Content Suite)
-- Menu Builder + Item Editor + Extras/Allergene + Preview + Media Library
-
-### DUMMY-P3 (Themes + Baukasten)
-- Theme Gallery + Builder + Blocks + Preview (Mobile/Tablet/Desktop) + Guest Karte Builder
-
-### DUMMY-P4 (Ads)
-- Facebook-like Campaign Builder, Targeting, Budget, Preview Slots, Analytics, Approval
-
-### DUMMY-P5 (Social)
-- Explore (Kunden-Verzeichnis), Feed, Profile, Post Create, Chat, Presence („wer ist hier“) blurred ohne Account, History
-
-### DUMMY-P6 (Küche/Stationen)
-- Kitchen Panel + Bar Panel + Station/Extras Views
-
-### DUMMY-P7/P8
-- Hotel/Motel/Service/Ecom Feinschliff + PWA App Experience UI-only
+### 2.5 Guest & Public & Ecommerce & Social
+- Guest QR-Karte (Dummy UI)
+- Public Main Page (Dummy UI)
+- Ecommerce Shop UI (Dummy)
+- Social Feed/Profile/„Wer ist hier“ Placeholder (Dummy)
 
 ---
 
-## 5) Wie du prüfst, ob alles richtig läuft (Checkliste)
-### Lokal (VS Code)
-1. Öffne `index.html` mit Live Server  
-2. Klick auf:
-   - Platform Admin → Login → Dashboard → Kunden → Kundendetails
-   - Guest/Public/Social Links im Hub
+## 3) Was als Nächstes kommt (Mini-Steps Logik-freundlich)
+**DUMMY-P1.4 (nächster Schritt):** Leads CRM Screens (CEO + Staff)
+- Leads Liste: Filter, Pipeline, Next Action, „öffnen“
+- Lead Detail: Notizen, Historie, Tasks, „zu Kunde konvertieren“ (nur Dummy UI)
+- Staff sieht nur „meine Leads“ Ansicht (UI gleich aufgebaut)
 
-### Vercel
-- Nach Push auf GitHub:
-  - Vercel Projekt → Deployments → Latest Deployment öffnen
-  - Wenn 404: prüfen ob `index.html` im Root liegt und Vercel „Other“/Static nutzt
+Danach:
+- DUMMY-P1.5 Kunden-Screens sauber (Liste/Detail/Module je Kundentyp)
+- DUMMY-P1.6 Ads Manager UI (Kampagne erstellen, Budget, Regionen, Preview, Analytics — Dummy)
+- DUMMY-P1.7 Social UI erweitern (Feed, Explore, Profile, Blurred Presence ohne Account — Dummy)
+- Dann TEIL 2: Logik in kleinen Schritten (Auth → Rollen → Firestore Datenmodelle → Caching/Perf)
 
 ---
 
-## 6) Regel für unsere Zusammenarbeit (damit keine Limits passieren)
-- Pro Chat: **genau 1 Mini-Step**
-- Ich liefere:
-  - komplette Dateien
-  - README_STATUS Update
-  - zusätzlich ein „Step-Readme“ (was geändert wurde & was als nächstes kommt)
+## 4) Bewusste „Später“ Themen (Design-Feinschliff)
+Diese Dinge fixen wir **zum Schluss**, weil sich Inhalte noch ändern:
+- Text-Overflow/Line-Clamp überall perfekt
+- Tabellen → mobile Karten, Typografie/Spacing final
+- Icons final (SVG Set), Farben, Themes, PWA-Polish
 
+**Basis-Layout (Shell/Wrapper/Views)** halten wir aber schon jetzt konsistent, damit später nur CSS nötig ist.

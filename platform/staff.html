@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>Platform Staff Admin – MENYRA (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
+  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
+</head>
+<body>
+  <!-- Mobile Drawer -->
+  <div id="drawerBackdrop" class="m-drawer-backdrop"></div>
+  <aside id="drawer" class="m-drawer" aria-label="Mobile Menü">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+      <div style="font-weight:1000;">MENYRA</div>
+      <button id="drawerCloseBtn" class="m-ghost-btn" type="button" aria-label="Menü schließen">✕</button>
+    </div>
+
+    <div class="m-side-group">
+      <button class="m-side-link" data-view-target="dashboard" type="button"><span class="m-nav-icon">📊</span><span class="m-nav-label">Dashboard</span></button>
+      <button class="m-side-link" data-view-target="my_customers" type="button"><span class="m-nav-icon">🏷️</span><span class="m-nav-label">Meine Kunden</span></button>
+      <button class="m-side-link" data-view-target="my_leads" type="button"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Meine Leads</span></button>
+      <button class="m-side-link" data-view-target="demos" type="button"><span class="m-nav-icon">🧪</span><span class="m-nav-label">Demos</span></button>
+      <button class="m-side-link" data-view-target="content" type="button"><span class="m-nav-icon">🧩</span><span class="m-nav-label">Content</span></button>
+      <button class="m-side-link" data-view-target="settings" type="button"><span class="m-nav-icon">⚙️</span><span class="m-nav-label">Einstellungen</span></button>
+    </div>
+
+    <div style="margin-top:12px;">
+      <a href="../index.html" style="text-decoration:none; font-weight:900;">← Zur Startseite</a>
+    </div>
+  </aside>
+
+  <header class="m-topbar">
+    <div class="m-topbar-left">
+      <button id="drawerOpenBtn" class="m-ghost-btn m-burger-btn" type="button" aria-label="Menü">☰</button>
+      <div style="display:flex; flex-direction:column; line-height:1.1;">
+        <div style="font-weight:1000;">MENYRA</div>
+        <div style="font-size:12px; color: rgba(15,23,42,0.55);">Staff Admin</div>
+      </div>
+    </div>
+
+    <div class="m-topbar-right" style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+      <button id="logoutBtn" class="m-btn m-btn--ghost" type="button">Abmelden</button>
+    </div>
+  </header>
+
+  <div class="m-layout">
+    <aside class="m-sidebar">
+      <div class="m-sidebar-inner">
+        <div class="m-sidebar-section--label">Navigation</div>
+        <div class="m-side-group">
+          <button class="m-side-link" data-view-target="dashboard" type="button"><span class="m-nav-icon">📊</span><span class="m-nav-label">Dashboard</span></button>
+          <button class="m-side-link" data-view-target="my_customers" type="button"><span class="m-nav-icon">🏷️</span><span class="m-nav-label">Meine Kunden</span></button>
+          <button class="m-side-link" data-view-target="my_leads" type="button"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Meine Leads</span></button>
+          <button class="m-side-link" data-view-target="demos" type="button"><span class="m-nav-icon">🧪</span><span class="m-nav-label">Demos</span></button>
+      <button class="m-side-link" data-view-target="content" type="button"><span class="m-nav-icon">🧩</span><span class="m-nav-label">Content</span></button>
+      <button class="m-side-link" data-view-target="settings" type="button"><span class="m-nav-icon">⚙️</span><span class="m-nav-label">Einstellungen</span></button>
+        </div>
+
+        <div style="margin-top:12px;">
+          <div class="m-badge">Dummy</div>
+          <div style="margin-top:8px; font-size:12px; color: rgba(15,23,42,0.65);">
+            Staff sieht später nur zugewiesene Kunden & Leads.
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="m-main">
+      <div class="m-view-container">
+
+        <!-- VIEW: DASHBOARD -->
+        <section class="m-view" data-view="dashboard">
+          <div class="m-page-header">
+            <div>
+              <div class="m-page-title">Dashboard (Staff)</div>
+              <div class="m-page-sub">Kurzüberblick nur für <b>deine</b> Kunden & Leads (Dummy). Später kommt alles aus Firestore.</div>
+            </div>
+          </div>
+
+          <div class="m-card" style="margin-bottom:14px;">
+            <div class="m-card-head">
+              <div>
+                <div class="m-card-title">Schnellaktionen</div>
+                <div class="m-card-sub">Klick führt in die passende Ansicht (alles Dummy/Platzhalter).</div>
+              </div>
+            </div>
+            <div class="m-actions-grid">
+              <button class="m-action-tile" data-view-target="my_customers" type="button">
+                <div class="m-action-ico">🏷️</div>
+                <div class="m-action-title">Meine Kunden</div>
+                <div class="m-action-sub">Liste, Filter, Details (nur zugewiesene)</div>
+              </button>
+              <button class="m-action-tile" data-view-target="my_leads" type="button">
+                <div class="m-action-ico">🎯</div>
+                <div class="m-action-title">Meine Leads</div>
+                <div class="m-action-sub">Pipeline, Notizen, Next Action</div>
+              </button>
+              <button class="m-action-tile" data-view-target="demos" type="button">
+                <div class="m-action-ico">🧪</div>
+                <div class="m-action-title">Demos</div>
+                <div class="m-action-sub">Demo-Links erzeugen & senden</div>
+              </button>
+              <button class="m-action-tile" data-view-target="content" type="button">
+                <div class="m-action-ico">🧩</div>
+                <div class="m-action-title">Content</div>
+                <div class="m-action-sub">Menü, Medien, Inhalte pflegen</div>
+              </button>
+              <button class="m-action-tile" data-view-target="settings" type="button">
+                <div class="m-action-ico">⚙️</div>
+                <div class="m-action-title">Einstellungen</div>
+                <div class="m-action-sub">Profil, Region, Sprache</div>
+              </button>
+            </div>
+          </div>
+
+          <div class="m-cards-grid">
+            <div class="m-card m-stat-card">
+              <div class="m-stat-top"><div class="m-stat-label">Meine Kunden</div><div class="m-badge">Dummy</div></div>
+              <div class="m-stat-value" id="sMyCustomers">7</div>
+              <div class="m-stat-sub">Nur Kunden, die dir zugewiesen sind</div>
+            </div>
+
+            <div class="m-card m-stat-card">
+              <div class="m-stat-top"><div class="m-stat-label">Meine Leads</div><div class="m-badge">Dummy</div></div>
+              <div class="m-stat-value" id="sMyLeads">18</div>
+              <div class="m-stat-sub">Deine Pipeline (new → won/lost)</div>
+            </div>
+
+            <div class="m-card m-stat-card">
+              <div class="m-stat-top"><div class="m-stat-label">Gewonnene Leads</div><div class="m-badge">Dummy</div></div>
+              <div class="m-stat-value" id="sMyWon">3</div>
+              <div class="m-stat-sub">Leads, die zu Kunden wurden</div>
+            </div>
+
+            <div class="m-card m-stat-card">
+              <div class="m-stat-top"><div class="m-stat-label">Provision</div><div class="m-badge">später</div></div>
+              <div class="m-stat-value">—</div>
+              <div class="m-stat-sub">Kommt mit Abrechnung & KPIs</div>
+            </div>
+          </div>
+
+          <div style="height:12px"></div>
+
+          <div class="m-card m-table-card">
+            <div class="m-table-toolbar">
+              <div class="m-table-title">Meine letzte Aktivität</div>
+              <div class="m-table-actions">
+                <button class="m-ghost-btn" type="button">Export (später)</button>
+              </div>
+            </div>
+            <div style="overflow:auto">
+              <table class="m-table">
+                <thead>
+                  <tr><th>Zeit</th><th>Event</th><th>Kunde/Lead</th><th>Details</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>10:40</td><td>Lead angerufen</td><td>Lead #12 – Restaurant</td><td>Termin vereinbart: Do 15:00</td></tr>
+                  <tr><td>10:12</td><td>Demo Link gesendet</td><td>Lead #07 – Hotel</td><td>WhatsApp + Email (Dummy)</td></tr>
+                  <tr><td>09:58</td><td>Menü Bild vorbereitet</td><td>Shpija e Vjetër</td><td>3 neue Speisen-Fotos (später Upload)</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- VIEW: MEINE KUNDEN -->
+        <section class="m-view" data-view="my_customers" style="display:none">
+          <div class="m-page-header">
+            <div>
+              <div class="m-page-title">Meine Kunden</div>
+              <div class="m-page-sub">Liste deiner zugewiesenen Kunden (Dummy).</div>
+            </div>
+          </div>
+
+          <div class="m-card">
+            <div class="m-input-row">
+              <div class="m-input-group">
+                <label>Suche</label>
+                <input class="m-input" placeholder="Name / Stadt / Typ"/>
+              </div>
+              <div class="m-input-group">
+                <label>Status</label>
+                <select class="m-select">
+                  <option>Alle</option>
+                  <option>In Umsetzung</option>
+                  <option>Aktiv</option>
+                  <option>Pause</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="m-card">
+            <div class="m-card-head">
+              <div>
+                <div class="m-card-title">Kunden (Dummy)</div>
+                <div class="m-card-sub">Später: nur Kunden mit assignedStaffId = dein UID.</div>
+              </div>
+            </div>
+            <div class="m-card-body">
+              <div style="overflow:auto;">
+                <table class="m-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th><th>Typ</th><th>Stadt</th><th>Status</th><th>Aktion</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><b>Café Demo</b></td><td>Café</td><td>Prishtina</td><td><span class="m-status m-status--ok">Aktiv</span></td>
+                      <td><button class="m-mini-btn" type="button">Öffnen</button></td>
+                    </tr>
+                    <tr>
+                      <td><b>Pizza Demo</b></td><td>Restaurant</td><td>Prizren</td><td><span class="m-status m-status--ok">Aktiv</span></td>
+                      <td><button class="m-mini-btn" type="button">Öffnen</button></td>
+                    </tr>
+                    <tr>
+                      <td><b>Hotel Demo</b></td><td>Hotel</td><td>Peja</td><td><span class="m-status">In Umsetzung</span></td>
+                      <td><button class="m-mini-btn" type="button">Öffnen</button></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- VIEW: MEINE LEADS -->
+        <section class="m-view" data-view="my_leads" style="display:none">
+          <div class="m-page-header">
+            <div>
+              <div class="m-page-title">Meine Leads</div>
+              <div class="m-page-sub">Pipeline & Notizen (Dummy).</div>
+            </div>
+          </div>
+
+          <div class="m-card">
+            <div class="m-card-head">
+              <div>
+                <div class="m-card-title">Pipeline</div>
+                <div class="m-card-sub">Später: echte Pipeline pro Mitarbeiter.</div>
+              </div>
+            </div>
+            <div class="m-card-body">
+              <div class="m-pipeline">
+                <div class="m-pipe-col"><div class="m-pipe-title">Neu</div><div class="m-pipe-item">Lead #18 – Shop</div><div class="m-pipe-item">Lead #21 – Service</div></div>
+                <div class="m-pipe-col"><div class="m-pipe-title">Kontaktiert</div><div class="m-pipe-item">Lead #12 – Restaurant</div></div>
+                <div class="m-pipe-col"><div class="m-pipe-title">Meeting</div><div class="m-pipe-item">Lead #07 – Hotel</div></div>
+                <div class="m-pipe-col"><div class="m-pipe-title">Gewonnen</div><div class="m-pipe-item">Lead #05 – Café</div></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        
+        <!-- VIEW: DEMOS -->
+        <section class="m-view" data-view="demos" style="display:none">
+          <div class="m-page-header">
+            <div>
+              <div class="m-page-title">Demos</div>
+              <div class="m-page-sub">Demo-Templates & Share-Links, damit du Interessenten sofort etwas zeigen kannst (Dummy).</div>
+            </div>
+          </div>
+
+          <div class="m-cards-grid">
+            <div class="m-card">
+              <div class="m-card-head">
+                <div>
+                  <div class="m-card-title">Demo erstellen</div>
+                  <div class="m-card-sub">Später wählst du Typ (Restaurant/Café/Hotel/Shop/Service) + Theme + Sprache.</div>
+                </div>
+              </div>
+              <div class="m-card-body">
+                <div class="m-input-row">
+                  <div class="m-input-group">
+                    <label>Demo-Typ</label>
+                    <select class="m-select">
+                      <option>Restaurant/Café (QR Menü)</option>
+                      <option>Fastfood / Pickup</option>
+                      <option>Hotel/Motel</option>
+                      <option>Online-Shop</option>
+                      <option>Dienstleistung</option>
+                    </select>
+                  </div>
+                  <div class="m-input-group">
+                    <label>Sprache</label>
+                    <select class="m-select"><option>Deutsch</option><option>Shqip</option><option>English</option></select>
+                  </div>
+                </div>
+                <div style="height:10px"></div>
+                <button class="m-btn" type="button">Demo-Link erzeugen (später)</button>
+                <button class="m-btn m-btn--ghost" type="button" style="margin-left:8px;">Vorschau öffnen (später)</button>
+              </div>
+            </div>
+
+            <div class="m-card">
+              <div class="m-card-head">
+                <div>
+                  <div class="m-card-title">Meine Demo-Links (Dummy)</div>
+                  <div class="m-card-sub">Später: Liste deiner erzeugten Demos inkl. Klicks/Leads.</div>
+                </div>
+              </div>
+              <div class="m-card-body">
+                <div style="overflow:auto">
+                  <table class="m-table">
+                    <thead><tr><th>Name</th><th>Typ</th><th>Link</th><th>Aktion</th></tr></thead>
+                    <tbody>
+                      <tr><td>Demo – Shpija e Vjetër</td><td>Restaurant</td><td>.../public/demo?x=123</td><td><button class="m-ghost-btn" type="button">Kopieren</button></td></tr>
+                      <tr><td>Demo – Hotel Center</td><td>Hotel</td><td>.../public/demo?x=456</td><td><button class="m-ghost-btn" type="button">Kopieren</button></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+
+        <!-- VIEW: CONTENT -->
+        <section class="m-view" data-view="content" style="display:none">
+          <div class="m-page-header">
+            <div>
+              <div class="m-page-title">Content / Menü & Medien</div>
+              <div class="m-page-sub">Hier pflegst du später für deine Kunden Inhalte: Menü, Bilder, Angebote, Texte, Öffnungszeiten (Dummy).</div>
+            </div>
+          </div>
+
+          <div class="m-cards-grid">
+            <div class="m-card">
+              <div class="m-card-head">
+                <div>
+                  <div class="m-card-title">Kunde auswählen</div>
+                  <div class="m-card-sub">Später: nur Kunden, die dir zugewiesen sind.</div>
+                </div>
+              </div>
+              <div class="m-card-body">
+                <select class="m-select" style="width:100%;">
+                  <option>Shpija e Vjetër (Restaurant)</option>
+                  <option>Bar Coffee (Café)</option>
+                  <option>Hotel Center (Hotel)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="m-card">
+              <div class="m-card-head">
+                <div>
+                  <div class="m-card-title">Menü/Produkte</div>
+                  <div class="m-card-sub">Später: Editor mit Vorschau (wie es in der Karte aussieht).</div>
+                </div>
+              </div>
+              <div class="m-card-body">
+                <div class="m-actions-row">
+                  <button class="m-btn" type="button">Menü öffnen (später)</button>
+                  <button class="m-btn m-btn--ghost" type="button">Vorschau Karte (später)</button>
+                </div>
+                <div style="height:10px"></div>
+                <div class="m-badge">Dummy</div>
+                <div style="margin-top:8px; font-size:13px; color: rgba(15,23,42,0.65);">
+                  Hier kommen später: Kategorien, Produkte, Preise, Extras, Allergene, Bilder, Verfügbarkeit.
+                </div>
+              </div>
+            </div>
+
+            <div class="m-card">
+              <div class="m-card-head">
+                <div>
+                  <div class="m-card-title">Bilder & Medien</div>
+                  <div class="m-card-sub">Später: Upload (Storage) + Optimierung (nicht verpixelt, aber schnell).</div>
+                </div>
+              </div>
+              <div class="m-card-body">
+                <button class="m-btn" type="button">Bilder hochladen (später)</button>
+                <div style="height:10px"></div>
+                <div class="m-badge">Hinweis</div>
+                <div style="margin-top:8px; font-size:13px; color: rgba(15,23,42,0.65);">
+                  Wir planen später: automatische Größen (Thumbnail + Full), WebP/AVIF, Lazy-Load.
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- VIEW: SETTINGS -->
+        <section class="m-view" data-view="settings" style="display:none">
+          <div class="m-page-header">
+            <div>
+              <div class="m-page-title">Einstellungen</div>
+              <div class="m-page-sub">Profil / Passwort / Sprache (später).</div>
+            </div>
+          </div>
+
+          <div class="m-card">
+            <div class="m-card-head"><div><div class="m-card-title">Staff Profil</div><div class="m-card-sub">Nur Dummy.</div></div></div>
+            <div class="m-card-body">
+              <div class="m-input-row">
+                <div class="m-input-group"><label>Name</label><input class="m-input" value="Staff Demo"/></div>
+                <div class="m-input-group"><label>Region</label><input class="m-input" value="Prishtina"/></div>
+              </div>
+              <div style="height:10px"></div>
+              <button class="m-btn m-btn--ghost" type="button">Speichern (später)</button>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script type="module">
+    import { bootDashboard } from "../shared/ui.js";
+    import { applyI18n } from "../shared/i18n.js";
+    bootDashboard("./staff-login.html");
+    applyI18n(document);
+  </script>
+  <script type="module" src="./staff-app.js"></script>
+</body>
+</html>

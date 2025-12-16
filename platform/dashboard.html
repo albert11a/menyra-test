@@ -308,7 +308,8 @@
     <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
       <button class="m-btn m-btn--ghost" type="button" data-view-target="customers">← Zur Kundenliste</button>
       <div>
-        <div class="m-page-title">Kundendetails</div>
+        <div class="m-page-title">Kundendetails: <span id="cdName">—</span></div>
+        <div class="m-page-sub" style="margin-top:2px;">ID: <b id="cdId">—</b> • Typ: <b id="cdType">—</b></div>
         <div class="m-page-sub">
           Hier werden später alle Daten gespeichert, die du beim Kunden vor Ort abfragst (Onboarding-Fragen).
           <b>Dummy:</b> Formular + Links + Module + QR – ohne Logik.
@@ -836,7 +837,14 @@
   <div class="m-page-header">
     <div>
       <div class="m-page-title">Mitarbeiter</div>
-      <div class="m-page-sub">Staff-Admins, Zuweisungen und Statistiken (Dummy). Alles ist Platzhalter – Logik kommt später.</div>
+      <div class="m-page-sub">
+        Staff-Admins verwalten, Kunden/Leads zuweisen, getrennte Statistiken (Dummy). Später: echte Rechte + Provisionen.
+      </div>
+    </div>
+
+    <div class="m-table-actions" style="margin-left:auto;">
+      <button id="staffCreateBtn" class="m-btn" type="button">+ Neuer Mitarbeiter</button>
+      <button class="m-btn m-btn--ghost" type="button">Provisionen (später)</button>
     </div>
   </div>
 
@@ -844,15 +852,55 @@
     <div class="m-card">
       <div class="m-card-head">
         <div>
-          <div class="m-card-title">Mitarbeiter – Übersicht</div>
-          <div class="m-card-sub">Liste / Filter / Detail – alles Dummy.</div>
+          <div class="m-card-title">Mitarbeiter – Liste</div>
+          <div class="m-card-sub">Suchen/filtern, öffnen, zuweisen – alles Dummy (klickbar).</div>
         </div>
       </div>
+
       <div class="m-card-body">
-        <div class="m-empty">
-          <div class="m-empty-ico">🧩</div>
-          <div class="m-empty-title">Platzhalter-Ansicht</div>
-          <div class="m-empty-sub">In den nächsten Mini-Steps füllen wir diese Ansicht mit Screens (Liste, Detail, Aktionen, Vorschau).</div>
+        <div class="m-input-row">
+          <div class="m-input-group">
+            <label>Suche</label>
+            <input id="staffSearch" class="m-input" placeholder="Name / Stadt / StaffId (später)"/>
+          </div>
+          <div class="m-input-group">
+            <label>Status</label>
+            <select id="staffStatus" class="m-select">
+              <option value="all">Alle</option>
+              <option value="active">Aktiv</option>
+              <option value="disabled">Deaktiviert</option>
+            </select>
+          </div>
+          <div class="m-input-group">
+            <label>Ansicht</label>
+            <select id="staffViewMode" class="m-select">
+              <option value="kpi">KPIs</option>
+              <option value="compact">Kompakt</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="overflow:auto">
+          <table class="m-table" id="staffTable">
+            <thead>
+              <tr>
+                <th>Mitarbeiter</th>
+                <th>Region</th>
+                <th>Kunden</th>
+                <th>Leads</th>
+                <th>Status</th>
+                <th>Aktionen</th>
+              </tr>
+            </thead>
+            <tbody id="staffTableBody">
+              <!-- wird von app.js als Dummy gefüllt -->
+            </tbody>
+          </table>
+        </div>
+
+        <div style="height:10px"></div>
+        <div class="m-side-small">
+          Logik später: Staff sieht nur eigene Kunden/Leads. CEO sieht alle + kann zuweisen. Leads von Staff sind getrennt (ownerId).
         </div>
       </div>
     </div>
@@ -860,18 +908,160 @@
     <div class="m-card">
       <div class="m-card-head">
         <div>
-          <div class="m-card-title">Schnellaktionen</div>
-          <div class="m-card-sub">Beispiele, wie es später funktioniert.</div>
+          <div class="m-card-title">Wie es später funktioniert</div>
+          <div class="m-card-sub">Praxis-Flow für Provisionen + Überblick.</div>
         </div>
       </div>
+
       <div class="m-card-body">
         <ul class="m-bullets">
-          <li><strong>Neu</strong>: Anlegen (Formular)</li>
-          <li><strong>Bearbeiten</strong>: Daten ändern</li>
-          <li><strong>Status</strong>: Pipeline/State wechseln</li>
-          <li><strong>Zuordnen</strong>: Mitarbeiter (nur CEO)</li>
-          <li><strong>Stats</strong>: Übersicht/KPIs (placeholder)</li>
+          <li><b>Staff erstellt Leads</b> → bleiben getrennt (ownerId=staff).</li>
+          <li><b>CEO kann Leads sehen</b> → optional zuweisen/übernehmen.</li>
+          <li><b>Wenn Lead gewinnt</b> → Convert zu Kunde (Tenant) + AssignedStaffId wird gesetzt.</li>
+          <li><b>Staff sieht nur zugewiesene Kunden</b> (Kundenliste + KPIs).</li>
+          <li><b>Provisionen</b> später automatisch aus Umsatz/Package berechnen.</li>
         </ul>
+
+        <div style="height:10px"></div>
+        <div class="m-chip-row">
+          <span class="m-chip">ownerId (Staff/CEO)</span>
+          <span class="m-chip">assignedStaffId</span>
+          <span class="m-chip">Provision Rule (später)</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Create Staff -->
+  <div id="staffCreateOverlay" class="m-modal-overlay is-hidden" role="dialog" aria-modal="true" aria-label="Neuer Mitarbeiter">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title">Neuen Mitarbeiter (Staff Admin) anlegen</h3>
+        <button id="staffCreateClose" class="m-ghost-btn" type="button" aria-label="Schließen">✕</button>
+      </div>
+      <div class="m-modal-body">
+        <div class="m-form-grid">
+          <div class="m-input-group">
+            <label>Name</label>
+            <input id="staffCreateName" class="m-input" placeholder="z.B. Arben Krasniqi"/>
+          </div>
+          <div class="m-input-group">
+            <label>Region/Stadt</label>
+            <input id="staffCreateRegion" class="m-input" placeholder="z.B. Prishtina"/>
+          </div>
+          <div class="m-input-group">
+            <label>Username/E-Mail</label>
+            <input id="staffCreateUser" class="m-input" placeholder="z.B. staff01@menyra.com"/>
+          </div>
+          <div class="m-input-group">
+            <label>Passwort (Dummy)</label>
+            <input id="staffCreatePass" class="m-input" placeholder="wird später automatisch generiert"/>
+          </div>
+          <div class="m-input-group">
+            <label>Provision (später)</label>
+            <input class="m-input" placeholder="z.B. 10% / pro Kunde / pro Paket"/>
+          </div>
+          <div class="m-input-group">
+            <label>Aktiv</label>
+            <select id="staffCreateStatus" class="m-select">
+              <option value="active">Aktiv</option>
+              <option value="disabled">Deaktiviert</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+        <div class="m-side-small">
+          Später: Auth anlegen + Firestore staffAdmins/{uid} + Rechte. Dummy: nur UI.
+        </div>
+      </div>
+      <div class="m-modal-body" style="padding-top:0">
+        <div class="m-modal-footer">
+          <button id="staffCreateCancel" class="m-btn m-btn--ghost" type="button">Abbrechen</button>
+          <button id="staffCreateSave" class="m-btn" type="button">Erstellen (Dummy)</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Staff Detail -->
+  <div id="staffDetailOverlay" class="m-modal-overlay is-hidden" role="dialog" aria-modal="true" aria-label="Mitarbeiter Details">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title">Mitarbeiter: <span id="staffDetailName">—</span></h3>
+        <button id="staffDetailClose" class="m-ghost-btn" type="button" aria-label="Schließen">✕</button>
+      </div>
+
+      <div class="m-modal-body">
+        <div class="m-stats">
+          <div class="m-stat"><div class="m-stat-label">Kunden</div><div class="m-stat-value" id="staffDetailCustomers">—</div></div>
+          <div class="m-stat"><div class="m-stat-label">Leads</div><div class="m-stat-value" id="staffDetailLeads">—</div></div>
+          <div class="m-stat"><div class="m-stat-label">Won</div><div class="m-stat-value" id="staffDetailWon">—</div></div>
+          <div class="m-stat"><div class="m-stat-label">Provision</div><div class="m-stat-value">—</div></div>
+        </div>
+
+        <div style="height:10px"></div>
+
+        <div class="m-actions-row">
+          <button id="staffAssignBtn" class="m-btn" type="button">Zuordnen</button>
+          <button class="m-btn m-btn--ghost" type="button">Login-Daten (später)</button>
+          <button class="m-btn m-btn--ghost" type="button">Deaktivieren (später)</button>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="m-cards-grid">
+          <div class="m-card">
+            <div class="m-card-head"><div><div class="m-card-title">Zugewiesene Kunden</div><div class="m-card-sub">Dummy Liste.</div></div></div>
+            <div class="m-card-body">
+              <ul id="staffDetailCustomersList" class="m-bullets"></ul>
+            </div>
+          </div>
+          <div class="m-card">
+            <div class="m-card-head"><div><div class="m-card-title">Zugewiesene Leads</div><div class="m-card-sub">Dummy Liste.</div></div></div>
+            <div class="m-card-body">
+              <ul id="staffDetailLeadsList" class="m-bullets"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div style="height:10px"></div>
+        <div class="m-side-small">
+          Später: Staff-Interface ist getrennt: <b>/platform/staff.html</b> (zeigt nur zugewiesene Daten).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Assign -->
+  <div id="staffAssignOverlay" class="m-modal-overlay is-hidden" role="dialog" aria-modal="true" aria-label="Zuordnen">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title">Zuordnen (Dummy)</h3>
+        <button id="staffAssignClose" class="m-ghost-btn" type="button" aria-label="Schließen">✕</button>
+      </div>
+      <div class="m-modal-body">
+        <div class="m-card" style="margin:0;">
+          <div class="m-card-body">
+            <div class="m-card-title" style="font-size:13px">Kunden zuweisen</div>
+            <div style="height:8px"></div>
+            <label style="display:flex; gap:10px; align-items:center;"><input type="checkbox" checked/> Café Demo (demo_cafe)</label>
+            <label style="display:flex; gap:10px; align-items:center;"><input type="checkbox"/> Pizza Demo (demo_rest)</label>
+            <label style="display:flex; gap:10px; align-items:center;"><input type="checkbox"/> Hotel Demo (demo_hotel)</label>
+
+            <div style="height:14px"></div>
+
+            <div class="m-card-title" style="font-size:13px">Leads zuweisen</div>
+            <div style="height:8px"></div>
+            <label style="display:flex; gap:10px; align-items:center;"><input type="checkbox" checked/> Lead #12 – Restaurant</label>
+            <label style="display:flex; gap:10px; align-items:center;"><input type="checkbox"/> Lead #18 – Shop</label>
+          </div>
+        </div>
+
+        <div class="m-modal-footer">
+          <button id="staffAssignCancel" class="m-btn m-btn--ghost" type="button">Abbrechen</button>
+          <button id="staffAssignSave" class="m-btn" type="button">Speichern (Dummy)</button>
+        </div>
       </div>
     </div>
   </div>
