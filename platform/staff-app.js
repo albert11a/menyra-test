@@ -41,6 +41,37 @@ function escapeHtml(s){
 }
 function escapeAttr(s){ return escapeHtml(s); }
 
+/* =========================================================
+   P1.6 — Global Shared Stores (CEO ↔ Staff)
+   ========================================================= */
+
+const GLOBAL_LEADS_KEY = "menyra_dummy_leads_v1";
+const GLOBAL_CUSTOMERS_KEY = "menyra_dummy_customers_v1";
+const CUSTOMER_ASSIGN_KEY = "menyra_dummy_customer_assignments_v1";
+
+function loadGlobalLeads(){
+  try{
+    const raw = localStorage.getItem(GLOBAL_LEADS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(_){ return []; }
+}
+function saveGlobalLeads(arr){
+  try{ localStorage.setItem(GLOBAL_LEADS_KEY, JSON.stringify(arr||[])); }catch(_){}
+}
+
+function loadGlobalCustomers(){
+  try{
+    const raw = localStorage.getItem(GLOBAL_CUSTOMERS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(_){ return []; }
+}
+function loadCustomerAssignmentsMap(){
+  try{ return JSON.parse(localStorage.getItem(CUSTOMER_ASSIGN_KEY) || "{}") || {}; }
+  catch(_){ return {}; }
+}
+
 const STAFF_DUMMY_LEADS_BASE = [
   { id:"slead_001", name:"Café Aroma", type:"cafe", city:"Prishtina", phone:"+383 44 000 111", note:"Will Demo sehen", status:"new", next:"Heute 17:00 Anruf", ownerId:"staff_001", updatedAt: 10 },
   { id:"slead_002", name:"Restaurant Te Kodra", type:"restaurant", city:"Prizren", phone:"+383 49 222 333", note:"Interesse an Ads", status:"contacted", next:"Mi 11:00 Meeting", ownerId:"staff_002", updatedAt: 9 },
@@ -56,16 +87,22 @@ function getStoreKey(){ return "menyra_dummy_staff_leads_" + getStaffId(); }
 
 function loadMyLeads(){
   const staffId = getStaffId();
-  const base = STAFF_DUMMY_LEADS_BASE.filter(l => l.ownerId === staffId);
-  let extra = [];
-  try{
-    extra = JSON.parse(localStorage.getItem(getStoreKey()) || "[]");
-  }catch(e){}
-  return [...extra, ...base];
+  const global = loadGlobalLeads();
+
+  // If no global store exists yet, fall back to local base list
+  if (!global.length){
+    return STAFF_DUMMY_LEADS_BASE.filter(l => (l.ownerId === staffId));
+  }
+
+  return global
+    .filter(l => (l.ownerType ? l.ownerType === "staff" : true))
+    .filter(l => (l.ownerId === staffId))
+    .sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
 }
 
 function saveMyLeads(list){
-  localStorage.setItem(getStoreKey(), JSON.stringify(list));
+  // list is full global leads array in the new model (shared with CEO)
+  saveGlobalLeads(list);
 }
 
 const staffLeadsState = { chip:"all", selectedId:null };
@@ -167,32 +204,31 @@ function openStaffLeadCreate(){
 function closeStaffLeadCreate(){ hideOverlay($("staffLeadCreateOverlay")); }
 
 function saveStaffLeadCreateDummy(){
-  const list = loadMyLeads();
+  const global = loadGlobalLeads();
+
   const name = $("staffLeadCreateName")?.value?.trim() || "Neuer Lead (Dummy)";
   const type = $("staffLeadCreateType")?.value || "restaurant";
   const city = $("staffLeadCreateCity")?.value?.trim() || "—";
   const phone = $("staffLeadCreatePhone")?.value?.trim() || "";
   const note = $("staffLeadCreateNote")?.value?.trim() || "";
 
-  const id = "slead_" + String(Math.floor(Math.random()*900)+100);
+  const id = "lead_s_" + Date.now();
   const lead = {
     id, name, type, city, phone, note,
     status:"new",
     next:"—",
+    ownerType:"staff",
     ownerId: getStaffId(),
-    updatedAt: (list[0]?.updatedAt||10) + 1
+    updatedAt: (global[0]?.updatedAt||10) + 1
   };
 
-  // store only extra leads (so base list stays base)
-  const extrasKey = getStoreKey();
-  let extras = [];
-  try{ extras = JSON.parse(localStorage.getItem(extrasKey) || "[]"); }catch(e){}
-  extras.unshift(lead);
-  localStorage.setItem(extrasKey, JSON.stringify(extras));
+  global.unshift(lead);
+  saveGlobalLeads(global);
 
   closeStaffLeadCreate();
   renderMyLeads();
 }
+
 
 function openStaffLeadDetail(id){
   const list = loadMyLeads();
@@ -216,24 +252,27 @@ function saveStaffLeadDetailDummy(){
   const id = staffLeadsState.selectedId;
   if (!id) return;
 
-  // update only extras
-  const extrasKey = getStoreKey();
-  let extras = [];
-  try{ extras = JSON.parse(localStorage.getItem(extrasKey) || "[]"); }catch(e){ extras=[]; }
-
-  const idx = extras.findIndex(l=>l.id===id);
-  if (idx !== -1){
-    extras[idx].status = $("staffLeadDetailStatus")?.value || extras[idx].status;
-    extras[idx].next = $("staffLeadDetailNext")?.value || extras[idx].next;
-    extras[idx].phone = $("staffLeadDetailPhone")?.value || extras[idx].phone;
-    extras[idx].note = $("staffLeadDetailNote")?.value || extras[idx].note;
-    extras[idx].updatedAt = (extras[0]?.updatedAt||10) + 1;
-    localStorage.setItem(extrasKey, JSON.stringify(extras));
+  const staffId = getStaffId();
+  const global = loadGlobalLeads();
+  const idx = global.findIndex(l=>l.id===id && l.ownerId===staffId);
+  if (idx === -1){
+    closeStaffLeadDetail();
+    renderMyLeads();
+    return;
   }
+
+  global[idx].status = $("staffLeadDetailStatus")?.value || global[idx].status;
+  global[idx].next = $("staffLeadDetailNext")?.value || global[idx].next;
+  global[idx].phone = $("staffLeadDetailPhone")?.value || global[idx].phone;
+  global[idx].note = $("staffLeadDetailNote")?.value || global[idx].note;
+  global[idx].updatedAt = (global[0]?.updatedAt||10) + 1;
+
+  saveGlobalLeads(global);
 
   closeStaffLeadDetail();
   renderMyLeads();
 }
+
 
 function bindStaffLeadsView(){
   $("staffLeadsNewBtn")?.addEventListener("click", openStaffLeadCreate);
@@ -263,7 +302,74 @@ function bindStaffLeadsView(){
   renderMyLeads();
 }
 
+/* =========================================================
+   P1.6 — Meine Kunden (assignedStaffId) — Shared Dummy Store
+   ========================================================= */
+
+function matchesCustomerFilter(c, q, status){
+  const qq = (q||"").toLowerCase().trim();
+  if (qq){
+    const blob = `${c.name||""} ${c.city||""} ${c.type||""} ${c.id||""}`.toLowerCase();
+    if (!blob.includes(qq)) return false;
+  }
+  if (status && status !== "all"){
+    const st = (c.status||"").trim();
+    if (st !== status) return false;
+  }
+  return true;
+}
+
+function renderMyCustomers(){
+  const tbody = $("staffCustomersTbody");
+  if (!tbody) return;
+
+  const staffId = getStaffId();
+  const q = $("staffCustomersSearch")?.value || "";
+  const status = $("staffCustomersStatusFilter")?.value || "all";
+
+  const customers = loadGlobalCustomers();
+  const map = loadCustomerAssignmentsMap();
+
+  if (!customers.length){
+    tbody.innerHTML = `<tr><td colspan="5"><div class="m-table-meta">
+      Keine Kundenliste gefunden. Öffne im CEO-Panel einmal den Kunden-Tab (Dummy bootstrap).
+    </div></td></tr>`;
+    return;
+  }
+
+  const mine = customers
+    .filter(c => (map[c.id] || "none") === staffId)
+    .filter(c => matchesCustomerFilter(c, q, status));
+
+  if (!mine.length){
+    tbody.innerHTML = `<tr><td colspan="5"><div class="m-table-meta">Keine zugewiesenen Kunden (Dummy).</div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = mine.map(c=>{
+    const badge = (c.status||"") === "Aktiv"
+      ? '<span class="m-status m-status--ok">Aktiv</span>'
+      : '<span class="m-status m-status--muted">'+escapeHtml(c.status||"—")+'</span>';
+
+    return `<tr>
+      <td><b>${escapeHtml(c.name||"—")}</b><div class="m-table-meta">${escapeHtml(c.id||"—")}</div></td>
+      <td>${escapeHtml(c.type||"—")}</td>
+      <td>${escapeHtml(c.city||"—")}</td>
+      <td>${badge}</td>
+      <td><a class="m-mini-btn" href="../public/main.html?r=${escapeAttr(c.id||"")}" target="_blank" rel="noopener">Main</a></td>
+    </tr>`;
+  }).join("");
+}
+
+function bindMyCustomersView(){
+  $("staffCustomersSearch")?.addEventListener("input", renderMyCustomers);
+  $("staffCustomersStatusFilter")?.addEventListener("change", renderMyCustomers);
+  renderMyCustomers();
+}
+
+
 window.addEventListener("DOMContentLoaded", ()=>{
   bindStaffLeadsView();
-});
+  bindMyCustomersView();
+  });
 

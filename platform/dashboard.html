@@ -309,7 +309,7 @@
       <button class="m-btn m-btn--ghost" type="button" data-view-target="customers">← Zur Kundenliste</button>
       <div>
         <div class="m-page-title">Kundendetails: <span id="cdName">—</span></div>
-        <div class="m-page-sub" style="margin-top:2px;">ID: <b id="cdId">—</b> • Typ: <b id="cdType">—</b></div>
+        <div class="m-page-sub" style="margin-top:2px;">ID: <b id="cdId">—</b> • Typ: <b id="cdType">—</b> • Staff: <b id="cdAssignedStaff">—</b></div>
         <div class="m-page-sub">
           Hier werden später alle Daten gespeichert, die du beim Kunden vor Ort abfragst (Onboarding-Fragen).
           <b>Dummy:</b> Formular + Links + Module + QR – ohne Logik.
@@ -354,6 +354,13 @@
             </select>
             <div class="m-input-hint">Später: Umsatz zählt nur bei „Aktiv“.</div>
           </div>
+          <div class="m-input-group">
+  <label>Zuweisen (Staff)</label>
+  <select id="cdAssignStaffSelect" class="m-select">
+    <option value="none">— (nicht zugewiesen)</option>
+  </select>
+  <div class="m-input-hint">Dummy: wird lokal im Browser gespeichert.</div>
+</div>
         </div>
 
         <div style="height:10px"></div>

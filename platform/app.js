@@ -35,6 +35,95 @@ const DUMMY_LEADS = [
   { id:"lead_010", name:"Hotel CityLine", type:"hotel", city:"Prishtina", phone:"+383 45 222 111", note:"Multi-Location später", status:"new", next:"Di 16:00 Nachricht", ownerType:"staff", ownerId:"staff_002", updatedAt: 1 },
 ];
 
+
+/* =========================================================
+   DUMMY STORAGE — Leads + Customer Assignments (P1.6)
+   ========================================================= */
+
+const LEADS_STORE_KEY = "menyra_dummy_leads_v1";
+const CUSTOMERS_STORE_KEY = "menyra_dummy_customers_v1";
+const CUSTOMER_ASSIGN_KEY = "menyra_dummy_customer_assignments_v1";
+
+function hydrateLeadsFromStorage(){
+  try{
+    const raw = localStorage.getItem(LEADS_STORE_KEY);
+    if (!raw){
+      // Seed store once so Staff/Admin share the same dataset
+      persistLeadsToStorage();
+      return;
+    }
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return;
+    DUMMY_LEADS.splice(0, DUMMY_LEADS.length, ...arr);
+  }catch(_){}
+}
+function persistLeadsToStorage(){
+  try{ localStorage.setItem(LEADS_STORE_KEY, JSON.stringify(DUMMY_LEADS)); }catch(_){}
+}
+
+function loadCustomerAssignments(){
+  try{ return JSON.parse(localStorage.getItem(CUSTOMER_ASSIGN_KEY) || "{}") || {}; }
+  catch(_){ return {}; }
+}
+function persistCustomerAssignments(map){
+  try{ localStorage.setItem(CUSTOMER_ASSIGN_KEY, JSON.stringify(map||{})); }catch(_){}
+}
+function setCustomerAssignment(customerId, staffIdOrNone){
+  if (!customerId) return;
+  const map = loadCustomerAssignments();
+  if (!staffIdOrNone || staffIdOrNone === "none") delete map[customerId];
+  else map[customerId] = staffIdOrNone;
+  persistCustomerAssignments(map);
+}
+function getCustomerAssignedStaffId(customerId){
+  const map = loadCustomerAssignments();
+  return map[customerId] || "none";
+}
+
+function bootstrapCustomersFromTable(){
+  const out = [];
+  document.querySelectorAll('section.m-view[data-view="customers"] table.m-table tbody tr').forEach(tr=>{
+    const btn = tr.querySelector('[data-view-target="customer_detail"]');
+    if (!btn) return;
+    const c = parseCustomerFromRow(btn);
+    if (c && c.id && !out.some(x=>x.id===c.id)) out.push(c);
+  });
+  try{ localStorage.setItem(CUSTOMERS_STORE_KEY, JSON.stringify(out)); }catch(_){}
+}
+
+function updateCustomerAssignmentUI(){
+  const c = loadSelectedCustomer();
+  if (!c) return;
+
+  const staffId = getCustomerAssignedStaffId(c.id);
+  const staffObj = state.staff.find(s=>s.id===staffId);
+  const label = staffObj ? staffObj.name : (staffId === "none" ? "—" : staffId);
+
+  $("cdAssignedStaff") && ($("cdAssignedStaff").textContent = label);
+
+  const sel = $("cdAssignStaffSelect");
+  if (!sel) return;
+
+  const opts = ['<option value="none">— (nicht zugewiesen)</option>']
+    .concat(state.staff.map(s =>
+      `<option value="${escapeAttr(s.id)}">${escapeHtml(s.name)} (${escapeHtml(s.region||"")})</option>`
+    ));
+
+  sel.innerHTML = opts.join("");
+  sel.value = staffId;
+
+  if (!sel.dataset.bound){
+    sel.dataset.bound = "1";
+    sel.addEventListener("change", ()=>{
+      const cc = loadSelectedCustomer();
+      if (!cc) return;
+      setCustomerAssignment(cc.id, sel.value || "none");
+      updateCustomerAssignmentUI();
+    });
+  }
+}
+
+
 const DUMMY_DEMOS = [
   { id:"demo_001", rid:"demo_cafe", name:"Café Aroma – Demo", type:"cafe", city:"Prishtina", status:"active", lang:"de", clicks: 128, updatedAt: 10 },
   { id:"demo_002", rid:"demo_restaurant", name:"Pizza Te Kodra – Demo", type:"restaurant", city:"Prizren", status:"draft", lang:"sq", clicks: 54, updatedAt: 9 },
@@ -230,15 +319,21 @@ function parseCustomerFromRow(btn){
   const tds = tr.querySelectorAll("td");
   const name = (tds[0]?.querySelector("b")?.textContent || tds[0]?.textContent || "—").trim();
   const type = (tds[1]?.textContent || "—").trim();
+  const statusText = (tds[2]?.textContent || "—").trim();
 
   const meta = tds[0]?.querySelector(".m-table-meta")?.textContent || "";
   // Format: "City • demo_id"
   let id = "—";
-  const parts = meta.split("•");
-  if (parts.length >= 2) id = parts[1].trim();
-  else if (meta.trim()) id = meta.trim();
+  let city = "—";
+  const parts = meta.split("•").map(x=>x.trim()).filter(Boolean);
+  if (parts.length >= 2){
+    city = parts[0] || "—";
+    id = parts[1] || "—";
+  }else if (parts.length === 1){
+    city = parts[0] || "—";
+  }
 
-  return { id, name, type };
+  return { id, name, type, city, status: statusText };
 }
 
 function saveSelectedCustomer(c){
@@ -261,6 +356,7 @@ function applyCustomerDetailHeader(){
   $("cdName") && ($("cdName").textContent = c.name || "—");
   $("cdId") && ($("cdId").textContent = c.id || "—");
   $("cdType") && ($("cdType").textContent = c.type || "—");
+  updateCustomerAssignmentUI();
 }
 
 function bindCustomerOpenButtons(){
@@ -799,6 +895,7 @@ function saveLeadCreateDummy(){
     ownerId:"ceo",
     updatedAt: (DUMMY_LEADS[0]?.updatedAt||10) + 1
   });
+  persistLeadsToStorage();
   closeLeadCreate();
   renderLeadsKPIs();
   renderLeadsTable();
@@ -833,7 +930,10 @@ function saveLeadDetailDummy(){
   lead.note = $("leadDetailNote")?.value || lead.note;
 
   const assign = $("leadDetailAssign")?.value || "none";
-  if (assign !== "none"){
+  if (assign === "none"){
+    lead.ownerType = "ceo";
+    lead.ownerId = "ceo";
+  } else {
     lead.ownerType = "staff";
     lead.ownerId = assign;
   }
@@ -887,8 +987,10 @@ function bindLeadsView(){
    ========================================================= */
 
 window.addEventListener("DOMContentLoaded", ()=>{
+  hydrateLeadsFromStorage();
   bindStaffView();
   bindCustomerOpenButtons();
+  bootstrapCustomersFromTable();
   bindDemoView();
   bindLeadsView();
   // Safety: if current view is already customer_detail (reload), apply header

@@ -181,15 +181,15 @@
             <div class="m-input-row">
               <div class="m-input-group">
                 <label>Suche</label>
-                <input class="m-input" placeholder="Name / Stadt / Typ"/>
+                <input id="staffCustomersSearch" class="m-input" placeholder="Name / Stadt / Typ"/>
               </div>
               <div class="m-input-group">
                 <label>Status</label>
-                <select class="m-select">
-                  <option>Alle</option>
-                  <option>In Umsetzung</option>
-                  <option>Aktiv</option>
-                  <option>Pause</option>
+                <select id="staffCustomersStatusFilter" class="m-select">
+                  <option value="all">Alle</option>
+                  <option value="Setup">Setup</option>
+                  <option value="Aktiv">Aktiv</option>
+                  <option value="Test">Test</option>
                 </select>
               </div>
             </div>
@@ -210,20 +210,7 @@
                       <th>Name</th><th>Typ</th><th>Stadt</th><th>Status</th><th>Aktion</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    <tr>
-                      <td><b>Café Demo</b></td><td>Café</td><td>Prishtina</td><td><span class="m-status m-status--ok">Aktiv</span></td>
-                      <td><button class="m-mini-btn" type="button">Öffnen</button></td>
-                    </tr>
-                    <tr>
-                      <td><b>Pizza Demo</b></td><td>Restaurant</td><td>Prizren</td><td><span class="m-status m-status--ok">Aktiv</span></td>
-                      <td><button class="m-mini-btn" type="button">Öffnen</button></td>
-                    </tr>
-                    <tr>
-                      <td><b>Hotel Demo</b></td><td>Hotel</td><td>Peja</td><td><span class="m-status">In Umsetzung</span></td>
-                      <td><button class="m-mini-btn" type="button">Öffnen</button></td>
-                    </tr>
-                  </tbody>
+                  <tbody id="staffCustomersTbody"></tbody>
                 </table>
               </div>
             </div>
