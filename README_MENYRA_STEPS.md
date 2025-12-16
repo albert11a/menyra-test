@@ -49,6 +49,11 @@ Pro ZIP: nur die zu ersetzenden Dateien + aktualisierte Readmes + CHANGES.md.
 **Tests:** Assignment setzen, Reload, bleibt; Staff sieht nur zugewiesene Kunden.
 
 ## ✅ P1.7 — Staff Create Customer (Draft) + CEO sieht CreatedBy
+
+**Hotfix (Bugfix):** Wenn „+ Neuer Kunde“ nicht reagiert oder Modal nicht sichtbar ist:
+- `staffCustomerCreateOverlay` muss `.m-modal-overlay` nutzen
+- `bootDashboard()` darf UI-Bindings nicht blockieren (try/catch)
+
 **Ziel:** Staff kann Kunden als Draft anlegen; CEO sieht Ersteller im Detail.  
 **Files:** `platform/staff.html`, `platform/staff-app.js`, `platform/app.js`, `platform/dashboard.html`  
 **Tests:** Staff legt Kunden an → CEO listet ihn; Detail zeigt “Erstellt von”.

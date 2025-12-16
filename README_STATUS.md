@@ -15,7 +15,8 @@ Stand: 2025-12-16
 - Customer → Staff zuweisen (persistiert)  
 - Staff „Meine Kunden“ filtert nach Assignment  
 
-✅ **P1.7** Staff kann Kunden erstellen (Draft / „In Umsetzung“) + CEO sieht „Erstellt von“  
+✅ **P1.7** Staff kann Kunden erstellen (Draft / „In Umsetzung“) + CEO sieht „Erstellt von“
+   - HOTFIX: Staff „Neuer Kunde“-Modal nutzt jetzt `.m-modal-overlay` (sichtbar/zentriert) + `bootDashboard()` ist safe-gekapselt.  
 - Staff legt Kunden an → erscheint im CEO sofort  
 - Customer Detail zeigt: „Erstellt von“ + „Zuständig“ (Assignment)
 

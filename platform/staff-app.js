@@ -417,7 +417,11 @@ function bindStaffLeadsView(){
 }
 
 window.addEventListener("DOMContentLoaded", ()=>{
-  bootDashboard("./staff-login.html");
+  try{
+    bootDashboard("$1");
+  }catch(err){
+    console.warn("[MENYRA] bootDashboard failed (safe-continue):", err);
+  }
   bindStaffCustomersView();
   bindStaffLeadsView();
 });
