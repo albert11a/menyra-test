@@ -235,23 +235,80 @@
           <div class="m-page-header">
             <div>
               <div class="m-page-title">Meine Leads</div>
-              <div class="m-page-sub">Pipeline & Notizen (Dummy).</div>
+              <div class="m-page-sub">Nur Leads, die ich erstellt habe (Dummy). Später: echte Trennung per Staff-UID.</div>
             </div>
+            <div class="m-page-actions">
+              <button id="staffLeadsNewBtn" class="m-btn" type="button">+ Neuer Lead</button>
+            </div>
+          </div>
+
+          <div class="m-cards-grid">
+            <div class="m-card"><div class="m-card-head"><div><div class="m-card-title">Meine Leads</div><div class="m-card-sub">Gesamt</div></div></div>
+              <div class="m-card-body"><div style="font-size:34px;font-weight:1000" id="staffLeadsKpiTotal">—</div></div></div>
+            <div class="m-card"><div class="m-card-head"><div><div class="m-card-title">Neu</div><div class="m-card-sub">Status: Neu</div></div></div>
+              <div class="m-card-body"><div style="font-size:34px;font-weight:1000" id="staffLeadsKpiNew">—</div></div></div>
+            <div class="m-card"><div class="m-card-head"><div><div class="m-card-title">In Arbeit</div><div class="m-card-sub">Kontaktiert / Demo / Termin</div></div></div>
+              <div class="m-card-body"><div style="font-size:34px;font-weight:1000" id="staffLeadsKpiWork">—</div></div></div>
+            <div class="m-card"><div class="m-card-head"><div><div class="m-card-title">Gewonnen</div><div class="m-card-sub">Won</div></div></div>
+              <div class="m-card-body"><div style="font-size:34px;font-weight:1000" id="staffLeadsKpiWon">—</div></div></div>
           </div>
 
           <div class="m-card">
             <div class="m-card-head">
               <div>
-                <div class="m-card-title">Pipeline</div>
-                <div class="m-card-sub">Später: echte Pipeline pro Mitarbeiter.</div>
+                <div class="m-card-title">Leads Liste</div>
+                <div class="m-card-sub">Filter, Detail, Status ändern (Dummy).</div>
+              </div>
+              <div class="m-card-actions">
+                <select id="staffLeadsStatusFilter" class="m-select">
+                  <option value="all">Status: Alle</option>
+                  <option value="new">Neu</option>
+                  <option value="contacted">Kontaktiert</option>
+                  <option value="demo">Demo</option>
+                  <option value="meeting">Termin</option>
+                  <option value="won">Won</option>
+                  <option value="lost">Lost</option>
+                </select>
               </div>
             </div>
+
             <div class="m-card-body">
-              <div class="m-pipeline">
-                <div class="m-pipe-col"><div class="m-pipe-title">Neu</div><div class="m-pipe-item">Lead #18 – Shop</div><div class="m-pipe-item">Lead #21 – Service</div></div>
-                <div class="m-pipe-col"><div class="m-pipe-title">Kontaktiert</div><div class="m-pipe-item">Lead #12 – Restaurant</div></div>
-                <div class="m-pipe-col"><div class="m-pipe-title">Meeting</div><div class="m-pipe-item">Lead #07 – Hotel</div></div>
-                <div class="m-pipe-col"><div class="m-pipe-title">Gewonnen</div><div class="m-pipe-item">Lead #05 – Café</div></div>
+              <div class="m-input-row">
+                <div class="m-input-group">
+                  <label>Suche</label>
+                  <input id="staffLeadsSearch" class="m-input" placeholder="Name / Stadt / Notiz"/>
+                </div>
+                <div class="m-input-group">
+                  <label>Sort</label>
+                  <select id="staffLeadsSort" class="m-select">
+                    <option value="updated_desc">Zuletzt geändert</option>
+                    <option value="next_asc">Nächste Aktion</option>
+                    <option value="name_asc">Name A–Z</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="m-chipbar" id="staffLeadsChips">
+                <button class="m-chip is-active" data-staff-lead-chip="all" type="button">Alle</button>
+                <button class="m-chip" data-staff-lead-chip="new" type="button">Neu</button>
+                <button class="m-chip" data-staff-lead-chip="contacted" type="button">Kontaktiert</button>
+                <button class="m-chip" data-staff-lead-chip="demo" type="button">Demo</button>
+                <button class="m-chip" data-staff-lead-chip="meeting" type="button">Termin</button>
+                <button class="m-chip" data-staff-lead-chip="won" type="button">Won</button>
+                <button class="m-chip" data-staff-lead-chip="lost" type="button">Lost</button>
+              </div>
+
+              <div style="overflow:auto; margin-top:12px">
+                <table class="m-table">
+                  <thead><tr><th>Lead</th><th>Status</th><th>Nächste Aktion</th><th>Aktionen</th></tr></thead>
+                  <tbody id="staffLeadsTbody">
+                    <tr><td colspan="4"><div class="m-table-meta">Lade Dummy-Leads…</div></td></tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="m-table-meta" style="margin-top:10px">
+                Hinweis: Später wird hier wirklich nur „deine Leads“ geladen (createdByStaffId / assignedStaffId).
               </div>
             </div>
           </div>
@@ -419,6 +476,101 @@
     bootDashboard("./staff-login.html");
     applyI18n(document);
   </script>
+  
+  <!-- =========================================================
+       MODAL: STAFF LEAD CREATE (DUMMY)
+       ========================================================= -->
+  <div id="staffLeadCreateOverlay" class="m-modal-overlay is-hidden" role="dialog" aria-modal="true" aria-label="Neuer Lead">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title">Neuen Lead anlegen</h3>
+        <button id="staffLeadCreateClose" class="m-ghost-btn" type="button" aria-label="Schließen">✕</button>
+      </div>
+      <div class="m-modal-body">
+        <div class="m-form-grid">
+          <div class="m-input-group">
+            <label>Lead Name</label>
+            <input id="staffLeadCreateName" class="m-input" placeholder="z.B. Café Aroma"/>
+          </div>
+          <div class="m-input-group">
+            <label>Typ</label>
+            <select id="staffLeadCreateType" class="m-select">
+              <option value="restaurant">Restaurant</option>
+              <option value="cafe">Café</option>
+              <option value="fastfood">Fastfood</option>
+              <option value="hotel">Hotel</option>
+              <option value="motel">Motel</option>
+              <option value="ecommerce">Online Shop</option>
+              <option value="service">Dienstleistung</option>
+            </select>
+          </div>
+          <div class="m-input-group">
+            <label>Stadt/Region</label>
+            <input id="staffLeadCreateCity" class="m-input" placeholder="z.B. Prizren"/>
+          </div>
+          <div class="m-input-group">
+            <label>Kontakt</label>
+            <input id="staffLeadCreatePhone" class="m-input" placeholder="+383 ..."/>
+          </div>
+          <div class="m-input-group" style="grid-column:1/-1">
+            <label>Notiz</label>
+            <textarea id="staffLeadCreateNote" class="m-textarea" placeholder="Kurz notieren…"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="m-modal-footer">
+        <button id="staffLeadCreateSave" class="m-btn" type="button">Speichern (Dummy)</button>
+        <button id="staffLeadCreateCancel" class="m-ghost-btn" type="button">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL: STAFF LEAD DETAIL (DUMMY)
+       ========================================================= -->
+  <div id="staffLeadDetailOverlay" class="m-modal-overlay is-hidden" role="dialog" aria-modal="true" aria-label="Lead Detail">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title" id="staffLeadDetailTitle">Lead</h3>
+        <button id="staffLeadDetailClose" class="m-ghost-btn" type="button" aria-label="Schließen">✕</button>
+      </div>
+      <div class="m-modal-body">
+        <div class="m-table-meta" id="staffLeadDetailMeta">—</div>
+
+        <div class="m-form-grid" style="margin-top:12px">
+          <div class="m-input-group">
+            <label>Status</label>
+            <select id="staffLeadDetailStatus" class="m-select">
+              <option value="new">Neu</option>
+              <option value="contacted">Kontaktiert</option>
+              <option value="demo">Demo gesendet</option>
+              <option value="meeting">Termin</option>
+              <option value="won">Gewonnen</option>
+              <option value="lost">Verloren</option>
+            </select>
+          </div>
+          <div class="m-input-group">
+            <label>Nächste Aktion</label>
+            <input id="staffLeadDetailNext" class="m-input" placeholder="z.B. Morgen 11:00 – Anruf"/>
+          </div>
+          <div class="m-input-group">
+            <label>Kontakt</label>
+            <input id="staffLeadDetailPhone" class="m-input" placeholder="—"/>
+          </div>
+          <div class="m-input-group" style="grid-column:1/-1">
+            <label>Notiz</label>
+            <textarea id="staffLeadDetailNote" class="m-textarea"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="m-modal-footer">
+        <button id="staffLeadDetailSave" class="m-btn" type="button">Speichern (Dummy)</button>
+        <button id="staffLeadDetailDemo" class="m-ghost-btn" type="button">Demo-Link senden (Dummy)</button>
+      </div>
+    </div>
+  </div>
+
+
   <script type="module" src="./staff-app.js"></script>
 </body>
 </html>

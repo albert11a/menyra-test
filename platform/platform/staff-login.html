@@ -41,6 +41,12 @@
       err.style.display = "none";
       // Dummy: später echte Auth + Staff-Doc Check
       localStorage.setItem("menyra_dummy_staff_logged_in", "1");
+      // Dummy: Staff-ID aus Email ableiten (damit jeder Mitarbeiter „seine“ Leads sieht)
+      const em = (email.value || "").trim().toLowerCase();
+      const sum = Array.from(em).reduce((a,ch)=>a + ch.charCodeAt(0), 0);
+      const ids = ["staff_001","staff_002","staff_003"];
+      const staffId = ids[ sum % ids.length ] || "staff_001";
+      localStorage.setItem("menyra_dummy_staff_id", staffId);
       location.href = "./staff.html";
     });
   </script>

@@ -20,7 +20,7 @@ Damit es **immer** funktioniert (keine riesigen Antworten):
 ### DUMMY-P1: Platform Basis + Navigation + Struktur
 - P1.1 CEO Dashboard Skeleton + Schnellaktionen ✅
 - P1.2 Kunden (Tenants) Liste + Detail UI (ohne Logik) ✅
-- P1.3 Mitarbeiter (Staff Admin) Screens (ohne Logik)
+- P1.3 Mitarbeiter (Staff Admin) Screens (ohne Logik) ✅
 - P1.4 Leads CRM Screens (Liste, Pipeline, Detail, Convert UI)
 - P1.5 Demo Generator Screens
 - P1.6 Assignments Screens (Lead/Tenant zu Staff)

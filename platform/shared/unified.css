@@ -145,3 +145,10 @@ html, body{ background: var(--menyra-bg) !important; }
 }
 .m-kv-row a{ font-weight: 900; text-decoration:none; }
 .m-kv-row a:hover{ text-decoration: underline; }
+
+/* ------------------------- Platform Dummy Helpers ------------------------- */
+.m-card-actions{ display:flex; gap:10px; align-items:center; justify-content:flex-end; flex-wrap:wrap; }
+.m-chipbar{ display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+.m-table-meta{ font-size:12px; opacity:.72; line-height:1.25; }
+.m-card-sub, .m-page-sub, .m-table-meta{ overflow-wrap:anywhere; word-break:break-word; }
+
