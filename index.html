@@ -3,102 +3,124 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>MENYRA – Dummy System (Schritt 2.1)</title>
-  <link rel="stylesheet" href="./shared/menyra.css"/>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>MENYRA Dummy – Step 4 (All-in-One)</title>
+  <link rel="stylesheet" href="./shared/styles.css"/>
   <link rel="stylesheet" href="./shared/unified.css"/>
 </head>
 <body>
-  <div class="m-topbar">
-    <div class="m-topbar-left">
-      <span class="m-logo">MENYRA</span>
-      <span class="m-env-badge">Dummy</span>
-      <span class="m-topbar-sep"></span>
-      <span class="m-topbar-title">Projekt-Start</span>
+  <div class="hub">
+    <div class="hub-title">MENYRA Dummy – Step 4 (All-in-One)</div>
+    <div class="hub-sub">
+      Komplettes Dummy-System: Platform + Admins + Staff + Guest + Public + Social + Ads + PWA (alles Platzhalter, aber klickbar).
+      Default: Deutsch.
     </div>
-    <div class="m-topbar-right">
-      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
-      <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
-    </div>
-  </div>
 
-  <div class="m-layout" style="padding: 14px 0;">
-    <main class="m-main">
-      <div class="m-shell">
-        <div class="m-card">
-          <div class="m-card-h">
-            <div>
-              <div class="m-kicker">SCHRITT 2.1</div>
-              <h1 style="margin:6px 0 0;">MENYRA Dummy – Admin-Welten</h1>
-              <p class="m-muted" style="margin:10px 0 0;">
-                Fokus: <b>Platform + Admins + Staff</b>. <b>Guest</b> kommt im nächsten Schritt (Schritt 3) – damit wir sauber bleiben.
-              </p>
-            </div>
-          </div>
+    <div class="hub-grid">
 
-          <div class="m-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
-            <a class="m-tile" href="./platform/login.html">
-              <div class="m-tile-title">Platform Admin</div>
-              <div class="m-tile-desc">Kunden, Accounts, Module, Ads-Freigabe, Moderation, Analytics</div>
-            </a>
-            <a class="m-tile" href="./owner/login.html">
-              <div class="m-tile-title">Gastro Owner Admin</div>
-              <div class="m-tile-desc">Menü, Orders (Tisch/Pickup), Offers, Loyalty, Queue, Ads</div>
-            </a>
-            <a class="m-tile" href="./ecommerce/login.html">
-              <div class="m-tile-title">E-Commerce Admin</div>
-              <div class="m-tile-desc">Produkte/Varianten, Lager, Orders, Discounts, Ads</div>
-            </a>
-            <a class="m-tile" href="./hotel/login.html">
-              <div class="m-tile-title">Hotel/Motel Admin</div>
-              <div class="m-tile-desc">Rooms & QR, Requests/Tickets, Housekeeping Workflows</div>
-            </a>
-            <a class="m-tile" href="./services/login.html">
-              <div class="m-tile-title">Services Admin</div>
-              <div class="m-tile-desc">Leistungen, Anfragen, Öffnungszeiten, Reviews, Ads</div>
-            </a>
-            <a class="m-tile" href="./staff/login.html">
-              <div class="m-tile-title">Staff Panels</div>
-              <div class="m-tile-desc">Gastro Orders, Fastfood Pickup, Hotel Housekeeping</div>
-            </a>
-            <a class="m-tile" href="./public/main.html">
-              <div class="m-tile-title">Public Page (Demo)</div>
-              <div class="m-tile-desc">Öffentliche Seite für Lokale/Hotels/Services (Infos, Reviews-Widget Platzhalter)</div>
-            </a>
-
-            <a class="m-tile" href="./guest/coming-soon.html">
-              <div class="m-tile-title">Guest (kommt in Schritt 3)</div>
-              <div class="m-tile-desc">Karte, Pickup, Room-QR, Shop Layout – mit guest.css</div>
-            </a>
-            <a class="m-tile" href="./social/feed.html">
-              <div class="m-tile-title">Social (Dummy)</div>
-              <div class="m-tile-desc">Feed, Profil, Chat, Live (nur UI)</div>
-            </a>
-          </div>
+      <div class="hub-card">
+        <h3>Platform Admin (Superadmin)</h3>
+        <p>Kunden verwalten, Module aktivieren, Accounts, Moderation, Ads-Freigabe, Analytics.</p>
+        <div class="hub-links">
+          <a href="./platform/login.html">Login</a>
+          <a href="./platform/dashboard.html">Dashboard</a>
         </div>
-
-        <div class="m-card" style="margin-top:14px;">
-          <div class="m-card-h">
-            <div>
-              <div class="m-kicker">HINWEIS</div>
-              <h2 style="margin:6px 0 0;">Guest Folder</h2>
-              <p class="m-muted" style="margin:10px 0 0;">
-                Der Guest-Bereich (Karte/Shop/Room-QR) kommt in <b>Schritt 3</b>.
-                Wir bauen ihn extra getrennt, weil er ein anderes UI (guest.css) hat und wir hier zuerst Admin/Staff fertig machen.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div class="m-footer">MENYRA Dummy – Schritt 2.1 (Placeholder UI, keine Firebase-Logik)</div>
       </div>
-    </main>
+
+      <div class="hub-card">
+        <h3>Gastro Owner Admin (Restaurant/Café/Club/Fastfood)</h3>
+        <p>Profil, Menü, Bestellungen (Tisch & Pickup), Offers, Loyalty, Referrals, Queue, Ads, Social.</p>
+        <div class="hub-links">
+          <a href="./owner/login.html">Login</a>
+          <a href="./owner/dashboard.html">Dashboard</a>
+        </div>
+      </div>
+
+      <div class="hub-card">
+        <h3>E-Commerce Admin (Shop)</h3>
+        <p>Produkte/Varianten/Lager, Bestellungen, Rabatte, Loyalty, Referrals, Ads, Social.</p>
+        <div class="hub-links">
+          <a href="./ecommerce/login.html">Login</a>
+          <a href="./ecommerce/dashboard.html">Dashboard</a>
+        </div>
+      </div>
+
+      <div class="hub-card">
+        <h3>Hotel / Motel Admin</h3>
+        <p>Rooms & QR, Service-Requests/Tickets, Housekeeping-Flow, Motel-Privacy Mode.</p>
+        <div class="hub-links">
+          <a href="./hotel/login.html">Login</a>
+          <a href="./hotel/dashboard.html">Dashboard</a>
+        </div>
+      </div>
+
+      <div class="hub-card">
+        <h3>Services Admin (Dienstleistungen)</h3>
+        <p>Leistungen, Anfragen/Tickets, Reviews/Maps, Ads.</p>
+        <div class="hub-links">
+          <a href="./services/login.html">Login</a>
+          <a href="./services/dashboard.html">Dashboard</a>
+        </div>
+      </div>
+
+      <div class="hub-card">
+        <h3>Staff Panels</h3>
+        <p>Fokussierte Interfaces: Gastro Orders / Pickup / Housekeeping.</p>
+        <div class="hub-links">
+          <a href="./staff/login.html">Login</a>
+          <a href="./staff/gastro.html">Gastro</a>
+          <a href="./staff/pickup.html">Pickup</a>
+          <a href="./staff/housekeeping.html">Housekeeping</a>
+        </div>
+      </div>
+
+      <div class="hub-card">
+        <h3>Guest (QR-Welt)</h3>
+        <p>Gastro Karte (Tisch-QR), Fastfood Pickup, Hotel Room QR, Shop Layout.</p>
+        <div class="hub-links">
+          <a href="./guest/karte.html?r=demo_gastro&t=T1">Gastro (mit Tisch)</a>
+          <a href="./guest/karte.html?r=demo_gastro">Gastro (Preview)</a>
+          <a href="./guest/fastfood.html?r=demo_fastfood">Fastfood</a>
+          <a href="./guest/room.html?r=demo_hotel&room=204">Hotel Room</a>
+          <a href="./guest/shop.html?r=demo_shop">Shop</a>
+        </div>
+      </div>
+
+      <div class="hub-card">
+        <h3>Public Pages</h3>
+        <p>Öffentliche Mini-Website pro Kunde (Mehrwert: Reviews/Maps/Öffnungszeiten).</p>
+        <div class="hub-links">
+          <a href="./public/main.html?r=demo_gastro">Restaurant Main</a>
+          <a href="./public/main.html?r=demo_hotel">Hotel Main</a>
+          <a href="./public/main.html?r=demo_service">Service Main</a>
+          <a href="./public/main.html?r=demo_shop">Shop Main</a>
+        </div>
+      </div>
+
+      <div class="hub-card">
+        <h3>Social (Community)</h3>
+        <p>Feed, Profil, Chat, Live, Gifts – alles als UI-Platzhalter (später mit Moderation).</p>
+        <div class="hub-links">
+          <a href="./social/login.html">Login</a>
+          <a href="./social/feed.html">Feed</a>
+          <a href="./social/profile.html">Profil</a>
+          <a href="./social/chat.html">Chat</a>
+          <a href="./social/live.html">Live</a>
+          <a href="./social/gifts.html">Gifts</a>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="margin-top:16px; font-size: 13px; color: rgba(15,23,42,0.65);">
+      Hinweis: Dieses Projekt ist rein Dummy (Design & Struktur). Später kommt Firebase/Auth/Firestore/Rules Schritt für Schritt dazu.
+    </div>
   </div>
 
-  <script src="./shared/i18n.js"></script>
-  <script src="./shared/ui.js"></script>
   <script>
-    MENYRA_I18N_API.mountLangSelect("#langSelect");
-    MENYRA_UI.initTheme();
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js").catch(()=>{});
+    }
   </script>
 </body>
 </html>

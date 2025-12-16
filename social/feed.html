@@ -3,37 +3,42 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>MENYRA – Social Feed (Dummy)</title>
-  <link rel="stylesheet" href="../shared/guest.css"/>
-  <style>
-    .wrap{ max-width: 860px; margin: 0 auto; padding: 16px; }
-    .card{ background:#fff; border-radius:18px; padding:14px; box-shadow:0 10px 25px rgba(0,0,0,.06); }
-    .row{ display:flex; justify-content:space-between; align-items:center; gap:10px; }
-    .ph{ border:1px dashed rgba(148,163,184,.6); border-radius:14px; padding:12px; background:rgba(255,255,255,.6); margin-top:10px; }
-  </style>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>Feed – MENYRA Social (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div class="row">
-        <div>
-          <b>Social Feed</b>
-          <div style="color:#475569; font-size:13px;">Posts · Follow · Chat · Live · Geschenke (Dummy)</div>
-        </div>
-        <div class="row">
-          <a href="./profile.html" style="color:#111827;">Profil</a>
-          <a href="./chat.html" style="color:#111827;">Chat</a>
-          <a href="./live.html" style="color:#111827;">Live</a>
-        </div>
+  <div class="hub" style="padding-top:12px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;">
+      <div>
+        <div class="hub-title" style="font-size:18px;">Feed</div>
+        <div class="hub-sub" style="margin-bottom:0;">Social Modul (Dummy) – später mit Moderation & Privacy.</div>
       </div>
-
-      <div class="ph"><b>Post</b><br/>Bild/Video Platzhalter + Like + Kommentar</div>
-      <div class="ph"><b>Sponsored</b><br/>Ad Slot (Card‑Style)</div>
-      <div class="ph"><b>Post</b><br/>Balkan: Musik‑Night / Event / Angebot</div>
-
-      <div style="margin-top:12px;">
-        <a href="../index.html" style="color:#111827;">Zur Startseite</a>
+      <div class="hub-links" style="gap:6px;">
+        <a href="./feed.html">Feed</a>
+        <a href="./profile.html">Profil</a>
+        <a href="./chat.html">Chat</a>
+        <a href="./live.html">Live</a>
+        <a href="./gifts.html">Gifts</a>
+        <a href="../index.html">Start</a>
       </div>
+    </div>
+
+    <div class="hub-grid" style="grid-template-columns:1fr;">
+      <div class="hub-card">
+<div style="display:grid; gap:10px;">
+  <div class="hub-card" style="box-shadow:none;">
+    <b>@arta</b><div class="hub-sub" style="margin:6px 0 0;">„Sonte ne Shpija e Vjetër 🔥“</div>
+  </div>
+  <div class="hub-card" style="box-shadow:none;">
+    <b>@besim</b><div class="hub-sub" style="margin:6px 0 0;">„Best coffee in town ☕“</div>
+  </div>
+  <div class="hub-card" style="box-shadow:none;">
+    <b>@elira</b><div class="hub-sub" style="margin:6px 0 0;">„New skincare drop 💧“</div>
+  </div>
+</div>
+</div>
     </div>
   </div>
 </body>

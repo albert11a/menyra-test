@@ -3,202 +3,365 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>MENYRA – Platform Admin</title>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>Platform Admin – MENYRA (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
   <link rel="stylesheet" href="../shared/menyra.css"/>
   <link rel="stylesheet" href="../shared/unified.css"/>
 </head>
-<body data-login-path="./login.html">
-  <div class="m-topbar">
+<body>
+  <!-- Mobile Drawer -->
+  <div id="drawerBackdrop" class="m-drawer-backdrop"></div>
+  <aside id="drawer" class="m-drawer" aria-label="Mobile Menü">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;">
+      <div style="font-weight:1000;">MENYRA</div>
+      <button id="drawerCloseBtn" class="m-ghost-btn" type="button">✕</button>
+    </div>
+    <div class="m-side-group">
+      <button class="m-side-link" data-view-target="dashboard"><span class="m-nav-icon">📊</span><span class="m-nav-label" data-i18n="nav_dashboard"></span></button>
+<button class="m-side-link" data-view-target="customers"><span class="m-nav-icon">🏷️</span><span class="m-nav-label" data-i18n="nav_customers"></span></button>
+<button class="m-side-link" data-view-target="accounts"><span class="m-nav-icon">👤</span><span class="m-nav-label" data-i18n="nav_accounts"></span></button>
+<button class="m-side-link" data-view-target="modules"><span class="m-nav-icon">🧩</span><span class="m-nav-label" data-i18n="nav_modules"></span></button>
+<button class="m-side-link" data-view-target="ads_review"><span class="m-nav-icon">✅</span><span class="m-nav-label" data-i18n="nav_ads_review"></span></button>
+<button class="m-side-link" data-view-target="moderation"><span class="m-nav-icon">🛡️</span><span class="m-nav-label" data-i18n="nav_moderation"></span></button>
+<button class="m-side-link" data-view-target="analytics"><span class="m-nav-icon">📈</span><span class="m-nav-label" data-i18n="nav_analytics"></span></button>
+<button class="m-side-link" data-view-target="settings"><span class="m-nav-icon">⚙️</span><span class="m-nav-label" data-i18n="nav_settings"></span></button>
+    </div>
+    <div style="margin-top:12px;">
+      <a href="../index.html" style="text-decoration:none; font-weight:900;">← Zur Startseite</a>
+    </div>
+  </aside>
+
+  <header class="m-topbar">
     <div class="m-topbar-left">
-      <button class="m-icon-btn m-burger-btn" type="button" data-mobile-menu-open aria-label="Menü">☰</button>
-      <a class="m-logo" href="../index.html" aria-label="MENYRA">MENYRA</a>
-      <span class="m-env-badge">Dummy</span>
-      <span class="m-topbar-sep"></span>
-      <span class="m-topbar-title">Platform Admin</span>
+      <button id="drawerOpenBtn" class="m-ghost-btn m-burger-btn" type="button" aria-label="Menü">☰</button>
+      <div style="display:flex; flex-direction:column; line-height:1.1;">
+        <div style="font-weight:1000;">MENYRA</div>
+        <div style="font-size:12px; color: rgba(15,23,42,0.55);">Platform Admin</div>
+      </div>
     </div>
-    <div class="m-topbar-right">
+
+    <div class="m-topbar-right" style="margin-left:auto; display:flex; align-items:center; gap:10px;">
       <select id="langSelect" class="m-select" aria-label="Sprache"></select>
-      <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
-      <button class="m-btn" type="button" data-logout>Logout</button>
+      <button id="logoutBtn" class="m-btn m-btn--ghost" type="button" data-i18n="logout"></button>
     </div>
-  </div>
+  </header>
 
   <div class="m-layout">
     <aside class="m-sidebar">
       <div class="m-sidebar-inner">
-        <div class="m-sidebar-header">
-          <div class="m-sidebar-title">Navigation</div>
+        <div class="m-sidebar-section--label">Navigation</div>
+        <div class="m-side-group">
+          <button class="m-side-link" data-view-target="dashboard"><span class="m-nav-icon">📊</span><span class="m-nav-label" data-i18n="nav_dashboard"></span></button>
+<button class="m-side-link" data-view-target="customers"><span class="m-nav-icon">🏷️</span><span class="m-nav-label" data-i18n="nav_customers"></span></button>
+<button class="m-side-link" data-view-target="accounts"><span class="m-nav-icon">👤</span><span class="m-nav-label" data-i18n="nav_accounts"></span></button>
+<button class="m-side-link" data-view-target="modules"><span class="m-nav-icon">🧩</span><span class="m-nav-label" data-i18n="nav_modules"></span></button>
+<button class="m-side-link" data-view-target="ads_review"><span class="m-nav-icon">✅</span><span class="m-nav-label" data-i18n="nav_ads_review"></span></button>
+<button class="m-side-link" data-view-target="moderation"><span class="m-nav-icon">🛡️</span><span class="m-nav-label" data-i18n="nav_moderation"></span></button>
+<button class="m-side-link" data-view-target="analytics"><span class="m-nav-icon">📈</span><span class="m-nav-label" data-i18n="nav_analytics"></span></button>
+<button class="m-side-link" data-view-target="settings"><span class="m-nav-icon">⚙️</span><span class="m-nav-label" data-i18n="nav_settings"></span></button>
         </div>
-        <ul class="m-sidebar-nav">
-          <li><a href="#" data-nav="customers" class="is-active">Kunden</a></li>
-<li><a href="#" data-nav="accounts" class="">Accounts</a></li>
-<li><a href="#" data-nav="modules" class="">Module</a></li>
-<li><a href="#" data-nav="ads" class="">Ads (Freigabe)</a></li>
-<li><a href="#" data-nav="moderation" class="">Moderation (Social)</a></li>
-<li><a href="#" data-nav="analytics" class="">Analytics</a></li>
-<li><a href="#" data-nav="settings" class="">System</a></li>
-        </ul>
+
+        <div class="m-sidebar-footer">
+          <a href="../index.html" style="text-decoration:none; font-weight:900;">← Zur Startseite</a>
+          <div class="m-sidebar-meta">
+            <div class="m-sidebar-meta-line"><span>•</span><span>Dummy UI (ohne Firebase)</span></div>
+            <div class="m-sidebar-meta-line"><span>•</span><span>Sprache: Dropdown</span></div>
+            <div class="m-sidebar-meta-line"><span>•</span><span>Hintergrund: wie Guest</span></div>
+          </div>
+        </div>
       </div>
     </aside>
 
     <main class="m-main">
       <div class="m-shell">
-        <section data-view="customers" style=""><div class="m-card">
-  <div class="m-card-h">
+        
+<section class="m-view" data-view="dashboard">
+  <div class="m-page-header">
     <div>
-      <div class="m-kicker">PLATZHALTER</div>
-      <h2 style="margin:6px 0 0;">Kundenverwaltung</h2>
+      <div class="m-page-title">Dashboard</div>
+      <div class="m-page-sub">Kurzüberblick (Platzhalter). Später werden diese Zahlen aus Firestore berechnet.</div>
     </div>
   </div>
-  <div class="m-card-b">
-    
-<p class="m-muted">Hier siehst du alle Kunden (Gastro, Fastfood, Hotel/Motel, E-Commerce, Services). Du kannst anlegen, bearbeiten und Module aktivieren.</p>
-<div class="m-grid">
-  <div class="m-stat"><div class="m-stat-k">Aktive Kunden</div><div class="m-stat-v">—</div></div>
-  <div class="m-stat"><div class="m-stat-k">In Umsetzung</div><div class="m-stat-v">—</div></div>
-  <div class="m-stat"><div class="m-stat-k">Paused</div><div class="m-stat-v">—</div></div>
-</div>
-<div class="m-muted" style="margin-top:10px;">Später: Tabellen-Filter nach Land (KS/AL/MK/ME/RS), Typ, Status, Partner, Abrechnung.</div>
+  
+    <div class="m-cards-grid">
+      <div class="m-card m-stat-card">
+        <div class="m-stat-top"><div class="m-stat-label">Aktive Kunden</div><div class="m-badge">Platzhalter</div></div>
+        <div class="m-stat-value">12</div>
+        <div class="m-stat-sub">Kosovo/Albanien/Mazedonien/Serbien/Montenegro</div>
+      </div>
+      <div class="m-card m-stat-card">
+        <div class="m-stat-top"><div class="m-stat-label">Bestellungen heute</div><div class="m-badge">Platzhalter</div></div>
+        <div class="m-stat-value">245</div>
+        <div class="m-stat-sub">Gastro + Pickup + Shop</div>
+      </div>
+      <div class="m-card m-stat-card">
+        <div class="m-stat-top"><div class="m-stat-label">Ads Umsatz</div><div class="m-badge">später</div></div>
+        <div class="m-stat-value">€ 0</div>
+        <div class="m-stat-sub">Kommt ab 50–100 Kunden</div>
+      </div>
+      <div class="m-card m-stat-card">
+        <div class="m-stat-top"><div class="m-stat-label">Social User</div><div class="m-badge">Platzhalter</div></div>
+        <div class="m-stat-value">3.420</div>
+        <div class="m-stat-sub">mit Follow/Chat/Live/Gifts (Dummy)</div>
+      </div>
+    </div>
 
-  </div>
-</div></section>
-<section data-view="accounts" style="display:none;"><div class="m-card">
-  <div class="m-card-h">
+    <div style="height:12px"></div>
+
+    <div class="m-card m-table-card">
+      <div class="m-table-toolbar">
+        <div class="m-table-title">Letzte Aktivität</div>
+        <div class="m-table-actions">
+          <button class="m-ghost-btn" type="button">Export (später)</button>
+        </div>
+      </div>
+      <div style="overflow:auto">
+        <table class="m-table">
+          <thead>
+            <tr><th>Zeit</th><th>Event</th><th>Kunde</th><th>Details</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>10:22</td><td>Neue Bestellung</td><td>Shpija e Vjetër</td><td>Tisch T3 – 2x Espresso</td></tr>
+            <tr><td>10:05</td><td>Ads Kampagne erstellt</td><td>Bar Coffee</td><td>Budget: 10€/Tag – Region: Prishtinë</td></tr>
+            <tr><td>09:44</td><td>Request erstellt</td><td>Hotel Center</td><td>Zimmer 204 – Handtücher</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+</section>
+
+
+<section class="m-view" data-view="customers">
+  <div class="m-page-header">
     <div>
-      <div class="m-kicker">PLATZHALTER</div>
-      <h2 style="margin:6px 0 0;">Accounts & Rollen</h2>
+      <div class="m-page-title">Kunden</div>
+      <div class="m-page-sub">Anlegen/Bearbeiten. Später werden hier RestaurantId, Slug, Module, Status gespeichert.</div>
     </div>
   </div>
-  <div class="m-card-b">
-    
-<p class="m-muted">Owner/Admin/Staff Accounts pro Kunde. Später: automatisches Generieren + Reset + Sperren.</p>
-<ul class="m-muted" style="margin:10px 0 0;">
-  <li>Owner Admin (Gastro)</li>
-  <li>E-Commerce Admin</li>
-  <li>Hotel Admin + Housekeeping</li>
-  <li>Service Admin</li>
-  <li>Staff Panels (Kellner, Pickup, Housekeeping)</li>
-</ul>
+  
+    <div class="m-card">
+      <div class="m-input-row">
+        <div class="m-input-group">
+          <label>Suche</label>
+          <input class="m-input" placeholder="Name / Stadt / Typ"/>
+        </div>
+        <div class="m-input-group">
+          <label>Typ</label>
+          <select class="m-select">
+            <option>Alle</option>
+            <option>Gastro (Restaurant/Café/Club)</option>
+            <option>Fastfood (Pickup)</option>
+            <option>Hotel</option>
+            <option>Motel</option>
+            <option>E-Commerce Shop</option>
+            <option>Dienstleistung</option>
+          </select>
+        </div>
+      </div>
 
-  </div>
-</div></section>
-<section data-view="modules" style="display:none;"><div class="m-card">
-  <div class="m-card-h">
+      <div style="height:12px"></div>
+
+      <div class="m-table-toolbar" style="border:0; padding:0 0 10px;">
+        <div class="m-table-title">Kundenliste (Dummy)</div>
+        <div class="m-table-actions">
+          <button class="m-btn" type="button">+ Neuer Kunde (später)</button>
+        </div>
+      </div>
+
+      <div style="overflow:auto">
+        <table class="m-table">
+          <thead>
+            <tr><th>Name</th><th>Typ</th><th>Status</th><th>Module</th><th>Links</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Shpija e Vjetër</td><td>Gastro</td><td>Aktiv</td>
+              <td>Orders • Social • Ads</td>
+              <td><a href="../public/main.html?r=demo_gastro">Public</a> • <a href="../guest/karte.html?r=demo_gastro&t=T1">QR</a></td>
+            </tr>
+            <tr>
+              <td>HEBS Fastfood</td><td>Pickup</td><td>Aktiv</td>
+              <td>Pickup • Ads</td>
+              <td><a href="../guest/fastfood.html?r=demo_fastfood">Pickup</a></td>
+            </tr>
+            <tr>
+              <td>Hotel Center</td><td>Hotel</td><td>Test</td>
+              <td>Rooms • Requests</td>
+              <td><a href="../guest/room.html?r=demo_hotel&room=204">Room QR</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+</section>
+
+
+<section class="m-view" data-view="accounts">
+  <div class="m-page-header">
     <div>
-      <div class="m-kicker">PLATZHALTER</div>
-      <h2 style="margin:6px 0 0;">Module pro Kunde</h2>
+      <div class="m-page-title">Accounts</div>
+      <div class="m-page-sub">Owner/Staff Logins pro Kunde. Später: Auth + Firestore Mapping (roles).</div>
     </div>
   </div>
-  <div class="m-card-b">
-    
-<p class="m-muted">Schalter, welche Funktionen ein Kunde bekommt:</p>
-<div class="m-grid">
-  <div class="m-card" style="padding:12px;">
-    <b>Orders</b><div class="m-muted">Tisch / Pickup / Requests</div>
-  </div>
-  <div class="m-card" style="padding:12px;">
-    <b>Social</b><div class="m-muted">Feed, Check-in, Chat, Gifts</div>
-  </div>
-  <div class="m-card" style="padding:12px;">
-    <b>Ads</b><div class="m-muted">Campaigns + Slots</div>
-  </div>
-  <div class="m-card" style="padding:12px;">
-    <b>Loyalty</b><div class="m-muted">Stempelkarte, Punkte</div>
-  </div>
-</div>
+  
+    <div class="m-cards-grid">
+      <div class="m-card">
+        <div class="m-page-sub"><b>Owner Accounts</b> (Restaurant/Shop/Hotel)</div>
+        <ul style="margin:10px 0 0 18px;">
+          <li>owner@shpija.com (Gastro)</li>
+          <li>owner@hebs.com (Fastfood)</li>
+          <li>owner@hotelcenter.com (Hotel)</li>
+        </ul>
+      </div>
+      <div class="m-card">
+        <div class="m-page-sub"><b>Staff Accounts</b> (Kellner/Housekeeping)</div>
+        <ul style="margin:10px 0 0 18px;">
+          <li>staff1@shpija.com (Kellner)</li>
+          <li>pickup@hebs.com (Pickup Counter)</li>
+          <li>hk@hotelcenter.com (Housekeeping)</li>
+        </ul>
+      </div>
+    </div>
 
-  </div>
-</div></section>
-<section data-view="ads" style="display:none;"><div class="m-card">
-  <div class="m-card-h">
+    <div style="height:12px"></div>
+
+    <div class="m-card">
+      <div class="m-page-sub"><b>Später:</b> „Account generieren“ Button (Username+Pass), Rollen & RestaurantId Zuordnung.</div>
+      <div style="height:8px"></div>
+      <button class="m-btn" type="button">+ Owner erzeugen (später)</button>
+      <button class="m-btn m-btn--ghost" type="button" style="margin-left:8px;">+ Staff erzeugen (später)</button>
+    </div>
+    
+</section>
+
+
+<section class="m-view" data-view="modules">
+  <div class="m-page-header">
     <div>
-      <div class="m-kicker">PLATZHALTER</div>
-      <h2 style="margin:6px 0 0;">Ads Freigabe & Regeln</h2>
+      <div class="m-page-title">Module</div>
+      <div class="m-page-sub">Welche Funktionen ein Kunde aktiv hat (Toggle).</div>
     </div>
   </div>
-  <div class="m-card-b">
+  
+    <div class="m-card">
+      <div class="m-page-sub"><b>Module Beispiele:</b></div>
+      <div style="height:8px"></div>
+      <ul style="margin-left:18px;">
+        <li><b>Orders</b> (Tischservice)</li>
+        <li><b>Pickup</b> (Fastfood)</li>
+        <li><b>Rooms & QR</b> (Hotel/Motel)</li>
+        <li><b>Requests/Tickets</b> (Housekeeping/Service)</li>
+        <li><b>Social</b> (Feed, Chat, Live, Gifts)</li>
+        <li><b>Ads</b> (Campaign Manager + Slots)</li>
+        <li><b>Loyalty</b> (Stempelkarte)</li>
+        <li><b>Referrals</b> (Einladungscode)</li>
+        <li><b>Queue</b> (Warteliste/Clubs)</li>
+      </ul>
+    </div>
     
-<p class="m-muted">Kunden erstellen Kampagnen wie bei Facebook. Hier entscheidet die Platform: freigeben, ablehnen, Richtlinien.</p>
-<div class="m-muted">Später: Fraud/Spam, Budget-Limits, Kategorien, Jugendschutz (Clubs), Consent/GDPR.</div>
+</section>
 
-  </div>
-</div></section>
-<section data-view="moderation" style="display:none;"><div class="m-card">
-  <div class="m-card-h">
+
+<section class="m-view" data-view="ads_review">
+  <div class="m-page-header">
     <div>
-      <div class="m-kicker">PLATZHALTER</div>
-      <h2 style="margin:6px 0 0;">Social Moderation</h2>
+      <div class="m-page-title">Ads Freigabe</div>
+      <div class="m-page-sub">Jede Werbung kann (optional) vor Freigabe geprüft werden (wie Facebook).</div>
     </div>
   </div>
-  <div class="m-card-b">
+  
+    <div class="m-card m-table-card">
+      <div class="m-table-toolbar">
+        <div class="m-table-title">Kampagnen „Pending“ (Dummy)</div>
+        <div class="m-table-actions">
+          <button class="m-ghost-btn" type="button">Filter</button>
+        </div>
+      </div>
+      <div style="overflow:auto">
+        <table class="m-table">
+          <thead><tr><th>Kunde</th><th>Titel</th><th>Region</th><th>Budget</th><th>Status</th><th>Aktion</th></tr></thead>
+          <tbody>
+            <tr><td>Bar Coffee</td><td>Neuer Winter-Drink</td><td>Prishtinë</td><td>10€/Tag</td><td>Pending</td><td><button class="m-ghost-btn">Freigeben</button></td></tr>
+            <tr><td>Shop Beauty</td><td>Skincare Deal</td><td>Tirana</td><td>15€/Tag</td><td>Pending</td><td><button class="m-ghost-btn">Freigeben</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
     
-<p class="m-muted">Reports, Blocks, Kommentar-Queue, Live-Reports. Alles erstmal UI.</p>
+</section>
 
-  </div>
-</div></section>
-<section data-view="analytics" style="display:none;"><div class="m-card">
-  <div class="m-card-h">
+
+<section class="m-view" data-view="moderation">
+  <div class="m-page-header">
     <div>
-      <div class="m-kicker">PLATZHALTER</div>
-      <h2 style="margin:6px 0 0;">Analytics Übersicht</h2>
+      <div class="m-page-title">Moderation</div>
+      <div class="m-page-sub">Reports/Blocks/Spam – wichtig für Social & Comments.</div>
     </div>
   </div>
-  <div class="m-card-b">
+  
+    <div class="m-card">
+      <div class="m-page-sub">
+        <b>Platzhalter:</b> Liste gemeldeter Posts/Kommentare/Chats. Später: Auto-Flagging + Admin Review.
+      </div>
+      <div style="height:10px"></div>
+      <button class="m-btn" type="button">Moderations-Queue öffnen (später)</button>
+    </div>
     
-<p class="m-muted">High-Level KPIs (Visits, Orders, Active Users, Ad-Revenue). Später pro Land/Region und pro Kunde.</p>
+</section>
 
-  </div>
-</div></section>
-<section data-view="settings" style="display:none;"><div class="m-card">
-  <div class="m-card-h">
+
+<section class="m-view" data-view="analytics">
+  <div class="m-page-header">
     <div>
-      <div class="m-kicker">PLATZHALTER</div>
-      <h2 style="margin:6px 0 0;">System Settings</h2>
+      <div class="m-page-title">Analytics</div>
+      <div class="m-page-sub">Global: Besucher, Orders, Ads, Social – nach Region/Kunde/Tag.</div>
     </div>
   </div>
-  <div class="m-card-b">
+  
+    <div class="m-cards-grid">
+      <div class="m-card"><b>Traffic</b><div class="m-page-sub">Visits / QR scans / Shop sessions (Dummy)</div></div>
+      <div class="m-card"><b>Orders</b><div class="m-page-sub">Conversion, Peak Hours, Top Items (Dummy)</div></div>
+      <div class="m-card"><b>Ads</b><div class="m-page-sub">Impressions, CTR, CPA (Dummy)</div></div>
+      <div class="m-card"><b>Social</b><div class="m-page-sub">Follows, Chat activity, Gifts (Dummy)</div></div>
+    </div>
     
-<p class="m-muted">Global: Sprachen, PWA, Payment Placeholder, Feature Flags.</p>
+</section>
 
+
+<section class="m-view" data-view="settings">
+  <div class="m-page-header">
+    <div>
+      <div class="m-page-title">Einstellungen</div>
+      <div class="m-page-sub">Zahlungen (später), Länder/Steuerprofile, PWA, Sprachen.</div>
+    </div>
   </div>
-</div></section>
-        <div class="m-footer">MENYRA Dummy – Platform Admin (UI-Platzhalter)</div>
+  
+    <div class="m-card">
+      <div class="m-page-sub"><b>Region-Fokus:</b> Kosovo, Albanien, Nordmazedonien, Montenegro, Serbien.</div>
+      <div style="height:8px"></div>
+      <ul style="margin-left:18px;">
+        <li>Währungen (EUR/ALL/RSD/MKD) – später</li>
+        <li>Steuerprofile / VAT – später</li>
+        <li>Card Payment – Platzhalter (erst ab 50–100 Kunden)</li>
+        <li>PWA & Push Notifications – Platzhalter</li>
+      </ul>
+    </div>
+    
+</section>
+
       </div>
     </main>
   </div>
 
-  <div class="m-mobile-menu-overlay" data-mobile-menu-overlay></div>
-  <aside class="m-mobile-menu" data-mobile-menu>
-    <div class="m-mobile-menu-inner">
-      <div class="m-mobile-menu-header">
-        <div class="m-mobile-menu-title">Platform Admin</div>
-        <button class="m-mobile-menu-close" type="button" data-mobile-menu-close aria-label="Schließen">✕</button>
-      </div>
-      <div class="m-mobile-menu-section">
-        <div class="m-mobile-nav">
-          <button class="m-mobile-nav-btn is-active" type="button" data-nav="customers">Kunden</button>
-<button class="m-mobile-nav-btn " type="button" data-nav="accounts">Accounts</button>
-<button class="m-mobile-nav-btn " type="button" data-nav="modules">Module</button>
-<button class="m-mobile-nav-btn " type="button" data-nav="ads">Ads (Freigabe)</button>
-<button class="m-mobile-nav-btn " type="button" data-nav="moderation">Moderation (Social)</button>
-<button class="m-mobile-nav-btn " type="button" data-nav="analytics">Analytics</button>
-<button class="m-mobile-nav-btn " type="button" data-nav="settings">System</button>
-        </div>
-      </div>
-      <div class="m-mobile-menu-section" style="margin-top:auto;">
-        <button class="m-btn" type="button" data-logout style="width:100%;">Logout</button>
-      </div>
-    </div>
-  </aside>
-
-  <script src="../shared/i18n.js"></script>
-  <script src="../shared/ui.js"></script>
-  <script>
-    MENYRA_I18N_API.mountLangSelect("#langSelect");
-    MENYRA_UI.initTheme();
-    MENYRA_UI.initViews("customers");
-    MENYRA_UI.initMobileMenu();
-    document.querySelectorAll("[data-logout]").forEach(b=>b.addEventListener("click", MENYRA_UI.fakeLogout));
+  <script type="module">
+    import { bootDashboard } from "../shared/ui.js";
+    import { applyI18n } from "../shared/i18n.js";
+    bootDashboard("./login.html");
+    applyI18n(document);
   </script>
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

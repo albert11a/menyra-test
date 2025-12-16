@@ -1,86 +1,58 @@
-/* =========================================================
-   MENYRA – ui.js (dummy navigation + theme)
-   - NO Firebase here
-   - Only: view switching, theme toggle, language chips mounting
-   ========================================================= */
+import { fillLangSelect, applyI18n, setLang } from "./i18n.js";
 
-function qs(sel, root=document){ return root.querySelector(sel); }
-function qsa(sel, root=document){ return [...root.querySelectorAll(sel)]; }
-
-function setTheme(mode){
-  const html = document.documentElement;
-  const isDark = mode === "dark";
-  html.classList.toggle("is-dark", isDark);
-  localStorage.setItem("menyra_theme", isDark ? "dark" : "light");
-  const tBtn = qs("[data-theme-toggle]");
-  if(tBtn) tBtn.textContent = isDark ? "☾" : "☀";
-}
-function initTheme(){
-  const saved = localStorage.getItem("menyra_theme") || "light";
-  setTheme(saved);
-  const btn = qs("[data-theme-toggle]");
-  if(btn){
-    btn.addEventListener("click", ()=>{
-      const curr = localStorage.getItem("menyra_theme") || "light";
-      setTheme(curr === "dark" ? "light" : "dark");
-    });
-  }
-}
-
-function showView(id){
-  qsa("[data-view]").forEach(v=>{
-    v.style.display = (v.getAttribute("data-view") === id) ? "" : "none";
+export function initLangDropdown(){
+  const sel = document.getElementById("langSelect");
+  if (!sel) return;
+  fillLangSelect(sel);
+  sel.addEventListener("change", ()=>{
+    setLang(sel.value);
+    applyI18n(document);
   });
-  qsa("[data-nav]").forEach(a=>{
-    a.classList.toggle("is-active", a.getAttribute("data-nav") === id);
-  });
-  localStorage.setItem(location.pathname + ":view", id);
-}
-function initViews(defaultId){
-  const saved = localStorage.getItem(location.pathname + ":view");
-  const id = saved || defaultId;
-  qsa("[data-nav]").forEach(a=>{
-    a.addEventListener("click", (e)=>{
-      e.preventDefault();
-      showView(a.getAttribute("data-nav"));
-    });
-  });
-  showView(id);
 }
 
-function fakeLogout(){
-  // dummy: go to login page
-  const back = qs("[data-login-path]")?.getAttribute("data-login-path");
-  if(back) location.href = back;
-}
+export function initViews(){
+  const btns = Array.from(document.querySelectorAll("[data-view-target]"));
+  const views = Array.from(document.querySelectorAll("[data-view]"));
+  if (!views.length) return;
 
-function initMobileMenu(){
-  const openBtn = qs("[data-mobile-menu-open]");
-  const closeBtn = qs("[data-mobile-menu-close]");
-  const overlay = qs("[data-mobile-menu-overlay]");
-  const menu = qs("[data-mobile-menu]");
-
-  if(!openBtn || !overlay || !menu) return;
-
-  function open(){
-    overlay.style.display = "block";
-    requestAnimationFrame(()=>{ menu.style.transform = "translateX(0)"; });
+  function show(name){
+    views.forEach(v => v.style.display = (v.getAttribute("data-view") === name) ? "" : "none");
+    btns.forEach(b => b.classList.toggle("is-active", b.getAttribute("data-view-target") === name));
+    localStorage.setItem(location.pathname + ":view", name);
   }
-  function close(){
-    menu.style.transform = "translateX(-105%)";
-    setTimeout(()=>{ overlay.style.display = "none"; }, 180);
-  }
+
+  const last = localStorage.getItem(location.pathname + ":view") || views[0].getAttribute("data-view");
+  show(last);
+  btns.forEach(b => b.addEventListener("click", ()=> show(b.getAttribute("data-view-target"))));
+}
+
+export function initDrawer(){
+  const openBtn = document.getElementById("drawerOpenBtn");
+  const closeBtn = document.getElementById("drawerCloseBtn");
+  const backdrop = document.getElementById("drawerBackdrop");
+  const drawer = document.getElementById("drawer");
+  if (!openBtn || !backdrop || !drawer) return;
+
+  const open = ()=>{ drawer.classList.add("is-open"); backdrop.classList.add("is-open"); };
+  const close = ()=>{ drawer.classList.remove("is-open"); backdrop.classList.remove("is-open"); };
 
   openBtn.addEventListener("click", open);
-  overlay.addEventListener("click", close);
-  if(closeBtn) closeBtn.addEventListener("click", close);
-
-  // Close menu when changing views on mobile
-  qsa("[data-nav]").forEach(el=>{
-    el.addEventListener("click", ()=>{
-      if(window.innerWidth < 980) close();
-    });
-  });
+  (closeBtn || backdrop).addEventListener("click", close);
+  backdrop.addEventListener("click", close);
+  window.addEventListener("keydown", (e)=>{ if (e.key === "Escape") close(); });
+  drawer.querySelectorAll("[data-view-target]").forEach(el => el.addEventListener("click", close));
 }
 
-window.MENYRA_UI = { initTheme, initViews, showView, fakeLogout, initMobileMenu };
+export function initLogout(loginPath="./login.html"){
+  const btn = document.getElementById("logoutBtn");
+  if (!btn) return;
+  btn.addEventListener("click", ()=> location.href = loginPath);
+}
+
+export function bootDashboard(loginPath){
+  initLangDropdown();
+  applyI18n(document);
+  initViews();
+  initDrawer();
+  initLogout(loginPath);
+}

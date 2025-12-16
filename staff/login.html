@@ -3,54 +3,51 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Staff Panels – Login</title>
-  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <title>Staff Login – MENYRA (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
   <link rel="stylesheet" href="../shared/unified.css"/>
 </head>
 <body class="auth-page">
   <div class="auth-card">
-    <div class="m-card">
-      <div class="m-card-h">
-        <div>
-          <div class="m-kicker">ANMELDUNG</div>
-          <h1 style="margin:6px 0 0;">Staff Panels</h1>
-          <p class="m-muted" style="margin:10px 0 0;">Dummy Login (ohne echte Firebase Auth). Später wird hier Email/Passwort normal geprüft.</p>
-        </div>
-      </div>
+    <div class="auth-title">Staff Login</div>
+    <div class="auth-sub">Ein Login → Rolle wählen (Dummy). Später: echte Rollen (staff/{uid}.role).</div>
 
-      <form class="m-form" id="loginForm" style="margin-top:12px;">
-        <div class="m-row">
-          <label class="m-label" for="email">E-Mail</label>
-          <input class="m-input" id="email" type="email" placeholder="name@domain.com" required />
-        </div>
-        <div class="m-row">
-          <label class="m-label" for="pass">Passwort</label>
-          <input class="m-input" id="pass" type="password" placeholder="••••••••" required />
-        </div>
-        <button class="m-btn m-btn-primary" type="submit" style="width:100%;">Anmelden</button>
-
-        <div class="auth-meta">
-          <select id="langSelect" class="m-select" aria-label="Sprache"></select>
-          <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
-        </div>
-
-        <div style="margin-top:12px;">
-          <a class="m-link" href="../index.html">← Zurück</a>
-        </div>
-      </form>
+    <div class="auth-row">
+      <label style="font-weight:900; font-size:12px;">Code / E-Mail</label>
+      <input id="email" class="m-input" placeholder="z.B. staff@kunde.com"/>
+      <label style="font-weight:900; font-size:12px;">Passwort</label>
+      <input id="pass" class="m-input" type="password" placeholder="••••••••"/>
+      <div id="err" class="auth-error">Bitte ausfüllen.</div>
     </div>
 
-    <div class="m-muted" style="text-align:center; margin-top:10px; font-size:12px;">MENYRA Dummy – Login getrennt vom Dashboard</div>
+    <div class="auth-actions" style="justify-content:flex-end;">
+      <button id="loginBtn" class="m-btn" type="button">Weiter</button>
+    </div>
+
+    <div id="roleBox" style="display:none; margin-top:12px;">
+      <div class="auth-hint" style="margin-bottom:10px;">Rolle auswählen:</div>
+      <div class="hub-links">
+        <a href="./gastro.html">Gastro Orders</a>
+        <a href="./pickup.html">Pickup Counter</a>
+        <a href="./housekeeping.html">Housekeeping</a>
+      </div>
+    </div>
+
+    <div style="margin-top:12px;">
+      <a href="../index.html" style="text-decoration:none; font-weight:900;">← Startseite</a>
+    </div>
   </div>
 
-  <script src="../shared/i18n.js"></script>
-  <script src="../shared/ui.js"></script>
   <script>
-    MENYRA_I18N_API.mountLangSelect("#langSelect");
-    MENYRA_UI.initTheme();
-    document.getElementById("loginForm").addEventListener("submit", (e)=>{
-      e.preventDefault();
-      location.href = "./dashboard.html";
+    const btn = document.getElementById("loginBtn");
+    const err = document.getElementById("err");
+    const roleBox = document.getElementById("roleBox");
+    btn.addEventListener("click", ()=>{
+      const e = document.getElementById("email").value.trim();
+      const p = document.getElementById("pass").value.trim();
+      if (!e || !p){ err.style.display="block"; return; }
+      err.style.display="none";
+      roleBox.style.display="block";
     });
   </script>
 </body>

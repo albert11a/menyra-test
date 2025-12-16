@@ -3,53 +3,49 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>Services Admin – Login</title>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>Services Admin (Dienstleistung) – Login (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
   <link rel="stylesheet" href="../shared/menyra.css"/>
   <link rel="stylesheet" href="../shared/unified.css"/>
 </head>
 <body class="auth-page">
   <div class="auth-card">
-    <div class="m-card">
-      <div class="m-card-h">
-        <div>
-          <div class="m-kicker">ANMELDUNG</div>
-          <h1 style="margin:6px 0 0;">Services Admin</h1>
-          <p class="m-muted" style="margin:10px 0 0;">Dummy Login (ohne echte Firebase Auth). Später wird hier Email/Passwort normal geprüft.</p>
-        </div>
-      </div>
+    <div class="auth-title">Services Admin (Dienstleistung)</div>
+    <div class="auth-sub">Getrennte Login-Seite. Später: echte Firebase Auth + Rollenprüfung.</div>
 
-      <form class="m-form" id="loginForm" style="margin-top:12px;">
-        <div class="m-row">
-          <label class="m-label" for="email">E-Mail</label>
-          <input class="m-input" id="email" type="email" placeholder="name@domain.com" required />
-        </div>
-        <div class="m-row">
-          <label class="m-label" for="pass">Passwort</label>
-          <input class="m-input" id="pass" type="password" placeholder="••••••••" required />
-        </div>
-        <button class="m-btn m-btn-primary" type="submit" style="width:100%;">Anmelden</button>
-
-        <div class="auth-meta">
-          <select id="langSelect" class="m-select" aria-label="Sprache"></select>
-          <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
-        </div>
-
-        <div style="margin-top:12px;">
-          <a class="m-link" href="../index.html">← Zurück</a>
-        </div>
-      </form>
+    <div class="auth-row">
+      <label style="font-weight:900; font-size:12px;">E-Mail</label>
+      <input id="email" class="m-input" type="email" placeholder="z.B. admin@kunde.com"/>
+      <label style="font-weight:900; font-size:12px;">Passwort</label>
+      <input id="pass" class="m-input" type="password" placeholder="••••••••"/>
+      <div class="auth-hint">Dummy-Login: beliebige Daten eingeben.</div>
+      <div id="err" class="auth-error">Bitte E-Mail und Passwort ausfüllen.</div>
     </div>
 
-    <div class="m-muted" style="text-align:center; margin-top:10px; font-size:12px;">MENYRA Dummy – Login getrennt vom Dashboard</div>
+    <div class="auth-actions">
+      <a href="../index.html" class="m-ghost-btn" style="text-decoration:none;">← Startseite</a>
+      <button id="loginBtn" class="m-btn" type="button">Anmelden</button>
+    </div>
   </div>
 
-  <script src="../shared/i18n.js"></script>
-  <script src="../shared/ui.js"></script>
-  <script>
-    MENYRA_I18N_API.mountLangSelect("#langSelect");
-    MENYRA_UI.initTheme();
-    document.getElementById("loginForm").addEventListener("submit", (e)=>{
-      e.preventDefault();
+  <script type="module">
+    import { initLangDropdown } from "../shared/ui.js";
+    import { applyI18n } from "../shared/i18n.js";
+    // Dropdown optional auch auf Login (damit du es siehst)
+    const tmp = document.createElement("select");
+    tmp.id = "langSelect"; tmp.style.display="none";
+    document.body.appendChild(tmp);
+    initLangDropdown();
+    applyI18n(document);
+
+    const btn = document.getElementById("loginBtn");
+    const err = document.getElementById("err");
+    btn.addEventListener("click", () => {
+      const email = document.getElementById("email").value.trim();
+      const pass = document.getElementById("pass").value.trim();
+      if (!email || !pass) { err.style.display = "block"; return; }
+      err.style.display = "none";
       location.href = "./dashboard.html";
     });
   </script>

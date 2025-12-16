@@ -3,40 +3,42 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>MENYRA – Profil (Dummy)</title>
-  <link rel="stylesheet" href="../shared/guest.css"/>
-  <style>
-    .wrap{ max-width: 860px; margin: 0 auto; padding: 16px; }
-    .card{ background:#fff; border-radius:18px; padding:14px; box-shadow:0 10px 25px rgba(0,0,0,.06); }
-    .grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:12px; }
-    .tile{ border-radius:14px; background:rgba(148,163,184,.18); height:120px; }
-  </style>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>Profil – MENYRA Social (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div style="display:flex; align-items:center; gap:12px;">
-        <div style="width:56px; height:56px; border-radius:16px; background:rgba(148,163,184,.25);"></div>
-        <div>
-          <b>@user_name</b>
-          <div style="color:#475569; font-size:13px;">Follower · Following · Gifts</div>
-        </div>
+  <div class="hub" style="padding-top:12px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;">
+      <div>
+        <div class="hub-title" style="font-size:18px;">Profil</div>
+        <div class="hub-sub" style="margin-bottom:0;">Social Modul (Dummy) – später mit Moderation & Privacy.</div>
       </div>
+      <div class="hub-links" style="gap:6px;">
+        <a href="./feed.html">Feed</a>
+        <a href="./profile.html">Profil</a>
+        <a href="./chat.html">Chat</a>
+        <a href="./live.html">Live</a>
+        <a href="./gifts.html">Gifts</a>
+        <a href="../index.html">Start</a>
+      </div>
+    </div>
 
-      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
-        <button class="btn" type="button">Folgen (Dummy)</button>
-        <button class="btn" type="button">Nachricht (Dummy)</button>
-        <button class="btn" type="button">Rose schenken (Dummy)</button>
-      </div>
-
-      <div class="grid">
-        <div class="tile"></div><div class="tile"></div><div class="tile"></div>
-        <div class="tile"></div><div class="tile"></div><div class="tile"></div>
-      </div>
-
-      <div style="margin-top:12px;">
-        <a href="./feed.html" style="color:#111827;">Zurück zum Feed</a>
-      </div>
+    <div class="hub-grid" style="grid-template-columns:1fr;">
+      <div class="hub-card">
+<div class="m-card" style="box-shadow:none;">
+  <div style="display:flex; gap:12px; align-items:center;">
+    <div style="width:44px;height:44px;border-radius:999px;background:rgba(148,163,184,0.25);display:flex;align-items:center;justify-content:center;font-weight:1000;">A</div>
+    <div>
+      <div style="font-weight:1000;">@arta</div>
+      <div class="hub-sub" style="margin:0;">Prishtinë • Likes: 120 • Follows: 88</div>
+    </div>
+  </div>
+  <div style="height:12px"></div>
+  <button class="m-btn">Edit Profile (später)</button>
+</div>
+</div>
     </div>
   </div>
 </body>

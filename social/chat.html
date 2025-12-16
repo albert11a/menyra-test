@@ -3,32 +3,38 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
-  <title>MENYRA – Chat (Dummy)</title>
-  <link rel="stylesheet" href="../shared/guest.css"/>
-  <style>
-    .wrap{ max-width: 860px; margin: 0 auto; padding: 16px; }
-    .card{ background:#fff; border-radius:18px; padding:14px; box-shadow:0 10px 25px rgba(0,0,0,.06); }
-    .bubble{ max-width:70%; padding:10px 12px; border-radius:14px; background:rgba(148,163,184,.18); margin:8px 0; }
-    .me{ margin-left:auto; background:rgba(96,165,250,.22); }
-  </style>
+  <meta name="theme-color" content="#f3f4f6"/>
+  <title>Chat – MENYRA Social (Dummy)</title>
+  <link rel="stylesheet" href="../shared/styles.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <b>Chat</b>
-      <div style="color:#475569; font-size:13px;">1:1 Chat – später Firestore + Regeln + Block/Report</div>
-
-      <div class="bubble">Hey, bist du heute im Lokal?</div>
-      <div class="bubble me">Ja, komme um 21:00 🙂</div>
-
-      <div style="display:flex; gap:10px; margin-top:12px;">
-        <input class="input" style="flex:1;" placeholder="Nachricht schreiben (Dummy)"/>
-        <button class="btn" type="button">Senden</button>
+  <div class="hub" style="padding-top:12px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px;">
+      <div>
+        <div class="hub-title" style="font-size:18px;">Chat</div>
+        <div class="hub-sub" style="margin-bottom:0;">Social Modul (Dummy) – später mit Moderation & Privacy.</div>
       </div>
-
-      <div style="margin-top:12px;">
-        <a href="./feed.html" style="color:#111827;">Zurück</a>
+      <div class="hub-links" style="gap:6px;">
+        <a href="./feed.html">Feed</a>
+        <a href="./profile.html">Profil</a>
+        <a href="./chat.html">Chat</a>
+        <a href="./live.html">Live</a>
+        <a href="./gifts.html">Gifts</a>
+        <a href="../index.html">Start</a>
       </div>
+    </div>
+
+    <div class="hub-grid" style="grid-template-columns:1fr;">
+      <div class="hub-card">
+<div class="m-card" style="box-shadow:none;">
+  <b>Chats (Dummy)</b>
+  <ul style="margin:10px 0 0 18px;">
+    <li>@besim: „Ku je?“</li>
+    <li>@elira: „A vjen sonte?“</li>
+  </ul>
+</div>
+</div>
     </div>
   </div>
 </body>

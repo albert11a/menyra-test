@@ -1,100 +1,79 @@
-/* =========================================================
-   MENYRA – i18n.js (placeholder)
-   - Default language: German (de)
-   - Other languages fallback to German for now (dummy stage)
-   ========================================================= */
-
-const MENYRA_LANGS = [
-  { code:"de", label:"Deutsch" },
-  { code:"sq", label:"Shqip (Albanisch)" },
-  { code:"en", label:"English" },
-  { code:"sr", label:"Srpski" },
-  { code:"bs", label:"Bosanski" },
-  { code:"hr", label:"Hrvatski" },
-  { code:"cs", label:"Čeština" },
-  { code:"fr", label:"Français" },
-  { code:"it", label:"Italiano" },
-  { code:"es", label:"Español" },
-  { code:"da", label:"Dansk" },
-  { code:"tr", label:"Türkçe" },
+export const LANGS = [
+  { code: "de", label: "Deutsch" },
+  { code: "sq", label: "Shqip" },
+  { code: "en", label: "English" },
+  { code: "sr", label: "Srpski" },
+  { code: "bs", label: "Bosanski" },
+  { code: "hr", label: "Hrvatski" },
+  { code: "mk", label: "Македонски" },
+  { code: "me", label: "Crnogorski" },
+  { code: "tr", label: "Türkçe" },
+  { code: "fr", label: "Français" },
+  { code: "it", label: "Italiano" },
+  { code: "es", label: "Español" },
+  { code: "da", label: "Dansk" },
+  { code: "cs", label: "Čeština" }
 ];
 
-const MENYRA_I18N = {
+const DICT = {
   de: {
-    "app.title":"MENYRA",
-    "common.login":"Anmelden",
-    "common.logout":"Abmelden",
-    "common.search":"Suchen…",
-    "common.save":"Speichern",
-    "common.cancel":"Abbrechen",
-    "common.create":"Erstellen",
-    "common.edit":"Bearbeiten",
-    "common.delete":"Löschen",
-    "common.preview":"Vorschau",
-    "common.placeholder":"Platzhalter (Dummy)",
+    logout: "Abmelden",
+    nav_dashboard: "Dashboard",
+    nav_customers: "Kunden",
+    nav_accounts: "Accounts",
+    nav_modules: "Module",
+    nav_ads_review: "Ads Freigabe",
+    nav_moderation: "Moderation",
+    nav_analytics: "Analytics",
+    nav_settings: "Einstellungen",
+
+    nav_profile: "Profil",
+    nav_menu: "Menü / Produkte",
+    nav_orders: "Bestellungen",
+    nav_offers: "Angebote",
+    nav_staff: "Mitarbeiter",
+    nav_social: "Social",
+    nav_ads: "Werbung (Ads)",
+    nav_loyalty: "Loyalty / Stempelkarte",
+    nav_referrals: "Referrals / Empfehlungen",
+    nav_queue: "Queue / Warteliste",
+    nav_receipts: "Belege & Bewertungen",
+    nav_locations: "Filialen (Multi-Location)",
+
+    nav_shop_products: "Produkte",
+    nav_shop_variants: "Varianten & Lager",
+    nav_shop_discounts: "Rabatte",
+    nav_shop_shipping: "Versand (später)",
+
+    nav_rooms: "Zimmer & QR",
+    nav_requests: "Requests / Tickets",
+    nav_housekeeping: "Housekeeping",
+
+    nav_services: "Leistungen",
+    nav_inquiries: "Anfragen",
+    nav_reviews: "Reviews & Google",
   }
 };
 
-function getLang(){
-  return localStorage.getItem("menyra_lang") || "de";
-}
-function setLang(code){
-  localStorage.setItem("menyra_lang", code);
-  document.documentElement.setAttribute("lang", code);
-  // optional: mark active in UI
-  document.querySelectorAll("[data-lang-btn]").forEach(btn=>{
-    btn.classList.toggle("is-active", btn.getAttribute("data-lang-btn") === code);
-  });
-  applyI18n();
-}
-function t(key){
-  const lang = getLang();
-  return (MENYRA_I18N[lang] && MENYRA_I18N[lang][key]) || (MENYRA_I18N.de && MENYRA_I18N.de[key]) || key;
-}
-function applyI18n(){
-  document.querySelectorAll("[data-i18n]").forEach(el=>{
-    const key = el.getAttribute("data-i18n");
-    el.textContent = t(key);
-  });
-  document.querySelectorAll("[data-i18n-ph]").forEach(el=>{
-    const key = el.getAttribute("data-i18n-ph");
-    el.setAttribute("placeholder", t(key));
-  });
-}
+export function getLang(){ return localStorage.getItem("menyra_lang") || "de"; }
+export function setLang(code){ localStorage.setItem("menyra_lang", code); }
 
-function mountLangSwitcher(containerSelector){
-  const wrap = document.querySelector(containerSelector);
-  if(!wrap) return;
-  wrap.innerHTML = "";
-  MENYRA_LANGS.forEach(l=>{
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "m-chip";
-    b.textContent = l.code.toUpperCase();
-    b.setAttribute("data-lang-btn", l.code);
-    b.addEventListener("click", ()=>setLang(l.code));
-    wrap.appendChild(b);
-  });
-  // mark active
-  const lang = getLang();
-  document.documentElement.setAttribute("lang", lang);
-  setLang(lang);
-}
-function mountLangSelect(selectSelector){
-  const sel = document.querySelector(selectSelector);
-  if(!sel) return;
-  sel.innerHTML = "";
-  MENYRA_LANGS.forEach(l=>{
+export function fillLangSelect(selectEl){
+  if (!selectEl) return;
+  selectEl.innerHTML = "";
+  const current = getLang();
+  for (const l of LANGS){
     const opt = document.createElement("option");
     opt.value = l.code;
     opt.textContent = l.label;
-    sel.appendChild(opt);
-  });
-  sel.value = getLang();
-  sel.addEventListener("change", ()=>{
-    setLang(sel.value);
-  });
+    if (l.code === current) opt.selected = true;
+    selectEl.appendChild(opt);
+  }
 }
 
-
-window.MENYRA_I18N_API = { getLang, setLang, applyI18n, mountLangSwitcher, mountLangSelect, t };
+export function applyI18n(root=document){
+  root.querySelectorAll("[data-i18n]").forEach(el=>{
+    const key = el.getAttribute("data-i18n");
+    el.textContent = (DICT[getLang()] && DICT[getLang()][key]) || (DICT.de[key] || key);
+  });
+}

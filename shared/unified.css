@@ -1,182 +1,104 @@
 /* =========================================================
-   MENYRA – unified.css (helpers shared across all apps)
-   - keeps your existing guest.css + menyra.css intact
-   - adds responsive containers + small utilities
+   MENYRA — Unified Overrides (Step 4)
    ========================================================= */
 
-:root{
-  --shell-max: 1120px;
-  --shell-pad: 16px;
-}
+:root{ --menyra-bg: #f3f4f6; }
 
-@media (min-width: 768px){
-  :root{ --shell-pad: 22px; }
-}
-@media (min-width: 1100px){
-  :root{ --shell-pad: 26px; }
-}
+/* unify background everywhere */
+html, body{ background: var(--menyra-bg) !important; }
 
-/* A safe container that doesn't override your page layouts */
-.m-shell{
-  width: 100%;
-  max-width: var(--shell-max);
-  margin: 0 auto;
-  padding: 0 var(--shell-pad);
-}
-
-/* Simple inline badges */
-.m-badge{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:6px 10px;
-  border-radius:999px;
-  border:1px solid rgba(148,163,184,0.25);
-  background: rgba(255,255,255,0.65);
-  backdrop-filter: blur(10px);
-  font-size: 12px;
-  color: rgba(11,16,32,0.85);
-}
-html.is-dark .m-badge{
-  background: rgba(15,23,42,0.55);
-  border-color: rgba(148,163,184,0.18);
-  color: rgba(230,233,255,0.88);
-}
-
-/* Simple two-column grid helper for desktop cards */
-.m-grid2{
-  display:grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-}
-@media (min-width: 980px){
-  .m-grid2{ grid-template-columns: 1fr 1fr; gap: 16px; }
-}
-.m-grid3{
-  display:grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-}
-@media (min-width: 980px){
-  .m-grid3{ grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-}
-
-/* Demo placeholders */
-.m-ph{
-  border: 1px dashed rgba(148,163,184,0.55);
-  background: rgba(255,255,255,0.45);
-  border-radius: 14px;
-  padding: 14px;
-}
-html.is-dark .m-ph{
-  background: rgba(15,23,42,0.45);
-  border-color: rgba(148,163,184,0.25);
-}
-
-/* Footer */
-.m-footer{
-  margin: 26px 0 18px;
-  font-size: 12px;
-  color: rgba(91,100,120,0.9);
-  text-align:center;
-}
-html.is-dark .m-footer{
-  color: rgba(170,178,213,0.85);
-}
-/* =========================================================
-   Global background unification (like guest.css)
-   - keeps Admin pages consistent with Guest background
-   ========================================================= */
-body{ background:#f3f4f6 !important; }
-html.is-dark body{ background:#0b1220 !important; }
-
-/* Topbar language select */
-.m-topbar .m-select{ height: 40px; }
-
-/* =========================================================
-   Auth pages (login) — no topbar, no sidebar
-   ========================================================= */
-.auth-page{
-  min-height: 100vh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding: 18px;
-}
+/* ------------------------- Login Pages ------------------------- */
+.auth-page{ min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px 14px; }
 .auth-card{
-  width: 100%;
-  max-width: 520px;
+  width:min(420px, 100%);
+  background: rgba(255,255,255,0.92);
+  border:1px solid rgba(148,163,184,0.35);
+  border-radius:18px;
+  padding:18px;
+  box-shadow:0 14px 40px rgba(2,6,23,0.08);
 }
-.auth-meta{
+.auth-title{ font-size:18px; font-weight:900; margin-bottom:6px; }
+.auth-sub{ font-size:13px; color: rgba(15,23,42,0.65); margin-bottom: 14px; }
+.auth-row{ display:grid; gap:10px; margin: 12px 0; }
+.auth-actions{ display:flex; gap:10px; align-items:center; justify-content:space-between; margin-top: 12px; }
+.auth-hint{ font-size:12px; color: rgba(15,23,42,0.55); }
+.auth-error{ margin-top:10px; font-size: 12px; color:#b91c1c; display:none; }
+
+/* ------------------------- Sidebar Links ------------------------- */
+.m-side-link{
+  width:100%;
   display:flex;
   align-items:center;
-  justify-content:space-between;
-  gap: 12px;
-  margin-top: 12px;
+  gap:10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148,163,184,0.28);
+  background: rgba(148,163,184,0.10);
+  color: inherit;
+  cursor:pointer;
+  text-align:left;
+  font-weight: 900;
 }
-.auth-meta .m-select{ width: 100%; max-width: 240px; }
+.m-side-link:hover{ background: rgba(148,163,184,0.18); }
+.m-side-link.is-active{
+  background: rgba(105,108,255,0.18);
+  border-color: rgba(105,108,255,0.35);
+}
+.m-side-group{ display:grid; gap:8px; padding: 6px 0 10px; }
 
+/* ------------------------- Mobile Drawer ------------------------- */
+.m-drawer-backdrop{
+  position: fixed; inset:0; background: rgba(2,6,23,0.40);
+  display:none; z-index:80;
+}
+.m-drawer{
+  position: fixed; left:0; top:0; height:100vh; width:min(320px, 86vw);
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid rgba(148,163,184,0.35);
+  padding: 14px;
+  transform: translateX(-110%);
+  transition: transform .18s ease;
+  z-index: 90;
+  overflow:auto;
+}
+.m-drawer.is-open{ transform: translateX(0); }
+.m-drawer-backdrop.is-open{ display:block; }
+@media (min-width: 980px){
+  .m-drawer, .m-drawer-backdrop{ display:none !important; }
+}
 
-/* Quick tiles used in index.html */
-.m-tile{
-  display:block;
-  text-decoration:none;
-  color: var(--text);
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.7);
+/* ------------------------- Guest helpers ------------------------- */
+.guest-top-actions{ display:flex; align-items:center; gap:10px; }
+.guest-lang{
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148,163,184,0.35);
+  background: rgba(255,255,255,0.85);
+  font-size: 13px;
+}
+
+/* ------------------------- Index hub ------------------------- */
+.hub{ max-width:1100px; margin:0 auto; padding:18px 14px 40px; }
+.hub-title{ font-size:22px; font-weight: 1000; margin:8px 0 6px; }
+.hub-sub{ color: rgba(15,23,42,0.65); font-size:13px; margin-bottom:16px; }
+.hub-grid{ display:grid; gap:12px; }
+@media (min-width: 860px){ .hub-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+.hub-card{
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(148,163,184,0.30);
   border-radius: 18px;
   padding: 14px;
-  box-shadow: var(--shadow);
-  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+  box-shadow: 0 12px 32px rgba(2,6,23,0.06);
 }
-html.is-dark .m-tile{ background: rgba(2,6,23,0.35); }
-.m-tile:hover{
-  transform: translateY(-1px);
-  border-color: rgba(105,108,255,0.25);
-  background: rgba(105,108,255,0.06);
+.hub-card h3{ font-size:16px; margin-bottom:6px; }
+.hub-card p{ font-size:13px; color: rgba(15,23,42,0.65); margin-bottom:10px; }
+.hub-links{ display:flex; flex-wrap:wrap; gap:8px; }
+.hub-links a{
+  display:inline-flex; align-items:center; gap:8px;
+  padding: 9px 12px; border-radius:999px;
+  border:1px solid rgba(148,163,184,0.28);
+  background: rgba(148,163,184,0.10);
+  color: inherit; text-decoration:none; font-weight: 900; font-size:13px;
 }
-.m-tile-title{ font-weight: 900; margin: 0 0 6px; }
-.m-tile-desc{ color: var(--muted); font-size: 13px; line-height: 1.35; }
-
-/* =========================================================
-   Small helper classes used by Dummy markup
-   - keeps it readable in HTML, without touching your menyra.css
-   ========================================================= */
-
-.m-topbar-sep{ width:1px; height:22px; background: rgba(148,163,184,0.55); border-radius: 999px; }
-.m-topbar-title{ font-weight: 900; }
-
-.m-kicker{
-  font-size: 11px;
-  letter-spacing: 0.12em;
-  font-weight: 900;
-  opacity: 0.7;
-}
-
-.m-card-h{ margin-bottom: 10px; }
-.m-card-b{ margin-top: 8px; }
-
-.m-btn-primary{
-  background: var(--accent);
-  border-color: rgba(105,108,255,0.25);
-  color: #fff;
-}
-.m-btn-primary:hover{ filter: brightness(1.02); }
-
-.m-link{
-  color: var(--accent);
-  text-decoration:none;
-  font-weight: 800;
-}
-.m-link:hover{ text-decoration: underline; }
-
-.m-row{ display:flex; flex-direction:column; gap: 6px; margin-bottom: 12px; }
-.m-label{ font-size: 13px; font-weight: 800; color: var(--text); }
-
-.m-sidebar-header{ margin-bottom: 10px; }
-.m-sidebar-title{ font-weight: 900; opacity: 0.85; }
-
-.m-stat-k{ font-size: 12px; font-weight: 900; opacity: 0.7; }
-
-.m-table-wrap{ width:100%; overflow:auto; border-radius: 14px; border: 1px solid var(--border); }
-.m-table-wrap .m-table{ border:0; }
+.hub-links a:hover{ background: rgba(148,163,184,0.18); }
