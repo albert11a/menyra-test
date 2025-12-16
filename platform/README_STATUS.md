@@ -19,6 +19,7 @@ Stand: DUMMY-TEIL 1 (Platform Admin) — **P1.4 abgeschlossen**
 
 ## 🧪 Was du testen sollst (Checkliste)
 1) CEO: `/platform/login.html` → Dummy Login → `/platform/dashboard.html`
+   - View „Demos“ öffnen → Demo öffnen → Links kopieren → Neue Demo anlegen
    - View „Leads“ öffnen
    - Filter/Chips klicken → Tabelle reagiert
    - „+ Neuer Lead“ → Modal → speichern → Lead erscheint oben
@@ -31,10 +32,10 @@ Stand: DUMMY-TEIL 1 (Platform Admin) — **P1.4 abgeschlossen**
    - Detail öffnen → Status ändern → speichern
 
 ## ➜ Nächster Mini-Step
-**DUMMY-P1.5: Demo Generator UI (richtig ausbauen)**
-- Demo erstellen (Typ wählen)
-- Automatische Demo Links anzeigen (Main Page / Guest Karte / Shop / Room)
-- Button „Demo → Kunde konvertieren“ (Dummy)
+**DUMMY-P1.6: Assignments UI (Lead/Kunde zu Staff zuweisen – UI + Modals)**
+- Leads: Zuweisung an Staff im Detail (Dropdown + speichern) → Dummy
+- Kunden: Zuweisung an Staff (in Kunden-Detail) → Dummy
+- Filter „Meine Kunden“ im Staff Admin → Dummy
 
 Danach:
-- **DUMMY-P1.6: Assignments UI** (Lead/Kunde zu Staff zuweisen – UI + Modals)
+- **DUMMY-P1.7: Kitchen Screen Dummy** (Bestellungen sehen – UI)

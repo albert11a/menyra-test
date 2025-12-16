@@ -865,7 +865,11 @@
   <div class="m-page-header">
     <div>
       <div class="m-page-title">Demos</div>
-      <div class="m-page-sub">Demo-Templates erstellen, Vorschau & Share-Links (Dummy). Alles ist Platzhalter – Logik kommt später.</div>
+      <div class="m-page-sub">Demo-Templates für Präsentationen (Dummy). Erstellen → Links kopieren → Demo zu Kunde konvertieren (später Logik).</div>
+    </div>
+    <div class="m-page-actions">
+      <button id="demoNewBtn" class="m-btn" type="button">+ Neue Demo</button>
+      <button id="demoExportBtn" class="m-ghost-btn" type="button">Export (später)</button>
     </div>
   </div>
 
@@ -873,35 +877,105 @@
     <div class="m-card">
       <div class="m-card-head">
         <div>
-          <div class="m-card-title">Demos – Übersicht</div>
-          <div class="m-card-sub">Liste / Filter / Detail – alles Dummy.</div>
+          <div class="m-card-title">Demos gesamt</div>
+          <div class="m-card-sub">Alle Demos (Dummy-Daten)</div>
         </div>
       </div>
-      <div class="m-card-body">
-        <div class="m-empty">
-          <div class="m-empty-ico">🧩</div>
-          <div class="m-empty-title">Platzhalter-Ansicht</div>
-          <div class="m-empty-sub">In den nächsten Mini-Steps füllen wir diese Ansicht mit Screens (Liste, Detail, Aktionen, Vorschau).</div>
-        </div>
-      </div>
+      <div class="m-card-body"><div style="font-size:34px;font-weight:1000" id="demoKpiTotal">—</div></div>
     </div>
 
     <div class="m-card">
       <div class="m-card-head">
         <div>
-          <div class="m-card-title">Schnellaktionen</div>
-          <div class="m-card-sub">Beispiele, wie es später funktioniert.</div>
+          <div class="m-card-title">Aktiv</div>
+          <div class="m-card-sub">Status: aktiv</div>
         </div>
       </div>
-      <div class="m-card-body">
-        <ul class="m-bullets">
-          <li><strong>Neu</strong>: Anlegen (Formular)</li>
-          <li><strong>Bearbeiten</strong>: Daten ändern</li>
-          <li><strong>Status</strong>: Pipeline/State wechseln</li>
-          <li><strong>Zuordnen</strong>: Mitarbeiter (nur CEO)</li>
-          <li><strong>Stats</strong>: Übersicht/KPIs (placeholder)</li>
-        </ul>
+      <div class="m-card-body"><div style="font-size:34px;font-weight:1000" id="demoKpiActive">—</div></div>
+    </div>
+
+    <div class="m-card">
+      <div class="m-card-head">
+        <div>
+          <div class="m-card-title">Entwurf</div>
+          <div class="m-card-sub">Status: draft</div>
+        </div>
       </div>
+      <div class="m-card-body"><div style="font-size:34px;font-weight:1000" id="demoKpiDraft">—</div></div>
+    </div>
+
+    <div class="m-card">
+      <div class="m-card-head">
+        <div>
+          <div class="m-card-title">Klicks</div>
+          <div class="m-card-sub">placeholder (später Tracking)</div>
+        </div>
+      </div>
+      <div class="m-card-body"><div style="font-size:34px;font-weight:1000" id="demoKpiClicks">—</div></div>
+    </div>
+  </div>
+
+  <div class="m-card">
+    <div class="m-card-head">
+      <div>
+        <div class="m-card-title">Demo Liste</div>
+        <div class="m-card-sub">Filter + Detail + Links kopieren (Dummy).</div>
+      </div>
+      <div class="m-card-actions">
+        <select id="demoTypeFilter" class="m-select" aria-label="Typ Filter">
+          <option value="all">Typ: Alle</option>
+          <option value="restaurant">Restaurant</option>
+          <option value="cafe">Café</option>
+          <option value="fastfood">Fastfood</option>
+          <option value="hotel">Hotel</option>
+          <option value="motel">Motel</option>
+          <option value="shop">Online Shop</option>
+          <option value="service">Dienstleistung</option>
+        </select>
+        <select id="demoStatusFilter" class="m-select" aria-label="Status Filter">
+          <option value="all">Status: Alle</option>
+          <option value="active">Aktiv</option>
+          <option value="draft">Entwurf</option>
+          <option value="archived">Archiviert</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="m-card-body">
+      <div class="m-input-row">
+        <div class="m-input-group">
+          <label>Suche</label>
+          <input id="demoSearch" class="m-input" placeholder="Name / Stadt / Typ"/>
+        </div>
+        <div class="m-input-group">
+          <label>Sort</label>
+          <select id="demoSort" class="m-select">
+            <option value="updated_desc">Zuletzt geändert</option>
+            <option value="name_asc">Name A–Z</option>
+            <option value="type_asc">Typ</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="m-table-wrap" style="margin-top:10px">
+        <table class="m-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Typ</th>
+              <th>Stadt</th>
+              <th>Status</th>
+              <th>Updated</th>
+              <th style="text-align:right">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody id="demoTbody">
+            <!-- rows via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="m-table-meta" id="demoMeta" style="margin-top:10px">—</div>
     </div>
   </div>
 </section>
@@ -1279,6 +1353,117 @@
   </div>
 
 
-  <script type="module" src="./app.js"></script>
+  
+
+  <!-- =========================================================
+       MODAL: Demo Create (Dummy)
+       ========================================================= -->
+  <div id="demoCreateOverlay" class="m-modal-overlay is-hidden" role="dialog" aria-modal="true" aria-label="Demo erstellen">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title">Neue Demo</h3>
+        <button id="demoCreateClose" class="m-ghost-btn" type="button" aria-label="Schließen">✕</button>
+      </div>
+      <div class="m-modal-body">
+        <div class="m-form-grid">
+          <div class="m-input-group">
+            <label>Demo Name</label>
+            <input id="demoCreateName" class="m-input" placeholder="z.B. Café Aroma Demo"/>
+          </div>
+          <div class="m-input-group">
+            <label>Typ</label>
+            <select id="demoCreateType" class="m-select">
+              <option value="restaurant">Restaurant</option>
+              <option value="cafe">Café</option>
+              <option value="fastfood">Fastfood</option>
+              <option value="hotel">Hotel</option>
+              <option value="motel">Motel</option>
+              <option value="shop">Online Shop</option>
+              <option value="service">Dienstleistung</option>
+            </select>
+          </div>
+          <div class="m-input-group">
+            <label>Stadt</label>
+            <input id="demoCreateCity" class="m-input" placeholder="z.B. Prishtina"/>
+          </div>
+          <div class="m-input-group">
+            <label>Sprache</label>
+            <select id="demoCreateLang" class="m-select">
+              <option value="de">Deutsch</option>
+              <option value="sq">Albanisch</option>
+              <option value="en">Englisch</option>
+              <option value="sr">Serbisch</option>
+              <option value="tr">Türkisch</option>
+            </select>
+          </div>
+          <div class="m-input-group">
+            <label>Status</label>
+            <select id="demoCreateStatus" class="m-select">
+              <option value="draft">Entwurf</option>
+              <option value="active">Aktiv</option>
+              <option value="archived">Archiviert</option>
+            </select>
+          </div>
+        </div>
+        <div class="m-table-meta" style="margin-top:10px">
+          Diese Demo erzeugt später automatisch Links (Main Page, Guest QR, Shop, Room, Admins). Hier aktuell Dummy.
+        </div>
+      </div>
+      <div class="m-modal-footer">
+        <button id="demoCreateSave" class="m-btn" type="button">Demo speichern (Dummy)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       MODAL: Demo Detail (Dummy)
+       ========================================================= -->
+  <div id="demoDetailOverlay" class="m-modal-overlay is-hidden" role="dialog" aria-modal="true" aria-label="Demo Detail">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title" id="demoDetailTitle">Demo</h3>
+        <button id="demoDetailClose" class="m-ghost-btn" type="button" aria-label="Schließen">✕</button>
+      </div>
+      <div class="m-modal-body">
+        <div class="m-table-meta" id="demoDetailMeta">—</div>
+
+        <div class="m-card" style="margin-top:12px">
+          <div class="m-card-head">
+            <div>
+              <div class="m-card-title">Links</div>
+              <div class="m-card-sub">Für Präsentation: öffnen oder kopieren.</div>
+            </div>
+            <div class="m-card-actions">
+              <button id="demoCopyAllBtn" class="m-ghost-btn" type="button">Alle Links kopieren</button>
+            </div>
+          </div>
+          <div class="m-card-body">
+            <div id="demoLinksList" style="display:flex; flex-direction:column; gap:10px;"></div>
+          </div>
+        </div>
+
+        <div class="m-card" style="margin-top:12px">
+          <div class="m-card-head">
+            <div>
+              <div class="m-card-title">Aktionen</div>
+              <div class="m-card-sub">Alles Dummy – später echte Logik.</div>
+            </div>
+          </div>
+          <div class="m-card-body">
+            <div class="m-actions-row">
+              <button id="demoConvertBtn" class="m-btn" type="button">Demo → Kunde konvertieren (Dummy)</button>
+              <button id="demoDuplicateBtn" class="m-ghost-btn" type="button">Duplizieren (Dummy)</button>
+              <button id="demoArchiveBtn" class="m-ghost-btn" type="button">Archivieren (Dummy)</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="m-modal-footer">
+        <button id="demoDetailOk" class="m-btn" type="button">Schließen</button>
+      </div>
+    </div>
+  </div>
+
+<script type="module" src="./app.js"></script>
 </body>
 </html>

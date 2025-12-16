@@ -35,6 +35,17 @@ const DUMMY_LEADS = [
   { id:"lead_010", name:"Hotel CityLine", type:"hotel", city:"Prishtina", phone:"+383 45 222 111", note:"Multi-Location später", status:"new", next:"Di 16:00 Nachricht", ownerType:"staff", ownerId:"staff_002", updatedAt: 1 },
 ];
 
+const DUMMY_DEMOS = [
+  { id:"demo_001", rid:"demo_cafe", name:"Café Aroma – Demo", type:"cafe", city:"Prishtina", status:"active", lang:"de", clicks: 128, updatedAt: 10 },
+  { id:"demo_002", rid:"demo_restaurant", name:"Pizza Te Kodra – Demo", type:"restaurant", city:"Prizren", status:"draft", lang:"sq", clicks: 54, updatedAt: 9 },
+  { id:"demo_003", rid:"demo_hotel", name:"Hotel Panorama – Demo", type:"hotel", city:"Peja", status:"active", lang:"en", clicks: 301, updatedAt: 8 },
+  { id:"demo_004", rid:"demo_motel", name:"Motel Secret – Demo", type:"motel", city:"Ferizaj", status:"draft", lang:"de", clicks: 22, updatedAt: 7 },
+  { id:"demo_005", rid:"demo_shop", name:"Online Shop – Demo", type:"shop", city:"Prishtina", status:"active", lang:"de", clicks: 410, updatedAt: 6 },
+  { id:"demo_006", rid:"demo_fastfood", name:"Fastfood HEB’s – Demo", type:"fastfood", city:"Gjakova", status:"active", lang:"sq", clicks: 88, updatedAt: 5 },
+  { id:"demo_007", rid:"demo_service", name:"Auto Service – Demo", type:"service", city:"Mitrovica", status:"draft", lang:"de", clicks: 11, updatedAt: 4 }
+];
+
+
 
 const state = {
   staff: [...DUMMY_STAFF],
@@ -291,6 +302,349 @@ function escapeAttr(s){ return escapeHtml(s); }
 
 
 /* =========================================================
+   DEMOS VIEW — Dummy Render + Events
+   ========================================================= */
+
+const demosState = { selectedId: null };
+
+function demoTypeLabel(t){
+  const map = {
+    restaurant:"Restaurant",
+    cafe:"Café",
+    fastfood:"Fastfood",
+    hotel:"Hotel",
+    motel:"Motel",
+    shop:"Online Shop",
+    service:"Dienstleistung"
+  };
+  return map[t] || t || "—";
+}
+function demoStatusLabel(s){
+  const map = { active:"Aktiv", draft:"Entwurf", archived:"Archiviert" };
+  return map[s] || s || "—";
+}
+
+function buildDemoLinks(demo){
+  const rid = demo?.rid || demo?.id || "demo";
+  const enc = encodeURIComponent(rid);
+  const base = ".."; // /platform → project root
+
+  const links = [
+    { label:"Main Page (Public)", url:`${base}/public/main.html?r=${enc}` },
+    { label:"QR Menü (T1)", url:`${base}/guest/karte.html?r=${enc}&t=T1` },
+    { label:"QR Menü (T2)", url:`${base}/guest/karte.html?r=${enc}&t=T2` },
+  ];
+
+  // type-specific guest views
+  if (demo?.type === "fastfood"){
+    links.push({ label:"Fastfood (Pickup)", url:`${base}/guest/fastfood.html?r=${enc}` });
+  }
+  if (demo?.type === "shop"){
+    links.push({ label:"Shop (Guest)", url:`${base}/guest/shop.html?r=${enc}` });
+  }
+  if (demo?.type === "hotel" || demo?.type === "motel"){
+    links.push({ label:"Zimmer QR (Room 101)", url:`${base}/guest/room.html?r=${enc}&room=101` });
+  }
+
+  // admin/staff logins
+  links.push({ label:"Owner Admin Login", url:`${base}/owner/login.html?r=${enc}` });
+
+  if (demo?.type === "shop"){
+    links.push({ label:"E-Commerce Admin Login", url:`${base}/ecommerce/login.html?r=${enc}` });
+  }
+  if (demo?.type === "hotel" || demo?.type === "motel"){
+    links.push({ label:"Hotel Admin Login", url:`${base}/hotel/login.html?r=${enc}` });
+  }
+  if (demo?.type === "service"){
+    links.push({ label:"Service Admin Login", url:`${base}/services/login.html?r=${enc}` });
+  }
+
+  links.push({ label:"Staff Login (Küche/Service/Housekeeping)", url:`${base}/staff/login.html?r=${enc}` });
+
+  return links;
+}
+
+async function copyToClipboard(text){
+  const t = String(text || "");
+  try{
+    await navigator.clipboard.writeText(t);
+    return true;
+  }catch(_){
+    try{
+      const ta = document.createElement("textarea");
+      ta.value = t;
+      ta.setAttribute("readonly","true");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+      return true;
+    }catch(__){
+      return false;
+    }
+  }
+}
+
+function renderDemoKPIs(){
+  if (!$("demoKpiTotal")) return;
+
+  const total = DUMMY_DEMOS.length;
+  const active = DUMMY_DEMOS.filter(d=>d.status==="active").length;
+  const draft = DUMMY_DEMOS.filter(d=>d.status==="draft").length;
+  const clicks = DUMMY_DEMOS.reduce((sum,d)=> sum + (Number(d.clicks)||0), 0);
+
+  $("demoKpiTotal").textContent = String(total);
+  $("demoKpiActive").textContent = String(active);
+  $("demoKpiDraft").textContent = String(draft);
+  $("demoKpiClicks").textContent = String(clicks);
+}
+
+function getFilteredDemos(){
+  const q = ($("demoSearch")?.value || "").trim().toLowerCase();
+  const type = $("demoTypeFilter")?.value || "all";
+  const status = $("demoStatusFilter")?.value || "all";
+  const sort = $("demoSort")?.value || "updated_desc";
+
+  let rows = DUMMY_DEMOS.slice();
+
+  if (type !== "all") rows = rows.filter(d=> d.type === type);
+  if (status !== "all") rows = rows.filter(d=> d.status === status);
+
+  if (q){
+    rows = rows.filter(d=>{
+      const hay = `${d.name||""} ${d.city||""} ${d.type||""} ${d.rid||""}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+
+  if (sort === "updated_desc") rows.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  if (sort === "name_asc") rows.sort((a,b)=> String(a.name||"").localeCompare(String(b.name||""), "de"));
+  if (sort === "type_asc") rows.sort((a,b)=> String(a.type||"").localeCompare(String(b.type||""), "de"));
+
+  return rows;
+}
+
+function renderDemoTable(){
+  const tbody = $("demoTbody");
+  if (!tbody) return;
+
+  const rows = getFilteredDemos();
+  tbody.innerHTML = rows.map(d=>{
+    const updated = `#${d.updatedAt ?? "—"}`;
+    return `
+      <tr>
+        <td style="font-weight:900">${escapeHtml(d.name)}</td>
+        <td>${escapeHtml(demoTypeLabel(d.type))}</td>
+        <td>${escapeHtml(d.city)}</td>
+        <td>${escapeHtml(demoStatusLabel(d.status))}</td>
+        <td>${escapeHtml(updated)}</td>
+        <td style="text-align:right">
+          <button class="m-ghost-btn" type="button" data-demo-open="${escapeAttr(d.id)}">Öffnen</button>
+          <button class="m-ghost-btn" type="button" data-demo-copy="${escapeAttr(d.id)}">Links kopieren</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  const meta = $("demoMeta");
+  if (meta){
+    meta.textContent = `${rows.length} Demo(s) angezeigt • Gesamt: ${DUMMY_DEMOS.length}`;
+  }
+
+  // bind open/copy
+  tbody.querySelectorAll("[data-demo-open]").forEach(btn=>{
+    btn.addEventListener("click", ()=> openDemoDetail(btn.getAttribute("data-demo-open")));
+  });
+  tbody.querySelectorAll("[data-demo-copy]").forEach(btn=>{
+    btn.addEventListener("click", async ()=> {
+      const id = btn.getAttribute("data-demo-copy");
+      const d = DUMMY_DEMOS.find(x=>x.id===id);
+      if (!d) return;
+      const lines = buildDemoLinks(d).map(x=>`${x.label}: ${x.url}`).join("\n");
+      await copyToClipboard(lines);
+      const meta = $("demoMeta");
+      if (meta) meta.textContent = `Links kopiert: ${d.name}`;
+    });
+  });
+}
+
+function openDemoCreate(){
+  if ($("demoCreateName")) $("demoCreateName").value = "";
+  if ($("demoCreateType")) $("demoCreateType").value = "cafe";
+  if ($("demoCreateCity")) $("demoCreateCity").value = "Prishtina";
+  if ($("demoCreateLang")) $("demoCreateLang").value = "de";
+  if ($("demoCreateStatus")) $("demoCreateStatus").value = "draft";
+  showOverlay($("demoCreateOverlay"));
+}
+
+function closeDemoCreate(){ hideOverlay($("demoCreateOverlay")); }
+
+function slugifyRid(name){
+  const base = String(name || "demo").toLowerCase().trim();
+  const s = base
+    .replaceAll("ä","ae").replaceAll("ö","oe").replaceAll("ü","ue").replaceAll("ß","ss")
+    .replaceAll(/[^a-z0-9]+/g,"_")
+    .replaceAll(/^_+|_+$/g,"");
+  return s ? `demo_${s}` : "demo";
+}
+
+function saveDemoCreate(){
+  const name = ($("demoCreateName")?.value || "").trim() || "Neue Demo";
+  const type = $("demoCreateType")?.value || "restaurant";
+  const city = ($("demoCreateCity")?.value || "").trim() || "—";
+  const lang = $("demoCreateLang")?.value || "de";
+  const status = $("demoCreateStatus")?.value || "draft";
+  const maxUpdated = Math.max(0, ...DUMMY_DEMOS.map(d=>Number(d.updatedAt)||0));
+  const id = `demo_${String(maxUpdated + 1).padStart(3,"0")}`;
+  const rid = slugifyRid(name);
+
+  DUMMY_DEMOS.unshift({
+    id,
+    rid,
+    name,
+    type,
+    city,
+    status,
+    lang,
+    clicks: 0,
+    updatedAt: maxUpdated + 1
+  });
+
+  closeDemoCreate();
+  renderDemoKPIs();
+  renderDemoTable();
+  openDemoDetail(id);
+}
+
+function openDemoDetail(id){
+  const demo = DUMMY_DEMOS.find(d=>d.id===id);
+  if (!demo) return;
+  demosState.selectedId = id;
+
+  if ($("demoDetailTitle")) $("demoDetailTitle").textContent = demo.name;
+  if ($("demoDetailMeta")){
+    $("demoDetailMeta").textContent = `RID: ${demo.rid} • Typ: ${demoTypeLabel(demo.type)} • Stadt: ${demo.city} • Status: ${demoStatusLabel(demo.status)} • Sprache: ${demo.lang}`;
+  }
+
+  const list = $("demoLinksList");
+  if (list){
+    const links = buildDemoLinks(demo);
+    list.innerHTML = links.map((l, idx)=>`
+      <div style="padding:10px; border:1px solid rgba(148,163,184,0.35); border-radius:14px;">
+        <div style="font-weight:900">${escapeHtml(l.label)}</div>
+        <div style="font-size:12px; color: rgba(15,23,42,0.65); word-break:break-all; margin-top:4px;">${escapeHtml(l.url)}</div>
+        <div style="display:flex; gap:8px; margin-top:10px;">
+          <button class="m-ghost-btn" type="button" data-demo-open-url="${escapeAttr(l.url)}">Öffnen</button>
+          <button class="m-ghost-btn" type="button" data-demo-copy-url="${escapeAttr(l.url)}">Kopieren</button>
+        </div>
+      </div>
+    `).join("");
+
+    list.querySelectorAll("[data-demo-open-url]").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        const url = btn.getAttribute("data-demo-open-url");
+        if (url) window.open(url, "_blank", "noopener");
+      });
+    });
+    list.querySelectorAll("[data-demo-copy-url]").forEach(btn=>{
+      btn.addEventListener("click", async ()=>{
+        const url = btn.getAttribute("data-demo-copy-url");
+        if (!url) return;
+        const ok = await copyToClipboard(url);
+        const meta = $("demoDetailMeta");
+        if (meta) meta.textContent = ok ? "Link kopiert ✅" : "Kopieren nicht möglich ❌";
+      });
+    });
+  }
+
+  showOverlay($("demoDetailOverlay"));
+}
+
+function closeDemoDetail(){ hideOverlay($("demoDetailOverlay")); demosState.selectedId = null; }
+
+function demoCopyAll(){
+  const demo = DUMMY_DEMOS.find(d=>d.id===demosState.selectedId);
+  if (!demo) return;
+  const lines = buildDemoLinks(demo).map(x=>`${x.label}: ${x.url}`).join("\n");
+  copyToClipboard(lines).then(ok=>{
+    const meta = $("demoDetailMeta");
+    if (meta) meta.textContent = ok ? "Alle Links kopiert ✅" : "Kopieren nicht möglich ❌";
+  });
+}
+
+function demoDuplicate(){
+  const demo = DUMMY_DEMOS.find(d=>d.id===demosState.selectedId);
+  if (!demo) return;
+  const maxUpdated = Math.max(0, ...DUMMY_DEMOS.map(d=>Number(d.updatedAt)||0));
+  const id = `demo_${String(maxUpdated + 1).padStart(3,"0")}`;
+  DUMMY_DEMOS.unshift({
+    ...demo,
+    id,
+    name: demo.name + " (Kopie)",
+    updatedAt: maxUpdated + 1
+  });
+  renderDemoKPIs();
+  renderDemoTable();
+  const meta = $("demoDetailMeta");
+  if (meta) meta.textContent = "Dupliziert ✅ (Dummy)";
+}
+
+function demoArchive(){
+  const demo = DUMMY_DEMOS.find(d=>d.id===demosState.selectedId);
+  if (!demo) return;
+  demo.status = "archived";
+  renderDemoKPIs();
+  renderDemoTable();
+  const meta = $("demoDetailMeta");
+  if (meta) meta.textContent = "Archiviert ✅ (Dummy)";
+}
+
+function demoConvert(){
+  // placeholder: later creates customer docs + accounts + QR packs
+  const meta = $("demoDetailMeta");
+  if (meta) meta.textContent = "Konvertierung gestartet (Dummy) — später echte Logik.";
+}
+
+function bindDemoView(){
+  if (!$("demoNewBtn")) return;
+
+  $("demoNewBtn")?.addEventListener("click", openDemoCreate);
+  $("demoExportBtn")?.addEventListener("click", ()=>{ const meta=$("demoMeta"); if(meta) meta.textContent="Export kommt später."; });
+
+  $("demoCreateClose")?.addEventListener("click", closeDemoCreate);
+  $("demoCreateSave")?.addEventListener("click", saveDemoCreate);
+
+  $("demoDetailClose")?.addEventListener("click", closeDemoDetail);
+  $("demoDetailOk")?.addEventListener("click", closeDemoDetail);
+  $("demoCopyAllBtn")?.addEventListener("click", demoCopyAll);
+  $("demoDuplicateBtn")?.addEventListener("click", demoDuplicate);
+  $("demoArchiveBtn")?.addEventListener("click", demoArchive);
+  $("demoConvertBtn")?.addEventListener("click", demoConvert);
+
+  ["demoSearch","demoTypeFilter","demoStatusFilter","demoSort"].forEach(id=>{
+    $(id)?.addEventListener("input", renderDemoTable);
+    $(id)?.addEventListener("change", renderDemoTable);
+  });
+
+  // click outside close
+  ["demoCreateOverlay","demoDetailOverlay"].forEach(id=>{
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener("click", (e)=>{
+      if (e.target === el){
+        if (id === "demoCreateOverlay") closeDemoCreate();
+        if (id === "demoDetailOverlay") closeDemoDetail();
+      }
+    });
+  });
+
+  renderDemoKPIs();
+  renderDemoTable();
+}
+
+/* =========================================================
    LEADS VIEW — Dummy Render + Events
    ========================================================= */
 
@@ -535,6 +889,7 @@ function bindLeadsView(){
 window.addEventListener("DOMContentLoaded", ()=>{
   bindStaffView();
   bindCustomerOpenButtons();
+  bindDemoView();
   bindLeadsView();
   // Safety: if current view is already customer_detail (reload), apply header
   applyCustomerDetailHeader();
