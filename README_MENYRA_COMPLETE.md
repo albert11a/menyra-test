@@ -1,160 +1,109 @@
-# MENYRA — COMPLETE SPEZIFIKATION (0–1000) | Dummy zuerst, Logik danach
+# MENYRA — COMPLETE SPEC (Source of Truth)
 
-> **Für Albert (CEO)** – Dieses Dokument ist eure „Wahrheit“. Wenn etwas fehlt, ergänzen wir es hier zuerst, bevor wir Logik bauen.
+Stand: 2025-12-16
 
-## 0) Ziel
-Wir bauen MENYRA in dieser Reihenfolge:
-1) **Dummy komplett** (alles sichtbar/klickbar, Platzhalter)
-2) **Logik** (Auth/Firestore/Rules/Realtime/Caching) in kleinen Mini-Schritten
-3) **Icons**
-4) **Design/CSS Feinschliff** + **PWA App-Erlebnis** (Desktop/Tablet/Mobile perfekt)
+Dieses Dokument beschreibt **was** MENYRA am Ende kann.  
+Die Umsetzung erfolgt **Dummy-first** (UI), danach LOGIC (Firebase).
 
-## 1) Grundregeln
-- **Bestellen/Requests ohne Account** möglich.
-- **Account Pflicht** für: Like, Kommentar, Post, Save, Follow, Chat, Live, Gifts, Reservierung.
-- Social ist **global** (ein Account überall).
-- **„Wer ist grad hier?“** in der Guest-Karte:
-  - ohne Account: **blurred**
-  - mit Account: sichtbar + Check-in optional
-- **Ads cross-tenant**: Kunden dürfen überall werben.
-- Payment später (Placeholder), Standard: Bar/Personal.
-- Mehrsprachig: sq/de/en/sr/bs/hr/cs/fr/it/es/da/tr.
-- Skalierung: **200 Kunden**, **50.000+ Besucher/Tag** → Guest muss extrem performant sein.
+---
 
-## 2) Welten/Apps (komplette Liste)
-A) Platform **CEO Admin**
-B) Platform **Staff Admin** (Mitarbeiter)
-C) Owner Admin **Gastro** (Restaurant/Café/Bar/Club)
-D) Owner Admin **Fastfood/Pickup**
-E) **E‑Commerce Admin**
-F) **Hotel Admin**
-G) **Motel Admin** (Privacy Mode)
-H) **Services Admin**
-I) **Staff Panels**: Kellner, Küche, Bar optional, Pickup, Housekeeping
-J) **Guest**: Gastro Karte, Pickup, Room Requests, Shop
-K) **Public Main Page** (pro Kunde)
-L) **Social App** (global)
+## 1) Rollen & Apps
 
-## 3) Platform — CEO Admin (du)
-### 3.1 Dashboard (alles)
-- Tenants: aktiv/setup/pausiert
-- Traffic/Orders/Requests (Placeholder)
-- Social Stats (Placeholder)
-- Ads Stats (Placeholder)
-- Leads Pipeline (Placeholder)
-- System Logs/Health (Placeholder)
-- Schnellaktionen: Neuer Kunde, Lead, Demo, Builder, Ads Review, Moderation
+### 1.1 CEO / Superadmin (Platform Admin)
+- sieht alle Kunden (restaurants/shops)
+- sieht alle Staff-Accounts
+- CRM Leads (create/assign/convert)
+- Billing/Plans/Status
+- Systemübersicht (Logs, KPIs)
 
-### 3.2 Kunden (Tenants)
-- Tenant erstellen (Typ wählen)
-- Tenant bearbeiten (Profil, Öffnungszeiten, Module Toggles, Status)
-- Multi-Location (Filialen) UI + QR Sets
-- Links: Public, Guest, Shop, Rooms
+### 1.2 Staff Admin (Mitarbeiter)
+- erstellt Leads
+- kann Kunden als Draft anlegen (In Umsetzung)
+- sieht nur seine Kunden/Leads (created/assigned)
+- Übergabe an CEO (Approve/Activate)
 
-### 3.3 Leads CRM
-- Pipeline: new/contacted/demoSent/meeting/won/lost
-- Lead Detail: Notes, Next Action (Datum/Uhrzeit), Files placeholder
-- Filter: CEO/Staff getrennt + pro Mitarbeiter
-- Convert: Lead → Tenant
+### 1.3 Owner Admin (Restaurant/Shop Kunde)
+- verwaltet Menu/Items/Preise/Extras
+- verwaltet Offers
+- (später) Mitarbeiter/Kellner verwalten
+- sieht Orders (Restaurant) / Sales (Shop)
 
-### 3.4 Demos (Sales)
-- Demo erstellen (Typ wählen)
-- Demo Links sofort teilbar (WhatsApp/Copy)
-- Convert Demo → echter Kunde
+### 1.4 Kamarieri / Kitchen
+- sieht Orders live
+- kann Status ändern: neu → in arbeit → fertig → serviert
 
-### 3.5 Mitarbeiter (Staff Admin)
-- Staff Admin erstellen
-- Zuweisung: Leads/Kunden
-- Staff Stats + Provision Placeholder
+### 1.5 Guest (Gastro)
+- scannt QR
+- sieht Karte
+- legt in Warenkorb
+- bestellt
+- optional: likes/comments (später Social)
 
-### 3.6 Content Suite (CEO Superpower)
-#### 3.6.1 Menü/Produkte bauen + **Live Preview**
-- Kategorien/Items
-- Station: kitchen/bar/both
-- Extras/Allergene/Notizen
-- Bilder/Video
-- **Preview**: Card / Detail / Cart / Order Summary
+### 1.6 Public Main Page
+- Restaurant-Website (Öffnungszeiten, Kontakt, Galerie)
+- Shop Landing Page (Produkte, Kategorien)
 
-#### 3.6.2 Theme + Baukasten (wie Shopify) — **Main Page + Shop + Guest Karte**
-- Theme Gallery + Apply
-- Builder (Blocks hinzufügen, löschen, umsortieren)
-- Block Settings
-- Preview Mode: Mobile/Tablet/Desktop
-- Draft/Publish
-- Templates pro Branche
+---
 
-Block-Beispiele:
-- HERO, INFO, HOURS, CONTACT (Call/WhatsApp), MAP (placeholder), REVIEWS (placeholder),
-  GALLERY, OFFERS, MENU PREVIEW, CATEGORY TABS, PRODUCT GRID, AD SLOT,
-  SOCIAL UGC, PRESENCE (blurred ohne account), RESERVATION (placeholder), FAQ, FOOTER
+## 2) Kern-Flows
 
-#### 3.6.3 Media Library
-- Assets pro Tenant (Menu, Offers, Posts, Rooms, Ads Creatives)
-- Upload UI (CEO/Staff/Kunde)
+### 2.1 Lead → Kunde
+1) Staff erstellt Lead
+2) Staff oder CEO weist Lead zu
+3) CEO wandelt Lead in Kunde um (Restaurant/Shop)
+4) Staff bleibt assigned (Betreuung)
 
-## 4) Owner Admins (Kunden)
-### 4.1 Gastro Owner Admin
-- Profil, Menü, Offers/Events, Orders, Staff/Küche
-- Ads Manager + Preview + Analytics UI
-- Social/UGC + Moderation
-- Loyalty/Referral/Queue UI
+### 2.2 Staff erstellt Kunde (Draft)
+- Staff kann direkt ein Restaurant/Shop als Draft anlegen
+- CEO prüft & aktiviert (Billing/Plan)
 
-### 4.2 Fastfood Owner Admin
-- Pickup Orders + Ausgabe-Nummern
-- Menü + Stationen
-- Ads/Loyalty/Referral
+### 2.3 Orders
+- Guest sendet Order unter restaurantId/tableId
+- Kitchen/Staff sieht live
+- Status-Lifecycle
 
-### 4.3 Shop Admin
-- Produkte/Varianten/Lager, Orders, Coupons
-- Ads + Preview
-- Social/UGC
+---
 
-### 4.4 Hotel/Motel Admin
-- Rooms + QR
-- Requests/Tickets + Housekeeping Panel
-- Motel Privacy Mode
+## 3) Datenmodell (Firestore später)
 
-### 4.5 Services Admin
-- Leistungen + Anfragen
-- Ads + Preview
+### 3.1 restaurants/{restaurantId}
+Minimum:
+- name, type (cafe/restaurant/hotel/shop/…)
+- city, address, phone
+- status (In Umsetzung/Aktiv/Test/…)
+- createdAt
+- createdByStaffId
+- assignedStaffId
+- billing: plan, price, startAt, renewalAt (nur CEO edit)
 
-## 5) Staff Panels
-- Kellner: Orders live + Status
-- Küche: nur kitchen/both Items
-- Bar optional: nur bar/both Items
-- Pickup: ready/served
-- Housekeeping: requests live
+### 3.2 leads/{leadId}
+- name, phone, city, source, note
+- status (new/contacted/won/lost)
+- createdAt
+- createdByStaffId
+- assignedStaffId
 
-## 6) Guest
-- Gastro Karte: bestellen ohne Account
-- Likes/Kommentare nur mit Account
-- Presence „Wer ist hier?“ blurred ohne Account
-- Fastfood Pickup
-- Hotel Room Requests
-- Shop Layout
-- Ads Slots (Sponsored Cards)
-- Receipt → Review Flow (placeholder)
+### 3.3 restaurants/{restaurantId}/orders/{orderId}
+- tableId
+- items [{id,name,qty,price}]
+- total
+- status (new/in_progress/done/served)
+- createdAt
+- lastUpdateAt
 
-## 7) Social (global)
-- Explore: Tenants browsen (Restaurants/Hotels/Shops/Services)
-- Feed: Posts (image/video), Likes/Comments
-- Follow/Following
-- Save/Collections
-- History: zuletzt besucht + orders
-- Post erstellen + Tenant tag + optional item tag
-- Chat, Live (placeholder), Gifts (placeholder)
-- Moderation: report/block
+---
 
-## 8) Ads (Facebook-like)
-- Placements: Feed/Explore/GuestMenu/Offers/Shop
-- Campaign Builder: Ziel → Creative → Placements → Targeting → Budget placeholder
-- **Preview** pro Placement
-- Analytics Screens
-- Approval Queue (optional)
+## 4) Dummy→Logic Mapping
+Alles was im Dummy als localStorage existiert, wird später:
+- **1:1 in Firestore Docs**
+- gelesen via `onSnapshot`
+- gefiltert via Queries
+- abgesichert via Security Rules
 
-## 9) Performance/Skalierung
-- Guest cache-first, später 1–3 Reads pro Besuch
-- Realtime nur staff/kitchen/requests
-- Bilder: responsive sizes + lazy + feste Höhen
+---
 
-Ende.
+## 5) Nicht-Ziele (für Dummy Phase)
+- Keine echten Zahlungen
+- Kein echtes Media Upload
+- Keine komplexen Social Features  
+Diese kommen erst in LOGIC + spätere Phasen.

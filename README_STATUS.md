@@ -1,41 +1,30 @@
-# MENYRA — README_STATUS (aktueller Stand)
+# MENYRA — STATUS
 
-Stand: DUMMY-TEIL 1 (Platform Admin) — **P1.6 abgeschlossen**
+Stand: 2025-12-16
 
-## ✅ Was ist bereits drin (Dummy, ohne Firestore)
-### Platform CEO Admin
-- Dashboard (Stat-Cards + Schnellaktionen) ✅
-- Kunden: Liste + Detail (Dummy) ✅
-- Mitarbeiter: Staff Admin Verwaltung (Dummy) ✅
-- Leads CRM: **Liste + Filter + Pipeline Chips + KPIs + Create/Detail Modals** ✅
-- Demos: Platzhalter View ✅
+## Phase: DUMMY (UI zuerst)
 
-### Platform Staff Admin (Mitarbeiter)
-- Getrennte Staff-Login-Seite (`/platform/staff-login.html`) ✅
-- Staff Dashboard im gleichen Layout wie CEO ✅
-- Meine Kunden: zeigt nur zugewiesene Kunden (Dummy) ✅
-- **Meine Leads**: Liste + Filter + Chips + KPIs + Create/Detail Modals ✅
-- Dummy: Staff-ID wird aus der Login-Email abgeleitet → Staff sieht „seine“ Leads (shared store) ✅
+### DUMMY-P1 — Platform Admin (CEO + Staff)
+✅ **P1.1** CEO Dashboard Skeleton  
+✅ **P1.2** Customers UI (Liste + Detail Dummy)  
+✅ **P1.3** Staff Admin UI + Staff Login (eigener Bereich)  
+✅ **P1.4** Leads CRM UI (Liste/Filter/Chips/KPIs + Create/Detail Modals)  
+✅ **P1.5** Demos Generator UI (Liste + Create + Detail mit Links/Kopieren)  
+✅ **P1.6** Assignments + Persist (localStorage)  
+- Lead → Staff zuweisen (persistiert)  
+- Customer → Staff zuweisen (persistiert)  
+- Staff „Meine Kunden“ filtert nach Assignment  
 
-## 🧪 Was du testen sollst (Checkliste)
-1) CEO: `/platform/login.html` → Dummy Login → `/platform/dashboard.html`
-   - View „Demos“ öffnen → Demo öffnen → Links kopieren → Neue Demo anlegen
-   - View „Leads“ öffnen
-   - Filter/Chips klicken → Tabelle reagiert
-   - „+ Neuer Lead“ → Modal → speichern → Lead erscheint oben
-   - Lead „Detail“ → Status ändern → speichern
+✅ **P1.7** Staff kann Kunden erstellen (Draft / „In Umsetzung“) + CEO sieht „Erstellt von“  
+- Staff legt Kunden an → erscheint im CEO sofort  
+- Customer Detail zeigt: „Erstellt von“ + „Zuständig“ (Assignment)
 
-2) Staff: `/platform/staff-login.html`
-   - Email+Pass eingeben → weiter
-   - View „Meine Leads“
-   - „+ Neuer Lead“ → speichern
-   - Detail öffnen → Status ändern → speichern
+➡️ **NEXT: P1.8 — Orders & Kitchen Dummy (UI-only, später Firestore 1:1)**
 
-## ➜ Nächster Mini-Step
-**DUMMY-P1.6: Assignments UI (Lead/Kunde zu Staff zuweisen – UI + Modals)**
-- Leads: Zuweisung an Staff im Detail (Dropdown + speichern) → Dummy
-- Kunden: Zuweisung an Staff (in Kunden-Detail) → Dummy
-- Filter „Meine Kunden“ im Staff Admin → Dummy
+---
 
-Danach:
-- **DUMMY-P1.7: Kitchen Screen Dummy** (Bestellungen sehen – UI)
+## Regel für zukünftige ZIPs
+Jedes ZIP enthält:
+1) nur geänderte Dateien  
+2) **immer** die aktualisierten Readmes (mindestens STATUS + STEPS)  
+3) eine `CHANGES.md` im ZIP (kurz: was/wo/warum)
