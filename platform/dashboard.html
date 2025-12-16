@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>MENYRA – Platform Admin</title>
+  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
+</head>
+<body data-login-path="./login.html">
+  <div class="m-topbar">
+    <div class="m-topbar-left">
+      <button class="m-icon-btn m-burger-btn" type="button" data-mobile-menu-open aria-label="Menü">☰</button>
+      <a class="m-logo" href="../index.html" aria-label="MENYRA">MENYRA</a>
+      <span class="m-env-badge">Dummy</span>
+      <span class="m-topbar-sep"></span>
+      <span class="m-topbar-title">Platform Admin</span>
+    </div>
+    <div class="m-topbar-right">
+      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+      <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
+      <button class="m-btn" type="button" data-logout>Logout</button>
+    </div>
+  </div>
+
+  <div class="m-layout">
+    <aside class="m-sidebar">
+      <div class="m-sidebar-inner">
+        <div class="m-sidebar-header">
+          <div class="m-sidebar-title">Navigation</div>
+        </div>
+        <ul class="m-sidebar-nav">
+          <li><a href="#" data-nav="customers" class="is-active">Kunden</a></li>
+<li><a href="#" data-nav="accounts" class="">Accounts</a></li>
+<li><a href="#" data-nav="modules" class="">Module</a></li>
+<li><a href="#" data-nav="ads" class="">Ads (Freigabe)</a></li>
+<li><a href="#" data-nav="moderation" class="">Moderation (Social)</a></li>
+<li><a href="#" data-nav="analytics" class="">Analytics</a></li>
+<li><a href="#" data-nav="settings" class="">System</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="m-main">
+      <div class="m-shell">
+        <section data-view="customers" style=""><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Kundenverwaltung</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Hier siehst du alle Kunden (Gastro, Fastfood, Hotel/Motel, E-Commerce, Services). Du kannst anlegen, bearbeiten und Module aktivieren.</p>
+<div class="m-grid">
+  <div class="m-stat"><div class="m-stat-k">Aktive Kunden</div><div class="m-stat-v">—</div></div>
+  <div class="m-stat"><div class="m-stat-k">In Umsetzung</div><div class="m-stat-v">—</div></div>
+  <div class="m-stat"><div class="m-stat-k">Paused</div><div class="m-stat-v">—</div></div>
+</div>
+<div class="m-muted" style="margin-top:10px;">Später: Tabellen-Filter nach Land (KS/AL/MK/ME/RS), Typ, Status, Partner, Abrechnung.</div>
+
+  </div>
+</div></section>
+<section data-view="accounts" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Accounts & Rollen</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Owner/Admin/Staff Accounts pro Kunde. Später: automatisches Generieren + Reset + Sperren.</p>
+<ul class="m-muted" style="margin:10px 0 0;">
+  <li>Owner Admin (Gastro)</li>
+  <li>E-Commerce Admin</li>
+  <li>Hotel Admin + Housekeeping</li>
+  <li>Service Admin</li>
+  <li>Staff Panels (Kellner, Pickup, Housekeeping)</li>
+</ul>
+
+  </div>
+</div></section>
+<section data-view="modules" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Module pro Kunde</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Schalter, welche Funktionen ein Kunde bekommt:</p>
+<div class="m-grid">
+  <div class="m-card" style="padding:12px;">
+    <b>Orders</b><div class="m-muted">Tisch / Pickup / Requests</div>
+  </div>
+  <div class="m-card" style="padding:12px;">
+    <b>Social</b><div class="m-muted">Feed, Check-in, Chat, Gifts</div>
+  </div>
+  <div class="m-card" style="padding:12px;">
+    <b>Ads</b><div class="m-muted">Campaigns + Slots</div>
+  </div>
+  <div class="m-card" style="padding:12px;">
+    <b>Loyalty</b><div class="m-muted">Stempelkarte, Punkte</div>
+  </div>
+</div>
+
+  </div>
+</div></section>
+<section data-view="ads" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Ads Freigabe & Regeln</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Kunden erstellen Kampagnen wie bei Facebook. Hier entscheidet die Platform: freigeben, ablehnen, Richtlinien.</p>
+<div class="m-muted">Später: Fraud/Spam, Budget-Limits, Kategorien, Jugendschutz (Clubs), Consent/GDPR.</div>
+
+  </div>
+</div></section>
+<section data-view="moderation" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Social Moderation</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Reports, Blocks, Kommentar-Queue, Live-Reports. Alles erstmal UI.</p>
+
+  </div>
+</div></section>
+<section data-view="analytics" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Analytics Übersicht</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">High-Level KPIs (Visits, Orders, Active Users, Ad-Revenue). Später pro Land/Region und pro Kunde.</p>
+
+  </div>
+</div></section>
+<section data-view="settings" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">System Settings</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Global: Sprachen, PWA, Payment Placeholder, Feature Flags.</p>
+
+  </div>
+</div></section>
+        <div class="m-footer">MENYRA Dummy – Platform Admin (UI-Platzhalter)</div>
+      </div>
+    </main>
+  </div>
+
+  <div class="m-mobile-menu-overlay" data-mobile-menu-overlay></div>
+  <aside class="m-mobile-menu" data-mobile-menu>
+    <div class="m-mobile-menu-inner">
+      <div class="m-mobile-menu-header">
+        <div class="m-mobile-menu-title">Platform Admin</div>
+        <button class="m-mobile-menu-close" type="button" data-mobile-menu-close aria-label="Schließen">✕</button>
+      </div>
+      <div class="m-mobile-menu-section">
+        <div class="m-mobile-nav">
+          <button class="m-mobile-nav-btn is-active" type="button" data-nav="customers">Kunden</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="accounts">Accounts</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="modules">Module</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="ads">Ads (Freigabe)</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="moderation">Moderation (Social)</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="analytics">Analytics</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="settings">System</button>
+        </div>
+      </div>
+      <div class="m-mobile-menu-section" style="margin-top:auto;">
+        <button class="m-btn" type="button" data-logout style="width:100%;">Logout</button>
+      </div>
+    </div>
+  </aside>
+
+  <script src="../shared/i18n.js"></script>
+  <script src="../shared/ui.js"></script>
+  <script>
+    MENYRA_I18N_API.mountLangSelect("#langSelect");
+    MENYRA_UI.initTheme();
+    MENYRA_UI.initViews("customers");
+    MENYRA_UI.initMobileMenu();
+    document.querySelectorAll("[data-logout]").forEach(b=>b.addEventListener("click", MENYRA_UI.fakeLogout));
+  </script>
+</body>
+</html>

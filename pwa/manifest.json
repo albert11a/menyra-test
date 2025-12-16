@@ -1,0 +1,9 @@
+{
+  "name": "MENYRA (Dummy)",
+  "short_name": "MENYRA",
+  "start_url": "../index.html",
+  "display": "standalone",
+  "background_color": "#eef0ff",
+  "theme_color": "#eef0ff",
+  "icons": []
+}

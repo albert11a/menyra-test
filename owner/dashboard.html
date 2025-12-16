@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>MENYRA – Gastro Owner Admin</title>
+  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
+</head>
+<body data-login-path="./login.html">
+  <div class="m-topbar">
+    <div class="m-topbar-left">
+      <button class="m-icon-btn m-burger-btn" type="button" data-mobile-menu-open aria-label="Menü">☰</button>
+      <a class="m-logo" href="../index.html" aria-label="MENYRA">MENYRA</a>
+      <span class="m-env-badge">Dummy</span>
+      <span class="m-topbar-sep"></span>
+      <span class="m-topbar-title">Gastro Owner Admin</span>
+    </div>
+    <div class="m-topbar-right">
+      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+      <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
+      <button class="m-btn" type="button" data-logout>Logout</button>
+    </div>
+  </div>
+
+  <div class="m-layout">
+    <aside class="m-sidebar">
+      <div class="m-sidebar-inner">
+        <div class="m-sidebar-header">
+          <div class="m-sidebar-title">Navigation</div>
+        </div>
+        <ul class="m-sidebar-nav">
+          <li><a href="#" data-nav="overview" class="is-active">Übersicht</a></li>
+<li><a href="#" data-nav="menu" class="">Speisekarte</a></li>
+<li><a href="#" data-nav="orders" class="">Bestellungen</a></li>
+<li><a href="#" data-nav="offers" class="">Offers / Happy Hour</a></li>
+<li><a href="#" data-nav="loyalty" class="">Loyalty / Stempelkarte</a></li>
+<li><a href="#" data-nav="referrals" class="">Referrals</a></li>
+<li><a href="#" data-nav="queue" class="">Queue / Waitlist</a></li>
+<li><a href="#" data-nav="ads" class="">Ads Manager</a></li>
+<li><a href="#" data-nav="social" class="">Social & Community</a></li>
+<li><a href="#" data-nav="locations" class="">Filialen</a></li>
+<li><a href="#" data-nav="settings" class="">Einstellungen</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="m-main">
+      <div class="m-shell">
+        <section data-view="overview" style=""><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Gastro Dashboard</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Hier verwaltet der Betreiber sein Lokal (Restaurant/Café/Club/Fastfood).</p>
+<div class="m-grid">
+  <div class="m-stat"><div class="m-stat-k">Orders heute</div><div class="m-stat-v">—</div></div>
+  <div class="m-stat"><div class="m-stat-k">Aktive Offers</div><div class="m-stat-v">—</div></div>
+  <div class="m-stat"><div class="m-stat-k">Check-ins heute</div><div class="m-stat-v">—</div></div>
+</div>
+<p class="m-muted" style="margin-top:10px;"><b>Wichtig:</b> Zahlungen standardmäßig über Personal (Cash/Terminal). Card-Payment bleibt als Platzhalter.</p>
+
+  </div>
+</div></section>
+<section data-view="menu" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Speisekarte verwalten</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Kategorien, Items, Preise, Zutaten/Allergene, Varianten (z.B. Größe), Extras, Ausverkauft.</p>
+
+  </div>
+</div></section>
+<section data-view="orders" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Bestellungen</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Dine-In (Tisch-QR) + Pickup (Fastfood). Status: Neu → In Arbeit → Fertig → Abgeschlossen.</p>
+
+  </div>
+</div></section>
+<section data-view="offers" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Offers / Smart Offers</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Happy Hour automatisch (Zeitplan) + Kampagnen (z.B. 2+1). Später: Regeln pro Kategorie/Produkt.</p>
+
+  </div>
+</div></section>
+<section data-view="loyalty" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Loyalty / Stempelkarte</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Stempel pro Bestellung oder pro Produkt. Belohnungen: Gratis Kaffee, -10%, Geschenk.</p>
+<div class="m-muted">Später: QR-Scan bei Kasse, Anti-Fraud, Limits pro Tag.</div>
+
+  </div>
+</div></section>
+<section data-view="referrals" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Referrals</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">User lädt Freunde ein → beide bekommen Reward (z.B. 1 Stempel, Gutschein).</p>
+
+  </div>
+</div></section>
+<section data-view="queue" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Queue / Waitlist</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Warteliste für Clubs/Restaurants: Namen/Anzahl Personen, Status: wartet → reinlassen → abgelaufen.</p>
+
+  </div>
+</div></section>
+<section data-view="ads" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Ads Manager (wie Facebook – Platzhalter)</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Kampagnen erstellen: Ziel, Region (KS/AL/MK/ME/RS), Tagesbudget, Laufzeit, Creative (Bild/Video), Stats.</p>
+<p class="m-muted">Ad Slots sind Cards im gleichen Design, die beim Scrollen erscheinen.</p>
+
+  </div>
+</div></section>
+<section data-view="social" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Social (Lokal)</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Posts (Bild/Video), Kommentare, Likes, „Wer ist im Lokal?“, Chat (später), Geschenke (Rosen/Drinks – später).</p>
+
+  </div>
+</div></section>
+<section data-view="locations" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Filialen (Multi-Location)</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Ketten können mehrere Standorte haben. Später: pro Filiale eigene QR/Tische/Staff.</p>
+
+  </div>
+</div></section>
+<section data-view="settings" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Einstellungen</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Öffnungszeiten, Kontakt, Google Reviews Widget, Maps, Social toggles (an/aus), Privacy (für Motel/Club Optionen).</p>
+
+  </div>
+</div></section>
+        <div class="m-footer">MENYRA Dummy – Gastro Owner Admin (UI-Platzhalter)</div>
+      </div>
+    </main>
+  </div>
+
+  <div class="m-mobile-menu-overlay" data-mobile-menu-overlay></div>
+  <aside class="m-mobile-menu" data-mobile-menu>
+    <div class="m-mobile-menu-inner">
+      <div class="m-mobile-menu-header">
+        <div class="m-mobile-menu-title">Gastro Owner Admin</div>
+        <button class="m-mobile-menu-close" type="button" data-mobile-menu-close aria-label="Schließen">✕</button>
+      </div>
+      <div class="m-mobile-menu-section">
+        <div class="m-mobile-nav">
+          <button class="m-mobile-nav-btn is-active" type="button" data-nav="overview">Übersicht</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="menu">Speisekarte</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="orders">Bestellungen</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="offers">Offers / Happy Hour</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="loyalty">Loyalty / Stempelkarte</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="referrals">Referrals</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="queue">Queue / Waitlist</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="ads">Ads Manager</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="social">Social & Community</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="locations">Filialen</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="settings">Einstellungen</button>
+        </div>
+      </div>
+      <div class="m-mobile-menu-section" style="margin-top:auto;">
+        <button class="m-btn" type="button" data-logout style="width:100%;">Logout</button>
+      </div>
+    </div>
+  </aside>
+
+  <script src="../shared/i18n.js"></script>
+  <script src="../shared/ui.js"></script>
+  <script>
+    MENYRA_I18N_API.mountLangSelect("#langSelect");
+    MENYRA_UI.initTheme();
+    MENYRA_UI.initViews("overview");
+    MENYRA_UI.initMobileMenu();
+    document.querySelectorAll("[data-logout]").forEach(b=>b.addEventListener("click", MENYRA_UI.fakeLogout));
+  </script>
+</body>
+</html>

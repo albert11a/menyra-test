@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>MENYRA – Staff Panels</title>
+  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
+</head>
+<body data-login-path="./login.html">
+  <div class="m-topbar">
+    <div class="m-topbar-left">
+      <button class="m-icon-btn m-burger-btn" type="button" data-mobile-menu-open aria-label="Menü">☰</button>
+      <a class="m-logo" href="../index.html">MENYRA</a>
+      <span class="m-env-badge">Dummy</span>
+      <span class="m-topbar-sep"></span>
+      <span class="m-topbar-title">Staff Panels</span>
+    </div>
+    <div class="m-topbar-right">
+      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+      <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
+      <button class="m-btn" type="button" data-logout>Logout</button>
+    </div>
+  </div>
+
+  <div class="m-layout" style="padding: 14px 0;">
+    <main class="m-main">
+      <div class="m-shell">
+        <div class="m-card">
+          <div class="m-card-h">
+            <div>
+              <div class="m-kicker">PANELS</div>
+              <h1 style="margin:6px 0 0;">Wähle dein Panel</h1>
+              <p class="m-muted" style="margin:10px 0 0;">Jedes Panel ist absichtlich extrem simpel, damit es in der Praxis schnell ist.</p>
+            </div>
+          </div>
+          <div class="m-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+            <a class="m-tile" href="./gastro-orders.html">
+              <div class="m-tile-title">Gastro – Orders</div>
+              <div class="m-tile-desc">Live Bestellungen: Neu → In Arbeit → Fertig</div>
+            </a>
+            <a class="m-tile" href="./fastfood-pickup.html">
+              <div class="m-tile-title">Fastfood – Pickup</div>
+              <div class="m-tile-desc">Abholung: Ticket-Nummer, „bereit“ markieren</div>
+            </a>
+            <a class="m-tile" href="./hotel-housekeeping.html">
+              <div class="m-tile-title">Hotel – Housekeeping</div>
+              <div class="m-tile-desc">Requests/Tickets: zuweisen → erledigt</div>
+            </a>
+          </div>
+        </div>
+
+        <div class="m-footer">MENYRA Dummy – Staff Panels</div>
+      </div>
+    </main>
+  </div>
+
+  <script src="../shared/i18n.js"></script>
+  <script src="../shared/ui.js"></script>
+  <script>
+    MENYRA_I18N_API.mountLangSelect("#langSelect");
+    MENYRA_UI.initTheme();
+    MENYRA_UI.initMobileMenu();
+    document.querySelectorAll("[data-logout]").forEach(b=>b.addEventListener("click", MENYRA_UI.fakeLogout));
+  </script>
+</body>
+</html>

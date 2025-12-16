@@ -1,0 +1,182 @@
+/* =========================================================
+   MENYRA – unified.css (helpers shared across all apps)
+   - keeps your existing guest.css + menyra.css intact
+   - adds responsive containers + small utilities
+   ========================================================= */
+
+:root{
+  --shell-max: 1120px;
+  --shell-pad: 16px;
+}
+
+@media (min-width: 768px){
+  :root{ --shell-pad: 22px; }
+}
+@media (min-width: 1100px){
+  :root{ --shell-pad: 26px; }
+}
+
+/* A safe container that doesn't override your page layouts */
+.m-shell{
+  width: 100%;
+  max-width: var(--shell-max);
+  margin: 0 auto;
+  padding: 0 var(--shell-pad);
+}
+
+/* Simple inline badges */
+.m-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(148,163,184,0.25);
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(10px);
+  font-size: 12px;
+  color: rgba(11,16,32,0.85);
+}
+html.is-dark .m-badge{
+  background: rgba(15,23,42,0.55);
+  border-color: rgba(148,163,184,0.18);
+  color: rgba(230,233,255,0.88);
+}
+
+/* Simple two-column grid helper for desktop cards */
+.m-grid2{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 980px){
+  .m-grid2{ grid-template-columns: 1fr 1fr; gap: 16px; }
+}
+.m-grid3{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+@media (min-width: 980px){
+  .m-grid3{ grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+}
+
+/* Demo placeholders */
+.m-ph{
+  border: 1px dashed rgba(148,163,184,0.55);
+  background: rgba(255,255,255,0.45);
+  border-radius: 14px;
+  padding: 14px;
+}
+html.is-dark .m-ph{
+  background: rgba(15,23,42,0.45);
+  border-color: rgba(148,163,184,0.25);
+}
+
+/* Footer */
+.m-footer{
+  margin: 26px 0 18px;
+  font-size: 12px;
+  color: rgba(91,100,120,0.9);
+  text-align:center;
+}
+html.is-dark .m-footer{
+  color: rgba(170,178,213,0.85);
+}
+/* =========================================================
+   Global background unification (like guest.css)
+   - keeps Admin pages consistent with Guest background
+   ========================================================= */
+body{ background:#f3f4f6 !important; }
+html.is-dark body{ background:#0b1220 !important; }
+
+/* Topbar language select */
+.m-topbar .m-select{ height: 40px; }
+
+/* =========================================================
+   Auth pages (login) — no topbar, no sidebar
+   ========================================================= */
+.auth-page{
+  min-height: 100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 18px;
+}
+.auth-card{
+  width: 100%;
+  max-width: 520px;
+}
+.auth-meta{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+.auth-meta .m-select{ width: 100%; max-width: 240px; }
+
+
+/* Quick tiles used in index.html */
+.m-tile{
+  display:block;
+  text-decoration:none;
+  color: var(--text);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.7);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: var(--shadow);
+  transition: transform .12s ease, background .12s ease, border-color .12s ease;
+}
+html.is-dark .m-tile{ background: rgba(2,6,23,0.35); }
+.m-tile:hover{
+  transform: translateY(-1px);
+  border-color: rgba(105,108,255,0.25);
+  background: rgba(105,108,255,0.06);
+}
+.m-tile-title{ font-weight: 900; margin: 0 0 6px; }
+.m-tile-desc{ color: var(--muted); font-size: 13px; line-height: 1.35; }
+
+/* =========================================================
+   Small helper classes used by Dummy markup
+   - keeps it readable in HTML, without touching your menyra.css
+   ========================================================= */
+
+.m-topbar-sep{ width:1px; height:22px; background: rgba(148,163,184,0.55); border-radius: 999px; }
+.m-topbar-title{ font-weight: 900; }
+
+.m-kicker{
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-weight: 900;
+  opacity: 0.7;
+}
+
+.m-card-h{ margin-bottom: 10px; }
+.m-card-b{ margin-top: 8px; }
+
+.m-btn-primary{
+  background: var(--accent);
+  border-color: rgba(105,108,255,0.25);
+  color: #fff;
+}
+.m-btn-primary:hover{ filter: brightness(1.02); }
+
+.m-link{
+  color: var(--accent);
+  text-decoration:none;
+  font-weight: 800;
+}
+.m-link:hover{ text-decoration: underline; }
+
+.m-row{ display:flex; flex-direction:column; gap: 6px; margin-bottom: 12px; }
+.m-label{ font-size: 13px; font-weight: 800; color: var(--text); }
+
+.m-sidebar-header{ margin-bottom: 10px; }
+.m-sidebar-title{ font-weight: 900; opacity: 0.85; }
+
+.m-stat-k{ font-size: 12px; font-weight: 900; opacity: 0.7; }
+
+.m-table-wrap{ width:100%; overflow:auto; border-radius: 14px; border: 1px solid var(--border); }
+.m-table-wrap .m-table{ border:0; }

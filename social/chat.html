@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>MENYRA – Chat (Dummy)</title>
+  <link rel="stylesheet" href="../shared/guest.css"/>
+  <style>
+    .wrap{ max-width: 860px; margin: 0 auto; padding: 16px; }
+    .card{ background:#fff; border-radius:18px; padding:14px; box-shadow:0 10px 25px rgba(0,0,0,.06); }
+    .bubble{ max-width:70%; padding:10px 12px; border-radius:14px; background:rgba(148,163,184,.18); margin:8px 0; }
+    .me{ margin-left:auto; background:rgba(96,165,250,.22); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <b>Chat</b>
+      <div style="color:#475569; font-size:13px;">1:1 Chat – später Firestore + Regeln + Block/Report</div>
+
+      <div class="bubble">Hey, bist du heute im Lokal?</div>
+      <div class="bubble me">Ja, komme um 21:00 🙂</div>
+
+      <div style="display:flex; gap:10px; margin-top:12px;">
+        <input class="input" style="flex:1;" placeholder="Nachricht schreiben (Dummy)"/>
+        <button class="btn" type="button">Senden</button>
+      </div>
+
+      <div style="margin-top:12px;">
+        <a href="./feed.html" style="color:#111827;">Zurück</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,91 +1,57 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>MENYRA – Platform Login</title>
-
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f3f4f6" />
-
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&display=swap" rel="stylesheet">
-
-  <style>
-    :root{ --bg:#f3f4f6; --card:#fff; --text:#111827; --muted:#6b7280; --border:#e5e7eb; --accent:#111827; }
-    html,body{ height:100%; }
-    body{
-      margin:0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: var(--bg);
-      display:flex; align-items:center; justify-content:center;
-      padding:18px;
-    }
-    .card{
-      width:100%;
-      max-width:420px;
-      background: var(--card);
-      border:1px solid rgba(0,0,0,0.04);
-      border-radius:18px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.08);
-      padding:18px;
-    }
-    .h{ margin:0 0 6px; font-size:18px; font-weight:800; color:var(--text); }
-    .p{ margin:0 0 14px; font-size:13px; color:var(--muted); line-height:1.35; }
-    .row{ display:flex; flex-direction:column; gap:10px; }
-    label{ font-size:12px; color:var(--muted); }
-    input{
-      width:100%;
-      padding:12px;
-      border:1px solid var(--border);
-      border-radius:12px;
-      font-size:14px;
-      outline:none;
-      background:#fff;
-    }
-    input:focus{ border-color:#c7d2fe; box-shadow:0 0 0 4px rgba(99,102,241,.12); }
-    .btn{
-      width:100%;
-      padding:12px;
-      border:0;
-      border-radius:12px;
-      background: var(--accent);
-      color:#fff;
-      font-weight:800;
-      cursor:pointer;
-    }
-    .btn:disabled{ opacity:.6; cursor:not-allowed; }
-    .status{ margin-top:10px; font-size:13px; min-height:18px; }
-    .status.ok{ color:#059669; }
-    .status.err{ color:#dc2626; }
-    .small{ margin-top:10px; color:var(--muted); font-size:12px; }
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Platform Admin – Login</title>
+  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
 </head>
-
-<body>
-  <div class="card">
-    <h1 class="h">Platform Login</h1>
-    <p class="p">Melde dich mit deiner E-Mail & deinem Passwort an. Du bleibst eingeloggt, bis du dich ausloggst.</p>
-
-    <form id="loginForm" class="row" autocomplete="on">
-      <div>
-        <label for="emailInput">E-Mail</label>
-        <input id="emailInput" type="email" autocomplete="email" placeholder="admin@menyra.com" required />
+<body class="auth-page">
+  <div class="auth-card">
+    <div class="m-card">
+      <div class="m-card-h">
+        <div>
+          <div class="m-kicker">ANMELDUNG</div>
+          <h1 style="margin:6px 0 0;">Platform Admin</h1>
+          <p class="m-muted" style="margin:10px 0 0;">Dummy Login (ohne echte Firebase Auth). Später wird hier Email/Passwort normal geprüft.</p>
+        </div>
       </div>
 
-      <div>
-        <label for="passwordInput">Passwort</label>
-        <input id="passwordInput" type="password" autocomplete="current-password" placeholder="••••••••" required />
-      </div>
+      <form class="m-form" id="loginForm" style="margin-top:12px;">
+        <div class="m-row">
+          <label class="m-label" for="email">E-Mail</label>
+          <input class="m-input" id="email" type="email" placeholder="name@domain.com" required />
+        </div>
+        <div class="m-row">
+          <label class="m-label" for="pass">Passwort</label>
+          <input class="m-input" id="pass" type="password" placeholder="••••••••" required />
+        </div>
+        <button class="m-btn m-btn-primary" type="submit" style="width:100%;">Anmelden</button>
 
-      <button id="loginBtn" class="btn" type="submit">Einloggen</button>
-      <div id="loginStatus" class="status"></div>
+        <div class="auth-meta">
+          <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+          <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
+        </div>
 
-      <div class="small">Nur Superadmins erhalten Zugriff auf das Platform-Panel.</div>
-    </form>
+        <div style="margin-top:12px;">
+          <a class="m-link" href="../index.html">← Zurück</a>
+        </div>
+      </form>
+    </div>
+
+    <div class="m-muted" style="text-align:center; margin-top:10px; font-size:12px;">MENYRA Dummy – Login getrennt vom Dashboard</div>
   </div>
 
-  <script type="module" src="./login.js"></script>
+  <script src="../shared/i18n.js"></script>
+  <script src="../shared/ui.js"></script>
+  <script>
+    MENYRA_I18N_API.mountLangSelect("#langSelect");
+    MENYRA_UI.initTheme();
+    document.getElementById("loginForm").addEventListener("submit", (e)=>{
+      e.preventDefault();
+      location.href = "./dashboard.html";
+    });
+  </script>
 </body>
 </html>

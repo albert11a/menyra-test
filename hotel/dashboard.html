@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>MENYRA – Hotel/Motel Admin</title>
+  <link rel="stylesheet" href="../shared/menyra.css"/>
+  <link rel="stylesheet" href="../shared/unified.css"/>
+</head>
+<body data-login-path="./login.html">
+  <div class="m-topbar">
+    <div class="m-topbar-left">
+      <button class="m-icon-btn m-burger-btn" type="button" data-mobile-menu-open aria-label="Menü">☰</button>
+      <a class="m-logo" href="../index.html" aria-label="MENYRA">MENYRA</a>
+      <span class="m-env-badge">Dummy</span>
+      <span class="m-topbar-sep"></span>
+      <span class="m-topbar-title">Hotel/Motel Admin</span>
+    </div>
+    <div class="m-topbar-right">
+      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+      <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
+      <button class="m-btn" type="button" data-logout>Logout</button>
+    </div>
+  </div>
+
+  <div class="m-layout">
+    <aside class="m-sidebar">
+      <div class="m-sidebar-inner">
+        <div class="m-sidebar-header">
+          <div class="m-sidebar-title">Navigation</div>
+        </div>
+        <ul class="m-sidebar-nav">
+          <li><a href="#" data-nav="overview" class="is-active">Übersicht</a></li>
+<li><a href="#" data-nav="rooms" class="">Zimmer / Units</a></li>
+<li><a href="#" data-nav="qr" class="">QR Links</a></li>
+<li><a href="#" data-nav="requests" class="">Requests / Tickets</a></li>
+<li><a href="#" data-nav="housekeeping" class="">Housekeeping</a></li>
+<li><a href="#" data-nav="spa" class="">Spa & Services</a></li>
+<li><a href="#" data-nav="ads" class="">Ads</a></li>
+<li><a href="#" data-nav="social" class="">Social</a></li>
+<li><a href="#" data-nav="settings" class="">Einstellungen / Privacy</a></li>
+        </ul>
+      </div>
+    </aside>
+
+    <main class="m-main">
+      <div class="m-shell">
+        <section data-view="overview" style=""><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Hotel/Motel Dashboard</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Hotel/Motel ist ein eigener Bereich: Zimmer-QR, Requests, Housekeeping. Für Motel: Diskretions-/Privacy-Mode.</p>
+<div class="m-grid">
+  <div class="m-stat"><div class="m-stat-k">Offene Tickets</div><div class="m-stat-v">—</div></div>
+  <div class="m-stat"><div class="m-stat-k">Zimmer</div><div class="m-stat-v">—</div></div>
+  <div class="m-stat"><div class="m-stat-k">Heute Check-ins</div><div class="m-stat-v">—</div></div>
+</div>
+
+  </div>
+</div></section>
+<section data-view="rooms" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Zimmer / Units</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Zimmerliste, Typen (Single/Double/Suite), Status (clean/dirty/occupied). QR pro Zimmer.</p>
+
+  </div>
+</div></section>
+<section data-view="qr" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">QR Links</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">QR pro Zimmer + QR für Hotel-Seite. Später: QR-Templates (druckfertig).</p>
+
+  </div>
+</div></section>
+<section data-view="requests" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Requests / Tickets</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Gast meldet: Handtücher, Reinigung, Reparatur, Minibar, Checkout Frage.</p>
+
+  </div>
+</div></section>
+<section data-view="housekeeping" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Housekeeping Workflow</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">ToDo-Liste: Ticket → zuweisen → in Arbeit → erledigt. (Staff Panel nutzt das später.)</p>
+
+  </div>
+</div></section>
+<section data-view="spa" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Spa & Services</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Spa-Angebote, Zeiten, Buchungs-Requests (erst Platzhalter).</p>
+
+  </div>
+</div></section>
+<section data-view="ads" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Ads</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Hotel kann Ads schalten (z.B. Spa-Angebot in der Region).</p>
+
+  </div>
+</div></section>
+<section data-view="social" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Social</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted">Optional: Social aktivieren. Für Motels meist aus (Privacy).</p>
+
+  </div>
+</div></section>
+<section data-view="settings" style="display:none;"><div class="m-card">
+  <div class="m-card-h">
+    <div>
+      <div class="m-kicker">PLATZHALTER</div>
+      <h2 style="margin:6px 0 0;">Einstellungen / Privacy</h2>
+    </div>
+  </div>
+  <div class="m-card-b">
+    
+<p class="m-muted"><b>Motel Privacy Mode:</b> weniger Tracking, weniger Social, minimales Logging (später).</p>
+<p class="m-muted">Google Reviews & Maps auf Public Page.</p>
+
+  </div>
+</div></section>
+        <div class="m-footer">MENYRA Dummy – Hotel/Motel Admin (UI-Platzhalter)</div>
+      </div>
+    </main>
+  </div>
+
+  <div class="m-mobile-menu-overlay" data-mobile-menu-overlay></div>
+  <aside class="m-mobile-menu" data-mobile-menu>
+    <div class="m-mobile-menu-inner">
+      <div class="m-mobile-menu-header">
+        <div class="m-mobile-menu-title">Hotel/Motel Admin</div>
+        <button class="m-mobile-menu-close" type="button" data-mobile-menu-close aria-label="Schließen">✕</button>
+      </div>
+      <div class="m-mobile-menu-section">
+        <div class="m-mobile-nav">
+          <button class="m-mobile-nav-btn is-active" type="button" data-nav="overview">Übersicht</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="rooms">Zimmer / Units</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="qr">QR Links</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="requests">Requests / Tickets</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="housekeeping">Housekeeping</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="spa">Spa & Services</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="ads">Ads</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="social">Social</button>
+<button class="m-mobile-nav-btn " type="button" data-nav="settings">Einstellungen / Privacy</button>
+        </div>
+      </div>
+      <div class="m-mobile-menu-section" style="margin-top:auto;">
+        <button class="m-btn" type="button" data-logout style="width:100%;">Logout</button>
+      </div>
+    </div>
+  </aside>
+
+  <script src="../shared/i18n.js"></script>
+  <script src="../shared/ui.js"></script>
+  <script>
+    MENYRA_I18N_API.mountLangSelect("#langSelect");
+    MENYRA_UI.initTheme();
+    MENYRA_UI.initViews("overview");
+    MENYRA_UI.initMobileMenu();
+    document.querySelectorAll("[data-logout]").forEach(b=>b.addEventListener("click", MENYRA_UI.fakeLogout));
+  </script>
+</body>
+</html>

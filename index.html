@@ -1,78 +1,104 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <title>MENYRA – QR Menü & Bestellungen</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f3f4f6" />
-  <link rel="stylesheet" href="./shared/styles.css">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>MENYRA – Dummy System (Schritt 2.1)</title>
+  <link rel="stylesheet" href="./shared/menyra.css"/>
+  <link rel="stylesheet" href="./shared/unified.css"/>
 </head>
 <body>
-  <main class="page">
-    <header class="header">
-      <div>
-        <div class="header-title">MENYRA</div>
-        <div class="header-sub">QR Menu · Mobile Bestellungen · Für Lokale, Cafés & Hotels</div>
+  <div class="m-topbar">
+    <div class="m-topbar-left">
+      <span class="m-logo">MENYRA</span>
+      <span class="m-env-badge">Dummy</span>
+      <span class="m-topbar-sep"></span>
+      <span class="m-topbar-title">Projekt-Start</span>
+    </div>
+    <div class="m-topbar-right">
+      <select id="langSelect" class="m-select" aria-label="Sprache"></select>
+      <button class="m-icon-btn" data-theme-toggle type="button" aria-label="Theme">☀</button>
+    </div>
+  </div>
+
+  <div class="m-layout" style="padding: 14px 0;">
+    <main class="m-main">
+      <div class="m-shell">
+        <div class="m-card">
+          <div class="m-card-h">
+            <div>
+              <div class="m-kicker">SCHRITT 2.1</div>
+              <h1 style="margin:6px 0 0;">MENYRA Dummy – Admin-Welten</h1>
+              <p class="m-muted" style="margin:10px 0 0;">
+                Fokus: <b>Platform + Admins + Staff</b>. <b>Guest</b> kommt im nächsten Schritt (Schritt 3) – damit wir sauber bleiben.
+              </p>
+            </div>
+          </div>
+
+          <div class="m-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+            <a class="m-tile" href="./platform/login.html">
+              <div class="m-tile-title">Platform Admin</div>
+              <div class="m-tile-desc">Kunden, Accounts, Module, Ads-Freigabe, Moderation, Analytics</div>
+            </a>
+            <a class="m-tile" href="./owner/login.html">
+              <div class="m-tile-title">Gastro Owner Admin</div>
+              <div class="m-tile-desc">Menü, Orders (Tisch/Pickup), Offers, Loyalty, Queue, Ads</div>
+            </a>
+            <a class="m-tile" href="./ecommerce/login.html">
+              <div class="m-tile-title">E-Commerce Admin</div>
+              <div class="m-tile-desc">Produkte/Varianten, Lager, Orders, Discounts, Ads</div>
+            </a>
+            <a class="m-tile" href="./hotel/login.html">
+              <div class="m-tile-title">Hotel/Motel Admin</div>
+              <div class="m-tile-desc">Rooms & QR, Requests/Tickets, Housekeeping Workflows</div>
+            </a>
+            <a class="m-tile" href="./services/login.html">
+              <div class="m-tile-title">Services Admin</div>
+              <div class="m-tile-desc">Leistungen, Anfragen, Öffnungszeiten, Reviews, Ads</div>
+            </a>
+            <a class="m-tile" href="./staff/login.html">
+              <div class="m-tile-title">Staff Panels</div>
+              <div class="m-tile-desc">Gastro Orders, Fastfood Pickup, Hotel Housekeeping</div>
+            </a>
+            <a class="m-tile" href="./public/main.html">
+              <div class="m-tile-title">Public Page (Demo)</div>
+              <div class="m-tile-desc">Öffentliche Seite für Lokale/Hotels/Services (Infos, Reviews-Widget Platzhalter)</div>
+            </a>
+
+            <a class="m-tile" href="./guest/coming-soon.html">
+              <div class="m-tile-title">Guest (kommt in Schritt 3)</div>
+              <div class="m-tile-desc">Karte, Pickup, Room-QR, Shop Layout – mit guest.css</div>
+            </a>
+            <a class="m-tile" href="./social/feed.html">
+              <div class="m-tile-title">Social (Dummy)</div>
+              <div class="m-tile-desc">Feed, Profil, Chat, Live (nur UI)</div>
+            </a>
+          </div>
+        </div>
+
+        <div class="m-card" style="margin-top:14px;">
+          <div class="m-card-h">
+            <div>
+              <div class="m-kicker">HINWEIS</div>
+              <h2 style="margin:6px 0 0;">Guest Folder</h2>
+              <p class="m-muted" style="margin:10px 0 0;">
+                Der Guest-Bereich (Karte/Shop/Room-QR) kommt in <b>Schritt 3</b>.
+                Wir bauen ihn extra getrennt, weil er ein anderes UI (guest.css) hat und wir hier zuerst Admin/Staff fertig machen.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="m-footer">MENYRA Dummy – Schritt 2.1 (Placeholder UI, keine Firebase-Logik)</div>
       </div>
-    </header>
+    </main>
+  </div>
 
-    <section class="card">
-      <h1>Eine App – alle Bestellungen im Griff</h1>
-      <p>
-        MENYRA ist dein komplettes QR-Menü- und Bestellsystem: Gäste scannen, wählen,
-        senden – Kellner sehen alles in Echtzeit, der Chef verwaltet die Speisekarte
-        direkt vom Handy oder Tablet.
-      </p>
-      <div class="list">
-        <div>✅ Keine Hardware-Kosten – läuft im Browser</div>
-        <div>✅ Speisekarte in Sekunden anpassbar</div>
-        <div>✅ Für Restaurants, Cafés, Bars, Hotels & Weddings</div>
-      </div>
-      <p class="info">
-        Jahreslizenz pro Standort · 370 € / Jahr · 1 Monat kostenlos testen
-      </p>
-    </section>
-
-    <section class="card">
-      <h2>MENYRA Bereiche</h2>
-      <p class="info">
-        Hier kommst du direkt in alle wichtigen Bereiche des Systems.
-      </p>
-
-      <div class="list" style="margin-top:10px;">
-        <div class="list-item-row">
-          <span>
-            <strong>MENYRA Admin (Superadmin)</strong><br />
-            <span class="info">Kunden/Lokale anlegen, QR-Links & Codes.</span>
-          </span>
-          <a href="menyra.html" class="btn btn-primary btn-small">Öffnen</a>
-        </div>
-
-        <div class="list-item-row">
-          <span>
-            <strong>Restaurant Admin</strong><br />
-            <span class="info">Für Kunden (Inhaber) – Speisekarte pflegen.</span>
-          </span>
-          <a href="admin.html" class="btn btn-ghost btn-small">Öffnen</a>
-        </div>
-
-        <div class="list-item-row">
-          <span>
-            <strong>Kamarieri / Kellner</strong><br />
-            <span class="info">Bestellungen live sehen.</span>
-          </span>
-          <a href="kamarieri.html" class="btn btn-ghost btn-small">Öffnen</a>
-        </div>
-
-        <div class="list-item-row">
-          <span>
-            <strong>Gäste-Ansicht (QR-Demo)</strong><br />
-            <span class="info">Beispiel-Link für Gäste (QR).</span>
-          </span>
-          <a href="karte.html?r=demo-lokal&t=T1" class="btn btn-ghost btn-small">Demo öffnen</a>
-        </div>
-      </div>
-    </section>
-  </main>
+  <script src="./shared/i18n.js"></script>
+  <script src="./shared/ui.js"></script>
+  <script>
+    MENYRA_I18N_API.mountLangSelect("#langSelect");
+    MENYRA_UI.initTheme();
+  </script>
 </body>
 </html>
