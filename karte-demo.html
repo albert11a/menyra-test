@@ -764,19 +764,18 @@ body.no-scroll {
 .like-wrap {
   display: inline-flex;
   align-items: center;
-  gap: 12px;                 /* Abstand Kreis → Counter (wie Referenz) */
+  gap: 10px;                 /* Abstand Kreis → Counter */
 }
 
 /* =========================================================
-   HERZ-BUTTON (Drink Like) — Premium + Smooth, sehr leicht
-   Ziel: Weißer Kreis, weicher Shadow, zarter Glow unten,
-         Herz färbt sich + kleine Pop-Animation.
+   HERZ-BUTTON (Drink Like) — SMALL + CLEAN (perf & stabil)
+   Ziel: kleiner, kaum Shadow, saubere Rot-Füllung ohne "graue Ränder".
    Performance: nur transform/opacity, kein Dauer-Loop.
 ========================================================= */
 .icon-circle {
   position: relative;
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   border: none;
   background: rgba(255,255,255,0.98);
@@ -787,136 +786,142 @@ body.no-scroll {
   outline: none;
   -webkit-tap-highlight-color: transparent;
 
-  /* weicher, "iOS-like" Shadow */
-  box-shadow:
-    0 14px 28px rgba(15, 23, 42, 0.10),
-    0 4px 10px rgba(15, 23, 42, 0.06);
+  /* sehr subtiler Shadow (deutlich weniger als vorher) */
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.07);
 
   transition:
-    transform 180ms cubic-bezier(.2,.9,.2,1),
-    box-shadow 220ms cubic-bezier(.2,.9,.2,1),
-    background 200ms ease-out;
+    transform 160ms cubic-bezier(.2,.9,.2,1),
+    box-shadow 180ms ease-out,
+    background 160ms ease-out;
 }
 
-/* zarter Glow unter dem Kreis (ohne Filter/Blur → performant) */
+/* zarter Glow unten (kleiner + schwächer) */
 .icon-circle::after {
   content: "";
   position: absolute;
   left: 50%;
-  top: 68%;
-  width: 92px;
-  height: 92px;
+  top: 70%;
+  width: 72px;
+  height: 72px;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  opacity: 0.55;
+  opacity: 0.22;
 
   background: radial-gradient(circle at 50% 35%,
-    rgba(255, 105, 135, 0.28) 0%,
-    rgba(255, 105, 135, 0.16) 34%,
-    rgba(255, 105, 135, 0.08) 52%,
+    rgba(255, 90, 95, 0.22) 0%,
+    rgba(255, 90, 95, 0.12) 35%,
+    rgba(255, 90, 95, 0.06) 52%,
     transparent 70%);
   transition:
-    opacity 220ms ease-out,
-    transform 220ms ease-out;
+    opacity 200ms ease-out,
+    transform 200ms ease-out;
 }
 
 .icon-circle:hover {
   transform: translateY(-1px);
-  box-shadow:
-    0 16px 34px rgba(15, 23, 42, 0.12),
-    0 6px 14px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.08);
 }
 .icon-circle:active {
-  transform: scale(0.96);
+  transform: scale(0.97);
 }
 
 /* Icon-Größe im Kreis */
 .icon-circle__inner {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   display: block;
-}
-
-/* Herz default: Outline (clean) */
-.heart-path {
-  fill: transparent;
-  stroke: rgba(148, 163, 184, 0.85);
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition:
-    fill 200ms ease-out,
-    stroke 200ms ease-out,
-    transform 200ms cubic-bezier(.2,.9,.2,1);
   transform-origin: center;
 }
 
-/* Count rechts (wie Referenz: leicht rosa, tabular) */
+/* Herz: wir nutzen 2 Layer → garantiert saubere Kanten
+   - .heart-outline: grauer Outline-Status
+   - .heart-fill: roter Filled-Status
+*/
+.heart-outline {
+  fill: none;
+  stroke: rgba(148, 163, 184, 0.90);
+  stroke-width: 9;            /* dick genug, damit's sauber aussieht */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 1;
+  transition: opacity 160ms ease-out;
+}
+
+.heart-fill {
+  fill: #ff5a5f;              /* soft coral */
+  opacity: 0;
+  transform: scale(1);
+  transition:
+    opacity 160ms ease-out,
+    transform 200ms cubic-bezier(.2,.9,.2,1);
+}
+
+/* Count rechts (hell/pastell wie Referenz) */
 .like-count {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 105, 135, 0.45);
+  color: rgba(255, 90, 95, 0.42);
   min-width: 18px;
 }
 
 /* --- LIKED STATE --- */
 .like-wrap.is-liked .icon-circle {
-  background: rgba(255, 255, 255, 0.98);
-  box-shadow:
-    0 16px 34px rgba(255, 59, 48, 0.16),
-    0 6px 14px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 6px 16px rgba(255, 90, 95, 0.12);
 }
 .like-wrap.is-liked .icon-circle::after {
-  opacity: 0.78;
+  opacity: 0.34;
   transform: translate(-50%, -50%) scale(1.02);
 }
-.like-wrap.is-liked .heart-path {
-  fill: #ff5a5f;   /* soft coral (ähnlich Referenz) */
-  stroke: #ff5a5f;
-  transform: scale(1.04);
+.like-wrap.is-liked .heart-fill {
+  opacity: 1;                 /* Fill an */
+  transform: scale(1.02);
+}
+.like-wrap.is-liked .heart-outline {
+  opacity: 0;                 /* Outline aus → keine "grauen Ränder" */
 }
 .like-wrap.is-liked .like-count {
-  color: rgba(255, 90, 95, 0.72);
+  color: rgba(255, 90, 95, 0.74);
 }
 
-/* --- TAP ANIMATION (einmalig, sehr kurz) --- */
-.like-wrap.is-animating .heart-path {
-  animation: drinkHeartPop 280ms cubic-bezier(.2,.9,.2,1);
+/* --- TAP ANIMATION (einmalig, kurz) --- */
+.like-wrap.is-animating .icon-circle__inner {
+  animation: drinkHeartPop 260ms cubic-bezier(.2,.9,.2,1);
 }
 .like-wrap.is-animating .icon-circle {
-  animation: drinkBtnPop 280ms cubic-bezier(.2,.9,.2,1);
+  animation: drinkBtnPop 260ms cubic-bezier(.2,.9,.2,1);
 }
 .like-wrap.is-animating .icon-circle::after {
-  animation: drinkGlowPop 280ms ease-out;
+  animation: drinkGlowPop 260ms ease-out;
 }
 
 @keyframes drinkHeartPop {
-  0%   { transform: scale(0.86); }
-  55%  { transform: scale(1.18); }
-  100% { transform: scale(1.04); }
+  0%   { transform: scale(0.92); }
+  55%  { transform: scale(1.16); }
+  100% { transform: scale(1.02); }
 }
 @keyframes drinkBtnPop {
   0%   { transform: scale(1); }
-  45%  { transform: scale(0.96); }
+  45%  { transform: scale(0.97); }
   100% { transform: scale(1); }
 }
 @keyframes drinkGlowPop {
-  0%   { opacity: 0.50; transform: translate(-50%, -50%) scale(1); }
-  55%  { opacity: 0.88; transform: translate(-50%, -50%) scale(1.06); }
-  100% { opacity: 0.78; transform: translate(-50%, -50%) scale(1.02); }
+  0%   { opacity: 0.20; transform: translate(-50%, -50%) scale(1); }
+  55%  { opacity: 0.38; transform: translate(-50%, -50%) scale(1.05); }
+  100% { opacity: 0.34; transform: translate(-50%, -50%) scale(1.02); }
 }
 
-/* Reduced Motion: keine Keyframes, nur Zustand wechseln */
+/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
-  .like-wrap.is-animating .heart-path,
+  .like-wrap.is-animating .icon-circle__inner,
   .like-wrap.is-animating .icon-circle,
   .like-wrap.is-animating .icon-circle::after {
     animation: none !important;
   }
   .icon-circle,
-  .heart-path,
-  .icon-circle::after {
+  .icon-circle::after,
+  .heart-fill,
+  .heart-outline {
     transition: none !important;
   }
 }
@@ -1876,8 +1881,9 @@ img {
           <div class="drink-topbar">
             <div class="like-wrap">
               <button class="icon-circle" type="button" aria-label="Like">
-                <svg class="icon-circle__inner" viewBox="0 0 24 24">
-                  <path class="heart-path" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                <svg class="icon-circle__inner" viewBox="0 0 130 130" aria-hidden="true" focusable="false">
+                  <path class="heart-fill" d="M 65,29 C 59,19 49,12 37,12 20,12 7,25 7,42 7,75 25,80 65,118 105,80 123,75 123,42 123,25 110,12 93,12 81,12 71,19 65,29 z"/>
+                  <path class="heart-outline" d="M 65,29 C 59,19 49,12 37,12 20,12 7,25 7,42 7,75 25,80 65,118 105,80 123,75 123,42 123,25 110,12 93,12 81,12 71,19 65,29 z"/>
                 </svg>
               </button>
               <span class="like-count">12</span>
@@ -1896,8 +1902,9 @@ img {
           <div class="drink-topbar">
             <div class="like-wrap">
               <button class="icon-circle" type="button" aria-label="Like">
-                <svg class="icon-circle__inner" viewBox="0 0 24 24">
-                  <path class="heart-path" d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                <svg class="icon-circle__inner" viewBox="0 0 130 130" aria-hidden="true" focusable="false">
+                  <path class="heart-fill" d="M 65,29 C 59,19 49,12 37,12 20,12 7,25 7,42 7,75 25,80 65,118 105,80 123,75 123,42 123,25 110,12 93,12 81,12 71,19 65,29 z"/>
+                  <path class="heart-outline" d="M 65,29 C 59,19 49,12 37,12 20,12 7,25 7,42 7,75 25,80 65,118 105,80 123,75 123,42 123,25 110,12 93,12 81,12 71,19 65,29 z"/>
                 </svg>
               </button>
               <span class="like-count">7</span>
