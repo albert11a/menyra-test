@@ -1,13 +1,14 @@
 /* ========================================
-   GLOBAL: Reset & Schrift (PERFORMANCE-FIX)
-   - Entfernt @import (blockt Render)
+   GLOBAL: Reset & Schrift
    ======================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 /* ========================================
@@ -25,10 +26,12 @@ body {
   color: #0f172a;
 }
 
+/* Optional: wenn per JS genutzt */
 body.no-scroll {
   overflow: hidden;
 }
 
+/* Der sichtbare App-Bereich */
 .page {
   width: 100%;
   max-width: 480px;
@@ -45,6 +48,7 @@ body.no-scroll {
   width: 100%;
 }
 
+/* Speziell Karte */
 .page--karte {
   gap: 12px;
   padding-top: 12px;
@@ -99,6 +103,8 @@ body.no-scroll {
   color: #475569;
 }
 
+/* Restaurant-Card */
+
 .restaurant-card {
   padding: 14px 16px;
 }
@@ -128,6 +134,8 @@ body.no-scroll {
   margin-top: 2px;
 }
 
+/* Search-Card */
+
 .search-card {
   padding: 10px 14px;
 }
@@ -149,6 +157,7 @@ body.no-scroll {
   white-space: nowrap;
 }
 
+/* Hauptfarbe: #643A71 */
 .btn-primary {
   background: #643A71;
   color: #ffffff;
@@ -170,6 +179,8 @@ body.no-scroll {
   padding: 4px 10px;
   font-size: 0.75rem;
 }
+
+/* Schwarzer Button für Detajet */
 
 .btn-dark {
   background: #020617;
@@ -242,13 +253,20 @@ body.no-scroll {
   margin-top: 6px;
 }
 
+/* Status-Anzeigen */
+
 .status-text {
   font-size: 0.8rem;
   margin-top: 6px;
 }
 
-.status-ok { color: #16a34a; }
-.status-err { color: #b91c1c; }
+.status-ok {
+  color: #16a34a;
+}
+
+.status-err {
+  color: #b91c1c;
+}
 
 /* ========================================
    KARTE: TOP-BEREICH
@@ -284,7 +302,11 @@ body.no-scroll {
   padding: 8px 6px 8px 0;
 }
 
-.search-input::placeholder { color: #9ca3af; }
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+/* Such-Button #643A71 */
 
 .search-btn {
   width: 40px;
@@ -432,8 +454,13 @@ body.no-scroll {
   margin-bottom: 4px;
 }
 
-.tabs-wrapper--drinks { margin-top: 8px; }
-.tabs-wrapper--food { margin-top: 8px; }
+.tabs-wrapper--drinks {
+  margin-top: 8px;
+}
+
+.tabs-wrapper--food {
+  margin-top: 8px;
+}
 
 .category-tabs {
   display: flex;
@@ -464,10 +491,12 @@ body.no-scroll {
 .menu-list {
   display: flex;
   flex-direction: column;
-  gap: 45px;
+  gap: 45px;          /* Abstand zwischen vollständigen Cards (Speisekarte) */
   margin-top: 10px;
 }
 
+/* Card als Grid: oben Bild, darunter Titel/Preis, Text,
+   unten eine Zeile: links Likes, rechts Buttons */
 .menu-item {
   background: #ffffff;
   border-radius: 14px;
@@ -492,7 +521,7 @@ body.no-scroll {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 18px;
+  margin-top: 18px; /* mehr Abstand zum Bild */
 }
 
 .menu-item-name {
@@ -509,10 +538,11 @@ body.no-scroll {
   grid-column: 1 / -1;
   font-size: 0.78rem;
   color: #64748b;
-  margin-top: 14px;
-  margin-bottom: 18px;
+  margin-top: 14px;    /* Abstand Titel → Text */
+  margin-bottom: 18px; /* leerer Abstand Text → Footer */
 }
 
+/* Social-Leiste (links im Footer) */
 .menu-item-social {
   grid-column: 1 / 2;
   align-self: center;
@@ -520,7 +550,7 @@ body.no-scroll {
   align-items: center;
   gap: 10px;
   font-size: 0.78rem;
-  margin-top: 4px;
+  margin-top: 4px; /* kleiner Abstand Beschreibung → Likes */
 }
 
 .social-btn {
@@ -552,8 +582,11 @@ body.no-scroll {
   font-size: 0.9rem;
 }
 
-.social-count { font-weight: 500; }
+.social-count {
+  font-weight: 500;
+}
 
+/* Like-Farben */
 .social-btn-like .social-icon {
   background: rgba(239, 68, 68, 0.08);
   color: #ef4444;
@@ -564,32 +597,35 @@ body.no-scroll {
   color: #2563eb;
 }
 
-.social-btn-like--active { color: #ef4444; }
+.social-btn-like--active {
+  color: #ef4444;
+}
 
 .social-btn-like--active .social-icon {
   background: #fee2e2;
   color: #b91c1c;
 }
 
+/* Aktionen (rechts im Footer) */
 .menu-item-actions {
   grid-column: 2 / 3;
   justify-self: end;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 14px;    /* Abstand: Likes → Buttons (Speisekarte) */
 }
 
-/* Mengen-Kapsel */
+/* Mengen-Kapsel – weißer Hintergrund, kein Rahmen, Shadow wie Like */
 .qty-control {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  border: none;
+  border: none; /* kein Rahmen */
   overflow: hidden;
-  background: #ffffff;
+  background: #ffffff; /* wie Like-Button */
   height: 34px;
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06); /* gleicher Shadow wie Herz */
 }
 
 .qty-btn {
@@ -605,7 +641,9 @@ body.no-scroll {
   color: #111827;
 }
 
-.qty-btn:active { background: #e5e7eb; }
+.qty-btn:active {
+  background: #e5e7eb;
+}
 
 .qty-value {
   min-width: 30px;
@@ -615,6 +653,7 @@ body.no-scroll {
   color: #111827;
   padding: 0 4px;
 }
+
 
 /* ========================================
    GETRÄNKE-KARTE (2 Spalten, iOS-Style)
@@ -626,13 +665,16 @@ body.no-scroll {
   margin-bottom: 6px;
 }
 
+/* Grid: 2 Spalten */
 .drinks-list {
   margin-top: 8px;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 14px; /* Abstand zwischen Getränkekarten */
 }
 
+/* Card-Layout – hier wird die Karte „länger“:
+   -> padding-bottom anpassen, wenn du noch mehr Luft unten willst */
 .drink-item {
   background: #ffffff;
   border-radius: 18px;
@@ -641,16 +683,19 @@ body.no-scroll {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04); /* sehr dezent */
 }
 
+/* Topbar mit Herz + Counter
+   -> margin-bottom steuert Abstand Like-Reihe → Bild */
 .drink-topbar {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  margin-bottom: 6px;
+  margin-bottom: 6px; /* HIER Abstand Like → Bild anpassen */
 }
 
+/* Bild */
 .drink-image {
   width: 100%;
   border-radius: 14px;
@@ -659,12 +704,14 @@ body.no-scroll {
   display: block;
 }
 
+/* Titel + Preis
+   -> margin-top Abstand Bild → Titel */
 .drink-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
   gap: 4px;
-  margin-top: 8px;
+  margin-top: 8px;          /* HIER Abstand Bild → Titel anpassen */
 }
 
 .drink-name {
@@ -680,20 +727,25 @@ body.no-scroll {
   white-space: nowrap;
 }
 
+/* Beschreibung */
 .drink-desc {
-  margin-top: 6px;
+  margin-top: 6px;          /* Titel → Beschreibung */
   font-size: 0.75rem;
   color: #64748b;
   line-height: 1.38;
 }
 
+/* Footer: links Menge, rechts „Wähle“ 
+   -> margin-top Abstand Text → Footer */
 .drink-footer {
-  margin-top: 16px;
+  margin-top: 16px;         /* HIER Abstand Beschreibung → Footer anpassen */
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
 }
+
+/* Like-Bereich (Herz + Zahl) – Re-Use aus Demo */
 
 .like-wrap {
   display: inline-flex;
@@ -701,6 +753,7 @@ body.no-scroll {
   gap: 6px;
 }
 
+/* Weißer Kreis, kein Border, dezenter iOS-Shadow */
 .icon-circle {
   position: relative;
   width: 32px;
@@ -715,7 +768,10 @@ body.no-scroll {
   outline: none;
   -webkit-tap-highlight-color: transparent;
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06);
-  transition: transform 0.14s ease-out, box-shadow 0.16s ease-out, background 0.16s ease-out;
+  transition:
+    transform 0.14s ease-out,
+    box-shadow 0.16s ease-out,
+    background 0.16s ease-out;
 }
 
 .icon-circle:hover {
@@ -728,18 +784,27 @@ body.no-scroll {
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
 }
 
-.icon-circle__inner { width: 17px; height: 17px; display: block; }
+.icon-circle__inner {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
 
+/* Herz-Pfad – modern, dünn, iOS-like */
 .heart-path {
   fill: none;
   stroke: #cbd5e1;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
-  transition: fill 0.18s ease-out, stroke 0.18s ease-out, transform 0.18s ease-out;
+  transition:
+    fill 0.18s ease-out,
+    stroke 0.18s ease-out,
+    transform 0.18s ease-out;
   transform-origin: center;
 }
 
+/* Count neben Herz */
 .like-count {
   font-size: 0.78rem;
   font-weight: 500;
@@ -748,6 +813,7 @@ body.no-scroll {
   min-width: 18px;
 }
 
+/* Aktiver Like-Zustand – Apple-Red Style */
 .like-wrap.is-liked .icon-circle {
   background: #fff1f2;
   box-shadow: 0 4px 10px rgba(255, 59, 48, 0.20);
@@ -759,36 +825,48 @@ body.no-scroll {
   transform: scale(1.03);
 }
 
-.like-wrap.is-liked .like-count { color: #b91c1c; }
+.like-wrap.is-liked .like-count {
+  color: #b91c1c;
+}
 
-.like-wrap.is-animating .heart-path { animation: drinkHeartTap 0.26s ease-out; }
-.like-wrap.is-animating .icon-circle { animation: drinkButtonTap 0.26s ease-out; }
+/* kleine Tap-Animation */
+.like-wrap.is-animating .heart-path {
+  animation: drinkHeartTap 0.26s ease-out;
+}
+
+.like-wrap.is-animating .icon-circle {
+  animation: drinkButtonTap 0.26s ease-out;
+}
 
 @keyframes drinkHeartTap {
-  0% { transform: scale(0.82); }
-  50% { transform: scale(1.18); }
+  0%   { transform: scale(0.82); }
+  50%  { transform: scale(1.18); }
   100% { transform: scale(1); }
 }
 
 @keyframes drinkButtonTap {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.95); }
+  0%   { transform: scale(1); }
+  50%  { transform: scale(0.95); }
   100% { transform: scale(1); }
 }
 
+/* Rechter Button – „Wähle“, keine Border */
 .btn-add-round {
   border: none;
   border-radius: 999px;
   padding: 0 14px;
   height: 32px;
-  background: #6c66e6;
+  background: #6c66e6;                    /* moderner Indigo-Ton */
   color: #f9fafb;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
-  transition: background 0.18s ease-out, transform 0.14s ease-out, box-shadow 0.18s ease-out;
+  transition:
+    background 0.18s ease-out,
+    transform 0.14s ease-out,
+    box-shadow 0.18s ease-out;
   -webkit-tap-highlight-color: transparent;
   white-space: nowrap;
 }
@@ -848,8 +926,13 @@ body.no-scroll {
   -webkit-overflow-scrolling: touch;
 }
 
-.offers-slider::-webkit-scrollbar { display: none; }
-.offers-slider { -ms-overflow-style: none; scrollbar-width: none; }
+.offers-slider::-webkit-scrollbar {
+  display: none;
+}
+.offers-slider {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 .offer-slide {
   flex: 0 0 100%;
@@ -872,8 +955,15 @@ body.no-scroll {
   margin-bottom: 10px;
 }
 
-.offer-title { font-size: 0.98rem; font-weight: 600; }
-.offer-price { font-size: 0.95rem; font-weight: 600; }
+.offer-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.offer-price {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
 
 .offer-desc {
   font-size: 0.8rem;
@@ -903,42 +993,21 @@ body.no-scroll {
   gap: 6px;
 }
 
-/* Touch-Target groß, Optik bleibt klein durch ::before */
 .offers-dot {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-  position: relative;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.offers-dot::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  margin: auto;
   width: 6px;
   height: 6px;
   border-radius: 999px;
+  border: none;
   background: #4b5563;
+  padding: 0;
+  cursor: pointer;
 }
 
-.offers-dot.active::before {
+.offers-dot.active {
   width: 14px;
-  height: 6px;
   border-radius: 999px;
   background: #f9fafb;
 }
-
-.offers-dot:focus-visible {
-  outline: 2px solid rgba(255,255,255,0.9);
-  outline-offset: 2px;
-}
-
 
 /* ========================================
    WARENKORB (Gäste-Ansicht – inline)
@@ -981,7 +1050,7 @@ body.no-scroll {
 }
 
 /* ========================================
-   BILDER
+   BILDER (z.B. QR-Codes im Admin)
    ======================================== */
 
 img {
@@ -993,6 +1062,47 @@ img {
 .list-item-row img {
   border-radius: 12px;
   border: 1px solid #e2e8f0;
+}
+
+/* ========================================
+   SUPERADMIN: Tabs
+   ======================================== */
+
+.tab-row {
+  display: flex;
+  gap: 6px;
+  background: #f3f4f6;
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.tab-btn {
+  flex: 1;
+  border: none;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 0.8rem;
+  background: transparent;
+  cursor: pointer;
+  color: #475569;
+}
+
+.tab-btn-active {
+  background: #0f172a;
+  color: #f9fafb;
+}
+
+.offer-flag-label {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #475569;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.offer-flag-label input {
+  margin-top: 3px;
 }
 
 /* ========================================
@@ -1015,6 +1125,7 @@ img {
   pointer-events: auto;
 }
 
+/* Drawer: klassischer Fullscreen-Overlay, zentriert wie .page */
 .drawer {
   position: fixed;
   top: 0;
@@ -1039,8 +1150,19 @@ img {
   z-index: 61;
 }
 
-.drawer--visible { transform: translateX(0); }
-.drawer-body { flex: 1; padding-bottom: 8px; }
+.drawer--visible {
+  transform: translateX(0);
+}
+
+.drawer-body {
+  flex: 1;
+  padding-bottom: 8px;
+}
+
+/* Produkt-Drawer – dunkler Inhalt als Card */
+.drawer--product {
+  color: #f9fafb;
+}
 
 /* ============================================
    DETAJET – Bildanzeige mit schönem Abstand
@@ -1055,7 +1177,10 @@ img {
   background: #f9fafb;
 }
 
-.detail-slider { width: 100%; height: auto; }
+.detail-slider {
+  width: 100%;
+  height: auto;
+}
 
 .detail-slider-viewport {
   width: 100%;
@@ -1106,10 +1231,21 @@ img {
   z-index: 10;
 }
 
-.detail-slider-arrow--left { left: 10px; }
-.detail-slider-arrow--right { right: 10px; }
+.detail-slider-arrow--left {
+  left: 10px;
+}
+
+.detail-slider-arrow--right {
+  right: 10px;
+}
 
 /* Inhalt unter dem Bild */
+
+.drawer--product .drawer-body {
+  background: #020617;
+  border-radius: 18px;
+  padding: 12px 14px 18px;
+}
 
 .drawer-title-row {
   display: flex;
@@ -1119,8 +1255,15 @@ img {
   margin-bottom: 6px;
 }
 
-.drawer-title-row h3 { font-size: 1.05rem; font-weight: 600; }
-.drawer-title-row span { font-size: 0.95rem; font-weight: 600; }
+.drawer-title-row h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.drawer-title-row span {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
 
 .drawer-meta-row {
   display: flex;
@@ -1130,7 +1273,9 @@ img {
   font-size: 0.78rem;
 }
 
-.drawer-rating { color: #e5e7eb; }
+.drawer-rating {
+  color: #e5e7eb;
+}
 
 .drawer-like-btn {
   background: transparent;
@@ -1165,12 +1310,116 @@ img {
   font-weight: 600;
 }
 
-.drawer-add-btn { margin-left: auto; }
+.drawer-add-btn {
+  margin-left: auto;
+}
+
+.drawer-comments {
+  margin-top: 4px;
+}
+
+.drawer-comments-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.comment-item {
+  background: rgba(15, 23, 42, 0.85);
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+}
+
+.comment-meta {
+  opacity: 0.7;
+  font-size: 0.7rem;
+  margin-bottom: 3px;
+}
+
+.comment-text {
+  line-height: 1.4;
+}
+
+.comment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.rating-pills {
+  display: flex;
+  gap: 6px;
+}
+
+.rating-pill {
+  min-width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: transparent;
+  color: #e5e7eb;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.rating-pill--active {
+  background: #f59e0b;
+  border-color: #f59e0b;
+  color: #111827;
+}
+
+.comment-input {
+  border-radius: 12px;
+  min-height: 70px;
+}
+
+.comment-send-btn {
+  align-self: flex-end;
+}
 
 .drawer-cart-btn {
   width: 100%;
   margin-top: 14px;
   justify-content: center;
+}
+
+.drawer--cart .drawer-body {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 14px 14px 18px;
+}
+
+.drawer-cart-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.drawer-close-btn {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(15, 23, 42, 0.9);
+  color: #f9fafb;
+  font-size: 1.1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 62;
 }
 
 /* =====================================================
@@ -1179,7 +1428,7 @@ img {
 
 .karte-status-row {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: nowrap;      /* nicht umbrechen */
   gap: 12px;
   margin-top: 8px;
   margin-bottom: 4px;
@@ -1199,14 +1448,16 @@ img {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: space-between;  /* ⬅ Button nach unten */
 }
+
 
 .status-card--order,
 .status-card--call {
-  min-height: 150px;
+  min-height: 150px;      /* Höhe kannst du hier ändern */
 }
 
+/* Top: Icon + Label "Porosia juaj" / "Thirr kamarierin" */
 .status-card-top {
   width: 100%;
   display: flex;
@@ -1222,24 +1473,34 @@ img {
   border-radius: 999px;
   background: #ffffff;
   box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
+  cursor: default;
+  pointer-events: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  cursor: default;
-  pointer-events: none;
 }
 
-/* Inline SVG Icon */
-.status-icon {
-  width: 24px;
-  height: 24px;
-  stroke: #0f172a;
-  fill: none;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+/* Inneres Icon – dein PNG */
+.status-icon-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background-size: 24px 24px;   /* Icon-Größe */
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
+/* Links: Porosia-Icon */
+.status-icon-circle--order {
+  background-image: url("https://i.postimg.cc/fWrbHsdR/Chat-GPT-Image-5-Dez-2025-23-31-43.png");
+}
+
+/* Rechts: Kamarier-Icon */
+.status-icon-circle--call {
+  background-image: url("https://i.postimg.cc/yNLKkhXd/Chat-GPT-Image-5-Dez-2025-23-36-38.png");
+}
+
+/* Text neben dem Icon */
 .status-card-label {
   font-size: 0.8rem;
   font-weight: 600;
@@ -1248,11 +1509,11 @@ img {
 
 /* Haupt-Button – weiß, mit Shadow, weniger runde Ecken */
 .status-main-btn {
-  align-self: stretch;
+  align-self: stretch;          /* gleiche Abstände links/rechts wie Icon */
   margin-top: 18px;
-  margin-bottom: 5px;
+  margin-bottom: 5px;   /* ⬅ ein bisschen Luft nach unten */
   border: none;
-  border-radius: 12px;
+  border-radius: 12px;          /* weniger rund als 999px */
   padding: 9px 16px;
   font-size: 0.82rem;
   font-weight: 600;
@@ -1262,7 +1523,7 @@ img {
   justify-content: center;
   background: #ffffff;
   color: #111827;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);  /* Button-Shadow */
   -webkit-tap-highlight-color: transparent;
   transition:
     background 0.18s ease-out,
@@ -1281,9 +1542,10 @@ img {
 .status-main-btn:active {
   transform: translateY(0) scale(0.97);
   box-shadow: 0 3px 8px rgba(15, 23, 42, 0.16);
-  background: #f3f4f6;
+  background: #f3f4f6;         /* etwas grauer beim Tap */
 }
 
+/* Aktive States – Text/Farbe kannst du im JS ändern */
 .order-toggle-btn--active {
   background: #111827;
   color: #f9fafb;
@@ -1295,6 +1557,7 @@ img {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
+/* Mobile Feintuning */
 @media (max-width: 400px) {
   .status-card {
     padding: 10px 10px 12px;
@@ -1306,30 +1569,39 @@ img {
   }
 }
 
-
 /* ========================================
    POROSIA JUAJ – Card unter Shiko porosinë
    ======================================== */
 
-.order-details-container { margin-top: 10px; }
+/* Container unter den beiden Status-Cards */
+.order-details-container {
+  margin-top: 10px;
+}
 
+/* Die eigentliche Card (Porosia juaj) */
 .order-details-card {
   width: 100%;
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.35);
   background: #ffffff;
-  box-shadow: none;
+  box-shadow: none; /* wie deine anderen „flachen“ Cards */
   padding: 12px 14px 14px;
+
+  /* kleine Fade/Slide-Animation beim Öffnen */
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 0.22s ease-out, transform 0.22s ease-out;
+  transition:
+    opacity 0.22s ease-out,
+    transform 0.22s ease-out;
 }
 
+/* wird von JS gesetzt, wenn Shiko porosinë offen ist */
 .order-details-card--open {
   opacity: 1;
   transform: translateY(0);
 }
 
+/* Header: „Porosia juaj“ links, Status-Badge rechts */
 .order-details-header {
   display: flex;
   justify-content: space-between;
@@ -1343,6 +1615,7 @@ img {
   font-weight: 600;
 }
 
+/* Status-Badge (S'ka porosi / Neu / Në përgatitje / Serviert / Paguar) */
 .order-status-badge {
   display: inline-flex;
   align-items: center;
@@ -1354,18 +1627,40 @@ img {
   white-space: nowrap;
 }
 
-.order-status-badge--empty { background: #e5e7eb; color: #6b7280; }
-.order-status-badge--new { background: #dbeafe; color: #1d4ed8; }
-.order-status-badge--in-progress { background: #fef9c3; color: #a16207; }
-.order-status-badge--served { background: #e0f2fe; color: #0369a1; }
-.order-status-badge--paid { background: #dcfce7; color: #15803d; }
+/* Farben für die einzelnen Stati – JS setzt die Klassen */
+.order-status-badge--empty {
+  background: #e5e7eb;
+  color: #6b7280;
+}
 
+.order-status-badge--new {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.order-status-badge--in-progress {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.order-status-badge--served {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.order-status-badge--paid {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+/* Inhalt der Card – wird komplett von JS in orderDetailsContent gefüllt */
 .order-details-content {
   margin-top: 4px;
   font-size: 0.8rem;
   color: #0f172a;
 }
 
+/* Liste der bestellten Artikel */
 .order-items-list {
   display: flex;
   flex-direction: column;
@@ -1373,6 +1668,7 @@ img {
   margin-bottom: 6px;
 }
 
+/* einzelne Zeile: links „2× Cappuccino“, rechts „5,00 €“ */
 .order-item-row {
   display: flex;
   justify-content: space-between;
@@ -1392,6 +1688,7 @@ img {
   font-weight: 500;
 }
 
+/* Totali-Zeile unten */
 .order-summary-row {
   margin-top: 6px;
   padding-top: 6px;
@@ -1402,3 +1699,6 @@ img {
   font-size: 0.9rem;
   font-weight: 600;
 }
+
+
+

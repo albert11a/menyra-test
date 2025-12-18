@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Porosia (Placeholder)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f3f4f6" />
+  <link rel="stylesheet" href="../../shared/styles.css" />
+</head>
+<body>
+  <main class="page page--karte page--porosia">
+    <header class="karte-topbar">
+      <section class="card restaurant-card">
+        <div class="restaurant-header">
+          <a href="./karte.html" id="porosiaBackBtn" class="btn btn-ghost btn-small">← Kthehu</a>
+          <div>
+            <div class="restaurant-name" id="porosiaRestaurantName">Porosia jote</div>
+            <div class="restaurant-meta" id="porosiaTableLabel">Tavolina A7</div>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <section class="card">
+      <h2>Porosia jote</h2>
+
+      <div id="porosiaItems" class="cart-items">
+        <div class="cart-item-row"><span>1× Cappuccino</span><span>2.90 €</span></div>
+        <div class="cart-item-row"><span>1× Classic Burger</span><span>5.90 €</span></div>
+      </div>
+
+      <div id="porosiaTotal" class="cart-total">Totali: 8.80 €</div>
+
+      <textarea id="porosiaNote" class="input" style="border-radius: 12px; margin-top: 8px;" placeholder="Shënim për kuzhinën (opsionale)"></textarea>
+
+      <div class="cart-actions">
+        <button class="btn btn-ghost" id="porosiaClearBtn" type="button">Fshij porosinë</button>
+        <button class="btn btn-primary" id="porosiaSendBtn" type="button">Dërgo porosinë</button>
+      </div>
+
+      <div class="status-text status-ok" id="porosiaStatus">Platzhalter: porosia do të dërgohet më vonë (logjika vjen në step-at e ardhshëm).</div>
+    </section>
+  </main>
+
+  <button class="cart-fab visible cart-fab--has-items" id="cartFab" type="button">
+    <span class="cart-fab-icon"></span>
+    <span class="cart-fab-label" id="cartFabLabel">Shiko porosin</span>
+    <span class="cart-fab-badge" id="cartBadge" style="display:flex;">2</span>
+  </button>
+
+  <script type="module" src="./porosia.js"></script>
+</body>
+</html>

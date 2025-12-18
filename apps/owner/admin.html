@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Owner Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eef0ff" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../shared/menyra.css" />
+</head>
+<body>
+  <div class="m-app">
+
+    <header class="m-topbar">
+      <div class="m-topbar-left">
+        <button class="m-icon-btn m-burger-btn" type="button" aria-label="Menü öffnen">☰</button>
+        <div class="m-logo">MENYRA</div>
+        <span class="m-env-badge">Owner Admin</span>
+      </div>
+
+      <div class="m-topbar-center">
+        <div class="m-search">
+          <span class="m-search-icon">🔍</span>
+          <input class="m-search-input" placeholder="Suche (Produkte, Gerichte, Bestellungen)..." />
+        </div>
+      </div>
+
+      <div class="m-topbar-right">
+        <select class="m-select m-select--topbar" aria-label="Sprache">
+          <option>DE</option><option>EN</option><option>SQ</option><option>SR</option><option>TR</option>
+        </select>
+        <button class="m-icon-btn" type="button" title="Theme wechseln">🌓</button>
+        <div class="m-profile">
+          <span class="m-profile-name">Owner</span>
+          <img class="m-profile-avatar" src="https://i.postimg.cc/mgQ1p3sB/blank-avatar.png" alt="Avatar" />
+        </div>
+      </div>
+    </header>
+
+    <div class="m-layout">
+      <aside class="m-sidebar">
+        <div class="m-sidebar-inner">
+          <div class="m-sidebar-section m-sidebar-section--label">Navigation</div>
+          <nav>
+            <ul class="m-sidebar-nav">
+              <li><a href="#" class="is-active"><span class="m-nav-icon">🏠</span><span class="m-nav-label">Dashboard</span></a></li>
+              <li><a href="#"><span class="m-nav-icon">🧾</span><span class="m-nav-label">Bestellungen</span></a></li>
+              <li><a href="#"><span class="m-nav-icon">🍽️</span><span class="m-nav-label">Menü / Produkte</span></a></li>
+              <li><a href="#"><span class="m-nav-icon">⭐</span><span class="m-nav-label">Angebote</span></a></li>
+              <li><a href="#"><span class="m-nav-icon">⚙️</span><span class="m-nav-label">Einstellungen</span></a></li>
+            </ul>
+          </nav>
+
+          <div class="m-sidebar-section m-sidebar-section--label">Konto</div>
+          <div class="m-sidebar-footer">
+            <button class="m-ghost-btn" type="button">⏻ Logout</button>
+            <div class="m-sidebar-meta">
+              <div class="m-sidebar-meta-line">Owner Admin · Platzhalter</div>
+              <div class="m-sidebar-meta-line">Status: <span class="m-dot m-dot--green"></span> Online</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="m-main">
+        <div class="m-shell">
+          <div class="m-page-header">
+            <div>
+              <h1 class="m-page-title">Owner Dashboard</h1>
+              <p class="m-page-subtitle">Platzhalter – später kommen hier Umsätze, Bestellungen, Menü-Status.</p>
+            </div>
+            <div class="m-page-actions">
+              <button class="m-btn m-btn--ghost" type="button">Export</button>
+              <button class="m-btn" type="button">+ Neues Produkt</button>
+            </div>
+          </div>
+
+          <section class="m-section">
+            <div class="m-cards-grid">
+              <article class="m-card m-stat-card">
+                <div class="m-stat-top"><span class="m-stat-label">Bestellungen heute</span><span class="m-stat-pill">Live</span></div>
+                <div class="m-stat-value-row"><span class="m-stat-value">0</span><span class="m-stat-trend m-stat-trend--neutral">—</span></div>
+                <p class="m-stat-hint">Noch keine Bestellungen.</p>
+              </article>
+
+              <article class="m-card m-stat-card">
+                <div class="m-stat-top"><span class="m-stat-label">Umsatz heute</span><span class="m-stat-pill">€</span></div>
+                <div class="m-stat-value-row"><span class="m-stat-value">0</span><span class="m-stat-trend m-stat-trend--neutral">€</span></div>
+                <p class="m-stat-hint">Platzhalter.</p>
+              </article>
+
+              <article class="m-card m-stat-card">
+                <div class="m-stat-top"><span class="m-stat-label">Menü-Items</span><span class="m-stat-pill">aktiv</span></div>
+                <div class="m-stat-value-row"><span class="m-stat-value">0</span><span class="m-stat-trend m-stat-trend--neutral">Items</span></div>
+                <p class="m-stat-hint">Platzhalter.</p>
+              </article>
+
+              <article class="m-card m-stat-card">
+                <div class="m-stat-top"><span class="m-stat-label">Bewertungen</span><span class="m-stat-pill">Google</span></div>
+                <div class="m-stat-value-row"><span class="m-stat-value">—</span><span class="m-stat-trend m-stat-trend--neutral">★</span></div>
+                <p class="m-stat-hint">Später: Google Reviews Anzeige.</p>
+              </article>
+            </div>
+          </section>
+
+          <section class="m-section m-section--split">
+            <div class="m-card">
+              <h2 class="m-section-title">Letzte Bestellungen</h2>
+              <p class="m-section-subtitle">Platzhalter – später Liste der letzten Orders.</p>
+            </div>
+            <div class="m-card">
+              <h2 class="m-section-title">Schnellaktionen</h2>
+              <p class="m-section-subtitle">Platzhalter – QR Codes, Speisekarte, Angebote.</p>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+  </div>
+  <script type="module" src="./admin.js"></script>
+</body>
+</html>
