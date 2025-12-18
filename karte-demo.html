@@ -786,8 +786,8 @@ body.no-scroll {
   outline: none;
   -webkit-tap-highlight-color: transparent;
 
-  /* sehr subtiler Shadow (deutlich weniger als vorher) */
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.07);
+  /* ✅ viel weniger Shadow */
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
 
   transition:
     transform 160ms cubic-bezier(.2,.9,.2,1),
@@ -795,23 +795,26 @@ body.no-scroll {
     background 160ms ease-out;
 }
 
-/* zarter Glow unten (kleiner + schwächer) */
+/* ✅ viel weniger Glow unten (kleiner + schwächer) */
 .icon-circle::after {
   content: "";
   position: absolute;
   left: 50%;
   top: 70%;
-  width: 72px;
-  height: 72px;
+  width: 56px;
+  height: 56px;
   transform: translate(-50%, -50%);
   pointer-events: none;
-  opacity: 0.22;
+
+  /* ✅ deutlich weniger sichtbar */
+  opacity: 0.08;
 
   background: radial-gradient(circle at 50% 35%,
-    rgba(255, 90, 95, 0.22) 0%,
-    rgba(255, 90, 95, 0.12) 35%,
-    rgba(255, 90, 95, 0.06) 52%,
+    rgba(255, 90, 95, 0.14) 0%,
+    rgba(255, 90, 95, 0.07) 35%,
+    rgba(255, 90, 95, 0.03) 52%,
     transparent 70%);
+
   transition:
     opacity 200ms ease-out,
     transform 200ms ease-out;
@@ -819,10 +822,12 @@ body.no-scroll {
 
 .icon-circle:hover {
   transform: translateY(-1px);
-  box-shadow: 0 7px 16px rgba(15, 23, 42, 0.08);
+  /* ✅ hover-shadow auch minimal */
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06);
 }
 .icon-circle:active {
   transform: scale(0.97);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
 }
 
 /* Icon-Größe im Kreis */
@@ -833,14 +838,14 @@ body.no-scroll {
   transform-origin: center;
 }
 
-/* Herz: wir nutzen 2 Layer → garantiert saubere Kanten
-   - .heart-outline: grauer Outline-Status
-   - .heart-fill: roter Filled-Status
+/* Herz: 2 Layer → garantiert saubere Kanten
+   - .heart-outline: Outline-Status
+   - .heart-fill: Filled-Status
 */
 .heart-outline {
   fill: none;
   stroke: rgba(148, 163, 184, 0.90);
-  stroke-width: 9;            /* dick genug, damit's sauber aussieht */
+  stroke-width: 9;
   stroke-linecap: round;
   stroke-linejoin: round;
   opacity: 1;
@@ -848,7 +853,7 @@ body.no-scroll {
 }
 
 .heart-fill {
-  fill: #ff5a5f;              /* soft coral */
+  fill: #ff5a5f;
   opacity: 0;
   transform: scale(1);
   transition:
@@ -867,18 +872,20 @@ body.no-scroll {
 
 /* --- LIKED STATE --- */
 .like-wrap.is-liked .icon-circle {
-  box-shadow: 0 6px 16px rgba(255, 90, 95, 0.12);
+  /* ✅ liked-shadow auch nur leicht */
+  box-shadow: 0 2px 8px rgba(255, 90, 95, 0.10);
 }
 .like-wrap.is-liked .icon-circle::after {
-  opacity: 0.34;
-  transform: translate(-50%, -50%) scale(1.02);
+  /* ✅ liked-glow nur minimal stärker */
+  opacity: 0.12;
+  transform: translate(-50%, -50%) scale(1.01);
 }
 .like-wrap.is-liked .heart-fill {
-  opacity: 1;                 /* Fill an */
+  opacity: 1;
   transform: scale(1.02);
 }
 .like-wrap.is-liked .heart-outline {
-  opacity: 0;                 /* Outline aus → keine "grauen Ränder" */
+  opacity: 0;
 }
 .like-wrap.is-liked .like-count {
   color: rgba(255, 90, 95, 0.74);
@@ -906,9 +913,10 @@ body.no-scroll {
   100% { transform: scale(1); }
 }
 @keyframes drinkGlowPop {
-  0%   { opacity: 0.20; transform: translate(-50%, -50%) scale(1); }
-  55%  { opacity: 0.38; transform: translate(-50%, -50%) scale(1.05); }
-  100% { opacity: 0.34; transform: translate(-50%, -50%) scale(1.02); }
+  /* ✅ Glow-Animation stark reduziert */
+  0%   { opacity: 0.08; transform: translate(-50%, -50%) scale(1); }
+  55%  { opacity: 0.14; transform: translate(-50%, -50%) scale(1.03); }
+  100% { opacity: 0.12; transform: translate(-50%, -50%) scale(1.01); }
 }
 
 /* Reduced Motion */
@@ -925,6 +933,7 @@ body.no-scroll {
     transition: none !important;
   }
 }
+
 
 /* Rechter Button – „Wähle“, keine Border */
 .btn-add-round {
