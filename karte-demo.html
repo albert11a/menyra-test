@@ -767,15 +767,10 @@ body.no-scroll {
   gap: 10px;                 /* Abstand Kreis → Counter */
 }
 
-/* =========================================================
-   HERZ-BUTTON (Drink Like) — SMALL + CLEAN (perf & stabil)
-   Ziel: kleiner, kaum Shadow, saubere Rot-Füllung ohne "graue Ränder".
-   Performance: nur transform/opacity, kein Dauer-Loop.
-========================================================= */
 .icon-circle {
   position: relative;
-  width: 40px;
-  height: 40px;
+  width: 38px;                /* kleiner */
+  height: 38px;               /* kleiner */
   border-radius: 999px;
   border: none;
   background: rgba(255,255,255,0.98);
@@ -786,8 +781,8 @@ body.no-scroll {
   outline: none;
   -webkit-tap-highlight-color: transparent;
 
-  /* ✅ viel weniger Shadow */
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+  /* weniger Shadow */
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.045);
 
   transition:
     transform 160ms cubic-bezier(.2,.9,.2,1),
@@ -795,26 +790,23 @@ body.no-scroll {
     background 160ms ease-out;
 }
 
-/* ✅ viel weniger Glow unten (kleiner + schwächer) */
+/* viel weniger Glow */
 .icon-circle::after {
   content: "";
   position: absolute;
   left: 50%;
   top: 70%;
-  width: 56px;
-  height: 56px;
+  width: 48px;               /* kleiner */
+  height: 48px;              /* kleiner */
   transform: translate(-50%, -50%);
   pointer-events: none;
-
-  /* ✅ deutlich weniger sichtbar */
-  opacity: 0.08;
+  opacity: 0.04;             /* weniger */
 
   background: radial-gradient(circle at 50% 35%,
-    rgba(255, 90, 95, 0.14) 0%,
-    rgba(255, 90, 95, 0.07) 35%,
-    rgba(255, 90, 95, 0.03) 52%,
+    rgba(255, 90, 95, 0.10) 0%,
+    rgba(255, 90, 95, 0.05) 35%,
+    rgba(255, 90, 95, 0.02) 52%,
     transparent 70%);
-
   transition:
     opacity 200ms ease-out,
     transform 200ms ease-out;
@@ -822,26 +814,21 @@ body.no-scroll {
 
 .icon-circle:hover {
   transform: translateY(-1px);
-  /* ✅ hover-shadow auch minimal */
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.055);
 }
 .icon-circle:active {
   transform: scale(0.97);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.05);
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.045);
 }
 
-/* Icon-Größe im Kreis */
+/* Icon minimal kleiner */
 .icon-circle__inner {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   display: block;
   transform-origin: center;
 }
 
-/* Herz: 2 Layer → garantiert saubere Kanten
-   - .heart-outline: Outline-Status
-   - .heart-fill: Filled-Status
-*/
 .heart-outline {
   fill: none;
   stroke: rgba(148, 163, 184, 0.90);
@@ -861,23 +848,21 @@ body.no-scroll {
     transform 200ms cubic-bezier(.2,.9,.2,1);
 }
 
-/* Count rechts (hell/pastell wie Referenz) */
+/* Counter kleiner */
 .like-count {
-  font-size: 0.92rem;
+  font-size: 0.82rem;         /* kleiner */
   font-weight: 800;
   font-variant-numeric: tabular-nums;
-  color: rgba(255, 90, 95, 0.42);
-  min-width: 18px;
+  color: rgba(255, 90, 95, 0.40);
+  min-width: 14px;            /* kleiner */
 }
 
-/* --- LIKED STATE --- */
+/* Liked-State: Glow bleibt sehr dezent */
 .like-wrap.is-liked .icon-circle {
-  /* ✅ liked-shadow auch nur leicht */
-  box-shadow: 0 2px 8px rgba(255, 90, 95, 0.10);
+  box-shadow: 0 2px 8px rgba(255, 90, 95, 0.08);
 }
 .like-wrap.is-liked .icon-circle::after {
-  /* ✅ liked-glow nur minimal stärker */
-  opacity: 0.12;
+  opacity: 0.06;              /* weniger */
   transform: translate(-50%, -50%) scale(1.01);
 }
 .like-wrap.is-liked .heart-fill {
@@ -888,23 +873,17 @@ body.no-scroll {
   opacity: 0;
 }
 .like-wrap.is-liked .like-count {
-  color: rgba(255, 90, 95, 0.74);
+  color: rgba(255, 90, 95, 0.68);
 }
 
-/* --- TAP ANIMATION (einmalig, kurz) --- */
-.like-wrap.is-animating .icon-circle__inner {
-  animation: drinkHeartPop 260ms cubic-bezier(.2,.9,.2,1);
-}
-.like-wrap.is-animating .icon-circle {
-  animation: drinkBtnPop 260ms cubic-bezier(.2,.9,.2,1);
-}
-.like-wrap.is-animating .icon-circle::after {
-  animation: drinkGlowPop 260ms ease-out;
-}
+/* Tap Animation: Glow auch reduziert */
+.like-wrap.is-animating .icon-circle__inner { animation: drinkHeartPop 260ms cubic-bezier(.2,.9,.2,1); }
+.like-wrap.is-animating .icon-circle { animation: drinkBtnPop 260ms cubic-bezier(.2,.9,.2,1); }
+.like-wrap.is-animating .icon-circle::after { animation: drinkGlowPop 260ms ease-out; }
 
 @keyframes drinkHeartPop {
   0%   { transform: scale(0.92); }
-  55%  { transform: scale(1.16); }
+  55%  { transform: scale(1.14); }
   100% { transform: scale(1.02); }
 }
 @keyframes drinkBtnPop {
@@ -913,25 +892,19 @@ body.no-scroll {
   100% { transform: scale(1); }
 }
 @keyframes drinkGlowPop {
-  /* ✅ Glow-Animation stark reduziert */
-  0%   { opacity: 0.08; transform: translate(-50%, -50%) scale(1); }
-  55%  { opacity: 0.14; transform: translate(-50%, -50%) scale(1.03); }
-  100% { opacity: 0.12; transform: translate(-50%, -50%) scale(1.01); }
+  0%   { opacity: 0.04; transform: translate(-50%, -50%) scale(1); }
+  55%  { opacity: 0.07; transform: translate(-50%, -50%) scale(1.02); }
+  100% { opacity: 0.06; transform: translate(-50%, -50%) scale(1.01); }
 }
 
-/* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   .like-wrap.is-animating .icon-circle__inner,
   .like-wrap.is-animating .icon-circle,
-  .like-wrap.is-animating .icon-circle::after {
-    animation: none !important;
-  }
+  .like-wrap.is-animating .icon-circle::after { animation: none !important; }
   .icon-circle,
   .icon-circle::after,
   .heart-fill,
-  .heart-outline {
-    transition: none !important;
-  }
+  .heart-outline { transition: none !important; }
 }
 
 
@@ -1898,7 +1871,7 @@ img {
               <span class="like-count">12</span>
             </div>
           </div>
-          <img class="drink-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22600%22%20height%3D%22800%22%20viewBox%3D%220%200%20600%20800%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23fee2e2%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2242%22%20fill%3D%22%23b91c1c%22%3EDRINK%3C/text%3E%0A%3C/svg%3E" alt="Drink" />
+          <img class="drink-image" src="./images/getränk1.png" alt="Drink" loading="lazy" decoding="async" />
           <div class="drink-header"><div class="drink-name">Cappuccino</div><div class="drink-price">2.90 €</div></div>
           <div class="drink-desc">Platzhalter-Beschreibung für Getränk.</div>
           <div class="drink-footer">
@@ -1919,7 +1892,7 @@ img {
               <span class="like-count">7</span>
             </div>
           </div>
-          <img class="drink-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22600%22%20height%3D%22800%22%20viewBox%3D%220%200%20600%20800%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23dcfce7%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2242%22%20fill%3D%22%2315803d%22%3EDRINK%3C/text%3E%0A%3C/svg%3E" alt="Drink" />
+          <img class="drink-image" src="./images/getränk1.png" alt="Drink" loading="lazy" decoding="async" />
           <div class="drink-header"><div class="drink-name">Fresh Juice</div><div class="drink-price">3.50 €</div></div>
           <div class="drink-desc">Platzhalter-Beschreibung für Getränk.</div>
           <div class="drink-footer">
@@ -1953,7 +1926,7 @@ img {
       <h2>Speisekarte</h2>
       <div class="menu-list" id="menuList">
         <article class="menu-item">
-          <img class="menu-item-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22900%22%20height%3D%22560%22%20viewBox%3D%220%200%20900%20560%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23e5e7eb%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2239%22%20fill%3D%22%23475569%22%3EFOOD%3C/text%3E%0A%3C/svg%3E" alt="Food" />
+          <img class="menu-item-image" src="./images/speise1.avif" alt="Food" loading="lazy" decoding="async" />
           <div class="menu-item-header">
             <div class="menu-item-name">Classic Burger</div>
             <div class="menu-item-price">5.90 €</div>
@@ -1970,7 +1943,7 @@ img {
         </article>
 
         <article class="menu-item">
-          <img class="menu-item-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22900%22%20height%3D%22560%22%20viewBox%3D%220%200%20900%20560%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23dbeafe%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2239%22%20fill%3D%22%231d4ed8%22%3EFOOD%3C/text%3E%0A%3C/svg%3E" alt="Food" />
+          <img class="menu-item-image" src="./images/speise1.avif" alt="Food" loading="lazy" decoding="async" />
           <div class="menu-item-header">
             <div class="menu-item-name">Chicken Salad</div>
             <div class="menu-item-price">4.60 €</div>
