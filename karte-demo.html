@@ -1758,6 +1758,107 @@ img {
   font-weight: 600;
 }
 
+/* =========================
+   QUICK NAV (wie Screenshot)
+========================= */
+
+.quickNav{
+  /* gleiche Seiten-Abstände wie dein Layout */
+  margin: 14px 16px 0 16px;
+
+  background:#fff;
+  border-radius: 44px;
+
+  /* sehr dezente Kante statt Glow */
+  border: 1px solid rgba(17,24,39,0.06);
+
+  /* KEIN Glow (wenn du minimal willst: 0 6px 16px rgba(0,0,0,.06)) */
+  box-shadow: none;
+
+  padding: 12px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 8px;
+}
+
+.quickNavBtn{
+  flex:1;
+  border:0;
+  background:transparent;
+  padding: 0;
+
+  height: 82px;              /* wirkt wie im Bild */
+  border-radius: 26px;       /* wichtig: damit active tile schön ist */
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap: 7px;
+
+  color: #6b7280;            /* grau wie im Bild */
+  font-size: 12px;
+  font-weight: 500;
+
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+
+.quickNavIcon{
+  width: 26px;
+  height: 26px;
+  display:grid;
+  place-items:center;
+}
+
+.quickNavBtn svg{
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.quickNavLabel{
+  line-height: 1;
+}
+
+/* Active tile: helle Kachel + Akzentfarbe (wie Home im Bild) */
+.quickNavBtn.is-active{
+  background: #d7e2fe;       /* helles blau */
+  color: #4b4cff;            /* lila/blau Akzent */
+}
+
+/* Optional: kleiner “unread dot” wie im Bild */
+.quickNavBtn[data-badge="1"]{
+  position: relative;
+}
+
+.quickNavDot{
+  position:absolute;
+  bottom: 10px;              /* sitzt “unter” dem Text wie im Bild */
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #ef4444;       /* rot */
+  display:none;
+}
+
+.quickNavBtn[data-badge="1"] .quickNavDot{
+  display:block;
+}
+
+/* Optional: micro feedback */
+.quickNavBtn:active{
+  transform: scale(0.98);
+}
+
+
 
 
 
@@ -1822,6 +1923,66 @@ img {
           <button class="offers-dot" type="button"></button>
         </div>
       </section>
+
+      <!-- =========================
+     MENU BAR (wie dein Bild)
+========================= -->
+<nav class="quickNav" aria-label="Quick Navigation">
+  <button class="quickNavBtn is-active" type="button" data-tab="home">
+    <span class="quickNavIcon">
+      <!-- Home -->
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5z"/>
+      </svg>
+    </span>
+    <span class="quickNavLabel">Home</span>
+  </button>
+
+  <button class="quickNavBtn" type="button" data-tab="search">
+    <span class="quickNavIcon">
+      <!-- Search -->
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"></circle>
+        <path d="M20 20l-3.5-3.5"></path>
+      </svg>
+    </span>
+    <span class="quickNavLabel">Search</span>
+  </button>
+
+  <button class="quickNavBtn" type="button" data-tab="likes">
+    <span class="quickNavIcon">
+      <!-- Heart -->
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 21s-7-4.6-9.2-8.6C.6 8.6 3 6 5.9 6c1.6 0 3 .8 4 2 1-1.2 2.4-2 4-2 2.9 0 5.3 2.6 3.1 6.4C19 16.4 12 21 12 21z"/>
+      </svg>
+    </span>
+    <span class="quickNavLabel">Likes</span>
+  </button>
+
+  <button class="quickNavBtn" type="button" data-tab="notif" data-badge="1">
+    <span class="quickNavIcon">
+      <!-- Bell -->
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7z"></path>
+        <path d="M10 21a2 2 0 0 0 4 0"></path>
+      </svg>
+    </span>
+    <span class="quickNavLabel">Notifications</span>
+    <span class="quickNavDot" aria-hidden="true"></span>
+  </button>
+
+  <button class="quickNavBtn" type="button" data-tab="profile">
+    <span class="quickNavIcon">
+      <!-- User -->
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="8" r="4"></circle>
+        <path d="M4 21c1.8-4 5-6 8-6s6.2 2 8 6"></path>
+      </svg>
+    </span>
+    <span class="quickNavLabel">Profile</span>
+  </button>
+</nav>
+
 <!-- =========================================================
   ABSCHNITT 2.3: SUCHE
   - #searchInput: Suchfeld (später filtert es Drinks + Menu)
