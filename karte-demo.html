@@ -1759,64 +1759,67 @@ img {
 }
 
 /* =========================
-   QUICK NAV (wie Screenshot)
+   QUICK NAV (MENYRA Style)
 ========================= */
 
 .quickNav{
-  /* gleiche Seiten-Abstände wie dein Layout */
-  margin: 14px 16px 0 16px;
+  width: 100%;
+  margin: 2px 0 0 0;                 /* passt in dein .page padding */
+  background: #ffffff;
+  border-radius: 18px;               /* wie deine Cards */
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: none;                  /* kein Glow */
 
-  background:#fff;
-  border-radius: 44px;
-
-  /* sehr dezente Kante statt Glow */
-  border: 1px solid rgba(17,24,39,0.06);
-
-  /* KEIN Glow (wenn du minimal willst: 0 6px 16px rgba(0,0,0,.06)) */
-  box-shadow: none;
-
-  padding: 12px;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
 }
 
 .quickNavBtn{
-  flex:1;
-  border:0;
-  background:transparent;
-  padding: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  height: 74px;
+  border-radius: 14px;
 
-  height: 82px;              /* wirkt wie im Bild */
-  border-radius: 26px;       /* wichtig: damit active tile schön ist */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap: 7px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 600;
 
-  color: #6b7280;            /* grau wie im Bild */
-  font-size: 12px;
-  font-weight: 500;
-
-  cursor:pointer;
+  cursor: pointer;
+  position: relative;
   -webkit-tap-highlight-color: transparent;
 
-  transition: background .18s ease, color .18s ease, transform .18s ease;
+  transition:
+    background .18s ease,
+    color .18s ease,
+    transform .14s ease,
+    box-shadow .18s ease;
 }
 
+/* Icon-Circle wie iOS, aber clean */
 .quickNavIcon{
-  width: 26px;
-  height: 26px;
-  display:grid;
-  place-items:center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+
+  background: #f3f4f6;
+  border: 1px solid rgba(148, 163, 184, 0.22);
 }
 
 .quickNavBtn svg{
-  width: 26px;
-  height: 26px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentColor;
   stroke-width: 2;
@@ -1828,35 +1831,43 @@ img {
   line-height: 1;
 }
 
-/* Active tile: helle Kachel + Akzentfarbe (wie Home im Bild) */
-.quickNavBtn.is-active{
-  background: #d7e2fe;       /* helles blau */
-  color: #4b4cff;            /* lila/blau Akzent */
+/* Hover/Tap minimal */
+.quickNavBtn:hover{
+  background: rgba(15, 23, 42, 0.04);
+  color: #0f172a;
 }
-
-/* Optional: kleiner “unread dot” wie im Bild */
-.quickNavBtn[data-badge="1"]{
-  position: relative;
-}
-
-.quickNavDot{
-  position:absolute;
-  bottom: 10px;              /* sitzt “unter” dem Text wie im Bild */
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  background: #ef4444;       /* rot */
-  display:none;
-}
-
-.quickNavBtn[data-badge="1"] .quickNavDot{
-  display:block;
-}
-
-/* Optional: micro feedback */
 .quickNavBtn:active{
-  transform: scale(0.98);
+  transform: scale(0.985);
 }
+
+/* ACTIVE = gleiche Farbe wie Offers */
+.quickNavBtn.is-active{
+  background: #0f172a;               /* wie offers-card */
+  color: #f9fafb;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12); /* sehr dezent */
+}
+
+.quickNavBtn.is-active .quickNavIcon{
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+/* Badge-Dot (wenn data-badge="1") – sitzt beim Icon */
+.quickNavDot{
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(14px);
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #ef4444;
+  display: none;
+}
+.quickNavBtn[data-badge="1"] .quickNavDot{
+  display: block;
+}
+
 
 
 
@@ -2168,6 +2179,16 @@ document.addEventListener("click", (e) => {
   wrap.classList.add("is-animating");
   window.setTimeout(() => wrap.classList.remove("is-animating"), 300);
 });
+
+// QuickNav active toggle (Demo)
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".quickNavBtn");
+  if (!btn) return;
+
+  document.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
+  btn.classList.add("is-active");
+});
+
 
 
 </script>
