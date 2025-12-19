@@ -1759,31 +1759,19 @@ img {
 }
 
 /* ========================================
-   KARTE – Sticky Wrapper (Restaurant + QuickNav)
-   ======================================== */
-.karte-sticky{
-  position: sticky;
-  top: 12px;
-  z-index: 45;
+   KARTE – QUICKNAV (NICHT STICKY)
+   - bleibt im normalen Flow (kein sticky)
+   - wird dunkel wie "Sot ne fokus", sobald ein Tab aktiv ist
+======================================== */
 
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+/* Entfernt: .karte-sticky (nicht mehr verwenden) */
+/* (wenn du willst, kannst du die alte .karte-sticky Regel komplett löschen) */
 
-  /* damit beim Scrollen nichts “durchscheint” */
-  background: #f3f4f6;
-  padding-bottom: 6px;
-}
-
-/* =========================
-   QUICK MENU BAR (match MENYRA card style)
-   - keine extra Ränder links/rechts
-   - gleiche Border wie .card
-   - clean (kein Glow)
-========================= */
+/* QuickNav normal (weiß) */
 .quickNav{
-  margin: 0; /* WICHTIG: page hat schon padding 16px */
+  margin: 0; /* page hat schon padding 16px */
   background:#fff;
+  color:#0f172a;
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.25);
   box-shadow: none;
@@ -1793,7 +1781,7 @@ img {
   isolation: isolate;
 }
 
-/* row */
+/* Row */
 .quickNavRow{
   display:flex;
   align-items:center;
@@ -1820,7 +1808,7 @@ img {
   cursor:pointer;
   -webkit-tap-highlight-color: transparent;
 
-  color: #64748b;
+  color: inherit;
   font-size: 11px;
   font-weight: 600;
 
@@ -1841,8 +1829,8 @@ img {
   stroke: none;
 }
 
-/* active tile -> MENYRA Primary */
-.quickNavBtn.is-active{
+/* Active tile in normal mode */
+.quickNav:not(.is-dark) .quickNavBtn.is-active{
   background: rgba(100, 58, 113, 0.12);
   color: #643A71;
 }
@@ -1853,9 +1841,22 @@ img {
 
 #langLabel{ letter-spacing: .3px; }
 
-/* =========================
+/* ===== DARK MODE (wie Sot ne fokus) ===== */
+.quickNav.is-dark{
+  background: #0f172a;
+  color: #f9fafb;
+  border: 1px solid rgba(148, 163, 184, 0.40);
+}
+
+/* Active tile in dark mode */
+.quickNav.is-dark .quickNavBtn.is-active{
+  background: rgba(249, 250, 251, 0.12);
+  color: #f9fafb;
+}
+
+/* ========================================
    LANGUAGE OVERLAY PANEL
-========================= */
+======================================== */
 .langPanel{
   position:absolute;
   inset: 0;
@@ -1943,12 +1944,32 @@ img {
   opacity: 1;
 }
 
+/* Dark mode styles for lang panel */
+.quickNav.is-dark .langPanel{
+  background:#0f172a;
+}
+.quickNav.is-dark .langBackBtn,
+.quickNav.is-dark .langNextBtn{
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(148,163,184,0.35);
+}
+.quickNav.is-dark .langBackBtn svg,
+.quickNav.is-dark .langNextBtn svg{
+  fill:#f9fafb;
+}
+.quickNav.is-dark .langOpt{
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(148,163,184,0.35);
+  color:#f9fafb;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce){
   .quickNavRow, .langPanel, .langList, .quickNavBtn, .langOpt{
     transition: none !important;
   }
 }
+
 
 
 
@@ -1977,69 +1998,67 @@ img {
   - #restaurantName: Name
   - #restaurantMeta: Stadt / Tisch
 ========================================================= -->
-<div class="karte-sticky">
-  <section class="card restaurant-card">
-    <div class="restaurant-header">
-      <img id="restaurantLogo" class="rest-logo" alt="Logo" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23f1f5f9%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%228%22%20fill%3D%22%230f172a%22%3ELOGO%3C/text%3E%0A%3C/svg%3E" />
-      <div>
-        <div class="restaurant-name" id="restaurantName">MENYRA Demo Lokal</div>
-        <div class="restaurant-meta" id="restaurantMeta">Prishtinë · Tavolina A7</div>
-      </div>
+<section class="card restaurant-card">
+  <div class="restaurant-header">
+    <img id="restaurantLogo" class="rest-logo" alt="Logo" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23f1f5f9%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%228%22%20fill%3D%22%230f172a%22%3ELOGO%3C/text%3E%0A%3C/svg%3E" />
+    <div>
+      <div class="restaurant-name" id="restaurantName">MENYRA Demo Lokal</div>
+      <div class="restaurant-meta" id="restaurantMeta">Prishtinë · Tavolina A7</div>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- QUICK MENU (sticky mit header) -->
-  <nav class="quickNav" aria-label="MENYRA Quick Menu">
-    <div class="quickNavRow" id="quickNavRow">
-      <button class="quickNavBtn is-active" type="button" data-tab="social" aria-current="page">
-        <span class="qIcon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
-        </span>
-        <span class="qLabel">Social</span>
-      </button>
+<!-- QUICK MENU (NICHT STICKY) -->
+<nav class="quickNav" aria-label="MENYRA Quick Menu">
+  <div class="quickNavRow" id="quickNavRow">
+    <button class="quickNavBtn is-active" type="button" data-tab="social" aria-current="page">
+      <span class="qIcon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
+      </span>
+      <span class="qLabel">Social</span>
+    </button>
 
-      <button class="quickNavBtn" type="button" data-tab="info">
-        <span class="qIcon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a1.2 1.2 0 110 2.4A1.2 1.2 0 0112 6zm1.6 12.5h-3.2a1 1 0 010-2h.6V12h-.6a1 1 0 010-2h2a1 1 0 011 1v5.5h.2a1 1 0 010 2z"/></svg>
-        </span>
-        <span class="qLabel">Info</span>
-      </button>
+    <button class="quickNavBtn" type="button" data-tab="info">
+      <span class="qIcon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a1.2 1.2 0 110 2.4A1.2 1.2 0 0112 6zm1.6 12.5h-3.2a1 1 0 010-2h.6V12h-.6a1 1 0 010-2h2a1 1 0 011 1v5.5h.2a1 1 0 010 2z"/></svg>
+      </span>
+      <span class="qLabel">Info</span>
+    </button>
 
-      <button class="quickNavBtn" type="button" data-tab="kamarieri">
-        <span class="qIcon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5v2.2c0 .6-.2 1.2-.6 1.7L5 12.8V15h14v-2.2l-1.4-1.9c-.4-.5-.6-1.1-.6-1.7V7a5 5 0 00-5-5zm0 20a2.5 2.5 0 002.4-2H9.6A2.5 2.5 0 0012 22z"/></svg>
-        </span>
-        <span class="qLabel">Kamarieri</span>
-      </button>
+    <button class="quickNavBtn" type="button" data-tab="kamarieri">
+      <span class="qIcon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5v2.2c0 .6-.2 1.2-.6 1.7L5 12.8V15h14v-2.2l-1.4-1.9c-.4-.5-.6-1.1-.6-1.7V7a5 5 0 00-5-5zm0 20a2.5 2.5 0 002.4-2H9.6A2.5 2.5 0 0012 22z"/></svg>
+      </span>
+      <span class="qLabel">Kamarieri</span>
+    </button>
 
-      <!-- LANGUAGE (last) -->
-      <button class="quickNavBtn quickNavBtnLang" id="langToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
-        <span class="qIcon" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 9h-2.4a15 15 0 00-1.1-5A8.04 8.04 0 0118.9 11zM12 4c.9 1.1 1.8 3.1 2.2 7H9.8C10.2 7.1 11.1 5.1 12 4zM4.9 13h2.4a15 15 0 001.1 5A8.04 8.04 0 015.1 13zM5.1 11a8.04 8.04 0 013.5-5 15 15 0 00-1.1 5H5.1zm6.9 9c-.9-1.1-1.8-3.1-2.2-7h4.4c-.4 3.9-1.3 5.9-2.2 7zm3.4-2a15 15 0 001.1-5h2.4a8.04 8.04 0 01-3.5 5z"/></svg>
-        </span>
-        <span class="qLabel" id="langLabel">DE</span>
-      </button>
+    <button class="quickNavBtn quickNavBtnLang" id="langToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
+      <span class="qIcon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 9h-2.4a15 15 0 00-1.1-5A8.04 8.04 0 0118.9 11zM12 4c.9 1.1 1.8 3.1 2.2 7H9.8C10.2 7.1 11.1 5.1 12 4zM4.9 13h2.4a15 15 0 001.1 5A8.04 8.04 0 015.1 13zM5.1 11a8.04 8.04 0 013.5-5 15 15 0 00-1.1 5H5.1zm6.9 9c-.9-1.1-1.8-3.1-2.2-7h4.4c-.4 3.9-1.3 5.9-2.2 7zm3.4-2a15 15 0 001.1-5h2.4a8.04 8.04 0 01-3.5 5z"/></svg>
+      </span>
+      <span class="qLabel" id="langLabel">DE</span>
+    </button>
+  </div>
+
+  <div class="langPanel" id="langPanel" aria-hidden="true">
+    <button class="langBackBtn" id="langBackBtn" type="button" aria-label="Back">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
+    </button>
+
+    <div class="langList" role="listbox" aria-label="Choose language">
+      <button class="langOpt" type="button" data-lang="DE" role="option">DE</button>
+      <button class="langOpt" type="button" data-lang="EN" role="option">EN</button>
+      <button class="langOpt" type="button" data-lang="SQ" role="option">SQ</button>
+      <button class="langOpt" type="button" data-lang="SR" role="option">SR</button>
+      <button class="langOpt" type="button" data-lang="TR" role="option">TR</button>
     </div>
 
-    <div class="langPanel" id="langPanel" aria-hidden="true">
-      <button class="langBackBtn" id="langBackBtn" type="button" aria-label="Back">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
-      </button>
+    <button class="langNextBtn" id="langNextBtn" type="button" aria-label="Next">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L16 12l-7.5 7.5-1.8-1.8L12.4 12 6.7 6.3l1.8-1.8z"/></svg>
+    </button>
+  </div>
+</nav>
 
-      <div class="langList" role="listbox" aria-label="Choose language">
-        <button class="langOpt" type="button" data-lang="DE" role="option">DE</button>
-        <button class="langOpt" type="button" data-lang="EN" role="option">EN</button>
-        <button class="langOpt" type="button" data-lang="SQ" role="option">SQ</button>
-        <button class="langOpt" type="button" data-lang="SR" role="option">SR</button>
-        <button class="langOpt" type="button" data-lang="TR" role="option">TR</button>
-      </div>
-
-      <button class="langNextBtn" id="langNextBtn" type="button" aria-label="Next">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L16 12l-7.5 7.5-1.8-1.8L12.4 12 6.7 6.3l1.8-1.8z"/></svg>
-      </button>
-    </div>
-  </nav>
-</div>
 
       <!-- =========================================================
   ABSCHNITT 2.2: OFFERS (SOT NE FOKUS)
@@ -2277,11 +2296,12 @@ document.addEventListener("click", (e) => {
   function setLang(code){
     localStorage.setItem(LANG_KEY, code);
     langLabel.textContent = code;
+  }
 
-    // OPTIONAL: wenn du später i18n hast:
-    // window.MENYRA_setLanguage?.(code);
-    // oder reload:
-    // location.reload();
+  function applyDarkState(){
+    // sobald irgendein Tab aktiv ist -> dark wie "Sot ne fokus"
+    const hasActive = !!row.querySelector(".quickNavBtn.is-active");
+    nav.classList.toggle("is-dark", hasActive);
   }
 
   function openLang(){
@@ -2300,17 +2320,18 @@ document.addEventListener("click", (e) => {
   const saved = localStorage.getItem(LANG_KEY);
   if (saved) langLabel.textContent = saved;
 
+  // init dark state (weil "Social" default active ist)
+  applyDarkState();
+
   // Tab switching (active state)
   row.querySelectorAll(".quickNavBtn:not(.quickNavBtnLang)").forEach(btn => {
     btn.addEventListener("click", () => {
       row.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
       btn.classList.add("is-active");
 
+      applyDarkState();
+
       const tab = btn.dataset.tab;
-      // TODO: deine Navigation:
-      // if(tab==="social") navTo("social.html");
-      // if(tab==="info") navTo("info.html");
-      // if(tab==="kamarieri") navTo("../staff/kamarieri.html");
       console.log("TAB:", tab);
     }, { passive:true });
   });
@@ -2327,13 +2348,11 @@ document.addEventListener("click", (e) => {
     closeLang();
   }, { passive:false });
 
-  // “Next” optional (hier einfach auch schließen oder später page/scroll der Optionen)
   langNextBtn.addEventListener("click", (e) => {
     e.stopPropagation();
     closeLang();
   }, { passive:false });
 
-  // Choose language
   langOpts.forEach(btn => {
     btn.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -2352,12 +2371,7 @@ document.addEventListener("click", (e) => {
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && nav.classList.contains("lang-open")) closeLang();
   });
-
 })();
-
-
-
-
 
 
 
