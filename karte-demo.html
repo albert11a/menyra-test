@@ -1758,114 +1758,196 @@ img {
   font-weight: 600;
 }
 
-/* =========================
-   QUICK NAV (MENYRA Style)
-========================= */
+/* ========================================
+   KARTE – Sticky Wrapper (Restaurant + QuickNav)
+   ======================================== */
+.karte-sticky{
+  position: sticky;
+  top: 12px;
+  z-index: 45;
 
-.quickNav{
-  width: 100%;
-  margin: 2px 0 0 0;                 /* passt in dein .page padding */
-  background: #ffffff;
-  border-radius: 18px;               /* wie deine Cards */
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: none;                  /* kein Glow */
-
-  padding: 10px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
+
+  /* damit beim Scrollen nichts “durchscheint” */
+  background: #f3f4f6;
+  padding-bottom: 6px;
+}
+
+/* =========================
+   QUICK MENU BAR (match MENYRA card style)
+   - keine extra Ränder links/rechts
+   - gleiche Border wie .card
+   - clean (kein Glow)
+========================= */
+.quickNav{
+  margin: 0; /* WICHTIG: page hat schon padding 16px */
+  background:#fff;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: none;
+  padding: 8px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* row */
+.quickNavRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 6px;
+  min-height: 64px;
+  transition: opacity .18s ease, transform .18s ease;
 }
 
 .quickNavBtn{
   flex: 1;
   border: 0;
   background: transparent;
-  height: 74px;
+  padding: 0;
+  height: 64px;
   border-radius: 14px;
 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap: 5px;
 
-  color: #64748b;
-  font-size: 0.72rem;
-  font-weight: 600;
-
-  cursor: pointer;
-  position: relative;
+  cursor:pointer;
   -webkit-tap-highlight-color: transparent;
 
-  transition:
-    background .18s ease,
-    color .18s ease,
-    transform .14s ease,
-    box-shadow .18s ease;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 600;
+
+  transition: background .18s ease, color .18s ease, transform .18s ease;
 }
 
-/* Icon-Circle wie iOS, aber clean */
-.quickNavIcon{
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-
-  background: #f3f4f6;
-  border: 1px solid rgba(148, 163, 184, 0.22);
+/* ICONS */
+.qIcon{
+  width: 22px;
+  height: 22px;
+  display:grid;
+  place-items:center;
 }
-
 .quickNavBtn svg{
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  stroke: none;
 }
 
-.quickNavLabel{
-  line-height: 1;
+/* active tile -> MENYRA Primary */
+.quickNavBtn.is-active{
+  background: rgba(100, 58, 113, 0.12);
+  color: #643A71;
 }
 
-/* Hover/Tap minimal */
-.quickNavBtn:hover{
-  background: rgba(15, 23, 42, 0.04);
-  color: #0f172a;
-}
 .quickNavBtn:active{
   transform: scale(0.985);
 }
 
-/* ACTIVE = gleiche Farbe wie Offers */
-.quickNavBtn.is-active{
-  background: #0f172a;               /* wie offers-card */
-  color: #f9fafb;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12); /* sehr dezent */
+#langLabel{ letter-spacing: .3px; }
+
+/* =========================
+   LANGUAGE OVERLAY PANEL
+========================= */
+.langPanel{
+  position:absolute;
+  inset: 0;
+  padding: 8px;
+  border-radius: inherit;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 8px;
+
+  background:#fff;
+
+  transform-origin: right center;
+  transform: scaleX(0);
+  opacity: 0;
+  pointer-events:none;
+
+  transition: transform .22s ease, opacity .18s ease;
+  z-index: 2;
 }
 
-.quickNavBtn.is-active .quickNavIcon{
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.18);
+.langBackBtn,
+.langNextBtn{
+  width: 40px;
+  height: 52px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #fff;
+  border-radius: 14px;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.langBackBtn svg,
+.langNextBtn svg{
+  width: 20px;
+  height: 20px;
+  fill: #111827;
 }
 
-/* Badge-Dot (wenn data-badge="1") – sitzt beim Icon */
-.quickNavDot{
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(14px);
-  width: 7px;
-  height: 7px;
+.langList{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 8px;
+
+  transform: translateX(12px);
+  opacity: 0;
+  transition: transform .22s ease, opacity .22s ease;
+}
+
+.langOpt{
+  border: 1px solid rgba(148, 163, 184, 0.30);
+  background:#fff;
+  height: 40px;
+  min-width: 46px;
+  padding: 0 12px;
   border-radius: 999px;
-  background: #ef4444;
-  display: none;
+
+  font-weight: 700;
+  font-size: 12px;
+  color: #111827;
+
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .18s ease, background .18s ease, border-color .18s ease;
 }
-.quickNavBtn[data-badge="1"] .quickNavDot{
-  display: block;
+.langOpt:active{ transform: scale(0.98); }
+
+/* OPEN STATE */
+.quickNav.lang-open .quickNavRow{
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events:none;
+}
+.quickNav.lang-open .langPanel{
+  transform: scaleX(1);
+  opacity: 1;
+  pointer-events:auto;
+}
+.quickNav.lang-open .langList{
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .quickNavRow, .langPanel, .langList, .quickNavBtn, .langOpt{
+    transition: none !important;
+  }
 }
 
 
@@ -1895,15 +1977,69 @@ img {
   - #restaurantName: Name
   - #restaurantMeta: Stadt / Tisch
 ========================================================= -->
-<section class="card restaurant-card">
-        <div class="restaurant-header">
-          <img id="restaurantLogo" class="rest-logo" alt="Logo" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23f1f5f9%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%228%22%20fill%3D%22%230f172a%22%3ELOGO%3C/text%3E%0A%3C/svg%3E" />
-          <div>
-            <div class="restaurant-name" id="restaurantName">MENYRA Demo Lokal</div>
-            <div class="restaurant-meta" id="restaurantMeta">Prishtinë · Tavolina A7</div>
-          </div>
-        </div>
-      </section>
+<div class="karte-sticky">
+  <section class="card restaurant-card">
+    <div class="restaurant-header">
+      <img id="restaurantLogo" class="rest-logo" alt="Logo" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23f1f5f9%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%228%22%20fill%3D%22%230f172a%22%3ELOGO%3C/text%3E%0A%3C/svg%3E" />
+      <div>
+        <div class="restaurant-name" id="restaurantName">MENYRA Demo Lokal</div>
+        <div class="restaurant-meta" id="restaurantMeta">Prishtinë · Tavolina A7</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUICK MENU (sticky mit header) -->
+  <nav class="quickNav" aria-label="MENYRA Quick Menu">
+    <div class="quickNavRow" id="quickNavRow">
+      <button class="quickNavBtn is-active" type="button" data-tab="social" aria-current="page">
+        <span class="qIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
+        </span>
+        <span class="qLabel">Social</span>
+      </button>
+
+      <button class="quickNavBtn" type="button" data-tab="info">
+        <span class="qIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a1.2 1.2 0 110 2.4A1.2 1.2 0 0112 6zm1.6 12.5h-3.2a1 1 0 010-2h.6V12h-.6a1 1 0 010-2h2a1 1 0 011 1v5.5h.2a1 1 0 010 2z"/></svg>
+        </span>
+        <span class="qLabel">Info</span>
+      </button>
+
+      <button class="quickNavBtn" type="button" data-tab="kamarieri">
+        <span class="qIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5v2.2c0 .6-.2 1.2-.6 1.7L5 12.8V15h14v-2.2l-1.4-1.9c-.4-.5-.6-1.1-.6-1.7V7a5 5 0 00-5-5zm0 20a2.5 2.5 0 002.4-2H9.6A2.5 2.5 0 0012 22z"/></svg>
+        </span>
+        <span class="qLabel">Kamarieri</span>
+      </button>
+
+      <!-- LANGUAGE (last) -->
+      <button class="quickNavBtn quickNavBtnLang" id="langToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
+        <span class="qIcon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 9h-2.4a15 15 0 00-1.1-5A8.04 8.04 0 0118.9 11zM12 4c.9 1.1 1.8 3.1 2.2 7H9.8C10.2 7.1 11.1 5.1 12 4zM4.9 13h2.4a15 15 0 001.1 5A8.04 8.04 0 015.1 13zM5.1 11a8.04 8.04 0 013.5-5 15 15 0 00-1.1 5H5.1zm6.9 9c-.9-1.1-1.8-3.1-2.2-7h4.4c-.4 3.9-1.3 5.9-2.2 7zm3.4-2a15 15 0 001.1-5h2.4a8.04 8.04 0 01-3.5 5z"/></svg>
+        </span>
+        <span class="qLabel" id="langLabel">DE</span>
+      </button>
+    </div>
+
+    <div class="langPanel" id="langPanel" aria-hidden="true">
+      <button class="langBackBtn" id="langBackBtn" type="button" aria-label="Back">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
+      </button>
+
+      <div class="langList" role="listbox" aria-label="Choose language">
+        <button class="langOpt" type="button" data-lang="DE" role="option">DE</button>
+        <button class="langOpt" type="button" data-lang="EN" role="option">EN</button>
+        <button class="langOpt" type="button" data-lang="SQ" role="option">SQ</button>
+        <button class="langOpt" type="button" data-lang="SR" role="option">SR</button>
+        <button class="langOpt" type="button" data-lang="TR" role="option">TR</button>
+      </div>
+
+      <button class="langNextBtn" id="langNextBtn" type="button" aria-label="Next">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L16 12l-7.5 7.5-1.8-1.8L12.4 12 6.7 6.3l1.8-1.8z"/></svg>
+      </button>
+    </div>
+  </nav>
+</div>
 
       <!-- =========================================================
   ABSCHNITT 2.2: OFFERS (SOT NE FOKUS)
@@ -1935,64 +2071,7 @@ img {
         </div>
       </section>
 
-      <!-- =========================
-     MENU BAR (wie dein Bild)
-========================= -->
-<nav class="quickNav" aria-label="Quick Navigation">
-  <button class="quickNavBtn is-active" type="button" data-tab="home">
-    <span class="quickNavIcon">
-      <!-- Home -->
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M3 10.5L12 3l9 7.5V21a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1V10.5z"/>
-      </svg>
-    </span>
-    <span class="quickNavLabel">Home</span>
-  </button>
 
-  <button class="quickNavBtn" type="button" data-tab="search">
-    <span class="quickNavIcon">
-      <!-- Search -->
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="11" cy="11" r="7"></circle>
-        <path d="M20 20l-3.5-3.5"></path>
-      </svg>
-    </span>
-    <span class="quickNavLabel">Search</span>
-  </button>
-
-  <button class="quickNavBtn" type="button" data-tab="likes">
-    <span class="quickNavIcon">
-      <!-- Heart -->
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 21s-7-4.6-9.2-8.6C.6 8.6 3 6 5.9 6c1.6 0 3 .8 4 2 1-1.2 2.4-2 4-2 2.9 0 5.3 2.6 3.1 6.4C19 16.4 12 21 12 21z"/>
-      </svg>
-    </span>
-    <span class="quickNavLabel">Likes</span>
-  </button>
-
-  <button class="quickNavBtn" type="button" data-tab="notif" data-badge="1">
-    <span class="quickNavIcon">
-      <!-- Bell -->
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M18 8a6 6 0 10-12 0c0 7-3 7-3 7h18s-3 0-3-7z"></path>
-        <path d="M10 21a2 2 0 0 0 4 0"></path>
-      </svg>
-    </span>
-    <span class="quickNavLabel">Notifications</span>
-    <span class="quickNavDot" aria-hidden="true"></span>
-  </button>
-
-  <button class="quickNavBtn" type="button" data-tab="profile">
-    <span class="quickNavIcon">
-      <!-- User -->
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="12" cy="8" r="4"></circle>
-        <path d="M4 21c1.8-4 5-6 8-6s6.2 2 8 6"></path>
-      </svg>
-    </span>
-    <span class="quickNavLabel">Profile</span>
-  </button>
-</nav>
 
 <!-- =========================================================
   ABSCHNITT 2.3: SUCHE
@@ -2180,14 +2259,105 @@ document.addEventListener("click", (e) => {
   window.setTimeout(() => wrap.classList.remove("is-animating"), 300);
 });
 
-// QuickNav active toggle (Demo)
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".quickNavBtn");
-  if (!btn) return;
 
-  document.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
-  btn.classList.add("is-active");
-});
+(() => {
+  const nav = document.querySelector(".quickNav");
+  if (!nav) return;
+
+  const row = document.getElementById("quickNavRow");
+  const langToggleBtn = document.getElementById("langToggleBtn");
+  const langPanel = document.getElementById("langPanel");
+  const langBackBtn = document.getElementById("langBackBtn");
+  const langNextBtn = document.getElementById("langNextBtn");
+  const langLabel = document.getElementById("langLabel");
+  const langOpts = Array.from(nav.querySelectorAll(".langOpt"));
+
+  const LANG_KEY = "menyra_lang";
+
+  function setLang(code){
+    localStorage.setItem(LANG_KEY, code);
+    langLabel.textContent = code;
+
+    // OPTIONAL: wenn du später i18n hast:
+    // window.MENYRA_setLanguage?.(code);
+    // oder reload:
+    // location.reload();
+  }
+
+  function openLang(){
+    nav.classList.add("lang-open");
+    langToggleBtn.setAttribute("aria-expanded", "true");
+    langPanel.setAttribute("aria-hidden", "false");
+  }
+
+  function closeLang(){
+    nav.classList.remove("lang-open");
+    langToggleBtn.setAttribute("aria-expanded", "false");
+    langPanel.setAttribute("aria-hidden", "true");
+  }
+
+  // init label from storage
+  const saved = localStorage.getItem(LANG_KEY);
+  if (saved) langLabel.textContent = saved;
+
+  // Tab switching (active state)
+  row.querySelectorAll(".quickNavBtn:not(.quickNavBtnLang)").forEach(btn => {
+    btn.addEventListener("click", () => {
+      row.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+
+      const tab = btn.dataset.tab;
+      // TODO: deine Navigation:
+      // if(tab==="social") navTo("social.html");
+      // if(tab==="info") navTo("info.html");
+      // if(tab==="kamarieri") navTo("../staff/kamarieri.html");
+      console.log("TAB:", tab);
+    }, { passive:true });
+  });
+
+  // Language open/close
+  langToggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (nav.classList.contains("lang-open")) closeLang();
+    else openLang();
+  }, { passive:false });
+
+  langBackBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeLang();
+  }, { passive:false });
+
+  // “Next” optional (hier einfach auch schließen oder später page/scroll der Optionen)
+  langNextBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeLang();
+  }, { passive:false });
+
+  // Choose language
+  langOpts.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setLang(btn.dataset.lang);
+      closeLang();
+    }, { passive:false });
+  });
+
+  // Click outside closes
+  document.addEventListener("click", (e) => {
+    if (!nav.classList.contains("lang-open")) return;
+    if (!nav.contains(e.target)) closeLang();
+  }, { passive:true });
+
+  // ESC closes
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && nav.classList.contains("lang-open")) closeLang();
+  });
+
+})();
+
+
+
+
 
 
 

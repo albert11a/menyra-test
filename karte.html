@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Karte (Placeholder)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f3f4f6" />
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root{
+  --safe-top: env(safe-area-inset-top, 0px);
+  --sticky-top: 12px;
+  --sticky-y: calc(var(--safe-top) + var(--sticky-top));
+}
+
+*{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+
+html,body{height:100%;background-color:#f3f4f6}
+body{min-height:100vh;color:#0f172a}
+body.no-scroll{overflow:hidden}
+
+.page{
+  width:100%;
+  max-width:480px;
+  margin:0 auto;
+  min-height:100vh;
+  padding:16px 16px 32px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  background-color:#f3f4f6;
+}
+.page>*{width:100%}
+.page--karte{gap:12px;padding-top:12px}
+
+.header{display:flex;justify-content:space-between;align-items:center;margin-top:6px;margin-bottom:4px}
+.header-title{font-weight:800;letter-spacing:.12em;font-size:.9rem;text-transform:uppercase}
+.header-sub{font-size:.72rem;color:#64748b;text-align:right}
+
+.card{
+  background:#fff;
+  padding:14px 14px;
+  border-radius:18px;
+  box-shadow:0 12px 30px rgba(15,23,42,.08);
+  border:1px solid rgba(148,163,184,.25);
+}
+.card h1,.card h2{font-size:1.1rem;font-weight:600;margin-bottom:4px}
+.card p{font-size:.82rem;color:#475569}
+
+.restaurant-card{padding:14px 16px}
+.restaurant-header{display:flex;align-items:center;gap:10px}
+.rest-logo{width:44px;height:44px;border-radius:10px;object-fit:contain;border:1px solid #e2e8f0}
+.restaurant-name{font-weight:700;font-size:1.05rem}
+.restaurant-meta{font-size:.8rem;color:#64748b;margin-top:2px}
+
+.search-card{padding:10px 14px}
+
+.btn{border:none;border-radius:999px;padding:7px 14px;font-size:.8rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;white-space:nowrap}
+.btn-primary{background:#643A71;color:#fff;border:1px solid #643A71;box-shadow:none}
+.btn-primary:hover{background:#4F2F59;border-color:#4F2F59}
+.btn-ghost{background:#e5e7eb;color:#111827}
+.btn-small{padding:4px 10px;font-size:.75rem}
+
+.input{width:100%;border-radius:999px;border:1px solid #cbd5f5;padding:8px 12px;font-size:.8rem;margin-top:6px;background:#fff}
+.card .input+.input{margin-top:8px}
+.input-textarea{border-radius:14px;min-height:90px;resize:vertical}
+
+.karte-topbar{display:flex;flex-direction:column;gap:10px}
+
+.search-wrapper{margin-top:0}
+.search-pill{display:flex;align-items:center;background:#f4f4f5;border-radius:999px;padding:4px 4px 4px 16px}
+.search-input{flex:1;border:none;outline:none;background:transparent;font-size:.82rem;color:#111827;padding:8px 6px 8px 0}
+.search-input::placeholder{color:#9ca3af}
+.search-btn{width:40px;height:40px;border-radius:999px;border:1px solid #643A71;background:#643A71;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:none}
+.search-btn:hover{background:#4F2F59;border-color:#4F2F59}
+.search-btn-icon{width:16px;height:16px;border-radius:999px;border:2px solid #fff;position:relative;box-sizing:border-box}
+.search-btn-icon::after{content:"";position:absolute;width:7px;height:2px;border-radius:999px;background:#fff;right:-1px;bottom:1px;transform:rotate(45deg)}
+
+.cart-fab{
+  height:54px;padding:0 18px;border-radius:999px;border:1px solid #643A71;background:#643A71;box-shadow:none;
+  display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;position:fixed;right:18px;
+  bottom:calc(26px + env(safe-area-inset-bottom, 0px));z-index:50;
+  opacity:0;transform:translateY(16px);pointer-events:none;
+  transition:opacity .25s ease,transform .25s ease,width .2s ease;
+}
+.cart-fab.visible{opacity:1;transform:translateY(0);pointer-events:auto}
+.cart-fab-icon{width:20px;height:16px;position:relative;box-sizing:border-box}
+.cart-fab-icon::before,.cart-fab-icon::after{content:"";position:absolute;border-radius:3px;border:2px solid #fff;box-sizing:border-box}
+.cart-fab-icon::before{left:2px;right:2px;top:5px;bottom:1px;border-radius:5px 5px 4px 4px}
+.cart-fab-icon::after{width:8px;height:5px;border-bottom:none;border-radius:6px 6px 0 0;left:6px;top:0}
+.cart-fab-label{color:#fff;font-size:.8rem;font-weight:600;white-space:nowrap;display:none}
+.cart-fab--has-items .cart-fab-label{display:block}
+.cart-fab-badge{
+  position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:999px;background:#000;color:#fff;
+  font-size:.7rem;padding:0 5px;display:none;align-items:center;justify-content:center;font-weight:600;
+}
+
+.tabs-wrapper{background:transparent;border-radius:0;padding:0;margin-top:6px;margin-bottom:4px}
+.tabs-wrapper--drinks{margin-top:8px}
+.tabs-wrapper--food{margin-top:8px}
+.category-tabs{display:flex;flex-wrap:wrap;gap:6px}
+.tabs-wrapper .category-tab{padding:6px 10px;border-radius:999px;border:1px solid rgba(17,24,39,.08);font-size:.75rem;background:#f9fafb;cursor:pointer;color:#111827}
+.tabs-wrapper .category-tab.active{background:#111827;color:#f9fafb;border-color:#111827}
+
+.menu-list{display:flex;flex-direction:column;gap:45px;margin-top:10px}
+.menu-item{background:#fff;border-radius:14px;padding:10px 12px 14px;border:1px solid #e2e8f0;display:grid;grid-template-columns:1fr auto;grid-auto-rows:auto;row-gap:4px}
+.menu-item-image{grid-column:1/-1;width:100%;max-height:160px;border-radius:12px;object-fit:cover}
+.menu-item-header{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-top:18px}
+.menu-item-name{font-size:.95rem;font-weight:600}
+.menu-item-price{font-size:.9rem;font-weight:600}
+.menu-item-desc{grid-column:1/-1;font-size:.78rem;color:#64748b;margin-top:14px;margin-bottom:18px}
+.menu-item-social{grid-column:1/2;align-self:center;display:flex;align-items:center;gap:10px;font-size:.78rem;margin-top:4px}
+.social-btn{border:none;background:transparent;display:inline-flex;align-items:center;gap:6px;font-size:.78rem;color:#6b7280;cursor:pointer;padding:4px 9px;border-radius:999px;transition:background .12s ease,transform .08s ease,color .12s ease}
+.social-btn:hover{background:#e5e7eb;transform:translateY(-1px)}
+.social-icon{width:18px;height:18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:.9rem}
+.social-count{font-weight:500}
+.social-btn-like .social-icon{background:rgba(239,68,68,.08);color:#ef4444}
+.social-btn-comment .social-icon{background:rgba(59,130,246,.08);color:#2563eb}
+.social-btn-like--active{color:#ef4444}
+.social-btn-like--active .social-icon{background:#fee2e2;color:#b91c1c}
+.menu-item-actions{grid-column:2/3;justify-self:end;display:flex;align-items:center;gap:8px;margin-top:14px}
+
+.qty-control{display:inline-flex;align-items:center;border-radius:999px;border:none;overflow:hidden;background:#fff;height:34px;box-shadow:0 3px 8px rgba(15,23,42,.06)}
+.qty-btn{border:none;background:transparent;width:30px;height:100%;display:flex;align-items:center;justify-content:center;font-size:1rem;cursor:pointer;color:#111827}
+.qty-btn:active{background:#e5e7eb}
+.qty-value{min-width:30px;text-align:center;font-size:.85rem;font-weight:600;color:#111827;padding:0 4px}
+
+#drinksSection h2{font-size:1rem;font-weight:600;margin-bottom:6px}
+.drinks-list{margin-top:8px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.drink-item{background:#fff;border-radius:18px;padding:10px 10px 18px;border:1px solid rgba(148,163,184,.30);display:flex;flex-direction:column;gap:8px;box-shadow:0 4px 10px rgba(15,23,42,.04)}
+.drink-topbar{display:flex;align-items:center;justify-content:flex-start;margin-bottom:6px}
+.drink-image{width:100%;border-radius:14px;object-fit:cover;aspect-ratio:3/4;display:block}
+.drink-header{display:flex;justify-content:space-between;align-items:flex-start;gap:4px;margin-top:8px}
+.drink-name{font-size:.82rem;font-weight:600;color:#0f172a}
+.drink-price{font-size:.82rem;font-weight:600;color:#111827;white-space:nowrap}
+.drink-desc{margin-top:6px;font-size:.75rem;color:#64748b;line-height:1.38}
+.drink-footer{margin-top:16px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+
+.like-wrap{display:inline-flex;align-items:center;gap:10px}
+.icon-circle{
+  position:relative;width:38px;height:38px;border-radius:999px;border:none;background:rgba(255,255,255,.98);
+  display:inline-flex;align-items:center;justify-content:center;cursor:pointer;outline:none;-webkit-tap-highlight-color:transparent;
+  box-shadow:0 2px 6px rgba(15,23,42,.045);
+  transition:transform 160ms cubic-bezier(.2,.9,.2,1),box-shadow 180ms ease-out,background 160ms ease-out;
+}
+.icon-circle::after{
+  content:"";position:absolute;left:50%;top:70%;width:48px;height:48px;transform:translate(-50%,-50%);
+  pointer-events:none;opacity:.04;
+  background:radial-gradient(circle at 50% 35%,rgba(255,90,95,.10) 0%,rgba(255,90,95,.05) 35%,rgba(255,90,95,.02) 52%,transparent 70%);
+  transition:opacity 200ms ease-out,transform 200ms ease-out;
+}
+.icon-circle:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(15,23,42,.055)}
+.icon-circle:active{transform:scale(.97);box-shadow:0 2px 6px rgba(15,23,42,.045)}
+.icon-circle__inner{width:17px;height:17px;display:block;transform-origin:center}
+.heart-outline{fill:none;stroke:rgba(148,163,184,.90);stroke-width:9;stroke-linecap:round;stroke-linejoin:round;opacity:1;transition:opacity 160ms ease-out}
+.heart-fill{fill:#ff5a5f;opacity:0;transform:scale(1);transition:opacity 160ms ease-out,transform 200ms cubic-bezier(.2,.9,.2,1)}
+.like-count{font-size:.82rem;font-weight:800;font-variant-numeric:tabular-nums;color:rgba(255,90,95,.40);min-width:14px}
+.like-wrap.is-liked .icon-circle{box-shadow:0 2px 8px rgba(255,90,95,.08)}
+.like-wrap.is-liked .icon-circle::after{opacity:.06;transform:translate(-50%,-50%) scale(1.01)}
+.like-wrap.is-liked .heart-fill{opacity:1;transform:scale(1.02)}
+.like-wrap.is-liked .heart-outline{opacity:0}
+.like-wrap.is-liked .like-count{color:rgba(255,90,95,.68)}
+.like-wrap.is-animating .icon-circle__inner{animation:drinkHeartPop 260ms cubic-bezier(.2,.9,.2,1)}
+.like-wrap.is-animating .icon-circle{animation:drinkBtnPop 260ms cubic-bezier(.2,.9,.2,1)}
+.like-wrap.is-animating .icon-circle::after{animation:drinkGlowPop 260ms ease-out}
+@keyframes drinkHeartPop{0%{transform:scale(.92)}55%{transform:scale(1.14)}100%{transform:scale(1.02)}}
+@keyframes drinkBtnPop{0%{transform:scale(1)}45%{transform:scale(.97)}100%{transform:scale(1)}}
+@keyframes drinkGlowPop{0%{opacity:.04;transform:translate(-50%,-50%) scale(1)}55%{opacity:.07;transform:translate(-50%,-50%) scale(1.02)}100%{opacity:.06;transform:translate(-50%,-50%) scale(1.01)}}
+@media (prefers-reduced-motion: reduce){
+  .like-wrap.is-animating .icon-circle__inner,.like-wrap.is-animating .icon-circle,.like-wrap.is-animating .icon-circle::after{animation:none!important}
+  .icon-circle,.icon-circle::after,.heart-fill,.heart-outline{transition:none!important}
+}
+
+.btn-add-round{
+  border:none;border-radius:999px;padding:0 14px;height:32px;background:#6c66e6;color:#f9fafb;display:inline-flex;
+  align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 10px rgba(15,23,42,.16);
+  transition:background .18s ease-out,transform .14s ease-out,box-shadow .18s ease-out;
+  -webkit-tap-highlight-color:transparent;white-space:nowrap;
+}
+.btn-add-round span{font-size:.78rem;font-weight:600;line-height:1}
+.btn-add-round:hover{background:#4338ca;box-shadow:0 5px 12px rgba(15,23,42,.20);transform:translateY(-1px)}
+.btn-add-round:active{transform:translateY(0) scale(.97);box-shadow:0 3px 8px rgba(15,23,42,.14)}
+
+.offers-card{
+  background:#0f172a;color:#f9fafb;border-radius:18px;padding:16px 16px 22px;box-shadow:none;
+  border:1px solid rgba(148,163,184,.4);width:100%;margin-bottom:4px;
+}
+.offers-header-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.offers-label{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
+.offers-slider{margin-top:4px;display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch}
+.offers-slider::-webkit-scrollbar{display:none}
+.offers-slider{-ms-overflow-style:none;scrollbar-width:none}
+.offer-slide{flex:0 0 100%;scroll-snap-align:center}
+.offer-image{width:100%;height:180px;border-radius:14px;object-fit:cover;background:#1f2937;margin-bottom:16px}
+.offer-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.offer-title{font-size:.98rem;font-weight:600}
+.offer-price{font-size:.95rem;font-weight:600}
+.offer-desc{font-size:.8rem;color:#e5e7eb;line-height:1.5;margin-bottom:20px}
+.offer-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.offers-dots{margin-top:14px;display:flex;justify-content:center;gap:6px}
+.offers-dot{width:6px;height:6px;border-radius:999px;border:none;background:#4b5563;padding:0;cursor:pointer}
+.offers-dot.active{width:14px;border-radius:999px;background:#f9fafb}
+
+img{max-width:100%;height:auto;display:block}
+
+/* ===== Sticky choreography ===== */
+.sticky-sentinel{height:1px}
+.karte-sticky-scope{display:flex;flex-direction:column;gap:10px}
+.sticky-header-card{position:sticky;top:var(--sticky-y);z-index:70;will-change:transform}
+.sticky-menu{position:sticky;top:var(--sticky-y);z-index:69;will-change:transform}
+.sticky-shadow{transition:box-shadow 180ms ease, transform 180ms ease}
+.sticky-header-card.is-stuck{box-shadow:0 14px 34px rgba(15,23,42,.10)}
+.sticky-menu.is-stuck{box-shadow:0 12px 28px rgba(15,23,42,.08)}
+
+/* QuickNav (unchanged look) */
+.quickNav{
+  margin:0;background:#fff;border-radius:18px;border:1px solid rgba(148,163,184,.25);box-shadow:none;
+  padding:8px;position:relative;overflow:hidden;isolation:isolate;
+}
+.quickNavRow{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:64px;transition:opacity .18s ease,transform .18s ease}
+.quickNavBtn{
+  flex:1;border:0;background:transparent;padding:0;height:64px;border-radius:14px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:5px;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  color:#64748b;font-size:11px;font-weight:600;transition:background .18s ease,color .18s ease,transform .18s ease;
+}
+.qIcon{width:22px;height:22px;display:grid;place-items:center}
+.quickNavBtn svg{width:22px;height:22px;fill:currentColor;stroke:none}
+.quickNavBtn.is-active{background:rgba(100,58,113,.12);color:#643A71}
+.quickNavBtn:active{transform:scale(.985)}
+#langLabel{letter-spacing:.3px}
+
+.langPanel{
+  position:absolute;inset:0;padding:8px;border-radius:inherit;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  background:#fff;transform-origin:right center;transform:scaleX(0);opacity:0;pointer-events:none;
+  transition:transform .22s ease,opacity .18s ease;z-index:2;
+}
+.langBackBtn,.langNextBtn{
+  width:40px;height:52px;border:1px solid rgba(148,163,184,.25);background:#fff;border-radius:14px;
+  display:grid;place-items:center;cursor:pointer;-webkit-tap-highlight-color:transparent;
+}
+.langBackBtn svg,.langNextBtn svg{width:20px;height:20px;fill:#111827}
+.langList{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;transform:translateX(12px);opacity:0;transition:transform .22s ease,opacity .22s ease}
+.langOpt{
+  border:1px solid rgba(148,163,184,.30);background:#fff;height:40px;min-width:46px;padding:0 12px;border-radius:999px;
+  font-weight:700;font-size:12px;color:#111827;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:transform .18s ease,background .18s ease,border-color .18s ease;
+}
+.langOpt:active{transform:scale(.98)}
+.quickNav.lang-open .quickNavRow{opacity:0;transform:translateX(-8px);pointer-events:none}
+.quickNav.lang-open .langPanel{transform:scaleX(1);opacity:1;pointer-events:auto}
+.quickNav.lang-open .langList{transform:translateX(0);opacity:1}
+@media (prefers-reduced-motion: reduce){
+  .quickNavRow,.langPanel,.langList,.quickNavBtn,.langOpt{transition:none!important}
+}
+</style>
+</head>
+<body>
+<main class="page page--karte">
+  <header class="karte-topbar">
+
+    <div class="karte-sticky-scope" id="stickyScope">
+      <div class="sticky-sentinel" id="sentHeader" aria-hidden="true"></div>
+
+      <section class="card restaurant-card sticky-header-card sticky-shadow" id="restaurantCard">
+        <div class="restaurant-header">
+          <img id="restaurantLogo" class="rest-logo" alt="Logo" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23f1f5f9%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%228%22%20fill%3D%22%230f172a%22%3ELOGO%3C/text%3E%0A%3C/svg%3E" />
+          <div>
+            <div class="restaurant-name" id="restaurantName">MENYRA Demo Lokal</div>
+            <div class="restaurant-meta" id="restaurantMeta">Prishtinë · Tavolina A7</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="offers-card" id="offersSection">
+        <div class="offers-header-row">
+          <div class="offers-label">SOT NE FOKUS</div>
+        </div>
+        <div class="offers-slider" id="offersSlider">
+          <div class="offer-slide">
+            <img class="offer-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22900%22%20height%3D%22450%22%20viewBox%3D%220%200%20900%20450%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23111827%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2231%22%20fill%3D%22%23f9fafb%22%3ESOT%20NE%20FOKUS%3C/text%3E%0A%3C/svg%3E" alt="Offer" />
+            <div class="offer-header">
+              <div class="offer-title">Burger + Fries</div>
+              <div class="offer-price">5.90 €</div>
+            </div>
+            <div class="offer-desc">Platzhalter-Angebot. Später kommt hier echtes Angebot vom Kunden.</div>
+            <div class="offer-actions">
+              <button class="btn btn-ghost btn-small" type="button">Info</button>
+              <button class="btn btn-primary btn-small" type="button">Shto</button>
+            </div>
+          </div>
+        </div>
+        <div class="offers-dots" id="offersDots">
+          <button class="offers-dot active" type="button"></button>
+          <button class="offers-dot" type="button"></button>
+          <button class="offers-dot" type="button"></button>
+        </div>
+      </section>
+    </div>
+
+    <div class="sticky-sentinel" id="sentMenu" aria-hidden="true"></div>
+
+    <nav class="quickNav sticky-menu sticky-shadow" aria-label="MENYRA Quick Menu" id="quickNav">
+      <div class="quickNavRow" id="quickNavRow">
+        <button class="quickNavBtn is-active" type="button" data-tab="social" aria-current="page">
+          <span class="qIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
+          </span>
+          <span class="qLabel">Social</span>
+        </button>
+
+        <button class="quickNavBtn" type="button" data-tab="info">
+          <span class="qIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a1.2 1.2 0 110 2.4A1.2 1.2 0 0112 6zm1.6 12.5h-3.2a1 1 0 010-2h.6V12h-.6a1 1 0 010-2h2a1 1 0 011 1v5.5h.2a1 1 0 010 2z"/></svg>
+          </span>
+          <span class="qLabel">Info</span>
+        </button>
+
+        <button class="quickNavBtn" type="button" data-tab="kamarieri">
+          <span class="qIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5v2.2c0 .6-.2 1.2-.6 1.7L5 12.8V15h14v-2.2l-1.4-1.9c-.4-.5-.6-1.1-.6-1.7V7a5 5 0 00-5-5zm0 20a2.5 2.5 0 002.4-2H9.6A2.5 2.5 0 0012 22z"/></svg>
+          </span>
+          <span class="qLabel">Kamarieri</span>
+        </button>
+
+        <button class="quickNavBtn quickNavBtnLang" id="langToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
+          <span class="qIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 9h-2.4a15 15 0 00-1.1-5A8.04 8.04 0 0118.9 11zM12 4c.9 1.1 1.8 3.1 2.2 7H9.8C10.2 7.1 11.1 5.1 12 4zM4.9 13h2.4a15 15 0 001.1 5A8.04 8.04 0 015.1 13zM5.1 11a8.04 8.04 0 013.5-5 15 15 0 00-1.1 5H5.1zm6.9 9c-.9-1.1-1.8-3.1-2.2-7h4.4c-.4 3.9-1.3 5.9-2.2 7zm3.4-2a15 15 0 001.1-5h2.4a8.04 8.04 0 01-3.5 5z"/></svg>
+          </span>
+          <span class="qLabel" id="langLabel">DE</span>
+        </button>
+      </div>
+
+      <div class="langPanel" id="langPanel" aria-hidden="true">
+        <button class="langBackBtn" id="langBackBtn" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
+        </button>
+
+        <div class="langList" role="listbox" aria-label="Choose language">
+          <button class="langOpt" type="button" data-lang="DE" role="option">DE</button>
+          <button class="langOpt" type="button" data-lang="EN" role="option">EN</button>
+          <button class="langOpt" type="button" data-lang="SQ" role="option">SQ</button>
+          <button class="langOpt" type="button" data-lang="SR" role="option">SR</button>
+          <button class="langOpt" type="button" data-lang="TR" role="option">TR</button>
+        </div>
+
+        <button class="langNextBtn" id="langNextBtn" type="button" aria-label="Next">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L16 12l-7.5 7.5-1.8-1.8L12.4 12 6.7 6.3l1.8-1.8z"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <section class="card search-card">
+      <div class="search-wrapper">
+        <div class="search-pill">
+          <input id="searchInput" class="search-input" type="search" placeholder="Kërko në meny." />
+          <button type="button" class="search-btn" aria-label="Search"><span class="search-btn-icon"></span></button>
+        </div>
+      </div>
+    </section>
+  </header>
+
+  <section class="tabs-wrapper tabs-wrapper--drinks" id="drinksTabsWrapper">
+    <div class="category-tabs" id="drinksTabs">
+      <button class="category-tab active" type="button">All</button>
+      <button class="category-tab" type="button">Coffee</button>
+      <button class="category-tab" type="button">Soft</button>
+      <button class="category-tab" type="button">Beer</button>
+    </div>
+  </section>
+
+  <section class="card" id="drinksSection">
+    <h2>Getränke</h2>
+    <div class="drinks-list" id="drinksList">
+      <article class="drink-item">
+        <div class="drink-topbar">
+          <div class="like-wrap">
+            <button class="icon-circle" type="button" aria-label="Like">
+              <svg class="icon-circle__inner" viewBox="0 0 130 130" aria-hidden="true" focusable="false">
+                <path class="heart-fill" d="M 65,29 C 59,19 49,12 37,12 20,12 7,25 7,42 7,75 25,80 65,118 105,80 123,75 123,42 123,25 110,12 93,12 81,12 71,19 65,29 z"/>
+                <path class="heart-outline" d="M 65,29 C 59,19 49,12 37,12 20,12 7,25 7,42 7,75 25,80 65,118 105,80 123,75 123,42 123,25 110,12 93,12 81,12 71,19 65,29 z"/>
+              </svg>
+            </button>
+            <span class="like-count">12</span>
+          </div>
+        </div>
+        <img class="drink-image" src="./images/getränk1.png" alt="Drink" loading="lazy" decoding="async" />
+        <div class="drink-header"><div class="drink-name">Cappuccino</div><div class="drink-price">2.90 €</div></div>
+        <div class="drink-desc">Platzhalter-Beschreibung für Getränk.</div>
+        <div class="drink-footer">
+          <div class="qty-control"><button class="qty-btn" type="button">−</button><span class="qty-value">1</span><button class="qty-btn" type="button">+</button></div>
+          <button class="btn-add-round" type="button"><span>Wähle</span></button>
+        </div>
+      </article>
+
+      <article class="drink-item">
+        <div class="drink-topbar">
+          <div class="like-wrap">
+            <button class="icon-circle" type="button" aria-label="Like">
+              <svg class="icon-circle__inner" viewBox="0 0 130 130" aria-hidden="true" focusable="false">
+                <path class="heart-fill" d="M 65,29 C 59,19 49,12 37,12 20,12 7,25 7,42 7,75 25,80 65,118 105,80 123,75 123,42 123,25 110,12 93,12 81,12 71,19 65,29 z"/>
+                <path class="heart-outline" d="M 65,29 C 59,19 49,12 37,12 20,12 7,25 7,42 7,75 25,80 65,118 105,80 123,75 123,42 123,25 110,12 93,12 81,12 71,19 65,29 z"/>
+              </svg>
+            </button>
+            <span class="like-count">7</span>
+          </div>
+        </div>
+        <img class="drink-image" src="./images/getränk1.png" alt="Drink" loading="lazy" decoding="async" />
+        <div class="drink-header"><div class="drink-name">Fresh Juice</div><div class="drink-price">3.50 €</div></div>
+        <div class="drink-desc">Platzhalter-Beschreibung für Getränk.</div>
+        <div class="drink-footer">
+          <div class="qty-control"><button class="qty-btn" type="button">−</button><span class="qty-value">0</span><button class="qty-btn" type="button">+</button></div>
+          <button class="btn-add-round" type="button"><span>Wähle</span></button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="tabs-wrapper tabs-wrapper--food" id="foodTabsWrapper">
+    <div class="category-tabs" id="foodCategoryTabs">
+      <button class="category-tab active" type="button">Burger</button>
+      <button class="category-tab" type="button">Pasta</button>
+      <button class="category-tab" type="button">Salad</button>
+      <button class="category-tab" type="button">Dessert</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Speisekarte</h2>
+    <div class="menu-list" id="menuList">
+      <article class="menu-item">
+        <img class="menu-item-image" src="./images/speise1.avif" alt="Food" loading="lazy" decoding="async" />
+        <div class="menu-item-header">
+          <div class="menu-item-name">Classic Burger</div>
+          <div class="menu-item-price">5.90 €</div>
+        </div>
+        <div class="menu-item-desc">Platzhalter Text: Zutaten, Beschreibung, Allergene – später dynamisch.</div>
+        <div class="menu-item-social">
+          <button class="social-btn social-btn-like" type="button"><span class="social-icon">❤️</span><span class="social-count">34</span></button>
+          <button class="social-btn social-btn-comment" type="button"><span class="social-icon">💬</span><span class="social-count">6</span></button>
+        </div>
+        <div class="menu-item-actions">
+          <a class="btn btn-ghost btn-small" href="./detajet.html">Detajet</a>
+          <button class="btn btn-primary btn-small" type="button">Shto</button>
+        </div>
+      </article>
+
+      <article class="menu-item">
+        <img class="menu-item-image" src="./images/speise1.avif" alt="Food" loading="lazy" decoding="async" />
+        <div class="menu-item-header">
+          <div class="menu-item-name">Chicken Salad</div>
+          <div class="menu-item-price">4.60 €</div>
+        </div>
+        <div class="menu-item-desc">Platzhalter Text: frische Zutaten, leicht, schnell – später echte Daten.</div>
+        <div class="menu-item-social">
+          <button class="social-btn social-btn-like" type="button"><span class="social-icon">❤️</span><span class="social-count">18</span></button>
+          <button class="social-btn social-btn-comment" type="button"><span class="social-icon">💬</span><span class="social-count">2</span></button>
+        </div>
+        <div class="menu-item-actions">
+          <a class="btn btn-ghost btn-small" href="./detajet.html">Detajet</a>
+          <button class="btn btn-primary btn-small" type="button">Shto</button>
+        </div>
+      </article>
+    </div>
+  </section>
+</main>
+
+<button class="cart-fab visible cart-fab--has-items" id="cartFab" type="button">
+  <span class="cart-fab-icon"></span>
+  <span class="cart-fab-label" id="cartFabLabel">Shiko porosin</span>
+  <span class="cart-fab-badge" id="cartBadge" style="display:flex;">2</span>
+</button>
+
+<script type="module">
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest(".icon-circle");
+  if (!btn) return;
+  const wrap = btn.closest(".like-wrap");
+  if (!wrap) return;
+  const countEl = wrap.querySelector(".like-count");
+  const current = parseInt((countEl?.textContent || "0").trim(), 10) || 0;
+  const liked = wrap.classList.toggle("is-liked");
+  const next = liked ? current + 1 : Math.max(0, current - 1);
+  if (countEl) countEl.textContent = String(next);
+  wrap.classList.add("is-animating");
+  window.setTimeout(() => wrap.classList.remove("is-animating"), 300);
+});
+
+(() => {
+  const nav = document.getElementById("quickNav");
+  if (!nav) return;
+
+  const row = document.getElementById("quickNavRow");
+  const langToggleBtn = document.getElementById("langToggleBtn");
+  const langPanel = document.getElementById("langPanel");
+  const langBackBtn = document.getElementById("langBackBtn");
+  const langNextBtn = document.getElementById("langNextBtn");
+  const langLabel = document.getElementById("langLabel");
+  const langOpts = Array.from(nav.querySelectorAll(".langOpt"));
+  const LANG_KEY = "menyra_lang";
+
+  function setLang(code){
+    localStorage.setItem(LANG_KEY, code);
+    langLabel.textContent = code;
+  }
+  function openLang(){
+    nav.classList.add("lang-open");
+    langToggleBtn.setAttribute("aria-expanded","true");
+    langPanel.setAttribute("aria-hidden","false");
+  }
+  function closeLang(){
+    nav.classList.remove("lang-open");
+    langToggleBtn.setAttribute("aria-expanded","false");
+    langPanel.setAttribute("aria-hidden","true");
+  }
+
+  const saved = localStorage.getItem(LANG_KEY);
+  if (saved) langLabel.textContent = saved;
+
+  row.querySelectorAll(".quickNavBtn:not(.quickNavBtnLang)").forEach(btn => {
+    btn.addEventListener("click", () => {
+      row.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      console.log("TAB:", btn.dataset.tab);
+    }, { passive:true });
+  });
+
+  langToggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    nav.classList.contains("lang-open") ? closeLang() : openLang();
+  }, { passive:false });
+
+  langBackBtn.addEventListener("click", (e) => { e.stopPropagation(); closeLang(); }, { passive:false });
+  langNextBtn.addEventListener("click", (e) => { e.stopPropagation(); closeLang(); }, { passive:false });
+
+  langOpts.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      setLang(btn.dataset.lang);
+      closeLang();
+    }, { passive:false });
+  });
+
+  document.addEventListener("click", (e) => {
+    if (nav.classList.contains("lang-open") && !nav.contains(e.target)) closeLang();
+  }, { passive:true });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && nav.classList.contains("lang-open")) closeLang();
+  });
+
+  // Sticky "snap" polish: toggle shadow only when stuck (IntersectionObserver, no scroll handler)
+  const stickyY = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--sticky-y")) || 12;
+
+  function watchStuck(sentinelId, el){
+    const s = document.getElementById(sentinelId);
+    if (!s || !el) return;
+    const io = new IntersectionObserver(([entry]) => {
+      el.classList.toggle("is-stuck", !entry.isIntersecting);
+    }, { threshold: 0, rootMargin: `-${Math.ceil(stickyY)}px 0px 0px 0px` });
+    io.observe(s);
+  }
+
+  watchStuck("sentHeader", document.getElementById("restaurantCard"));
+  watchStuck("sentMenu", nav);
+})();
+</script>
+</body>
+</html>
