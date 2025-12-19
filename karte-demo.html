@@ -2,2117 +2,956 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>MENYRA – Karte (Placeholder)</title>
+  <title>MENYRA – Karte (Demo)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f3f4f6" />
+
   <!-- =========================================================
-  INLINED CSS
-  Quelle: shared/styles.css (aus MENYRA_STEP_005_ALL_PLACEHOLDERS)
-  Zweck: 1 Datei zum schnellen Designen (kein Build, kein Import).
-  Hinweis: Wenn Design fertig ist, kopieren wir Änderungen zurück.
-========================================================= -->
-<style>
-/* ========================================
-   GLOBAL: Reset & Schrift
-   ======================================== */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-/* ========================================
-   EINHEITLICHER HINTERGRUND ÜBERALL
-   ======================================== */
-
-html,
-body {
-  height: 100%;
-  background-color: #f3f4f6;
-}
-
-body {
-  min-height: 100vh;
-  color: #0f172a;
-}
-
-/* Optional: wenn per JS genutzt */
-body.no-scroll {
-  overflow: hidden;
-}
-
-/* Der sichtbare App-Bereich */
-.page {
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  min-height: 100vh;
-  padding: 16px 16px 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  background-color: #f3f4f6;
-}
-
-.page > * {
-  width: 100%;
-}
-
-/* Speziell Karte */
-.page--karte {
-  gap: 12px;
-  padding-top: 12px;
-}
-
-/* ========================================
-   HEADER
-   ======================================== */
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 6px;
-  margin-bottom: 4px;
-}
-
-.header-title {
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  font-size: 0.9rem;
-  text-transform: uppercase;
-}
-
-.header-sub {
-  font-size: 0.72rem;
-  color: #64748b;
-  text-align: right;
-}
-
-/* ========================================
-   CARDS / BOXEN
-   ======================================== */
-
-.card {
-  background: #ffffff;
-  padding: 14px 14px;
-  border-radius: 18px;
-  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
-  border: 1px solid rgba(148, 163, 184, 0.25);
-}
-
-.card h1,
-.card h2 {
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 4px;
-}
-
-.card p {
-  font-size: 0.82rem;
-  color: #475569;
-}
-
-/* Restaurant-Card */
-
-.restaurant-card {
-  padding: 14px 16px;
-}
-
-.restaurant-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.rest-logo {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  object-fit: contain;
-  border: 1px solid #e2e8f0;
-}
-
-.restaurant-name {
-  font-weight: 700;
-  font-size: 1.05rem;
-}
-
-.restaurant-meta {
-  font-size: 0.8rem;
-  color: #64748b;
-  margin-top: 2px;
-}
-
-/* Search-Card */
-
-.search-card {
-  padding: 10px 14px;
-}
-
-/* ========================================
-   BUTTONS
-   ======================================== */
-
-.btn {
-  border: none;
-  border-radius: 999px;
-  padding: 7px 14px;
-  font-size: 0.8rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-/* Hauptfarbe: #643A71 */
-.btn-primary {
-  background: #643A71;
-  color: #ffffff;
-  border: 1px solid #643A71;
-  box-shadow: none;
-}
-
-.btn-primary:hover {
-  background: #4F2F59;
-  border-color: #4F2F59;
-}
-
-.btn-ghost {
-  background: #e5e7eb;
-  color: #111827;
-}
-
-.btn-small {
-  padding: 4px 10px;
-  font-size: 0.75rem;
-}
-
-/* Schwarzer Button für Detajet */
-
-.btn-dark {
-  background: #020617;
-  color: #f9fafb;
-  border-radius: 999px;
-  padding: 7px 14px;
-  font-size: 0.8rem;
-  border: 1px solid #020617;
-}
-
-.btn-dark:hover {
-  background: #111827;
-  border-color: #111827;
-}
-
-/* ========================================
-   INPUTS / FORM
-   ======================================== */
-
-.input {
-  width: 100%;
-  border-radius: 999px;
-  border: 1px solid #cbd5f5;
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  margin-top: 6px;
-  background: #ffffff;
-}
-
-.card .input + .input {
-  margin-top: 8px;
-}
-
-.input-textarea {
-  border-radius: 14px;
-  min-height: 90px;
-  resize: vertical;
-}
-
-/* ========================================
-   LISTEN / BADGES / INFO-TEXT
-   ======================================== */
-
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-  font-size: 0.82rem;
-}
-
-.list-item-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
-.badge {
-  font-size: 0.72rem;
-  padding: 3px 8px;
-  border-radius: 999px;
-  background: #e0f2fe;
-  color: #0369a1;
-}
-
-.info {
-  font-size: 0.8rem;
-  color: #64748b;
-  margin-top: 6px;
-}
-
-/* Status-Anzeigen */
-
-.status-text {
-  font-size: 0.8rem;
-  margin-top: 6px;
-}
-
-.status-ok {
-  color: #16a34a;
-}
-
-.status-err {
-  color: #b91c1c;
-}
-
-/* ========================================
-   KARTE: TOP-BEREICH
-   ======================================== */
-
-.karte-topbar {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-/* Search */
-
-.search-wrapper {
-  margin-top: 0;
-}
-
-.search-pill {
-  display: flex;
-  align-items: center;
-  background: #f4f4f5;
-  border-radius: 999px;
-  padding: 4px 4px 4px 16px;
-}
-
-.search-input {
-  flex: 1;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: 0.82rem;
-  color: #111827;
-  padding: 8px 6px 8px 0;
-}
-
-.search-input::placeholder {
-  color: #9ca3af;
-}
-
-/* Such-Button #643A71 */
-
-.search-btn {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  border: 1px solid #643A71;
-  background: #643A71;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: none;
-}
-
-.search-btn:hover {
-  background: #4F2F59;
-  border-color: #4F2F59;
-}
-
-.search-btn-icon {
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  border: 2px solid #ffffff;
-  position: relative;
-  box-sizing: border-box;
-}
-
-.search-btn-icon::after {
-  content: "";
-  position: absolute;
-  width: 7px;
-  height: 2px;
-  border-radius: 999px;
-  background: #ffffff;
-  right: -1px;
-  bottom: 1px;
-  transform: rotate(45deg);
-}
-
-/* ========================================
-   FLOATING CART FAB
-   ======================================== */
-
-.cart-fab {
-  height: 54px;
-  padding: 0 18px;
-  border-radius: 999px;
-  border: 1px solid #643A71;
-  background: #643A71;
-  box-shadow: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  position: fixed;
-  right: 18px;
-  bottom: 26px;
-  z-index: 50;
-
-  opacity: 0;
-  transform: translateY(16px);
-  pointer-events: none;
-  transition: opacity 0.25s ease, transform 0.25s ease, width 0.2s ease;
-}
-
-.cart-fab.visible {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-.cart-fab-icon {
-  width: 20px;
-  height: 16px;
-  position: relative;
-  box-sizing: border-box;
-}
-
-.cart-fab-icon::before,
-.cart-fab-icon::after {
-  content: "";
-  position: absolute;
-  border-radius: 3px;
-  border: 2px solid #ffffff;
-  box-sizing: border-box;
-}
-
-.cart-fab-icon::before {
-  left: 2px;
-  right: 2px;
-  top: 5px;
-  bottom: 1px;
-  border-radius: 5px 5px 4px 4px;
-}
-
-.cart-fab-icon::after {
-  width: 8px;
-  height: 5px;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-  left: 6px;
-  top: 0;
-}
-
-.cart-fab-label {
-  color: #ffffff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  white-space: nowrap;
-  display: none;
-}
-
-.cart-fab--has-items .cart-fab-label {
-  display: block;
-}
-
-.cart-fab-badge {
-  position: absolute;
-  top: -3px;
-  right: -3px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  background: #000000;
-  color: #ffffff;
-  font-size: 0.7rem;
-  padding: 0 5px;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
-}
-
-/* ========================================
-   TABS-CONTAINER / CATEGORY-TABS
-   ======================================== */
-
-.tabs-wrapper {
-  background: transparent;
-  border-radius: 0;
-  padding: 0;
-  margin-top: 6px;
-  margin-bottom: 4px;
-}
-
-.tabs-wrapper--drinks {
-  margin-top: 8px;
-}
-
-.tabs-wrapper--food {
-  margin-top: 8px;
-}
-
-.category-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.tabs-wrapper .category-tab {
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(17, 24, 39, 0.08);
-  font-size: 0.75rem;
-  background: #f9fafb;
-  cursor: pointer;
-  color: #111827;
-}
-
-.tabs-wrapper .category-tab.active {
-  background: #111827;
-  color: #f9fafb;
-  border-color: #111827;
-}
-
-/* ========================================
-   MENÜ (Speisen)
-   ======================================== */
-
-.menu-list {
-  display: flex;
-  flex-direction: column;
-  gap: 45px;          /* Abstand zwischen vollständigen Cards (Speisekarte) */
-  margin-top: 10px;
-}
-
-/* Card als Grid: oben Bild, darunter Titel/Preis, Text,
-   unten eine Zeile: links Likes, rechts Buttons */
-.menu-item {
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 10px 12px 14px;
-  border: 1px solid #e2e8f0;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-auto-rows: auto;
-  row-gap: 4px;
-}
-
-.menu-item-image {
-  grid-column: 1 / -1;
-  width: 100%;
-  max-height: 160px;
-  border-radius: 12px;
-  object-fit: cover;
-}
-
-.menu-item-header {
-  grid-column: 1 / -1;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 18px; /* mehr Abstand zum Bild */
-}
-
-.menu-item-name {
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-.menu-item-price {
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.menu-item-desc {
-  grid-column: 1 / -1;
-  font-size: 0.78rem;
-  color: #64748b;
-  margin-top: 14px;    /* Abstand Titel → Text */
-  margin-bottom: 18px; /* leerer Abstand Text → Footer */
-}
-
-/* Social-Leiste (links im Footer) */
-.menu-item-social {
-  grid-column: 1 / 2;
-  align-self: center;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.78rem;
-  margin-top: 4px; /* kleiner Abstand Beschreibung → Likes */
-}
-
-.social-btn {
-  border: none;
-  background: transparent;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  color: #6b7280;
-  cursor: pointer;
-  padding: 4px 9px;
-  border-radius: 999px;
-  transition: background 0.12s ease, transform 0.08s ease, color 0.12s ease;
-}
-
-.social-btn:hover {
-  background: #e5e7eb;
-  transform: translateY(-1px);
-}
-
-.social-icon {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9rem;
-}
-
-.social-count {
-  font-weight: 500;
-}
-
-/* Like-Farben */
-.social-btn-like .social-icon {
-  background: rgba(239, 68, 68, 0.08);
-  color: #ef4444;
-}
-
-.social-btn-comment .social-icon {
-  background: rgba(59, 130, 246, 0.08);
-  color: #2563eb;
-}
-
-.social-btn-like--active {
-  color: #ef4444;
-}
-
-.social-btn-like--active .social-icon {
-  background: #fee2e2;
-  color: #b91c1c;
-}
-
-/* Aktionen (rechts im Footer) */
-.menu-item-actions {
-  grid-column: 2 / 3;
-  justify-self: end;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 14px;    /* Abstand: Likes → Buttons (Speisekarte) */
-}
-
-/* Mengen-Kapsel – weißer Hintergrund, kein Rahmen, Shadow wie Like */
-.qty-control {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  border: none; /* kein Rahmen */
-  overflow: hidden;
-  background: #ffffff; /* wie Like-Button */
-  height: 34px;
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06); /* gleicher Shadow wie Herz */
-}
-
-.qty-btn {
-  border: none;
-  background: transparent;
-  width: 30px;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  cursor: pointer;
-  color: #111827;
-}
-
-.qty-btn:active {
-  background: #e5e7eb;
-}
-
-.qty-value {
-  min-width: 30px;
-  text-align: center;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #111827;
-  padding: 0 4px;
-}
-
-
-/* ========================================
-   GETRÄNKE-KARTE (2 Spalten, iOS-Style)
-   ======================================== */
-
-#drinksSection h2 {
-  font-size: 1rem;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-/* Grid: 2 Spalten */
-.drinks-list {
-  margin-top: 8px;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px; /* Abstand zwischen Getränkekarten */
-}
-
-/* Card-Layout – hier wird die Karte „länger“:
-   -> padding-bottom anpassen, wenn du noch mehr Luft unten willst */
-.drink-item {
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 10px 10px 18px;
-  border: 1px solid rgba(148, 163, 184, 0.30);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04); /* sehr dezent */
-}
-
-/* Topbar mit Herz + Counter
-   -> margin-bottom steuert Abstand Like-Reihe → Bild */
-.drink-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-bottom: 6px; /* HIER Abstand Like → Bild anpassen */
-}
-
-/* Bild */
-.drink-image {
-  width: 100%;
-  border-radius: 14px;
-  object-fit: cover;
-  aspect-ratio: 3 / 4;
-  display: block;
-}
-
-/* Titel + Preis
-   -> margin-top Abstand Bild → Titel */
-.drink-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 4px;
-  margin-top: 8px;          /* HIER Abstand Bild → Titel anpassen */
-}
-
-.drink-name {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #0f172a;
-}
-
-.drink-price {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
-}
-
-/* Beschreibung */
-.drink-desc {
-  margin-top: 6px;          /* Titel → Beschreibung */
-  font-size: 0.75rem;
-  color: #64748b;
-  line-height: 1.38;
-}
-
-/* Footer: links Menge, rechts „Wähle“ 
-   -> margin-top Abstand Text → Footer */
-.drink-footer {
-  margin-top: 16px;         /* HIER Abstand Beschreibung → Footer anpassen */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-
-/* Like-Bereich (Herz + Zahl) – Re-Use aus Demo */
-
-.like-wrap {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;                 /* Abstand Kreis → Counter */
-}
-
-.icon-circle {
-  position: relative;
-  width: 38px;                /* kleiner */
-  height: 38px;               /* kleiner */
-  border-radius: 999px;
-  border: none;
-  background: rgba(255,255,255,0.98);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  outline: none;
-  -webkit-tap-highlight-color: transparent;
-
-  /* weniger Shadow */
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.045);
-
-  transition:
-    transform 160ms cubic-bezier(.2,.9,.2,1),
-    box-shadow 180ms ease-out,
-    background 160ms ease-out;
-}
-
-/* viel weniger Glow */
-.icon-circle::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 70%;
-  width: 48px;               /* kleiner */
-  height: 48px;              /* kleiner */
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  opacity: 0.04;             /* weniger */
-
-  background: radial-gradient(circle at 50% 35%,
-    rgba(255, 90, 95, 0.10) 0%,
-    rgba(255, 90, 95, 0.05) 35%,
-    rgba(255, 90, 95, 0.02) 52%,
-    transparent 70%);
-  transition:
-    opacity 200ms ease-out,
-    transform 200ms ease-out;
-}
-
-.icon-circle:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.055);
-}
-.icon-circle:active {
-  transform: scale(0.97);
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.045);
-}
-
-/* Icon minimal kleiner */
-.icon-circle__inner {
-  width: 17px;
-  height: 17px;
-  display: block;
-  transform-origin: center;
-}
-
-.heart-outline {
-  fill: none;
-  stroke: rgba(148, 163, 184, 0.90);
-  stroke-width: 9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 1;
-  transition: opacity 160ms ease-out;
-}
-
-.heart-fill {
-  fill: #ff5a5f;
-  opacity: 0;
-  transform: scale(1);
-  transition:
-    opacity 160ms ease-out,
-    transform 200ms cubic-bezier(.2,.9,.2,1);
-}
-
-/* Counter kleiner */
-.like-count {
-  font-size: 0.82rem;         /* kleiner */
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-  color: rgba(255, 90, 95, 0.40);
-  min-width: 14px;            /* kleiner */
-}
-
-/* Liked-State: Glow bleibt sehr dezent */
-.like-wrap.is-liked .icon-circle {
-  box-shadow: 0 2px 8px rgba(255, 90, 95, 0.08);
-}
-.like-wrap.is-liked .icon-circle::after {
-  opacity: 0.06;              /* weniger */
-  transform: translate(-50%, -50%) scale(1.01);
-}
-.like-wrap.is-liked .heart-fill {
-  opacity: 1;
-  transform: scale(1.02);
-}
-.like-wrap.is-liked .heart-outline {
-  opacity: 0;
-}
-.like-wrap.is-liked .like-count {
-  color: rgba(255, 90, 95, 0.68);
-}
-
-/* Tap Animation: Glow auch reduziert */
-.like-wrap.is-animating .icon-circle__inner { animation: drinkHeartPop 260ms cubic-bezier(.2,.9,.2,1); }
-.like-wrap.is-animating .icon-circle { animation: drinkBtnPop 260ms cubic-bezier(.2,.9,.2,1); }
-.like-wrap.is-animating .icon-circle::after { animation: drinkGlowPop 260ms ease-out; }
-
-@keyframes drinkHeartPop {
-  0%   { transform: scale(0.92); }
-  55%  { transform: scale(1.14); }
-  100% { transform: scale(1.02); }
-}
-@keyframes drinkBtnPop {
-  0%   { transform: scale(1); }
-  45%  { transform: scale(0.97); }
-  100% { transform: scale(1); }
-}
-@keyframes drinkGlowPop {
-  0%   { opacity: 0.04; transform: translate(-50%, -50%) scale(1); }
-  55%  { opacity: 0.07; transform: translate(-50%, -50%) scale(1.02); }
-  100% { opacity: 0.06; transform: translate(-50%, -50%) scale(1.01); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .like-wrap.is-animating .icon-circle__inner,
-  .like-wrap.is-animating .icon-circle,
-  .like-wrap.is-animating .icon-circle::after { animation: none !important; }
-  .icon-circle,
-  .icon-circle::after,
-  .heart-fill,
-  .heart-outline { transition: none !important; }
-}
-
-
-/* Rechter Button – „Wähle“, keine Border */
-.btn-add-round {
-  border: none;
-  border-radius: 999px;
-  padding: 0 14px;
-  height: 32px;
-  background: #6c66e6;                    /* moderner Indigo-Ton */
-  color: #f9fafb;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
-  transition:
-    background 0.18s ease-out,
-    transform 0.14s ease-out,
-    box-shadow 0.18s ease-out;
-  -webkit-tap-highlight-color: transparent;
-  white-space: nowrap;
-}
-
-.btn-add-round span {
-  font-size: 0.78rem;
-  font-weight: 600;
-  line-height: 1;
-}
-
-.btn-add-round:hover {
-  background: #4338ca;
-  box-shadow: 0 5px 12px rgba(15, 23, 42, 0.20);
-  transform: translateY(-1px);
-}
-
-.btn-add-round:active {
-  transform: translateY(0) scale(0.97);
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.14);
-}
-
-/* ========================================
-   ANGEBOTS-KARTE (Slider "Sot ne fokus")
-   ======================================== */
-
-.offers-card {
-  background: #0f172a;
-  color: #f9fafb;
-  border-radius: 18px;
-  padding: 16px 16px 22px;
-  box-shadow: none;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  width: 100%;
-  margin-bottom: 4px;
-}
-
-.offers-header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  margin-bottom: 12px;
-}
-
-.offers-label {
-  font-size: 0.7rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.85;
-}
-
-.offers-slider {
-  margin-top: 4px;
-  display: flex;
-  gap: 10px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-}
-
-.offers-slider::-webkit-scrollbar {
-  display: none;
-}
-.offers-slider {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.offer-slide {
-  flex: 0 0 100%;
-  scroll-snap-align: center;
-}
-
-.offer-image {
-  width: 100%;
-  height: 180px;
-  border-radius: 14px;
-  object-fit: cover;
-  background: #1f2937;
-  margin-bottom: 16px;
-}
-
-.offer-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-}
-
-.offer-title {
-  font-size: 0.98rem;
-  font-weight: 600;
-}
-
-.offer-price {
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-.offer-desc {
-  font-size: 0.8rem;
-  color: #e5e7eb;
-  line-height: 1.5;
-  margin-bottom: 20px;
-}
-
-.offer-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.offer-info-only {
-  font-size: 0.78rem;
-  color: #e5e7eb;
-  opacity: 0.9;
-  margin-top: 6px;
-}
-
-.offers-dots {
-  margin-top: 14px;
-  display: flex;
-  justify-content: center;
-  gap: 6px;
-}
-
-.offers-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 999px;
-  border: none;
-  background: #4b5563;
-  padding: 0;
-  cursor: pointer;
-}
-
-.offers-dot.active {
-  width: 14px;
-  border-radius: 999px;
-  background: #f9fafb;
-}
-
-/* ========================================
-   WARENKORB (Gäste-Ansicht – inline)
-   ======================================== */
-
-.cart-card {
-  background: #020617;
-  color: #f9fafb;
-  padding: 12px 14px;
-  border-radius: 18px;
-}
-
-.cart-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.cart-items {
-  margin-top: 8px;
-  font-size: 0.8rem;
-}
-
-.cart-item-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 2px 0;
-}
-
-.cart-total {
-  margin-top: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.cart-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 6px;
-}
-
-/* ========================================
-   BILDER (z.B. QR-Codes im Admin)
-   ======================================== */
-
-img {
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-
-.list-item-row img {
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-}
-
-/* ========================================
-   SUPERADMIN: Tabs
-   ======================================== */
-
-.tab-row {
-  display: flex;
-  gap: 6px;
-  background: #f3f4f6;
-  padding: 4px;
-  border-radius: 999px;
-}
-
-.tab-btn {
-  flex: 1;
-  border: none;
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 0.8rem;
-  background: transparent;
-  cursor: pointer;
-  color: #475569;
-}
-
-.tab-btn-active {
-  background: #0f172a;
-  color: #f9fafb;
-}
-
-.offer-flag-label {
-  margin-top: 8px;
-  font-size: 0.8rem;
-  color: #475569;
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-}
-
-.offer-flag-label input {
-  margin-top: 3px;
-}
-
-/* ========================================
-   DETAIL & CART DRAWER – Fullscreen, swipe von rechts
-   ======================================== */
-
-.drawer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  backdrop-filter: blur(6px);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.25s ease;
-  z-index: 60;
-}
-
-.drawer-overlay--visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-/* Drawer: klassischer Fullscreen-Overlay, zentriert wie .page */
-.drawer {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  max-width: 480px;
-  margin: 0 auto;
-  background: #f3f4f6;
-  padding: 16px 16px 32px;
-  box-sizing: border-box;
-
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-
-  transform: translateX(100%);
-  transition: transform 0.28s ease;
-  z-index: 61;
-}
-
-.drawer--visible {
-  transform: translateX(0);
-}
-
-.drawer-body {
-  flex: 1;
-  padding-bottom: 8px;
-}
-
-/* Produkt-Drawer – dunkler Inhalt als Card */
-.drawer--product {
-  color: #f9fafb;
-}
-
-/* ============================================
-   DETAJET – Bildanzeige mit schönem Abstand
-   ============================================ */
-
-.drawer-image-wrap {
-  position: relative;
-  margin: 3px 3px 25px;
-  padding: 0;
-  border-radius: 16px;
-  overflow: hidden;
-  background: #f9fafb;
-}
-
-.detail-slider {
-  width: 100%;
-  height: auto;
-}
-
-.detail-slider-viewport {
-  width: 100%;
-  overflow: hidden;
-}
-
-.detail-slider-track {
-  display: flex;
-  transition: transform 0.35s ease;
-  will-change: transform;
-}
-
-.detail-slide {
-  flex: 0 0 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.drawer-image-wrap img,
-.detail-slide img {
-  display: block;
-  width: 100%;
-  height: auto;
-  max-height: 260px;
-  object-fit: cover;
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  outline: none;
-}
-
-.detail-slider-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  border: none;
-  background: rgba(0, 0, 0, 0.35);
-  color: #ffffff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.2rem;
-  cursor: pointer;
-  z-index: 10;
-}
-
-.detail-slider-arrow--left {
-  left: 10px;
-}
-
-.detail-slider-arrow--right {
-  right: 10px;
-}
-
-/* Inhalt unter dem Bild */
-
-.drawer--product .drawer-body {
-  background: #020617;
-  border-radius: 18px;
-  padding: 12px 14px 18px;
-}
-
-.drawer-title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-
-.drawer-title-row h3 {
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-.drawer-title-row span {
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-.drawer-meta-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  font-size: 0.78rem;
-}
-
-.drawer-rating {
-  color: #e5e7eb;
-}
-
-.drawer-like-btn {
-  background: transparent;
-  border: none;
-  color: #e5e7eb;
-  padding: 4px 6px;
-  cursor: pointer;
-}
-
-.drawer-long-desc {
-  font-size: 0.8rem;
-  line-height: 1.5;
-  margin-bottom: 6px;
-}
-
-.drawer-zutaten {
-  font-size: 0.78rem;
-  color: #cbd5f5;
-  margin-bottom: 14px;
-}
-
-.drawer-qty-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-}
-
-.drawer-qty-row span {
-  min-width: 24px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.drawer-add-btn {
-  margin-left: auto;
-}
-
-.drawer-comments {
-  margin-top: 4px;
-}
-
-.drawer-comments-title {
-  font-size: 0.9rem;
-  font-weight: 600;
-  margin-bottom: 6px;
-}
-
-.comments-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.comment-item {
-  background: rgba(15, 23, 42, 0.85);
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 0.78rem;
-}
-
-.comment-meta {
-  opacity: 0.7;
-  font-size: 0.7rem;
-  margin-bottom: 3px;
-}
-
-.comment-text {
-  line-height: 1.4;
-}
-
-.comment-form {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.rating-pills {
-  display: flex;
-  gap: 6px;
-}
-
-.rating-pill {
-  min-width: 26px;
-  height: 26px;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: transparent;
-  color: #e5e7eb;
-  font-size: 0.78rem;
-  cursor: pointer;
-}
-
-.rating-pill--active {
-  background: #f59e0b;
-  border-color: #f59e0b;
-  color: #111827;
-}
-
-.comment-input {
-  border-radius: 12px;
-  min-height: 70px;
-}
-
-.comment-send-btn {
-  align-self: flex-end;
-}
-
-.drawer-cart-btn {
-  width: 100%;
-  margin-top: 14px;
-  justify-content: center;
-}
-
-.drawer--cart .drawer-body {
-  background: #ffffff;
-  border-radius: 18px;
-  padding: 14px 14px 18px;
-}
-
-.drawer-cart-title {
-  font-size: 1.05rem;
-  font-weight: 600;
-  margin-bottom: 10px;
-}
-
-.drawer-close-btn {
-  position: fixed;
-  top: 18px;
-  left: 18px;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: none;
-  background: rgba(15, 23, 42, 0.9);
-  color: #f9fafb;
-  font-size: 1.1rem;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 62;
-}
-
-/* =====================================================
-   KARTE – STATUS-CARDS (Shiko porosinë / Thirr kamarierin)
-   ===================================================== */
-
-.karte-status-row {
-  display: flex;
-  flex-wrap: nowrap;      /* nicht umbrechen */
-  gap: 12px;
-  margin-top: 8px;
-  margin-bottom: 4px;
-}
-
-/* Cards: wie andere Cards – weiß, mit Border, KEIN Shadow */
-.status-card {
-  flex: 1 1 0;
-  min-width: 0;
-  padding: 12px 12px 14px;
-  border-radius: 18px;
-  background: #ffffff;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: none;
-  color: #0f172a;
-
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: space-between;  /* ⬅ Button nach unten */
-}
-
-
-.status-card--order,
-.status-card--call {
-  min-height: 150px;      /* Höhe kannst du hier ändern */
-}
-
-/* Top: Icon + Label "Porosia juaj" / "Thirr kamarierin" */
-.status-card-top {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-}
-
-/* Icon-Kreis in der Card – weiß mit Shadow (iOS-Style) */
-.status-card-top .icon-circle {
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  background: #ffffff;
-  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.18);
-  cursor: default;
-  pointer-events: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Inneres Icon – dein PNG */
-.status-icon-circle {
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  background-size: 24px 24px;   /* Icon-Größe */
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-/* Links: Porosia-Icon */
-.status-icon-circle--order {
-  background-image: url("https://i.postimg.cc/fWrbHsdR/Chat-GPT-Image-5-Dez-2025-23-31-43.png");
-}
-
-/* Rechts: Kamarier-Icon */
-.status-icon-circle--call {
-  background-image: url("https://i.postimg.cc/yNLKkhXd/Chat-GPT-Image-5-Dez-2025-23-36-38.png");
-}
-
-/* Text neben dem Icon */
-.status-card-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-/* Haupt-Button – weiß, mit Shadow, weniger runde Ecken */
-.status-main-btn {
-  align-self: stretch;          /* gleiche Abstände links/rechts wie Icon */
-  margin-top: 18px;
-  margin-bottom: 5px;   /* ⬅ ein bisschen Luft nach unten */
-  border: none;
-  border-radius: 12px;          /* weniger rund als 999px */
-  padding: 9px 16px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: #ffffff;
-  color: #111827;
-  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);  /* Button-Shadow */
-  -webkit-tap-highlight-color: transparent;
-  transition:
-    background 0.18s ease-out,
-    color 0.18s ease-out,
-    box-shadow 0.18s ease-out,
-    transform 0.12s ease-out;
-  text-align: center;
-  white-space: nowrap;
-}
-
-.status-main-btn:hover {
-  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.22);
-  transform: translateY(-1px);
-}
-
-.status-main-btn:active {
-  transform: translateY(0) scale(0.97);
-  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.16);
-  background: #f3f4f6;         /* etwas grauer beim Tap */
-}
-
-/* Aktive States – Text/Farbe kannst du im JS ändern */
-.order-toggle-btn--active {
-  background: #111827;
-  color: #f9fafb;
-}
-
-.call-waiter-btn--active {
-  background: #111827;
-  color: #f9fafb;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
-}
-
-/* Mobile Feintuning */
-@media (max-width: 400px) {
-  .status-card {
-    padding: 10px 10px 12px;
-    min-height: 130px;
-  }
-  .status-main-btn {
-    padding-inline: 14px;
-    font-size: 0.8rem;
-  }
-}
-
-/* ========================================
-   POROSIA JUAJ – Card unter Shiko porosinë
-   ======================================== */
-
-/* Container unter den beiden Status-Cards */
-.order-details-container {
-  margin-top: 10px;
-}
-
-/* Die eigentliche Card (Porosia juaj) */
-.order-details-card {
-  width: 100%;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.35);
-  background: #ffffff;
-  box-shadow: none; /* wie deine anderen „flachen“ Cards */
-  padding: 12px 14px 14px;
-
-  /* kleine Fade/Slide-Animation beim Öffnen */
-  opacity: 0;
-  transform: translateY(6px);
-  transition:
-    opacity 0.22s ease-out,
-    transform 0.22s ease-out;
-}
-
-/* wird von JS gesetzt, wenn Shiko porosinë offen ist */
-.order-details-card--open {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Header: „Porosia juaj“ links, Status-Badge rechts */
-.order-details-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.order-details-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-}
-
-/* Status-Badge (S'ka porosi / Neu / Në përgatitje / Serviert / Paguar) */
-.order-status-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-/* Farben für die einzelnen Stati – JS setzt die Klassen */
-.order-status-badge--empty {
-  background: #e5e7eb;
-  color: #6b7280;
-}
-
-.order-status-badge--new {
-  background: #dbeafe;
-  color: #1d4ed8;
-}
-
-.order-status-badge--in-progress {
-  background: #fef9c3;
-  color: #a16207;
-}
-
-.order-status-badge--served {
-  background: #e0f2fe;
-  color: #0369a1;
-}
-
-.order-status-badge--paid {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-/* Inhalt der Card – wird komplett von JS in orderDetailsContent gefüllt */
-.order-details-content {
-  margin-top: 4px;
-  font-size: 0.8rem;
-  color: #0f172a;
-}
-
-/* Liste der bestellten Artikel */
-.order-items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 6px;
-}
-
-/* einzelne Zeile: links „2× Cappuccino“, rechts „5,00 €“ */
-.order-item-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-size: 0.8rem;
-}
-
-.order-item-name {
-  max-width: 70%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.order-item-price {
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-/* Totali-Zeile unten */
-.order-summary-row {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-/* ========================================
-   KARTE – QUICKNAV (NICHT STICKY)
-   - bleibt im normalen Flow (kein sticky)
-   - wird dunkel wie "Sot ne fokus", sobald ein Tab aktiv ist
-======================================== */
-
-/* Entfernt: .karte-sticky (nicht mehr verwenden) */
-/* (wenn du willst, kannst du die alte .karte-sticky Regel komplett löschen) */
-
-/* QuickNav normal (weiß) */
-.quickNav{
-  margin: 0; /* page hat schon padding 16px */
-  background:#fff;
-  color:#0f172a;
-  border-radius: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: none;
-  padding: 8px;
-  position: relative;
-  overflow: hidden;
-  isolation: isolate;
-}
-
-/* Row */
-.quickNavRow{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 6px;
-  min-height: 64px;
-  transition: opacity .18s ease, transform .18s ease;
-}
-
-.quickNavBtn{
-  flex: 1;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  height: 64px;
-  border-radius: 14px;
-
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  gap: 5px;
-
-  cursor:pointer;
-  -webkit-tap-highlight-color: transparent;
-
-  color: inherit;
-  font-size: 11px;
-  font-weight: 600;
-
-  transition: background .18s ease, color .18s ease, transform .18s ease;
-}
-
-/* ICONS */
-.qIcon{
-  width: 22px;
-  height: 22px;
-  display:grid;
-  place-items:center;
-}
-.quickNavBtn svg{
-  width: 22px;
-  height: 22px;
-  fill: currentColor;
-  stroke: none;
-}
-
-/* Active tile in normal mode */
-.quickNav:not(.is-dark) .quickNavBtn.is-active{
-  background: rgba(100, 58, 113, 0.12);
-  color: #643A71;
-}
-
-.quickNavBtn:active{
-  transform: scale(0.985);
-}
-
-#langLabel{ letter-spacing: .3px; }
-
-/* ===== DARK MODE (wie Sot ne fokus) ===== */
-.quickNav.is-dark{
-  background: #0f172a;
-  color: #f9fafb;
-  border: 1px solid rgba(148, 163, 184, 0.40);
-}
-
-/* Active tile in dark mode */
-.quickNav.is-dark .quickNavBtn.is-active{
-  background: rgba(249, 250, 251, 0.12);
-  color: #f9fafb;
-}
-
-/* ========================================
-   LANGUAGE OVERLAY PANEL
-======================================== */
-.langPanel{
-  position:absolute;
-  inset: 0;
-  padding: 8px;
-  border-radius: inherit;
-
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 8px;
-
-  background:#fff;
-
-  transform-origin: right center;
-  transform: scaleX(0);
-  opacity: 0;
-  pointer-events:none;
-
-  transition: transform .22s ease, opacity .18s ease;
-  z-index: 2;
-}
-
-.langBackBtn,
-.langNextBtn{
-  width: 40px;
-  height: 52px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
-  background: #fff;
-  border-radius: 14px;
-  display:grid;
-  place-items:center;
-  cursor:pointer;
-  -webkit-tap-highlight-color: transparent;
-}
-.langBackBtn svg,
-.langNextBtn svg{
-  width: 20px;
-  height: 20px;
-  fill: #111827;
-}
-
-.langList{
-  flex:1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap: 8px;
-
-  transform: translateX(12px);
-  opacity: 0;
-  transition: transform .22s ease, opacity .22s ease;
-}
-
-.langOpt{
-  border: 1px solid rgba(148, 163, 184, 0.30);
-  background:#fff;
-  height: 40px;
-  min-width: 46px;
-  padding: 0 12px;
-  border-radius: 999px;
-
-  font-weight: 700;
-  font-size: 12px;
-  color: #111827;
-
-  cursor:pointer;
-  -webkit-tap-highlight-color: transparent;
-  transition: transform .18s ease, background .18s ease, border-color .18s ease;
-}
-.langOpt:active{ transform: scale(0.98); }
-
-/* OPEN STATE */
-.quickNav.lang-open .quickNavRow{
-  opacity: 0;
-  transform: translateX(-8px);
-  pointer-events:none;
-}
-.quickNav.lang-open .langPanel{
-  transform: scaleX(1);
-  opacity: 1;
-  pointer-events:auto;
-}
-.quickNav.lang-open .langList{
-  transform: translateX(0);
-  opacity: 1;
-}
-
-/* Dark mode styles for lang panel */
-.quickNav.is-dark .langPanel{
-  background:#0f172a;
-}
-.quickNav.is-dark .langBackBtn,
-.quickNav.is-dark .langNextBtn{
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(148,163,184,0.35);
-}
-.quickNav.is-dark .langBackBtn svg,
-.quickNav.is-dark .langNextBtn svg{
-  fill:#f9fafb;
-}
-.quickNav.is-dark .langOpt{
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(148,163,184,0.35);
-  color:#f9fafb;
-}
-
-/* Reduced motion */
-@media (prefers-reduced-motion: reduce){
-  .quickNavRow, .langPanel, .langList, .quickNavBtn, .langOpt{
-    transition: none !important;
-  }
-}
-
-
-
-
-
-
-
-</style>
+    DEMO-ONLY: Inlined CSS
+    Zweck: Nur Design für karte.html (ohne Drawer/Detajet/Cart-Drawer usw.)
+    Hinweis: Später splitten wir wieder in shared/styles.css + karte.css
+  ========================================================= -->
+  <style>
+    /* ========================================
+       GLOBAL: Reset & Schrift
+       ======================================== */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background-color: #f3f4f6;
+    }
+
+    body {
+      min-height: 100vh;
+      color: #0f172a;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    /* ========================================
+       PAGE WRAPPER
+       ======================================== */
+    .page {
+      width: 100%;
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding: 12px 16px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background-color: #f3f4f6;
+    }
+    .page > * { width: 100%; }
+
+    /* ========================================
+       CARDS / BOXEN
+       ======================================== */
+    .card {
+      background: #ffffff;
+      padding: 14px 14px;
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .restaurant-card { padding: 14px 16px; }
+    .restaurant-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .rest-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      object-fit: contain;
+      border: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .restaurant-name {
+      font-weight: 700;
+      font-size: 1.05rem;
+    }
+    .restaurant-meta {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    /* ========================================
+       BUTTONS
+       ======================================== */
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 7px 14px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn-primary {
+      background: #643A71;
+      color: #ffffff;
+      border: 1px solid #643A71;
+      box-shadow: none;
+    }
+    .btn-primary:hover {
+      background: #4F2F59;
+      border-color: #4F2F59;
+    }
+
+    .btn-ghost {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-small {
+      padding: 4px 10px;
+      font-size: 0.75rem;
+    }
+
+    /* ========================================
+       SEARCH
+       ======================================== */
+    .search-card { padding: 10px 14px; }
+
+    .search-pill {
+      display: flex;
+      align-items: center;
+      background: #f4f4f5;
+      border-radius: 999px;
+      padding: 4px 4px 4px 16px;
+    }
+    .search-input {
+      flex: 1;
+      border: none;
+      outline: none;
+      background: transparent;
+      font-size: 0.82rem;
+      color: #111827;
+      padding: 8px 6px 8px 0;
+    }
+    .search-input::placeholder { color: #9ca3af; }
+
+    .search-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 999px;
+      border: 1px solid #643A71;
+      background: #643A71;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: none;
+    }
+    .search-btn:hover {
+      background: #4F2F59;
+      border-color: #4F2F59;
+    }
+    .search-btn-icon {
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      border: 2px solid #ffffff;
+      position: relative;
+      box-sizing: border-box;
+    }
+    .search-btn-icon::after {
+      content: "";
+      position: absolute;
+      width: 7px;
+      height: 2px;
+      border-radius: 999px;
+      background: #ffffff;
+      right: -1px;
+      bottom: 1px;
+      transform: rotate(45deg);
+    }
+
+    /* ========================================
+       FLOATING CART FAB
+       ======================================== */
+    .cart-fab {
+      height: 54px;
+      padding: 0 18px;
+      border-radius: 999px;
+      border: 1px solid #643A71;
+      background: #643A71;
+      box-shadow: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      position: fixed;
+      right: 18px;
+      bottom: 26px;
+      z-index: 50;
+
+      opacity: 1;
+      transform: translateY(0);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cart-fab-icon {
+      width: 20px;
+      height: 16px;
+      position: relative;
+      box-sizing: border-box;
+    }
+    .cart-fab-icon::before,
+    .cart-fab-icon::after {
+      content: "";
+      position: absolute;
+      border-radius: 3px;
+      border: 2px solid #ffffff;
+      box-sizing: border-box;
+    }
+    .cart-fab-icon::before {
+      left: 2px;
+      right: 2px;
+      top: 5px;
+      bottom: 1px;
+      border-radius: 5px 5px 4px 4px;
+    }
+    .cart-fab-icon::after {
+      width: 8px;
+      height: 5px;
+      border-bottom: none;
+      border-radius: 6px 6px 0 0;
+      left: 6px;
+      top: 0;
+    }
+    .cart-fab-label {
+      color: #ffffff;
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .cart-fab-badge {
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #000000;
+      color: #ffffff;
+      font-size: 0.7rem;
+      padding: 0 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+    }
+
+    /* ========================================
+       CATEGORY TABS
+       ======================================== */
+    .tabs-wrapper {
+      background: transparent;
+      padding: 0;
+      margin-top: 6px;
+      margin-bottom: 0;
+    }
+    .category-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .category-tab {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(17, 24, 39, 0.08);
+      font-size: 0.75rem;
+      background: #f9fafb;
+      cursor: pointer;
+      color: #111827;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .category-tab.active {
+      background: #111827;
+      color: #f9fafb;
+      border-color: #111827;
+    }
+
+    /* ========================================
+       OFFERS: SOT NE FOKUS
+       ======================================== */
+    .offers-card {
+      background: #0f172a;
+      color: #f9fafb;
+      border-radius: 18px;
+      padding: 16px 16px 22px;
+      box-shadow: none;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      width: 100%;
+      margin-bottom: 4px;
+    }
+    .offers-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 12px;
+    }
+    .offers-label {
+      font-size: 0.7rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
+    .offers-slider {
+      margin-top: 4px;
+      display: flex;
+      gap: 10px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+    }
+    .offers-slider::-webkit-scrollbar { display: none; }
+    .offers-slider { -ms-overflow-style: none; scrollbar-width: none; }
+
+    .offer-slide { flex: 0 0 100%; scroll-snap-align: center; }
+    .offer-image {
+      width: 100%;
+      height: 180px;
+      border-radius: 14px;
+      object-fit: cover;
+      background: #1f2937;
+      margin-bottom: 16px;
+    }
+    .offer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .offer-title { font-size: 0.98rem; font-weight: 600; }
+    .offer-price { font-size: 0.95rem; font-weight: 600; }
+    .offer-desc {
+      font-size: 0.8rem;
+      color: #e5e7eb;
+      line-height: 1.5;
+      margin-bottom: 20px;
+    }
+    .offer-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .offers-dots {
+      margin-top: 14px;
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+    }
+    .offers-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      border: none;
+      background: #4b5563;
+      padding: 0;
+      cursor: pointer;
+    }
+    .offers-dot.active {
+      width: 14px;
+      border-radius: 999px;
+      background: #f9fafb;
+    }
+
+    /* ========================================
+       DRINKS (2 Spalten)
+       ======================================== */
+    #drinksSection h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .drinks-list {
+      margin-top: 8px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .drink-item {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 10px 10px 18px;
+      border: 1px solid rgba(148, 163, 184, 0.30);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+    }
+    .drink-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      margin-bottom: 6px;
+    }
+    .drink-image {
+      width: 100%;
+      border-radius: 14px;
+      object-fit: cover;
+      aspect-ratio: 3 / 4;
+      display: block;
+    }
+    .drink-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .drink-name {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .drink-price {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #111827;
+      white-space: nowrap;
+    }
+    .drink-desc {
+      margin-top: 6px;
+      font-size: 0.75rem;
+      color: #64748b;
+      line-height: 1.38;
+    }
+    .drink-footer {
+      margin-top: 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Drink Like (Herz + Counter) */
+    .like-wrap { display: inline-flex; align-items: center; gap: 10px; }
+    .icon-circle {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      border: none;
+      background: rgba(255,255,255,0.98);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.045);
+      transition: transform 160ms cubic-bezier(.2,.9,.2,1), box-shadow 180ms ease-out, background 160ms ease-out;
+    }
+    .icon-circle::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: 70%;
+      width: 48px;
+      height: 48px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+      opacity: 0.04;
+      background: radial-gradient(circle at 50% 35%,
+        rgba(255, 90, 95, 0.10) 0%,
+        rgba(255, 90, 95, 0.05) 35%,
+        rgba(255, 90, 95, 0.02) 52%,
+        transparent 70%);
+      transition: opacity 200ms ease-out, transform 200ms ease-out;
+    }
+    .icon-circle:hover { transform: translateY(-1px); box-shadow: 0 3px 8px rgba(15, 23, 42, 0.055); }
+    .icon-circle:active { transform: scale(0.97); box-shadow: 0 2px 6px rgba(15, 23, 42, 0.045); }
+    .icon-circle__inner { width: 17px; height: 17px; display: block; transform-origin: center; }
+    .heart-outline {
+      fill: none;
+      stroke: rgba(148, 163, 184, 0.90);
+      stroke-width: 9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 1;
+      transition: opacity 160ms ease-out;
+    }
+    .heart-fill {
+      fill: #ff5a5f;
+      opacity: 0;
+      transform: scale(1);
+      transition: opacity 160ms ease-out, transform 200ms cubic-bezier(.2,.9,.2,1);
+    }
+    .like-count {
+      font-size: 0.82rem;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255, 90, 95, 0.40);
+      min-width: 14px;
+    }
+    .like-wrap.is-liked .icon-circle { box-shadow: 0 2px 8px rgba(255, 90, 95, 0.08); }
+    .like-wrap.is-liked .icon-circle::after { opacity: 0.06; transform: translate(-50%, -50%) scale(1.01); }
+    .like-wrap.is-liked .heart-fill { opacity: 1; transform: scale(1.02); }
+    .like-wrap.is-liked .heart-outline { opacity: 0; }
+    .like-wrap.is-liked .like-count { color: rgba(255, 90, 95, 0.68); }
+
+    .like-wrap.is-animating .icon-circle__inner { animation: drinkHeartPop 260ms cubic-bezier(.2,.9,.2,1); }
+    @keyframes drinkHeartPop {
+      0%   { transform: scale(0.92); }
+      55%  { transform: scale(1.14); }
+      100% { transform: scale(1.02); }
+    }
+    @media (prefers-reduced-motion: reduce){
+      .like-wrap.is-animating .icon-circle__inner { animation: none !important; }
+      .icon-circle, .icon-circle::after, .heart-fill, .heart-outline { transition: none !important; }
+    }
+
+    /* Menge */
+    .qty-control {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      border: none;
+      overflow: hidden;
+      background: #ffffff;
+      height: 34px;
+      box-shadow: 0 3px 8px rgba(15, 23, 42, 0.06);
+    }
+    .qty-btn {
+      border: none;
+      background: transparent;
+      width: 30px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      cursor: pointer;
+      color: #111827;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .qty-btn:active { background: #e5e7eb; }
+    .qty-value {
+      min-width: 30px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #111827;
+      padding: 0 4px;
+    }
+
+    /* Add Button rechts */
+    .btn-add-round {
+      border: none;
+      border-radius: 999px;
+      padding: 0 14px;
+      height: 32px;
+      background: #6c66e6;
+      color: #f9fafb;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
+      transition: background 0.18s ease-out, transform 0.14s ease-out, box-shadow 0.18s ease-out;
+      -webkit-tap-highlight-color: transparent;
+      white-space: nowrap;
+    }
+    .btn-add-round span { font-size: 0.78rem; font-weight: 600; line-height: 1; }
+    .btn-add-round:hover { background: #4338ca; box-shadow: 0 5px 12px rgba(15, 23, 42, 0.20); transform: translateY(-1px); }
+    .btn-add-round:active { transform: translateY(0) scale(0.97); box-shadow: 0 3px 8px rgba(15, 23, 42, 0.14); }
+
+    /* ========================================
+       MENU (Speisen)
+       ======================================== */
+    .menu-list {
+      display: flex;
+      flex-direction: column;
+      gap: 45px;
+      margin-top: 10px;
+    }
+    .menu-item {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 10px 12px 14px;
+      border: 1px solid #e2e8f0;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      grid-auto-rows: auto;
+      row-gap: 4px;
+    }
+    .menu-item-image {
+      grid-column: 1 / -1;
+      width: 100%;
+      max-height: 160px;
+      border-radius: 12px;
+      object-fit: cover;
+    }
+    .menu-item-header {
+      grid-column: 1 / -1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+    }
+    .menu-item-name { font-size: 0.95rem; font-weight: 600; }
+    .menu-item-price { font-size: 0.9rem; font-weight: 600; }
+
+    .menu-item-desc {
+      grid-column: 1 / -1;
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-top: 14px;
+      margin-bottom: 18px;
+    }
+
+    .menu-item-social {
+      grid-column: 1 / 2;
+      align-self: center;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.78rem;
+      margin-top: 4px;
+    }
+    .social-btn {
+      border: none;
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      color: #6b7280;
+      cursor: pointer;
+      padding: 4px 9px;
+      border-radius: 999px;
+      transition: background 0.12s ease, transform 0.08s ease, color 0.12s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .social-btn:hover { background: #e5e7eb; transform: translateY(-1px); }
+
+    .social-icon {
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+    }
+    .social-count { font-weight: 500; }
+
+    .menu-item-actions {
+      grid-column: 2 / 3;
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    /* ========================================
+       QUICKNAV (NICHT STICKY)
+       ======================================== */
+    .quickNav{
+      margin: 0;
+      background:#fff;
+      color:#0f172a;
+      border-radius: 18px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: none;
+      padding: 8px;
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .quickNavRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 6px;
+      min-height: 64px;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .quickNavBtn{
+      flex: 1;
+      border: 0;
+      background: transparent;
+      padding: 0;
+      height: 64px;
+      border-radius: 14px;
+
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap: 5px;
+
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+
+      color: inherit;
+      font-size: 11px;
+      font-weight: 600;
+
+      transition: background .18s ease, color .18s ease, transform .18s ease;
+    }
+    .qIcon{ width: 22px; height: 22px; display:grid; place-items:center; }
+    .quickNavBtn svg{ width: 22px; height: 22px; fill: currentColor; }
+
+    .quickNavBtn:active{ transform: scale(0.985); }
+    #langLabel{ letter-spacing: .3px; }
+
+    /* =========================================================
+       FIX (nur Farbe): QuickNav Hover + Active = “Sot ne fokus”
+       - Active: #0f172a
+       - Hover:  #0f172a (Desktop only)
+    ========================================================= */
+    .quickNavBtn.is-active{
+      background: #0f172a;
+      color: #f9fafb;
+    }
+    @media (hover:hover) and (pointer:fine){
+      .quickNavBtn:hover{
+        background: #0f172a;
+        color: #f9fafb;
+      }
+    }
+
+    /* ========================================
+       LANGUAGE PANEL (Expand)
+       ======================================== */
+    .langPanel{
+      position:absolute;
+      inset: 0;
+      padding: 8px;
+      border-radius: inherit;
+
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 8px;
+
+      background:#fff;
+
+      transform-origin: right center;
+      transform: scaleX(0);
+      opacity: 0;
+      pointer-events:none;
+
+      transition: transform .22s ease, opacity .18s ease;
+      z-index: 2;
+    }
+    .langBackBtn,
+    .langNextBtn{
+      width: 40px;
+      height: 52px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: #fff;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .langBackBtn svg,
+    .langNextBtn svg{
+      width: 20px;
+      height: 20px;
+      fill: #111827;
+    }
+    .langList{
+      flex:1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 8px;
+
+      transform: translateX(12px);
+      opacity: 0;
+      transition: transform .22s ease, opacity .22s ease;
+    }
+
+    /* weniger border radius (nicht 999) */
+    .langOpt{
+      border: 1px solid rgba(148, 163, 184, 0.30);
+      background:#fff;
+      height: 40px;
+      min-width: 46px;
+      padding: 0 12px;
+      border-radius: 14px;
+
+      font-weight: 700;
+      font-size: 12px;
+      color: #111827;
+
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .18s ease, background .18s ease, border-color .18s ease;
+    }
+    .langOpt:active{ transform: scale(0.98); }
+
+    /* OPEN STATE */
+    .quickNav.lang-open .quickNavRow{
+      opacity: 0;
+      transform: translateX(-8px);
+      pointer-events:none;
+    }
+    .quickNav.lang-open .langPanel{
+      transform: scaleX(1);
+      opacity: 1;
+      pointer-events:auto;
+    }
+    .quickNav.lang-open .langList{
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .quickNavRow, .langPanel, .langList, .quickNavBtn, .langOpt{ transition: none !important; }
+    }
+  </style>
 </head>
+
 <body>
-  <!-- =========================================================
-  ABSCHNITT 1: PAGE WRAPPER
-  - hält alles zentriert (mobile look)
-  - enthält Header (oben) + Inhalte (Getränke/Speisen) + FAB
-========================================================= -->
-<main class="page page--karte">
-    <!-- =========================================================
-  ABSCHNITT 2: HEADER-BEREICH (oben)
-  - Restaurant Card (Logo/Name/Tisch)
-  - Offers Slider (Sot ne fokus)
-  - Suche
-========================================================= -->
-<header class="karte-topbar">
-      <!-- =========================================================
-  ABSCHNITT 2.1: RESTAURANT CARD
-  - #restaurantLogo: Logo Bild
-  - #restaurantName: Name
-  - #restaurantMeta: Stadt / Tisch
-========================================================= -->
-<section class="card restaurant-card">
-  <div class="restaurant-header">
-    <img id="restaurantLogo" class="rest-logo" alt="Logo" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23f1f5f9%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%228%22%20fill%3D%22%230f172a%22%3ELOGO%3C/text%3E%0A%3C/svg%3E" />
-    <div>
-      <div class="restaurant-name" id="restaurantName">MENYRA Demo Lokal</div>
-      <div class="restaurant-meta" id="restaurantMeta">Prishtinë · Tavolina A7</div>
-    </div>
-  </div>
-</section>
-
-<!-- QUICK MENU (NICHT STICKY) -->
-<nav class="quickNav" aria-label="MENYRA Quick Menu">
-  <div class="quickNavRow" id="quickNavRow">
-    <button class="quickNavBtn is-active" type="button" data-tab="social" aria-current="page">
-      <span class="qIcon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
-      </span>
-      <span class="qLabel">Social</span>
-    </button>
-
-    <button class="quickNavBtn" type="button" data-tab="info">
-      <span class="qIcon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a1.2 1.2 0 110 2.4A1.2 1.2 0 0112 6zm1.6 12.5h-3.2a1 1 0 010-2h.6V12h-.6a1 1 0 010-2h2a1 1 0 011 1v5.5h.2a1 1 0 010 2z"/></svg>
-      </span>
-      <span class="qLabel">Info</span>
-    </button>
-
-    <button class="quickNavBtn" type="button" data-tab="kamarieri">
-      <span class="qIcon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5v2.2c0 .6-.2 1.2-.6 1.7L5 12.8V15h14v-2.2l-1.4-1.9c-.4-.5-.6-1.1-.6-1.7V7a5 5 0 00-5-5zm0 20a2.5 2.5 0 002.4-2H9.6A2.5 2.5 0 0012 22z"/></svg>
-      </span>
-      <span class="qLabel">Kamarieri</span>
-    </button>
-
-    <button class="quickNavBtn quickNavBtnLang" id="langToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
-      <span class="qIcon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 9h-2.4a15 15 0 00-1.1-5A8.04 8.04 0 0118.9 11zM12 4c.9 1.1 1.8 3.1 2.2 7H9.8C10.2 7.1 11.1 5.1 12 4zM4.9 13h2.4a15 15 0 001.1 5A8.04 8.04 0 015.1 13zM5.1 11a8.04 8.04 0 013.5-5 15 15 0 00-1.1 5H5.1zm6.9 9c-.9-1.1-1.8-3.1-2.2-7h4.4c-.4 3.9-1.3 5.9-2.2 7zm3.4-2a15 15 0 001.1-5h2.4a8.04 8.04 0 01-3.5 5z"/></svg>
-      </span>
-      <span class="qLabel" id="langLabel">DE</span>
-    </button>
-  </div>
-
-  <div class="langPanel" id="langPanel" aria-hidden="true">
-    <button class="langBackBtn" id="langBackBtn" type="button" aria-label="Back">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
-    </button>
-
-    <div class="langList" role="listbox" aria-label="Choose language">
-      <button class="langOpt" type="button" data-lang="DE" role="option">DE</button>
-      <button class="langOpt" type="button" data-lang="EN" role="option">EN</button>
-      <button class="langOpt" type="button" data-lang="SQ" role="option">SQ</button>
-      <button class="langOpt" type="button" data-lang="SR" role="option">SR</button>
-      <button class="langOpt" type="button" data-lang="TR" role="option">TR</button>
-    </div>
-
-    <button class="langNextBtn" id="langNextBtn" type="button" aria-label="Next">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L16 12l-7.5 7.5-1.8-1.8L12.4 12 6.7 6.3l1.8-1.8z"/></svg>
-    </button>
-  </div>
-</nav>
-
-
-      <!-- =========================================================
-  ABSCHNITT 2.2: OFFERS (SOT NE FOKUS)
-  - #offersSlider: horizontales Slider-Track
-  - .offers-dot: Dots
-========================================================= -->
-<section class="offers-card" id="offersSection">
-        <div class="offers-header-row">
-          <div class="offers-label">SOT NE FOKUS</div>
-        </div>
-        <div class="offers-slider" id="offersSlider">
-          <div class="offer-slide">
-            <img class="offer-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22900%22%20height%3D%22450%22%20viewBox%3D%220%200%20900%20450%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23111827%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2231%22%20fill%3D%22%23f9fafb%22%3ESOT%20NE%20FOKUS%3C/text%3E%0A%3C/svg%3E" alt="Offer" />
-            <div class="offer-header">
-              <div class="offer-title">Burger + Fries</div>
-              <div class="offer-price">5.90 €</div>
-            </div>
-            <div class="offer-desc">Platzhalter-Angebot. Später kommt hier echtes Angebot vom Kunden.</div>
-            <div class="offer-actions">
-              <button class="btn btn-ghost btn-small" type="button">Info</button>
-              <button class="btn btn-primary btn-small" type="button">Shto</button>
-            </div>
-          </div>
-        </div>
-        <div class="offers-dots" id="offersDots">
-          <button class="offers-dot active" type="button"></button>
-          <button class="offers-dot" type="button"></button>
-          <button class="offers-dot" type="button"></button>
-        </div>
-      </section>
-
-
-
-<!-- =========================================================
-  ABSCHNITT 2.3: SUCHE
-  - #searchInput: Suchfeld (später filtert es Drinks + Menu)
-========================================================= -->
-<section class="card search-card">
-        <div class="search-wrapper">
-          <div class="search-pill">
-            <input id="searchInput" class="search-input" type="search" placeholder="Kërko në meny." />
-            <button type="button" class="search-btn" aria-label="Search">
-              <span class="search-btn-icon"></span>
-            </button>
-          </div>
-        </div>
-      </section>
-    </header>
+  <main class="page page--karte">
 
     <!-- =========================================================
-  ABSCHNITT 3: GETRÄNKE TABS
-  - #drinksTabs: Kategorie Buttons
-========================================================= -->
-<section class="tabs-wrapper tabs-wrapper--drinks" id="drinksTabsWrapper">
+      ABSCHNITT 2.1: RESTAURANT CARD
+    ========================================================= -->
+    <section class="card restaurant-card">
+      <div class="restaurant-header">
+        <img id="restaurantLogo" class="rest-logo" alt="Logo"
+          src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23f1f5f9%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%228%22%20fill%3D%22%230f172a%22%3ELOGO%3C/text%3E%0A%3C/svg%3E" />
+        <div>
+          <div class="restaurant-name" id="restaurantName">MENYRA Demo Lokal</div>
+          <div class="restaurant-meta" id="restaurantMeta">Prishtinë · Tavolina A7</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+      QUICK MENU (NICHT STICKY)
+    ========================================================= -->
+    <nav class="quickNav" aria-label="MENYRA Quick Menu">
+      <div class="quickNavRow" id="quickNavRow">
+        <button class="quickNavBtn is-active" type="button" data-tab="social" aria-current="page">
+          <span class="qIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
+          </span>
+          <span class="qLabel">Social</span>
+        </button>
+
+        <button class="quickNavBtn" type="button" data-tab="info">
+          <span class="qIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a1.2 1.2 0 110 2.4A1.2 1.2 0 0112 6zm1.6 12.5h-3.2a1 1 0 010-2h.6V12h-.6a1 1 0 010-2h2a1 1 0 011 1v5.5h.2a1 1 0 010 2z"/></svg>
+          </span>
+          <span class="qLabel">Info</span>
+        </button>
+
+        <button class="quickNavBtn" type="button" data-tab="kamarieri">
+          <span class="qIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5v2.2c0 .6-.2 1.2-.6 1.7L5 12.8V15h14v-2.2l-1.4-1.9c-.4-.5-.6-1.1-.6-1.7V7a5 5 0 00-5-5zm0 20a2.5 2.5 0 002.4-2H9.6A2.5 2.5 0 0012 22z"/></svg>
+          </span>
+          <span class="qLabel">Kamarieri</span>
+        </button>
+
+        <button class="quickNavBtn quickNavBtnLang" id="langToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
+          <span class="qIcon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 9h-2.4a15 15 0 00-1.1-5A8.04 8.04 0 0118.9 11zM12 4c.9 1.1 1.8 3.1 2.2 7H9.8C10.2 7.1 11.1 5.1 12 4zM4.9 13h2.4a15 15 0 001.1 5A8.04 8.04 0 015.1 13zM5.1 11a8.04 8.04 0 013.5-5 15 15 0 00-1.1 5H5.1zm6.9 9c-.9-1.1-1.8-3.1-2.2-7h4.4c-.4 3.9-1.3 5.9-2.2 7zm3.4-2a15 15 0 001.1-5h2.4a8.04 8.04 0 01-3.5 5z"/></svg>
+          </span>
+          <span class="qLabel" id="langLabel">DE</span>
+        </button>
+      </div>
+
+      <div class="langPanel" id="langPanel" aria-hidden="true">
+        <button class="langBackBtn" id="langBackBtn" type="button" aria-label="Back">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
+        </button>
+
+        <div class="langList" role="listbox" aria-label="Choose language">
+          <button class="langOpt" type="button" data-lang="DE" role="option">DE</button>
+          <button class="langOpt" type="button" data-lang="EN" role="option">EN</button>
+          <button class="langOpt" type="button" data-lang="SQ" role="option">SQ</button>
+          <button class="langOpt" type="button" data-lang="SR" role="option">SR</button>
+          <button class="langOpt" type="button" data-lang="TR" role="option">TR</button>
+        </div>
+
+        <button class="langNextBtn" id="langNextBtn" type="button" aria-label="Next">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L16 12l-7.5 7.5-1.8-1.8L12.4 12 6.7 6.3l1.8-1.8z"/></svg>
+        </button>
+      </div>
+    </nav>
+
+    <!-- =========================================================
+      ABSCHNITT 2.2: OFFERS (SOT NE FOKUS)
+    ========================================================= -->
+    <section class="offers-card" id="offersSection">
+      <div class="offers-header-row">
+        <div class="offers-label">SOT NE FOKUS</div>
+      </div>
+
+      <div class="offers-slider" id="offersSlider">
+        <div class="offer-slide">
+          <img class="offer-image"
+            src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22900%22%20height%3D%22450%22%20viewBox%3D%220%200%20900%20450%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23111827%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2231%22%20fill%3D%22%23f9fafb%22%3ESOT%20NE%20FOKUS%3C/text%3E%0A%3C/svg%3E"
+            alt="Offer" />
+          <div class="offer-header">
+            <div class="offer-title">Burger + Fries</div>
+            <div class="offer-price">5.90 €</div>
+          </div>
+          <div class="offer-desc">Platzhalter-Angebot. Später kommt hier echtes Angebot vom Kunden.</div>
+          <div class="offer-actions">
+            <button class="btn btn-ghost btn-small" type="button">Info</button>
+            <button class="btn btn-primary btn-small" type="button">Shto</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="offers-dots" id="offersDots">
+        <button class="offers-dot active" type="button"></button>
+        <button class="offers-dot" type="button"></button>
+        <button class="offers-dot" type="button"></button>
+      </div>
+    </section>
+
+    <!-- =========================================================
+      ABSCHNITT 2.3: SUCHE
+    ========================================================= -->
+    <section class="card search-card">
+      <div class="search-pill">
+        <input id="searchInput" class="search-input" type="search" placeholder="Kërko në meny." />
+        <button type="button" class="search-btn" aria-label="Search">
+          <span class="search-btn-icon"></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- =========================================================
+      ABSCHNITT 3: GETRÄNKE TABS
+    ========================================================= -->
+    <section class="tabs-wrapper" id="drinksTabsWrapper">
       <div class="category-tabs" id="drinksTabs">
         <button class="category-tab active" type="button">All</button>
         <button class="category-tab" type="button">Coffee</button>
@@ -2122,12 +961,11 @@ img {
     </section>
 
     <!-- =========================================================
-  ABSCHNITT 4: GETRÄNKE LISTE
-  - #drinksList: Grid mit .drink-item Cards
-  - .qty-control: +/- Menge (nur UI)
-========================================================= -->
-<section class="card" id="drinksSection">
+      ABSCHNITT 4: GETRÄNKE LISTE
+    ========================================================= -->
+    <section class="card" id="drinksSection">
       <h2>Getränke</h2>
+
       <div class="drinks-list" id="drinksList">
         <article class="drink-item">
           <div class="drink-topbar">
@@ -2141,11 +979,22 @@ img {
               <span class="like-count">12</span>
             </div>
           </div>
+
           <img class="drink-image" src="./images/getränk1.png" alt="Drink" loading="lazy" decoding="async" />
-          <div class="drink-header"><div class="drink-name">Cappuccino</div><div class="drink-price">2.90 €</div></div>
+
+          <div class="drink-header">
+            <div class="drink-name">Cappuccino</div>
+            <div class="drink-price">2.90 €</div>
+          </div>
+
           <div class="drink-desc">Platzhalter-Beschreibung für Getränk.</div>
+
           <div class="drink-footer">
-            <div class="qty-control"><button class="qty-btn" type="button">−</button><span class="qty-value">1</span><button class="qty-btn" type="button">+</button></div>
+            <div class="qty-control">
+              <button class="qty-btn" type="button">−</button>
+              <span class="qty-value">1</span>
+              <button class="qty-btn" type="button">+</button>
+            </div>
             <button class="btn-add-round" type="button"><span>Wähle</span></button>
           </div>
         </article>
@@ -2162,11 +1011,22 @@ img {
               <span class="like-count">7</span>
             </div>
           </div>
+
           <img class="drink-image" src="./images/getränk1.png" alt="Drink" loading="lazy" decoding="async" />
-          <div class="drink-header"><div class="drink-name">Fresh Juice</div><div class="drink-price">3.50 €</div></div>
+
+          <div class="drink-header">
+            <div class="drink-name">Fresh Juice</div>
+            <div class="drink-price">3.50 €</div>
+          </div>
+
           <div class="drink-desc">Platzhalter-Beschreibung für Getränk.</div>
+
           <div class="drink-footer">
-            <div class="qty-control"><button class="qty-btn" type="button">−</button><span class="qty-value">0</span><button class="qty-btn" type="button">+</button></div>
+            <div class="qty-control">
+              <button class="qty-btn" type="button">−</button>
+              <span class="qty-value">0</span>
+              <button class="qty-btn" type="button">+</button>
+            </div>
             <button class="btn-add-round" type="button"><span>Wähle</span></button>
           </div>
         </article>
@@ -2174,10 +1034,9 @@ img {
     </section>
 
     <!-- =========================================================
-  ABSCHNITT 5: SPEISEN TABS
-  - #foodCategoryTabs: Kategorie Buttons
-========================================================= -->
-<section class="tabs-wrapper tabs-wrapper--food" id="foodTabsWrapper">
+      ABSCHNITT 5: SPEISEN TABS
+    ========================================================= -->
+    <section class="tabs-wrapper" id="foodTabsWrapper">
       <div class="category-tabs" id="foodCategoryTabs">
         <button class="category-tab active" type="button">Burger</button>
         <button class="category-tab" type="button">Pasta</button>
@@ -2187,13 +1046,11 @@ img {
     </section>
 
     <!-- =========================================================
-  ABSCHNITT 6: SPEISEN LISTE
-  - #menuList: Liste mit .menu-item Cards
-  - .menu-item-social: Like/Comment UI
-  - .menu-item-actions: Detajet / Shto Buttons
-========================================================= -->
-<section class="card">
+      ABSCHNITT 6: SPEISEN LISTE
+    ========================================================= -->
+    <section class="card">
       <h2>Speisekarte</h2>
+
       <div class="menu-list" id="menuList">
         <article class="menu-item">
           <img class="menu-item-image" src="./images/speise1.avif" alt="Food" loading="lazy" decoding="async" />
@@ -2202,10 +1059,12 @@ img {
             <div class="menu-item-price">5.90 €</div>
           </div>
           <div class="menu-item-desc">Platzhalter Text: Zutaten, Beschreibung, Allergene – später dynamisch.</div>
+
           <div class="menu-item-social">
-            <button class="social-btn social-btn-like" type="button"><span class="social-icon">❤️</span><span class="social-count">34</span></button>
-            <button class="social-btn social-btn-comment" type="button"><span class="social-icon">💬</span><span class="social-count">6</span></button>
+            <button class="social-btn" type="button"><span class="social-icon">❤️</span><span class="social-count">34</span></button>
+            <button class="social-btn" type="button"><span class="social-icon">💬</span><span class="social-count">6</span></button>
           </div>
+
           <div class="menu-item-actions">
             <a class="btn btn-ghost btn-small" href="./detajet.html">Detajet</a>
             <button class="btn btn-primary btn-small" type="button">Shto</button>
@@ -2219,10 +1078,12 @@ img {
             <div class="menu-item-price">4.60 €</div>
           </div>
           <div class="menu-item-desc">Platzhalter Text: frische Zutaten, leicht, schnell – später echte Daten.</div>
+
           <div class="menu-item-social">
-            <button class="social-btn social-btn-like" type="button"><span class="social-icon">❤️</span><span class="social-count">18</span></button>
-            <button class="social-btn social-btn-comment" type="button"><span class="social-icon">💬</span><span class="social-count">2</span></button>
+            <button class="social-btn" type="button"><span class="social-icon">❤️</span><span class="social-count">18</span></button>
+            <button class="social-btn" type="button"><span class="social-icon">💬</span><span class="social-count">2</span></button>
           </div>
+
           <div class="menu-item-actions">
             <a class="btn btn-ghost btn-small" href="./detajet.html">Detajet</a>
             <button class="btn btn-primary btn-small" type="button">Shto</button>
@@ -2233,153 +1094,131 @@ img {
   </main>
 
   <!-- =========================================================
-  ABSCHNITT 7: FLOATING CART BUTTON (FAB)
-  - #cartFab: Button
-  - #cartFabLabel: Text
-  - #cartBadge: Badge Zahl
-  - Klassen: .visible / .cart-fab--has-items = Zustand (Design)
-========================================================= -->
-<button class="cart-fab visible cart-fab--has-items" id="cartFab" type="button">
+    ABSCHNITT 7: FAB (Demo)
+  ========================================================= -->
+  <button class="cart-fab" id="cartFab" type="button">
     <span class="cart-fab-icon"></span>
     <span class="cart-fab-label" id="cartFabLabel">Shiko porosin</span>
-    <span class="cart-fab-badge" id="cartBadge" style="display:flex;">2</span>
+    <span class="cart-fab-badge" id="cartBadge">2</span>
   </button>
 
   <!-- =========================================================
-  INLINED JS
-  Quelle: apps/guest/karte.js (Platzhalter)
-  Zweck: Für dieses Demo aktuell keine Logik.
-========================================================= -->
-<script type="module">
-// STEP 001 Placeholder — keine Funktionen
+    DEMO-ONLY: Inlined JS
+    - Drink Like (delegation)
+    - QuickNav Tabs + Language Panel
+  ========================================================= -->
+  <script type="module">
+    // =========================================================
+    // ABSCHNITT JS 1: DRINK LIKE (Herz + Counter) — minimal & schnell
+    // =========================================================
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest(".icon-circle");
+      if (!btn) return;
 
-// =========================================================
-// ABSCHNITT JS 1: DRINK LIKE (Herz + Counter) — minimal & schnell
-// - 1 Event-Listener (delegation) für alle Drink-Herzen
-// - toggelt Klassen: .is-liked + .is-animating
-// - updated Counter (Text)
-// =========================================================
-document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".icon-circle");
-  if (!btn) return;
+      const wrap = btn.closest(".like-wrap");
+      if (!wrap) return;
 
-  const wrap = btn.closest(".like-wrap");
-  if (!wrap) return;
+      const countEl = wrap.querySelector(".like-count");
+      const current = parseInt((countEl?.textContent || "0").trim(), 10) || 0;
 
-  const countEl = wrap.querySelector(".like-count");
-  const current = parseInt((countEl?.textContent || "0").trim(), 10) || 0;
+      const liked = wrap.classList.toggle("is-liked");
+      const next = liked ? current + 1 : Math.max(0, current - 1);
+      if (countEl) countEl.textContent = String(next);
 
-  const liked = wrap.classList.toggle("is-liked");
-  const next = liked ? current + 1 : Math.max(0, current - 1);
-  if (countEl) countEl.textContent = String(next);
+      wrap.classList.add("is-animating");
+      window.setTimeout(() => wrap.classList.remove("is-animating"), 280);
+    });
 
-  // Tap-Animation kurz triggern
-  wrap.classList.add("is-animating");
-  window.setTimeout(() => wrap.classList.remove("is-animating"), 300);
-});
+    // =========================================================
+    // ABSCHNITT JS 2: QUICKNAV + LANGUAGE PANEL
+    // =========================================================
+    (() => {
+      const nav = document.querySelector(".quickNav");
+      if (!nav) return;
 
+      const row = document.getElementById("quickNavRow");
+      const langToggleBtn = document.getElementById("langToggleBtn");
+      const langPanel = document.getElementById("langPanel");
+      const langBackBtn = document.getElementById("langBackBtn");
+      const langNextBtn = document.getElementById("langNextBtn");
+      const langLabel = document.getElementById("langLabel");
+      const langOpts = Array.from(nav.querySelectorAll(".langOpt"));
 
-(() => {
-  const nav = document.querySelector(".quickNav");
-  if (!nav) return;
+      const LANG_KEY = "menyra_lang";
 
-  const row = document.getElementById("quickNavRow");
-  const langToggleBtn = document.getElementById("langToggleBtn");
-  const langPanel = document.getElementById("langPanel");
-  const langBackBtn = document.getElementById("langBackBtn");
-  const langNextBtn = document.getElementById("langNextBtn");
-  const langLabel = document.getElementById("langLabel");
-  const langOpts = Array.from(nav.querySelectorAll(".langOpt"));
+      function setLang(code){
+        localStorage.setItem(LANG_KEY, code);
+        langLabel.textContent = code;
+      }
 
-  const LANG_KEY = "menyra_lang";
+      function openLang(){
+        nav.classList.add("lang-open");
+        langToggleBtn.setAttribute("aria-expanded", "true");
+        langPanel.setAttribute("aria-hidden", "false");
+      }
 
-  function setLang(code){
-    localStorage.setItem(LANG_KEY, code);
-    langLabel.textContent = code;
+      function closeLang(){
+        nav.classList.remove("lang-open");
+        langToggleBtn.setAttribute("aria-expanded", "false");
+        langPanel.setAttribute("aria-hidden", "true");
+      }
 
-    // OPTIONAL: wenn du später i18n hast:
-    // window.MENYRA_setLanguage?.(code);
-    // oder reload:
-    // location.reload();
-  }
+      // init label from storage
+      const saved = localStorage.getItem(LANG_KEY);
+      if (saved) langLabel.textContent = saved;
 
-  function openLang(){
-    nav.classList.add("lang-open");
-    langToggleBtn.setAttribute("aria-expanded", "true");
-    langPanel.setAttribute("aria-hidden", "false");
-  }
+      // Tabs (nur Demo: active state)
+      row.querySelectorAll(".quickNavBtn:not(.quickNavBtnLang)").forEach(btn => {
+        btn.addEventListener("click", () => {
+          row.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
+          btn.classList.add("is-active");
 
-  function closeLang(){
-    nav.classList.remove("lang-open");
-    langToggleBtn.setAttribute("aria-expanded", "false");
-    langPanel.setAttribute("aria-hidden", "true");
-  }
+          const tab = btn.dataset.tab;
+          // Später echte Navigation:
+          // if(tab==="kamarieri") location.href = "../staff/kamarieri.html";
+          // if(tab==="info")      location.href = "./info.html";
+          // if(tab==="social")    location.href = "./social.html";
+          console.log("TAB:", tab);
+        }, { passive:true });
+      });
 
-  // init label from storage
-  const saved = localStorage.getItem(LANG_KEY);
-  if (saved) langLabel.textContent = saved;
+      // Language open/close
+      langToggleBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (nav.classList.contains("lang-open")) closeLang();
+        else openLang();
+      }, { passive:false });
 
-  // Tab switching (active state)
-  row.querySelectorAll(".quickNavBtn:not(.quickNavBtnLang)").forEach(btn => {
-    btn.addEventListener("click", () => {
-      row.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
-      btn.classList.add("is-active");
+      langBackBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeLang();
+      }, { passive:false });
 
-      const tab = btn.dataset.tab;
-      // TODO: deine Navigation:
-      // if(tab==="social") navTo("social.html");
-      // if(tab==="info") navTo("info.html");
-      // if(tab==="kamarieri") navTo("../staff/kamarieri.html");
-      console.log("TAB:", tab);
-    }, { passive:true });
-  });
+      langNextBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeLang();
+      }, { passive:false });
 
-  // Language open/close
-  langToggleBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    if (nav.classList.contains("lang-open")) closeLang();
-    else openLang();
-  }, { passive:false });
+      // Choose language
+      langOpts.forEach(btn => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          setLang(btn.dataset.lang);
+          closeLang();
+        }, { passive:false });
+      });
 
-  langBackBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    closeLang();
-  }, { passive:false });
+      // Click outside closes
+      document.addEventListener("click", (e) => {
+        if (!nav.classList.contains("lang-open")) return;
+        if (!nav.contains(e.target)) closeLang();
+      }, { passive:true });
 
-  // “Next” optional (hier einfach auch schließen oder später page/scroll der Optionen)
-  langNextBtn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    closeLang();
-  }, { passive:false });
-
-  // Choose language
-  langOpts.forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      setLang(btn.dataset.lang);
-      closeLang();
-    }, { passive:false });
-  });
-
-  // Click outside closes
-  document.addEventListener("click", (e) => {
-    if (!nav.classList.contains("lang-open")) return;
-    if (!nav.contains(e.target)) closeLang();
-  }, { passive:true });
-
-  // ESC closes
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && nav.classList.contains("lang-open")) closeLang();
-  });
-
-})();
-
-
-
-
-
-
-
-</script>
+      // ESC closes
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && nav.classList.contains("lang-open")) closeLang();
+      });
+    })();
+  </script>
 </body>
 </html>
