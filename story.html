@@ -6,9 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- nur das 1. Video priorisieren -->
+  <!-- Priorisiere nur Reel 1 -->
   <link rel="preload" as="video" href="./images/tik1.mp4" type="video/mp4" fetchpriority="high">
   <link rel="preload" as="image" href="./images/Prince-coffe-house-logo.jpg">
+  <link rel="preload" as="image" href="./images/Prince-coffe-house-offer.jpg">
 
   <style>
     :root{
@@ -27,23 +28,47 @@
     img{display:block;max-width:100%}
 
     .app{position:fixed;inset:0;height:var(--vh);background:#000;overflow:hidden}
-    .viewport{position:absolute;inset:0;height:var(--vh);overflow:hidden;touch-action:pan-y}
-    .track{position:absolute;inset:0;will-change:transform;transform:translate3d(0,0,0)}
 
-    .reel{position:relative;height:var(--vh);width:100%;background:#000;overflow:hidden}
-    .reel::before{
-      content:"";
-      position:absolute;inset:0;
-      background: radial-gradient(circle at 50% 20%, rgba(255,255,255,.08), rgba(0,0,0,.92));
-      z-index:0;
+    /* FEED: wir scrollen per scrollTop (keine transforms auf Video!) */
+    .feed{
+      position:absolute; inset:0;
+      height:var(--vh);
+      overflow:hidden;            /* user kann nicht “momentum-scrollen” */
+      touch-action:none;          /* wir übernehmen swipe */
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .reel{
+      position:relative;
+      height:var(--vh);
+      width:100%;
+      background:#000;
+      overflow:hidden;
     }
     .reelVideo{
-      position:relative;z-index:1;
-      width:100%;height:100%;
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit:cover;
+      background:#000;
+      display:block;
+    }
+
+    /* COVER: bleibt bis erstes Video-Frame wirklich da ist */
+    .cover{
+      position:absolute; inset:0; z-index:3;
+      background:#000;
+      display:block;
+    }
+    .coverImg{
+      width:100%; height:100%;
       object-fit:cover;
       display:block;
-      background:#000;
-      transform:translateZ(0);
+      transform: translateZ(0);
+    }
+    .cover.is-hidden{
+      opacity:0;
+      pointer-events:none;
+      transition: opacity 120ms ease;
     }
 
     .topFade,.botFade{position:fixed;left:0;right:0;pointer-events:none;z-index:5}
@@ -61,10 +86,10 @@
       border:1px solid var(--line);
       background:var(--glass);
       display:grid;place-items:center;
-      cursor:pointer;-webkit-tap-highlight-color:transparent;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
     }
     .iconBtn:active{transform:scale(.985)}
-
     .logo{
       width:30px;height:30px;border-radius:10px;object-fit:contain;
       background:rgba(255,255,255,.06);
@@ -86,7 +111,8 @@
       background:var(--glass);
       border-radius:18px;padding:10px 8px;
       display:flex;flex-direction:column;align-items:center;gap:6px;
-      cursor:pointer;-webkit-tap-highlight-color:transparent;
+      cursor:pointer;
+      -webkit-tap-highlight-color:transparent;
     }
     .actionBtn:active{transform:scale(.985)}
     .actionIcon{width:22px;height:22px;display:block}
@@ -175,36 +201,62 @@
       padding:0 12px;outline:none;font-size:13px;
     }
     @media (prefers-reduced-motion: reduce){
-      .track,.sheet,.backdrop{transition:none!important}
+      .cover, .sheet, .backdrop{transition:none!important}
     }
   </style>
 </head>
 
 <body>
   <div class="app" id="app">
-    <div class="viewport" id="viewport">
-      <div class="track" id="track">
-        <!-- Reel 1: sofort src -->
-        <section class="reel" data-i="0">
-          <video class="reelVideo" playsinline webkit-playsinline muted preload="auto"
-                 poster="./images/Prince-coffe-house-offer.jpg">
-            <source src="./images/tik1.mp4" type="video/mp4">
-          </video>
-        </section>
 
-        <!-- Reel 2/3: lazy (src wird erst gesetzt) -->
-        <section class="reel" data-i="1">
-          <video class="reelVideo" playsinline webkit-playsinline muted preload="metadata"
-                 poster="./images/Prince-coffe-house-offer.jpg"
-                 data-src="./images/tik2.mp4"></video>
-        </section>
+    <div class="feed" id="feed" aria-label="Story Feed">
+      <!-- Reel 1 -->
+      <section class="reel" data-i="0">
+        <video class="reelVideo"
+          playsinline webkit-playsinline
+          muted autoplay
+          preload="auto"
+          poster="./images/Prince-coffe-house-offer.jpg"
+          disablepictureinpicture
+        >
+          <source src="./images/tik1.mp4" type="video/mp4">
+        </video>
+        <div class="cover">
+          <img class="coverImg" src="./images/Prince-coffe-house-offer.jpg" alt="" />
+        </div>
+      </section>
 
-        <section class="reel" data-i="2">
-          <video class="reelVideo" playsinline webkit-playsinline muted preload="metadata"
-                 poster="./images/Prince-coffe-house-offer.jpg"
-                 data-src="./images/tik3.mp4"></video>
-        </section>
-      </div>
+      <!-- Reel 2 -->
+      <section class="reel" data-i="1">
+        <video class="reelVideo"
+          playsinline webkit-playsinline
+          muted autoplay
+          preload="auto"
+          poster="./images/Prince-coffe-house-offer.jpg"
+          disablepictureinpicture
+        >
+          <source src="./images/tik2.mp4" type="video/mp4">
+        </video>
+        <div class="cover">
+          <img class="coverImg" src="./images/Prince-coffe-house-offer.jpg" alt="" />
+        </div>
+      </section>
+
+      <!-- Reel 3 -->
+      <section class="reel" data-i="2">
+        <video class="reelVideo"
+          playsinline webkit-playsinline
+          muted autoplay
+          preload="auto"
+          poster="./images/Prince-coffe-house-offer.jpg"
+          disablepictureinpicture
+        >
+          <source src="./images/tik3.mp4" type="video/mp4">
+        </video>
+        <div class="cover">
+          <img class="coverImg" src="./images/Prince-coffe-house-offer.jpg" alt="" />
+        </div>
+      </section>
     </div>
 
     <div class="topFade" aria-hidden="true"></div>
@@ -286,19 +338,20 @@
         <button class="productBtn" type="button">Send</button>
       </div>
     </section>
+
   </div>
 
   <script type="module">
-    const REELS = [
-      {likes:128, comments:12, user:"@princecoffeehouse", text:"New drop 🔥 Burger + Fries today.", productName:"Burger + Fries", productSub:"5.90 € • Marked Product"},
-      {likes:86,  comments:8,  user:"@princecoffeehouse", text:"Coffee vibes ☕ smooth & strong.",        productName:"Cappuccino",   productSub:"2.90 € • Marked Product"},
-      {likes:203, comments:21, user:"@princecoffeehouse", text:"Quick bite, big taste ✅",             productName:"Burger Menu",  productSub:"5.90 € • Marked Product"}
+    const DATA = [
+      { likes:128, comments:12, user:"@princecoffeehouse", text:"New drop 🔥 Burger + Fries today.", productName:"Burger + Fries", productSub:"5.90 € • Marked Product" },
+      { likes:86,  comments:8,  user:"@princecoffeehouse", text:"Coffee vibes ☕ smooth & strong.",        productName:"Cappuccino",   productSub:"2.90 € • Marked Product" },
+      { likes:203, comments:21, user:"@princecoffeehouse", text:"Quick bite, big taste ✅",             productName:"Burger Menu",  productSub:"5.90 € • Marked Product" }
     ];
 
-    const viewport = document.getElementById("viewport");
-    const track = document.getElementById("track");
+    const feed = document.getElementById("feed");
     const reels = Array.from(document.querySelectorAll(".reel"));
-    const videos = Array.from(document.querySelectorAll(".reelVideo"));
+    const videos = reels.map(r => r.querySelector("video"));
+    const covers = reels.map(r => r.querySelector(".cover"));
 
     const backBtn = document.getElementById("backBtn");
     const soundBtn = document.getElementById("soundBtn");
@@ -318,11 +371,13 @@
     const sheet = document.getElementById("sheet");
     const sheetCloseBtn = document.getElementById("sheetCloseBtn");
 
-    // Safe height (iOS/Android Browser UI)
+    // Safe height (Browser UI iOS/Android)
     function setVH(){
       const vv = window.visualViewport;
       const h = vv ? vv.height : window.innerHeight;
       document.documentElement.style.setProperty("--vh", h + "px");
+      // auch section heights stabil halten
+      reels.forEach(r => r.style.height = h + "px");
     }
     setVH();
     window.addEventListener("resize", setVH, { passive:true });
@@ -354,7 +409,7 @@
     sheetCloseBtn.addEventListener("click", closeSheet, { passive:true });
     backdrop.addEventListener("click", closeSheet, { passive:true });
 
-    // Sound
+    // Sound toggle (Regel: Sound darf nicht automatisch starten -> nur User-Klick)
     const SOUND_KEY = "menyra_story_sound";
     let soundOn = (localStorage.getItem(SOUND_KEY) === "1");
     function renderSoundIcon(){
@@ -364,22 +419,75 @@
     }
     renderSoundIcon();
 
-    // Pager state
-    let H = 1;
-    let active = 0;
-    let animating = false;
-
-    function measure(){
-      H = viewport.clientHeight || 1;
-      track.style.transition = "none";
-      track.style.transform = `translate3d(0, ${-active * H}px, 0)`;
-      requestAnimationFrame(() => track.style.transition = "");
+    // Playback helpers
+    function hardStop(v){
+      try{ v.pause(); }catch{}
+      try{ v.currentTime = 0; }catch{}
+      try{ v.muted = true; }catch{}
     }
-    measure();
-    window.addEventListener("resize", measure, { passive:true });
+
+    function hideCoverWhenReady(i){
+      const v = videos[i];
+      const c = covers[i];
+      if (!v || !c) return;
+
+      // Falls schon Frames da sind
+      const tryHide = () => {
+        // Sobald das Video wirklich spielt/Frames hat -> Cover weg
+        c.classList.add("is-hidden");
+      };
+
+      // requestVideoFrameCallback = perfekter Indikator (wenn vorhanden)
+      if ("requestVideoFrameCallback" in v){
+        try{
+          v.requestVideoFrameCallback(() => tryHide());
+          return;
+        }catch{}
+      }
+
+      // Fallback: loadeddata/playing
+      v.addEventListener("loadeddata", tryHide, { once:true });
+      v.addEventListener("playing", tryHide, { once:true });
+    }
+
+    async function playIndex(i){
+      const v = videos[i];
+      if (!v) return;
+
+      // stop others to avoid ghost audio
+      videos.forEach((ov, idx) => { if (idx !== i) hardStop(ov); });
+
+      // cover sichtbar machen (falls zurück geswiped)
+      covers.forEach((c, idx) => {
+        if (!c) return;
+        if (idx === i) c.classList.remove("is-hidden");
+      });
+
+      // reset + mute based on toggle
+      try{ v.pause(); }catch{}
+      try{ v.currentTime = 0; }catch{}
+      v.muted = !soundOn;
+
+      // Prime (iOS): nach metadata tiny seek hilft schneller frame
+      const prime = () => {
+        try{
+          if (v.duration && v.duration > 0) v.currentTime = 0.001;
+        }catch{}
+      };
+      v.addEventListener("loadedmetadata", prime, { once:true });
+
+      hideCoverWhenReady(i);
+
+      // Play sofort (muted autoplay erlaubt)
+      v.play().catch(() => {
+        // Fallback: sobald canplay, nochmal
+        const once = () => v.play().catch(()=>{});
+        v.addEventListener("canplay", once, { once:true });
+      });
+    }
 
     function applyMeta(i){
-      const d = REELS[i];
+      const d = DATA[i] || DATA[0];
       likeCount.textContent = String(d.likes);
       commentCount.textContent = String(d.comments);
       capUser.textContent = d.user;
@@ -388,79 +496,14 @@
       prodSub.textContent = d.productSub;
     }
 
-    function ensureSrc(i){
-      const v = videos[i];
-      if (!v) return;
-      if (v.querySelector("source")) return;
-
-      const src = v.dataset.src;
-      if (!src) return;
-
-      const s = document.createElement("source");
-      s.src = src;
-      s.type = "video/mp4";
-      v.appendChild(s);
-      try{ v.load(); }catch{}
-    }
-
-    function hardStop(v){
-      try{ v.pause(); }catch{}
-      try{ v.muted = true; }catch{}
-      try{ v.currentTime = 0; }catch{}
-    }
-
-    async function playIndex(i){
-      const v = videos[i];
-      if (!v) return;
-
-      // stop all others -> kein ghost audio
-      videos.forEach((ov, idx) => { if (idx !== i) hardStop(ov); });
-
-      ensureSrc(i);
-      reels.forEach((r, idx) => r.classList.toggle("is-active", idx === i));
-
-      try{ v.pause(); }catch{}
-      try{ v.currentTime = 0; }catch{}
-      v.muted = !soundOn;
-
-      // kein warten / keine loader – einfach play
-      v.play().catch(() => {});
-    }
-
-    async function goTo(next){
-      if (animating) return;
-      const ni = Math.max(0, Math.min(REELS.length - 1, next));
-      animating = true;
-
-      // vor dem Swipe schon src setzen (damit es sofort startet)
-      ensureSrc(ni);
-
-      active = ni;
-      applyMeta(active);
-
-      track.style.transition = "transform 240ms cubic-bezier(.2,.9,.2,1)";
-      track.style.transform = `translate3d(0, ${-active * H}px, 0)`;
-
-      // Video sofort starten (nicht erst nach transition)
-      requestAnimationFrame(() => playIndex(active));
-
-      track.addEventListener("transitionend", () => {
-        animating = false;
-        track.style.transition = "";
-        // nach dem ersten Start: nächstes Reel leise vorladen
-        const nextIdx = Math.min(REELS.length - 1, active + 1);
-        ensureSrc(nextIdx);
-      }, { once:true });
-    }
-
     // Like demo
     likeBtn.addEventListener("click", () => {
       likeBtn.classList.toggle("is-liked");
-      const base = REELS[active].likes;
+      const base = DATA[active].likes;
       likeCount.textContent = String(likeBtn.classList.contains("is-liked") ? base + 1 : base);
     }, { passive:true });
 
-    // Sound toggle (user gesture)
+    // Sound toggle
     soundBtn.addEventListener("click", (e) => {
       e.preventDefault();
       soundOn = !soundOn;
@@ -469,65 +512,90 @@
       const v = videos[active];
       if (v){
         v.muted = !soundOn;
-        v.play().catch(() => {});
+        v.play().catch(()=>{});
       }
     }, { passive:false });
 
-    // Drag paging (TikTok feel, kein natives scroll)
-    let dragging=false, startY=0, baseY=0, startT=0;
+    // TikTok-like SNAP paging (no slow last mm)
+    let active = 0;
+    let H = 1;
+    let dragging = false;
+    let startY = 0;
+    let baseTop = 0;
+    let anim = null;
 
-    function clampY(y){
-      const min = -(REELS.length - 1) * H;
-      const max = 0;
-      return Math.max(min, Math.min(max, y));
+    function measure(){
+      const vv = window.visualViewport;
+      H = (vv ? vv.height : window.innerHeight) || 1;
+      feed.scrollTop = active * H;
+    }
+    measure();
+    window.addEventListener("resize", measure, { passive:true });
+
+    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+    function animateTo(top){
+      if (anim) cancelAnimationFrame(anim);
+      const from = feed.scrollTop;
+      const to = top;
+      const dur = 220; // fix & snappy like reels
+      const t0 = performance.now();
+
+      const step = (t) => {
+        const p = clamp((t - t0) / dur, 0, 1);
+        const eased = 1 - Math.pow(1 - p, 3);
+        feed.scrollTop = from + (to - from) * eased;
+        if (p < 1) anim = requestAnimationFrame(step);
+      };
+      anim = requestAnimationFrame(step);
     }
 
-    viewport.addEventListener("pointerdown", (e) => {
-      if (animating) return;
-      if (e.pointerType === "mouse" && e.button !== 0) return;
-      viewport.setPointerCapture?.(e.pointerId);
+    function goTo(i){
+      const ni = clamp(i, 0, reels.length - 1);
+      active = ni;
+      applyMeta(active);
+      animateTo(active * H);
+      playIndex(active);
+    }
+
+    // Pointer swipe
+    feed.addEventListener("pointerdown", (e) => {
+      if (sheet.classList.contains("open")) return;
       dragging = true;
       startY = e.clientY;
-      baseY = -active * H;
-      startT = performance.now();
-      track.style.transition = "none";
+      baseTop = feed.scrollTop;
+      try{ feed.setPointerCapture(e.pointerId); }catch{}
     }, { passive:true });
 
-    viewport.addEventListener("pointermove", (e) => {
+    feed.addEventListener("pointermove", (e) => {
       if (!dragging) return;
       const dy = e.clientY - startY;
-      track.style.transform = `translate3d(0, ${clampY(baseY + dy)}px, 0)`;
+      const next = clamp(baseTop - dy, 0, (reels.length - 1) * H);
+      feed.scrollTop = next;
     }, { passive:true });
 
-    function endDrag(y){
+    feed.addEventListener("pointerup", (e) => {
       if (!dragging) return;
       dragging = false;
 
-      const dy = y - startY;
-      const dt = Math.max(1, performance.now() - startT);
-      const v = dy / dt; // px/ms
-
+      const dy = e.clientY - startY;
       const threshold = H * 0.14;
-      const fast = Math.abs(v) > 0.55;
 
-      if (dy > threshold || (fast && v > 0)) goTo(active - 1);
-      else if (dy < -threshold || (fast && v < 0)) goTo(active + 1);
+      if (dy > threshold) goTo(active - 1);
+      else if (dy < -threshold) goTo(active + 1);
       else goTo(active);
-    }
-
-    viewport.addEventListener("pointerup", (e) => endDrag(e.clientY), { passive:true });
-    viewport.addEventListener("pointercancel", (e) => endDrag(e.clientY), { passive:true });
-
-    // Wheel desktop
-    let wheelLock = 0;
-    viewport.addEventListener("wheel", (e) => {
-      const now = performance.now();
-      if (now < wheelLock) return;
-      if (Math.abs(e.deltaY) < 8) return;
-      wheelLock = now + 280;
-      if (e.deltaY > 0) goTo(active + 1);
-      else goTo(active - 1);
     }, { passive:true });
+
+    feed.addEventListener("pointercancel", () => {
+      if (!dragging) return;
+      dragging = false;
+      goTo(active);
+    }, { passive:true });
+
+    // ESC closes comments
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeSheet();
+    });
 
     // Visibility: stop all
     document.addEventListener("visibilitychange", () => {
@@ -535,11 +603,10 @@
       else playIndex(active);
     }, { passive:true });
 
-    // INIT: sofort meta + sofort play Reel 1 (kein warmup-warten)
+    // INIT: sofort Reel 1 starten (muted autoplay)
     applyMeta(0);
-    playIndex(0);
-    // ganz leichter background prefetch (aber nicht blockieren)
-    setTimeout(() => ensureSrc(1), 250);
+    // wichtig: kurze microtask -> stabiler autostart
+    queueMicrotask(() => playIndex(0));
   </script>
 </body>
 </html>
