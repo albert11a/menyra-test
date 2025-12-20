@@ -4,558 +4,647 @@
   <meta charset="UTF-8" />
   <title>MENYRA – Story</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0f172a" />
+  <meta name="theme-color" content="#000000" />
 
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    :root{
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
 
-    *{ margin:0; padding:0; box-sizing:border-box; font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif; }
-    html,body{ height:100%; background:#000; color:#fff; }
-    body{ overflow:hidden; }
+      --ui: rgba(0,0,0,0.45);
+      --ui2: rgba(0,0,0,0.25);
+      --txt: #ffffff;
+      --muted: rgba(255,255,255,0.72);
+    }
 
-    /* ====== FEED (TikTok-Style) ====== */
-    .feed{
-      height:100vh;
-      overflow-y:auto;
-      scroll-snap-type:y mandatory;
-      -webkit-overflow-scrolling:touch;
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    html, body{ height:100%; background:#000; }
+    body{
+      color: var(--txt);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      overflow: hidden;
       background:#000;
     }
-    .feed::-webkit-scrollbar{ display:none; }
-    .feed{ -ms-overflow-style:none; scrollbar-width:none; }
+
+    /* ====== FIX: Visible viewport height ======
+       Reihenfolge ist KRITISCH:
+       1) vh fallback
+       2) svh (stabile small viewport)
+       3) dvh (dynamische sichtbare Höhe, best für Browser-UI)
+    */
+    .reels{
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
+
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      background:#000;
+
+      /* damit Snap sauber bleibt */
+      scroll-padding-top: var(--safe-top);
+      scroll-padding-bottom: var(--safe-bottom);
+    }
+    .reels::-webkit-scrollbar{ display:none; }
+    .reels{ scrollbar-width:none; }
 
     .reel{
-      height:100vh;
-      width:100%;
-      scroll-snap-align:start;
-      position:relative;
+      position: relative;
+
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
+
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
       background:#000;
       overflow:hidden;
+      isolation:isolate;
     }
 
     .reel video{
+      position:absolute;
+      inset:0;
       width:100%;
       height:100%;
-      object-fit:cover;
-      display:block;
+      object-fit: cover;
       background:#000;
+      transform: translateZ(0);
     }
 
-    /* ====== OVERLAYS ====== */
+    .vignette{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(120% 70% at 50% 10%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.8) 100%),
+        linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.00) 45%);
+      opacity: .9;
+      z-index: 5;
+    }
+
+    /* ====== Overlay UI (Topbar) ====== */
     .topbar{
-      position:fixed;
-      left:0; right:0;
-      top:0;
-      padding: calc(env(safe-area-inset-top, 0px) + 12px) 14px 10px;
-      z-index:50;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      pointer-events:none;
-      background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0));
-    }
-    .topbar > *{ pointer-events:auto; }
-
-    .backBtn{
-      width:40px; height:40px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.35);
-      display:grid;
-      place-items:center;
-      cursor:pointer;
-      -webkit-tap-highlight-color:transparent;
-    }
-    .backBtn svg{ width:20px; height:20px; fill:#fff; }
-
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      min-width:0;
-    }
-    .brandLogo{
-      width:34px; height:34px;
-      border-radius:10px;
-      object-fit:contain;
-      background: rgba(255,255,255,.92);
-      border:1px solid rgba(255,255,255,.10);
-    }
-    .brandText{
-      display:flex;
-      flex-direction:column;
-      min-width:0;
-      line-height:1.05;
-    }
-    .brandName{
-      font-weight:800;
-      font-size:14px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .brandSub{
-      font-size:12px;
-      opacity:.78;
-      margin-top:3px;
-    }
-
-    /* Right actions */
-    .actions{
       position:absolute;
-      right:12px;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 108px);
-      z-index:20;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      align-items:center;
-      pointer-events:auto;
-    }
-    .actionBtn{
-      width:46px; height:46px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.16);
-      background: rgba(0,0,0,.35);
-      display:grid;
-      place-items:center;
-      cursor:pointer;
-      -webkit-tap-highlight-color:transparent;
-      transition: transform .12s ease, background .18s ease;
-    }
-    .actionBtn:active{ transform: scale(.98); background: rgba(0,0,0,.5); }
-    .actionBtn svg{ width:22px; height:22px; fill:#fff; opacity:.95; }
-    .actionCount{
-      font-size:12px;
-      font-weight:700;
-      opacity:.92;
-      margin-top:6px;
-      text-align:center;
-    }
-    .actionStack{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+      top: 0;
+      left: 0;
+      right: 0;
 
-    .isLiked .likeIcon{
-      fill:#ff5a5f !important;
-    }
+      padding-top: calc(var(--safe-top) + 10px);
+      padding-left: calc(var(--safe-left) + 12px);
+      padding-right: calc(var(--safe-right) + 12px);
+      padding-bottom: 10px;
 
-    /* Caption bottom-left */
-    .meta{
-      position:absolute;
-      left:14px;
-      right:78px;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 120px);
-      z-index:18;
-      pointer-events:none;
-      text-shadow: 0 10px 30px rgba(0,0,0,.55);
-    }
-    .metaTitle{
-      font-weight:800;
-      font-size:14px;
-      margin-bottom:8px;
-    }
-    .metaDesc{
-      font-size:13px;
-      opacity:.92;
-      line-height:1.35;
-      max-width: 92%;
-    }
-
-    /* Product tag card (bottom) */
-    .productCard{
-      position:absolute;
-      left:14px;
-      right:78px;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
-      z-index:25;
-
-      display:flex;
-      align-items:center;
-      gap:12px;
-
-      padding:10px 12px;
-      border-radius:16px;
-      border:1px solid rgba(255,255,255,.16);
-      background: rgba(0,0,0,.45);
-      backdrop-filter: blur(8px);
-
-      pointer-events:auto;
-    }
-    .productCard.is-hidden{ display:none; }
-
-    .productImg{
-      width:52px; height:52px;
-      border-radius:12px;
-      object-fit:cover;
-      background: rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.10);
-      flex:0 0 auto;
-    }
-    .productInfo{ min-width:0; flex:1; }
-    .productName{
-      font-weight:800;
-      font-size:13px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      margin-bottom:4px;
-    }
-    .productPrice{
-      font-size:12px;
-      opacity:.86;
-      font-weight:700;
-    }
-    .productBtn{
-      border:none;
-      height:36px;
-      padding:0 12px;
-      border-radius:999px;
-      background:#fff;
-      color:#0f172a;
-      font-weight:900;
-      font-size:12px;
-      cursor:pointer;
-      -webkit-tap-highlight-color:transparent;
-      flex:0 0 auto;
-    }
-
-    /* Tap indicator */
-    .tapHint{
-      position:absolute;
-      left:50%;
-      top:50%;
-      transform: translate(-50%, -50%) scale(1);
-      z-index:30;
-      background: rgba(0,0,0,.55);
-      border:1px solid rgba(255,255,255,.16);
-      padding:10px 14px;
-      border-radius:999px;
-      font-weight:800;
-      font-size:12px;
-      opacity:0;
-      pointer-events:none;
-      transition: opacity .18s ease, transform .18s ease;
-    }
-    .tapHint.show{
-      opacity:1;
-      transform: translate(-50%, -50%) scale(1.02);
-    }
-
-    /* Comments drawer (placeholder) */
-    .comments{
-      position:fixed;
-      left:0; right:0;
-      bottom:0;
-      height:72vh;
-      z-index:80;
-      background:#0b1220;
-      border-top-left-radius:22px;
-      border-top-right-radius:22px;
-      transform: translateY(100%);
-      transition: transform .22s ease;
-      box-shadow: 0 -18px 40px rgba(0,0,0,.45);
-      padding: 14px;
-    }
-    .comments.open{ transform: translateY(0); }
-    .commentsHeader{
       display:flex;
       align-items:center;
       justify-content:space-between;
-      padding: 6px 2px 10px;
+      gap: 10px;
+
+      z-index: 20;
+      pointer-events:none;
     }
-    .commentsTitle{ font-weight:900; font-size:14px; }
-    .commentsClose{
-      width:40px; height:40px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
+
+    .topbarLeft, .topbarRight{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      pointer-events:auto;
+    }
+
+    .btnIcon{
+      border:0;
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
       display:grid;
       place-items:center;
       cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      backdrop-filter: blur(6px);
     }
-    .commentsClose svg{ width:20px; height:20px; fill:#fff; }
-    .commentsBody{
-      opacity:.85;
-      font-size:13px;
-      line-height:1.45;
-      padding-top:8px;
+    .btnIcon:active{ transform: scale(0.98); }
+
+    .brandPill{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 16px;
+      background: rgba(0,0,0,0.25);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.12);
+      pointer-events:auto;
+      min-width: 0;
+    }
+    .brandLogo{
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      object-fit: contain;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      flex: 0 0 auto;
+    }
+    .brandName{
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: .2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 56vw;
+    }
+
+    /* ====== Right Action Rail ====== */
+    .rail{
+      position:absolute;
+      right: calc(var(--safe-right) + 12px);
+      bottom: calc(var(--safe-bottom) + 110px);
+      z-index: 20;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 14px;
+      pointer-events:auto;
+    }
+
+    .railBtn{
+      border:0;
+      background: transparent;
+      color: #fff;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 6px;
+    }
+    .railIcon{
+      width: 46px;
+      height: 46px;
+      border-radius: 18px;
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.10);
+      display:grid;
+      place-items:center;
+      backdrop-filter: blur(6px);
+    }
+    .railCount{
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(255,255,255,0.85);
+      white-space: nowrap;
+    }
+
+    .railBtn[data-action="like"].is-liked .railIcon{
+      background: rgba(255,255,255,0.90);
+      color:#111;
+    }
+    .railBtn[data-action="like"].is-liked svg{ fill:#111; }
+
+    /* ====== Bottom product tag ====== */
+    .productTag{
+      position:absolute;
+      left: calc(var(--safe-left) + 12px);
+      right: calc(var(--safe-right) + 12px);
+      bottom: calc(var(--safe-bottom) + 16px);
+      z-index: 20;
+      pointer-events:auto;
+
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(15,23,42,0.58);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+    }
+    .productImg{
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      object-fit: cover;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      flex: 0 0 auto;
+    }
+    .productMeta{
+      min-width:0;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap: 2px;
+    }
+    .productTitle{
+      font-weight: 900;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .productSub{
+      font-size: 12px;
+      color: rgba(255,255,255,0.72);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .productBtn{
+      border:0;
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 14px;
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 900;
+      font-size: 12px;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      flex: 0 0 auto;
+    }
+    .productBtn:active{ transform: scale(0.985); }
+
+    /* Tap hint when paused */
+    .tapHint{
+      position:absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      z-index: 15;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.35);
+      color: rgba(255,255,255,0.85);
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid rgba(255,255,255,0.10);
+      pointer-events:none;
+      opacity: 0;
+      transition: opacity .2s ease;
+    }
+    .reel.is-paused .tapHint{ opacity: 1; }
+
+    /* Toast */
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--safe-bottom) + 88px);
+      transform: translateX(-50%);
+      z-index: 999;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.90);
+      font-size: 12px;
+      font-weight: 900;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show{
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .toast{ transition:none !important; }
+      .tapHint{ transition:none !important; }
     }
   </style>
 </head>
 
 <body>
-  <!-- TOPBAR -->
-  <header class="topbar">
-    <button class="backBtn" id="backBtn" type="button" aria-label="Back">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
-    </button>
+  <div class="toast" id="toast">Sound</div>
 
-    <div class="brand" aria-label="Restaurant">
-      <img class="brandLogo" src="./images/Prince-coffe-house-logo.jpg" alt="Logo" />
-      <div class="brandText">
-        <div class="brandName" id="brandName">Prince Coffe House</div>
-        <div class="brandSub">Story</div>
+  <!-- TEMPLATE: wird auf alle Reels geklont (damit du nicht 3x HTML kopieren musst) -->
+  <template id="overlayTpl">
+    <header class="topbar">
+      <div class="topbarLeft">
+        <button class="btnIcon" type="button" data-action="back" aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="brandPill" aria-label="Restaurant">
+          <img class="brandLogo" data-bind="logo" src="" alt="Logo" />
+          <div class="brandName" data-bind="name">Restaurant</div>
+        </div>
       </div>
+
+      <div class="topbarRight">
+        <button class="btnIcon" type="button" data-action="sound" aria-label="Toggle sound">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M11 5L6.5 8.5H3v7h3.5L11 19V5z" stroke="white" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M15.5 8.5c1.2 1.1 1.2 5.9 0 7" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M18 6.8c2 2.1 2 8.3 0 10.4" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity="0.9"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <aside class="rail">
+      <button class="railBtn" type="button" data-action="like" data-count="0">
+        <span class="railIcon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+            <path d="M12 21s-7-4.5-9.5-8.9C.7 8.6 3 5.5 6.4 5.5c1.7 0 3.1.8 3.9 2 0 0 .8-2 3.7-2 3.4 0 5.7 3.1 3.9 6.6C19 16.5 12 21 12 21z"/>
+          </svg>
+        </span>
+        <span class="railCount" data-bind="likeCount">0</span>
+      </button>
+
+      <button class="railBtn" type="button" data-action="comment" data-count="0">
+        <span class="railIcon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+            <path d="M21 12c0 4.4-4 8-9 8-1 0-2-.1-2.9-.4L3 21l1.6-4.1C3.6 15.6 3 13.9 3 12c0-4.4 4-8 9-8s9 3.6 9 8z"/>
+          </svg>
+        </span>
+        <span class="railCount" data-bind="commentCount">0</span>
+      </button>
+
+      <button class="railBtn" type="button" data-action="share">
+        <span class="railIcon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+            <path d="M14 9l-4 6 4-2 6 3V7l-6 2z"/>
+            <path d="M4 20v-9a3 3 0 013-3h5" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="railCount">Share</span>
+      </button>
+    </aside>
+
+    <div class="productTag" role="button" tabindex="0" aria-label="Tagged product">
+      <img class="productImg" data-bind="productImg" src="" alt="Product" loading="lazy" decoding="async" />
+      <div class="productMeta">
+        <div class="productTitle" data-bind="productTitle">Produkt</div>
+        <div class="productSub" data-bind="productSub">Tap to view product</div>
+      </div>
+      <button class="productBtn" type="button" data-action="product">Shiko</button>
     </div>
-  </header>
 
-  <!-- FEED -->
-  <main class="feed" id="feed">
+    <div class="tapHint">Paused</div>
+  </template>
+
+  <main class="reels" id="reels" aria-label="MENYRA Stories">
     <!-- Reel 1 -->
-    <section class="reel" data-reel="0">
-      <video class="reelVideo" playsinline muted loop preload="metadata" src="./images/tik1.mp4"></video>
-
-      <div class="tapHint">Paused</div>
-
-      <div class="actions">
-        <div class="actionStack">
-          <button class="actionBtn likeBtn" type="button" aria-label="Like">
-            <svg class="likeIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 21s-7-4.6-9.5-8.6C.8 9.1 2.2 5.9 5.6 5.1c1.7-.4 3.4.2 4.6 1.4 1.2-1.2 2.9-1.8 4.6-1.4 3.4.8 4.8 4 3.1 7.3C19 16.4 12 21 12 21z"/>
-            </svg>
-          </button>
-          <div class="actionCount likeCount">128</div>
-        </div>
-
-        <div class="actionStack">
-          <button class="actionBtn commentBtn" type="button" aria-label="Comments">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 4h16v12H7l-3 3V4zm3 5h10v2H7V9zm0-4h10v2H7V5zm0 8h7v2H7v-2z"/>
-            </svg>
-          </button>
-          <div class="actionCount commentCount">24</div>
-        </div>
-      </div>
-
-      <div class="meta">
-        <div class="metaTitle">@princecoffee</div>
-        <div class="metaDesc">Fresh vibes ☕️🔥 Heute: Burger & Fries Deal.</div>
-      </div>
-
-      <div class="productCard" data-has-product="1">
-        <img class="productImg" src="./images/speise1.avif" alt="Product" />
-        <div class="productInfo">
-          <div class="productName">Burger + Fries</div>
-          <div class="productPrice">5.90 €</div>
-        </div>
-        <button class="productBtn" type="button">View</button>
-      </div>
+    <section class="reel"
+      data-index="0"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="128"
+      data-comments="16"
+      data-product-title="Burger + Fries"
+      data-product-sub="Tap to view product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik1.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
     </section>
 
     <!-- Reel 2 -->
-    <section class="reel" data-reel="1">
-      <video class="reelVideo" playsinline muted loop preload="metadata" src="./images/tik2.mp4"></video>
-
-      <div class="tapHint">Paused</div>
-
-      <div class="actions">
-        <div class="actionStack">
-          <button class="actionBtn likeBtn" type="button" aria-label="Like">
-            <svg class="likeIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 21s-7-4.6-9.5-8.6C.8 9.1 2.2 5.9 5.6 5.1c1.7-.4 3.4.2 4.6 1.4 1.2-1.2 2.9-1.8 4.6-1.4 3.4.8 4.8 4 3.1 7.3C19 16.4 12 21 12 21z"/>
-            </svg>
-          </button>
-          <div class="actionCount likeCount">76</div>
-        </div>
-
-        <div class="actionStack">
-          <button class="actionBtn commentBtn" type="button" aria-label="Comments">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 4h16v12H7l-3 3V4zm3 5h10v2H7V9zm0-4h10v2H7V5zm0 8h7v2H7v-2z"/>
-            </svg>
-          </button>
-          <div class="actionCount commentCount">9</div>
-        </div>
-      </div>
-
-      <div class="meta">
-        <div class="metaTitle">@princecoffee</div>
-        <div class="metaDesc">Coffee art ✨ Cappuccino moment.</div>
-      </div>
-
-      <div class="productCard is-hidden" data-has-product="0">
-        <img class="productImg" src="./images/getränk1.png" alt="Product" />
-        <div class="productInfo">
-          <div class="productName">Cappuccino</div>
-          <div class="productPrice">2.90 €</div>
-        </div>
-        <button class="productBtn" type="button">View</button>
-      </div>
+    <section class="reel"
+      data-index="1"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="74"
+      data-comments="9"
+      data-product-title="Classic Burger"
+      data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik2.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
     </section>
 
     <!-- Reel 3 -->
-    <section class="reel" data-reel="2">
-      <video class="reelVideo" playsinline muted loop preload="metadata" src="./images/tik3.mp4"></video>
-
-      <div class="tapHint">Paused</div>
-
-      <div class="actions">
-        <div class="actionStack">
-          <button class="actionBtn likeBtn" type="button" aria-label="Like">
-            <svg class="likeIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 21s-7-4.6-9.5-8.6C.8 9.1 2.2 5.9 5.6 5.1c1.7-.4 3.4.2 4.6 1.4 1.2-1.2 2.9-1.8 4.6-1.4 3.4.8 4.8 4 3.1 7.3C19 16.4 12 21 12 21z"/>
-            </svg>
-          </button>
-          <div class="actionCount likeCount">201</div>
-        </div>
-
-        <div class="actionStack">
-          <button class="actionBtn commentBtn" type="button" aria-label="Comments">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 4h16v12H7l-3 3V4zm3 5h10v2H7V9zm0-4h10v2H7V5zm0 8h7v2H7v-2z"/>
-            </svg>
-          </button>
-          <div class="actionCount commentCount">41</div>
-        </div>
-      </div>
-
-      <div class="meta">
-        <div class="metaTitle">@princecoffee</div>
-        <div class="metaDesc">Late night vibes 🌙 Music + snacks.</div>
-      </div>
-
-      <div class="productCard" data-has-product="1">
-        <img class="productImg" src="./images/getränk1.png" alt="Product" />
-        <div class="productInfo">
-          <div class="productName">Fresh Juice</div>
-          <div class="productPrice">3.50 €</div>
-        </div>
-        <button class="productBtn" type="button">View</button>
-      </div>
+    <section class="reel"
+      data-index="2"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="203"
+      data-comments="31"
+      data-product-title="Coffee Special"
+      data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik3.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
     </section>
   </main>
 
-  <!-- COMMENTS (placeholder drawer) -->
-  <aside class="comments" id="comments">
-    <div class="commentsHeader">
-      <div class="commentsTitle">Comments</div>
-      <button class="commentsClose" id="commentsClose" type="button" aria-label="Close">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.3 5.7L12 12l6.3 6.3-1.4 1.4L10.6 13.4 4.3 19.7 2.9 18.3 9.2 12 2.9 5.7 4.3 4.3l6.3 6.3 6.3-6.3 1.4 1.4z"/></svg>
-      </button>
-    </div>
-    <div class="commentsBody">
-      Demo-Placeholder.<br><br>
-      Später: Admin kann Kommentare moderieren + User können schreiben (Firestore).
-    </div>
-  </aside>
-
   <script type="module">
     // =========================================================
-    // STORY PAGE — TikTok-like feed (scroll-snap + autoplay)
-    // Minimal & schnell
+    // 0) Inject overlay into ALL reels (fast, no duplication)
     // =========================================================
-    const feed = document.getElementById("feed");
+    const tpl = document.getElementById("overlayTpl");
     const reels = Array.from(document.querySelectorAll(".reel"));
     const videos = Array.from(document.querySelectorAll(".reelVideo"));
+    const reelsEl = document.getElementById("reels");
+    const toastEl = document.getElementById("toast");
 
-    const backBtn = document.getElementById("backBtn");
-    const comments = document.getElementById("comments");
-    const commentsClose = document.getElementById("commentsClose");
+    reels.forEach((reel) => {
+      // clone UI
+      const frag = tpl.content.cloneNode(true);
 
-    function goBack(){
-      if (history.length > 1) history.back();
-      else window.location.href = "./karte.html";
-    }
-    backBtn?.addEventListener("click", goBack);
+      // bind data
+      const name = reel.getAttribute("data-name") || "Restaurant";
+      const logo = reel.getAttribute("data-logo") || "";
+      const like = reel.getAttribute("data-like") || "0";
+      const comments = reel.getAttribute("data-comments") || "0";
+      const pTitle = reel.getAttribute("data-product-title") || "Produkt";
+      const pSub = reel.getAttribute("data-product-sub") || "Tap to view product";
+      const pImg = reel.getAttribute("data-product-img") || "";
 
-    // --- Comments drawer ---
-    function openComments(){ comments?.classList.add("open"); }
-    function closeComments(){ comments?.classList.remove("open"); }
-    commentsClose?.addEventListener("click", closeComments);
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeComments();
+      const logoEl = frag.querySelector('[data-bind="logo"]');
+      const nameEl = frag.querySelector('[data-bind="name"]');
+      const likeCountEl = frag.querySelector('[data-bind="likeCount"]');
+      const commentCountEl = frag.querySelector('[data-bind="commentCount"]');
+      const pTitleEl = frag.querySelector('[data-bind="productTitle"]');
+      const pSubEl = frag.querySelector('[data-bind="productSub"]');
+      const pImgEl = frag.querySelector('[data-bind="productImg"]');
+
+      if (logoEl && logo) logoEl.src = logo;
+      if (nameEl) nameEl.textContent = name;
+
+      // set counts
+      const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
+      if (likeBtn) likeBtn.setAttribute("data-count", String(parseInt(like,10)||0));
+      if (likeCountEl) likeCountEl.textContent = String(parseInt(like,10)||0);
+
+      const comBtn = frag.querySelector('.railBtn[data-action="comment"]');
+      if (comBtn) comBtn.setAttribute("data-count", String(parseInt(comments,10)||0));
+      if (commentCountEl) commentCountEl.textContent = String(parseInt(comments,10)||0);
+
+      if (pTitleEl) pTitleEl.textContent = pTitle;
+      if (pSubEl) pSubEl.textContent = pSub;
+      if (pImgEl && pImg) pImgEl.src = pImg;
+
+      reel.appendChild(frag);
     });
 
-    // --- Like / Comment actions (delegation) ---
-    document.addEventListener("click", (e) => {
-      const reel = e.target.closest(".reel");
-      if (!reel) return;
+    // =========================================================
+    // 1) TikTok-like autoplay (only active plays)
+    // =========================================================
+    const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
+    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+    let activeIndex = 0;
 
-      // Like
-      const likeBtn = e.target.closest(".likeBtn");
-      if (likeBtn) {
-        const stack = likeBtn.closest(".actionStack");
-        const countEl = reel.querySelector(".likeCount");
-        const current = parseInt((countEl?.textContent || "0").trim(), 10) || 0;
-
-        const isLiked = likeBtn.classList.toggle("isLiked");
-        const next = isLiked ? current + 1 : Math.max(0, current - 1);
-        if (countEl) countEl.textContent = String(next);
-        return;
-      }
-
-      // Comment
-      const commentBtn = e.target.closest(".commentBtn");
-      if (commentBtn) {
-        openComments();
-        return;
-      }
-
-      // Product card click
-      const productBtn = e.target.closest(".productBtn");
-      if (productBtn) {
-        alert("Product öffnen ✅ (demo)");
-        return;
-      }
-    });
-
-    // --- Tap to pause/play on reel ---
-    function showHint(reelEl, text){
-      const hint = reelEl.querySelector(".tapHint");
-      if (!hint) return;
-      hint.textContent = text;
-      hint.classList.add("show");
-      window.setTimeout(() => hint.classList.remove("show"), 450);
+    function showToast(text){
+      if (!toastEl) return;
+      toastEl.textContent = text;
+      toastEl.classList.add("show");
+      window.setTimeout(() => toastEl.classList.remove("show"), 700);
     }
 
-    reels.forEach((reelEl) => {
-      reelEl.addEventListener("click", (e) => {
-        // ignore if click on buttons/cards
-        if (e.target.closest("button") || e.target.closest(".productCard")) return;
+    function setSoundState(on){
+      soundOn = !!on;
+      localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+      // only active can be unmuted
+      videos.forEach((v, i) => v.muted = !(soundOn && i === activeIndex));
+      showToast(soundOn ? "Sound: ON" : "Sound: OFF");
+    }
 
-        const v = reelEl.querySelector("video");
-        if (!v) return;
+    async function playOnly(index){
+      activeIndex = index;
 
-        if (v.paused) {
-          v.play().catch(()=>{});
-          showHint(reelEl, "Play");
-        } else {
+      videos.forEach((v, i) => {
+        const reel = reels[i];
+        if (i !== index){
           v.pause();
-          showHint(reelEl, "Paused");
+          v.muted = true;
+          reel?.classList.remove("is-paused");
         }
-      }, { passive: true });
-    });
-
-    // --- Autoplay only visible reel ---
-    function pauseAll(except){
-      videos.forEach(v => {
-        if (v === except) return;
-        try { v.pause(); } catch {}
       });
-    }
 
-    const io = new IntersectionObserver((entries) => {
-      // pick the most visible entry
-      let best = null;
-      for (const ent of entries) {
-        if (!ent.isIntersecting) continue;
-        if (!best || ent.intersectionRatio > best.intersectionRatio) best = ent;
-      }
-      if (!best) return;
-
-      const activeReel = best.target;
-      const v = activeReel.querySelector("video");
+      const v = videos[index];
       if (!v) return;
 
-      pauseAll(v);
-      // autoplay needs muted + playsinline
-      v.play().catch(()=>{});
-    }, { root: feed, threshold: [0.55, 0.7, 0.85] });
+      v.muted = !soundOn;
+
+      try{
+        await v.play();
+        reels[index]?.classList.remove("is-paused");
+      }catch(_){
+        reels[index]?.classList.add("is-paused");
+      }
+    }
+
+    // Init
+    setSoundState(soundOn);
+    playOnly(0);
+
+    // Observe active reel
+    const io = new IntersectionObserver((entries) => {
+      let best = null;
+      for (const e of entries){
+        if (!e.isIntersecting) continue;
+        if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+      }
+      if (!best) return;
+      const idx = Number(best.target.getAttribute("data-index") || "0");
+      if (Number.isFinite(idx) && idx !== activeIndex){
+        playOnly(idx);
+      }
+    }, { threshold: [0.35, 0.5, 0.75, 0.9] });
 
     reels.forEach(r => io.observe(r));
 
-    // --- Init: play first ---
-    const first = videos[0];
-    if (first) first.play().catch(()=>{});
+    // =========================================================
+    // 2) Controls (global, fast)
+    // =========================================================
+    document.addEventListener("click", (e) => {
+      const actionEl = e.target.closest("[data-action]");
+      if (actionEl){
+        const action = actionEl.getAttribute("data-action");
+
+        if (action === "back"){
+          window.location.href = "./karte.html";
+          return;
+        }
+
+        if (action === "sound"){
+          setSoundState(!soundOn);
+          // try to ensure active is playing with new sound state
+          playOnly(activeIndex);
+          return;
+        }
+
+        if (action === "like"){
+          const btn = actionEl.closest('.railBtn[data-action="like"]');
+          if (!btn) return;
+
+          const countEl = btn.querySelector(".railCount");
+          const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
+          const liked = btn.classList.toggle("is-liked");
+          const next = liked ? cur + 1 : Math.max(0, cur - 1);
+
+          btn.setAttribute("data-count", String(next));
+          if (countEl) countEl.textContent = String(next);
+          return;
+        }
+
+        if (action === "comment"){
+          alert("Kommentare (demo) — später Bottom-Sheet + Firestore");
+          return;
+        }
+
+        if (action === "share"){
+          alert("Share (demo)");
+          return;
+        }
+
+        if (action === "product"){
+          alert("Produkt öffnen (demo) — später detajet/product page");
+          return;
+        }
+      }
+
+      // Tap on video: play/pause
+      const video = e.target.closest("video.reelVideo");
+      if (!video) return;
+
+      const reel = video.closest(".reel");
+      const idx = Number(reel?.getAttribute("data-index") || "0");
+
+      if (video.paused){
+        playOnly(Number.isFinite(idx) ? idx : activeIndex);
+      }else{
+        video.pause();
+        reel?.classList.add("is-paused");
+      }
+    }, { passive: true });
+
+    // Double tap to like (fast)
+    let lastTap = 0;
+    document.addEventListener("touchend", (e) => {
+      const now = Date.now();
+      const isDouble = (now - lastTap) < 260;
+      lastTap = now;
+      if (!isDouble) return;
+
+      const reel = e.target.closest(".reel");
+      if (!reel) return;
+
+      const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
+      if (likeBtn) likeBtn.click();
+    }, { passive: true });
+
+    // Pause when hidden
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden){
+        videos.forEach(v => v.pause());
+      }else{
+        playOnly(activeIndex);
+      }
+    }, { passive: true });
   </script>
 </body>
 </html>
