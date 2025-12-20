@@ -6,6 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
+  <!-- Mini-Speed: erstes Reel früh laden -->
+  <link rel="preload" as="video" href="./images/tik1.mp4" type="video/mp4" fetchpriority="high" />
+
   <style>
     :root{
       --safe-top: env(safe-area-inset-top, 0px);
@@ -28,12 +31,7 @@
       background:#000;
     }
 
-    /* ====== FIX: Visible viewport height ======
-       Reihenfolge ist KRITISCH:
-       1) vh fallback
-       2) svh (stabile small viewport)
-       3) dvh (dynamische sichtbare Höhe, best für Browser-UI)
-    */
+    /* ====== FIX: Visible viewport height ====== */
     .reels{
       height: 100vh;
       height: 100svh;
@@ -45,7 +43,6 @@
       overscroll-behavior: contain;
       background:#000;
 
-      /* damit Snap sauber bleibt */
       scroll-padding-top: var(--safe-top);
       scroll-padding-bottom: var(--safe-bottom);
     }
@@ -314,9 +311,108 @@
       transform: translateX(-50%) translateY(-4px);
     }
 
+    /* ====== COMMENTS (Black like before) ====== */
+    .commentsBackdrop{
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .16s ease;
+    }
+    .commentsBackdrop.open{
+      opacity: .86;
+      pointer-events: auto;
+    }
+
+    .commentsSheet{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 2100;
+
+      height: min(70dvh, 520px);
+      background: #000;
+      border-top-left-radius: 22px;
+      border-top-right-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.10);
+
+      transform: translateY(110%);
+      transition: transform .20s ease;
+      padding-bottom: var(--safe-bottom);
+
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .commentsSheet.open{
+      transform: translateY(0);
+    }
+
+    .commentsTop{
+      padding: 12px 12px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+    .commentsTitle{
+      font-size: 13px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.92);
+      letter-spacing: .2px;
+    }
+
+    .commentsList{
+      flex: 1;
+      overflow: auto;
+      padding: 10px 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .cItem{
+      padding: 10px 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      margin-bottom: 10px;
+    }
+    .cUser{
+      font-size: 12px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.92);
+      margin-bottom: 4px;
+    }
+    .cText{
+      font-size: 12px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.35;
+    }
+
+    .commentsInput{
+      padding: 10px 12px 12px;
+      border-top: 1px solid rgba(255,255,255,0.10);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .commentsInput input{
+      flex: 1;
+      height: 42px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.92);
+      padding: 0 12px;
+      outline: none;
+      font-size: 13px;
+    }
+
     @media (prefers-reduced-motion: reduce){
       .toast{ transition:none !important; }
       .tapHint{ transition:none !important; }
+      .commentsBackdrop, .commentsSheet{ transition:none !important; }
     }
   </style>
 </head>
@@ -324,7 +420,7 @@
 <body>
   <div class="toast" id="toast">Sound</div>
 
-  <!-- TEMPLATE: wird auf alle Reels geklont (damit du nicht 3x HTML kopieren musst) -->
+  <!-- TEMPLATE: wird auf alle Reels geklont -->
   <template id="overlayTpl">
     <header class="topbar">
       <div class="topbarLeft">
@@ -405,7 +501,8 @@
       data-product-sub="Tap to view product (demo)"
       data-product-img="./images/speise1.avif"
     >
-      <video class="reelVideo" src="./images/tik1.mp4" playsinline muted preload="metadata" loop></video>
+      <!-- Nur minimal: preload auto fürs erste Reel -->
+      <video class="reelVideo" src="./images/tik1.mp4" playsinline muted preload="auto" loop></video>
       <div class="vignette"></div>
     </section>
 
@@ -440,6 +537,31 @@
     </section>
   </main>
 
+  <!-- COMMENTS (global, einmal – schwarz) -->
+  <div class="commentsBackdrop" id="commentsBackdrop" aria-hidden="true"></div>
+
+  <section class="commentsSheet" id="commentsSheet" aria-hidden="true">
+    <div class="commentsTop">
+      <div class="commentsTitle">Komentet</div>
+      <button class="btnIcon" type="button" data-action="closeComments" aria-label="Close comments">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="white" d="M18.3 5.7 12 12l6.3 6.3-1.3 1.3-6.3-6.3-6.3 6.3-1.3-1.3L9.4 12 3.1 5.7 4.4 4.4l6.3 6.3L17 4.4l1.3 1.3z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="commentsList" id="commentsList">
+      <div class="cItem"><div class="cUser">Ardi</div><div class="cText">🔥🔥 super</div></div>
+      <div class="cItem"><div class="cUser">Lina</div><div class="cText">Kur ka edhe sot?</div></div>
+      <div class="cItem"><div class="cUser">Denis</div><div class="cText">Perfect vibe</div></div>
+    </div>
+
+    <form class="commentsInput" id="commentsForm" autocomplete="off">
+      <input id="commentInput" type="text" placeholder="Shkruaj koment…" />
+      <button class="productBtn" type="submit">Send</button>
+    </form>
+  </section>
+
   <script type="module">
     // =========================================================
     // 0) Inject overlay into ALL reels (fast, no duplication)
@@ -450,11 +572,16 @@
     const reelsEl = document.getElementById("reels");
     const toastEl = document.getElementById("toast");
 
+    // Comments UI (global)
+    const commentsBackdrop = document.getElementById("commentsBackdrop");
+    const commentsSheet = document.getElementById("commentsSheet");
+    const commentsList = document.getElementById("commentsList");
+    const commentsForm = document.getElementById("commentsForm");
+    const commentInput = document.getElementById("commentInput");
+
     reels.forEach((reel) => {
-      // clone UI
       const frag = tpl.content.cloneNode(true);
 
-      // bind data
       const name = reel.getAttribute("data-name") || "Restaurant";
       const logo = reel.getAttribute("data-logo") || "";
       const like = reel.getAttribute("data-like") || "0";
@@ -474,7 +601,6 @@
       if (logoEl && logo) logoEl.src = logo;
       if (nameEl) nameEl.textContent = name;
 
-      // set counts
       const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
       if (likeBtn) likeBtn.setAttribute("data-count", String(parseInt(like,10)||0));
       if (likeCountEl) likeCountEl.textContent = String(parseInt(like,10)||0);
@@ -507,7 +633,6 @@
     function setSoundState(on){
       soundOn = !!on;
       localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
-      // only active can be unmuted
       videos.forEach((v, i) => v.muted = !(soundOn && i === activeIndex));
       showToast(soundOn ? "Sound: ON" : "Sound: OFF");
     }
@@ -541,7 +666,6 @@
     setSoundState(soundOn);
     playOnly(0);
 
-    // Observe active reel
     const io = new IntersectionObserver((entries) => {
       let best = null;
       for (const e of entries){
@@ -558,6 +682,57 @@
     reels.forEach(r => io.observe(r));
 
     // =========================================================
+    // 1.5) Comments (black sheet) – slim
+    // =========================================================
+    let commentsOpen = false;
+
+    function lockFeed(lock){
+      // super-slim: verhindert scroll/taps im Hintergrund
+      reelsEl.style.pointerEvents = lock ? "none" : "";
+      reelsEl.style.overflowY = lock ? "hidden" : "";
+    }
+
+    function openComments(){
+      if (commentsOpen) return;
+      commentsOpen = true;
+      commentsBackdrop.classList.add("open");
+      commentsSheet.classList.add("open");
+      commentsBackdrop.setAttribute("aria-hidden", "false");
+      commentsSheet.setAttribute("aria-hidden", "false");
+      lockFeed(true);
+      // Focus input (optional)
+      window.setTimeout(() => commentInput?.focus?.(), 60);
+    }
+
+    function closeComments(){
+      if (!commentsOpen) return;
+      commentsOpen = false;
+      commentsBackdrop.classList.remove("open");
+      commentsSheet.classList.remove("open");
+      commentsBackdrop.setAttribute("aria-hidden", "true");
+      commentsSheet.setAttribute("aria-hidden", "true");
+      lockFeed(false);
+    }
+
+    commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
+
+    commentsForm?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = (commentInput?.value || "").trim();
+      if (!val) return;
+      const item = document.createElement("div");
+      item.className = "cItem";
+      item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
+      item.querySelector(".cText").textContent = val;
+      commentsList?.prepend(item);
+      commentInput.value = "";
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeComments();
+    }, { passive:true });
+
+    // =========================================================
     // 2) Controls (global, fast)
     // =========================================================
     document.addEventListener("click", (e) => {
@@ -566,13 +741,13 @@
         const action = actionEl.getAttribute("data-action");
 
         if (action === "back"){
-          window.location.href = "./karte.html";
+          // FIX: zurück zur Demo-Karte
+          window.location.href = "./karte-demo.html";
           return;
         }
 
         if (action === "sound"){
           setSoundState(!soundOn);
-          // try to ensure active is playing with new sound state
           playOnly(activeIndex);
           return;
         }
@@ -592,7 +767,12 @@
         }
 
         if (action === "comment"){
-          alert("Kommentare (demo) — später Bottom-Sheet + Firestore");
+          openComments();
+          return;
+        }
+
+        if (action === "closeComments"){
+          closeComments();
           return;
         }
 
@@ -607,7 +787,9 @@
         }
       }
 
-      // Tap on video: play/pause
+      // Tap on video: play/pause (nur wenn comments NICHT offen)
+      if (commentsOpen) return;
+
       const video = e.target.closest("video.reelVideo");
       if (!video) return;
 
@@ -622,9 +804,11 @@
       }
     }, { passive: true });
 
-    // Double tap to like (fast)
+    // Double tap to like (fast) – blocken wenn comments offen
     let lastTap = 0;
     document.addEventListener("touchend", (e) => {
+      if (commentsOpen) return;
+
       const now = Date.now();
       const isDouble = (now - lastTap) < 260;
       lastTap = now;
@@ -637,7 +821,6 @@
       if (likeBtn) likeBtn.click();
     }, { passive: true });
 
-    // Pause when hidden
     document.addEventListener("visibilitychange", () => {
       if (document.hidden){
         videos.forEach(v => v.pause());
