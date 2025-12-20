@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- Mini-Speed: erstes Reel früh laden -->
+  <!-- Optional: erstes Video früher laden -->
   <link rel="preload" as="video" href="./images/tik1.mp4" type="video/mp4" fetchpriority="high" />
 
   <style>
@@ -17,7 +17,6 @@
       --safe-left: env(safe-area-inset-left, 0px);
 
       --ui: rgba(0,0,0,0.45);
-      --ui2: rgba(0,0,0,0.25);
       --txt: #ffffff;
       --muted: rgba(255,255,255,0.72);
     }
@@ -31,7 +30,7 @@
       background:#000;
     }
 
-    /* ====== FIX: Visible viewport height ====== */
+    /* ====== Viewport height (iOS/Android safe) ====== */
     .reels{
       height: 100vh;
       height: 100svh;
@@ -311,7 +310,7 @@
       transform: translateX(-50%) translateY(-4px);
     }
 
-    /* ====== COMMENTS (Black like before) ====== */
+    /* ====== COMMENTS (black like before) ====== */
     .commentsBackdrop{
       position: fixed;
       inset: 0;
@@ -322,7 +321,7 @@
       transition: opacity .16s ease;
     }
     .commentsBackdrop.open{
-      opacity: .86;
+      opacity: .88;
       pointer-events: auto;
     }
 
@@ -347,9 +346,7 @@
       flex-direction: column;
       overflow: hidden;
     }
-    .commentsSheet.open{
-      transform: translateY(0);
-    }
+    .commentsSheet.open{ transform: translateY(0); }
 
     .commentsTop{
       padding: 12px 12px 10px;
@@ -364,7 +361,6 @@
       color: rgba(255,255,255,0.92);
       letter-spacing: .2px;
     }
-
     .commentsList{
       flex: 1;
       overflow: auto;
@@ -389,7 +385,6 @@
       color: rgba(255,255,255,0.78);
       line-height: 1.35;
     }
-
     .commentsInput{
       padding: 10px 12px 12px;
       border-top: 1px solid rgba(255,255,255,0.10);
@@ -420,7 +415,6 @@
 <body>
   <div class="toast" id="toast">Sound</div>
 
-  <!-- TEMPLATE: wird auf alle Reels geklont -->
   <template id="overlayTpl">
     <header class="topbar">
       <div class="topbarLeft">
@@ -490,54 +484,59 @@
   </template>
 
   <main class="reels" id="reels" aria-label="MENYRA Stories">
-    <!-- Reel 1 -->
-    <section class="reel"
-      data-index="0"
-      data-name="Prince Coffe House"
-      data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="128"
-      data-comments="16"
-      data-product-title="Burger + Fries"
-      data-product-sub="Tap to view product (demo)"
-      data-product-img="./images/speise1.avif"
-    >
-      <!-- Nur minimal: preload auto fürs erste Reel -->
-      <video class="reelVideo" src="./images/tik1.mp4" playsinline muted preload="auto" loop></video>
+    <!-- 1..10 -->
+    <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="./images/tik1.mp4" playsinline muted preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <!-- Reel 2 -->
-    <section class="reel"
-      data-index="1"
-      data-name="Prince Coffe House"
-      data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="74"
-      data-comments="9"
-      data-product-title="Classic Burger"
-      data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif"
-    >
+    <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
       <video class="reelVideo" src="./images/tik2.mp4" playsinline muted preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <!-- Reel 3 -->
-    <section class="reel"
-      data-index="2"
-      data-name="Prince Coffe House"
-      data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="203"
-      data-comments="31"
-      data-product-title="Coffee Special"
-      data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif"
-    >
+    <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
       <video class="reelVideo" src="./images/tik3.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="./images/tik4.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="./images/tik5.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="./images/tik6.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="./images/tik7.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="House Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="./images/tik8.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="./images/tik9.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="./images/tik10.mp4" playsinline muted preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
   </main>
 
-  <!-- COMMENTS (global, einmal – schwarz) -->
+  <!-- COMMENTS (black) -->
   <div class="commentsBackdrop" id="commentsBackdrop" aria-hidden="true"></div>
 
   <section class="commentsSheet" id="commentsSheet" aria-hidden="true">
@@ -572,12 +571,13 @@
     const reelsEl = document.getElementById("reels");
     const toastEl = document.getElementById("toast");
 
-    // Comments UI (global)
+    // Comments UI
     const commentsBackdrop = document.getElementById("commentsBackdrop");
     const commentsSheet = document.getElementById("commentsSheet");
     const commentsList = document.getElementById("commentsList");
     const commentsForm = document.getElementById("commentsForm");
     const commentInput = document.getElementById("commentInput");
+    let commentsOpen = false;
 
     reels.forEach((reel) => {
       const frag = tpl.content.cloneNode(true);
@@ -617,7 +617,7 @@
     });
 
     // =========================================================
-    // 1) TikTok-like autoplay (only active plays)
+    // 1) TikTok-like autoplay (only active plays)  (wie dein guter Code)
     // =========================================================
     const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
@@ -682,12 +682,9 @@
     reels.forEach(r => io.observe(r));
 
     // =========================================================
-    // 1.5) Comments (black sheet) – slim
+    // 1.5) Comments (black)
     // =========================================================
-    let commentsOpen = false;
-
     function lockFeed(lock){
-      // super-slim: verhindert scroll/taps im Hintergrund
       reelsEl.style.pointerEvents = lock ? "none" : "";
       reelsEl.style.overflowY = lock ? "hidden" : "";
     }
@@ -700,7 +697,6 @@
       commentsBackdrop.setAttribute("aria-hidden", "false");
       commentsSheet.setAttribute("aria-hidden", "false");
       lockFeed(true);
-      // Focus input (optional)
       window.setTimeout(() => commentInput?.focus?.(), 60);
     }
 
@@ -720,20 +716,18 @@
       e.preventDefault();
       const val = (commentInput?.value || "").trim();
       if (!val) return;
+
       const item = document.createElement("div");
       item.className = "cItem";
       item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
       item.querySelector(".cText").textContent = val;
       commentsList?.prepend(item);
+
       commentInput.value = "";
     });
 
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeComments();
-    }, { passive:true });
-
     // =========================================================
-    // 2) Controls (global, fast)
+    // 2) Controls (global)
     // =========================================================
     document.addEventListener("click", (e) => {
       const actionEl = e.target.closest("[data-action]");
@@ -741,7 +735,6 @@
         const action = actionEl.getAttribute("data-action");
 
         if (action === "back"){
-          // FIX: zurück zur Demo-Karte
           window.location.href = "./karte-demo.html";
           return;
         }
@@ -787,9 +780,9 @@
         }
       }
 
-      // Tap on video: play/pause (nur wenn comments NICHT offen)
       if (commentsOpen) return;
 
+      // Tap on video: play/pause
       const video = e.target.closest("video.reelVideo");
       if (!video) return;
 
@@ -804,7 +797,7 @@
       }
     }, { passive: true });
 
-    // Double tap to like (fast) – blocken wenn comments offen
+    // Double tap to like (fast)
     let lastTap = 0;
     document.addEventListener("touchend", (e) => {
       if (commentsOpen) return;
@@ -821,6 +814,7 @@
       if (likeBtn) likeBtn.click();
     }, { passive: true });
 
+    // Pause when hidden
     document.addEventListener("visibilitychange", () => {
       if (document.hidden){
         videos.forEach(v => v.pause());
@@ -828,6 +822,11 @@
         playOnly(activeIndex);
       }
     }, { passive: true });
+
+    // ESC closes comments
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeComments();
+    }, { passive:true });
   </script>
 </body>
 </html>
