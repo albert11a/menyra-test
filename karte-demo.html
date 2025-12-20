@@ -927,15 +927,7 @@
       <span class="qLabel">Story</span>
     </button>
 
-    <!-- 3) SOCIAL -->
-    <button class="quickNavBtn" type="button" data-tab="social">
-      <span class="qIcon" aria-hidden="true">
-        <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
-      </span>
-      <span class="qLabel">Social</span>
-    </button>
-
-    <!-- 4) INFO -->
+    <!-- 3) INFO -->
     <button class="quickNavBtn" type="button" data-tab="info">
       <span class="qIcon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a1.2 1.2 0 110 2.4A1.2 1.2 0 0112 6zm1.6 12.5h-3.2a1 1 0 010-2h.6V12h-.6a1 1 0 010-2h2a1 1 0 011 1v5.5h.2a1 1 0 010 2z"/></svg>
@@ -943,7 +935,7 @@
       <span class="qLabel">Info</span>
     </button>
 
-    <!-- 5) LANGUAGE -->
+    <!-- 4) LANGUAGE -->
     <button class="quickNavBtn" id="langToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
       <span class="qIcon" aria-hidden="true">
         <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 9h-2.4a15 15 0 00-1.1-5A8.04 8.04 0 0118.9 11zM12 4c.9 1.1 1.8 3.1 2.2 7H9.8C10.2 7.1 11.1 5.1 12 4zM4.9 13h2.4a15 15 0 001.1 5A8.04 8.04 0 015.1 13zM5.1 11a8.04 8.04 0 013.5-5 15 15 0 00-1.1 5H5.1zm6.9 9c-.9-1.1-1.8-3.1-2.2-7h4.4c-.4 3.9-1.3 5.9-2.2 7zm3.4-2a15 15 0 001.1-5h2.4a8.04 8.04 0 01-3.5 5z"/></svg>
@@ -978,8 +970,9 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
     </button>
 
-    <div class="panelList" role="listbox" aria-label="Call waiter">
+    <div class="panelList" role="listbox" aria-label="Kamarieri actions">
       <button class="panelOpt" id="callWaiterOpt" type="button" role="option">Thirr kamarierin</button>
+      <button class="panelOpt" id="payOpt" type="button" role="option">Paguaj</button>
     </div>
 
     <button class="panelNextBtn" id="kamNextBtn" type="button" aria-label="Close">
@@ -1215,6 +1208,9 @@
 /* ---------------------------
    2) QUICKNAV (Tabs + Panels) — passend zu deinem HTML
 ---------------------------- */
+/* ---------------------------
+   2) QUICKNAV (Tabs + Panels) — schlank & korrekt
+---------------------------- */
 (() => {
   const nav = document.querySelector(".quickNav");
   if (!nav) return;
@@ -1223,24 +1219,21 @@
   if (!row) return;
 
   const langToggleBtn = document.getElementById("langToggleBtn");
-  const langPanel     = document.getElementById("langPanel");
-  const langBackBtn   = document.getElementById("langBackBtn");
-  const langNextBtn   = document.getElementById("langNextBtn");
-  const langLabel     = document.getElementById("langLabel");
-  const langOpts      = Array.from(langPanel?.querySelectorAll(".panelOpt[data-lang]") || []);
-
   const kamToggleBtn  = document.getElementById("kamToggleBtn");
-  const kamPanel      = document.getElementById("kamPanel");
-  const kamBackBtn    = document.getElementById("kamBackBtn");
-  const kamNextBtn    = document.getElementById("kamNextBtn");
+
+  const langPanel   = document.getElementById("langPanel");
+  const langBackBtn = document.getElementById("langBackBtn");
+  const langNextBtn = document.getElementById("langNextBtn");
+  const langLabel   = document.getElementById("langLabel");
+
+  const kamPanel    = document.getElementById("kamPanel");
+  const kamBackBtn  = document.getElementById("kamBackBtn");
+  const kamNextBtn  = document.getElementById("kamNextBtn");
+
   const callWaiterOpt = document.getElementById("callWaiterOpt");
+  const payOpt        = document.getElementById("payOpt");
 
   const LANG_KEY = "menyra_lang";
-
-  function setActive(btn) {
-    row.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
-    if (btn) btn.classList.add("is-active");
-  }
 
   function closeAllPanels() {
     nav.classList.remove("lang-open", "kam-open");
@@ -1250,21 +1243,15 @@
     if (kamPanel)  kamPanel.setAttribute("aria-hidden", "true");
   }
 
-  function toggleLang() {
-    const isOpen = nav.classList.contains("lang-open");
-    if (isOpen) { closeAllPanels(); return; }
+  function openLang() {
     closeAllPanels();
-    setActive(langToggleBtn);
     nav.classList.add("lang-open");
     if (langToggleBtn) langToggleBtn.setAttribute("aria-expanded", "true");
     if (langPanel) langPanel.setAttribute("aria-hidden", "false");
   }
 
-  function toggleKamarieri() {
-    const isOpen = nav.classList.contains("kam-open");
-    if (isOpen) { closeAllPanels(); return; }
+  function openKamarieri() {
     closeAllPanels();
-    setActive(kamToggleBtn);
     nav.classList.add("kam-open");
     if (kamToggleBtn) kamToggleBtn.setAttribute("aria-expanded", "true");
     if (kamPanel) kamPanel.setAttribute("aria-hidden", "false");
@@ -1272,96 +1259,111 @@
 
   function setLang(code) {
     localStorage.setItem(LANG_KEY, code);
-    // IMMER nur "Language" anzeigen — kein Code im Menü
-    if (langLabel) {
-      langLabel.textContent = "Language";
-      langLabel.title = `Current: ${code}`; // optional tooltip
-    }
+    // NIE Code anzeigen – Button bleibt immer "Language"
+    if (langLabel) langLabel.textContent = "Language";
   }
 
   // INIT
-  const saved = localStorage.getItem(LANG_KEY) || "DE";
-  if (langLabel) {
-    langLabel.textContent = "Language";
-    langLabel.title = `Current: ${saved}`;
-  }
-  closeAllPanels();
+  const saved = localStorage.getItem(LANG_KEY) || "de";
+  localStorage.setItem(LANG_KEY, saved);
+  if (langLabel) langLabel.textContent = "Language";
 
-  // 1 Listener für die ganze Row
+  // Row Click (1 Listener)
   row.addEventListener("click", (e) => {
     const btn = e.target.closest(".quickNavBtn");
     if (!btn) return;
 
-    // Language toggle
+    // Hover erst nach erstem Klick aktivieren
+    nav.classList.add("has-interacted");
+
     if (btn === langToggleBtn) {
       e.preventDefault();
       e.stopPropagation();
-      toggleLang();
+      if (nav.classList.contains("lang-open")) closeAllPanels();
+      else openLang();
       return;
     }
 
-    // Kamarieri toggle
     if (btn === kamToggleBtn) {
       e.preventDefault();
       e.stopPropagation();
-      toggleKamarieri();
+      if (nav.classList.contains("kam-open")) closeAllPanels();
+      else openKamarieri();
       return;
     }
 
+    // Tabs (Story/Info) – später Seiten
     const tab = btn.dataset.tab || "";
-
-    if (tab === "story") { window.location.href = "./story.html"; return; }
-    if (tab === "social") { window.location.href = "./social.html"; return; }
-
-    if (tab === "info") {
-      setActive(btn);
-      closeAllPanels();
-      return;
-    }
-
-    // Default
-    setActive(btn);
     closeAllPanels();
+
+    if (tab === "story") return; // später: window.location.href = "./story.html";
+    if (tab === "info")  return; // später: window.location.href = "./info.html";
   }, { passive: false });
 
-  // Language panel buttons
-  if (langBackBtn) langBackBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeAllPanels(); }, { passive:false });
-  if (langNextBtn) langNextBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeAllPanels(); }, { passive:false });
+  // Language panel close buttons
+  [langBackBtn, langNextBtn].forEach((b) => {
+    if (!b) return;
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeAllPanels();
+    }, { passive: false });
+  });
 
-  langOpts.forEach((opt) => {
-    opt.addEventListener("click", (e) => {
+  // Language options (delegation)
+  if (langPanel) {
+    langPanel.addEventListener("click", (e) => {
+      const opt = e.target.closest(".panelOpt[data-lang]");
+      if (!opt) return;
       e.preventDefault();
       e.stopPropagation();
       const code = opt.dataset.lang;
       if (code) setLang(code);
       closeAllPanels();
-    }, { passive:false });
+    }, { passive: false });
+  }
+
+  // Kamarieri panel close buttons
+  [kamBackBtn, kamNextBtn].forEach((b) => {
+    if (!b) return;
+    b.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeAllPanels();
+    }, { passive: false });
   });
 
-  // Kamarieri panel buttons
-  if (kamBackBtn) kamBackBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeAllPanels(); }, { passive:false });
-  if (kamNextBtn) kamNextBtn.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeAllPanels(); }, { passive:false });
-
+  // Kamarieri actions
   if (callWaiterOpt) {
     callWaiterOpt.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       alert("Thirr kamarierin ✅ (demo)");
       closeAllPanels();
-    }, { passive:false });
+    }, { passive: false });
   }
 
-  // Click outside closes panels
+  if (payOpt) {
+    payOpt.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      alert("Paguaj ✅ (demo)");
+      closeAllPanels();
+    }, { passive: false });
+  }
+
+  // Outside click closes
   document.addEventListener("click", (e) => {
     if (!nav.classList.contains("lang-open") && !nav.classList.contains("kam-open")) return;
     if (!nav.contains(e.target)) closeAllPanels();
-  }, { passive:true });
+  }, { passive: true });
 
   // ESC closes
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") closeAllPanels();
   });
 })();
+
 
 
   </script>
