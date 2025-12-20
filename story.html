@@ -6,14 +6,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- PERF: warmup -->
-  <link rel="dns-prefetch" href="//vz-14f8b42c-6ba.b-cdn.net" />
+  <!-- =========================
+       PERF: Preconnect (CDN & Video Delivery)
+       ========================= -->
   <link rel="preconnect" href="https://vz-14f8b42c-6ba.b-cdn.net" crossorigin />
+  <link rel="dns-prefetch" href="//vz-14f8b42c-6ba.b-cdn.net" />
 
-  <!-- HLS.js (needed for Chrome/Edge/Firefox for .m3u8) -->
-  <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
-  <script defer src="https://cdn.jsdelivr.net/npm/hls.js@1.6.15"></script>
+  <!-- Optional, falls du auch Menyra.b-cdn.net Assets nutzt -->
+  <link rel="preconnect" href="https://Menyra.b-cdn.net" crossorigin />
+  <link rel="dns-prefetch" href="//Menyra.b-cdn.net" />
+
+  <!-- =========================
+       PERF: Preload FIRST manifest (NICHT as="video"!)
+       as="fetch" ist korrekt für m3u8 (Text/Manifest)
+       ========================= -->
+  <link rel="preload"
+        as="fetch"
+        href="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8"
+        type="application/vnd.apple.mpegurl"
+        crossorigin />
 
   <style>
     :root{
@@ -21,8 +32,12 @@
       --safe-right: env(safe-area-inset-right, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-left: env(safe-area-inset-left, 0px);
+
+      --ui: rgba(0,0,0,0.45);
       --txt: #ffffff;
+      --muted: rgba(255,255,255,0.72);
     }
+
     *{ box-sizing:border-box; margin:0; padding:0; }
     html, body{ height:100%; background:#000; }
     body{
@@ -30,35 +45,43 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
       overflow: hidden;
       background:#000;
+      -webkit-tap-highlight-color: transparent;
     }
 
+    /* =========================================================
+       Reels Container: Scroll Snap + "Paging" Feel
+       ========================================================= */
     .reels{
       height: 100vh;
       height: 100svh;
       height: 100dvh;
 
       overflow-y: auto;
-      scroll-snap-type: y mandatory;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
-      background:#000;
 
+      scroll-snap-type: y mandatory;
       scroll-padding-top: var(--safe-top);
       scroll-padding-bottom: var(--safe-bottom);
 
+      /* Wichtig für mobile gestures */
       touch-action: pan-y;
+
+      background:#000;
     }
     .reels::-webkit-scrollbar{ display:none; }
     .reels{ scrollbar-width:none; }
 
     .reel{
       position: relative;
+
       height: 100vh;
       height: 100svh;
       height: 100dvh;
 
       scroll-snap-align: start;
       scroll-snap-stop: always;
+
       background:#000;
       overflow:hidden;
       isolation:isolate;
@@ -85,17 +108,23 @@
       z-index: 5;
     }
 
+    /* ===== Overlay UI ===== */
     .topbar{
       position:absolute;
-      top: 0; left: 0; right: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+
       padding-top: calc(var(--safe-top) + 10px);
       padding-left: calc(var(--safe-left) + 12px);
       padding-right: calc(var(--safe-right) + 12px);
       padding-bottom: 10px;
+
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 10px;
+
       z-index: 20;
       pointer-events:none;
     }
@@ -117,7 +146,6 @@
       display:grid;
       place-items:center;
       cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
       backdrop-filter: blur(6px);
     }
     .btnIcon:active{ transform: scale(0.98); }
@@ -170,7 +198,6 @@
       background: transparent;
       color: #fff;
       cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -193,12 +220,6 @@
       white-space: nowrap;
     }
 
-    .railBtn[data-action="like"].is-liked .railIcon{
-      background: rgba(255,255,255,0.90);
-      color:#111;
-    }
-    .railBtn[data-action="like"].is-liked svg{ fill:#111; }
-
     .productTag{
       position:absolute;
       left: calc(var(--safe-left) + 12px);
@@ -206,6 +227,7 @@
       bottom: calc(var(--safe-bottom) + 16px);
       z-index: 20;
       pointer-events:auto;
+
       display:flex;
       align-items:center;
       gap: 12px;
@@ -224,13 +246,7 @@
       border: 1px solid rgba(255,255,255,0.10);
       flex: 0 0 auto;
     }
-    .productMeta{
-      min-width:0;
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      gap: 2px;
-    }
+    .productMeta{ min-width:0; flex:1; display:flex; flex-direction:column; gap:2px; }
     .productTitle{
       font-weight: 900;
       font-size: 13px;
@@ -255,10 +271,28 @@
       font-weight: 900;
       font-size: 12px;
       cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
       flex: 0 0 auto;
     }
     .productBtn:active{ transform: scale(0.985); }
+
+    .tapHint{
+      position:absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      z-index: 15;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.35);
+      color: rgba(255,255,255,0.85);
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid rgba(255,255,255,0.10);
+      pointer-events:none;
+      opacity: 0;
+      transition: opacity .15s ease;
+    }
+    .reel.is-paused .tapHint{ opacity: 1; }
 
     .toast{
       position: fixed;
@@ -275,13 +309,20 @@
       font-weight: 900;
       opacity: 0;
       pointer-events:none;
-      transition: opacity .18s ease, transform .18s ease;
+      transition: opacity .16s ease, transform .16s ease;
     }
     .toast.show{
       opacity: 1;
       transform: translateX(-50%) translateY(-4px);
     }
+
+    @media (prefers-reduced-motion: reduce){
+      .toast, .tapHint{ transition:none !important; }
+    }
   </style>
+
+  <!-- hls.js (für Chrome/Android/Firefox). Pin Version! -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.6.15/dist/hls.min.js"></script>
 </head>
 
 <body>
@@ -295,6 +336,7 @@
             <path d="M15 18l-6-6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
+
         <div class="brandPill" aria-label="Restaurant">
           <img class="brandLogo" data-bind="logo" src="" alt="Logo" />
           <div class="brandName" data-bind="name">Restaurant</div>
@@ -350,390 +392,392 @@
       </div>
       <button class="productBtn" type="button" data-action="product">Shiko</button>
     </div>
+
+    <div class="tapHint">Tap to play</div>
   </template>
 
   <main class="reels" id="reels" aria-label="MENYRA Stories"></main>
 
   <script type="module">
-    // =========================================================
-    // 1) DATA (deine 10 HLS Links)
-    // =========================================================
-    const STORIES = [
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8" },
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8" },
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8" },
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8" },
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8" },
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8" },
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8" },
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8" },
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8" },
-      { src: "https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8" },
+    /* =========================================================
+       0) DATA (deine Bunny Stream HLS Links)
+       ========================================================= */
+    const VIDEO_SOURCES = [
+      "https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8", // 1
+      "https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8", // 2
+      "https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8", // 3
+      "https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8", // 4
+      "https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8", // 5
+      "https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8", // 6
+      "https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8", // 7
+      "https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8", // 8
+      "https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8", // 9
+      "https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8", // 10
     ];
 
-    // Demo-meta (kannst du später dynamisch machen)
-    const DEMO_META = {
-      name: "Prince Coffe House",
+    const FEED = VIDEO_SOURCES.map((src, i) => ({
+      index: i,
+      src,
+      name: "Prince Coffee House",
       logo: "./images/Prince-coffe-house-logo.jpg",
-      like: ["128","74","203","56","88","145","62","190","39","211"],
-      comments: ["16","9","31","5","12","21","8","27","3","44"],
-      pTitle: ["Burger + Fries","Classic Burger","Coffee Special","Daily Offer","Burger Menu","Coffee Shot","Fries + Sauce","House Special","Morning Coffee","Burger + Drink"],
-      pSub: ["Tap to view product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)"],
-      pImg: "./images/speise1.avif"
-    };
+      like: [128,74,203,56,88,145,62,190,39,211][i] ?? 0,
+      comments: [16,9,31,5,12,21,8,27,3,44][i] ?? 0,
+      productTitle: ["Burger + Fries","Classic Burger","Coffee Special","Daily Offer","Burger Menu","Coffee Shot","Fries + Sauce","House Special","Morning Coffee","Burger + Drink"][i] ?? "Produkt",
+      productSub: "Marked product (demo)",
+      productImg: "./images/speise1.avif"
+    }));
 
+    /* =========================================================
+       1) Render minimal DOM (10 slides)
+       ========================================================= */
     const reelsEl = document.getElementById("reels");
     const tpl = document.getElementById("overlayTpl");
     const toastEl = document.getElementById("toast");
 
-    function toast(t){
-      toastEl.textContent = t;
-      toastEl.classList.add("show");
-      setTimeout(() => toastEl.classList.remove("show"), 700);
-    }
+    reelsEl.innerHTML = FEED.map(item => `
+      <section class="reel" data-index="${item.index}">
+        <video class="reelVideo"
+          playsinline webkit-playsinline
+          muted
+          preload="${item.index === 0 ? "auto" : "none"}"
+          loop
+          crossorigin="anonymous"
+          data-src="${item.src}"
+        ></video>
+        <div class="vignette"></div>
+      </section>
+    `).join("");
 
-    // =========================================================
-    // 2) Build DOM (slim HTML)
-    // =========================================================
-    const reels = [];
-    const videos = [];
+    const reels = Array.from(document.querySelectorAll(".reel"));
+    const videos = Array.from(document.querySelectorAll(".reelVideo"));
 
-    STORIES.forEach((s, i) => {
-      const sec = document.createElement("section");
-      sec.className = "reel";
-      sec.dataset.index = String(i);
-      sec.dataset.name = DEMO_META.name;
-      sec.dataset.logo = DEMO_META.logo;
-      sec.dataset.like = DEMO_META.like[i] || "0";
-      sec.dataset.comments = DEMO_META.comments[i] || "0";
-      sec.dataset.productTitle = DEMO_META.pTitle[i] || "Produkt";
-      sec.dataset.productSub = DEMO_META.pSub[i] || "Tap";
-      sec.dataset.productImg = DEMO_META.pImg;
-
-      const v = document.createElement("video");
-      v.className = "reelVideo";
-      v.setAttribute("playsinline", "");
-      v.setAttribute("webkit-playsinline", "");
-      v.setAttribute("muted", "");     // autoplay safe
-      v.setAttribute("autoplay", "");  // helps instant start
-      v.setAttribute("loop", "");
-      v.setAttribute("preload", "none");
-      v.setAttribute("crossorigin", "anonymous");
-      v.disablePictureInPicture = true;
-      v.dataset.src = s.src; // HLS manifest
-
-      const vig = document.createElement("div");
-      vig.className = "vignette";
-
-      // overlay inject
+    // inject overlay
+    reels.forEach((reel, i) => {
       const frag = tpl.content.cloneNode(true);
-      frag.querySelector('[data-bind="logo"]').src = DEMO_META.logo;
-      frag.querySelector('[data-bind="name"]').textContent = DEMO_META.name;
-      frag.querySelector('[data-bind="likeCount"]').textContent = String(parseInt(sec.dataset.like,10)||0);
-      frag.querySelector('[data-bind="commentCount"]').textContent = String(parseInt(sec.dataset.comments,10)||0);
-      frag.querySelector('[data-bind="productTitle"]').textContent = sec.dataset.productTitle;
-      frag.querySelector('[data-bind="productSub"]').textContent = sec.dataset.productSub;
-      frag.querySelector('[data-bind="productImg"]').src = sec.dataset.productImg;
+      const item = FEED[i];
 
-      sec.appendChild(v);
-      sec.appendChild(vig);
-      sec.appendChild(frag);
+      const logoEl = frag.querySelector('[data-bind="logo"]');
+      const nameEl = frag.querySelector('[data-bind="name"]');
+      const likeCountEl = frag.querySelector('[data-bind="likeCount"]');
+      const commentCountEl = frag.querySelector('[data-bind="commentCount"]');
+      const pTitleEl = frag.querySelector('[data-bind="productTitle"]');
+      const pSubEl = frag.querySelector('[data-bind="productSub"]');
+      const pImgEl = frag.querySelector('[data-bind="productImg"]');
 
-      reelsEl.appendChild(sec);
-      reels.push(sec);
-      videos.push(v);
+      if (logoEl) logoEl.src = item.logo;
+      if (nameEl) nameEl.textContent = item.name;
+
+      const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
+      if (likeBtn) likeBtn.setAttribute("data-count", String(item.like));
+      if (likeCountEl) likeCountEl.textContent = String(item.like);
+
+      const comBtn = frag.querySelector('.railBtn[data-action="comment"]');
+      if (comBtn) comBtn.setAttribute("data-count", String(item.comments));
+      if (commentCountEl) commentCountEl.textContent = String(item.comments);
+
+      if (pTitleEl) pTitleEl.textContent = item.productTitle;
+      if (pSubEl) pSubEl.textContent = item.productSub;
+      if (pImgEl) pImgEl.src = item.productImg;
+
+      reel.appendChild(frag);
     });
 
-    // =========================================================
-    // 3) HLS Engine (Chrome fast)
-    // =========================================================
-    const isNativeHls = (() => {
-      const t = document.createElement("video");
-      return !!(t.canPlayType("application/vnd.apple.mpegurl") || t.canPlayType("application/x-mpegURL"));
-    })();
-
-    const hlsMap = new Map(); // index -> Hls instance
-    const prepared = new Set(); // index prepared
-    let HLS_READY = false;
-
-    function waitForHlsJs(){
-      return new Promise((resolve) => {
-        if (isNativeHls) return resolve(true);
-        const tick = () => {
-          if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()){
-            HLS_READY = true;
-            resolve(true);
-            return;
-          }
-          setTimeout(tick, 20);
-        };
-        tick();
-      });
+    /* =========================================================
+       2) Toast
+       ========================================================= */
+    function showToast(text){
+      if (!toastEl) return;
+      toastEl.textContent = text;
+      toastEl.classList.add("show");
+      window.setTimeout(() => toastEl.classList.remove("show"), 700);
     }
 
-    function ensurePlayer(i){
-      const v = videos[i];
+    /* =========================================================
+       3) Sound policy (TikTok style):
+          - Always start new video muted (autoplay allowed)
+          - If user enabled sound: unmute AFTER it started playing (no stall)
+       ========================================================= */
+    const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
+    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+
+    function setSound(on){
+      soundOn = !!on;
+      localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+      showToast(soundOn ? "Sound: ON" : "Sound: OFF");
+      // active video wird unten beim activate() sauber behandelt
+    }
+
+    /* =========================================================
+       4) HLS attach (Chrome/Android/Firefox) + warmup next
+       ========================================================= */
+    const hlsMap = new Map(); // idx -> Hls instance
+    const MAX_HLS_INSTANCES = 4; // active + 2 ahead + 1 behind
+
+    const HLS_CONFIG = {
+      // Startup speed:
+      startLevel: 0,               // start lowest quality for fastest first frame
+      capLevelToPlayerSize: true,
+      maxBufferLength: 8,
+      maxMaxBufferLength: 12,
+      backBufferLength: 0,
+      enableWorker: true,
+      lowLatencyMode: false,
+      startFragPrefetch: true
+    };
+
+    function isM3U8(url){
+      return /\.m3u8(\?|$)/i.test(url);
+    }
+
+    function detachAndDestroy(idx){
+      const hls = hlsMap.get(idx);
+      if (!hls) return;
+      try { hls.detachMedia(); } catch(_) {}
+      try { hls.destroy(); } catch(_) {}
+      hlsMap.delete(idx);
+    }
+
+    function enforceHlsLimit(keepSet){
+      // keepSet: indices that should stay
+      // remove oldest not in keepSet
+      for (const [idx] of hlsMap){
+        if (keepSet.has(idx)) continue;
+        detachAndDestroy(idx);
+        if (hlsMap.size <= MAX_HLS_INSTANCES) break;
+      }
+    }
+
+    function attachSource(idx){
+      const v = videos[idx];
       if (!v) return;
 
-      const src = v.dataset.src;
-      if (!src) return;
+      const url = v.getAttribute("data-src") || "";
+      if (!url) return;
 
-      if (isNativeHls){
-        if (v.src !== src){
-          v.src = src;
-        }
-        prepared.add(i);
+      // Safari: native HLS
+      const canNativeHls = v.canPlayType("application/vnd.apple.mpegurl");
+      if (canNativeHls){
+        if (v.src !== url) v.src = url;
         return;
       }
 
-      if (!HLS_READY || !window.Hls || !window.Hls.isSupported()) return;
+      // Non-Safari: hls.js
+      if (!window.Hls || !window.Hls.isSupported()){
+        // fallback: try direct (won't work in Chrome for m3u8, but keeps file small)
+        if (v.src !== url) v.src = url;
+        return;
+      }
 
-      if (hlsMap.has(i)) return;
+      if (!isM3U8(url)){
+        // mp4 etc.
+        if (v.src !== url) v.src = url;
+        return;
+      }
 
-      const Hls = window.Hls;
-      const hls = new Hls({
-        autoStartLoad: false,            // we decide when to load
-        startPosition: 0,
-        maxBufferLength: 6,              // keep small -> less RAM, quicker switches
-        maxMaxBufferLength: 12,
-        backBufferLength: 0,
-        enableWorker: true,
-        lowLatencyMode: false,
-      });
+      // already attached?
+      if (hlsMap.has(idx)) return;
+
+      const hls = new window.Hls(HLS_CONFIG);
+      hlsMap.set(idx, hls);
 
       hls.attachMedia(v);
-      hls.loadSource(src);
-
-      // Recovery (no "hängen" forever)
-      hls.on(Hls.Events.ERROR, (ev, data) => {
-        if (!data || !data.fatal) return;
-        try{
-          if (data.type === Hls.ErrorTypes.NETWORK_ERROR){
-            hls.startLoad();
-          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR){
-            hls.recoverMediaError();
-          } else {
-            hls.destroy();
-            hlsMap.delete(i);
-            prepared.delete(i);
-          }
-        }catch(_){}
+      hls.on(window.Hls.Events.MEDIA_ATTACHED, () => {
+        hls.loadSource(url);
+        // Start loading right away (warmup)
+        try { hls.startLoad(0); } catch(_) {}
       });
 
-      hlsMap.set(i, hls);
-      prepared.add(i);
+      // If error, mark paused
+      hls.on(window.Hls.Events.ERROR, (_evt, data) => {
+        if (!data) return;
+        if (data.fatal){
+          // destroy to allow retry later
+          detachAndDestroy(idx);
+          const reel = reels[idx];
+          reel?.classList.add("is-paused");
+        }
+      });
     }
 
-    function startLoad(i){
-      if (!prepared.has(i)) ensurePlayer(i);
-      if (isNativeHls) return;
-      const hls = hlsMap.get(i);
-      try{ hls?.startLoad(); }catch(_){}
+    function warmupAround(activeIdx){
+      // warm: active, prev, next, next+1
+      const keep = new Set([activeIdx, activeIdx-1, activeIdx+1, activeIdx+2].filter(i => i>=0 && i<videos.length));
+      // ensure attach
+      for (const i of keep) attachSource(i);
+      enforceHlsLimit(keep);
     }
 
-    function stopLoad(i){
-      if (isNativeHls) return;
-      const hls = hlsMap.get(i);
-      try{ hls?.stopLoad(); }catch(_){}
-    }
-
-    async function prefetchManifest(url){
-      try{
-        // warm TLS + cache a tiny bit (best-effort)
-        await fetch(url, { mode: "cors", cache: "force-cache" });
-      }catch(_){}
-    }
-
-    // =========================================================
-    // 4) Playback (no random pauses)
-    // =========================================================
-    const SOUND_KEY = "menyra_story_sound";
-    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+    /* =========================================================
+       5) Play logic (no random pauses)
+       ========================================================= */
     let activeIndex = 0;
+    let playToken = 0;
 
-    function applySound(){
+    async function activate(idx){
+      idx = Math.max(0, Math.min(videos.length - 1, idx));
+      activeIndex = idx;
+
+      warmupAround(idx);
+
+      // Pause others
       videos.forEach((v, i) => {
-        if (i !== activeIndex){
+        if (i !== idx){
+          try { v.pause(); } catch(_) {}
           v.muted = true;
-          v.volume = 0;
-          return;
+          reels[i]?.classList.remove("is-paused");
         }
-        v.muted = !soundOn;
-        v.volume = soundOn ? 1 : 0;
       });
-    }
 
-    function safePlay(v){
+      const v = videos[idx];
+      const reel = reels[idx];
       if (!v) return;
-      const p = v.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
-    }
 
-    function activate(i){
-      i = Math.max(0, Math.min(videos.length - 1, i));
-      if (i === activeIndex) return;
+      // Always start muted first (fast + autoplay safe)
+      v.muted = true;
 
-      activeIndex = i;
+      const token = ++playToken;
 
-      // Pause others (CPU), but keep next preloaded via HLS startLoad
-      videos.forEach((v, idx) => {
-        if (idx !== activeIndex){
-          try { v.pause(); } catch(_){}
+      try{
+        await v.play();
+        if (token !== playToken) return;
+        reel?.classList.remove("is-paused");
+
+        // If user wants sound: unmute AFTER video started
+        if (soundOn){
+          // slight delay helps avoid "stall on unmute"
+          window.setTimeout(() => {
+            if (idx !== activeIndex) return;
+            try { v.muted = false; } catch(_) {}
+          }, 120);
         }
-      });
-
-      warmAround(activeIndex);
-
-      applySound();
-      safePlay(videos[activeIndex]);
-    }
-
-    function warmAround(idx){
-      // Ultra fast: active + next + next2 + prev
-      const hot = new Set([idx, idx+1, idx+2, idx-1].filter(x => x >= 0 && x < videos.length));
-
-      // Start loads for hot, stop for far
-      for (let i = 0; i < videos.length; i++){
-        if (hot.has(i)){
-          ensurePlayer(i);
-          startLoad(i);
-          // warm cache
-          const src = videos[i].dataset.src;
-          if (src) prefetchManifest(src);
-        } else {
-          stopLoad(i);
-        }
-      }
-
-      // Make the "next" start instant: nudge to decode soon
-      const next = videos[idx+1];
-      if (next){
-        // do NOT play; just ensure it can start instantly when activated
-        try { next.preload = "auto"; } catch(_){}
+      }catch(_){
+        reel?.classList.add("is-paused");
       }
     }
 
-    // If active stalls, re-play quickly
-    function attachStallFix(){
-      videos.forEach((v, i) => {
-        v.addEventListener("waiting", () => {
-          if (i !== activeIndex) return;
-          safePlay(v);
-        }, { passive: true });
-
-        v.addEventListener("stalled", () => {
-          if (i !== activeIndex) return;
-          safePlay(v);
-        }, { passive: true });
-
-        v.addEventListener("canplay", () => {
-          if (i !== activeIndex) return;
-          safePlay(v);
-        }, { passive: true });
-      });
-    }
-
-    // =========================================================
-    // 5) Snap Fix (smooth, nicht extrem schnell)
-    // =========================================================
-    let VIEW_H = 1;
-    function updateViewH(){
-      VIEW_H = reelsEl.getBoundingClientRect().height || window.innerHeight || 1;
-    }
-    updateViewH();
-    window.addEventListener("resize", updateViewH, { passive:true });
-
-    let snapTimer = null;
-    let anim = null;
-
-    function animateTo(top, ms = 240){
-      if (anim) cancelAnimationFrame(anim);
-      const start = reelsEl.scrollTop;
-      const diff = top - start;
-      if (Math.abs(diff) < 1) return;
-
-      const t0 = performance.now();
-      const dur = Math.max(200, Math.min(ms, 320));
-
-      const ease = (t) => 1 - Math.pow(1 - t, 3);
-
-      const step = (now) => {
-        const p = Math.min(1, (now - t0) / dur);
-        reelsEl.scrollTop = start + diff * ease(p);
-        if (p < 1) anim = requestAnimationFrame(step);
-      };
-      anim = requestAnimationFrame(step);
-    }
+    /* =========================================================
+       6) TikTok-like SNAP:
+          - Small swipe => exactly 1 video up/down
+          - Scroll-end => always align to nearest reel (no half positions)
+       ========================================================= */
+    function reelTop(i){ return reels[i]?.offsetTop ?? 0; }
 
     function nearestIndex(){
-      return Math.max(0, Math.min(reels.length - 1, Math.round(reelsEl.scrollTop / VIEW_H)));
+      const st = reelsEl.scrollTop;
+      let best = 0;
+      let bestDist = Infinity;
+      for (let i=0;i<reels.length;i++){
+        const d = Math.abs(st - reelTop(i));
+        if (d < bestDist){ bestDist = d; best = i; }
+      }
+      return best;
     }
 
+    let scrollEndTimer = null;
+    let snapping = false;
+
+    function snapToIndex(idx, behavior = "smooth"){
+      idx = Math.max(0, Math.min(reels.length - 1, idx));
+      snapping = true;
+      reelsEl.scrollTo({ top: reelTop(idx), behavior });
+      window.setTimeout(() => { snapping = false; }, 220);
+    }
+
+    // Scroll handler: warmup quickly + activate on scroll end
     reelsEl.addEventListener("scroll", () => {
-      if (snapTimer) clearTimeout(snapTimer);
-      snapTimer = setTimeout(() => {
+      if (snapping) return;
+
+      const est = nearestIndex();
+      warmupAround(est);
+
+      clearTimeout(scrollEndTimer);
+      scrollEndTimer = window.setTimeout(() => {
         const idx = nearestIndex();
-        const targetTop = idx * VIEW_H;
-        // hard align if off by more than 2px
-        if (Math.abs(reelsEl.scrollTop - targetTop) > 2){
-          animateTo(targetTop, 240);
-        }
-        activate(idx);
-      }, 70);
+        // hard align (auto) only if we are off by noticeable pixels
+        const off = Math.abs(reelsEl.scrollTop - reelTop(idx));
+        if (off > 2) snapToIndex(idx, "auto");
+        if (idx !== activeIndex) activate(idx);
+      }, 90);
     }, { passive:true });
 
-    // Small swipe should still go 1 reel (ohne "extrem schnell")
-    let touchStartY = 0;
-    let touchStartTop = 0;
-
+    // Touch paging (small swipe)
+    let tY = 0, tT = 0;
     reelsEl.addEventListener("touchstart", (e) => {
-      const t = e.touches?.[0];
-      if (!t) return;
-      touchStartY = t.clientY;
-      touchStartTop = reelsEl.scrollTop;
+      if (!e.touches?.length) return;
+      tY = e.touches[0].clientY;
+      tT = performance.now();
     }, { passive:true });
 
     reelsEl.addEventListener("touchend", (e) => {
-      const t = e.changedTouches?.[0];
-      if (!t) return;
+      const endT = performance.now();
+      const dt = Math.max(1, endT - tT);
 
-      const dy = t.clientY - touchStartY;
-      const dTop = reelsEl.scrollTop - touchStartTop;
+      // changedTouches exists on touchend
+      const cy = e.changedTouches?.[0]?.clientY ?? tY;
+      const dy = cy - tY;
+      const vy = Math.abs(dy) / dt; // px/ms
 
-      // If user made a small gesture but scroll didn't "commit": force 1 step
-      const smallGesture = Math.abs(dy) > 18 && Math.abs(dTop) < VIEW_H * 0.12;
-      if (!smallGesture) return;
+      // threshold tuned: "ein bisschen" reicht, aber nicht nervös
+      const DIST = 26;
+      const VEL = 0.35;
 
-      const dir = dy < 0 ? 1 : -1;
-      const idx = nearestIndex();
-      const next = Math.max(0, Math.min(reels.length - 1, idx + dir));
-      animateTo(next * VIEW_H, 240);
+      if (Math.abs(dy) < DIST && vy < VEL){
+        // snap back to current
+        snapToIndex(activeIndex, "smooth");
+        return;
+      }
+
+      const dir = (dy < 0) ? 1 : -1;
+      const next = Math.max(0, Math.min(reels.length - 1, activeIndex + dir));
+      snapToIndex(next, "smooth");
       activate(next);
     }, { passive:true });
 
-    // =========================================================
-    // 6) Controls
-    // =========================================================
+    // Wheel paging (Desktop)
+    let wheelLock = 0;
+    reelsEl.addEventListener("wheel", (e) => {
+      const now = performance.now();
+      if (now < wheelLock) return;
+      if (Math.abs(e.deltaY) < 6) return;
+
+      e.preventDefault();
+      wheelLock = now + 380;
+
+      const dir = e.deltaY > 0 ? 1 : -1;
+      const next = Math.max(0, Math.min(reels.length - 1, activeIndex + dir));
+      snapToIndex(next, "smooth");
+      activate(next);
+    }, { passive:false });
+
+    /* =========================================================
+       7) Controls (minimal)
+       ========================================================= */
     document.addEventListener("click", (e) => {
       const actionEl = e.target.closest("[data-action]");
-      if (!actionEl) return;
+      if (!actionEl) {
+        // Tap on video: pause/play
+        const video = e.target.closest("video.reelVideo");
+        if (!video) return;
+        const reel = video.closest(".reel");
+        const idx = Number(reel?.getAttribute("data-index") || activeIndex);
+
+        if (video.paused){
+          activate(Number.isFinite(idx) ? idx : activeIndex);
+        }else{
+          try { video.pause(); } catch(_) {}
+          reel?.classList.add("is-paused");
+        }
+        return;
+      }
 
       const action = actionEl.getAttribute("data-action");
-      if (action === "back"){
-        window.location.href = "./karte-demo.html";
-        return;
-      }
-
+      if (action === "back"){ window.location.href = "./karte-demo.html"; return; }
       if (action === "sound"){
-        soundOn = !soundOn;
-        localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
-        applySound();
-        // important: do NOT restart, just keep playing
-        safePlay(videos[activeIndex]);
-        toast(soundOn ? "Sound: ON" : "Sound: OFF");
+        setSound(!soundOn);
+        // apply instantly on active
+        activate(activeIndex);
         return;
       }
-
       if (action === "like"){
         const btn = actionEl.closest('.railBtn[data-action="like"]');
         if (!btn) return;
@@ -745,63 +789,27 @@
         if (countEl) countEl.textContent = String(next);
         return;
       }
-
       if (action === "comment"){ alert("Comments (demo)"); return; }
       if (action === "share"){ alert("Share (demo)"); return; }
       if (action === "product"){ alert("Produkt öffnen (demo)"); return; }
-    }, { passive:true });
-
-    // Double-tap like
-    let lastTap = 0;
-    document.addEventListener("touchend", (e) => {
-      const now = Date.now();
-      const isDouble = (now - lastTap) < 260;
-      lastTap = now;
-      if (!isDouble) return;
-
-      const reel = e.target.closest(".reel");
-      if (!reel) return;
-      const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
-      likeBtn?.click();
-    }, { passive:true });
+    }, { passive:false });
 
     // Pause when hidden
     document.addEventListener("visibilitychange", () => {
       if (document.hidden){
-        videos.forEach(v => { try { v.pause(); } catch(_){} });
-      } else {
-        warmAround(activeIndex);
-        applySound();
-        safePlay(videos[activeIndex]);
+        videos.forEach(v => { try{ v.pause(); }catch(_){} });
+      }else{
+        warmupAround(activeIndex);
+        activate(activeIndex);
       }
     }, { passive:true });
 
-    // =========================================================
-    // 7) IntersectionObserver (stable active index)
-    // =========================================================
-    const io = new IntersectionObserver((entries) => {
-      let best = null;
-      for (const e of entries){
-        if (!e.isIntersecting) continue;
-        if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
-      }
-      if (!best) return;
-      const idx = Number(best.target.dataset.index || "0");
-      if (Number.isFinite(idx)) activate(idx);
-    }, { threshold: [0.55, 0.7, 0.85] });
-
-    reels.forEach(r => io.observe(r));
-
-    // =========================================================
-    // 8) INIT (instant)
-    // =========================================================
-    await waitForHlsJs();     // ensures Chrome can play m3u8
-    attachStallFix();
-
-    // Start fast: prepare 0,1,2 immediately
-    warmAround(0);
-    applySound();
-    safePlay(videos[0]);
+    /* =========================================================
+       8) Init: attach + play first instantly
+       ========================================================= */
+    // Attach first + warm next early
+    warmupAround(0);
+    activate(0);
   </script>
 </body>
 </html>
