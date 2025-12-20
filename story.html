@@ -2,862 +2,884 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>MENYRA – Story</title>
+  <title>MENYRA – Story (Demo)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
-
   <style>
     :root{
-      --vvh: 100vh; /* wird per JS (visualViewport) präzise gesetzt */
-      --safeTop: env(safe-area-inset-top, 0px);
-      --safeBottom: env(safe-area-inset-bottom, 0px);
-      --safeLeft: env(safe-area-inset-left, 0px);
-      --safeRight: env(safe-area-inset-right, 0px);
-
-      --ui: rgba(15, 23, 42, 0.86);
-      --uiSoft: rgba(15, 23, 42, 0.55);
-      --text: #f8fafc;
-      --muted: rgba(248, 250, 252, 0.72);
+      --sat: env(safe-area-inset-top, 0px);
+      --sab: env(safe-area-inset-bottom, 0px);
+      --sal: env(safe-area-inset-left, 0px);
+      --sar: env(safe-area-inset-right, 0px);
     }
 
     *{ box-sizing:border-box; margin:0; padding:0; }
-    html, body{
-      width:100%;
-      height:100%;
-      background:#000;
-      color: var(--text);
-      overflow:hidden; /* wichtig: nur Feed scrollt */
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
+    html, body{ height:100%; background:#000; }
+    body{ overflow:hidden; color:#fff; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
 
-    /* =========================
-       FEED (TikTok Snap)
-       ========================= */
-    .feed{
-      position: fixed;
-      inset: 0;
-      height: var(--vvh);
-      width: 100%;
-      overflow-y: scroll;
-      overflow-x: hidden;
-
-      /* CSS Snap als Basis */
-      scroll-snap-type: y mandatory;
-      scroll-snap-stop: always;
-
-      /* kein “bounce” */
-      overscroll-behavior-y: contain;
-
-      /* kein smooth */
-      scroll-behavior: auto;
-
-      /* iOS: Momentum kann dieses "langsam letzte mm" erzeugen -> wir lassen es auf auto
-         und machen Snap per JS sofort */
-      -webkit-overflow-scrolling: auto;
-
-      scrollbar-width: none;
-      touch-action: pan-y;
-      background:#000;
-    }
-    .feed::-webkit-scrollbar{ display:none; }
-
-    .reel{
-      position: relative;
-      height: var(--vvh);
-      width: 100%;
-      scroll-snap-align: start;
-      scroll-snap-stop: always;
+    /* =========================================================
+       APP WRAPPER (fixed) – verhindert "letzte mm langsam"
+    ========================================================= */
+    .storyApp{
+      position:fixed;
+      inset:0;
       background:#000;
       overflow:hidden;
     }
 
-    /* Video layer */
+    /* Scroll Container */
+    .reels{
+      height:100vh;
+      height:100svh;
+      height:100dvh;
+      overflow-y:auto;
+      scroll-snap-type:y mandatory;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+
+      scrollbar-width:none;
+    }
+    .reels::-webkit-scrollbar{ display:none; }
+
+    /* Each reel = exakt viewport height (fix für Snap + Browser UI) */
+    .reel{
+      position:relative;
+      height:100vh;
+      height:100svh;
+      height:100dvh;
+      width:100%;
+      scroll-snap-align:start;
+      scroll-snap-stop:always;
+      background:#000;
+    }
+
+    /* Video full */
     .reelVideo{
       position:absolute;
       inset:0;
       width:100%;
       height:100%;
-      object-fit: cover;
+      object-fit:cover;
       background:#000;
-
-      /* Anti-flicker: Video wird erst sichtbar wenn "warmed" */
-      opacity: 0;
-      transform: translateZ(0);
-    }
-    .reelVideo.is-ready{ opacity: 1; }
-
-    /* leichte vignette für app-feel */
-    .vignette{
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      background:
-        radial-gradient(circle at 50% 35%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.25) 55%, rgba(0,0,0,0.62) 100%),
-        linear-gradient(to bottom, rgba(0,0,0,0.52) 0%, rgba(0,0,0,0.08) 25%, rgba(0,0,0,0.08) 70%, rgba(0,0,0,0.65) 100%);
-      opacity: .95;
     }
 
-    /* =========================
-       TOP BAR
-       ========================= */
-    .topbar{
+    /* =========================================================
+       TOP BAR (safe area)
+    ========================================================= */
+    .topBar{
       position:absolute;
-      top: calc(10px + var(--safeTop));
-      left: calc(12px + var(--safeLeft));
-      right: calc(12px + var(--safeRight));
+      left:0; right:0;
+      top:0;
+      padding-top: calc(10px + var(--sat));
+      padding-left: calc(12px + var(--sal));
+      padding-right: calc(12px + var(--sar));
+      padding-bottom: 10px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
       z-index: 5;
-      pointer-events:none; /* Buttons bekommen pointer-events */
+      pointer-events:none;
     }
-
     .topLeft{
       display:flex;
       align-items:center;
       gap:10px;
       pointer-events:auto;
-      min-width: 0;
     }
 
     .backBtn{
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(15,23,42,0.35);
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.35);
       display:grid;
       place-items:center;
       cursor:pointer;
       -webkit-tap-highlight-color: transparent;
-      backdrop-filter: blur(10px);
     }
-    .backBtn svg{ width: 20px; height:20px; fill: #fff; opacity: .95; }
+    .backBtn:active{ transform:scale(.98); }
 
     .brand{
       display:flex;
       align-items:center;
       gap:10px;
-      min-width: 0;
-      padding: 8px 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(15,23,42,0.30);
-      backdrop-filter: blur(10px);
+      max-width: 70vw;
     }
-
     .brandLogo{
-      width: 28px;
-      height: 28px;
-      border-radius: 9px;
-      object-fit: contain;
-      background: rgba(255,255,255,0.92);
-      padding: 3px;
+      width:34px;
+      height:34px;
+      border-radius:10px;
+      background:#111;
+      border:1px solid rgba(255,255,255,.12);
+      object-fit:contain;
     }
-
     .brandName{
-      font-weight: 750;
-      font-size: 13px;
-      white-space: nowrap;
+      font-weight:750;
+      font-size:14px;
+      white-space:nowrap;
       overflow:hidden;
-      text-overflow: ellipsis;
-      max-width: 52vw;
-      letter-spacing: .2px;
+      text-overflow:ellipsis;
+      opacity:.95;
     }
 
     .topRight{
       pointer-events:auto;
       display:flex;
       align-items:center;
-      gap:10px;
+      gap:8px;
     }
-
     .pillBtn{
-      height: 44px;
-      padding: 0 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(15,23,42,0.35);
+      height:42px;
+      border-radius:14px;
+      padding:0 12px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(0,0,0,.35);
+      color:#fff;
+      font-weight:750;
+      font-size:12px;
+      cursor:pointer;
       display:inline-flex;
       align-items:center;
       gap:8px;
-      cursor:pointer;
       -webkit-tap-highlight-color: transparent;
-      backdrop-filter: blur(10px);
-      color:#fff;
-      font-weight: 700;
-      font-size: 12px;
-      letter-spacing:.2px;
     }
-    .pillBtn svg{ width:18px; height:18px; fill:#fff; opacity:.95; }
+    .pillBtn:active{ transform:scale(.98); }
+    .pillDot{
+      width:8px; height:8px; border-radius:999px;
+      background:#fff;
+      opacity:.85;
+    }
 
-    /* =========================
-       RIGHT ACTIONS (TikTok)
-       ========================= */
-    .actions{
+    /* =========================================================
+       RIGHT RAIL (TikTok style)
+    ========================================================= */
+    .rail{
       position:absolute;
-      right: calc(12px + var(--safeRight));
-      bottom: calc(118px + var(--safeBottom));
-      z-index: 5;
+      right: calc(10px + var(--sar));
+      bottom: calc(110px + var(--sab));
       display:flex;
       flex-direction:column;
-      gap: 14px;
-      align-items:center;
+      gap:14px;
+      z-index:5;
       pointer-events:auto;
     }
-
-    .actionBtn{
-      width: 52px;
-      height: 52px;
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(15,23,42,0.30);
-      display:grid;
-      place-items:center;
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
-      backdrop-filter: blur(10px);
-    }
-    .actionBtn svg{ width: 22px; height:22px; fill:#fff; opacity:.95; }
-    .actionCount{
-      margin-top: 6px;
-      font-size: 11px;
-      font-weight: 800;
-      color: rgba(255,255,255,0.82);
-      letter-spacing:.2px;
-    }
-
-    .actionWrap{
+    .railBtn{
+      width:52px;
+      height:52px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.30);
       display:flex;
       flex-direction:column;
       align-items:center;
-      gap:6px;
-      user-select:none;
+      justify-content:center;
+      gap:2px;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
     }
-
-    .likeBtn.is-liked{
-      background: rgba(255, 90, 95, 0.24);
-      border-color: rgba(255, 90, 95, 0.35);
+    .railBtn:active{ transform:scale(.98); }
+    .railIcon{
+      width:22px; height:22px;
+      display:block;
+      fill:#fff;
+      opacity:.95;
     }
+    .railCount{
+      font-size:11px;
+      font-weight:800;
+      opacity:.9;
+      line-height:1;
+    }
+    .railBtn.is-liked .railIcon{ fill:#ff5a5f; }
+    .railBtn.is-liked .railCount{ color:#ff5a5f; }
 
-    /* =========================
-       BOTTOM PRODUCT CARD
-       ========================= */
+    /* =========================================================
+       BOTTOM PRODUCT CARD (safe area)
+    ========================================================= */
     .productCard{
       position:absolute;
-      left: calc(12px + var(--safeLeft));
-      right: calc(82px + var(--safeRight)); /* Platz für actions */
-      bottom: calc(16px + var(--safeBottom));
-      z-index: 5;
-
-      border-radius: 18px;
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(15,23,42,0.35);
-      backdrop-filter: blur(12px);
-      padding: 10px 10px;
+      left: calc(12px + var(--sal));
+      right: calc(12px + var(--sar));
+      bottom: calc(14px + var(--sab));
+      z-index:5;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      padding:12px;
       display:flex;
-      gap:10px;
       align-items:center;
+      gap:12px;
       pointer-events:auto;
     }
-
     .productImg{
-      width: 56px;
-      height: 56px;
-      border-radius: 14px;
-      object-fit: cover;
-      background: rgba(255,255,255,0.92);
+      width:54px;
+      height:54px;
+      border-radius:14px;
+      object-fit:cover;
+      border:1px solid rgba(255,255,255,.12);
+      background:#111;
+      flex: 0 0 auto;
     }
-
-    .productInfo{
-      flex:1;
-      min-width: 0;
+    .productMeta{
+      min-width:0;
       display:flex;
       flex-direction:column;
       gap:2px;
+      flex:1;
     }
     .productTitle{
-      font-size: 13px;
-      font-weight: 850;
-      white-space: nowrap;
+      font-size:13px;
+      font-weight:850;
+      white-space:nowrap;
       overflow:hidden;
-      text-overflow: ellipsis;
-      letter-spacing:.2px;
+      text-overflow:ellipsis;
     }
-    .productMeta{
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
+    .productSub{
+      font-size:12px;
+      opacity:.85;
+      white-space:nowrap;
       overflow:hidden;
-      text-overflow: ellipsis;
+      text-overflow:ellipsis;
     }
-
-    .productBtn{
-      height: 38px;
-      padding: 0 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(255,255,255,0.10);
-      color:#fff;
-      font-weight: 850;
-      font-size: 12px;
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
-      white-space: nowrap;
+    .productArrow{
+      width:34px; height:34px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      display:grid;
+      place-items:center;
+      flex:0 0 auto;
     }
-    .productBtn:active{ transform: scale(0.99); }
+    .productArrow svg{ width:18px; height:18px; fill:#fff; opacity:.95; }
 
-    /* =========================
-       COMMENTS SHEET (Demo)
-       ========================= */
-    .sheetOverlay{
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.55);
-      opacity: 0;
+    /* Pause hint */
+    .pauseHint{
+      position:absolute;
+      left:50%;
+      top:50%;
+      transform:translate(-50%, -50%);
+      z-index:5;
+      width:74px;
+      height:74px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.35);
+      display:none;
+      place-items:center;
       pointer-events:none;
-      transition: opacity 180ms ease;
-      z-index: 30;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
-    .sheetOverlay.is-open{
-      opacity: 1;
-      pointer-events:auto;
-    }
-    .sheet{
-      position: fixed;
-      left: 0; right: 0;
-      bottom: 0;
-      height: min(62vh, 520px);
-      transform: translateY(105%);
-      transition: transform 220ms cubic-bezier(.2,.9,.2,1);
-      z-index: 31;
-      background: rgba(15,23,42,0.96);
-      border-top-left-radius: 22px;
-      border-top-right-radius: 22px;
-      border: 1px solid rgba(255,255,255,0.12);
-      padding: 12px 14px calc(14px + var(--safeBottom));
-    }
-    .sheet.is-open{ transform: translateY(0); }
+    .pauseHint svg{ width:26px; height:26px; fill:#fff; opacity:.95; }
+    .reel.is-paused .pauseHint{ display:grid; }
 
+    /* =========================================================
+       COMMENTS SHEET (demo sichtbar)
+    ========================================================= */
+    .sheetBackdrop{
+      position:fixed;
+      inset:0;
+      background: rgba(0,0,0,.55);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .18s ease;
+      z-index: 20;
+    }
+    .commentSheet{
+      position:fixed;
+      left:0; right:0;
+      bottom:0;
+      transform: translateY(105%);
+      transition: transform .22s ease;
+      z-index: 21;
+
+      padding-left: calc(12px + var(--sal));
+      padding-right: calc(12px + var(--sar));
+      padding-bottom: calc(12px + var(--sab));
+
+      will-change: transform;
+    }
+    .commentSheetInner{
+      border-radius: 22px 22px 0 0;
+      background:#0b0f1a;
+      border: 1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      max-height: calc(70vh + var(--sab));
+      max-height: calc(70svh + var(--sab));
+      max-height: calc(70dvh + var(--sab));
+      display:flex;
+      flex-direction:column;
+    }
     .sheetHeader{
+      padding: 14px 14px 10px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
-      margin-bottom: 10px;
+      border-bottom:1px solid rgba(255,255,255,.08);
     }
     .sheetTitle{
-      font-weight: 900;
-      letter-spacing: .2px;
-      font-size: 14px;
+      font-weight:900;
+      font-size:13px;
+      opacity:.95;
     }
     .sheetClose{
-      width: 44px;
-      height: 44px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.08);
-      color:#fff;
+      width:40px;
+      height:40px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
       cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
       display:grid;
       place-items:center;
+      -webkit-tap-highlight-color: transparent;
     }
-    .sheetClose svg{ width:18px; height:18px; fill:#fff; opacity:.95; }
+    .sheetClose svg{ width:18px; height:18px; fill:#fff; opacity:.9; }
 
-    .commentsList{
-      margin-top: 6px;
+    .sheetList{
+      padding: 10px 14px;
+      overflow:auto;
       display:flex;
       flex-direction:column;
-      gap: 10px;
-      overflow:auto;
-      height: calc(100% - 58px);
-      padding-right: 4px;
+      gap:12px;
     }
-    .comment{
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(255,255,255,0.06);
-      padding: 10px 12px;
+    .cRow{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
     }
-    .commentUser{
-      font-weight: 900;
-      font-size: 12px;
-      margin-bottom: 4px;
+    .cAvatar{
+      width:34px;
+      height:34px;
+      border-radius:999px;
+      background: rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.10);
+      flex:0 0 auto;
+      display:grid;
+      place-items:center;
+      font-weight:900;
+      font-size:12px;
+      opacity:.95;
     }
-    .commentText{
-      font-size: 13px;
-      color: rgba(255,255,255,0.85);
-      line-height: 1.35;
+    .cBody{
+      min-width:0;
+      flex:1;
+    }
+    .cName{
+      font-weight:900;
+      font-size:12px;
+      opacity:.95;
+      margin-bottom:2px;
+    }
+    .cText{
+      font-size:12px;
+      opacity:.85;
+      line-height:1.35;
+    }
+
+    .sheetInputRow{
+      padding: 12px 14px;
+      border-top:1px solid rgba(255,255,255,.08);
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .sheetInput{
+      flex:1;
+      height:42px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color:#fff;
+      padding: 0 12px;
+      outline:none;
+      font-size:12px;
+    }
+    .sheetSend{
+      height:42px;
+      padding:0 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.10);
+      color:#fff;
+      font-weight:900;
+      font-size:12px;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Open state */
+    html.comments-open .sheetBackdrop{
+      opacity:1;
+      pointer-events:auto;
+    }
+    html.comments-open .commentSheet{
+      transform: translateY(0);
+    }
+
+    /* Toast */
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom: calc(88px + var(--sab));
+      transform: translateX(-50%) translateY(10px);
+      background: rgba(0,0,0,.55);
+      border:1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight:800;
+      font-size:12px;
+      opacity:0;
+      transition: opacity .18s ease, transform .18s ease;
+      z-index: 25;
+      pointer-events:none;
+      white-space:nowrap;
+    }
+    .toast.show{
+      opacity:1;
+      transform: translateX(-50%) translateY(0);
     }
 
     @media (prefers-reduced-motion: reduce){
-      .sheetOverlay, .sheet{ transition:none !important; }
+      .commentSheet, .sheetBackdrop, .toast{ transition:none !important; }
     }
   </style>
 </head>
 
 <body>
+  <main class="storyApp">
+    <section class="reels" id="reels">
 
-  <main class="feed" id="feed" aria-label="MENYRA Story Feed">
-
-    <!-- =========================
-         REEL 1
-         ========================= -->
-    <section class="reel" data-index="0">
-      <video class="reelVideo" src="./images/tik1.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
-      <div class="vignette" aria-hidden="true"></div>
-
-      <div class="topbar">
-        <div class="topLeft">
-          <button class="backBtn" id="backBtn" type="button" aria-label="Back">
-            <svg viewBox="0 0 24 24"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
-          </button>
-          <div class="brand" aria-label="Story Author">
-            <img class="brandLogo" src="./images/Prince-coffe-house-logo.jpg" alt="Logo" />
-            <div class="brandName">Prince Coffee House</div>
-          </div>
+      <!-- REEL 1 -->
+      <article class="reel"
+        data-index="0"
+        data-name="Prince Coffe House"
+        data-logo="./images/Prince-coffe-house-logo.jpg"
+        data-like="128"
+        data-comments="34"
+        data-product-title="Burger + Fries"
+        data-product-sub="5.90 € • Tap to view product"
+        data-product-img="./images/Prince-coffe-house-offer.jpg"
+      >
+        <video class="reelVideo" src="./images/tik1.mp4" playsinline muted loop preload="metadata"></video>
+        <div class="pauseHint" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M8 5h3v14H8V5zm5 0h3v14h-3V5z"/></svg>
         </div>
+      </article>
 
-        <div class="topRight">
-          <button class="pillBtn" id="soundBtn" type="button" aria-label="Sound toggle">
-            <svg id="soundIcon" viewBox="0 0 24 24">
-              <!-- muted icon -->
-              <path d="M16.5 12l3.5 3.5-1.4 1.4L15.1 13.4l-3.6 3.6H8.8v-4H6v-2h2.8V7h2.7l3.6 3.6 3.5-3.5 1.4 1.4L16.5 12z"/>
-            </svg>
-            <span id="soundLabel">Sound</span>
-          </button>
+      <!-- REEL 2 -->
+      <article class="reel"
+        data-index="1"
+        data-name="Prince Coffe House"
+        data-logo="./images/Prince-coffe-house-logo.jpg"
+        data-like="76"
+        data-comments="18"
+        data-product-title="Special Coffee"
+        data-product-sub="2.90 € • Tap to view product"
+        data-product-img="./images/Prince-coffe-house-logo.jpg"
+      >
+        <video class="reelVideo" src="./images/tik2.mp4" playsinline muted loop preload="metadata"></video>
+        <div class="pauseHint" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M8 5h3v14H8V5zm5 0h3v14h-3V5z"/></svg>
         </div>
-      </div>
+      </article>
 
-      <div class="actions" aria-label="Actions">
-        <div class="actionWrap">
-          <button class="actionBtn likeBtn" type="button" aria-label="Like">
-            <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.3-8.6C.6 9 .9 5.7 3.6 4.1c2-1.1 4.4-.6 6 1 1.6-1.6 4-2.1 6-1C18.3 5.7 18.6 9 21.3 12.4 19 16.4 12 21 12 21z"/></svg>
-          </button>
-          <div class="actionCount likeCount">128</div>
+      <!-- REEL 3 -->
+      <article class="reel"
+        data-index="2"
+        data-name="Prince Coffe House"
+        data-logo="./images/Prince-coffe-house-logo.jpg"
+        data-like="210"
+        data-comments="52"
+        data-product-title="Dessert"
+        data-product-sub="4.60 € • Tap to view product"
+        data-product-img="./images/Prince-coffe-house-offer.jpg"
+      >
+        <video class="reelVideo" src="./images/tik3.mp4" playsinline muted loop preload="metadata"></video>
+        <div class="pauseHint" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M8 5h3v14H8V5zm5 0h3v14h-3V5z"/></svg>
         </div>
+      </article>
 
-        <div class="actionWrap">
-          <button class="actionBtn commentBtn" type="button" aria-label="Comments">
-            <svg viewBox="0 0 24 24"><path d="M4 4h16v12H7l-3 3V4z"/></svg>
-          </button>
-          <div class="actionCount">24</div>
-        </div>
-
-        <div class="actionWrap">
-          <button class="actionBtn" type="button" aria-label="Share (demo)">
-            <svg viewBox="0 0 24 24"><path d="M14 9l-4 6 4-2v6h2v-6l4 2-6-8zM4 5h8V3H4a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H4V5z"/></svg>
-          </button>
-          <div class="actionCount">—</div>
-        </div>
-      </div>
-
-      <div class="productCard" aria-label="Tagged product">
-        <img class="productImg" src="./images/Prince-coffe-house-offer.jpg" alt="Product" />
-        <div class="productInfo">
-          <div class="productTitle">Burger + Fries</div>
-          <div class="productMeta">Markiert im Video • 5.90 €</div>
-        </div>
-        <button class="productBtn" type="button">Shiko</button>
-      </div>
     </section>
-
-    <!-- =========================
-         REEL 2
-         ========================= -->
-    <section class="reel" data-index="1">
-      <video class="reelVideo" src="./images/tik2.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
-      <div class="vignette" aria-hidden="true"></div>
-
-      <div class="topbar">
-        <div class="topLeft">
-          <button class="backBtn" type="button" aria-label="Back (same)" data-back>
-            <svg viewBox="0 0 24 24"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
-          </button>
-          <div class="brand">
-            <img class="brandLogo" src="./images/Prince-coffe-house-logo.jpg" alt="Logo" />
-            <div class="brandName">Prince Coffee House</div>
-          </div>
-        </div>
-
-        <div class="topRight">
-          <button class="pillBtn" type="button" aria-label="Sound toggle" data-sound>
-            <svg class="soundIconClone" viewBox="0 0 24 24">
-              <path d="M16.5 12l3.5 3.5-1.4 1.4L15.1 13.4l-3.6 3.6H8.8v-4H6v-2h2.8V7h2.7l3.6 3.6 3.5-3.5 1.4 1.4L16.5 12z"/>
-            </svg>
-            <span>Sound</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="actions">
-        <div class="actionWrap">
-          <button class="actionBtn likeBtn" type="button" aria-label="Like">
-            <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.3-8.6C.6 9 .9 5.7 3.6 4.1c2-1.1 4.4-.6 6 1 1.6-1.6 4-2.1 6-1C18.3 5.7 18.6 9 21.3 12.4 19 16.4 12 21 12 21z"/></svg>
-          </button>
-          <div class="actionCount likeCount">91</div>
-        </div>
-
-        <div class="actionWrap">
-          <button class="actionBtn commentBtn" type="button" aria-label="Comments">
-            <svg viewBox="0 0 24 24"><path d="M4 4h16v12H7l-3 3V4z"/></svg>
-          </button>
-          <div class="actionCount">11</div>
-        </div>
-
-        <div class="actionWrap">
-          <button class="actionBtn" type="button" aria-label="Share (demo)">
-            <svg viewBox="0 0 24 24"><path d="M14 9l-4 6 4-2v6h2v-6l4 2-6-8zM4 5h8V3H4a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H4V5z"/></svg>
-          </button>
-          <div class="actionCount">—</div>
-        </div>
-      </div>
-
-      <div class="productCard">
-        <img class="productImg" src="./images/Prince-coffe-house-offer.jpg" alt="Product" />
-        <div class="productInfo">
-          <div class="productTitle">Prince Special</div>
-          <div class="productMeta">Markiert im Video • Demo</div>
-        </div>
-        <button class="productBtn" type="button">Shiko</button>
-      </div>
-    </section>
-
-    <!-- =========================
-         REEL 3
-         ========================= -->
-    <section class="reel" data-index="2">
-      <video class="reelVideo" src="./images/tik3.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
-      <div class="vignette" aria-hidden="true"></div>
-
-      <div class="topbar">
-        <div class="topLeft">
-          <button class="backBtn" type="button" aria-label="Back (same)" data-back>
-            <svg viewBox="0 0 24 24"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
-          </button>
-          <div class="brand">
-            <img class="brandLogo" src="./images/Prince-coffe-house-logo.jpg" alt="Logo" />
-            <div class="brandName">Prince Coffee House</div>
-          </div>
-        </div>
-
-        <div class="topRight">
-          <button class="pillBtn" type="button" aria-label="Sound toggle" data-sound>
-            <svg class="soundIconClone" viewBox="0 0 24 24">
-              <path d="M16.5 12l3.5 3.5-1.4 1.4L15.1 13.4l-3.6 3.6H8.8v-4H6v-2h2.8V7h2.7l3.6 3.6 3.5-3.5 1.4 1.4L16.5 12z"/>
-            </svg>
-            <span>Sound</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="actions">
-        <div class="actionWrap">
-          <button class="actionBtn likeBtn" type="button" aria-label="Like">
-            <svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.3-8.6C.6 9 .9 5.7 3.6 4.1c2-1.1 4.4-.6 6 1 1.6-1.6 4-2.1 6-1C18.3 5.7 18.6 9 21.3 12.4 19 16.4 12 21 12 21z"/></svg>
-          </button>
-          <div class="actionCount likeCount">64</div>
-        </div>
-
-        <div class="actionWrap">
-          <button class="actionBtn commentBtn" type="button" aria-label="Comments">
-            <svg viewBox="0 0 24 24"><path d="M4 4h16v12H7l-3 3V4z"/></svg>
-          </button>
-          <div class="actionCount">7</div>
-        </div>
-
-        <div class="actionWrap">
-          <button class="actionBtn" type="button" aria-label="Share (demo)">
-            <svg viewBox="0 0 24 24"><path d="M14 9l-4 6 4-2v6h2v-6l4 2-6-8zM4 5h8V3H4a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H4V5z"/></svg>
-          </button>
-          <div class="actionCount">—</div>
-        </div>
-      </div>
-
-      <div class="productCard">
-        <img class="productImg" src="./images/Prince-coffe-house-offer.jpg" alt="Product" />
-        <div class="productInfo">
-          <div class="productTitle">Dessert Deal</div>
-          <div class="productMeta">Markiert im Video • Demo</div>
-        </div>
-        <button class="productBtn" type="button">Shiko</button>
-      </div>
-    </section>
-
   </main>
 
-  <!-- COMMENTS (Demo) -->
-  <div class="sheetOverlay" id="sheetOverlay" aria-hidden="true"></div>
-  <section class="sheet" id="sheet" aria-label="Comments">
-    <div class="sheetHeader">
-      <div class="sheetTitle">Komentet (demo)</div>
-      <button class="sheetClose" id="sheetClose" type="button" aria-label="Close">
-        <svg viewBox="0 0 24 24"><path d="M18.3 5.7l-1-1L12 10 6.7 4.7l-1 1L11 11l-5.3 5.3 1 1L12 12l5.3 5.3 1-1L13 11l5.3-5.3z"/></svg>
-      </button>
-    </div>
-    <div class="commentsList">
-      <div class="comment">
-        <div class="commentUser">Arta</div>
-        <div class="commentText">Super vibe 🔥</div>
+  <!-- Backdrop + Sheet -->
+  <div class="sheetBackdrop" id="sheetBackdrop" aria-hidden="true"></div>
+
+  <section class="commentSheet" id="commentSheet" aria-hidden="true">
+    <div class="commentSheetInner" role="dialog" aria-label="Kommentare">
+      <div class="sheetHeader">
+        <div class="sheetTitle" id="sheetTitle">Kommentare</div>
+        <button class="sheetClose" id="sheetCloseBtn" type="button" aria-label="Close">
+          <svg viewBox="0 0 24 24"><path d="M18.3 5.7 12 12l6.3 6.3-1.6 1.6L10.4 13.6 4.1 19.9 2.5 18.3 8.8 12 2.5 5.7 4.1 4.1l6.3 6.3 6.3-6.3 1.6 1.6z"/></svg>
+        </button>
       </div>
-      <div class="comment">
-        <div class="commentUser">Luan</div>
-        <div class="commentText">Kjo duket shumë mirë 😍</div>
+
+      <div class="sheetList" id="sheetList">
+        <!-- JS fills demo comments -->
       </div>
-      <div class="comment">
-        <div class="commentUser">Erin</div>
-        <div class="commentText">A ka delivery?</div>
+
+      <div class="sheetInputRow">
+        <input class="sheetInput" type="text" placeholder="Write a comment… (demo)" disabled />
+        <button class="sheetSend" type="button" disabled>Send</button>
       </div>
     </div>
   </section>
 
+  <!-- Overlay Template (topbar + rail + product) -->
+  <template id="overlayTpl">
+    <div class="topBar">
+      <div class="topLeft">
+        <button class="backBtn" type="button" data-action="back" aria-label="Back">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff" aria-hidden="true">
+            <path d="M15.5 19.5 8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/>
+          </svg>
+        </button>
+
+        <div class="brand" aria-label="Brand">
+          <img class="brandLogo" data-bind="logo" alt="Logo" />
+          <div class="brandName" data-bind="name">Restaurant</div>
+        </div>
+      </div>
+
+      <div class="topRight">
+        <button class="pillBtn" type="button" data-action="sound" aria-label="Sound toggle">
+          <span class="pillDot" aria-hidden="true"></span>
+          <span id="soundLabel">Sound</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="rail" aria-label="Actions">
+      <button class="railBtn" type="button" data-action="like" aria-label="Like">
+        <svg class="railIcon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 21s-7-4.6-9.6-8.7C.8 9.4 2.1 6.6 4.7 5.6c1.7-.7 3.7-.2 5 1.2L12 9l2.3-2.2c1.3-1.4 3.3-1.9 5-1.2 2.6 1 3.9 3.8 2.3 6.7C19 16.4 12 21 12 21z"/>
+        </svg>
+        <div class="railCount" data-bind="likeCount">0</div>
+      </button>
+
+      <button class="railBtn" type="button" data-action="comment" aria-label="Comments">
+        <svg class="railIcon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 4h16v12H7l-3 3V4zm3 5h10v2H7V9zm0 4h7v2H7v-2z"/>
+        </svg>
+        <div class="railCount" data-bind="commentCount">0</div>
+      </button>
+
+      <button class="railBtn" type="button" data-action="share" aria-label="Share">
+        <svg class="railIcon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 8a3 3 0 10-2.8-4H15a3 3 0 003 3zM6 14a3 3 0 10-2.8-4H3a3 3 0 003 3zm12 10a3 3 0 10-2.8-4H15a3 3 0 003 3zM8.7 12.2l6.6-3.4-.9-1.8-6.6 3.4.9 1.8zm6.6 4l-6.6-3.4-.9 1.8 6.6 3.4.9-1.8z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="productCard" role="button" tabindex="0" data-action="product" aria-label="Marked product">
+      <img class="productImg" data-bind="productImg" alt="Product" />
+      <div class="productMeta">
+        <div class="productTitle" data-bind="productTitle">Produkt</div>
+        <div class="productSub" data-bind="productSub">Tap to view</div>
+      </div>
+      <div class="productArrow" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6-1.6-1.6L11.8 12 7.4 7.6 9 6z"/></svg>
+      </div>
+    </div>
+  </template>
+
+  <div class="toast" id="toast">Sound</div>
+
   <script type="module">
     // =========================================================
-    // STORY FEED — Instant snap (no slow tail) + safe areas + no poster flash
+    // ABSCHNITT JS 1: Overlay in alle Reels injizieren (schnell)
     // =========================================================
-
-    const feed = document.getElementById("feed");
+    const tpl = document.getElementById("overlayTpl");
     const reels = Array.from(document.querySelectorAll(".reel"));
-    const videos = reels.map(r => r.querySelector(".reelVideo"));
+    const videos = Array.from(document.querySelectorAll(".reelVideo"));
+    const toastEl = document.getElementById("toast");
 
-    const sheet = document.getElementById("sheet");
-    const sheetOverlay = document.getElementById("sheetOverlay");
-    const sheetClose = document.getElementById("sheetClose");
+    const sheetBackdrop = document.getElementById("sheetBackdrop");
+    const commentSheet = document.getElementById("commentSheet");
+    const sheetCloseBtn = document.getElementById("sheetCloseBtn");
+    const sheetList = document.getElementById("sheetList");
+    const sheetTitle = document.getElementById("sheetTitle");
 
-    const backBtn = document.getElementById("backBtn");
-    const soundBtn = document.getElementById("soundBtn");
-    const soundIcon = document.getElementById("soundIcon");
+    reels.forEach((reel) => {
+      const frag = tpl.content.cloneNode(true);
 
-    let currentIndex = 0;
-    let muted = true;
+      const name = reel.getAttribute("data-name") || "Restaurant";
+      const logo = reel.getAttribute("data-logo") || "";
+      const like = reel.getAttribute("data-like") || "0";
+      const comments = reel.getAttribute("data-comments") || "0";
+      const pTitle = reel.getAttribute("data-product-title") || "Produkt";
+      const pSub = reel.getAttribute("data-product-sub") || "Tap to view product";
+      const pImg = reel.getAttribute("data-product-img") || "";
 
-    // "Instant snap" lock
-    let snapping = false;
-    let lastST = 0;
+      const logoEl = frag.querySelector('[data-bind="logo"]');
+      const nameEl = frag.querySelector('[data-bind="name"]');
+      const likeCountEl = frag.querySelector('[data-bind="likeCount"]');
+      const commentCountEl = frag.querySelector('[data-bind="commentCount"]');
+      const pTitleEl = frag.querySelector('[data-bind="productTitle"]');
+      const pSubEl = frag.querySelector('[data-bind="productSub"]');
+      const pImgEl = frag.querySelector('[data-bind="productImg"]');
 
-    const START_AT = 0.01;
+      if (logoEl && logo) logoEl.src = logo;
+      if (nameEl) nameEl.textContent = name;
 
-    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+      const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
+      if (likeBtn) likeBtn.setAttribute("data-count", String(parseInt(like,10)||0));
+      if (likeCountEl) likeCountEl.textContent = String(parseInt(like,10)||0);
 
-    function updateVvh(){
-      const vv = window.visualViewport;
-      const h = vv ? vv.height : window.innerHeight;
-      document.documentElement.style.setProperty("--vvh", Math.round(h) + "px");
-    }
-    updateVvh();
-    window.addEventListener("resize", updateVvh, { passive:true });
-    if (window.visualViewport){
-      visualViewport.addEventListener("resize", updateVvh, { passive:true });
-      visualViewport.addEventListener("scroll", updateVvh, { passive:true });
-    }
+      const comBtn = frag.querySelector('.railBtn[data-action="comment"]');
+      if (comBtn) comBtn.setAttribute("data-count", String(parseInt(comments,10)||0));
+      if (commentCountEl) commentCountEl.textContent = String(parseInt(comments,10)||0);
 
-    function waitOnce(el, evt){
-      return new Promise((res) => el.addEventListener(evt, res, { once:true }));
-    }
+      if (pTitleEl) pTitleEl.textContent = pTitle;
+      if (pSubEl) pSubEl.textContent = pSub;
+      if (pImgEl && pImg) pImgEl.src = pImg;
 
-    async function warmVideo(v){
-      if (!v || v.dataset.warmed === "1") return;
+      reel.appendChild(frag);
+    });
 
-      v.playsInline = true;
-      v.muted = true;
+    // =========================================================
+    // ABSCHNITT JS 2: Autoplay nur für aktives Reel
+    // =========================================================
+    const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
+    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+    let activeIndex = 0;
 
-      if (v.readyState < 1) await waitOnce(v, "loadedmetadata").catch(()=>{});
-
-      try{
-        if (Number.isFinite(v.duration) && v.duration > START_AT){
-          v.currentTime = START_AT;
-          await waitOnce(v, "seeked").catch(()=>{});
-        }
-      }catch(_){}
-
-      if (v.readyState < 2) await waitOnce(v, "loadeddata").catch(()=>{});
-
-      // Prime decode (muted autoplay ok)
-      try{
-        await v.play();
-        v.pause();
-      }catch(_){}
-
-      // Back to stable start frame
-      try{
-        if (Number.isFinite(v.duration) && v.duration > START_AT){
-          v.currentTime = START_AT;
-          await waitOnce(v, "seeked").catch(()=>{});
-        }
-      }catch(_){}
-
-      v.dataset.warmed = "1";
-      v.classList.add("is-ready"); // -> verhindert poster flash
+    function showToast(text){
+      if (!toastEl) return;
+      toastEl.textContent = text;
+      toastEl.classList.add("show");
+      window.setTimeout(() => toastEl.classList.remove("show"), 650);
     }
 
-    async function warmAll(){
-      await warmVideo(videos[0]);
-      Promise.allSettled(videos.slice(1).map(warmVideo));
+    function setSoundState(on){
+      soundOn = !!on;
+      localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+      videos.forEach((v, i) => v.muted = !(soundOn && i === activeIndex));
+      showToast(soundOn ? "Sound: ON" : "Sound: OFF");
     }
 
-    function pageHeight(){
-      return feed.clientHeight || window.innerHeight || 1;
-    }
+    async function playOnly(index){
+      activeIndex = index;
 
-    function goToIndex(idx){
-      const h = pageHeight();
-      const target = clamp(idx, 0, reels.length - 1);
-      snapping = true;
-      feed.scrollTop = target * h;     // sofort, kein easing
-      currentIndex = target;
-
-      // lock kurz halten, damit wir nicht im Loop landen
-      window.setTimeout(() => { snapping = false; lastST = feed.scrollTop; }, 70);
-    }
-
-    function setMutedState(isMuted){
-      muted = isMuted;
-
-      // Icon swap (nur das erste, die anderen sind clones)
-      if (!muted){
-        soundIcon.innerHTML =
-          '<path d="M3 10v4h3l4 4V6L6 10H3z"/>' +
-          '<path d="M16.5 12a4.5 4.5 0 01-2.1 3.8l-1-1.7a2.5 2.5 0 000-4.2l1-1.7A4.5 4.5 0 0116.5 12z"/>' +
-          '<path d="M14.3 3.7l-1 1.7A7.5 7.5 0 0117.5 12a7.5 7.5 0 01-4.2 6.6l1 1.7A9.5 9.5 0 0019.5 12a9.5 9.5 0 00-5.2-8.3z"/>';
-      } else {
-        soundIcon.innerHTML =
-          '<path d="M16.5 12l3.5 3.5-1.4 1.4L15.1 13.4l-3.6 3.6H8.8v-4H6v-2h2.8V7h2.7l3.6 3.6 3.5-3.5 1.4 1.4L16.5 12z"/>';
-      }
-
-      // Active video
-      const v = videos[currentIndex];
-      if (!v) return;
-
-      videos.forEach((vv, i) => { if (i !== currentIndex) vv.muted = true; });
-      v.muted = muted ? true : false;
-      v.volume = 1;
-      v.play().catch(()=>{});
-    }
-
-    async function activate(idx){
-      currentIndex = clamp(idx, 0, reels.length - 1);
-
-      const v = videos[currentIndex];
-      if (v) await warmVideo(v);
-
-      videos.forEach((vv, i) => {
-        if (!vv) return;
-        if (i === currentIndex){
-          vv.muted = muted ? true : false;
-          vv.volume = 1;
-          vv.play().catch(()=>{});
-        } else {
-          vv.pause();
-          vv.muted = true;
-          try{
-            if (vv.dataset.warmed === "1" && Number.isFinite(vv.duration) && vv.duration > START_AT){
-              vv.currentTime = START_AT;
-            }
-          }catch(_){}
+      videos.forEach((v, i) => {
+        const reel = reels[i];
+        if (i !== index){
+          v.pause();
+          v.muted = true;
+          reel?.classList.remove("is-paused");
         }
       });
 
-      // warm neighbors
-      if (videos[currentIndex - 1]) warmVideo(videos[currentIndex - 1]);
-      if (videos[currentIndex + 1]) warmVideo(videos[currentIndex + 1]);
+      const v = videos[index];
+      if (!v) return;
+
+      // sound only on active
+      v.muted = !soundOn;
+
+      try{
+        await v.play();
+        reels[index]?.classList.remove("is-paused");
+      }catch(_){
+        // iOS kann blocken – bleibt pausiert, user tappt dann
+        reels[index]?.classList.add("is-paused");
+      }
     }
 
-    // IntersectionObserver: wer ist aktiv?
+    // =========================================================
+    // ABSCHNITT JS 3: SMART BACK (Demo-Fallback karte-demo.html)
+    // =========================================================
+    const BACK_FALLBACK = (() => {
+      const qs = new URLSearchParams(window.location.search);
+      const back = (qs.get("back") || "").trim();
+      return back || "./karte-demo.html";
+    })();
+
+    function goBackSmart(){
+      if (window.history.length > 1) {
+        window.history.back();
+        return;
+      }
+      window.location.href = BACK_FALLBACK;
+    }
+
+    // init
+    setSoundState(soundOn);
+    playOnly(0);
+
+    // observer → findet aktives Reel sauber (kein "letzte mm langsam")
     const io = new IntersectionObserver((entries) => {
-      if (snapping) return;
       let best = null;
       for (const e of entries){
+        if (!e.isIntersecting) continue;
         if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
       }
-      if (!best || !best.isIntersecting) return;
-      const idx = parseInt(best.target.dataset.index || "0", 10) || 0;
-      if (idx !== currentIndex) activate(idx);
-    }, { root: feed, threshold: [0.55, 0.75] });
+      if (!best) return;
+      const idx = Number(best.target.getAttribute("data-index") || "0");
+      if (Number.isFinite(idx) && idx !== activeIndex){
+        playOnly(idx);
+      }
+    }, { threshold: [0.55, 0.75, 0.9] });
 
     reels.forEach(r => io.observe(r));
 
     // =========================================================
-    // IMPORTANT: INSTANT SNAP (kein "langsam letzte mm")
-    // - sobald User scrollt, springen wir sofort zur nächsten/prev Seite.
+    // ABSCHNITT JS 4: Comments Sheet (sichtbar Demo)
     // =========================================================
-    feed.addEventListener("scroll", () => {
-      if (snapping) return;
+    function fillDemoComments(reel){
+      const name = reel?.getAttribute("data-name") || "Prince Coffe House";
+      const count = parseInt(reel?.getAttribute("data-comments") || "0", 10) || 0;
 
-      const st = feed.scrollTop;
-      const delta = st - lastST;
+      if (sheetTitle) sheetTitle.textContent = `Kommentare (${count})`;
 
-      // kleine jitter ignorieren
-      if (Math.abs(delta) < 6) return;
+      const demo = [
+        { n:"Ardi", t:"Shume e mire 🔥" },
+        { n:"Lira", t:"A ka edhe sauce extra?" },
+        { n:"Beni", t:"Kjo duket super!" },
+        { n:"Sara", t:"Sa shpejt vjen porosia?" },
+        { n:"Erion", t:"Top, do vij prape 👌" },
+      ];
 
-      // Richtung -> sofortiger Page Jump
-      if (delta > 0) goToIndex(currentIndex + 1);
-      else goToIndex(currentIndex - 1);
-    }, { passive:true });
+      sheetList.innerHTML = demo.map(x => `
+        <div class="cRow">
+          <div class="cAvatar">${x.n.slice(0,1).toUpperCase()}</div>
+          <div class="cBody">
+            <div class="cName">${x.n} <span style="opacity:.55;font-weight:800;">• ${name}</span></div>
+            <div class="cText">${x.t}</div>
+          </div>
+        </div>
+      `).join("");
+    }
 
-    // Click delegation: like / comments / sound clones / back clones
+    function openComments(){
+      const reel = reels[activeIndex];
+      fillDemoComments(reel);
+
+      document.documentElement.classList.add("comments-open");
+      commentSheet?.setAttribute("aria-hidden", "false");
+      sheetBackdrop?.setAttribute("aria-hidden", "false");
+
+      // optional: pause while reading comments (schneller/ruhiger)
+      videos[activeIndex]?.pause();
+      reels[activeIndex]?.classList.add("is-paused");
+    }
+
+    function closeComments(){
+      document.documentElement.classList.remove("comments-open");
+      commentSheet?.setAttribute("aria-hidden", "true");
+      sheetBackdrop?.setAttribute("aria-hidden", "true");
+
+      // resume
+      playOnly(activeIndex);
+    }
+
+    sheetBackdrop?.addEventListener("click", closeComments, { passive:true });
+    sheetCloseBtn?.addEventListener("click", closeComments, { passive:true });
+
+    // =========================================================
+    // ABSCHNITT JS 5: Global click delegation (super schnell)
+    // =========================================================
     document.addEventListener("click", (e) => {
-      // Back buttons
-      if (e.target.closest("#backBtn") || e.target.closest("[data-back]")){
-        e.preventDefault();
-        window.location.href = "./karte-demo.html";
-        return;
+      const actionEl = e.target.closest("[data-action]");
+      if (actionEl){
+        const action = actionEl.getAttribute("data-action");
+
+        if (action === "back"){
+          goBackSmart();
+          return;
+        }
+
+        if (action === "sound"){
+          setSoundState(!soundOn);
+          playOnly(activeIndex);
+          return;
+        }
+
+        if (action === "like"){
+          const btn = actionEl.closest('.railBtn[data-action="like"]');
+          if (!btn) return;
+
+          const countEl = btn.querySelector(".railCount");
+          const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
+          const liked = btn.classList.toggle("is-liked");
+          const next = liked ? cur + 1 : Math.max(0, cur - 1);
+
+          btn.setAttribute("data-count", String(next));
+          if (countEl) countEl.textContent = String(next);
+          return;
+        }
+
+        if (action === "comment"){
+          openComments();
+          return;
+        }
+
+        if (action === "share"){
+          showToast("Share (demo)");
+          return;
+        }
+
+        if (action === "product"){
+          showToast("Produkt öffnen (demo)");
+          return;
+        }
       }
 
-      // Sound button + clones
-      if (e.target.closest("#soundBtn") || e.target.closest("[data-sound]")){
-        e.preventDefault();
-        setMutedState(!muted);
-        return;
+      // Tap on video → play/pause
+      const video = e.target.closest("video.reelVideo");
+      if (!video) return;
+
+      const reel = video.closest(".reel");
+      const idx = Number(reel?.getAttribute("data-index") || "0");
+
+      // wenn user tippt und comments offen sind → ignorieren
+      if (document.documentElement.classList.contains("comments-open")) return;
+
+      if (video.paused){
+        playOnly(Number.isFinite(idx) ? idx : activeIndex);
+      }else{
+        video.pause();
+        reel?.classList.add("is-paused");
       }
-
-      // Like
-      const like = e.target.closest(".likeBtn");
-      if (like){
-        const reel = like.closest(".reel");
-        const countEl = reel?.querySelector(".likeCount");
-        const cur = parseInt((countEl?.textContent || "0").trim(), 10) || 0;
-        const liked = like.classList.toggle("is-liked");
-        if (countEl) countEl.textContent = String(liked ? cur + 1 : Math.max(0, cur - 1));
-        return;
-      }
-
-      // Comments
-      if (e.target.closest(".commentBtn")){
-        e.preventDefault();
-        openSheet();
-        return;
-      }
-    }, { passive:false });
-
-    function openSheet(){
-      sheetOverlay.classList.add("is-open");
-      sheet.classList.add("is-open");
-      sheetOverlay.setAttribute("aria-hidden","false");
-    }
-    function closeSheet(){
-      sheetOverlay.classList.remove("is-open");
-      sheet.classList.remove("is-open");
-      sheetOverlay.setAttribute("aria-hidden","true");
-    }
-    sheetOverlay.addEventListener("click", closeSheet, { passive:true });
-    sheetClose.addEventListener("click", closeSheet, { passive:true });
-
-    // ESC closes
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeSheet();
-    });
-
-    // Start: warm + exakt auf 0 + autoplay
-    window.addEventListener("pageshow", async () => {
-      updateVvh();
-      await warmAll();
-      goToIndex(0);
-      await activate(0);
-      setMutedState(true);
-      lastST = feed.scrollTop;
     }, { passive:true });
+
+    // Double tap to like
+    let lastTap = 0;
+    document.addEventListener("touchend", (e) => {
+      if (document.documentElement.classList.contains("comments-open")) return;
+
+      const now = Date.now();
+      const isDouble = (now - lastTap) < 260;
+      lastTap = now;
+      if (!isDouble) return;
+
+      const reel = e.target.closest(".reel");
+      if (!reel) return;
+
+      const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
+      if (likeBtn) likeBtn.click();
+    }, { passive:true });
+
+    // Pause when hidden
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden){
+        videos.forEach(v => v.pause());
+      }else{
+        playOnly(activeIndex);
+      }
+    }, { passive:true });
+
+    // ESC closes comments (desktop)
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && document.documentElement.classList.contains("comments-open")){
+        closeComments();
+      }
+    });
   </script>
 </body>
 </html>
