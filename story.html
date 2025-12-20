@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- PERF: Connection warmup -->
+  <!-- PERF: CDN warmup -->
   <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
   <link rel="preconnect" href="https://menyra.b-cdn.net" crossorigin />
 
@@ -44,6 +44,8 @@
 
       scroll-padding-top: var(--safe-top);
       scroll-padding-bottom: var(--safe-bottom);
+
+      touch-action: pan-y;
     }
     .reels::-webkit-scrollbar{ display:none; }
     .reels{ scrollbar-width:none; }
@@ -82,9 +84,11 @@
       z-index: 5;
     }
 
+    /* ====== Overlay UI (Topbar) ====== */
     .topbar{
       position:absolute;
       top: 0; left: 0; right: 0;
+
       padding-top: calc(var(--safe-top) + 10px);
       padding-left: calc(var(--safe-left) + 12px);
       padding-right: calc(var(--safe-right) + 12px);
@@ -152,6 +156,7 @@
       max-width: 56vw;
     }
 
+    /* ====== Right Action Rail ====== */
     .rail{
       position:absolute;
       right: calc(var(--safe-right) + 12px);
@@ -198,6 +203,7 @@
     }
     .railBtn[data-action="like"].is-liked svg{ fill:#111; }
 
+    /* ====== Bottom product tag ====== */
     .productTag{
       position:absolute;
       left: calc(var(--safe-left) + 12px);
@@ -258,7 +264,9 @@
       -webkit-tap-highlight-color: transparent;
       flex: 0 0 auto;
     }
+    .productBtn:active{ transform: scale(0.985); }
 
+    /* Tap hint only if USER pauses */
     .tapHint{
       position:absolute;
       left: 50%;
@@ -278,6 +286,7 @@
     }
     .reel.is-paused .tapHint{ opacity: 1; }
 
+    /* Toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -300,6 +309,7 @@
       transform: translateX(-50%) translateY(-4px);
     }
 
+    /* ====== COMMENTS (black) ====== */
     .commentsBackdrop{
       position: fixed;
       inset: 0;
@@ -392,7 +402,9 @@
     }
 
     @media (prefers-reduced-motion: reduce){
-      .toast, .tapHint, .commentsBackdrop, .commentsSheet{ transition:none !important; }
+      .toast{ transition:none !important; }
+      .tapHint{ transition:none !important; }
+      .commentsBackdrop, .commentsSheet{ transition:none !important; }
     }
   </style>
 </head>
@@ -469,58 +481,58 @@
   </template>
 
   <main class="reels" id="reels" aria-label="MENYRA Stories">
-    <!-- WICHTIG: Wir setzen NICHT src direkt, sondern data-src -> JS hängt nur nahe Videos an -->
     <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik1.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik1.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik2.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik2.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik3.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik3.mp4" playsinline webkit-playsinline muted preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik4.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik4.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik5.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik5.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik6.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik6.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik7.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik7.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="Schwanz Special" data-product-sub="Mit sose" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik8.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+    <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="House Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik8.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik9.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik9.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-src="https://menyra.b-cdn.net/tik10.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik10.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
   </main>
 
+  <!-- COMMENTS (black) -->
   <div class="commentsBackdrop" id="commentsBackdrop" aria-hidden="true"></div>
 
   <section class="commentsSheet" id="commentsSheet" aria-hidden="true">
@@ -546,12 +558,16 @@
   </section>
 
   <script type="module">
+    // =========================================================
+    // 0) Setup
+    // =========================================================
     const tpl = document.getElementById("overlayTpl");
     const reels = Array.from(document.querySelectorAll(".reel"));
     const videos = Array.from(document.querySelectorAll(".reelVideo"));
     const reelsEl = document.getElementById("reels");
     const toastEl = document.getElementById("toast");
 
+    // Comments UI
     const commentsBackdrop = document.getElementById("commentsBackdrop");
     const commentsSheet = document.getElementById("commentsSheet");
     const commentsList = document.getElementById("commentsList");
@@ -559,6 +575,7 @@
     const commentInput = document.getElementById("commentInput");
     let commentsOpen = false;
 
+    // Inject overlay
     reels.forEach((reel) => {
       const frag = tpl.content.cloneNode(true);
 
@@ -596,207 +613,338 @@
       reel.appendChild(frag);
     });
 
-    const SOUND_KEY = "menyra_story_sound";
-    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
-    let audioUnlocked = false;
-
-    let activeIndex = 0;
-    let playToken = 0;
-
-    let isSnapping = false;
-    let snapTimer = null;
-
+    // =========================================================
+    // 1) Toast
+    // =========================================================
     function showToast(text){
       if (!toastEl) return;
       toastEl.textContent = text;
       toastEl.classList.add("show");
-      window.setTimeout(() => toastEl.classList.remove("show"), 700);
+      window.setTimeout(() => toastEl.classList.remove("show"), 750);
     }
+
+    // =========================================================
+    // 2) Sound (TikTok style: start muted -> unmute when playing)
+    // =========================================================
+    const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
+    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+    let activeIndex = 0;
 
     function setSoundState(on){
       soundOn = !!on;
       localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
       showToast(soundOn ? "Sound: ON" : "Sound: OFF");
 
+      // Apply immediately on active (muted-first trick)
       const v = videos[activeIndex];
       if (!v) return;
 
-      if (soundOn && audioUnlocked){
-        try { v.muted = false; v.volume = 1; } catch(_){}
-      } else {
+      if (!soundOn){
         v.muted = true;
-      }
-    }
-
-    // ====== ULTRA PERF: attach src only near current ======
-    function attachVideo(i, preloadMode){
-      const v = videos[i];
-      if (!v) return;
-
-      const url = v.getAttribute("data-src");
-      if (!url) return;
-
-      if (!v.dataset.attached){
-        v.src = url;
-        v.dataset.attached = "1";
-        try { v.load(); } catch(_){}
+        v.volume = 0;
+        safePlay(v);
+        return;
       }
 
-      if (v.preload !== preloadMode) v.preload = preloadMode;
-    }
-
-    function detachVideo(i){
-      const v = videos[i];
-      if (!v || !v.dataset.attached) return;
-
-      try { v.pause(); } catch(_){}
+      // IMPORTANT: browsers allow unmute best when already playing.
+      // Start playing muted -> then unmute.
       v.muted = true;
-      v.removeAttribute("src");
-      delete v.dataset.attached;
+      v.volume = 0;
+      safePlay(v);
 
-      // load() nach remove src gibt RAM frei
-      try { v.load(); } catch(_){}
+      // try unmute shortly after (still within user gesture usually)
+      window.setTimeout(() => {
+        if (!soundOn) return;
+        try{
+          v.muted = false;
+          v.volume = 1;
+          // kick again (some browsers need it)
+          safePlay(v);
+        }catch(_){}
+      }, 60);
     }
 
-    function updateNearSources(idx){
-      // near-set: prev, current, next, next+1
-      const keep = new Set([idx-1, idx, idx+1, idx+2]);
+    // =========================================================
+    // 3) Ultra-safe play
+    // =========================================================
+    function safePlay(v){
+      if (!v) return;
+      const p = v.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
+    }
 
+    // =========================================================
+    // 4) Preload strategy (speed stays)
+    // Active + Next = auto, Near = metadata, Rest = none
+    // =========================================================
+    function warmPreload(idx){
       for (let i = 0; i < videos.length; i++){
-        if (keep.has(i)){
-          const preloadMode =
-            (i === idx) ? "auto" :
-            (i === idx+1) ? "auto" :
-            "metadata";
-          attachVideo(i, preloadMode);
-        } else {
-          detachVideo(i);
+        const v = videos[i];
+        let target = "none";
+
+        if (i === idx || i === idx + 1) target = "auto";
+        else if (Math.abs(i - idx) <= 2) target = "metadata";
+
+        if (v.preload !== target) v.preload = target;
+
+        // Nudge load only for promoted videos, never touch active with load()
+        if (target !== "none" && i !== idx && v.readyState === 0){
+          try { v.load(); } catch(_) {}
         }
       }
     }
 
-    async function playOnly(index){
-      const token = ++playToken;
-      activeIndex = index;
+    // Extra: prewarm candidate without downgrading active
+    function prewarmCandidate(candidateIdx){
+      const a = Math.max(0, Math.min(videos.length - 1, candidateIdx));
+      const b = Math.max(0, Math.min(videos.length - 1, candidateIdx + 1));
+      [a,b].forEach(i => {
+        const v = videos[i];
+        if (!v) return;
+        if (v.preload !== "auto") v.preload = "auto";
+        if (v.readyState === 0){
+          try { v.load(); } catch(_) {}
+        }
+      });
+    }
 
-      updateNearSources(index);
+    // =========================================================
+    // 5) Snap engine (TikTok-like: small swipe => next/prev)
+    // =========================================================
+    let VIEW_H = 1;
+    function updateViewH(){
+      VIEW_H = reelsEl.getBoundingClientRect().height || window.innerHeight || 1;
+    }
+    updateViewH();
+    window.addEventListener("resize", updateViewH, { passive: true });
 
-      // stop other playing
+    let animRAF = 0;
+    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+    function animateScrollTo(targetY, duration = 160){
+      cancelAnimationFrame(animRAF);
+      const startY = reelsEl.scrollTop;
+      const diff = targetY - startY;
+      if (Math.abs(diff) < 1) return;
+
+      const startT = performance.now();
+      const d = Math.max(110, Math.min(duration, 220));
+
+      function step(now){
+        const t = Math.min(1, (now - startT) / d);
+        reelsEl.scrollTop = startY + diff * easeOutCubic(t);
+        if (t < 1) animRAF = requestAnimationFrame(step);
+      }
+      animRAF = requestAnimationFrame(step);
+    }
+
+    function clampIndex(i){
+      return Math.max(0, Math.min(videos.length - 1, i));
+    }
+
+    function indexToTop(i){
+      return i * VIEW_H;
+    }
+
+    // "current index" from scrollTop (but we don't require half-page scroll anymore)
+    function currentIndex(){
+      const raw = reelsEl.scrollTop / VIEW_H;
+      return clampIndex(Math.round(raw));
+    }
+
+    function activate(idx){
+      idx = clampIndex(idx);
+      if (idx === activeIndex) return;
+
+      // Preload around new active
+      warmPreload(idx);
+
+      // Pause others
       videos.forEach((v, i) => {
         const reel = reels[i];
-        if (i !== index){
-          try { v.pause(); } catch(_){}
+        if (i !== idx){
+          try { v.pause(); } catch(_) {}
           v.muted = true;
+          v.volume = 0;
           reel?.classList.remove("is-paused");
         }
       });
 
-      const v = videos[index];
-      if (!v) return;
+      activeIndex = idx;
+      const v = videos[idx];
 
-      // autoplay policy: start muted
+      // Start always muted -> then unmute if soundOn (smooth)
       v.muted = true;
+      v.volume = 0;
+      safePlay(v);
 
-      try{
-        if (token !== playToken) return;
-        await v.play();
-        if (token !== playToken) return;
-
-        if (soundOn && audioUnlocked){
-          try { v.muted = false; v.volume = 1; } catch(_){}
-        }
-
-        reels[index]?.classList.remove("is-paused");
-      }catch(_){
-        // fallback muted play
-        try{
-          v.muted = true;
-          await v.play();
-          reels[index]?.classList.remove("is-paused");
-        }catch(__){
-          reels[index]?.classList.add("is-paused");
-        }
+      if (soundOn){
+        // unmute only after playback really starts (prevents black/blocked)
+        const onPlaying = () => {
+          v.removeEventListener("playing", onPlaying);
+          if (!soundOn) return;
+          try{
+            v.muted = false;
+            v.volume = 1;
+          }catch(_){}
+        };
+        v.addEventListener("playing", onPlaying, { passive: true });
+        // also nudge (safe)
+        window.setTimeout(() => { if (soundOn) safePlay(v); }, 40);
       }
     }
 
-    // ====== init ======
-    setSoundState(soundOn);
-    updateNearSources(0);
-    playOnly(0);
+    // =========================================================
+    // 6) Scroll + snap-finish (faster lock)
+    // =========================================================
+    let rafPending = false;
+    let snapTimer = null;
 
-    // ====== IO: stable active reel in scroll container ======
-    const io = new IntersectionObserver((entries) => {
-      if (isSnapping) return;
+    let scrollSession = false;
+    let startTop = 0;
+    let startIdx = 0;
 
-      let best = null;
-      for (const e of entries){
-        if (!e.isIntersecting) continue;
-        if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
-      }
-      if (!best) return;
-
-      const idx = Number(best.target.getAttribute("data-index") || "0");
-      if (Number.isFinite(idx) && idx !== activeIndex){
-        playOnly(idx);
-      }
-    }, { root: reelsEl, threshold: [0.6, 0.75, 0.9] });
-
-    reels.forEach(r => io.observe(r));
-
-    // ====== SNAP: scroll-end correction ======
-    function getNearestIndex(){
-      const center = reelsEl.scrollTop + reelsEl.clientHeight / 2;
-      let bestI = 0, bestD = Infinity;
-      for (let i = 0; i < reels.length; i++){
-        const r = reels[i];
-        const mid = r.offsetTop + r.clientHeight / 2;
-        const d = Math.abs(mid - center);
-        if (d < bestD){ bestD = d; bestI = i; }
-      }
-      return bestI;
+    // thresholds
+    function snapThresholdPx(){
+      // small gesture should count
+      return Math.max(22, VIEW_H * 0.06);
     }
 
-    function snapToIndex(i){
-      const r = reels[i];
-      if (!r) return;
+    function onScrollTick(){
+      rafPending = false;
+      if (commentsOpen) return;
 
-      isSnapping = true;
-      reelsEl.scrollTo({ top: r.offsetTop, behavior: "smooth" });
-      playOnly(i);
-
-      window.setTimeout(() => { isSnapping = false; }, 220);
+      const idx = currentIndex();
+      // only activate when we are basically on the reel (no early pausing)
+      activate(idx);
     }
 
-    reelsEl.addEventListener("scroll", () => {
-      if (isSnapping) return;
-      clearTimeout(snapTimer);
+    function onScroll(){
+      if (commentsOpen) return;
+
+      // start of scroll session
+      if (!scrollSession){
+        scrollSession = true;
+        startTop = reelsEl.scrollTop;
+        startIdx = currentIndex();
+      }
+
+      // During scroll: prewarm likely target without pausing active
+      const delta = reelsEl.scrollTop - startTop;
+      const th = snapThresholdPx();
+      if (Math.abs(delta) > th * 0.6){
+        const cand = clampIndex(startIdx + (delta > 0 ? 1 : -1));
+        if (cand !== startIdx) prewarmCandidate(cand);
+      }
+
+      if (!rafPending){
+        rafPending = true;
+        requestAnimationFrame(onScrollTick);
+      }
+
+      // faster scroll-end snap
+      if (snapTimer) clearTimeout(snapTimer);
       snapTimer = setTimeout(() => {
-        const i = getNearestIndex();
-        const diff = Math.abs(reelsEl.scrollTop - reels[i].offsetTop);
-        if (diff > 8) snapToIndex(i);
-      }, 90);
+        if (commentsOpen) return;
+
+        const endTop = reelsEl.scrollTop;
+        const deltaEnd = endTop - startTop;
+        const th2 = snapThresholdPx();
+
+        let targetIdx = startIdx;
+
+        // TikTok-like: small swipe decides next/prev
+        if (Math.abs(deltaEnd) >= th2){
+          targetIdx = clampIndex(startIdx + (deltaEnd > 0 ? 1 : -1));
+        } else {
+          // if it barely moved: snap back to start
+          targetIdx = startIdx;
+        }
+
+        const targetY = indexToTop(targetIdx);
+        animateScrollTo(targetY, 150);
+
+        // session end (after we commit)
+        scrollSession = false;
+
+        // ensure activation after snap settles
+        setTimeout(() => activate(targetIdx), 70);
+      }, 70);
+    }
+
+    reelsEl.addEventListener("scroll", onScroll, { passive: true });
+
+    // =========================================================
+    // 7) Touch swipe assist (even if scroll distance is tiny)
+    // =========================================================
+    let tStartY = 0;
+    let tStartTime = 0;
+
+    reelsEl.addEventListener("touchstart", (e) => {
+      if (commentsOpen) return;
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      tStartY = t.clientY;
+      tStartTime = Date.now();
     }, { passive: true });
 
-    // ====== Comments ======
+    reelsEl.addEventListener("touchend", (e) => {
+      if (commentsOpen) return;
+
+      const dt = Date.now() - tStartTime;
+      // very short flicks count
+      const MIN_SWIPE = 18;
+
+      const endTouch = (e.changedTouches && e.changedTouches[0]);
+      if (!endTouch) return;
+
+      const dy = endTouch.clientY - tStartY;
+      if (Math.abs(dy) < MIN_SWIPE) return;
+
+      // direction: swipe up => next (dy negative), swipe down => prev
+      const dir = dy < 0 ? 1 : -1;
+      const idx = currentIndex();
+      const target = clampIndex(idx + dir);
+
+      // prewarm next immediately
+      prewarmCandidate(target);
+
+      animateScrollTo(indexToTop(target), dt < 200 ? 140 : 170);
+      setTimeout(() => activate(target), 60);
+    }, { passive: true });
+
+    // =========================================================
+    // 8) Comments lock
+    // =========================================================
     function lockFeed(lock){
       reelsEl.style.pointerEvents = lock ? "none" : "";
       reelsEl.style.overflowY = lock ? "hidden" : "";
     }
+
     function openComments(){
       if (commentsOpen) return;
       commentsOpen = true;
       commentsBackdrop.classList.add("open");
       commentsSheet.classList.add("open");
+      commentsBackdrop.setAttribute("aria-hidden", "false");
+      commentsSheet.setAttribute("aria-hidden", "false");
       lockFeed(true);
       window.setTimeout(() => commentInput?.focus?.(), 60);
     }
+
     function closeComments(){
       if (!commentsOpen) return;
       commentsOpen = false;
       commentsBackdrop.classList.remove("open");
       commentsSheet.classList.remove("open");
+      commentsBackdrop.setAttribute("aria-hidden", "true");
+      commentsSheet.setAttribute("aria-hidden", "true");
       lockFeed(false);
+
+      warmPreload(activeIndex);
+      safePlay(videos[activeIndex]);
     }
+
     commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
 
     commentsForm?.addEventListener("submit", (e) => {
@@ -809,10 +957,13 @@
       item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
       item.querySelector(".cText").textContent = val;
       commentsList?.prepend(item);
+
       commentInput.value = "";
     });
 
-    // ====== Global controls ======
+    // =========================================================
+    // 9) Controls + Tap pause only by user
+    // =========================================================
     document.addEventListener("click", (e) => {
       const actionEl = e.target.closest("[data-action]");
       if (actionEl){
@@ -824,19 +975,20 @@
         }
 
         if (action === "sound"){
-          audioUnlocked = true;
+          // toggling sound must be user gesture => best chance to enable
           setSoundState(!soundOn);
-          playOnly(activeIndex);
           return;
         }
 
         if (action === "like"){
           const btn = actionEl.closest('.railBtn[data-action="like"]');
           if (!btn) return;
+
           const countEl = btn.querySelector(".railCount");
           const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
           const liked = btn.classList.toggle("is-liked");
           const next = liked ? cur + 1 : Math.max(0, cur - 1);
+
           btn.setAttribute("data-count", String(next));
           if (countEl) countEl.textContent = String(next);
           return;
@@ -850,20 +1002,24 @@
 
       if (commentsOpen) return;
 
+      // Tap on active video: play/pause (only user pause shows hint)
       const video = e.target.closest("video.reelVideo");
       if (!video) return;
 
       const reel = video.closest(".reel");
       const idx = Number(reel?.getAttribute("data-index") || "0");
+      if (idx !== activeIndex) return;
 
       if (video.paused){
-        playOnly(Number.isFinite(idx) ? idx : activeIndex);
-      } else {
+        reel?.classList.remove("is-paused");
+        safePlay(video);
+      }else{
         video.pause();
         reel?.classList.add("is-paused");
       }
-    }, { passive: true });
+    });
 
+    // Double tap to like
     let lastTap = 0;
     document.addEventListener("touchend", (e) => {
       if (commentsOpen) return;
@@ -871,24 +1027,48 @@
       const isDouble = (now - lastTap) < 260;
       lastTap = now;
       if (!isDouble) return;
+
       const reel = e.target.closest(".reel");
       if (!reel) return;
       const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
       if (likeBtn) likeBtn.click();
     }, { passive: true });
 
+    // Pause when hidden
     document.addEventListener("visibilitychange", () => {
       if (document.hidden){
-        videos.forEach(v => { try { v.pause(); } catch(_){ } });
-      } else {
-        updateNearSources(activeIndex);
-        playOnly(activeIndex);
+        videos.forEach(v => { try { v.pause(); } catch(_){} });
+      }else{
+        warmPreload(activeIndex);
+        safePlay(videos[activeIndex]);
       }
     }, { passive: true });
 
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeComments();
     }, { passive:true });
+
+    // =========================================================
+    // 10) Init (FAST)
+    // =========================================================
+    warmPreload(0);
+
+    // start first ASAP
+    videos[0].muted = true;
+    videos[0].volume = 0;
+    safePlay(videos[0]);
+
+    // pre-warm second
+    prewarmCandidate(1);
+
+    // apply saved sound preference (but keep safe muted-first)
+    if (soundOn){
+      // we do not auto-unmute without user gesture.
+      // keep state but show hint
+      showToast("Tap Sound für Audio");
+      soundOn = false;
+      localStorage.setItem(SOUND_KEY, "off");
+    }
   </script>
 </body>
 </html>
