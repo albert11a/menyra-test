@@ -9,9 +9,7 @@
   <!-- PERF: schneller Verbindungsaufbau zum Bunny CDN -->
   <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
   <link rel="preconnect" href="https://menyra.b-cdn.net" crossorigin />
-
   <!-- Optional: erstes Video früher laden (CDN) -->
-  <!-- Hinweis: Einige Browser warnen bei as="video". Wenn dich das nervt: as="fetch" verwenden oder Link entfernen. -->
   <link rel="preload" as="video" href="https://menyra.b-cdn.net/tik1.mp4" type="video/mp4" fetchpriority="high" />
 
   <style>
@@ -49,6 +47,7 @@
 
       scroll-padding-top: var(--safe-top);
       scroll-padding-bottom: var(--safe-bottom);
+      scroll-behavior: smooth;
     }
     .reels::-webkit-scrollbar{ display:none; }
     .reels{ scrollbar-width:none; }
@@ -490,54 +489,53 @@
 
   <main class="reels" id="reels" aria-label="MENYRA Stories">
     <!-- CDN VIDEO LINKS: tik1.mp4 ... tik10.mp4 -->
-
     <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik1.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik1.mp4" playsinline webkit-playsinline muted autoplay preload="auto" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik2.mp4" playsinline webkit-playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik2.mp4" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik3.mp4" playsinline webkit-playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik3.mp4" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik4.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik4.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik5.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik5.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik6.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik6.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik7.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik7.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="House Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik8.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik8.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik9.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik9.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik10.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik10.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
   </main>
@@ -627,7 +625,14 @@
     // =========================================================
     const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+
     let activeIndex = 0;
+    let playToken = 0;
+
+    // NEW: prevents random paused + makes snap stable
+    let audioUnlocked = false;  // Audio erst nach User-Gesture
+    let isSnapping = false;     // verhindert IO/scroll fight
+    let snapTimer = null;       // debounce
 
     function showToast(text){
       if (!toastEl) return;
@@ -639,34 +644,42 @@
     function setSoundState(on){
       soundOn = !!on;
       localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
-      videos.forEach((v, i) => v.muted = !(soundOn && i === activeIndex));
       showToast(soundOn ? "Sound: ON" : "Sound: OFF");
+
+      const v = videos[activeIndex];
+      if (!v) return;
+
+      // Autoplay stabil: immer muted starten; unmute erst nach User-Gesture
+      if (soundOn && audioUnlocked){
+        try { v.muted = false; v.volume = 1; } catch(_) {}
+      } else {
+        v.muted = true;
+      }
     }
 
     // =========================================================
-    // 1.2) PERF: Warmup/Lazy Preload ohne Umbau (nur preload steuern)
-    // active = auto, near = metadata, rest = none (lazy via JS warmup)
+    // PERF: Warmup/Lazy Preload stabil (kein dauerndes load())
+    // current + next => auto, prev + next+1 => metadata, rest => none
     // =========================================================
     function warmPreload(idx){
-      const hot = new Set([idx, idx - 1, idx + 1, idx + 2]);
+      const wanted = new Map();
+      wanted.set(idx, "auto");
+      wanted.set(idx + 1, "auto");
+      wanted.set(idx - 1, "metadata");
+      wanted.set(idx + 2, "metadata");
 
       for (let i = 0; i < videos.length; i++){
         const v = videos[i];
-
-        let target = "none";
-        if (i === idx) target = "auto";
-        else if (hot.has(i)) target = "metadata";
-
+        const target = wanted.get(i) || "none";
         if (v.preload !== target) v.preload = target;
 
-        // Nur wenn wir "near" sind und noch nix geladen ist → load() anschubsen
-        if (target !== "none" && v.readyState < 2){
+        // warmup nur 1x (sonst reset/pause)
+        if (target !== "none" && !v.dataset.warmed){
+          v.dataset.warmed = "1";
           try { v.load(); } catch(_){}
         }
       }
     }
-
-    let playToken = 0;
 
     async function playOnly(index){
       const token = ++playToken;
@@ -686,15 +699,29 @@
       const v = videos[index];
       if (!v) return;
 
-      v.muted = !soundOn;
+      // 100% autoplay policy: start muted
+      v.muted = true;
 
       try{
         if (token !== playToken) return;
         await v.play();
         if (token !== playToken) return;
+
+        // wenn Sound gewünscht + per User-Gesture freigeschaltet -> unmute versuchen
+        if (soundOn && audioUnlocked){
+          try { v.muted = false; v.volume = 1; } catch(_){}
+        }
+
         reels[index]?.classList.remove("is-paused");
       }catch(_){
-        reels[index]?.classList.add("is-paused");
+        // fallback: muted nochmal versuchen, damit es NICHT stehen bleibt
+        try{
+          v.muted = true;
+          await v.play();
+          reels[index]?.classList.remove("is-paused");
+        }catch(__){
+          reels[index]?.classList.add("is-paused");
+        }
       }
     }
 
@@ -703,20 +730,66 @@
     warmPreload(0);
     playOnly(0);
 
+    // IntersectionObserver (root = reels container) – stabiler active Reel
     const io = new IntersectionObserver((entries) => {
+      if (isSnapping) return;
+
       let best = null;
       for (const e of entries){
         if (!e.isIntersecting) continue;
         if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
       }
       if (!best) return;
+
       const idx = Number(best.target.getAttribute("data-index") || "0");
       if (Number.isFinite(idx) && idx !== activeIndex){
         playOnly(idx);
       }
-    }, { threshold: [0.35, 0.5, 0.75, 0.9] });
+    }, {
+      root: reelsEl,
+      threshold: [0.55, 0.7, 0.85]
+    });
 
     reels.forEach(r => io.observe(r));
+
+    // =========================================================
+    // SNAP FIX: scroll-end Korrektur (exakt snappen)
+    // =========================================================
+    function getNearestIndex(){
+      const center = reelsEl.scrollTop + reelsEl.clientHeight / 2;
+      let bestI = 0;
+      let bestD = Infinity;
+
+      for (let i = 0; i < reels.length; i++){
+        const r = reels[i];
+        const mid = r.offsetTop + r.clientHeight / 2;
+        const d = Math.abs(mid - center);
+        if (d < bestD){ bestD = d; bestI = i; }
+      }
+      return bestI;
+    }
+
+    function snapToIndex(i){
+      const r = reels[i];
+      if (!r) return;
+
+      isSnapping = true;
+      reelsEl.scrollTo({ top: r.offsetTop, behavior: "smooth" });
+      playOnly(i);
+
+      window.setTimeout(() => { isSnapping = false; }, 220);
+    }
+
+    reelsEl.addEventListener("scroll", () => {
+      if (isSnapping) return;
+      clearTimeout(snapTimer);
+      snapTimer = setTimeout(() => {
+        const i = getNearestIndex();
+        const targetTop = reels[i].offsetTop;
+        const diff = Math.abs(reelsEl.scrollTop - targetTop);
+        if (diff > 8) snapToIndex(i);
+      }, 90);
+    }, { passive: true });
 
     // =========================================================
     // 1.5) Comments (black)
@@ -777,6 +850,7 @@
         }
 
         if (action === "sound"){
+          audioUnlocked = true;      // user gesture -> darf unmute versuchen
           setSoundState(!soundOn);
           playOnly(activeIndex);
           return;
@@ -804,6 +878,7 @@
 
       if (commentsOpen) return;
 
+      // Tap on video: play/pause
       const video = e.target.closest("video.reelVideo");
       if (!video) return;
 
