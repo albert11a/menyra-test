@@ -6,329 +6,176 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- Warm start -->
+  <!-- nur das 1. Video priorisieren -->
   <link rel="preload" as="video" href="./images/tik1.mp4" type="video/mp4" fetchpriority="high">
   <link rel="preload" as="image" href="./images/Prince-coffe-house-logo.jpg">
 
   <style>
     :root{
       --vh: 100dvh;
-      --safe-top: env(safe-area-inset-top, 0px);
-      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --st: env(safe-area-inset-top, 0px);
+      --sb: env(safe-area-inset-bottom, 0px);
+      --txt: rgba(255,255,255,.92);
+      --sub: rgba(255,255,255,.68);
+      --glass: rgba(0,0,0,.30);
+      --line: rgba(255,255,255,.14);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#000;color:#fff}
+    body{overflow:hidden;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif}
+    button{font:inherit;color:inherit;background:none;border:0}
+    img{display:block;max-width:100%}
 
-      --txt: rgba(255,255,255,0.92);
-      --sub: rgba(255,255,255,0.68);
-      --glass: rgba(0,0,0,0.30);
-      --line: rgba(255,255,255,0.14);
-    }
-    *{ box-sizing:border-box; margin:0; padding:0; }
-    html,body{ height:100%; background:#000; color:#fff; }
-    body{
-      overflow:hidden;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-    button{ font:inherit; color:inherit; background:none; border:0; }
-    img{ display:block; max-width:100%; }
+    .app{position:fixed;inset:0;height:var(--vh);background:#000;overflow:hidden}
+    .viewport{position:absolute;inset:0;height:var(--vh);overflow:hidden;touch-action:pan-y}
+    .track{position:absolute;inset:0;will-change:transform;transform:translate3d(0,0,0)}
 
-    .app{
-      position:fixed;
-      inset:0;
-      height: var(--vh);
-      background:#000;
-      overflow:hidden;
-      touch-action: pan-y;
+    .reel{position:relative;height:var(--vh);width:100%;background:#000;overflow:hidden}
+    .reel::before{
+      content:"";
+      position:absolute;inset:0;
+      background: radial-gradient(circle at 50% 20%, rgba(255,255,255,.08), rgba(0,0,0,.92));
+      z-index:0;
     }
-
-    /* Track: wir steuern Paging selbst -> kein "letzte mm langsam" */
-    .viewport{
-      position:absolute;
-      inset:0;
-      height: var(--vh);
-      overflow:hidden;
-    }
-    .track{
-      position:absolute;
-      inset:0;
-      will-change: transform;
-      transform: translate3d(0,0,0);
-    }
-
-    .reel{
-      position:relative;
-      height: var(--vh);
-      width:100%;
-      background:#000;
-      overflow:hidden;
-    }
-
     .reelVideo{
-      width:100%;
-      height:100%;
-      object-fit: cover;
+      position:relative;z-index:1;
+      width:100%;height:100%;
+      object-fit:cover;
       display:block;
       background:#000;
-      transform: translateZ(0);
-      will-change: transform;
-      opacity:0;                /* kein black/standbild flicker */
-    }
-    .reel.is-ready .reelVideo{ opacity:1; }
-    .reel.is-active .reelVideo{ opacity:1; }
-
-    /* fades */
-    .topFade, .botFade{
-      position:fixed; left:0; right:0;
-      pointer-events:none;
-      z-index:5;
-    }
-    .topFade{
-      top:0;
-      height: 34%;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.62), rgba(0,0,0,0));
-    }
-    .botFade{
-      bottom:0;
-      height: 44%;
-      background: linear-gradient(to top, rgba(0,0,0,0.74), rgba(0,0,0,0));
+      transform:translateZ(0);
     }
 
-    /* header overlay */
+    .topFade,.botFade{position:fixed;left:0;right:0;pointer-events:none;z-index:5}
+    .topFade{top:0;height:34%;background:linear-gradient(to bottom,rgba(0,0,0,.62),rgba(0,0,0,0))}
+    .botFade{bottom:0;height:44%;background:linear-gradient(to top,rgba(0,0,0,.74),rgba(0,0,0,0))}
+
     .hdr{
-      position:fixed;
-      top: calc(10px + var(--safe-top));
-      left: 10px;
-      right: 10px;
-      display:flex;
-      align-items:center;
-      gap:10px;
-      z-index:10;
+      position:fixed;z-index:10;
+      top:calc(10px + var(--st));
+      left:10px;right:10px;
+      display:flex;align-items:center;gap:10px;
     }
     .iconBtn{
-      width:40px; height:40px;
-      border-radius:14px;
-      border: 1px solid var(--line);
-      background: var(--glass);
-      display:grid;
-      place-items:center;
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
+      width:40px;height:40px;border-radius:14px;
+      border:1px solid var(--line);
+      background:var(--glass);
+      display:grid;place-items:center;
+      cursor:pointer;-webkit-tap-highlight-color:transparent;
     }
-    .iconBtn:active{ transform: scale(0.985); }
+    .iconBtn:active{transform:scale(.985)}
 
     .logo{
-      width:30px; height:30px;
-      border-radius:10px;
-      object-fit:contain;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
+      width:30px;height:30px;border-radius:10px;object-fit:contain;
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
     }
-    .titleWrap{ min-width:0; display:flex; flex-direction:column; line-height:1.05; }
-    .title{
-      font-weight:900;
-      font-size:14px;
-      letter-spacing:0.2px;
-      color: var(--txt);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .subtitle{
-      font-size:12px;
-      color: var(--sub);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .spacer{ flex:1; }
+    .titleWrap{min-width:0;display:flex;flex-direction:column;line-height:1.05}
+    .title{font-weight:900;font-size:14px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .subtitle{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .spacer{flex:1}
 
-    /* right actions */
     .actions{
-      position:fixed;
-      right: 10px;
-      bottom: calc(110px + var(--safe-bot));
-      z-index:10;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
+      position:fixed;z-index:10;
+      right:10px;
+      bottom:calc(110px + var(--sb));
+      display:flex;flex-direction:column;gap:10px;
     }
     .actionBtn{
-      width: 52px;
-      border: 1px solid var(--line);
-      background: var(--glass);
-      border-radius: 18px;
-      padding: 10px 8px;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap: 6px;
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
+      width:52px;border:1px solid var(--line);
+      background:var(--glass);
+      border-radius:18px;padding:10px 8px;
+      display:flex;flex-direction:column;align-items:center;gap:6px;
+      cursor:pointer;-webkit-tap-highlight-color:transparent;
     }
-    .actionBtn:active{ transform: scale(0.985); }
-    .actionIcon{ width:22px; height:22px; display:block; }
-    .actionLabel{ font-size:11px; font-weight:900; color: var(--txt); }
+    .actionBtn:active{transform:scale(.985)}
+    .actionIcon{width:22px;height:22px;display:block}
+    .actionLabel{font-size:11px;font-weight:900;color:var(--txt)}
 
-    /* caption */
     .caption{
-      position:fixed;
-      left: 12px;
-      bottom: calc(98px + var(--safe-bot));
-      z-index:10;
-      max-width: 72%;
+      position:fixed;z-index:10;
+      left:12px;
+      bottom:calc(98px + var(--sb));
+      max-width:72%;
     }
-    .capUser{ font-size:14px; font-weight:900; color: var(--txt); margin-bottom:6px; }
-    .capText{ font-size:13px; line-height:1.35; color: rgba(255,255,255,0.82); }
+    .capUser{font-size:14px;font-weight:900;color:var(--txt);margin-bottom:6px}
+    .capText{font-size:13px;line-height:1.35;color:rgba(255,255,255,.82)}
 
-    /* product card */
     .productCard{
-      position:fixed;
-      left: 12px;
-      right: 76px;
-      bottom: calc(18px + var(--safe-bot));
-      z-index:12;
-      border-radius: 18px;
-      border: 1px solid var(--line);
-      background: rgba(0,0,0,0.34);
-      padding: 10px;
-      display:flex;
-      gap: 10px;
-      align-items:center;
-      overflow:hidden;
+      position:fixed;z-index:12;
+      left:12px;right:76px;
+      bottom:calc(18px + var(--sb));
+      border-radius:18px;border:1px solid var(--line);
+      background:rgba(0,0,0,.34);
+      padding:10px;display:flex;gap:10px;align-items:center;overflow:hidden;
     }
     .productImg{
-      width: 54px; height: 54px;
-      border-radius: 14px;
-      object-fit: cover;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      flex: 0 0 auto;
+      width:54px;height:54px;border-radius:14px;object-fit:cover;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.06);
+      flex:0 0 auto;
     }
-    .productMeta{ min-width:0; display:flex; flex-direction:column; gap:3px; flex:1; }
-    .productName{
-      font-size:13px; font-weight:900; color: var(--txt);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-    .productSub{
-      font-size:12px; color: var(--sub);
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
+    .productMeta{min-width:0;display:flex;flex-direction:column;gap:3px;flex:1}
+    .productName{font-size:13px;font-weight:900;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .productSub{font-size:12px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .productBtn{
-      border: 1px solid rgba(255,255,255,0.16);
-      background: rgba(255,255,255,0.10);
-      color: rgba(255,255,255,0.92);
-      height: 38px;
-      padding: 0 12px;
-      border-radius: 14px;
-      font-size:12px;
-      font-weight:900;
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
-      white-space:nowrap;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.10);
+      color:rgba(255,255,255,.92);
+      height:38px;padding:0 12px;border-radius:14px;
+      font-size:12px;font-weight:900;cursor:pointer;white-space:nowrap;
+      -webkit-tap-highlight-color:transparent;
     }
-    .productBtn:active{ transform: scale(0.985); }
+    .productBtn:active{transform:scale(.985)}
 
-    /* loading (nur wenn video noch nicht bereit) */
-    .loading{
-      position:fixed;
-      inset:0;
-      z-index:20;
-      display:grid;
-      place-items:center;
-      pointer-events:none;
-      opacity:0;
-      transition: opacity 120ms ease;
-    }
-    .loading.on{ opacity:1; }
-    .loadingInner{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding: 10px 12px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: var(--glass);
-    }
-    .dot{
-      width:10px; height:10px; border-radius:999px;
-      background: rgba(255,255,255,0.72);
-      animation: pulse 900ms ease-in-out infinite;
-    }
-    @keyframes pulse{
-      0%,100%{ transform:scale(0.8); opacity:0.6; }
-      50%{ transform:scale(1.1); opacity:1; }
-    }
-    .loadingText{ font-size:13px; color: var(--txt); font-weight:900; }
-
-    /* comments (black) */
+    /* comments demo */
     .backdrop{
-      position:fixed; inset:0;
-      background:#000;
-      opacity:0;
-      pointer-events:none;
-      transition: opacity 160ms ease;
-      z-index:50;
+      position:fixed;inset:0;z-index:50;
+      background:#000;opacity:0;pointer-events:none;
+      transition:opacity 160ms ease;
     }
-    .backdrop.open{ opacity:0.85; pointer-events:auto; }
-
+    .backdrop.open{opacity:.85;pointer-events:auto}
     .sheet{
-      position:fixed;
-      left:0; right:0;
-      bottom:0;
-      height: min(70dvh, 520px);
+      position:fixed;left:0;right:0;bottom:0;z-index:60;
+      height:min(70dvh,520px);
       background:#000;
-      border-top-left-radius: 22px;
-      border-top-right-radius: 22px;
-      border: 1px solid rgba(255,255,255,0.10);
-      transform: translateY(110%);
-      transition: transform 200ms ease;
-      z-index:60;
-      padding-bottom: var(--safe-bot);
-      display:flex;
-      flex-direction:column;
-      overflow:hidden;
+      border-top-left-radius:22px;border-top-right-radius:22px;
+      border:1px solid rgba(255,255,255,.10);
+      transform:translateY(110%);
+      transition:transform 200ms ease;
+      padding-bottom:var(--sb);
+      display:flex;flex-direction:column;overflow:hidden;
     }
-    .sheet.open{ transform: translateY(0); }
+    .sheet.open{transform:translateY(0)}
     .sheetTop{
-      padding: 12px 12px 10px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      border-bottom: 1px solid rgba(255,255,255,0.10);
+      padding:12px 12px 10px;
+      display:flex;align-items:center;justify-content:space-between;
+      border-bottom:1px solid rgba(255,255,255,.10);
     }
-    .sheetTitle{ font-size:13px; font-weight:900; color: var(--txt); }
-    .sheetList{ padding: 10px 12px; overflow:auto; flex:1; }
+    .sheetTitle{font-size:13px;font-weight:900;color:var(--txt)}
+    .sheetList{padding:10px 12px;overflow:auto;flex:1}
     .cItem{
-      padding: 10px 10px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      margin-bottom: 10px;
+      padding:10px 10px;border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      margin-bottom:10px;
     }
-    .cUser{ font-size:12px; font-weight:900; color: var(--txt); margin-bottom:4px; }
-    .cText{ font-size:12px; color: rgba(255,255,255,0.78); line-height:1.35; }
+    .cUser{font-size:12px;font-weight:900;color:var(--txt);margin-bottom:4px}
+    .cText{font-size:12px;color:rgba(255,255,255,.78);line-height:1.35}
     .sheetInput{
-      padding: 10px 12px 12px;
-      border-top: 1px solid rgba(255,255,255,0.10);
-      display:flex;
-      gap:10px;
-      align-items:center;
+      padding:10px 12px 12px;
+      border-top:1px solid rgba(255,255,255,.10);
+      display:flex;gap:10px;align-items:center;
     }
     .sheetInput input{
-      flex:1;
-      height: 42px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.92);
-      padding: 0 12px;
-      outline:none;
-      font-size:13px;
+      flex:1;height:42px;border-radius:16px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.06);
+      color:rgba(255,255,255,.92);
+      padding:0 12px;outline:none;font-size:13px;
     }
-
     @media (prefers-reduced-motion: reduce){
-      .track, .loading, .sheet, .backdrop{ transition:none !important; }
-      .dot{ animation:none !important; }
+      .track,.sheet,.backdrop{transition:none!important}
     }
   </style>
 </head>
@@ -337,30 +184,31 @@
   <div class="app" id="app">
     <div class="viewport" id="viewport">
       <div class="track" id="track">
+        <!-- Reel 1: sofort src -->
         <section class="reel" data-i="0">
-          <video class="reelVideo" preload="auto" playsinline webkit-playsinline muted>
+          <video class="reelVideo" playsinline webkit-playsinline muted preload="auto"
+                 poster="./images/Prince-coffe-house-offer.jpg">
             <source src="./images/tik1.mp4" type="video/mp4">
           </video>
         </section>
+
+        <!-- Reel 2/3: lazy (src wird erst gesetzt) -->
         <section class="reel" data-i="1">
-          <video class="reelVideo" preload="auto" playsinline webkit-playsinline muted>
-            <source src="./images/tik2.mp4" type="video/mp4">
-          </video>
+          <video class="reelVideo" playsinline webkit-playsinline muted preload="metadata"
+                 poster="./images/Prince-coffe-house-offer.jpg"
+                 data-src="./images/tik2.mp4"></video>
         </section>
+
         <section class="reel" data-i="2">
-          <video class="reelVideo" preload="auto" playsinline webkit-playsinline muted>
-            <source src="./images/tik3.mp4" type="video/mp4">
-          </video>
+          <video class="reelVideo" playsinline webkit-playsinline muted preload="metadata"
+                 poster="./images/Prince-coffe-house-offer.jpg"
+                 data-src="./images/tik3.mp4"></video>
         </section>
       </div>
     </div>
 
     <div class="topFade" aria-hidden="true"></div>
     <div class="botFade" aria-hidden="true"></div>
-
-    <div class="loading" id="loading" aria-hidden="true">
-      <div class="loadingInner"><span class="dot"></span><span class="loadingText">Loading…</span></div>
-    </div>
 
     <!-- HEADER -->
     <div class="hdr">
@@ -441,68 +289,36 @@
   </div>
 
   <script type="module">
-    // =========================================================
-    // ABSCHNITT JS: TikTok Pager (Swipe/Wheel) + Video Control
-    // - Kein natives Scroll -> kein "langsam vor snap"
-    // - Kein Ghost Audio -> wir pausieren strikt
-    // - Immer ab Anfang -> currentTime=0 vor play
-    // =========================================================
-
     const REELS = [
-      {
-        likes: 128, comments: 12,
-        user: "@princecoffeehouse",
-        text: "New drop 🔥 Burger + Fries today.",
-        productName: "Burger + Fries",
-        productSub: "5.90 € • Marked Product",
-        productImg: "./images/Prince-coffe-house-offer.jpg",
-      },
-      {
-        likes: 86, comments: 8,
-        user: "@princecoffeehouse",
-        text: "Coffee vibes ☕ smooth & strong.",
-        productName: "Cappuccino",
-        productSub: "2.90 € • Marked Product",
-        productImg: "./images/Prince-coffe-house-offer.jpg",
-      },
-      {
-        likes: 203, comments: 21,
-        user: "@princecoffeehouse",
-        text: "Quick bite, big taste ✅",
-        productName: "Burger Menu",
-        productSub: "5.90 € • Marked Product",
-        productImg: "./images/Prince-coffe-house-offer.jpg",
-      }
+      {likes:128, comments:12, user:"@princecoffeehouse", text:"New drop 🔥 Burger + Fries today.", productName:"Burger + Fries", productSub:"5.90 € • Marked Product"},
+      {likes:86,  comments:8,  user:"@princecoffeehouse", text:"Coffee vibes ☕ smooth & strong.",        productName:"Cappuccino",   productSub:"2.90 € • Marked Product"},
+      {likes:203, comments:21, user:"@princecoffeehouse", text:"Quick bite, big taste ✅",             productName:"Burger Menu",  productSub:"5.90 € • Marked Product"}
     ];
 
-    const app = document.getElementById("app");
     const viewport = document.getElementById("viewport");
     const track = document.getElementById("track");
     const reels = Array.from(document.querySelectorAll(".reel"));
     const videos = Array.from(document.querySelectorAll(".reelVideo"));
-
-    const loading = document.getElementById("loading");
 
     const backBtn = document.getElementById("backBtn");
     const soundBtn = document.getElementById("soundBtn");
     const soundIcon = document.getElementById("soundIcon");
 
     const likeBtn = document.getElementById("likeBtn");
-    const likeCount = document.getElementById("likeCount");
     const commentBtn = document.getElementById("commentBtn");
+    const likeCount = document.getElementById("likeCount");
     const commentCount = document.getElementById("commentCount");
 
     const capUser = document.getElementById("capUser");
     const capText = document.getElementById("capText");
-    const prodImg = document.getElementById("prodImg");
     const prodName = document.getElementById("prodName");
-    const prodSub  = document.getElementById("prodSub");
+    const prodSub = document.getElementById("prodSub");
 
     const backdrop = document.getElementById("backdrop");
     const sheet = document.getElementById("sheet");
     const sheetCloseBtn = document.getElementById("sheetCloseBtn");
 
-    // ---- Safe height (iOS/Android Browser UI) ----
+    // Safe height (iOS/Android Browser UI)
     function setVH(){
       const vv = window.visualViewport;
       const h = vv ? vv.height : window.innerHeight;
@@ -511,95 +327,81 @@
     setVH();
     window.addEventListener("resize", setVH, { passive:true });
     if (window.visualViewport){
-      window.visualViewport.addEventListener("resize", setVH, { passive:true });
-      window.visualViewport.addEventListener("scroll", setVH, { passive:true });
+      visualViewport.addEventListener("resize", setVH, { passive:true });
+      visualViewport.addEventListener("scroll", setVH, { passive:true });
     }
 
-    // ---- Sound ----
-    const SOUND_KEY = "menyra_story_sound";
-    let soundOn = (localStorage.getItem(SOUND_KEY) === "1");
-
-    function renderSoundIcon(){
-      soundIcon.innerHTML = soundOn
-        ? `
-          <path fill="rgba(255,255,255,0.92)" d="M5 9v6h4l5 4V5L9 9H5Z"/>
-          <path fill="rgba(255,255,255,0.92)" d="M16.5 7.5a7 7 0 0 1 0 9.9l-1.4-1.4a5 5 0 0 0 0-7.1l1.4-1.4z"/>
-          <path fill="rgba(255,255,255,0.72)" d="M18.9 5.1a10 10 0 0 1 0 13.8l-1.4-1.4a8 8 0 0 0 0-11l1.4-1.4z"/>
-        `
-        : `
-          <path fill="rgba(255,255,255,0.92)" d="M16.5 12a4.5 4.5 0 0 0-2.02-3.76v7.52A4.5 4.5 0 0 0 16.5 12ZM5 9v6h4l5 4V5L9 9H5Z"/>
-          <path fill="rgba(255,255,255,0.62)" d="M19 8.6 17.6 10 20 12.4 17.6 14.8 19 16.2 22.8 12.4 19 8.6Z"/>
-        `;
-    }
-    renderSoundIcon();
-
-    // ---- Comments ----
-    function openSheet(){
-      backdrop.classList.add("open");
-      sheet.classList.add("open");
-      backdrop.setAttribute("aria-hidden", "false");
-      sheet.setAttribute("aria-hidden", "false");
-    }
-    function closeSheet(){
-      backdrop.classList.remove("open");
-      sheet.classList.remove("open");
-      backdrop.setAttribute("aria-hidden", "true");
-      sheet.setAttribute("aria-hidden", "true");
-    }
-    sheetCloseBtn.addEventListener("click", closeSheet, { passive:true });
-    backdrop.addEventListener("click", closeSheet, { passive:true });
-
-    // ---- Back ----
+    // Back
     backBtn.addEventListener("click", (e) => {
       e.preventDefault();
       window.location.href = "./karte-demo.html";
     }, { passive:false });
 
-    // ---- Helpers: first decoded frame -> kein flicker/standbild ----
-    function waitFirstFrame(v){
-      return new Promise((resolve) => {
-        if ("requestVideoFrameCallback" in v){
-          v.requestVideoFrameCallback(() => resolve());
-        } else {
-          v.addEventListener("loadeddata", () => resolve(), { once:true });
-        }
-      });
+    // Comments demo
+    function openSheet(){
+      backdrop.classList.add("open");
+      sheet.classList.add("open");
+      backdrop.setAttribute("aria-hidden","false");
+      sheet.setAttribute("aria-hidden","false");
     }
-
-    function showLoading(on){
-      loading.classList.toggle("on", !!on);
-      loading.setAttribute("aria-hidden", on ? "false" : "true");
+    function closeSheet(){
+      backdrop.classList.remove("open");
+      sheet.classList.remove("open");
+      backdrop.setAttribute("aria-hidden","true");
+      sheet.setAttribute("aria-hidden","true");
     }
+    commentBtn.addEventListener("click", openSheet, { passive:true });
+    sheetCloseBtn.addEventListener("click", closeSheet, { passive:true });
+    backdrop.addEventListener("click", closeSheet, { passive:true });
 
-    async function warmVideo(v, reelEl){
-      try{
-        v.muted = true;
-        v.currentTime = 0;
-        // play muted (autoplay ok), warten auf 1. Frame, dann wieder stoppen -> cached
-        await v.play().catch(() => {});
-        await waitFirstFrame(v);
-        try{ v.pause(); }catch{}
-        try{ v.currentTime = 0; }catch{}
-        reelEl.classList.add("is-ready");
-      }catch{
-        reelEl.classList.add("is-ready");
-      }
+    // Sound
+    const SOUND_KEY = "menyra_story_sound";
+    let soundOn = (localStorage.getItem(SOUND_KEY) === "1");
+    function renderSoundIcon(){
+      soundIcon.innerHTML = soundOn
+        ? `<path fill="rgba(255,255,255,.92)" d="M5 9v6h4l5 4V5L9 9H5Z"/><path fill="rgba(255,255,255,.92)" d="M16.5 7.5a7 7 0 0 1 0 9.9l-1.4-1.4a5 5 0 0 0 0-7.1l1.4-1.4z"/>`
+        : `<path fill="rgba(255,255,255,.92)" d="M5 9v6h4l5 4V5L9 9H5Z"/><path fill="rgba(255,255,255,.62)" d="M19 8.6 17.6 10 20 12.4 17.6 14.8 19 16.2 22.8 12.4 19 8.6Z"/>`;
     }
+    renderSoundIcon();
 
-    // ---- Overlay update ----
+    // Pager state
+    let H = 1;
+    let active = 0;
+    let animating = false;
+
+    function measure(){
+      H = viewport.clientHeight || 1;
+      track.style.transition = "none";
+      track.style.transform = `translate3d(0, ${-active * H}px, 0)`;
+      requestAnimationFrame(() => track.style.transition = "");
+    }
+    measure();
+    window.addEventListener("resize", measure, { passive:true });
+
     function applyMeta(i){
       const d = REELS[i];
       likeCount.textContent = String(d.likes);
       commentCount.textContent = String(d.comments);
       capUser.textContent = d.user;
       capText.textContent = d.text;
-      prodImg.src = d.productImg;
       prodName.textContent = d.productName;
       prodSub.textContent = d.productSub;
     }
 
-    // ---- Strict video control (no ghost audio) ----
-    let active = 0;
+    function ensureSrc(i){
+      const v = videos[i];
+      if (!v) return;
+      if (v.querySelector("source")) return;
+
+      const src = v.dataset.src;
+      if (!src) return;
+
+      const s = document.createElement("source");
+      s.src = src;
+      s.type = "video/mp4";
+      v.appendChild(s);
+      try{ v.load(); }catch{}
+    }
 
     function hardStop(v){
       try{ v.pause(); }catch{}
@@ -607,73 +409,72 @@
       try{ v.currentTime = 0; }catch{}
     }
 
-    async function playActive(i){
+    async function playIndex(i){
       const v = videos[i];
       if (!v) return;
 
-      // stop others NOW
-      videos.forEach((ov, idx) => {
-        if (idx !== i) hardStop(ov);
-      });
+      // stop all others -> kein ghost audio
+      videos.forEach((ov, idx) => { if (idx !== i) hardStop(ov); });
 
-      // set active state
+      ensureSrc(i);
       reels.forEach((r, idx) => r.classList.toggle("is-active", idx === i));
 
-      // ensure start from 0
       try{ v.pause(); }catch{}
       try{ v.currentTime = 0; }catch{}
-      v.muted = !soundOn; // sound only if user enabled
+      v.muted = !soundOn;
 
-      // play + wait first frame (instant + no black)
-      showLoading(!reels[i].classList.contains("is-ready"));
-      await v.play().catch(() => {});
-      await waitFirstFrame(v).catch(() => {});
-      showLoading(false);
+      // kein warten / keine loader – einfach play
+      v.play().catch(() => {});
     }
 
-    // ---- Sound toggle (gesture) ----
-    soundBtn.addEventListener("click", async (e) => {
-      e.preventDefault();
-      soundOn = !soundOn;
-      localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0");
-      renderSoundIcon();
+    async function goTo(next){
+      if (animating) return;
+      const ni = Math.max(0, Math.min(REELS.length - 1, next));
+      animating = true;
 
-      // only active video toggles
-      const v = videos[active];
-      if (v){
-        v.muted = !soundOn;
-        await v.play().catch(() => {});
-      }
-    }, { passive:false });
+      // vor dem Swipe schon src setzen (damit es sofort startet)
+      ensureSrc(ni);
 
-    // ---- Like (demo) ----
+      active = ni;
+      applyMeta(active);
+
+      track.style.transition = "transform 240ms cubic-bezier(.2,.9,.2,1)";
+      track.style.transform = `translate3d(0, ${-active * H}px, 0)`;
+
+      // Video sofort starten (nicht erst nach transition)
+      requestAnimationFrame(() => playIndex(active));
+
+      track.addEventListener("transitionend", () => {
+        animating = false;
+        track.style.transition = "";
+        // nach dem ersten Start: nächstes Reel leise vorladen
+        const nextIdx = Math.min(REELS.length - 1, active + 1);
+        ensureSrc(nextIdx);
+      }, { once:true });
+    }
+
+    // Like demo
     likeBtn.addEventListener("click", () => {
       likeBtn.classList.toggle("is-liked");
       const base = REELS[active].likes;
       likeCount.textContent = String(likeBtn.classList.contains("is-liked") ? base + 1 : base);
     }, { passive:true });
 
-    commentBtn.addEventListener("click", openSheet, { passive:true });
+    // Sound toggle (user gesture)
+    soundBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      soundOn = !soundOn;
+      localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0");
+      renderSoundIcon();
+      const v = videos[active];
+      if (v){
+        v.muted = !soundOn;
+        v.play().catch(() => {});
+      }
+    }, { passive:false });
 
-    // ---- Pager (no scroll inertia) ----
-    let H = 1;
-    function measure(){
-      H = viewport.clientHeight || 1;
-      // keep correct position
-      track.style.transition = "none";
-      track.style.transform = `translate3d(0, ${-active * H}px, 0)`;
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        track.style.transition = "";
-      }));
-    }
-    measure();
-    window.addEventListener("resize", measure, { passive:true });
-
-    let isDragging = false;
-    let startY = 0;
-    let startT = 0;
-    let baseY = 0;
-    let animating = false;
+    // Drag paging (TikTok feel, kein natives scroll)
+    let dragging=false, startY=0, baseY=0, startT=0;
 
     function clampY(y){
       const min = -(REELS.length - 1) * H;
@@ -681,135 +482,64 @@
       return Math.max(min, Math.min(max, y));
     }
 
-    function setY(y){
-      track.style.transform = `translate3d(0, ${clampY(y)}px, 0)`;
-    }
-
-    async function goTo(nextIndex){
-      if (animating) return;
-      const ni = Math.max(0, Math.min(REELS.length - 1, nextIndex));
-      if (ni === active) {
-        // snap back
-        animating = true;
-        track.style.transition = "transform 220ms cubic-bezier(.2,.9,.2,1)";
-        setY(-active * H);
-        track.addEventListener("transitionend", () => {
-          animating = false;
-          track.style.transition = "";
-        }, { once:true });
-        return;
-      }
-
-      active = ni;
-      applyMeta(active);
-
-      animating = true;
-      track.style.transition = "transform 240ms cubic-bezier(.2,.9,.2,1)";
-      setY(-active * H);
-
-      // start video immediately (feels instant)
-      playActive(active);
-
-      track.addEventListener("transitionend", () => {
-        animating = false;
-        track.style.transition = "";
-      }, { once:true });
-    }
-
-    function onDown(clientY){
-      if (animating) return;
-      isDragging = true;
-      startY = clientY;
-      startT = performance.now();
-      baseY = -active * H;
-      track.style.transition = "none";
-    }
-
-    function onMove(clientY){
-      if (!isDragging) return;
-      const dy = clientY - startY;
-      setY(baseY + dy);
-    }
-
-    function onUp(clientY){
-      if (!isDragging) return;
-      isDragging = false;
-
-      const dy = clientY - startY;
-      const dt = Math.max(1, performance.now() - startT);
-      const velocity = dy / dt; // px/ms
-
-      // threshold like TikTok
-      const threshold = H * 0.14;
-      const fast = Math.abs(velocity) > 0.55;
-
-      if (dy > threshold || (fast && velocity > 0)) {
-        goTo(active - 1);
-      } else if (dy < -threshold || (fast && velocity < 0)) {
-        goTo(active + 1);
-      } else {
-        goTo(active); // snap back
-      }
-    }
-
-    // pointer events (works touch + mouse)
     viewport.addEventListener("pointerdown", (e) => {
+      if (animating) return;
       if (e.pointerType === "mouse" && e.button !== 0) return;
       viewport.setPointerCapture?.(e.pointerId);
-      onDown(e.clientY);
+      dragging = true;
+      startY = e.clientY;
+      baseY = -active * H;
+      startT = performance.now();
+      track.style.transition = "none";
     }, { passive:true });
 
     viewport.addEventListener("pointermove", (e) => {
-      onMove(e.clientY);
+      if (!dragging) return;
+      const dy = e.clientY - startY;
+      track.style.transform = `translate3d(0, ${clampY(baseY + dy)}px, 0)`;
     }, { passive:true });
 
-    viewport.addEventListener("pointerup", (e) => {
-      onUp(e.clientY);
-    }, { passive:true });
+    function endDrag(y){
+      if (!dragging) return;
+      dragging = false;
 
-    viewport.addEventListener("pointercancel", (e) => {
-      onUp(e.clientY);
-    }, { passive:true });
+      const dy = y - startY;
+      const dt = Math.max(1, performance.now() - startT);
+      const v = dy / dt; // px/ms
 
-    // wheel for desktop
+      const threshold = H * 0.14;
+      const fast = Math.abs(v) > 0.55;
+
+      if (dy > threshold || (fast && v > 0)) goTo(active - 1);
+      else if (dy < -threshold || (fast && v < 0)) goTo(active + 1);
+      else goTo(active);
+    }
+
+    viewport.addEventListener("pointerup", (e) => endDrag(e.clientY), { passive:true });
+    viewport.addEventListener("pointercancel", (e) => endDrag(e.clientY), { passive:true });
+
+    // Wheel desktop
     let wheelLock = 0;
     viewport.addEventListener("wheel", (e) => {
       const now = performance.now();
       if (now < wheelLock) return;
       if (Math.abs(e.deltaY) < 8) return;
       wheelLock = now + 280;
-
       if (e.deltaY > 0) goTo(active + 1);
       else goTo(active - 1);
     }, { passive:true });
 
-    // visibility -> no ghost audio
+    // Visibility: stop all
     document.addEventListener("visibilitychange", () => {
-      if (document.hidden){
-        videos.forEach(v => hardStop(v));
-      } else {
-        playActive(active);
-      }
+      if (document.hidden) videos.forEach(hardStop);
+      else playIndex(active);
     }, { passive:true });
 
-    // ---- INIT: warm videos 0..2 quickly (sequential) ----
-    (async () => {
-      applyMeta(0);
-      showLoading(true);
-
-      // load tags
-      videos.forEach(v => { try{ v.load(); }catch{} });
-
-      // warm in order (keeps it stable + instant)
-      await warmVideo(videos[0], reels[0]);
-      await playActive(0);
-
-      // warm next in background
-      setTimeout(() => warmVideo(videos[1], reels[1]), 60);
-      setTimeout(() => warmVideo(videos[2], reels[2]), 120);
-
-      showLoading(false);
-    })();
+    // INIT: sofort meta + sofort play Reel 1 (kein warmup-warten)
+    applyMeta(0);
+    playIndex(0);
+    // ganz leichter background prefetch (aber nicht blockieren)
+    setTimeout(() => ensureSrc(1), 250);
   </script>
 </body>
 </html>
