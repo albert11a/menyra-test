@@ -2,16 +2,13 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>MENYRA – Story (HLS)</title>
+  <title>MENYRA – Story</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- Perf: Preconnect -->
-  <link rel="dns-prefetch" href="//vz-14f8b42c-6ba.b-cdn.net" />
-  <link rel="preconnect" href="https://vz-14f8b42c-6ba.b-cdn.net" crossorigin />
-
-  <!-- hls.js (Chrome/Edge/Firefox). Safari kann HLS nativ. -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
+  <!-- PERF: CDN warmup -->
+  <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
+  <link rel="preconnect" href="https://menyra.b-cdn.net" crossorigin />
 
   <style>
     :root{
@@ -34,6 +31,7 @@
       background:#000;
     }
 
+    /* ====== Viewport height (iOS/Android safe) ====== */
     .reels{
       height: 100vh;
       height: 100svh;
@@ -47,12 +45,16 @@
 
       scroll-padding-top: var(--safe-top);
       scroll-padding-bottom: var(--safe-bottom);
+
+      /* Smooth snap feel */
+      scroll-behavior: smooth;
     }
     .reels::-webkit-scrollbar{ display:none; }
     .reels{ scrollbar-width:none; }
 
     .reel{
       position: relative;
+
       height: 100vh;
       height: 100svh;
       height: 100dvh;
@@ -85,26 +87,34 @@
       z-index: 5;
     }
 
+    /* ====== Overlay UI (Topbar) ====== */
     .topbar{
       position:absolute;
-      top: 0; left: 0; right: 0;
+      top: 0;
+      left: 0;
+      right: 0;
+
       padding-top: calc(var(--safe-top) + 10px);
       padding-left: calc(var(--safe-left) + 12px);
       padding-right: calc(var(--safe-right) + 12px);
       padding-bottom: 10px;
+
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 10px;
+
       z-index: 20;
       pointer-events:none;
     }
+
     .topbarLeft, .topbarRight{
       display:flex;
       align-items:center;
       gap: 10px;
       pointer-events:auto;
     }
+
     .btnIcon{
       border:0;
       background: rgba(0,0,0,0.45);
@@ -151,6 +161,7 @@
       max-width: 56vw;
     }
 
+    /* ====== Right Action Rail ====== */
     .rail{
       position:absolute;
       right: calc(var(--safe-right) + 12px);
@@ -162,6 +173,7 @@
       gap: 14px;
       pointer-events:auto;
     }
+
     .railBtn{
       border:0;
       background: transparent;
@@ -196,6 +208,7 @@
     }
     .railBtn[data-action="like"].is-liked svg{ fill:#111; }
 
+    /* ====== Bottom product tag ====== */
     .productTag{
       position:absolute;
       left: calc(var(--safe-left) + 12px);
@@ -222,9 +235,27 @@
       border: 1px solid rgba(255,255,255,0.10);
       flex: 0 0 auto;
     }
-    .productMeta{ min-width:0; flex:1; display:flex; flex-direction:column; gap:2px; }
-    .productTitle{ font-weight: 900; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .productSub{ font-size: 12px; color: rgba(255,255,255,0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .productMeta{
+      min-width:0;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap: 2px;
+    }
+    .productTitle{
+      font-weight: 900;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .productSub{
+      font-size: 12px;
+      color: rgba(255,255,255,0.72);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .productBtn{
       border:0;
       height: 38px;
@@ -240,6 +271,7 @@
     }
     .productBtn:active{ transform: scale(0.985); }
 
+    /* Tap hint only if USER pauses */
     .tapHint{
       position:absolute;
       left: 50%;
@@ -259,6 +291,7 @@
     }
     .reel.is-paused .tapHint{ opacity: 1; }
 
+    /* Toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -276,39 +309,67 @@
       pointer-events:none;
       transition: opacity .18s ease, transform .18s ease;
     }
-    .toast.show{ opacity: 1; transform: translateX(-50%) translateY(-4px); }
+    .toast.show{
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
 
+    /* ====== COMMENTS (black like before) ====== */
     .commentsBackdrop{
-      position: fixed; inset: 0; z-index: 2000;
-      background: #000; opacity: 0; pointer-events: none;
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
       transition: opacity .16s ease;
     }
-    .commentsBackdrop.open{ opacity: .88; pointer-events: auto; }
+    .commentsBackdrop.open{
+      opacity: .88;
+      pointer-events: auto;
+    }
 
     .commentsSheet{
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 2100;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 2100;
+
       height: min(70dvh, 520px);
       background: #000;
       border-top-left-radius: 22px;
       border-top-right-radius: 22px;
       border: 1px solid rgba(255,255,255,0.10);
+
       transform: translateY(110%);
       transition: transform .20s ease;
       padding-bottom: var(--safe-bottom);
-      display: flex; flex-direction: column; overflow: hidden;
+
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     .commentsSheet.open{ transform: translateY(0); }
 
     .commentsTop{
       padding: 12px 12px 10px;
-      display: flex; align-items: center; justify-content: space-between;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       border-bottom: 1px solid rgba(255,255,255,0.10);
     }
     .commentsTitle{
-      font-size: 13px; font-weight: 900; color: rgba(255,255,255,0.92); letter-spacing: .2px;
+      font-size: 13px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.92);
+      letter-spacing: .2px;
     }
     .commentsList{
-      flex: 1; overflow: auto; padding: 10px 12px; -webkit-overflow-scrolling: touch;
+      flex: 1;
+      overflow: auto;
+      padding: 10px 12px;
+      -webkit-overflow-scrolling: touch;
     }
     .cItem{
       padding: 10px 10px;
@@ -317,13 +378,23 @@
       background: rgba(255,255,255,0.06);
       margin-bottom: 10px;
     }
-    .cUser{ font-size: 12px; font-weight: 900; color: rgba(255,255,255,0.92); margin-bottom: 4px; }
-    .cText{ font-size: 12px; color: rgba(255,255,255,0.78); line-height: 1.35; }
-
+    .cUser{
+      font-size: 12px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.92);
+      margin-bottom: 4px;
+    }
+    .cText{
+      font-size: 12px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.35;
+    }
     .commentsInput{
       padding: 10px 12px 12px;
       border-top: 1px solid rgba(255,255,255,0.10);
-      display: flex; gap: 10px; align-items: center;
+      display: flex;
+      gap: 10px;
+      align-items: center;
     }
     .commentsInput input{
       flex: 1;
@@ -336,11 +407,18 @@
       outline: none;
       font-size: 13px;
     }
+
+    @media (prefers-reduced-motion: reduce){
+      .toast{ transition:none !important; }
+      .tapHint{ transition:none !important; }
+      .commentsBackdrop, .commentsSheet{ transition:none !important; }
+      .reels{ scroll-behavior: auto; }
+    }
   </style>
 </head>
 
 <body>
-  <div class="toast" id="toast">…</div>
+  <div class="toast" id="toast">Sound</div>
 
   <template id="overlayTpl">
     <header class="topbar">
@@ -411,111 +489,59 @@
   </template>
 
   <main class="reels" id="reels" aria-label="MENYRA Stories">
-
-    <section class="reel" data-index="0"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="128" data-comments="16"
-      data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <!-- CDN MP4s -->
+    <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik1.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="1"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="74" data-comments="9"
-      data-product-title="Classic Burger" data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik2.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <!-- Video 3 (dein Link) -->
-    <section class="reel" data-index="2"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="203" data-comments="31"
-      data-product-title="Coffee Special" data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik3.mp4" playsinline webkit-playsinline muted preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <!-- Video 4 (dein Link) -->
-    <section class="reel" data-index="3"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="56" data-comments="5"
-      data-product-title="Daily Offer" data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik4.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="4"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="88" data-comments="12"
-      data-product-title="Burger Menu" data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik5.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="5"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="145" data-comments="21"
-      data-product-title="Coffee Shot" data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik6.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="6"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="62" data-comments="8"
-      data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik7.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="7"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="190" data-comments="27"
-      data-product-title="House Special" data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="House Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik8.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="8"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="39" data-comments="3"
-      data-product-title="Morning Coffee" data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik9.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="9"
-      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8"
-      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-      data-like="211" data-comments="44"
-      data-product-title="Burger + Drink" data-product-sub="Marked product (demo)"
-      data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+    <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" src="https://menyra.b-cdn.net/tik10.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
-
   </main>
 
+  <!-- COMMENTS (black) -->
   <div class="commentsBackdrop" id="commentsBackdrop" aria-hidden="true"></div>
 
   <section class="commentsSheet" id="commentsSheet" aria-hidden="true">
@@ -541,12 +567,14 @@
   </section>
 
   <script type="module">
+    // =========================================================
+    // 0) Setup
+    // =========================================================
     const tpl = document.getElementById("overlayTpl");
-    const reelsEl = document.getElementById("reels");
-    const toastEl = document.getElementById("toast");
-
     const reels = Array.from(document.querySelectorAll(".reel"));
     const videos = Array.from(document.querySelectorAll(".reelVideo"));
+    const reelsEl = document.getElementById("reels");
+    const toastEl = document.getElementById("toast");
 
     // Comments UI
     const commentsBackdrop = document.getElementById("commentsBackdrop");
@@ -556,14 +584,6 @@
     const commentInput = document.getElementById("commentInput");
     let commentsOpen = false;
 
-    // Toast
-    function showToast(text){
-      toastEl.textContent = text;
-      toastEl.classList.add("show");
-      window.setTimeout(() => toastEl.classList.remove("show"), 900);
-    }
-
-    // Inject overlay
     reels.forEach((reel) => {
       const frag = tpl.content.cloneNode(true);
 
@@ -601,10 +621,19 @@
       reel.appendChild(frag);
     });
 
-    // Sound
-    const SOUND_KEY = "menyra_story_sound";
+    // =========================================================
+    // 1) Sound state (default OFF)
+    // =========================================================
+    const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
     let activeIndex = 0;
+
+    function showToast(text){
+      if (!toastEl) return;
+      toastEl.textContent = text;
+      toastEl.classList.add("show");
+      window.setTimeout(() => toastEl.classList.remove("show"), 700);
+    }
 
     function setSoundState(on){
       soundOn = !!on;
@@ -613,256 +642,301 @@
       showToast(soundOn ? "Sound: ON" : "Sound: OFF");
     }
 
-    // HLS Manager (keep prev/current/next attached)
-    const HLS_CONFIG = {
-      enableWorker: true,
-      backBufferLength: 0,
-      maxBufferLength: 8,
-      maxMaxBufferLength: 15,
-      capLevelToPlayerSize: true
-    };
-
-    const state = videos.map(() => ({ hls: null, attachedUrl: "" }));
-
-    function getHlsUrl(i){
-      return reels[i]?.getAttribute("data-hls") || "";
-    }
-    function canNativeHls(video){
-      return !!video.canPlayType('application/vnd.apple.mpegurl');
-    }
-
-    function detach(i){
-      const v = videos[i];
-      const s = state[i];
+    // =========================================================
+    // 2) Ultra-stable autoplay (NO random "paused" UI)
+    // =========================================================
+    function safePlay(v){
       if (!v) return;
-
-      try { v.pause(); } catch(_){}
-      v.muted = true;
-      reels[i]?.classList.remove("is-paused");
-
-      if (s.hls){
-        try { s.hls.destroy(); } catch(_){}
-        s.hls = null;
-      }
-      s.attachedUrl = "";
-
-      if (v.src){
-        v.removeAttribute("src");
-        try { v.load(); } catch(_){}
-      }
+      // Always try; never show "paused" unless user taps pause.
+      const p = v.play();
+      if (p && typeof p.catch === "function") p.catch(() => {});
     }
 
-    function ensureAttached(i){
-      const v = videos[i];
-      const url = getHlsUrl(i);
-      if (!v || !url) return;
+    // Ensure active keeps playing even after buffering
+    videos.forEach((v, i) => {
+      v.addEventListener("canplay", () => {
+        if (i === activeIndex && !commentsOpen && v.paused) safePlay(v);
+      }, { passive: true });
 
-      const s = state[i];
-      if (s.attachedUrl === url) return;
+      v.addEventListener("ended", () => {
+        // loop is set, but some browsers can still fire ended weirdly
+        if (i === activeIndex && !commentsOpen) safePlay(v);
+      }, { passive: true });
+    });
 
-      detach(i);
+    // =========================================================
+    // 3) Preload strategy (fast + smooth)
+    // Active: auto, Next: auto, Near: metadata, Rest: none
+    // =========================================================
+    function warmPreload(idx){
+      for (let i = 0; i < videos.length; i++){
+        const v = videos[i];
+        let target = "none";
 
-      if (canNativeHls(v)){
-        v.src = url;
-        s.attachedUrl = url;
-        try { v.load(); } catch(_){}
-        return;
-      }
+        if (i === idx || i === idx + 1) target = "auto";
+        else if (Math.abs(i - idx) <= 2) target = "metadata";
 
-      if (window.Hls && window.Hls.isSupported()){
-        const h = new window.Hls(HLS_CONFIG);
+        if (v.preload !== target) v.preload = target;
 
-        // Debug: hilft dir sofort zu sehen ob 403/CORS/Network
-        h.on(window.Hls.Events.ERROR, (_evt, data) => {
-          if (!data) return;
-          const msg = `HLS error: ${data.type || "?"} / ${data.details || "?"}`;
-          console.warn(msg, data);
-          showToast(msg);
-          if (data.fatal){
-            reels[i]?.classList.add("is-paused");
-          }
-        });
-
-        s.hls = h;
-        s.attachedUrl = url;
-        h.loadSource(url);
-        h.attachMedia(v);
-      } else {
-        showToast("HLS.js not supported");
-        reels[i]?.classList.add("is-paused");
-      }
-    }
-
-    async function tryPlay(i){
-      const v = videos[i];
-      if (!v) return;
-
-      // autoplay-safe
-      v.muted = !soundOn;
-      v.setAttribute("playsinline", "");
-      v.setAttribute("webkit-playsinline", "");
-
-      // Retry gegen “random paused”
-      for (let attempt = 0; attempt < 3; attempt++){
-        try{
-          await v.play();
-          reels[i]?.classList.remove("is-paused");
-          return;
-        }catch(_){
-          await new Promise(r => setTimeout(r, 140));
+        // If we just promoted from none -> metadata/auto, nudge load (not for active)
+        if (target !== "none" && i !== idx && v.readyState === 0){
+          try { v.load(); } catch(_) {}
         }
       }
-      reels[i]?.classList.add("is-paused");
     }
 
-    function keepSetFor(idx){
-      return new Set([idx, idx-1, idx+1].filter(x => x >= 0 && x < videos.length));
+    // =========================================================
+    // 4) SNAP FIX (scroll-snap is good, but we enforce perfect landing)
+    // =========================================================
+    let VIEW_H = 1;
+    function updateViewH(){
+      VIEW_H = reelsEl.getBoundingClientRect().height || window.innerHeight || 1;
+    }
+    updateViewH();
+    window.addEventListener("resize", updateViewH, { passive: true });
+
+    let rafPending = false;
+    let snapTimer = null;
+
+    function getNearestIndex(){
+      const raw = reelsEl.scrollTop / VIEW_H;
+      const idx = Math.round(raw);
+      return Math.max(0, Math.min(videos.length - 1, idx));
     }
 
-    let playToken = 0;
-    async function playOnly(idx){
-      const token = ++playToken;
+    function snapToIndex(idx){
+      const top = idx * VIEW_H;
+      const diff = Math.abs(reelsEl.scrollTop - top);
+      if (diff > 2){
+        reelsEl.scrollTo({ top, behavior: "smooth" });
+      }
+    }
+
+    function activate(idx){
+      if (idx === activeIndex) return;
       activeIndex = idx;
 
-      const keep = keepSetFor(idx);
+      warmPreload(idx);
 
-      for (const i of keep) ensureAttached(i);
-      for (let i = 0; i < videos.length; i++){
-        if (!keep.has(i)) detach(i);
-      }
-
+      // Pause all others, play active
       videos.forEach((v, i) => {
+        const reel = reels[i];
         if (i !== idx){
-          try { v.pause(); } catch(_){}
+          try { v.pause(); } catch(_) {}
           v.muted = true;
-          reels[i]?.classList.remove("is-paused");
+          reel?.classList.remove("is-paused"); // we only show paused if user tapped
         }
       });
 
-      if (token !== playToken) return;
-      await tryPlay(idx);
+      const v = videos[idx];
+      v.muted = !soundOn;
+      safePlay(v);
     }
 
-    // Snap-Assist (bessere Snap Stabilität)
-    let snapTimer = null;
-    function snapToNearest(){
-      const h = reelsEl.clientHeight || 1;
-      const idx = Math.max(0, Math.min(videos.length - 1, Math.round(reelsEl.scrollTop / h)));
-      const targetTop = idx * h;
-      if (Math.abs(reelsEl.scrollTop - targetTop) > 2){
-        reels[idx]?.scrollIntoView({ block: "start", behavior: "smooth" });
-      }
+    function onScrollTick(){
+      rafPending = false;
+      if (commentsOpen) return;
+
+      const idx = getNearestIndex();
+      // switch when user is basically on that reel
+      activate(idx);
     }
-    reelsEl.addEventListener("scroll", () => {
+
+    function onScroll(){
+      if (commentsOpen) return;
+
+      if (!rafPending){
+        rafPending = true;
+        requestAnimationFrame(onScrollTick);
+      }
+
+      // scroll-end snap reinforcement
       if (snapTimer) clearTimeout(snapTimer);
-      snapTimer = setTimeout(snapToNearest, 120);
-    }, { passive: true });
+      snapTimer = setTimeout(() => {
+        if (commentsOpen) return;
+        const idx = getNearestIndex();
+        snapToIndex(idx);
+        // ensure playback after snap settles
+        setTimeout(() => {
+          if (commentsOpen) return;
+          warmPreload(idx);
+          videos[idx].muted = !soundOn;
+          safePlay(videos[idx]);
+        }, 120);
+      }, 90);
+    }
 
-    // Active detection
-    const io = new IntersectionObserver((entries) => {
-      let best = null;
-      for (const e of entries){
-        if (!e.isIntersecting) continue;
-        if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
-      }
-      if (!best) return;
-      const idx = Number(best.target.getAttribute("data-index") || "0");
-      if (Number.isFinite(idx) && idx !== activeIndex){
-        playOnly(idx);
-      }
-    }, { threshold: [0.55, 0.7, 0.85, 0.95] });
+    reelsEl.addEventListener("scroll", onScroll, { passive: true });
 
-    reels.forEach(r => io.observe(r));
-
-    // Comments
+    // =========================================================
+    // 5) Comments lock
+    // =========================================================
     function lockFeed(lock){
       reelsEl.style.pointerEvents = lock ? "none" : "";
       reelsEl.style.overflowY = lock ? "hidden" : "";
     }
+
     function openComments(){
       if (commentsOpen) return;
       commentsOpen = true;
       commentsBackdrop.classList.add("open");
       commentsSheet.classList.add("open");
+      commentsBackdrop.setAttribute("aria-hidden", "false");
+      commentsSheet.setAttribute("aria-hidden", "false");
       lockFeed(true);
       window.setTimeout(() => commentInput?.focus?.(), 60);
     }
+
     function closeComments(){
       if (!commentsOpen) return;
       commentsOpen = false;
       commentsBackdrop.classList.remove("open");
       commentsSheet.classList.remove("open");
+      commentsBackdrop.setAttribute("aria-hidden", "true");
+      commentsSheet.setAttribute("aria-hidden", "true");
       lockFeed(false);
+
+      // Resume active immediately
+      warmPreload(activeIndex);
+      videos[activeIndex].muted = !soundOn;
+      safePlay(videos[activeIndex]);
     }
+
     commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
 
     commentsForm?.addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (commentInput?.value || "").trim();
       if (!val) return;
+
       const item = document.createElement("div");
       item.className = "cItem";
       item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
       item.querySelector(".cText").textContent = val;
       commentsList?.prepend(item);
+
       commentInput.value = "";
     });
 
-    // Global click controls
+    // =========================================================
+    // 6) Global controls + Tap play/pause (ONLY user pause shows hint)
+    // =========================================================
     document.addEventListener("click", (e) => {
       const actionEl = e.target.closest("[data-action]");
       if (actionEl){
         const action = actionEl.getAttribute("data-action");
-        if (action === "back"){ window.location.href = "./karte-demo.html"; return; }
-        if (action === "sound"){ setSoundState(!soundOn); playOnly(activeIndex); return; }
+
+        if (action === "back"){
+          window.location.href = "./karte-demo.html";
+          return;
+        }
+
+        if (action === "sound"){
+          setSoundState(!soundOn);
+          videos[activeIndex].muted = !soundOn;
+          safePlay(videos[activeIndex]);
+          return;
+        }
+
         if (action === "like"){
           const btn = actionEl.closest('.railBtn[data-action="like"]');
           if (!btn) return;
+
           const countEl = btn.querySelector(".railCount");
           const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
           const liked = btn.classList.toggle("is-liked");
           const next = liked ? cur + 1 : Math.max(0, cur - 1);
+
           btn.setAttribute("data-count", String(next));
           if (countEl) countEl.textContent = String(next);
           return;
         }
+
         if (action === "comment"){ openComments(); return; }
         if (action === "closeComments"){ closeComments(); return; }
         if (action === "share"){ alert("Share (demo)"); return; }
-        if (action === "product"){ alert("Produkt öffnen (demo)"); return; }
+        if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
       }
 
       if (commentsOpen) return;
 
+      // Tap on active video: play/pause
       const video = e.target.closest("video.reelVideo");
       if (!video) return;
 
       const reel = video.closest(".reel");
       const idx = Number(reel?.getAttribute("data-index") || "0");
 
+      // If user tapped a non-active reel (rare), snap to it
+      if (idx !== activeIndex){
+        snapToIndex(idx);
+        return;
+      }
+
       if (video.paused){
-        playOnly(Number.isFinite(idx) ? idx : activeIndex);
-      } else {
+        reel?.classList.remove("is-paused");
+        safePlay(video);
+      }else{
         video.pause();
         reel?.classList.add("is-paused");
       }
+    });
+
+    // Double tap to like (fast)
+    let lastTap = 0;
+    document.addEventListener("touchend", (e) => {
+      if (commentsOpen) return;
+
+      const now = Date.now();
+      const isDouble = (now - lastTap) < 260;
+      lastTap = now;
+      if (!isDouble) return;
+
+      const reel = e.target.closest(".reel");
+      if (!reel) return;
+
+      const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
+      if (likeBtn) likeBtn.click();
     }, { passive: true });
 
-    // Init
-    setSoundState(soundOn);
-
-    // Wichtig: Erst attach, dann play
-    ensureAttached(0);
-    ensureAttached(1);
-    playOnly(0);
-
+    // Pause when hidden
     document.addEventListener("visibilitychange", () => {
       if (document.hidden){
         videos.forEach(v => { try { v.pause(); } catch(_){} });
-      } else {
-        playOnly(activeIndex);
+      }else{
+        warmPreload(activeIndex);
+        videos[activeIndex].muted = !soundOn;
+        safePlay(videos[activeIndex]);
       }
     }, { passive: true });
+
+    // ESC closes comments
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeComments();
+    }, { passive:true });
+
+    // =========================================================
+    // 7) Init (FAST)
+    // =========================================================
+    setSoundState(soundOn);
+    updateViewH();
+    warmPreload(0);
+
+    // Force first to start ASAP
+    videos[0].muted = !soundOn;
+    safePlay(videos[0]);
+
+    // Also keep 2nd ready
+    try { videos[1].load(); } catch(_){}
+
+    // If browser starts weird: re-kick after a moment
+    setTimeout(() => {
+      if (!commentsOpen){
+        warmPreload(activeIndex);
+        videos[activeIndex].muted = !soundOn;
+        safePlay(videos[activeIndex]);
+      }
+    }, 350);
   </script>
 </body>
 </html>
