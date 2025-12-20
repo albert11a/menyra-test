@@ -675,7 +675,8 @@
    KARTE – QUICKNAV (WHITE BAR)
    - Nav bleibt weiß
    - Nur aktive Tile wird dunkel wie "Sot ne fokus"
-   - KEIN Hover-Effekt (erst Click/Active sichtbar)
+   - Desktop: Hover sichtbar
+   - Mobile: Tap/Pressed Feedback (kein Hover-Stuck)
 ======================================== */
 
 .quickNav{
@@ -717,6 +718,9 @@
 
   cursor:pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
 
   color: inherit;
   font-size: 11px;
@@ -725,21 +729,36 @@
   transition: background .18s ease, color .18s ease, transform .18s ease;
 }
 
-/* Hover erst nach Interaktion */
-.quickNavBtn:hover { background: transparent; }
+/* Desktop Hover (nur wenn echtes Hover existiert) */
+@media (hover:hover) and (pointer:fine){
+  .quickNavBtn:hover{
+    background: rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+  }
+  .quickNavBtn.is-active:hover{
+    background: #0f172a;
+    transform: none;
+  }
+}
 
-
-
-/* Click/Press */
-.quickNavBtn:active{
-  transform: scale(0.985);
-  background: rgba(15, 23, 42, 0.08);
+/* Mobile/Touch: pressed feedback (kein hover) */
+@media (hover:none) and (pointer:coarse){
+  .quickNavBtn:active{
+    transform: scale(0.985);
+    background: rgba(15, 23, 42, 0.08);
+  }
 }
 
 /* Active = dunkel wie "Sot ne fokus" */
 .quickNavBtn.is-active{
   background: #0f172a;
   color: #f9fafb;
+}
+
+/* Keyboard/Accessibility */
+.quickNavBtn:focus-visible{
+  outline: 2px solid rgba(15, 23, 42, 0.22);
+  outline-offset: 2px;
 }
 
 /* ICONS */
@@ -800,6 +819,13 @@
   place-items:center;
   cursor:pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.panelBackBtn:active,
+.panelNextBtn:active{
+  transform: scale(0.985);
+  background: rgba(15, 23, 42, 0.06);
 }
 
 .panelBackBtn svg,
@@ -843,10 +869,15 @@
 
   cursor:pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+
   transition: transform .18s ease, background .18s ease, border-color .18s ease;
 }
-.panelOpt:hover{ background: rgba(15, 23, 42, 0.04); }
-.panelOpt:active{ transform: scale(0.98); }
+
+@media (hover:hover) and (pointer:fine){
+  .panelOpt:hover{ background: rgba(15, 23, 42, 0.04); }
+}
+.panelOpt:active{ transform: scale(0.98); background: rgba(15, 23, 42, 0.06); }
 
 /* OPEN STATES (Row verschwindet, Panel kommt rein) */
 .quickNav.lang-open .quickNavRow,
@@ -1209,7 +1240,7 @@
    2) QUICKNAV (Tabs + Panels) — passend zu deinem HTML
 ---------------------------- */
 /* ---------------------------
-   2) QUICKNAV (Tabs + Panels) — schlank & korrekt
+   2) QUICKNAV (Tabs + Panels) — sauber, hover-friendly, mobile-friendly
 ---------------------------- */
 (() => {
   const nav = document.querySelector(".quickNav");
@@ -1217,6 +1248,8 @@
 
   const row = document.getElementById("quickNavRow");
   if (!row) return;
+
+  const allBtns = Array.from(row.querySelectorAll(".quickNavBtn"));
 
   const langToggleBtn = document.getElementById("langToggleBtn");
   const kamToggleBtn  = document.getElementById("kamToggleBtn");
@@ -1235,31 +1268,52 @@
 
   const LANG_KEY = "menyra_lang";
 
-  function closeAllPanels() {
+  let lastTabBtn = null; // merkt sich Story/Info (nicht Language/Kamarieri)
+
+  function setActive(btnOrNull){
+    allBtns.forEach(b => b.classList.remove("is-active"));
+    if (btnOrNull) btnOrNull.classList.add("is-active");
+  }
+
+  function closeAllPanels({ restoreTab = true } = {}){
     nav.classList.remove("lang-open", "kam-open");
+
     if (langToggleBtn) langToggleBtn.setAttribute("aria-expanded", "false");
     if (kamToggleBtn)  kamToggleBtn.setAttribute("aria-expanded", "false");
+
     if (langPanel) langPanel.setAttribute("aria-hidden", "true");
     if (kamPanel)  kamPanel.setAttribute("aria-hidden", "true");
+
+    if (restoreTab && lastTabBtn){
+      setActive(lastTabBtn);
+    } else if (!restoreTab){
+      // nothing
+    }
   }
 
-  function openLang() {
-    closeAllPanels();
+  function openLang(){
+    closeAllPanels({ restoreTab: false });
     nav.classList.add("lang-open");
+
     if (langToggleBtn) langToggleBtn.setAttribute("aria-expanded", "true");
     if (langPanel) langPanel.setAttribute("aria-hidden", "false");
+
+    setActive(langToggleBtn);
   }
 
-  function openKamarieri() {
-    closeAllPanels();
+  function openKamarieri(){
+    closeAllPanels({ restoreTab: false });
     nav.classList.add("kam-open");
+
     if (kamToggleBtn) kamToggleBtn.setAttribute("aria-expanded", "true");
     if (kamPanel) kamPanel.setAttribute("aria-hidden", "false");
+
+    setActive(kamToggleBtn);
   }
 
-  function setLang(code) {
+  function setLang(code){
     localStorage.setItem(LANG_KEY, code);
-    // NIE Code anzeigen – Button bleibt immer "Language"
+    // Button bleibt immer "Language" (wie du willst)
     if (langLabel) langLabel.textContent = "Language";
   }
 
@@ -1273,33 +1327,46 @@
     const btn = e.target.closest(".quickNavBtn");
     if (!btn) return;
 
-    // Hover erst nach erstem Klick aktivieren
-    nav.classList.add("has-interacted");
-
-    if (btn === langToggleBtn) {
+    // Toggle: Language
+    if (btn === langToggleBtn){
       e.preventDefault();
       e.stopPropagation();
-      if (nav.classList.contains("lang-open")) closeAllPanels();
+      if (nav.classList.contains("lang-open")) closeAllPanels({ restoreTab: true });
       else openLang();
       return;
     }
 
-    if (btn === kamToggleBtn) {
+    // Toggle: Kamarieri
+    if (btn === kamToggleBtn){
       e.preventDefault();
       e.stopPropagation();
-      if (nav.classList.contains("kam-open")) closeAllPanels();
+      if (nav.classList.contains("kam-open")) closeAllPanels({ restoreTab: true });
       else openKamarieri();
       return;
     }
 
-      // STORY -> story.html (wenn du wirklich story.htm hast: einfach unten ändern)
-      if (btn.dataset.tab === "story") {
-        window.location.href = "./story.html"; // <-- falls du story.htm willst: "./story.htm"
-        return;
-      }
+    // Normal Tabs
+    const tab = btn.dataset.tab || "";
 
-    if (tab === "story") return; // später: window.location.href = "./story.html";
-    if (tab === "info")  return; // später: window.location.href = "./info.html";
+    closeAllPanels({ restoreTab: false }); // falls ein Panel offen war
+
+    // Active nur für Story/Info merken
+    if (tab){
+      lastTabBtn = btn;
+      setActive(btn);
+    } else {
+      setActive(null);
+    }
+
+    if (tab === "story"){
+      window.location.href = "./story.html"; // ggf. "./story.htm"
+      return;
+    }
+
+    if (tab === "info"){
+      alert("Info (demo)");
+      return;
+    }
   }, { passive: false });
 
   // Language panel close buttons
@@ -1308,20 +1375,22 @@
     b.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      closeAllPanels();
+      closeAllPanels({ restoreTab: true });
     }, { passive: false });
   });
 
   // Language options (delegation)
-  if (langPanel) {
+  if (langPanel){
     langPanel.addEventListener("click", (e) => {
       const opt = e.target.closest(".panelOpt[data-lang]");
       if (!opt) return;
       e.preventDefault();
       e.stopPropagation();
+
       const code = opt.dataset.lang;
       if (code) setLang(code);
-      closeAllPanels();
+
+      closeAllPanels({ restoreTab: true });
     }, { passive: false });
   }
 
@@ -1331,38 +1400,38 @@
     b.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-      closeAllPanels();
+      closeAllPanels({ restoreTab: true });
     }, { passive: false });
   });
 
   // Kamarieri actions
-  if (callWaiterOpt) {
+  if (callWaiterOpt){
     callWaiterOpt.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       alert("Thirr kamarierin ✅ (demo)");
-      closeAllPanels();
+      closeAllPanels({ restoreTab: true });
     }, { passive: false });
   }
 
-  if (payOpt) {
+  if (payOpt){
     payOpt.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       alert("Paguaj ✅ (demo)");
-      closeAllPanels();
+      closeAllPanels({ restoreTab: true });
     }, { passive: false });
   }
 
-  // Outside click closes
+  // Outside click closes panels (mobile + desktop)
   document.addEventListener("click", (e) => {
     if (!nav.classList.contains("lang-open") && !nav.classList.contains("kam-open")) return;
-    if (!nav.contains(e.target)) closeAllPanels();
+    if (!nav.contains(e.target)) closeAllPanels({ restoreTab: true });
   }, { passive: true });
 
-  // ESC closes
+  // ESC closes panels
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeAllPanels();
+    if (e.key === "Escape") closeAllPanels({ restoreTab: true });
   });
 })();
 
