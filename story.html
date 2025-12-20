@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- (Optional) Preload: hilft bei langsamer Verbindung -->
+  <!-- Preload: hilft dem 1. Reel sofort (wenn Pfad stimmt) -->
   <link rel="preload" as="video" href="./images/tik1.mp4" type="video/mp4">
   <link rel="preload" as="video" href="./image/tik1.mp4" type="video/mp4">
 
@@ -18,31 +18,32 @@
       --safeLeft: env(safe-area-inset-left, 0px);
       --safeRight: env(safe-area-inset-right, 0px);
     }
+
     *{ box-sizing:border-box; margin:0; padding:0; }
     html, body{
       width:100%;
       height:100%;
       background:#000;
       overflow:hidden;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color:#fff;
     }
 
     #app{
       position: fixed;
       inset: 0;
+      width:100%;
       height: var(--vvh);
-      width: 100%;
       background:#000;
       overflow:hidden;
-      touch-action: pan-x; /* wir handeln pan-y selbst (Pager) */
+      touch-action: pan-x; /* pan-y handled by pager */
     }
 
     #stage{
       position:absolute;
       inset:0;
       width:100%;
-      transform: translate3d(0, 0, 0);
+      transform: translate3d(0,0,0);
       will-change: transform;
     }
 
@@ -56,6 +57,7 @@
       transform: translate3d(0,0,0);
     }
 
+    /* Video */
     .reelVideo{
       position:absolute;
       inset:0;
@@ -63,17 +65,48 @@
       height:100%;
       object-fit: cover;
       background:#000;
-
-      /* wichtig: nicht komplett unsichtbar “für immer” */
-      opacity: 0;
-      transition: opacity 120ms ease;
       transform: translateZ(0);
     }
-    .reelVideo.is-show{ opacity: 1; }
+
+    /* Frame hold (fix gegen black flash + preview mismatch)
+       - erst shimmer
+       - dann echtes Frame aus Video
+       - beim playing fade-out */
+    .frameHold{
+      position:absolute;
+      inset:0;
+      z-index: 2;
+      background: #000;
+      transform: translateZ(0);
+      opacity: 1;
+      pointer-events:none;
+      transition: opacity 160ms ease;
+    }
+    .frameHold.is-hidden{ opacity: 0; }
+
+    .frameHold::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(circle at 40% 30%, rgba(255,255,255,0.06), transparent 55%),
+        linear-gradient(120deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.06) 40%, rgba(255,255,255,0.03) 70%),
+        #000;
+      opacity: .9;
+      animation: shimmer 1.0s linear infinite;
+    }
+    .frameHold.has-frame::before{ display:none; }
+
+    @keyframes shimmer{
+      0%{ transform: translateX(-8%); opacity:.75; }
+      50%{ transform: translateX(0%); opacity:.95; }
+      100%{ transform: translateX(8%); opacity:.75; }
+    }
 
     .vignette{
       position:absolute;
       inset:0;
+      z-index: 3;
       pointer-events:none;
       background:
         radial-gradient(circle at 50% 35%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.25) 55%, rgba(0,0,0,0.62) 100%),
@@ -81,6 +114,7 @@
       opacity:.95;
     }
 
+    /* Top UI */
     .topbar{
       position:absolute;
       top: calc(10px + var(--safeTop));
@@ -93,7 +127,13 @@
       gap:10px;
       pointer-events:none;
     }
-    .topLeft, .topRight{ pointer-events:auto; display:flex; align-items:center; gap:10px; min-width:0; }
+    .topLeft, .topRight{
+      pointer-events:auto;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
 
     .backBtn{
       width:44px; height:44px;
@@ -124,7 +164,7 @@
       padding:3px;
     }
     .brandName{
-      font-weight:850;
+      font-weight:900;
       font-size:13px;
       white-space:nowrap;
       overflow:hidden;
@@ -145,13 +185,14 @@
       gap:8px;
       cursor:pointer;
       -webkit-tap-highlight-color: transparent;
-      font-weight:850;
+      font-weight:900;
       font-size:12px;
       color:#fff;
       letter-spacing:.2px;
     }
     .pillBtn svg{ width:18px; height:18px; fill:#fff; opacity:.95; }
 
+    /* Right actions */
     .actions{
       position:absolute;
       right: calc(12px + var(--safeRight));
@@ -178,7 +219,7 @@
     .actionBtn svg{ width:22px; height:22px; fill:#fff; opacity:.95; }
     .actionCount{
       font-size:11px;
-      font-weight:900;
+      font-weight:950;
       color: rgba(255,255,255,0.82);
       letter-spacing:.2px;
     }
@@ -187,6 +228,7 @@
       border-color: rgba(255,90,95,0.38);
     }
 
+    /* Product card bottom */
     .productCard{
       position:absolute;
       left: calc(12px + var(--safeLeft));
@@ -309,6 +351,7 @@
       <!-- REEL 1 -->
       <section class="reel" data-index="0">
         <video class="reelVideo" data-file="tik1.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
+        <div class="frameHold" aria-hidden="true"></div>
         <div class="vignette" aria-hidden="true"></div>
 
         <div class="topbar">
@@ -361,6 +404,7 @@
       <!-- REEL 2 -->
       <section class="reel" data-index="1">
         <video class="reelVideo" data-file="tik2.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
+        <div class="frameHold" aria-hidden="true"></div>
         <div class="vignette" aria-hidden="true"></div>
 
         <div class="topbar">
@@ -413,6 +457,7 @@
       <!-- REEL 3 -->
       <section class="reel" data-index="2">
         <video class="reelVideo" data-file="tik3.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
+        <div class="frameHold" aria-hidden="true"></div>
         <div class="vignette" aria-hidden="true"></div>
 
         <div class="topbar">
@@ -483,17 +528,17 @@
 
   <script type="module">
     // =========================================================
-    // MENYRA STORY — TikTok Pager (translateY)
-    // Fix: Videos sichtbar bei loadeddata + Pfad-Fallback (images/ vs image/)
+    // MENYRA STORY — TikTok Pager + FrameHold (kein black flash)
     // =========================================================
 
-    const app = document.getElementById("app");
+    const app   = document.getElementById("app");
     const stage = document.getElementById("stage");
     const reels = Array.from(document.querySelectorAll(".reel"));
     const videos = reels.map(r => r.querySelector(".reelVideo"));
+    const holds  = reels.map(r => r.querySelector(".frameHold"));
 
-    const backBtn = document.getElementById("backBtn");
-    const soundBtn = document.getElementById("soundBtn");
+    const backBtn   = document.getElementById("backBtn");
+    const soundBtn  = document.getElementById("soundBtn");
     const soundIcon = document.getElementById("soundIcon");
 
     const sheet = document.getElementById("sheet");
@@ -514,18 +559,15 @@
     let lockAxis = null;
     let animating = false;
 
-    // wheel (desktop)
+    // wheel
     let wheelAcc = 0;
     let wheelTimer = null;
-
-    const START_AT = 0.05; // sec
 
     function updateVvh(){
       const vv = window.visualViewport;
       const h = vv ? vv.height : window.innerHeight;
       document.documentElement.style.setProperty("--vvh", Math.round(h) + "px");
     }
-
     function vh(){ return app.clientHeight || window.innerHeight || 1; }
     function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
@@ -547,97 +589,71 @@
       const file = videoEl.dataset.file;
       if (!file) return;
 
-      // zuerst ./images/, wenn fail -> ./image/
-      const primary = `./images/${file}`;
+      const primary  = `./images/${file}`;
       const fallback = `./image/${file}`;
 
-      videoEl.src = primary;
+      if (!videoEl.src) videoEl.src = primary;
 
       const onErr = () => {
         videoEl.removeEventListener("error", onErr);
-        // falls primary fehlt -> fallback probieren
         videoEl.src = fallback;
-        videoEl.load();
+        try{ videoEl.load(); }catch(_){}
       };
       videoEl.addEventListener("error", onErr, { once:true });
     }
 
-    function warmLoad(videoEl){
-      if (!videoEl) return;
-      try{
-        // triggert download früher (hilft bei slow net)
-        videoEl.preload = "auto";
-        videoEl.load();
-      }catch(_){}
-    }
-
-    function once(el, ev){
-      return new Promise((res) => el.addEventListener(ev, res, { once:true }));
-    }
-
-    async function ensureReady(v){
+    function warmLoad(v){
       if (!v) return;
-      if (v.dataset.ready === "1") return;
-
-      // Sobald loadeddata kommt -> Video anzeigen (auch wenn play später kommt)
-      const showOnData = () => v.classList.add("is-show");
-      v.addEventListener("loadeddata", showOnData, { once:true });
-
-      try{
-        if (v.readyState < 2) await once(v, "loadeddata");
-      }catch(_){}
-
-      // wenn duration verfügbar -> auf START_AT, damit first frame passt
-      try{
-        if (Number.isFinite(v.duration) && v.duration > 0.2){
-          v.currentTime = START_AT;
-          await once(v, "seeked");
-        }
-      }catch(_){}
-
-      v.dataset.ready = "1";
-      // falls loadeddata nicht gefeuert hat (selten), trotzdem sichtbar machen
-      v.classList.add("is-show");
+      try{ v.preload = "auto"; v.load(); }catch(_){}
     }
 
-    async function playActive(){
-      const v = videos[idx];
-      if (!v) return;
+    // --- FrameHold: capture real first frame to prevent mismatch
+    async function captureFrame(videoEl, holdEl){
+      if (!videoEl || !holdEl) return;
+      if (holdEl.dataset.hasFrame === "1") return;
 
-      // pause others
-      videos.forEach((vv, i) => {
-        if (!vv) return;
-        if (i !== idx){
-          vv.pause();
-          vv.muted = true;
-        }
-      });
-
-      v.muted = muted ? true : false;
-      v.volume = 1;
-
-      warmLoad(v); // sofort laden
-      await ensureReady(v);
-
-      // start frame stabil
-      try{
-        if (Number.isFinite(v.duration) && v.duration > 0.2){
-          v.currentTime = START_AT;
-          await once(v, "seeked");
-        }
-      }catch(_){}
-
-      try{
-        await v.play();
-      }catch(_){
-        // Autoplay kann bei unmuted blocken -> bleibt trotzdem sichtbar
+      // Wait until we have some decoded frame
+      if (videoEl.readyState < 2){
+        await new Promise((res) => {
+          const t = setTimeout(res, 1200); // never block forever
+          videoEl.addEventListener("loadeddata", () => { clearTimeout(t); res(); }, { once:true });
+        });
       }
 
-      // warm neighbors
-      warmLoad(videos[idx + 1]);
-      warmLoad(videos[idx - 1]);
-      if (videos[idx + 1]) ensureReady(videos[idx + 1]);
-      if (videos[idx - 1]) ensureReady(videos[idx - 1]);
+      // Try requestVideoFrameCallback (best)
+      if (typeof videoEl.requestVideoFrameCallback === "function"){
+        await new Promise((res) => videoEl.requestVideoFrameCallback(() => res()));
+      }
+
+      // Draw to canvas -> set as hold background
+      try{
+        const w = Math.max(2, videoEl.videoWidth || 0);
+        const h = Math.max(2, videoEl.videoHeight || 0);
+        if (w > 2 && h > 2){
+          const c = document.createElement("canvas");
+          c.width = w;
+          c.height = h;
+          const ctx = c.getContext("2d", { alpha:false });
+          ctx.drawImage(videoEl, 0, 0, w, h);
+          const url = c.toDataURL("image/jpeg", 0.72);
+          holdEl.style.backgroundImage = `url("${url}")`;
+          holdEl.style.backgroundSize = "cover";
+          holdEl.style.backgroundPosition = "center";
+          holdEl.classList.add("has-frame");
+          holdEl.dataset.hasFrame = "1";
+        }
+      }catch(_){}
+    }
+
+    function showHold(i){
+      const h = holds[i];
+      if (!h) return;
+      h.classList.remove("is-hidden");
+    }
+    function hideHold(i){
+      const h = holds[i];
+      if (!h) return;
+      h.classList.add("is-hidden");
     }
 
     function iconMuted(){
@@ -660,17 +676,108 @@
       }
     }
 
+    async function prepVideo(i){
+      const v = videos[i];
+      const h = holds[i];
+      if (!v || !h) return;
+
+      setVideoSrcWithFallback(v);
+
+      v.muted = true;        // autoplay safe
+      v.playsInline = true;
+      v.preload = "auto";
+
+      // show hold while preparing
+      showHold(i);
+
+      // force load earlier
+      warmLoad(v);
+
+      // Seek minimal once, to stabilize first frame (avoids preview mismatch)
+      // Important: only once per video
+      if (!v.dataset.seekingDone){
+        await new Promise((res) => {
+          const done = () => res();
+          if (v.readyState >= 1) return done();
+          v.addEventListener("loadedmetadata", done, { once:true });
+          setTimeout(done, 900);
+        });
+
+        try{
+          // 0 sometimes ignored, so 0.001
+          v.currentTime = 0.001;
+          await new Promise((res) => {
+            const t = setTimeout(res, 700);
+            v.addEventListener("seeked", () => { clearTimeout(t); res(); }, { once:true });
+          });
+        }catch(_){}
+        v.dataset.seekingDone = "1";
+      }
+
+      // Capture real frame into hold background
+      await captureFrame(v, h);
+    }
+
+    async function playActive(){
+      // stop others
+      videos.forEach((vv, i) => {
+        if (!vv) return;
+        if (i !== idx){
+          vv.pause();
+          vv.muted = true;
+          showHold(i); // if user comes back, hold is ready
+        }
+      });
+
+      const v = videos[idx];
+      if (!v) return;
+
+      // Prepare active + neighbors (warm + frame capture)
+      await prepVideo(idx);
+      if (videos[idx + 1]) prepVideo(idx + 1);
+      if (videos[idx - 1]) prepVideo(idx - 1);
+
+      // Play
+      v.muted = muted ? true : false;
+
+      // Events: waiting => show hold, playing => hide hold (super smooth)
+      const onWaiting = () => showHold(idx);
+      const onPlaying = () => hideHold(idx);
+      v.addEventListener("waiting", onWaiting);
+      v.addEventListener("playing", onPlaying);
+
+      // try play
+      try{
+        const p = v.play();
+        if (p && typeof p.then === "function") await p;
+      }catch(_){
+        // if unmuted autoplay blocked, it will still show hold; user can toggle sound later
+      }
+
+      // if already playing quickly, hide hold
+      if (!v.paused) hideHold(idx);
+
+      // cleanup handlers (avoid duplicates)
+      setTimeout(() => {
+        v.removeEventListener("waiting", onWaiting);
+        v.removeEventListener("playing", onPlaying);
+      }, 1200);
+    }
+
     function go(nextIdx){
       if (animating) return;
       const target = clamp(nextIdx, 0, reels.length - 1);
+
       if (target === idx){
         animating = true;
         setStage(0, true);
         setTimeout(() => { animating = false; setStage(0, false); }, 260);
         return;
       }
+
       animating = true;
       idx = target;
+
       setStage(0, true);
       setTimeout(async () => {
         animating = false;
@@ -697,7 +804,6 @@
     document.addEventListener("click", (e) => {
       if (e.target.closest("#backBtn") || e.target.closest("[data-back]")){
         e.preventDefault();
-        // FIX: immer zurück zur Demo-Karte
         window.location.href = "./karte-demo.html";
         return;
       }
@@ -810,7 +916,7 @@
       setTimeout(() => { animating = false; setStage(0, false); }, 260);
     }, { passive:true });
 
-    // Wheel (Desktop)
+    // Wheel (desktop)
     app.addEventListener("wheel", (e) => {
       if (animating || dragging) return;
       if (sheetOverlay.classList.contains("is-open")) return;
@@ -833,19 +939,17 @@
       updateVvh();
       placeReels();
 
-      // set src with fallback (images/ vs image/)
-      videos.forEach(v => {
+      videos.forEach((v, i) => {
         v.muted = true;
-        v.playsInline = true;
         v.preload = "auto";
         setVideoSrcWithFallback(v);
+        showHold(i); // hold visible until playing stable
       });
 
       setMuted(true);
 
-      // sofort erstes laden + abspielen
+      // Warm first + neighbor hard
       warmLoad(videos[0]);
-      // warm next auch gleich (hilft auf slow net)
       warmLoad(videos[1]);
 
       playActive();
@@ -868,7 +972,6 @@
       }, { passive:true });
     }
 
-    // DOM ready
     if (document.readyState === "loading"){
       document.addEventListener("DOMContentLoaded", init, { once:true });
     } else {
