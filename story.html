@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- Optional: erstes Video früher laden -->
   <link rel="preload" as="video" href="./images/tik1.mp4" type="video/mp4" fetchpriority="high" />
 
   <style>
@@ -15,22 +14,17 @@
       --safe-right: env(safe-area-inset-right, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-left: env(safe-area-inset-left, 0px);
-
-      --ui: rgba(0,0,0,0.45);
-      --txt: #ffffff;
-      --muted: rgba(255,255,255,0.72);
     }
 
     *{ box-sizing:border-box; margin:0; padding:0; }
     html, body{ height:100%; background:#000; }
     body{
-      color: var(--txt);
+      color: #fff;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
       overflow: hidden;
       background:#000;
     }
 
-    /* ====== Viewport height (iOS/Android safe) ====== */
     .reels{
       height: 100vh;
       height: 100svh;
@@ -83,7 +77,6 @@
       z-index: 5;
     }
 
-    /* ====== Overlay UI (Topbar) ====== */
     .topbar{
       position:absolute;
       top: 0;
@@ -157,7 +150,6 @@
       max-width: 56vw;
     }
 
-    /* ====== Right Action Rail ====== */
     .rail{
       position:absolute;
       right: calc(var(--safe-right) + 12px);
@@ -204,7 +196,6 @@
     }
     .railBtn[data-action="like"].is-liked svg{ fill:#111; }
 
-    /* ====== Bottom product tag ====== */
     .productTag{
       position:absolute;
       left: calc(var(--safe-left) + 12px);
@@ -267,7 +258,6 @@
     }
     .productBtn:active{ transform: scale(0.985); }
 
-    /* Tap hint when paused */
     .tapHint{
       position:absolute;
       left: 50%;
@@ -287,7 +277,6 @@
     }
     .reel.is-paused .tapHint{ opacity: 1; }
 
-    /* Toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -310,7 +299,7 @@
       transform: translateX(-50%) translateY(-4px);
     }
 
-    /* ====== COMMENTS (black like before) ====== */
+    /* COMMENTS (black) */
     .commentsBackdrop{
       position: fixed;
       inset: 0;
@@ -405,9 +394,7 @@
     }
 
     @media (prefers-reduced-motion: reduce){
-      .toast{ transition:none !important; }
-      .tapHint{ transition:none !important; }
-      .commentsBackdrop, .commentsSheet{ transition:none !important; }
+      .toast, .tapHint, .commentsBackdrop, .commentsSheet{ transition:none !important; }
     }
   </style>
 </head>
@@ -484,9 +471,8 @@
   </template>
 
   <main class="reels" id="reels" aria-label="MENYRA Stories">
-    <!-- 1..10 -->
     <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik1.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik1.mp4" playsinline muted preload="auto" loop></video>
       <div class="vignette"></div>
     </section>
 
@@ -563,7 +549,7 @@
 
   <script type="module">
     // =========================================================
-    // 0) Inject overlay into ALL reels (fast, no duplication)
+    // 0) Inject overlay into ALL reels
     // =========================================================
     const tpl = document.getElementById("overlayTpl");
     const reels = Array.from(document.querySelectorAll(".reel"));
@@ -571,7 +557,6 @@
     const reelsEl = document.getElementById("reels");
     const toastEl = document.getElementById("toast");
 
-    // Comments UI
     const commentsBackdrop = document.getElementById("commentsBackdrop");
     const commentsSheet = document.getElementById("commentsSheet");
     const commentsList = document.getElementById("commentsList");
@@ -617,7 +602,7 @@
     });
 
     // =========================================================
-    // 1) TikTok-like autoplay (only active plays)  (wie dein guter Code)
+    // 1) Sound
     // =========================================================
     const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
@@ -637,14 +622,57 @@
       showToast(soundOn ? "Sound: ON" : "Sound: OFF");
     }
 
+    // =========================================================
+    // 2) Smart preload (lazy-ish): active + next + prev = auto
+    // =========================================================
+    function setPreload(i, mode){
+      const v = videos[i];
+      if (!v) return;
+      if (v.getAttribute("preload") !== mode) v.setAttribute("preload", mode);
+      // warm next/prev only if not loaded yet
+      if (mode === "auto" && v.readyState === 0){
+        try { v.load(); } catch(_) {}
+      }
+    }
+
+    function warmNeighbors(idx){
+      for (let i = 0; i < videos.length; i++){
+        const near = (i === idx || i === idx-1 || i === idx+1);
+        setPreload(i, near ? "auto" : "metadata");
+      }
+    }
+
+    // =========================================================
+    // 3) ALWAYS restart from 0 when reel becomes active
+    // =========================================================
+    function resetToStart(v){
+      if (!v) return;
+      try{
+        if (typeof v.fastSeek === "function") v.fastSeek(0);
+        else v.currentTime = 0;
+      }catch(_){}
+    }
+
+    function ensureMeta(v){
+      if (!v) return Promise.resolve();
+      if (v.readyState >= 1) return Promise.resolve();
+      return new Promise((res) => {
+        const fn = () => { v.removeEventListener("loadedmetadata", fn); res(); };
+        v.addEventListener("loadedmetadata", fn, { once:true });
+      });
+    }
+
     async function playOnly(index){
       activeIndex = index;
+      warmNeighbors(index);
 
+      // stop others + reset (so when you return, always from start)
       videos.forEach((v, i) => {
         const reel = reels[i];
         if (i !== index){
           v.pause();
           v.muted = true;
+          resetToStart(v);
           reel?.classList.remove("is-paused");
         }
       });
@@ -652,6 +680,8 @@
       const v = videos[index];
       if (!v) return;
 
+      await ensureMeta(v);
+      resetToStart(v);                 // <--- KEY: always start from 0
       v.muted = !soundOn;
 
       try{
@@ -664,8 +694,10 @@
 
     // Init
     setSoundState(soundOn);
+    warmNeighbors(0);
     playOnly(0);
 
+    // Observe active reel
     const io = new IntersectionObserver((entries) => {
       let best = null;
       for (const e of entries){
@@ -682,7 +714,7 @@
     reels.forEach(r => io.observe(r));
 
     // =========================================================
-    // 1.5) Comments (black)
+    // 4) Comments (black)
     // =========================================================
     function lockFeed(lock){
       reelsEl.style.pointerEvents = lock ? "none" : "";
@@ -694,8 +726,6 @@
       commentsOpen = true;
       commentsBackdrop.classList.add("open");
       commentsSheet.classList.add("open");
-      commentsBackdrop.setAttribute("aria-hidden", "false");
-      commentsSheet.setAttribute("aria-hidden", "false");
       lockFeed(true);
       window.setTimeout(() => commentInput?.focus?.(), 60);
     }
@@ -705,8 +735,6 @@
       commentsOpen = false;
       commentsBackdrop.classList.remove("open");
       commentsSheet.classList.remove("open");
-      commentsBackdrop.setAttribute("aria-hidden", "true");
-      commentsSheet.setAttribute("aria-hidden", "true");
       lockFeed(false);
     }
 
@@ -727,7 +755,7 @@
     });
 
     // =========================================================
-    // 2) Controls (global)
+    // 5) Controls
     // =========================================================
     document.addEventListener("click", (e) => {
       const actionEl = e.target.closest("[data-action]");
@@ -782,7 +810,6 @@
 
       if (commentsOpen) return;
 
-      // Tap on video: play/pause
       const video = e.target.closest("video.reelVideo");
       if (!video) return;
 
@@ -797,7 +824,7 @@
       }
     }, { passive: true });
 
-    // Double tap to like (fast)
+    // Double tap to like
     let lastTap = 0;
     document.addEventListener("touchend", (e) => {
       if (commentsOpen) return;
@@ -823,7 +850,6 @@
       }
     }, { passive: true });
 
-    // ESC closes comments
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape") closeComments();
     }, { passive:true });
