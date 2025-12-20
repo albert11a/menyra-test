@@ -6,124 +6,95 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <link rel="preload" as="image" href="./images/Prince-coffe-house-logo.jpg" />
-  <link rel="preload" as="video" href="./images/tik1.mp4" type="video/mp4" />
+  <!-- Warm start -->
+  <link rel="preload" as="video" href="./images/tik1.mp4" type="video/mp4" fetchpriority="high">
+  <link rel="preload" as="image" href="./images/Prince-coffe-house-logo.jpg">
 
   <style>
     :root{
-      --app-h: 100dvh;
+      --vh: 100dvh;
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bot: env(safe-area-inset-bottom, 0px);
 
       --txt: rgba(255,255,255,0.92);
       --sub: rgba(255,255,255,0.68);
-      --glass: rgba(0,0,0,0.28);
+      --glass: rgba(0,0,0,0.30);
       --line: rgba(255,255,255,0.14);
     }
-
     *{ box-sizing:border-box; margin:0; padding:0; }
-    html, body{ height:100%; background:#000; color:#fff; }
+    html,body{ height:100%; background:#000; color:#fff; }
     body{
       overflow:hidden;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
-    button{ font:inherit; color:inherit; }
+    button{ font:inherit; color:inherit; background:none; border:0; }
     img{ display:block; max-width:100%; }
 
     .app{
       position:fixed;
       inset:0;
-      height: var(--app-h);
+      height: var(--vh);
       background:#000;
-      padding-top: var(--safe-top);
-      padding-bottom: var(--safe-bot);
-      display:flex;
-      flex-direction:column;
+      overflow:hidden;
+      touch-action: pan-y;
     }
 
-    .feed{
-      height: calc(var(--app-h) - var(--safe-top) - var(--safe-bot));
-      overflow-y:auto;
-      -webkit-overflow-scrolling: touch;
-      scroll-snap-type: y mandatory;
-      overscroll-behavior-y: contain;
-      background:#000;
-      scrollbar-width: none;
-      contain: layout paint size;
+    /* Track: wir steuern Paging selbst -> kein "letzte mm langsam" */
+    .viewport{
+      position:absolute;
+      inset:0;
+      height: var(--vh);
+      overflow:hidden;
     }
-    .feed::-webkit-scrollbar{ display:none; }
+    .track{
+      position:absolute;
+      inset:0;
+      will-change: transform;
+      transform: translate3d(0,0,0);
+    }
 
     .reel{
-      height: calc(var(--app-h) - var(--safe-top) - var(--safe-bot));
-      scroll-snap-align: start;
-      scroll-snap-stop: always;
       position:relative;
+      height: var(--vh);
+      width:100%;
       background:#000;
-      isolation:isolate;
-      contain: layout paint size;
+      overflow:hidden;
     }
 
-    .reel video{
+    .reelVideo{
       width:100%;
       height:100%;
-      object-fit:cover;
+      object-fit: cover;
       display:block;
       background:#000;
       transform: translateZ(0);
+      will-change: transform;
+      opacity:0;                /* kein black/standbild flicker */
     }
+    .reel.is-ready .reelVideo{ opacity:1; }
+    .reel.is-active .reelVideo{ opacity:1; }
 
-    /* Placeholder bis echte Frames da sind */
-    .placeholder{
-      position:absolute;
-      inset:0;
-      display:grid;
-      place-items:center;
-      background:
-        radial-gradient(900px 480px at 20% 10%, rgba(255,255,255,0.08), transparent 60%),
-        radial-gradient(900px 480px at 80% 30%, rgba(255,255,255,0.06), transparent 60%);
-      transition: opacity 120ms ease;
+    /* fades */
+    .topFade, .botFade{
+      position:fixed; left:0; right:0;
       pointer-events:none;
-      z-index:2;
+      z-index:5;
     }
-    .placeholderInner{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      padding: 10px 12px;
-      border-radius: 16px;
-      border: 1px solid var(--line);
-      background: var(--glass);
-    }
-    .phDot{
-      width:10px; height:10px; border-radius:999px;
-      background: rgba(255,255,255,0.72);
-      animation: phPulse 900ms ease-in-out infinite;
-    }
-    @keyframes phPulse{
-      0%,100%{ transform:scale(0.8); opacity:0.6; }
-      50%{ transform:scale(1.1); opacity:1; }
-    }
-    .phText{ font-size:13px; color: var(--txt); font-weight:800; letter-spacing:0.2px; }
-    .reel[data-ready="1"] .placeholder{ opacity:0; }
-
-    .overlayTopFade{
-      position:absolute; left:0; right:0; top:0;
+    .topFade{
+      top:0;
       height: 34%;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.62), rgba(0,0,0,0.0));
-      pointer-events:none;
-      z-index:3;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.62), rgba(0,0,0,0));
     }
-    .overlayBottomFade{
-      position:absolute; left:0; right:0; bottom:0;
+    .botFade{
+      bottom:0;
       height: 44%;
-      background: linear-gradient(to top, rgba(0,0,0,0.74), rgba(0,0,0,0.0));
-      pointer-events:none;
-      z-index:3;
+      background: linear-gradient(to top, rgba(0,0,0,0.74), rgba(0,0,0,0));
     }
 
-    /* HEADER IM VIDEO */
-    .reelHeader{
-      position:absolute;
+    /* header overlay */
+    .hdr{
+      position:fixed;
       top: calc(10px + var(--safe-top));
       left: 10px;
       right: 10px;
@@ -132,13 +103,13 @@
       gap:10px;
       z-index:10;
     }
-
     .iconBtn{
       width:40px; height:40px;
       border-radius:14px;
       border: 1px solid var(--line);
       background: var(--glass);
-      display:grid; place-items:center;
+      display:grid;
+      place-items:center;
       cursor:pointer;
       -webkit-tap-highlight-color: transparent;
     }
@@ -151,22 +122,15 @@
       background: rgba(255,255,255,0.06);
       border: 1px solid rgba(255,255,255,0.12);
     }
-
-    .titleWrap{
-      display:flex;
-      flex-direction:column;
-      line-height:1.05;
-      min-width:0;
-      max-width: 58%;
-    }
+    .titleWrap{ min-width:0; display:flex; flex-direction:column; line-height:1.05; }
     .title{
       font-weight:900;
       font-size:14px;
       letter-spacing:0.2px;
+      color: var(--txt);
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      color: var(--txt);
     }
     .subtitle{
       font-size:12px;
@@ -177,15 +141,15 @@
     }
     .spacer{ flex:1; }
 
-    /* Actions rechts */
+    /* right actions */
     .actions{
-      position:absolute;
+      position:fixed;
       right: 10px;
-      bottom: 110px;
+      bottom: calc(110px + var(--safe-bot));
+      z-index:10;
       display:flex;
       flex-direction:column;
-      gap: 10px;
-      z-index:10;
+      gap:10px;
     }
     .actionBtn{
       width: 52px;
@@ -205,33 +169,24 @@
     .actionIcon{ width:22px; height:22px; display:block; }
     .actionLabel{ font-size:11px; font-weight:900; color: var(--txt); }
 
+    /* caption */
     .caption{
-      position:absolute;
+      position:fixed;
       left: 12px;
-      bottom: 98px;
+      bottom: calc(98px + var(--safe-bot));
       z-index:10;
-      max-width: 70%;
+      max-width: 72%;
     }
-    .capUser{
-      font-size:14px;
-      font-weight:900;
-      letter-spacing:0.2px;
-      color: var(--txt);
-      margin-bottom:6px;
-    }
-    .capText{
-      font-size:13px;
-      line-height:1.35;
-      color: rgba(255,255,255,0.82);
-    }
+    .capUser{ font-size:14px; font-weight:900; color: var(--txt); margin-bottom:6px; }
+    .capText{ font-size:13px; line-height:1.35; color: rgba(255,255,255,0.82); }
 
-    /* Product card unten */
+    /* product card */
     .productCard{
-      position:absolute;
+      position:fixed;
       left: 12px;
-      bottom: 18px;
       right: 76px;
-      z-index:11;
+      bottom: calc(18px + var(--safe-bot));
+      z-index:12;
       border-radius: 18px;
       border: 1px solid var(--line);
       background: rgba(0,0,0,0.34);
@@ -239,37 +194,24 @@
       display:flex;
       gap: 10px;
       align-items:center;
+      overflow:hidden;
     }
     .productImg{
-      width: 54px;
-      height: 54px;
+      width: 54px; height: 54px;
       border-radius: 14px;
       object-fit: cover;
       border: 1px solid rgba(255,255,255,0.14);
       background: rgba(255,255,255,0.06);
       flex: 0 0 auto;
     }
-    .productMeta{
-      min-width:0;
-      display:flex;
-      flex-direction:column;
-      gap: 3px;
-      flex:1;
-    }
+    .productMeta{ min-width:0; display:flex; flex-direction:column; gap:3px; flex:1; }
     .productName{
-      font-size:13px;
-      font-weight:900;
-      color: var(--txt);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      font-size:13px; font-weight:900; color: var(--txt);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .productSub{
-      font-size:12px;
-      color: var(--sub);
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+      font-size:12px; color: var(--sub);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
     }
     .productBtn{
       border: 1px solid rgba(255,255,255,0.16);
@@ -286,10 +228,41 @@
     }
     .productBtn:active{ transform: scale(0.985); }
 
-    /* COMMENTS: schwarz */
-    .backdrop{
+    /* loading (nur wenn video noch nicht bereit) */
+    .loading{
       position:fixed;
       inset:0;
+      z-index:20;
+      display:grid;
+      place-items:center;
+      pointer-events:none;
+      opacity:0;
+      transition: opacity 120ms ease;
+    }
+    .loading.on{ opacity:1; }
+    .loadingInner{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: var(--glass);
+    }
+    .dot{
+      width:10px; height:10px; border-radius:999px;
+      background: rgba(255,255,255,0.72);
+      animation: pulse 900ms ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%,100%{ transform:scale(0.8); opacity:0.6; }
+      50%{ transform:scale(1.1); opacity:1; }
+    }
+    .loadingText{ font-size:13px; color: var(--txt); font-weight:900; }
+
+    /* comments (black) */
+    .backdrop{
+      position:fixed; inset:0;
       background:#000;
       opacity:0;
       pointer-events:none;
@@ -314,30 +287,17 @@
       display:flex;
       flex-direction:column;
       overflow:hidden;
-      contain: layout paint size;
     }
     .sheet.open{ transform: translateY(0); }
-
     .sheetTop{
       padding: 12px 12px 10px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       border-bottom: 1px solid rgba(255,255,255,0.10);
-      background:#000;
     }
-    .sheetTitle{
-      font-size:13px;
-      font-weight:900;
-      color: var(--txt);
-      letter-spacing:0.2px;
-    }
-    .sheetList{
-      padding: 10px 12px;
-      overflow:auto;
-      flex:1;
-      background:#000;
-    }
+    .sheetTitle{ font-size:13px; font-weight:900; color: var(--txt); }
+    .sheetList{ padding: 10px 12px; overflow:auto; flex:1; }
     .cItem{
       padding: 10px 10px;
       border-radius: 16px;
@@ -347,14 +307,12 @@
     }
     .cUser{ font-size:12px; font-weight:900; color: var(--txt); margin-bottom:4px; }
     .cText{ font-size:12px; color: rgba(255,255,255,0.78); line-height:1.35; }
-
     .sheetInput{
       padding: 10px 12px 12px;
       border-top: 1px solid rgba(255,255,255,0.10);
       display:flex;
       gap:10px;
       align-items:center;
-      background:#000;
     }
     .sheetInput input{
       flex:1;
@@ -369,274 +327,213 @@
     }
 
     @media (prefers-reduced-motion: reduce){
-      .placeholder, .sheet, .backdrop{ transition:none !important; }
-      .phDot{ animation:none !important; }
+      .track, .loading, .sheet, .backdrop{ transition:none !important; }
+      .dot{ animation:none !important; }
     }
   </style>
 </head>
 
 <body>
   <div class="app" id="app">
-    <main class="feed" id="feed" aria-label="Story Feed">
+    <div class="viewport" id="viewport">
+      <div class="track" id="track">
+        <section class="reel" data-i="0">
+          <video class="reelVideo" preload="auto" playsinline webkit-playsinline muted>
+            <source src="./images/tik1.mp4" type="video/mp4">
+          </video>
+        </section>
+        <section class="reel" data-i="1">
+          <video class="reelVideo" preload="auto" playsinline webkit-playsinline muted>
+            <source src="./images/tik2.mp4" type="video/mp4">
+          </video>
+        </section>
+        <section class="reel" data-i="2">
+          <video class="reelVideo" preload="auto" playsinline webkit-playsinline muted>
+            <source src="./images/tik3.mp4" type="video/mp4">
+          </video>
+        </section>
+      </div>
+    </div>
 
-      <!-- REEL 1 -->
-      <section class="reel" data-index="0" data-ready="0">
-        <div class="placeholder" aria-hidden="true">
-          <div class="placeholderInner"><span class="phDot"></span><span class="phText">Loading…</span></div>
-        </div>
-        <div class="overlayTopFade" aria-hidden="true"></div>
-        <div class="overlayBottomFade" aria-hidden="true"></div>
+    <div class="topFade" aria-hidden="true"></div>
+    <div class="botFade" aria-hidden="true"></div>
 
-        <div class="reelHeader">
-          <button class="iconBtn backBtn" type="button" aria-label="Zurück">
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="rgba(255,255,255,0.92)" d="M15.5 19.5 8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/>
-            </svg>
-          </button>
+    <div class="loading" id="loading" aria-hidden="true">
+      <div class="loadingInner"><span class="dot"></span><span class="loadingText">Loading…</span></div>
+    </div>
 
-          <img class="logo" src="./images/Prince-coffe-house-logo.jpg" alt="Logo" />
-
-          <div class="titleWrap">
-            <div class="title">Prince Coffe House</div>
-            <div class="subtitle">Story</div>
-          </div>
-
-          <div class="spacer"></div>
-
-          <button class="iconBtn soundBtn" type="button" aria-label="Ton umschalten" title="Sound">
-            <svg class="soundIcon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"></svg>
-          </button>
-        </div>
-
-        <video class="v" playsinline webkit-playsinline preload="auto" muted loop src="./images/tik1.mp4"></video>
-
-        <div class="actions">
-          <button class="actionBtn" type="button" data-action="like">
-            <svg class="actionIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="rgba(255,255,255,0.92)" d="M12 21s-7-4.6-9.5-9C.7 8.2 3 5 6.4 5c1.9 0 3.2 1 3.6 1.6.4-.6 1.7-1.6 3.6-1.6C17 5 19.3 8.2 21.5 12 19 16.4 12 21 12 21z"/>
-            </svg>
-            <div class="actionLabel" data-like-count="128">128</div>
-          </button>
-
-          <button class="actionBtn" type="button" data-action="comment">
-            <svg class="actionIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="rgba(255,255,255,0.92)" d="M4 4h16v11H7.2L4 18.2V4z"/>
-            </svg>
-            <div class="actionLabel">12</div>
-          </button>
-        </div>
-
-        <div class="caption">
-          <div class="capUser">@princecoffeehouse</div>
-          <div class="capText">New drop 🔥 Burger + Fries today.</div>
-        </div>
-
-        <div class="productCard">
-          <img class="productImg" src="./images/Prince-coffe-house-offer.jpg" alt="Produkt" />
-          <div class="productMeta">
-            <div class="productName">Burger + Fries</div>
-            <div class="productSub">5.90 € • Marked Product</div>
-          </div>
-          <button class="productBtn" type="button">Shiko</button>
-        </div>
-      </section>
-
-      <!-- REEL 2 -->
-      <section class="reel" data-index="1" data-ready="0">
-        <div class="placeholder" aria-hidden="true">
-          <div class="placeholderInner"><span class="phDot"></span><span class="phText">Loading…</span></div>
-        </div>
-        <div class="overlayTopFade" aria-hidden="true"></div>
-        <div class="overlayBottomFade" aria-hidden="true"></div>
-
-        <div class="reelHeader">
-          <button class="iconBtn backBtn" type="button" aria-label="Zurück">
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="rgba(255,255,255,0.92)" d="M15.5 19.5 8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/>
-            </svg>
-          </button>
-
-          <img class="logo" src="./images/Prince-coffe-house-logo.jpg" alt="Logo" />
-
-          <div class="titleWrap">
-            <div class="title">Prince Coffe House</div>
-            <div class="subtitle">Story</div>
-          </div>
-
-          <div class="spacer"></div>
-
-          <button class="iconBtn soundBtn" type="button" aria-label="Ton umschalten" title="Sound">
-            <svg class="soundIcon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"></svg>
-          </button>
-        </div>
-
-        <video class="v" playsinline webkit-playsinline preload="auto" muted loop src="./images/tik2.mp4"></video>
-
-        <div class="actions">
-          <button class="actionBtn" type="button" data-action="like">
-            <svg class="actionIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="rgba(255,255,255,0.92)" d="M12 21s-7-4.6-9.5-9C.7 8.2 3 5 6.4 5c1.9 0 3.2 1 3.6 1.6.4-.6 1.7-1.6 3.6-1.6C17 5 19.3 8.2 21.5 12 19 16.4 12 21 12 21z"/>
-            </svg>
-            <div class="actionLabel" data-like-count="86">86</div>
-          </button>
-
-          <button class="actionBtn" type="button" data-action="comment">
-            <svg class="actionIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="rgba(255,255,255,0.92)" d="M4 4h16v11H7.2L4 18.2V4z"/>
-            </svg>
-            <div class="actionLabel">8</div>
-          </button>
-        </div>
-
-        <div class="caption">
-          <div class="capUser">@princecoffeehouse</div>
-          <div class="capText">Coffee vibes ☕ smooth & strong.</div>
-        </div>
-
-        <div class="productCard">
-          <img class="productImg" src="./images/Prince-coffe-house-offer.jpg" alt="Produkt" />
-          <div class="productMeta">
-            <div class="productName">Cappuccino</div>
-            <div class="productSub">2.90 € • Marked Product</div>
-          </div>
-          <button class="productBtn" type="button">Shiko</button>
-        </div>
-      </section>
-
-      <!-- REEL 3 -->
-      <section class="reel" data-index="2" data-ready="0">
-        <div class="placeholder" aria-hidden="true">
-          <div class="placeholderInner"><span class="phDot"></span><span class="phText">Loading…</span></div>
-        </div>
-        <div class="overlayTopFade" aria-hidden="true"></div>
-        <div class="overlayBottomFade" aria-hidden="true"></div>
-
-        <div class="reelHeader">
-          <button class="iconBtn backBtn" type="button" aria-label="Zurück">
-            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="rgba(255,255,255,0.92)" d="M15.5 19.5 8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/>
-            </svg>
-          </button>
-
-          <img class="logo" src="./images/Prince-coffe-house-logo.jpg" alt="Logo" />
-
-          <div class="titleWrap">
-            <div class="title">Prince Coffe House</div>
-            <div class="subtitle">Story</div>
-          </div>
-
-          <div class="spacer"></div>
-
-          <button class="iconBtn soundBtn" type="button" aria-label="Ton umschalten" title="Sound">
-            <svg class="soundIcon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"></svg>
-          </button>
-        </div>
-
-        <video class="v" playsinline webkit-playsinline preload="auto" muted loop src="./images/tik3.mp4"></video>
-
-        <div class="actions">
-          <button class="actionBtn" type="button" data-action="like">
-            <svg class="actionIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="rgba(255,255,255,0.92)" d="M12 21s-7-4.6-9.5-9C.7 8.2 3 5 6.4 5c1.9 0 3.2 1 3.6 1.6.4-.6 1.7-1.6 3.6-1.6C17 5 19.3 8.2 21.5 12 19 16.4 12 21 12 21z"/>
-            </svg>
-            <div class="actionLabel" data-like-count="203">203</div>
-          </button>
-
-          <button class="actionBtn" type="button" data-action="comment">
-            <svg class="actionIcon" viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="rgba(255,255,255,0.92)" d="M4 4h16v11H7.2L4 18.2V4z"/>
-            </svg>
-            <div class="actionLabel">21</div>
-          </button>
-        </div>
-
-        <div class="caption">
-          <div class="capUser">@princecoffeehouse</div>
-          <div class="capText">Quick bite, big taste ✅</div>
-        </div>
-
-        <div class="productCard">
-          <img class="productImg" src="./images/Prince-coffe-house-offer.jpg" alt="Produkt" />
-          <div class="productMeta">
-            <div class="productName">Burger Menu</div>
-            <div class="productSub">5.90 € • Marked Product</div>
-          </div>
-          <button class="productBtn" type="button">Shiko</button>
-        </div>
-      </section>
-
-    </main>
-  </div>
-
-  <div class="backdrop" id="backdrop" aria-hidden="true"></div>
-
-  <section class="sheet" id="sheet" aria-hidden="true">
-    <div class="sheetTop">
-      <div class="sheetTitle">Komentet</div>
-      <button class="iconBtn" id="sheetCloseBtn" type="button" aria-label="Close">
+    <!-- HEADER -->
+    <div class="hdr">
+      <button class="iconBtn" id="backBtn" type="button" aria-label="Zurück">
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="rgba(255,255,255,0.92)" d="M18.3 5.7 12 12l6.3 6.3-1.3 1.3L10.7 13.3 4.4 19.6 3.1 18.3 9.4 12 3.1 5.7 4.4 4.4l6.3 6.3L17 4.4l1.3 1.3z"/>
+          <path fill="rgba(255,255,255,0.92)" d="M15.5 19.5 8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/>
         </svg>
       </button>
+
+      <img class="logo" src="./images/Prince-coffe-house-logo.jpg" alt="Logo" />
+
+      <div class="titleWrap">
+        <div class="title" id="hdrTitle">Prince Coffe House</div>
+        <div class="subtitle" id="hdrSub">Story</div>
+      </div>
+
+      <div class="spacer"></div>
+
+      <button class="iconBtn" id="soundBtn" type="button" aria-label="Ton umschalten">
+        <svg id="soundIcon" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"></svg>
+      </button>
     </div>
-    <div class="sheetList" id="sheetList">
-      <div class="cItem"><div class="cUser">Ardi</div><div class="cText">🔥🔥 super</div></div>
-      <div class="cItem"><div class="cUser">Lina</div><div class="cText">Kur ka edhe sot?</div></div>
-      <div class="cItem"><div class="cUser">Denis</div><div class="cText">Perfect vibe</div></div>
+
+    <!-- ACTIONS -->
+    <div class="actions">
+      <button class="actionBtn" id="likeBtn" type="button">
+        <svg class="actionIcon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="rgba(255,255,255,0.92)" d="M12 21s-7-4.6-9.5-9C.7 8.2 3 5 6.4 5c1.9 0 3.2 1 3.6 1.6.4-.6 1.7-1.6 3.6-1.6C17 5 19.3 8.2 21.5 12 19 16.4 12 21 12 21z"/>
+        </svg>
+        <div class="actionLabel" id="likeCount">0</div>
+      </button>
+
+      <button class="actionBtn" id="commentBtn" type="button">
+        <svg class="actionIcon" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="rgba(255,255,255,0.92)" d="M4 4h16v11H7.2L4 18.2V4z"/>
+        </svg>
+        <div class="actionLabel" id="commentCount">0</div>
+      </button>
     </div>
-    <div class="sheetInput">
-      <input type="text" placeholder="Shkruaj koment…" />
-      <button class="productBtn" type="button">Send</button>
+
+    <!-- CAPTION -->
+    <div class="caption">
+      <div class="capUser" id="capUser">@princecoffeehouse</div>
+      <div class="capText" id="capText">…</div>
     </div>
-  </section>
+
+    <!-- PRODUCT -->
+    <div class="productCard">
+      <img class="productImg" id="prodImg" src="./images/Prince-coffe-house-offer.jpg" alt="Produkt" />
+      <div class="productMeta">
+        <div class="productName" id="prodName">…</div>
+        <div class="productSub" id="prodSub">…</div>
+      </div>
+      <button class="productBtn" type="button">Shiko</button>
+    </div>
+
+    <!-- COMMENTS -->
+    <div class="backdrop" id="backdrop" aria-hidden="true"></div>
+    <section class="sheet" id="sheet" aria-hidden="true">
+      <div class="sheetTop">
+        <div class="sheetTitle">Komentet</div>
+        <button class="iconBtn" id="sheetCloseBtn" type="button" aria-label="Close">
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="rgba(255,255,255,0.92)" d="M18.3 5.7 12 12l6.3 6.3-1.3 1.3L10.7 13.3 4.4 19.6 3.1 18.3 9.4 12 3.1 5.7 4.4 4.4l6.3 6.3L17 4.4l1.3 1.3z"/>
+          </svg>
+        </button>
+      </div>
+      <div class="sheetList">
+        <div class="cItem"><div class="cUser">Ardi</div><div class="cText">🔥🔥 super</div></div>
+        <div class="cItem"><div class="cUser">Lina</div><div class="cText">Kur ka edhe sot?</div></div>
+        <div class="cItem"><div class="cUser">Denis</div><div class="cText">Perfect vibe</div></div>
+      </div>
+      <div class="sheetInput">
+        <input type="text" placeholder="Shkruaj koment…" />
+        <button class="productBtn" type="button">Send</button>
+      </div>
+    </section>
+  </div>
 
   <script type="module">
-    const feed = document.getElementById("feed");
+    // =========================================================
+    // ABSCHNITT JS: TikTok Pager (Swipe/Wheel) + Video Control
+    // - Kein natives Scroll -> kein "langsam vor snap"
+    // - Kein Ghost Audio -> wir pausieren strikt
+    // - Immer ab Anfang -> currentTime=0 vor play
+    // =========================================================
+
+    const REELS = [
+      {
+        likes: 128, comments: 12,
+        user: "@princecoffeehouse",
+        text: "New drop 🔥 Burger + Fries today.",
+        productName: "Burger + Fries",
+        productSub: "5.90 € • Marked Product",
+        productImg: "./images/Prince-coffe-house-offer.jpg",
+      },
+      {
+        likes: 86, comments: 8,
+        user: "@princecoffeehouse",
+        text: "Coffee vibes ☕ smooth & strong.",
+        productName: "Cappuccino",
+        productSub: "2.90 € • Marked Product",
+        productImg: "./images/Prince-coffe-house-offer.jpg",
+      },
+      {
+        likes: 203, comments: 21,
+        user: "@princecoffeehouse",
+        text: "Quick bite, big taste ✅",
+        productName: "Burger Menu",
+        productSub: "5.90 € • Marked Product",
+        productImg: "./images/Prince-coffe-house-offer.jpg",
+      }
+    ];
+
+    const app = document.getElementById("app");
+    const viewport = document.getElementById("viewport");
+    const track = document.getElementById("track");
     const reels = Array.from(document.querySelectorAll(".reel"));
-    const videos = reels.map(r => r.querySelector("video.v"));
+    const videos = Array.from(document.querySelectorAll(".reelVideo"));
+
+    const loading = document.getElementById("loading");
+
+    const backBtn = document.getElementById("backBtn");
+    const soundBtn = document.getElementById("soundBtn");
+    const soundIcon = document.getElementById("soundIcon");
+
+    const likeBtn = document.getElementById("likeBtn");
+    const likeCount = document.getElementById("likeCount");
+    const commentBtn = document.getElementById("commentBtn");
+    const commentCount = document.getElementById("commentCount");
+
+    const capUser = document.getElementById("capUser");
+    const capText = document.getElementById("capText");
+    const prodImg = document.getElementById("prodImg");
+    const prodName = document.getElementById("prodName");
+    const prodSub  = document.getElementById("prodSub");
 
     const backdrop = document.getElementById("backdrop");
     const sheet = document.getElementById("sheet");
     const sheetCloseBtn = document.getElementById("sheetCloseBtn");
 
+    // ---- Safe height (iOS/Android Browser UI) ----
+    function setVH(){
+      const vv = window.visualViewport;
+      const h = vv ? vv.height : window.innerHeight;
+      document.documentElement.style.setProperty("--vh", h + "px");
+    }
+    setVH();
+    window.addEventListener("resize", setVH, { passive:true });
+    if (window.visualViewport){
+      window.visualViewport.addEventListener("resize", setVH, { passive:true });
+      window.visualViewport.addEventListener("scroll", setVH, { passive:true });
+    }
+
+    // ---- Sound ----
     const SOUND_KEY = "menyra_story_sound";
     let soundOn = (localStorage.getItem(SOUND_KEY) === "1");
 
-    let activeIndex = -1;
-    let isSnapping = false;
-    let settleT = 0;
-
-    // --- Safe height (iOS/Android browser UI) ---
-    function setAppHeight(){
-      const vv = window.visualViewport;
-      const h = vv ? vv.height : window.innerHeight;
-      document.documentElement.style.setProperty("--app-h", h + "px");
+    function renderSoundIcon(){
+      soundIcon.innerHTML = soundOn
+        ? `
+          <path fill="rgba(255,255,255,0.92)" d="M5 9v6h4l5 4V5L9 9H5Z"/>
+          <path fill="rgba(255,255,255,0.92)" d="M16.5 7.5a7 7 0 0 1 0 9.9l-1.4-1.4a5 5 0 0 0 0-7.1l1.4-1.4z"/>
+          <path fill="rgba(255,255,255,0.72)" d="M18.9 5.1a10 10 0 0 1 0 13.8l-1.4-1.4a8 8 0 0 0 0-11l1.4-1.4z"/>
+        `
+        : `
+          <path fill="rgba(255,255,255,0.92)" d="M16.5 12a4.5 4.5 0 0 0-2.02-3.76v7.52A4.5 4.5 0 0 0 16.5 12ZM5 9v6h4l5 4V5L9 9H5Z"/>
+          <path fill="rgba(255,255,255,0.62)" d="M19 8.6 17.6 10 20 12.4 17.6 14.8 19 16.2 22.8 12.4 19 8.6Z"/>
+        `;
     }
-    setAppHeight();
-    window.addEventListener("resize", setAppHeight, { passive:true });
-    if (window.visualViewport){
-      window.visualViewport.addEventListener("resize", setAppHeight, { passive:true });
-      window.visualViewport.addEventListener("scroll", setAppHeight, { passive:true });
-    }
+    renderSoundIcon();
 
-    // --- Icons ---
-    function renderSoundIcons(){
-      document.querySelectorAll(".soundIcon").forEach((svg) => {
-        svg.innerHTML = !soundOn
-          ? `
-            <path fill="rgba(255,255,255,0.92)" d="M16.5 12a4.5 4.5 0 0 0-2.02-3.76v7.52A4.5 4.5 0 0 0 16.5 12ZM5 9v6h4l5 4V5L9 9H5Z"/>
-            <path fill="rgba(255,255,255,0.62)" d="M19 8.6 17.6 10 20 12.4 17.6 14.8 19 16.2 22.8 12.4 19 8.6Z"/>
-          `
-          : `
-            <path fill="rgba(255,255,255,0.92)" d="M5 9v6h4l5 4V5L9 9H5Z"/>
-            <path fill="rgba(255,255,255,0.92)" d="M16.5 7.5a7 7 0 0 1 0 9.9l-1.4-1.4a5 5 0 0 0 0-7.1l1.4-1.4z"/>
-            <path fill="rgba(255,255,255,0.72)" d="M18.9 5.1a10 10 0 0 1 0 13.8l-1.4-1.4a8 8 0 0 0 0-11l1.4-1.4z"/>
-          `;
-      });
-    }
-    renderSoundIcons();
-
-    // --- Comments sheet ---
+    // ---- Comments ----
     function openSheet(){
       backdrop.classList.add("open");
       sheet.classList.add("open");
@@ -649,169 +546,270 @@
       backdrop.setAttribute("aria-hidden", "true");
       sheet.setAttribute("aria-hidden", "true");
     }
-    sheetCloseBtn?.addEventListener("click", closeSheet, { passive:true });
-    backdrop?.addEventListener("click", closeSheet, { passive:true });
+    sheetCloseBtn.addEventListener("click", closeSheet, { passive:true });
+    backdrop.addEventListener("click", closeSheet, { passive:true });
 
-    // --- Back buttons ---
-    document.addEventListener("click", (e) => {
-      const back = e.target.closest(".backBtn");
-      if (!back) return;
+    // ---- Back ----
+    backBtn.addEventListener("click", (e) => {
       e.preventDefault();
       window.location.href = "./karte-demo.html";
     }, { passive:false });
 
-    // --- Toggle sound ---
-    document.addEventListener("click", (e) => {
-      const sb = e.target.closest(".soundBtn");
-      if (!sb) return;
+    // ---- Helpers: first decoded frame -> kein flicker/standbild ----
+    function waitFirstFrame(v){
+      return new Promise((resolve) => {
+        if ("requestVideoFrameCallback" in v){
+          v.requestVideoFrameCallback(() => resolve());
+        } else {
+          v.addEventListener("loadeddata", () => resolve(), { once:true });
+        }
+      });
+    }
+
+    function showLoading(on){
+      loading.classList.toggle("on", !!on);
+      loading.setAttribute("aria-hidden", on ? "false" : "true");
+    }
+
+    async function warmVideo(v, reelEl){
+      try{
+        v.muted = true;
+        v.currentTime = 0;
+        // play muted (autoplay ok), warten auf 1. Frame, dann wieder stoppen -> cached
+        await v.play().catch(() => {});
+        await waitFirstFrame(v);
+        try{ v.pause(); }catch{}
+        try{ v.currentTime = 0; }catch{}
+        reelEl.classList.add("is-ready");
+      }catch{
+        reelEl.classList.add("is-ready");
+      }
+    }
+
+    // ---- Overlay update ----
+    function applyMeta(i){
+      const d = REELS[i];
+      likeCount.textContent = String(d.likes);
+      commentCount.textContent = String(d.comments);
+      capUser.textContent = d.user;
+      capText.textContent = d.text;
+      prodImg.src = d.productImg;
+      prodName.textContent = d.productName;
+      prodSub.textContent = d.productSub;
+    }
+
+    // ---- Strict video control (no ghost audio) ----
+    let active = 0;
+
+    function hardStop(v){
+      try{ v.pause(); }catch{}
+      try{ v.muted = true; }catch{}
+      try{ v.currentTime = 0; }catch{}
+    }
+
+    async function playActive(i){
+      const v = videos[i];
+      if (!v) return;
+
+      // stop others NOW
+      videos.forEach((ov, idx) => {
+        if (idx !== i) hardStop(ov);
+      });
+
+      // set active state
+      reels.forEach((r, idx) => r.classList.toggle("is-active", idx === i));
+
+      // ensure start from 0
+      try{ v.pause(); }catch{}
+      try{ v.currentTime = 0; }catch{}
+      v.muted = !soundOn; // sound only if user enabled
+
+      // play + wait first frame (instant + no black)
+      showLoading(!reels[i].classList.contains("is-ready"));
+      await v.play().catch(() => {});
+      await waitFirstFrame(v).catch(() => {});
+      showLoading(false);
+    }
+
+    // ---- Sound toggle (gesture) ----
+    soundBtn.addEventListener("click", async (e) => {
       e.preventDefault();
       soundOn = !soundOn;
       localStorage.setItem(SOUND_KEY, soundOn ? "1" : "0");
-      renderSoundIcons();
-      // nur aktives Video anpassen (ohne restart)
-      const v = videos[activeIndex];
-      if (v) v.muted = !soundOn;
+      renderSoundIcon();
+
+      // only active video toggles
+      const v = videos[active];
+      if (v){
+        v.muted = !soundOn;
+        await v.play().catch(() => {});
+      }
     }, { passive:false });
 
-    // --- Mark ready when real frame exists ---
-    function markReady(i){
-      const r = reels[i];
-      if (!r) return;
-      if (r.dataset.ready === "1") return;
-      r.dataset.ready = "1";
-    }
-    videos.forEach((v, i) => {
-      if (!v) return;
-      v.muted = true;
-      v.loop = true;
-      v.preload = "auto";
-      v.playsInline = true;
-      v.setAttribute("playsinline", "");
-      v.setAttribute("webkit-playsinline", "");
-      v.addEventListener("playing", () => markReady(i), { once:true, passive:true });
-      v.addEventListener("loadeddata", () => markReady(i), { once:true, passive:true });
-      try{ v.load(); } catch {}
-    });
+    // ---- Like (demo) ----
+    likeBtn.addEventListener("click", () => {
+      likeBtn.classList.toggle("is-liked");
+      const base = REELS[active].likes;
+      likeCount.textContent = String(likeBtn.classList.contains("is-liked") ? base + 1 : base);
+    }, { passive:true });
 
-    // --- Core: activate ONLY when index changes (no snap stutter) ---
-    async function activateIndex(idx, userGesture = false){
-      if (idx === activeIndex) {
-        // schon aktiv: nur sicherstellen dass Video läuft + sound stimmt
-        const v = videos[activeIndex];
-        if (v){
-          v.muted = !soundOn;
-          if (v.paused){
-            try{ await v.play(); } catch {}
-          }
-        }
+    commentBtn.addEventListener("click", openSheet, { passive:true });
+
+    // ---- Pager (no scroll inertia) ----
+    let H = 1;
+    function measure(){
+      H = viewport.clientHeight || 1;
+      // keep correct position
+      track.style.transition = "none";
+      track.style.transform = `translate3d(0, ${-active * H}px, 0)`;
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        track.style.transition = "";
+      }));
+    }
+    measure();
+    window.addEventListener("resize", measure, { passive:true });
+
+    let isDragging = false;
+    let startY = 0;
+    let startT = 0;
+    let baseY = 0;
+    let animating = false;
+
+    function clampY(y){
+      const min = -(REELS.length - 1) * H;
+      const max = 0;
+      return Math.max(min, Math.min(max, y));
+    }
+
+    function setY(y){
+      track.style.transform = `translate3d(0, ${clampY(y)}px, 0)`;
+    }
+
+    async function goTo(nextIndex){
+      if (animating) return;
+      const ni = Math.max(0, Math.min(REELS.length - 1, nextIndex));
+      if (ni === active) {
+        // snap back
+        animating = true;
+        track.style.transition = "transform 220ms cubic-bezier(.2,.9,.2,1)";
+        setY(-active * H);
+        track.addEventListener("transitionend", () => {
+          animating = false;
+          track.style.transition = "";
+        }, { once:true });
         return;
       }
 
-      const prev = videos[activeIndex];
-      if (prev){
-        try{ prev.pause(); } catch {}
-        prev.muted = true;
+      active = ni;
+      applyMeta(active);
+
+      animating = true;
+      track.style.transition = "transform 240ms cubic-bezier(.2,.9,.2,1)";
+      setY(-active * H);
+
+      // start video immediately (feels instant)
+      playActive(active);
+
+      track.addEventListener("transitionend", () => {
+        animating = false;
+        track.style.transition = "";
+      }, { once:true });
+    }
+
+    function onDown(clientY){
+      if (animating) return;
+      isDragging = true;
+      startY = clientY;
+      startT = performance.now();
+      baseY = -active * H;
+      track.style.transition = "none";
+    }
+
+    function onMove(clientY){
+      if (!isDragging) return;
+      const dy = clientY - startY;
+      setY(baseY + dy);
+    }
+
+    function onUp(clientY){
+      if (!isDragging) return;
+      isDragging = false;
+
+      const dy = clientY - startY;
+      const dt = Math.max(1, performance.now() - startT);
+      const velocity = dy / dt; // px/ms
+
+      // threshold like TikTok
+      const threshold = H * 0.14;
+      const fast = Math.abs(velocity) > 0.55;
+
+      if (dy > threshold || (fast && velocity > 0)) {
+        goTo(active - 1);
+      } else if (dy < -threshold || (fast && velocity < 0)) {
+        goTo(active + 1);
+      } else {
+        goTo(active); // snap back
       }
-
-      activeIndex = idx;
-
-      const v = videos[activeIndex];
-      if (!v) return;
-
-      // restart from 0 ONLY when switching reel
-      try{ v.pause(); } catch {}
-      try{ v.currentTime = 0; } catch {}
-      v.muted = !soundOn;
-
-      // show quickly if already has data
-      if (v.readyState >= 2) markReady(activeIndex);
-
-      try{
-        const p = v.play();
-        if (p && typeof p.then === "function") await p;
-      } catch {
-        // autoplay policy fallback
-        if (soundOn && !userGesture){
-          v.muted = true;
-          try{ await v.play(); } catch {}
-        }
-      }
-
-      // light prewarm neighbors (no play/pause = no jank)
-      const n1 = videos[activeIndex + 1];
-      const n2 = videos[activeIndex - 1];
-      try{ n1 && n1.load(); } catch {}
-      try{ n2 && n2.load(); } catch {}
     }
 
-    function getNearestIndex(){
-      const reelH = feed.clientHeight || 1;
-      const idx = Math.round(feed.scrollTop / reelH);
-      return Math.max(0, Math.min(reels.length - 1, idx));
-    }
-
-    function hardSnapIfNeeded(idx){
-      const reelH = feed.clientHeight || 1;
-      const target = idx * reelH;
-      const diff = Math.abs(feed.scrollTop - target);
-
-      if (diff <= 2) return false;
-
-      // Snap ohne Video-Operationen (wichtig gegen Ruckler)
-      isSnapping = true;
-      feed.scrollTo({ top: target, behavior: "auto" });
-
-      // erst NACH dem Snap (2 frames) aktivieren
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          isSnapping = false;
-          activateIndex(idx, false);
-        });
-      });
-      return true;
-    }
-
-    // --- Scroll settle (single driver, no double calls) ---
-    feed.addEventListener("scroll", () => {
-      if (isSnapping) return;
-      window.clearTimeout(settleT);
-      settleT = window.setTimeout(() => {
-        const idx = getNearestIndex();
-        const snapped = hardSnapIfNeeded(idx);
-        if (!snapped) activateIndex(idx, false);
-      }, 60);
+    // pointer events (works touch + mouse)
+    viewport.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      viewport.setPointerCapture?.(e.pointerId);
+      onDown(e.clientY);
     }, { passive:true });
 
-    // --- Actions ---
-    document.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-action]");
-      if (!btn) return;
-      const action = btn.getAttribute("data-action");
-      if (action === "comment"){ openSheet(); return; }
-      if (action === "like"){
-        const label = btn.querySelector("[data-like-count]");
-        if (!label) return;
-        const cur = parseInt(label.textContent.trim(), 10) || 0;
-        const liked = btn.classList.toggle("is-liked");
-        label.textContent = String(liked ? cur + 1 : Math.max(0, cur - 1));
-      }
+    viewport.addEventListener("pointermove", (e) => {
+      onMove(e.clientY);
     }, { passive:true });
 
-    // --- Visibility safety (no ghost audio) ---
+    viewport.addEventListener("pointerup", (e) => {
+      onUp(e.clientY);
+    }, { passive:true });
+
+    viewport.addEventListener("pointercancel", (e) => {
+      onUp(e.clientY);
+    }, { passive:true });
+
+    // wheel for desktop
+    let wheelLock = 0;
+    viewport.addEventListener("wheel", (e) => {
+      const now = performance.now();
+      if (now < wheelLock) return;
+      if (Math.abs(e.deltaY) < 8) return;
+      wheelLock = now + 280;
+
+      if (e.deltaY > 0) goTo(active + 1);
+      else goTo(active - 1);
+    }, { passive:true });
+
+    // visibility -> no ghost audio
     document.addEventListener("visibilitychange", () => {
       if (document.hidden){
-        videos.forEach(v => { try{ v.pause(); } catch{} v.muted = true; });
+        videos.forEach(v => hardStop(v));
       } else {
-        const idx = getNearestIndex();
-        activateIndex(idx, false);
+        playActive(active);
       }
     }, { passive:true });
 
-    // --- Start: snap + play first instantly ---
-    requestAnimationFrame(() => {
-      feed.scrollTo({ top: 0, behavior: "auto" });
-      activateIndex(0, false);
-    });
+    // ---- INIT: warm videos 0..2 quickly (sequential) ----
+    (async () => {
+      applyMeta(0);
+      showLoading(true);
+
+      // load tags
+      videos.forEach(v => { try{ v.load(); }catch{} });
+
+      // warm in order (keeps it stable + instant)
+      await warmVideo(videos[0], reels[0]);
+      await playActive(0);
+
+      // warm next in background
+      setTimeout(() => warmVideo(videos[1], reels[1]), 60);
+      setTimeout(() => warmVideo(videos[2], reels[2]), 120);
+
+      showLoading(false);
+    })();
   </script>
 </body>
 </html>
