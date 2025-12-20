@@ -2,15 +2,15 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>MENYRA – Story (TikTok-like)</title>
+  <title>MENYRA – Story (HLS)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- PERF: Preconnect (HLS) -->
+  <!-- Perf: Preconnect -->
   <link rel="dns-prefetch" href="//vz-14f8b42c-6ba.b-cdn.net" />
   <link rel="preconnect" href="https://vz-14f8b42c-6ba.b-cdn.net" crossorigin />
 
-  <!-- hls.js -->
+  <!-- hls.js (Chrome/Edge/Firefox). Safari kann HLS nativ. -->
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.18/dist/hls.min.js"></script>
 
   <style>
@@ -32,35 +32,33 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
       overflow: hidden;
       background:#000;
-      touch-action: none; /* wir steuern swipes selbst */
     }
 
-    /* ====== Pager Stage (statt Scroll) ====== */
-    .stage{
-      position: fixed;
-      inset: 0;
-      background:#000;
-      overflow: hidden;
-      /* Wichtig: wir haben keine native Scroll, daher super smooth */
-    }
-
-    .track{
-      height: 100%;
-      width: 100%;
-      will-change: transform;
-      transform: translate3d(0,0,0);
-      transition: transform 280ms cubic-bezier(.2,.9,.2,1);
-    }
-
-    /* Jede Reel = exakt 1 Screen */
-    .reel{
-      position: relative;
-
+    .reels{
       height: 100vh;
       height: 100svh;
       height: 100dvh;
 
-      width: 100%;
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      background:#000;
+
+      scroll-padding-top: var(--safe-top);
+      scroll-padding-bottom: var(--safe-bottom);
+    }
+    .reels::-webkit-scrollbar{ display:none; }
+    .reels{ scrollbar-width:none; }
+
+    .reel{
+      position: relative;
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
+
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
       background:#000;
       overflow:hidden;
       isolation:isolate;
@@ -87,32 +85,26 @@
       z-index: 5;
     }
 
-    /* ====== Overlay UI (Topbar) ====== */
     .topbar{
       position:absolute;
       top: 0; left: 0; right: 0;
-
       padding-top: calc(var(--safe-top) + 10px);
       padding-left: calc(var(--safe-left) + 12px);
       padding-right: calc(var(--safe-right) + 12px);
       padding-bottom: 10px;
-
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 10px;
-
       z-index: 20;
       pointer-events:none;
     }
-
     .topbarLeft, .topbarRight{
       display:flex;
       align-items:center;
       gap: 10px;
       pointer-events:auto;
     }
-
     .btnIcon{
       border:0;
       background: rgba(0,0,0,0.45);
@@ -159,7 +151,6 @@
       max-width: 56vw;
     }
 
-    /* ====== Right Action Rail ====== */
     .rail{
       position:absolute;
       right: calc(var(--safe-right) + 12px);
@@ -171,7 +162,6 @@
       gap: 14px;
       pointer-events:auto;
     }
-
     .railBtn{
       border:0;
       background: transparent;
@@ -206,7 +196,6 @@
     }
     .railBtn[data-action="like"].is-liked svg{ fill:#111; }
 
-    /* ====== Bottom product tag ====== */
     .productTag{
       position:absolute;
       left: calc(var(--safe-left) + 12px);
@@ -233,27 +222,9 @@
       border: 1px solid rgba(255,255,255,0.10);
       flex: 0 0 auto;
     }
-    .productMeta{
-      min-width:0;
-      flex:1;
-      display:flex;
-      flex-direction:column;
-      gap: 2px;
-    }
-    .productTitle{
-      font-weight: 900;
-      font-size: 13px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .productSub{
-      font-size: 12px;
-      color: rgba(255,255,255,0.72);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+    .productMeta{ min-width:0; flex:1; display:flex; flex-direction:column; gap:2px; }
+    .productTitle{ font-weight: 900; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .productSub{ font-size: 12px; color: rgba(255,255,255,0.72); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .productBtn{
       border:0;
       height: 38px;
@@ -269,7 +240,6 @@
     }
     .productBtn:active{ transform: scale(0.985); }
 
-    /* Tap hint when paused */
     .tapHint{
       position:absolute;
       left: 50%;
@@ -289,7 +259,6 @@
     }
     .reel.is-paused .tapHint{ opacity: 1; }
 
-    /* Toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -307,67 +276,39 @@
       pointer-events:none;
       transition: opacity .18s ease, transform .18s ease;
     }
-    .toast.show{
-      opacity: 1;
-      transform: translateX(-50%) translateY(-4px);
-    }
+    .toast.show{ opacity: 1; transform: translateX(-50%) translateY(-4px); }
 
-    /* ====== COMMENTS (black) ====== */
     .commentsBackdrop{
-      position: fixed;
-      inset: 0;
-      z-index: 2000;
-      background: #000;
-      opacity: 0;
-      pointer-events: none;
+      position: fixed; inset: 0; z-index: 2000;
+      background: #000; opacity: 0; pointer-events: none;
       transition: opacity .16s ease;
     }
-    .commentsBackdrop.open{
-      opacity: .88;
-      pointer-events: auto;
-    }
+    .commentsBackdrop.open{ opacity: .88; pointer-events: auto; }
 
     .commentsSheet{
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 2100;
-
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 2100;
       height: min(70dvh, 520px);
       background: #000;
       border-top-left-radius: 22px;
       border-top-right-radius: 22px;
       border: 1px solid rgba(255,255,255,0.10);
-
       transform: translateY(110%);
       transition: transform .20s ease;
       padding-bottom: var(--safe-bottom);
-
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      display: flex; flex-direction: column; overflow: hidden;
     }
     .commentsSheet.open{ transform: translateY(0); }
 
     .commentsTop{
       padding: 12px 12px 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      display: flex; align-items: center; justify-content: space-between;
       border-bottom: 1px solid rgba(255,255,255,0.10);
     }
     .commentsTitle{
-      font-size: 13px;
-      font-weight: 900;
-      color: rgba(255,255,255,0.92);
-      letter-spacing: .2px;
+      font-size: 13px; font-weight: 900; color: rgba(255,255,255,0.92); letter-spacing: .2px;
     }
     .commentsList{
-      flex: 1;
-      overflow: auto;
-      padding: 10px 12px;
-      -webkit-overflow-scrolling: touch;
+      flex: 1; overflow: auto; padding: 10px 12px; -webkit-overflow-scrolling: touch;
     }
     .cItem{
       padding: 10px 10px;
@@ -376,23 +317,13 @@
       background: rgba(255,255,255,0.06);
       margin-bottom: 10px;
     }
-    .cUser{
-      font-size: 12px;
-      font-weight: 900;
-      color: rgba(255,255,255,0.92);
-      margin-bottom: 4px;
-    }
-    .cText{
-      font-size: 12px;
-      color: rgba(255,255,255,0.78);
-      line-height: 1.35;
-    }
+    .cUser{ font-size: 12px; font-weight: 900; color: rgba(255,255,255,0.92); margin-bottom: 4px; }
+    .cText{ font-size: 12px; color: rgba(255,255,255,0.78); line-height: 1.35; }
+
     .commentsInput{
       padding: 10px 12px 12px;
       border-top: 1px solid rgba(255,255,255,0.10);
-      display: flex;
-      gap: 10px;
-      align-items: center;
+      display: flex; gap: 10px; align-items: center;
     }
     .commentsInput input{
       flex: 1;
@@ -404,13 +335,6 @@
       padding: 0 12px;
       outline: none;
       font-size: 13px;
-    }
-
-    @media (prefers-reduced-motion: reduce){
-      .track{ transition: none !important; }
-      .toast{ transition:none !important; }
-      .tapHint{ transition:none !important; }
-      .commentsBackdrop, .commentsSheet{ transition:none !important; }
     }
   </style>
 </head>
@@ -486,124 +410,112 @@
     <div class="tapHint">Paused</div>
   </template>
 
-  <!-- ====== STAGE / TRACK ====== -->
-  <div class="stage" id="stage" aria-label="MENYRA Stories">
-    <div class="track" id="track">
+  <main class="reels" id="reels" aria-label="MENYRA Stories">
 
-      <!-- 0 -->
-      <section class="reel" data-index="0"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="128" data-comments="16"
-        data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <section class="reel" data-index="0"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="128" data-comments="16"
+      data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-      <!-- 1 -->
-      <section class="reel" data-index="1"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="74" data-comments="9"
-        data-product-title="Classic Burger" data-product-sub="Marked product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <section class="reel" data-index="1"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="74" data-comments="9"
+      data-product-title="Classic Burger" data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-      <!-- 2 -->
-      <section class="reel" data-index="2"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="203" data-comments="31"
-        data-product-title="Coffee Special" data-product-sub="Marked product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <!-- Video 3 (dein Link) -->
+    <section class="reel" data-index="2"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="203" data-comments="31"
+      data-product-title="Coffee Special" data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-      <!-- 3 -->
-      <section class="reel" data-index="3"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="56" data-comments="5"
-        data-product-title="Daily Offer" data-product-sub="Marked product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <!-- Video 4 (dein Link) -->
+    <section class="reel" data-index="3"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="56" data-comments="5"
+      data-product-title="Daily Offer" data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-      <!-- 4 -->
-      <section class="reel" data-index="4"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="88" data-comments="12"
-        data-product-title="Burger Menu" data-product-sub="Marked product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <section class="reel" data-index="4"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="88" data-comments="12"
+      data-product-title="Burger Menu" data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-      <!-- 5 -->
-      <section class="reel" data-index="5"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="145" data-comments="21"
-        data-product-title="Coffee Shot" data-product-sub="Marked product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <section class="reel" data-index="5"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="145" data-comments="21"
+      data-product-title="Coffee Shot" data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-      <!-- 6 -->
-      <section class="reel" data-index="6"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="62" data-comments="8"
-        data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <section class="reel" data-index="6"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="62" data-comments="8"
+      data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-      <!-- 7 -->
-      <section class="reel" data-index="7"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="190" data-comments="27"
-        data-product-title="House Special" data-product-sub="Marked product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <section class="reel" data-index="7"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="190" data-comments="27"
+      data-product-title="House Special" data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-      <!-- 8 -->
-      <section class="reel" data-index="8"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="39" data-comments="3"
-        data-product-title="Morning Coffee" data-product-sub="Marked product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <section class="reel" data-index="8"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="39" data-comments="3"
+      data-product-title="Morning Coffee" data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-      <!-- 9 -->
-      <section class="reel" data-index="9"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8"
-        data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
-        data-like="211" data-comments="44"
-        data-product-title="Burger + Drink" data-product-sub="Marked product (demo)"
-        data-product-img="./images/speise1.avif">
-        <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop></video>
-        <div class="vignette"></div>
-      </section>
+    <section class="reel" data-index="9"
+      data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8"
+      data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="211" data-comments="44"
+      data-product-title="Burger + Drink" data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" playsinline webkit-playsinline muted loop preload="none"></video>
+      <div class="vignette"></div>
+    </section>
 
-    </div>
-  </div>
+  </main>
 
-  <!-- COMMENTS -->
   <div class="commentsBackdrop" id="commentsBackdrop" aria-hidden="true"></div>
 
   <section class="commentsSheet" id="commentsSheet" aria-hidden="true">
@@ -629,15 +541,12 @@
   </section>
 
   <script type="module">
-    // =========================================================
-    // 0) DOM refs
-    // =========================================================
     const tpl = document.getElementById("overlayTpl");
-    const stage = document.getElementById("stage");
-    const track = document.getElementById("track");
+    const reelsEl = document.getElementById("reels");
+    const toastEl = document.getElementById("toast");
+
     const reels = Array.from(document.querySelectorAll(".reel"));
     const videos = Array.from(document.querySelectorAll(".reelVideo"));
-    const toastEl = document.getElementById("toast");
 
     // Comments UI
     const commentsBackdrop = document.getElementById("commentsBackdrop");
@@ -647,15 +556,14 @@
     const commentInput = document.getElementById("commentInput");
     let commentsOpen = false;
 
+    // Toast
     function showToast(text){
       toastEl.textContent = text;
       toastEl.classList.add("show");
-      window.setTimeout(() => toastEl.classList.remove("show"), 700);
+      window.setTimeout(() => toastEl.classList.remove("show"), 900);
     }
 
-    // =========================================================
-    // 1) Inject overlay into ALL reels (fast)
-    // =========================================================
+    // Inject overlay
     reels.forEach((reel) => {
       const frag = tpl.content.cloneNode(true);
 
@@ -693,11 +601,10 @@
       reel.appendChild(frag);
     });
 
-    // =========================================================
-    // 2) Sound (default OFF wie TikTok)
-    // =========================================================
+    // Sound
     const SOUND_KEY = "menyra_story_sound";
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+    let activeIndex = 0;
 
     function setSoundState(on){
       soundOn = !!on;
@@ -706,31 +613,23 @@
       showToast(soundOn ? "Sound: ON" : "Sound: OFF");
     }
 
-    // =========================================================
-    // 3) HLS: ultra fast strategy (current + next2 + prev)
-    //    + warm-cache of playlists+first segments in background
-    // =========================================================
-    function getHlsUrl(i){
-      return reels[i]?.getAttribute("data-hls") || "";
-    }
-
-    function canNativeHls(video){
-      return !!video.canPlayType('application/vnd.apple.mpegurl');
-    }
-
+    // HLS Manager (keep prev/current/next attached)
     const HLS_CONFIG = {
       enableWorker: true,
-      lowLatencyMode: false,
       backBufferLength: 0,
-      maxBufferLength: 6,
-      maxMaxBufferLength: 12,
-      maxBufferSize: 24 * 1000 * 1000,
-      capLevelToPlayerSize: true,
-      startLevel: -1,
-      startFragPrefetch: true
+      maxBufferLength: 8,
+      maxMaxBufferLength: 15,
+      capLevelToPlayerSize: true
     };
 
     const state = videos.map(() => ({ hls: null, attachedUrl: "" }));
+
+    function getHlsUrl(i){
+      return reels[i]?.getAttribute("data-hls") || "";
+    }
+    function canNativeHls(video){
+      return !!video.canPlayType('application/vnd.apple.mpegurl');
+    }
 
     function detach(i){
       const v = videos[i];
@@ -763,7 +662,6 @@
 
       detach(i);
 
-      // Native HLS (Safari)
       if (canNativeHls(v)){
         v.src = url;
         s.attachedUrl = url;
@@ -771,14 +669,16 @@
         return;
       }
 
-      // hls.js (Chrome)
       if (window.Hls && window.Hls.isSupported()){
         const h = new window.Hls(HLS_CONFIG);
 
+        // Debug: hilft dir sofort zu sehen ob 403/CORS/Network
         h.on(window.Hls.Events.ERROR, (_evt, data) => {
           if (!data) return;
+          const msg = `HLS error: ${data.type || "?"} / ${data.details || "?"}`;
+          console.warn(msg, data);
+          showToast(msg);
           if (data.fatal){
-            console.warn("HLS fatal", data);
             reels[i]?.classList.add("is-paused");
           }
         });
@@ -788,6 +688,7 @@
         h.loadSource(url);
         h.attachMedia(v);
       } else {
+        showToast("HLS.js not supported");
         reels[i]?.classList.add("is-paused");
       }
     }
@@ -796,130 +697,40 @@
       const v = videos[i];
       if (!v) return;
 
+      // autoplay-safe
       v.muted = !soundOn;
       v.setAttribute("playsinline", "");
       v.setAttribute("webkit-playsinline", "");
 
-      // robust autoplay retry (kein random pause)
-      for (let attempt = 0; attempt < 4; attempt++){
+      // Retry gegen “random paused”
+      for (let attempt = 0; attempt < 3; attempt++){
         try{
           await v.play();
           reels[i]?.classList.remove("is-paused");
-          return true;
+          return;
         }catch(_){
-          await new Promise(r => setTimeout(r, 120));
+          await new Promise(r => setTimeout(r, 140));
         }
       }
       reels[i]?.classList.add("is-paused");
-      return false;
     }
-
-    // ---- Warm cache (damit die letzten Videos nicht "katastrophal" sind)
-    const warmed = new Set();
-
-    async function warmHls(url){
-      if (!url || warmed.has(url)) return;
-      warmed.add(url);
-
-      // Playlist holen
-      const res = await fetch(url, { mode: "cors", cache: "force-cache" });
-      if (!res.ok) return;
-
-      const text = await res.text();
-      const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
-
-      // Erste 2 Segmente anwärmen (meist reicht das extrem)
-      const segs = [];
-      for (const l of lines){
-        if (l.startsWith("#")) continue;
-        segs.push(l);
-        if (segs.length >= 2) break;
-      }
-
-      for (const seg of segs){
-        const segUrl = new URL(seg, url).href;
-        // fetch -> browser cache
-        try { await fetch(segUrl, { mode: "cors", cache: "force-cache" }); } catch(_){}
-      }
-    }
-
-    function warmAround(idx){
-      const urls = [
-        getHlsUrl(idx),
-        getHlsUrl(idx + 1),
-        getHlsUrl(idx + 2),
-      ].filter(Boolean);
-
-      urls.forEach(u => warmHls(u));
-    }
-
-    // Warm ALLE im Hintergrund (damit Video 8/9 sofort sind)
-    function warmAllLater(){
-      const all = reels.map((_, i) => getHlsUrl(i)).filter(Boolean);
-      let cursor = 0;
-      let inFlight = 0;
-      const MAX_PAR = 2;
-
-      const pump = () => {
-        while (inFlight < MAX_PAR && cursor < all.length){
-          const u = all[cursor++];
-          inFlight++;
-          warmHls(u).finally(() => {
-            inFlight--;
-            pump();
-          });
-        }
-      };
-
-      const start = () => pump();
-      if ("requestIdleCallback" in window){
-        requestIdleCallback(start, { timeout: 1500 });
-      } else {
-        setTimeout(start, 900);
-      }
-    }
-
-    // =========================================================
-    // 4) Pager Nav (100% TikTok Snap)
-    // =========================================================
-    let activeIndex = 0;
-    let navToken = 0;
-
-    function vh(){
-      // stage height = viewport height
-      return stage.getBoundingClientRect().height || window.innerHeight || 1;
-    }
-
-    function setTrack(px, animate){
-      if (animate){
-        track.style.transition = "transform 280ms cubic-bezier(.2,.9,.2,1)";
-      } else {
-        track.style.transition = "none";
-      }
-      track.style.transform = `translate3d(0, ${px}px, 0)`;
-    }
-
-    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
     function keepSetFor(idx){
-      return new Set([idx - 1, idx, idx + 1, idx + 2].filter(x => x >= 0 && x < videos.length));
+      return new Set([idx, idx-1, idx+1].filter(x => x >= 0 && x < videos.length));
     }
 
-    function prime(idx){
-      // attach current + near
-      const keep = keepSetFor(idx);
-      for (let i = 0; i < videos.length; i++){
-        if (keep.has(i)) ensureAttached(i);
-        else detach(i);
-      }
-      warmAround(idx);
-    }
-
+    let playToken = 0;
     async function playOnly(idx){
-      const token = ++navToken;
+      const token = ++playToken;
       activeIndex = idx;
 
-      // pause all others
+      const keep = keepSetFor(idx);
+
+      for (const i of keep) ensureAttached(i);
+      for (let i = 0; i < videos.length; i++){
+        if (!keep.has(i)) detach(i);
+      }
+
       videos.forEach((v, i) => {
         if (i !== idx){
           try { v.pause(); } catch(_){}
@@ -928,280 +739,129 @@
         }
       });
 
-      // set mute based on sound state
-      videos[idx].muted = !soundOn;
-
-      // only play if still current
-      if (token !== navToken) return;
+      if (token !== playToken) return;
       await tryPlay(idx);
     }
 
-    async function goTo(idx, animate = true){
-      const target = clamp(idx, 0, reels.length - 1);
-
-      // prime BEFORE animation ends (damit sofort ready)
-      prime(target);
-
-      // move track
-      const offset = -target * vh();
-      setTrack(offset, animate);
-
-      // play after transition settles (super stable)
-      const localToken = ++navToken;
-      if (!animate){
-        await playOnly(target);
-        return;
+    // Snap-Assist (bessere Snap Stabilität)
+    let snapTimer = null;
+    function snapToNearest(){
+      const h = reelsEl.clientHeight || 1;
+      const idx = Math.max(0, Math.min(videos.length - 1, Math.round(reelsEl.scrollTop / h)));
+      const targetTop = idx * h;
+      if (Math.abs(reelsEl.scrollTop - targetTop) > 2){
+        reels[idx]?.scrollIntoView({ block: "start", behavior: "smooth" });
       }
-
-      const onEnd = async () => {
-        track.removeEventListener("transitionend", onEnd);
-        if (localToken !== navToken) return;
-        await playOnly(target);
-      };
-      track.addEventListener("transitionend", onEnd, { passive: true });
-
-      // safety fallback
-      setTimeout(() => {
-        if (localToken !== navToken) return;
-        track.removeEventListener("transitionend", onEnd);
-        playOnly(target);
-      }, 360);
     }
+    reelsEl.addEventListener("scroll", () => {
+      if (snapTimer) clearTimeout(snapTimer);
+      snapTimer = setTimeout(snapToNearest, 120);
+    }, { passive: true });
 
-    // =========================================================
-    // 5) Input: wheel + swipe (native-feel)
-    // =========================================================
-    let wheelLock = false;
-    stage.addEventListener("wheel", (e) => {
-      if (commentsOpen) return;
-      e.preventDefault();
-
-      if (wheelLock) return;
-      wheelLock = true;
-
-      const dy = e.deltaY || 0;
-      if (Math.abs(dy) < 10){
-        wheelLock = false;
-        return;
+    // Active detection
+    const io = new IntersectionObserver((entries) => {
+      let best = null;
+      for (const e of entries){
+        if (!e.isIntersecting) continue;
+        if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
       }
+      if (!best) return;
+      const idx = Number(best.target.getAttribute("data-index") || "0");
+      if (Number.isFinite(idx) && idx !== activeIndex){
+        playOnly(idx);
+      }
+    }, { threshold: [0.55, 0.7, 0.85, 0.95] });
 
-      const dir = dy > 0 ? 1 : -1;
-      goTo(activeIndex + dir, true).finally(() => {
-        setTimeout(() => wheelLock = false, 260);
-      });
-    }, { passive: false });
+    reels.forEach(r => io.observe(r));
 
-    // Swipe drag (pointer events)
-    let dragging = false;
-    let startY = 0;
-    let dragY = 0;
-    let baseOffset = 0;
-
-    function resistance(val, idx){
-      // edge resistance
-      const atTop = (idx === 0 && val > 0);
-      const atBottom = (idx === reels.length - 1 && val < 0);
-      if (!atTop && !atBottom) return val;
-      return val * 0.35;
+    // Comments
+    function lockFeed(lock){
+      reelsEl.style.pointerEvents = lock ? "none" : "";
+      reelsEl.style.overflowY = lock ? "hidden" : "";
     }
-
-    stage.addEventListener("pointerdown", (e) => {
-      if (commentsOpen) return;
-      dragging = true;
-      stage.setPointerCapture(e.pointerId);
-      startY = e.clientY;
-      dragY = 0;
-      baseOffset = -activeIndex * vh();
-      setTrack(baseOffset, false);
-    }, { passive: true });
-
-    stage.addEventListener("pointermove", (e) => {
-      if (!dragging || commentsOpen) return;
-      dragY = e.clientY - startY;
-      const d = resistance(dragY, activeIndex);
-      setTrack(baseOffset + d, false);
-    }, { passive: true });
-
-    stage.addEventListener("pointerup", async (e) => {
-      if (!dragging) return;
-      dragging = false;
-      try { stage.releasePointerCapture(e.pointerId); } catch(_){}
-
-      const H = vh();
-      const threshold = Math.min(140, H * 0.18);
-
-      let target = activeIndex;
-      if (dragY < -threshold) target = activeIndex + 1;      // swipe up -> next
-      else if (dragY > threshold) target = activeIndex - 1;  // swipe down -> prev
-
-      await goTo(target, true);
-    }, { passive: true });
-
-    stage.addEventListener("pointercancel", () => {
-      if (!dragging) return;
-      dragging = false;
-      goTo(activeIndex, true);
-    }, { passive: true });
-
-    // =========================================================
-    // 6) Comments
-    // =========================================================
-    function lockUI(lock){
-      // when comments open, stop moving
-      stage.style.pointerEvents = lock ? "none" : "";
-    }
-
     function openComments(){
       if (commentsOpen) return;
       commentsOpen = true;
       commentsBackdrop.classList.add("open");
       commentsSheet.classList.add("open");
-      lockUI(true);
+      lockFeed(true);
       window.setTimeout(() => commentInput?.focus?.(), 60);
     }
-
     function closeComments(){
       if (!commentsOpen) return;
       commentsOpen = false;
       commentsBackdrop.classList.remove("open");
       commentsSheet.classList.remove("open");
-      lockUI(false);
+      lockFeed(false);
     }
-
     commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
 
     commentsForm?.addEventListener("submit", (e) => {
       e.preventDefault();
       const val = (commentInput?.value || "").trim();
       if (!val) return;
-
       const item = document.createElement("div");
       item.className = "cItem";
       item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
       item.querySelector(".cText").textContent = val;
       commentsList?.prepend(item);
-
       commentInput.value = "";
     });
 
-    // =========================================================
-    // 7) Click controls
-    // =========================================================
+    // Global click controls
     document.addEventListener("click", (e) => {
       const actionEl = e.target.closest("[data-action]");
       if (actionEl){
         const action = actionEl.getAttribute("data-action");
-
-        if (action === "back"){
-          window.location.href = "./karte-demo.html";
-          return;
-        }
-
-        if (action === "sound"){
-          setSoundState(!soundOn);
-          // replay to apply mute
-          playOnly(activeIndex);
-          return;
-        }
-
+        if (action === "back"){ window.location.href = "./karte-demo.html"; return; }
+        if (action === "sound"){ setSoundState(!soundOn); playOnly(activeIndex); return; }
         if (action === "like"){
-          const reel = e.target.closest(".reel");
-          const btn = reel?.querySelector('.railBtn[data-action="like"]');
+          const btn = actionEl.closest('.railBtn[data-action="like"]');
           if (!btn) return;
-
           const countEl = btn.querySelector(".railCount");
           const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
           const liked = btn.classList.toggle("is-liked");
           const next = liked ? cur + 1 : Math.max(0, cur - 1);
-
           btn.setAttribute("data-count", String(next));
           if (countEl) countEl.textContent = String(next);
           return;
         }
-
         if (action === "comment"){ openComments(); return; }
         if (action === "closeComments"){ closeComments(); return; }
         if (action === "share"){ alert("Share (demo)"); return; }
         if (action === "product"){ alert("Produkt öffnen (demo)"); return; }
       }
 
-      // Tap on video: play/pause
       if (commentsOpen) return;
+
       const video = e.target.closest("video.reelVideo");
       if (!video) return;
 
       const reel = video.closest(".reel");
-      if (!reel) return;
-      const idx = Number(reel.getAttribute("data-index") || "0");
-
-      if (idx !== activeIndex){
-        goTo(idx, true);
-        return;
-      }
+      const idx = Number(reel?.getAttribute("data-index") || "0");
 
       if (video.paused){
-        playOnly(activeIndex);
+        playOnly(Number.isFinite(idx) ? idx : activeIndex);
       } else {
         video.pause();
-        reel.classList.add("is-paused");
+        reel?.classList.add("is-paused");
       }
     }, { passive: true });
 
-    // Double tap to like (fast)
-    let lastTap = 0;
-    document.addEventListener("touchend", (e) => {
-      if (commentsOpen) return;
-      const now = Date.now();
-      const isDouble = (now - lastTap) < 260;
-      lastTap = now;
-      if (!isDouble) return;
+    // Init
+    setSoundState(soundOn);
 
-      const reel = e.target.closest(".reel");
-      if (!reel) return;
+    // Wichtig: Erst attach, dann play
+    ensureAttached(0);
+    ensureAttached(1);
+    playOnly(0);
 
-      const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
-      if (likeBtn) likeBtn.click();
-    }, { passive: true });
-
-    // ESC closes comments
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeComments();
-      if (commentsOpen) return;
-
-      if (e.key === "ArrowDown") goTo(activeIndex + 1, true);
-      if (e.key === "ArrowUp") goTo(activeIndex - 1, true);
-    }, { passive:true });
-
-    // Pause when hidden
     document.addEventListener("visibilitychange", () => {
       if (document.hidden){
         videos.forEach(v => { try { v.pause(); } catch(_){} });
       } else {
-        prime(activeIndex);
         playOnly(activeIndex);
       }
-    }, { passive: true });
-
-    // =========================================================
-    // 8) Init (SUPER FAST)
-    // =========================================================
-    setSoundState(soundOn);
-
-    // sofort prime + warm cache start
-    prime(0);
-
-    // sofort position
-    setTrack(0, false);
-
-    // sofort play
-    playOnly(0);
-
-    // warm all in background, damit last 3 instant sind
-    warmAllLater();
-
-    // On resize: keep exact position
-    window.addEventListener("resize", () => {
-      setTrack(-activeIndex * vh(), false);
     }, { passive: true });
   </script>
 </body>
