@@ -6,6 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
+  <!-- (Optional) Preload: hilft bei langsamer Verbindung -->
+  <link rel="preload" as="video" href="./images/tik1.mp4" type="video/mp4">
+  <link rel="preload" as="video" href="./image/tik1.mp4" type="video/mp4">
+
   <style>
     :root{
       --vvh: 100vh;
@@ -14,7 +18,6 @@
       --safeLeft: env(safe-area-inset-left, 0px);
       --safeRight: env(safe-area-inset-right, 0px);
     }
-
     *{ box-sizing:border-box; margin:0; padding:0; }
     html, body{
       width:100%;
@@ -25,7 +28,6 @@
       color:#fff;
     }
 
-    /* App viewport = exakt visualViewport height (iOS/Android UI safe) */
     #app{
       position: fixed;
       inset: 0;
@@ -33,24 +35,25 @@
       width: 100%;
       background:#000;
       overflow:hidden;
+      touch-action: pan-x; /* wir handeln pan-y selbst (Pager) */
     }
 
-    /* Stage wird per translateY gepaged */
     #stage{
       position:absolute;
       inset:0;
       width:100%;
-      height: calc(var(--vvh) * 3); /* 3 reels */
       transform: translate3d(0, 0, 0);
       will-change: transform;
     }
 
     .reel{
-      position: relative;
+      position:absolute;
+      left:0; right:0; top:0;
       width:100%;
       height: var(--vvh);
       background:#000;
       overflow:hidden;
+      transform: translate3d(0,0,0);
     }
 
     .reelVideo{
@@ -60,6 +63,8 @@
       height:100%;
       object-fit: cover;
       background:#000;
+
+      /* wichtig: nicht komplett unsichtbar “für immer” */
       opacity: 0;
       transition: opacity 120ms ease;
       transform: translateZ(0);
@@ -76,7 +81,6 @@
       opacity:.95;
     }
 
-    /* TOP BAR */
     .topbar{
       position:absolute;
       top: calc(10px + var(--safeTop));
@@ -148,7 +152,6 @@
     }
     .pillBtn svg{ width:18px; height:18px; fill:#fff; opacity:.95; }
 
-    /* RIGHT ACTIONS */
     .actions{
       position:absolute;
       right: calc(12px + var(--safeRight));
@@ -184,7 +187,6 @@
       border-color: rgba(255,90,95,0.38);
     }
 
-    /* PRODUCT CARD */
     .productCard{
       position:absolute;
       left: calc(12px + var(--safeLeft));
@@ -240,7 +242,7 @@
       flex:0 0 auto;
     }
 
-    /* Comments sheet (demo, leicht) */
+    /* Comments demo */
     .sheetOverlay{
       position: fixed;
       inset: 0;
@@ -306,7 +308,7 @@
 
       <!-- REEL 1 -->
       <section class="reel" data-index="0">
-        <video class="reelVideo" src="./images/tik1.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
+        <video class="reelVideo" data-file="tik1.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
         <div class="vignette" aria-hidden="true"></div>
 
         <div class="topbar">
@@ -323,10 +325,9 @@
           <div class="topRight">
             <button class="pillBtn" id="soundBtn" type="button" aria-label="Sound toggle">
               <svg id="soundIcon" viewBox="0 0 24 24">
-                <!-- muted -->
                 <path d="M16.5 12l3.5 3.5-1.4 1.4L15.1 13.4l-3.6 3.6H8.8v-4H6v-2h2.8V7h2.7l3.6 3.6 3.5-3.5 1.4 1.4L16.5 12z"/>
               </svg>
-              <span id="soundLabel">Sound</span>
+              <span>Sound</span>
             </button>
           </div>
         </div>
@@ -345,13 +346,6 @@
             </button>
             <div class="actionCount">24</div>
           </div>
-
-          <div class="actionWrap">
-            <button class="actionBtn" type="button" aria-label="Share (demo)">
-              <svg viewBox="0 0 24 24"><path d="M14 9l-4 6 4-2v6h2v-6l4 2-6-8zM4 5h8V3H4a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H4V5z"/></svg>
-            </button>
-            <div class="actionCount">—</div>
-          </div>
         </div>
 
         <div class="productCard">
@@ -366,7 +360,7 @@
 
       <!-- REEL 2 -->
       <section class="reel" data-index="1">
-        <video class="reelVideo" src="./images/tik2.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
+        <video class="reelVideo" data-file="tik2.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
         <div class="vignette" aria-hidden="true"></div>
 
         <div class="topbar">
@@ -382,7 +376,7 @@
 
           <div class="topRight">
             <button class="pillBtn" type="button" aria-label="Sound toggle" data-sound>
-              <svg class="soundIconClone" viewBox="0 0 24 24">
+              <svg viewBox="0 0 24 24">
                 <path d="M16.5 12l3.5 3.5-1.4 1.4L15.1 13.4l-3.6 3.6H8.8v-4H6v-2h2.8V7h2.7l3.6 3.6 3.5-3.5 1.4 1.4L16.5 12z"/>
               </svg>
               <span>Sound</span>
@@ -404,13 +398,6 @@
             </button>
             <div class="actionCount">11</div>
           </div>
-
-          <div class="actionWrap">
-            <button class="actionBtn" type="button" aria-label="Share (demo)">
-              <svg viewBox="0 0 24 24"><path d="M14 9l-4 6 4-2v6h2v-6l4 2-6-8zM4 5h8V3H4a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H4V5z"/></svg>
-            </button>
-            <div class="actionCount">—</div>
-          </div>
         </div>
 
         <div class="productCard">
@@ -425,7 +412,7 @@
 
       <!-- REEL 3 -->
       <section class="reel" data-index="2">
-        <video class="reelVideo" src="./images/tik3.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
+        <video class="reelVideo" data-file="tik3.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
         <div class="vignette" aria-hidden="true"></div>
 
         <div class="topbar">
@@ -441,7 +428,7 @@
 
           <div class="topRight">
             <button class="pillBtn" type="button" aria-label="Sound toggle" data-sound>
-              <svg class="soundIconClone" viewBox="0 0 24 24">
+              <svg viewBox="0 0 24 24">
                 <path d="M16.5 12l3.5 3.5-1.4 1.4L15.1 13.4l-3.6 3.6H8.8v-4H6v-2h2.8V7h2.7l3.6 3.6 3.5-3.5 1.4 1.4L16.5 12z"/>
               </svg>
               <span>Sound</span>
@@ -462,13 +449,6 @@
               <svg viewBox="0 0 24 24"><path d="M4 4h16v12H7l-3 3V4z"/></svg>
             </button>
             <div class="actionCount">7</div>
-          </div>
-
-          <div class="actionWrap">
-            <button class="actionBtn" type="button" aria-label="Share (demo)">
-              <svg viewBox="0 0 24 24"><path d="M14 9l-4 6 4-2v6h2v-6l4 2-6-8zM4 5h8V3H4a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H4V5z"/></svg>
-            </button>
-            <div class="actionCount">—</div>
           </div>
         </div>
 
@@ -503,7 +483,8 @@
 
   <script type="module">
     // =========================================================
-    // MENYRA STORY — TikTok Pager (translateY, 1 swipe = 1 reel)
+    // MENYRA STORY — TikTok Pager (translateY)
+    // Fix: Videos sichtbar bei loadeddata + Pfad-Fallback (images/ vs image/)
     // =========================================================
 
     const app = document.getElementById("app");
@@ -529,41 +510,66 @@
     let dy = 0;
     let lastY = 0;
     let lastT = 0;
-    let vY = 0; // px/ms
-    let lockAxis = null; // "y" or "x"
-
-    // wheel state (desktop)
-    let wheelAcc = 0;
-    let wheelTimer = null;
+    let vY = 0;
+    let lockAxis = null;
     let animating = false;
 
-    const START_AT = 0.05;
+    // wheel (desktop)
+    let wheelAcc = 0;
+    let wheelTimer = null;
+
+    const START_AT = 0.05; // sec
 
     function updateVvh(){
       const vv = window.visualViewport;
       const h = vv ? vv.height : window.innerHeight;
       document.documentElement.style.setProperty("--vvh", Math.round(h) + "px");
     }
-    updateVvh();
-    window.addEventListener("resize", updateVvh, { passive:true });
-    if (window.visualViewport){
-      visualViewport.addEventListener("resize", updateVvh, { passive:true });
-      visualViewport.addEventListener("scroll", updateVvh, { passive:true });
-    }
 
     function vh(){ return app.clientHeight || window.innerHeight || 1; }
+    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
     function setStage(offset = 0, animate = false){
-      if (animate){
-        stage.style.transition = "transform 260ms cubic-bezier(.2,.9,.2,1)";
-      } else {
-        stage.style.transition = "none";
-      }
+      stage.style.transition = animate ? "transform 260ms cubic-bezier(.2,.9,.2,1)" : "none";
       const y = (-idx * vh()) + offset;
       stage.style.transform = `translate3d(0, ${y}px, 0)`;
     }
 
-    function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+    function placeReels(){
+      stage.style.height = `calc(var(--vvh) * ${reels.length})`;
+      reels.forEach((r, i) => {
+        r.style.transform = `translate3d(0, ${i * vh()}px, 0)`;
+      });
+      setStage(0, false);
+    }
+
+    function setVideoSrcWithFallback(videoEl){
+      const file = videoEl.dataset.file;
+      if (!file) return;
+
+      // zuerst ./images/, wenn fail -> ./image/
+      const primary = `./images/${file}`;
+      const fallback = `./image/${file}`;
+
+      videoEl.src = primary;
+
+      const onErr = () => {
+        videoEl.removeEventListener("error", onErr);
+        // falls primary fehlt -> fallback probieren
+        videoEl.src = fallback;
+        videoEl.load();
+      };
+      videoEl.addEventListener("error", onErr, { once:true });
+    }
+
+    function warmLoad(videoEl){
+      if (!videoEl) return;
+      try{
+        // triggert download früher (hilft bei slow net)
+        videoEl.preload = "auto";
+        videoEl.load();
+      }catch(_){}
+    }
 
     function once(el, ev){
       return new Promise((res) => el.addEventListener(ev, res, { once:true }));
@@ -573,11 +579,15 @@
       if (!v) return;
       if (v.dataset.ready === "1") return;
 
+      // Sobald loadeddata kommt -> Video anzeigen (auch wenn play später kommt)
+      const showOnData = () => v.classList.add("is-show");
+      v.addEventListener("loadeddata", showOnData, { once:true });
+
       try{
         if (v.readyState < 2) await once(v, "loadeddata");
       }catch(_){}
 
-      // force a tiny seek so Safari nicht irgendeinen falschen frame cached zeigt
+      // wenn duration verfügbar -> auf START_AT, damit first frame passt
       try{
         if (Number.isFinite(v.duration) && v.duration > 0.2){
           v.currentTime = START_AT;
@@ -586,6 +596,8 @@
       }catch(_){}
 
       v.dataset.ready = "1";
+      // falls loadeddata nicht gefeuert hat (selten), trotzdem sichtbar machen
+      v.classList.add("is-show");
     }
 
     async function playActive(){
@@ -601,13 +613,13 @@
         }
       });
 
-      v.classList.remove("is-show");
       v.muted = muted ? true : false;
       v.volume = 1;
 
+      warmLoad(v); // sofort laden
       await ensureReady(v);
 
-      // set stable start frame (prevents “wrong still image”)
+      // start frame stabil
       try{
         if (Number.isFinite(v.duration) && v.duration > 0.2){
           v.currentTime = START_AT;
@@ -615,24 +627,15 @@
         }
       }catch(_){}
 
-      // play (muted autoplay ok; unmuted needs user gesture -> sound button)
       try{
         await v.play();
       }catch(_){
-        // ignore (iOS policy if unmuted)
+        // Autoplay kann bei unmuted blocken -> bleibt trotzdem sichtbar
       }
 
-      // show only when video is actually running / updated
-      const show = () => {
-        v.classList.add("is-show");
-        v.removeEventListener("playing", show);
-        v.removeEventListener("timeupdate", show);
-      };
-      v.addEventListener("playing", show, { once:true });
-      v.addEventListener("timeupdate", show, { once:true });
-      setTimeout(() => v.classList.add("is-show"), 220);
-
-      // warm neighbors for instant switch
+      // warm neighbors
+      warmLoad(videos[idx + 1]);
+      warmLoad(videos[idx - 1]);
       if (videos[idx + 1]) ensureReady(videos[idx + 1]);
       if (videos[idx - 1]) ensureReady(videos[idx - 1]);
     }
@@ -653,8 +656,6 @@
       const v = videos[idx];
       if (v){
         v.muted = muted ? true : false;
-        v.volume = 1;
-        // ensure playback continues after toggle
         v.play().catch(()=>{});
       }
     }
@@ -665,10 +666,9 @@
       if (target === idx){
         animating = true;
         setStage(0, true);
-        setTimeout(() => { animating = false; }, 260);
+        setTimeout(() => { animating = false; setStage(0, false); }, 260);
         return;
       }
-
       animating = true;
       idx = target;
       setStage(0, true);
@@ -679,9 +679,7 @@
       }, 260);
     }
 
-    // =========================
-    // COMMENTS SHEET
-    // =========================
+    // Comments
     function openSheet(){
       sheetOverlay.classList.add("is-open");
       sheet.classList.add("is-open");
@@ -695,26 +693,19 @@
     sheetOverlay.addEventListener("click", closeSheet, { passive:true });
     sheetClose.addEventListener("click", closeSheet, { passive:true });
 
-    // =========================
-    // UI clicks (delegation)
-    // =========================
+    // UI click
     document.addEventListener("click", (e) => {
-      // Back
       if (e.target.closest("#backBtn") || e.target.closest("[data-back]")){
         e.preventDefault();
-        if (history.length > 1) history.back();
-        else window.location.href = "./karte-demo.html";
+        // FIX: immer zurück zur Demo-Karte
+        window.location.href = "./karte-demo.html";
         return;
       }
-
-      // Sound toggle
       if (e.target.closest("#soundBtn") || e.target.closest("[data-sound]")){
         e.preventDefault();
         setMuted(!muted);
         return;
       }
-
-      // Like
       const like = e.target.closest(".likeBtn");
       if (like){
         const reel = like.closest(".reel");
@@ -724,8 +715,6 @@
         if (countEl) countEl.textContent = String(liked ? cur + 1 : Math.max(0, cur - 1));
         return;
       }
-
-      // Comments
       if (e.target.closest(".commentBtn")){
         e.preventDefault();
         openSheet();
@@ -733,12 +722,9 @@
       }
     }, { passive:false });
 
-    // =========================
-    // TikTok-like swipe (Pointer)
-    // =========================
+    // Swipe pager
     function isInteractiveTarget(t){
-      if (!t) return false;
-      return !!t.closest("button, a, input, textarea, select, .productCard, .actions, .topbar, .sheet, .sheetOverlay");
+      return !!t?.closest("button, a, input, textarea, select, .productCard, .actions, .topbar, .sheet, .sheetOverlay");
     }
 
     app.addEventListener("pointerdown", (e) => {
@@ -767,23 +753,19 @@
       const deltaY = curY - startY;
       const deltaX = curX - startX;
 
-      // axis lock (wie apps): erst ab bisschen movement
       if (!lockAxis){
         if (Math.abs(deltaY) + Math.abs(deltaX) < 10) return;
         lockAxis = Math.abs(deltaY) >= Math.abs(deltaX) ? "y" : "x";
       }
       if (lockAxis !== "y") return;
 
-      // velocity
       const now = performance.now();
       const dt = Math.max(1, now - lastT);
-      vY = (curY - lastY) / dt; // px/ms
+      vY = (curY - lastY) / dt;
       lastY = curY;
       lastT = now;
 
       let offset = deltaY;
-
-      // edge resistance (wie TikTok)
       if (idx === 0 && offset > 0) offset *= 0.32;
       if (idx === reels.length - 1 && offset < 0) offset *= 0.32;
 
@@ -796,25 +778,24 @@
       dragging = false;
 
       if (lockAxis !== "y"){
+        animating = true;
         setStage(0, true);
+        setTimeout(() => { animating = false; setStage(0, false); }, 260);
         return;
       }
 
       const H = vh();
-      const dist = dy;                // px
+      const dist = dy;
       const absDist = Math.abs(dist);
-      const speed = vY;               // px/ms
+      const speed = vY;
 
-      // TikTok-like decision:
-      // - genug Strecke ODER genug Geschwindigkeit
       const THRESH_DIST = Math.max(80, H * 0.18);
-      const THRESH_VEL  = 0.75; // px/ms
+      const THRESH_VEL  = 0.75;
 
       if (absDist > THRESH_DIST || Math.abs(speed) > THRESH_VEL){
         if (dist < 0) go(idx + 1);
         else go(idx - 1);
       } else {
-        // snap back
         animating = true;
         setStage(0, true);
         setTimeout(() => { animating = false; setStage(0, false); }, 260);
@@ -829,9 +810,7 @@
       setTimeout(() => { animating = false; setStage(0, false); }, 260);
     }, { passive:true });
 
-    // =========================
-    // Wheel (Desktop trackpad) — 1 scroll gesture = 1 reel
-    // =========================
+    // Wheel (Desktop)
     app.addEventListener("wheel", (e) => {
       if (animating || dragging) return;
       if (sheetOverlay.classList.contains("is-open")) return;
@@ -839,7 +818,6 @@
       e.preventDefault();
 
       wheelAcc += e.deltaY;
-
       clearTimeout(wheelTimer);
       wheelTimer = setTimeout(() => {
         const a = wheelAcc;
@@ -850,64 +828,51 @@
       }, 90);
     }, { passive:false });
 
-    // =========================
-    // Key (optional)
-    // =========================
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowDown") go(idx + 1);
-      if (e.key === "ArrowUp") go(idx - 1);
-      if (e.key === "Escape") closeSheet();
-    });
-
-    // =========================
     // Init
-    // =========================
-    function placeStage(){
-      // height must match reels count
-      stage.style.height = `calc(var(--vvh) * ${reels.length})`;
-      reels.forEach((r, i) => { r.style.transform = `translate3d(0, ${i * vh()}px, 0)`; });
-      // we absolutely position via transforms for consistent paging
-      reels.forEach(r => { r.style.position = "absolute"; r.style.left="0"; r.style.right="0"; r.style.top="0"; });
-    }
-
-    function fixReelPositions(){
-      // update transforms on rotate / UI changes
-      reels.forEach((r, i) => { r.style.transform = `translate3d(0, ${i * vh()}px, 0)`; });
-      setStage(0, false);
-    }
-
-    async function init(){
+    function init(){
       updateVvh();
-      placeStage();
+      placeReels();
 
-      // preload readiness without showing wrong still frames
+      // set src with fallback (images/ vs image/)
       videos.forEach(v => {
         v.muted = true;
         v.playsInline = true;
         v.preload = "auto";
+        setVideoSrcWithFallback(v);
       });
 
-      // first reel ready + play
-      await ensureReady(videos[0]);
       setMuted(true);
-      setStage(0, false);
-      await playActive();
+
+      // sofort erstes laden + abspielen
+      warmLoad(videos[0]);
+      // warm next auch gleich (hilft auf slow net)
+      warmLoad(videos[1]);
+
+      playActive();
     }
 
-    window.addEventListener("pageshow", init, { passive:true });
+    updateVvh();
     window.addEventListener("resize", () => {
       updateVvh();
-      fixReelPositions();
+      placeReels();
     }, { passive:true });
+
     if (window.visualViewport){
       visualViewport.addEventListener("resize", () => {
         updateVvh();
-        fixReelPositions();
+        placeReels();
       }, { passive:true });
       visualViewport.addEventListener("scroll", () => {
         updateVvh();
-        fixReelPositions();
+        placeReels();
       }, { passive:true });
+    }
+
+    // DOM ready
+    if (document.readyState === "loading"){
+      document.addEventListener("DOMContentLoaded", init, { once:true });
+    } else {
+      init();
     }
   </script>
 </body>
