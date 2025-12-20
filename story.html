@@ -484,54 +484,56 @@
   </template>
 
   <main class="reels" id="reels" aria-label="MENYRA Stories">
-    <!-- 1..10 -->
+    <!-- NOTE: Wir lassen src wie bei dir (kein Umbau) – aber ändern preload: -->
+    <!-- Reel 0: auto (start schnell) | Reel 1-2: metadata | Rest: none (lazy via JS warmup) -->
+
     <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik1.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik1.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik2.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik2.mp4" playsinline webkit-playsinline muted preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik3.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik3.mp4" playsinline webkit-playsinline muted preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik4.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik4.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik5.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik5.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik6.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik6.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik7.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik7.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="House Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik8.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik8.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik9.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik9.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="./images/tik10.mp4" playsinline muted preload="metadata" loop></video>
+      <video class="reelVideo" src="./images/tik10.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
       <div class="vignette"></div>
     </section>
   </main>
@@ -617,7 +619,7 @@
     });
 
     // =========================================================
-    // 1) TikTok-like autoplay (only active plays)  (wie dein guter Code)
+    // 1) TikTok-like autoplay (only active plays)
     // =========================================================
     const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
@@ -637,8 +639,36 @@
       showToast(soundOn ? "Sound: ON" : "Sound: OFF");
     }
 
+    // =========================================================
+    // 1.2) PERF: Warmup/Lazy Preload ohne Umbau (nur preload steuern)
+    // active = auto, near = metadata, rest = none
+    // =========================================================
+    function warmPreload(idx){
+      const hot = new Set([idx, idx - 1, idx + 1, idx + 2]);
+
+      for (let i = 0; i < videos.length; i++){
+        const v = videos[i];
+
+        let target = "none";
+        if (i === idx) target = "auto";
+        else if (hot.has(i)) target = "metadata";
+
+        if (v.preload !== target) v.preload = target;
+
+        // Nur wenn wir "near" sind und noch nix geladen ist → load() anschubsen
+        if (target !== "none" && v.readyState < 2){
+          try { v.load(); } catch(_){}
+        }
+      }
+    }
+
+    let playToken = 0;
+
     async function playOnly(index){
+      const token = ++playToken;
       activeIndex = index;
+
+      warmPreload(index);
 
       videos.forEach((v, i) => {
         const reel = reels[i];
@@ -655,7 +685,10 @@
       v.muted = !soundOn;
 
       try{
+        // Falls wir beim schnellen Scrollen überholt wurden
+        if (token !== playToken) return;
         await v.play();
+        if (token !== playToken) return;
         reels[index]?.classList.remove("is-paused");
       }catch(_){
         reels[index]?.classList.add("is-paused");
@@ -664,6 +697,7 @@
 
     // Init
     setSoundState(soundOn);
+    warmPreload(0);
     playOnly(0);
 
     const io = new IntersectionObserver((entries) => {
@@ -759,25 +793,10 @@
           return;
         }
 
-        if (action === "comment"){
-          openComments();
-          return;
-        }
-
-        if (action === "closeComments"){
-          closeComments();
-          return;
-        }
-
-        if (action === "share"){
-          alert("Share (demo)");
-          return;
-        }
-
-        if (action === "product"){
-          alert("Produkt öffnen (demo) — später detajet/product page");
-          return;
-        }
+        if (action === "comment"){ openComments(); return; }
+        if (action === "closeComments"){ closeComments(); return; }
+        if (action === "share"){ alert("Share (demo)"); return; }
+        if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
       }
 
       if (commentsOpen) return;
@@ -819,6 +838,7 @@
       if (document.hidden){
         videos.forEach(v => v.pause());
       }else{
+        warmPreload(activeIndex);
         playOnly(activeIndex);
       }
     }, { passive: true });
