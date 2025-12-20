@@ -16,10 +16,7 @@
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-left: env(safe-area-inset-left, 0px);
 
-      --ui: rgba(0,0,0,0.45);
-      --ui2: rgba(0,0,0,0.25);
       --txt: #ffffff;
-      --muted: rgba(255,255,255,0.72);
     }
 
     *{ box-sizing:border-box; margin:0; padding:0; }
@@ -31,7 +28,7 @@
       background:#000;
     }
 
-    /* ====== FIX: Visible viewport height ====== */
+    /* ====== Visible viewport height ====== */
     .reels{
       height: 100vh;
       height: 100svh;
@@ -43,6 +40,7 @@
       overscroll-behavior: contain;
       background:#000;
 
+      /* Tipp: scroll-padding belassen (safe) */
       scroll-padding-top: var(--safe-top);
       scroll-padding-bottom: var(--safe-bottom);
     }
@@ -311,7 +309,7 @@
       transform: translateX(-50%) translateY(-4px);
     }
 
-    /* ====== COMMENTS (Black like before) ====== */
+    /* ====== COMMENTS (Black) ====== */
     .commentsBackdrop{
       position: fixed;
       inset: 0;
@@ -347,9 +345,7 @@
       flex-direction: column;
       overflow: hidden;
     }
-    .commentsSheet.open{
-      transform: translateY(0);
-    }
+    .commentsSheet.open{ transform: translateY(0); }
 
     .commentsTop{
       padding: 12px 12px 10px;
@@ -420,7 +416,7 @@
 <body>
   <div class="toast" id="toast">Sound</div>
 
-  <!-- TEMPLATE: wird auf alle Reels geklont -->
+  <!-- TEMPLATE -->
   <template id="overlayTpl">
     <header class="topbar">
       <div class="topbarLeft">
@@ -501,7 +497,6 @@
       data-product-sub="Tap to view product (demo)"
       data-product-img="./images/speise1.avif"
     >
-      <!-- Nur minimal: preload auto fürs erste Reel -->
       <video class="reelVideo" src="./images/tik1.mp4" playsinline muted preload="auto" loop></video>
       <div class="vignette"></div>
     </section>
@@ -535,9 +530,114 @@
       <video class="reelVideo" src="./images/tik3.mp4" playsinline muted preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
+
+    <!-- Reel 4 -->
+    <section class="reel"
+      data-index="3"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="56"
+      data-comments="5"
+      data-product-title="Daily Offer"
+      data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik4.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <!-- Reel 5 -->
+    <section class="reel"
+      data-index="4"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="88"
+      data-comments="12"
+      data-product-title="Burger Menu"
+      data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik5.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <!-- Reel 6 -->
+    <section class="reel"
+      data-index="5"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="145"
+      data-comments="21"
+      data-product-title="Coffee Shot"
+      data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik6.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <!-- Reel 7 -->
+    <section class="reel"
+      data-index="6"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="62"
+      data-comments="8"
+      data-product-title="Fries + Sauce"
+      data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik7.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <!-- Reel 8 -->
+    <section class="reel"
+      data-index="7"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="190"
+      data-comments="27"
+      data-product-title="House Special"
+      data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik8.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <!-- Reel 9 -->
+    <section class="reel"
+      data-index="8"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="39"
+      data-comments="3"
+      data-product-title="Morning Coffee"
+      data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik9.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <!-- Reel 10 -->
+    <section class="reel"
+      data-index="9"
+      data-name="Prince Coffe House"
+      data-logo="./images/Prince-coffe-house-logo.jpg"
+      data-like="211"
+      data-comments="44"
+      data-product-title="Burger + Drink"
+      data-product-sub="Marked product (demo)"
+      data-product-img="./images/speise1.avif"
+    >
+      <video class="reelVideo" src="./images/tik10.mp4" playsinline muted preload="metadata" loop></video>
+      <div class="vignette"></div>
+    </section>
   </main>
 
-  <!-- COMMENTS (global, einmal – schwarz) -->
+  <!-- COMMENTS -->
   <div class="commentsBackdrop" id="commentsBackdrop" aria-hidden="true"></div>
 
   <section class="commentsSheet" id="commentsSheet" aria-hidden="true">
@@ -617,7 +717,7 @@
     });
 
     // =========================================================
-    // 1) TikTok-like autoplay (only active plays)
+    // 1) TikTok-like autoplay (only active plays)  [UNVERÄNDERT]
     // =========================================================
     const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
@@ -666,6 +766,7 @@
     setSoundState(soundOn);
     playOnly(0);
 
+    // Observe active reel
     const io = new IntersectionObserver((entries) => {
       let best = null;
       for (const e of entries){
@@ -682,12 +783,87 @@
     reels.forEach(r => io.observe(r));
 
     // =========================================================
-    // 1.5) Comments (black sheet) – slim
+    // 1.25) SNAP OPTIMIZER (nur Scroll/Snap, KEIN Video ändern)
+    // - verhindert "halb stehen bleiben"
+    // - nach Swipe -> exakt auf Reel-Top einrasten (auto, nicht smooth)
     // =========================================================
     let commentsOpen = false;
 
+    let reelTops = [];
+    function measureReelTops(){
+      // offsetTop ist hier stabil, da jedes Reel 100dvh hoch ist
+      reelTops = reels.map(r => r.offsetTop);
+    }
+    measureReelTops();
+
+    // Re-measure bei Rotation/Resize
+    let resizeTimer = 0;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        measureReelTops();
+        // nach Resize sofort sauber einschnappen
+        snapToNearest(true);
+      }, 120);
+    }, { passive: true });
+
+    function nearestIndexByScrollTop(st){
+      if (!reelTops.length) return 0;
+      let bestI = 0;
+      let bestD = Infinity;
+      for (let i = 0; i < reelTops.length; i++){
+        const d = Math.abs(st - reelTops[i]);
+        if (d < bestD){ bestD = d; bestI = i; }
+      }
+      return bestI;
+    }
+
+    let snapTimer = 0;
+    let snapping = false;
+
+    function snapToNearest(force = false){
+      if (commentsOpen) return;
+      if (!reelTops.length) measureReelTops();
+
+      const st = reelsEl.scrollTop;
+      const idx = nearestIndexByScrollTop(st);
+      const target = reelTops[idx] ?? 0;
+
+      // Wenn wir schon fast exakt dort sind -> nichts tun (verhindert "zitter")
+      const diff = Math.abs(st - target);
+      if (!force && diff < 2) return;
+
+      snapping = true;
+      reelsEl.scrollTo({ top: target, behavior: "auto" });
+      // releasing flag im nächsten frame
+      requestAnimationFrame(() => { snapping = false; });
+    }
+
+    function scheduleSnap(delay = 90){
+      clearTimeout(snapTimer);
+      snapTimer = window.setTimeout(() => snapToNearest(false), delay);
+    }
+
+    // Scroll -> nach Ende snappen (wie Reels)
+    reelsEl.addEventListener("scroll", () => {
+      if (commentsOpen) return;
+      if (snapping) return;
+      scheduleSnap(90);
+    }, { passive: true });
+
+    // Touch-End / Pointer-Up -> schnelleres Einschnappen
+    ["touchend","pointerup","mouseup"].forEach((ev) => {
+      reelsEl.addEventListener(ev, () => {
+        if (commentsOpen) return;
+        // kurzes Delay, damit Momentum nicht "dagegen" arbeitet
+        scheduleSnap(60);
+      }, { passive: true });
+    });
+
+    // =========================================================
+    // 1.5) Comments (black sheet) – slim
+    // =========================================================
     function lockFeed(lock){
-      // super-slim: verhindert scroll/taps im Hintergrund
       reelsEl.style.pointerEvents = lock ? "none" : "";
       reelsEl.style.overflowY = lock ? "hidden" : "";
     }
@@ -700,7 +876,6 @@
       commentsBackdrop.setAttribute("aria-hidden", "false");
       commentsSheet.setAttribute("aria-hidden", "false");
       lockFeed(true);
-      // Focus input (optional)
       window.setTimeout(() => commentInput?.focus?.(), 60);
     }
 
@@ -712,6 +887,8 @@
       commentsBackdrop.setAttribute("aria-hidden", "true");
       commentsSheet.setAttribute("aria-hidden", "true");
       lockFeed(false);
+      // nach close sofort sauber auf Reel einrasten
+      scheduleSnap(0);
     }
 
     commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
@@ -741,7 +918,6 @@
         const action = actionEl.getAttribute("data-action");
 
         if (action === "back"){
-          // FIX: zurück zur Demo-Karte
           window.location.href = "./karte-demo.html";
           return;
         }
@@ -787,7 +963,7 @@
         }
       }
 
-      // Tap on video: play/pause (nur wenn comments NICHT offen)
+      // Tap on video: play/pause
       if (commentsOpen) return;
 
       const video = e.target.closest("video.reelVideo");
@@ -804,7 +980,7 @@
       }
     }, { passive: true });
 
-    // Double tap to like (fast) – blocken wenn comments offen
+    // Double tap to like (fast)
     let lastTap = 0;
     document.addEventListener("touchend", (e) => {
       if (commentsOpen) return;
@@ -821,6 +997,7 @@
       if (likeBtn) likeBtn.click();
     }, { passive: true });
 
+    // Pause when hidden
     document.addEventListener("visibilitychange", () => {
       if (document.hidden){
         videos.forEach(v => v.pause());
