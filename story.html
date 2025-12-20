@@ -6,9 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- PERF: CDN warmup -->
-  <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
-  <link rel="preconnect" href="https://menyra.b-cdn.net" crossorigin />
+  <!-- PERF: warmup -->
+  <link rel="dns-prefetch" href="//vz-14f8b42c-6ba.b-cdn.net" />
+  <link rel="preconnect" href="https://vz-14f8b42c-6ba.b-cdn.net" crossorigin />
+
+  <!-- HLS.js (needed for Chrome/Edge/Firefox for .m3u8) -->
+  <link rel="dns-prefetch" href="//cdn.jsdelivr.net" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+  <script defer src="https://cdn.jsdelivr.net/npm/hls.js@1.6.15"></script>
 
   <style>
     :root{
@@ -16,12 +21,8 @@
       --safe-right: env(safe-area-inset-right, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
       --safe-left: env(safe-area-inset-left, 0px);
-
-      --ui: rgba(0,0,0,0.45);
       --txt: #ffffff;
-      --muted: rgba(255,255,255,0.72);
     }
-
     *{ box-sizing:border-box; margin:0; padding:0; }
     html, body{ height:100%; background:#000; }
     body{
@@ -84,21 +85,17 @@
       z-index: 5;
     }
 
-    /* ====== Overlay UI (Topbar) ====== */
     .topbar{
       position:absolute;
       top: 0; left: 0; right: 0;
-
       padding-top: calc(var(--safe-top) + 10px);
       padding-left: calc(var(--safe-left) + 12px);
       padding-right: calc(var(--safe-right) + 12px);
       padding-bottom: 10px;
-
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap: 10px;
-
       z-index: 20;
       pointer-events:none;
     }
@@ -156,7 +153,6 @@
       max-width: 56vw;
     }
 
-    /* ====== Right Action Rail ====== */
     .rail{
       position:absolute;
       right: calc(var(--safe-right) + 12px);
@@ -203,7 +199,6 @@
     }
     .railBtn[data-action="like"].is-liked svg{ fill:#111; }
 
-    /* ====== Bottom product tag ====== */
     .productTag{
       position:absolute;
       left: calc(var(--safe-left) + 12px);
@@ -211,7 +206,6 @@
       bottom: calc(var(--safe-bottom) + 16px);
       z-index: 20;
       pointer-events:auto;
-
       display:flex;
       align-items:center;
       gap: 12px;
@@ -266,27 +260,6 @@
     }
     .productBtn:active{ transform: scale(0.985); }
 
-    /* Tap hint only if USER pauses */
-    .tapHint{
-      position:absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%,-50%);
-      z-index: 15;
-      padding: 8px 12px;
-      border-radius: 999px;
-      background: rgba(0,0,0,0.35);
-      color: rgba(255,255,255,0.85);
-      font-size: 12px;
-      font-weight: 800;
-      border: 1px solid rgba(255,255,255,0.10);
-      pointer-events:none;
-      opacity: 0;
-      transition: opacity .2s ease;
-    }
-    .reel.is-paused .tapHint{ opacity: 1; }
-
-    /* Toast */
     .toast{
       position: fixed;
       left: 50%;
@@ -308,104 +281,6 @@
       opacity: 1;
       transform: translateX(-50%) translateY(-4px);
     }
-
-    /* ====== COMMENTS (black) ====== */
-    .commentsBackdrop{
-      position: fixed;
-      inset: 0;
-      z-index: 2000;
-      background: #000;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity .16s ease;
-    }
-    .commentsBackdrop.open{
-      opacity: .88;
-      pointer-events: auto;
-    }
-
-    .commentsSheet{
-      position: fixed;
-      left: 0; right: 0; bottom: 0;
-      z-index: 2100;
-
-      height: min(70dvh, 520px);
-      background: #000;
-      border-top-left-radius: 22px;
-      border-top-right-radius: 22px;
-      border: 1px solid rgba(255,255,255,0.10);
-
-      transform: translateY(110%);
-      transition: transform .20s ease;
-      padding-bottom: var(--safe-bottom);
-
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-    .commentsSheet.open{ transform: translateY(0); }
-
-    .commentsTop{
-      padding: 12px 12px 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid rgba(255,255,255,0.10);
-    }
-    .commentsTitle{
-      font-size: 13px;
-      font-weight: 900;
-      color: rgba(255,255,255,0.92);
-      letter-spacing: .2px;
-    }
-    .commentsList{
-      flex: 1;
-      overflow: auto;
-      padding: 10px 12px;
-      -webkit-overflow-scrolling: touch;
-    }
-    .cItem{
-      padding: 10px 10px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      margin-bottom: 10px;
-    }
-    .cUser{
-      font-size: 12px;
-      font-weight: 900;
-      color: rgba(255,255,255,0.92);
-      margin-bottom: 4px;
-    }
-    .cText{
-      font-size: 12px;
-      color: rgba(255,255,255,0.78);
-      line-height: 1.35;
-    }
-    .commentsInput{
-      padding: 10px 12px 12px;
-      border-top: 1px solid rgba(255,255,255,0.10);
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-    .commentsInput input{
-      flex: 1;
-      height: 42px;
-      border-radius: 16px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.92);
-      padding: 0 12px;
-      outline: none;
-      font-size: 13px;
-    }
-
-    @media (prefers-reduced-motion: reduce){
-      .toast{ transition:none !important; }
-      .tapHint{ transition:none !important; }
-      .commentsBackdrop, .commentsSheet{ transition:none !important; }
-    }
   </style>
 </head>
 
@@ -420,7 +295,6 @@
             <path d="M15 18l-6-6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </button>
-
         <div class="brandPill" aria-label="Restaurant">
           <img class="brandLogo" data-bind="logo" src="" alt="Logo" />
           <div class="brandName" data-bind="name">Restaurant</div>
@@ -476,553 +350,410 @@
       </div>
       <button class="productBtn" type="button" data-action="product">Shiko</button>
     </div>
-
-    <div class="tapHint">Paused</div>
   </template>
 
-  <main class="reels" id="reels" aria-label="MENYRA Stories">
-    <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik1.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
-      <div class="vignette"></div>
-    </section>
-
-    <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik2.mp4" playsinline webkit-playsinline muted preload="auto" loop></video>
-      <div class="vignette"></div>
-    </section>
-
-    <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik3.mp4" playsinline webkit-playsinline muted preload="metadata" loop></video>
-      <div class="vignette"></div>
-    </section>
-
-    <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik4.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
-      <div class="vignette"></div>
-    </section>
-
-    <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik5.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
-      <div class="vignette"></div>
-    </section>
-
-    <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik6.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
-      <div class="vignette"></div>
-    </section>
-
-    <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik7.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
-      <div class="vignette"></div>
-    </section>
-
-    <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="House Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik8.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
-      <div class="vignette"></div>
-    </section>
-
-    <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik9.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
-      <div class="vignette"></div>
-    </section>
-
-    <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" src="https://menyra.b-cdn.net/tik10.mp4" playsinline webkit-playsinline muted preload="none" loop></video>
-      <div class="vignette"></div>
-    </section>
-  </main>
-
-  <!-- COMMENTS (black) -->
-  <div class="commentsBackdrop" id="commentsBackdrop" aria-hidden="true"></div>
-
-  <section class="commentsSheet" id="commentsSheet" aria-hidden="true">
-    <div class="commentsTop">
-      <div class="commentsTitle">Komentet</div>
-      <button class="btnIcon" type="button" data-action="closeComments" aria-label="Close comments">
-        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="white" d="M18.3 5.7 12 12l6.3 6.3-1.3 1.3-6.3-6.3-6.3 6.3-1.3-1.3L9.4 12 3.1 5.7 4.4 4.4l6.3 6.3L17 4.4l1.3 1.3z"/>
-        </svg>
-      </button>
-    </div>
-
-    <div class="commentsList" id="commentsList">
-      <div class="cItem"><div class="cUser">Ardi</div><div class="cText">🔥🔥 super</div></div>
-      <div class="cItem"><div class="cUser">Lina</div><div class="cText">Kur ka edhe sot?</div></div>
-      <div class="cItem"><div class="cUser">Denis</div><div class="cText">Perfect vibe</div></div>
-    </div>
-
-    <form class="commentsInput" id="commentsForm" autocomplete="off">
-      <input id="commentInput" type="text" placeholder="Shkruaj koment…" />
-      <button class="productBtn" type="submit">Send</button>
-    </form>
-  </section>
+  <main class="reels" id="reels" aria-label="MENYRA Stories"></main>
 
   <script type="module">
     // =========================================================
-    // 0) Setup
+    // 1) DATA (deine 10 HLS Links)
     // =========================================================
-    const tpl = document.getElementById("overlayTpl");
-    const reels = Array.from(document.querySelectorAll(".reel"));
-    const videos = Array.from(document.querySelectorAll(".reelVideo"));
+    const STORIES = [
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8" },
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8" },
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8" },
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8" },
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8" },
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8" },
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8" },
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8" },
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8" },
+      { src: "https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8" },
+    ];
+
+    // Demo-meta (kannst du später dynamisch machen)
+    const DEMO_META = {
+      name: "Prince Coffe House",
+      logo: "./images/Prince-coffe-house-logo.jpg",
+      like: ["128","74","203","56","88","145","62","190","39","211"],
+      comments: ["16","9","31","5","12","21","8","27","3","44"],
+      pTitle: ["Burger + Fries","Classic Burger","Coffee Special","Daily Offer","Burger Menu","Coffee Shot","Fries + Sauce","House Special","Morning Coffee","Burger + Drink"],
+      pSub: ["Tap to view product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)","Marked product (demo)"],
+      pImg: "./images/speise1.avif"
+    };
+
     const reelsEl = document.getElementById("reels");
+    const tpl = document.getElementById("overlayTpl");
     const toastEl = document.getElementById("toast");
 
-    // Comments UI
-    const commentsBackdrop = document.getElementById("commentsBackdrop");
-    const commentsSheet = document.getElementById("commentsSheet");
-    const commentsList = document.getElementById("commentsList");
-    const commentsForm = document.getElementById("commentsForm");
-    const commentInput = document.getElementById("commentInput");
-    let commentsOpen = false;
+    function toast(t){
+      toastEl.textContent = t;
+      toastEl.classList.add("show");
+      setTimeout(() => toastEl.classList.remove("show"), 700);
+    }
 
-    // Inject overlay
-    reels.forEach((reel) => {
+    // =========================================================
+    // 2) Build DOM (slim HTML)
+    // =========================================================
+    const reels = [];
+    const videos = [];
+
+    STORIES.forEach((s, i) => {
+      const sec = document.createElement("section");
+      sec.className = "reel";
+      sec.dataset.index = String(i);
+      sec.dataset.name = DEMO_META.name;
+      sec.dataset.logo = DEMO_META.logo;
+      sec.dataset.like = DEMO_META.like[i] || "0";
+      sec.dataset.comments = DEMO_META.comments[i] || "0";
+      sec.dataset.productTitle = DEMO_META.pTitle[i] || "Produkt";
+      sec.dataset.productSub = DEMO_META.pSub[i] || "Tap";
+      sec.dataset.productImg = DEMO_META.pImg;
+
+      const v = document.createElement("video");
+      v.className = "reelVideo";
+      v.setAttribute("playsinline", "");
+      v.setAttribute("webkit-playsinline", "");
+      v.setAttribute("muted", "");     // autoplay safe
+      v.setAttribute("autoplay", "");  // helps instant start
+      v.setAttribute("loop", "");
+      v.setAttribute("preload", "none");
+      v.setAttribute("crossorigin", "anonymous");
+      v.disablePictureInPicture = true;
+      v.dataset.src = s.src; // HLS manifest
+
+      const vig = document.createElement("div");
+      vig.className = "vignette";
+
+      // overlay inject
       const frag = tpl.content.cloneNode(true);
+      frag.querySelector('[data-bind="logo"]').src = DEMO_META.logo;
+      frag.querySelector('[data-bind="name"]').textContent = DEMO_META.name;
+      frag.querySelector('[data-bind="likeCount"]').textContent = String(parseInt(sec.dataset.like,10)||0);
+      frag.querySelector('[data-bind="commentCount"]').textContent = String(parseInt(sec.dataset.comments,10)||0);
+      frag.querySelector('[data-bind="productTitle"]').textContent = sec.dataset.productTitle;
+      frag.querySelector('[data-bind="productSub"]').textContent = sec.dataset.productSub;
+      frag.querySelector('[data-bind="productImg"]').src = sec.dataset.productImg;
 
-      const name = reel.getAttribute("data-name") || "Restaurant";
-      const logo = reel.getAttribute("data-logo") || "";
-      const like = reel.getAttribute("data-like") || "0";
-      const comments = reel.getAttribute("data-comments") || "0";
-      const pTitle = reel.getAttribute("data-product-title") || "Produkt";
-      const pSub = reel.getAttribute("data-product-sub") || "Tap to view product";
-      const pImg = reel.getAttribute("data-product-img") || "";
+      sec.appendChild(v);
+      sec.appendChild(vig);
+      sec.appendChild(frag);
 
-      const logoEl = frag.querySelector('[data-bind="logo"]');
-      const nameEl = frag.querySelector('[data-bind="name"]');
-      const likeCountEl = frag.querySelector('[data-bind="likeCount"]');
-      const commentCountEl = frag.querySelector('[data-bind="commentCount"]');
-      const pTitleEl = frag.querySelector('[data-bind="productTitle"]');
-      const pSubEl = frag.querySelector('[data-bind="productSub"]');
-      const pImgEl = frag.querySelector('[data-bind="productImg"]');
-
-      if (logoEl && logo) logoEl.src = logo;
-      if (nameEl) nameEl.textContent = name;
-
-      const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
-      if (likeBtn) likeBtn.setAttribute("data-count", String(parseInt(like,10)||0));
-      if (likeCountEl) likeCountEl.textContent = String(parseInt(like,10)||0);
-
-      const comBtn = frag.querySelector('.railBtn[data-action="comment"]');
-      if (comBtn) comBtn.setAttribute("data-count", String(parseInt(comments,10)||0));
-      if (commentCountEl) commentCountEl.textContent = String(parseInt(comments,10)||0);
-
-      if (pTitleEl) pTitleEl.textContent = pTitle;
-      if (pSubEl) pSubEl.textContent = pSub;
-      if (pImgEl && pImg) pImgEl.src = pImg;
-
-      reel.appendChild(frag);
+      reelsEl.appendChild(sec);
+      reels.push(sec);
+      videos.push(v);
     });
 
     // =========================================================
-    // 1) Toast
+    // 3) HLS Engine (Chrome fast)
     // =========================================================
-    function showToast(text){
-      if (!toastEl) return;
-      toastEl.textContent = text;
-      toastEl.classList.add("show");
-      window.setTimeout(() => toastEl.classList.remove("show"), 750);
+    const isNativeHls = (() => {
+      const t = document.createElement("video");
+      return !!(t.canPlayType("application/vnd.apple.mpegurl") || t.canPlayType("application/x-mpegURL"));
+    })();
+
+    const hlsMap = new Map(); // index -> Hls instance
+    const prepared = new Set(); // index prepared
+    let HLS_READY = false;
+
+    function waitForHlsJs(){
+      return new Promise((resolve) => {
+        if (isNativeHls) return resolve(true);
+        const tick = () => {
+          if (window.Hls && window.Hls.isSupported && window.Hls.isSupported()){
+            HLS_READY = true;
+            resolve(true);
+            return;
+          }
+          setTimeout(tick, 20);
+        };
+        tick();
+      });
     }
 
-    // =========================================================
-    // 2) Sound (TikTok style: start muted -> unmute when playing)
-    // =========================================================
-    const SOUND_KEY = "menyra_story_sound"; // "on" | "off"
-    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
-    let activeIndex = 0;
-
-    function setSoundState(on){
-      soundOn = !!on;
-      localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
-      showToast(soundOn ? "Sound: ON" : "Sound: OFF");
-
-      // Apply immediately on active (muted-first trick)
-      const v = videos[activeIndex];
+    function ensurePlayer(i){
+      const v = videos[i];
       if (!v) return;
 
-      if (!soundOn){
-        v.muted = true;
-        v.volume = 0;
-        safePlay(v);
+      const src = v.dataset.src;
+      if (!src) return;
+
+      if (isNativeHls){
+        if (v.src !== src){
+          v.src = src;
+        }
+        prepared.add(i);
         return;
       }
 
-      // IMPORTANT: browsers allow unmute best when already playing.
-      // Start playing muted -> then unmute.
-      v.muted = true;
-      v.volume = 0;
-      safePlay(v);
+      if (!HLS_READY || !window.Hls || !window.Hls.isSupported()) return;
 
-      // try unmute shortly after (still within user gesture usually)
-      window.setTimeout(() => {
-        if (!soundOn) return;
+      if (hlsMap.has(i)) return;
+
+      const Hls = window.Hls;
+      const hls = new Hls({
+        autoStartLoad: false,            // we decide when to load
+        startPosition: 0,
+        maxBufferLength: 6,              // keep small -> less RAM, quicker switches
+        maxMaxBufferLength: 12,
+        backBufferLength: 0,
+        enableWorker: true,
+        lowLatencyMode: false,
+      });
+
+      hls.attachMedia(v);
+      hls.loadSource(src);
+
+      // Recovery (no "hängen" forever)
+      hls.on(Hls.Events.ERROR, (ev, data) => {
+        if (!data || !data.fatal) return;
         try{
-          v.muted = false;
-          v.volume = 1;
-          // kick again (some browsers need it)
-          safePlay(v);
+          if (data.type === Hls.ErrorTypes.NETWORK_ERROR){
+            hls.startLoad();
+          } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR){
+            hls.recoverMediaError();
+          } else {
+            hls.destroy();
+            hlsMap.delete(i);
+            prepared.delete(i);
+          }
         }catch(_){}
-      }, 60);
+      });
+
+      hlsMap.set(i, hls);
+      prepared.add(i);
+    }
+
+    function startLoad(i){
+      if (!prepared.has(i)) ensurePlayer(i);
+      if (isNativeHls) return;
+      const hls = hlsMap.get(i);
+      try{ hls?.startLoad(); }catch(_){}
+    }
+
+    function stopLoad(i){
+      if (isNativeHls) return;
+      const hls = hlsMap.get(i);
+      try{ hls?.stopLoad(); }catch(_){}
+    }
+
+    async function prefetchManifest(url){
+      try{
+        // warm TLS + cache a tiny bit (best-effort)
+        await fetch(url, { mode: "cors", cache: "force-cache" });
+      }catch(_){}
     }
 
     // =========================================================
-    // 3) Ultra-safe play
+    // 4) Playback (no random pauses)
     // =========================================================
+    const SOUND_KEY = "menyra_story_sound";
+    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+    let activeIndex = 0;
+
+    function applySound(){
+      videos.forEach((v, i) => {
+        if (i !== activeIndex){
+          v.muted = true;
+          v.volume = 0;
+          return;
+        }
+        v.muted = !soundOn;
+        v.volume = soundOn ? 1 : 0;
+      });
+    }
+
     function safePlay(v){
       if (!v) return;
       const p = v.play();
       if (p && typeof p.catch === "function") p.catch(() => {});
     }
 
-    // =========================================================
-    // 4) Preload strategy (speed stays)
-    // Active + Next = auto, Near = metadata, Rest = none
-    // =========================================================
-    function warmPreload(idx){
-      for (let i = 0; i < videos.length; i++){
-        const v = videos[i];
-        let target = "none";
+    function activate(i){
+      i = Math.max(0, Math.min(videos.length - 1, i));
+      if (i === activeIndex) return;
 
-        if (i === idx || i === idx + 1) target = "auto";
-        else if (Math.abs(i - idx) <= 2) target = "metadata";
+      activeIndex = i;
 
-        if (v.preload !== target) v.preload = target;
-
-        // Nudge load only for promoted videos, never touch active with load()
-        if (target !== "none" && i !== idx && v.readyState === 0){
-          try { v.load(); } catch(_) {}
+      // Pause others (CPU), but keep next preloaded via HLS startLoad
+      videos.forEach((v, idx) => {
+        if (idx !== activeIndex){
+          try { v.pause(); } catch(_){}
         }
+      });
+
+      warmAround(activeIndex);
+
+      applySound();
+      safePlay(videos[activeIndex]);
+    }
+
+    function warmAround(idx){
+      // Ultra fast: active + next + next2 + prev
+      const hot = new Set([idx, idx+1, idx+2, idx-1].filter(x => x >= 0 && x < videos.length));
+
+      // Start loads for hot, stop for far
+      for (let i = 0; i < videos.length; i++){
+        if (hot.has(i)){
+          ensurePlayer(i);
+          startLoad(i);
+          // warm cache
+          const src = videos[i].dataset.src;
+          if (src) prefetchManifest(src);
+        } else {
+          stopLoad(i);
+        }
+      }
+
+      // Make the "next" start instant: nudge to decode soon
+      const next = videos[idx+1];
+      if (next){
+        // do NOT play; just ensure it can start instantly when activated
+        try { next.preload = "auto"; } catch(_){}
       }
     }
 
-    // Extra: prewarm candidate without downgrading active
-    function prewarmCandidate(candidateIdx){
-      const a = Math.max(0, Math.min(videos.length - 1, candidateIdx));
-      const b = Math.max(0, Math.min(videos.length - 1, candidateIdx + 1));
-      [a,b].forEach(i => {
-        const v = videos[i];
-        if (!v) return;
-        if (v.preload !== "auto") v.preload = "auto";
-        if (v.readyState === 0){
-          try { v.load(); } catch(_) {}
-        }
+    // If active stalls, re-play quickly
+    function attachStallFix(){
+      videos.forEach((v, i) => {
+        v.addEventListener("waiting", () => {
+          if (i !== activeIndex) return;
+          safePlay(v);
+        }, { passive: true });
+
+        v.addEventListener("stalled", () => {
+          if (i !== activeIndex) return;
+          safePlay(v);
+        }, { passive: true });
+
+        v.addEventListener("canplay", () => {
+          if (i !== activeIndex) return;
+          safePlay(v);
+        }, { passive: true });
       });
     }
 
     // =========================================================
-    // 5) Snap engine (TikTok-like: small swipe => next/prev)
+    // 5) Snap Fix (smooth, nicht extrem schnell)
     // =========================================================
     let VIEW_H = 1;
     function updateViewH(){
       VIEW_H = reelsEl.getBoundingClientRect().height || window.innerHeight || 1;
     }
     updateViewH();
-    window.addEventListener("resize", updateViewH, { passive: true });
+    window.addEventListener("resize", updateViewH, { passive:true });
 
-    let animRAF = 0;
-    function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+    let snapTimer = null;
+    let anim = null;
 
-    function animateScrollTo(targetY, duration = 160){
-      cancelAnimationFrame(animRAF);
-      const startY = reelsEl.scrollTop;
-      const diff = targetY - startY;
+    function animateTo(top, ms = 240){
+      if (anim) cancelAnimationFrame(anim);
+      const start = reelsEl.scrollTop;
+      const diff = top - start;
       if (Math.abs(diff) < 1) return;
 
-      const startT = performance.now();
-      const d = Math.max(110, Math.min(duration, 220));
+      const t0 = performance.now();
+      const dur = Math.max(200, Math.min(ms, 320));
 
-      function step(now){
-        const t = Math.min(1, (now - startT) / d);
-        reelsEl.scrollTop = startY + diff * easeOutCubic(t);
-        if (t < 1) animRAF = requestAnimationFrame(step);
-      }
-      animRAF = requestAnimationFrame(step);
+      const ease = (t) => 1 - Math.pow(1 - t, 3);
+
+      const step = (now) => {
+        const p = Math.min(1, (now - t0) / dur);
+        reelsEl.scrollTop = start + diff * ease(p);
+        if (p < 1) anim = requestAnimationFrame(step);
+      };
+      anim = requestAnimationFrame(step);
     }
 
-    function clampIndex(i){
-      return Math.max(0, Math.min(videos.length - 1, i));
+    function nearestIndex(){
+      return Math.max(0, Math.min(reels.length - 1, Math.round(reelsEl.scrollTop / VIEW_H)));
     }
 
-    function indexToTop(i){
-      return i * VIEW_H;
-    }
-
-    // "current index" from scrollTop (but we don't require half-page scroll anymore)
-    function currentIndex(){
-      const raw = reelsEl.scrollTop / VIEW_H;
-      return clampIndex(Math.round(raw));
-    }
-
-    function activate(idx){
-      idx = clampIndex(idx);
-      if (idx === activeIndex) return;
-
-      // Preload around new active
-      warmPreload(idx);
-
-      // Pause others
-      videos.forEach((v, i) => {
-        const reel = reels[i];
-        if (i !== idx){
-          try { v.pause(); } catch(_) {}
-          v.muted = true;
-          v.volume = 0;
-          reel?.classList.remove("is-paused");
-        }
-      });
-
-      activeIndex = idx;
-      const v = videos[idx];
-
-      // Start always muted -> then unmute if soundOn (smooth)
-      v.muted = true;
-      v.volume = 0;
-      safePlay(v);
-
-      if (soundOn){
-        // unmute only after playback really starts (prevents black/blocked)
-        const onPlaying = () => {
-          v.removeEventListener("playing", onPlaying);
-          if (!soundOn) return;
-          try{
-            v.muted = false;
-            v.volume = 1;
-          }catch(_){}
-        };
-        v.addEventListener("playing", onPlaying, { passive: true });
-        // also nudge (safe)
-        window.setTimeout(() => { if (soundOn) safePlay(v); }, 40);
-      }
-    }
-
-    // =========================================================
-    // 6) Scroll + snap-finish (faster lock)
-    // =========================================================
-    let rafPending = false;
-    let snapTimer = null;
-
-    let scrollSession = false;
-    let startTop = 0;
-    let startIdx = 0;
-
-    // thresholds
-    function snapThresholdPx(){
-      // small gesture should count
-      return Math.max(22, VIEW_H * 0.06);
-    }
-
-    function onScrollTick(){
-      rafPending = false;
-      if (commentsOpen) return;
-
-      const idx = currentIndex();
-      // only activate when we are basically on the reel (no early pausing)
-      activate(idx);
-    }
-
-    function onScroll(){
-      if (commentsOpen) return;
-
-      // start of scroll session
-      if (!scrollSession){
-        scrollSession = true;
-        startTop = reelsEl.scrollTop;
-        startIdx = currentIndex();
-      }
-
-      // During scroll: prewarm likely target without pausing active
-      const delta = reelsEl.scrollTop - startTop;
-      const th = snapThresholdPx();
-      if (Math.abs(delta) > th * 0.6){
-        const cand = clampIndex(startIdx + (delta > 0 ? 1 : -1));
-        if (cand !== startIdx) prewarmCandidate(cand);
-      }
-
-      if (!rafPending){
-        rafPending = true;
-        requestAnimationFrame(onScrollTick);
-      }
-
-      // faster scroll-end snap
+    reelsEl.addEventListener("scroll", () => {
       if (snapTimer) clearTimeout(snapTimer);
       snapTimer = setTimeout(() => {
-        if (commentsOpen) return;
-
-        const endTop = reelsEl.scrollTop;
-        const deltaEnd = endTop - startTop;
-        const th2 = snapThresholdPx();
-
-        let targetIdx = startIdx;
-
-        // TikTok-like: small swipe decides next/prev
-        if (Math.abs(deltaEnd) >= th2){
-          targetIdx = clampIndex(startIdx + (deltaEnd > 0 ? 1 : -1));
-        } else {
-          // if it barely moved: snap back to start
-          targetIdx = startIdx;
+        const idx = nearestIndex();
+        const targetTop = idx * VIEW_H;
+        // hard align if off by more than 2px
+        if (Math.abs(reelsEl.scrollTop - targetTop) > 2){
+          animateTo(targetTop, 240);
         }
-
-        const targetY = indexToTop(targetIdx);
-        animateScrollTo(targetY, 150);
-
-        // session end (after we commit)
-        scrollSession = false;
-
-        // ensure activation after snap settles
-        setTimeout(() => activate(targetIdx), 70);
+        activate(idx);
       }, 70);
-    }
+    }, { passive:true });
 
-    reelsEl.addEventListener("scroll", onScroll, { passive: true });
-
-    // =========================================================
-    // 7) Touch swipe assist (even if scroll distance is tiny)
-    // =========================================================
-    let tStartY = 0;
-    let tStartTime = 0;
+    // Small swipe should still go 1 reel (ohne "extrem schnell")
+    let touchStartY = 0;
+    let touchStartTop = 0;
 
     reelsEl.addEventListener("touchstart", (e) => {
-      if (commentsOpen) return;
-      const t = e.touches && e.touches[0];
+      const t = e.touches?.[0];
       if (!t) return;
-      tStartY = t.clientY;
-      tStartTime = Date.now();
-    }, { passive: true });
+      touchStartY = t.clientY;
+      touchStartTop = reelsEl.scrollTop;
+    }, { passive:true });
 
     reelsEl.addEventListener("touchend", (e) => {
-      if (commentsOpen) return;
+      const t = e.changedTouches?.[0];
+      if (!t) return;
 
-      const dt = Date.now() - tStartTime;
-      // very short flicks count
-      const MIN_SWIPE = 18;
+      const dy = t.clientY - touchStartY;
+      const dTop = reelsEl.scrollTop - touchStartTop;
 
-      const endTouch = (e.changedTouches && e.changedTouches[0]);
-      if (!endTouch) return;
+      // If user made a small gesture but scroll didn't "commit": force 1 step
+      const smallGesture = Math.abs(dy) > 18 && Math.abs(dTop) < VIEW_H * 0.12;
+      if (!smallGesture) return;
 
-      const dy = endTouch.clientY - tStartY;
-      if (Math.abs(dy) < MIN_SWIPE) return;
-
-      // direction: swipe up => next (dy negative), swipe down => prev
       const dir = dy < 0 ? 1 : -1;
-      const idx = currentIndex();
-      const target = clampIndex(idx + dir);
-
-      // prewarm next immediately
-      prewarmCandidate(target);
-
-      animateScrollTo(indexToTop(target), dt < 200 ? 140 : 170);
-      setTimeout(() => activate(target), 60);
-    }, { passive: true });
+      const idx = nearestIndex();
+      const next = Math.max(0, Math.min(reels.length - 1, idx + dir));
+      animateTo(next * VIEW_H, 240);
+      activate(next);
+    }, { passive:true });
 
     // =========================================================
-    // 8) Comments lock
-    // =========================================================
-    function lockFeed(lock){
-      reelsEl.style.pointerEvents = lock ? "none" : "";
-      reelsEl.style.overflowY = lock ? "hidden" : "";
-    }
-
-    function openComments(){
-      if (commentsOpen) return;
-      commentsOpen = true;
-      commentsBackdrop.classList.add("open");
-      commentsSheet.classList.add("open");
-      commentsBackdrop.setAttribute("aria-hidden", "false");
-      commentsSheet.setAttribute("aria-hidden", "false");
-      lockFeed(true);
-      window.setTimeout(() => commentInput?.focus?.(), 60);
-    }
-
-    function closeComments(){
-      if (!commentsOpen) return;
-      commentsOpen = false;
-      commentsBackdrop.classList.remove("open");
-      commentsSheet.classList.remove("open");
-      commentsBackdrop.setAttribute("aria-hidden", "true");
-      commentsSheet.setAttribute("aria-hidden", "true");
-      lockFeed(false);
-
-      warmPreload(activeIndex);
-      safePlay(videos[activeIndex]);
-    }
-
-    commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
-
-    commentsForm?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const val = (commentInput?.value || "").trim();
-      if (!val) return;
-
-      const item = document.createElement("div");
-      item.className = "cItem";
-      item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
-      item.querySelector(".cText").textContent = val;
-      commentsList?.prepend(item);
-
-      commentInput.value = "";
-    });
-
-    // =========================================================
-    // 9) Controls + Tap pause only by user
+    // 6) Controls
     // =========================================================
     document.addEventListener("click", (e) => {
       const actionEl = e.target.closest("[data-action]");
-      if (actionEl){
-        const action = actionEl.getAttribute("data-action");
+      if (!actionEl) return;
 
-        if (action === "back"){
-          window.location.href = "./karte-demo.html";
-          return;
-        }
-
-        if (action === "sound"){
-          // toggling sound must be user gesture => best chance to enable
-          setSoundState(!soundOn);
-          return;
-        }
-
-        if (action === "like"){
-          const btn = actionEl.closest('.railBtn[data-action="like"]');
-          if (!btn) return;
-
-          const countEl = btn.querySelector(".railCount");
-          const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
-          const liked = btn.classList.toggle("is-liked");
-          const next = liked ? cur + 1 : Math.max(0, cur - 1);
-
-          btn.setAttribute("data-count", String(next));
-          if (countEl) countEl.textContent = String(next);
-          return;
-        }
-
-        if (action === "comment"){ openComments(); return; }
-        if (action === "closeComments"){ closeComments(); return; }
-        if (action === "share"){ alert("Share (demo)"); return; }
-        if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
+      const action = actionEl.getAttribute("data-action");
+      if (action === "back"){
+        window.location.href = "./karte-demo.html";
+        return;
       }
 
-      if (commentsOpen) return;
-
-      // Tap on active video: play/pause (only user pause shows hint)
-      const video = e.target.closest("video.reelVideo");
-      if (!video) return;
-
-      const reel = video.closest(".reel");
-      const idx = Number(reel?.getAttribute("data-index") || "0");
-      if (idx !== activeIndex) return;
-
-      if (video.paused){
-        reel?.classList.remove("is-paused");
-        safePlay(video);
-      }else{
-        video.pause();
-        reel?.classList.add("is-paused");
+      if (action === "sound"){
+        soundOn = !soundOn;
+        localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+        applySound();
+        // important: do NOT restart, just keep playing
+        safePlay(videos[activeIndex]);
+        toast(soundOn ? "Sound: ON" : "Sound: OFF");
+        return;
       }
-    });
 
-    // Double tap to like
+      if (action === "like"){
+        const btn = actionEl.closest('.railBtn[data-action="like"]');
+        if (!btn) return;
+        const countEl = btn.querySelector(".railCount");
+        const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
+        const liked = btn.classList.toggle("is-liked");
+        const next = liked ? cur + 1 : Math.max(0, cur - 1);
+        btn.setAttribute("data-count", String(next));
+        if (countEl) countEl.textContent = String(next);
+        return;
+      }
+
+      if (action === "comment"){ alert("Comments (demo)"); return; }
+      if (action === "share"){ alert("Share (demo)"); return; }
+      if (action === "product"){ alert("Produkt öffnen (demo)"); return; }
+    }, { passive:true });
+
+    // Double-tap like
     let lastTap = 0;
     document.addEventListener("touchend", (e) => {
-      if (commentsOpen) return;
       const now = Date.now();
       const isDouble = (now - lastTap) < 260;
       lastTap = now;
@@ -1031,44 +762,46 @@
       const reel = e.target.closest(".reel");
       if (!reel) return;
       const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
-      if (likeBtn) likeBtn.click();
-    }, { passive: true });
+      likeBtn?.click();
+    }, { passive:true });
 
     // Pause when hidden
     document.addEventListener("visibilitychange", () => {
       if (document.hidden){
         videos.forEach(v => { try { v.pause(); } catch(_){} });
-      }else{
-        warmPreload(activeIndex);
+      } else {
+        warmAround(activeIndex);
+        applySound();
         safePlay(videos[activeIndex]);
       }
-    }, { passive: true });
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeComments();
     }, { passive:true });
 
     // =========================================================
-    // 10) Init (FAST)
+    // 7) IntersectionObserver (stable active index)
     // =========================================================
-    warmPreload(0);
+    const io = new IntersectionObserver((entries) => {
+      let best = null;
+      for (const e of entries){
+        if (!e.isIntersecting) continue;
+        if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+      }
+      if (!best) return;
+      const idx = Number(best.target.dataset.index || "0");
+      if (Number.isFinite(idx)) activate(idx);
+    }, { threshold: [0.55, 0.7, 0.85] });
 
-    // start first ASAP
-    videos[0].muted = true;
-    videos[0].volume = 0;
+    reels.forEach(r => io.observe(r));
+
+    // =========================================================
+    // 8) INIT (instant)
+    // =========================================================
+    await waitForHlsJs();     // ensures Chrome can play m3u8
+    attachStallFix();
+
+    // Start fast: prepare 0,1,2 immediately
+    warmAround(0);
+    applySound();
     safePlay(videos[0]);
-
-    // pre-warm second
-    prewarmCandidate(1);
-
-    // apply saved sound preference (but keep safe muted-first)
-    if (soundOn){
-      // we do not auto-unmute without user gesture.
-      // keep state but show hint
-      showToast("Tap Sound für Audio");
-      soundOn = false;
-      localStorage.setItem(SOUND_KEY, "off");
-    }
   </script>
 </body>
 </html>
