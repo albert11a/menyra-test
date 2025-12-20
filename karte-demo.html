@@ -1292,9 +1292,11 @@
       return;
     }
 
-    // Tabs (Story/Info) – später Seiten
-    const tab = btn.dataset.tab || "";
-    closeAllPanels();
+      // STORY -> story.html (wenn du wirklich story.htm hast: einfach unten ändern)
+      if (btn.dataset.tab === "story") {
+        window.location.href = "./story.html"; // <-- falls du story.htm willst: "./story.htm"
+        return;
+      }
 
     if (tab === "story") return; // später: window.location.href = "./story.html";
     if (tab === "info")  return; // später: window.location.href = "./info.html";
