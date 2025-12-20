@@ -672,165 +672,207 @@
     }
 
     /* ========================================
-       QUICKNAV (NICHT STICKY)
-       ======================================== */
-    .quickNav{
-      margin: 0;
-      background:#fff;
-      color:#0f172a;
-      border-radius: 18px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      box-shadow: none;
-      padding: 8px;
-      position: relative;
-      overflow: hidden;
-      isolation: isolate;
-    }
-    .quickNavRow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 6px;
-      min-height: 64px;
-      transition: opacity .18s ease, transform .18s ease;
-    }
-    .quickNavBtn{
-      flex: 1;
-      border: 0;
-      background: transparent;
-      padding: 0;
-      height: 64px;
-      border-radius: 14px;
+   KARTE – QUICKNAV (WHITE BAR)
+   - Nav bleibt weiß
+   - Nur aktive Tile wird dunkel wie "Sot ne fokus"
+======================================== */
 
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap: 5px;
+.quickNav{
+  margin: 0;
+  background:#fff;
+  color:#0f172a;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: none;
+  padding: 8px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
 
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
+/* Row */
+.quickNavRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 6px;
+  min-height: 64px;
+  transition: opacity .18s ease, transform .18s ease;
+}
 
-      color: inherit;
-      font-size: 11px;
-      font-weight: 600;
+.quickNavBtn{
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  height: 64px;
+  border-radius: 14px;
 
-      transition: background .18s ease, color .18s ease, transform .18s ease;
-    }
-    .qIcon{ width: 22px; height: 22px; display:grid; place-items:center; }
-    .quickNavBtn svg{ width: 22px; height: 22px; fill: currentColor; }
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap: 5px;
 
-    .quickNavBtn:active{ transform: scale(0.985); }
-    #langLabel{ letter-spacing: .3px; }
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
 
-    /* =========================================================
-       FIX (nur Farbe): QuickNav Hover + Active = “Sot ne fokus”
-       - Active: #0f172a
-       - Hover:  #0f172a (Desktop only)
-    ========================================================= */
-    .quickNavBtn.is-active{
-      background: #0f172a;
-      color: #f9fafb;
-    }
-    @media (hover:hover) and (pointer:fine){
-      .quickNavBtn:hover{
-        background: #0f172a;
-        color: #f9fafb;
-      }
-    }
+  color: inherit;
+  font-size: 11px;
+  font-weight: 650;
 
-    /* ========================================
-       LANGUAGE PANEL (Expand)
-       ======================================== */
-    .langPanel{
-      position:absolute;
-      inset: 0;
-      padding: 8px;
-      border-radius: inherit;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
 
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 8px;
+/* Hover = leicht wie "focus", aber nur opacity */
+.quickNavBtn:hover{
+  background: rgba(15, 23, 42, 0.06);
+}
+.quickNavBtn:active{
+  transform: scale(0.985);
+  background: rgba(15, 23, 42, 0.08);
+}
 
-      background:#fff;
+/* Active = dunkel wie "Sot ne fokus" */
+.quickNavBtn.is-active{
+  background: #0f172a;
+  color: #f9fafb;
+}
 
-      transform-origin: right center;
-      transform: scaleX(0);
-      opacity: 0;
-      pointer-events:none;
+/* ICONS */
+.qIcon{
+  width: 22px;
+  height: 22px;
+  display:grid;
+  place-items:center;
+}
+.quickNavBtn svg{
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  stroke: none;
+}
 
-      transition: transform .22s ease, opacity .18s ease;
-      z-index: 2;
-    }
-    .langBackBtn,
-    .langNextBtn{
-      width: 40px;
-      height: 52px;
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      background: #fff;
-      border-radius: 14px;
-      display:grid;
-      place-items:center;
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .langBackBtn svg,
-    .langNextBtn svg{
-      width: 20px;
-      height: 20px;
-      fill: #111827;
-    }
-    .langList{
-      flex:1;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap: 8px;
+#langLabel{ letter-spacing: .3px; }
 
-      transform: translateX(12px);
-      opacity: 0;
-      transition: transform .22s ease, opacity .22s ease;
-    }
+/* ========================================
+   PANELS (Language + Kamarieri)
+   - öffnen wie "Sprache" (scaleX von rechts)
+   - Nav-Farbe ändert sich NICHT
+======================================== */
+.panelOverlay{
+  position:absolute;
+  inset: 0;
+  padding: 8px;
+  border-radius: inherit;
 
-    /* weniger border radius (nicht 999) */
-    .langOpt{
-      border: 1px solid rgba(148, 163, 184, 0.30);
-      background:#fff;
-      height: 40px;
-      min-width: 46px;
-      padding: 0 12px;
-      border-radius: 14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 8px;
 
-      font-weight: 700;
-      font-size: 12px;
-      color: #111827;
+  background:#fff;
 
-      cursor:pointer;
-      -webkit-tap-highlight-color: transparent;
-      transition: transform .18s ease, background .18s ease, border-color .18s ease;
-    }
-    .langOpt:active{ transform: scale(0.98); }
+  transform-origin: right center;
+  transform: scaleX(0);
+  opacity: 0;
+  pointer-events:none;
 
-    /* OPEN STATE */
-    .quickNav.lang-open .quickNavRow{
-      opacity: 0;
-      transform: translateX(-8px);
-      pointer-events:none;
-    }
-    .quickNav.lang-open .langPanel{
-      transform: scaleX(1);
-      opacity: 1;
-      pointer-events:auto;
-    }
-    .quickNav.lang-open .langList{
-      transform: translateX(0);
-      opacity: 1;
-    }
+  transition: transform .22s ease, opacity .18s ease;
+  z-index: 2;
+}
 
-    @media (prefers-reduced-motion: reduce){
-      .quickNavRow, .langPanel, .langList, .quickNavBtn, .langOpt{ transition: none !important; }
-    }
+.panelBackBtn,
+.panelNextBtn{
+  width: 40px;
+  height: 52px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #fff;
+  border-radius: 14px;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.panelBackBtn svg,
+.panelNextBtn svg{
+  width: 20px;
+  height: 20px;
+  fill: #111827;
+}
+
+.panelList{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: 8px;
+
+  transform: translateX(12px);
+  opacity: 0;
+  transition: transform .22s ease, opacity .22s ease;
+}
+
+/* Weniger Radius als vorher (keine 999px) */
+.panelOpt{
+  border: 1px solid rgba(148, 163, 184, 0.30);
+  background:#fff;
+  height: 40px;
+  min-width: 46px;
+  padding: 0 12px;
+  border-radius: 12px; /* <- weniger round */
+
+  font-weight: 750;
+  font-size: 12px;
+  color: #111827;
+
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .18s ease, background .18s ease, border-color .18s ease;
+}
+.panelOpt:hover{
+  background: rgba(15, 23, 42, 0.04);
+}
+.panelOpt:active{
+  transform: scale(0.98);
+}
+
+/* OPEN STATES (Row verschwindet, Panel kommt rein) */
+.quickNav.lang-open .quickNavRow,
+.quickNav.kam-open  .quickNavRow{
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events:none;
+}
+
+.quickNav.lang-open #langPanel{
+  transform: scaleX(1);
+  opacity: 1;
+  pointer-events:auto;
+}
+.quickNav.lang-open #langPanel .panelList{
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.quickNav.kam-open #kamPanel{
+  transform: scaleX(1);
+  opacity: 1;
+  pointer-events:auto;
+}
+.quickNav.kam-open #kamPanel .panelList{
+  transform: translateX(0);
+  opacity: 1;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .quickNavRow, .panelOverlay, .panelList, .quickNavBtn, .panelOpt{
+    transition: none !important;
+  }
+}
+
   </style>
 </head>
 
@@ -853,55 +895,94 @@
     <!-- =========================================================
       QUICK MENU (NICHT STICKY)
     ========================================================= -->
-    <nav class="quickNav" aria-label="MENYRA Quick Menu">
-      <div class="quickNavRow" id="quickNavRow">
-        <button class="quickNavBtn is-active" type="button" data-tab="social" aria-current="page">
-          <span class="qIcon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
-          </span>
-          <span class="qLabel">Social</span>
-        </button>
+<nav class="quickNav" aria-label="MENYRA Quick Menu">
+  <div class="quickNavRow" id="quickNavRow">
 
-        <button class="quickNavBtn" type="button" data-tab="info">
-          <span class="qIcon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a1.2 1.2 0 110 2.4A1.2 1.2 0 0112 6zm1.6 12.5h-3.2a1 1 0 010-2h.6V12h-.6a1 1 0 010-2h2a1 1 0 011 1v5.5h.2a1 1 0 010 2z"/></svg>
-          </span>
-          <span class="qLabel">Info</span>
-        </button>
+    <!-- STORY -->
+    <button class="quickNavBtn" type="button" data-tab="story">
+      <span class="qIcon" aria-hidden="true">
+        <!-- Story Ring -->
+        <svg viewBox="0 0 24 24">
+          <path d="M12 3.5a8.5 8.5 0 108.5 8.5A8.51 8.51 0 0012 3.5zm0 15A6.5 6.5 0 1118.5 12 6.51 6.51 0 0112 18.5z"/>
+        </svg>
+      </span>
+      <span class="qLabel">Story</span>
+    </button>
 
-        <button class="quickNavBtn" type="button" data-tab="kamarieri">
-          <span class="qIcon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5v2.2c0 .6-.2 1.2-.6 1.7L5 12.8V15h14v-2.2l-1.4-1.9c-.4-.5-.6-1.1-.6-1.7V7a5 5 0 00-5-5zm0 20a2.5 2.5 0 002.4-2H9.6A2.5 2.5 0 0012 22z"/></svg>
-          </span>
-          <span class="qLabel">Kamarieri</span>
-        </button>
+    <!-- SOCIAL -->
+    <button class="quickNavBtn is-active" type="button" data-tab="social" aria-current="page">
+      <span class="qIcon" aria-hidden="true">
+        <!-- Grid -->
+        <svg viewBox="0 0 24 24"><path d="M4 4h7v7H4V4zm9 0h7v7h-7V4zM4 13h7v7H4v-7zm9 0h7v7h-7v-7z"/></svg>
+      </span>
+      <span class="qLabel">Social</span>
+    </button>
 
-        <button class="quickNavBtn quickNavBtnLang" id="langToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
-          <span class="qIcon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 9h-2.4a15 15 0 00-1.1-5A8.04 8.04 0 0118.9 11zM12 4c.9 1.1 1.8 3.1 2.2 7H9.8C10.2 7.1 11.1 5.1 12 4zM4.9 13h2.4a15 15 0 001.1 5A8.04 8.04 0 015.1 13zM5.1 11a8.04 8.04 0 013.5-5 15 15 0 00-1.1 5H5.1zm6.9 9c-.9-1.1-1.8-3.1-2.2-7h4.4c-.4 3.9-1.3 5.9-2.2 7zm3.4-2a15 15 0 001.1-5h2.4a8.04 8.04 0 01-3.5 5z"/></svg>
-          </span>
-          <span class="qLabel" id="langLabel">DE</span>
-        </button>
-      </div>
+    <!-- INFO -->
+    <button class="quickNavBtn" type="button" data-tab="info">
+      <span class="qIcon" aria-hidden="true">
+        <!-- Info -->
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 4a1.2 1.2 0 110 2.4A1.2 1.2 0 0112 6zm1.6 12.5h-3.2a1 1 0 010-2h.6V12h-.6a1 1 0 010-2h2a1 1 0 011 1v5.5h.2a1 1 0 010 2z"/></svg>
+      </span>
+      <span class="qLabel">Info</span>
+    </button>
 
-      <div class="langPanel" id="langPanel" aria-hidden="true">
-        <button class="langBackBtn" id="langBackBtn" type="button" aria-label="Back">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
-        </button>
+    <!-- KAMARIERI (öffnet Panel wie Sprache) -->
+    <button class="quickNavBtn" id="kamToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
+      <span class="qIcon" aria-hidden="true">
+        <!-- Bell -->
+        <svg viewBox="0 0 24 24"><path d="M12 2a5 5 0 00-5 5v2.2c0 .6-.2 1.2-.6 1.7L5 12.8V15h14v-2.2l-1.4-1.9c-.4-.5-.6-1.1-.6-1.7V7a5 5 0 00-5-5zm0 20a2.5 2.5 0 002.4-2H9.6A2.5 2.5 0 0012 22z"/></svg>
+      </span>
+      <span class="qLabel">Kamarieri</span>
+    </button>
 
-        <div class="langList" role="listbox" aria-label="Choose language">
-          <button class="langOpt" type="button" data-lang="DE" role="option">DE</button>
-          <button class="langOpt" type="button" data-lang="EN" role="option">EN</button>
-          <button class="langOpt" type="button" data-lang="SQ" role="option">SQ</button>
-          <button class="langOpt" type="button" data-lang="SR" role="option">SR</button>
-          <button class="langOpt" type="button" data-lang="TR" role="option">TR</button>
-        </div>
+    <!-- SPRACHEN -->
+    <button class="quickNavBtn" id="langToggleBtn" type="button" aria-haspopup="true" aria-expanded="false">
+      <span class="qIcon" aria-hidden="true">
+        <!-- Globe -->
+        <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm6.9 9h-2.4a15 15 0 00-1.1-5A8.04 8.04 0 0118.9 11zM12 4c.9 1.1 1.8 3.1 2.2 7H9.8C10.2 7.1 11.1 5.1 12 4zM4.9 13h2.4a15 15 0 001.1 5A8.04 8.04 0 015.1 13zM5.1 11a8.04 8.04 0 013.5-5 15 15 0 00-1.1 5H5.1zm6.9 9c-.9-1.1-1.8-3.1-2.2-7h4.4c-.4 3.9-1.3 5.9-2.2 7zm3.4-2a15 15 0 001.1-5h2.4a8.04 8.04 0 01-3.5 5z"/></svg>
+      </span>
+      <span class="qLabel" id="langLabel">DE</span>
+    </button>
+  </div>
 
-        <button class="langNextBtn" id="langNextBtn" type="button" aria-label="Next">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L16 12l-7.5 7.5-1.8-1.8L12.4 12 6.7 6.3l1.8-1.8z"/></svg>
-        </button>
-      </div>
-    </nav>
+  <!-- LANGUAGE PANEL -->
+  <div class="panelOverlay" id="langPanel" aria-hidden="true">
+    <button class="panelBackBtn" id="langBackBtn" type="button" aria-label="Back">
+      <!-- < -->
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
+    </button>
+
+    <div class="panelList" role="listbox" aria-label="Choose language">
+      <button class="panelOpt" type="button" data-lang="DE" role="option">DE</button>
+      <button class="panelOpt" type="button" data-lang="EN" role="option">EN</button>
+      <button class="panelOpt" type="button" data-lang="SQ" role="option">SQ</button>
+      <button class="panelOpt" type="button" data-lang="SR" role="option">SR</button>
+      <button class="panelOpt" type="button" data-lang="TR" role="option">TR</button>
+    </div>
+
+    <button class="panelNextBtn" id="langNextBtn" type="button" aria-label="Next">
+      <!-- > -->
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L16 12l-7.5 7.5-1.8-1.8L12.4 12 6.7 6.3l1.8-1.8z"/></svg>
+    </button>
+  </div>
+
+  <!-- KAMARIERI PANEL -->
+  <div class="panelOverlay" id="kamPanel" aria-hidden="true">
+    <button class="panelBackBtn" id="kamBackBtn" type="button" aria-label="Back">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.5 19.5L8 12l7.5-7.5 1.8 1.8L11.6 12l5.7 5.7-1.8 1.8z"/></svg>
+    </button>
+
+    <div class="panelList" role="listbox" aria-label="Call waiter">
+      <button class="panelOpt" id="callWaiterOpt" type="button" role="option">Thirr kamarierin</button>
+    </div>
+
+    <button class="panelNextBtn" id="kamNextBtn" type="button" aria-label="Next">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5L16 12l-7.5 7.5-1.8-1.8L12.4 12 6.7 6.3l1.8-1.8z"/></svg>
+    </button>
+  </div>
+</nav>
+
 
     <!-- =========================================================
       ABSCHNITT 2.2: OFFERS (SOT NE FOKUS)
@@ -1130,92 +1211,134 @@
     // ABSCHNITT JS 2: QUICKNAV + LANGUAGE PANEL
     // =========================================================
     (() => {
-      const nav = document.querySelector(".quickNav");
-      if (!nav) return;
+  const nav = document.querySelector(".quickNav");
+  if (!nav) return;
 
-      const row = document.getElementById("quickNavRow");
-      const langToggleBtn = document.getElementById("langToggleBtn");
-      const langPanel = document.getElementById("langPanel");
-      const langBackBtn = document.getElementById("langBackBtn");
-      const langNextBtn = document.getElementById("langNextBtn");
-      const langLabel = document.getElementById("langLabel");
-      const langOpts = Array.from(nav.querySelectorAll(".langOpt"));
+  const row = document.getElementById("quickNavRow");
 
-      const LANG_KEY = "menyra_lang";
+  // Buttons
+  const langToggleBtn = document.getElementById("langToggleBtn");
+  const kamToggleBtn  = document.getElementById("kamToggleBtn");
 
-      function setLang(code){
-        localStorage.setItem(LANG_KEY, code);
-        langLabel.textContent = code;
-      }
+  // Panels
+  const langPanel = document.getElementById("langPanel");
+  const kamPanel  = document.getElementById("kamPanel");
 
-      function openLang(){
-        nav.classList.add("lang-open");
-        langToggleBtn.setAttribute("aria-expanded", "true");
-        langPanel.setAttribute("aria-hidden", "false");
-      }
+  // Lang controls
+  const langBackBtn = document.getElementById("langBackBtn");
+  const langNextBtn = document.getElementById("langNextBtn");
+  const langLabel   = document.getElementById("langLabel");
+  const langOpts    = Array.from(langPanel.querySelectorAll(".panelOpt[data-lang]"));
 
-      function closeLang(){
-        nav.classList.remove("lang-open");
-        langToggleBtn.setAttribute("aria-expanded", "false");
-        langPanel.setAttribute("aria-hidden", "true");
-      }
+  // Kam controls
+  const kamBackBtn  = document.getElementById("kamBackBtn");
+  const kamNextBtn  = document.getElementById("kamNextBtn");
+  const callWaiterOpt = document.getElementById("callWaiterOpt");
 
-      // init label from storage
-      const saved = localStorage.getItem(LANG_KEY);
-      if (saved) langLabel.textContent = saved;
+  const LANG_KEY = "menyra_lang";
 
-      // Tabs (nur Demo: active state)
-      row.querySelectorAll(".quickNavBtn:not(.quickNavBtnLang)").forEach(btn => {
-        btn.addEventListener("click", () => {
-          row.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
-          btn.classList.add("is-active");
+  function setActiveTab(btn){
+    row.querySelectorAll(".quickNavBtn").forEach(b => b.classList.remove("is-active"));
+    btn.classList.add("is-active");
+  }
 
-          const tab = btn.dataset.tab;
-          // Später echte Navigation:
-          // if(tab==="kamarieri") location.href = "../staff/kamarieri.html";
-          // if(tab==="info")      location.href = "./info.html";
-          // if(tab==="social")    location.href = "./social.html";
-          console.log("TAB:", tab);
-        }, { passive:true });
-      });
+  function closeAllPanels(){
+    nav.classList.remove("lang-open", "kam-open");
+    langToggleBtn?.setAttribute("aria-expanded", "false");
+    kamToggleBtn?.setAttribute("aria-expanded", "false");
+    langPanel?.setAttribute("aria-hidden", "true");
+    kamPanel?.setAttribute("aria-hidden", "true");
+  }
 
-      // Language open/close
-      langToggleBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        if (nav.classList.contains("lang-open")) closeLang();
-        else openLang();
-      }, { passive:false });
+  function openLang(){
+    nav.classList.remove("kam-open");
+    nav.classList.add("lang-open");
+    langToggleBtn.setAttribute("aria-expanded", "true");
+    langPanel.setAttribute("aria-hidden", "false");
+    kamToggleBtn?.setAttribute("aria-expanded", "false");
+    kamPanel?.setAttribute("aria-hidden", "true");
+  }
 
-      langBackBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        closeLang();
-      }, { passive:false });
+  function openKam(){
+    nav.classList.remove("lang-open");
+    nav.classList.add("kam-open");
+    kamToggleBtn.setAttribute("aria-expanded", "true");
+    kamPanel.setAttribute("aria-hidden", "false");
+    langToggleBtn?.setAttribute("aria-expanded", "false");
+    langPanel?.setAttribute("aria-hidden", "true");
+  }
 
-      langNextBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        closeLang();
-      }, { passive:false });
+  // Init language label
+  const saved = localStorage.getItem(LANG_KEY);
+  if (saved) langLabel.textContent = saved;
 
-      // Choose language
-      langOpts.forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          setLang(btn.dataset.lang);
-          closeLang();
-        }, { passive:false });
-      });
+  // Normal tabs (Story/Social/Info)
+  row.querySelectorAll(".quickNavBtn:not(#langToggleBtn):not(#kamToggleBtn)").forEach(btn => {
+    btn.addEventListener("click", () => {
+      closeAllPanels();
+      setActiveTab(btn);
 
-      // Click outside closes
-      document.addEventListener("click", (e) => {
-        if (!nav.classList.contains("lang-open")) return;
-        if (!nav.contains(e.target)) closeLang();
-      }, { passive:true });
+      const tab = btn.dataset.tab;
 
-      // ESC closes
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && nav.classList.contains("lang-open")) closeLang();
-      });
-    })();
+      // Placeholder navigation (später aktivieren):
+      // if(tab==="story")  location.href = "./story.html";
+      // if(tab==="social") location.href = "./social.html";
+
+      console.log("TAB:", tab);
+    }, { passive:true });
+  });
+
+  // Lang toggle
+  langToggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (nav.classList.contains("lang-open")) closeAllPanels();
+    else openLang();
+  }, { passive:false });
+
+  // Kam toggle
+  kamToggleBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (nav.classList.contains("kam-open")) closeAllPanels();
+    else openKam();
+  }, { passive:false });
+
+  // Back/Next close (beide Panels)
+  langBackBtn.addEventListener("click", (e) => { e.stopPropagation(); closeAllPanels(); }, { passive:false });
+  langNextBtn.addEventListener("click", (e) => { e.stopPropagation(); closeAllPanels(); }, { passive:false });
+  kamBackBtn.addEventListener("click", (e) => { e.stopPropagation(); closeAllPanels(); }, { passive:false });
+  kamNextBtn.addEventListener("click", (e) => { e.stopPropagation(); closeAllPanels(); }, { passive:false });
+
+  // Choose language
+  langOpts.forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const code = btn.dataset.lang;
+      localStorage.setItem(LANG_KEY, code);
+      langLabel.textContent = code;
+      closeAllPanels();
+    }, { passive:false });
+  });
+
+  // Call waiter (placeholder)
+  callWaiterOpt.addEventListener("click", (e) => {
+    e.stopPropagation();
+    closeAllPanels();
+    console.log("CALL WAITER: Thirr kamarierin");
+    // später: Firestore write / calls collection
+  }, { passive:false });
+
+  // Click outside closes
+  document.addEventListener("click", (e) => {
+    if (!nav.classList.contains("lang-open") && !nav.classList.contains("kam-open")) return;
+    if (!nav.contains(e.target)) closeAllPanels();
+  }, { passive:true });
+
+  // ESC closes
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeAllPanels();
+  });
+})();
+
   </script>
 </body>
 </html>
