@@ -573,365 +573,438 @@
        SCRIPT
        ========================================================= -->
   <script type="module">
-    // =========================================================
-    // ABSCHNITT A: DOM + Overlay Render
-    // =========================================================
-    const tpl = document.getElementById("overlayTpl");
-    const reels = Array.from(document.querySelectorAll(".reel"));
-    const videos = Array.from(document.querySelectorAll(".reelVideo"));
-    const reelsEl = document.getElementById("reels");
-    const toastEl = document.getElementById("toast");
+  // =========================================================
+  // ABSCHNITT A: DOM + Overlay Render (unverändert)
+  // =========================================================
+  const tpl = document.getElementById("overlayTpl");
+  const reels = Array.from(document.querySelectorAll(".reel"));
+  const videos = Array.from(document.querySelectorAll(".reelVideo"));
+  const reelsEl = document.getElementById("reels");
+  const toastEl = document.getElementById("toast");
 
-    const commentsBackdrop = document.getElementById("commentsBackdrop");
-    const commentsSheet = document.getElementById("commentsSheet");
-    const commentsList = document.getElementById("commentsList");
-    const commentsForm = document.getElementById("commentsForm");
-    const commentInput = document.getElementById("commentInput");
-    let commentsOpen = false;
+  const commentsBackdrop = document.getElementById("commentsBackdrop");
+  const commentsSheet = document.getElementById("commentsSheet");
+  const commentsList = document.getElementById("commentsList");
+  const commentsForm = document.getElementById("commentsForm");
+  const commentInput = document.getElementById("commentInput");
+  let commentsOpen = false;
 
-    reels.forEach((reel) => {
-      const frag = tpl.content.cloneNode(true);
+  reels.forEach((reel) => {
+    const frag = tpl.content.cloneNode(true);
 
-      const name = reel.getAttribute("data-name") || "Restaurant";
-      const logo = reel.getAttribute("data-logo") || "";
-      const like = reel.getAttribute("data-like") || "0";
-      const comments = reel.getAttribute("data-comments") || "0";
-      const pTitle = reel.getAttribute("data-product-title") || "Produkt";
-      const pSub = reel.getAttribute("data-product-sub") || "Tap to view product";
-      const pImg = reel.getAttribute("data-product-img") || "";
+    const name = reel.getAttribute("data-name") || "Restaurant";
+    const logo = reel.getAttribute("data-logo") || "";
+    const like = reel.getAttribute("data-like") || "0";
+    const comments = reel.getAttribute("data-comments") || "0";
+    const pTitle = reel.getAttribute("data-product-title") || "Produkt";
+    const pSub = reel.getAttribute("data-product-sub") || "Tap to view product";
+    const pImg = reel.getAttribute("data-product-img") || "";
 
-      const logoEl = frag.querySelector('[data-bind="logo"]');
-      const nameEl = frag.querySelector('[data-bind="name"]');
-      const likeCountEl = frag.querySelector('[data-bind="likeCount"]');
-      const commentCountEl = frag.querySelector('[data-bind="commentCount"]');
-      const pTitleEl = frag.querySelector('[data-bind="productTitle"]');
-      const pSubEl = frag.querySelector('[data-bind="productSub"]');
-      const pImgEl = frag.querySelector('[data-bind="productImg"]');
+    const logoEl = frag.querySelector('[data-bind="logo"]');
+    const nameEl = frag.querySelector('[data-bind="name"]');
+    const likeCountEl = frag.querySelector('[data-bind="likeCount"]');
+    const commentCountEl = frag.querySelector('[data-bind="commentCount"]');
+    const pTitleEl = frag.querySelector('[data-bind="productTitle"]');
+    const pSubEl = frag.querySelector('[data-bind="productSub"]');
+    const pImgEl = frag.querySelector('[data-bind="productImg"]');
 
-      if (logoEl && logo) logoEl.src = logo;
-      if (nameEl) nameEl.textContent = name;
+    if (logoEl && logo) logoEl.src = logo;
+    if (nameEl) nameEl.textContent = name;
 
-      const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
-      if (likeBtn) likeBtn.setAttribute("data-count", String(parseInt(like,10)||0));
-      if (likeCountEl) likeCountEl.textContent = String(parseInt(like,10)||0);
+    const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
+    if (likeBtn) likeBtn.setAttribute("data-count", String(parseInt(like,10)||0));
+    if (likeCountEl) likeCountEl.textContent = String(parseInt(like,10)||0);
 
-      const comBtn = frag.querySelector('.railBtn[data-action="comment"]');
-      if (comBtn) comBtn.setAttribute("data-count", String(parseInt(comments,10)||0));
-      if (commentCountEl) commentCountEl.textContent = String(parseInt(comments,10)||0);
+    const comBtn = frag.querySelector('.railBtn[data-action="comment"]');
+    if (comBtn) comBtn.setAttribute("data-count", String(parseInt(comments,10)||0));
+    if (commentCountEl) commentCountEl.textContent = String(parseInt(comments,10)||0);
 
-      if (pTitleEl) pTitleEl.textContent = pTitle;
-      if (pSubEl) pSubEl.textContent = pSub;
-      if (pImgEl && pImg) pImgEl.src = pImg;
+    if (pTitleEl) pTitleEl.textContent = pTitle;
+    if (pSubEl) pSubEl.textContent = pSub;
+    if (pImgEl && pImg) pImgEl.src = pImg;
 
-      reel.appendChild(frag);
-    });
+    reel.appendChild(frag);
+  });
 
-    // =========================================================
-    // ABSCHNITT B: Network Mode (3G/WLAN)
-    // =========================================================
-    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    const effectiveType = (conn && conn.effectiveType) ? String(conn.effectiveType) : "";
-    const saveData = !!(conn && conn.saveData);
+  // =========================================================
+  // ABSCHNITT B: Network Mode (3G/WLAN)
+  // =========================================================
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const effectiveType = (conn && conn.effectiveType) ? String(conn.effectiveType) : "";
+  const saveData = !!(conn && conn.saveData);
 
-    // LOW_DATA => wir halten nur current + next attached
-    const LOW_DATA = saveData || /(^|-)2g|3g|slow-2g/i.test(effectiveType);
+  const LOW_DATA = saveData || /(^|-)2g|3g|slow-2g/i.test(effectiveType);
 
-    // =========================================================
-    // ABSCHNITT C: Toast + Sound
-    // =========================================================
-    const SOUND_KEY = "menyra_story_sound";
-    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
-    let audioUnlocked = false;
+  // =========================================================
+  // ABSCHNITT C: Toast + Sound (FIX: Sound schaltet ohne Rebuffer)
+  // =========================================================
+  const SOUND_KEY = "menyra_story_sound";
+  let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+  let audioUnlocked = false;
 
-    let activeIndex = 0;
-    let playToken = 0;
+  let activeIndex = 0;
+  let playToken = 0;
 
-    function showToast(text){
-      if (!toastEl) return;
-      toastEl.textContent = text;
-      toastEl.classList.add("show");
-      window.setTimeout(() => toastEl.classList.remove("show"), 700);
+  function showToast(text){
+    if (!toastEl) return;
+    toastEl.textContent = text;
+    toastEl.classList.add("show");
+    window.setTimeout(() => toastEl.classList.remove("show"), 700);
+  }
+
+  function applySoundToVideo(v){
+    if (!v) return;
+    const wantSound = audioUnlocked && soundOn;
+    try{
+      v.muted = !wantSound;
+      v.volume = wantSound ? 1 : 0;
+    }catch(_){}
+  }
+
+  function setSoundState(on){
+    soundOn = !!on;
+    localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+    showToast(soundOn ? "Sound: ON" : "Sound: OFF");
+
+    // WICHTIG: kein playOnly() hier -> kein detach/attach -> kein Rebuffer
+    applySoundToVideo(videos[activeIndex]);
+  }
+
+  // =========================================================
+  // ABSCHNITT D: Video Attach/Detach (UPGRADE: schnelleres Swipen)
+  // - Wir halten 4 Videos im RAM (prev, current, next, next+1) auf gutem Netz
+  // - Und detach NICHT sofort, sondern leicht verzögert (Back-Scroll ohne Nachladen)
+  // =========================================================
+  const DETACH_DELAY_MS = LOW_DATA ? 0 : 850; // sehr wichtig für "schnelles sliden"
+  const detachTimers = new Map();
+
+  function cancelDetach(i){
+    const t = detachTimers.get(i);
+    if (t){
+      clearTimeout(t);
+      detachTimers.delete(i);
     }
+  }
 
-    function setSoundState(on){
-      soundOn = !!on;
-      localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
-      showToast(soundOn ? "Sound: ON" : "Sound: OFF");
-
-      const v = videos[activeIndex];
-      if (!v) return;
-
-      if (soundOn && audioUnlocked){
-        try { v.muted = false; v.volume = 1; } catch(_){}
-      } else {
-        v.muted = true;
-      }
+  function scheduleDetach(i){
+    if (DETACH_DELAY_MS <= 0){
+      detachVideo(i);
+      return;
     }
+    if (detachTimers.has(i)) return;
+    detachTimers.set(i, setTimeout(() => {
+      detachTimers.delete(i);
+      detachVideo(i);
+    }, DETACH_DELAY_MS));
+  }
 
-    // =========================================================
-    // ABSCHNITT D: Video Attach/Detach (mobile-first)
-    // =========================================================
-    function attachVideo(i, preloadMode){
-      const v = videos[i];
-      if (!v) return;
+  // OPTIONAL: Mini-Warmup (Range-Request) für NEXT – nur bei gutem Netz
+  // Das kann den "schwarzen Moment" beim schnellen Wischen reduzieren.
+  const warmed = new Set();
+  async function warmupUrl(url){
+    if (!url || LOW_DATA) return;
+    if (warmed.has(url)) return;
+    warmed.add(url);
 
-      const url = v.getAttribute("data-src");
-      if (!url) return;
+    try{
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 900);
+      // Kleiner Range reicht oft, damit CDN + TCP "warm" sind
+      await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+        signal: ctrl.signal,
+        headers: { Range: "bytes=0-220000" }
+      }).catch(() => {});
+      clearTimeout(t);
+    }catch(_){}
+  }
 
-      // preload zuerst setzen, dann src
-      if (v.preload !== preloadMode) v.preload = preloadMode;
+  function attachVideo(i, preloadMode){
+    const v = videos[i];
+    if (!v) return;
 
-      if (!v.dataset.attached){
-        v.src = url;
-        v.dataset.attached = "1";
-        try { v.load(); } catch(_){}
-      }
-    }
+    const url = v.getAttribute("data-src");
+    if (!url) return;
 
-    function detachVideo(i){
-      const v = videos[i];
-      if (!v || !v.dataset.attached) return;
+    // preload zuerst setzen, dann src
+    if (v.preload !== preloadMode) v.preload = preloadMode;
 
-      try { v.pause(); } catch(_){}
-      v.muted = true;
-      v.removeAttribute("src");
-      delete v.dataset.attached;
+    if (!v.dataset.attached){
+      v.src = url;
+      v.dataset.attached = "1";
       try { v.load(); } catch(_){}
     }
+  }
 
-    function updateNearSources(idx){
-      // 3G: current + next
-      // WLAN/4G: prev + current + next
-      const keep = LOW_DATA
-        ? new Set([idx, idx+1])
-        : new Set([idx-1, idx, idx+1]);
+  function detachVideo(i){
+    const v = videos[i];
+    if (!v || !v.dataset.attached) return;
 
-      for (let i = 0; i < videos.length; i++){
-        if (keep.has(i)){
-          const preloadMode =
-            (i === idx) ? "auto" :
-            (i === idx+1) ? (LOW_DATA ? "metadata" : "auto") :
-            "metadata";
-          attachVideo(i, preloadMode);
-        } else {
-          detachVideo(i);
-        }
-      }
-    }
+    try { v.pause(); } catch(_){}
+    v.muted = true;
+    v.removeAttribute("src");
+    delete v.dataset.attached;
 
-    function waitFor(el, event, timeoutMs){
-      return new Promise((resolve, reject) => {
-        let done = false;
-        const t = window.setTimeout(() => {
-          if (done) return;
-          done = true;
-          cleanup();
-          reject(new Error("timeout"));
-        }, timeoutMs);
+    try { v.load(); } catch(_){}
+  }
 
-        function onEvt(){
-          if (done) return;
-          done = true;
-          cleanup();
-          resolve();
-        }
+  function updateNearSources(idx){
+    // 3G: current + next
+    // WLAN/4G: prev + current + next + next+1 (schnelles swipe fühlt sich viel besser an)
+    const keep = LOW_DATA
+      ? new Set([idx, idx+1])
+      : new Set([idx-1, idx, idx+1, idx+2]);
 
-        function cleanup(){
-          window.clearTimeout(t);
-          el.removeEventListener(event, onEvt);
-        }
+    for (let i = 0; i < videos.length; i++){
+      if (keep.has(i)){
+        cancelDetach(i);
 
-        el.addEventListener(event, onEvt, { once: true });
-      });
-    }
+        const preloadMode =
+          (i === idx) ? "auto" :
+          (i === idx+1) ? (LOW_DATA ? "metadata" : "auto") :
+          (i === idx+2) ? (LOW_DATA ? "none" : "metadata") :
+          "metadata";
 
-    async function safePlay(v){
-      try{
-        await v.play();
-        return true;
-      }catch(_){
-        // warten auf canplay (kurz), dann nochmal
-        try { await waitFor(v, "canplay", 1200); } catch(__){}
-        try { await v.play(); return true; } catch(___){ return false; }
-      }
-    }
-
-    async function playOnly(index){
-      const token = ++playToken;
-      activeIndex = index;
-
-      updateNearSources(index);
-
-      // stop other playing
-      videos.forEach((v, i) => {
-        const reel = reels[i];
-        if (i !== index){
-          try { v.pause(); } catch(_){}
-          v.muted = true;
-          reel?.classList.remove("is-paused");
-        }
-      });
-
-      const v = videos[index];
-      if (!v) return;
-
-      // autoplay policy: start muted
-      v.muted = true;
-
-      if (token !== playToken) return;
-
-      const ok = await safePlay(v);
-      if (token !== playToken) return;
-
-      if (ok){
-        if (soundOn && audioUnlocked){
-          try { v.muted = false; v.volume = 1; } catch(_){}
-        }
-        reels[index]?.classList.remove("is-paused");
+        attachVideo(i, preloadMode);
       } else {
-        reels[index]?.classList.add("is-paused");
+        scheduleDetach(i);
       }
     }
 
-    // =========================================================
-    // ABSCHNITT E: Init + IntersectionObserver (stabil)
-    // =========================================================
-    setSoundState(soundOn);
-    updateNearSources(0);
-    playOnly(0);
+    // Warmup nur für next (und next+1 bei gutem Netz)
+    const v1 = videos[idx+1];
+    if (v1?.getAttribute) warmupUrl(v1.getAttribute("data-src"));
+    if (!LOW_DATA){
+      const v2 = videos[idx+2];
+      if (v2?.getAttribute) warmupUrl(v2.getAttribute("data-src"));
+    }
+  }
 
-    const io = new IntersectionObserver((entries) => {
-      let best = null;
-      for (const e of entries){
-        if (!e.isIntersecting) continue;
-        if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+  function waitFor(el, event, timeoutMs){
+    return new Promise((resolve, reject) => {
+      let done = false;
+      const t = window.setTimeout(() => {
+        if (done) return;
+        done = true;
+        cleanup();
+        reject(new Error("timeout"));
+      }, timeoutMs);
+
+      function onEvt(){
+        if (done) return;
+        done = true;
+        cleanup();
+        resolve();
       }
-      if (!best) return;
 
-      const idx = Number(best.target.getAttribute("data-index") || "0");
-      if (Number.isFinite(idx) && idx !== activeIndex){
-        playOnly(idx);
+      function cleanup(){
+        window.clearTimeout(t);
+        el.removeEventListener(event, onEvt);
       }
-    }, { root: reelsEl, threshold: [0.65, 0.8, 0.92] });
 
-    reels.forEach(r => io.observe(r));
+      el.addEventListener(event, onEvt, { once: true });
+    });
+  }
 
-    // =========================================================
-    // ABSCHNITT F: Comments Sheet
-    // =========================================================
-    function lockFeed(lock){
-      reelsEl.style.pointerEvents = lock ? "none" : "";
-      reelsEl.style.overflowY = lock ? "hidden" : "";
+  async function safePlay(v){
+    try{
+      await v.play();
+      return true;
+    }catch(_){
+      // Loadeddata ist oft schneller als canplay
+      try { await waitFor(v, "loadeddata", 900); } catch(__){}
+      try { await v.play(); return true; } catch(___){ return false; }
     }
-    function openComments(){
-      if (commentsOpen) return;
-      commentsOpen = true;
-      commentsBackdrop.classList.add("open");
-      commentsSheet.classList.add("open");
-      lockFeed(true);
-      window.setTimeout(() => commentInput?.focus?.(), 60);
-    }
-    function closeComments(){
-      if (!commentsOpen) return;
-      commentsOpen = false;
-      commentsBackdrop.classList.remove("open");
-      commentsSheet.classList.remove("open");
-      lockFeed(false);
-    }
-    commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
+  }
 
-    commentsForm?.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const val = (commentInput?.value || "").trim();
-      if (!val) return;
+  async function playOnly(index){
+    const token = ++playToken;
+    activeIndex = index;
 
-      const item = document.createElement("div");
-      item.className = "cItem";
-      item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
-      item.querySelector(".cText").textContent = val;
-      commentsList?.prepend(item);
-      commentInput.value = "";
+    updateNearSources(index);
+
+    // stop other playing
+    videos.forEach((v, i) => {
+      const reel = reels[i];
+      if (i !== index){
+        try { v.pause(); } catch(_){}
+        v.muted = true;
+        reel?.classList.remove("is-paused");
+      }
     });
 
-    // =========================================================
-    // ABSCHNITT G: Global Controls
-    // =========================================================
-    document.addEventListener("click", (e) => {
-      const actionEl = e.target.closest("[data-action]");
-      if (actionEl){
-        const action = actionEl.getAttribute("data-action");
+    const v = videos[index];
+    if (!v) return;
 
-        if (action === "back"){
-          window.location.href = "./karte-demo.html";
-          return;
-        }
+    // Autoplay: immer muted starten
+    v.muted = true;
+    v.volume = 0;
 
-        if (action === "sound"){
-          audioUnlocked = true;
-          setSoundState(!soundOn);
-          playOnly(activeIndex);
-          return;
-        }
+    if (token !== playToken) return;
 
-        if (action === "like"){
-          const btn = actionEl.closest('.railBtn[data-action="like"]');
-          if (!btn) return;
-          const countEl = btn.querySelector(".railCount");
-          const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
-          const liked = btn.classList.toggle("is-liked");
-          const next = liked ? cur + 1 : Math.max(0, cur - 1);
-          btn.setAttribute("data-count", String(next));
-          if (countEl) countEl.textContent = String(next);
-          return;
-        }
+    const ok = await safePlay(v);
+    if (token !== playToken) return;
 
-        if (action === "comment"){ openComments(); return; }
-        if (action === "closeComments"){ closeComments(); return; }
-        if (action === "share"){ alert("Share (demo)"); return; }
-        if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
+    if (ok){
+      // Sound ggf. ohne reload aktivieren
+      applySoundToVideo(v);
+      reels[index]?.classList.remove("is-paused");
+    } else {
+      reels[index]?.classList.add("is-paused");
+    }
+  }
+
+  // =========================================================
+  // ABSCHNITT E: Init + IntersectionObserver (stabil)
+  // =========================================================
+  setSoundState(soundOn);
+
+  // Start: current sofort + next sofort attach (macht Start schneller)
+  updateNearSources(0);
+  attachVideo(0, "auto");
+  attachVideo(1, LOW_DATA ? "metadata" : "auto");
+  playOnly(0);
+
+  const io = new IntersectionObserver((entries) => {
+    let best = null;
+    for (const e of entries){
+      if (!e.isIntersecting) continue;
+      if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+    }
+    if (!best) return;
+
+    const idx = Number(best.target.getAttribute("data-index") || "0");
+    if (Number.isFinite(idx) && idx !== activeIndex){
+      playOnly(idx);
+    }
+  }, { root: reelsEl, threshold: [0.65, 0.8, 0.92] });
+
+  reels.forEach(r => io.observe(r));
+
+  // =========================================================
+  // ABSCHNITT F: Comments Sheet (unverändert)
+  // =========================================================
+  function lockFeed(lock){
+    reelsEl.style.pointerEvents = lock ? "none" : "";
+    reelsEl.style.overflowY = lock ? "hidden" : "";
+  }
+  function openComments(){
+    if (commentsOpen) return;
+    commentsOpen = true;
+    commentsBackdrop.classList.add("open");
+    commentsSheet.classList.add("open");
+    lockFeed(true);
+    window.setTimeout(() => commentInput?.focus?.(), 60);
+  }
+  function closeComments(){
+    if (!commentsOpen) return;
+    commentsOpen = false;
+    commentsBackdrop.classList.remove("open");
+    commentsSheet.classList.remove("open");
+    lockFeed(false);
+  }
+  commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
+
+  commentsForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const val = (commentInput?.value || "").trim();
+    if (!val) return;
+
+    const item = document.createElement("div");
+    item.className = "cItem";
+    item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
+    item.querySelector(".cText").textContent = val;
+    commentsList?.prepend(item);
+    commentInput.value = "";
+  });
+
+  // =========================================================
+  // ABSCHNITT G: Global Controls (FIX: Sound ohne playOnly)
+  // =========================================================
+  document.addEventListener("click", async (e) => {
+    const actionEl = e.target.closest("[data-action]");
+    if (actionEl){
+      const action = actionEl.getAttribute("data-action");
+
+      if (action === "back"){
+        window.location.href = "./karte-demo.html";
+        return;
       }
 
-      if (commentsOpen) return;
+      if (action === "sound"){
+        audioUnlocked = true;
+        setSoundState(!soundOn);
 
-      const video = e.target.closest("video.reelVideo");
-      if (!video) return;
-
-      const reel = video.closest(".reel");
-      const idx = Number(reel?.getAttribute("data-index") || "0");
-
-      if (video.paused){
-        playOnly(Number.isFinite(idx) ? idx : activeIndex);
-      } else {
-        video.pause();
-        reel?.classList.add("is-paused");
+        // WICHTIG: NICHT playOnly(activeIndex) -> das verursacht Rebuffer/Lag
+        const v = videos[activeIndex];
+        if (v && v.paused){
+          try { await safePlay(v); } catch(_){}
+          applySoundToVideo(v);
+        }
+        return;
       }
-    }, { passive: true });
 
-    let lastTap = 0;
-    document.addEventListener("touchend", (e) => {
-      if (commentsOpen) return;
-      const now = Date.now();
-      const isDouble = (now - lastTap) < 260;
-      lastTap = now;
-      if (!isDouble) return;
-      const reel = e.target.closest(".reel");
-      if (!reel) return;
-      const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
-      if (likeBtn) likeBtn.click();
-    }, { passive: true });
-
-    document.addEventListener("visibilitychange", () => {
-      if (document.hidden){
-        videos.forEach(v => { try { v.pause(); } catch(_){ } });
-      } else {
-        updateNearSources(activeIndex);
-        playOnly(activeIndex);
+      if (action === "like"){
+        const btn = actionEl.closest('.railBtn[data-action="like"]');
+        if (!btn) return;
+        const countEl = btn.querySelector(".railCount");
+        const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
+        const liked = btn.classList.toggle("is-liked");
+        const next = liked ? cur + 1 : Math.max(0, cur - 1);
+        btn.setAttribute("data-count", String(next));
+        if (countEl) countEl.textContent = String(next);
+        return;
       }
-    }, { passive: true });
 
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape") closeComments();
-    }, { passive:true });
-  </script>
+      if (action === "comment"){ openComments(); return; }
+      if (action === "closeComments"){ closeComments(); return; }
+      if (action === "share"){ alert("Share (demo)"); return; }
+      if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
+    }
+
+    if (commentsOpen) return;
+
+    const video = e.target.closest("video.reelVideo");
+    if (!video) return;
+
+    const reel = video.closest(".reel");
+    const idx = Number(reel?.getAttribute("data-index") || "0");
+
+    if (video.paused){
+      playOnly(Number.isFinite(idx) ? idx : activeIndex);
+    } else {
+      video.pause();
+      reel?.classList.add("is-paused");
+    }
+  }, { passive: true });
+
+  let lastTap = 0;
+  document.addEventListener("touchend", (e) => {
+    if (commentsOpen) return;
+    const now = Date.now();
+    const isDouble = (now - lastTap) < 260;
+    lastTap = now;
+    if (!isDouble) return;
+    const reel = e.target.closest(".reel");
+    if (!reel) return;
+    const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
+    if (likeBtn) likeBtn.click();
+  }, { passive: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden){
+      videos.forEach(v => { try { v.pause(); } catch(_){ } });
+    } else {
+      updateNearSources(activeIndex);
+      playOnly(activeIndex);
+    }
+  }, { passive: true });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeComments();
+  }, { passive:true });
+</script>
 </body>
 </html>
