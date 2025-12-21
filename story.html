@@ -6,12 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- PERF: Connection warmup (beide Domains, weil HLS + MP4 fallback) -->
+  <!-- PERF: Connection warmup (Bunny Stream Host) -->
   <link rel="dns-prefetch" href="//vz-14f8b42c-6ba.b-cdn.net" />
   <link rel="preconnect" href="https://vz-14f8b42c-6ba.b-cdn.net" crossorigin />
-
-  <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
-  <link rel="preconnect" href="https://menyra.b-cdn.net" crossorigin />
 
   <style>
     :root{
@@ -472,84 +469,54 @@
   </template>
 
   <main class="reels" id="reels" aria-label="MENYRA Stories">
-    <!-- HLS + MP4 Fallback (damit Desktop nicht schwarz bleibt) -->
+    <!-- WICHTIG: keine MP4s mehr hier - Bunny Stream HLS -->
     <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik1.mp4"
-        playsinline webkit-playsinline muted autoplay preload="auto" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik2.mp4"
-        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik3.mp4"
-        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik4.mp4"
-        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik5.mp4"
-        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik6.mp4"
-        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik7.mp4"
-        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="Schwanz Special" data-product-sub="Mit sose" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik8.mp4"
-        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik9.mp4"
-        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo"
-        data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8"
-        data-mp4="https://menyra.b-cdn.net/tik10.mp4"
-        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
   </main>
@@ -578,6 +545,9 @@
     </form>
   </section>
 
+  <!-- hls.js für Chrome/Android/Firefox (Safari kann HLS nativ) -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+
   <script type="module">
     const tpl = document.getElementById("overlayTpl");
     const reels = Array.from(document.querySelectorAll(".reel"));
@@ -592,6 +562,7 @@
     const commentInput = document.getElementById("commentInput");
     let commentsOpen = false;
 
+    // ---- Overlay pro Reel ----
     reels.forEach((reel) => {
       const frag = tpl.content.cloneNode(true);
 
@@ -629,6 +600,7 @@
       reel.appendChild(frag);
     });
 
+    // ---- Sound ----
     const SOUND_KEY = "menyra_story_sound";
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
     let audioUnlocked = false;
@@ -636,8 +608,8 @@
     let activeIndex = 0;
     let playToken = 0;
 
-    let isSnapping = false;
-    let snapTimer = null;
+    // HLS instances
+    const hlsMap = new Map();
 
     function showToast(text){
       if (!toastEl) return;
@@ -646,81 +618,101 @@
       window.setTimeout(() => toastEl.classList.remove("show"), 700);
     }
 
-    function applySoundToActive(){
-      const v = videos[activeIndex];
-      if (!v) return;
-      const want = audioUnlocked && soundOn;
-      try{
-        v.muted = !want;
-        v.volume = want ? 1 : 0;
-      }catch(_){}
-    }
-
     function setSoundState(on){
       soundOn = !!on;
       localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
       showToast(soundOn ? "Sound: ON" : "Sound: OFF");
-      applySoundToActive();
+
+      const v = videos[activeIndex];
+      if (!v) return;
+
+      if (soundOn && audioUnlocked){
+        try { v.muted = false; v.volume = 1; } catch(_){}
+      } else {
+        v.muted = true;
+      }
     }
 
-    // ====== HLS native check (Safari/iOS) ======
-    function canPlayHlsNative(v){
-      if (!v || !v.canPlayType) return false;
-      const a = v.canPlayType("application/vnd.apple.mpegurl");
-      const b = v.canPlayType("application/x-mpegURL");
-      return (a && a !== "no") || (b && b !== "no");
+    function canNativeHls(videoEl){
+      try{
+        return !!videoEl.canPlayType("application/vnd.apple.mpegurl");
+      }catch(_){
+        return false;
+      }
     }
 
-    // ====== attach src only near current (wie dein alter Stil) ======
-    function getBestUrl(v){
-      const hls = v.getAttribute("data-hls") || "";
-      const mp4 = v.getAttribute("data-mp4") || "";
-
-      // iPhone/Safari: HLS
-      if (hls && canPlayHlsNative(v)) return { url: hls, type: "hls" };
-
-      // Desktop Chrome: HLS oft nicht -> MP4 fallback (damit nix schwarz bleibt)
-      if (mp4) return { url: mp4, type: "mp4" };
-
-      // notfalls hls
-      return { url: hls || mp4, type: hls ? "hls" : "mp4" };
+    function destroyHls(i){
+      const h = hlsMap.get(i);
+      if (!h) return;
+      try { h.destroy(); } catch(_){}
+      hlsMap.delete(i);
     }
 
+    // ---- Attach HLS source (HLS-first) ----
     function attachVideo(i, preloadMode){
       const v = videos[i];
       if (!v) return;
 
-      const { url } = getBestUrl(v);
-      if (!url) return;
+      const hlsUrl = v.getAttribute("data-hls") || "";
+      if (!hlsUrl) return;
 
-      if (!v.dataset.attached || v.dataset.attachedUrl !== url){
-        v.src = url;
-        v.dataset.attached = "1";
-        v.dataset.attachedUrl = url;
-      }
-
+      // preload setzen
       if (v.preload !== preloadMode) v.preload = preloadMode;
 
-      // WICHTIG: force early network start
-      try { v.load(); } catch(_){}
+      // schon attached?
+      if (v.dataset.attached === "1") return;
+      v.dataset.attached = "1";
+
+      // iOS Safari: native HLS (schnell + stabil)
+      if (canNativeHls(v)){
+        v.src = hlsUrl;
+        try { v.load(); } catch(_){}
+        return;
+      }
+
+      // Andere Browser: hls.js (MSE)
+      if (window.Hls && Hls.isSupported()){
+        const h = new Hls({
+          // extrem schneller Start:
+          startLevel: 0,                 // startet in niedriger Qualität -> instant
+          capLevelToPlayerSize: true,
+          enableWorker: true,
+          maxBufferLength: 8,
+          backBufferLength: 30
+        });
+
+        hlsMap.set(i, h);
+        h.attachMedia(v);
+        h.on(Hls.Events.MEDIA_ATTACHED, () => {
+          try { h.loadSource(hlsUrl); } catch(_){}
+        });
+
+        return;
+      }
+
+      // Wenn gar kein HLS möglich (sehr selten):
+      console.warn("HLS not supported on this browser:", navigator.userAgent);
     }
 
+    // ---- Detach nur wenn wirklich weit weg (sonst restart) ----
     function detachVideo(i){
       const v = videos[i];
-      if (!v || !v.dataset.attached) return;
+      if (!v) return;
+      if (v.dataset.attached !== "1") return;
 
       try { v.pause(); } catch(_){}
       v.muted = true;
-      v.removeAttribute("src");
-      delete v.dataset.attached;
-      delete v.dataset.attachedUrl;
 
+      destroyHls(i);
+
+      v.removeAttribute("src");
+      v.dataset.attached = "0";
       try { v.load(); } catch(_){}
     }
 
     function updateNearSources(idx){
-      // wie vorher: prev, current, next, next+1
-      const keep = new Set([idx-1, idx, idx+1, idx+2]);
+      // Größeres Keep-Fenster => weniger Reload => “TikTok Feeling”
+      const keep = new Set([idx-2, idx-1, idx, idx+1, idx+2]);
 
       for (let i = 0; i < videos.length; i++){
         if (keep.has(i)){
@@ -741,11 +733,12 @@
 
       updateNearSources(index);
 
-      // stop other playing
+      // Stop others (aber Sources bleiben bei keep-window drinnen -> schnell zurück)
       videos.forEach((v, i) => {
         const reel = reels[i];
         if (i !== index){
           try { v.pause(); } catch(_){}
+          v.muted = true;
           reel?.classList.remove("is-paused");
         }
       });
@@ -753,17 +746,17 @@
       const v = videos[index];
       if (!v) return;
 
-      // autoplay policy: start muted
       v.muted = true;
-      v.volume = 0;
+      v.preload = "auto";
 
       try{
         if (token !== playToken) return;
         await v.play();
         if (token !== playToken) return;
 
-        // wenn Sound an + user gesture vorhanden -> unmute ohne reload
-        applySoundToActive();
+        if (soundOn && audioUnlocked){
+          try { v.muted = false; v.volume = 1; } catch(_){}
+        }
 
         reels[index]?.classList.remove("is-paused");
       }catch(_){
@@ -771,16 +764,13 @@
       }
     }
 
-    // ====== init (wichtig: Video0 sofort attach + preload auto) ======
+    // ---- INIT ----
     setSoundState(soundOn);
-    attachVideo(0, "auto");
-    attachVideo(1, "auto");
+    updateNearSources(0);
     playOnly(0);
 
-    // ====== IO: stable active reel in scroll container (wie vorher) ======
+    // ---- IntersectionObserver: stabile aktive Story ohne Snap-Fight ----
     const io = new IntersectionObserver((entries) => {
-      if (isSnapping) return;
-
       let best = null;
       for (const e of entries){
         if (!e.isIntersecting) continue;
@@ -796,41 +786,7 @@
 
     reels.forEach(r => io.observe(r));
 
-    // ====== SNAP: scroll-end correction (wie dein ursprünglicher Code) ======
-    function getNearestIndex(){
-      const center = reelsEl.scrollTop + reelsEl.clientHeight / 2;
-      let bestI = 0, bestD = Infinity;
-      for (let i = 0; i < reels.length; i++){
-        const r = reels[i];
-        const mid = r.offsetTop + r.clientHeight / 2;
-        const d = Math.abs(mid - center);
-        if (d < bestD){ bestD = d; bestI = i; }
-      }
-      return bestI;
-    }
-
-    function snapToIndex(i){
-      const r = reels[i];
-      if (!r) return;
-
-      isSnapping = true;
-      reelsEl.scrollTo({ top: r.offsetTop, behavior: "smooth" });
-      playOnly(i);
-
-      window.setTimeout(() => { isSnapping = false; }, 220);
-    }
-
-    reelsEl.addEventListener("scroll", () => {
-      if (isSnapping) return;
-      clearTimeout(snapTimer);
-      snapTimer = setTimeout(() => {
-        const i = getNearestIndex();
-        const diff = Math.abs(reelsEl.scrollTop - reels[i].offsetTop);
-        if (diff > 8) snapToIndex(i);
-      }, 90);
-    }, { passive: true });
-
-    // ====== Comments ======
+    // ---- Comments ----
     function lockFeed(lock){
       reelsEl.style.pointerEvents = lock ? "none" : "";
       reelsEl.style.overflowY = lock ? "hidden" : "";
@@ -865,8 +821,8 @@
       commentInput.value = "";
     });
 
-    // ====== Global controls ======
-    document.addEventListener("click", async (e) => {
+    // ---- Global controls ----
+    document.addEventListener("click", (e) => {
       const actionEl = e.target.closest("[data-action]");
       if (actionEl){
         const action = actionEl.getAttribute("data-action");
@@ -879,12 +835,7 @@
         if (action === "sound"){
           audioUnlocked = true;
           setSoundState(!soundOn);
-
-          // Kein reload/playOnly hier! Nur sicherstellen, dass current läuft
-          const v = videos[activeIndex];
-          if (v && v.paused){
-            try { await v.play(); } catch(_){}
-          }
+          playOnly(activeIndex);
           return;
         }
 
@@ -903,7 +854,7 @@
         if (action === "comment"){ openComments(); return; }
         if (action === "closeComments"){ closeComments(); return; }
         if (action === "share"){ alert("Share (demo)"); return; }
-        if (action === "product"){ alert("Produkt öffnen (demo)"); return; }
+        if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
       }
 
       if (commentsOpen) return;
