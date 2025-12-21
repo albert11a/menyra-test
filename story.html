@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- PERF: Connection warmup (Bunny Stream Host) -->
+  <!-- PERF: Connection warmup -->
   <link rel="dns-prefetch" href="//vz-14f8b42c-6ba.b-cdn.net" />
   <link rel="preconnect" href="https://vz-14f8b42c-6ba.b-cdn.net" crossorigin />
 
@@ -469,54 +469,54 @@
   </template>
 
   <main class="reels" id="reels" aria-label="MENYRA Stories">
-    <!-- WICHTIG: keine MP4s mehr hier - Bunny Stream HLS -->
+    <!-- WICHTIG: Wir setzen NICHT src direkt, sondern data-src -> JS hängt nur nahe Videos an -->
     <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="Schwanz Special" data-product-sub="Mit sose" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
+      <video class="reelVideo" data-src="https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
   </main>
@@ -545,9 +545,6 @@
     </form>
   </section>
 
-  <!-- hls.js für Chrome/Android/Firefox (Safari kann HLS nativ) -->
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
-
   <script type="module">
     const tpl = document.getElementById("overlayTpl");
     const reels = Array.from(document.querySelectorAll(".reel"));
@@ -562,7 +559,9 @@
     const commentInput = document.getElementById("commentInput");
     let commentsOpen = false;
 
-    // ---- Overlay pro Reel ----
+    // =========================================================
+    // OVERLAYS
+    // =========================================================
     reels.forEach((reel) => {
       const frag = tpl.content.cloneNode(true);
 
@@ -600,16 +599,12 @@
       reel.appendChild(frag);
     });
 
-    // ---- Sound ----
+    // =========================================================
+    // SOUND: KEIN reload/rebuffer mehr beim Toggle
+    // =========================================================
     const SOUND_KEY = "menyra_story_sound";
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
     let audioUnlocked = false;
-
-    let activeIndex = 0;
-    let playToken = 0;
-
-    // HLS instances
-    const hlsMap = new Map();
 
     function showToast(text){
       if (!toastEl) return;
@@ -618,107 +613,161 @@
       window.setTimeout(() => toastEl.classList.remove("show"), 700);
     }
 
+    function applySoundToVideo(v){
+      if (!v) return;
+      const wantSound = audioUnlocked && soundOn;
+      try{
+        v.muted = !wantSound;
+        v.volume = wantSound ? 1 : 0;
+      }catch(_){}
+    }
+
     function setSoundState(on){
       soundOn = !!on;
       localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
       showToast(soundOn ? "Sound: ON" : "Sound: OFF");
+      applySoundToVideo(videos[activeIndex]);
+    }
 
-      const v = videos[activeIndex];
-      if (!v) return;
+    // =========================================================
+    // HLS: Native (Safari) + hls.js fallback (Chrome/Firefox)
+    // hls.js wird nur geladen, wenn nötig.
+    // Version-Hinweis: hls.js Demo zeigt v1.6.15. :contentReference[oaicite:6]{index=6}
+    // =========================================================
+    const HLS_MIME = "application/vnd.apple.mpegurl";
+    const isNativeHls = (v) => !!v?.canPlayType?.(HLS_MIME);
 
-      if (soundOn && audioUnlocked){
-        try { v.muted = false; v.volume = 1; } catch(_){}
-      } else {
-        v.muted = true;
+    let HlsCtor = null;
+    let hlsScriptLoading = null;
+
+    function loadScriptOnce(src){
+      if (hlsScriptLoading) return hlsScriptLoading;
+      hlsScriptLoading = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.async = true;
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
+      return hlsScriptLoading;
+    }
+
+    async function ensureHlsJs(){
+      if (HlsCtor) return HlsCtor;
+      // Pinned version (stabil statt @latest)
+      await loadScriptOnce("https://cdn.jsdelivr.net/npm/hls.js@1.6.15/dist/hls.min.js");
+      HlsCtor = window.Hls || null;
+      return HlsCtor;
+    }
+
+    async function attachHls(videoEl, url){
+      if (!videoEl || !url) return;
+
+      // Native HLS (iOS Safari): direkt src setzen
+      if (isNativeHls(videoEl)){
+        if (videoEl.src !== url){
+          videoEl.src = url;
+        }
+        return;
+      }
+
+      // Fallback: hls.js (nur wenn supported)
+      const Hls = await ensureHlsJs();
+      if (!Hls || !Hls.isSupported()) {
+        // Letzter Versuch: src setzen (manche Browser können HLS nativ)
+        if (videoEl.src !== url) videoEl.src = url;
+        return;
+      }
+
+      if (videoEl._hls && videoEl._hlsUrl === url) return;
+
+      // clean old instance
+      if (videoEl._hls){
+        try{ videoEl._hls.destroy(); }catch(_){}
+        videoEl._hls = null;
+        videoEl._hlsUrl = null;
+      }
+
+      const hls = new Hls({
+        // Fast start + smooth switch
+        startLevel: 0,
+        capLevelToPlayerSize: true,
+        maxBufferLength: 18,
+        backBufferLength: 6,
+        // weniger “thrash” beim sliden
+        enableWorker: true
+      });
+
+      videoEl._hls = hls;
+      videoEl._hlsUrl = url;
+
+      hls.attachMedia(videoEl);
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        hls.loadSource(url);
+      });
+    }
+
+    function detachHls(videoEl){
+      if (!videoEl) return;
+      if (videoEl._hls){
+        try{ videoEl._hls.destroy(); }catch(_){}
+        videoEl._hls = null;
+        videoEl._hlsUrl = null;
       }
     }
 
-    function canNativeHls(videoEl){
-      try{
-        return !!videoEl.canPlayType("application/vnd.apple.mpegurl");
-      }catch(_){
-        return false;
-      }
-    }
+    // =========================================================
+    // ULTRA PERF: attach nur “near window”, aber größer (damit back/forward instant)
+    // =========================================================
+    const KEEP_BEHIND = 2; // prev2
+    const KEEP_AHEAD  = 3; // next3
 
-    function destroyHls(i){
-      const h = hlsMap.get(i);
-      if (!h) return;
-      try { h.destroy(); } catch(_){}
-      hlsMap.delete(i);
-    }
-
-    // ---- Attach HLS source (HLS-first) ----
     function attachVideo(i, preloadMode){
       const v = videos[i];
       if (!v) return;
 
-      const hlsUrl = v.getAttribute("data-hls") || "";
-      if (!hlsUrl) return;
+      const url = v.getAttribute("data-src");
+      if (!url) return;
 
-      // preload setzen
-      if (v.preload !== preloadMode) v.preload = preloadMode;
-
-      // schon attached?
-      if (v.dataset.attached === "1") return;
-      v.dataset.attached = "1";
-
-      // iOS Safari: native HLS (schnell + stabil)
-      if (canNativeHls(v)){
-        v.src = hlsUrl;
-        try { v.load(); } catch(_){}
-        return;
+      if (!v.dataset.attached){
+        v.dataset.attached = "1";
       }
 
-      // Andere Browser: hls.js (MSE)
-      if (window.Hls && Hls.isSupported()){
-        const h = new Hls({
-          // extrem schneller Start:
-          startLevel: 0,                 // startet in niedriger Qualität -> instant
-          capLevelToPlayerSize: true,
-          enableWorker: true,
-          maxBufferLength: 8,
-          backBufferLength: 30
-        });
+      v.preload = preloadMode;
 
-        hlsMap.set(i, h);
-        h.attachMedia(v);
-        h.on(Hls.Events.MEDIA_ATTACHED, () => {
-          try { h.loadSource(hlsUrl); } catch(_){}
-        });
+      // HLS attach (native oder hls.js)
+      attachHls(v, url);
 
-        return;
-      }
-
-      // Wenn gar kein HLS möglich (sehr selten):
-      console.warn("HLS not supported on this browser:", navigator.userAgent);
+      // Nur load() – NICHT play() fürs next, damit keine CPU/Audio-Probleme
+      try { v.load(); } catch(_){}
     }
 
-    // ---- Detach nur wenn wirklich weit weg (sonst restart) ----
     function detachVideo(i){
       const v = videos[i];
-      if (!v) return;
-      if (v.dataset.attached !== "1") return;
+      if (!v || !v.dataset.attached) return;
 
       try { v.pause(); } catch(_){}
-      v.muted = true;
-
-      destroyHls(i);
-
       v.removeAttribute("src");
-      v.dataset.attached = "0";
+      delete v.dataset.attached;
+
+      // hls.js instance weg (sonst lädt es weiter)
+      detachHls(v);
+
       try { v.load(); } catch(_){}
     }
 
     function updateNearSources(idx){
-      // Größeres Keep-Fenster => weniger Reload => “TikTok Feeling”
-      const keep = new Set([idx-2, idx-1, idx, idx+1, idx+2]);
+      const keep = new Set();
+      for (let k = idx - KEEP_BEHIND; k <= idx + KEEP_AHEAD; k++){
+        if (k >= 0 && k < videos.length) keep.add(k);
+      }
 
       for (let i = 0; i < videos.length; i++){
         if (keep.has(i)){
           const preloadMode =
             (i === idx) ? "auto" :
-            (i === idx+1) ? "auto" :
+            (i === idx + 1) ? "auto" :
             "metadata";
           attachVideo(i, preloadMode);
         } else {
@@ -727,18 +776,23 @@
       }
     }
 
+    // =========================================================
+    // PLAYBACK (kein “zurückspringen”, kein Thrash)
+    // =========================================================
+    let activeIndex = 0;
+    let playToken = 0;
+
     async function playOnly(index){
       const token = ++playToken;
       activeIndex = index;
 
       updateNearSources(index);
 
-      // Stop others (aber Sources bleiben bei keep-window drinnen -> schnell zurück)
+      // stop other playing
       videos.forEach((v, i) => {
         const reel = reels[i];
         if (i !== index){
           try { v.pause(); } catch(_){}
-          v.muted = true;
           reel?.classList.remove("is-paused");
         }
       });
@@ -746,30 +800,49 @@
       const v = videos[index];
       if (!v) return;
 
-      v.muted = true;
-      v.preload = "auto";
+      // Sound-Status vor play setzen (wenn user einmal geklickt hat, klappt unmuted oft direkt)
+      applySoundToVideo(v);
 
       try{
         if (token !== playToken) return;
         await v.play();
         if (token !== playToken) return;
 
-        if (soundOn && audioUnlocked){
-          try { v.muted = false; v.volume = 1; } catch(_){}
-        }
-
         reels[index]?.classList.remove("is-paused");
       }catch(_){
-        reels[index]?.classList.add("is-paused");
+        // Autoplay fallback: muted
+        try{
+          v.muted = true;
+          v.volume = 0;
+          await v.play();
+          reels[index]?.classList.remove("is-paused");
+        }catch(__){
+          reels[index]?.classList.add("is-paused");
+        }
       }
     }
 
-    // ---- INIT ----
+    // init
     setSoundState(soundOn);
     updateNearSources(0);
     playOnly(0);
 
-    // ---- IntersectionObserver: stabile aktive Story ohne Snap-Fight ----
+    // =========================================================
+    // IO: aktives Reel stabil bestimmen + debounce (schneller slide)
+    // =========================================================
+    let pendingIndex = null;
+    let pendingTimer = null;
+
+    function requestPlay(i){
+      if (!Number.isFinite(i)) return;
+      if (i === activeIndex) return;
+      pendingIndex = i;
+      clearTimeout(pendingTimer);
+      pendingTimer = setTimeout(() => {
+        if (pendingIndex !== null) playOnly(pendingIndex);
+      }, 70);
+    }
+
     const io = new IntersectionObserver((entries) => {
       let best = null;
       for (const e of entries){
@@ -779,14 +852,14 @@
       if (!best) return;
 
       const idx = Number(best.target.getAttribute("data-index") || "0");
-      if (Number.isFinite(idx) && idx !== activeIndex){
-        playOnly(idx);
-      }
-    }, { root: reelsEl, threshold: [0.6, 0.75, 0.9] });
+      if (best.intersectionRatio >= 0.72) requestPlay(idx);
+    }, { root: reelsEl, threshold: [0.55, 0.72, 0.86, 0.95] });
 
     reels.forEach(r => io.observe(r));
 
-    // ---- Comments ----
+    // =========================================================
+    // COMMENTS
+    // =========================================================
     function lockFeed(lock){
       reelsEl.style.pointerEvents = lock ? "none" : "";
       reelsEl.style.overflowY = lock ? "hidden" : "";
@@ -821,8 +894,10 @@
       commentInput.value = "";
     });
 
-    // ---- Global controls ----
-    document.addEventListener("click", (e) => {
+    // =========================================================
+    // GLOBAL CONTROLS
+    // =========================================================
+    document.addEventListener("click", async (e) => {
       const actionEl = e.target.closest("[data-action]");
       if (actionEl){
         const action = actionEl.getAttribute("data-action");
@@ -833,9 +908,23 @@
         }
 
         if (action === "sound"){
+          // WICHTIG: kein playOnly() mehr hier -> verhindert Rebuffer beim Toggle
           audioUnlocked = true;
           setSoundState(!soundOn);
-          playOnly(activeIndex);
+
+          // Wenn unmuted play blockiert, sofort wieder muten (sauber)
+          const v = videos[activeIndex];
+          if (v && audioUnlocked && soundOn){
+            try{
+              // falls Safari kurz zickt: play anstoßen (läuft eh schon)
+              await v.play();
+            }catch(_){
+              soundOn = false;
+              localStorage.setItem(SOUND_KEY, "off");
+              showToast("Sound blocked");
+              applySoundToVideo(v);
+            }
+          }
           return;
         }
 
@@ -853,8 +942,8 @@
 
         if (action === "comment"){ openComments(); return; }
         if (action === "closeComments"){ closeComments(); return; }
-        if (action === "share"){ alert("Share (demo)"); return; }
-        if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
+        if (action === "share"){ showToast("Share (demo)"); return; }
+        if (action === "product"){ showToast("Produkt (demo)"); return; }
       }
 
       if (commentsOpen) return;
