@@ -6,11 +6,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
 
-  <!-- =========================================================
-       PERF: Connection warmup (ok)
-       ========================================================= -->
-  <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
-  <link rel="preconnect" href="https://menyra.b-cdn.net" crossorigin />
+  <!-- PERF: Connection warmup (Bunny Stream Host) -->
+  <link rel="dns-prefetch" href="//vz-14f8b42c-6ba.b-cdn.net" />
+  <link rel="preconnect" href="https://vz-14f8b42c-6ba.b-cdn.net" crossorigin />
 
   <style>
     :root{
@@ -33,9 +31,6 @@
       background:#000;
     }
 
-    /* =========================================================
-       ABSCHNITT 1: FEED / REELS
-       ========================================================= */
     .reels{
       height: 100vh;
       height: 100svh;
@@ -49,9 +44,6 @@
 
       scroll-padding-top: var(--safe-top);
       scroll-padding-bottom: var(--safe-bottom);
-
-      /* helps with touch */
-      touch-action: pan-y;
     }
     .reels::-webkit-scrollbar{ display:none; }
     .reels{ scrollbar-width:none; }
@@ -90,9 +82,6 @@
       z-index: 5;
     }
 
-    /* =========================================================
-       ABSCHNITT 2: TOPBAR / UI
-       ========================================================= */
     .topbar{
       position:absolute;
       top: 0; left: 0; right: 0;
@@ -311,9 +300,6 @@
       transform: translateX(-50%) translateY(-4px);
     }
 
-    /* =========================================================
-       ABSCHNITT 3: COMMENTS SHEET
-       ========================================================= */
     .commentsBackdrop{
       position: fixed;
       inset: 0;
@@ -414,9 +400,6 @@
 <body>
   <div class="toast" id="toast">Sound</div>
 
-  <!-- =========================================================
-       TEMPLATE: Overlays pro Reel
-       ========================================================= -->
   <template id="overlayTpl">
     <header class="topbar">
       <div class="topbarLeft">
@@ -485,66 +468,59 @@
     <div class="tapHint">Paused</div>
   </template>
 
-  <!-- =========================================================
-       MAIN: Feed
-       ========================================================= -->
   <main class="reels" id="reels" aria-label="MENYRA Stories">
-    <!-- WICHTIG: src NICHT im HTML setzen -> nur data-src, JS hängt nur nahe Videos an -->
-
+    <!-- WICHTIG: keine MP4s mehr hier - Bunny Stream HLS -->
     <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik1.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik2.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik3.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik4.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik5.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik6.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik7.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="Schwanz Special" data-product-sub="Mit sose" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik8.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik9.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik10.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" data-hls="https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8" playsinline webkit-playsinline muted autoplay preload="metadata" loop></video>
       <div class="vignette"></div>
     </section>
   </main>
 
-  <!-- =========================================================
-       COMMENTS
-       ========================================================= -->
   <div class="commentsBackdrop" id="commentsBackdrop" aria-hidden="true"></div>
 
   <section class="commentsSheet" id="commentsSheet" aria-hidden="true">
@@ -569,13 +545,10 @@
     </form>
   </section>
 
-  <!-- =========================================================
-       SCRIPT
-       ========================================================= -->
+  <!-- hls.js für Chrome/Android/Firefox (Safari kann HLS nativ) -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+
   <script type="module">
-    // =========================================================
-    // ABSCHNITT A: DOM + Overlay Render
-    // =========================================================
     const tpl = document.getElementById("overlayTpl");
     const reels = Array.from(document.querySelectorAll(".reel"));
     const videos = Array.from(document.querySelectorAll(".reelVideo"));
@@ -589,6 +562,7 @@
     const commentInput = document.getElementById("commentInput");
     let commentsOpen = false;
 
+    // ---- Overlay pro Reel ----
     reels.forEach((reel) => {
       const frag = tpl.content.cloneNode(true);
 
@@ -626,25 +600,16 @@
       reel.appendChild(frag);
     });
 
-    // =========================================================
-    // ABSCHNITT B: Network Mode (3G/WLAN)
-    // =========================================================
-    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    const effectiveType = (conn && conn.effectiveType) ? String(conn.effectiveType) : "";
-    const saveData = !!(conn && conn.saveData);
-
-    // LOW_DATA => wir halten nur current + next attached
-    const LOW_DATA = saveData || /(^|-)2g|3g|slow-2g/i.test(effectiveType);
-
-    // =========================================================
-    // ABSCHNITT C: Toast + Sound
-    // =========================================================
+    // ---- Sound ----
     const SOUND_KEY = "menyra_story_sound";
     let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
     let audioUnlocked = false;
 
     let activeIndex = 0;
     let playToken = 0;
+
+    // HLS instances
+    const hlsMap = new Map();
 
     function showToast(text){
       if (!toastEl) return;
@@ -668,91 +633,97 @@
       }
     }
 
-    // =========================================================
-    // ABSCHNITT D: Video Attach/Detach (mobile-first)
-    // =========================================================
+    function canNativeHls(videoEl){
+      try{
+        return !!videoEl.canPlayType("application/vnd.apple.mpegurl");
+      }catch(_){
+        return false;
+      }
+    }
+
+    function destroyHls(i){
+      const h = hlsMap.get(i);
+      if (!h) return;
+      try { h.destroy(); } catch(_){}
+      hlsMap.delete(i);
+    }
+
+    // ---- Attach HLS source (HLS-first) ----
     function attachVideo(i, preloadMode){
       const v = videos[i];
       if (!v) return;
 
-      const url = v.getAttribute("data-src");
-      if (!url) return;
+      const hlsUrl = v.getAttribute("data-hls") || "";
+      if (!hlsUrl) return;
 
-      // preload zuerst setzen, dann src
+      // preload setzen
       if (v.preload !== preloadMode) v.preload = preloadMode;
 
-      if (!v.dataset.attached){
-        v.src = url;
-        v.dataset.attached = "1";
+      // schon attached?
+      if (v.dataset.attached === "1") return;
+      v.dataset.attached = "1";
+
+      // iOS Safari: native HLS (schnell + stabil)
+      if (canNativeHls(v)){
+        v.src = hlsUrl;
         try { v.load(); } catch(_){}
+        return;
       }
+
+      // Andere Browser: hls.js (MSE)
+      if (window.Hls && Hls.isSupported()){
+        const h = new Hls({
+          // extrem schneller Start:
+          startLevel: 0,                 // startet in niedriger Qualität -> instant
+          capLevelToPlayerSize: true,
+          enableWorker: true,
+          maxBufferLength: 8,
+          backBufferLength: 30
+        });
+
+        hlsMap.set(i, h);
+        h.attachMedia(v);
+        h.on(Hls.Events.MEDIA_ATTACHED, () => {
+          try { h.loadSource(hlsUrl); } catch(_){}
+        });
+
+        return;
+      }
+
+      // Wenn gar kein HLS möglich (sehr selten):
+      console.warn("HLS not supported on this browser:", navigator.userAgent);
     }
 
+    // ---- Detach nur wenn wirklich weit weg (sonst restart) ----
     function detachVideo(i){
       const v = videos[i];
-      if (!v || !v.dataset.attached) return;
+      if (!v) return;
+      if (v.dataset.attached !== "1") return;
 
       try { v.pause(); } catch(_){}
       v.muted = true;
+
+      destroyHls(i);
+
       v.removeAttribute("src");
-      delete v.dataset.attached;
+      v.dataset.attached = "0";
       try { v.load(); } catch(_){}
     }
 
     function updateNearSources(idx){
-      // 3G: current + next
-      // WLAN/4G: prev + current + next
-      const keep = LOW_DATA
-        ? new Set([idx, idx+1])
-        : new Set([idx-1, idx, idx+1]);
+      // Größeres Keep-Fenster => weniger Reload => “TikTok Feeling”
+      const keep = new Set([idx-2, idx-1, idx, idx+1, idx+2]);
 
       for (let i = 0; i < videos.length; i++){
         if (keep.has(i)){
           const preloadMode =
             (i === idx) ? "auto" :
-            (i === idx+1) ? (LOW_DATA ? "metadata" : "auto") :
+            (i === idx+1) ? "auto" :
             "metadata";
           attachVideo(i, preloadMode);
         } else {
           detachVideo(i);
         }
-      }
-    }
-
-    function waitFor(el, event, timeoutMs){
-      return new Promise((resolve, reject) => {
-        let done = false;
-        const t = window.setTimeout(() => {
-          if (done) return;
-          done = true;
-          cleanup();
-          reject(new Error("timeout"));
-        }, timeoutMs);
-
-        function onEvt(){
-          if (done) return;
-          done = true;
-          cleanup();
-          resolve();
-        }
-
-        function cleanup(){
-          window.clearTimeout(t);
-          el.removeEventListener(event, onEvt);
-        }
-
-        el.addEventListener(event, onEvt, { once: true });
-      });
-    }
-
-    async function safePlay(v){
-      try{
-        await v.play();
-        return true;
-      }catch(_){
-        // warten auf canplay (kurz), dann nochmal
-        try { await waitFor(v, "canplay", 1200); } catch(__){}
-        try { await v.play(); return true; } catch(___){ return false; }
       }
     }
 
@@ -762,7 +733,7 @@
 
       updateNearSources(index);
 
-      // stop other playing
+      // Stop others (aber Sources bleiben bei keep-window drinnen -> schnell zurück)
       videos.forEach((v, i) => {
         const reel = reels[i];
         if (i !== index){
@@ -775,31 +746,30 @@
       const v = videos[index];
       if (!v) return;
 
-      // autoplay policy: start muted
       v.muted = true;
+      v.preload = "auto";
 
-      if (token !== playToken) return;
+      try{
+        if (token !== playToken) return;
+        await v.play();
+        if (token !== playToken) return;
 
-      const ok = await safePlay(v);
-      if (token !== playToken) return;
-
-      if (ok){
         if (soundOn && audioUnlocked){
           try { v.muted = false; v.volume = 1; } catch(_){}
         }
+
         reels[index]?.classList.remove("is-paused");
-      } else {
+      }catch(_){
         reels[index]?.classList.add("is-paused");
       }
     }
 
-    // =========================================================
-    // ABSCHNITT E: Init + IntersectionObserver (stabil)
-    // =========================================================
+    // ---- INIT ----
     setSoundState(soundOn);
     updateNearSources(0);
     playOnly(0);
 
+    // ---- IntersectionObserver: stabile aktive Story ohne Snap-Fight ----
     const io = new IntersectionObserver((entries) => {
       let best = null;
       for (const e of entries){
@@ -812,13 +782,11 @@
       if (Number.isFinite(idx) && idx !== activeIndex){
         playOnly(idx);
       }
-    }, { root: reelsEl, threshold: [0.65, 0.8, 0.92] });
+    }, { root: reelsEl, threshold: [0.6, 0.75, 0.9] });
 
     reels.forEach(r => io.observe(r));
 
-    // =========================================================
-    // ABSCHNITT F: Comments Sheet
-    // =========================================================
+    // ---- Comments ----
     function lockFeed(lock){
       reelsEl.style.pointerEvents = lock ? "none" : "";
       reelsEl.style.overflowY = lock ? "hidden" : "";
@@ -853,9 +821,7 @@
       commentInput.value = "";
     });
 
-    // =========================================================
-    // ABSCHNITT G: Global Controls
-    // =========================================================
+    // ---- Global controls ----
     document.addEventListener("click", (e) => {
       const actionEl = e.target.closest("[data-action]");
       if (actionEl){
