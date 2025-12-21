@@ -7,10 +7,10 @@
   <meta name="theme-color" content="#000000" />
 
   <!-- =========================================================
-       PERF: Connection warmup (ok)
+       PERF: Connection warmup
        ========================================================= -->
-  <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
-  <link rel="preconnect" href="https://menyra.b-cdn.net" crossorigin />
+  <link rel="dns-prefetch" href="//vz-14f8b42c-6ba.b-cdn.net" />
+  <link rel="preconnect" href="https://vz-14f8b42c-6ba.b-cdn.net" crossorigin />
 
   <style>
     :root{
@@ -50,7 +50,6 @@
       scroll-padding-top: var(--safe-top);
       scroll-padding-bottom: var(--safe-bottom);
 
-      /* helps with touch */
       touch-action: pan-y;
     }
     .reels::-webkit-scrollbar{ display:none; }
@@ -409,6 +408,12 @@
       .toast, .tapHint, .commentsBackdrop, .commentsSheet{ transition:none !important; }
     }
   </style>
+
+  <!-- =========================================================
+       HLS: hls.js fallback (Chrome/Android/Windows)
+       iOS Safari spielt HLS nativ.
+       ========================================================= -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
 </head>
 
 <body>
@@ -492,52 +497,72 @@
     <!-- WICHTIG: src NICHT im HTML setzen -> nur data-src, JS hängt nur nahe Videos an -->
 
     <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik1.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/40f49c55-83e0-402a-b342-9afc506209d8/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik2.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/93212fef-e27a-4bbc-81d8-f98fee1c562f/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik3.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/624fcfa3-73b2-43fc-9742-ab0c0370ce12/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik4.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/b08e8ec7-17c8-4504-b473-5e6e6c51adde/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik5.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/3a333939-6525-4f5a-b5de-f3fe30aac7c4/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik6.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/38d02e9b-f8fd-446e-82e6-f333a23e4d69/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
     <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik7.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/ddbdc472-79fd-4c3a-9a4d-a8466734b8ef/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="Schwanz Special" data-product-sub="Mit sose" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik8.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+    <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="Tik 8" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/fa54daae-3208-48d2-91b2-12f2a7ce72a5/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik9.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+    <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Tik 9" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/e3700fff-62e2-4afc-a821-b179a1debb7c/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
 
-    <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
-      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik10.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+    <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Tik 10" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous"
+        data-src="https://vz-14f8b42c-6ba.b-cdn.net/ada7903b-72ec-422a-9510-6059bf1d75c1/playlist.m3u8"
+        playsinline webkit-playsinline muted autoplay preload="none" loop></video>
       <div class="vignette"></div>
     </section>
   </main>
@@ -570,441 +595,495 @@
   </section>
 
   <!-- =========================================================
-       SCRIPT
+       SCRIPT (HLS kompatibel + dein fast-swipe Setup)
        ========================================================= -->
   <script type="module">
-  // =========================================================
-  // ABSCHNITT A: DOM + Overlay Render (unverändert)
-  // =========================================================
-  const tpl = document.getElementById("overlayTpl");
-  const reels = Array.from(document.querySelectorAll(".reel"));
-  const videos = Array.from(document.querySelectorAll(".reelVideo"));
-  const reelsEl = document.getElementById("reels");
-  const toastEl = document.getElementById("toast");
+    // =========================================================
+    // ABSCHNITT A: DOM + Overlay Render
+    // =========================================================
+    const tpl = document.getElementById("overlayTpl");
+    const reels = Array.from(document.querySelectorAll(".reel"));
+    const videos = Array.from(document.querySelectorAll(".reelVideo"));
+    const reelsEl = document.getElementById("reels");
+    const toastEl = document.getElementById("toast");
 
-  const commentsBackdrop = document.getElementById("commentsBackdrop");
-  const commentsSheet = document.getElementById("commentsSheet");
-  const commentsList = document.getElementById("commentsList");
-  const commentsForm = document.getElementById("commentsForm");
-  const commentInput = document.getElementById("commentInput");
-  let commentsOpen = false;
+    const commentsBackdrop = document.getElementById("commentsBackdrop");
+    const commentsSheet = document.getElementById("commentsSheet");
+    const commentsList = document.getElementById("commentsList");
+    const commentsForm = document.getElementById("commentsForm");
+    const commentInput = document.getElementById("commentInput");
+    let commentsOpen = false;
 
-  reels.forEach((reel) => {
-    const frag = tpl.content.cloneNode(true);
+    reels.forEach((reel) => {
+      const frag = tpl.content.cloneNode(true);
 
-    const name = reel.getAttribute("data-name") || "Restaurant";
-    const logo = reel.getAttribute("data-logo") || "";
-    const like = reel.getAttribute("data-like") || "0";
-    const comments = reel.getAttribute("data-comments") || "0";
-    const pTitle = reel.getAttribute("data-product-title") || "Produkt";
-    const pSub = reel.getAttribute("data-product-sub") || "Tap to view product";
-    const pImg = reel.getAttribute("data-product-img") || "";
+      const name = reel.getAttribute("data-name") || "Restaurant";
+      const logo = reel.getAttribute("data-logo") || "";
+      const like = reel.getAttribute("data-like") || "0";
+      const comments = reel.getAttribute("data-comments") || "0";
+      const pTitle = reel.getAttribute("data-product-title") || "Produkt";
+      const pSub = reel.getAttribute("data-product-sub") || "Tap to view product";
+      const pImg = reel.getAttribute("data-product-img") || "";
 
-    const logoEl = frag.querySelector('[data-bind="logo"]');
-    const nameEl = frag.querySelector('[data-bind="name"]');
-    const likeCountEl = frag.querySelector('[data-bind="likeCount"]');
-    const commentCountEl = frag.querySelector('[data-bind="commentCount"]');
-    const pTitleEl = frag.querySelector('[data-bind="productTitle"]');
-    const pSubEl = frag.querySelector('[data-bind="productSub"]');
-    const pImgEl = frag.querySelector('[data-bind="productImg"]');
+      const logoEl = frag.querySelector('[data-bind="logo"]');
+      const nameEl = frag.querySelector('[data-bind="name"]');
+      const likeCountEl = frag.querySelector('[data-bind="likeCount"]');
+      const commentCountEl = frag.querySelector('[data-bind="commentCount"]');
+      const pTitleEl = frag.querySelector('[data-bind="productTitle"]');
+      const pSubEl = frag.querySelector('[data-bind="productSub"]');
+      const pImgEl = frag.querySelector('[data-bind="productImg"]');
 
-    if (logoEl && logo) logoEl.src = logo;
-    if (nameEl) nameEl.textContent = name;
+      if (logoEl && logo) logoEl.src = logo;
+      if (nameEl) nameEl.textContent = name;
 
-    const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
-    if (likeBtn) likeBtn.setAttribute("data-count", String(parseInt(like,10)||0));
-    if (likeCountEl) likeCountEl.textContent = String(parseInt(like,10)||0);
+      const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
+      if (likeBtn) likeBtn.setAttribute("data-count", String(parseInt(like,10)||0));
+      if (likeCountEl) likeCountEl.textContent = String(parseInt(like,10)||0);
 
-    const comBtn = frag.querySelector('.railBtn[data-action="comment"]');
-    if (comBtn) comBtn.setAttribute("data-count", String(parseInt(comments,10)||0));
-    if (commentCountEl) commentCountEl.textContent = String(parseInt(comments,10)||0);
+      const comBtn = frag.querySelector('.railBtn[data-action="comment"]');
+      if (comBtn) comBtn.setAttribute("data-count", String(parseInt(comments,10)||0));
+      if (commentCountEl) commentCountEl.textContent = String(parseInt(comments,10)||0);
 
-    if (pTitleEl) pTitleEl.textContent = pTitle;
-    if (pSubEl) pSubEl.textContent = pSub;
-    if (pImgEl && pImg) pImgEl.src = pImg;
+      if (pTitleEl) pTitleEl.textContent = pTitle;
+      if (pSubEl) pSubEl.textContent = pSub;
+      if (pImgEl && pImg) pImgEl.src = pImg;
 
-    reel.appendChild(frag);
-  });
+      reel.appendChild(frag);
+    });
 
-  // =========================================================
-  // ABSCHNITT B: Network Mode (3G/WLAN)
-  // =========================================================
-  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-  const effectiveType = (conn && conn.effectiveType) ? String(conn.effectiveType) : "";
-  const saveData = !!(conn && conn.saveData);
+    // =========================================================
+    // ABSCHNITT B: Network Mode (3G/WLAN)
+    // =========================================================
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const effectiveType = (conn && conn.effectiveType) ? String(conn.effectiveType) : "";
+    const saveData = !!(conn && conn.saveData);
+    const LOW_DATA = saveData || /(^|-)2g|3g|slow-2g/i.test(effectiveType);
 
-  const LOW_DATA = saveData || /(^|-)2g|3g|slow-2g/i.test(effectiveType);
+    // =========================================================
+    // ABSCHNITT C: Toast + Sound
+    // =========================================================
+    const SOUND_KEY = "menyra_story_sound";
+    let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+    let audioUnlocked = false;
 
-  // =========================================================
-  // ABSCHNITT C: Toast + Sound (FIX: Sound schaltet ohne Rebuffer)
-  // =========================================================
-  const SOUND_KEY = "menyra_story_sound";
-  let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
-  let audioUnlocked = false;
+    let activeIndex = 0;
+    let playToken = 0;
 
-  let activeIndex = 0;
-  let playToken = 0;
-
-  function showToast(text){
-    if (!toastEl) return;
-    toastEl.textContent = text;
-    toastEl.classList.add("show");
-    window.setTimeout(() => toastEl.classList.remove("show"), 700);
-  }
-
-  function applySoundToVideo(v){
-    if (!v) return;
-    const wantSound = audioUnlocked && soundOn;
-    try{
-      v.muted = !wantSound;
-      v.volume = wantSound ? 1 : 0;
-    }catch(_){}
-  }
-
-  function setSoundState(on){
-    soundOn = !!on;
-    localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
-    showToast(soundOn ? "Sound: ON" : "Sound: OFF");
-
-    // WICHTIG: kein playOnly() hier -> kein detach/attach -> kein Rebuffer
-    applySoundToVideo(videos[activeIndex]);
-  }
-
-  // =========================================================
-  // ABSCHNITT D: Video Attach/Detach (UPGRADE: schnelleres Swipen)
-  // - Wir halten 4 Videos im RAM (prev, current, next, next+1) auf gutem Netz
-  // - Und detach NICHT sofort, sondern leicht verzögert (Back-Scroll ohne Nachladen)
-  // =========================================================
-  const DETACH_DELAY_MS = LOW_DATA ? 0 : 850; // sehr wichtig für "schnelles sliden"
-  const detachTimers = new Map();
-
-  function cancelDetach(i){
-    const t = detachTimers.get(i);
-    if (t){
-      clearTimeout(t);
-      detachTimers.delete(i);
+    function showToast(text){
+      if (!toastEl) return;
+      toastEl.textContent = text;
+      toastEl.classList.add("show");
+      window.setTimeout(() => toastEl.classList.remove("show"), 700);
     }
-  }
 
-  function scheduleDetach(i){
-    if (DETACH_DELAY_MS <= 0){
-      detachVideo(i);
-      return;
+    function applySoundToVideo(v){
+      if (!v) return;
+      const wantSound = audioUnlocked && soundOn;
+      try{
+        v.muted = !wantSound;
+        v.volume = wantSound ? 1 : 0;
+      }catch(_){}
     }
-    if (detachTimers.has(i)) return;
-    detachTimers.set(i, setTimeout(() => {
-      detachTimers.delete(i);
-      detachVideo(i);
-    }, DETACH_DELAY_MS));
-  }
 
-  // OPTIONAL: Mini-Warmup (Range-Request) für NEXT – nur bei gutem Netz
-  // Das kann den "schwarzen Moment" beim schnellen Wischen reduzieren.
-  const warmed = new Set();
-  async function warmupUrl(url){
-    if (!url || LOW_DATA) return;
-    if (warmed.has(url)) return;
-    warmed.add(url);
+    function setSoundState(on){
+      soundOn = !!on;
+      localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+      showToast(soundOn ? "Sound: ON" : "Sound: OFF");
+      applySoundToVideo(videos[activeIndex]); // kein reload
+    }
 
-    try{
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 900);
-      // Kleiner Range reicht oft, damit CDN + TCP "warm" sind
-      await fetch(url, {
-        method: "GET",
-        mode: "cors",
-        credentials: "omit",
-        signal: ctrl.signal,
-        headers: { Range: "bytes=0-220000" }
-      }).catch(() => {});
-      clearTimeout(t);
-    }catch(_){}
-  }
+    // =========================================================
+    // ABSCHNITT D: HLS Support (Safari nativ, sonst hls.js)
+    // =========================================================
+    function hasNativeHls(videoEl){
+      try{
+        return !!(videoEl && (
+          videoEl.canPlayType("application/vnd.apple.mpegurl") ||
+          videoEl.canPlayType("application/x-mpegURL")
+        ));
+      }catch(_){
+        return false;
+      }
+    }
 
-  function attachVideo(i, preloadMode){
-    const v = videos[i];
-    if (!v) return;
+    const HLS_OK = (window.Hls && typeof window.Hls.isSupported === "function" && window.Hls.isSupported());
 
-    const url = v.getAttribute("data-src");
-    if (!url) return;
+    // pro Video merken wir die Hls-Instanz, damit detach sauber destroy macht
+    function getHls(v){ return v?._menyraHls || null; }
+    function setHls(v, inst){ if (v) v._menyraHls = inst; }
+    function clearHls(v){ if (v) delete v._menyraHls; }
 
-    // preload zuerst setzen, dann src
-    if (v.preload !== preloadMode) v.preload = preloadMode;
+    // hls.js config: schnell starten, nicht zu viel Buffer (wichtig fürs Swipe)
+    function createHlsInstance(){
+      return new window.Hls({
+        enableWorker: true,
+        lowLatencyMode: false,
+        backBufferLength: 5,
+        maxBufferLength: LOW_DATA ? 8 : 14,
+        maxMaxBufferLength: LOW_DATA ? 12 : 20,
+        startLevel: -1,
+        capLevelToPlayerSize: true,
+        abrEwmaDefaultEstimate: 2500000
+      });
+    }
 
-    if (!v.dataset.attached){
+    // =========================================================
+    // ABSCHNITT E: Attach/Detach (HLS-fähig + fast swipe)
+    // =========================================================
+    const DETACH_DELAY_MS = LOW_DATA ? 0 : 850;
+    const detachTimers = new Map();
+
+    function cancelDetach(i){
+      const t = detachTimers.get(i);
+      if (t){
+        clearTimeout(t);
+        detachTimers.delete(i);
+      }
+    }
+    function scheduleDetach(i){
+      if (DETACH_DELAY_MS <= 0){
+        detachVideo(i);
+        return;
+      }
+      if (detachTimers.has(i)) return;
+      detachTimers.set(i, setTimeout(() => {
+        detachTimers.delete(i);
+        detachVideo(i);
+      }, DETACH_DELAY_MS));
+    }
+
+    // Warmup für HLS: Playlist fetch (kein Range, weil m3u8 Text ist)
+    const warmed = new Set();
+    async function warmupUrl(url){
+      if (!url || LOW_DATA) return;
+      if (warmed.has(url)) return;
+      warmed.add(url);
+      try{
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 900);
+        await fetch(url, { method:"GET", mode:"cors", credentials:"omit", cache:"force-cache", signal: ctrl.signal }).catch(()=>{});
+        clearTimeout(t);
+      }catch(_){}
+    }
+
+    function attachVideo(i, preloadMode){
+      const v = videos[i];
+      if (!v) return;
+
+      const url = v.getAttribute("data-src");
+      if (!url) return;
+
+      if (v.preload !== preloadMode) v.preload = preloadMode;
+      if (v.dataset.attached) return;
+
+      // immer muted starten (autoplay-policy)
+      try { v.muted = true; v.volume = 0; } catch(_){}
+
+      // Native HLS (iOS Safari)
+      if (hasNativeHls(v)){
+        v.src = url;
+        v.dataset.attached = "1";
+        try { v.load(); } catch(_){}
+        return;
+      }
+
+      // hls.js (Chrome/Android/Windows)
+      if (HLS_OK){
+        const hls = createHlsInstance();
+        setHls(v, hls);
+
+        // (optional) event minimal logging (kannst du rausnehmen)
+        hls.on(window.Hls.Events.ERROR, (_evt, data) => {
+          // bei fatal -> versuchen neu
+          if (data?.fatal){
+            try { hls.destroy(); } catch(_){}
+            clearHls(v);
+            // fallback: src direkt setzen (manche Browser spielen trotzdem)
+            try { v.src = url; v.dataset.attached = "1"; v.load(); } catch(_){}
+          }
+        });
+
+        hls.loadSource(url);
+        hls.attachMedia(v);
+
+        v.dataset.attached = "1";
+        return;
+      }
+
+      // Fallback: direkt setzen (wird auf manchen Browsern nicht gehen)
       v.src = url;
       v.dataset.attached = "1";
       try { v.load(); } catch(_){}
     }
-  }
 
-  function detachVideo(i){
-    const v = videos[i];
-    if (!v || !v.dataset.attached) return;
+    function detachVideo(i){
+      const v = videos[i];
+      if (!v || !v.dataset.attached) return;
 
-    try { v.pause(); } catch(_){}
-    v.muted = true;
-    v.removeAttribute("src");
-    delete v.dataset.attached;
+      try { v.pause(); } catch(_){}
+      try { v.muted = true; v.volume = 0; } catch(_){}
 
-    try { v.load(); } catch(_){}
-  }
-
-  function updateNearSources(idx){
-    // 3G: current + next
-    // WLAN/4G: prev + current + next + next+1 (schnelles swipe fühlt sich viel besser an)
-    const keep = LOW_DATA
-      ? new Set([idx, idx+1])
-      : new Set([idx-1, idx, idx+1, idx+2]);
-
-    for (let i = 0; i < videos.length; i++){
-      if (keep.has(i)){
-        cancelDetach(i);
-
-        const preloadMode =
-          (i === idx) ? "auto" :
-          (i === idx+1) ? (LOW_DATA ? "metadata" : "auto") :
-          (i === idx+2) ? (LOW_DATA ? "none" : "metadata") :
-          "metadata";
-
-        attachVideo(i, preloadMode);
-      } else {
-        scheduleDetach(i);
-      }
-    }
-
-    // Warmup nur für next (und next+1 bei gutem Netz)
-    const v1 = videos[idx+1];
-    if (v1?.getAttribute) warmupUrl(v1.getAttribute("data-src"));
-    if (!LOW_DATA){
-      const v2 = videos[idx+2];
-      if (v2?.getAttribute) warmupUrl(v2.getAttribute("data-src"));
-    }
-  }
-
-  function waitFor(el, event, timeoutMs){
-    return new Promise((resolve, reject) => {
-      let done = false;
-      const t = window.setTimeout(() => {
-        if (done) return;
-        done = true;
-        cleanup();
-        reject(new Error("timeout"));
-      }, timeoutMs);
-
-      function onEvt(){
-        if (done) return;
-        done = true;
-        cleanup();
-        resolve();
+      // hls.js instanz zerstören
+      const hls = getHls(v);
+      if (hls){
+        try { hls.destroy(); } catch(_){}
+        clearHls(v);
       }
 
-      function cleanup(){
-        window.clearTimeout(t);
-        el.removeEventListener(event, onEvt);
-      }
-
-      el.addEventListener(event, onEvt, { once: true });
-    });
-  }
-
-  async function safePlay(v){
-    try{
-      await v.play();
-      return true;
-    }catch(_){
-      // Loadeddata ist oft schneller als canplay
-      try { await waitFor(v, "loadeddata", 900); } catch(__){}
-      try { await v.play(); return true; } catch(___){ return false; }
+      v.removeAttribute("src");
+      delete v.dataset.attached;
+      try { v.load(); } catch(_){}
     }
-  }
 
-  async function playOnly(index){
-    const token = ++playToken;
-    activeIndex = index;
+    function updateNearSources(idx){
+      const keep = LOW_DATA
+        ? new Set([idx, idx+1])
+        : new Set([idx-1, idx, idx+1, idx+2]);
 
-    updateNearSources(index);
+      for (let i = 0; i < videos.length; i++){
+        if (keep.has(i)){
+          cancelDetach(i);
 
-    // stop other playing
-    videos.forEach((v, i) => {
-      const reel = reels[i];
-      if (i !== index){
-        try { v.pause(); } catch(_){}
-        v.muted = true;
-        reel?.classList.remove("is-paused");
-      }
-    });
+          const preloadMode =
+            (i === idx) ? "auto" :
+            (i === idx+1) ? (LOW_DATA ? "metadata" : "auto") :
+            (i === idx+2) ? (LOW_DATA ? "none" : "metadata") :
+            "metadata";
 
-    const v = videos[index];
-    if (!v) return;
-
-    // Autoplay: immer muted starten
-    v.muted = true;
-    v.volume = 0;
-
-    if (token !== playToken) return;
-
-    const ok = await safePlay(v);
-    if (token !== playToken) return;
-
-    if (ok){
-      // Sound ggf. ohne reload aktivieren
-      applySoundToVideo(v);
-      reels[index]?.classList.remove("is-paused");
-    } else {
-      reels[index]?.classList.add("is-paused");
-    }
-  }
-
-  // =========================================================
-  // ABSCHNITT E: Init + IntersectionObserver (stabil)
-  // =========================================================
-  setSoundState(soundOn);
-
-  // Start: current sofort + next sofort attach (macht Start schneller)
-  updateNearSources(0);
-  attachVideo(0, "auto");
-  attachVideo(1, LOW_DATA ? "metadata" : "auto");
-  playOnly(0);
-
-  const io = new IntersectionObserver((entries) => {
-    let best = null;
-    for (const e of entries){
-      if (!e.isIntersecting) continue;
-      if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
-    }
-    if (!best) return;
-
-    const idx = Number(best.target.getAttribute("data-index") || "0");
-    if (Number.isFinite(idx) && idx !== activeIndex){
-      playOnly(idx);
-    }
-  }, { root: reelsEl, threshold: [0.65, 0.8, 0.92] });
-
-  reels.forEach(r => io.observe(r));
-
-  // =========================================================
-  // ABSCHNITT F: Comments Sheet (unverändert)
-  // =========================================================
-  function lockFeed(lock){
-    reelsEl.style.pointerEvents = lock ? "none" : "";
-    reelsEl.style.overflowY = lock ? "hidden" : "";
-  }
-  function openComments(){
-    if (commentsOpen) return;
-    commentsOpen = true;
-    commentsBackdrop.classList.add("open");
-    commentsSheet.classList.add("open");
-    lockFeed(true);
-    window.setTimeout(() => commentInput?.focus?.(), 60);
-  }
-  function closeComments(){
-    if (!commentsOpen) return;
-    commentsOpen = false;
-    commentsBackdrop.classList.remove("open");
-    commentsSheet.classList.remove("open");
-    lockFeed(false);
-  }
-  commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
-
-  commentsForm?.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const val = (commentInput?.value || "").trim();
-    if (!val) return;
-
-    const item = document.createElement("div");
-    item.className = "cItem";
-    item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
-    item.querySelector(".cText").textContent = val;
-    commentsList?.prepend(item);
-    commentInput.value = "";
-  });
-
-  // =========================================================
-  // ABSCHNITT G: Global Controls (FIX: Sound ohne playOnly)
-  // =========================================================
-  document.addEventListener("click", async (e) => {
-    const actionEl = e.target.closest("[data-action]");
-    if (actionEl){
-      const action = actionEl.getAttribute("data-action");
-
-      if (action === "back"){
-        window.location.href = "./karte-demo.html";
-        return;
-      }
-
-      if (action === "sound"){
-        audioUnlocked = true;
-        setSoundState(!soundOn);
-
-        // WICHTIG: NICHT playOnly(activeIndex) -> das verursacht Rebuffer/Lag
-        const v = videos[activeIndex];
-        if (v && v.paused){
-          try { await safePlay(v); } catch(_){}
-          applySoundToVideo(v);
+          attachVideo(i, preloadMode);
+        } else {
+          scheduleDetach(i);
         }
-        return;
       }
 
-      if (action === "like"){
-        const btn = actionEl.closest('.railBtn[data-action="like"]');
-        if (!btn) return;
-        const countEl = btn.querySelector(".railCount");
-        const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
-        const liked = btn.classList.toggle("is-liked");
-        const next = liked ? cur + 1 : Math.max(0, cur - 1);
-        btn.setAttribute("data-count", String(next));
-        if (countEl) countEl.textContent = String(next);
-        return;
+      // Warmup next (+ next+1)
+      const v1 = videos[idx+1];
+      if (v1?.getAttribute) warmupUrl(v1.getAttribute("data-src"));
+      if (!LOW_DATA){
+        const v2 = videos[idx+2];
+        if (v2?.getAttribute) warmupUrl(v2.getAttribute("data-src"));
+      }
+    }
+
+    function waitFor(el, event, timeoutMs){
+      return new Promise((resolve, reject) => {
+        let done = false;
+        const t = window.setTimeout(() => {
+          if (done) return;
+          done = true;
+          cleanup();
+          reject(new Error("timeout"));
+        }, timeoutMs);
+
+        function onEvt(){
+          if (done) return;
+          done = true;
+          cleanup();
+          resolve();
+        }
+
+        function cleanup(){
+          window.clearTimeout(t);
+          el.removeEventListener(event, onEvt);
+        }
+
+        el.addEventListener(event, onEvt, { once: true });
+      });
+    }
+
+    async function safePlay(v){
+      try{
+        await v.play();
+        return true;
+      }catch(_){
+        try { await waitFor(v, "loadeddata", 1000); } catch(__){}
+        try { await v.play(); return true; } catch(___){ return false; }
+      }
+    }
+
+    async function playOnly(index){
+      const token = ++playToken;
+      activeIndex = index;
+
+      updateNearSources(index);
+
+      // stop other playing
+      videos.forEach((v, i) => {
+        const reel = reels[i];
+        if (i !== index){
+          try { v.pause(); } catch(_){}
+          try { v.muted = true; v.volume = 0; } catch(_){}
+          reel?.classList.remove("is-paused");
+        }
+      });
+
+      const v = videos[index];
+      if (!v) return;
+
+      // autoplay: muted start
+      try { v.muted = true; v.volume = 0; } catch(_){}
+
+      if (token !== playToken) return;
+
+      const ok = await safePlay(v);
+      if (token !== playToken) return;
+
+      if (ok){
+        applySoundToVideo(v);
+        reels[index]?.classList.remove("is-paused");
+      } else {
+        reels[index]?.classList.add("is-paused");
+      }
+    }
+
+    // =========================================================
+    // ABSCHNITT F: Init + IntersectionObserver
+    // =========================================================
+    setSoundState(soundOn);
+
+    updateNearSources(0);
+    attachVideo(0, "auto");
+    attachVideo(1, LOW_DATA ? "metadata" : "auto");
+    playOnly(0);
+
+    const io = new IntersectionObserver((entries) => {
+      let best = null;
+      for (const e of entries){
+        if (!e.isIntersecting) continue;
+        if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+      }
+      if (!best) return;
+
+      const idx = Number(best.target.getAttribute("data-index") || "0");
+      if (Number.isFinite(idx) && idx !== activeIndex){
+        playOnly(idx);
+      }
+    }, { root: reelsEl, threshold: [0.65, 0.8, 0.92] });
+
+    reels.forEach(r => io.observe(r));
+
+    // =========================================================
+    // ABSCHNITT G: Comments Sheet
+    // =========================================================
+    function lockFeed(lock){
+      reelsEl.style.pointerEvents = lock ? "none" : "";
+      reelsEl.style.overflowY = lock ? "hidden" : "";
+    }
+    function openComments(){
+      if (commentsOpen) return;
+      commentsOpen = true;
+      commentsBackdrop.classList.add("open");
+      commentsSheet.classList.add("open");
+      lockFeed(true);
+      window.setTimeout(() => commentInput?.focus?.(), 60);
+    }
+    function closeComments(){
+      if (!commentsOpen) return;
+      commentsOpen = false;
+      commentsBackdrop.classList.remove("open");
+      commentsSheet.classList.remove("open");
+      lockFeed(false);
+    }
+    commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
+
+    commentsForm?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = (commentInput?.value || "").trim();
+      if (!val) return;
+
+      const item = document.createElement("div");
+      item.className = "cItem";
+      item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
+      item.querySelector(".cText").textContent = val;
+      commentsList?.prepend(item);
+      commentInput.value = "";
+    });
+
+    // =========================================================
+    // ABSCHNITT H: Global Controls
+    // =========================================================
+    document.addEventListener("click", async (e) => {
+      const actionEl = e.target.closest("[data-action]");
+      if (actionEl){
+        const action = actionEl.getAttribute("data-action");
+
+        if (action === "back"){
+          window.location.href = "./karte-demo.html";
+          return;
+        }
+
+        if (action === "sound"){
+          audioUnlocked = true;
+          setSoundState(!soundOn);
+
+          // wichtig: kein playOnly() hier -> kein rebuffer
+          const v = videos[activeIndex];
+          if (v && v.paused){
+            try { await safePlay(v); } catch(_){}
+            applySoundToVideo(v);
+          }
+          return;
+        }
+
+        if (action === "like"){
+          const btn = actionEl.closest('.railBtn[data-action="like"]');
+          if (!btn) return;
+          const countEl = btn.querySelector(".railCount");
+          const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
+          const liked = btn.classList.toggle("is-liked");
+          const next = liked ? cur + 1 : Math.max(0, cur - 1);
+          btn.setAttribute("data-count", String(next));
+          if (countEl) countEl.textContent = String(next);
+          return;
+        }
+
+        if (action === "comment"){ openComments(); return; }
+        if (action === "closeComments"){ closeComments(); return; }
+        if (action === "share"){ alert("Share (demo)"); return; }
+        if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
       }
 
-      if (action === "comment"){ openComments(); return; }
-      if (action === "closeComments"){ closeComments(); return; }
-      if (action === "share"){ alert("Share (demo)"); return; }
-      if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
-    }
+      if (commentsOpen) return;
 
-    if (commentsOpen) return;
+      const video = e.target.closest("video.reelVideo");
+      if (!video) return;
 
-    const video = e.target.closest("video.reelVideo");
-    if (!video) return;
+      const reel = video.closest(".reel");
+      const idx = Number(reel?.getAttribute("data-index") || "0");
 
-    const reel = video.closest(".reel");
-    const idx = Number(reel?.getAttribute("data-index") || "0");
+      if (video.paused){
+        playOnly(Number.isFinite(idx) ? idx : activeIndex);
+      } else {
+        video.pause();
+        reel?.classList.add("is-paused");
+      }
+    }, { passive: true });
 
-    if (video.paused){
-      playOnly(Number.isFinite(idx) ? idx : activeIndex);
-    } else {
-      video.pause();
-      reel?.classList.add("is-paused");
-    }
-  }, { passive: true });
+    let lastTap = 0;
+    document.addEventListener("touchend", (e) => {
+      if (commentsOpen) return;
+      const now = Date.now();
+      const isDouble = (now - lastTap) < 260;
+      lastTap = now;
+      if (!isDouble) return;
+      const reel = e.target.closest(".reel");
+      if (!reel) return;
+      const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
+      if (likeBtn) likeBtn.click();
+    }, { passive: true });
 
-  let lastTap = 0;
-  document.addEventListener("touchend", (e) => {
-    if (commentsOpen) return;
-    const now = Date.now();
-    const isDouble = (now - lastTap) < 260;
-    lastTap = now;
-    if (!isDouble) return;
-    const reel = e.target.closest(".reel");
-    if (!reel) return;
-    const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
-    if (likeBtn) likeBtn.click();
-  }, { passive: true });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden){
+        videos.forEach(v => { try { v.pause(); } catch(_){ } });
+      } else {
+        updateNearSources(activeIndex);
+        playOnly(activeIndex);
+      }
+    }, { passive: true });
 
-  document.addEventListener("visibilitychange", () => {
-    if (document.hidden){
-      videos.forEach(v => { try { v.pause(); } catch(_){ } });
-    } else {
-      updateNearSources(activeIndex);
-      playOnly(activeIndex);
-    }
-  }, { passive: true });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeComments();
-  }, { passive:true });
-</script>
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeComments();
+    }, { passive:true });
+  </script>
 </body>
 </html>
