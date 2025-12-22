@@ -134,33 +134,6 @@ async function uploadVideoTus(file, tusInfo) {
   });
 }
 
-
-async function getTusSignature({ restaurantId, title, fileType }) {
-  // Prefer Firebase callable (no CORS headache, supports auth context).
-  try {
-    const getSig = httpsCallable(functions, "getStreamUploadSignature");
-    const sigRes = await getSig({ restaurantId, title, fileType });
-    return sigRes.data || null;
-  } catch (e) {
-    // Fallback to HTTP endpoint (CORS-enabled) for dev / edge cases.
-    // NOTE: This is still safe in dev because it returns only a short-lived upload signature.
-    const res = await fetch(
-      "https://us-central1-menyra-c0e68.cloudfunctions.net/getStreamUploadSignatureHttp",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ restaurantId, title }),
-      }
-    );
-    if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      throw new Error(`Signature HTTP fallback failed (${res.status}): ${t}`);
-    }
-    return res.json();
-  }
-}
-
-
 async function createStoryDoc({ mediaType, mediaUrl, videoId, imageUrl, caption, product }) {
   const ref = collection(db, "restaurants", restaurantId, "stories");
 
@@ -215,13 +188,14 @@ async function handleUpload() {
     if (file.type.startsWith("video/")) {
       setStatus("Video vorbereiten…");
 
-      const sig = await getTusSignature({
+      const getSig = httpsCallable(functions, "getStreamUploadSignature");
+      const sigRes = await getSig({
         restaurantId,
         title: caption || file.name || "Story Video",
         fileType: file.type,
       });
 
-      const { videoId, tusEndpoint, tusHeaders } = sig || {};
+      const { videoId, tusEndpoint, tusHeaders } = sigRes.data || {};
       if (!videoId || !tusEndpoint || !tusHeaders) throw new Error("Missing tus info");
 
       await uploadVideoTus(file, { endpoint: tusEndpoint, headers: tusHeaders });

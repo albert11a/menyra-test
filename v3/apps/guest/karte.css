@@ -1,0 +1,117 @@
+/* =========================================================
+   MENYRA Guest — Karte (Quick Menu)
+   Extracted + slimmed from karte-demo.html
+   ========================================================= */
+
+.page--karte{ padding-bottom: 22px; }
+
+/* ===== QuickNav Bar ===== */
+.quickNav{
+  position: relative;
+  width: 100%;
+  margin: 12px 0 10px;
+}
+
+.quickNavRow{
+  display:flex;
+  gap:10px;
+  align-items:stretch;
+  justify-content:space-between;
+}
+
+.quickNavBtn{
+  flex:1;
+  min-width:0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255,255,255,0.92);
+  border-radius: 16px;
+  padding: 12px 10px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  transition: transform .08s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.quickNavBtn:active{ transform: scale(.98); }
+
+.qIcon{ width: 22px; height: 22px; display:grid; place-items:center; }
+.qIcon svg{ width:22px; height:22px; fill:#0f172a; opacity:.92; }
+.qLabel{ font-weight:700; font-size:12px; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ===== Panels ===== */
+.panelOverlay{
+  position:absolute;
+  inset:0;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.96);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.10);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding: 10px;
+  transform: scaleX(0.98);
+  opacity: 0;
+  pointer-events:none;
+  transform-origin: left center;
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.panelBackBtn, .panelNextBtn{
+  width:42px;
+  height:42px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(15, 23, 42, 0.04);
+  display:grid;
+  place-items:center;
+}
+
+.panelBackBtn svg, .panelNextBtn svg{ width:20px; height:20px; fill:#0f172a; opacity:.9; }
+
+.panelList{
+  flex:1;
+  display:flex;
+  gap:8px;
+  align-items:stretch;
+  justify-content:space-evenly;
+  padding: 0 10px;
+  overflow-x:auto;
+  scroll-snap-type: x mandatory;
+}
+
+.panelOpt{
+  scroll-snap-align:center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255,255,255,0.92);
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #0f172a;
+  white-space:nowrap;
+}
+
+.panelOpt:active{ transform: scale(.98); }
+
+/* Open states */
+.quickNav.lang-open .quickNavRow,
+.quickNav.kam-open  .quickNavRow{
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events:none;
+  transition: opacity .16s ease, transform .16s ease;
+}
+
+.quickNav.lang-open #langPanel,
+.quickNav.kam-open  #kamPanel{
+  transform: scaleX(1);
+  opacity: 1;
+  pointer-events:auto;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .quickNavBtn, .panelOverlay{ transition: none !important; }
+}

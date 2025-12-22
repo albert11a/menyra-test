@@ -118,58 +118,6 @@ exports.getStreamUploadSignature = functions.https.onCall(async (data, context) 
   };
 });
 
-// ---------------------------------------------------------
-// HTTP fallback (CORS-friendly)
-// Some setups (or manual fetch) can hit CORS issues with callable functions.
-// This endpoint is a safe fallback during development.
-// IMPORTANT: For production, you SHOULD authenticate callers and restrict origins.
-// ---------------------------------------------------------
-exports.getStreamUploadSignatureHttp = functions.https.onRequest((req, res) => {
-  cors(req, res, async () => {
-    try {
-      if (req.method === "OPTIONS") {
-        // CORS preflight handled by cors() middleware
-        res.status(204).send("");
-        return;
-      }
-      if (req.method !== "POST") {
-        res.status(405).json({ error: "Method not allowed" });
-        return;
-      }
-
-      const restaurantId = String(req.body?.restaurantId || "").trim();
-      const title = String(req.body?.title || "").trim();
-
-      if (!restaurantId) {
-        res.status(400).json({ error: "restaurantId is required" });
-        return;
-      }
-
-      requireEnv("BUNNY_STREAM_API_KEY", STREAM_API_KEY);
-
-      const videoId = await createBunnyStreamVideo({ title: title || "Story Video" });
-
-      const expiration = Math.floor(Date.now() / 1000) + 60 * 60; // +1h
-      const signature = sha256Hex(`${STREAM_LIBRARY_ID}${STREAM_API_KEY}${expiration}${videoId}`);
-
-      res.status(200).json({
-        videoId,
-        tusEndpoint: "https://video.bunnycdn.com/tusupload",
-        tusHeaders: {
-          AuthorizationSignature: signature,
-          AuthorizationExpire: String(expiration),
-          LibraryId: String(STREAM_LIBRARY_ID),
-          VideoId: String(videoId),
-        },
-        streamCdnHost: STREAM_CDN_HOST || null,
-      });
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ error: String(err?.message || err) });
-    }
-  });
-});
-
 exports.uploadStoryImage = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
     try {

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Staff Admin Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#eef0ff" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../../shared/menyra.css" />
+  <style>
+    .login-shell{max-width:520px;margin:0 auto;padding:22px 14px 40px}
+    .login-card{margin-top:18px}
+  </style>
+</head>
+<body>
+  <div class="m-app">
+    <header class="m-topbar">
+      <div class="m-topbar-left">
+        <div class="m-logo">MENYRA</div>
+        <span class="m-env-badge">Staff Admin</span>
+      </div>
+    </header>
+
+    <main class="login-shell">
+      <div class="m-card login-card">
+        <h1 class="m-page-title" style="margin-bottom:6px;">Staff Admin Login</h1>
+        <p class="m-page-subtitle" style="margin-bottom:12px;">Platzhalter – später Firebase Login.</p>
+
+        <div class="m-input-group">
+          <label for="staffEmail">E-Mail</label>
+          <input id="staffEmail" type="email" placeholder="staff@menyra.com" />
+        </div>
+
+        <div class="m-input-group">
+          <label for="staffPass">Passwort</label>
+          <input id="staffPass" type="password" placeholder="••••••••" />
+        </div>
+
+        <div class="m-modal-footer" style="justify-content:flex-start;">
+          <button class="m-btn" type="button">Einloggen</button>
+          <button class="m-btn m-btn--ghost" type="button" onclick="location.href='./dashboard.html'">Demo öffnen</button>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module" src="./login.js"></script>
+</body>
+</html>
