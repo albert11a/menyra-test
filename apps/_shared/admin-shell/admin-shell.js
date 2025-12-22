@@ -1,25 +1,19 @@
 /* =========================================================
-   MENYRA Admin Shell - Sliding Menu Page
-   - opens via burgerToggle
-   - loads menu.html into panel (fetch)
-   - supports back button (history)
+   MENYRA Admin Shell - FULLSCREEN MENU PAGE (no drawer)
+   - opens via #burgerToggle
+   - loads ./menu.html into fullscreen container
+   - uses history back to close (no navigation)
    ========================================================= */
-
 (function(){
   function $(id){ return document.getElementById(id); }
 
-  function ensureOverlay(){
-    if ($("menuOverlay")) return;
-    const overlay = document.createElement("div");
-    overlay.className = "m-menu-overlay";
-    overlay.id = "menuOverlay";
-    overlay.innerHTML = `
-      <div class="m-menu-backdrop" id="menuBackdrop"></div>
-      <div class="m-menu-panel" id="menuPanel">
-        <div class="m-menu-page" id="menuPage"></div>
-      </div>
-    `;
-    document.body.appendChild(overlay);
+  function ensureScreen(){
+    if ($("menuScreen")) return;
+    const screen = document.createElement("div");
+    screen.className = "m-menu-screen";
+    screen.id = "menuScreen";
+    screen.innerHTML = `<div class="m-menu-page" id="menuPage"></div>`;
+    document.body.appendChild(screen);
   }
 
   async function loadMenuPage(menuUrl){
@@ -31,11 +25,10 @@
       const html = await res.text();
       host.innerHTML = html;
 
-      // wire close button (inside loaded HTML)
-      const closeBtn = host.querySelector("[data-menu-close]");
-      closeBtn && closeBtn.addEventListener("click", () => window.MenyraAdminShell.close());
+      // close button inside menu html
+      host.querySelector("[data-menu-close]")?.addEventListener("click", close);
 
-      // wire nav items
+      // navigate items (delegation)
       host.addEventListener("click", (e) => {
         const a = e.target.closest("a[data-section]");
         if (!a) return;
@@ -44,48 +37,48 @@
         if (typeof window.__MENYRA_ADMIN_NAV === "function") {
           window.__MENYRA_ADMIN_NAV(section);
         } else {
-          // fallback: click original sidebar link
-          const orig = document.querySelector(`[data-section="${section}"]`);
-          orig && orig.click();
+          // fallback: click original nav link if exists
+          document.querySelector(`[data-section="${section}"]`)?.click();
         }
-        window.MenyraAdminShell.close();
+        close();
       }, { passive: false });
 
-      // mark active
-      setActiveFromBody();
+      setActiveFromApp();
     }catch(err){
       console.error(err);
       host.innerHTML = "<div class='m-menu-meta'>Menu konnte nicht geladen werden.</div>";
     }
   }
 
-  function setActiveFromBody(){
+  function setActiveFromApp(){
     const host = $("menuPage");
     if (!host) return;
     const active = document.querySelector('.m-nav-link.is-active')?.getAttribute("data-section")
       || document.querySelector('.m-view[style*="display: block"]')?.getAttribute("data-view")
       || "dashboard";
-
     host.querySelectorAll("a[data-section]").forEach(a => {
       a.classList.toggle("is-active", a.getAttribute("data-section") === active);
     });
   }
 
   function open(menuUrl){
-    ensureOverlay();
-    const overlay = $("menuOverlay");
-    overlay.classList.add("is-open");
-    overlay.style.display = "block";
+    ensureScreen();
+    const screen = $("menuScreen");
+    if (!screen) return;
+
+    // prepare visible, then animate
+    screen.classList.add("is-ready");
+    document.body.classList.add("m-menu-open");
 
     loadMenuPage(menuUrl);
 
-    // close on backdrop
-    $("menuBackdrop")?.addEventListener("click", close, { once: true });
+    // next tick to trigger transition
+    requestAnimationFrame(() => screen.classList.add("is-open"));
 
-    // ESC close
+    // ESC
     window.addEventListener("keydown", onKeydown);
 
-    // push history state so back closes menu
+    // Back closes menu
     if (!history.state || history.state.__menyraMenuOpen !== true){
       history.pushState({ __menyraMenuOpen: true }, "");
     }
@@ -93,14 +86,14 @@
   }
 
   function close(){
-    const overlay = $("menuOverlay");
-    if (!overlay) return;
-    overlay.classList.remove("is-open");
-    // after transition
-    setTimeout(() => {
-      overlay.style.display = "none";
-    }, 260);
+    const screen = $("menuScreen");
+    if (!screen) return;
+    screen.classList.remove("is-open");
     window.removeEventListener("keydown", onKeydown);
+    setTimeout(() => {
+      screen.classList.remove("is-ready");
+      document.body.classList.remove("m-menu-open");
+    }, 260);
   }
 
   function onKeydown(e){
@@ -112,7 +105,8 @@
 
   function init(opts){
     const menuUrl = (opts && opts.menuUrl) ? opts.menuUrl : "./menu.html";
-    ensureOverlay();
+    ensureScreen();
+    window.MenyraAdminShell._menuUrl = menuUrl;
 
     const burger = $("burgerToggle");
     if (burger){
@@ -122,9 +116,6 @@
         open(menuUrl);
       }, true);
     }
-
-    // also allow programmatic
-    window.MenyraAdminShell._menuUrl = menuUrl;
   }
 
   window.MenyraAdminShell = {

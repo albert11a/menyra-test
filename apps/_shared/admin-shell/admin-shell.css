@@ -1,51 +1,44 @@
 /* =========================================================
-   MENYRA Admin Shell - Sliding Menu "Page"
-   Fixes safe areas + smooth slide, no drawer padding bugs.
+   MENYRA Admin Shell - FULLSCREEN MENU PAGE (no drawer)
+   - Slides in as a full page from LEFT
+   - Clean safe-area handling
+   - No partial-width drawer, no backdrop overlay
    ========================================================= */
 
 :root{
-  --shell-bg: rgba(255,255,255,0.96);
-  --shell-stroke: rgba(15,23,42,0.10);
-  --shell-shadow: 0 18px 60px rgba(2,6,23,0.16);
-  --shell-dark: rgba(15,23,42,0.92);
+  --menu-bg: rgba(255,255,255,0.98);
+  --menu-stroke: rgba(15,23,42,0.10);
+  --menu-shadow: 0 24px 70px rgba(2,6,23,0.18);
+  --menu-dark: rgba(15,23,42,0.92);
 }
 
-.m-menu-overlay{
+/* prevent weird scrolling behind */
+body.m-menu-open{ overflow: hidden; }
+
+/* The fullscreen menu page container */
+.m-menu-screen{
   position: fixed;
   inset: 0;
-  z-index: 120;
+  z-index: 200;
   display: none;
-}
-
-.m-menu-overlay.is-open{ display: block; }
-
-.m-menu-backdrop{
-  position: absolute;
-  inset: 0;
-  background: rgba(2,6,23,0.48);
-  backdrop-filter: blur(6px);
-}
-
-.m-menu-panel{
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100dvh;
-  width: min(360px, 92vw);
-  background: var(--shell-bg);
-  border-right: 1px solid var(--shell-stroke);
-  box-shadow: var(--shell-shadow);
-  transform: translateX(-105%);
+  background: var(--menu-bg);
+  transform: translateX(-100%);
   transition: transform 260ms cubic-bezier(.2,.9,.2,1);
   will-change: transform;
-  padding-top: calc(10px + env(safe-area-inset-top, 0px));
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  overflow: hidden;
+  box-shadow: var(--menu-shadow);
 }
 
-.m-menu-overlay.is-open .m-menu-panel{ transform: translateX(0); }
+/* visible state */
+.m-menu-screen.is-ready{ display: block; }
+.m-menu-screen.is-open{ transform: translateX(0); }
 
-/* Menu inner page (loaded from menu.html) */
+/* safe areas */
+.m-menu-screen{
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* inner scroll page */
 .m-menu-page{
   height: 100%;
   overflow: auto;
@@ -53,6 +46,7 @@
   padding: 14px 14px 18px 14px;
 }
 
+/* menu header */
 .m-menu-top{
   display:flex;
   align-items:center;
@@ -68,9 +62,9 @@
 }
 
 .m-menu-close{
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
   border: 1px solid rgba(15,23,42,0.12);
   background: #fff;
   cursor: pointer;
@@ -90,19 +84,19 @@
   display:flex;
   align-items:center;
   gap: 10px;
-  padding: 12px 12px;
-  border-radius: 16px;
+  padding: 14px 12px;
+  border-radius: 18px;
   text-decoration:none;
   color: var(--text-main, #0f172a);
   border: 1px solid rgba(15,23,42,0.10);
-  background: rgba(255,255,255,0.9);
+  background: rgba(255,255,255,0.92);
 }
 
 .m-menu-item .ico{ width: 26px; text-align:center; }
-.m-menu-item .txt{ font-weight: 700; }
+.m-menu-item .txt{ font-weight: 800; }
 
 .m-menu-item.is-active{
-  background: var(--shell-dark);
+  background: var(--menu-dark);
   color: #fff;
   border-color: rgba(255,255,255,0.18);
 }
@@ -119,5 +113,10 @@
   line-height: 1.35;
 }
 
-/* Kill old inline mobile menu (we use the sliding page) */
+/* Disable any legacy drawer/mobile menus if present */
 #mobileMenu{ display:none !important; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .m-menu-screen{ transition: none; }
+}
