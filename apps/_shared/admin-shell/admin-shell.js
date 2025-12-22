@@ -1,7 +1,9 @@
 /* =========================================================
-   MENYRA Admin Shell - SLIDING DRAWER (like before)
-   FIX: Drawer background matches Admin background.
-   - Copies computed background from the main admin page (color + gradient)
+   MENYRA Admin Shell - SLIDING DRAWER (NO menu pages)
+   - Burger opens drawer
+   - Drawer background matches admin background (color + gradient)
+   - Drawer menu is BUILT from existing sidebar (#sidebarNav)
+   - No extra menu.html/menu.js/menu.css needed
    ========================================================= */
 (function(){
   function $(id){ return document.getElementById(id); }
@@ -21,11 +23,10 @@
   }
 
   function pickBgElement(){
-    // try common wrappers first, fallback to body/html
     return (
+      document.querySelector(".m-app") ||
       document.querySelector(".app") ||
       document.querySelector(".page") ||
-      document.querySelector(".m-app") ||
       document.body ||
       document.documentElement
     );
@@ -38,7 +39,6 @@
     const el = pickBgElement();
     const cs = window.getComputedStyle(el);
 
-    // copy background properties (supports gradients)
     panel.style.backgroundColor = cs.backgroundColor || "#ffffff";
     panel.style.backgroundImage = cs.backgroundImage || "none";
     panel.style.backgroundRepeat = cs.backgroundRepeat || "no-repeat";
@@ -46,7 +46,6 @@
     panel.style.backgroundSize = cs.backgroundSize || "cover";
     panel.style.backgroundAttachment = cs.backgroundAttachment || "scroll";
 
-    // also copy to menu page, so scroll area matches perfectly
     const page = $("menuPage");
     if (page){
       page.style.backgroundColor = panel.style.backgroundColor;
@@ -58,61 +57,99 @@
     }
   }
 
-  async function loadMenuPage(menuUrl){
+  function buildMenuFromSidebar(){
     const host = $("menuPage");
     if (!host) return;
-    host.innerHTML = "<div class='m-menu-meta'>Loading…</div>";
-    try{
-      const res = await fetch(menuUrl, { cache: "no-cache" });
-      const html = await res.text();
-      host.innerHTML = html;
 
-      const closeBtn = host.querySelector("[data-menu-close]");
-      closeBtn && closeBtn.addEventListener("click", () => window.MenyraAdminShell.close());
+    // Get existing sidebar links
+    const sidebar = document.getElementById("sidebarNav");
+    const links = sidebar ? Array.from(sidebar.querySelectorAll("a[data-section]")) : [];
 
-      host.addEventListener("click", (e) => {
-        const a = e.target.closest("a[data-section]");
-        if (!a) return;
-        e.preventDefault();
-        const section = a.getAttribute("data-section");
-        if (typeof window.__MENYRA_ADMIN_NAV === "function") {
-          window.__MENYRA_ADMIN_NAV(section);
-        } else {
-          document.querySelector(`[data-section="${section}"]`)?.click();
-        }
-        window.MenyraAdminShell.close();
-      }, { passive: false });
+    // Title from topbar logo or page title fallback
+    const titleEl = document.querySelector(".m-topbar .m-brand-name") || document.querySelector(".m-topbar-title");
+    const title = titleEl ? (titleEl.textContent || "").trim() : (document.title || "MENYRA");
 
-      // mark active
-      const active = document.querySelector('.m-nav-link.is-active')?.getAttribute("data-section")
-        || document.querySelector('.m-view[style*="display: block"]')?.getAttribute("data-view")
-        || "dashboard";
-      host.querySelectorAll("a[data-section]").forEach(a => {
-        a.classList.toggle("is-active", a.getAttribute("data-section") === active);
-      });
-    }catch(err){
-      console.error(err);
-      host.innerHTML = "<div class='m-menu-meta'>Menu konnte nicht geladen werden.</div>";
+    host.innerHTML = `
+      <div class="m-menu-top">
+        <div class="m-menu-title">${escapeHtml(title)}</div>
+        <button class="m-menu-close" type="button" data-menu-close aria-label="Close">✕</button>
+      </div>
+      <div class="m-menu-list" id="mMenuList"></div>
+      <div class="m-menu-divider"></div>
+      <div class="m-menu-meta">Navigation • Burger öffnet dieses Menü.</div>
+    `;
+
+    const list = host.querySelector("#mMenuList");
+    if (!list) return;
+
+    if (!links.length){
+      list.innerHTML = `<div class="m-menu-meta">Keine Navigation gefunden (#sidebarNav).</div>`;
+      return;
     }
+
+    const active = (
+      document.querySelector('#sidebarNav a.is-active')?.getAttribute("data-section") ||
+      document.querySelector('.m-view[style*="display: block"]')?.getAttribute("data-view") ||
+      "dashboard"
+    );
+
+    links.forEach(a => {
+      const sec = a.getAttribute("data-section") || "";
+      const icon = (a.querySelector(".m-nav-icon")?.textContent || "").trim();
+      const label = (a.querySelector(".m-nav-label")?.textContent || a.textContent || "").trim();
+
+      const item = document.createElement("a");
+      item.href = "#";
+      item.className = "m-menu-item" + (sec === active ? " is-active" : "");
+      item.setAttribute("data-section", sec);
+      item.innerHTML = `<span class="ico">${escapeHtml(icon)}</span><span class="txt">${escapeHtml(label)}</span>`;
+      list.appendChild(item);
+    });
+
+    host.querySelector("[data-menu-close]")?.addEventListener("click", close);
+
+    // Delegate clicks
+    host.addEventListener("click", (e) => {
+      const a = e.target.closest("a[data-section]");
+      if (!a) return;
+      e.preventDefault();
+      const section = a.getAttribute("data-section");
+      if (typeof window.__MENYRA_ADMIN_NAV === "function") {
+        window.__MENYRA_ADMIN_NAV(section);
+      } else {
+        // fallback: click original sidebar link
+        document.querySelector(`#sidebarNav a[data-section="${cssEscape(section)}"]`)?.click();
+      }
+      close();
+    }, { passive: false });
   }
 
-  function open(menuUrl){
+  function escapeHtml(s){
+    return String(s || "")
+      .replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  function cssEscape(s){
+    try { return CSS.escape(s); } catch(e){ return String(s || "").replace(/[^a-zA-Z0-9_-]/g,""); }
+  }
+
+  function open(){
     ensureOverlay();
     syncPanelBackground();
+    buildMenuFromSidebar();
 
     const overlay = $("menuOverlay");
     overlay.classList.add("is-open");
     overlay.style.display = "block";
 
-    loadMenuPage(menuUrl);
-
-    // close on backdrop
     $("menuBackdrop")?.addEventListener("click", close, { once: true });
-
-    // ESC close
     window.addEventListener("keydown", onKeydown);
 
-    // back closes (optional)
+    // Back closes
     if (!history.state || history.state.__menyraMenuOpen !== true){
       history.pushState({ __menyraMenuOpen: true }, "");
     }
@@ -134,12 +171,10 @@
     close();
   }
 
-  function init(opts){
-    const menuUrl = (opts && opts.menuUrl) ? opts.menuUrl : "./menu.html";
+  function init(){
     ensureOverlay();
-    window.MenyraAdminShell._menuUrl = menuUrl;
 
-    // keep panel background synced on resize/orientation
+    // keep panel bg synced on resize/orientation
     window.addEventListener("resize", () => {
       if ($("menuOverlay")?.classList.contains("is-open")) syncPanelBackground();
     }, { passive: true });
@@ -150,14 +185,10 @@
         e.preventDefault();
         e.stopPropagation();
         if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-        open(menuUrl);
+        open();
       }, true);
     }
   }
 
-  window.MenyraAdminShell = {
-    init,
-    open: () => open(window.MenyraAdminShell._menuUrl || "./menu.html"),
-    close
-  };
+  window.MenyraAdminShell = { init, open, close };
 })();
