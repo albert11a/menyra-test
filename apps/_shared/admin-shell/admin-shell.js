@@ -1,6 +1,8 @@
 /* =========================================================
    MENYRA Admin Shell - FULLSCREEN MENU PAGE (no drawer)
-   + Safe-area instant WHITE via html/body + meta theme-color swap
+   SAFE-AREA WHITE: SYNCHRONIZED with slide animation
+   - Safe-area/theme-color switches ON exactly when slide IN starts
+   - Restores exactly when slide OUT finishes (transitionend)
    ========================================================= */
 (function(){
   function $(id){ return document.getElementById(id); }
@@ -55,10 +57,8 @@
       const html = await res.text();
       host.innerHTML = html;
 
-      // close button inside menu html
       host.querySelector("[data-menu-close]")?.addEventListener("click", close);
 
-      // navigate items (delegation)
       host.addEventListener("click", (e) => {
         const a = e.target.closest("a[data-section]");
         if (!a) return;
@@ -95,19 +95,21 @@
     const screen = $("menuScreen");
     if (!screen) return;
 
-    // 1) INSTANT white for safe area + Android bar
-    document.documentElement.classList.add("m-menu-open");
-    document.body.classList.add("m-menu-open");
-    setThemeColor("#ffffff");
-
-    // 2) show + load
+    // show container (still off-screen at -100%)
     screen.classList.add("is-ready");
     loadMenuPage(menuUrl);
 
-    // 3) animate in
-    requestAnimationFrame(() => screen.classList.add("is-open"));
+    // START animation next frame — and switch safe-area/theme-color exactly in the same frame
+    requestAnimationFrame(() => {
+      // SYNC ON
+      document.documentElement.classList.add("m-menu-open");
+      document.body.classList.add("m-menu-open");
+      setThemeColor("#ffffff");
 
-    // ESC
+      // slide in
+      screen.classList.add("is-open");
+    });
+
     window.addEventListener("keydown", onKeydown);
 
     // Back closes menu
@@ -121,15 +123,28 @@
     const screen = $("menuScreen");
     if (!screen) return;
 
+    // slide out
     screen.classList.remove("is-open");
     window.removeEventListener("keydown", onKeydown);
 
-    setTimeout(() => {
+    // restore exactly when animation finishes
+    const done = () => {
       screen.classList.remove("is-ready");
+
+      // SYNC OFF
       document.body.classList.remove("m-menu-open");
       document.documentElement.classList.remove("m-menu-open");
       restoreThemeColor();
-    }, 260);
+
+      screen.removeEventListener("transitionend", done);
+      clearTimeout(fallback);
+    };
+
+    // exact end
+    screen.addEventListener("transitionend", done, { once: true });
+
+    // fallback (in case transitionend doesn't fire)
+    const fallback = setTimeout(done, 320);
   }
 
   function onKeydown(e){
