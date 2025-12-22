@@ -1,11 +1,41 @@
 /* =========================================================
    MENYRA Admin Shell - FULLSCREEN MENU PAGE (no drawer)
-   - opens via #burgerToggle
-   - loads ./menu.html into fullscreen container
-   - uses history back to close (no navigation)
+   + Safe-area instant WHITE via html/body + meta theme-color swap
    ========================================================= */
 (function(){
   function $(id){ return document.getElementById(id); }
+
+  let prevThemeColor = null;
+
+  function ensureThemeMeta(){
+    let meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta){
+      meta = document.createElement("meta");
+      meta.setAttribute("name","theme-color");
+      meta.setAttribute("content","#ffffff");
+      document.head.appendChild(meta);
+      prevThemeColor = null;
+      return meta;
+    }
+    return meta;
+  }
+
+  function setThemeColor(color){
+    const meta = ensureThemeMeta();
+    if (prevThemeColor === null){
+      prevThemeColor = meta.getAttribute("content") || "";
+    }
+    meta.setAttribute("content", color);
+  }
+
+  function restoreThemeColor(){
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (!meta) return;
+    if (prevThemeColor !== null){
+      meta.setAttribute("content", prevThemeColor || "#ffffff");
+    }
+    prevThemeColor = null;
+  }
 
   function ensureScreen(){
     if ($("menuScreen")) return;
@@ -37,7 +67,6 @@
         if (typeof window.__MENYRA_ADMIN_NAV === "function") {
           window.__MENYRA_ADMIN_NAV(section);
         } else {
-          // fallback: click original nav link if exists
           document.querySelector(`[data-section="${section}"]`)?.click();
         }
         close();
@@ -66,13 +95,16 @@
     const screen = $("menuScreen");
     if (!screen) return;
 
-    // prepare visible, then animate
-    screen.classList.add("is-ready");
+    // 1) INSTANT white for safe area + Android bar
+    document.documentElement.classList.add("m-menu-open");
     document.body.classList.add("m-menu-open");
+    setThemeColor("#ffffff");
 
+    // 2) show + load
+    screen.classList.add("is-ready");
     loadMenuPage(menuUrl);
 
-    // next tick to trigger transition
+    // 3) animate in
     requestAnimationFrame(() => screen.classList.add("is-open"));
 
     // ESC
@@ -88,11 +120,15 @@
   function close(){
     const screen = $("menuScreen");
     if (!screen) return;
+
     screen.classList.remove("is-open");
     window.removeEventListener("keydown", onKeydown);
+
     setTimeout(() => {
       screen.classList.remove("is-ready");
       document.body.classList.remove("m-menu-open");
+      document.documentElement.classList.remove("m-menu-open");
+      restoreThemeColor();
     }, 260);
   }
 

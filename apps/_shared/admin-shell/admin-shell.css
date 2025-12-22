@@ -1,8 +1,6 @@
 /* =========================================================
    MENYRA Admin Shell - FULLSCREEN MENU PAGE (no drawer)
-   - Slides in as a full page from LEFT
-   - Clean safe-area handling
-   - No partial-width drawer, no backdrop overlay
+   + Safe-area instant WHITE (html/body + theme-color)
    ========================================================= */
 
 :root{
@@ -14,6 +12,14 @@
 
 /* prevent weird scrolling behind */
 body.m-menu-open{ overflow: hidden; }
+
+/* IMPORTANT:
+   On iOS/Android, the "safe area"/browser UI can reveal html/body background.
+   When menu is open, force html+body background to pure white instantly. */
+html.m-menu-open,
+body.m-menu-open{
+  background: #fff !important;
+}
 
 /* The fullscreen menu page container */
 .m-menu-screen{
@@ -44,6 +50,7 @@ body.m-menu-open{ overflow: hidden; }
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   padding: 14px 14px 18px 14px;
+  overscroll-behavior: contain;
 }
 
 /* menu header */
