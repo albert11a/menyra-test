@@ -568,11 +568,6 @@ function closeOfferEditor() {
 export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", restrictRestaurantId = null } = {}) {
   const nav = initNav();
 
-// Expose a stable navigation hook for the Shell Menu (burger slide menu page)
-window.__MENYRA_ADMIN_NAV = (section) => {
-  try { nav.showView(section); } catch(e) { console.error(e); }
-};
-
   // Logout
   const logoutBtn = $("logoutButton");
   if (logoutBtn) {
@@ -908,4 +903,15 @@ window.__MENYRA_ADMIN_NAV = (section) => {
     // Leads placeholders
     setText("leadsMeta", "Demo – später.");
   });
+
+
+// URL → open a specific view (used by menu pages): ?view=customers|offers|...
+try {
+  const params = new URLSearchParams(window.location.search || "");
+  const view = params.get("view");
+  if (view) nav.showView(view);
+} catch (e) {
+  // ignore
+}
+
 }
