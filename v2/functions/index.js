@@ -23,26 +23,14 @@ const cors = require("cors")({ origin: true });
 
 admin.initializeApp();
 
-// Support both:
-// 1) process.env.* (Cloud Functions "secrets" / environment variables)
-// 2) functions.config().bunny.* (Firebase Runtime Config)
-let runtimeCfg = {};
-try {
-  runtimeCfg = functions.config() || {};
-} catch {
-  runtimeCfg = {};
-}
-const bunnyCfg = runtimeCfg.bunny || {};
+const STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID || "568747";
+const STREAM_API_KEY = process.env.BUNNY_STREAM_API_KEY || "";
+const STREAM_CDN_HOST = process.env.BUNNY_STREAM_CDN_HOST || "";
 
-const STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID || bunnyCfg.stream_library_id || "568747";
-const STREAM_API_KEY = process.env.BUNNY_STREAM_API_KEY || bunnyCfg.stream_api_key || "";
-const STREAM_CDN_HOST = process.env.BUNNY_STREAM_CDN_HOST || bunnyCfg.stream_cdn_host || "";
-
-// NOTE: Storage Zone name is usually the same as your "Username" shown in Bunny panel.
-const STORAGE_ZONE = process.env.BUNNY_STORAGE_ZONE || bunnyCfg.storage_zone || "menyra";
-const STORAGE_ACCESS_KEY = process.env.BUNNY_STORAGE_ACCESS_KEY || bunnyCfg.storage_access_key || "";
-const STORAGE_HOST = process.env.BUNNY_STORAGE_HOST || bunnyCfg.storage_host || "storage.bunnycdn.com";
-const IMAGES_CDN_HOST = process.env.BUNNY_IMAGES_CDN_HOST || bunnyCfg.images_cdn_host || "";
+const STORAGE_ZONE = process.env.BUNNY_STORAGE_ZONE || "";
+const STORAGE_ACCESS_KEY = process.env.BUNNY_STORAGE_ACCESS_KEY || "";
+const STORAGE_HOST = process.env.BUNNY_STORAGE_HOST || "storage.bunnycdn.com";
+const IMAGES_CDN_HOST = process.env.BUNNY_IMAGES_CDN_HOST || "";
 
 function requireEnv(name, val) {
   if (!val) {

@@ -201,7 +201,7 @@ async function handleUpload() {
       await uploadVideoTus(file, { endpoint: tusEndpoint, headers: tusHeaders });
       setStatus("Video hochgeladen – Story speichern…");
 
-      const url = streamUrls(videoId);
+      const url = streamUrls.videoSources(videoId);
       await createStoryDoc({
         mediaType: "video",
         mediaUrl: url.mp4_720 || url.hls,

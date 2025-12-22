@@ -11,7 +11,7 @@ Start: `index.html`
 
 2) **Social Story**: `apps/social/story.html`
    - lädt Stories aus Firestore: `restaurants/{restaurantId}/stories`
-   - zeigt **Produkt-Tag** aus Story-Dokument (`product` Snapshot)
+   - zeigt **Produkt-Tag** aus Story-Dokument (productSnapshot)
 
 3) **Owner Admin Story Upload**: `apps/owner/admin.html`
    - Foto/Video wählen
@@ -49,8 +49,6 @@ Du brauchst folgende Env/Secrets (aus Bunny Dashboard):
 Wenn die Functions deployt sind, funktionieren Uploads in:
 `/apps/owner/admin.html?r=prince-coffe-house-001`
 
-👉 **Setup Schritt-für-Schritt:** `docs/README_BUNNY_FUNCTIONS_SETUP.md`
-
 ## 3) Firestore Struktur (pro Kunde)
 
 ```
@@ -61,4 +59,4 @@ restaurants/{restaurantId}
 ```
 
 Story Doc Beispiel:
-`mediaType`, `videoId` (optional), `mediaUrl`, `imageUrl` (optional), `product` (Snapshot), `createdAt`, `expiresAt`
+`mediaType`, `videoId` (optional), `mediaUrl`, `mediaUrlMp4`, `productId`, `productSnapshot`, `createdAt`, `expiresAt`
