@@ -1256,43 +1256,57 @@ body.theme-dark .m-sidebar {
 }
 
 
-/* Extra: iOS safe-area */
-:root{ --safe-top: env(safe-area-inset-top); --safe-bottom: env(safe-area-inset-bottom); }
+/* =========================================================
+   OWNER: Bottom Nav (Handy + Tablet)
+   ========================================================= */
 
-
-
-/* ========================================
-   Extra: QR Modal grid/list (System 1)
-======================================== */
-.m-qr-grid{
-  display:grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  margin-bottom: 12px;
+.m-bottom-nav{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: none;
+  background: rgba(255,255,255,0.96);
+  border-top: 1px solid rgba(15,23,42,0.10);
+  padding: 10px 10px calc(10px + env(safe-area-inset-bottom, 0px));
+  backdrop-filter: blur(10px);
 }
-.m-qr-list{
-  display:flex;
-  flex-direction:column;
-  gap: 10px;
-}
-.m-qr-item{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
+.m-bottom-nav-item{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  text-decoration: none;
+  color: var(--text-main);
+  font-weight: 600;
   border-radius: 14px;
-  background: rgba(255,255,255,0.6);
+  padding: 10px 8px;
 }
-.theme-dark .m-qr-item{
-  background: rgba(15,23,42,0.35);
+.m-bottom-nav-ico{ font-size: 18px; line-height: 1; }
+.m-bottom-nav-txt{ font-size: 12px; line-height: 1; opacity: 0.86; }
+.m-bottom-nav-item.is-active{
+  background: rgba(15,23,42,0.92);
+  color: #fff;
 }
-.m-qr-left{ flex: 1; min-width: 0; }
-.m-qr-url{ font-size: 11px; opacity: 0.95; word-break: break-all; }
-.m-qr-canvas{
-  width: 128px;
-  height: 128px;
-  border-radius: 10px;
-  background: #fff;
+.m-bottom-nav-item.is-active .m-bottom-nav-txt{ opacity: 1; }
+@media (max-width: 1024px){
+  .m-bottom-nav{ display: flex; gap: 8px; }
+  .m-main{ padding-bottom: 86px; }
+}
+@media (min-width: 1025px){
+  .m-bottom-nav{ display: none; }
+}
+
+/* Owner: menu/orders table grid */
+
+.m-menu-header,
+#customersTableBody .m-table-row{
+  grid-template-columns: 1.6fr 1fr 0.8fr 0.8fr 1fr 1fr;
+}
+.m-orders-header,
+#leadsTableBody .m-table-row{
+  grid-template-columns: 1fr 1.2fr 0.8fr 1.2fr;
 }

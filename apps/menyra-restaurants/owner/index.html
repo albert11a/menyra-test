@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
-  <title>MENYRA – Platform Admin</title>
+  <title>MENYRA – Owner Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#eef0ff" media="(prefers-color-scheme: light)" />
   <meta name="theme-color" content="#050816" media="(prefers-color-scheme: dark)" />
@@ -11,23 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="./owner.css" />
-<script type="importmap">
-{
-  "imports": {
-    "@shared/": "/shared/",
-    "@apps/": "/apps/",
-    "@s1/": "/apps/menyra-restaurants/_shared/"
-  }
-}
-</script>
-
-<link rel="stylesheet" href="/shared/styles/base.css">
-<link rel="stylesheet" href="/shared/styles/ui-kit.css">
-<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-
+  <link rel="stylesheet" href="./menyra_platform.css" />
 </head>
 
 <body>
@@ -46,14 +30,14 @@
       <div class="m-topbar-center">
         <div class="m-search">
           <span class="m-search-icon">⌕</span>
-          <input id="topSearch" class="m-search-input" placeholder="Suche Menu…" />
+          <input id="topSearch" class="m-search-input" placeholder="Suche Kunden/Leads…" />
         </div>
       </div>
 
       <div class="m-topbar-right">
         <button class="m-icon-btn" id="themeToggle" type="button" aria-label="Theme umschalten">🌙</button>
         <div class="m-profile">
-          <span class="m-profile-name" id="profileName">—</span>
+          <span class="m-profile-name">Albert</span>
           <img class="m-profile-avatar" alt="Profil" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb'/%3E%3Ccircle cx='32' cy='26' r='12' fill='%239ca3af'/%3E%3Cpath d='M12 58c4-12 16-18 20-18s16 6 20 18' fill='%239ca3af'/%3E%3C/svg%3E" />
         </div>
       </div>
@@ -83,7 +67,7 @@
 
         <div class="m-mobile-menu-section">
           <div class="m-profile m-profile--mobile">
-            <span class="m-profile-name" id="profileName">—</span>
+            <span class="m-profile-name">Albert</span>
             <img class="m-profile-avatar" alt="Profil" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb'/%3E%3Ccircle cx='32' cy='26' r='12' fill='%239ca3af'/%3E%3Cpath d='M12 58c4-12 16-18 20-18s16 6 20 18' fill='%239ca3af'/%3E%3C/svg%3E" />
           </div>
         </div>
@@ -110,16 +94,16 @@
           <nav>
             <ul class="m-sidebar-nav" id="sidebarNav">
               <li><a href="#" class="is-active" data-section="dashboard"><span class="m-nav-icon">🏠</span><span class="m-nav-label">Dashboard</span></a></li>
-              <li><a href="#" data-section="customers"><span class="m-nav-icon">🏪</span><span class="m-nav-label">Menu</span></a></li>
+              <li><a href="#" data-section="customers"><span class="m-nav-icon">🍽️</span><span class="m-nav-label">Menü</span></a></li>
               <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Angebote</span></a></li>
-              <li><a href="#" data-section="leads"><span class="m-nav-icon">🧲</span><span class="m-nav-label">Leads</span></a></li>
+              <li><a href="#" data-section="leads"><span class="m-nav-icon">🧾</span><span class="m-nav-label">Bestellungen</span></a></li>
             </ul>
           </nav>
 
           <div class="m-sidebar-footer">
             <button class="m-ghost-btn" id="logoutButton" type="button">Logout</button>
             <div class="m-sidebar-meta">
-              <div class="m-sidebar-meta-line">Build: owner-admin</div>
+              <div class="m-sidebar-meta-line">Build: system1-admin</div>
               <div class="m-sidebar-meta-line"><span class="m-dot m-dot--green"></span> System: OK</div>
             </div>
           </div>
@@ -146,7 +130,7 @@
             <div class="m-cards-grid">
               <div class="m-card m-stat-card">
                 <div class="m-stat-top">
-                  <span class="m-stat-label">Kunden (aktiv)</span>
+                  <span class="m-stat-label">Aktive Kunden</span>
                   <span class="m-stat-pill m-stat-pill--green">Live</span>
                 </div>
                 <div class="m-stat-value-row">
@@ -157,7 +141,7 @@
 
               <div class="m-card m-stat-card">
                 <div class="m-stat-top">
-                  <span class="m-stat-label">Offers (aktiv)</span>
+                  <span class="m-stat-label">Leads offen</span>
                   <span class="m-stat-pill">CRM</span>
                 </div>
                 <div class="m-stat-value-row">
@@ -168,7 +152,7 @@
 
               <div class="m-card m-stat-card">
                 <div class="m-stat-top">
-                  <span class="m-stat-label">Kunden (gesamt)</span>
+                  <span class="m-stat-label">Kunden gesamt</span>
                   <span class="m-stat-pill">DB</span>
                 </div>
                 <div class="m-stat-value-row">
@@ -179,7 +163,7 @@
 
               <div class="m-card m-stat-card">
                 <div class="m-stat-top">
-                  <span class="m-stat-label">Tables (gesamt)</span>
+                  <span class="m-stat-label">Leads gesamt</span>
                   <span class="m-stat-pill">DB</span>
                 </div>
                 <div class="m-stat-value-row">
@@ -230,7 +214,7 @@
           <section class="m-view" data-view="customers" style="display:none;">
             <div class="m-page-header">
               <div>
-                <h1 class="m-page-title">Menu</h1>
+                <h1 class="m-page-title">Menü</h1>
                 <p class="m-page-subtitle">Kunden anlegen, suchen und QR-Links anzeigen.</p>
               </div>
               <div class="m-page-actions">
@@ -256,12 +240,12 @@
               </div>
 
               <div class="m-table">
-                <div class="m-table-row m-table-row--header">
-                  <div>Kunde</div>
-                  <div>Tische</div>
-                  <div>Typ</div>
+                <div class="m-table-row m-table-row--header m-menu-header">
+                  <div>Item</div>
+                  <div>Kategorie</div>
+                  <div>Preis</div>
+                  <div>Verfügbar</div>
                   <div>ID</div>
-                  <div>Status</div>
                   <div class="m-table-col-actions">Aktion</div>
                 </div>
 
@@ -384,59 +368,9 @@
               </div>
 
               <div class="m-table">
-                <div class="m-table-row m-table-row--header" style="grid-template-columns: 2fr 1.2fr 1fr 0.9fr;">
-                  <div>Titel</div>
-                  <div>Status</div>
-                  <div>Preis</div>
-                  <div class="m-table-col-actions">Aktion</div>
-                </div>
-                <div id="offersTableBody"></div>
-              </div>
-            </section>
-          </section>
-
-          <!-- VIEW: LEADS -->
-          <section class="m-view" data-view="leads" style="display:none;">
-            <div class="m-page-header">
-              <div>
-                <h1 class="m-page-title">Leads</h1>
-                <p class="m-page-subtitle">Einfaches CRM: Leads erfassen, Status setzen, zu Kunde machen.</p>
-              </div>
-              <div class="m-page-actions">
-                <button class="m-btn" type="button" id="newLeadBtn">+ Neuer Lead</button>
-              </div>
-            </div>
-
-            <section class="m-card">
-              <div class="m-section-header">
-                <div>
-                  <h2 class="m-section-title">Status Übersicht</h2>
-                  <p class="m-section-subtitle m-muted">Gesamt: <span id="leadsTotalBadge">0</span></p>
-                </div>
-              </div>
-              <div class="m-inline" style="gap:10px; flex-wrap:wrap;">
-                <span class="m-chip" id="leadsStatNew">Offen: 0</span>
-                <span class="m-chip m-chip--soft" id="leadsStatContacted">Kontaktiert/Warten: 0</span>
-                <span class="m-chip" id="leadsStatInterested">Interesse: 0</span>
-                <span class="m-chip m-chip--danger" id="leadsStatNoInterest">Kein Interesse: 0</span>
-              </div>
-            </section>
-
-            <section class="m-card m-table-card">
-              <div class="m-table-toolbar">
-                <div>
-                  <div class="m-search m-search--small" style="max-width:520px;">
-                    <span class="m-search-icon">⌕</span>
-                    <input id="leadsSearch" class="m-search-input" placeholder="Suche nach Betrieb, Insta, Telefon…" />
-                  </div>
-                  <div class="m-table-meta" id="leadsMeta">–</div>
-                </div>
-              </div>
-
-              <div class="m-table">
-                <div class="m-table-row m-table-row--header" style="grid-template-columns: 2fr 1.4fr 1fr 1.4fr;">
-                  <div>Betrieb</div>
-                  <div>Kontakt</div>
+                <div class="m-table-row m-table-row--header m-orders-header" style="grid-template-columns: 1fr 1.2fr 0.8fr 1.2fr;">
+                  <div>Tisch</div>
+                  <div>Items</div>
                   <div>Status</div>
                   <div class="m-table-col-actions">Aktion</div>
                 </div>
@@ -462,43 +396,73 @@
           <button class="m-icon-btn" id="customerModalClose" type="button" aria-label="Schließen">✕</button>
         </div>
         <div class="m-modal-body">
-          <form id="customerForm"><div class="m-grid-2">
-  <div class="m-field">
-    <label class="m-label">Name</label>
-    <input id="customerName" class="m-input" placeholder="z.B. Nightbar" />
-  </div>
+          <form id="customerForm">
+            <input type="hidden" id="customerId" />
 
-  <div class="m-field">
-    <label class="m-label">Typ</label>
-    <select id="customerType" class="m-input">
-      <option value="cafe">Café / Bar</option>
-      <option value="restaurant">Restaurant</option>
-    </select>
-  </div>
-</div>
+            <div class="m-input-row">
+              <div class="m-input-group">
+                <label for="customerName">Lokal / Name</label>
+                <input id="customerName" class="m-input" placeholder="Restaurant / Café / Shop…" />
+              </div>
+              <div class="m-input-group">
+                <label for="customerOwner">Inhaber</label>
+                <input id="customerOwner" class="m-input" placeholder="Inhabername" />
+              </div>
+            </div>
 
-<div class="m-grid-2">
-  <div class="m-field">
-    <label class="m-label">Tische</label>
-    <input id="customerTables" class="m-input" type="number" min="0" step="1" placeholder="z.B. 12" />
-  </div>
+            <div class="m-input-row">
+              <div class="m-input-group">
+                <label for="customerCity">Ort</label>
+                <input id="customerCity" class="m-input" placeholder="z.B. Prishtina" />
+              </div>
+              <div class="m-input-group">
+                <label for="customerPhone">Telefon (optional)</label>
+                <input id="customerPhone" class="m-input" placeholder="+383…" />
+              </div>
+            </div>
 
-  <div class="m-field">
-    <label class="m-label">Slug (optional)</label>
-    <input id="customerSlug" class="m-input" placeholder="z.B. nightbar-prishtina" />
-  </div>
-</div>
+            <div class="m-input-row">
+              <div class="m-input-group">
+                <label for="customerTableCount">Anzahl Tische</label>
+                <input id="customerTableCount" class="m-input" placeholder="z.B. 20" />
+                <p class="m-input-hint">Für QR-Links (T1…Tn). Wenn 0 → nur Main Page.</p>
+              </div>
+              <div class="m-input-group">
+                <label for="customerYearPrice">Preis/Jahr (€)</label>
+                <input id="customerYearPrice" class="m-input" placeholder="z.B. 370" />
+              </div>
+            </div>
 
-<div class="m-divider"></div>
+            
+            <div class="m-input-group">
+              <label for="customerType">Typ</label>
+              <select id="customerType" class="m-select2">
+                <option value="cafe">Café</option>
+                <option value="restaurant">Restaurant</option>
+              </select>
+            </div>
 
-<div class="m-inline">
-  <div class="m-hint">Beim Erstellen werden automatisch <b>Tables</b> + <b>Links</b> vorbereitet.</div>
-  <div class="m-spacer"></div>
-  <button class="btn btn-primary" id="customerSaveBtn" type="submit">Kunde erstellen</button>
-</div>
+            <div class="m-input-group">
+              <label for="customerLogoUrl">Logo URL (optional)</label>
+              <input id="customerLogoUrl" class="m-input" placeholder="https://…" />
+            </div>
 
-<div class="m-status" id="customerModalStatus"></div>
-</form>
+            <div class="m-input-group">
+              <label for="customerStatus">Status</label>
+              <select id="customerStatus" class="m-select2">
+                <option value="active">Aktiv</option>
+                <option value="trial">Test</option>
+                <option value="paused">Pausiert</option>
+              </select>
+            </div>
+
+            <div class="m-modal-footer">
+              <button class="m-btn m-btn--ghost" id="customerCancelBtn" type="button">Abbrechen</button>
+              <button class="m-btn" id="customerSaveBtn" type="submit">Speichern</button>
+            </div>
+
+            <div class="m-muted" id="customerModalStatus" style="margin-top:10px;"></div>
+          </form>
         </div>
       </div>
     </div>
@@ -613,38 +577,30 @@
 
   </div>
 
-  <script type="module" src="./owner.js"></script>
+  <script type="module" src="./menyra_platform.js"></script>
 
-<!-- ========================================================= -->
-<!-- MODAL: AUTH (Login) -->
-<!-- ========================================================= -->
-<div class="m-modal-overlay" id="authModalOverlay" style="display:none">
-  <div class="m-modal">
-    <div class="m-modal-head">
-      <div>
-        <div class="m-modal-title">Login</div>
-        <div class="m-modal-sub">Bitte einloggen, um Kunden & Offers zu verwalten.</div>
-      </div>
-      <button class="m-icon-btn" id="authModalClose" type="button" aria-label="Schließen">✕</button>
-    </div>
-
-    <form id="authForm" class="m-modal-body">
-      <div class="m-field">
-        <label class="m-label">E-Mail</label>
-        <input id="authEmail" class="m-input" type="email" autocomplete="email" placeholder="you@domain.com" />
-      </div>
-      <div class="m-field">
-        <label class="m-label">Passwort</label>
-        <input id="authPass" class="m-input" type="password" autocomplete="current-password" placeholder="••••••••" />
-      </div>
-
-      <div class="m-inline">
-        <button class="btn btn-primary" id="authLoginBtn" type="submit">Login</button>
-        <span class="m-status" id="authStatus"></span>
-      </div>
-    </form>
-  </div>
-</div>
+    <!-- =========================================================
+         OWNER MOBILE/TABLET BOTTOM NAV
+         (always visible on handy + tablet)
+    ========================================================= -->
+    <nav class="m-bottom-nav" id="ownerBottomNav" aria-label="Owner Navigation">
+      <a href="#" class="m-bottom-nav-item is-active" data-section="dashboard" aria-label="Dashboard">
+        <span class="m-bottom-nav-ico">🏠</span>
+        <span class="m-bottom-nav-txt">Dashboard</span>
+      </a>
+      <a href="#" class="m-bottom-nav-item" data-section="customers" aria-label="Menü">
+        <span class="m-bottom-nav-ico">🍽️</span>
+        <span class="m-bottom-nav-txt">Menü</span>
+      </a>
+      <a href="#" class="m-bottom-nav-item" data-section="offers" aria-label="Angebote">
+        <span class="m-bottom-nav-ico">🎯</span>
+        <span class="m-bottom-nav-txt">Angebote</span>
+      </a>
+      <a href="#" class="m-bottom-nav-item" data-section="leads" aria-label="Bestellungen">
+        <span class="m-bottom-nav-ico">🧾</span>
+        <span class="m-bottom-nav-txt">Orders</span>
+      </a>
+    </nav>
 
 </body>
 </html>
