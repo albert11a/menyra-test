@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Karte (Placeholder)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f3f4f6" />
+  <link rel="stylesheet" href="../../shared/styles.css" />
+</head>
+<body>
+  <main class="page page--karte">
+    <header class="karte-topbar">
+      <section class="card restaurant-card">
+        <div class="restaurant-header">
+          <img id="restaurantLogo" class="rest-logo" alt="Logo" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%20120%20120%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23f1f5f9%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%228%22%20fill%3D%22%230f172a%22%3ELOGO%3C/text%3E%0A%3C/svg%3E" />
+          <div>
+            <div class="restaurant-name" id="restaurantName">MENYRA Demo Lokal</div>
+            <div class="restaurant-meta" id="restaurantMeta">Prishtinë · Tavolina A7</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="offers-card" id="offersSection">
+        <div class="offers-header-row">
+          <div class="offers-label">SOT NE FOKUS</div>
+        </div>
+        <div class="offers-slider" id="offersSlider">
+          <div class="offer-slide">
+            <img class="offer-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22900%22%20height%3D%22450%22%20viewBox%3D%220%200%20900%20450%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23111827%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2231%22%20fill%3D%22%23f9fafb%22%3ESOT%20NE%20FOKUS%3C/text%3E%0A%3C/svg%3E" alt="Offer" />
+            <div class="offer-header">
+              <div class="offer-title">Burger + Fries</div>
+              <div class="offer-price">5.90 €</div>
+            </div>
+            <div class="offer-desc">Platzhalter-Angebot. Später kommt hier echtes Angebot vom Kunden.</div>
+            <div class="offer-actions">
+              <button class="btn btn-ghost btn-small" type="button">Info</button>
+              <button class="btn btn-primary btn-small" type="button">Shto</button>
+            </div>
+          </div>
+        </div>
+        <div class="offers-dots" id="offersDots">
+          <button class="offers-dot active" type="button"></button>
+          <button class="offers-dot" type="button"></button>
+          <button class="offers-dot" type="button"></button>
+        </div>
+      </section>
+<section class="card search-card">
+        <div class="search-wrapper">
+          <div class="search-pill">
+            <input id="searchInput" class="search-input" type="search" placeholder="Kërko në meny." />
+            <button type="button" class="search-btn" aria-label="Search">
+              <span class="search-btn-icon"></span>
+            </button>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <section class="tabs-wrapper tabs-wrapper--drinks" id="drinksTabsWrapper">
+      <div class="category-tabs" id="drinksTabs">
+        <button class="category-tab active" type="button">All</button>
+        <button class="category-tab" type="button">Coffee</button>
+        <button class="category-tab" type="button">Soft</button>
+        <button class="category-tab" type="button">Beer</button>
+      </div>
+    </section>
+
+    <section class="card" id="drinksSection">
+      <h2>Getränke</h2>
+      <div class="drinks-list" id="drinksList">
+        <article class="drink-item">
+          <div class="drink-topbar">
+            <div class="like-wrap">
+              <button class="icon-circle" type="button" aria-label="Like">
+                <svg class="icon-circle__inner" viewBox="0 0 24 24">
+                  <path class="heart-path" d="M12 21s-7-4.6-9.4-8.6C.2 8.7 2.3 5.5 6 5.5c2 0 3.1 1.1 4 2.2.9-1.1 2-2.2 4-2.2 3.7 0 5.8 3.2 3.4 6.9C19 16.4 12 21 12 21z"/>
+                </svg>
+              </button>
+              <span class="like-count">12</span>
+            </div>
+          </div>
+          <img class="drink-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22600%22%20height%3D%22800%22%20viewBox%3D%220%200%20600%20800%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23fee2e2%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2242%22%20fill%3D%22%23b91c1c%22%3EDRINK%3C/text%3E%0A%3C/svg%3E" alt="Drink" />
+          <div class="drink-header"><div class="drink-name">Cappuccino</div><div class="drink-price">2.90 €</div></div>
+          <div class="drink-desc">Platzhalter-Beschreibung für Getränk.</div>
+          <div class="drink-footer">
+            <div class="qty-control"><button class="qty-btn" type="button">−</button><span class="qty-value">1</span><button class="qty-btn" type="button">+</button></div>
+            <button class="btn-add-round" type="button"><span>Wähle</span></button>
+          </div>
+        </article>
+
+        <article class="drink-item">
+          <div class="drink-topbar">
+            <div class="like-wrap">
+              <button class="icon-circle" type="button" aria-label="Like">
+                <svg class="icon-circle__inner" viewBox="0 0 24 24">
+                  <path class="heart-path" d="M12 21s-7-4.6-9.4-8.6C.2 8.7 2.3 5.5 6 5.5c2 0 3.1 1.1 4 2.2.9-1.1 2-2.2 4-2.2 3.7 0 5.8 3.2 3.4 6.9C19 16.4 12 21 12 21z"/>
+                </svg>
+              </button>
+              <span class="like-count">7</span>
+            </div>
+          </div>
+          <img class="drink-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22600%22%20height%3D%22800%22%20viewBox%3D%220%200%20600%20800%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23dcfce7%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2242%22%20fill%3D%22%2315803d%22%3EDRINK%3C/text%3E%0A%3C/svg%3E" alt="Drink" />
+          <div class="drink-header"><div class="drink-name">Fresh Juice</div><div class="drink-price">3.50 €</div></div>
+          <div class="drink-desc">Platzhalter-Beschreibung für Getränk.</div>
+          <div class="drink-footer">
+            <div class="qty-control"><button class="qty-btn" type="button">−</button><span class="qty-value">0</span><button class="qty-btn" type="button">+</button></div>
+            <button class="btn-add-round" type="button"><span>Wähle</span></button>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="tabs-wrapper tabs-wrapper--food" id="foodTabsWrapper">
+      <div class="category-tabs" id="foodCategoryTabs">
+        <button class="category-tab active" type="button">Burger</button>
+        <button class="category-tab" type="button">Pasta</button>
+        <button class="category-tab" type="button">Salad</button>
+        <button class="category-tab" type="button">Dessert</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Speisekarte</h2>
+      <div class="menu-list" id="menuList">
+        <article class="menu-item">
+          <img class="menu-item-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22900%22%20height%3D%22560%22%20viewBox%3D%220%200%20900%20560%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23e5e7eb%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2239%22%20fill%3D%22%23475569%22%3EFOOD%3C/text%3E%0A%3C/svg%3E" alt="Food" />
+          <div class="menu-item-header">
+            <div class="menu-item-name">Classic Burger</div>
+            <div class="menu-item-price">5.90 €</div>
+          </div>
+          <div class="menu-item-desc">Platzhalter Text: Zutaten, Beschreibung, Allergene – später dynamisch.</div>
+          <div class="menu-item-social">
+            <button class="social-btn social-btn-like" type="button"><span class="social-icon">❤️</span><span class="social-count">34</span></button>
+            <button class="social-btn social-btn-comment" type="button"><span class="social-icon">💬</span><span class="social-count">6</span></button>
+          </div>
+          <div class="menu-item-actions">
+            <a class="btn btn-ghost btn-small" href="./detajet.html">Detajet</a>
+            <button class="btn btn-primary btn-small" type="button">Shto</button>
+          </div>
+        </article>
+
+        <article class="menu-item">
+          <img class="menu-item-image" src="data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22900%22%20height%3D%22560%22%20viewBox%3D%220%200%20900%20560%22%3E%0A%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20rx%3D%2224%22%20ry%3D%2224%22%20fill%3D%22%23dbeafe%22/%3E%0A%3Ctext%20x%3D%2250%25%22%20y%3D%2250%25%22%20dominant-baseline%3D%22middle%22%20text-anchor%3D%22middle%22%20font-family%3D%22Inter%2CArial%22%20font-size%3D%2239%22%20fill%3D%22%231d4ed8%22%3EFOOD%3C/text%3E%0A%3C/svg%3E" alt="Food" />
+          <div class="menu-item-header">
+            <div class="menu-item-name">Chicken Salad</div>
+            <div class="menu-item-price">4.60 €</div>
+          </div>
+          <div class="menu-item-desc">Platzhalter Text: frische Zutaten, leicht, schnell – später echte Daten.</div>
+          <div class="menu-item-social">
+            <button class="social-btn social-btn-like" type="button"><span class="social-icon">❤️</span><span class="social-count">18</span></button>
+            <button class="social-btn social-btn-comment" type="button"><span class="social-icon">💬</span><span class="social-count">2</span></button>
+          </div>
+          <div class="menu-item-actions">
+            <a class="btn btn-ghost btn-small" href="./detajet.html">Detajet</a>
+            <button class="btn btn-primary btn-small" type="button">Shto</button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <button class="cart-fab visible cart-fab--has-items" id="cartFab" type="button">
+    <span class="cart-fab-icon"></span>
+    <span class="cart-fab-label" id="cartFabLabel">Shiko porosin</span>
+    <span class="cart-fab-badge" id="cartBadge" style="display:flex;">2</span>
+  </button>
+
+  <script type="module" src="./karte.js"></script>
+</body>
+</html>

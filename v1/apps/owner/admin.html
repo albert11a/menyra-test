@@ -115,52 +115,6 @@
               <p class="m-section-subtitle">Platzhalter – QR Codes, Speisekarte, Angebote.</p>
             </div>
           </section>
-
-          <!-- =========================================================
-               STORY UPLOAD (Bunny + Firestore)
-               - Video -> Bunny Stream (TUS)
-               - Image -> Bunny Storage (via Cloud Function proxy)
-               - Produkt auswählen -> wird in Story angezeigt
-               ========================================================= -->
-          <section class="m-section">
-            <div class="m-card">
-              <div class="m-flex m-flex--between m-flex--center" style="gap:12px; flex-wrap:wrap;">
-                <div>
-                  <h2 class="m-section-title" style="margin-bottom:4px;">Story posten</h2>
-                  <p class="m-section-subtitle" style="margin:0;">Restaurant-ID: <strong id="ownerRestaurantId">—</strong></p>
-                </div>
-                <button class="m-btn m-btn--ghost" id="storyOpenPublicBtn" type="button">Story ansehen</button>
-              </div>
-
-              <div class="m-grid" style="grid-template-columns: 1fr; gap:12px; margin-top:14px;">
-                <div>
-                  <label class="m-label">Foto/Video auswählen</label>
-                  <input id="storyFileInput" class="m-input" type="file" accept="video/*,image/*" />
-                  <div class="m-help" style="margin-top:6px;">Tipp: Auf Handy kannst du direkt aufnehmen.</div>
-                </div>
-
-                <div>
-                  <label class="m-label">Produkt in der Story</label>
-                  <select id="storyProductSelect" class="m-select">
-                    <option value="">(kein Produkt)</option>
-                  </select>
-                  <div class="m-help" style="margin-top:6px;">Produkte werden aus Firestore geladen.</div>
-                </div>
-
-                <div>
-                  <label class="m-label">Text (optional)</label>
-                  <input id="storyCaptionInput" class="m-input" type="text" placeholder="z.B. Sot special…" maxlength="80" />
-                </div>
-
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                  <button id="storyUploadBtn" class="m-btn" type="button">Posten</button>
-                  <button id="storyResetBtn" class="m-btn m-btn--ghost" type="button">Reset</button>
-                </div>
-
-                <div id="storyUploadStatus" class="m-help">Status: bereit</div>
-              </div>
-            </div>
-          </section>
         </div>
       </main>
     </div>

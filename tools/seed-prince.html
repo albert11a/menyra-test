@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MENYRA – Seed: Prince Coffee House</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;padding:24px;max-width:720px;margin:0 auto;}
+    .card{border:1px solid rgba(0,0,0,.12);border-radius:16px;padding:18px;}
+    button{padding:12px 14px;border-radius:12px;border:0;background:#111;color:#fff;font-weight:600;cursor:pointer;}
+    pre{background:#f6f7f9;padding:12px;border-radius:12px;overflow:auto;}
+  </style>
+</head>
+<body>
+  <h1>Seed: Prince Coffee House</h1>
+  <p>Dieses Tool schreibt Demo-Daten in Firestore. Nur 1x ausführen.</p>
+
+  <div class="card">
+    <p><b>restaurantId:</b> <code>prince-coffe-house-001</code></p>
+    <button id="seedBtn">Daten schreiben</button>
+    <p id="status" style="margin-top:12px;"></p>
+    <pre id="log"></pre>
+  </div>
+
+  <script type="module">
+    import { db } from "../shared/firebase-config.js";
+    import {
+      doc, setDoc, collection, addDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+    const restaurantId = "prince-coffe-house-001";
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+    const btn = document.getElementById('seedBtn');
+
+    const log = (m) => { logEl.textContent += m + "\n"; };
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      statusEl.textContent = "Seeding...";
+      logEl.textContent = "";
+      try {
+        await setDoc(doc(db, "restaurants", restaurantId), {
+          name: "Prince Coffee House",
+          slug: "prince-coffe-house",
+          status: "active",
+          type: "cafe",
+          profileImageUrl: "https://Menyra.b-cdn.net/Prince-coffe-house-logo.jpg",
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          social: {
+            enabled: true,
+            storyUrl: `/apps/social/story.html?r=${restaurantId}`
+          }
+        }, { merge: true });
+        log("✔ restaurants/" + restaurantId);
+
+        // Offer (Sot ne fokus)
+        await addDoc(collection(db, "restaurants", restaurantId, "offers"), {
+          title: "Sot ne Fokus",
+          subtitle: "Oferta e ditës",
+          imageUrl: "https://Menyra.b-cdn.net/Prince-coffe-house-offer.jpg",
+          isActive: true,
+          priority: 10,
+          createdAt: serverTimestamp()
+        });
+        log("✔ offers (+1)");
+
+        // Menu items (for product tagging)
+        const menuItems = [
+          { id: "espresso", name: "Espresso", price: 1.50, imageUrl: "https://Menyra.b-cdn.net/Prince-coffe-house-offer.jpg" },
+          { id: "cappuccino", name: "Cappuccino", price: 2.50, imageUrl: "https://Menyra.b-cdn.net/Prince-coffe-house-offer.jpg" },
+          { id: "latte", name: "Latte", price: 2.80, imageUrl: "https://Menyra.b-cdn.net/Prince-coffe-house-offer.jpg" },
+          { id: "cheesecake", name: "Cheesecake", price: 3.50, imageUrl: "https://Menyra.b-cdn.net/Prince-coffe-house-offer.jpg" }
+        ];
+
+        for (const it of menuItems) {
+          await setDoc(doc(db, "restaurants", restaurantId, "menuItems", it.id), {
+            name: it.name,
+            price: it.price,
+            currency: "EUR",
+            imageUrl: it.imageUrl,
+            isActive: true,
+            createdAt: serverTimestamp()
+          }, { merge: true });
+          log("✔ menuItems/" + it.id);
+        }
+
+        statusEl.textContent = "Fertig ✅";
+        log("\nJetzt testen:");
+        log(`- Karte: /apps/guest/karte.html?r=${restaurantId}&t=A1`);
+        log(`- Story: /apps/social/story.html?r=${restaurantId}&t=A1`);
+        log(`- Owner Upload: /apps/owner/admin.html?r=${restaurantId}`);
+
+      } catch (e) {
+        console.error(e);
+        statusEl.textContent = "Fehler ❌";
+        log(String(e?.message || e));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
