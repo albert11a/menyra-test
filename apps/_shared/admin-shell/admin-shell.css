@@ -1,0 +1,123 @@
+/* =========================================================
+   MENYRA Admin Shell - Sliding Menu "Page"
+   Fixes safe areas + smooth slide, no drawer padding bugs.
+   ========================================================= */
+
+:root{
+  --shell-bg: rgba(255,255,255,0.96);
+  --shell-stroke: rgba(15,23,42,0.10);
+  --shell-shadow: 0 18px 60px rgba(2,6,23,0.16);
+  --shell-dark: rgba(15,23,42,0.92);
+}
+
+.m-menu-overlay{
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: none;
+}
+
+.m-menu-overlay.is-open{ display: block; }
+
+.m-menu-backdrop{
+  position: absolute;
+  inset: 0;
+  background: rgba(2,6,23,0.48);
+  backdrop-filter: blur(6px);
+}
+
+.m-menu-panel{
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100dvh;
+  width: min(360px, 92vw);
+  background: var(--shell-bg);
+  border-right: 1px solid var(--shell-stroke);
+  box-shadow: var(--shell-shadow);
+  transform: translateX(-105%);
+  transition: transform 260ms cubic-bezier(.2,.9,.2,1);
+  will-change: transform;
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
+}
+
+.m-menu-overlay.is-open .m-menu-panel{ transform: translateX(0); }
+
+/* Menu inner page (loaded from menu.html) */
+.m-menu-page{
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 14px 18px 14px;
+}
+
+.m-menu-top{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.m-menu-title{
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--text-main, #0f172a);
+}
+
+.m-menu-close{
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  border: 1px solid rgba(15,23,42,0.12);
+  background: #fff;
+  cursor: pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.m-menu-list{
+  display:flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.m-menu-item{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  padding: 12px 12px;
+  border-radius: 16px;
+  text-decoration:none;
+  color: var(--text-main, #0f172a);
+  border: 1px solid rgba(15,23,42,0.10);
+  background: rgba(255,255,255,0.9);
+}
+
+.m-menu-item .ico{ width: 26px; text-align:center; }
+.m-menu-item .txt{ font-weight: 700; }
+
+.m-menu-item.is-active{
+  background: var(--shell-dark);
+  color: #fff;
+  border-color: rgba(255,255,255,0.18);
+}
+
+.m-menu-divider{
+  height: 1px;
+  background: rgba(15,23,42,0.10);
+  margin: 14px 0;
+}
+
+.m-menu-meta{
+  font-size: 12px;
+  opacity: 0.75;
+  line-height: 1.35;
+}
+
+/* Kill old inline mobile menu (we use the sliding page) */
+#mobileMenu{ display:none !important; }

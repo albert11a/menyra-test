@@ -5,9 +5,7 @@
 // - No realtime listeners (no onSnapshot)
 // =========================================================
 
-import {
-  db,
-  auth } from "../../../../shared/firebase-config.js";
+import { db, auth } from "../../../../shared/firebase-config.js";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -24,8 +22,6 @@ import {
   where,
   setDoc,
   updateDoc,
-  orderBy,
-  limit,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
@@ -40,12 +36,6 @@ function esc(str) {
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   }[c]));
 }
-
-
-function escapeAttr(str) {
-  return esc(str).replace(/"/g, "&quot;").replace(/'/g, "&#39;");
-}
-
 
 function nowMs() { return Date.now(); }
 
@@ -493,14 +483,6 @@ async function savePublicOffers(restaurantId, items) {
   }, { merge: true });
 }
 
-
-async function savePublicMenuItems(restaurantId, items) {
-  await setDoc(doc(db, "restaurants", restaurantId, "public", "menu"), {
-    items: items || [],
-    updatedAt: serverTimestamp()
-  }, { merge: true });
-}
-
 async function loadPublicMenuItems(restaurantId) {
   const ref = doc(db, "restaurants", restaurantId, "public", "menu");
   const snap = await getDoc(ref);
@@ -508,30 +490,6 @@ async function loadPublicMenuItems(restaurantId) {
   const data = snap.data() || {};
   return Array.isArray(data.items) ? data.items : [];
 }
-
-async function loadRestaurantOrders(restaurantId, limitN = 40) {
-  const ordersCol = collection(doc(db, "restaurants", restaurantId), "orders");
-  const q = query(ordersCol, orderBy("createdAt", "desc"), limit(limitN));
-  const snap = await getDocs(q);
-  const out = [];
-  snap.forEach(d => out.push({ id: d.id, ...d.data() }));
-  return out;
-}
-
-function formatOrderItems(items) {
-  if (!Array.isArray(items) || items.length === 0) return "—";
-  const parts = items.slice(0, 3).map(i => `${i.qty || 1}× ${i.name || i.id || "Item"}`);
-  const more = items.length > 3 ? ` +${items.length - 3}` : "";
-  return parts.join(", ") + more;
-}
-
-function normalizeStatus(s) {
-  const v = (s || "").toLowerCase();
-  if (["new","preparing","ready","served","canceled"].includes(v)) return v;
-  return "new";
-}
-
-
 
 function fillOfferMenuSelect(items) {
   const sel = $("offerMenuItem");
@@ -610,6 +568,11 @@ function closeOfferEditor() {
 export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", restrictRestaurantId = null } = {}) {
   const nav = initNav();
 
+// Expose a stable navigation hook for the Shell Menu (burger slide menu page)
+window.__MENYRA_ADMIN_NAV = (section) => {
+  try { nav.showView(section); } catch(e) { console.error(e); }
+};
+
   // Logout
   const logoutBtn = $("logoutButton");
   if (logoutBtn) {
@@ -635,11 +598,12 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
 
   // Hide sections depending on role
   if (role === "owner") {
-    // Owner: uses Dashboard + Menü + Angebote + Bestellungen.
-    // No customer creation.
+    // hide customers/leads in nav & mobile nav
+    qsa('[data-section="customers"], [data-section="leads"]').forEach(a => a.style.display = "none");
     const newBtn = $("newCustomerBtn");
     if (newBtn) newBtn.style.display = "none";
-    nav.showView("dashboard");
+    // show offers as default
+    nav.showView("offers");
   }
 
   // Sign in gate
@@ -717,113 +681,6 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
     });
 
     // Customers view
-
-// Owner: menu view (reuses "customers" view markup in owner/index.html)
-if (role === "owner") {
-  const rid = restrictRestaurantId || (restaurants[0] ? restaurants[0].id : "");
-  let menuItems = [];
-
-  const menuBody = $("customersTableBody");
-  const menuMeta = $("customersMeta");
-  const menuFooter = $("customersFooter");
-
-  function renderMenu(items) {
-    if (!menuBody) return;
-    menuBody.innerHTML = "";
-    (items || []).forEach((it, idx) => {
-      const row = document.createElement("div");
-      row.className = "m-table-row";
-      const name = (it.name || it.title || it.label || "—");
-      const cat = (it.category || it.type || it.group || "—");
-      const price = (it.price != null) ? String(it.price) : "";
-      const available = (it.available !== false);
-
-      row.innerHTML = `
-        <div>${esc(name)}</div>
-        <div>${esc(String(cat))}</div>
-        <div><input class="m-input" style="height:34px" data-menu="price" data-idx="${idx}" value="${escapeAttr(price)}" placeholder="0.00"></div>
-        <div style="display:flex; align-items:center; gap:10px;">
-          <input type="checkbox" data-menu="avail" data-idx="${idx}" ${available ? "checked" : ""} />
-          <span class="m-muted">${available ? "Ja" : "Nein"}</span>
-        </div>
-        <div class="m-mono">${esc(it.id || it.menuItemId || ("item_" + idx))}</div>
-        <div class="m-table-actions">
-          <button class="m-btn m-btn--small" type="button" data-menu="img" data-idx="${idx}">Bild</button>
-        </div>
-      `;
-      menuBody.appendChild(row);
-    });
-
-    const n = (items || []).length;
-    if (menuMeta) menuMeta.textContent = `Items: ${n}`;
-    if (menuFooter) menuFooter.textContent = `Items: ${n}`;
-  }
-
-  async function reloadMenu() {
-    if (!rid) return;
-    try {
-      if (menuMeta) menuMeta.textContent = "Lade…";
-      menuItems = await loadPublicMenuItems(rid);
-      renderMenu(menuItems);
-    } catch (err) {
-      console.error(err);
-      if (menuMeta) menuMeta.textContent = "Fehler beim Laden (Rules/Auth?)";
-    }
-  }
-
-  async function saveMenu() {
-    if (!rid) return;
-    try {
-      if (menuMeta) menuMeta.textContent = "Speichere…";
-      await savePublicMenuItems(rid, menuItems);
-      if (menuMeta) menuMeta.textContent = `Gespeichert (${menuItems.length})`;
-    } catch (err) {
-      console.error(err);
-      if (menuMeta) menuMeta.textContent = err?.message || "Speichern fehlgeschlagen.";
-    }
-  }
-
-  // Input delegation
-  menuBody?.addEventListener("input", (e) => {
-    const t = e.target;
-    const idx = parseInt(t?.dataset?.idx || "-1", 10);
-    if (idx < 0 || !menuItems[idx]) return;
-    if (t.dataset.menu === "price") {
-      const v = parseFloatSafe(t.value);
-      menuItems[idx].price = Number.isFinite(v) ? v : 0;
-    }
-  });
-  menuBody?.addEventListener("change", (e) => {
-    const t = e.target;
-    const idx = parseInt(t?.dataset?.idx || "-1", 10);
-    if (idx < 0 || !menuItems[idx]) return;
-    if (t.dataset.menu === "avail") {
-      menuItems[idx].available = !!t.checked;
-      renderMenu(menuItems);
-    }
-  });
-  menuBody?.addEventListener("click", (e) => {
-    const btn = e.target?.closest("button[data-menu]");
-    if (!btn) return;
-    const idx = parseInt(btn.dataset.idx || "-1", 10);
-    if (idx < 0 || !menuItems[idx]) return;
-    if (btn.dataset.menu === "img") {
-      const url = prompt("Bild-URL (imageUrl):", menuItems[idx].imageUrl || "");
-      if (url != null) {
-        menuItems[idx].imageUrl = url.trim();
-        if (menuMeta) menuMeta.textContent = "Bild gesetzt (bitte speichern)";
-      }
-    }
-  });
-
-  $("menuReloadBtn")?.addEventListener("click", reloadMenu);
-  $("menuSaveBtn")?.addEventListener("click", saveMenu);
-
-  // Load once
-  reloadMenu();
-}
-
-
     const allRows = restaurants;
     function refreshCustomers() {
       const filtered = applyCustomersFilter(allRows);
@@ -917,14 +774,6 @@ if (role === "owner") {
     let currentOffers = [];
     let currentMenuItems = [];
     let currentRestaurantId = role === "owner" && restaurants[0] ? restaurants[0].id : "";
-
-// Owner: fixed restaurant for offers
-if (role === "owner") {
-  const sel = $("offersRestaurantSelect");
-  if (sel) sel.style.display = "none";
-  const badge = $("offersSelectedBadge");
-  if (badge) badge.textContent = currentRestaurantId || "";
-}
 
     async function loadOffersUI(rid) {
       if (!rid) {

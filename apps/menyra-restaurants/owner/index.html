@@ -12,6 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="./menyra_platform.css" />
+  <link rel="stylesheet" href="../../_shared/admin-shell/admin-shell.css" />
 </head>
 
 <body>
@@ -94,9 +95,9 @@
           <nav>
             <ul class="m-sidebar-nav" id="sidebarNav">
               <li><a href="#" class="is-active" data-section="dashboard"><span class="m-nav-icon">🏠</span><span class="m-nav-label">Dashboard</span></a></li>
-              <li><a href="#" data-section="customers"><span class="m-nav-icon">🍽️</span><span class="m-nav-label">Menü</span></a></li>
+              <li><a href="#" data-section="customers"><span class="m-nav-icon">🏪</span><span class="m-nav-label">Kunden</span></a></li>
               <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Angebote</span></a></li>
-              <li><a href="#" data-section="leads"><span class="m-nav-icon">🧾</span><span class="m-nav-label">Bestellungen</span></a></li>
+              <li><a href="#" data-section="leads"><span class="m-nav-icon">🧲</span><span class="m-nav-label">Leads</span></a></li>
             </ul>
           </nav>
 
@@ -214,7 +215,7 @@
           <section class="m-view" data-view="customers" style="display:none;">
             <div class="m-page-header">
               <div>
-                <h1 class="m-page-title">Menü</h1>
+                <h1 class="m-page-title">Kunden</h1>
                 <p class="m-page-subtitle">Kunden anlegen, suchen und QR-Links anzeigen.</p>
               </div>
               <div class="m-page-actions">
@@ -240,12 +241,12 @@
               </div>
 
               <div class="m-table">
-                <div class="m-table-row m-table-row--header m-menu-header">
-                  <div>Item</div>
-                  <div>Kategorie</div>
-                  <div>Preis</div>
-                  <div>Verfügbar</div>
-                  <div>ID</div>
+                <div class="m-table-row m-table-row--header">
+                  <div>Kunde</div>
+                  <div>Inhaber</div>
+                  <div>Ort</div>
+                  <div>Abo</div>
+                  <div>Status</div>
                   <div class="m-table-col-actions">Aktion</div>
                 </div>
 
@@ -368,9 +369,59 @@
               </div>
 
               <div class="m-table">
-                <div class="m-table-row m-table-row--header m-orders-header" style="grid-template-columns: 1fr 1.2fr 0.8fr 1.2fr;">
-                  <div>Tisch</div>
-                  <div>Items</div>
+                <div class="m-table-row m-table-row--header" style="grid-template-columns: 2fr 1.2fr 1fr 0.9fr;">
+                  <div>Titel</div>
+                  <div>Status</div>
+                  <div>Preis</div>
+                  <div class="m-table-col-actions">Aktion</div>
+                </div>
+                <div id="offersTableBody"></div>
+              </div>
+            </section>
+          </section>
+
+          <!-- VIEW: LEADS -->
+          <section class="m-view" data-view="leads" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title">Leads</h1>
+                <p class="m-page-subtitle">Einfaches CRM: Leads erfassen, Status setzen, zu Kunde machen.</p>
+              </div>
+              <div class="m-page-actions">
+                <button class="m-btn" type="button" id="newLeadBtn">+ Neuer Lead</button>
+              </div>
+            </div>
+
+            <section class="m-card">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title">Status Übersicht</h2>
+                  <p class="m-section-subtitle m-muted">Gesamt: <span id="leadsTotalBadge">0</span></p>
+                </div>
+              </div>
+              <div class="m-inline" style="gap:10px; flex-wrap:wrap;">
+                <span class="m-chip" id="leadsStatNew">Offen: 0</span>
+                <span class="m-chip m-chip--soft" id="leadsStatContacted">Kontaktiert/Warten: 0</span>
+                <span class="m-chip" id="leadsStatInterested">Interesse: 0</span>
+                <span class="m-chip m-chip--danger" id="leadsStatNoInterest">Kein Interesse: 0</span>
+              </div>
+            </section>
+
+            <section class="m-card m-table-card">
+              <div class="m-table-toolbar">
+                <div>
+                  <div class="m-search m-search--small" style="max-width:520px;">
+                    <span class="m-search-icon">⌕</span>
+                    <input id="leadsSearch" class="m-search-input" placeholder="Suche nach Betrieb, Insta, Telefon…" />
+                  </div>
+                  <div class="m-table-meta" id="leadsMeta">–</div>
+                </div>
+              </div>
+
+              <div class="m-table">
+                <div class="m-table-row m-table-row--header" style="grid-template-columns: 2fr 1.4fr 1fr 1.4fr;">
+                  <div>Betrieb</div>
+                  <div>Kontakt</div>
                   <div>Status</div>
                   <div class="m-table-col-actions">Aktion</div>
                 </div>
@@ -578,29 +629,7 @@
   </div>
 
   <script type="module" src="./menyra_platform.js"></script>
-
-    <!-- =========================================================
-         OWNER MOBILE/TABLET BOTTOM NAV
-         (always visible on handy + tablet)
-    ========================================================= -->
-    <nav class="m-bottom-nav" id="ownerBottomNav" aria-label="Owner Navigation">
-      <a href="#" class="m-bottom-nav-item is-active" data-section="dashboard" aria-label="Dashboard">
-        <span class="m-bottom-nav-ico">🏠</span>
-        <span class="m-bottom-nav-txt">Dashboard</span>
-      </a>
-      <a href="#" class="m-bottom-nav-item" data-section="customers" aria-label="Menü">
-        <span class="m-bottom-nav-ico">🍽️</span>
-        <span class="m-bottom-nav-txt">Menü</span>
-      </a>
-      <a href="#" class="m-bottom-nav-item" data-section="offers" aria-label="Angebote">
-        <span class="m-bottom-nav-ico">🎯</span>
-        <span class="m-bottom-nav-txt">Angebote</span>
-      </a>
-      <a href="#" class="m-bottom-nav-item" data-section="leads" aria-label="Bestellungen">
-        <span class="m-bottom-nav-ico">🧾</span>
-        <span class="m-bottom-nav-txt">Orders</span>
-      </a>
-    </nav>
-
+  <script src="../../_shared/admin-shell/admin-shell.js"></script>
+  <script>window.MenyraAdminShell && window.MenyraAdminShell.init({ menuUrl: "./menu.html" });</script>
 </body>
 </html>
