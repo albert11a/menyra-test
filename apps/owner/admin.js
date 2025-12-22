@@ -104,14 +104,21 @@ async function uploadImageViaFunction(file) {
   return res.json();
 }
 
-async function ensureTus() {
-  // ESM build from jsDelivr
-  return import("https://cdn.jsdelivr.net/npm/tus-js-client@4.1.0/dist/tus.esm.js");
+function getTusClient() {
+  // We load tus-js-client as UMD via <script> tag in admin.html.
+  // This avoids "Failed to fetch dynamically imported module" on some browsers/dev servers.
+  const tusClient = window.tus;
+  if (!tusClient || !tusClient.Upload) {
+    throw new Error(
+      "TUS uploader not loaded. Check admin.html includes tus.min.js before admin.js"
+    );
+  }
+  return tusClient;
 }
 
 async function uploadVideoTus(file, tusInfo) {
   // tusInfo: { endpoint, headers }
-  const tus = await ensureTus();
+  const tus = getTusClient();
 
   return new Promise((resolve, reject) => {
     const upload = new tus.Upload(file, {
@@ -122,7 +129,8 @@ async function uploadVideoTus(file, tusInfo) {
         filetype: file.type || "video/mp4",
       },
       retryDelays: [0, 1000, 3000, 5000],
-      chunkSize: 8 * 1024 * 1024,
+      // Slightly smaller chunks = more reliable on mobile networks.
+      chunkSize: 5 * 1024 * 1024,
       onError: (error) => reject(error),
       onProgress: (bytesUploaded, bytesTotal) => {
         const pct = bytesTotal ? Math.round((bytesUploaded / bytesTotal) * 100) : 0;

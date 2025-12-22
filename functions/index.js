@@ -34,12 +34,14 @@ try {
 }
 const bunnyCfg = runtimeCfg.bunny || {};
 
-const STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID || bunnyCfg.stream_library_id || "568747";
+// Library ID is safe to keep public, but we still read it from env/config for portability.
+const STREAM_LIBRARY_ID = process.env.BUNNY_STREAM_LIBRARY_ID || bunnyCfg.stream_library_id || "";
+// NEVER hardcode API keys in repo.
 const STREAM_API_KEY = process.env.BUNNY_STREAM_API_KEY || bunnyCfg.stream_api_key || "";
 const STREAM_CDN_HOST = process.env.BUNNY_STREAM_CDN_HOST || bunnyCfg.stream_cdn_host || "";
 
 // NOTE: Storage Zone name is usually the same as your "Username" shown in Bunny panel.
-const STORAGE_ZONE = process.env.BUNNY_STORAGE_ZONE || bunnyCfg.storage_zone || "menyra";
+const STORAGE_ZONE = process.env.BUNNY_STORAGE_ZONE || bunnyCfg.storage_zone || "";
 const STORAGE_ACCESS_KEY = process.env.BUNNY_STORAGE_ACCESS_KEY || bunnyCfg.storage_access_key || "";
 const STORAGE_HOST = process.env.BUNNY_STORAGE_HOST || bunnyCfg.storage_host || "storage.bunnycdn.com";
 const IMAGES_CDN_HOST = process.env.BUNNY_IMAGES_CDN_HOST || bunnyCfg.images_cdn_host || "";
@@ -58,6 +60,7 @@ function sha256Hex(str) {
 }
 
 async function createBunnyStreamVideo({ title }) {
+  requireEnv("BUNNY_STREAM_LIBRARY_ID", STREAM_LIBRARY_ID);
   requireEnv("BUNNY_STREAM_API_KEY", STREAM_API_KEY);
 
   const url = `https://video.bunnycdn.com/library/${STREAM_LIBRARY_ID}/videos`;
@@ -93,6 +96,7 @@ exports.getStreamUploadSignature = functions.https.onCall(async (data, context) 
     throw new functions.https.HttpsError("invalid-argument", "restaurantId is required");
   }
 
+  requireEnv("BUNNY_STREAM_LIBRARY_ID", STREAM_LIBRARY_ID);
   requireEnv("BUNNY_STREAM_API_KEY", STREAM_API_KEY);
 
   // 1) Create the video object in Bunny Stream
@@ -146,6 +150,7 @@ exports.getStreamUploadSignatureHttp = functions.https.onRequest((req, res) => {
       }
 
       requireEnv("BUNNY_STREAM_API_KEY", STREAM_API_KEY);
+      requireEnv("BUNNY_STREAM_LIBRARY_ID", STREAM_LIBRARY_ID);
 
       const videoId = await createBunnyStreamVideo({ title: title || "Story Video" });
 
