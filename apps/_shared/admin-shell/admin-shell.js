@@ -1,43 +1,11 @@
 /* =========================================================
    MENYRA Admin Shell - FULLSCREEN MENU PAGE (no drawer)
-   SAFE-AREA WHITE: SYNCHRONIZED with slide animation
-   - Safe-area/theme-color switches ON exactly when slide IN starts
-   - Restores exactly when slide OUT finishes (transitionend)
+   SCOPED ONLY:
+   - Does NOT touch html/body/theme-color (prevents safe-area color leaks)
+   - Menu screen covers safe-areas itself via padding + solid bg
    ========================================================= */
 (function(){
   function $(id){ return document.getElementById(id); }
-
-  let prevThemeColor = null;
-
-  function ensureThemeMeta(){
-    let meta = document.querySelector('meta[name="theme-color"]');
-    if (!meta){
-      meta = document.createElement("meta");
-      meta.setAttribute("name","theme-color");
-      meta.setAttribute("content","#ffffff");
-      document.head.appendChild(meta);
-      prevThemeColor = null;
-      return meta;
-    }
-    return meta;
-  }
-
-  function setThemeColor(color){
-    const meta = ensureThemeMeta();
-    if (prevThemeColor === null){
-      prevThemeColor = meta.getAttribute("content") || "";
-    }
-    meta.setAttribute("content", color);
-  }
-
-  function restoreThemeColor(){
-    const meta = document.querySelector('meta[name="theme-color"]');
-    if (!meta) return;
-    if (prevThemeColor !== null){
-      meta.setAttribute("content", prevThemeColor || "#ffffff");
-    }
-    prevThemeColor = null;
-  }
 
   function ensureScreen(){
     if ($("menuScreen")) return;
@@ -95,24 +63,16 @@
     const screen = $("menuScreen");
     if (!screen) return;
 
-    // show container (still off-screen at -100%)
     screen.classList.add("is-ready");
     loadMenuPage(menuUrl);
 
-    // START animation next frame — and switch safe-area/theme-color exactly in the same frame
     requestAnimationFrame(() => {
-      // SYNC ON
-      document.documentElement.classList.add("m-menu-open");
-      document.body.classList.add("m-menu-open");
-      setThemeColor("#ffffff");
-
-      // slide in
       screen.classList.add("is-open");
     });
 
     window.addEventListener("keydown", onKeydown);
 
-    // Back closes menu
+    // Back closes menu (scoped)
     if (!history.state || history.state.__menyraMenuOpen !== true){
       history.pushState({ __menyraMenuOpen: true }, "");
     }
@@ -123,27 +83,15 @@
     const screen = $("menuScreen");
     if (!screen) return;
 
-    // slide out
     screen.classList.remove("is-open");
     window.removeEventListener("keydown", onKeydown);
 
-    // restore exactly when animation finishes
     const done = () => {
       screen.classList.remove("is-ready");
-
-      // SYNC OFF
-      document.body.classList.remove("m-menu-open");
-      document.documentElement.classList.remove("m-menu-open");
-      restoreThemeColor();
-
       screen.removeEventListener("transitionend", done);
       clearTimeout(fallback);
     };
-
-    // exact end
     screen.addEventListener("transitionend", done, { once: true });
-
-    // fallback (in case transitionend doesn't fire)
     const fallback = setTimeout(done, 320);
   }
 

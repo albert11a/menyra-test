@@ -1,24 +1,15 @@
 /* =========================================================
    MENYRA Admin Shell - FULLSCREEN MENU PAGE (no drawer)
-   + Safe-area instant WHITE (html/body + theme-color)
+   Scoped styling ONLY to the menu screen:
+   - No html/body/theme-color changes (prevents leaking safe-area colors)
+   - Menu screen itself is solid white and covers safe-areas
    ========================================================= */
 
 :root{
-  --menu-bg: rgba(255,255,255,0.98);
+  --menu-bg: #ffffff; /* solid to avoid bleed-through */
   --menu-stroke: rgba(15,23,42,0.10);
   --menu-shadow: 0 24px 70px rgba(2,6,23,0.18);
   --menu-dark: rgba(15,23,42,0.92);
-}
-
-/* prevent weird scrolling behind */
-body.m-menu-open{ overflow: hidden; }
-
-/* IMPORTANT:
-   On iOS/Android, the "safe area"/browser UI can reveal html/body background.
-   When menu is open, force html+body background to pure white instantly. */
-html.m-menu-open,
-body.m-menu-open{
-  background: #fff !important;
 }
 
 /* The fullscreen menu page container */
@@ -123,7 +114,6 @@ body.m-menu-open{
 /* Disable any legacy drawer/mobile menus if present */
 #mobileMenu{ display:none !important; }
 
-/* Reduced motion */
 @media (prefers-reduced-motion: reduce){
   .m-menu-screen{ transition: none; }
 }
