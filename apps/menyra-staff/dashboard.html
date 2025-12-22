@@ -1,0 +1,57 @@
+<!doctype html><html lang="de"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>MENYRA Staff</title>
+<script type="importmap">
+{
+  "imports": {
+    "@shared/": "/shared/",
+    "@apps/": "/apps/",
+    "@s1/": "/apps/menyra-restaurants/_shared/"
+  }
+}
+</script>
+
+<link rel="stylesheet" href="/shared/styles/base.css">
+<link rel="stylesheet" href="/shared/styles/ui-kit.css">
+<link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<link rel="stylesheet" href="./staff.css">
+</head><body>
+<div class="container"><div class="card" style="padding:16px">
+  <div class="row" style="align-items:center;justify-content:space-between">
+    <div><div class="h1">MENYRA – Staff Platform</div><div class="muted" id="userLine">nicht eingeloggt</div></div>
+    <div class="row"><button class="btn" id="logoutBtn">Logout</button></div>
+  </div>
+  <div class="sep"></div>
+
+  <div id="loginBox" class="grid two">
+    <div><div class="label">Email</div><input class="inp" id="emailInp" placeholder="email"/></div>
+    <div><div class="label">Password</div><input class="inp" id="passInp" placeholder="password" type="password"/></div>
+    <div><button class="btn primary" id="loginBtn">Login</button></div>
+    <div class="muted" id="loginMsg"></div>
+  </div>
+
+  <div id="appBox" style="display:none">
+    <div class="h2">Neuer Kunde</div>
+    <div class="grid two">
+      <div><div class="label">Name</div><input class="inp" id="nameInp" placeholder="z.B. Nachtbar"/></div>
+      <div><div class="label">Typ</div>
+        <select class="inp" id="typeSel"><option value="cafe">Cafe</option><option value="restaurant">Restaurant</option></select>
+      </div>
+      <div><div class="label">Anzahl Tische</div><input class="inp" id="tablesInp" type="number" min="0" value="10"/></div>
+      <div><div class="label">Slug (optional)</div><input class="inp" id="slugInp" placeholder="nachtbar (optional)"/></div>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" id="createBtn">Kunde erstellen + QR/Tische</button>
+      <span class="muted" id="createMsg"></span>
+    </div>
+
+    <div class="sep"></div>
+    <div class="h2">Kunden</div>
+    <div class="muted">Staff sieht nur Kunden, die er/sie selbst erstellt hat.</div>
+    <div id="customers" class="grid" style="margin-top:10px"></div>
+  </div>
+</div></div>
+<script type="module" src="./staff.js"></script>
+</body></html>

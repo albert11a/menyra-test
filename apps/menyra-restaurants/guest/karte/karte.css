@@ -1,0 +1,226 @@
+/* apps/menyra-restaurants/guest/karte/karte.css */
+/* Page overrides (optional) */
+
+/* ========================================
+   KARTE – QUICKNAV (White Bar)
+   - Nav bleibt weiß
+   - Nur aktive Tile wird dunkel wie "Sot ne fokus"
+   - Panels: Language + Kamarieri (scaleX von rechts)
+======================================== */
+
+.quickNav{
+  margin: 0;
+  background:#fff;
+  color:#0f172a;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: none;
+  padding: 8px;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.quickNavRow{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 6px;
+  min-height: 64px;
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.quickNavBtn{
+  flex: 1;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  height: 64px;
+  border-radius: 14px;
+
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap: 5px;
+
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+
+  color: inherit;
+  font-size: 11px;
+  font-weight: 650;
+
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+}
+
+@media (hover:hover) and (pointer:fine){
+  .quickNavBtn:hover{
+    background: rgba(15, 23, 42, 0.06);
+    transform: translateY(-1px);
+  }
+  .quickNavBtn.is-active:hover{
+    background: #0f172a;
+    transform: none;
+  }
+}
+
+@media (hover:none) and (pointer:coarse){
+  .quickNavBtn:active{
+    transform: scale(0.985);
+    background: rgba(15, 23, 42, 0.08);
+  }
+}
+
+.quickNavBtn.is-active{
+  background: #0f172a;
+  color: #f9fafb;
+}
+
+.quickNavBtn:focus-visible{
+  outline: 2px solid rgba(15, 23, 42, 0.22);
+  outline-offset: 2px;
+}
+
+.qIcon{
+  width: 22px;
+  height: 22px;
+  display:grid;
+  place-items:center;
+}
+.quickNavBtn svg{
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+  stroke: none;
+}
+
+#langLabel{ letter-spacing: .3px; }
+
+.panelOverlay{
+  position:absolute;
+  inset: 0;
+  padding: 8px;
+  border-radius: inherit;
+
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 8px;
+
+  background:#fff;
+
+  transform-origin: right center;
+  transform: scaleX(0);
+  opacity: 0;
+  pointer-events:none;
+
+  transition: transform .22s ease, opacity .18s ease;
+  z-index: 2;
+}
+
+.panelBackBtn,
+.panelNextBtn{
+  width: 40px;
+  height: 52px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: #fff;
+  border-radius: 14px;
+  display:grid;
+  place-items:center;
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.panelBackBtn:active,
+.panelNextBtn:active{
+  transform: scale(0.985);
+  background: rgba(15, 23, 42, 0.06);
+}
+
+.panelBackBtn svg,
+.panelNextBtn svg{
+  width: 20px;
+  height: 20px;
+  fill: #111827;
+}
+
+.panelList{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap: 8px;
+
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+
+  padding: 0 2px;
+  transform: translateX(12px);
+  opacity: 0;
+  transition: transform .22s ease, opacity .22s ease;
+}
+.panelList::-webkit-scrollbar{ display:none; }
+.panelList{ -ms-overflow-style:none; scrollbar-width:none; }
+
+.panelOpt{
+  border: 1px solid rgba(148, 163, 184, 0.30);
+  background:#fff;
+  height: 40px;
+  min-width: max-content;
+  padding: 0 12px;
+  border-radius: 12px;
+
+  font-weight: 750;
+  font-size: 12px;
+  color: #111827;
+
+  cursor:pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+
+  transition: transform .18s ease, background .18s ease, border-color .18s ease;
+}
+
+@media (hover:hover) and (pointer:fine){
+  .panelOpt:hover{ background: rgba(15, 23, 42, 0.04); }
+}
+.panelOpt:active{ transform: scale(0.98); background: rgba(15, 23, 42, 0.06); }
+
+.quickNav.lang-open .quickNavRow,
+.quickNav.kam-open  .quickNavRow{
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events:none;
+}
+
+.quickNav.lang-open #langPanel{
+  transform: scaleX(1);
+  opacity: 1;
+  pointer-events:auto;
+}
+.quickNav.lang-open #langPanel .panelList{
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.quickNav.kam-open #kamPanel{
+  transform: scaleX(1);
+  opacity: 1;
+  pointer-events:auto;
+}
+.quickNav.kam-open #kamPanel .panelList{
+  transform: translateX(0);
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .quickNavRow, .panelOverlay, .panelList, .quickNavBtn, .panelOpt{
+    transition: none !important;
+  }
+}

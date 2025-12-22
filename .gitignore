@@ -1,7 +1,0 @@
-# MENYRA
-node_modules/
-
-# Firebase Functions local secrets/runtime config
-functions/.runtimeconfig.json
-functions/.env
-functions/.env.*

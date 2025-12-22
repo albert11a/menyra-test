@@ -1,64 +1,28 @@
-# MENYRA — Demo (Firestore + Bunny Stories)
+# MENYRA – System 1 Skeleton (Restaurant/Café)
 
-Start: `index.html`
+## Wichtig (Start)
+Öffne das Projekt mit **Live Server** (oder einem beliebigen lokalen Webserver).
+**Nicht** via file:// öffnen, sonst funktionieren ES-Module Imports nicht.
 
-## Was ist jetzt drin?
+## Was ist drin (genau wie du wolltest)
+✅ **Struktur**: 1 System für Restaurants/Cafés + 1 CEO Platform + 1 Staff Platform (weitere Systeme kommen danach)  
+✅ **Firebase ist drinnen**: `/shared/firebase-config.js` (deine Config)  
+✅ **CEO sieht alle Kunden** (`restaurants`)  
+✅ **Staff sieht nur eigene Kunden** (`createdBy == uid`)  
+✅ Beim Kunden erstellen:
+- `restaurants` doc
+- `restaurants/{id}/public/meta`
+- `restaurants/{id}/tables/{1..N}` (automatisch anhand "Anzahl Tische")
+✅ **QR & Links**: Im CEO/Staff Dashboard wird automatisch ein QR-Link (Tisch 1) angezeigt + QR-Render (lib + fallback).
 
-1) **Guest Karte**: `apps/guest/karte.html`
-   - QR Params: `?r=restaurantId&t=tableId`
-   - lädt Restaurant + Offers aus Firestore
-   - Button **Story** öffnet `apps/social/story.html`
+## Öffnen
+- Hub: `/index.html`
+- CEO: `/apps/menyra-ceo/dashboard.html`
+- Staff: `/apps/menyra-staff/dashboard.html`
 
-2) **Social Story**: `apps/social/story.html`
-   - lädt Stories aus Firestore: `restaurants/{restaurantId}/stories`
-   - zeigt **Produkt-Tag** aus Story-Dokument (`product` Snapshot)
-
-3) **Owner Admin Story Upload**: `apps/owner/admin.html`
-   - Foto/Video wählen
-   - Produkt auswählen
-   - Upload:
-     - Video via **Bunny Stream TUS** (Signature über Cloud Function)
-     - Foto via **Bunny Storage** (Upload Proxy über Cloud Function)
-
-4) **Seed Tool (Prince Coffee House)**: `tools/seed-prince.html`
-
-## 1) Demo-Daten in Firestore schreiben
-
-Öffnen:
-`/tools/seed-prince.html` → Button „Daten schreiben“.
-
-Danach testen:
-`/apps/guest/karte.html?r=prince-coffe-house-001&t=A1`
-
-## 2) Bunny Upload: Keys als Server-Secrets (wichtig)
-
-**Nie** Bunny Keys/Passwörter im Browser speichern.
-
-Die Upload-Bridge liegt in:
-`functions/index.js`
-
-Du brauchst folgende Env/Secrets (aus Bunny Dashboard):
-
-- `BUNNY_STREAM_LIBRARY_ID` (bei dir: 568747)
-- `BUNNY_STREAM_API_KEY` (Video Library AccessKey)
-- `BUNNY_STREAM_CDN_HOST` (bei dir: vz-e3ced87e-921.b-cdn.net)
-- `BUNNY_STORAGE_ZONE` (Storage Zone Name)
-- `BUNNY_STORAGE_ACCESS_KEY` (Storage Zone Password)
-- `BUNNY_IMAGES_CDN_HOST` (bei dir: Menyra.b-cdn.net)
-
-Wenn die Functions deployt sind, funktionieren Uploads in:
-`/apps/owner/admin.html?r=prince-coffe-house-001`
-
-👉 **Setup Schritt-für-Schritt:** `docs/README_BUNNY_FUNCTIONS_SETUP.md`
-
-## 3) Firestore Struktur (pro Kunde)
-
-```
-restaurants/{restaurantId}
-  offers/{offerId}
-  menuItems/{itemId}
-  stories/{storyId}
-```
-
-Story Doc Beispiel:
-`mediaType`, `videoId` (optional), `mediaUrl`, `imageUrl` (optional), `product` (Snapshot), `createdAt`, `expiresAt`
+## Nächste Schritte (Design machen wir erst, wie du willst)
+- Firestore Rules + Rollen/Logins (ceo/staff/owner/waiter/kitchen)
+- Owner Admin: Rollen hinzufügen (owner/kellner/küche/manager) in `restaurants/{id}/staff`
+- Guest Karte/Porosia: echte Orders + Kitchen/Waiter Views
+- Social/Story: 24h Stories + Highlights + Main zeigt Highlights
+- Bunny Upload-Gateway (damit keine Keys im Browser sind)

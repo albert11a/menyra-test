@@ -1,108 +1,92 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="de">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f3f4f6" />
-  <title>MENYRA – Dev Hub</title>
-  <link rel="stylesheet" href="./shared/styles.css" />
-  <style>
-    body{padding:18px}
-    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
-    .links{display:flex;flex-direction:column;gap:8px;margin-top:10px}
-    a{color:#0b57d0;text-decoration:none}
-    a:hover{text-decoration:underline}
-  </style>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>MENYRA – Test Hub</title>
+  <link rel="stylesheet" href="./shared/styles/base.css">
+  <link rel="stylesheet" href="./shared/styles/ui-kit.css">
+
+  <!-- Import Map (für ES-Module Imports ohne Bundler) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@shared/": "/shared/",
+      "@apps/": "/apps/",
+      "@s1/": "/apps/menyra-restaurants/_shared/"
+    }
+  }
+  </script>
 </head>
 <body>
-  <main class="page">
-    <header class="header">
-      <div class="header-title">MENYRA</div>
-      <div class="header-sub">STEP 001 · Platzhalter UI</div>
-    </header>
+  <div class="container">
+    <div class="card" style="padding:16px">
+      <div class="h1">MENYRA – Test Hub</div>
+      <div class="muted" id="subLine">Login → Kunden auswählen → Links testen.</div>
+      <div class="sep"></div>
 
-    <section class="card">
-      <h2>Start</h2>
-      <p>Alle Seiten sind Platzhalter (keine Funktionen). Wir bauen jetzt Schritt für Schritt.</p>
-    </section>
-
-    <section class="grid">
-      <section class="card">
-        <h2>Guest (QR)</h2>
-        <div class="links">
-          <a href="./apps/guest/karte.html">Karte</a>
-          <a href="./apps/guest/detajet.html">Detajet</a>
-          <a href="./apps/guest/porosia.html">Porosia</a>
-          <a href="./apps/guest/hotel.html">Hotel Portal</a>
-          <a href="./apps/guest/ticket.html">Fastfood Ticket</a>
+      <!-- =========================
+           LOGIN (nur wenn nötig)
+           ========================= -->
+      <div id="loginBox" class="grid two" style="margin-bottom:12px">
+        <div>
+          <div class="label">Email</div>
+          <input class="inp" id="emailInp" placeholder="email" />
         </div>
-      </section>
-
-
-      <section class="card">
-        <h2>Public (Main Pages)</h2>
-        <div class="links">
-          <a href="./apps/public/cafe.html">Café Main</a>
-          <a href="./apps/public/restaurant.html">Restaurant Main</a>
-          <a href="./apps/public/hotel.html">Hotel Main</a>
-          <a href="./apps/public/motel.html">Motel Main</a>
-          <a href="./apps/public/store.html">Geschäft Main</a>
-          <a href="./apps/public/service.html">Dienstleistung Main</a>
-          <a href="./apps/public/shop-universal.html">Shop (Universal)</a>
-          <a href="./apps/public/shop-fashion.html">Shop (Fashion)</a>
-          <a href="./apps/public/shop-cosmetics.html">Shop (Kosmetik)</a>
-          <a href="./apps/public/shop-tech.html">Shop (Technik)</a>
-          <a href="./apps/public/shop-general.html">Shop (Allerlei)</a>
-          <a href="./apps/public/reservation.html">Reservation / Booking</a>
+        <div>
+          <div class="label">Password</div>
+          <input class="inp" id="passInp" placeholder="password" type="password" />
         </div>
-      </section>
-
-      <section class="card">
-        <h2>Social (User)</h2>
-        <div class="links">
-          <a href="./apps/social/login.html">Login</a>
-          <a href="./apps/social/entdecken.html">Entdecken</a>
-          <a href="./apps/social/feed.html">Feed</a>
-          <a href="./apps/social/profile.html">Profil</a>
-          <a href="./apps/social/profile-edit.html">Profil bearbeiten</a>
-          <a href="./apps/social/history.html">History</a>
+        <div>
+          <button class="btn primary" id="loginBtn">Login</button>
         </div>
-      </section>
+        <div class="muted" id="loginMsg"></div>
+      </div>
 
-      <section class="card">
-        <h2>Owner (Kunde)</h2>
-        <div class="links">
-          <a href="./apps/owner/login.html">Login</a>
-          <a href="./apps/owner/admin.html">Admin</a>
+      <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="muted" id="userLine">nicht eingeloggt</div>
+        <button class="btn" id="logoutBtn">Logout</button>
+      </div>
+
+      <!-- =========================
+           CUSTOMER PICKER
+           ========================= -->
+      <div class="grid two">
+        <div style="min-width:260px">
+          <div class="label">Bestehender Kunde (Firestore)</div>
+          <select class="inp" id="customerSel">
+            <option value="">— lädt… —</option>
+          </select>
+          <div class="muted" style="margin-top:6px" id="customerMeta">—</div>
         </div>
-      </section>
 
-      <section class="card">
-        <h2>Staff</h2>
-        <div class="links">
-          <a href="./apps/staff/login.html">Login</a>
-          <a href="./apps/staff/kamarieri.html">Kamarieri</a>
+        <div>
+          <div class="label">Suche (Name/ID)</div>
+          <input class="inp" id="searchInp" placeholder="z.B. Nachtbar oder ABC123" />
+          <div class="muted" style="margin-top:6px">Tipp: Auswahl bleibt erhalten, TableId unten optional.</div>
         </div>
-      </section>
-      <section class="card">
-        <h2>Staff Admin (dein Team)</h2>
-        <div class="links">
-          <a href="./apps/staffadmin/login.html">Login</a>
-          <a href="./apps/staffadmin/dashboard.html">Dashboard</a>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="row">
+        <div style="min-width:260px;flex:1">
+          <div class="label">restaurantId (auto aus Auswahl)</div>
+          <input class="inp" id="rid" placeholder="z.B. ABC123" />
         </div>
-        <p class="muted">Platzhalter – gleiche UI wie Superadmin, später sieht jeder Staff nur seine eigenen Kunden/Leads.</p>
-      </section>
-
-
-
-      <section class="card">
-        <h2>Platform</h2>
-        <div class="links">
-          <a href="./apps/platform/login.html">Login</a>
-          <a href="./apps/platform/dashboard.html">Dashboard</a>
+        <div style="min-width:180px">
+          <div class="label">tableId (optional)</div>
+          <input class="inp" id="tid" placeholder="z.B. 5" />
         </div>
-      </section>
-    </section>
-  </main>
+        <div style="align-self:end">
+          <button class="btn primary" id="go">Links aktualisieren</button>
+        </div>
+      </div>
+
+      <div id="links" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./index.js"></script>
 </body>
 </html>
