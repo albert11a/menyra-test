@@ -1,50 +1,62 @@
 /* =========================================================
-   MENYRA Admin Shell - FULLSCREEN MENU PAGE (no drawer)
-   Scoped styling ONLY to the menu screen:
-   - No html/body/theme-color changes (prevents leaking safe-area colors)
-   - Menu screen itself is solid white and covers safe-areas
+   MENYRA Admin Shell - SLIDING DRAWER (like before)
+   FIX: Drawer background matches Admin background.
+   - No global html/body/theme-color changes
+   - Drawer panel copies computed background (color + gradient)
    ========================================================= */
 
 :root{
-  --menu-bg: #ffffff; /* solid to avoid bleed-through */
   --menu-stroke: rgba(15,23,42,0.10);
-  --menu-shadow: 0 24px 70px rgba(2,6,23,0.18);
-  --menu-dark: rgba(15,23,42,0.92);
+  --menu-shadow: 0 18px 60px rgba(2,6,23,0.16);
 }
 
-/* The fullscreen menu page container */
-.m-menu-screen{
+/* Overlay container */
+.m-menu-overlay{
   position: fixed;
   inset: 0;
   z-index: 200;
   display: none;
-  background: var(--menu-bg);
-  transform: translateX(-100%);
+}
+
+.m-menu-overlay.is-open{ display: block; }
+
+/* Backdrop (optional dim) */
+.m-menu-backdrop{
+  position: absolute;
+  inset: 0;
+  background: rgba(2,6,23,0.42);
+  backdrop-filter: blur(6px);
+}
+
+/* Drawer panel */
+.m-menu-panel{
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100dvh;
+  width: min(360px, 92vw);
+  /* IMPORTANT: will be overwritten by JS to match admin background */
+  background: #ffffff;
+  border-right: 1px solid var(--menu-stroke);
+  box-shadow: var(--menu-shadow);
+  transform: translateX(-105%);
   transition: transform 260ms cubic-bezier(.2,.9,.2,1);
   will-change: transform;
-  box-shadow: var(--menu-shadow);
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  overflow: hidden;
 }
 
-/* visible state */
-.m-menu-screen.is-ready{ display: block; }
-.m-menu-screen.is-open{ transform: translateX(0); }
+.m-menu-overlay.is-open .m-menu-panel{ transform: translateX(0); }
 
-/* safe areas */
-.m-menu-screen{
-  padding-top: env(safe-area-inset-top, 0px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-/* inner scroll page */
+/* Menu inner */
 .m-menu-page{
   height: 100%;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   padding: 14px 14px 18px 14px;
-  overscroll-behavior: contain;
 }
 
-/* menu header */
 .m-menu-top{
   display:flex;
   align-items:center;
@@ -54,17 +66,17 @@
 }
 
 .m-menu-title{
-  font-weight: 800;
+  font-weight: 900;
   font-size: 16px;
   color: var(--text-main, #0f172a);
 }
 
 .m-menu-close{
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
   border: 1px solid rgba(15,23,42,0.12);
-  background: #fff;
+  background: rgba(255,255,255,0.92);
   cursor: pointer;
   display:flex;
   align-items:center;
@@ -82,19 +94,19 @@
   display:flex;
   align-items:center;
   gap: 10px;
-  padding: 14px 12px;
-  border-radius: 18px;
+  padding: 12px 12px;
+  border-radius: 16px;
   text-decoration:none;
   color: var(--text-main, #0f172a);
   border: 1px solid rgba(15,23,42,0.10);
-  background: rgba(255,255,255,0.92);
+  background: rgba(255,255,255,0.86);
 }
 
 .m-menu-item .ico{ width: 26px; text-align:center; }
-.m-menu-item .txt{ font-weight: 800; }
+.m-menu-item .txt{ font-weight: 900; }
 
 .m-menu-item.is-active{
-  background: var(--menu-dark);
+  background: rgba(15,23,42,0.92);
   color: #fff;
   border-color: rgba(255,255,255,0.18);
 }
@@ -111,9 +123,9 @@
   line-height: 1.35;
 }
 
-/* Disable any legacy drawer/mobile menus if present */
+/* Disable any legacy mobile menu if present */
 #mobileMenu{ display:none !important; }
 
 @media (prefers-reduced-motion: reduce){
-  .m-menu-screen{ transition: none; }
+  .m-menu-panel{ transition: none; }
 }
