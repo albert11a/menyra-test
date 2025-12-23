@@ -74,46 +74,21 @@ function renderStories(stories, container, meta){
     reel.className = "reel";
     reel.dataset.index = index;
 
-    // Video element - entweder <video> für Storage oder <iframe> für Stream
+    // Video element
     let videoElement;
-    const videoUrl = (story.videoUrl || "").trim(); // Direkter Storage-Link
+
     const embedUrl = (story.embedUrl || "").trim() || (story.libraryId && story.videoId
       ? `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(story.libraryId))}/${encodeURIComponent(String(story.videoId))}`
       : "");
 
-    if (videoUrl) {
-      // Verwende <video> für direkte Links - mit HLS-Unterstützung
-      const video = document.createElement("video");
-      video.className = "reel-video";
-      video.muted = true;
-      video.loop = true;
-      video.playsInline = true;
-      video.preload = "metadata";
-      video.controls = false; // Keine Controls!
-      video.setAttribute("webkit-playsinline", "");
-
-      // HLS-Unterstützung für .m3u8 URLs
-      if (videoUrl.includes('.m3u8') && Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: false, // Für bessere Performance
-          maxBufferLength: 10, // Kurzer Buffer für Stories
-          maxMaxBufferLength: 20
-        });
-        hls.loadSource(videoUrl);
-        hls.attachMedia(video);
-      } else {
-        video.src = videoUrl;
-      }
-
-      videoElement = video;
-    } else if (embedUrl) {
-      // Fallback zu iframe für Stream
+    if (embedUrl) {
+      // Verwende iframe für alle Videos - zuverlässig und ohne CORS-Probleme
       const iframe = document.createElement("iframe");
       iframe.className = "reel-video";
       iframe.allow = "autoplay; fullscreen; picture-in-picture";
       iframe.setAttribute("allowfullscreen", "");
       iframe.frameBorder = "0";
-      iframe.src = `${embedUrl}?autoplay=false&loop=true&muted=true&preload=true&controls=0`;
+      iframe.src = `${embedUrl}?autoplay=true&loop=true&muted=true&preload=true&controls=0`;
       videoElement = iframe;
     }
 
