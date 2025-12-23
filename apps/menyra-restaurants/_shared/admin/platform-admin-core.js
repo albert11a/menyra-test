@@ -5,15 +5,15 @@
 // - No realtime listeners (no onSnapshot)
 // =========================================================
 
-import { db, auth } from "../../../../shared/firebase-config.js";
+import { db, auth } from "/shared/firebase-config.js";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 import {
-  collection,
+collection,
   addDoc,
   doc,
   getDoc,
@@ -22,8 +22,11 @@ import {
   where,
   setDoc,
   updateDoc,
+  orderBy,
+  limit,
   serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 // -------------------------
 // Helpers
@@ -51,6 +54,8 @@ function cacheGet(key, ttlMs) {
   return v.data;
 }
 function cacheSet(key, data) { lsSet(key, { t: nowMs(), data }); }
+function cacheDel(key) { try { localStorage.removeItem(key); } catch {} }
+
 
 function setText(id, txt) {
   const el = $(id);
@@ -219,19 +224,35 @@ async function fetchRestaurants(role, uid, restrictRestaurantId = null) {
     return [{ id: snap.id, ...(snap.data() || {}) }];
   }
 
-  const cached = cacheGet(REST_CACHE_KEY + "_" + role + "_" + (uid || "anon"), REST_CACHE_TTL_MS);
+  const cacheKey = REST_CACHE_KEY + "_" + role + "_" + (uid || "anon");
+  const cached = cacheGet(cacheKey, REST_CACHE_TTL_MS);
   if (cached && Array.isArray(cached)) return cached;
 
   const ref = collection(db, "restaurants");
-  let q = ref;
+  let snaps = null;
 
   if (role === "staff") {
-    // Staff sees only their customers (scopeStaffId)
-    q = query(ref, where("scopeStaffId", "==", uid));
+    // Staff sees only their customers.
+    // We support multiple possible fields for backwards compatibility.
+    try {
+      snaps = await getDocs(query(ref, where("scopeStaffId", "==", uid)));
+    } catch (_) { snaps = null; }
+
+    if (!snaps || snaps.empty) {
+      try {
+        snaps = await getDocs(query(ref, where("assignedStaffId", "==", uid)));
+      } catch (_) { snaps = null; }
+    }
+    if (!snaps || snaps.empty) {
+      try {
+        snaps = await getDocs(query(ref, where("createdByStaffId", "==", uid)));
+      } catch (_) { snaps = null; }
+    }
   }
 
-  // CEO loads all (no orderBy => no index needed)
-  const snaps = await getDocs(q);
+  // CEO (and fallback): load all (no orderBy => no index needed)
+  if (!snaps) snaps = await getDocs(ref);
+
   const rows = snaps.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
   // client-side sort by createdAt if available
   rows.sort((a, b) => {
@@ -240,12 +261,17 @@ async function fetchRestaurants(role, uid, restrictRestaurantId = null) {
     return tb - ta;
   });
 
-  cacheSet(REST_CACHE_KEY + "_" + role + "_" + (uid || "anon"), rows);
+  cacheSet(cacheKey, rows);
   return rows;
 }
 
+const __ENSURED_PUBLIC_DOCS = (window.__MENYRA_ENSURED_PUBLIC_DOCS ||= new Set());
+
 async function ensurePublicDocs(restaurantId, base) {
-  // public/meta
+  if (!restaurantId) return;
+  if (__ENSURED_PUBLIC_DOCS.has(restaurantId)) return;
+
+  // public/meta (safe merge)
   await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), {
     name: base.name || "",
     type: base.type || "cafe",
@@ -255,17 +281,27 @@ async function ensurePublicDocs(restaurantId, base) {
     updatedAt: serverTimestamp()
   }, { merge: true });
 
-  // public/menu (single-doc menu list: items[])
-  await setDoc(doc(db, "restaurants", restaurantId, "public", "menu"), {
-    items: [],
-    updatedAt: serverTimestamp()
-  }, { merge: true });
+  // IMPORTANT:
+  // Never overwrite existing menu/offers items arrays here.
+  // Create missing docs only (1x per restaurant per session).
+  const menuRef = doc(db, "restaurants", restaurantId, "public", "menu");
+  const offersRef = doc(db, "restaurants", restaurantId, "public", "offers");
 
-  // public/offers (single-doc offers list: items[])
-  await setDoc(doc(db, "restaurants", restaurantId, "public", "offers"), {
-    items: [],
-    updatedAt: serverTimestamp()
-  }, { merge: true });
+  try {
+    const mSnap = await getDoc(menuRef);
+    if (!mSnap.exists()) {
+      await setDoc(menuRef, { items: [], updatedAt: serverTimestamp() }, { merge: true });
+    }
+  } catch (_) {}
+
+  try {
+    const oSnap = await getDoc(offersRef);
+    if (!oSnap.exists()) {
+      await setDoc(offersRef, { items: [], updatedAt: serverTimestamp() }, { merge: true });
+    }
+  } catch (_) {}
+
+  __ENSURED_PUBLIC_DOCS.add(restaurantId);
 }
 
 async function createRestaurantDoc(role, user, payload) {
@@ -565,6 +601,152 @@ function closeOfferEditor() {
 // -------------------------
 // Boot function
 // -------------------------
+// =========================================================
+// MENYRA Leads (CEO/Staff)
+// - Collection: /leads
+// - Staff scoping: scopeStaffId OR createdByStaffId (fallback)
+// =========================================================
+
+const LEADS_CACHE_KEY = "menyra_admin_leads_cache_v1";
+const LEADS_CACHE_TTL_MS = 2 * 60 * 1000;
+
+function normalizeLead(row){
+  return {
+    id: row.id,
+    businessName: row.businessName || row.name || "",
+    customerType: row.customerType || row.type || "cafe",
+    city: row.city || "",
+    phone: row.phone || "",
+    insta: row.insta || "",
+    status: row.status || "new",
+    note: row.note || "",
+    scopeStaffId: row.scopeStaffId || row.createdByStaffId || row.assignedStaffId || "",
+    createdAt: row.createdAt || null,
+    updatedAt: row.updatedAt || null
+  };
+}
+
+async function fetchLeads(role, uid){
+  const cacheKey = `${LEADS_CACHE_KEY}_${role}_${uid||"anon"}`;
+  const cached = cacheGet(cacheKey, LEADS_CACHE_TTL_MS);
+  if (cached && Array.isArray(cached)) return cached;
+
+  const ref = collection(db, "leads");
+  let snaps = null;
+
+  async function tryStaff(field){
+    try {
+      // index-free query (no orderBy). We'll sort client-side by createdAt.
+      return await getDocs(query(ref, where(field, "==", uid), limit(200)));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  if (role === "staff") {
+    snaps = await tryStaff("scopeStaffId");
+    if (!snaps || snaps.empty) snaps = await tryStaff("createdByStaffId");
+    if (!snaps || snaps.empty) snaps = await tryStaff("assignedStaffId");
+  }
+
+  if (!snaps) {
+    // CEO (or fallback): also avoid index issues by not forcing orderBy
+    try {
+      snaps = await getDocs(query(ref, limit(200)));
+    } catch (e) {
+      snaps = await getDocs(ref);
+    }
+  }
+
+  const rows = snaps.docs.map(d => normalizeLead({ id: d.id, ...(d.data()||{}) }));
+  // client-side sort (newest first)
+  rows.sort((a,b)=>{
+    const ta = a.createdAt?.seconds ? a.createdAt.seconds : 0;
+    const tb = b.createdAt?.seconds ? b.createdAt.seconds : 0;
+    return tb - ta;
+  });
+
+  cacheSet(cacheKey, rows);
+  return rows;
+}
+
+function leadsStats(rows){
+  const total = rows.length;
+  const counts = { new:0, contacted:0, interested:0, no_interest:0, other:0 };
+  rows.forEach(r=>{
+    const s = (r.status||"").toLowerCase();
+    if (s === "new" || s === "open" || s === "offen") counts.new++;
+    else if (s === "contacted" || s === "waiting" || s === "kontaktiert") counts.contacted++;
+    else if (s === "interested" || s === "interesse") counts.interested++;
+    else if (s === "no_interest" || s === "nointerest" || s === "kein_interesse") counts.no_interest++;
+    else counts.other++;
+  });
+  return { total, counts };
+}
+
+function openLeadModal(mode, data={}){
+  const overlay = $("leadModalOverlay");
+  if (!overlay) return;
+  $("leadModalTitle").textContent = (mode === "edit") ? "Lead bearbeiten" : "Neuer Lead";
+
+  $("leadId").value = data.id || "";
+  $("leadBusinessName").value = data.businessName || "";
+  $("leadCustomerType").value = data.customerType || "cafe";
+  $("leadCity").value = data.city || "";
+  $("leadPhone").value = data.phone || "";
+  $("leadInsta").value = data.insta || "";
+  $("leadStatus").value = data.status || "new";
+  $("leadNote").value = data.note || "";
+
+  setText("leadModalStatus", "");
+  show(overlay);
+}
+
+function closeLeadModal(){
+  const overlay = $("leadModalOverlay");
+  if (overlay) hide(overlay);
+}
+
+function applyLeadsFilter(allRows){
+  const term = ($("leadsSearch")?.value || "").trim().toLowerCase();
+  if (!term) return allRows;
+  return allRows.filter(r=>{
+    const hay = `${r.businessName} ${r.city} ${r.phone} ${r.insta} ${r.status}`.toLowerCase();
+    return hay.includes(term);
+  });
+}
+
+function renderLeadsTable(rows){
+  const body = $("leadsTableBody");
+  if (!body) return;
+  body.innerHTML = "";
+  rows.forEach(r=>{
+    const row = document.createElement("div");
+    row.className = "m-table-row";
+    row.innerHTML = `
+      <div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <b>${esc(r.businessName || "—")}</b>
+          <span class="m-muted" style="font-size:12px;">${esc(r.customerType || "")}${r.city ? " • "+esc(r.city) : ""}</span>
+        </div>
+      </div>
+      <div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <span>${esc(r.phone || "—")}</span>
+          <span class="m-muted" style="font-size:12px;">${esc(r.insta || "")}</span>
+        </div>
+      </div>
+      <div><span class="m-badge">${esc(r.status || "—")}</span></div>
+      <div class="m-table-col-actions" style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="lead-edit" data-id="${esc(r.id)}">Edit</button>
+        <button class="m-btn m-btn--small" type="button" data-act="lead-to-customer" data-id="${esc(r.id)}">→ Kunde</button>
+      </div>
+    `;
+    body.appendChild(row);
+  });
+  setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "—");
+}
+
 export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", restrictRestaurantId = null } = {}) {
   const nav = initNav();
 
@@ -581,10 +763,15 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   $("customerModalClose")?.addEventListener("click", closeCustomerModal);
   $("customerCancelBtn")?.addEventListener("click", closeCustomerModal);
   $("qrModalClose")?.addEventListener("click", closeQrModal);
+  $("leadModalClose")?.addEventListener("click", closeLeadModal);
+  $("leadCancelBtn")?.addEventListener("click", closeLeadModal);
+
 
   // When clicking outside (overlay)
   $("customerModalOverlay")?.addEventListener("click", (e) => { if (e.target?.id === "customerModalOverlay") closeCustomerModal(); });
   $("qrModalOverlay")?.addEventListener("click", (e) => { if (e.target?.id === "qrModalOverlay") closeQrModal(); });
+  $("leadModalOverlay")?.addEventListener("click", (e) => { if (e.target?.id === "leadModalOverlay") closeLeadModal(); });
+
 
   // Owner mode: restrict restaurant id from URL if not passed
   if (role === "owner" && !restrictRestaurantId) {
@@ -604,6 +791,53 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   // Sign in gate
   mountLoginModal(`${roleLabel} Login`);
   let currentUser = null;
+
+// Leads UI (CEO/Staff)
+$("newLeadBtn")?.addEventListener("click", () => openLeadModal("new", {}));
+$("leadsSearch")?.addEventListener("input", () => { window.__MENYRA__refreshLeads && window.__MENYRA__refreshLeads(); });
+
+$("leadForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const user = currentUser;
+  if (!user) return;
+
+  const leadId = ($("leadId")?.value || "").trim();
+  const payload = {
+    businessName: ($("leadBusinessName")?.value || "").trim(),
+    customerType: ($("leadCustomerType")?.value || "cafe").trim(),
+    city: ($("leadCity")?.value || "").trim(),
+    phone: ($("leadPhone")?.value || "").trim(),
+    insta: ($("leadInsta")?.value || "").trim(),
+    status: ($("leadStatus")?.value || "new").trim(),
+    note: ($("leadNote")?.value || "").trim(),
+    updatedAt: serverTimestamp()
+  };
+
+  // Staff scoping fields (so staff sees only own leads)
+  if (role === "staff") {
+    payload.scopeStaffId = user.uid;
+    payload.createdByStaffId = user.uid;
+  }
+
+  setText("leadModalStatus", "Speichere…");
+  try {
+    if (leadId) {
+      await setDoc(doc(db, "leads", leadId), payload, { merge: true });
+    } else {
+      payload.createdAt = serverTimestamp();
+      await addDoc(collection(db, "leads"), payload);
+    }
+    cacheDel(`${LEADS_CACHE_KEY}_${role}_${user.uid}`);
+    closeLeadModal();
+    // refresh leads table immediately
+    window.__MENYRA__refreshLeads && window.__MENYRA__refreshLeads(true);
+  } catch (err) {
+    console.error(err);
+    setText("leadModalStatus", "Fehler beim Speichern (Rules/Auth?).");
+  }
+});
+
+
 
   onAuthStateChanged(auth, async (user) => {
     currentUser = user;
@@ -750,7 +984,90 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
 
     refreshCustomers();
 
-    // Offers view
+    
+// Leads view (CEO/Staff)
+let leadsAll = [];
+async function refreshLeads(force = false) {
+  if (role === "owner") return; // owner doesn't use CRM leads
+  if (!currentUser) return;
+
+  try {
+    if (force) cacheDel(`${LEADS_CACHE_KEY}_${role}_${currentUser.uid}`);
+    const rows = await fetchLeads(role, currentUser.uid);
+    leadsAll = rows;
+
+    const filtered = applyLeadsFilter(leadsAll);
+    renderLeadsTable(filtered);
+
+    // stats chips
+    const st = leadsStats(leadsAll);
+    setText("leadsTotalBadge", String(st.total));
+    setText("leadsStatNew", `Offen: ${st.counts.new}`);
+    setText("leadsStatContacted", `Kontaktiert/Warten: ${st.counts.contacted}`);
+    setText("leadsStatInterested", `Interesse: ${st.counts.interested}`);
+    setText("leadsStatNoInterest", `Kein Interesse: ${st.counts.no_interest}`);
+
+    // row actions (event delegation)
+    $("leadsTableBody")?.addEventListener("click", async (e) => {
+      const btn = e.target?.closest?.("button[data-act]");
+      if (!btn) return;
+      const act = btn.getAttribute("data-act");
+      const id = btn.getAttribute("data-id");
+      if (!id) return;
+      const row = leadsAll.find(x => x.id === id);
+      if (!row) return;
+
+      if (act === "lead-edit") {
+        openLeadModal("edit", row);
+        return;
+      }
+
+      if (act === "lead-to-customer") {
+        // Convert lead -> new customer (restaurant doc)
+        setText("adminStatus", "Erstelle Kunde…");
+        try {
+          const payload = {
+            name: row.businessName || "Neuer Kunde",
+            type: (row.customerType === "restaurant" ? "restaurant" : "cafe"),
+            city: row.city || "",
+            phone: row.phone || "",
+            ownerName: "",
+            tableCount: 10,
+            yearPrice: 490,
+            logoUrl: "",
+            status: "active"
+          };
+          const createdId = await createRestaurantDoc(role, currentUser, payload);
+          await setDoc(doc(db, "leads", id), { status: "converted", convertedRestaurantId: createdId, updatedAt: serverTimestamp() }, { merge: true });
+
+          // clear caches
+          try { localStorage.removeItem(REST_CACHE_KEY + "_" + role + "_" + currentUser.uid); } catch {}
+          cacheDel(`${LEADS_CACHE_KEY}_${role}_${currentUser.uid}`);
+
+          setText("adminStatus", `Lead → Kunde erstellt: ${createdId}`);
+          // refresh customers UI & leads
+          const updated = await fetchRestaurants(role, currentUser.uid, restrictRestaurantId);
+          restaurants.splice(0, restaurants.length, ...updated);
+          refreshCustomers();
+          refreshLeads(true);
+        } catch (err) {
+          console.error(err);
+          setText("adminStatus", "Fehler beim Erstellen (Rules/Auth?).");
+        }
+        return;
+      }
+    }, { once: true });
+
+    setText("leadsMeta", filtered.length ? `Zeilen: ${filtered.length}` : "—");
+  } catch (err) {
+    console.error(err);
+    setText("leadsMeta", "Fehler beim Laden (Rules/Auth?).");
+  }
+}
+window.__MENYRA__refreshLeads = refreshLeads;
+await refreshLeads(true);
+
+// Offers view
     const offersSel = $("offersRestaurantSelect");
     if (offersSel) {
       offersSel.innerHTML = `<option value="">— Lokal wählen —</option>`;

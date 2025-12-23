@@ -28,7 +28,7 @@ import {
   increment,
   addDoc,
   serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 // =========================================================
 // ABSCHNITT 1: PARAMS / PAGE DETECTION

@@ -1,10 +1,10 @@
-import { db, auth } from "@shared/firebase-config.js";
+import { db, auth } from "/shared/firebase-config.js";
 import {
   collection, query, orderBy, limit, onSnapshot
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
   onAuthStateChanged, signInWithEmailAndPassword, signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 const $ = (id) => document.getElementById(id);
 

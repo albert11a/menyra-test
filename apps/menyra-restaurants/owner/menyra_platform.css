@@ -1310,3 +1310,27 @@ body.theme-dark .m-sidebar {
 #leadsTableBody .m-table-row{
   grid-template-columns: 1fr 1.2fr 0.8fr 1.2fr;
 }
+
+
+/* ============================================================= */
+/* === PATCH: Menu overlay matches admin background (no dim) ==== */
+/* ============================================================= */
+/* The mobile menu uses the same background as the admin page (html gradient),
+   so safe-areas don't "flash" another color. */
+.m-mobile-menu-overlay {
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+.m-mobile-menu {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+/* keep menu content readable */
+.m-mobile-menu-header,
+.m-mobile-menu-content {
+  background: rgba(255, 255, 255, 0.85);
+}
+body.theme-dark .m-mobile-menu-header,
+body.theme-dark .m-mobile-menu-content {
+  background: rgba(11, 18, 32, 0.88);
+}

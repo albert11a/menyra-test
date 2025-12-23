@@ -29,7 +29,7 @@ import {
   increment,
   addDoc,
   serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 // =========================================================
 // ABSCHNITT 1: PARAMS / PAGE DETECTION
@@ -171,6 +171,16 @@ function navToDetajet(itemId) {
 // =========================================================
 
 const TTL_REST_MS = 24 * 60 * 60 * 1000; // 24h
+
+const MIGRATE_KEY_MENU = (rid) => `MENYRA_MIGRATED_PUBLIC_MENU_${rid}`;
+const MIGRATE_KEY_OFFERS = (rid) => `MENYRA_MIGRATED_PUBLIC_OFFERS_${rid}`;
+function migrateFlagGet(key){
+  try { return localStorage.getItem(key) === "1"; } catch { return false; }
+}
+function migrateFlagSet(key){
+  try { localStorage.setItem(key, "1"); } catch {}
+}
+
 const TTL_MENU_MS = 5 * 60 * 1000;      // 5min
 const TTL_OFFERS_MS = 2 * 60 * 1000;    // 2min
 
@@ -212,11 +222,48 @@ async function loadMenuItems() {
     const menuRef = doc(db, "restaurants", restaurantId, "public", "menu");
     const menuSnap = await getDoc(menuRef);
     if (menuSnap.exists()) {
-      const data = menuSnap.data() || {};
-      const items = Array.isArray(data.items) ? data.items : [];
-      cacheSet(key, items);
-      return items;
-    }
+  const data = menuSnap.data() || {};
+  let items = Array.isArray(data.items) ? data.items : [];
+
+  // If public/menu exists but is empty, we may have legacy data in restaurants/{id}/menuItems.
+  // We migrate ONCE per restaurant (and per browser) to keep reads low afterwards.
+  if (!items.length && !migrateFlagGet(MIGRATE_KEY_MENU(restaurantId))) {
+    try {
+      const legacyRef = collection(db, "restaurants", restaurantId, "menuItems");
+      const legacySnap = await getDocs(legacyRef);
+      if (!legacySnap.empty) {
+        items = legacySnap.docs.map((docSnap) => {
+          const d = docSnap.data() || {};
+          return {
+            id: docSnap.id,
+            name: d.name || "Produkt",
+            description: d.description || "",
+            longDescription: d.longDescription || d.longDescr || "",
+            price: typeof d.price === "number" ? d.price : parseFloat(d.price || 0),
+            category: d.category || d.cat || "Food",
+            isDrink: !!d.isDrink,
+            available: (d.available !== false),
+            imageUrl: d.imageUrl || d.image || d.photoUrl || d.img || "",
+            createdAt: d.createdAt || null,
+            updatedAt: d.updatedAt || null,
+          };
+        });
+
+        // Persist migrated items to public/menu (1 write)
+        try {
+          await setDoc(menuRef, { items, migratedFrom: "menuItems", migratedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+        } catch {}
+        cacheSet(key, items);
+        migrateFlagSet(MIGRATE_KEY_MENU(restaurantId));
+        return items;
+      }
+    } catch (_) {}
+    migrateFlagSet(MIGRATE_KEY_MENU(restaurantId));
+  }
+
+  cacheSet(key, items);
+  return items;
+}
   } catch {}
 
   // Fallback: menuItems subcollection (EXPENSIVE reads!)
@@ -261,11 +308,44 @@ async function loadOffers() {
     const offersRef = doc(db, "restaurants", restaurantId, "public", "offers");
     const offersSnap = await getDoc(offersRef);
     if (offersSnap.exists()) {
-      const data = offersSnap.data() || {};
-      const offers = Array.isArray(data.items) ? data.items : [];
-      cacheSet(key, offers);
-      return offers;
-    }
+  const data = offersSnap.data() || {};
+  let items = Array.isArray(data.items) ? data.items : [];
+
+  // Legacy migration: restaurants/{id}/offers (subcollection) -> public/offers.items
+  if (!items.length && !migrateFlagGet(MIGRATE_KEY_OFFERS(restaurantId))) {
+    try {
+      const legacyRef = collection(db, "restaurants", restaurantId, "offers");
+      const legacySnap = await getDocs(legacyRef);
+      if (!legacySnap.empty) {
+        items = legacySnap.docs.map((docSnap) => {
+          const d = docSnap.data() || {};
+          return {
+            id: docSnap.id,
+            title: d.title || d.name || "Offer",
+            description: d.description || d.desc || "",
+            imageUrl: d.imageUrl || d.image || d.photoUrl || d.img || "",
+            price: typeof d.price === "number" ? d.price : (d.price ? parseFloat(d.price) : null),
+            menuItemId: d.menuItemId || d.itemId || "",
+            active: (d.active !== false),
+            createdAt: d.createdAt || null,
+            updatedAt: d.updatedAt || null,
+          };
+        }).filter(o => o.active !== false);
+
+        try {
+          await setDoc(offersRef, { items, migratedFrom: "offersSubcollection", migratedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+        } catch {}
+        cacheSet(key, items);
+        migrateFlagSet(MIGRATE_KEY_OFFERS(restaurantId));
+        return items;
+      }
+    } catch (_) {}
+    migrateFlagSet(MIGRATE_KEY_OFFERS(restaurantId));
+  }
+
+  cacheSet(key, items);
+  return items;
+}
   } catch {}
 
   // Fallback: offers subcollection (EXPENSIVE reads!)
@@ -384,20 +464,25 @@ export async function initKarte() {
     // Wenn noch keine Offers existieren: Fallback aus Menü-Items (0 extra Reads)
     // => damit "Sot ne fokus" trotzdem immer sichtbar ist.
     if (!list.length) {
-      const fallback = (Array.isArray(allMenuItems) ? allMenuItems : [])
-        .filter((m) => m && (m.imageUrl || m.image || m.photoUrl))
-        .slice(0, 6)
-        .map((m) => ({
-          id: "focus-" + m.id,
-          menuItemId: m.id,
-          title: m.name,
-          description: m.description || m.shortDesc || "",
-          price: typeof m.price === "number" ? m.price : m.price,
-          imageUrl: m.imageUrl || m.image || m.photoUrl,
-          _fallback: true,
-        }));
-      if (fallback.length) list = fallback;
-    }
+  // Always keep the section visible (user wants it always active)
+  offersSection.style.display = "block";
+  offersSliderEl.innerHTML = `
+    <div class="offer-slide" style="min-width:100%;">
+      <div class="offer-img" style="background:rgba(15,23,42,0.06); display:flex; align-items:center; justify-content:center; font-weight:900; color:rgba(15,23,42,0.75);">
+        Noch keine Angebote
+      </div>
+      <div class="offer-body">
+        <div class="offer-title">Sot ne fokus</div>
+        <div class="offer-desc">Sobald der Besitzer oder du ein Angebot erstellt, erscheint es hier.</div>
+      </div>
+    </div>
+  `;
+  offersDotsEl.innerHTML = "";
+  offersSlides = Array.from(offersSliderEl.children);
+  offersCurrentIndex = 0;
+  clearOffersTimer();
+  return;
+}
 
     if (!list.length) {
       offersSection.style.display = "none";
