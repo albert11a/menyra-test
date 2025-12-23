@@ -3,8 +3,6 @@
    ========================================================================== */
 
 :root {
-  --canvas-bg: radial-gradient(circle at top, #eef0ff 0, var(--bg) 35%, var(--bg) 100%);
-
   --bg: #f6f7fb;
   --bg-elevated: #ffffff;
   --bg-elevated-soft: #f9fafb;
@@ -49,9 +47,9 @@ body.theme-dark {
 html {
   margin: 0;
   padding: 0;
-  background: var(--canvas-bg);
+  background:
+    radial-gradient(circle at top, #eef0ff 0, var(--bg) 35%, var(--bg) 100%);
 }
-
 
 /* body liegt oben drauf, aber ist transparent,
    damit überall der gleiche Verlauf durchscheint */
@@ -1052,7 +1050,7 @@ body.theme-dark .m-sidebar {
   width: 100%;               /* volle Breite */
   transform: translateX(-100%);
   transition: transform 0.25s ease-out;
-  background: var(--canvas-bg);
+  background: var(--bg-elevated);
   box-shadow: var(--shadow-soft);
   z-index: 90;
   border-radius: 0;          /* keine abgerundete rechte Kante mehr */
@@ -1075,8 +1073,6 @@ body.theme-dark .m-sidebar {
 
 /* Inhalt im Drawer */
 .m-mobile-menu-inner {
-  background: transparent;
-
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -1317,24 +1313,32 @@ body.theme-dark .m-sidebar {
 
 
 /* ============================================================= */
-/* === PATCH: Menu overlay matches admin background (no dim) ==== */
+/* === PATCH: Menu overlay matches admin background (NO DIM) ==== */
 /* ============================================================= */
-/* The mobile menu uses the same background as the admin page (html gradient),
-   so safe-areas don't "flash" another color. */
+/* The mobile menu uses the SAME background as the admin page (html gradient),
+   so safe-areas don't "flash" another color. No dark dim, no transparency. */
 .m-mobile-menu-overlay {
-  background: transparent !important;
+  /* same as html background */
+  background: radial-gradient(circle at top, #eef0ff 0, var(--bg) 35%, var(--bg) 100%) !important;
   backdrop-filter: none !important;
 }
 .m-mobile-menu {
-  background: transparent !important;
+  /* same as html background */
+  background: radial-gradient(circle at top, #eef0ff 0, var(--bg) 35%, var(--bg) 100%) !important;
   box-shadow: none !important;
 }
-/* keep menu content readable */
+
+/* keep menu content readable on top of gradient */
 .m-mobile-menu-header,
 .m-mobile-menu-content {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--border-subtle);
 }
+
 body.theme-dark .m-mobile-menu-header,
 body.theme-dark .m-mobile-menu-content {
-  background: rgba(11, 18, 32, 0.88);
+  background: rgba(11, 18, 32, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.22);
 }
+
+
