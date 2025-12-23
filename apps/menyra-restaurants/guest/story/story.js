@@ -51,6 +51,10 @@ async function main(){
   // Stories rendern
   renderStories(currentStories, reelsContainer);
 
+  // Zeige Tap-Hinweis
+  const tapHint = qs("tapHint");
+  tapHint.style.display = "flex";
+
   // Intersection Observer für Autoplay
   setupAutoplay();
 
@@ -66,28 +70,37 @@ function renderStories(stories, container){
     reel.className = "reel";
     reel.dataset.index = index;
 
-    // Video element mit HLS support
-    const video = document.createElement("video");
-    video.className = "reel-video";
-    video.muted = true;
-    video.playsInline = true;
-    video.preload = "metadata";
-    video.loop = true;
-    video.controls = false;
+    // iframe für Bunny.net Videos
+    const iframe = document.createElement("iframe");
+    iframe.className = "reel-video";
+    iframe.allow = "autoplay; fullscreen; picture-in-picture";
+    iframe.setAttribute("allowfullscreen", "");
+    iframe.frameBorder = "0";
+    iframe.dataset.storyIndex = index;
 
-    // Video source - versuche HLS Stream URL für Bunny.net
+    // Video source - Bunny.net embed URL
     const embedUrl = (story.embedUrl || "").trim() || (story.libraryId && story.videoId
       ? `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(story.libraryId))}/${encodeURIComponent(String(story.videoId))}`
       : "");
 
-    if (embedUrl && story.libraryId && story.videoId) {
-      // Bunny.net HLS Stream URL (Region 'de' als Standard)
-      const hlsUrl = `https://vz-de.b-cdn.net/${story.libraryId}/${story.videoId}/playlist.m3u8`;
-      video.src = hlsUrl;
+    if (embedUrl) {
+      // Starte ohne autoplay
+      iframe.src = `${embedUrl}?autoplay=false&loop=true&muted=true&preload=true&controls=false`;
     }
 
-    videos.set(index, video);
-    reel.appendChild(video);
+    videos.set(index, iframe);
+    reel.appendChild(iframe);
+
+    // Click handler für autoplay
+    reel.addEventListener('click', () => {
+      const iframe = videos.get(index);
+      if (iframe && !iframe.dataset.autoplayEnabled) {
+        iframe.dataset.autoplayEnabled = 'true';
+        // Reload iframe mit autoplay
+        const currentSrc = iframe.src;
+        iframe.src = currentSrc.replace('autoplay=false', 'autoplay=true');
+      }
+    });
 
     // Vignette overlay
     const vignette = document.createElement("div");
@@ -184,15 +197,10 @@ function setupAutoplay(){
   // Erstes User-Interaktion abfangen
   const handleFirstInteraction = () => {
     hasUserInteracted = true;
+    const tapHint = qs("tapHint");
+    tapHint.style.display = "none";
     document.removeEventListener('touchstart', handleFirstInteraction);
     document.removeEventListener('click', handleFirstInteraction);
-
-    // Alle Videos starten
-    videos.forEach((video, index) => {
-      if (video && video.readyState >= 2) { // HAVE_CURRENT_DATA or higher
-        video.play().catch(err => console.warn("Autoplay failed:", err));
-      }
-    });
   };
 
   document.addEventListener('touchstart', handleFirstInteraction, { once: true });
@@ -202,22 +210,28 @@ function setupAutoplay(){
     entries.forEach(entry => {
       const reel = entry.target;
       const index = parseInt(reel.dataset.index);
-      const video = videos.get(index);
+      const iframe = videos.get(index);
 
-      if (!video) return;
+      if (!iframe) return;
 
       if (entry.isIntersecting && hasUserInteracted) {
-        // Video ist sichtbar und User hat interagiert - abspielen
-        video.play().catch(err => {
-          console.warn("Autoplay failed:", err);
-        });
+        // iframe ist sichtbar und User hat interagiert - autoplay aktivieren
+        if (!iframe.dataset.autoplayEnabled) {
+          iframe.dataset.autoplayEnabled = 'true';
+          const currentSrc = iframe.src;
+          iframe.src = currentSrc.replace('autoplay=false', 'autoplay=true');
+        }
       } else if (!entry.isIntersecting) {
-        // Video ist nicht mehr sichtbar - pausieren
-        video.pause();
+        // iframe ist nicht mehr sichtbar - autoplay deaktivieren
+        if (iframe.dataset.autoplayEnabled) {
+          iframe.dataset.autoplayEnabled = '';
+          const currentSrc = iframe.src;
+          iframe.src = currentSrc.replace('autoplay=true', 'autoplay=false');
+        }
       }
     });
   }, {
-    threshold: 0.7, // 70% des Videos müssen sichtbar sein
+    threshold: 0.7, // 70% der iframe müssen sichtbar sein
     rootMargin: "-10% 0px -10% 0px"
   });
 

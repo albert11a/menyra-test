@@ -69,7 +69,7 @@
       isolation:isolate;
     }
 
-    .reel video{
+    .reel iframe{
       position:absolute;
       inset:0;
       width:100%;
@@ -77,6 +77,7 @@
       object-fit: cover;
       background:#000;
       transform: translateZ(0);
+      border: none;
     }
 
     .vignette{
@@ -345,6 +346,12 @@
     <div class="emptyIcon">📹</div>
     <div class="emptyTitle">Keine Stories</div>
     <div class="emptyDesc">Aktive Stories werden hier angezeigt.</div>
+  </div>
+
+  <div class="empty" id="tapHint" style="display:none;">
+    <div class="emptyIcon">👆</div>
+    <div class="emptyTitle">Tippe um zu starten</div>
+    <div class="emptyDesc">Tippe auf den Bildschirm um die Stories abzuspielen.</div>
   </div>
 
   <script type="module" src="./story.js"></script>
