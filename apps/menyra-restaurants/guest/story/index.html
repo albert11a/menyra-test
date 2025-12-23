@@ -1,21 +1,1010 @@
-      <!doctype html><html lang="de"><head>
-      <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-      <title>MENYRA – Story</title>
-      <script type="importmap">
-{
-  "imports": {
-    "@shared/": "/shared/",
-    "@apps/": "/apps/",
-    "@s1/": "/apps/menyra-restaurants/_shared/"
-  }
-}
-</script>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Story</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
 
-      <link rel="stylesheet" href="/shared/styles/base.css">
-      <link rel="stylesheet" href="/shared/styles/ui-kit.css">
-      <link rel="stylesheet" href="/apps/menyra-restaurants/_shared/styles/guest-base.css">
-      <link rel="stylesheet" href="./story.css">
-      </head><body>
-      <div class="container"><div class='card' style='padding:16px'><div class='g-title'>Story</div><div class='muted'>Dummy</div></div></div>
-      <script type="module" src="./story.js"></script>
-      </body></html>
+  <!-- =========================================================
+       PERF: Connection warmup (ok)
+       ========================================================= -->
+  <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
+  <link rel="preconnect" href="https://menyra.b-cdn.net" crossorigin />
+
+  <style>
+    :root{
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+
+      --ui: rgba(0,0,0,0.45);
+      --txt: #ffffff;
+      --muted: rgba(255,255,255,0.72);
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    html, body{ height:100%; background:#000; }
+    body{
+      color: var(--txt);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      overflow: hidden;
+      background:#000;
+    }
+
+    /* =========================================================
+       ABSCHNITT 1: FEED / REELS
+       ========================================================= */
+    .reels{
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
+
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      background:#000;
+
+      scroll-padding-top: var(--safe-top);
+      scroll-padding-bottom: var(--safe-bottom);
+
+      /* helps with touch */
+      touch-action: pan-y;
+    }
+    .reels::-webkit-scrollbar{ display:none; }
+    .reels{ scrollbar-width:none; }
+
+    .reel{
+      position: relative;
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
+
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      background:#000;
+      overflow:hidden;
+      isolation:isolate;
+    }
+
+    .reel video{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit: cover;
+      background:#000;
+      transform: translateZ(0);
+    }
+
+    .vignette{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(120% 70% at 50% 10%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.8) 100%),
+        linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.00) 45%);
+      opacity: .9;
+      z-index: 5;
+    }
+
+    /* =========================================================
+       ABSCHNITT 2: TOPBAR / UI
+       ========================================================= */
+    .topbar{
+      position:absolute;
+      top: 0; left: 0; right: 0;
+      padding-top: calc(var(--safe-top) + 10px);
+      padding-left: calc(var(--safe-left) + 12px);
+      padding-right: calc(var(--safe-right) + 12px);
+      padding-bottom: 10px;
+
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+
+      z-index: 20;
+      pointer-events:none;
+    }
+
+    .topbarLeft, .topbarRight{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      pointer-events:auto;
+    }
+
+    .btnIcon{
+      border:0;
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      backdrop-filter: blur(6px);
+    }
+    .btnIcon:active{ transform: scale(0.98); }
+
+    .brandPill{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 16px;
+      background: rgba(0,0,0,0.25);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.12);
+      pointer-events:auto;
+      min-width: 0;
+    }
+    .brandLogo{
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      object-fit: contain;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      flex: 0 0 auto;
+    }
+    .brandName{
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: .2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 56vw;
+    }
+
+    .rail{
+      position:absolute;
+      right: calc(var(--safe-right) + 12px);
+      bottom: calc(var(--safe-bottom) + 110px);
+      z-index: 20;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 14px;
+      pointer-events:auto;
+    }
+
+    .railBtn{
+      border:0;
+      background: transparent;
+      color: #fff;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 6px;
+    }
+    .railIcon{
+      width: 46px;
+      height: 46px;
+      border-radius: 18px;
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.10);
+      display:grid;
+      place-items:center;
+      backdrop-filter: blur(6px);
+    }
+    .railCount{
+      font-size: 12px;
+      font-weight: 800;
+      color: rgba(255,255,255,0.85);
+      white-space: nowrap;
+    }
+
+    .railBtn[data-action="like"].is-liked .railIcon{
+      background: rgba(255,255,255,0.90);
+      color:#111;
+    }
+    .railBtn[data-action="like"].is-liked svg{ fill:#111; }
+
+    .productTag{
+      position:absolute;
+      left: calc(var(--safe-left) + 12px);
+      right: calc(var(--safe-right) + 12px);
+      bottom: calc(var(--safe-bottom) + 16px);
+      z-index: 20;
+      pointer-events:auto;
+
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(15,23,42,0.58);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(8px);
+    }
+    .productImg{
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      object-fit: cover;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      flex: 0 0 auto;
+    }
+    .productMeta{
+      min-width:0;
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      gap: 2px;
+    }
+    .productTitle{
+      font-weight: 900;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .productSub{
+      font-size: 12px;
+      color: rgba(255,255,255,0.72);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .productBtn{
+      border:0;
+      height: 38px;
+      padding: 0 12px;
+      border-radius: 14px;
+      background: #ffffff;
+      color: #0f172a;
+      font-weight: 900;
+      font-size: 12px;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      flex: 0 0 auto;
+    }
+
+    .tapHint{
+      position:absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%,-50%);
+      z-index: 15;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.35);
+      color: rgba(255,255,255,0.85);
+      font-size: 12px;
+      font-weight: 800;
+      border: 1px solid rgba(255,255,255,0.10);
+      pointer-events:none;
+      opacity: 0;
+      transition: opacity .2s ease;
+    }
+    .reel.is-paused .tapHint{ opacity: 1; }
+
+    .toast{
+      position: fixed;
+      left: 50%;
+      bottom: calc(var(--safe-bottom) + 88px);
+      transform: translateX(-50%);
+      z-index: 999;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.90);
+      font-size: 12px;
+      font-weight: 900;
+      opacity: 0;
+      pointer-events:none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+    .toast.show{
+      opacity: 1;
+      transform: translateX(-50%) translateY(-4px);
+    }
+
+    /* =========================================================
+       ABSCHNITT 3: COMMENTS SHEET
+       ========================================================= */
+    .commentsBackdrop{
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .16s ease;
+    }
+    .commentsBackdrop.open{
+      opacity: .88;
+      pointer-events: auto;
+    }
+
+    .commentsSheet{
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 2100;
+
+      height: min(70dvh, 520px);
+      background: #000;
+      border-top-left-radius: 22px;
+      border-top-right-radius: 22px;
+      border: 1px solid rgba(255,255,255,0.10);
+
+      transform: translateY(110%);
+      transition: transform .20s ease;
+      padding-bottom: var(--safe-bottom);
+
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .commentsSheet.open{ transform: translateY(0); }
+
+    .commentsTop{
+      padding: 12px 12px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+    .commentsTitle{
+      font-size: 13px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.92);
+      letter-spacing: .2px;
+    }
+    .commentsList{
+      flex: 1;
+      overflow: auto;
+      padding: 10px 12px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .cItem{
+      padding: 10px 10px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      margin-bottom: 10px;
+    }
+    .cUser{
+      font-size: 12px;
+      font-weight: 900;
+      color: rgba(255,255,255,0.92);
+      margin-bottom: 4px;
+    }
+    .cText{
+      font-size: 12px;
+      color: rgba(255,255,255,0.78);
+      line-height: 1.35;
+    }
+    .commentsInput{
+      padding: 10px 12px 12px;
+      border-top: 1px solid rgba(255,255,255,0.10);
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .commentsInput input{
+      flex: 1;
+      height: 42px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.92);
+      padding: 0 12px;
+      outline: none;
+      font-size: 13px;
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .toast, .tapHint, .commentsBackdrop, .commentsSheet{ transition:none !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="toast" id="toast">Sound</div>
+
+  <!-- =========================================================
+       TEMPLATE: Overlays pro Reel
+       ========================================================= -->
+  <template id="overlayTpl">
+    <header class="topbar">
+      <div class="topbarLeft">
+        <button class="btnIcon" type="button" data-action="back" aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+
+        <div class="brandPill" aria-label="Restaurant">
+          <img class="brandLogo" data-bind="logo" src="" alt="Logo" />
+          <div class="brandName" data-bind="name">Restaurant</div>
+        </div>
+      </div>
+
+      <div class="topbarRight">
+        <button class="btnIcon" type="button" data-action="sound" aria-label="Toggle sound">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M11 5L6.5 8.5H3v7h3.5L11 19V5z" stroke="white" stroke-width="2.2" stroke-linejoin="round"/>
+            <path d="M15.5 8.5c1.2 1.1 1.2 5.9 0 7" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M18 6.8c2 2.1 2 8.3 0 10.4" stroke="white" stroke-width="2.2" stroke-linecap="round" opacity="0.9"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <aside class="rail">
+      <button class="railBtn" type="button" data-action="like" data-count="0">
+        <span class="railIcon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+            <path d="M12 21s-7-4.5-9.5-8.9C.7 8.6 3 5.5 6.4 5.5c1.7 0 3.1.8 3.9 2 0 0 .8-2 3.7-2 3.4 0 5.7 3.1 3.9 6.6C19 16.5 12 21 12 21z"/>
+          </svg>
+        </span>
+        <span class="railCount" data-bind="likeCount">0</span>
+      </button>
+
+      <button class="railBtn" type="button" data-action="comment" data-count="0">
+        <span class="railIcon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+            <path d="M21 12c0 4.4-4 8-9 8-1 0-2-.1-2.9-.4L3 21l1.6-4.1C3.6 15.6 3 13.9 3 12c0-4.4 4-8 9-8s9 3.6 9 8z"/>
+          </svg>
+        </span>
+        <span class="railCount" data-bind="commentCount">0</span>
+      </button>
+
+      <button class="railBtn" type="button" data-action="share">
+        <span class="railIcon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="white" aria-hidden="true">
+            <path d="M14 9l-4 6 4-2 6 3V7l-6 2z"/>
+            <path d="M4 20v-9a3 3 0 013-3h5" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <span class="railCount">Share</span>
+      </button>
+    </aside>
+
+    <div class="productTag" role="button" tabindex="0" aria-label="Tagged product">
+      <img class="productImg" data-bind="productImg" src="" alt="Product" loading="lazy" decoding="async" />
+      <div class="productMeta">
+        <div class="productTitle" data-bind="productTitle">Produkt</div>
+        <div class="productSub" data-bind="productSub">Tap to view product</div>
+      </div>
+      <button class="productBtn" type="button" data-action="product">Shiko</button>
+    </div>
+
+    <div class="tapHint">Paused</div>
+  </template>
+
+  <!-- =========================================================
+       MAIN: Feed
+       ========================================================= -->
+  <main class="reels" id="reels" aria-label="MENYRA Stories">
+    <!-- WICHTIG: src NICHT im HTML setzen -> nur data-src, JS hängt nur nahe Videos an -->
+
+    <section class="reel" data-index="0" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="128" data-comments="16" data-product-title="Burger + Fries" data-product-sub="Tap to view product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik1.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="1" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="74" data-comments="9" data-product-title="Classic Burger" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik2.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="2" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="203" data-comments="31" data-product-title="Coffee Special" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik3.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="3" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="56" data-comments="5" data-product-title="Daily Offer" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik4.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="4" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="88" data-comments="12" data-product-title="Burger Menu" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik5.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="5" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="145" data-comments="21" data-product-title="Coffee Shot" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik6.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="6" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="62" data-comments="8" data-product-title="Fries + Sauce" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik7.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="7" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="190" data-comments="27" data-product-title="Schwanz Special" data-product-sub="Mit sose" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik8.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="8" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="39" data-comments="3" data-product-title="Morning Coffee" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik9.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+
+    <section class="reel" data-index="9" data-name="Prince Coffe House" data-logo="./images/Prince-coffe-house-logo.jpg" data-like="211" data-comments="44" data-product-title="Burger + Drink" data-product-sub="Marked product (demo)" data-product-img="./images/speise1.avif">
+      <video class="reelVideo" crossorigin="anonymous" data-src="https://menyra.b-cdn.net/tik10.mp4" playsinline webkit-playsinline muted autoplay preload="none" loop></video>
+      <div class="vignette"></div>
+    </section>
+  </main>
+
+  <!-- =========================================================
+       COMMENTS
+       ========================================================= -->
+  <div class="commentsBackdrop" id="commentsBackdrop" aria-hidden="true"></div>
+
+  <section class="commentsSheet" id="commentsSheet" aria-hidden="true">
+    <div class="commentsTop">
+      <div class="commentsTitle">Komentet</div>
+      <button class="btnIcon" type="button" data-action="closeComments" aria-label="Close comments">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="white" d="M18.3 5.7 12 12l6.3 6.3-1.3 1.3-6.3-6.3-6.3 6.3-1.3-1.3L9.4 12 3.1 5.7 4.4 4.4l6.3 6.3L17 4.4l1.3 1.3z"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="commentsList" id="commentsList">
+      <div class="cItem"><div class="cUser">Ardi</div><div class="cText">🔥🔥 super</div></div>
+      <div class="cItem"><div class="cUser">Lina</div><div class="cText">Kur ka edhe sot?</div></div>
+      <div class="cItem"><div class="cUser">Denis</div><div class="cText">Perfect vibe</div></div>
+    </div>
+
+    <form class="commentsInput" id="commentsForm" autocomplete="off">
+      <input id="commentInput" type="text" placeholder="Shkruaj koment…" />
+      <button class="productBtn" type="submit">Send</button>
+    </form>
+  </section>
+
+  <!-- =========================================================
+       SCRIPT
+       ========================================================= -->
+  <script type="module">
+  // =========================================================
+  // ABSCHNITT A: DOM + Overlay Render (unverändert)
+  // =========================================================
+  const tpl = document.getElementById("overlayTpl");
+  const reels = Array.from(document.querySelectorAll(".reel"));
+  const videos = Array.from(document.querySelectorAll(".reelVideo"));
+  const reelsEl = document.getElementById("reels");
+  const toastEl = document.getElementById("toast");
+
+  const commentsBackdrop = document.getElementById("commentsBackdrop");
+  const commentsSheet = document.getElementById("commentsSheet");
+  const commentsList = document.getElementById("commentsList");
+  const commentsForm = document.getElementById("commentsForm");
+  const commentInput = document.getElementById("commentInput");
+  let commentsOpen = false;
+
+  reels.forEach((reel) => {
+    const frag = tpl.content.cloneNode(true);
+
+    const name = reel.getAttribute("data-name") || "Restaurant";
+    const logo = reel.getAttribute("data-logo") || "";
+    const like = reel.getAttribute("data-like") || "0";
+    const comments = reel.getAttribute("data-comments") || "0";
+    const pTitle = reel.getAttribute("data-product-title") || "Produkt";
+    const pSub = reel.getAttribute("data-product-sub") || "Tap to view product";
+    const pImg = reel.getAttribute("data-product-img") || "";
+
+    const logoEl = frag.querySelector('[data-bind="logo"]');
+    const nameEl = frag.querySelector('[data-bind="name"]');
+    const likeCountEl = frag.querySelector('[data-bind="likeCount"]');
+    const commentCountEl = frag.querySelector('[data-bind="commentCount"]');
+    const pTitleEl = frag.querySelector('[data-bind="productTitle"]');
+    const pSubEl = frag.querySelector('[data-bind="productSub"]');
+    const pImgEl = frag.querySelector('[data-bind="productImg"]');
+
+    if (logoEl && logo) logoEl.src = logo;
+    if (nameEl) nameEl.textContent = name;
+
+    const likeBtn = frag.querySelector('.railBtn[data-action="like"]');
+    if (likeBtn) likeBtn.setAttribute("data-count", String(parseInt(like,10)||0));
+    if (likeCountEl) likeCountEl.textContent = String(parseInt(like,10)||0);
+
+    const comBtn = frag.querySelector('.railBtn[data-action="comment"]');
+    if (comBtn) comBtn.setAttribute("data-count", String(parseInt(comments,10)||0));
+    if (commentCountEl) commentCountEl.textContent = String(parseInt(comments,10)||0);
+
+    if (pTitleEl) pTitleEl.textContent = pTitle;
+    if (pSubEl) pSubEl.textContent = pSub;
+    if (pImgEl && pImg) pImgEl.src = pImg;
+
+    reel.appendChild(frag);
+  });
+
+  // =========================================================
+  // ABSCHNITT B: Network Mode (3G/WLAN)
+  // =========================================================
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const effectiveType = (conn && conn.effectiveType) ? String(conn.effectiveType) : "";
+  const saveData = !!(conn && conn.saveData);
+
+  const LOW_DATA = saveData || /(^|-)2g|3g|slow-2g/i.test(effectiveType);
+
+  // =========================================================
+  // ABSCHNITT C: Toast + Sound (FIX: Sound schaltet ohne Rebuffer)
+  // =========================================================
+  const SOUND_KEY = "menyra_story_sound";
+  let soundOn = (localStorage.getItem(SOUND_KEY) || "off") === "on";
+  let audioUnlocked = false;
+
+  let activeIndex = 0;
+  let playToken = 0;
+
+  function showToast(text){
+    if (!toastEl) return;
+    toastEl.textContent = text;
+    toastEl.classList.add("show");
+    window.setTimeout(() => toastEl.classList.remove("show"), 700);
+  }
+
+  function applySoundToVideo(v){
+    if (!v) return;
+    const wantSound = audioUnlocked && soundOn;
+    try{
+      v.muted = !wantSound;
+      v.volume = wantSound ? 1 : 0;
+    }catch(_){}
+  }
+
+  function setSoundState(on){
+    soundOn = !!on;
+    localStorage.setItem(SOUND_KEY, soundOn ? "on" : "off");
+    showToast(soundOn ? "Sound: ON" : "Sound: OFF");
+
+    // WICHTIG: kein playOnly() hier -> kein detach/attach -> kein Rebuffer
+    applySoundToVideo(videos[activeIndex]);
+  }
+
+  // =========================================================
+  // ABSCHNITT D: Video Attach/Detach (UPGRADE: schnelleres Swipen)
+  // - Wir halten 4 Videos im RAM (prev, current, next, next+1) auf gutem Netz
+  // - Und detach NICHT sofort, sondern leicht verzögert (Back-Scroll ohne Nachladen)
+  // =========================================================
+  const DETACH_DELAY_MS = LOW_DATA ? 0 : 850; // sehr wichtig für "schnelles sliden"
+  const detachTimers = new Map();
+
+  function cancelDetach(i){
+    const t = detachTimers.get(i);
+    if (t){
+      clearTimeout(t);
+      detachTimers.delete(i);
+    }
+  }
+
+  function scheduleDetach(i){
+    if (DETACH_DELAY_MS <= 0){
+      detachVideo(i);
+      return;
+    }
+    if (detachTimers.has(i)) return;
+    detachTimers.set(i, setTimeout(() => {
+      detachTimers.delete(i);
+      detachVideo(i);
+    }, DETACH_DELAY_MS));
+  }
+
+  // OPTIONAL: Mini-Warmup (Range-Request) für NEXT – nur bei gutem Netz
+  // Das kann den "schwarzen Moment" beim schnellen Wischen reduzieren.
+  const warmed = new Set();
+  async function warmupUrl(url){
+    if (!url || LOW_DATA) return;
+    if (warmed.has(url)) return;
+    warmed.add(url);
+
+    try{
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 900);
+      // Kleiner Range reicht oft, damit CDN + TCP "warm" sind
+      await fetch(url, {
+        method: "GET",
+        mode: "cors",
+        credentials: "omit",
+        signal: ctrl.signal,
+        headers: { Range: "bytes=0-220000" }
+      }).catch(() => {});
+      clearTimeout(t);
+    }catch(_){}
+  }
+
+  function attachVideo(i, preloadMode){
+    const v = videos[i];
+    if (!v) return;
+
+    const url = v.getAttribute("data-src");
+    if (!url) return;
+
+    // preload zuerst setzen, dann src
+    if (v.preload !== preloadMode) v.preload = preloadMode;
+
+    if (!v.dataset.attached){
+      v.src = url;
+      v.dataset.attached = "1";
+      try { v.load(); } catch(_){}
+    }
+  }
+
+  function detachVideo(i){
+    const v = videos[i];
+    if (!v || !v.dataset.attached) return;
+
+    try { v.pause(); } catch(_){}
+    v.muted = true;
+    v.removeAttribute("src");
+    delete v.dataset.attached;
+
+    try { v.load(); } catch(_){}
+  }
+
+  function updateNearSources(idx){
+    // 3G: current + next
+    // WLAN/4G: prev + current + next + next+1 (schnelles swipe fühlt sich viel besser an)
+    const keep = LOW_DATA
+      ? new Set([idx, idx+1])
+      : new Set([idx-1, idx, idx+1, idx+2]);
+
+    for (let i = 0; i < videos.length; i++){
+      if (keep.has(i)){
+        cancelDetach(i);
+
+        const preloadMode =
+          (i === idx) ? "auto" :
+          (i === idx+1) ? (LOW_DATA ? "metadata" : "auto") :
+          (i === idx+2) ? (LOW_DATA ? "none" : "metadata") :
+          "metadata";
+
+        attachVideo(i, preloadMode);
+      } else {
+        scheduleDetach(i);
+      }
+    }
+
+    // Warmup nur für next (und next+1 bei gutem Netz)
+    const v1 = videos[idx+1];
+    if (v1?.getAttribute) warmupUrl(v1.getAttribute("data-src"));
+    if (!LOW_DATA){
+      const v2 = videos[idx+2];
+      if (v2?.getAttribute) warmupUrl(v2.getAttribute("data-src"));
+    }
+  }
+
+  function waitFor(el, event, timeoutMs){
+    return new Promise((resolve, reject) => {
+      let done = false;
+      const t = window.setTimeout(() => {
+        if (done) return;
+        done = true;
+        cleanup();
+        reject(new Error("timeout"));
+      }, timeoutMs);
+
+      function onEvt(){
+        if (done) return;
+        done = true;
+        cleanup();
+        resolve();
+      }
+
+      function cleanup(){
+        window.clearTimeout(t);
+        el.removeEventListener(event, onEvt);
+      }
+
+      el.addEventListener(event, onEvt, { once: true });
+    });
+  }
+
+  async function safePlay(v){
+    try{
+      await v.play();
+      return true;
+    }catch(_){
+      // Loadeddata ist oft schneller als canplay
+      try { await waitFor(v, "loadeddata", 900); } catch(__){}
+      try { await v.play(); return true; } catch(___){ return false; }
+    }
+  }
+
+  async function playOnly(index){
+    const token = ++playToken;
+    activeIndex = index;
+
+    updateNearSources(index);
+
+    // stop other playing
+    videos.forEach((v, i) => {
+      const reel = reels[i];
+      if (i !== index){
+        try { v.pause(); } catch(_){}
+        v.muted = true;
+        reel?.classList.remove("is-paused");
+      }
+    });
+
+    const v = videos[index];
+    if (!v) return;
+
+    // Autoplay: immer muted starten
+    v.muted = true;
+    v.volume = 0;
+
+    if (token !== playToken) return;
+
+    const ok = await safePlay(v);
+    if (token !== playToken) return;
+
+    if (ok){
+      // Sound ggf. ohne reload aktivieren
+      applySoundToVideo(v);
+      reels[index]?.classList.remove("is-paused");
+    } else {
+      reels[index]?.classList.add("is-paused");
+    }
+  }
+
+  // =========================================================
+  // ABSCHNITT E: Init + IntersectionObserver (stabil)
+  // =========================================================
+  setSoundState(soundOn);
+
+  // Start: current sofort + next sofort attach (macht Start schneller)
+  updateNearSources(0);
+  attachVideo(0, "auto");
+  attachVideo(1, LOW_DATA ? "metadata" : "auto");
+  playOnly(0);
+
+  const io = new IntersectionObserver((entries) => {
+    let best = null;
+    for (const e of entries){
+      if (!e.isIntersecting) continue;
+      if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+    }
+    if (!best) return;
+
+    const idx = Number(best.target.getAttribute("data-index") || "0");
+    if (Number.isFinite(idx) && idx !== activeIndex){
+      playOnly(idx);
+    }
+  }, { root: reelsEl, threshold: [0.65, 0.8, 0.92] });
+
+  reels.forEach(r => io.observe(r));
+
+  // =========================================================
+  // ABSCHNITT F: Comments Sheet (unverändert)
+  // =========================================================
+  function lockFeed(lock){
+    reelsEl.style.pointerEvents = lock ? "none" : "";
+    reelsEl.style.overflowY = lock ? "hidden" : "";
+  }
+  function openComments(){
+    if (commentsOpen) return;
+    commentsOpen = true;
+    commentsBackdrop.classList.add("open");
+    commentsSheet.classList.add("open");
+    lockFeed(true);
+    window.setTimeout(() => commentInput?.focus?.(), 60);
+  }
+  function closeComments(){
+    if (!commentsOpen) return;
+    commentsOpen = false;
+    commentsBackdrop.classList.remove("open");
+    commentsSheet.classList.remove("open");
+    lockFeed(false);
+  }
+  commentsBackdrop?.addEventListener("click", closeComments, { passive:true });
+
+  commentsForm?.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const val = (commentInput?.value || "").trim();
+    if (!val) return;
+
+    const item = document.createElement("div");
+    item.className = "cItem";
+    item.innerHTML = `<div class="cUser">You</div><div class="cText"></div>`;
+    item.querySelector(".cText").textContent = val;
+    commentsList?.prepend(item);
+    commentInput.value = "";
+  });
+
+  // =========================================================
+  // ABSCHNITT G: Global Controls (FIX: Sound ohne playOnly)
+  // =========================================================
+  document.addEventListener("click", async (e) => {
+    const actionEl = e.target.closest("[data-action]");
+    if (actionEl){
+      const action = actionEl.getAttribute("data-action");
+
+      if (action === "back"){
+        window.location.href = "./karte-demo.html";
+        return;
+      }
+
+      if (action === "sound"){
+        audioUnlocked = true;
+        setSoundState(!soundOn);
+
+        // WICHTIG: NICHT playOnly(activeIndex) -> das verursacht Rebuffer/Lag
+        const v = videos[activeIndex];
+        if (v && v.paused){
+          try { await safePlay(v); } catch(_){}
+          applySoundToVideo(v);
+        }
+        return;
+      }
+
+      if (action === "like"){
+        const btn = actionEl.closest('.railBtn[data-action="like"]');
+        if (!btn) return;
+        const countEl = btn.querySelector(".railCount");
+        const cur = parseInt(btn.getAttribute("data-count") || "0", 10) || 0;
+        const liked = btn.classList.toggle("is-liked");
+        const next = liked ? cur + 1 : Math.max(0, cur - 1);
+        btn.setAttribute("data-count", String(next));
+        if (countEl) countEl.textContent = String(next);
+        return;
+      }
+
+      if (action === "comment"){ openComments(); return; }
+      if (action === "closeComments"){ closeComments(); return; }
+      if (action === "share"){ alert("Share (demo)"); return; }
+      if (action === "product"){ alert("Produkt öffnen (demo) — später detajet/product page"); return; }
+    }
+
+    if (commentsOpen) return;
+
+    const video = e.target.closest("video.reelVideo");
+    if (!video) return;
+
+    const reel = video.closest(".reel");
+    const idx = Number(reel?.getAttribute("data-index") || "0");
+
+    if (video.paused){
+      playOnly(Number.isFinite(idx) ? idx : activeIndex);
+    } else {
+      video.pause();
+      reel?.classList.add("is-paused");
+    }
+  }, { passive: true });
+
+  let lastTap = 0;
+  document.addEventListener("touchend", (e) => {
+    if (commentsOpen) return;
+    const now = Date.now();
+    const isDouble = (now - lastTap) < 260;
+    lastTap = now;
+    if (!isDouble) return;
+    const reel = e.target.closest(".reel");
+    if (!reel) return;
+    const likeBtn = reel.querySelector('.railBtn[data-action="like"]');
+    if (likeBtn) likeBtn.click();
+  }, { passive: true });
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden){
+      videos.forEach(v => { try { v.pause(); } catch(_){ } });
+    } else {
+      updateNearSources(activeIndex);
+      playOnly(activeIndex);
+    }
+  }, { passive: true });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeComments();
+  }, { passive:true });
+</script>
+</body>
+</html>
