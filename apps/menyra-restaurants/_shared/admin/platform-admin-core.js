@@ -1382,8 +1382,8 @@ async function initOwnerStoriesUI({ restaurantId, user }){
           st && (st.textContent = "Upload fertig. Speichere Story…");
           try {
             const ttlHours = start?.limits?.ttlHours || start?.ttlHours || 24;
-            // Speichere direkte MP4-URL statt HLS
-            const videoUrl = `https://vz-de.b-cdn.net/${encodeURIComponent(String(start.videoId))}/original.mp4`;
+            // Speichere HLS-URL für Bunny Stream (funktioniert in allen Browsern mit hls.js)
+            const videoUrl = `https://vz-de.b-cdn.net/${encodeURIComponent(String(start.videoId))}/index.m3u8`;
 
             // Neue Felder auslesen
             const titleInput = $("storyTitleInput");

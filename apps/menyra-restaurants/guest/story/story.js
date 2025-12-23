@@ -82,16 +82,29 @@ function renderStories(stories, container, meta){
       : "");
 
     if (videoUrl) {
-      // Verwende <video> für direkte Storage-Links - volle Kontrolle über Playback
+      // Verwende <video> für direkte Links - mit HLS-Unterstützung
       const video = document.createElement("video");
       video.className = "reel-video";
-      video.src = videoUrl;
       video.muted = true;
       video.loop = true;
       video.playsInline = true;
       video.preload = "metadata";
-      video.controls = false; // Keine Controls anzeigen
+      video.controls = false; // Keine Controls!
       video.setAttribute("webkit-playsinline", "");
+
+      // HLS-Unterstützung für .m3u8 URLs
+      if (videoUrl.includes('.m3u8') && Hls.isSupported()) {
+        const hls = new Hls({
+          enableWorker: false, // Für bessere Performance
+          maxBufferLength: 10, // Kurzer Buffer für Stories
+          maxMaxBufferLength: 20
+        });
+        hls.loadSource(videoUrl);
+        hls.attachMedia(video);
+      } else {
+        video.src = videoUrl;
+      }
+
       videoElement = video;
     } else if (embedUrl) {
       // Fallback zu iframe für Stream
