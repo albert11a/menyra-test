@@ -41,6 +41,9 @@ function esc(str) {
   }[c]));
 }
 
+// alias for legacy usage in some renderers
+function escapeHtml(s) { return esc(s); }
+
 function nowMs() { return Date.now(); }
 
 function lsGet(key) {
@@ -151,53 +154,132 @@ function mountLoginModal(roleLabel = "Login") {
 // Views Navigation
 // -------------------------
 function initNav() {
-  const navLinks = qsa('[data-section]');
   const views = qsa('.m-view[data-view]');
+
+  function closeMobileMenu() {
+    const mm = $("mobileMenu") || document.querySelector(".m-mobile-menu");
+    const ov = $("mobileMenuOverlay") || document.querySelector(".m-mobile-menu-overlay");
+    if (mm) mm.classList.remove("is-open");
+    if (ov) {
+      ov.classList.remove("is-open");
+      ov.classList.remove("is-visible");
+    }
+  }
 
   function showView(name) {
     views.forEach(v => v.style.display = (v.dataset.view === name) ? "" : "none");
-    navLinks.forEach(a => {
+
+    // Active state should reflect ALL nav links currently in DOM (desktop + mobile)
+    const allLinks = qsa('[data-section]');
+    allLinks.forEach(a => {
       if (a.dataset.section === name) a.classList.add("is-active");
       else a.classList.remove("is-active");
     });
   }
 
-  navLinks.forEach(a => {
-    a.addEventListener("click", (e) => {
-      e.preventDefault();
-      showView(a.dataset.section);
-      // close mobile menu if open
-      const mm = document.querySelector(".m-mobile-menu");
-      const mo = document.querySelector(".m-mobile-menu-overlay");
-      if (mm) mm.classList.remove("is-open");
-      if (mo) mo.classList.remove("is-open");
-    });
+  // Click delegation for navigation links (works for dynamically injected mobile nav)
+  document.addEventListener("click", (e) => {
+    const a = e.target.closest('[data-section]');
+    if (!a) return;
+
+    // Only handle anchors/buttons meant for navigation
+    const section = a.dataset.section;
+    if (!section) return;
+
+    e.preventDefault();
+    showView(section);
+    closeMobileMenu();
   });
 
-  // burger / mobile menu
+  // ----------------------------------------------------------
+  // Mobile Menu Wiring (Burger + Overlay + Close Button)
+  // ----------------------------------------------------------
   const burger = $("burgerToggle");
-  const mobileMenu = $("mobileMenu");
-  const mobileOverlay = document.querySelector(".m-mobile-menu-overlay");
-  if (burger && mobileMenu) {
-    burger.addEventListener("click", () => {
-      mobileMenu.classList.toggle("is-open");
-      if (mobileOverlay) mobileOverlay.classList.toggle("is-open");
-    });
+  const mobileMenu = $("mobileMenu") || document.querySelector(".m-mobile-menu");
+  const overlay = $("mobileMenuOverlay") || document.querySelector(".m-mobile-menu-overlay");
+  const closeBtn = $("mobileMenuClose");
+
+  function openMobileMenu() {
+    if (!mobileMenu) return;
+    mobileMenu.classList.add("is-open");
+    if (overlay) {
+      overlay.classList.add("is-visible");
+      overlay.classList.add("is-open"); // keep compatibility if some CSS uses is-open
+    }
   }
-  if (mobileOverlay && mobileMenu) {
-    mobileOverlay.addEventListener("click", () => {
-      mobileMenu.classList.remove("is-open");
-      mobileOverlay.classList.remove("is-open");
-    });
+  function toggleMobileMenu() {
+    if (!mobileMenu) return;
+    const willOpen = !mobileMenu.classList.contains("is-open");
+    if (willOpen) openMobileMenu();
+    else closeMobileMenu();
   }
 
-  // theme toggle (simple)
+  if (burger && mobileMenu) burger.addEventListener("click", toggleMobileMenu);
+  if (closeBtn) closeBtn.addEventListener("click", closeMobileMenu);
+  if (overlay) overlay.addEventListener("click", closeMobileMenu);
+
+  // ----------------------------------------------------------
+  // Mobile Navigation Content (NO empty menu)
+  // Build from desktop sidebar (#sidebarNav) to stay 1:1.
+  // ----------------------------------------------------------
+  function ensureMobileNav() {
+    if (!mobileMenu) return;
+
+    const inner = mobileMenu.querySelector(".m-mobile-menu-inner") || mobileMenu;
+    if (!inner) return;
+
+    // Create host once
+    let host = document.getElementById("mobileNavHost");
+    if (!host) {
+      const section = document.createElement("div");
+      section.className = "m-mobile-menu-section";
+      section.innerHTML = '<div id="mobileNavHost"></div>';
+      // insert right after the search section (if present), else near top
+      const searchSection = inner.querySelector(".m-mobile-menu-section");
+      if (searchSection && searchSection.parentNode) {
+        searchSection.parentNode.insertBefore(section, searchSection.nextSibling);
+      } else {
+        inner.insertBefore(section, inner.firstChild);
+      }
+      host = document.getElementById("mobileNavHost");
+    }
+
+    if (!host) return;
+
+    // Build list
+    const desktopLinks = Array.from(document.querySelectorAll("#sidebarNav a[data-section]"));
+    const list = document.createElement("ul");
+    list.className = "m-sidebar-nav m-sidebar-nav--mobile";
+
+    desktopLinks.forEach((dl) => {
+      const li = document.createElement("li");
+      const a = document.createElement("a");
+      a.href = "#";
+      a.dataset.section = dl.dataset.section;
+      a.className = dl.className || "";
+      // keep visuals
+      a.innerHTML = dl.innerHTML;
+      li.appendChild(a);
+      list.appendChild(li);
+    });
+
+    host.innerHTML = "";
+    host.appendChild(list);
+  }
+
+  // Build once on load
+  ensureMobileNav();
+
+  // Theme toggle (existing)
   const themeBtn = $("themeToggle");
   if (themeBtn) {
     themeBtn.addEventListener("click", () => {
       document.documentElement.classList.toggle("is-dark");
       try {
-        localStorage.setItem("menyra_theme", document.documentElement.classList.contains("is-dark") ? "dark" : "light");
+        localStorage.setItem(
+          "menyra_theme",
+          document.documentElement.classList.contains("is-dark") ? "dark" : "light"
+        );
       } catch {}
     });
     try {
@@ -210,6 +292,7 @@ function initNav() {
   showView("dashboard");
   return { showView };
 }
+
 
 // -------------------------
 // Data Access (cost optimized)
@@ -672,13 +755,7 @@ function toPublicOffer(o){
   };
 }
 
-async function loadPublicOffers(restaurantId) {
-  const ref = doc(db, "restaurants", restaurantId, "public", "offers");
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return [];
-  const data = snap.data() || {};
-  return Array.isArray(data.items) ? data.items : [];
-}
+
 
 async function loadOffersFromCollection(restaurantId){
   const ref = collection(db, "restaurants", restaurantId, "offers");
@@ -1546,21 +1623,24 @@ function bindMenuModal(){
       menuAddBtn.style.display = "none";
     } else {
       const menuPublishBtn = document.getElementById("menuPublishBtn");
-
-  if (menuPublishBtn) {
-    menuPublishBtn.addEventListener("click", async () => {
-      try{
-        menuStatus.textContent = "Publishing…";
-        await publishMenuToPublic(rid, menuItems);
-        menuStatus.textContent = "Published ✓";
-      }catch(err){
-        console.error(err);
-        menuStatus.textContent = "Publish error";
+      if (menuPublishBtn) {
+        menuPublishBtn.addEventListener("click", async () => {
+          try{
+            if (!currentRestaurantId) {
+              menuStatus.textContent = "Kein Lokal ausgewählt.";
+              return;
+            }
+            menuStatus.textContent = "Publishing…";
+            await publishMenuToPublic(currentRestaurantId, currentMenuItems);
+            menuStatus.textContent = "Published ✓";
+          }catch(err){
+            console.error(err);
+            menuStatus.textContent = "Publish error";
+          }
+        });
       }
-    });
-  }
 
-  menuAddBtn.addEventListener("click", () => {
+      menuAddBtn.addEventListener("click", () => {
         editMenuIndex = -1;
         miType && (miType.disabled = false, miType.value = "food");
         miCategory && (miCategory.value = "");
