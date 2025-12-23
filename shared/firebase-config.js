@@ -1,15 +1,15 @@
-/* =========================================================
-   MENYRA /shared/firebase-config.js
-   Browser ES-Module Firebase setup (no bundler)
-   Version: Firebase JS SDK 11.0.0
-   ========================================================= */
+// =========================================================
+// MENYRA /shared/firebase-config.js
+// Browser ES-Module Firebase setup (no bundler)
+// Firebase v11 (matches your config)
+// =========================================================
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
 import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-analytics.js";
 
-// Deine Konfiguration
 const firebaseConfig = {
   apiKey: "AIzaSyAq5kzdGITDekgajC0uUBny63JjS1DIPEU",
   authDomain: "menyra-c0e68.firebaseapp.com",
@@ -20,23 +20,15 @@ const firebaseConfig = {
   measurementId: "G-YLFKC8726B"
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+export const storage = getStorage(app);
 
-// Firestore
-const db = getFirestore(app);
-
-// Auth (Admins)
-const auth = getAuth(app);
-
-// Storage (nur falls du es irgendwo brauchst — Medien bleiben bei Bunny)
-const storage = getStorage(app);
-
-// Analytics optional (verhindert Fehler in Localhost/Browsern ohne Support)
-let analytics = null;
+// Analytics optional (safe)
+export let analytics = null;
 try {
   isSupported().then((ok) => {
     if (ok) analytics = getAnalytics(app);
   }).catch(() => {});
 } catch (_) {}
-
-export { app, db, auth, storage, analytics };

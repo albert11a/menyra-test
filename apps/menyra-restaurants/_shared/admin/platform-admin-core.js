@@ -5,12 +5,12 @@
 // - No realtime listeners (no onSnapshot)
 // =========================================================
 
-import { db, auth } from "/shared/firebase-config.js";
+import { db, auth } from "../../../../shared/firebase-config.js";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 import {
 collection,
@@ -26,7 +26,7 @@ collection,
   limit,
   serverTimestamp
 
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // -------------------------
 // Helpers
@@ -527,6 +527,71 @@ async function loadPublicMenuItems(restaurantId) {
   return Array.isArray(data.items) ? data.items : [];
 }
 
+/* =========================================================
+   MENU VIEW LOGIC (Speisekarte) — CEO/STAFF/OWNER
+   - Data source: restaurants/{id}/public/menu (single doc, cheap reads)
+   - Each item must have type: "food" | "drink"
+   ========================================================= */
+
+function normalizeMenuType(v) {
+  const t = String(v || "").toLowerCase().trim();
+  if (t === "drink" || t === "drinks" || t === "beverage" || t === "getränke" || t === "getraenke") return "drink";
+  return "food";
+}
+
+function menuRowBadge(type) {
+  const t = normalizeMenuType(type);
+  return t === "drink" ? "🥤 Getränk" : "🍲 Speise";
+}
+
+function renderMenuTable(items, filterType, canDelete) {
+  const body = $("menuTableBody");
+  if (!body) return;
+  body.innerHTML = "";
+
+  const list = Array.isArray(items) ? items.slice() : [];
+  const ft = (filterType || "all");
+  const filtered = (ft === "all") ? list : list.filter(i => normalizeMenuType(i.type) === ft);
+
+  if (!filtered.length) {
+    body.innerHTML = `<div class="m-empty">Keine Items.</div>`;
+    return;
+  }
+
+  filtered.forEach((it, idx) => {
+    const row = document.createElement("div");
+    row.className = "m-table-row";
+
+    const name = document.createElement("div");
+    name.innerHTML = `<strong>${escapeHtml(it.name || "Item")}</strong><div class="m-muted">${escapeHtml(it.category || "")}</div>`;
+
+    const price = document.createElement("div");
+    price.textContent = (it.price ?? "") === "" ? "—" : `${Number(it.price||0).toFixed(2)} €`;
+
+    const typ = document.createElement("div");
+    typ.textContent = menuRowBadge(it.type);
+
+    const st = document.createElement("div");
+    st.innerHTML = it.available === false
+      ? `<span class="m-badge m-badge--ghost">Nicht verfügbar</span>`
+      : `<span class="m-badge m-badge--success">Verfügbar</span>`;
+
+    const act = document.createElement("div");
+    act.className = "m-table-actions";
+    act.innerHTML = `
+      <button class="m-btn m-btn--xs m-btn--ghost" data-mi-edit="${idx}">Bearbeiten</button>
+      ${canDelete ? `<button class="m-btn m-btn--xs m-btn--danger" data-mi-del="${idx}">Löschen</button>` : ""}
+    `;
+
+    row.appendChild(name);
+    row.appendChild(price);
+    row.appendChild(typ);
+    row.appendChild(st);
+    row.appendChild(act);
+    body.appendChild(row);
+  });
+}
+
 function fillOfferMenuSelect(items) {
   const sel = $("offerMenuItem");
   if (!sel) return;
@@ -634,38 +699,28 @@ async function fetchLeads(role, uid){
   const ref = collection(db, "leads");
   let snaps = null;
 
-  async function tryStaff(field){
-    try {
-      // index-free query (no orderBy). We'll sort client-side by createdAt.
-      return await getDocs(query(ref, where(field, "==", uid), limit(200)));
-    } catch (e) {
-      return null;
-    }
-  }
-
+  // Staff: try scopeStaffId -> fallback createdByStaffId
   if (role === "staff") {
-    snaps = await tryStaff("scopeStaffId");
-    if (!snaps || snaps.empty) snaps = await tryStaff("createdByStaffId");
-    if (!snaps || snaps.empty) snaps = await tryStaff("assignedStaffId");
+    try {
+      snaps = await getDocs(query(ref, where("scopeStaffId","==", uid), orderBy("createdAt","desc"), limit(200)));
+    } catch (_) {
+      snaps = null;
+    }
+    if (!snaps || snaps.empty) {
+      try {
+        snaps = await getDocs(query(ref, where("createdByStaffId","==", uid), orderBy("createdAt","desc"), limit(200)));
+      } catch (_) {
+        snaps = null;
+      }
+    }
   }
 
   if (!snaps) {
-    // CEO (or fallback): also avoid index issues by not forcing orderBy
-    try {
-      snaps = await getDocs(query(ref, limit(200)));
-    } catch (e) {
-      snaps = await getDocs(ref);
-    }
+    // CEO (or fallback)
+    snaps = await getDocs(query(ref, orderBy("createdAt","desc"), limit(200)));
   }
 
   const rows = snaps.docs.map(d => normalizeLead({ id: d.id, ...(d.data()||{}) }));
-  // client-side sort (newest first)
-  rows.sort((a,b)=>{
-    const ta = a.createdAt?.seconds ? a.createdAt.seconds : 0;
-    const tb = b.createdAt?.seconds ? b.createdAt.seconds : 0;
-    return tb - ta;
-  });
-
   cacheSet(cacheKey, rows);
   return rows;
 }
@@ -1081,11 +1136,257 @@ await refreshLeads(true);
       if (role === "owner" && restaurants[0]) {
         offersSel.value = restaurants[0].id;
       }
+      // Also fill menu selector
+      fillMenuRestaurantSelect(restaurants);
     }
 
     let currentOffers = [];
     let currentMenuItems = [];
-    let currentRestaurantId = role === "owner" && restaurants[0] ? restaurants[0].id : "";
+    let currentRestaurantId = role === "owner" && restaurants[0] ? restaurants[0].id : "";// =========================================================
+// MENU VIEW: Speisekarte (cheap reads via public/menu)
+// =========================================================
+const menuSel = $("menuRestaurantSelect");
+const menuAddBtn = $("menuAddBtn");
+const menuStatus = $("menuStatus");
+const menuTypeSeg = $("menuTypeSeg");
+const menuOverlay = $("menuItemModalOverlay");
+const menuClose = $("menuItemModalClose");
+const menuForm = $("menuItemForm");
+
+const miType = $("miType");
+const miCategory = $("miCategory");
+const miName = $("miName");
+const miPrice = $("miPrice");
+const miDesc = $("miDesc");
+const miImageUrl = $("miImageUrl");
+const miAvailable = $("miAvailable");
+const miCancel = $("miCancel");
+const miTitle = $("menuItemModalTitle");
+const miStatus = $("menuItemModalStatus");
+
+let menuFilterType = "all";
+let editMenuIndex = -1;
+
+function setMenuStatus(t){ if(menuStatus) menuStatus.textContent = t || ""; }
+
+function canCreateMenuItems(){
+  return (role === "ceo" || role === "staff"); // Owner can't create new items
+}
+function canDeleteMenuItems(){
+  return (role === "ceo" || role === "staff");
+}
+
+function openMenuModal(mode){
+  if(!menuOverlay) return;
+  menuOverlay.style.display = "";
+  miStatus && (miStatus.textContent = "");
+  if(mode === "new"){
+    miTitle && (miTitle.textContent = "Neues Item");
+  } else {
+    miTitle && (miTitle.textContent = "Item bearbeiten");
+  }
+}
+function closeMenuModal(){
+  if(!menuOverlay) return;
+  menuOverlay.style.display = "none";
+  editMenuIndex = -1;
+}
+
+function fillMenuRestaurantSelect(restaurants){
+  if(!menuSel) return;
+  menuSel.innerHTML = "";
+  restaurants.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = r.name || r.id;
+    menuSel.appendChild(opt);
+  });
+  if(role === "owner" && restaurants[0]){
+    menuSel.value = restaurants[0].id;
+  }
+}
+
+async function loadMenuUI(rid){
+  if(!rid){
+    setMenuStatus("Bitte ein Lokal auswählen.");
+    renderMenuTable([], menuFilterType, canDeleteMenuItems());
+    return;
+  }
+  setMenuStatus("Lade…");
+  try{
+    await ensurePublicDocs(rid, { name:"", type:"cafe", city:"", logoUrl:"" });
+    currentMenuItems = await loadPublicMenuItems(rid);
+
+    // Normalize types for rendering (no auto-save here)
+    currentMenuItems = (currentMenuItems || []).map(i => ({
+      ...i,
+      id: i.id || crypto.randomUUID?.() || String(Math.random()).slice(2),
+      type: normalizeMenuType(i.type || i.kind || i.group || i.section || "food"),
+      available: i.available !== false
+    }));
+
+    renderMenuTable(currentMenuItems, menuFilterType, canDeleteMenuItems());
+    setMenuStatus(`${currentMenuItems.length} Items`);
+  }catch(err){
+    console.error(err);
+    setMenuStatus("Fehler beim Laden.");
+    renderMenuTable([], menuFilterType, canDeleteMenuItems());
+  }
+}
+
+async function saveMenuUI(){
+  if(!currentRestaurantId){ return; }
+  setMenuStatus("Speichere…");
+  try{
+    await setDoc(doc(db, "restaurants", currentRestaurantId, "public", "menu"), {
+      items: currentMenuItems || [],
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    // refresh offers select for linking
+    fillOfferMenuSelect(currentMenuItems || []);
+
+    setMenuStatus("Gespeichert.");
+    renderMenuTable(currentMenuItems, menuFilterType, canDeleteMenuItems());
+  }catch(err){
+    console.error(err);
+    setMenuStatus("Speichern fehlgeschlagen.");
+  }
+}
+
+function bindMenuClicks(){
+  const body = $("menuTableBody");
+  if(!body) return;
+
+  body.addEventListener("click", async (e) => {
+    const editBtn = e.target.closest("[data-mi-edit]");
+    if(editBtn){
+      const idx = Number(editBtn.getAttribute("data-mi-edit"));
+      const it = currentMenuItems[idx];
+      if(!it) return;
+
+      editMenuIndex = idx;
+      miType && (miType.value = normalizeMenuType(it.type));
+      miCategory && (miCategory.value = it.category || "");
+      miName && (miName.value = it.name || "");
+      miPrice && (miPrice.value = (it.price ?? "") === "" ? "" : String(it.price));
+      miDesc && (miDesc.value = it.description || "");
+      miImageUrl && (miImageUrl.value = it.imageUrl || "");
+      miAvailable && (miAvailable.checked = it.available !== false);
+
+      // Owner can edit fields but we keep type selectable only if ceo/staff
+      if(miType){
+        miType.disabled = !(role === "ceo" || role === "staff");
+      }
+
+      openMenuModal("edit");
+      return;
+    }
+
+    const delBtn = e.target.closest("[data-mi-del]");
+    if(delBtn && canDeleteMenuItems()){
+      const idx = Number(delBtn.getAttribute("data-mi-del"));
+      const it = currentMenuItems[idx];
+      if(!it) return;
+      if(!confirm(`Item löschen: ${it.name || "Item"} ?`)) return;
+      currentMenuItems.splice(idx, 1);
+      await saveMenuUI();
+    }
+  });
+}
+
+function bindMenuTypeSeg(){
+  if(!menuTypeSeg) return;
+  menuTypeSeg.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-menu-type]");
+    if(!b) return;
+    const t = b.getAttribute("data-menu-type");
+    menuFilterType = t || "all";
+    menuTypeSeg.querySelectorAll(".m-seg-btn").forEach(x => x.classList.toggle("is-active", x === b));
+    renderMenuTable(currentMenuItems, menuFilterType, canDeleteMenuItems());
+  });
+}
+
+function bindMenuModal(){
+  if(menuClose) menuClose.addEventListener("click", closeMenuModal);
+  if(miCancel) miCancel.addEventListener("click", closeMenuModal);
+  if(menuOverlay){
+    menuOverlay.addEventListener("click", (e) => {
+      if(e.target === menuOverlay) closeMenuModal();
+    });
+  }
+
+  if(menuForm){
+    menuForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      miStatus && (miStatus.textContent = "");
+
+      if(!currentRestaurantId){
+        miStatus && (miStatus.textContent = "Kein Lokal ausgewählt.");
+        return;
+      }
+
+      const obj = {
+        id: (editMenuIndex >= 0 && currentMenuItems[editMenuIndex]?.id) ? currentMenuItems[editMenuIndex].id : (crypto.randomUUID?.() || String(Math.random()).slice(2)),
+        type: normalizeMenuType(miType?.value || "food"),
+        category: (miCategory?.value || "").trim() || "Sonstiges",
+        name: (miName?.value || "").trim(),
+        price: (miPrice?.value || "").trim() === "" ? "" : Number(miPrice.value),
+        description: (miDesc?.value || "").trim(),
+        longDescription: "", // keep optional
+        imageUrl: (miImageUrl?.value || "").trim() || null,
+        imageUrls: [],
+        available: miAvailable?.checked !== false,
+        updatedAt: Date.now()
+      };
+
+      if(!obj.name){
+        miStatus && (miStatus.textContent = "Name fehlt.");
+        return;
+      }
+
+      // Role rules
+      if(editMenuIndex === -1){
+        if(!canCreateMenuItems()){
+          miStatus && (miStatus.textContent = "Owner kann keine neuen Items erstellen.");
+          return;
+        }
+        currentMenuItems.unshift(obj);
+      } else {
+        // Owner can edit only selected fields
+        if(role === "owner"){
+          const old = currentMenuItems[editMenuIndex] || {};
+          obj.type = normalizeMenuType(old.type);
+          obj.id = old.id;
+        }
+        currentMenuItems[editMenuIndex] = { ...currentMenuItems[editMenuIndex], ...obj };
+      }
+
+      await saveMenuUI();
+      closeMenuModal();
+    });
+  }
+
+  if(menuAddBtn){
+    // hide for owner
+    if(!canCreateMenuItems()){
+      menuAddBtn.style.display = "none";
+    } else {
+      menuAddBtn.addEventListener("click", () => {
+        editMenuIndex = -1;
+        miType && (miType.disabled = false, miType.value = "food");
+        miCategory && (miCategory.value = "");
+        miName && (miName.value = "");
+        miPrice && (miPrice.value = "");
+        miDesc && (miDesc.value = "");
+        miImageUrl && (miImageUrl.value = "");
+        miAvailable && (miAvailable.checked = true);
+        openMenuModal("new");
+      });
+    }
+  }
+}
+
 
     async function loadOffersUI(rid) {
       if (!rid) {

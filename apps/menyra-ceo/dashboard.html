@@ -95,7 +95,8 @@
             <ul class="m-sidebar-nav" id="sidebarNav">
               <li><a href="#" class="is-active" data-section="dashboard"><span class="m-nav-icon">🏠</span><span class="m-nav-label">Dashboard</span></a></li>
               <li><a href="#" data-section="customers"><span class="m-nav-icon">🏪</span><span class="m-nav-label">Kunden</span></a></li>
-              <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Angebote</span></a></li>
+              <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Angebote</span></a>
+            <a class="m-nav-link" data-section="menu" href="#">🍽️ <span>Speisekarte</span></a></li>
               <li><a href="#" data-section="leads"><span class="m-nav-icon">🧲</span><span class="m-nav-label">Leads</span></a></li>
             </ul>
           </nav>
@@ -380,7 +381,105 @@
           </section>
 
           <!-- VIEW: LEADS -->
-          <section class="m-view" data-view="leads" style="display:none;">
+          <!-- ========================================================= -->
+<!-- VIEW: MENU (Speisekarte) -->
+<!-- ========================================================= -->
+<section class="m-view" data-view="menu" style="display:none;">
+  <div class="m-view-head">
+    <div class="m-view-title">Speisekarte</div>
+    <div class="m-view-actions" style="gap:10px; flex-wrap:wrap;">
+      <select id="menuRestaurantSelect" class="m-select2" style="min-width: 220px;"></select>
+      <div class="m-seg" id="menuTypeSeg" role="tablist" aria-label="Typ">
+        <button class="m-seg-btn is-active" data-menu-type="food" type="button">🍲 Speisen</button>
+        <button class="m-seg-btn" data-menu-type="drink" type="button">🥤 Getränke</button>
+        <button class="m-seg-btn" data-menu-type="all" type="button">📋 Alle</button>
+      </div>
+      <button id="menuAddBtn" class="m-btn" type="button">+ Neu</button>
+    </div>
+  </div>
+
+  <div class="m-card">
+    <div class="m-card-head">
+      <div class="m-card-title">Items</div>
+      <div class="m-muted" id="menuStatus"></div>
+    </div>
+
+    <div class="m-table">
+      <div class="m-table-head">
+        <div>Name</div>
+        <div>Preis</div>
+        <div>Typ</div>
+        <div>Status</div>
+        <div>Aktion</div>
+      </div>
+      <div id="menuTableBody"></div>
+    </div>
+  </div>
+</section>
+
+<!-- MENU ITEM MODAL -->
+<div class="m-modal-overlay" id="menuItemModalOverlay" style="display:none;">
+  <div class="m-modal">
+    <div class="m-modal-head">
+      <div class="m-modal-title" id="menuItemModalTitle">Item</div>
+      <button class="m-modal-close" id="menuItemModalClose" type="button">✕</button>
+    </div>
+
+    <form id="menuItemForm" class="m-form">
+      <div class="m-grid-2">
+        <div class="m-input-group">
+          <label for="miType">Typ</label>
+          <select id="miType" class="m-select2">
+            <option value="food">Speise</option>
+            <option value="drink">Getränk</option>
+          </select>
+        </div>
+        <div class="m-input-group">
+          <label for="miCategory">Kategorie</label>
+          <input id="miCategory" class="m-input" placeholder="z.B. Pizza / Softdrinks" />
+        </div>
+      </div>
+
+      <div class="m-grid-2">
+        <div class="m-input-group">
+          <label for="miName">Name</label>
+          <input id="miName" class="m-input" placeholder="z.B. Margarita" required />
+        </div>
+        <div class="m-input-group">
+          <label for="miPrice">Preis</label>
+          <input id="miPrice" class="m-input" placeholder="z.B. 7.50" />
+        </div>
+      </div>
+
+      <div class="m-input-group">
+        <label for="miDesc">Beschreibung</label>
+        <textarea id="miDesc" class="m-textarea" placeholder="Kurz…"></textarea>
+      </div>
+
+      <div class="m-grid-2">
+        <div class="m-input-group">
+          <label for="miImageUrl">Bild-URL (optional)</label>
+          <input id="miImageUrl" class="m-input" placeholder="https://…" />
+        </div>
+        <div class="m-input-group">
+          <label class="m-check">
+            <input id="miAvailable" type="checkbox" checked />
+            <span>Verfügbar</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="m-modal-footer">
+        <button class="m-btn m-btn--ghost" id="miCancel" type="button">Abbrechen</button>
+        <button class="m-btn" id="miSave" type="submit">Speichern</button>
+      </div>
+
+      <div class="m-muted" id="menuItemModalStatus" style="margin-top:10px;"></div>
+    </form>
+  </div>
+</div>
+
+<section class="m-view" data-view="leads" style="display:none;">
             <div class="m-page-header">
               <div>
                 <h1 class="m-page-title">Leads</h1>

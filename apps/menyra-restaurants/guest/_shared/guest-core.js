@@ -29,7 +29,7 @@ import {
   increment,
   addDoc,
   serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // =========================================================
 // ABSCHNITT 1: PARAMS / PAGE DETECTION
@@ -171,16 +171,6 @@ function navToDetajet(itemId) {
 // =========================================================
 
 const TTL_REST_MS = 24 * 60 * 60 * 1000; // 24h
-
-const MIGRATE_KEY_MENU = (rid) => `MENYRA_MIGRATED_PUBLIC_MENU_${rid}`;
-const MIGRATE_KEY_OFFERS = (rid) => `MENYRA_MIGRATED_PUBLIC_OFFERS_${rid}`;
-function migrateFlagGet(key){
-  try { return localStorage.getItem(key) === "1"; } catch { return false; }
-}
-function migrateFlagSet(key){
-  try { localStorage.setItem(key, "1"); } catch {}
-}
-
 const TTL_MENU_MS = 5 * 60 * 1000;      // 5min
 const TTL_OFFERS_MS = 2 * 60 * 1000;    // 2min
 
@@ -220,76 +210,64 @@ async function loadMenuItems() {
   // Prefer public/menu (1 read)
   try {
     const menuRef = doc(db, "restaurants", restaurantId, "public", "menu");
-    const menuSnap = await getDoc(menuRef);
-    if (menuSnap.exists()) {
-  const data = menuSnap.data() || {};
-  let items = Array.isArray(data.items) ? data.items : [];
+    const snap = await getDoc(menuRef);
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      const arr = Array.isArray(data.items) ? data.items : [];
+      const items = arr.map((d) => {
+        if (!d) d = {};
+        return {
+          id: d.id || crypto.randomUUID?.() || String(Math.random()).slice(2),
+          name: d.name || "Produkt",
+          description: d.description || "",
+          longDescription: d.longDescription || "",
+          price: Number(d.price) || 0,
+          category: d.category || "Sonstiges",
+          available: d.available !== false,
+          imageUrl: d.imageUrl || null,
+          imageUrls: Array.isArray(d.imageUrls) ? d.imageUrls : [],
+          type: d.type || d.kind || d.group || d.section || null,
+          likeCount: d.likeCount || 0,
+          commentCount: d.commentCount || 0,
+          ratingCount: d.ratingCount || 0,
+          ratingSum: d.ratingSum || 0,
+        };
+      }).filter((i) => i.available !== false);
 
-  // If public/menu exists but is empty, we may have legacy data in restaurants/{id}/menuItems.
-  // We migrate ONCE per restaurant (and per browser) to keep reads low afterwards.
-  if (!items.length && !migrateFlagGet(MIGRATE_KEY_MENU(restaurantId))) {
-    try {
-      const legacyRef = collection(db, "restaurants", restaurantId, "menuItems");
-      const legacySnap = await getDocs(legacyRef);
-      if (!legacySnap.empty) {
-        items = legacySnap.docs.map((docSnap) => {
-          const d = docSnap.data() || {};
-          return {
-            id: docSnap.id,
-            name: d.name || "Produkt",
-            description: d.description || "",
-            longDescription: d.longDescription || d.longDescr || "",
-            price: typeof d.price === "number" ? d.price : parseFloat(d.price || 0),
-            category: d.category || d.cat || "Food",
-            isDrink: !!d.isDrink,
-            available: (d.available !== false),
-            imageUrl: d.imageUrl || d.image || d.photoUrl || d.img || "",
-            createdAt: d.createdAt || null,
-            updatedAt: d.updatedAt || null,
-          };
-        });
-
-        // Persist migrated items to public/menu (1 write)
-        try {
-          await setDoc(menuRef, { items, migratedFrom: "menuItems", migratedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
-        } catch {}
+      // If we already have items here -> done
+      if (items.length) {
         cacheSet(key, items);
-        migrateFlagSet(MIGRATE_KEY_MENU(restaurantId));
         return items;
       }
-    } catch (_) {}
-    migrateFlagSet(MIGRATE_KEY_MENU(restaurantId));
+    }
+  } catch (err) {
+    console.error(err);
   }
 
-  cacheSet(key, items);
-  return items;
-}
-  } catch {}
-
-  // Fallback: menuItems subcollection (EXPENSIVE reads!)
+  // Fallback: legacy collection restaurants/{id}/menuItems (more reads, but only if public/menu is empty)
   try {
-    const restRef = doc(db, "restaurants", restaurantId);
-    const colRef = collection(restRef, "menuItems");
+    const colRef = collection(db, "restaurants", restaurantId, "menuItems");
     const snap = await getDocs(colRef);
-    const items = snap.docs.map((docSnap) => {
-      const d = docSnap.data() || {};
+    const items = snap.docs.map((docu) => {
+      const d = docu.data() || {};
       return {
-        id: docSnap.id,
-        name: d.name || "Produkt",
-        description: d.description || "",
-        longDescription: d.longDescription || "",
+        id: docu.id,
+        name: d.name || d.title || "Produkt",
+        description: d.description || d.shortDesc || "",
+        longDescription: d.longDescription || d.longDesc || "",
         price: Number(d.price) || 0,
-        category: d.category || "Sonstiges",
+        category: d.category || d.cat || "Sonstiges",
         available: d.available !== false,
-        imageUrl: d.imageUrl || null,
+        imageUrl: d.imageUrl || d.photoUrl || d.image || null,
         imageUrls: Array.isArray(d.imageUrls) ? d.imageUrls : [],
-        type: d.type || null,
+        type: d.type || d.kind || d.group || d.section || (d.isDrink ? "drink" : null),
         likeCount: d.likeCount || 0,
         commentCount: d.commentCount || 0,
         ratingCount: d.ratingCount || 0,
         ratingSum: d.ratingSum || 0,
       };
     }).filter((i) => i.available !== false);
+
     cacheSet(key, items);
     return items;
   } catch (err) {
@@ -306,58 +284,53 @@ async function loadOffers() {
   // Prefer public/offers (1 read)
   try {
     const offersRef = doc(db, "restaurants", restaurantId, "public", "offers");
-    const offersSnap = await getDoc(offersRef);
-    if (offersSnap.exists()) {
-  const data = offersSnap.data() || {};
-  let items = Array.isArray(data.items) ? data.items : [];
+    const snap = await getDoc(offersRef);
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      const arr = Array.isArray(data.items) ? data.items : [];
+      const list = arr.map((o) => {
+        if (!o) o = {};
+        return {
+          id: o.id || crypto.randomUUID?.() || String(Math.random()).slice(2),
+          title: o.title || o.name || "Sot në fokus",
+          price: o.price ?? "",
+          desc: o.desc || o.description || "",
+          imageUrl: o.imageUrl || o.image || o.photoUrl || null,
+          active: o.active !== false,
+          menuItemId: o.menuItemId || o.menuItem || "",
+          _fallback: false,
+        };
+      }).filter((o) => o.active !== false);
 
-  // Legacy migration: restaurants/{id}/offers (subcollection) -> public/offers.items
-  if (!items.length && !migrateFlagGet(MIGRATE_KEY_OFFERS(restaurantId))) {
-    try {
-      const legacyRef = collection(db, "restaurants", restaurantId, "offers");
-      const legacySnap = await getDocs(legacyRef);
-      if (!legacySnap.empty) {
-        items = legacySnap.docs.map((docSnap) => {
-          const d = docSnap.data() || {};
-          return {
-            id: docSnap.id,
-            title: d.title || d.name || "Offer",
-            description: d.description || d.desc || "",
-            imageUrl: d.imageUrl || d.image || d.photoUrl || d.img || "",
-            price: typeof d.price === "number" ? d.price : (d.price ? parseFloat(d.price) : null),
-            menuItemId: d.menuItemId || d.itemId || "",
-            active: (d.active !== false),
-            createdAt: d.createdAt || null,
-            updatedAt: d.updatedAt || null,
-          };
-        }).filter(o => o.active !== false);
-
-        try {
-          await setDoc(offersRef, { items, migratedFrom: "offersSubcollection", migratedAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
-        } catch {}
-        cacheSet(key, items);
-        migrateFlagSet(MIGRATE_KEY_OFFERS(restaurantId));
-        return items;
+      if (list.length) {
+        cacheSet(key, list);
+        return list;
       }
-    } catch (_) {}
-    migrateFlagSet(MIGRATE_KEY_OFFERS(restaurantId));
+    }
+  } catch (err) {
+    console.error(err);
   }
 
-  cacheSet(key, items);
-  return items;
-}
-  } catch {}
-
-  // Fallback: offers subcollection (EXPENSIVE reads!)
+  // Fallback: legacy collection restaurants/{id}/offers (more reads, but only if public/offers is empty)
   try {
-    const restRef = doc(db, "restaurants", restaurantId);
-    const colRef = collection(restRef, "offers");
+    const colRef = collection(db, "restaurants", restaurantId, "offers");
     const snap = await getDocs(colRef);
-    const offers = snap.docs
-      .map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }))
-      .filter((o) => o.active !== false);
-    cacheSet(key, offers);
-    return offers;
+    const list = snap.docs.map((docu) => {
+      const o = docu.data() || {};
+      return {
+        id: docu.id,
+        title: o.title || o.name || "Sot në fokus",
+        price: o.price ?? "",
+        desc: o.desc || o.description || "",
+        imageUrl: o.imageUrl || o.image || o.photoUrl || null,
+        active: o.active !== false,
+        menuItemId: o.menuItemId || o.menuItem || "",
+        _fallback: true,
+      };
+    }).filter((o) => o.active !== false);
+
+    cacheSet(key, list);
+    return list;
   } catch (err) {
     console.error(err);
     return [];
@@ -369,15 +342,40 @@ async function loadOffers() {
 // =========================================================
 
 function inferTypeForItem(item) {
-  if (item.type === "food" || item.type === "drink") return item.type;
+  // Accept many legacy fields
+  const raw =
+    item?.type ?? item?.kind ?? item?.group ?? item?.section ?? item?.menuType ?? item?.categoryType ?? null;
 
-  const cat = String(item.category || "").toLowerCase();
+  if (raw) {
+    const t = String(raw).toLowerCase().trim();
+    if (["food","speise","speisen"].includes(t)) return "food";
+    if (["drink","drinks","beverage","getränke","getraenke","pije","pijet"].includes(t)) return "drink";
+  }
+
+  // Boolean legacy
+  if (item?.isDrink === true || item?.drink === true) return "drink";
+
+  const cat = String(item?.category || "").toLowerCase();
+  const name = String(item?.name || "").toLowerCase();
+
+  // Very forgiving keywords (DE/EN/SQ) + common beverages
   const drinksWords = [
-    "getränke","getraenke","drinks","freskuese","cafe","kafe",
-    "espresso","cappuccino","latte","çaj","caj","ujë","uje",
-    "lëngje","lengje","birra","verë","vere","koktej","energjike",
+    "getränke","getraenke","drinks","beverage","beverages","pije","pijet","freskuese",
+    "coffee","cafe","kafe","espresso","cappuccino","latte","macchiato","mocha",
+    "tea","çaj","caj",
+    "water","ujë","uje","mineral",
+    "juice","lëng","leng","sok","smoothie",
+    "cola","coca","pepsi","fanta","sprite","tonic","soda","ice tea","icetea",
+    "energy","energjike","red bull","monster",
+    "beer","bier","birra","weissbier","lager","pils",
+    "wine","wein","verë","vere","prosecco","champagne",
+    "cocktail","koktej","margarita","mojito","spritz",
+    "vodka","whiskey","whisky","gin","rum","tequila","raki","rakia","brandy","cognac",
+    "shot","likör","liqueur"
   ];
-  if (drinksWords.some((w) => cat.includes(w))) return "drink";
+
+  const hay = `${cat} ${name}`;
+  if (drinksWords.some((w) => hay.includes(w))) return "drink";
   return "food";
 }
 
@@ -464,35 +462,39 @@ export async function initKarte() {
     // Wenn noch keine Offers existieren: Fallback aus Menü-Items (0 extra Reads)
     // => damit "Sot ne fokus" trotzdem immer sichtbar ist.
     if (!list.length) {
-  // Always keep the section visible (user wants it always active)
-  offersSection.style.display = "block";
-  offersSliderEl.innerHTML = `
-    <div class="offer-slide" style="min-width:100%;">
-      <div class="offer-img" style="background:rgba(15,23,42,0.06); display:flex; align-items:center; justify-content:center; font-weight:900; color:rgba(15,23,42,0.75);">
-        Noch keine Angebote
-      </div>
-      <div class="offer-body">
-        <div class="offer-title">Sot ne fokus</div>
-        <div class="offer-desc">Sobald der Besitzer oder du ein Angebot erstellt, erscheint es hier.</div>
-      </div>
-    </div>
-  `;
-  offersDotsEl.innerHTML = "";
-  offersSlides = Array.from(offersSliderEl.children);
-  offersCurrentIndex = 0;
-  clearOffersTimer();
-  return;
-}
-
-    if (!list.length) {
-      offersSection.style.display = "none";
-      clearOffersTimer();
-      return;
+      const fallback = (Array.isArray(allMenuItems) ? allMenuItems : [])
+        .filter((m) => m && (m.imageUrl || m.image || m.photoUrl))
+        .slice(0, 6)
+        .map((m) => ({
+          id: "focus-" + m.id,
+          menuItemId: m.id,
+          title: m.name,
+          description: m.description || m.shortDesc || "",
+          price: typeof m.price === "number" ? m.price : m.price,
+          imageUrl: m.imageUrl || m.image || m.photoUrl,
+          _fallback: true,
+        }));
+      if (fallback.length) list = fallback;
     }
 
-    offersSliderEl.innerHTML = "";
-    offersDotsEl.innerHTML = "";
-    offersSection.style.display = "block";
+    
+if (!list.length) {
+  // Always visible: show placeholder slide
+  list = [{
+    id: "placeholder",
+    title: "Sot në fokus",
+    price: "",
+    desc: "Aktualisht keine Angebote.",
+    imageUrl: null,
+    active: true,
+    _fallback: true
+  }];
+  clearOffersTimer();
+}
+
+offersSliderEl.innerHTML = "";
+offersDotsEl.innerHTML = "";
+offersSection.style.display = "block";
 
     const dotsFrag = document.createDocumentFragment();
     const slidesFrag = document.createDocumentFragment();
