@@ -6,6 +6,14 @@
 // =========================================================
 
 import { db, auth } from "../../../../shared/firebase-config.js";
+import { BUNNY_EDGE_BASE } from "../../../../shared/bunny-edge.js";
+import {
+  listActiveStories,
+  countActiveStories,
+  listExpiredStories,
+  addStoryDoc,
+  deleteStoryDoc
+} from "../firebase/stories.js";
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -59,6 +67,64 @@ function cacheGet(key, ttlMs) {
 }
 function cacheSet(key, data) { lsSet(key, { t: nowMs(), data }); }
 function cacheDel(key) { try { localStorage.removeItem(key); } catch {} }
+
+// -------------------------
+// Bunny Edge + TUS helpers (Stories)
+// -------------------------
+let __tusPromise = null;
+async function ensureTus(){
+  if (window.tus && window.tus.Upload) return window.tus;
+  if (__tusPromise) return __tusPromise;
+  __tusPromise = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = "https://unpkg.com/tus-js-client/dist/tus.min.js";
+    s.async = true;
+    s.onload = () => resolve(window.tus);
+    s.onerror = () => reject(new Error("tus-js-client konnte nicht geladen werden"));
+    document.head.appendChild(s);
+  });
+  return __tusPromise;
+}
+
+async function postJson(url, body){
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body || {})
+  });
+  const txt = await res.text();
+  let data = null;
+  try { data = txt ? JSON.parse(txt) : null; } catch { data = { raw: txt }; }
+  if (!res.ok) {
+    const msg = data?.error || data?.message || txt || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return data;
+}
+
+async function getVideoDurationSeconds(file){
+  return await new Promise((resolve, reject) => {
+    try {
+      const v = document.createElement("video");
+      v.preload = "metadata";
+      v.muted = true;
+      v.playsInline = true;
+      const url = URL.createObjectURL(file);
+      v.src = url;
+      v.onloadedmetadata = () => {
+        const dur = Number(v.duration || 0);
+        URL.revokeObjectURL(url);
+        resolve(dur);
+      };
+      v.onerror = () => {
+        try { URL.revokeObjectURL(url); } catch {}
+        reject(new Error("Video-Metadaten konnten nicht gelesen werden"));
+      };
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
 
 
 function setText(id, txt) {
@@ -1052,6 +1118,276 @@ function renderLeadsTable(rows){
   setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "—");
 }
 
+// =========================================================
+// STORIES VIEW (Owner)
+// =========================================================
+
+function fmtTs(ts){
+  try {
+    if (ts && typeof ts.toDate === "function") ts = ts.toDate();
+  } catch {}
+  if (!(ts instanceof Date)) return "";
+  try {
+    return new Intl.DateTimeFormat("de-AT", {
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit"
+    }).format(ts);
+  } catch {
+    return ts.toLocaleString();
+  }
+}
+
+async function refreshOwnerStories(restaurantId){
+  const listEl = $("storyList");
+  const metaEl = $("storyListMeta");
+  if (!listEl) return;
+
+  listEl.innerHTML = "";
+  metaEl && (metaEl.textContent = "Lade…");
+
+  let rows = [];
+  try {
+    rows = await listActiveStories(restaurantId, 10);
+  } catch (err){
+    console.error(err);
+    metaEl && (metaEl.textContent = "Fehler beim Laden.");
+    listEl.innerHTML = `<div class="m-muted">Stories konnten nicht geladen werden.</div>`;
+    return;
+  }
+
+  metaEl && (metaEl.textContent = rows.length ? `${rows.length} aktiv` : "Keine aktiven Stories");
+  if (!rows.length){
+    listEl.innerHTML = `<div class="m-muted">Noch keine Storys – lade oben ein Video hoch.</div>`;
+    return;
+  }
+
+  rows.forEach((s) => {
+    const row = document.createElement("div");
+    row.className = "m-story-row";
+
+    const left = document.createElement("div");
+    left.className = "m-story-left";
+
+    const iframe = document.createElement("iframe");
+    iframe.className = "m-story-thumb";
+    iframe.allow = "autoplay; fullscreen; picture-in-picture";
+    iframe.setAttribute("allowfullscreen", "");
+    const embedUrl = (s.embedUrl || "").trim() || (s.libraryId && s.videoId
+      ? `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(s.libraryId))}/${encodeURIComponent(String(s.videoId))}`
+      : "");
+    iframe.src = embedUrl ? `${embedUrl}?autoplay=false&loop=true&muted=true&preload=true` : "about:blank";
+    iframe.loading = "lazy";
+
+    const info = document.createElement("div");
+    info.className = "m-story-info";
+    info.innerHTML = `
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <b>Story</b>
+        <span class="m-badge">${esc(s.status || "processing")}</span>
+      </div>
+      <div class="m-muted" style="font-size:12px;">VideoID: ${esc(s.videoId || "—")}</div>
+      <div class="m-muted" style="font-size:12px;">Ablauf: ${fmtTs(s.expiresAt) || "—"}</div>
+    `;
+
+    left.appendChild(iframe);
+    left.appendChild(info);
+
+    const actions = document.createElement("div");
+    actions.className = "m-story-actions";
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "m-btn m-btn--small m-btn--ghost";
+    delBtn.textContent = "Löschen";
+    delBtn.addEventListener("click", async () => {
+      const st = $("storyStatus");
+      delBtn.disabled = true;
+      st && (st.textContent = "Lösche Story…");
+      try {
+        if (s.videoId) {
+          try { await postJson(`${BUNNY_EDGE_BASE}/story/delete`, { videoId: s.videoId }); } catch (e) { console.warn(e); }
+        }
+        await deleteStoryDoc(restaurantId, s.id);
+        st && (st.textContent = "Story gelöscht.");
+        await refreshOwnerStories(restaurantId);
+      } catch (err){
+        console.error(err);
+        st && (st.textContent = "Löschen fehlgeschlagen.");
+      } finally {
+        delBtn.disabled = false;
+      }
+    });
+
+    actions.appendChild(delBtn);
+
+    row.appendChild(left);
+    row.appendChild(actions);
+    listEl.appendChild(row);
+  });
+}
+
+async function cleanupExpiredStories(restaurantId, { userInitiated = false } = {}){
+  const st = $("storyStatus");
+  const btn = $("storyCleanupBtn");
+  btn && (btn.disabled = true);
+  try {
+    st && (st.textContent = userInitiated ? "Cleanup läuft…" : "Cleanup…");
+    const expired = await listExpiredStories(restaurantId, 25);
+    if (!expired.length){
+      st && (st.textContent = "Keine abgelaufenen Stories.");
+      return 0;
+    }
+    let removed = 0;
+    for (const s of expired){
+      if (s.videoId) {
+        try { await postJson(`${BUNNY_EDGE_BASE}/story/delete`, { videoId: s.videoId }); } catch (e) { console.warn(e); }
+      }
+      try { await deleteStoryDoc(restaurantId, s.id); removed++; } catch (e) { console.warn(e); }
+    }
+    st && (st.textContent = `Cleanup: ${removed}/${expired.length} entfernt.`);
+    return removed;
+  } catch (err){
+    console.error(err);
+    st && (st.textContent = "Cleanup Fehler.");
+    return 0;
+  } finally {
+    btn && (btn.disabled = false);
+  }
+}
+
+async function initOwnerStoriesUI({ restaurantId, user }){
+  // Only if view exists in current HTML
+  if (!$("storyFileInput") || !$("storyUploadBtn") || !$("storyList")) return;
+  if (!restaurantId) return;
+
+  // One-time wiring per page
+  if (window.__MENYRA__storiesBound) {
+    // still refresh when restaurant changes
+    await refreshOwnerStories(restaurantId);
+    return;
+  }
+  window.__MENYRA__storiesBound = true;
+
+  // Guest link
+  const openGuest = $("storyOpenGuestBtn");
+  if (openGuest) {
+    openGuest.href = `../guest/story/index.html?r=${encodeURIComponent(restaurantId)}`;
+  }
+
+  // Cleanup button
+  $("storyCleanupBtn")?.addEventListener("click", async () => {
+    await cleanupExpiredStories(restaurantId, { userInitiated: true });
+    await refreshOwnerStories(restaurantId);
+  });
+
+  // Automatic cleanup: max once per day per restaurant (to keep costs low)
+  const cleanupKey = `menyra_story_cleanup_${restaurantId}`;
+  const lastCleanup = Number(lsGet(cleanupKey) || 0);
+  if (!lastCleanup || (nowMs() - lastCleanup) > 23 * 60 * 60 * 1000) {
+    try {
+      await cleanupExpiredStories(restaurantId, { userInitiated: false });
+      lsSet(cleanupKey, nowMs());
+    } catch {}
+  }
+
+  // Upload
+  const input = $("storyFileInput");
+  const btn = $("storyUploadBtn");
+  const prog = $("storyProgress");
+  const st = $("storyStatus");
+
+  btn.addEventListener("click", async () => {
+    const file = input?.files?.[0];
+    if (!file) {
+      st && (st.textContent = "Bitte ein Video auswählen.");
+      return;
+    }
+
+    btn.disabled = true;
+    try {
+      st && (st.textContent = "Prüfe Video…");
+      const dur = await getVideoDurationSeconds(file);
+      if (!Number.isFinite(dur) || dur <= 0) {
+        st && (st.textContent = "Video-Dauer konnte nicht gelesen werden.");
+        return;
+      }
+      if (dur > 15.05) {
+        st && (st.textContent = `Zu lang: ${dur.toFixed(1)}s (max 15s).`);
+        return;
+      }
+
+      st && (st.textContent = "Prüfe aktive Stories…");
+      const activeCount = await countActiveStories(restaurantId, 10);
+      if (activeCount >= 10) {
+        st && (st.textContent = "Limit erreicht: max. 10 aktive Stories.");
+        return;
+      }
+
+      await ensureTus();
+      st && (st.textContent = "Upload startet…");
+      prog && (prog.value = 0);
+
+      const start = await postJson(`${BUNNY_EDGE_BASE}/story/start`, { restaurantId });
+
+      const tus = window.tus;
+      const upload = new tus.Upload(file, {
+        endpoint: start.tusEndpoint,
+        headers: start.uploadHeaders,
+        retryDelays: [0, 1000, 3000, 5000],
+        metadata: {
+          filename: file.name,
+          filetype: file.type
+        },
+        onError: async (error) => {
+          console.error(error);
+          st && (st.textContent = "Upload Fehler.");
+          try { await postJson(`${BUNNY_EDGE_BASE}/story/delete`, { videoId: start.videoId }); } catch {}
+          btn.disabled = false;
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
+          prog && (prog.value = pct);
+          st && (st.textContent = `Upload: ${pct}%`);
+        },
+        onSuccess: async () => {
+          prog && (prog.value = 100);
+          st && (st.textContent = "Upload fertig. Speichere Story…");
+          try {
+            const ttlHours = start?.limits?.ttlHours || start?.ttlHours || 24;
+            const embedUrl = `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(start.libraryId))}/${encodeURIComponent(String(start.videoId))}`;
+            await addStoryDoc(restaurantId, {
+              libraryId: start.libraryId,
+              videoId: start.videoId,
+              createdByUid: user.uid,
+              ttlHours,
+              status: "processing",
+              embedUrl
+            });
+            st && (st.textContent = "Story gespeichert.");
+            if (input) input.value = "";
+            await refreshOwnerStories(restaurantId);
+          } catch (err){
+            console.error(err);
+            st && (st.textContent = "Speichern fehlgeschlagen. Lösche Video…");
+            try { await postJson(`${BUNNY_EDGE_BASE}/story/delete`, { videoId: start.videoId }); } catch {}
+          } finally {
+            btn.disabled = false;
+          }
+        }
+      });
+
+      upload.start();
+    } catch (err){
+      console.error(err);
+      st && (st.textContent = err?.message || "Fehler.");
+      btn.disabled = false;
+    }
+  });
+
+  // Initial load
+  await refreshOwnerStories(restaurantId);
+}
+
 export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", restrictRestaurantId = null } = {}) {
   const nav = initNav();
 
@@ -1387,12 +1723,22 @@ await refreshLeads(true);
         offersSel.value = restaurants[0].id;
       }
       // Also fill menu selector
-      fillMenuRestaurantSelect(restaurants);
+      // fillMenuRestaurantSelect(restaurants); // Moved to after menu variable declarations
     }
 
     let currentOffers = [];
     let currentMenuItems = [];
     let currentRestaurantId = role === "owner" && restaurants[0] ? restaurants[0].id : "";// =========================================================
+
+    // Owner Stories (Uploads -> Firestore -> Guest Story Page)
+    if (role === "owner") {
+      const ridForStories = restaurants[0]?.id || restrictRestaurantId || "";
+      try {
+        await initOwnerStoriesUI({ restaurantId: ridForStories, user });
+      } catch (err) {
+        console.error(err);
+      }
+    }
 // MENU VIEW: Speisekarte (cheap reads via public/menu)
 // =========================================================
 const menuSel = $("menuRestaurantSelect");
@@ -1416,6 +1762,9 @@ const miStatus = $("menuItemModalStatus");
 
 let menuFilterType = "all";
 let editMenuIndex = -1;
+
+// Initialize menu restaurant selector
+if (restaurants) fillMenuRestaurantSelect(restaurants);
 
 function setMenuStatus(t){ if(menuStatus) menuStatus.textContent = t || ""; }
 

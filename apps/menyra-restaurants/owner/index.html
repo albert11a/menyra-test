@@ -95,8 +95,9 @@
             <ul class="m-sidebar-nav" id="sidebarNav">
               <li><a href="#" class="is-active" data-section="dashboard"><span class="m-nav-icon">🏠</span><span class="m-nav-label">Dashboard</span></a></li>
               <li><a href="#" data-section="customers"><span class="m-nav-icon">🏪</span><span class="m-nav-label">Kunden</span></a></li>
-              <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Angebote</span></a>
-            <a class="m-nav-link" data-section="menu" href="#">🍽️ <span>Speisekarte</span></a></li>
+              <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Angebote</span></a></li>
+              <li><a href="#" data-section="menu"><span class="m-nav-icon">🍽️</span><span class="m-nav-label">Speisekarte</span></a></li>
+              <li><a href="#" data-section="stories"><span class="m-nav-icon">🎥</span><span class="m-nav-label">Stories</span></a></li>
               <li><a href="#" data-section="leads"><span class="m-nav-icon">🧲</span><span class="m-nav-label">Leads</span></a></li>
             </ul>
           </nav>
@@ -475,6 +476,57 @@
                 </div>
                 <div id="offersTableBody"></div>
               </div>
+            </section>
+          </section>
+
+          <!-- VIEW: STORIES -->
+          <section class="m-view" data-view="stories" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title">Stories</h1>
+                <p class="m-page-subtitle">Max. 15 Sekunden pro Video, max. 10 aktive Stories, automatische Löschung nach 24h.</p>
+              </div>
+              <div class="m-page-actions">
+                <a class="m-btn m-btn--ghost" id="storyOpenGuestBtn" href="#" target="_blank" rel="noopener">Story (Guest) öffnen</a>
+              </div>
+            </div>
+
+            <section class="m-card">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title">Upload</h2>
+                  <p class="m-section-subtitle m-muted">Wähle ein Video (oder nimm eins auf) → Upload → Story wird automatisch nach 24h entfernt.</p>
+                </div>
+              </div>
+
+              <div class="m-grid-2" style="align-items:end;">
+                <div class="m-input-group">
+                  <label for="storyFileInput">Video</label>
+                  <input id="storyFileInput" class="m-input" type="file" accept="video/*" />
+                </div>
+
+                <div class="m-inline" style="justify-content:flex-end; gap:10px; flex-wrap:wrap;">
+                  <button class="m-btn" id="storyUploadBtn" type="button">Upload Story</button>
+                  <button class="m-btn m-btn--ghost" id="storyCleanupBtn" type="button">Cleanup abgelaufene</button>
+                </div>
+              </div>
+
+              <div class="m-story-progress">
+                <progress id="storyProgress" max="100" value="0"></progress>
+              </div>
+              <div class="m-muted" id="storyStatus" style="margin-top:8px;">–</div>
+            </section>
+
+            <section class="m-card">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title">Aktive Stories</h2>
+                  <p class="m-section-subtitle m-muted">Es werden nur Stories geladen, deren <b>expiresAt</b> in der Zukunft liegt.</p>
+                </div>
+                <div class="m-table-meta" id="storyListMeta">–</div>
+              </div>
+
+              <div id="storyList" class="m-story-list"></div>
             </section>
           </section>
 
