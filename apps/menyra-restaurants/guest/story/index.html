@@ -5,6 +5,9 @@
   <title>MENYRA – Story</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
 
   <!-- =========================================================
        PERF: Connection warmup (ok)
@@ -78,6 +81,26 @@
       background:#000;
       transform: translateZ(0);
       border: none;
+      pointer-events: none;
+    }
+
+    .reel{
+      position: relative;
+      cursor: pointer;
+    }
+
+    /* Overlay um Player-Controls zu verstecken */
+    .reel::after{
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      pointer-events: auto;
+      z-index: 10;
+    }
+
+    .reel-video{
+      pointer-events: none;
     }
 
     .vignette{
@@ -354,6 +377,6 @@
     <div class="emptyDesc">Tippe auf den Bildschirm um die Stories abzuspielen.</div>
   </div>
 
-  <script type="module" src="./story.js"></script>
+  <script type="module" src="./story.js?v=20251223b"></script>
 </body>
 </html>

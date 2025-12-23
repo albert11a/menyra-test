@@ -63,6 +63,7 @@ export async function listExpiredStories(restaurantId, max = 25) {
 export async function addStoryDoc(restaurantId, {
   libraryId,
   videoId,
+  videoUrl,
   createdByUid,
   ttlHours = 24,
   status = "processing",
@@ -79,7 +80,8 @@ export async function addStoryDoc(restaurantId, {
     status: String(status || "processing"),
     createdAt: serverTimestamp(),
     expiresAt,
-    embedUrl: String(embedUrl || "")
+    embedUrl: String(embedUrl || ""),
+    videoUrl: String(videoUrl || "")
   };
 
   // Optionale Felder hinzufügen

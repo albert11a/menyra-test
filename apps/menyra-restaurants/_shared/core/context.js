@@ -1,4 +1,4 @@
-import { getLang, setLang } from "@shared/i18n/i18n.js";
+import { getLang, setLang } from "../../../../shared/i18n/i18n.js";
 export function getContext(){
   const u=new URL(location.href);
   const r=(u.searchParams.get("r")||"").trim();

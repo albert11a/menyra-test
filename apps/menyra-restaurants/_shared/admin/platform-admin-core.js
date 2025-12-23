@@ -1318,7 +1318,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
     } catch {}
   }
 
-  // Upload
+  // Upload - zurück zu Stream, aber speichere direkte Stream-URL
   const input = $("storyFileInput");
   const btn = $("storyUploadBtn");
   const prog = $("storyProgress");
@@ -1335,7 +1335,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
     try {
       st && (st.textContent = "Prüfe Video…");
       const dur = await getVideoDurationSeconds(file);
-      if (!Number.isFinite(dur) || dur <= 0) {
+      if (!dur || dur <= 0) {
         st && (st.textContent = "Video-Dauer konnte nicht gelesen werden.");
         return;
       }
@@ -1382,7 +1382,8 @@ async function initOwnerStoriesUI({ restaurantId, user }){
           st && (st.textContent = "Upload fertig. Speichere Story…");
           try {
             const ttlHours = start?.limits?.ttlHours || start?.ttlHours || 24;
-            const embedUrl = `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(start.libraryId))}/${encodeURIComponent(String(start.videoId))}`;
+            // Speichere direkte MP4-URL statt HLS
+            const videoUrl = `https://vz-de.b-cdn.net/${encodeURIComponent(String(start.videoId))}/original.mp4`;
 
             // Neue Felder auslesen
             const titleInput = $("storyTitleInput");
@@ -1392,10 +1393,11 @@ async function initOwnerStoriesUI({ restaurantId, user }){
             await addStoryDoc(restaurantId, {
               libraryId: start.libraryId,
               videoId: start.videoId,
+              videoUrl, // Direkte Stream-URL für <video> Element
               createdByUid: user.uid,
               ttlHours,
-              status: "processing",
-              embedUrl,
+              status: "active",
+              embedUrl: `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(start.libraryId))}/${encodeURIComponent(String(start.videoId))}`,
               title: titleInput?.value?.trim() || null,
               description: descInput?.value?.trim() || null,
               menuItemId: menuItemSelect?.value?.trim() || null
@@ -1419,12 +1421,13 @@ async function initOwnerStoriesUI({ restaurantId, user }){
       });
 
       upload.start();
-    } catch (err){
+    } catch (err) {
       console.error(err);
-      st && (st.textContent = err?.message || "Fehler.");
+      st && (st.textContent = "Fehler: " + (err.message || "Unbekannt"));
       btn.disabled = false;
     }
   });
+
 
   // Initial load
   await refreshOwnerStories(restaurantId);

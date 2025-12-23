@@ -1,4 +1,5 @@
 import { listActiveStories } from "../../_shared/firebase/stories.js";
+import { getPublicMeta } from "../../_shared/firebase/public.js";
 
 function qs(id){
   return document.getElementById(id);
@@ -19,6 +20,7 @@ function safeDate(ts){
 let currentStories = [];
 let currentIndex = 0;
 let videos = new Map(); // videoId -> video element
+let restaurantMeta = null;
 
 async function main(){
   const rid = getParam("r");
@@ -33,6 +35,8 @@ async function main(){
   }
 
   try {
+    // Lade Restaurant-Meta für Logo
+    restaurantMeta = await getPublicMeta(rid);
     currentStories = await listActiveStories(rid, 20);
   } catch (err){
     console.error(err);
@@ -49,7 +53,7 @@ async function main(){
   }
 
   // Stories rendern
-  renderStories(currentStories, reelsContainer);
+  renderStories(currentStories, reelsContainer, restaurantMeta);
 
   // Zeige Tap-Hinweis
   const tapHint = qs("tapHint");
@@ -62,7 +66,7 @@ async function main(){
   setupKeyboardNav();
 }
 
-function renderStories(stories, container){
+function renderStories(stories, container, meta){
   container.innerHTML = "";
 
   stories.forEach((story, index) => {
@@ -70,37 +74,40 @@ function renderStories(stories, container){
     reel.className = "reel";
     reel.dataset.index = index;
 
-    // iframe für Bunny.net Videos
-    const iframe = document.createElement("iframe");
-    iframe.className = "reel-video";
-    iframe.allow = "autoplay; fullscreen; picture-in-picture";
-    iframe.setAttribute("allowfullscreen", "");
-    iframe.frameBorder = "0";
-    iframe.dataset.storyIndex = index;
-
-    // Video source - Bunny.net embed URL
+    // Video element - entweder <video> für Storage oder <iframe> für Stream
+    let videoElement;
+    const videoUrl = (story.videoUrl || "").trim(); // Direkter Storage-Link
     const embedUrl = (story.embedUrl || "").trim() || (story.libraryId && story.videoId
       ? `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(story.libraryId))}/${encodeURIComponent(String(story.videoId))}`
       : "");
 
-    if (embedUrl) {
-      // Starte ohne autoplay
-      iframe.src = `${embedUrl}?autoplay=false&loop=true&muted=true&preload=true&controls=false`;
+    if (videoUrl) {
+      // Verwende <video> für direkte Storage-Links - volle Kontrolle über Playback
+      const video = document.createElement("video");
+      video.className = "reel-video";
+      video.src = videoUrl;
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.preload = "metadata";
+      video.controls = false; // Keine Controls anzeigen
+      video.setAttribute("webkit-playsinline", "");
+      videoElement = video;
+    } else if (embedUrl) {
+      // Fallback zu iframe für Stream
+      const iframe = document.createElement("iframe");
+      iframe.className = "reel-video";
+      iframe.allow = "autoplay; fullscreen; picture-in-picture";
+      iframe.setAttribute("allowfullscreen", "");
+      iframe.frameBorder = "0";
+      iframe.src = `${embedUrl}?autoplay=false&loop=true&muted=true&preload=true&controls=0`;
+      videoElement = iframe;
     }
 
-    videos.set(index, iframe);
-    reel.appendChild(iframe);
-
-    // Click handler für autoplay
-    reel.addEventListener('click', () => {
-      const iframe = videos.get(index);
-      if (iframe && !iframe.dataset.autoplayEnabled) {
-        iframe.dataset.autoplayEnabled = 'true';
-        // Reload iframe mit autoplay
-        const currentSrc = iframe.src;
-        iframe.src = currentSrc.replace('autoplay=false', 'autoplay=true');
-      }
-    });
+    if (videoElement) {
+      videos.set(index, videoElement);
+      reel.appendChild(videoElement);
+    }
 
     // Vignette overlay
     const vignette = document.createElement("div");
@@ -128,12 +135,23 @@ function renderStories(stories, container){
 
     const brandLogo = document.createElement("div");
     brandLogo.className = "brandLogo";
-    brandLogo.innerHTML = "🍽️";
+    if (meta && meta.logo) {
+      brandLogo.style.backgroundImage = `url(${meta.logo})`;
+      brandLogo.style.backgroundSize = "cover";
+      brandLogo.style.backgroundPosition = "center";
+    } else {
+      brandLogo.style.backgroundImage = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+      brandLogo.style.display = "flex";
+      brandLogo.style.alignItems = "center";
+      brandLogo.style.justifyContent = "center";
+      brandLogo.style.fontSize = "16px";
+      brandLogo.textContent = "M";
+    }
     brandPill.appendChild(brandLogo);
 
     const brandName = document.createElement("div");
     brandName.className = "brandName";
-    brandName.textContent = getParam("r") || "MENYRA";
+    brandName.textContent = (meta && meta.name) ? meta.name : (getParam("r") || "MENYRA");
     brandPill.appendChild(brandName);
 
     topbarLeft.appendChild(brandPill);
@@ -210,28 +228,41 @@ function setupAutoplay(){
     entries.forEach(entry => {
       const reel = entry.target;
       const index = parseInt(reel.dataset.index);
-      const iframe = videos.get(index);
+      const videoElement = videos.get(index);
 
-      if (!iframe) return;
+      if (!videoElement) return;
 
       if (entry.isIntersecting && hasUserInteracted) {
-        // iframe ist sichtbar und User hat interagiert - autoplay aktivieren
-        if (!iframe.dataset.autoplayEnabled) {
-          iframe.dataset.autoplayEnabled = 'true';
-          const currentSrc = iframe.src;
-          iframe.src = currentSrc.replace('autoplay=false', 'autoplay=true');
+        // Video ist sichtbar und User hat interagiert - autoplay aktivieren
+        if (videoElement.tagName === 'VIDEO') {
+          // Für <video> Elemente können wir play() direkt aufrufen
+          if (videoElement.paused) {
+            videoElement.play().catch(() => {}); // Ignore errors
+          }
+        } else {
+          // Für iframes - src ändern (fallback)
+          if (!videoElement.dataset.autoplayEnabled) {
+            videoElement.dataset.autoplayEnabled = 'true';
+            const currentSrc = videoElement.src;
+            videoElement.src = currentSrc.replace('autoplay=false', 'autoplay=true');
+          }
         }
       } else if (!entry.isIntersecting) {
-        // iframe ist nicht mehr sichtbar - autoplay deaktivieren
-        if (iframe.dataset.autoplayEnabled) {
-          iframe.dataset.autoplayEnabled = '';
-          const currentSrc = iframe.src;
-          iframe.src = currentSrc.replace('autoplay=true', 'autoplay=false');
+        // Video ist nicht mehr sichtbar - pausieren
+        if (videoElement.tagName === 'VIDEO') {
+          videoElement.pause();
+        } else {
+          // Für iframes - autoplay deaktivieren
+          if (videoElement.dataset.autoplayEnabled) {
+            videoElement.dataset.autoplayEnabled = '';
+            const currentSrc = videoElement.src;
+            videoElement.src = currentSrc.replace('autoplay=true', 'autoplay=false');
+          }
         }
       }
     });
   }, {
-    threshold: 0.7, // 70% der iframe müssen sichtbar sein
+    threshold: 0.7, // 70% des Videos müssen sichtbar sein
     rootMargin: "-10% 0px -10% 0px"
   });
 
@@ -278,3 +309,22 @@ function scrollToPrev(){
 
 // Start the app
 main().catch(console.error);
+
+// Click handler für Video play/pause
+document.addEventListener('click', (e) => {
+  const reel = e.target.closest('.reel');
+  if (!reel) return;
+
+  const index = parseInt(reel.dataset.index);
+  const videoElement = videos.get(index);
+  if (!videoElement) return;
+
+  if (videoElement.tagName === 'VIDEO') {
+    if (videoElement.paused) {
+      videoElement.play().catch(() => {});
+    } else {
+      videoElement.pause();
+    }
+  }
+  // Für iframes - kein direkter play/pause möglich
+});
