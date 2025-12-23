@@ -66,7 +66,10 @@ export async function addStoryDoc(restaurantId, {
   createdByUid,
   ttlHours = 24,
   status = "processing",
-  embedUrl
+  embedUrl,
+  title,
+  description,
+  menuItemId
 }) {
   const expiresAt = Timestamp.fromMillis(Date.now() + (ttlHours * HOURS));
   const payload = {
@@ -78,6 +81,12 @@ export async function addStoryDoc(restaurantId, {
     expiresAt,
     embedUrl: String(embedUrl || "")
   };
+
+  // Optionale Felder hinzufügen
+  if (title) payload.title = String(title);
+  if (description) payload.description = String(description);
+  if (menuItemId) payload.menuItemId = String(menuItemId);
+
   return addDoc(storiesColRef(restaurantId), payload);
 }
 

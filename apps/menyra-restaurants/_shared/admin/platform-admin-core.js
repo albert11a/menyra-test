@@ -1180,11 +1180,17 @@ async function refreshOwnerStories(restaurantId){
 
     const info = document.createElement("div");
     info.className = "m-story-info";
+    const titleHtml = s.title ? `<div style="font-weight:600; margin-bottom:4px;">${esc(s.title)}</div>` : '';
+    const descHtml = s.description ? `<div class="m-muted" style="font-size:13px; margin-bottom:6px;">${esc(s.description)}</div>` : '';
+    const menuLinkHtml = s.menuItemId ? `<div class="m-muted" style="font-size:12px;">🔗 Verlinkt mit Menu Item</div>` : '';
     info.innerHTML = `
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <b>Story</b>
         <span class="m-badge">${esc(s.status || "processing")}</span>
       </div>
+      ${titleHtml}
+      ${descHtml}
+      ${menuLinkHtml}
       <div class="m-muted" style="font-size:12px;">VideoID: ${esc(s.videoId || "—")}</div>
       <div class="m-muted" style="font-size:12px;">Ablauf: ${fmtTs(s.expiresAt) || "—"}</div>
     `;
@@ -1255,6 +1261,25 @@ async function cleanupExpiredStories(restaurantId, { userInitiated = false } = {
   }
 }
 
+async function loadMenuItemsForStorySelect(restaurantId) {
+  const select = $("storyMenuItemSelect");
+  if (!select) return;
+
+  try {
+    const items = await loadPublicMenuItems(restaurantId);
+    select.innerHTML = `<option value="">— Kein Link —</option>`;
+    items.forEach(item => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = item.name || `Item ${item.id}`;
+      select.appendChild(option);
+    });
+  } catch (err) {
+    console.warn("Failed to load menu items for story select:", err);
+    select.innerHTML = `<option value="">— Fehler beim Laden —</option>`;
+  }
+}
+
 async function initOwnerStoriesUI({ restaurantId, user }){
   // Only if view exists in current HTML
   if (!$("storyFileInput") || !$("storyUploadBtn") || !$("storyList")) return;
@@ -1273,6 +1298,9 @@ async function initOwnerStoriesUI({ restaurantId, user }){
   if (openGuest) {
     openGuest.href = `../guest/story/index.html?r=${encodeURIComponent(restaurantId)}`;
   }
+
+  // Menu items für Story-Verlinkung laden
+  await loadMenuItemsForStorySelect(restaurantId);
 
   // Cleanup button
   $("storyCleanupBtn")?.addEventListener("click", async () => {
@@ -1355,16 +1383,30 @@ async function initOwnerStoriesUI({ restaurantId, user }){
           try {
             const ttlHours = start?.limits?.ttlHours || start?.ttlHours || 24;
             const embedUrl = `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(start.libraryId))}/${encodeURIComponent(String(start.videoId))}`;
+
+            // Neue Felder auslesen
+            const titleInput = $("storyTitleInput");
+            const descInput = $("storyDescInput");
+            const menuItemSelect = $("storyMenuItemSelect");
+
             await addStoryDoc(restaurantId, {
               libraryId: start.libraryId,
               videoId: start.videoId,
               createdByUid: user.uid,
               ttlHours,
               status: "processing",
-              embedUrl
+              embedUrl,
+              title: titleInput?.value?.trim() || null,
+              description: descInput?.value?.trim() || null,
+              menuItemId: menuItemSelect?.value?.trim() || null
             });
+
             st && (st.textContent = "Story gespeichert.");
+            // Felder zurücksetzen
             if (input) input.value = "";
+            if (titleInput) titleInput.value = "";
+            if (descInput) descInput.value = "";
+            if (menuItemSelect) menuItemSelect.value = "";
             await refreshOwnerStories(restaurantId);
           } catch (err){
             console.error(err);

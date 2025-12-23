@@ -505,6 +505,23 @@
                   <input id="storyFileInput" class="m-input" type="file" accept="video/*" />
                 </div>
 
+                <div class="m-input-group">
+                  <label for="storyTitleInput">Titel (optional)</label>
+                  <input id="storyTitleInput" class="m-input" type="text" placeholder="z.B. Neues Gericht!" maxlength="50" />
+                </div>
+
+                <div class="m-input-group">
+                  <label for="storyDescInput">Beschreibung (optional)</label>
+                  <textarea id="storyDescInput" class="m-input" rows="2" placeholder="z.B. Probieren Sie unser neues Gericht!" maxlength="200"></textarea>
+                </div>
+
+                <div class="m-input-group">
+                  <label for="storyMenuItemSelect">Menu Item verlinken (optional)</label>
+                  <select id="storyMenuItemSelect" class="m-input">
+                    <option value="">— Kein Link —</option>
+                  </select>
+                </div>
+
                 <div class="m-inline" style="justify-content:flex-end; gap:10px; flex-wrap:wrap;">
                   <button class="m-btn" id="storyUploadBtn" type="button">Upload Story</button>
                   <button class="m-btn m-btn--ghost" id="storyCleanupBtn" type="button">Cleanup abgelaufene</button>
