@@ -174,29 +174,51 @@ const TTL_REST_MS = 24 * 60 * 60 * 1000; // 24h
 const TTL_MENU_MS = 5 * 60 * 1000;      // 5min
 const TTL_OFFERS_MS = 2 * 60 * 1000;    // 2min
 
+function normalizeRestaurantMeta(primary, fallback){
+  const pick=(...vals)=>vals.find(v=>v!==undefined&&v!==null&&v!=="");
+  const merged={ ...(fallback||{}), ...(primary||{}) };
+  const name=pick(primary?.restaurantName,primary?.name,fallback?.restaurantName,fallback?.name,fallback?.slug);
+  if (name){
+    merged.name=merged.name||name;
+    merged.restaurantName=merged.restaurantName||name;
+  }
+  const logoUrl=pick(primary?.logoUrl,primary?.logo,fallback?.logoUrl,fallback?.logo);
+  if (logoUrl) merged.logoUrl=logoUrl;
+  return merged;
+}
+
 async function loadRestaurantMeta() {
   const key = cacheKey("restmeta");
   const cached = cacheGet(key, TTL_REST_MS);
-  if (cached) return cached;
+  const cachedHasBasics = cached?.__hydratedMeta && (cached.logoUrl || cached.logo) && (cached.name || cached.restaurantName);
+  if (cachedHasBasics) return cached;
 
   // Prefer public/meta (1 read)
+  let meta = null;
   try {
     const metaRef = doc(db, "restaurants", restaurantId, "public", "meta");
     const metaSnap = await getDoc(metaRef);
     if (metaSnap.exists()) {
-      const data = metaSnap.data() || {};
-      cacheSet(key, data);
-      return data;
+      meta = metaSnap.data() || {};
     }
   } catch {}
 
-  // Fallback: restaurants/{id} (1 read)
-  const restRef = doc(db, "restaurants", restaurantId);
-  const restSnap = await getDoc(restRef);
-  if (restSnap.exists()) {
-    const data = restSnap.data() || {};
-    cacheSet(key, data);
-    return data;
+  const needsFallback = !meta || (!meta.name && !meta.restaurantName) || (!meta.logoUrl && !meta.logo);
+  let restDoc = null;
+
+  if (needsFallback) {
+    try {
+      const restRef = doc(db, "restaurants", restaurantId);
+      const restSnap = await getDoc(restRef);
+      if (restSnap.exists()) restDoc = restSnap.data() || {};
+    } catch {}
+  }
+
+  const normalized = normalizeRestaurantMeta(meta, restDoc);
+  if (Object.keys(normalized).length) {
+    normalized.__hydratedMeta = true;
+    cacheSet(key, normalized);
+    return normalized;
   }
 
   return null;
@@ -1017,8 +1039,9 @@ export async function initKarte() {
   restaurantNameEl.textContent = rest.restaurantName || rest.name || "Unbenanntes Lokal";
   restaurantMetaEl.textContent = "Mirësevini në menynë digjitale";
 
-  if (rest.logoUrl && restaurantLogoEl) {
-    restaurantLogoEl.src = rest.logoUrl;
+  const logoUrl = rest.logoUrl || rest.logo;
+  if (logoUrl && restaurantLogoEl) {
+    restaurantLogoEl.src = logoUrl;
     restaurantLogoEl.style.display = "block";
   } else if (restaurantLogoEl) {
     restaurantLogoEl.style.display = "none";

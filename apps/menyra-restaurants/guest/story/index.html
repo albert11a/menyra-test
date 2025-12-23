@@ -15,6 +15,30 @@
   <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
   <!-- Kein HLS.js mehr nötig - verwenden iframe -->
 
+  <!-- Block Bunny RUM monitoring script -->
+  <script>
+    // Override Bunny RUM script to prevent DNS errors
+    window.rum = window.rum || {};
+    window.rum.runNextTest = function() {
+      // Do nothing - prevent RUM monitoring
+      console.log('Bunny RUM monitoring disabled');
+    };
+    window.rum.scheduleNextTest = function() {
+      // Do nothing
+    };
+
+    // Block script loading
+    const originalCreateElement = document.createElement.bind(document);
+    document.createElement = function(tagName) {
+      const element = originalCreateElement(tagName);
+      if (tagName === 'script' && element.src && element.src.includes('rum.js')) {
+        console.log('Blocking Bunny RUM script loading');
+        return document.createElement('div'); // Return dummy element
+      }
+      return element;
+    };
+  </script>
+
   <style>
     :root{
       --safe-top: env(safe-area-inset-top, 0px);

@@ -421,15 +421,19 @@ async function ensurePublicDocs(restaurantId, base) {
   if (!restaurantId) return;
   if (__ENSURED_PUBLIC_DOCS.has(restaurantId)) return;
 
-  // public/meta (safe merge)
-  await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), {
-    name: base.name || "",
+  const metaPayload = {
+    name: base.name || base.restaurantName || base.slug || "",
+    restaurantName: base.restaurantName || base.name || "",
     type: base.type || "cafe",
     city: base.city || "",
-    logoUrl: base.logoUrl || "",
+    logoUrl: base.logoUrl || base.logo || "",
+    logo: base.logo || "",
     offersEnabled: true,
     updatedAt: serverTimestamp()
-  }, { merge: true });
+  };
+
+  // public/meta (safe merge)
+  await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), metaPayload, { merge: true });
 
   // IMPORTANT:
   // Never overwrite existing menu/offers items arrays here.
@@ -454,11 +458,31 @@ async function ensurePublicDocs(restaurantId, base) {
   __ENSURED_PUBLIC_DOCS.add(restaurantId);
 }
 
+async function ensureOwnerStaffDoc(restaurantId, user) {
+  if (!restaurantId || !user?.uid) return;
+  const staffRef = doc(db, "restaurants", restaurantId, "staff", user.uid);
+  try {
+    const snap = await getDoc(staffRef);
+    if (snap.exists()) return;
+  } catch {}
+
+  try {
+    await setDoc(staffRef, {
+      role: "owner",
+      createdAt: serverTimestamp(),
+      createdByUid: user.uid
+    }, { merge: true });
+  } catch (err) {
+    console.warn("ensureOwnerStaffDoc failed:", err?.message || err);
+  }
+}
+
 async function createRestaurantDoc(role, user, payload) {
   const restaurantsRef = collection(db, "restaurants");
 
   const base = {
     name: payload.name,
+    restaurantName: payload.restaurantName || payload.name,
     type: payload.type,
     ownerName: payload.ownerName,
     city: payload.city,
@@ -482,6 +506,31 @@ async function createRestaurantDoc(role, user, payload) {
   const docRef = await addDoc(restaurantsRef, base);
   await ensurePublicDocs(docRef.id, base);
   return docRef.id;
+}
+
+async function updateRestaurantDoc(role, user, restaurantId, payload) {
+  if (!restaurantId) throw new Error("restaurantId fehlt");
+
+  const base = {
+    name: payload.name,
+    restaurantName: payload.restaurantName || payload.name,
+    type: payload.type,
+    ownerName: payload.ownerName,
+    city: payload.city,
+    phone: payload.phone,
+    tableCount: payload.tableCount,
+    yearPrice: payload.yearPrice,
+    status: payload.status,
+    logoUrl: payload.logoUrl,
+    slug: payload.slug,
+    updatedAt: serverTimestamp(),
+    updatedByUid: user?.uid || null,
+    updatedByRole: role || null
+  };
+
+  await setDoc(doc(db, "restaurants", restaurantId), base, { merge: true });
+  await ensurePublicDocs(restaurantId, base);
+  return restaurantId;
 }
 
 // -------------------------
@@ -1544,6 +1593,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
         return;
       }
       try {
+        await ensureOwnerStaffDoc(rid, user);
         const staffSnap = await getDoc(doc(db, "restaurants", rid, "staff", user.uid));
         const staffRole = staffSnap.exists() ? (staffSnap.data()?.role || "") : "";
         if (!["owner","admin","manager"].includes(staffRole)) {
@@ -1566,6 +1616,15 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       setText("customersMeta", "Fehler beim Laden (Rules/Auth?).");
       setText("offersStatus", "Fehler beim Laden (Rules/Auth?).");
       return;
+    }
+
+    // Ensure public/meta has name+logo for all loaded restaurants (avoids missing logos on guest)
+    try {
+      await Promise.all(
+        (restaurants || []).map(r => ensurePublicDocs(r.id, r || {}))
+      );
+    } catch (err) {
+      console.warn("ensurePublicDocs batch failed:", err?.message || err);
     }
 
     // Dashboard stats
@@ -1634,6 +1693,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       const status = $("customerStatus")?.value || "active";
       const type = $("customerType")?.value || "cafe";
       const slug = slugify(name);
+      const customerId = ($("customerId")?.value || "").trim();
 
       if (!name) {
         if (statusEl) statusEl.textContent = "Name fehlt.";
@@ -1641,14 +1701,17 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       }
 
       try {
-        const id = await createRestaurantDoc(role, user, { name, type, ownerName, city, phone, tableCount, yearPrice, status, logoUrl, slug });
+        const payload = { name, type, ownerName, city, phone, tableCount, yearPrice, status, logoUrl, slug };
+        const id = customerId
+          ? await updateRestaurantDoc(role, user, customerId, payload)
+          : await createRestaurantDoc(role, user, payload);
         // refresh cache and UI
         try { localStorage.removeItem(REST_CACHE_KEY + "_" + role + "_" + user.uid); } catch {}
         const updated = await fetchRestaurants(role, user.uid, restrictRestaurantId);
         restaurants.splice(0, restaurants.length, ...updated);
         refreshCustomers();
         closeCustomerModal();
-        setText("adminStatus", `Kunde erstellt: ${id}`);
+        setText("adminStatus", customerId ? `Kunde aktualisiert: ${id}` : `Kunde erstellt: ${id}`);
       } catch (err) {
         console.error(err);
         if (statusEl) statusEl.textContent = err?.message || "Speichern fehlgeschlagen (Rules?).";

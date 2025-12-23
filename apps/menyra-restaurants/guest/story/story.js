@@ -88,7 +88,7 @@ function renderStories(stories, container, meta){
       iframe.allow = "autoplay; fullscreen; picture-in-picture";
       iframe.setAttribute("allowfullscreen", "");
       iframe.frameBorder = "0";
-      iframe.src = `${embedUrl}?autoplay=true&loop=true&muted=true&preload=true&controls=0`;
+      iframe.src = `${embedUrl}?autoplay=true&loop=true&muted=true&preload=true&controls=0&disableAnalytics=true&noRUM=true&disableRUM=true`;
       videoElement = iframe;
     }
 
@@ -121,10 +121,13 @@ function renderStories(stories, container, meta){
     const brandPill = document.createElement("div");
     brandPill.className = "brandPill";
 
+    const displayName = (meta?.restaurantName || meta?.name || meta?.slug || "Unbenanntes Lokal");
+    const logoUrl = meta?.logoUrl || meta?.logo || null;
+
     const brandLogo = document.createElement("div");
     brandLogo.className = "brandLogo";
-    if (meta && meta.logo) {
-      brandLogo.style.backgroundImage = `url(${meta.logo})`;
+    if (logoUrl) {
+      brandLogo.style.backgroundImage = `url(${logoUrl})`;
       brandLogo.style.backgroundSize = "cover";
       brandLogo.style.backgroundPosition = "center";
     } else {
@@ -133,13 +136,14 @@ function renderStories(stories, container, meta){
       brandLogo.style.alignItems = "center";
       brandLogo.style.justifyContent = "center";
       brandLogo.style.fontSize = "16px";
-      brandLogo.textContent = "M";
+      const initial = displayName?.trim()?.charAt(0)?.toUpperCase() || "M";
+      brandLogo.textContent = initial;
     }
     brandPill.appendChild(brandLogo);
 
     const brandName = document.createElement("div");
     brandName.className = "brandName";
-    brandName.textContent = (meta && meta.name) ? meta.name : (getParam("r") || "MENYRA");
+    brandName.textContent = displayName;
     brandPill.appendChild(brandName);
 
     topbarLeft.appendChild(brandPill);
