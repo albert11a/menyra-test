@@ -10,7 +10,7 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 import {
 collection,
@@ -24,9 +24,10 @@ collection,
   updateDoc,
   orderBy,
   limit,
+  deleteDoc,
   serverTimestamp
 
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 // -------------------------
 // Helpers
@@ -527,9 +528,187 @@ async function loadPublicMenuItems(restaurantId) {
   return Array.isArray(data.items) ? data.items : [];
 }
 
+// =========================================================
+// MENU + OFFERS (canonical in subcollections, publish snapshot to public docs)
+// - Canonical:
+//   restaurants/{restaurantId}/menuItems/{menuItemId}
+//   restaurants/{restaurantId}/offers/{offerId}
+// - Guest fast reads (1 doc):
+//   restaurants/{restaurantId}/public/menu
+//   restaurants/{restaurantId}/public/offers
+// =========================================================
+
+function foldText(s){
+  try{
+    return String(s || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }catch(_){
+    return String(s || "").toLowerCase();
+  }
+}
+
+function inferMenuTypeFromItem(d){
+  const explicit = d?.type ?? d?.menuType ?? d?.kind ?? d?.group ?? d?.section ?? null;
+  if (explicit) {
+    const t = foldText(explicit).trim();
+    if (t === "drink" || t === "drinks" || t === "beverage" || t === "getranke" || t === "getraenke") return "drink";
+    if (t === "food" || t === "speise" || t === "speisen") return "food";
+  }
+  if (d?.isDrink === true || d?.drink === true) return "drink";
+  const cat = d?.category ?? d?.cat ?? d?.categoryName ?? "";
+  const name = d?.name ?? d?.title ?? "";
+  const desc = d?.description ?? d?.shortDesc ?? d?.desc ?? "";
+  const hay = foldText(`${cat} ${name} ${desc}`);
+  const drinksWords = [
+    "getranke","getraenke","drinks","drink","beverage","beverages",
+    "pije","pijet","gazuze","gazuara","alkool","alkoolike","alkoolik",
+    "kafe","cafe","coffee","espresso","cappuccino","latte","macchiato",
+    "caj","çaj","tea",
+    "uje","uj","water","mineral","sparkling","still",
+    "leng","lengje","juice","sok","smoothie",
+    "cola","coca","pepsi","fanta","sprite","tonic","soda","icetea","iced tea",
+    "energy","energjike","red bull","monster",
+    "birra","beer","bier","lager","pils",
+    "vere","ver","verë","wine","wein","prosecco","champagne",
+    "koktej","cocktail","mojito","spritz",
+    "vodka","whiskey","whisky","gin","rum","tequila","raki","rakia"
+  ];
+  return drinksWords.some(w => hay.includes(w)) ? "drink" : "food";
+}
+
+function normalizeMenuItemDoc(data, id){
+  const d = data || {};
+  const type = inferMenuTypeFromItem(d);
+  return {
+    id: d.id || id,
+    type,
+    category: d.category || d.cat || d.categoryName || "Sonstiges",
+    name: d.name || d.title || "Produkt",
+    description: d.description || d.shortDesc || d.desc || "",
+    longDescription: d.longDescription || d.longDesc || "",
+    price: (d.price === "" || d.price === null || d.price === undefined) ? "" : (Number(d.price) || 0),
+    available: d.available !== false,
+    imageUrl: d.imageUrl || d.photoUrl || d.image || null,
+    imageUrls: Array.isArray(d.imageUrls) ? d.imageUrls : [],
+    likeCount: d.likeCount || 0,
+    commentCount: d.commentCount || 0,
+    ratingCount: d.ratingCount || 0,
+    ratingSum: d.ratingSum || 0,
+  };
+}
+
+function toPublicMenuItem(item){
+  const i = item || {};
+  return {
+    id: i.id,
+    type: i.type || null,
+    category: i.category || "Sonstiges",
+    name: i.name || "Produkt",
+    description: i.description || "",
+    longDescription: i.longDescription || "",
+    price: i.price ?? "",
+    available: i.available !== false,
+    imageUrl: i.imageUrl || null,
+    imageUrls: Array.isArray(i.imageUrls) ? i.imageUrls : [],
+    likeCount: i.likeCount || 0,
+    commentCount: i.commentCount || 0,
+    ratingCount: i.ratingCount || 0,
+    ratingSum: i.ratingSum || 0,
+  };
+}
+
+async function loadMenuItemsFromCollection(restaurantId){
+  const ref = collection(db, "restaurants", restaurantId, "menuItems");
+  const snap = await getDocs(ref);
+  return snap.docs.map(d => normalizeMenuItemDoc(d.data(), d.id));
+}
+
+async function publishMenuToPublic(restaurantId, items){
+  const ref = doc(db, "restaurants", restaurantId, "public", "menu");
+  const payload = {
+    items: (items || []).map(toPublicMenuItem),
+    publishedAt: serverTimestamp(),
+  };
+  await setDoc(ref, payload, { merge: true });
+}
+
+async function loadMenuHybrid(restaurantId){
+  const pub = await loadPublicMenuItems(restaurantId);
+  if (pub && pub.length) {
+    // normalize + infer missing type
+    return pub.map((x, idx) => normalizeMenuItemDoc(x, x?.id || `pub_${idx}`));
+  }
+  const col = await loadMenuItemsFromCollection(restaurantId);
+  if (col && col.length) {
+    // publish once to speed up guest
+    await publishMenuToPublic(restaurantId, col);
+    return col;
+  }
+  return [];
+}
+
+function normalizeOfferDoc(data, id){
+  const d = data || {};
+  return {
+    id: d.id || id,
+    title: d.title || d.name || "Sot në fokus",
+    price: d.price ?? "",
+    desc: d.desc || d.description || "",
+    imageUrl: d.imageUrl || d.image || d.photoUrl || null,
+    active: d.active !== false,
+    menuItemId: d.menuItemId || d.menuItem || "",
+  };
+}
+
+function toPublicOffer(o){
+  const x = o || {};
+  return {
+    id: x.id,
+    title: x.title || "Sot në fokus",
+    price: x.price ?? "",
+    desc: x.desc || "",
+    imageUrl: x.imageUrl || null,
+    active: x.active !== false,
+    menuItemId: x.menuItemId || "",
+  };
+}
+
+async function loadPublicOffers(restaurantId) {
+  const ref = doc(db, "restaurants", restaurantId, "public", "offers");
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return [];
+  const data = snap.data() || {};
+  return Array.isArray(data.items) ? data.items : [];
+}
+
+async function loadOffersFromCollection(restaurantId){
+  const ref = collection(db, "restaurants", restaurantId, "offers");
+  const snap = await getDocs(ref);
+  return snap.docs.map(d => normalizeOfferDoc(d.data(), d.id));
+}
+
+async function publishOffersToPublic(restaurantId, offers){
+  const ref = doc(db, "restaurants", restaurantId, "public", "offers");
+  const payload = { items: (offers || []).map(toPublicOffer), publishedAt: serverTimestamp() };
+  await setDoc(ref, payload, { merge: true });
+}
+
+async function loadOffersHybrid(restaurantId){
+  const pub = await loadPublicOffers(restaurantId);
+  if (pub && pub.length) return pub.map((x, idx) => normalizeOfferDoc(x, x?.id || `pub_${idx}`));
+  const col = await loadOffersFromCollection(restaurantId);
+  if (col && col.length) {
+    await publishOffersToPublic(restaurantId, col);
+    return col;
+  }
+  return [];
+}
+
+
+
+
 /* =========================================================
    MENU VIEW LOGIC (Speisekarte) — CEO/STAFF/OWNER
-   - Data source: restaurants/{id}/public/menu (single doc, cheap reads)
+   - Data source: menuItems subcollection (canonical) + auto-publish snapshot to public/menu
    - Each item must have type: "food" | "drink"
    ========================================================= */
 
@@ -692,37 +871,31 @@ function normalizeLead(row){
 }
 
 async function fetchLeads(role, uid){
-  const cacheKey = `${LEADS_CACHE_KEY}_${role}_${uid||"anon"}`;
-  const cached = cacheGet(cacheKey, LEADS_CACHE_TTL_MS);
-  if (cached && Array.isArray(cached)) return cached;
-
   const ref = collection(db, "leads");
-  let snaps = null;
 
-  // Staff: try scopeStaffId -> fallback createdByStaffId
+  if (role === "ceo") {
+    const snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(200)));
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  }
+
   if (role === "staff") {
-    try {
-      snaps = await getDocs(query(ref, where("scopeStaffId","==", uid), orderBy("createdAt","desc"), limit(200)));
-    } catch (_) {
-      snaps = null;
-    }
-    if (!snaps || snaps.empty) {
-      try {
-        snaps = await getDocs(query(ref, where("createdByStaffId","==", uid), orderBy("createdAt","desc"), limit(200)));
-      } catch (_) {
-        snaps = null;
-      }
-    }
+    const q1 = query(ref, where("assignedStaffId", "==", uid), limit(200));
+    const q2 = query(ref, where("createdByStaffId", "==", uid), limit(200));
+    const [s1, s2] = await Promise.all([getDocs(q1), getDocs(q2)]);
+    const map = new Map();
+    for (const d of s1.docs) map.set(d.id, { id: d.id, ...d.data() });
+    for (const d of s2.docs) map.set(d.id, { id: d.id, ...d.data() });
+
+    const arr = Array.from(map.values());
+    arr.sort((a,b) => {
+      const ta = a.createdAt?.seconds ? a.createdAt.seconds : 0;
+      const tb = b.createdAt?.seconds ? b.createdAt.seconds : 0;
+      return tb - ta;
+    });
+    return arr.slice(0, 200);
   }
 
-  if (!snaps) {
-    // CEO (or fallback)
-    snaps = await getDocs(query(ref, orderBy("createdAt","desc"), limit(200)));
-  }
-
-  const rows = snaps.docs.map(d => normalizeLead({ id: d.id, ...(d.data()||{}) }));
-  cacheSet(cacheKey, rows);
-  return rows;
+  return [];
 }
 
 function leadsStats(rows){
@@ -1372,7 +1545,22 @@ function bindMenuModal(){
     if(!canCreateMenuItems()){
       menuAddBtn.style.display = "none";
     } else {
-      menuAddBtn.addEventListener("click", () => {
+      const menuPublishBtn = document.getElementById("menuPublishBtn");
+
+  if (menuPublishBtn) {
+    menuPublishBtn.addEventListener("click", async () => {
+      try{
+        menuStatus.textContent = "Publishing…";
+        await publishMenuToPublic(rid, menuItems);
+        menuStatus.textContent = "Published ✓";
+      }catch(err){
+        console.error(err);
+        menuStatus.textContent = "Publish error";
+      }
+    });
+  }
+
+  menuAddBtn.addEventListener("click", () => {
         editMenuIndex = -1;
         miType && (miType.disabled = false, miType.value = "food");
         miCategory && (miCategory.value = "");

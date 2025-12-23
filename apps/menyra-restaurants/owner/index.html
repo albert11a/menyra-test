@@ -360,28 +360,7 @@
               <div class="m-muted" id="offerEditorStatus" style="margin-top:8px;"></div>
             </section>
 
-            <section class="m-card" id="offersListCard" style="display:none;">
-              <div class="m-section-header">
-                <div>
-                  <h2 class="m-section-title">Angebote dieses Lokals</h2>
-                  <p class="m-section-subtitle m-muted">Deaktivierte Offers werden nicht angezeigt.</p>
-                </div>
-              </div>
-
-              <div class="m-table">
-                <div class="m-table-row m-table-row--header" style="grid-template-columns: 2fr 1.2fr 1fr 0.9fr;">
-                  <div>Titel</div>
-                  <div>Status</div>
-                  <div>Preis</div>
-                  <div class="m-table-col-actions">Aktion</div>
-                </div>
-                <div id="offersTableBody"></div>
-              </div>
-            </section>
-          </section>
-
-          <!-- VIEW: LEADS -->
-          <!-- ========================================================= -->
+            <!-- ========================================================= -->
 <!-- VIEW: MENU (Speisekarte) -->
 <!-- ========================================================= -->
 <section class="m-view" data-view="menu" style="display:none;">
@@ -395,6 +374,7 @@
         <button class="m-seg-btn" data-menu-type="all" type="button">📋 Alle</button>
       </div>
       <button id="menuAddBtn" class="m-btn" type="button">+ Neu</button>
+      <button id="menuPublishBtn" class="m-btn m-btn--ghost" type="button">Publish → Guest</button>
     </div>
   </div>
 
@@ -478,8 +458,28 @@
     </form>
   </div>
 </div>
+<section class="m-card" id="offersListCard" style="display:none;">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title">Angebote dieses Lokals</h2>
+                  <p class="m-section-subtitle m-muted">Deaktivierte Offers werden nicht angezeigt.</p>
+                </div>
+              </div>
 
-<section class="m-view" data-view="leads" style="display:none;">
+              <div class="m-table">
+                <div class="m-table-row m-table-row--header" style="grid-template-columns: 2fr 1.2fr 1fr 0.9fr;">
+                  <div>Titel</div>
+                  <div>Status</div>
+                  <div>Preis</div>
+                  <div class="m-table-col-actions">Aktion</div>
+                </div>
+                <div id="offersTableBody"></div>
+              </div>
+            </section>
+          </section>
+
+          <!-- VIEW: LEADS -->
+          <section class="m-view" data-view="leads" style="display:none;">
             <div class="m-page-header">
               <div>
                 <h1 class="m-page-title">Leads</h1>

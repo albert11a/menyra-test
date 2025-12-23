@@ -3,9 +3,6 @@
    ========================================================================== */
 
 :root {
-  --menu-bg-top: #eef0ff;
-  --menu-bg: radial-gradient(circle at top, var(--menu-bg-top) 0, var(--bg) 35%, var(--bg) 100%);
-
   --bg: #f6f7fb;
   --bg-elevated: #ffffff;
   --bg-elevated-soft: #f9fafb;
@@ -26,8 +23,6 @@
 
 /* Dark Theme */
 body.theme-dark {
-  --menu-bg-top: #0b1220;
-
   --bg: #050816;
   --bg-elevated: #0b1220;
   --bg-elevated-soft: #020617;
@@ -1055,7 +1050,7 @@ body.theme-dark .m-sidebar {
   width: 100%;               /* volle Breite */
   transform: translateX(-100%);
   transition: transform 0.25s ease-out;
-  background: var(--menu-bg);
+  background: var(--bg-elevated);
   box-shadow: var(--shadow-soft);
   z-index: 90;
   border-radius: 0;          /* keine abgerundete rechte Kante mehr */
@@ -1078,8 +1073,6 @@ body.theme-dark .m-sidebar {
 
 /* Inhalt im Drawer */
 .m-mobile-menu-inner {
-  background: transparent;
-
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -1149,8 +1142,6 @@ body.theme-dark .m-sidebar {
 
   /* Dark-Theme Mobile: dunkle Topbar & Safe Areas */
   body.theme-dark {
-  --menu-bg-top: #0b1220;
-
     background: #020617;
   }
   body.theme-dark .m-topbar {

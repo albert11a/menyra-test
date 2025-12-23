@@ -29,7 +29,7 @@ import {
   increment,
   addDoc,
   serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 // =========================================================
 // ABSCHNITT 1: PARAMS / PAGE DETECTION
@@ -202,6 +202,37 @@ async function loadRestaurantMeta() {
   return null;
 }
 
+function normalizeMenuItem(raw, fallbackId) {
+  const d = raw || {};
+  const id = d.id || d._id || d.menuItemId || fallbackId || (crypto.randomUUID?.() || String(Math.random()).slice(2));
+  const name = d.name || d.title || d.productName || "Produkt";
+  const category = d.category || d.cat || d.categoryName || d.groupName || d.sectionName || "Sonstiges";
+  const description = d.description || d.shortDesc || d.desc || "";
+  const longDescription = d.longDescription || d.longDesc || d.details || "";
+  const price = (d.price === "" || d.price === null || d.price === undefined) ? "" : (Number(d.price) || 0);
+  const available = d.available !== false;
+  const imageUrl = d.imageUrl || d.photoUrl || d.image || d.img || null;
+  const imageUrls = Array.isArray(d.imageUrls) ? d.imageUrls : (Array.isArray(d.images) ? d.images : []);
+  const type = d.type || d.menuType || d.kind || d.group || d.section || (d.isDrink ? "drink" : null);
+
+  return {
+    id,
+    name,
+    category,
+    description,
+    longDescription,
+    price,
+    available,
+    imageUrl,
+    imageUrls,
+    type,
+    likeCount: d.likeCount || 0,
+    commentCount: d.commentCount || 0,
+    ratingCount: d.ratingCount || 0,
+    ratingSum: d.ratingSum || 0,
+  };
+}
+
 async function loadMenuItems() {
   const key = cacheKey("menu");
   const cached = cacheGet(key, TTL_MENU_MS);
@@ -209,64 +240,29 @@ async function loadMenuItems() {
 
   // Prefer public/menu (1 read)
   try {
-    const menuRef = doc(db, "restaurants", restaurantId, "public", "menu");
-    const snap = await getDoc(menuRef);
+    const ref = doc(db, "restaurants", restaurantId, "public", "menu");
+    const snap = await getDoc(ref);
     if (snap.exists()) {
       const data = snap.data() || {};
       const arr = Array.isArray(data.items) ? data.items : [];
-      const items = arr.map((d) => {
-        if (!d) d = {};
-        return {
-          id: d.id || crypto.randomUUID?.() || String(Math.random()).slice(2),
-          name: d.name || "Produkt",
-          description: d.description || "",
-          longDescription: d.longDescription || "",
-          price: Number(d.price) || 0,
-          category: d.category || "Sonstiges",
-          available: d.available !== false,
-          imageUrl: d.imageUrl || null,
-          imageUrls: Array.isArray(d.imageUrls) ? d.imageUrls : [],
-          type: d.type || d.kind || d.group || d.section || null,
-          likeCount: d.likeCount || 0,
-          commentCount: d.commentCount || 0,
-          ratingCount: d.ratingCount || 0,
-          ratingSum: d.ratingSum || 0,
-        };
-      }).filter((i) => i.available !== false);
-
-      // If we already have items here -> done
+      const items = arr.map((x, idx) => normalizeMenuItem(x, x?.id || `pub_${idx}`))
+        .filter((i) => i.available !== false);
       if (items.length) {
         cacheSet(key, items);
         return items;
       }
     }
   } catch (err) {
-    console.error(err);
+    console.warn("public/menu read failed:", err?.message || err);
   }
 
-  // Fallback: legacy collection restaurants/{id}/menuItems (more reads, but only if public/menu is empty)
+  // Fallback: restaurants/{id}/menuItems (legacy, more reads)
   try {
     const colRef = collection(db, "restaurants", restaurantId, "menuItems");
     const snap = await getDocs(colRef);
-    const items = snap.docs.map((docu) => {
-      const d = docu.data() || {};
-      return {
-        id: docu.id,
-        name: d.name || d.title || "Produkt",
-        description: d.description || d.shortDesc || "",
-        longDescription: d.longDescription || d.longDesc || "",
-        price: Number(d.price) || 0,
-        category: d.category || d.cat || "Sonstiges",
-        available: d.available !== false,
-        imageUrl: d.imageUrl || d.photoUrl || d.image || null,
-        imageUrls: Array.isArray(d.imageUrls) ? d.imageUrls : [],
-        type: d.type || d.kind || d.group || d.section || (d.isDrink ? "drink" : null),
-        likeCount: d.likeCount || 0,
-        commentCount: d.commentCount || 0,
-        ratingCount: d.ratingCount || 0,
-        ratingSum: d.ratingSum || 0,
-      };
-    }).filter((i) => i.available !== false);
+    const items = snap.docs
+      .map((docu) => normalizeMenuItem(docu.data(), docu.id))
+      .filter((i) => i.available !== false);
 
     cacheSet(key, items);
     return items;
@@ -276,6 +272,21 @@ async function loadMenuItems() {
   }
 }
 
+
+function normalizeOffer(raw, fallbackId) {
+  const d = raw || {};
+  const id = d.id || d._id || fallbackId || (crypto.randomUUID?.() || String(Math.random()).slice(2));
+  return {
+    id,
+    title: d.title || d.name || "Sot në fokus",
+    price: d.price ?? "",
+    desc: d.desc || d.description || "",
+    imageUrl: d.imageUrl || d.image || d.photoUrl || null,
+    active: d.active !== false,
+    menuItemId: d.menuItemId || d.menuItem || "",
+  };
+}
+
 async function loadOffers() {
   const key = cacheKey("offers");
   const cached = cacheGet(key, TTL_OFFERS_MS);
@@ -283,101 +294,85 @@ async function loadOffers() {
 
   // Prefer public/offers (1 read)
   try {
-    const offersRef = doc(db, "restaurants", restaurantId, "public", "offers");
-    const snap = await getDoc(offersRef);
+    const ref = doc(db, "restaurants", restaurantId, "public", "offers");
+    const snap = await getDoc(ref);
     if (snap.exists()) {
       const data = snap.data() || {};
       const arr = Array.isArray(data.items) ? data.items : [];
-      const list = arr.map((o) => {
-        if (!o) o = {};
-        return {
-          id: o.id || crypto.randomUUID?.() || String(Math.random()).slice(2),
-          title: o.title || o.name || "Sot në fokus",
-          price: o.price ?? "",
-          desc: o.desc || o.description || "",
-          imageUrl: o.imageUrl || o.image || o.photoUrl || null,
-          active: o.active !== false,
-          menuItemId: o.menuItemId || o.menuItem || "",
-          _fallback: false,
-        };
-      }).filter((o) => o.active !== false);
-
-      if (list.length) {
-        cacheSet(key, list);
-        return list;
+      const offers = arr.map((x, idx) => normalizeOffer(x, x?.id || `pub_${idx}`))
+        .filter(o => o.active !== false);
+      if (offers.length) {
+        cacheSet(key, offers);
+        return offers;
       }
     }
   } catch (err) {
-    console.error(err);
+    console.warn("public/offers read failed:", err?.message || err);
   }
 
-  // Fallback: legacy collection restaurants/{id}/offers (more reads, but only if public/offers is empty)
+  // Fallback: restaurants/{id}/offers (legacy)
   try {
     const colRef = collection(db, "restaurants", restaurantId, "offers");
     const snap = await getDocs(colRef);
-    const list = snap.docs.map((docu) => {
-      const o = docu.data() || {};
-      return {
-        id: docu.id,
-        title: o.title || o.name || "Sot në fokus",
-        price: o.price ?? "",
-        desc: o.desc || o.description || "",
-        imageUrl: o.imageUrl || o.image || o.photoUrl || null,
-        active: o.active !== false,
-        menuItemId: o.menuItemId || o.menuItem || "",
-        _fallback: true,
-      };
-    }).filter((o) => o.active !== false);
-
-    cacheSet(key, list);
-    return list;
+    const offers = snap.docs.map(d => normalizeOffer(d.data(), d.id)).filter(o => o.active !== false);
+    cacheSet(key, offers);
+    return offers;
   } catch (err) {
     console.error(err);
     return [];
   }
 }
 
+
 // =========================================================
 // ABSCHNITT 6: Shared Render Helpers
 // =========================================================
 
-function inferTypeForItem(item) {
-  // Accept many legacy fields
-  const raw =
-    item?.type ?? item?.kind ?? item?.group ?? item?.section ?? item?.menuType ?? item?.categoryType ?? null;
+function foldText(s){
+  try{
+    return String(s || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+  }catch(_){
+    return String(s || "").toLowerCase();
+  }
+}
 
-  if (raw) {
-    const t = String(raw).toLowerCase().trim();
-    if (["food","speise","speisen"].includes(t)) return "food";
-    if (["drink","drinks","beverage","getränke","getraenke","pije","pijet"].includes(t)) return "drink";
+function inferTypeForItem(item) {
+  const explicit = item?.type ?? item?.menuType ?? item?.kind ?? item?.group ?? item?.section ?? null;
+  if (explicit) {
+    const t = foldText(explicit).trim();
+    if (t === "drink" || t === "drinks" || t === "beverage" || t === "getranke" || t === "getraenke") return "drink";
+    if (t === "food" || t === "speise" || t === "speisen") return "food";
   }
 
-  // Boolean legacy
   if (item?.isDrink === true || item?.drink === true) return "drink";
 
-  const cat = String(item?.category || "").toLowerCase();
-  const name = String(item?.name || "").toLowerCase();
+  const cat = item?.category ?? item?.cat ?? item?.categoryName ?? item?.groupName ?? item?.sectionName ?? item?.tab ?? "";
+  const name = item?.name ?? item?.title ?? "";
+  const desc = item?.description ?? item?.shortDesc ?? "";
+  const hay = foldText(`${cat} ${name} ${desc}`);
 
-  // Very forgiving keywords (DE/EN/SQ) + common beverages
   const drinksWords = [
-    "getränke","getraenke","drinks","beverage","beverages","pije","pijet","freskuese",
-    "coffee","cafe","kafe","espresso","cappuccino","latte","macchiato","mocha",
-    "tea","çaj","caj",
-    "water","ujë","uje","mineral",
-    "juice","lëng","leng","sok","smoothie",
-    "cola","coca","pepsi","fanta","sprite","tonic","soda","ice tea","icetea",
+    "getranke","getraenke","drinks","drink","beverage","beverages",
+    "pije","pijet","gazuze","gazuara","alkool","alkoolike","alkoolik",
+    "kafe","cafe","coffee","espresso","cappuccino","latte","macchiato","mocha",
+    "caj","çaj","tea",
+    "uje","uj","water","mineral","sparkling","still",
+    "leng","lengje","juice","sok","smoothie",
+    "cola","coca","pepsi","fanta","sprite","tonic","soda","icetea","iced tea",
     "energy","energjike","red bull","monster",
-    "beer","bier","birra","weissbier","lager","pils",
-    "wine","wein","verë","vere","prosecco","champagne",
-    "cocktail","koktej","margarita","mojito","spritz",
-    "vodka","whiskey","whisky","gin","rum","tequila","raki","rakia","brandy","cognac",
-    "shot","likör","liqueur"
+    "birra","beer","bier","lager","pils",
+    "vere","ver","verë","wine","wein","prosecco","champagne",
+    "koktej","cocktail","mojito","margarita","spritz",
+    "vodka","whiskey","whisky","gin","rum","tequila","raki","rakia","brandy","cognac","shot","likor","liqueur"
   ];
 
-  const hay = `${cat} ${name}`;
-  if (drinksWords.some((w) => hay.includes(w))) return "drink";
+  if (drinksWords.some(w => hay.includes(w))) return "drink";
   return "food";
 }
+
 
 function money(v) {
   const n = Number(v) || 0;
@@ -462,6 +457,9 @@ export async function initKarte() {
     // Wenn noch keine Offers existieren: Fallback aus Menü-Items (0 extra Reads)
     // => damit "Sot ne fokus" trotzdem immer sichtbar ist.
     if (!list.length) {
+      // Always visible placeholder
+      list = [{ id:"placeholder", title:"Sot në fokus", price:"", desc:"Aktualisht keine Angebote.", imageUrl:null, active:true, menuItemId:"" }];
+
       const fallback = (Array.isArray(allMenuItems) ? allMenuItems : [])
         .filter((m) => m && (m.imageUrl || m.image || m.photoUrl))
         .slice(0, 6)
@@ -477,24 +475,18 @@ export async function initKarte() {
       if (fallback.length) list = fallback;
     }
 
-    
-if (!list.length) {
-  // Always visible: show placeholder slide
-  list = [{
-    id: "placeholder",
-    title: "Sot në fokus",
-    price: "",
-    desc: "Aktualisht keine Angebote.",
-    imageUrl: null,
-    active: true,
-    _fallback: true
-  }];
-  clearOffersTimer();
-}
+    if (!list.length) {
+      // Always visible placeholder
+      list = [{ id:"placeholder", title:"Sot në fokus", price:"", desc:"Aktualisht keine Angebote.", imageUrl:null, active:true, menuItemId:"" }];
 
-offersSliderEl.innerHTML = "";
-offersDotsEl.innerHTML = "";
-offersSection.style.display = "block";
+      offersSection.style.display = "none";
+      clearOffersTimer();
+      return;
+    }
+
+    offersSliderEl.innerHTML = "";
+    offersDotsEl.innerHTML = "";
+    offersSection.style.display = "block";
 
     const dotsFrag = document.createDocumentFragment();
     const slidesFrag = document.createDocumentFragment();

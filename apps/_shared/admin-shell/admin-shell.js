@@ -22,73 +22,41 @@
     document.body.appendChild(overlay);
   }
 
-  function isTransparentColor(c){
-  if (!c) return true;
-  const s = String(c).trim().toLowerCase();
-  return s === "transparent" || s === "rgba(0, 0, 0, 0)" || s === "rgba(0,0,0,0)";
-}
-
-function pickBgElement(){
-  // Prefer the element that actually has the background (often <html>)
-  const candidates = [
-    document.querySelector(".m-shell"),
-    document.querySelector(".m-app"),
-    document.querySelector(".app"),
-    document.querySelector("main"),
-    document.body,
-    document.documentElement
-  ].filter(Boolean);
-
-  for (const el of candidates){
-    const cs = window.getComputedStyle(el);
-    const hasImage = cs.backgroundImage && cs.backgroundImage !== "none";
-    const hasColor = !isTransparentColor(cs.backgroundColor);
-    if (hasImage || hasColor) return el;
+  function pickBgElement(){
+    // Prefer <html> because admin gradient is on html, body is transparent
+    return (
+      document.documentElement ||
+      document.querySelector(".m-app") ||
+      document.querySelector(".app") ||
+      document.querySelector(".page") ||
+      document.body
+    );
   }
-  return document.documentElement;
-}
 
   function syncPanelBackground(){
-  const panel = $("menuPanel");
-  if (!panel) return;
+    const panel = $("menuPanel");
+    if (!panel) return;
 
-  const el = pickBgElement();
-  const cs = window.getComputedStyle(el);
+    const el = pickBgElement();
+    const cs = window.getComputedStyle(el);
 
-  let bgColor = cs.backgroundColor || "";
-  let bgImage = cs.backgroundImage || "none";
+    panel.style.backgroundColor = cs.backgroundColor || "#ffffff";
+    panel.style.backgroundImage = cs.backgroundImage || "none";
+    panel.style.backgroundRepeat = cs.backgroundRepeat || "no-repeat";
+    panel.style.backgroundPosition = cs.backgroundPosition || "center top";
+    panel.style.backgroundSize = cs.backgroundSize || "cover";
+    panel.style.backgroundAttachment = cs.backgroundAttachment || "scroll";
 
-  // If the picked element is still transparent, fallback to <html>
-  if ((bgImage === "none") && isTransparentColor(bgColor)) {
-    const htmlCS = window.getComputedStyle(document.documentElement);
-    bgColor = htmlCS.backgroundColor || bgColor;
-    bgImage = htmlCS.backgroundImage || bgImage;
+    const page = $("menuPage");
+    if (page){
+      page.style.backgroundColor = panel.style.backgroundColor;
+      page.style.backgroundImage = panel.style.backgroundImage;
+      page.style.backgroundRepeat = panel.style.backgroundRepeat;
+      page.style.backgroundPosition = panel.style.backgroundPosition;
+      page.style.backgroundSize = panel.style.backgroundSize;
+      page.style.backgroundAttachment = panel.style.backgroundAttachment;
+    }
   }
-
-  // Final fallback to token --bg (so we NEVER become transparent)
-  if ((bgImage === "none") && isTransparentColor(bgColor)) {
-    const rootCS = window.getComputedStyle(document.documentElement);
-    const tokenBg = (rootCS.getPropertyValue("--bg") || "").trim();
-    bgColor = tokenBg || "#f6f7fb";
-  }
-
-  panel.style.backgroundColor = bgColor;
-  panel.style.backgroundImage = bgImage || "none";
-  panel.style.backgroundRepeat = cs.backgroundRepeat || "no-repeat";
-  panel.style.backgroundPosition = cs.backgroundPosition || "center top";
-  panel.style.backgroundSize = cs.backgroundSize || "cover";
-  panel.style.backgroundAttachment = cs.backgroundAttachment || "scroll";
-
-  const page = $("menuPage");
-  if (page){
-    page.style.backgroundColor = panel.style.backgroundColor;
-    page.style.backgroundImage = panel.style.backgroundImage;
-    page.style.backgroundRepeat = panel.style.backgroundRepeat;
-    page.style.backgroundPosition = panel.style.backgroundPosition;
-    page.style.backgroundSize = panel.style.backgroundSize;
-    page.style.backgroundAttachment = panel.style.backgroundAttachment;
-  }
-}
 
   function buildMenuFromSidebar(){
     const host = $("menuPage");
