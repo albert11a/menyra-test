@@ -21,14 +21,16 @@
 
 html {
   min-height: 100%;
-  background: var(--page-bg);
+  background-color: var(--bg);
+  background-image: var(--page-bg);
 }
 
 body {
   margin: 0;
   font-family: "Space Grotesk", system-ui, -apple-system, Segoe UI, sans-serif;
   color: var(--ink);
-  background: var(--page-bg);
+  background-color: var(--bg);
+  background-image: var(--page-bg);
   min-height: 100svh;
 }
 
