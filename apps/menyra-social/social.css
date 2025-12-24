@@ -1,10 +1,8 @@
 :root {
   --bg: #f6f3ea;
-  --bg-2: #efe5d7;
+  --bg-2: #f1e8da;
   --safe-solid: var(--bg);
-  --page-bg: radial-gradient(950px 520px at 82% 10%, rgba(247, 222, 200, 0.65), transparent 70%),
-    radial-gradient(900px 560px at 12% 14%, rgba(214, 236, 231, 0.75), transparent 70%),
-    linear-gradient(180deg, var(--safe-solid) 0%, var(--safe-solid) 20%, var(--bg-2) 60%, var(--safe-solid) 100%);
+  --page-bg: none;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -41,18 +39,6 @@ body {
     padding-bottom: var(--safe-bottom);
     padding-left: var(--safe-left);
   }
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: var(--safe-top);
-  bottom: var(--safe-bottom);
-  background-color: var(--safe-solid);
-  background-image: var(--page-bg);
-  z-index: -1;
 }
 
 .page {
