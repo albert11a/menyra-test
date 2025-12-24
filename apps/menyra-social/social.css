@@ -4,6 +4,10 @@
   --page-bg: radial-gradient(900px 500px at 80% -10%, #ffe7c7, transparent),
     radial-gradient(700px 500px at 10% 10%, #dff2ef, transparent),
     linear-gradient(180deg, var(--bg), var(--bg-2));
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
   --ink: #191919;
   --muted: #6f6b62;
   --card: #fffdf7;
@@ -28,11 +32,19 @@ body {
   min-height: 100svh;
 }
 
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: var(--safe-top);
+    padding-right: var(--safe-right);
+    padding-bottom: var(--safe-bottom);
+    padding-left: var(--safe-left);
+  }
+}
+
 .page {
   max-width: 1120px;
   margin: 0 auto;
-  padding: calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right))
-    calc(60px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
+  padding: 20px 20px 60px;
 }
 
 .topbar {
