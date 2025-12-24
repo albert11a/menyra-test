@@ -81,24 +81,26 @@ function getCartStorageKey() {
   return `menyra_cart_${restaurantId}_${tableId}`;
 }
 
-function loadCart() {
-  try {
-    const raw = localStorage.getItem(getCartStorageKey());
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: Number(item.price) || 0,
-        qty: Number(item.qty) || 0,
-      }))
-      .filter((i) => i.qty > 0);
-  } catch {
-    return [];
+  function loadCart() {
+    try {
+      const raw = localStorage.getItem(getCartStorageKey());
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [];
+      return parsed
+        .map((item) => ({
+          id: item.id,
+          name: item.name,
+          price: Number(item.price) || 0,
+          qty: Number(item.qty) || 0,
+          type: item.type || "",
+          category: item.category || "",
+        }))
+        .filter((i) => i.qty > 0);
+    } catch {
+      return [];
+    }
   }
-}
 
 function saveCart(cart) {
   try { localStorage.setItem(getCartStorageKey(), JSON.stringify(cart)); } catch {}
@@ -126,15 +128,24 @@ function updateFab(cart) {
   }
 }
 
-function changeCart(cart, item, deltaQty) {
-  const index = cart.findIndex((c) => c.id === item.id);
-  if (index === -1 && deltaQty > 0) {
-    cart.push({ id: item.id, name: item.name, price: item.price, qty: deltaQty });
-  } else if (index >= 0) {
-    cart[index].qty += deltaQty;
-    if (cart[index].qty <= 0) cart.splice(index, 1);
-  }
-  saveCart(cart);
+  function changeCart(cart, item, deltaQty) {
+    const index = cart.findIndex((c) => c.id === item.id);
+    if (index === -1 && deltaQty > 0) {
+      cart.push({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        qty: deltaQty,
+        type: item.type || "",
+        category: item.category || "",
+      });
+    } else if (index >= 0) {
+      cart[index].qty += deltaQty;
+      if (!cart[index].type && item.type) cart[index].type = item.type;
+      if (!cart[index].category && item.category) cart[index].category = item.category;
+      if (cart[index].qty <= 0) cart.splice(index, 1);
+    }
+    saveCart(cart);
   updateFab(cart);
   return cart;
 }
@@ -1306,7 +1317,14 @@ async function initPorosia() {
       const payload = {
         restaurantId,
         table: tableId,
-        items: cart.map((c) => ({ id: c.id, name: c.name, price: c.price, qty: c.qty })),
+        items: cart.map((c) => ({
+          id: c.id,
+          name: c.name,
+          price: c.price,
+          qty: c.qty,
+          type: c.type || "",
+          category: c.category || "",
+        })),
         note: noteEl.value || "",
         status: "new",
         createdAt: serverTimestamp(),

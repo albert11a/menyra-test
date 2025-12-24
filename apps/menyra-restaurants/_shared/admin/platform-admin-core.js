@@ -1218,8 +1218,8 @@ function openQrModal(restaurant) {
 
   // owner/staff codes
   const ownerRel = `../menyra-owner/index.html?r=${encodeURIComponent(rid)}`;
-  const waiterRel = `../menyra-restaurants/staff/kamarieri/index.html?r=${encodeURIComponent(rid)}`;
-  const kitchenRel = `../menyra-restaurants/staff/kuzhina/index.html?r=${encodeURIComponent(rid)}`;
+  const waiterRel = `../menyra-restaurants/waiter/index.html?r=${encodeURIComponent(rid)}`;
+  const kitchenRel = `../menyra-restaurants/kitchen/index.html?r=${encodeURIComponent(rid)}`;
 
   setText("ownerAdminLink", ownerRel);
   setText("staffLoginLink", waiterRel);

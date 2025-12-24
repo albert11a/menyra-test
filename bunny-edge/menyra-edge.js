@@ -18,6 +18,36 @@ function corsHeaders(origin) {
     .map((s) => s.trim())
     .filter(Boolean);
 
+  function matchesOrigin(entry) {
+    if (!origin) return false;
+    if (entry === "*") return true;
+    const cleaned = entry.replace(/\/+$/, "");
+    if (!cleaned) return false;
+
+    // Wildcard suffix: *.vercel.app or .vercel.app
+    if (cleaned.startsWith("*.") || cleaned.startsWith(".")) {
+      const suffix = cleaned.replace(/^\*\./, ".").toLowerCase();
+      try {
+        return new URL(origin).hostname.toLowerCase().endsWith(suffix);
+      } catch {
+        return origin.toLowerCase().endsWith(suffix);
+      }
+    }
+
+    // Exact origin (with scheme)
+    if (cleaned.startsWith("http://") || cleaned.startsWith("https://")) {
+      return cleaned === origin;
+    }
+
+    // Hostname-only entry: allow any scheme for that host
+    try {
+      const host = new URL(origin).hostname.toLowerCase();
+      return cleaned.toLowerCase() === host;
+    } catch {
+      return false;
+    }
+  }
+
   if (!allowed.length) {
     return {
       "access-control-allow-origin": origin || "*",
@@ -26,7 +56,7 @@ function corsHeaders(origin) {
     };
   }
 
-  const ok = allowed.includes("*") || allowed.includes(origin);
+  const ok = allowed.some(matchesOrigin);
   return ok
     ? {
         "access-control-allow-origin": allowed.includes("*") ? "*" : origin,
