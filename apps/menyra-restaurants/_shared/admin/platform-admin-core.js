@@ -315,8 +315,6 @@ function mountLoginModal(roleLabel = "Login") {
       status.textContent = err?.message || "Login fehlgeschlagen.";
     }
   });
-
-  show(overlay);
 }
 
 // -------------------------
@@ -1822,6 +1820,7 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   let nextPayExpanded = false;
   let storiesExpanded = false;
   let swipeLiveUnsub = null;
+  let loginShowTimer = null;
 
   function initSwipeUi() {
     const viewport = $("dashSwipeViewport");
@@ -1927,9 +1926,15 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
     const loginOverlay = $("loginModalOverlay");
 
+    if (loginShowTimer) { clearTimeout(loginShowTimer); loginShowTimer = null; }
+
     if (!user) {
 
-      if (loginOverlay) show(loginOverlay);
+      if (loginOverlay) {
+        loginShowTimer = setTimeout(() => {
+          show(loginOverlay);
+        }, 160);
+      }
 
       setText("adminStatus", "Nicht eingeloggt.");
 
