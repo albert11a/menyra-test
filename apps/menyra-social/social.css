@@ -1,6 +1,9 @@
 :root {
   --bg: #f6f3ea;
   --bg-2: #fcebd4;
+  --page-bg: radial-gradient(900px 500px at 80% -10%, #ffe7c7, transparent),
+    radial-gradient(700px 500px at 10% 10%, #dff2ef, transparent),
+    linear-gradient(180deg, var(--bg), var(--bg-2));
   --ink: #191919;
   --muted: #6f6b62;
   --card: #fffdf7;
@@ -12,20 +15,24 @@
 
 * { box-sizing: border-box; }
 
+html {
+  min-height: 100%;
+  background: var(--page-bg);
+}
+
 body {
   margin: 0;
   font-family: "Space Grotesk", system-ui, -apple-system, Segoe UI, sans-serif;
   color: var(--ink);
-  background: radial-gradient(900px 500px at 80% -10%, #ffe7c7, transparent),
-              radial-gradient(700px 500px at 10% 10%, #dff2ef, transparent),
-              linear-gradient(180deg, var(--bg), var(--bg-2));
-  min-height: 100vh;
+  background: var(--page-bg);
+  min-height: 100svh;
 }
 
 .page {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 20px 20px 60px;
+  padding: calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right))
+    calc(60px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
 }
 
 .topbar {
