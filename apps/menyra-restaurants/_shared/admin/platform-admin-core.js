@@ -624,6 +624,284 @@ async function ensureOwnerStaffDoc(restaurantId, user) {
   }
 }
 
+function shortCaption(text, max = 90) {
+  const safe = String(text || "").trim();
+  if (!safe) return "";
+  return safe.length > max ? safe.slice(0, max).trim() + "..." : safe;
+}
+
+async function initSocialPostsUI({ restaurantId, restaurants, user }) {
+  const listEl = $("socialPostsList");
+  const statusEl = $("socialStatus");
+  const metaEl = $("socialPostsMeta");
+    const typeSel = $("socialPostType");
+    const cityInp = $("socialCity");
+    const cityListEl = $("socialCityList");
+    const mediaTypeSel = $("socialMediaType");
+  const mediaUrlInp = $("socialMediaUrl");
+  const mediaFileInp = $("socialMediaFile");
+  const captionInp = $("socialCaption");
+  const publishBtn = $("socialPublishBtn");
+  const uploadBtn = $("socialUploadBtn");
+  const reloadBtn = $("socialReloadBtn");
+
+  if (!listEl) return;
+
+    const base = (restaurants || []).find((r) => r.id === restaurantId) || {};
+    if (cityInp && !cityInp.value) cityInp.value = base.city || "";
+    if (cityListEl) {
+      const cities = new Set();
+      (restaurants || []).forEach((r) => {
+        const city = String(r.city || "").trim();
+        if (city) cities.add(city);
+      });
+      if (!cities.size && base.city) cities.add(base.city);
+      if (!cities.size) cities.add("Prishtina");
+      cityListEl.innerHTML = Array.from(cities)
+        .sort((a, b) => a.localeCompare(b))
+        .map((city) => `<option value="${esc(city)}"></option>`)
+        .join("");
+    }
+
+    function normalizeUrl(raw) {
+      const value = String(raw || "").trim();
+      if (!value) return "";
+      if (/^https?:\/\//i.test(value)) return value;
+      if (value.startsWith("//")) return `https:${value}`;
+      return `https://${value.replace(/^\/+/, "")}`;
+    }
+
+    function setStatus(text) {
+      if (statusEl) statusEl.textContent = text || "";
+    }
+
+    function renderPosts(rows) {
+      if (!Array.isArray(rows) || !rows.length) {
+        listEl.innerHTML = `<div class="m-muted">Keine Posts vorhanden.</div>`;
+        if (metaEl) metaEl.textContent = "-";
+        return;
+      }
+
+      listEl.innerHTML = rows.map((row) => {
+        const createdAt = row.createdAt?.seconds ? relativeFromNow(row.createdAt.seconds * 1000) : "-";
+        const status = row.status || "active";
+        const nextAction = status === "active" ? "hide" : "show";
+        const currentType = row.postType || "offer";
+        const typeOptions = ["offer", "nightlife", "food", "event"]
+          .map((type) => `<option value="${type}" ${type === currentType ? "selected" : ""}>${type}</option>`)
+          .join("");
+        return `
+          <div class="m-table-row" style="grid-template-columns: 2fr 1fr 1fr 1fr 0.9fr;">
+            <div>${esc(shortCaption(row.caption || row.captionShort || ""))}</div>
+            <div>
+              <select class="m-select2" data-social-type="${row.id}">
+                ${typeOptions}
+              </select>
+            </div>
+            <div>${esc(status)}</div>
+            <div>${createdAt}</div>
+            <div class="m-table-col-actions">
+              <button class="m-ghost-btn" data-social-act="${nextAction}" data-social-id="${row.id}">${nextAction}</button>
+              <button class="m-ghost-btn" data-social-act="delete" data-social-id="${row.id}">delete</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    if (metaEl) metaEl.textContent = `Posts: ${rows.length}`;
+  }
+
+  async function loadPosts() {
+    if (!restaurantId) {
+      setStatus("Kein Lokal ausgewählt.");
+      return;
+    }
+    setStatus("Lade Posts.");
+    try {
+      const ref = collection(db, "restaurants", restaurantId, "socialPosts");
+      let snap = null;
+      try {
+        snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(50)));
+      } catch (_) {
+        snap = await getDocs(ref);
+      }
+      const rows = [];
+      snap.forEach((d) => rows.push({ id: d.id, ...d.data() }));
+      renderPosts(rows);
+      setStatus("");
+    } catch (err) {
+      console.error(err);
+      setStatus("Fehler beim Laden.");
+    }
+  }
+
+    async function setPostStatus(postId, nextStatus) {
+      if (!restaurantId || !postId) return;
+      await setDoc(doc(db, "restaurants", restaurantId, "socialPosts", postId), {
+        status: nextStatus,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      await setDoc(doc(db, "socialFeed", postId), {
+        status: nextStatus,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+
+    async function setPostType(postId, nextType) {
+      if (!restaurantId || !postId || !nextType) return;
+      await setDoc(doc(db, "restaurants", restaurantId, "socialPosts", postId), {
+        postType: nextType,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      await setDoc(doc(db, "socialFeed", postId), {
+        postType: nextType,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
+
+  if (uploadBtn) {
+    uploadBtn.addEventListener("click", async () => {
+      const file = mediaFileInp?.files?.[0];
+      if (!file) {
+        setStatus("Bitte ein Bild auswählen.");
+        return;
+      }
+      const maxBytes = 15 * 1024 * 1024;
+      if (file.size > maxBytes) {
+        setStatus("Max 15MB pro Bild.");
+        return;
+      }
+      if (!String(file.type || "").startsWith("image/")) {
+        setStatus("Nur Bilder erlaubt.");
+        return;
+      }
+
+      const form = new FormData();
+      form.append("file", file, file.name || "image.jpg");
+      form.append("restaurantId", restaurantId || "");
+
+      try {
+        setStatus("Upload startet.");
+        const res = await fetch(`${BUNNY_EDGE_BASE}/image/upload`, {
+          method: "POST",
+          body: form
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || !data?.url) {
+          setStatus(data?.error || "Upload fehlgeschlagen.");
+          return;
+        }
+          const safeUrl = normalizeUrl(data.url);
+          if (mediaUrlInp) mediaUrlInp.value = safeUrl;
+          if (mediaTypeSel) mediaTypeSel.value = "image";
+          setStatus("Upload OK.");
+        } catch (err) {
+          console.error(err);
+          setStatus("Upload fehlgeschlagen.");
+      }
+    });
+  }
+
+  if (publishBtn) {
+    publishBtn.addEventListener("click", async () => {
+      if (!restaurantId) {
+        setStatus("Kein Lokal ausgewählt.");
+        return;
+      }
+      const caption = captionInp?.value?.trim() || "";
+      const mediaUrl = normalizeUrl(mediaUrlInp?.value?.trim() || "");
+      if (!caption || !mediaUrl) {
+        setStatus("Caption und Media URL sind Pflicht.");
+        return;
+      }
+
+      const postType = typeSel?.value || "food";
+      const city = cityInp?.value?.trim() || base.city || "";
+      const mediaType = mediaTypeSel?.value || "image";
+      const postRef = doc(collection(db, "restaurants", restaurantId, "socialPosts"));
+      const postId = postRef.id;
+
+      const media = [{
+        url: mediaUrl,
+        type: mediaType,
+        thumbUrl: mediaType === "image" ? mediaUrl : ""
+      }];
+
+      const payload = {
+        postType,
+        caption,
+        media,
+        city,
+        createdAt: serverTimestamp(),
+        createdByUid: user?.uid || "",
+        status: "active"
+      };
+
+      const feedPayload = {
+        rid: restaurantId,
+        postType,
+        city,
+        createdAt: serverTimestamp(),
+        captionShort: shortCaption(caption),
+        thumbUrl: mediaType === "image" ? mediaUrl : "",
+        mediaType,
+        status: "active",
+        businessName: base.name || base.restaurantName || ""
+      };
+
+      try {
+        setStatus("Publishing.");
+        await setDoc(postRef, payload);
+        await setDoc(doc(db, "socialFeed", postId), feedPayload, { merge: true });
+        setStatus("Published.");
+        if (captionInp) captionInp.value = "";
+        if (mediaUrlInp) mediaUrlInp.value = "";
+        await loadPosts();
+      } catch (err) {
+        console.error(err);
+        setStatus("Publish fehlgeschlagen.");
+      }
+    });
+  }
+
+  if (reloadBtn) reloadBtn.addEventListener("click", loadPosts);
+
+    listEl.addEventListener("click", async (e) => {
+      const btn = e.target?.closest?.("[data-social-act]");
+      if (!btn) return;
+      const postId = btn.getAttribute("data-social-id");
+      const act = btn.getAttribute("data-social-act");
+    if (!postId || !act) return;
+    try {
+      if (act === "hide") await setPostStatus(postId, "hidden");
+      if (act === "show") await setPostStatus(postId, "active");
+      if (act === "delete") await setPostStatus(postId, "deleted");
+      await loadPosts();
+      } catch (err) {
+        console.error(err);
+        setStatus("Aktion fehlgeschlagen.");
+      }
+    });
+
+    listEl.addEventListener("change", async (e) => {
+      const sel = e.target?.closest?.("[data-social-type]");
+      if (!sel) return;
+      const postId = sel.getAttribute("data-social-type");
+      const nextType = sel.value;
+      if (!postId || !nextType) return;
+      try {
+        await setPostType(postId, nextType);
+        setStatus("Typ aktualisiert.");
+        await loadPosts();
+      } catch (err) {
+        console.error(err);
+        setStatus("Typ-Update fehlgeschlagen.");
+      }
+    });
+
+  await loadPosts();
+}
+
 async function createRestaurantDoc(role, user, payload) {
   const restaurantsRef = collection(db, "restaurants");
 
@@ -939,7 +1217,7 @@ function openQrModal(restaurant) {
   }
 
   // owner/staff codes
-  const ownerRel = `../menyra-restaurants/owner/index.html?r=${encodeURIComponent(rid)}`;
+  const ownerRel = `../menyra-owner/index.html?r=${encodeURIComponent(rid)}`;
   const waiterRel = `../menyra-restaurants/staff/kamarieri/index.html?r=${encodeURIComponent(rid)}`;
   const kitchenRel = `../menyra-restaurants/staff/kuzhina/index.html?r=${encodeURIComponent(rid)}`;
 
@@ -2465,6 +2743,14 @@ await refreshLeads(true);
       const ridForStories = restaurants[0]?.id || restrictRestaurantId || "";
       try {
         await initOwnerStoriesUI({ restaurantId: ridForStories, user });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    if (role === "owner") {
+      const ridForSocial = restaurants[0]?.id || restrictRestaurantId || "";
+      try {
+        await initSocialPostsUI({ restaurantId: ridForSocial, restaurants, user });
       } catch (err) {
         console.error(err);
       }

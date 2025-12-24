@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MENYRA Social - Feed</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./social.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "@shared/": "/shared/",
+      "@apps/": "/apps/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo"></span>
+        <div>MENYRA Social</div>
+      </div>
+      <nav class="nav">
+        <a class="is-active" href="/apps/menyra-social/index.html">Feed</a>
+        <a href="/apps/menyra-social/discover/index.html">Discover</a>
+        <a href="/apps/menyra-social/profile/index.html">Profile</a>
+      </nav>
+      <div class="header-actions">
+        <span class="meta" id="authUser">guest</span>
+        <a class="btn btn--ghost" id="authLink">Login</a>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h1>Whats new in Prishtina.</h1>
+      <p>Business posts, offers, nightlife, food and events. Filter by city and type to keep the feed sharp.</p>
+    </section>
+
+    <section class="toolbar">
+        <div class="tabs" id="feedTabs">
+          <button class="is-active" data-type="all" type="button">All</button>
+          <button data-type="offer" type="button">Actions</button>
+          <button data-type="nightlife" type="button">Nightlife</button>
+          <button data-type="food" type="button">Food</button>
+          <button data-type="event" type="button">Events</button>
+        </div>
+        <input class="input" id="cityInput" placeholder="City (optional)" />
+      <button class="btn btn--ghost" id="refreshBtn" type="button">Refresh</button>
+    </section>
+
+    <div id="feedStatus" class="meta"></div>
+    <div id="feedList" class="grid cols-3"></div>
+  </div>
+
+  <script type="module" src="./feed.js"></script>
+</body>
+</html>

@@ -45,16 +45,21 @@ function buildLinks(rid, tid){
   const qG = tid ? `?r=${encodeURIComponent(rid)}&t=${encodeURIComponent(tid)}` : qR;
 
   return {
-    main: `${root}apps/menyra-restaurants/main/index.html${qR}`,
+    main: `${root}apps/menyra-main/index.html${qR}`,
     karte: `${root}apps/menyra-restaurants/guest/karte/index.html${qG}`,
     detajet: `${root}apps/menyra-restaurants/guest/detajet/index.html${qG}&item=DEMO_ITEM_ID`,
     porosia: `${root}apps/menyra-restaurants/guest/porosia/index.html${qG}`,
     story: `${root}apps/menyra-restaurants/guest/story/index.html${qR}`,
-    owner: `${root}apps/menyra-restaurants/owner/index.html${qR}`,
+    owner: `${root}apps/menyra-owner/index.html${qR}`,
     waiter: `${root}apps/menyra-restaurants/waiter/index.html${qR}`,
     kitchen: `${root}apps/menyra-restaurants/kitchen/index.html${qR}`,
     ceo: `${root}apps/menyra-ceo/dashboard.html`,
-    staff: `${root}apps/menyra-staff/dashboard.html`
+    staff: `${root}apps/menyra-staff/dashboard.html`,
+    socialFeed: `${root}apps/menyra-social/index.html`,
+    socialDiscover: `${root}apps/menyra-social/discover/index.html`,
+    socialProfile: `${root}apps/menyra-social/profile/index.html`,
+    socialLogin: `${root}apps/menyra-social/login/index.html`,
+    socialRegister: `${root}apps/menyra-social/register/index.html`
   };
 }
 
@@ -85,6 +90,14 @@ function renderLinks(){
     <div class="row">
       <a class="btn" href="${L.ceo}" target="_blank">CEO</a>
       <a class="btn" href="${L.staff}" target="_blank">Staff</a>
+    </div>
+    <div class="h2" style="margin-top:16px">System 2 - Social</div>
+    <div class="row">
+      <a class="btn" href="${L.socialFeed}" target="_blank">Feed</a>
+      <a class="btn" href="${L.socialDiscover}" target="_blank">Discover</a>
+      <a class="btn" href="${L.socialProfile}" target="_blank">Profile</a>
+      <a class="btn" href="${L.socialLogin}" target="_blank">Login</a>
+      <a class="btn" href="${L.socialRegister}" target="_blank">Register</a>
     </div>
     <div class="muted" style="margin-top:10px">Details-Link nutzt item=DEMO_ITEM_ID (Dummy).</div>
   `;

@@ -5,8 +5,10 @@ System 1 deckt Restaurants/Cafés ab: QR-Guest, Bestellungen, Admins (CEO/Staff/
 ## Apps & Rollen
 - **CEO Platform** (`apps/menyra-ceo/`): sieht alle Kunden, volle Admin-Funktion.
 - **Staff Platform** (`apps/menyra-staff/`): sieht nur eigene Kunden, volle Admin-Funktion für diese.
-- **Owner Admin** (`apps/menyra-restaurants/owner/`): nur für einen Kunden (per `?r=<id>`), Menüs/Offers/Stories pflegen.
+- **Owner Admin** (`apps/menyra-owner/`): nur für einen Kunden (per `?r=<id>`), Menüs/Offers/Stories pflegen.
+- **Main Page** (`apps/menyra-main/`): public Hauptseite pro Kunde (Entry zu Menu/Story).
 - **Guest** (`apps/menyra-restaurants/guest/`): Karte/Detajet/Porosia/Story, liest nur `public/*`.
+- **Social** (`apps/menyra-social/`): System 2 (Feed/Discover/Post/Profile + User Login/Register).
 - **Waiter/Kitchen**: Platzhalter (UI da, Logik TODO).
 
 ## Boot & Access (CEO/Staff/Owner)
@@ -69,4 +71,3 @@ System 1 deckt Restaurants/Cafés ab: QR-Guest, Bestellungen, Admins (CEO/Staff/
 - Live Stats reduziert (2 Slides, keine Dots), Checks zeigen Fehlerliste statt Counter.
 - Quick-Select/Offers-Button aus „Aktive Kunden“ entfernt.
 - Live-Badge stabilisiert (sichtbar, softer Animation).
-

@@ -98,6 +98,7 @@
               <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Angebote</span></a></li>
               <li><a href="#" data-section="menu"><span class="m-nav-icon">🍽️</span><span class="m-nav-label">Speisekarte</span></a></li>
               <li><a href="#" data-section="stories"><span class="m-nav-icon">🎥</span><span class="m-nav-label">Stories</span></a></li>
+              <li><a href="#" data-section="social"><span class="m-nav-icon">S</span><span class="m-nav-label">Social</span></a></li>
               <li><a href="#" data-section="leads"><span class="m-nav-icon">🧲</span><span class="m-nav-label">Leads</span></a></li>
             </ul>
           </nav>
@@ -540,10 +541,99 @@
                   <h2 class="m-section-title">Aktive Stories</h2>
                   <p class="m-section-subtitle m-muted">Es werden nur Stories geladen, deren <b>expiresAt</b> in der Zukunft liegt.</p>
                 </div>
-                <div class="m-table-meta" id="storyListMeta">–</div>
+                <div class="m-table-meta" id="storyListMeta">-</div>
               </div>
 
               <div id="storyList" class="m-story-list"></div>
+            </section>
+          </section>
+
+          <!-- VIEW: SOCIAL -->
+          <section class="m-view" data-view="social" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title">Social Posts</h1>
+                <p class="m-page-subtitle">Posts erscheinen im Social Feed und in der Main Page.</p>
+              </div>
+            </div>
+
+            <section class="m-card">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title">Neuer Post</h2>
+                  <p class="m-section-subtitle m-muted">Publiziert auch in den Social Feed Index.</p>
+                </div>
+              </div>
+
+              <div class="m-form-grid">
+                <div class="m-input-group">
+                  <label for="socialPostType">Typ</label>
+                  <select id="socialPostType" class="m-select2">
+                    <option value="offer">Offer</option>
+                    <option value="nightlife">Nightlife</option>
+                    <option value="food">Food</option>
+                    <option value="event">Event</option>
+                  </select>
+                </div>
+                  <div class="m-input-group">
+                    <label for="socialCity">City</label>
+                    <input id="socialCity" class="m-input" placeholder="Prishtina" list="socialCityList" />
+                    <datalist id="socialCityList"></datalist>
+                  </div>
+                <div class="m-input-group">
+                  <label for="socialMediaType">Media Type</label>
+                  <select id="socialMediaType" class="m-select2">
+                    <option value="image">Image</option>
+                    <option value="video">Video</option>
+                  </select>
+                </div>
+                <div class="m-input-group">
+                  <label for="socialMediaUrl">Media URL</label>
+                  <input id="socialMediaUrl" class="m-input" placeholder="https://..." />
+                </div>
+              </div>
+
+              <div class="m-form-grid" style="margin-top:10px;">
+                <div class="m-input-group">
+                  <label for="socialMediaFile">Upload Image</label>
+                  <input id="socialMediaFile" class="m-input" type="file" accept="image/*" />
+                </div>
+                <div class="m-input-group" style="align-self:end;">
+                  <button class="m-btn m-btn--ghost" id="socialUploadBtn" type="button">Upload</button>
+                </div>
+              </div>
+
+              <div class="m-input-group">
+                <label for="socialCaption">Caption</label>
+                <textarea id="socialCaption" class="m-textarea" placeholder="Caption"></textarea>
+              </div>
+
+              <div class="m-inline" style="gap:10px; margin-top:12px;">
+                <button class="m-btn" id="socialPublishBtn" type="button">Publish</button>
+                <button class="m-btn m-btn--ghost" id="socialReloadBtn" type="button">Reload</button>
+              </div>
+              <div class="m-muted" id="socialStatus" style="margin-top:8px;"></div>
+            </section>
+
+            <section class="m-card">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title">Posts</h2>
+                  <p class="m-section-subtitle m-muted">Aktive, versteckte und gelöschte Posts.</p>
+                </div>
+                <div class="m-table-meta" id="socialPostsMeta">-</div>
+              </div>
+
+              <div class="m-table">
+                <div class="m-table-row m-table-row--header" style="grid-template-columns: 2fr 1fr 1fr 1fr 0.9fr;">
+                  <div>Caption</div>
+                  <div>Typ</div>
+                  <div>Status</div>
+                  <div>Datum</div>
+                  <div>Aktion</div>
+                </div>
+                <div id="socialPostsList"></div>
+              </div>
             </section>
           </section>
 
