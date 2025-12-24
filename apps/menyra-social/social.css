@@ -1,10 +1,10 @@
 :root {
   --bg: #f6f3ea;
-  --bg-2: #fcebd4;
+  --bg-2: #f1e8da;
   --safe-solid: var(--bg);
-  --page-bg: radial-gradient(900px 500px at 80% 15%, #ffe7c7, transparent 70%),
-    radial-gradient(700px 500px at 10% 18%, #dff2ef, transparent 70%),
-    linear-gradient(180deg, var(--safe-solid) 0%, var(--safe-solid) 14%, var(--bg-2) 62%, var(--safe-solid) 100%);
+  --page-bg: radial-gradient(900px 520px at 80% 18%, #f3e8d7, transparent 72%),
+    radial-gradient(700px 520px at 10% 18%, #e6f2ef, transparent 72%),
+    linear-gradient(180deg, var(--safe-solid) 0%, var(--safe-solid) 22%, var(--bg-2) 60%, var(--safe-solid) 100%);
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
