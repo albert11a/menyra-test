@@ -22,7 +22,6 @@
 html {
   min-height: 100%;
   background-color: var(--bg);
-  background-image: var(--page-bg);
 }
 
 body {
@@ -30,8 +29,8 @@ body {
   font-family: "Space Grotesk", system-ui, -apple-system, Segoe UI, sans-serif;
   color: var(--ink);
   background-color: var(--bg);
-  background-image: var(--page-bg);
   min-height: 100svh;
+  position: relative;
 }
 
 @supports (padding: env(safe-area-inset-top)) {
@@ -41,6 +40,17 @@ body {
     padding-bottom: var(--safe-bottom);
     padding-left: var(--safe-left);
   }
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--safe-top);
+  bottom: var(--safe-bottom);
+  background: var(--page-bg);
+  z-index: -1;
 }
 
 .page {
