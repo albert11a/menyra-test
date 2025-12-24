@@ -730,11 +730,18 @@ function buildNextPayItems(restaurants) {
   const items = [];
   (restaurants || []).forEach((r) => {
     const d = pickNextBillingDate(r);
-    if (!d) return;
-    const daysLeft = Math.ceil((d.getTime() - now) / DAY_MS);
-    items.push({ name: customerName(r), daysLeft, raw: d });
+    if (d) {
+      const daysLeft = Math.ceil((d.getTime() - now) / DAY_MS);
+      items.push({ name: customerName(r), daysLeft, raw: d });
+    }
   });
   items.sort((a, b) => (a.raw?.getTime() || 0) - (b.raw?.getTime() || 0));
+  if (!items.length) {
+    const fallback = (restaurants || []).slice(0, 5);
+    fallback.forEach((r, idx) => {
+      items.push({ name: customerName(r), daysLeft: null, raw: new Date(now + (idx + 1) * DAY_MS) });
+    });
+  }
   return items;
 }
 
@@ -753,7 +760,10 @@ function renderNextPayList(items, expanded = false, markStamp = true) {
   const limit = expanded ? Math.min(10, items.length) : Math.min(3, items.length);
   items.slice(0, limit).forEach((item, idx) => {
     const li = document.createElement("li");
-    const label = item.daysLeft <= 0 ? "heute" : (item.daysLeft === 1 ? "in 1 Tag" : `in ${item.daysLeft} Tagen`);
+    let label = "kein Datum";
+    if (item.daysLeft != null) {
+      label = item.daysLeft <= 0 ? "heute" : (item.daysLeft === 1 ? "in 1 Tag" : `in ${item.daysLeft} Tagen`);
+    }
     li.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:4px;">
         <b>${esc(item.name)}</b>
@@ -780,13 +790,11 @@ function renderStoriesList(list, expanded = false, markStamp = true) {
   }
   const limit = expanded ? Math.min(10, list.length) : Math.min(3, list.length);
   list.slice(0, limit).forEach((item, idx) => {
-    const hoursLeft = Math.max(0, Math.round((item.expiresAt - nowMs()) / (60 * 60 * 1000)));
-    const label = hoursLeft <= 1 ? "laeuft noch: <1h" : `laeuft noch: in ${hoursLeft} Std`;
     const li = document.createElement("li");
     li.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:4px;">
         <b>${idx + 1}. ${esc(item.name)}</b>
-        <span class="m-muted">${label}</span>
+        <span class="m-muted">Storys: ${item.count ?? 0}</span>
       </div>
     `;
     listEl.appendChild(li);
@@ -1826,35 +1834,10 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
     const viewport = $("dashSwipeViewport");
     const track = $("dashSwipeTrack");
     const dotsHost = $("dashSwipeDots");
-    if (!viewport || !track || !dotsHost) return;
+    if (!viewport || !track) return;
 
     const slides = Array.from(track.children);
-    dotsHost.innerHTML = "";
-    slides.forEach((_, idx) => {
-      const dot = document.createElement("button");
-      dot.type = "button";
-      dot.className = "m-swipe-dot" + (idx === 0 ? " is-active" : "");
-      dot.addEventListener("click", () => {
-        const target = slides[idx];
-        if (!target) return;
-        viewport.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
-      });
-      dotsHost.appendChild(dot);
-    });
-
-    const dots = Array.from(dotsHost.children);
-    function syncDots() {
-      const left = viewport.scrollLeft;
-      let activeIdx = 0;
-      let best = Number.POSITIVE_INFINITY;
-      slides.forEach((slide, idx) => {
-        const diff = Math.abs(left - slide.offsetLeft);
-        if (diff < best) { best = diff; activeIdx = idx; }
-      });
-      dots.forEach((dot, i) => dot.classList.toggle("is-active", i === activeIdx));
-    }
-    viewport.addEventListener("scroll", () => requestAnimationFrame(syncDots), { passive: true });
-    syncDots();
+    if (dotsHost) dotsHost.innerHTML = "";
   }
 
   initSwipeUi();
@@ -2104,34 +2087,20 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       try {
 
         const subset = restaurants.slice(0, 8);
+        const counts = await Promise.all(subset.map(r => countActiveStories(r.id, 15).catch(() => 0)));
 
-        const lists = await Promise.all(subset.map(r => listActiveStories(r.id, 3).catch(() => [])));
+        activeStoriesCache = subset.map((r, idx) => ({
+          name: customerName(r),
+          count: counts[idx] || 0
+        })).filter(x => x.count > 0);
 
-        const merged = [];
-
-        subset.forEach((r, idx) => {
-
-          (lists[idx] || []).forEach(st => {
-
-            const expiresAt = toDateSafe(st.expiresAt) || new Date(nowMs() + DAY_MS);
-
-            merged.push({ name: customerName(r), expiresAt });
-
-          });
-
-        });
-
-        merged.sort((a, b) => (a.expiresAt?.getTime() || 0) - (b.expiresAt?.getTime() || 0));
-
-        activeStoriesCache = merged.slice(0, 10);
-
-        animateValue($("dashActiveStoriesCount"), activeStoriesCache.length, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 200 });
-
+        const totalStories = activeStoriesCache.reduce((acc, x) => acc + (x.count || 0), 0);
+        animateValue($("dashActiveStoriesCount"), totalStories, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 200 });
         renderStoriesList(activeStoriesCache, storiesExpanded);
 
         markLive("cardStories");
 
-        updateSystemStatsCard({ restaurants, leadsCount: leadsAll.length, storiesCount: activeStoriesCache.length });
+        updateSystemStatsCard({ restaurants, leadsCount: leadsAll.length, storiesCount: totalStories });
 
       } catch (err) {
 
@@ -2147,38 +2116,28 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
       try {
 
-        const snap = await getDocs(query(collection(db, "systemLogs"), orderBy("createdAt", "desc"), limit(50)));
+        const snap = await getDocs(query(collection(db, "systemLogs"), orderBy("createdAt", "desc"), limit(20)));
 
         const rows = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
-
-        const start = new Date();
-
-        start.setHours(0, 0, 0, 0);
-
-        const errorsToday = rows.filter(r => {
-
-          const ts = toDateSafe(r.createdAt);
-
-          return ts && ts.getTime() >= start.getTime() && (r.type || "").toLowerCase() === "error";
-
-        });
-
-        const lastError = rows.find(r => (r.type || "").toLowerCase() === "error");
-
-        animateValue($("dashErrorsToday"), errorsToday.length, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 200 });
-
-        if (lastError) {
-
-          setText("dashLastError", lastError.message || lastError.msg || "Fehler");
-
-          setText("dashLastErrorApp", lastError.app || lastError.source || "-");
-
-        } else {
-
-          setText("dashLastError", "Keine Errors heute");
-
-          setText("dashLastErrorApp", "-");
-
+        const listEl = $("dashErrorsList");
+        if (listEl) {
+          listEl.innerHTML = "";
+          const errs = rows.filter(r => (r.type || "").toLowerCase() === "error").slice(0, 5);
+          if (!errs.length) {
+            const li = document.createElement("li");
+            li.innerHTML = `<span class="m-muted" style="font-size:12px;">Keine Errors heute</span>`;
+            listEl.appendChild(li);
+          } else {
+            errs.forEach((r) => {
+              const ts = toDateSafe(r.createdAt);
+              const li = document.createElement("li");
+              li.innerHTML = `
+                <div class="m-error-title">${esc(r.message || r.msg || "Error")}</div>
+                <div class="m-error-meta">${esc(r.app || r.source || "-")} · ${ts ? relativeFromNow(ts.getTime()) : ""}</div>
+              `;
+              listEl.appendChild(li);
+            });
+          }
         }
 
       } catch (err) {
