@@ -26,6 +26,7 @@ collection,
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   where,
   setDoc,
@@ -33,7 +34,8 @@ collection,
   orderBy,
   limit,
   deleteDoc,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp
 
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
@@ -163,6 +165,107 @@ function fullUrl(rel) {
 }
 
 // -------------------------
+// UI helpers: format, timers, live badges
+// -------------------------
+const updatedAtMap = new Map();
+const liveUntilMap = new Map();
+let updatedTimer = null;
+let liveTimer = null;
+
+const currencyFmt = new Intl.NumberFormat("de-AT", { style: "currency", currency: "EUR" });
+const numberFmt = new Intl.NumberFormat("de-AT", { maximumFractionDigits: 0 });
+
+function formatCurrency(v) {
+  try { return currencyFmt.format(Number(v || 0)); } catch { return `€ ${Math.round(v || 0)}`; }
+}
+function formatNumber(v) {
+  try { return numberFmt.format(Math.round(v || 0)); } catch { return String(Math.round(v || 0)); }
+}
+
+function toDateSafe(v) {
+  if (!v) return null;
+  try {
+    if (v instanceof Date) return v;
+    if (typeof v.toDate === "function") return v.toDate();
+    if (typeof v.seconds === "number") return new Date(v.seconds * 1000);
+    if (typeof v === "number") return new Date(v);
+    const parsed = new Date(v);
+    if (!isNaN(parsed.getTime())) return parsed;
+  } catch (_) {}
+  return null;
+}
+
+function relativeFromNow(tsMs) {
+  if (!tsMs) return "-";
+  const diff = Math.max(0, nowMs() - tsMs);
+  const sec = Math.round(diff / 1000);
+  if (sec < 60) return `${sec}s`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h`;
+  const days = Math.round(hr / 24);
+  return `${days}d`;
+}
+
+function renderUpdated(id, ts) {
+  const el = $(id);
+  if (!el) return;
+  if (!ts) { el.textContent = "-"; return; }
+  el.textContent = `updated vor ${relativeFromNow(ts)}`;
+}
+
+function setUpdated(id, ts = nowMs()) {
+  updatedAtMap.set(id, ts);
+  renderUpdated(id, ts);
+  if (!updatedTimer) {
+    updatedTimer = setInterval(() => {
+      updatedAtMap.forEach((val, key) => renderUpdated(key, val));
+    }, 10000);
+  }
+}
+
+function markLive(target, ttlMs = 20000) {
+  const el = typeof target === "string" ? document.getElementById(target) : target;
+  if (!el) return;
+  el.dataset.live = "true";
+  liveUntilMap.set(el, nowMs() + ttlMs);
+  if (!liveTimer) {
+    liveTimer = setInterval(() => {
+      const now = nowMs();
+      liveUntilMap.forEach((until, node) => {
+        if (until && now > until) {
+          delete node.dataset.live;
+          liveUntilMap.delete(node);
+        }
+      });
+    }, 2000);
+  }
+}
+
+function animateValue(el, target, formatter = (v) => formatNumber(Math.round(v || 0)), opts = {}) {
+  if (!el) return;
+  const prev = Number(el.dataset?.value || el.textContent || 0) || 0;
+  const diff = target - prev;
+  const maxDiff = opts.maxDiff ?? 5000;
+  if (!Number.isFinite(diff) || Math.abs(diff) > maxDiff) {
+    el.textContent = formatter(target);
+    el.dataset.value = target;
+    return;
+  }
+  const duration = opts.duration ?? Math.max(120, Math.min(180, Math.abs(diff) * 4));
+  const start = performance.now();
+  function step(now) {
+    const t = Math.min(1, (now - start) / duration);
+    const val = prev + diff * t;
+    el.textContent = formatter(val);
+    if (t < 1) requestAnimationFrame(step);
+    else el.dataset.value = target;
+  }
+  requestAnimationFrame(step);
+}
+
+// -------------------------
 // Login Modal (uses existing modal styles)
 // -------------------------
 function mountLoginModal(roleLabel = "Login") {
@@ -214,6 +317,52 @@ function mountLoginModal(roleLabel = "Login") {
   });
 
   show(overlay);
+}
+
+// -------------------------
+// Boot overlay
+// -------------------------
+function setBootLabel(label) {
+  const el = $("mBootLabel");
+  if (el && label) el.textContent = label;
+}
+
+function setBootStatus(text) {
+  const el = $("mBootStatus");
+  if (el && text) el.textContent = text;
+}
+
+function finishBoot() {
+  document.body.classList.remove("m-app-hidden");
+  document.body.classList.remove("m-boot");
+  const ov = $("mBootOverlay");
+  if (ov) {
+    ov.classList.add("is-done");
+    setTimeout(() => {
+      try { ov.remove(); } catch {}
+    }, 400);
+  }
+}
+
+async function ensureRoleAccess(role, uid) {
+  if (role === "owner") return true;
+  if (!uid) return false;
+  try {
+    if (role === "ceo") {
+      const snap = await getDoc(doc(db, "superadmins", uid));
+      if (snap.exists()) return true;
+    }
+    if (role === "staff") {
+      const snap = await getDoc(doc(db, "staffAdmins", uid));
+      if (snap.exists()) return true;
+      // allow superadmins as staff fallback
+      const sup = await getDoc(doc(db, "superadmins", uid));
+      if (sup.exists()) return true;
+    }
+  } catch (err) {
+    console.error("Access check failed", err);
+  }
+  return false;
 }
 
 // -------------------------
@@ -531,6 +680,144 @@ async function updateRestaurantDoc(role, user, restaurantId, payload) {
   await setDoc(doc(db, "restaurants", restaurantId), base, { merge: true });
   await ensurePublicDocs(restaurantId, base);
   return restaurantId;
+}
+
+// -------------------------
+// Dashboard helpers
+// -------------------------
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function calcYearlyAmount(row) {
+  const billing = (row.billingCycle || row.billingInterval || row.planInterval || row.planType || row.billing?.cycle || "").toLowerCase();
+  const price = parseFloatSafe(row.price ?? row.yearPrice ?? row.yearlyAmount ?? 0, 0);
+  const monthly = parseFloatSafe(row.monthlyPrice ?? row.priceMonthly ?? 0, 0);
+  if (billing === "monthly" || billing === "month") return (price || monthly) * 12;
+  if (billing === "yearly" || billing === "annual" || billing === "year") return price || (monthly * 12);
+  if (monthly) return monthly * 12;
+  return price || 0;
+}
+
+function isActiveCustomer(row) {
+  return (row.status || "").toLowerCase() === "active";
+}
+
+function isDemoCustomer(row) {
+  const status = (row.status || "").toLowerCase();
+  return status === "demo" || status === "trial" || status === "test" || row.demo === true || row.isDemo === true;
+}
+
+function customerName(row) {
+  return row.name || row.restaurantName || row.slug || row.id || "Kunde";
+}
+
+function pickNextBillingDate(row) {
+  const candidates = [
+    row.nextBillingAt,
+    row.nextBillingDate,
+    row.billingNextAt,
+    row.billingNext,
+    row.billing?.nextAt,
+    row.billing?.nextDate,
+    row.subscription?.nextBillingAt
+  ];
+  for (const c of candidates) {
+    const d = toDateSafe(c);
+    if (d) return d;
+  }
+  return null;
+}
+
+function buildNextPayItems(restaurants) {
+  const now = nowMs();
+  const items = [];
+  (restaurants || []).forEach((r) => {
+    const d = pickNextBillingDate(r);
+    if (!d) return;
+    const daysLeft = Math.ceil((d.getTime() - now) / DAY_MS);
+    items.push({ name: customerName(r), daysLeft, raw: d });
+  });
+  items.sort((a, b) => (a.raw?.getTime() || 0) - (b.raw?.getTime() || 0));
+  return items;
+}
+
+function renderNextPayList(items, expanded = false, markStamp = true) {
+  const listEl = $("dashNextPayList");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  if (!items || !items.length) {
+    const li = document.createElement("li");
+    li.className = "m-muted";
+    li.textContent = "Keine Daten";
+    listEl.appendChild(li);
+    if (markStamp) setUpdated("dashUpdatedNextPay");
+    return;
+  }
+  const limit = expanded ? Math.min(10, items.length) : Math.min(3, items.length);
+  items.slice(0, limit).forEach((item, idx) => {
+    const li = document.createElement("li");
+    const label = item.daysLeft <= 0 ? "heute" : (item.daysLeft === 1 ? "in 1 Tag" : `in ${item.daysLeft} Tagen`);
+    li.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <b>${esc(item.name)}</b>
+        <span class="m-muted">${label}</span>
+      </div>
+      <span class="m-badge">#${idx + 1}</span>
+    `;
+    listEl.appendChild(li);
+  });
+  if (markStamp) setUpdated("dashUpdatedNextPay");
+}
+
+function renderStoriesList(list, expanded = false, markStamp = true) {
+  const listEl = $("dashActiveStoriesList");
+  if (!listEl) return;
+  listEl.innerHTML = "";
+  if (!list || !list.length) {
+    const li = document.createElement("li");
+    li.className = "m-muted";
+    li.textContent = "Keine aktiven Storys";
+    listEl.appendChild(li);
+    if (markStamp) setUpdated("dashUpdatedStories");
+    return;
+  }
+  const limit = expanded ? Math.min(10, list.length) : Math.min(3, list.length);
+  list.slice(0, limit).forEach((item, idx) => {
+    const hoursLeft = Math.max(0, Math.round((item.expiresAt - nowMs()) / (60 * 60 * 1000)));
+    const label = hoursLeft <= 1 ? "laeuft noch: <1h" : `laeuft noch: in ${hoursLeft} Std`;
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:4px;">
+        <b>${idx + 1}. ${esc(item.name)}</b>
+        <span class="m-muted">${label}</span>
+      </div>
+    `;
+    listEl.appendChild(li);
+  });
+  if (markStamp) setUpdated("dashUpdatedStories");
+}
+
+function updateCustomersCard(restaurants) {
+  const active = (restaurants || []).filter(isActiveCustomer);
+  animateValue($("dashActiveCustomersCount"), active.length, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
+  const sumYearly = active.reduce((acc, r) => acc + calcYearlyAmount(r), 0);
+  animateValue($("dashRevenueYearly"), sumYearly, (v) => formatCurrency(v || 0), { maxDiff: 500000 });
+  animateValue($("dashRevenueMonthly"), sumYearly / 12, (v) => formatCurrency(v || 0), { maxDiff: 500000 });
+  animateValue($("dashRevenueDaily"), sumYearly / 365, (v) => formatCurrency(v || 0), { maxDiff: 500000 });
+  setUpdated("dashUpdatedActiveCustomers");
+  markLive("cardActiveCustomers");
+}
+
+function updateDemoCard(restaurants) {
+  const demoCount = (restaurants || []).filter(isDemoCustomer).length;
+  animateValue($("dashDemoCustomersCount"), demoCount, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 2000 });
+  setUpdated("dashUpdatedDemoCustomers");
+  markLive("cardDemoCustomers");
+}
+
+function updateSystemStatsCard({ restaurants = [], leadsCount = 0, storiesCount = 0 } = {}) {
+  animateValue($("dashSystemRestaurants"), restaurants.length, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
+  animateValue($("dashSystemLeads"), leadsCount, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
+  animateValue($("dashSystemStories"), storiesCount, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
 }
 
 // -------------------------
@@ -1525,7 +1812,67 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
 
   // Sign in gate
   mountLoginModal(`${roleLabel} Login`);
+  setBootLabel(roleLabel);
+  setBootStatus("Zugang wird geladen …");
+
   let currentUser = null;
+  const restaurants = [];
+  const leadsAll = [];
+  let activeStoriesCache = [];
+  let nextPayExpanded = false;
+  let storiesExpanded = false;
+  let swipeLiveUnsub = null;
+
+  function initSwipeUi() {
+    const viewport = $("dashSwipeViewport");
+    const track = $("dashSwipeTrack");
+    const dotsHost = $("dashSwipeDots");
+    if (!viewport || !track || !dotsHost) return;
+
+    const slides = Array.from(track.children);
+    dotsHost.innerHTML = "";
+    slides.forEach((_, idx) => {
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.className = "m-swipe-dot" + (idx === 0 ? " is-active" : "");
+      dot.addEventListener("click", () => {
+        const target = slides[idx];
+        if (!target) return;
+        viewport.scrollTo({ left: target.offsetLeft, behavior: "smooth" });
+      });
+      dotsHost.appendChild(dot);
+    });
+
+    const dots = Array.from(dotsHost.children);
+    function syncDots() {
+      const left = viewport.scrollLeft;
+      let activeIdx = 0;
+      let best = Number.POSITIVE_INFINITY;
+      slides.forEach((slide, idx) => {
+        const diff = Math.abs(left - slide.offsetLeft);
+        if (diff < best) { best = diff; activeIdx = idx; }
+      });
+      dots.forEach((dot, i) => dot.classList.toggle("is-active", i === activeIdx));
+    }
+    viewport.addEventListener("scroll", () => requestAnimationFrame(syncDots), { passive: true });
+    syncDots();
+  }
+
+  initSwipeUi();
+
+  $("dashNextPayToggle")?.addEventListener("click", () => {
+    nextPayExpanded = !nextPayExpanded;
+    const icon = $("dashNextPayToggleIcon");
+    if (icon) icon.textContent = nextPayExpanded ? "↑" : "↓";
+    renderNextPayList(buildNextPayItems(restaurants), nextPayExpanded, false);
+  });
+
+  $("dashActiveStoriesToggle")?.addEventListener("click", () => {
+    storiesExpanded = !storiesExpanded;
+    const btn = $("dashActiveStoriesToggle");
+    if (btn) btn.textContent = storiesExpanded ? "↑" : "↓";
+    renderStoriesList(activeStoriesCache, storiesExpanded, false);
+  });
 
 // Leads UI (CEO/Staff)
 $("newLeadBtn")?.addEventListener("click", () => openLeadModal("new", {}));
@@ -1575,84 +1922,387 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
 
   onAuthStateChanged(auth, async (user) => {
+
     currentUser = user;
+
     const loginOverlay = $("loginModalOverlay");
+
     if (!user) {
+
       if (loginOverlay) show(loginOverlay);
+
       setText("adminStatus", "Nicht eingeloggt.");
+
+      setBootStatus("Login erforderlich.");
+
       return;
+
     }
+
     if (loginOverlay) hide(loginOverlay);
+
     setText("adminStatus", `Eingeloggt: ${user.email || user.uid}`);
 
-    // Owner access check (optional)
+    setBootStatus("Pruefe Zugriff...");
+
+
     if (role === "owner") {
+
       const rid = restrictRestaurantId;
+
       if (!rid) {
+
         setText("offersStatus", "Fehler: ?r=RESTAURANT_ID fehlt.");
+
+        setBootStatus("Fehler: ?r=RESTAURANT_ID fehlt.");
+
         return;
+
       }
+
       try {
+
         await ensureOwnerStaffDoc(rid, user);
+
         const staffSnap = await getDoc(doc(db, "restaurants", rid, "staff", user.uid));
+
         const staffRole = staffSnap.exists() ? (staffSnap.data()?.role || "") : "";
+
         if (!["owner","admin","manager"].includes(staffRole)) {
+
           setText("offersStatus", "Kein Zugriff (restaurants/{r}/staff/{uid}.role).");
+
+          setBootStatus("Kein Zugriff fuer Owner.");
+
           return;
+
         }
+
       } catch (err) {
+
         console.error(err);
-        setText("offersStatus", "Zugriff konnte nicht geprüft werden.");
+
+        setText("offersStatus", "Zugriff konnte nicht geprueft werden.");
+
+        setBootStatus("Zugriff konnte nicht geprueft werden.");
+
+        return;
+
+      }
+
+    } else {
+
+      const allowed = await ensureRoleAccess(role, user.uid);
+
+      if (!allowed) {
+
+        setBootStatus("Kein Zugriff (superadmins/staffAdmins).");
+
+        return;
+
+      }
+
+    }
+
+
+
+    async function refreshRestaurantsUi(force = false) {
+
+      try {
+
+        if (force) cacheDel(`${REST_CACHE_KEY}_${role}_${user.uid}`);
+
+        const fetched = await fetchRestaurants(role, user.uid, restrictRestaurantId);
+
+        restaurants.splice(0, restaurants.length, ...(fetched || []));
+
+        await Promise.all((restaurants || []).map(r => ensurePublicDocs(r.id, r || {})));
+
+        updateCustomersCard(restaurants);
+
+        updateDemoCard(restaurants);
+
+        renderNextPayList(buildNextPayItems(restaurants), nextPayExpanded);
+
+        updateSystemStatsCard({ restaurants, leadsCount: leadsAll.length, storiesCount: activeStoriesCache.length });
+
+        try { refreshCustomers(); } catch (_) {}
+
+        markLive("cardNextPay");
+
+      } catch (err) {
+
+        console.error(err);
+
+        setText("customersMeta", "Fehler beim Laden (Rules/Auth?).");
+
+        setText("offersStatus", "Fehler beim Laden (Rules/Auth?).");
+
+      }
+
+    }
+
+
+
+    function fillDashQuickSelect() {
+
+      const dashSel = $("dashRestaurantQuickSelect");
+
+      if (!dashSel) return;
+
+      dashSel.innerHTML = `<option value="">- waehlen -</option>`;
+
+      restaurants.forEach(r => {
+
+        const opt = document.createElement("option");
+
+        opt.value = r.id;
+
+        opt.textContent = r.name || r.id;
+
+        dashSel.appendChild(opt);
+
+      });
+
+      $("dashGoOffers")?.addEventListener("click", () => {
+
+        const rid = dashSel.value;
+
+        if (rid) {
+
+          const offersSel = $("offersRestaurantSelect");
+
+          if (offersSel) offersSel.value = rid;
+
+          nav.showView("offers");
+
+          offersSel?.dispatchEvent(new Event("change"));
+
+        }
+
+      }, { once: true });
+
+    }
+
+
+
+    async function refreshActiveStories() {
+
+      if (!restaurants.length) {
+        activeStoriesCache = [];
+        animateValue($("dashActiveStoriesCount"), 0, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 200 });
+        renderStoriesList(activeStoriesCache, storiesExpanded);
+        updateSystemStatsCard({ restaurants, leadsCount: leadsAll.length, storiesCount: 0 });
         return;
       }
-    }
 
-    // Load restaurants list
-    let restaurants = [];
-    try {
-      restaurants = await fetchRestaurants(role, user.uid, restrictRestaurantId);
-    } catch (err) {
-      console.error(err);
-      setText("customersMeta", "Fehler beim Laden (Rules/Auth?).");
-      setText("offersStatus", "Fehler beim Laden (Rules/Auth?).");
-      return;
-    }
+      try {
 
-    // Ensure public/meta has name+logo for all loaded restaurants (avoids missing logos on guest)
-    try {
-      await Promise.all(
-        (restaurants || []).map(r => ensurePublicDocs(r.id, r || {}))
-      );
-    } catch (err) {
-      console.warn("ensurePublicDocs batch failed:", err?.message || err);
-    }
+        const subset = restaurants.slice(0, 8);
 
-    // Dashboard stats
-    const total = restaurants.length;
-    const active = restaurants.filter(r => r.status === "active").length;
-    setText("dashTotalCustomers", String(total));
-    setText("dashActiveCustomers", String(active));
+        const lists = await Promise.all(subset.map(r => listActiveStories(r.id, 3).catch(() => [])));
 
-    // Fill dashboard quick select
-    const dashSel = $("dashRestaurantQuickSelect");
-    if (dashSel) {
-      dashSel.innerHTML = `<option value="">— auswählen —</option>`;
-      restaurants.forEach(r => {
-        const opt = document.createElement("option");
-        opt.value = r.id;
-        opt.textContent = r.name || r.id;
-        dashSel.appendChild(opt);
-      });
-    }
-    $("dashGoOffers")?.addEventListener("click", () => {
-      const rid = dashSel?.value;
-      if (rid) {
-        const offersSel = $("offersRestaurantSelect");
-        if (offersSel) offersSel.value = rid;
-        nav.showView("offers");
-        offersSel?.dispatchEvent(new Event("change"));
+        const merged = [];
+
+        subset.forEach((r, idx) => {
+
+          (lists[idx] || []).forEach(st => {
+
+            const expiresAt = toDateSafe(st.expiresAt) || new Date(nowMs() + DAY_MS);
+
+            merged.push({ name: customerName(r), expiresAt });
+
+          });
+
+        });
+
+        merged.sort((a, b) => (a.expiresAt?.getTime() || 0) - (b.expiresAt?.getTime() || 0));
+
+        activeStoriesCache = merged.slice(0, 10);
+
+        animateValue($("dashActiveStoriesCount"), activeStoriesCache.length, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 200 });
+
+        renderStoriesList(activeStoriesCache, storiesExpanded);
+
+        markLive("cardStories");
+
+        updateSystemStatsCard({ restaurants, leadsCount: leadsAll.length, storiesCount: activeStoriesCache.length });
+
+      } catch (err) {
+
+        console.error("stories refresh", err);
+
       }
-    });
+
+    }
+
+
+
+    async function refreshChecks() {
+
+      try {
+
+        const snap = await getDocs(query(collection(db, "systemLogs"), orderBy("createdAt", "desc"), limit(50)));
+
+        const rows = snap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+
+        const start = new Date();
+
+        start.setHours(0, 0, 0, 0);
+
+        const errorsToday = rows.filter(r => {
+
+          const ts = toDateSafe(r.createdAt);
+
+          return ts && ts.getTime() >= start.getTime() && (r.type || "").toLowerCase() === "error";
+
+        });
+
+        const lastError = rows.find(r => (r.type || "").toLowerCase() === "error");
+
+        animateValue($("dashErrorsToday"), errorsToday.length, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 200 });
+
+        if (lastError) {
+
+          setText("dashLastError", lastError.message || lastError.msg || "Fehler");
+
+          setText("dashLastErrorApp", lastError.app || lastError.source || "-");
+
+        } else {
+
+          setText("dashLastError", "Keine Errors heute");
+
+          setText("dashLastErrorApp", "-");
+
+        }
+
+      } catch (err) {
+
+        console.error("systemLogs load failed", err);
+
+      }
+
+    }
+
+
+
+    function updateSwipeValues(liveUsersNow = 0, ordersToday = 0) {
+
+      animateValue($("dashLiveUsersNow"), liveUsersNow, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
+
+      animateValue($("dashOrdersToday"), ordersToday, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
+
+      markLive("cardSwipeStats", 60000);
+
+    }
+
+
+
+    function attachLiveSwipe() {
+
+      if (swipeLiveUnsub) return true;
+
+      try {
+
+        const ref = doc(db, "system", "liveStats");
+
+        swipeLiveUnsub = onSnapshot(ref, (snap) => {
+
+          if (!snap.exists()) return;
+
+          const data = snap.data() || {};
+
+          updateSwipeValues(Number(data.liveUsersNow || 0), Number(data.ordersToday || 0));
+
+        });
+
+        return true;
+
+      } catch (err) {
+
+        console.warn("Live stats listener failed", err);
+
+        swipeLiveUnsub = null;
+
+        return false;
+
+      }
+
+    }
+
+
+
+    async function refreshSwipeStats() {
+
+      if (attachLiveSwipe()) return;
+
+      const sample = restaurants.slice(0, 4);
+
+      if (!sample.length) {
+
+        updateSwipeValues(0, 0);
+
+        return;
+
+      }
+
+      const start = new Date();
+
+      start.setHours(0, 0, 0, 0);
+
+      const startTs = Timestamp.fromDate(start);
+
+      let orders = 0;
+
+      for (const r of sample) {
+
+        try {
+
+          const snap = await getDocs(query(collection(db, "restaurants", r.id, "orders"), where("createdAt", ">=", startTs)));
+
+          orders += snap.size;
+
+        } catch (err) {
+
+          console.warn("ordersToday fetch failed", err);
+
+        }
+
+      }
+
+      const liveUsersNow = Math.max(sample.length, orders);
+
+      updateSwipeValues(liveUsersNow, orders);
+
+    }
+
+
+
+    await refreshRestaurantsUi(true);
+
+    fillDashQuickSelect();
+    await refreshActiveStories();
+    await refreshChecks();
+    await refreshSwipeStats();
+    setBootStatus("Bereit.");
+    finishBoot();
+
+
+    setInterval(() => {
+
+      refreshRestaurantsUi();
+
+      refreshActiveStories();
+
+      refreshChecks();
+
+      refreshSwipeStats();
+
+      refreshLeads();
+
+    }, 50000);
+
+
 
     // Customers view
     const allRows = restaurants;
@@ -1735,7 +2385,6 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
     
 // Leads view (CEO/Staff)
-let leadsAll = [];
 async function refreshLeads(force = false) {
   if (role === "owner") return; // owner doesn't use CRM leads
   if (!currentUser) return;
@@ -1743,7 +2392,7 @@ async function refreshLeads(force = false) {
   try {
     if (force) cacheDel(`${LEADS_CACHE_KEY}_${role}_${currentUser.uid}`);
     const rows = await fetchLeads(role, currentUser.uid);
-    leadsAll = rows;
+    leadsAll.splice(0, leadsAll.length, ...(rows || []));
 
     const filtered = applyLeadsFilter(leadsAll);
     renderLeadsTable(filtered);
@@ -1755,6 +2404,15 @@ async function refreshLeads(force = false) {
     setText("leadsStatContacted", `Kontaktiert/Warten: ${st.counts.contacted}`);
     setText("leadsStatInterested", `Interesse: ${st.counts.interested}`);
     setText("leadsStatNoInterest", `Kein Interesse: ${st.counts.no_interest}`);
+    const openCount = leadsAll.filter(r => {
+      const s = (r.status || "").toLowerCase();
+      return !["no_interest", "converted", "closed", "done"].includes(s);
+    }).length;
+    animateValue($("dashLeadsTotal"), leadsAll.length, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
+    animateValue($("dashLeadsOpen"), openCount, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
+    setUpdated("dashUpdatedLeads");
+    markLive("cardLeads");
+    updateSystemStatsCard({ restaurants, leadsCount: leadsAll.length, storiesCount: activeStoriesCache.length });
 
     // row actions (event delegation)
     $("leadsTableBody")?.addEventListener("click", async (e) => {

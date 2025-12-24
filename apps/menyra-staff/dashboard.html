@@ -14,7 +14,15 @@
   <link rel="stylesheet" href="./menyra_platform.css" />
 </head>
 
-<body>
+<body class="m-boot m-app-hidden">
+  <div class="m-boot-overlay" id="mBootOverlay">
+    <div class="m-boot-card">
+      <div class="m-boot-logo">MENYRA</div>
+      <div class="m-boot-sub" id="mBootLabel">Staff Platform</div>
+      <div class="m-boot-loader"><span></span><span></span><span></span></div>
+      <div class="m-boot-status" id="mBootStatus">Zugang wird geladen...</div>
+    </div>
+  </div>
   <div class="m-app">
 
     <!-- ========================================================= -->
@@ -116,99 +124,351 @@
         <div class="m-shell">
 
           <!-- VIEW: DASHBOARD -->
+
           <section class="m-view" data-view="dashboard">
-            <div class="m-page-header">
+
+            <div class="m-page-header m-page-header--dash">
+
               <div>
-                <h1 class="m-page-title">Übersicht</h1>
-                <p class="m-page-subtitle">Schneller Überblick über Kunden & Leads.</p>
+
+                <p class="m-eyebrow">Staff Admin</p>
+
+                <h1 class="m-page-title">Dashboard</h1>
+
+                <p class="m-page-subtitle">Live Übersicht ohne Drawer-Flash.</p>
+
               </div>
+
               <div class="m-page-actions">
+
                 <button class="m-btn m-btn--ghost" type="button" id="openNewLeadFromDashboard">+ Lead</button>
+
                 <button class="m-btn" type="button" id="openNewCustomerFromDashboard">+ Kunde</button>
+
               </div>
+
             </div>
 
-            <div class="m-cards-grid">
-              <div class="m-card m-stat-card">
-                <div class="m-stat-top">
-                  <span class="m-stat-label">Aktive Kunden</span>
-                  <span class="m-stat-pill m-stat-pill--green">Live</span>
-                </div>
-                <div class="m-stat-value-row">
-                  <div class="m-stat-value" id="dashActiveCustomers">0</div>
-                </div>
-                <p class="m-stat-hint" id="dashCustomersHint">–</p>
-              </div>
 
-              <div class="m-card m-stat-card">
-                <div class="m-stat-top">
-                  <span class="m-stat-label">Leads offen</span>
-                  <span class="m-stat-pill">CRM</span>
-                </div>
-                <div class="m-stat-value-row">
-                  <div class="m-stat-value" id="dashOpenLeads">0</div>
-                </div>
-                <p class="m-stat-hint" id="dashLeadsHint">–</p>
-              </div>
 
-              <div class="m-card m-stat-card">
-                <div class="m-stat-top">
-                  <span class="m-stat-label">Kunden gesamt</span>
-                  <span class="m-stat-pill">DB</span>
-                </div>
-                <div class="m-stat-value-row">
-                  <div class="m-stat-value" id="dashTotalCustomers">0</div>
-                </div>
-                <p class="m-stat-hint">Inkl. inaktive / Test</p>
-              </div>
+            <div class="m-dash-grid">
 
-              <div class="m-card m-stat-card">
-                <div class="m-stat-top">
-                  <span class="m-stat-label">Leads gesamt</span>
-                  <span class="m-stat-pill">DB</span>
-                </div>
-                <div class="m-stat-value-row">
-                  <div class="m-stat-value" id="dashTotalLeads">0</div>
-                </div>
-                <p class="m-stat-hint">Letzte 200 (limit)</p>
-              </div>
-            </div>
+              <article class="m-card m-dash-card m-dash-card--wide" id="cardActiveCustomers">
 
-            <section class="m-section m-section--split" style="margin-top:14px;">
-              <div class="m-card m-activity-card">
-                <div class="m-section-header">
-                  <h2 class="m-section-title">Letzte Kunden</h2>
-                  <span class="m-table-meta" id="dashLastCustomersMeta">–</span>
-                </div>
-                <ul class="m-activity-list" id="dashLastCustomersList"></ul>
-              </div>
+                <div class="m-card-head">
 
-              <div class="m-card m-system-card">
-                <div class="m-section-header">
-                  <h2 class="m-section-title">Schnellaktionen</h2>
+                  <div>
+
+                    <p class="m-overline">Aktive Kunden</p>
+
+                    <h2 class="m-card-title">Kunden &amp; Einnahmen</h2>
+
+                  </div>
+
+                  <span class="m-live-pill" data-live-pill>LIVE</span>
+
                 </div>
 
-                <div class="m-system-row">
-                  <span>Aktiver Kunde auswählen</span>
-                  <span class="m-system-status">
+
+
+                <div class="m-dash-split">
+
+                  <div class="m-metric-block">
+
+                    <div class="m-metric-value" id="dashActiveCustomersCount">0</div>
+
+                    <p class="m-muted">aktive Accounts</p>
+
+                    <div class="m-updated" id="dashUpdatedActiveCustomers">updated gerade</div>
+
+                  </div>
+
+                  <div class="m-revenue">
+
+                    <div class="m-revenue-line">
+
+                      <span>Jährlich</span>
+
+                      <strong id="dashRevenueYearly">€ 0</strong>
+
+                    </div>
+
+                    <div class="m-revenue-line">
+
+                      <span>Monatlich ergibt</span>
+
+                      <strong id="dashRevenueMonthly">€ 0</strong>
+
+                    </div>
+
+                    <div class="m-revenue-line">
+
+                      <span>Täglich ergibt</span>
+
+                      <strong id="dashRevenueDaily">€ 0</strong>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+
+
+                <div class="m-quick-actions">
+
+                  <div class="m-form-inline">
+
+                    <label for="dashRestaurantQuickSelect">Aktiver Kunde</label>
+
                     <select class="m-select" id="dashRestaurantQuickSelect">
-                      <option value="">– wählen –</option>
+
+                      <option value="">- wählen -</option>
+
                     </select>
-                  </span>
+
+                  </div>
+
+                  <div class="m-inline">
+
+                    <button class="m-btn m-btn--ghost" type="button" id="dashGoOffers">Offers</button>
+
+                  </div>
+
                 </div>
 
-                <div class="m-system-row">
-                  <span>Offers öffnen</span>
-                  <span class="m-system-status">
-                    <button class="m-ghost-btn" type="button" id="dashGoOffers">Angebote</button>
-                  </span>
+              </article>
+
+
+
+              <article class="m-card m-dash-card" id="cardDemoCustomers">
+
+                <div class="m-card-head">
+
+                  <div>
+
+                    <p class="m-overline">Demo Kunden</p>
+
+                    <h3 class="m-card-title">Trial/Demo</h3>
+
+                  </div>
+
+                  <span class="m-live-pill" data-live-pill>LIVE</span>
+
                 </div>
 
-                <div class="m-system-note">
-                  Diese Admin-App lädt nur <b>restaurants</b>, <b>leads</b> und – nach Lokal-Auswahl – dessen <b>offers</b>.
+                <div class="m-metric-value" id="dashDemoCustomersCount">0</div>
+
+                <div class="m-updated" id="dashUpdatedDemoCustomers">updated gerade</div>
+
+              </article>
+
+
+
+              <article class="m-card m-dash-card" id="cardLeads">
+
+                <div class="m-card-head">
+
+                  <div>
+
+                    <p class="m-overline">Leads</p>
+
+                    <h3 class="m-card-title">CRM Überblick</h3>
+
+                  </div>
+
+                  <span class="m-live-pill" data-live-pill>LIVE</span>
+
                 </div>
-              </div>
-            </section>
+
+                <div class="m-metric-stack">
+
+                  <div class="m-metric-row">
+
+                    <span>Gesamt</span>
+
+                    <strong id="dashLeadsTotal">0</strong>
+
+                  </div>
+
+                  <div class="m-metric-row">
+
+                    <span>Offen</span>
+
+                    <strong id="dashLeadsOpen">0</strong>
+
+                  </div>
+
+                </div>
+
+                <div class="m-updated" id="dashUpdatedLeads">updated gerade</div>
+
+              </article>
+
+
+
+              <article class="m-card m-dash-card m-dash-card--tall" id="cardNextPay">
+
+                <div class="m-card-head">
+
+                  <div>
+
+                    <p class="m-overline">Nächster Zahltag</p>
+
+                    <h3 class="m-card-title">Top 10</h3>
+
+                  </div>
+
+                  <button class="m-icon-btn" id="dashNextPayToggle" type="button" aria-label="Liste öffnen">
+
+                    <span id="dashNextPayToggleIcon">↓</span>
+
+                  </button>
+
+                </div>
+
+                <ul class="m-compact-list" id="dashNextPayList"></ul>
+
+                <div class="m-updated" id="dashUpdatedNextPay">updated</div>
+
+              </article>
+
+
+
+              <article class="m-card m-dash-card m-dash-card--tall" id="cardStories">
+
+                <div class="m-card-head">
+
+                  <div>
+
+                    <p class="m-overline">Aktive Storys</p>
+
+                    <h3 class="m-card-title">Story Feed</h3>
+
+                  </div>
+
+                  <button class="m-icon-btn" id="dashActiveStoriesToggle" type="button" aria-label="Liste öffnen">↓</button>
+
+                </div>
+
+                <div class="m-metric-value" id="dashActiveStoriesCount">0</div>
+
+                <ul class="m-compact-list" id="dashActiveStoriesList"></ul>
+
+                <div class="m-updated" id="dashUpdatedStories">updated</div>
+
+              </article>
+
+
+
+              <article class="m-card m-dash-card m-dash-card--wide" id="cardSwipeStats">
+
+                <div class="m-card-head">
+
+                  <div>
+
+                    <p class="m-overline">Live Stats</p>
+
+                    <h3 class="m-card-title">Swipe</h3>
+
+                  </div>
+
+                  <span class="m-live-pill" data-live-pill>LIVE</span>
+
+                </div>
+
+                <div class="m-swipe-viewport" id="dashSwipeViewport">
+
+                  <div class="m-swipe-track" id="dashSwipeTrack">
+
+                    <div class="m-swipe-slide" data-slide="live-users">
+
+                      <p class="m-overline">Live Users</p>
+
+                      <div class="m-metric-value" id="dashLiveUsersNow">0</div>
+
+                      <p class="m-muted">gerade aktiv</p>
+
+                    </div>
+
+                    <div class="m-swipe-slide" data-slide="orders-today">
+
+                      <p class="m-overline">Bestellungen heute</p>
+
+                      <div class="m-metric-value" id="dashOrdersToday">0</div>
+
+                      <p class="m-muted">seit 00:00</p>
+
+                    </div>
+
+                    <div class="m-swipe-slide" data-slide="system">
+
+                      <p class="m-overline">System</p>
+
+                      <div class="m-microgrid">
+
+                        <div>
+
+                          <span class="m-muted">Restaurants</span>
+
+                          <div class="m-metric-subvalue" id="dashSystemRestaurants">0</div>
+
+                        </div>
+
+                        <div>
+
+                          <span class="m-muted">Leads</span>
+
+                          <div class="m-metric-subvalue" id="dashSystemLeads">0</div>
+
+                        </div>
+
+                        <div>
+
+                          <span class="m-muted">Storys aktiv</span>
+
+                          <div class="m-metric-subvalue" id="dashSystemStories">0</div>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                </div>
+
+                <div class="m-swipe-dots" id="dashSwipeDots"></div>
+
+              </article>
+
+
+
+              <article class="m-card m-dash-card" id="cardChecks">
+
+                <div class="m-card-head">
+
+                  <div>
+
+                    <p class="m-overline">Checks</p>
+
+                    <h3 class="m-card-title">Errors heute</h3>
+
+                  </div>
+
+                </div>
+
+                <div class="m-metric-value" id="dashErrorsToday">0</div>
+
+                <p class="m-muted" id="dashLastError">-</p>
+
+                <div class="m-badge" id="dashLastErrorApp">-</div>
+
+              </article>
+
+            </div>
+
           </section>
 
           <!-- VIEW: CUSTOMERS -->

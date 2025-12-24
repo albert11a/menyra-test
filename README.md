@@ -164,10 +164,25 @@ Staff sieht nur Leads, wo `scopeStaffId == staffUid` (so ist es im Core gedacht)
 **Prinzip**
 - Guest liest primär **1 Dokument**: `public/menu` (und `public/offers`)  
 - Nur wenn `public/*` fehlt/leer → Fallback liest Subcollection (teurer)  
-- Danach soll Admin/Tool `public/*` wieder „publishen“, damit Guest dauerhaft billig bleibt.
+- Danach soll Admin/Tool `public/*` wieder "publishen", damit Guest dauerhaft billig bleibt.
 
 **Caching (Guest)**
 - `guest-core.js` nutzt LocalStorage Cache/TTL (je nach Abschnitt) damit Reloads weniger Reads verursachen.
+
+---
+
+## Fixes (Q1 2025) und aktueller Funktionsumfang
+
+- **Logos/Name konsistent:** `public/meta` wird automatisch mit Name/Logo aus der Restaurant-Doc gemerged; Guest (Karte/Story) nutzt `logoUrl|logo` und erneuert den Cache, falls die Felder fehlen. Fehlende Logos wie bei Prince Coffee House sind damit behoben, sobald ein Logo hinterlegt ist.
+- **Owner Story Upload:** Owner erhalten automatisch einen `staff`-Eintrag (`role: owner`), damit Story-Uploads für jedes Lokal funktionieren. Aktive/abgelaufene Stories werden korrekt gezählt und aufgeräumt.
+- **Kunden bearbeiten:** Das Kundenformular updatet bestehende Restaurants statt immer neue anzulegen; Slug/Name/Logo werden in Basis- und Public-Dokument gemerged.
+- **Guest Story Branding:** Story-Topbar zeigt Lokals-Namen statt Restaurant-ID und nutzt Logo/Initialen als Badge-Fallback.
+- **Public Docs Absicherung:** Beim Admin-Login wird `ensurePublicDocs` für alle geladenen Restaurants ausgeführt, damit `public/meta/menu/offers` existieren und Gäste schnell laden.
+
+**Was das System aktuell kann**
+- **Guest:** Karte (Food/Drinks mit Kategorien, Suche, Offers-Slider), Detajet, Porosia (Warenkorb + Bestellung → Firestore `orders`), Story-Feed (Bunny Stream Embeds).
+- **Admin (CEO/Staff/Owner):** Kunden anlegen/bearbeiten, QR/Links generieren, Menüs/Offers pflegen (Publish zu `public/*`), Stories hochladen/anzeigen/aufräumen, Leads-Verwaltung (CEO/Staff).
+- **Performance/Kosten:** 1-Doc-Reads (`public/meta`, `public/menu`, `public/offers`), LocalStorage-Caching, keine Realtime-Listener im Guest, Publish-Flow für günstige Reads.
 
 ---
 
