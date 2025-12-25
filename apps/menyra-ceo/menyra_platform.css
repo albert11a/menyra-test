@@ -19,6 +19,8 @@
   --shadow-soft: 0 14px 30px rgba(15, 23, 42, 0.12);
   --shadow-small: 0 6px 14px rgba(15, 23, 42, 0.10);
   --transition-fast: 0.18s ease-out;
+  --safe-top: 0px;
+  --safe-bottom: 0px;
 }
 
 /* Dark Theme */
@@ -31,6 +33,20 @@ body.theme-dark {
   --text-muted: #9ca3af;
   --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.65);
   --shadow-small: 0 10px 30px rgba(0, 0, 0, 0.6);
+}
+
+@supports (padding: env(safe-area-inset-top)) {
+  :root {
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@supports (padding: constant(safe-area-inset-top)) {
+  :root {
+    --safe-top: constant(safe-area-inset-top);
+    --safe-bottom: constant(safe-area-inset-bottom);
+  }
 }
 
 /* ==========================================================================
@@ -94,6 +110,8 @@ html.m-boot,
 html.m-login {
   overflow: hidden;
   height: 100%;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 body.m-boot,
@@ -104,6 +122,8 @@ body.m-login {
   width: 100%;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
   touch-action: none;
   overscroll-behavior: none;
 }
@@ -1346,7 +1366,12 @@ body.m-app-hidden .m-app {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(246, 247, 251, 0.95);
+  background:
+    linear-gradient(rgba(246, 247, 251, 0.95), rgba(246, 247, 251, 0.95)) top / 100% var(--safe-top) no-repeat,
+    linear-gradient(rgba(246, 247, 251, 0.95), rgba(246, 247, 251, 0.95)) bottom / 100% var(--safe-bottom) no-repeat,
+    radial-gradient(circle at 18% 20%, rgba(105, 108, 255, 0.18), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.12), transparent 38%),
+    rgba(246, 247, 251, 0.95);
   z-index: 70;
   transition: opacity 0.3s ease, transform 0.3s ease;
   overflow: hidden;
@@ -1354,56 +1379,29 @@ body.m-app-hidden .m-app {
 }
 
 body.theme-dark .m-boot-overlay {
-  background: rgba(11, 18, 32, 0.94);
-}
-
-.m-boot-overlay::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: env(safe-area-inset-top, 0px);
-  bottom: env(safe-area-inset-bottom, 0px);
   background:
-    radial-gradient(circle at 18% 20%, rgba(105, 108, 255, 0.18), transparent 40%),
-    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.12), transparent 38%),
-    rgba(246, 247, 251, 0.95);
-  z-index: 0;
-}
-
-body.theme-dark .m-boot-overlay::before {
-  background:
+    linear-gradient(rgba(11, 18, 32, 0.94), rgba(11, 18, 32, 0.94)) top / 100% var(--safe-top) no-repeat,
+    linear-gradient(rgba(11, 18, 32, 0.94), rgba(11, 18, 32, 0.94)) bottom / 100% var(--safe-bottom) no-repeat,
     radial-gradient(circle at 16% 18%, rgba(99, 102, 241, 0.25), transparent 42%),
     radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.18), transparent 40%),
     rgba(11, 18, 32, 0.94);
 }
 
 body.m-login .m-modal-overlay {
-  background: rgba(246, 247, 251, 0.95);
+  background:
+    linear-gradient(rgba(246, 247, 251, 0.95), rgba(246, 247, 251, 0.95)) top / 100% var(--safe-top) no-repeat,
+    linear-gradient(rgba(246, 247, 251, 0.95), rgba(246, 247, 251, 0.95)) bottom / 100% var(--safe-bottom) no-repeat,
+    radial-gradient(circle at 18% 20%, rgba(105, 108, 255, 0.18), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.12), transparent 38%),
+    rgba(246, 247, 251, 0.95);
   overflow: hidden;
   isolation: isolate;
 }
 
 body.theme-dark.m-login .m-modal-overlay {
-  background: rgba(11, 18, 32, 0.94);
-}
-
-body.m-login .m-modal-overlay::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: env(safe-area-inset-top, 0px);
-  bottom: env(safe-area-inset-bottom, 0px);
   background:
-    radial-gradient(circle at 18% 20%, rgba(105, 108, 255, 0.18), transparent 40%),
-    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.12), transparent 38%),
-    rgba(246, 247, 251, 0.95);
-  z-index: 0;
-}
-
-body.theme-dark.m-login .m-modal-overlay::before {
-  background:
+    linear-gradient(rgba(11, 18, 32, 0.94), rgba(11, 18, 32, 0.94)) top / 100% var(--safe-top) no-repeat,
+    linear-gradient(rgba(11, 18, 32, 0.94), rgba(11, 18, 32, 0.94)) bottom / 100% var(--safe-bottom) no-repeat,
     radial-gradient(circle at 16% 18%, rgba(99, 102, 241, 0.25), transparent 42%),
     radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.18), transparent 40%),
     rgba(11, 18, 32, 0.94);
