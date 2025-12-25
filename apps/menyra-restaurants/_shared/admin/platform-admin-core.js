@@ -1289,12 +1289,100 @@ async function savePublicOffers(restaurantId, items) {
   }, { merge: true });
 }
 
+function inferMenuTypeHint(label) {
+  const key = foldText(label || "");
+  if (!key) return "";
+  if (key.includes("drink") || key.includes("getranke") || key.includes("getraenke") || key.includes("beverage")) return "drink";
+  if (key.includes("food") || key.includes("speise") || key.includes("speisen")) return "food";
+  return "";
+}
+
+function coerceMenuItemsFromData(data) {
+  const items = [];
+  const seen = new Set();
+
+  function addItems(list, typeHint, categoryHint) {
+    if (!Array.isArray(list)) return;
+    list.forEach((raw, idx) => {
+      let obj = null;
+      if (raw && typeof raw === "object") obj = { ...raw };
+      else if (typeof raw === "string" && raw.trim()) obj = { name: raw.trim() };
+      else return;
+
+      if (categoryHint && !obj.category && !obj.categoryName && !obj.cat) obj.category = categoryHint;
+      if (typeHint && !obj.type && !obj.menuType && !obj.kind && !obj.section && !obj.group) obj.type = typeHint;
+
+      const baseKey = String(obj.id || obj._id || obj.menuItemId || obj.name || obj.title || obj.product || "");
+      const key = baseKey ? `${baseKey}|${obj.price ?? ""}|${obj.category || ""}` : `idx_${items.length}_${idx}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push(obj);
+    });
+  }
+
+  function addBuckets(obj) {
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+    Object.entries(obj).forEach(([key, val]) => {
+      if (!Array.isArray(val)) return;
+      const hint = inferMenuTypeHint(key);
+      addItems(val, hint, key);
+    });
+  }
+
+  if (!data) return items;
+  if (Array.isArray(data)) {
+    addItems(data);
+    return items;
+  }
+
+  addItems(data.items);
+  addItems(data.menuItems);
+  addItems(data.menu);
+  addItems(data.speisekarte);
+  addItems(data.food || data.foodItems || data.speisen || data.speise, "food");
+  addItems(data.drinks || data.drinkItems || data.getraenke || data.getranke || data.beverages, "drink");
+
+  if (data.menu && typeof data.menu === "object" && !Array.isArray(data.menu)) {
+    const m = data.menu;
+    addItems(m.items);
+    addItems(m.menuItems);
+    addItems(m.speisekarte);
+    addItems(m.food || m.foodItems || m.speisen || m.speise, "food");
+    addItems(m.drinks || m.drinkItems || m.getraenke || m.getranke || m.beverages, "drink");
+    addBuckets(m);
+  }
+
+  if (Array.isArray(data.categories)) {
+    data.categories.forEach((cat) => {
+      if (!cat || typeof cat !== "object") return;
+      const catName = cat.name || cat.title || cat.category || "";
+      const hint = inferMenuTypeHint(cat.type || catName);
+      addItems(cat.items || cat.products || cat.list, hint, catName);
+    });
+  }
+
+  addBuckets(data);
+  return items;
+}
+
 async function loadPublicMenuItems(restaurantId) {
   const ref = doc(db, "restaurants", restaurantId, "public", "menu");
   const snap = await getDoc(ref);
   if (!snap.exists()) return [];
   const data = snap.data() || {};
-  return Array.isArray(data.items) ? data.items : [];
+  return coerceMenuItemsFromData(data);
+}
+
+async function loadLegacyMenuItems(restaurantId) {
+  try {
+    const snap = await getDoc(doc(db, "restaurants", restaurantId));
+    if (!snap.exists()) return [];
+    const data = snap.data() || {};
+    return coerceMenuItemsFromData(data);
+  } catch (err) {
+    console.warn("legacy menu read failed:", err?.message || err);
+    return [];
+  }
 }
 
 // =========================================================
@@ -1386,9 +1474,14 @@ function toPublicMenuItem(item){
 }
 
 async function loadMenuItemsFromCollection(restaurantId){
-  const ref = collection(db, "restaurants", restaurantId, "menuItems");
-  const snap = await getDocs(ref);
-  return snap.docs.map(d => normalizeMenuItemDoc(d.data(), d.id));
+  try {
+    const ref = collection(db, "restaurants", restaurantId, "menuItems");
+    const snap = await getDocs(ref);
+    return snap.docs.map(d => normalizeMenuItemDoc(d.data(), d.id));
+  } catch (err) {
+    console.warn("menuItems read failed:", err?.message || err);
+    return [];
+  }
 }
 
 async function publishMenuToPublic(restaurantId, items){
@@ -1411,6 +1504,12 @@ async function loadMenuHybrid(restaurantId){
     // publish once to speed up guest
     await publishMenuToPublic(restaurantId, col);
     return col;
+  }
+  const legacy = await loadLegacyMenuItems(restaurantId);
+  if (legacy && legacy.length) {
+    const normalized = legacy.map((x, idx) => normalizeMenuItemDoc(x, x?.id || `legacy_${idx}`));
+    await publishMenuToPublic(restaurantId, normalized);
+    return normalized;
   }
   return [];
 }
@@ -1665,14 +1764,109 @@ function leadsStats(rows){
   const total = rows.length;
   const counts = { new:0, contacted:0, interested:0, no_interest:0, other:0 };
   rows.forEach(r=>{
-    const s = (r.status||"").toLowerCase();
-    if (s === "new" || s === "open" || s === "offen") counts.new++;
-    else if (s === "contacted" || s === "waiting" || s === "kontaktiert") counts.contacted++;
-    else if (s === "interested" || s === "interesse") counts.interested++;
-    else if (s === "no_interest" || s === "nointerest" || s === "kein_interesse") counts.no_interest++;
+    const s = normalizeLeadStatusKey(r.status || "");
+    if (["new","open","offen"].includes(s)) counts.new++;
+    else if (["contacted","waiting","follow_up","followup","no_answer","kontaktiert","warten"].includes(s)) counts.contacted++;
+    else if (["interested","qualified","meeting","proposal_sent","offer_sent","negotiation","interesse","angebot_gesendet","termin"].includes(s)) counts.interested++;
+    else if (["no_interest","nointerest","kein_interesse","lost","verloren","abgelehnt"].includes(s)) counts.no_interest++;
     else counts.other++;
   });
   return { total, counts };
+}
+
+const LEAD_STATUS_LABELS = {
+  new: "Offen",
+  contacted: "Kontaktiert",
+  waiting: "Warten",
+  follow_up: "Follow-up",
+  followup: "Follow-up",
+  qualified: "Qualifiziert",
+  meeting: "Termin geplant",
+  proposal_sent: "Angebot gesendet",
+  offer_sent: "Angebot gesendet",
+  angebot_gesendet: "Angebot gesendet",
+  negotiation: "Verhandlung",
+  interested: "Interesse",
+  no_answer: "Keine Antwort",
+  no_interest: "Kein Interesse",
+  lost: "Verloren",
+  converted: "Kunde erstellt"
+};
+
+const LEAD_TYPE_LABELS = {
+  restaurant: "Restaurant",
+  cafe: "Café",
+  ecommerce: "E-Commerce",
+  hotel: "Hotel",
+  service: "Dienstleistung"
+};
+
+function normalizeLeadStatusKey(value){
+  return foldText(value || "").replace(/[\s-]+/g, "_").trim();
+}
+
+function normalizeLeadTypeKey(value){
+  const key = foldText(value || "").replace(/[\s-]+/g, "_").trim();
+  return key === "e_commerce" ? "ecommerce" : key;
+}
+
+function leadStatusLabel(value){
+  const key = normalizeLeadStatusKey(value || "");
+  return LEAD_STATUS_LABELS[key] || value || "—";
+}
+
+function leadTypeLabel(value){
+  const key = normalizeLeadTypeKey(value || "");
+  return LEAD_TYPE_LABELS[key] || value || "—";
+}
+
+function normalizeLeadLabels(value){
+  const list = Array.isArray(value) ? value : (typeof value === "string" ? value.split(/[;,]/) : []);
+  const seen = new Set();
+  const out = [];
+  list.forEach((raw) => {
+    const label = String(raw || "").trim();
+    if (!label) return;
+    const key = foldText(label);
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(label);
+  });
+  return out;
+}
+
+function parseLeadLabelsInput(value){
+  return normalizeLeadLabels(value);
+}
+
+function renderLeadLabels(labels){
+  if (!labels || !labels.length) return "";
+  return `<div class="m-inline" style="gap:6px; flex-wrap:wrap; margin-top:4px;">${labels.map(l => `<span class="m-badge">${esc(l)}</span>`).join("")}</div>`;
+}
+
+function renderLeadLabelFilterOptions(rows){
+  const sel = $("leadsLabelFilter");
+  if (!sel) return;
+  const current = sel.value || "";
+  const labels = new Set();
+  (rows || []).forEach((r) => {
+    normalizeLeadLabels(r.labels || r.tags || r.label).forEach(l => labels.add(l));
+  });
+
+  sel.innerHTML = "";
+  const opt0 = document.createElement("option");
+  opt0.value = "";
+  opt0.textContent = "Alle Labels";
+  sel.appendChild(opt0);
+
+  Array.from(labels).sort((a, b) => a.localeCompare(b, "de")).forEach((label) => {
+    const opt = document.createElement("option");
+    opt.value = label;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  });
+
+  if (current && labels.has(current)) sel.value = current;
 }
 
 function openLeadModal(mode, data={}){
@@ -1683,10 +1877,12 @@ function openLeadModal(mode, data={}){
   $("leadId").value = data.id || "";
   $("leadBusinessName").value = data.businessName || "";
   $("leadCustomerType").value = data.customerType || "cafe";
-  $("leadCity").value = data.city || "";
+  $("leadContactName") && ($("leadContactName").value = data.contactName || data.contact || "");
+  $("leadCity") && ($("leadCity").value = data.city || "");
   $("leadPhone").value = data.phone || "";
-  $("leadInsta").value = data.insta || "";
+  $("leadInstagram") && ($("leadInstagram").value = data.insta || data.instagram || "");
   $("leadStatus").value = data.status || "new";
+  $("leadLabels") && ($("leadLabels").value = normalizeLeadLabels(data.labels || data.tags || data.label).join(", "));
   $("leadNote").value = data.note || "";
 
   setText("leadModalStatus", "");
@@ -1699,10 +1895,25 @@ function closeLeadModal(){
 }
 
 function applyLeadsFilter(allRows){
-  const term = ($("leadsSearch")?.value || "").trim().toLowerCase();
-  if (!term) return allRows;
-  return allRows.filter(r=>{
-    const hay = `${r.businessName} ${r.city} ${r.phone} ${r.insta} ${r.status}`.toLowerCase();
+  const term = foldText(($("leadsSearch")?.value || "").trim());
+  const statusFilter = normalizeLeadStatusKey($("leadsStatusFilter")?.value || "");
+  const typeFilter = normalizeLeadTypeKey($("leadsTypeFilter")?.value || "");
+  const labelFilter = foldText(($("leadsLabelFilter")?.value || "").trim());
+
+  return (allRows || []).filter(r=>{
+    const statusKey = normalizeLeadStatusKey(r.status || "");
+    if (statusFilter && statusKey !== statusFilter) return false;
+
+    const typeKey = normalizeLeadTypeKey(r.customerType || "");
+    if (typeFilter && typeKey !== typeFilter) return false;
+
+    const labels = normalizeLeadLabels(r.labels || r.tags || r.label);
+    if (labelFilter && !labels.some(l => foldText(l) === labelFilter)) return false;
+
+    if (!term) return true;
+    const insta = r.insta || r.instagram || "";
+    const contact = r.contactName || r.contact || "";
+    const hay = foldText(`${r.businessName} ${r.city} ${contact} ${r.phone} ${insta} ${r.status} ${r.customerType} ${labels.join(" ")}`);
     return hay.includes(term);
   });
 }
@@ -1712,22 +1923,33 @@ function renderLeadsTable(rows){
   if (!body) return;
   body.innerHTML = "";
   rows.forEach(r=>{
+    const typeLabel = leadTypeLabel(r.customerType || "");
+    const labels = normalizeLeadLabels(r.labels || r.tags || r.label);
+    const labelsHtml = renderLeadLabels(labels);
+    const city = r.city ? ` • ${esc(r.city)}` : "";
+    const contactName = r.contactName || r.contact || "";
+    const phone = r.phone || "";
+    const insta = r.insta || r.instagram || "";
+    const contactLine2 = contactName ? (phone || insta) : (insta || phone);
+    const statusLabel = leadStatusLabel(r.status || "");
     const row = document.createElement("div");
     row.className = "m-table-row";
     row.innerHTML = `
       <div>
         <div style="display:flex; flex-direction:column; gap:2px;">
           <b>${esc(r.businessName || "—")}</b>
-          <span class="m-muted" style="font-size:12px;">${esc(r.customerType || "")}${r.city ? " • "+esc(r.city) : ""}</span>
+          <span class="m-muted" style="font-size:12px;">${esc(typeLabel)}${city}</span>
+          ${labelsHtml}
         </div>
       </div>
       <div>
         <div style="display:flex; flex-direction:column; gap:2px;">
-          <span>${esc(r.phone || "—")}</span>
-          <span class="m-muted" style="font-size:12px;">${esc(r.insta || "")}</span>
+          <span>${esc(contactName || phone || "—")}</span>
+          <span class="m-muted" style="font-size:12px;">${esc(contactLine2 || "")}</span>
+          ${contactName && insta ? `<span class="m-muted" style="font-size:12px;">${esc(insta)}</span>` : ""}
         </div>
       </div>
-      <div><span class="m-badge">${esc(r.status || "—")}</span></div>
+      <div><span class="m-badge">${esc(statusLabel)}</span></div>
       <div class="m-table-col-actions" style="display:flex; gap:8px; justify-content:flex-end;">
         <button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="lead-edit" data-id="${esc(r.id)}">Edit</button>
         <button class="m-btn m-btn--small" type="button" data-act="lead-to-customer" data-id="${esc(r.id)}">→ Kunde</button>
@@ -2137,6 +2359,18 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
 // Leads UI (CEO/Staff)
 $("newLeadBtn")?.addEventListener("click", () => openLeadModal("new", {}));
 $("leadsSearch")?.addEventListener("input", () => { window.__MENYRA__refreshLeads && window.__MENYRA__refreshLeads(); });
+["leadsStatusFilter", "leadsTypeFilter", "leadsLabelFilter"].forEach((id) => {
+  $(id)?.addEventListener("change", () => { window.__MENYRA__refreshLeads && window.__MENYRA__refreshLeads(); });
+});
+$("leadsClearFilters")?.addEventListener("click", () => {
+  const statusSel = $("leadsStatusFilter");
+  const typeSel = $("leadsTypeFilter");
+  const labelSel = $("leadsLabelFilter");
+  if (statusSel) statusSel.value = "";
+  if (typeSel) typeSel.value = "";
+  if (labelSel) labelSel.value = "";
+  window.__MENYRA__refreshLeads && window.__MENYRA__refreshLeads();
+});
 
 $("leadForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -2144,12 +2378,17 @@ $("leadForm")?.addEventListener("submit", async (e) => {
   if (!user) return;
 
   const leadId = ($("leadId")?.value || "").trim();
+  const instagram = ($("leadInstagram")?.value || "").trim();
   const payload = {
     businessName: ($("leadBusinessName")?.value || "").trim(),
     customerType: ($("leadCustomerType")?.value || "cafe").trim(),
+    contactName: ($("leadContactName")?.value || "").trim(),
+    contact: ($("leadContactName")?.value || "").trim(),
     city: ($("leadCity")?.value || "").trim(),
     phone: ($("leadPhone")?.value || "").trim(),
-    insta: ($("leadInsta")?.value || "").trim(),
+    insta: instagram,
+    instagram,
+    labels: parseLeadLabelsInput($("leadLabels")?.value || ""),
     status: ($("leadStatus")?.value || "new").trim(),
     note: ($("leadNote")?.value || "").trim(),
     updatedAt: serverTimestamp()
@@ -2636,6 +2875,7 @@ async function refreshLeads(force = false) {
     const rows = await fetchLeads(role, currentUser.uid);
     leadsAll.splice(0, leadsAll.length, ...(rows || []));
 
+    renderLeadLabelFilterOptions(leadsAll);
     const filtered = applyLeadsFilter(leadsAll);
     renderLeadsTable(filtered);
 
@@ -2647,8 +2887,8 @@ async function refreshLeads(force = false) {
     setText("leadsStatInterested", `Interesse: ${st.counts.interested}`);
     setText("leadsStatNoInterest", `Kein Interesse: ${st.counts.no_interest}`);
     const openCount = leadsAll.filter(r => {
-      const s = (r.status || "").toLowerCase();
-      return !["no_interest", "converted", "closed", "done"].includes(s);
+      const s = normalizeLeadStatusKey(r.status || "");
+      return !["no_interest", "lost", "converted", "closed", "done"].includes(s);
     }).length;
     animateValue($("dashLeadsTotal"), leadsAll.length, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
     animateValue($("dashLeadsOpen"), openCount, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
@@ -2778,6 +3018,7 @@ const miStatus = $("menuItemModalStatus");
 
 let menuFilterType = "all";
 let editMenuIndex = -1;
+let menuWiringDone = false;
 
 // Initialize menu restaurant selector
 if (restaurants) fillMenuRestaurantSelect(restaurants);
@@ -2830,7 +3071,7 @@ async function loadMenuUI(rid){
   setMenuStatus("Lade…");
   try{
     await ensurePublicDocs(rid, { name:"", type:"cafe", city:"", logoUrl:"" });
-    currentMenuItems = await loadPublicMenuItems(rid);
+    currentMenuItems = await loadMenuHybrid(rid);
 
     // Normalize types for rendering (no auto-save here)
     currentMenuItems = (currentMenuItems || []).map(i => ({
@@ -3019,6 +3260,37 @@ function bindMenuModal(){
     }
   }
 }
+
+function initMenuView(){
+  if (menuWiringDone) return;
+  if (!menuSel) return;
+  menuWiringDone = true;
+
+  bindMenuClicks();
+  bindMenuTypeSeg();
+  bindMenuModal();
+
+  menuSel.addEventListener("change", () => {
+    const rid = menuSel.value || "";
+    currentRestaurantId = rid;
+    loadMenuUI(rid);
+  });
+
+  document.addEventListener("menyra:viewchange", (e) => {
+    if (e?.detail?.view !== "menu") return;
+    const rid = menuSel.value || restaurants?.[0]?.id || "";
+    if (rid) {
+      if (menuSel.value !== rid) menuSel.value = rid;
+      currentRestaurantId = rid;
+      loadMenuUI(rid);
+    } else {
+      setMenuStatus("Bitte ein Lokal ausw„hlen.");
+      renderMenuTable([], menuFilterType, canDeleteMenuItems());
+    }
+  });
+}
+
+initMenuView();
 
 
     async function loadOffersUI(rid) {
