@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    { "source": "/ceo", "destination": "/apps/menyra-ceo/dashboard.html" },
+    { "source": "/ceo/", "destination": "/apps/menyra-ceo/dashboard.html" },
+    { "source": "/owner", "destination": "/apps/menyra-owner/index.html" },
+    { "source": "/owner/", "destination": "/apps/menyra-owner/index.html" },
+    { "source": "/staff", "destination": "/apps/menyra-staff/dashboard.html" },
+    { "source": "/staff/", "destination": "/apps/menyra-staff/dashboard.html" },
+    { "source": "/waiter", "destination": "/apps/menyra-restaurants/waiter/index.html" },
+    { "source": "/waiter/", "destination": "/apps/menyra-restaurants/waiter/index.html" },
+    { "source": "/kitchen", "destination": "/apps/menyra-restaurants/kitchen/index.html" },
+    { "source": "/kitchen/", "destination": "/apps/menyra-restaurants/kitchen/index.html" },
+    { "source": "/social", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/social/", "destination": "/apps/menyra-social/index.html" }
+  ]
+}
