@@ -995,6 +995,16 @@ body.theme-dark .m-sidebar {
   overflow: hidden;
 }
 
+.m-customer-search-card {
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.m-customer-search-card:hover {
+  transform: none;
+  box-shadow: var(--shadow-soft);
+}
+
 .m-customer-toolbar {
   display: flex;
   align-items: center;
@@ -1027,6 +1037,8 @@ body.theme-dark .m-sidebar {
 
 .m-customer-back {
   white-space: nowrap;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg);
 }
 
 @media (max-width: 720px) {
@@ -1259,6 +1271,15 @@ body.theme-dark .m-sidebar {
 
   .m-customer-meta {
     align-self: flex-end;
+  }
+
+  .m-customer-back {
+    align-self: flex-end;
+  }
+
+  .m-modal-footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 }
 
