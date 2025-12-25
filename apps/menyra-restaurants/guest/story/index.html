@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Story</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
+  <!-- =========================================================
+       PERF: Connection warmup (ok)
+       ========================================================= -->
+  <link rel="dns-prefetch" href="//menyra.b-cdn.net" />
+  <!-- Kein HLS.js mehr nötig - verwenden iframe -->
+
+  <!-- Block Bunny RUM monitoring script -->
+  <script>
+    // Override Bunny RUM script to prevent DNS errors
+    window.rum = window.rum || {};
+    window.rum.runNextTest = function() {
+      // Do nothing - prevent RUM monitoring
+      console.log('Bunny RUM monitoring disabled');
+    };
+    window.rum.scheduleNextTest = function() {
+      // Do nothing
+    };
+
+    // Block script loading
+    const originalCreateElement = document.createElement.bind(document);
+    document.createElement = function(tagName) {
+      const element = originalCreateElement(tagName);
+      if (tagName === 'script' && element.src && element.src.includes('rum.js')) {
+        console.log('Blocking Bunny RUM script loading');
+        return document.createElement('div'); // Return dummy element
+      }
+      return element;
+    };
+  </script>
+
+  <style>
+    :root{
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+
+      --ui: rgba(0,0,0,0.45);
+      --txt: #ffffff;
+      --muted: rgba(255,255,255,0.72);
+    }
+
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    html, body{ height:100%; background:#000; }
+    body{
+      color: var(--txt);
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      overflow: hidden;
+      background:#000;
+    }
+
+    /* =========================================================
+       ABSCHNITT 1: FEED / REELS
+       ========================================================= */
+    .reels{
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
+
+      overflow-y: auto;
+      scroll-snap-type: y mandatory;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      background:#000;
+
+      scroll-padding-top: var(--safe-top);
+      scroll-padding-bottom: var(--safe-bottom);
+
+      /* helps with touch */
+      touch-action: pan-y;
+    }
+    .reels::-webkit-scrollbar{ display:none; }
+    .reels{ scrollbar-width:none; }
+
+    .reel{
+      position: relative;
+      height: 100vh;
+      height: 100svh;
+      height: 100dvh;
+
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      background:#000;
+      overflow:hidden;
+      isolation:isolate;
+    }
+
+    .reel iframe{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      object-fit: cover;
+      background:#000;
+      transform: translateZ(0);
+      border: none;
+      pointer-events: none;
+    }
+
+    .reel{
+      position: relative;
+      cursor: pointer;
+    }
+
+    /* Overlay um Player-Controls zu verstecken */
+    .reel::after{
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: transparent;
+      pointer-events: auto;
+      z-index: 10;
+    }
+
+    .reel-video{
+      pointer-events: none;
+    }
+
+    .vignette{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background:
+        radial-gradient(120% 70% at 50% 10%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.8) 100%),
+        linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0.00) 45%);
+      opacity: .9;
+      z-index: 5;
+    }
+
+    /* =========================================================
+       ABSCHNITT 2: TOPBAR / UI
+       ========================================================= */
+    .topbar{
+      position:absolute;
+      top: 0; left: 0; right: 0;
+      padding-top: calc(var(--safe-top) + 10px);
+      padding-left: calc(var(--safe-left) + 12px);
+      padding-right: calc(var(--safe-right) + 12px);
+      padding-bottom: 10px;
+
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+
+      z-index: 20;
+      pointer-events:none;
+    }
+
+    .topbarLeft, .topbarRight{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      pointer-events:auto;
+    }
+
+    .btnIcon{
+      border:0;
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      display:grid;
+      place-items:center;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      backdrop-filter: blur(6px);
+    }
+    .btnIcon:active{ transform: scale(0.98); }
+
+    .brandPill{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 16px;
+      background: rgba(0,0,0,0.25);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.12);
+      pointer-events:auto;
+      min-width: 0;
+    }
+    .brandLogo{
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      object-fit: contain;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.10);
+      flex: 0 0 auto;
+    }
+    .brandName{
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: .2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 56vw;
+    }
+
+    .rail{
+      position:absolute;
+      right: calc(var(--safe-right) + 12px);
+      bottom: calc(var(--safe-bottom) + 110px);
+      z-index: 20;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 14px;
+      pointer-events:auto;
+    }
+
+    .railBtn{
+      border:0;
+      background: transparent;
+      color: #fff;
+      cursor:pointer;
+      -webkit-tap-highlight-color: transparent;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 6px;
+    }
+    .railIcon{
+      width: 46px;
+      height: 46px;
+      border-radius: 18px;
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.10);
+      display:grid;
+      place-items:center;
+      backdrop-filter: blur(6px);
+    }
+    .railCount{
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1;
+      color: #fff;
+    }
+
+    /* =========================================================
+       ABSCHNITT 3: CONTENT OVERLAY
+       ========================================================= */
+    .content{
+      position:absolute;
+      left: calc(var(--safe-left) + 12px);
+      right: calc(var(--safe-right) + 80px);
+      bottom: calc(var(--safe-bottom) + 120px);
+      z-index: 15;
+      pointer-events:auto;
+    }
+
+    .contentTitle{
+      font-weight: 800;
+      font-size: 18px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+    }
+
+    .contentDesc{
+      font-size: 14px;
+      line-height: 1.4;
+      opacity: 0.9;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+      margin-bottom: 12px;
+    }
+
+    .contentBtn{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.20);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .contentBtn:hover{
+      background: rgba(255,255,255,0.25);
+      transform: translateY(-1px);
+    }
+    .contentBtn:active{ transform: translateY(0) scale(0.98); }
+
+    /* =========================================================
+       ABSCHNITT 4: EMPTY STATE
+       ========================================================= */
+    .empty{
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+      z-index: 10;
+    }
+
+    .emptyIcon{
+      width: 64px;
+      height: 64px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      display: grid;
+      place-items: center;
+      margin-bottom: 16px;
+      font-size: 28px;
+    }
+
+    .emptyTitle{
+      font-weight: 800;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .emptyDesc{
+      font-size: 14px;
+      opacity: 0.7;
+      line-height: 1.4;
+    }
+
+    /* =========================================================
+       ABSCHNITT 5: LOADING
+       ========================================================= */
+    .loading{
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      background: #000;
+    }
+
+    .spinner{
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255,255,255,0.1);
+      border-top: 3px solid #fff;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* =========================================================
+       ABSCHNITT 6: RESPONSIVE
+       ========================================================= */
+    @media (max-width: 480px) {
+      .contentTitle{ font-size: 16px; }
+      .contentDesc{ font-size: 13px; }
+      .contentBtn{ font-size: 13px; padding: 7px 12px; }
+      .rail{ right: calc(var(--safe-right) + 8px); }
+      .topbar{ padding-left: calc(var(--safe-left) + 8px); padding-right: calc(var(--safe-right) + 8px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="reels" id="reelsContainer">
+    <!-- Stories werden hier dynamisch eingefügt -->
+  </div>
+
+  <div class="loading" id="loadingState">
+    <div class="spinner"></div>
+  </div>
+
+  <div class="empty" id="emptyState" style="display:none;">
+    <div class="emptyIcon">📹</div>
+    <div class="emptyTitle">Keine Stories</div>
+    <div class="emptyDesc">Aktive Stories werden hier angezeigt.</div>
+  </div>
+
+  <div class="empty" id="tapHint" style="display:none;">
+    <div class="emptyIcon">👆</div>
+    <div class="emptyTitle">Tippe um zu starten</div>
+    <div class="emptyDesc">Tippe auf den Bildschirm um die Stories abzuspielen.</div>
+  </div>
+
+  <script type="module" src="./story.js?v=20251223b"></script>
+</body>
+</html>

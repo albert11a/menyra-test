@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>MENYRA - Kitchen</title>
+    <script type="importmap">
+{
+  "imports": {
+    "@shared/": "/shared/",
+    "@apps/": "/apps/",
+    "@s1/": "/apps/menyra-restaurants/_shared/"
+  }
+}
+    </script>
+    <link rel="stylesheet" href="/shared/styles/base.css" />
+    <link rel="stylesheet" href="/shared/styles/ui-kit.css" />
+    <link rel="stylesheet" href="./kitchen.css" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="topbar">
+        <div>
+          <div class="title">Kitchen</div>
+          <div class="meta" id="restaurantName">-</div>
+        </div>
+        <div class="actions">
+          <button class="btn btn--ghost" id="refreshBtn" type="button">Refresh</button>
+          <button class="btn" id="logoutBtn" type="button">Logout</button>
+        </div>
+      </header>
+
+      <section class="card auth-card" id="authCard">
+        <div class="card-title">Login</div>
+        <div class="form">
+          <input id="emailInput" type="email" placeholder="Email" autocomplete="username" />
+          <input id="passwordInput" type="password" placeholder="Password" autocomplete="current-password" />
+          <button class="btn" id="loginBtn" type="button">Login</button>
+        </div>
+        <div class="meta" id="authStatus"></div>
+      </section>
+
+      <section class="app hidden" id="app">
+        <div class="toolbar">
+          <div class="meta" id="statusLine">Waiting for orders...</div>
+          <select id="statusFilter">
+            <option value="">All statuses</option>
+            <option value="new">New</option>
+            <option value="accepted">Accepted</option>
+            <option value="cooking">Cooking</option>
+            <option value="ready">Ready</option>
+            <option value="done">Done</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </div>
+        <div id="ordersList" class="orders"></div>
+      </section>
+    </div>
+    <script type="module" src="./kitchen.js"></script>
+  </body>
+</html>
