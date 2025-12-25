@@ -1,16 +1,24 @@
 {
+  "redirects": [
+    { "source": "/ceo", "destination": "/ceo/", "permanent": false },
+    { "source": "/owner", "destination": "/owner/", "permanent": false },
+    { "source": "/staff", "destination": "/staff/", "permanent": false },
+    { "source": "/waiter", "destination": "/waiter/", "permanent": false },
+    { "source": "/kitchen", "destination": "/kitchen/", "permanent": false },
+    { "source": "/social", "destination": "/social/", "permanent": false }
+  ],
   "rewrites": [
-    { "source": "/ceo", "destination": "/apps/menyra-ceo/dashboard.html" },
     { "source": "/ceo/", "destination": "/apps/menyra-ceo/dashboard.html" },
-    { "source": "/owner", "destination": "/apps/menyra-owner/index.html" },
+    { "source": "/ceo/:path*", "destination": "/apps/menyra-ceo/:path*" },
     { "source": "/owner/", "destination": "/apps/menyra-owner/index.html" },
-    { "source": "/staff", "destination": "/apps/menyra-staff/dashboard.html" },
+    { "source": "/owner/:path*", "destination": "/apps/menyra-owner/:path*" },
     { "source": "/staff/", "destination": "/apps/menyra-staff/dashboard.html" },
-    { "source": "/waiter", "destination": "/apps/menyra-restaurants/waiter/index.html" },
+    { "source": "/staff/:path*", "destination": "/apps/menyra-staff/:path*" },
     { "source": "/waiter/", "destination": "/apps/menyra-restaurants/waiter/index.html" },
-    { "source": "/kitchen", "destination": "/apps/menyra-restaurants/kitchen/index.html" },
+    { "source": "/waiter/:path*", "destination": "/apps/menyra-restaurants/waiter/:path*" },
     { "source": "/kitchen/", "destination": "/apps/menyra-restaurants/kitchen/index.html" },
-    { "source": "/social", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/social/", "destination": "/apps/menyra-social/index.html" }
+    { "source": "/kitchen/:path*", "destination": "/apps/menyra-restaurants/kitchen/:path*" },
+    { "source": "/social/", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" }
   ]
 }
