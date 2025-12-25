@@ -75,7 +75,7 @@
         <div class="m-mobile-menu-section">
           <div class="m-sidebar-meta">
             <div class="m-sidebar-meta-line">• Schnell & kostenschonend</div>
-            <div class="m-sidebar-meta-line">• Kunden / Focus</div>
+            <div class="m-sidebar-meta-line">• Kunden / Angebote / Leads</div>
           </div>
         </div>
       </div>
@@ -95,7 +95,7 @@
             <ul class="m-sidebar-nav" id="sidebarNav">
               <li><a href="#" class="is-active" data-section="dashboard"><span class="m-nav-icon">🏠</span><span class="m-nav-label">Dashboard</span></a></li>
               <li><a href="#" data-section="customers"><span class="m-nav-icon">🏪</span><span class="m-nav-label">Kunden</span></a></li>
-              <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Focus</span></a></li>
+              <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Angebote</span></a></li>
               <li><a href="#" data-section="menu"><span class="m-nav-icon">🍽️</span><span class="m-nav-label">Speisekarte</span></a></li>
               <li><a href="#" data-section="stories"><span class="m-nav-icon">🎥</span><span class="m-nav-label">Stories</span></a></li>
               <li><a href="#" data-section="social"><span class="m-nav-icon">S</span><span class="m-nav-label">Social</span></a></li>
@@ -202,7 +202,7 @@
                 <div class="m-system-row">
                   <span>Offers öffnen</span>
                   <span class="m-system-status">
-                    <button class="m-ghost-btn" type="button" id="dashGoOffers">Focus</button>
+                    <button class="m-ghost-btn" type="button" id="dashGoOffers">Angebote</button>
                   </span>
                 </div>
 
@@ -217,120 +217,32 @@
           <section class="m-view" data-view="customers" style="display:none;">
             <div class="m-page-header">
               <div>
+                <h1 class="m-page-title">Kunden</h1>
+                <p class="m-page-subtitle">Kunden anlegen, suchen und QR-Links anzeigen.</p>
               </div>
               <div class="m-page-actions">
                 <button class="m-btn" type="button" id="newCustomerBtn">+ Neuer Kunde</button>
-                <button class="m-btn m-btn--ghost" type="button" id="newDemoCustomerBtn">+ Demo Kunde</button>
               </div>
             </div>
 
-                        
-            </div>
-
-            <div class="m-card m-customer-search-card">
-              <div class="m-customer-toolbar">
-                <div class="m-search m-search--wide">
-                  <input id="customerSearch" class="m-search-input" placeholder="Suche nach Name, Inhaber, Ort." />
-                </div>
-                <div class="m-customer-toolbar-actions">
-                  <button class="m-btn m-btn--ghost m-customer-back is-hidden" type="button" id="customerEditBackTop">Zurueck</button>
-                </div>
-              </div>
-            </div>
-
-<section class="m-card m-table-card">
-              <div class="m-table-toolbar" style="display:none;">
+            <section class="m-card m-table-card">
+              <div class="m-table-toolbar">
                 <div>
                   <div class="m-search m-search--small" style="max-width:520px;">
                     <span class="m-search-icon">⌕</span>
-                    <input class="m-search-input" placeholder="Suche nach Name, Inhaber, Ort…" />
+                    <input id="customerSearch" class="m-search-input" placeholder="Suche nach Name, Inhaber, Ort…" />
                   </div>
-                  <div class="m-table-meta">-</div>
+                  <div class="m-table-meta" id="customersMeta">–</div>
                 </div>
-                
-              </div>
-
-              <div id="customersList" class="m-customer-list"></div>
-
-              <div class="m-card m-customer-detail is-hidden" id="customerDetailCard">
-                <div class="m-card-head">
-                  <div>
-                    <h2 class="m-section-title" id="customerDetailTitle">Kunde</h2>
-                    <div class="m-muted" id="customerDetailMeta">-</div>
-                  </div>
-                  <div class="m-inline">
-                    <button class="m-btn m-btn--ghost" type="button" id="customerDetailBackBtn">Zurueck</button>
-                    <button class="m-btn" type="button" id="customerDetailEditBtn">Bearbeiten</button>
-                  </div>
-                </div>
-                <div class="m-customer-detail-grid">
-                  <div class="m-detail-card">
-                    <h3 class="m-section-title">Profil</h3>
-                    <div class="m-kv-list" id="customerDetailProfile"></div>
-                  </div>
-                  <div class="m-detail-card">
-                    <h3 class="m-section-title">Links</h3>
-                    <div class="m-link-grid" id="customerDetailLinks"></div>
-                  </div>
-                  <div class="m-detail-card">
-                    <h3 class="m-section-title">QR Codes</h3>
-                    <div class="m-qr-preview">
-                      <button class="m-btn m-btn--ghost" type="button" id="customerDetailQrBtn">QR & Links</button>
-                      <div class="m-qr-list" id="customerDetailQrList"></div>
-                    </div>
-                  </div>
-                  <div class="m-detail-card">
-                    <h3 class="m-section-title">Speisekarte</h3>
-                    <div class="m-menu-list" id="customerDetailMenu"></div>
-                  </div>
-                  <div class="m-detail-card">
-                    <h3 class="m-section-title">Social</h3>
-                    <div class="m-detail-list" id="customerDetailSocial"></div>
-                  </div>
-                  <div class="m-detail-card">
-                    <h3 class="m-section-title">Stories</h3>
-                    <div class="m-detail-list" id="customerDetailStories"></div>
-                  </div>
+                <div class="m-inline">
+                  <label class="m-inline" style="gap:6px; font-size:12px;">
+                    <input type="checkbox" id="customersOnlyActive" checked />
+                    Nur aktive
+                  </label>
                 </div>
               </div>
 
-              <div class="m-card m-customer-edit is-hidden" id="customerEditCard">
-                
-                <div id="customerEditSlot"></div>
-                <div class="m-customer-detail m-customer-edit-details is-hidden" id="customerEditDetails">
-                  <div class="m-customer-detail-grid">
-                    <div class="m-detail-card">
-                      <h3 class="m-section-title">Profil</h3>
-                      <div class="m-kv-list" id="customerEditProfile"></div>
-                    </div>
-                    <div class="m-detail-card">
-                      <h3 class="m-section-title">Links</h3>
-                      <div class="m-link-grid" id="customerEditLinks"></div>
-                    </div>
-                    <div class="m-detail-card" id="customerEditQrCard">
-                      <h3 class="m-section-title">QR Codes</h3>
-                      <div class="m-qr-preview">
-                        <button class="m-btn m-btn--ghost" type="button" id="customerEditQrBtn">QR & Links</button>
-                        <div class="m-qr-list" id="customerEditQrList"></div>
-                      </div>
-                    </div>
-                    <div class="m-detail-card" id="customerEditMenuCard">
-                      <h3 class="m-section-title">Speisekarte</h3>
-                      <div class="m-menu-list" id="customerEditMenu"></div>
-                    </div>
-                    <div class="m-detail-card">
-                      <h3 class="m-section-title">Social</h3>
-                      <div class="m-detail-list" id="customerEditSocial"></div>
-                    </div>
-                    <div class="m-detail-card">
-                      <h3 class="m-section-title">Stories</h3>
-                      <div class="m-detail-list" id="customerEditStories"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="m-table" style="display:none;">
+              <div class="m-table">
                 <div class="m-table-row m-table-row--header">
                   <div>Kunde</div>
                   <div>Inhaber</div>
@@ -343,7 +255,7 @@
                 <div id="customersTableBody"></div>
               </div>
 
-              <div class="m-table-footer" style="display:none;">
+              <div class="m-table-footer">
                 <span class="m-table-meta" id="customersFooter">–</span>
                 <span class="m-table-meta">Seite 1 von 1</span>
               </div>
@@ -354,8 +266,8 @@
           <section class="m-view" data-view="offers" style="display:none;">
             <div class="m-page-header">
               <div>
-                <h1 class="m-page-title">Focus</h1>
-                <p class="m-page-subtitle">Focus pro Lokal - Slider in der Gaeste-Karte.</p>
+                <h1 class="m-page-title">Angebote</h1>
+                <p class="m-page-subtitle">Angebote pro Lokal – Slider in der Gäste-Karte.</p>
               </div>
             </div>
 
@@ -551,7 +463,7 @@
 <section class="m-card" id="offersListCard" style="display:none;">
               <div class="m-section-header">
                 <div>
-                  <h2 class="m-section-title">Focus dieses Lokals</h2>
+                  <h2 class="m-section-title">Angebote dieses Lokals</h2>
                   <p class="m-section-subtitle m-muted">Deaktivierte Offers werden nicht angezeigt.</p>
                 </div>
               </div>
@@ -792,15 +704,13 @@
           <button class="m-icon-btn" id="customerModalClose" type="button" aria-label="Schließen">✕</button>
         </div>
         <div class="m-modal-body">
-          
-
           <form id="customerForm">
             <input type="hidden" id="customerId" />
 
             <div class="m-input-row">
               <div class="m-input-group">
                 <label for="customerName">Lokal / Name</label>
-                <input id="customerName" class="m-input" placeholder="Restaurant / Cafe / Shop" />
+                <input id="customerName" class="m-input" placeholder="Restaurant / Café / Shop…" />
               </div>
               <div class="m-input-group">
                 <label for="customerOwner">Inhaber</label>
@@ -810,26 +720,12 @@
 
             <div class="m-input-row">
               <div class="m-input-group">
-                <label for="customerCountry">Land</label>
-                <input id="customerCountry" class="m-input" placeholder="z.B. Kosovo" />
-              </div>
-              <div class="m-input-group">
                 <label for="customerCity">Ort</label>
                 <input id="customerCity" class="m-input" placeholder="z.B. Prishtina" />
               </div>
-            </div>
-
-            <div class="m-input-row">
               <div class="m-input-group">
                 <label for="customerPhone">Telefon (optional)</label>
-                <input id="customerPhone" class="m-input" placeholder="+383..." />
-              </div>
-              <div class="m-input-group">
-                <label for="customerType">Typ</label>
-                <select id="customerType" class="m-select2">
-                  <option value="cafe">Cafe</option>
-                  <option value="restaurant">Restaurant</option>
-                </select>
+                <input id="customerPhone" class="m-input" placeholder="+383…" />
               </div>
             </div>
 
@@ -837,32 +733,38 @@
               <div class="m-input-group">
                 <label for="customerTableCount">Anzahl Tische</label>
                 <input id="customerTableCount" class="m-input" placeholder="z.B. 20" />
-                <p class="m-input-hint">Fuer QR-Links (T1..Tn). Wenn 0 -> nur Main Page.</p>
+                <p class="m-input-hint">Für QR-Links (T1…Tn). Wenn 0 → nur Main Page.</p>
               </div>
               <div class="m-input-group">
-                <label for="customerYearPrice">Preis/Jahr (optional)</label>
+                <label for="customerYearPrice">Preis/Jahr (€)</label>
                 <input id="customerYearPrice" class="m-input" placeholder="z.B. 370" />
               </div>
             </div>
 
-            <div class="m-input-row">
-              <div class="m-input-group">
-                <label for="customerLogoUrl">Logo URL (optional)</label>
-                <input id="customerLogoUrl" class="m-input" placeholder="https://" />
-              </div>
-              <div class="m-input-group">
-                <label for="customerStatus">Status</label>
-                <select id="customerStatus" class="m-select2">
-                  <option value="active">Aktiv</option>
-                  <option value="demo">Demo</option>
-                  <option value="trial">Test</option>
-                  <option value="paused">Pausiert</option>
-                </select>
-              </div>
+            
+            <div class="m-input-group">
+              <label for="customerType">Typ</label>
+              <select id="customerType" class="m-select2">
+                <option value="cafe">Café</option>
+                <option value="restaurant">Restaurant</option>
+              </select>
+            </div>
+
+            <div class="m-input-group">
+              <label for="customerLogoUrl">Logo URL (optional)</label>
+              <input id="customerLogoUrl" class="m-input" placeholder="https://…" />
+            </div>
+
+            <div class="m-input-group">
+              <label for="customerStatus">Status</label>
+              <select id="customerStatus" class="m-select2">
+                <option value="active">Aktiv</option>
+                <option value="trial">Test</option>
+                <option value="paused">Pausiert</option>
+              </select>
             </div>
 
             <div class="m-modal-footer">
-
               <button class="m-btn m-btn--ghost" id="customerCancelBtn" type="button">Abbrechen</button>
               <button class="m-btn" id="customerSaveBtn" type="submit">Speichern</button>
             </div>

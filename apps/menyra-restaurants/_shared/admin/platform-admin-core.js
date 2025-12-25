@@ -563,7 +563,6 @@ async function fetchRestaurants(role, uid, restrictRestaurantId = null) {
 }
 
 const __ENSURED_PUBLIC_DOCS = (window.__MENYRA_ENSURED_PUBLIC_DOCS ||= new Set());
-let didBackfillCountry = false;
 
 async function ensurePublicDocs(restaurantId, base) {
   if (!restaurantId) return;
@@ -573,7 +572,6 @@ async function ensurePublicDocs(restaurantId, base) {
     name: base.name || base.restaurantName || base.slug || "",
     restaurantName: base.restaurantName || base.name || "",
     type: base.type || "cafe",
-    country: base.country || "",
     city: base.city || "",
     logoUrl: base.logoUrl || base.logo || "",
     logo: base.logo || "",
@@ -605,26 +603,6 @@ async function ensurePublicDocs(restaurantId, base) {
   } catch (_) {}
 
   __ENSURED_PUBLIC_DOCS.add(restaurantId);
-}
-
-async function backfillMissingCountry(rows, role) {
-  if (didBackfillCountry || role !== "ceo") return;
-  const missing = (rows || []).filter((r) => !(r.country || r.countryName || r.countryCode));
-  if (!missing.length) {
-    didBackfillCountry = true;
-    return;
-  }
-  didBackfillCountry = true;
-  try {
-    await Promise.all(missing.map((r) => (
-      setDoc(doc(db, "restaurants", r.id), {
-        country: DEFAULT_COUNTRY,
-        updatedAt: serverTimestamp()
-      }, { merge: true })
-    )));
-  } catch (err) {
-    console.error("Country backfill failed", err);
-  }
 }
 
 async function ensureOwnerStaffDoc(restaurantId, user) {
@@ -932,7 +910,6 @@ async function createRestaurantDoc(role, user, payload) {
     restaurantName: payload.restaurantName || payload.name,
     type: payload.type,
     ownerName: payload.ownerName,
-    country: payload.country || DEFAULT_COUNTRY,
     city: payload.city,
     phone: payload.phone,
     tableCount: payload.tableCount,
@@ -964,7 +941,6 @@ async function updateRestaurantDoc(role, user, restaurantId, payload) {
     restaurantName: payload.restaurantName || payload.name,
     type: payload.type,
     ownerName: payload.ownerName,
-    country: payload.country || DEFAULT_COUNTRY,
     city: payload.city,
     phone: payload.phone,
     tableCount: payload.tableCount,
@@ -985,7 +961,6 @@ async function updateRestaurantDoc(role, user, restaurantId, payload) {
 // -------------------------
 // Dashboard helpers
 // -------------------------
-const DEFAULT_COUNTRY = "Kosovo";
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function calcYearlyAmount(row) {
@@ -996,40 +971,6 @@ function calcYearlyAmount(row) {
   if (billing === "yearly" || billing === "annual" || billing === "year") return price || (monthly * 12);
   if (monthly) return monthly * 12;
   return price || 0;
-}
-
-function calcMonthlyAmount(row) {
-  const monthly = parseFloatSafe(row.monthlyPrice ?? row.priceMonthly ?? 0, 0);
-  if (monthly) return monthly;
-  const yearly = calcYearlyAmount(row);
-  return yearly ? (yearly / 12) : 0;
-}
-
-function getPlanCycle(row) {
-  const billing = (row.billingCycle || row.billingInterval || row.planInterval || row.planType || row.billing?.cycle || "").toLowerCase();
-  if (billing.includes("month")) return "monthly";
-  if (billing.includes("year") || billing.includes("annual")) return "yearly";
-  if (row.monthlyPrice || row.priceMonthly) return "monthly";
-  if (row.yearPrice || row.yearlyAmount || row.price) return "yearly";
-  return "";
-}
-
-function planCycleLabel(row) {
-  const cycle = getPlanCycle(row);
-  if (cycle === "monthly") return "Monatlich";
-  if (cycle === "yearly") return "Jaehrlich";
-  return row.plan || "-";
-}
-
-function planPriceLabel(row) {
-  const cycle = getPlanCycle(row);
-  if (cycle === "monthly") return formatCurrency(calcMonthlyAmount(row) || 0);
-  if (cycle === "yearly") return formatCurrency(calcYearlyAmount(row) || 0);
-  const yearly = calcYearlyAmount(row);
-  if (yearly) return formatCurrency(yearly);
-  const monthly = calcMonthlyAmount(row);
-  if (monthly) return formatCurrency(monthly);
-  return "-";
 }
 
 function isActiveCustomer(row) {
@@ -1166,412 +1107,62 @@ function updateSystemStatsCard({ restaurants = [], leadsCount = 0, storiesCount 
 // -------------------------
 // UI: Customers
 // -------------------------
-const MENU_TYPES_WITH_KARTE = new Set(["restaurant", "cafe", "club", "hotel", "bar", "fastfood"]);
+function renderCustomersTable(rows, role) {
+  const body = $("customersTableBody");
+  if (!body) return;
 
-function hasMenuForCustomer(row) {
-  const type = String(row?.type || "").toLowerCase();
-  return MENU_TYPES_WITH_KARTE.has(type);
-}
-
-function formatDateShort(ts) {
-  const d = toDateSafe(ts);
-  if (!d) return "-";
-  try {
-    return new Intl.DateTimeFormat("de-AT", { year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
-  } catch {
-    return d.toLocaleDateString();
-  }
-}
-
-function renderKvList(el, rows) {
-  if (!el) return;
-  el.innerHTML = rows.map((r) => `
-    <div class="m-kv-row">
-      <span class="m-muted">${esc(r.label || "")}</span>
-      <span>${esc(r.value || "-")}</span>
-    </div>
-  `).join("");
-}
-
-function buildCustomerLinks(row) {
-  const rid = row.id;
-  const links = [
-    { label: "Admin", href: `../menyra-owner/index.html?r=${encodeURIComponent(rid)}` },
-    { label: "Main", href: `../menyra-main/index.html?r=${encodeURIComponent(rid)}` }
-  ];
-  if (hasMenuForCustomer(row)) {
-    links.push({ label: "Karte", href: `../menyra-restaurants/guest/karte/index.html?r=${encodeURIComponent(rid)}` });
-  }
-  if (row.plan === "ecom" || row.shopEnabled === true) {
-    links.push({ label: "Shop", href: `../menyra-main/index.html?r=${encodeURIComponent(rid)}&view=shop` });
-  }
-  return links;
-}
-
-function renderCustomerLinks(el, row) {
-  if (!el) return;
-  const links = buildCustomerLinks(row);
-  if (!links.length) {
-    el.innerHTML = `<div class="m-muted">Keine Links verfuegbar.</div>`;
-    return;
-  }
-  el.innerHTML = links.map((l) => `
-    <a class="m-link-btn" href="${esc(l.href)}" target="_blank" rel="noopener">${esc(l.label)}</a>
-  `).join("");
-}
-
-function buildQrLinks(row, maxCount = 8) {
-  const rid = row.id;
-  const tableCount = parseIntSafe(row.tableCount, 0);
-  const links = [];
-  const max = Math.min(tableCount, maxCount);
-  for (let i = 1; i <= max; i++) {
-    const t = `T${i}`;
-    const href = `../menyra-restaurants/guest/karte/index.html?r=${encodeURIComponent(rid)}&t=${encodeURIComponent(t)}`;
-    links.push({ label: t, href });
-  }
-  return links;
-}
-
-function renderQrPreview(el, row) {
-  if (!el) return;
-  const tableCount = parseIntSafe(row.tableCount, 0);
-  const links = buildQrLinks(row, 8);
-  if (!tableCount || !links.length) {
-    el.innerHTML = `<div class="m-muted">Keine Tische eingetragen.</div>`;
-    return;
-  }
-  el.innerHTML = links.map((l) => `<div>${esc(l.label)}: ${esc(l.href)}</div>`).join("");
-}
-
-function renderMenuPreview(el, items) {
-  if (!el) return;
-  const rows = Array.isArray(items) ? items : [];
-  if (!rows.length) {
-    el.innerHTML = `<div class="m-muted">Keine Speisekarte vorhanden.</div>`;
-    return;
-  }
-  const list = rows.map((raw) => {
-    const normalized = normalizeMenuItemDoc(raw, raw.id || raw.menuItemId);
-    normalized.allergens = raw.allergens || raw.allergen || raw.alergene || raw.allergene || "";
-    return normalized;
-  });
-  el.innerHTML = "";
-  list.forEach((item) => {
+  body.innerHTML = "";
+  rows.forEach((r) => {
     const row = document.createElement("div");
-    row.className = "m-menu-row";
-    const img = document.createElement("img");
-    img.className = "m-menu-thumb";
-    const imgUrl = item.imageUrl || (Array.isArray(item.imageUrls) ? item.imageUrls[0] : "");
-    if (imgUrl) img.src = imgUrl;
-    else img.style.visibility = "hidden";
-
-    const info = document.createElement("div");
-    const allergens = Array.isArray(item.allergens) ? item.allergens.join(", ") : String(item.allergens || "").trim();
-    info.innerHTML = `
-      <div class="m-menu-name">${esc(item.name || "-")}</div>
-      <div class="m-menu-desc">${esc(item.description || "")}</div>
-      ${allergens ? `<div class="m-menu-allergens">Allergene: ${esc(allergens)}</div>` : ""}
-    `;
-
-    const price = document.createElement("div");
-    price.textContent = item.price !== "" ? formatCurrency(item.price || 0) : "-";
-
-    row.appendChild(img);
-    row.appendChild(info);
-    row.appendChild(price);
-    el.appendChild(row);
-  });
-}
-
-function renderDetailList(el, rows, emptyText) {
-  if (!el) return;
-  if (!rows.length) {
-    el.innerHTML = `<div class="m-muted">${esc(emptyText || "Keine Eintraege.")}</div>`;
-    return;
-  }
-  el.innerHTML = rows.map((r) => `
-    <div class="m-detail-item">
-      <div style="font-weight:600;">${esc(r.title || "-")}</div>
-      <div class="m-muted" style="margin-top:4px;">${esc(r.meta || "-")}</div>
-    </div>
-  `).join("");
-}
-
-async function loadRecentSocialPosts(restaurantId, maxCount = 8) {
-  const ref = collection(db, "restaurants", restaurantId, "socialPosts");
-  try {
-    const snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(maxCount)));
-    return snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
-  } catch {
-    const snap = await getDocs(ref);
-    return snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) })).slice(0, maxCount);
-  }
-}
-
-let currentCustomerDetail = null;
-
-async function showCustomerDetail(row) {
-  currentCustomerDetail = row;
-  const detailCard = $("customerDetailCard");
-  const list = $("customersList");
-  if (list) list.classList.add("is-hidden");
-  $("customerEditCard")?.classList.add("is-hidden");
-  if (detailCard) detailCard.classList.remove("is-hidden");
-  window.scrollTo({ top: 0, behavior: "smooth" });
-
-  const country = row.country || row.countryName || row.countryCode || DEFAULT_COUNTRY;
-  setText("customerDetailTitle", row.name || row.restaurantName || row.id || "Kunde");
-  setText("customerDetailMeta", `${country} • ${row.city || "-"} • ${row.type || "-"} • ${row.status || "-"}`);
-  const editBtn = $("customerDetailEditBtn");
-  if (editBtn) editBtn.style.display = role === "owner" ? "none" : "";
-
-  renderKvList($("customerDetailProfile"), [
-    { label: "Name", value: row.name || "-" },
-    { label: "Typ", value: row.type || "-" },
-    { label: "Status", value: row.status || "-" },
-    { label: "Land", value: country },
-    { label: "Ort", value: row.city || "-" },
-    { label: "Owner", value: row.ownerName || "-" },
-    { label: "Telefon", value: row.phone || "-" },
-    { label: "Tische", value: row.tableCount != null ? String(row.tableCount) : "-" },
-    { label: "Abo", value: row.plan || "-" },
-    { label: "Preis/Jahr", value: formatCurrency(calcYearlyAmount(row) || 0) },
-    { label: "Erstellt", value: formatDateShort(row.createdAt) },
-    { label: "Naechster Zahltag", value: formatDateShort(row.nextBillingAt) }
-  ]);
-
-  renderCustomerLinks($("customerDetailLinks"), row);
-  renderQrPreview($("customerDetailQrList"), row);
-
-  const menuEl = $("customerDetailMenu");
-  if (menuEl) menuEl.innerHTML = `<div class="m-muted">Lade.</div>`;
-  try {
-    const items = await loadPublicMenuItems(row.id);
-    renderMenuPreview(menuEl, items);
-  } catch (err) {
-    console.error(err);
-    if (menuEl) menuEl.innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
-  }
-
-  const socialEl = $("customerDetailSocial");
-  if (socialEl) socialEl.innerHTML = `<div class="m-muted">Lade.</div>`;
-  try {
-    const posts = await loadRecentSocialPosts(row.id, 8);
-    const formatted = posts.map((p) => ({
-      title: (p.caption || p.captionShort || "").slice(0, 80) || "Post",
-      meta: `${p.postType || "-"} • ${p.status || "-"} • ${formatDateShort(p.createdAt)}`
-    }));
-    renderDetailList(socialEl, formatted, "Keine Social Posts.");
-  } catch (err) {
-    console.error(err);
-    if (socialEl) socialEl.innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
-  }
-
-  const storiesEl = $("customerDetailStories");
-  if (storiesEl) storiesEl.innerHTML = `<div class="m-muted">Lade.</div>`;
-  try {
-    const stories = await listActiveStories(row.id, 8);
-    const formatted = (stories || []).map((s) => ({
-      title: s.title || "Story",
-      meta: `${s.status || "-"} • Ablauf: ${formatDateShort(s.expiresAt)}`
-    }));
-    renderDetailList(storiesEl, formatted, "Keine aktiven Stories.");
-  } catch (err) {
-    console.error(err);
-    if (storiesEl) storiesEl.innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
-  }
-}
-
-async function renderCustomerEditDetails(row) {
-  const details = $("customerEditDetails");
-  if (!details) return;
-  if (!row?.id) {
-    details.classList.add("is-hidden");
-    return;
-  }
-  details.classList.remove("is-hidden");
-
-  const type = String(row.type || "").toLowerCase();
-  const hasMenu = type === "restaurant" || type === "cafe";
-  const qrCard = $("customerEditQrCard");
-  const menuCard = $("customerEditMenuCard");
-  if (qrCard) qrCard.style.display = hasMenu ? "" : "none";
-  if (menuCard) menuCard.style.display = hasMenu ? "" : "none";
-
-  renderKvList($("customerEditProfile"), [
-    { label: "Name", value: row.name || "-" },
-    { label: "Typ", value: row.type || "-" },
-    { label: "Status", value: row.status || "-" },
-    { label: "Land", value: row.country || row.countryName || row.countryCode || DEFAULT_COUNTRY },
-    { label: "Ort", value: row.city || "-" },
-    { label: "Owner", value: row.ownerName || "-" },
-    { label: "Telefon", value: row.phone || "-" },
-    { label: "Tische", value: row.tableCount != null ? String(row.tableCount) : "-" },
-    { label: "Abo", value: planCycleLabel(row) || "-" },
-    { label: "Preis", value: planPriceLabel(row) || "-" },
-    { label: "Erstellt", value: formatDateShort(row.createdAt) }
-  ]);
-
-  renderCustomerLinks($("customerEditLinks"), row);
-
-  const qrList = $("customerEditQrList");
-  if (qrList) qrList.innerHTML = hasMenu ? "" : `<div class="m-muted">Keine Karte fuer diesen Typ.</div>`;
-  if (hasMenu) renderQrPreview(qrList, row);
-
-  const menuEl = $("customerEditMenu");
-  if (menuEl) menuEl.innerHTML = hasMenu ? `<div class="m-muted">Lade.</div>` : `<div class="m-muted">Keine Karte fuer diesen Typ.</div>`;
-  if (hasMenu) {
-    try {
-      const items = await loadPublicMenuItems(row.id);
-      renderMenuPreview(menuEl, items);
-    } catch (err) {
-      console.error(err);
-      if (menuEl) menuEl.innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
-    }
-  }
-
-  const socialEl = $("customerEditSocial");
-  if (socialEl) socialEl.innerHTML = `<div class="m-muted">Lade.</div>`;
-  try {
-    const posts = await loadRecentSocialPosts(row.id, 8);
-    const formatted = posts.map((p) => ({
-      title: (p.caption || p.captionShort || "").slice(0, 80) || "Post",
-      meta: `${p.postType || "-"} • ${p.status || "-"} • ${formatDateShort(p.createdAt)}`
-    }));
-    renderDetailList(socialEl, formatted, "Keine Social Posts.");
-  } catch (err) {
-    console.error(err);
-    if (socialEl) socialEl.innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
-  }
-
-  const storiesEl = $("customerEditStories");
-  if (storiesEl) storiesEl.innerHTML = `<div class="m-muted">Lade.</div>`;
-  try {
-    const stories = await listActiveStories(row.id, 8);
-    const formatted = (stories || []).map((s) => ({
-      title: s.title || "Story",
-      meta: `${s.status || "-"} • Ablauf: ${formatDateShort(s.expiresAt)}`
-    }));
-    renderDetailList(storiesEl, formatted, "Keine aktiven Stories.");
-  } catch (err) {
-    console.error(err);
-    if (storiesEl) storiesEl.innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
-  }
-}
-
-function hideCustomerDetail() {
-  currentCustomerDetail = null;
-  const detailCard = $("customerDetailCard");
-  const list = $("customersList");
-  if (detailCard) detailCard.classList.add("is-hidden");
-  if (list) list.classList.remove("is-hidden");
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function renderCustomersList(rows, role) {
-  const host = $("customersList");
-  if (!host) return;
-  host.innerHTML = "";
-  if (!rows.length) {
-    host.innerHTML = `<div class="m-muted">Keine Kunden gefunden.</div>`;
-    return;
-  }
-
-  const sorted = [...rows].sort((a, b) => {
-    const na = customerName(a).toLowerCase();
-    const nb = customerName(b).toLowerCase();
-    if (na < nb) return -1;
-    if (na > nb) return 1;
-    return 0;
-  });
-
-  const header = document.createElement("div");
-  header.className = "m-customer-row m-customer-row--head";
-  header.innerHTML = `
-    <div>Logo</div>
-    <div>Name</div>
-    <div>Land</div>
-    <div>Stadt</div>
-    <div>Abo</div>
-    <div>Preis</div>
-    <div>Aktion</div>
-  `;
-  host.appendChild(header);
-
-  sorted.forEach((r, idx) => {
-    const row = document.createElement("div");
-    row.className = "m-customer-row";
-    const editBtn = role === "owner"
-      ? ""
-      : `<button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="edit" data-id="${esc(r.id)}">Edit</button>`;
-    const logoUrl = r.logoUrl || r.logo || r.logoURL || r.logo_url || r.logoImage || r.logoImg || "";
-    const initial = (r.name || r.restaurantName || r.slug || "?").trim().slice(0, 1).toUpperCase();
-    const logoHtml = logoUrl
-      ? `<img class="m-customer-logo" src="${esc(logoUrl)}" alt="${esc(r.name || "Logo")}" />`
-      : `<div class="m-customer-logo m-customer-logo--empty">${esc(initial)}</div>`;
-    const country = r.country || r.countryName || r.countryCode || DEFAULT_COUNTRY;
+    row.className = "m-table-row";
     row.innerHTML = `
-      <div class="m-customer-cell m-customer-index">
-        ${logoHtml}
+      <div>
+        <div style="display:flex; flex-direction:column; gap:2px;">
+          <b>${esc(r.name || "—")}</b>
+          <span class="m-muted" style="font-size:12px;">${esc(r.type || "")}${r.slug ? " • "+esc(r.slug) : ""}</span>
+        </div>
       </div>
-      <div class="m-customer-cell">
-        <div class="m-customer-name">${esc(r.name || "-")}</div>
-      </div>
-      <div class="m-customer-cell">${esc(country)}</div>
-      <div class="m-customer-cell">${esc(r.city || "-")}</div>
-      <div class="m-customer-cell">${esc(planCycleLabel(r))}</div>
-      <div class="m-customer-cell">${planPriceLabel(r)}</div>
-      <div class="m-customer-actions">
-        ${editBtn}
+      <div>${esc(r.ownerName || "—")}</div>
+      <div>${esc(r.city || "—")}</div>
+      <div>${esc(r.yearPrice != null ? (String(r.yearPrice)+" €/Jahr") : "—")}</div>
+      <div><span class="m-badge ${r.status === "active" ? "m-badge--green" : (r.status === "trial" ? "m-badge--yellow" : "m-badge--gray")}">${esc(r.status || "—")}</span></div>
+      <div class="m-table-col-actions" style="display:flex; gap:8px; justify-content:flex-end;">
+        <button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="qr" data-id="${esc(r.id)}">QR & Links</button>
+        <button class="m-btn m-btn--small" type="button" data-act="edit" data-id="${esc(r.id)}">Edit</button>
       </div>
     `;
-    host.appendChild(row);
+    // staff can't edit other than basic? still allow
+    body.appendChild(row);
   });
+
+  // footer
+  const footer = $("customersFooter");
+  if (footer) footer.textContent = rows.length ? `Zeilen: ${rows.length}` : "—";
 }
 
 function applyCustomersFilter(allRows) {
   const term = ($("customerSearch")?.value || "").trim().toLowerCase();
-  const onlyActive = $("customersOnlyActive")?.checked ?? false;
+  const onlyActive = $("customersOnlyActive")?.checked ?? true;
 
   return allRows.filter((r) => {
     if (onlyActive && r.status !== "active") return false;
     if (!term) return true;
-    const country = r.country || r.countryName || r.countryCode || DEFAULT_COUNTRY;
-    const hay = `${r.name||""} ${r.ownerName||""} ${r.city||""} ${country} ${r.slug||""}`.toLowerCase();
+    const hay = `${r.name||""} ${r.ownerName||""} ${r.city||""} ${r.slug||""}`.toLowerCase();
     return hay.includes(term);
   });
 }
 
 function openCustomerModal(mode, data = {}) {
   const overlay = $("customerModalOverlay");
-  const editCard = $("customerEditCard");
-  const editSlot = $("customerEditSlot");
   if (!overlay) return;
   const title = $("customerModalTitle");
   if (title) title.textContent = mode === "edit" ? "Kunde bearbeiten" : "Neuer Kunde";
-
-  if (editCard && editSlot) {
-    const modal = overlay.querySelector(".m-modal") || editSlot.querySelector(".m-modal");
-    if (modal && modal.parentElement !== editSlot) editSlot.appendChild(modal);
-    editCard.classList.remove("is-hidden");
-    $("customersList")?.classList.add("is-hidden");
-    $("customerDetailCard")?.classList.add("is-hidden");
-    overlay.classList.add("is-hidden");
-    const editTitle = $("customerEditTitle");
-    if (editTitle) editTitle.textContent = mode === "edit" ? "Kunde bearbeiten" : "Neuer Kunde";
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }
 
   // fill form
   $("customerId").value = data.id || "";
   $("customerName").value = data.name || "";
   $("customerOwner").value = data.ownerName || "";
   $("customerCity").value = data.city || "";
-  const countryField = $("customerCountry");
-  if (countryField) {
-    countryField.value = data.country || data.countryName || data.countryCode || DEFAULT_COUNTRY;
-  }
   $("customerPhone").value = data.phone || "";
   $("customerTableCount").value = (data.tableCount != null ? String(data.tableCount) : "");
   $("customerYearPrice").value = (data.yearPrice != null ? String(data.yearPrice) : "");
@@ -1582,30 +1173,11 @@ function openCustomerModal(mode, data = {}) {
   if (typeSel) typeSel.value = data.type || "cafe";
 
   setText("customerModalStatus", "");
-  renderCustomerEditDetails(data);
-  const editQrBtn = $("customerEditQrBtn");
-  if (editQrBtn) {
-    editQrBtn.onclick = () => {
-      if (data?.id) openQrModal(data);
-    };
-  }
-  const topBack = $("customerEditBackTop");
-  if (topBack) {
-    topBack.classList.remove("is-hidden");
-    topBack.onclick = closeCustomerModal;
-  }
-  if (!editCard) show(overlay);
+  show(overlay);
 }
 
 function closeCustomerModal() {
   const overlay = $("customerModalOverlay");
-  const editCard = $("customerEditCard");
-  if (editCard) {
-    editCard.classList.add("is-hidden");
-    $("customersList")?.classList.remove("is-hidden");
-  }
-  $("customerEditDetails")?.classList.add("is-hidden");
-  $("customerEditBackTop")?.classList.add("is-hidden");
   if (overlay) hide(overlay);
 }
 
@@ -2140,31 +1712,19 @@ function renderLeadsTable(rows){
   if (!body) return;
   body.innerHTML = "";
   rows.forEach(r=>{
-    const phoneRaw = String(r.phone || "").trim();
-    const waNumber = phoneRaw.replace(/[^0-9]/g, "");
-    const waLink = waNumber ? `https://wa.me/${waNumber}` : "";
-    const instaRaw = String(r.insta || "").trim();
-    const instaHandle = instaRaw.replace(/^@/, "");
-    const instaLink = instaHandle
-      ? (instaRaw.startsWith("http") ? instaRaw : `https://instagram.com/${encodeURIComponent(instaHandle)}`)
-      : "";
-
     const row = document.createElement("div");
     row.className = "m-table-row";
     row.innerHTML = `
       <div>
         <div style="display:flex; flex-direction:column; gap:2px;">
-          <b>${esc(r.businessName || "-")}</b>
+          <b>${esc(r.businessName || "—")}</b>
           <span class="m-muted" style="font-size:12px;">${esc(r.customerType || "")}${r.city ? " • "+esc(r.city) : ""}</span>
         </div>
       </div>
       <div>
         <div style="display:flex; flex-direction:column; gap:2px;">
-          <span>${esc(phoneRaw || "-")}</span>
-          <span class="m-muted" style="font-size:12px;">
-            ${waLink ? `<a href="${esc(waLink)}" target="_blank" rel="noopener">WhatsApp</a>` : "-"}
-            ${instaLink ? ` • <a href="${esc(instaLink)}" target="_blank" rel="noopener">${esc(instaRaw)}</a>` : ""}
-          </span>
+          <span>${esc(r.phone || "—")}</span>
+          <span class="m-muted" style="font-size:12px;">${esc(r.insta || "")}</span>
         </div>
       </div>
       <div><span class="m-badge">${esc(r.status || "—")}</span></div>
@@ -2175,121 +1735,7 @@ function renderLeadsTable(rows){
     `;
     body.appendChild(row);
   });
-  setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
-}
-
-// =========================================================
-// STAFF VIEW (CEO)
-// =========================================================
-
-function normalizeStaff(row) {
-  return {
-    id: row.id,
-    name: row.name || row.fullName || row.displayName || row.email || "Staff",
-    email: row.email || "",
-    phone: row.phone || "",
-    createdAt: row.createdAt || null
-  };
-}
-
-async function fetchStaffAdmins() {
-  const ref = collection(db, "staffAdmins");
-  const snap = await getDocs(ref);
-  return snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
-}
-
-function applyStaffFilter(allRows) {
-  const term = ($("staffSearch")?.value || "").trim().toLowerCase();
-  if (!term) return allRows;
-  return allRows.filter((r) => {
-    const hay = `${r.name} ${r.email} ${r.phone}`.toLowerCase();
-    return hay.includes(term);
-  });
-}
-
-function staffOwnsRestaurant(row, uid) {
-  return [row.assignedStaffId, row.createdByStaffId, row.scopeStaffId].includes(uid);
-}
-
-function renderStaffList(rows, restaurants, leadsAll) {
-  const host = $("staffList");
-  if (!host) return;
-  host.innerHTML = "";
-  if (!rows.length) {
-    host.innerHTML = `<div class="m-muted">Kein Staff gefunden.</div>`;
-    return;
-  }
-
-  rows.forEach((staff) => {
-    const customerCount = restaurants.filter((r) => staffOwnsRestaurant(r, staff.id)).length;
-    const leadCount = leadsAll.filter((l) => {
-      const sid = l.scopeStaffId || l.createdByStaffId || l.assignedStaffId || "";
-      return sid === staff.id;
-    }).length;
-    const card = document.createElement("div");
-    card.className = "m-customer-card";
-    card.innerHTML = `
-      <div class="m-customer-title">
-        <div class="m-customer-name">${esc(staff.name || "-")}</div>
-        <span class="m-badge">${customerCount} Kunden</span>
-      </div>
-      <div class="m-customer-meta">
-        <span>${esc(staff.email || "-")}</span>
-      </div>
-      <div class="m-customer-meta">
-        <span>Leads: ${leadCount}</span>
-        <span>•</span>
-        <span>Seit: ${formatDateShort(staff.createdAt)}</span>
-      </div>
-      <div class="m-customer-actions">
-        <button class="m-btn m-btn--small" type="button" data-act="staff-view" data-id="${esc(staff.id)}">View</button>
-      </div>
-    `;
-    host.appendChild(card);
-  });
-}
-
-let currentStaffDetail = null;
-
-function showStaffDetail(staff, restaurants, leadsAll) {
-  currentStaffDetail = staff;
-  const list = $("staffList");
-  const detail = $("staffDetailCard");
-  if (list) list.classList.add("is-hidden");
-  if (detail) detail.classList.remove("is-hidden");
-
-  setText("staffDetailTitle", staff.name || staff.email || staff.id);
-  setText("staffDetailMeta", staff.email || "-");
-
-  const staffCustomers = restaurants.filter((r) => staffOwnsRestaurant(r, staff.id));
-  const staffLeads = leadsAll.filter((l) => {
-    const sid = l.scopeStaffId || l.createdByStaffId || l.assignedStaffId || "";
-    return sid === staff.id;
-  });
-
-  renderDetailList(
-    $("staffDetailCustomers"),
-    staffCustomers.map((c) => ({
-      title: c.name || c.id,
-      meta: `${c.status || "-"} • ${c.city || "-"}`
-    })),
-    "Keine Kunden."
-  );
-
-  renderDetailList(
-    $("staffDetailLeads"),
-    staffLeads.map((l) => ({
-      title: l.businessName || l.id,
-      meta: `${l.status || "-"} • ${l.city || "-"}`
-    })),
-    "Keine Leads."
-  );
-}
-
-function hideStaffDetail() {
-  currentStaffDetail = null;
-  $("staffDetailCard")?.classList.add("is-hidden");
-  $("staffList")?.classList.remove("is-hidden");
+  setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "—");
 }
 
 // =========================================================
@@ -2622,8 +2068,6 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   // Basic modal close buttons
   $("customerModalClose")?.addEventListener("click", closeCustomerModal);
   $("customerCancelBtn")?.addEventListener("click", closeCustomerModal);
-  $("customerEditBackBtn")?.addEventListener("click", closeCustomerModal);
-  $("customerEditBackTop")?.addEventListener("click", closeCustomerModal);
   $("qrModalClose")?.addEventListener("click", closeQrModal);
   $("leadModalClose")?.addEventListener("click", closeLeadModal);
   $("leadCancelBtn")?.addEventListener("click", closeLeadModal);
@@ -2642,24 +2086,12 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
 
   // Hide sections depending on role
   if (role === "owner") {
-    // owner keeps customers view, but no CRM leads
-    qsa('[data-section="leads"]').forEach(a => a.style.display = "none");
+    // hide customers/leads in nav & mobile nav
+    qsa('[data-section="customers"], [data-section="leads"]').forEach(a => a.style.display = "none");
     const newBtn = $("newCustomerBtn");
     if (newBtn) newBtn.style.display = "none";
-    const demoBtn = $("newDemoCustomerBtn");
-    if (demoBtn) demoBtn.style.display = "none";
-    // show focus/offers as default
+    // show offers as default
     nav.showView("offers");
-  }
-
-  if (role !== "owner") {
-    qsa('[data-section="offers"]').forEach(a => a.style.display = "none");
-    qsa('.m-view[data-view="offers"]').forEach(v => v.remove());
-  }
-
-  if (role !== "ceo") {
-    qsa('[data-section="staff"]').forEach(a => a.style.display = "none");
-    qsa('.m-view[data-view="staff"]').forEach(v => v.remove());
   }
 
   // Sign in gate
@@ -2670,7 +2102,6 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   let currentUser = null;
   const restaurants = [];
   const leadsAll = [];
-  const staffAll = [];
   let activeStoriesCache = [];
   let nextPayExpanded = false;
   let storiesExpanded = false;
@@ -2706,8 +2137,6 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
 // Leads UI (CEO/Staff)
 $("newLeadBtn")?.addEventListener("click", () => openLeadModal("new", {}));
 $("leadsSearch")?.addEventListener("input", () => { window.__MENYRA__refreshLeads && window.__MENYRA__refreshLeads(); });
-$("staffSearch")?.addEventListener("input", () => { window.__MENYRA__refreshStaff && window.__MENYRA__refreshStaff(); });
-$("staffDetailBackBtn")?.addEventListener("click", hideStaffDetail);
 
 $("leadForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -2853,11 +2282,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
         restaurants.splice(0, restaurants.length, ...(fetched || []));
 
-        await Promise.all((restaurants || []).map((r) => ensurePublicDocs(r.id, {
-          ...(r || {}),
-          country: r?.country || r?.countryName || r?.countryCode || DEFAULT_COUNTRY
-        })));
-        await backfillMissingCountry(restaurants, role);
+        await Promise.all((restaurants || []).map(r => ensurePublicDocs(r.id, r || {})));
 
         updateCustomersCard(restaurants);
 
@@ -3116,7 +2541,6 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       refreshSwipeStats();
 
       refreshLeads();
-      refreshStaff();
 
     }, 50000);
 
@@ -3125,18 +2549,10 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     // Customers view
     const allRows = restaurants;
     function refreshCustomers() {
-      const filtered = role === "owner" ? allRows : applyCustomersFilter(allRows);
+      const filtered = applyCustomersFilter(allRows);
       const meta = $("customersMeta");
       if (meta) meta.textContent = `${filtered.length} / ${allRows.length}`;
-      renderCustomersList(filtered, role);
-
-      if (currentCustomerDetail) {
-        const stillThere = filtered.find((r) => r.id === currentCustomerDetail.id);
-        if (!stillThere) hideCustomerDetail();
-      }
-      if (role === "owner" && filtered.length === 1 && !currentCustomerDetail) {
-        showCustomerDetail(filtered[0]);
-      }
+      renderCustomersTable(filtered, role);
     }
 
     $("customerSearch")?.addEventListener("input", refreshCustomers);
@@ -3145,21 +2561,10 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       if (role === "owner") return;
       openCustomerModal("new", {});
     });
-    $("newDemoCustomerBtn")?.addEventListener("click", () => {
-      if (role === "owner") return;
-      openCustomerModal("new", { status: "demo" });
-    });
     $("openNewCustomerFromDashboard")?.addEventListener("click", () => {
       if (role === "owner") return;
       nav.showView("customers");
       openCustomerModal("new", {});
-    });
-    $("customerDetailBackBtn")?.addEventListener("click", hideCustomerDetail);
-    $("customerDetailQrBtn")?.addEventListener("click", () => {
-      if (currentCustomerDetail) openQrModal(currentCustomerDetail);
-    });
-    $("customerDetailEditBtn")?.addEventListener("click", () => {
-      if (currentCustomerDetail) openCustomerModal("edit", currentCustomerDetail);
     });
 
     // Customer modal submit
@@ -3173,7 +2578,6 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       const name = $("customerName")?.value?.trim();
       const ownerName = $("customerOwner")?.value?.trim();
       const city = $("customerCity")?.value?.trim();
-      const country = $("customerCountry")?.value?.trim() || DEFAULT_COUNTRY;
       const phone = $("customerPhone")?.value?.trim();
       const tableCount = parseIntSafe($("customerTableCount")?.value, 0);
       const yearPrice = parseFloatSafe($("customerYearPrice")?.value, 0);
@@ -3189,7 +2593,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       }
 
       try {
-        const payload = { name, type, ownerName, country, city, phone, tableCount, yearPrice, status, logoUrl, slug };
+        const payload = { name, type, ownerName, city, phone, tableCount, yearPrice, status, logoUrl, slug };
         const id = customerId
           ? await updateRestaurantDoc(role, user, customerId, payload)
           : await createRestaurantDoc(role, user, payload);
@@ -3206,8 +2610,8 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       }
     });
 
-    // Customers list actions (delegation)
-    $("customersList")?.addEventListener("click", (e) => {
+    // Customers table actions (delegation)
+    $("customersTableBody")?.addEventListener("click", (e) => {
       const btn = e.target?.closest("button[data-act]");
       if (!btn) return;
       const act = btn.dataset.act;
@@ -3215,7 +2619,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       const item = allRows.find(r => r.id === rid);
       if (!item) return;
 
-      if (act === "view") showCustomerDetail(item);
+      if (act === "qr") openQrModal(item);
       if (act === "edit") openCustomerModal("edit", item);
     });
 
@@ -3303,8 +2707,7 @@ async function refreshLeads(force = false) {
       }
     }, { once: true });
 
-    setText("leadsMeta", filtered.length ? `Zeilen: ${filtered.length}` : "-");
-    if (role === "ceo") refreshStaff();
+    setText("leadsMeta", filtered.length ? `Zeilen: ${filtered.length}` : "—");
   } catch (err) {
     console.error(err);
     setText("leadsMeta", "Fehler beim Laden (Rules/Auth?).");
@@ -3312,39 +2715,6 @@ async function refreshLeads(force = false) {
 }
 window.__MENYRA__refreshLeads = refreshLeads;
 await refreshLeads(true);
-
-async function refreshStaff(force = false) {
-  if (role !== "ceo") return;
-  if (!$("staffList")) return;
-  if (force) cacheDel(`menyra_admin_staff_cache_v1_${currentUser?.uid || "anon"}`);
-
-  try {
-    const rows = await fetchStaffAdmins();
-    staffAll.splice(0, staffAll.length, ...(rows || []).map(normalizeStaff));
-    const filtered = applyStaffFilter(staffAll);
-    renderStaffList(filtered, restaurants, leadsAll);
-    setText("staffMeta", filtered.length ? `Zeilen: ${filtered.length}` : "-");
-  } catch (err) {
-    console.error(err);
-    $("staffList").innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
-  }
-
-  if (!window.__MENYRA__staffListBound) {
-    window.__MENYRA__staffListBound = true;
-    $("staffList")?.addEventListener("click", (e) => {
-      const btn = e.target?.closest("button[data-act]");
-      if (!btn) return;
-      const act = btn.dataset.act;
-      const id = btn.dataset.id;
-      if (act !== "staff-view") return;
-      const item = staffAll.find((s) => s.id === id);
-      if (!item) return;
-      showStaffDetail(item, restaurants, leadsAll);
-    });
-  }
-}
-window.__MENYRA__refreshStaff = refreshStaff;
-await refreshStaff(true);
 
 // Offers view
     const offersSel = $("offersRestaurantSelect");
