@@ -1279,6 +1279,7 @@ body.theme-dark .m-sidebar {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 10px;
+  min-width: 0;
 }
 
 .m-input-group label {

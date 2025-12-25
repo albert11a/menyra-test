@@ -1591,7 +1591,6 @@ function openCustomerModal(mode, data = {}) {
   }
   const topBack = $("customerEditBackTop");
   if (topBack) {
-    topBack.classList.remove("is-hidden");
     topBack.onclick = closeCustomerModal;
   }
   if (!editCard) show(overlay);
@@ -1605,7 +1604,6 @@ function closeCustomerModal() {
     $("customersList")?.classList.remove("is-hidden");
   }
   $("customerEditDetails")?.classList.add("is-hidden");
-  $("customerEditBackTop")?.classList.add("is-hidden");
   if (overlay) hide(overlay);
 }
 
@@ -2623,6 +2621,7 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   $("customerModalClose")?.addEventListener("click", closeCustomerModal);
   $("customerCancelBtn")?.addEventListener("click", closeCustomerModal);
   $("customerEditBackBtn")?.addEventListener("click", closeCustomerModal);
+  $("customerEditBackTop")?.addEventListener("click", closeCustomerModal);
   $("qrModalClose")?.addEventListener("click", closeQrModal);
   $("leadModalClose")?.addEventListener("click", closeLeadModal);
   $("leadCancelBtn")?.addEventListener("click", closeLeadModal);
