@@ -1383,6 +1383,83 @@ async function showCustomerDetail(row) {
   }
 }
 
+async function renderCustomerEditDetails(row) {
+  const details = $("customerEditDetails");
+  if (!details) return;
+  if (!row?.id) {
+    details.classList.add("is-hidden");
+    return;
+  }
+  details.classList.remove("is-hidden");
+
+  const type = String(row.type || "").toLowerCase();
+  const hasMenu = type === "restaurant" || type === "cafe";
+  const qrCard = $("customerEditQrCard");
+  const menuCard = $("customerEditMenuCard");
+  if (qrCard) qrCard.style.display = hasMenu ? "" : "none";
+  if (menuCard) menuCard.style.display = hasMenu ? "" : "none";
+
+  renderKvList($("customerEditProfile"), [
+    { label: "Name", value: row.name || "-" },
+    { label: "Typ", value: row.type || "-" },
+    { label: "Status", value: row.status || "-" },
+    { label: "Land", value: row.country || row.countryName || row.countryCode || DEFAULT_COUNTRY },
+    { label: "Ort", value: row.city || "-" },
+    { label: "Owner", value: row.ownerName || "-" },
+    { label: "Telefon", value: row.phone || "-" },
+    { label: "Tische", value: row.tableCount != null ? String(row.tableCount) : "-" },
+    { label: "Abo", value: planCycleLabel(row) || "-" },
+    { label: "Preis", value: planPriceLabel(row) || "-" },
+    { label: "Erstellt", value: formatDateShort(row.createdAt) }
+  ]);
+
+  renderCustomerLinks($("customerEditLinks"), row);
+
+  const qrList = $("customerEditQrList");
+  if (qrList) qrList.innerHTML = hasMenu ? "" : `<div class="m-muted">Keine Karte fuer diesen Typ.</div>`;
+  if (hasMenu) renderQrPreview(qrList, row);
+
+  const menuEl = $("customerEditMenu");
+  if (menuEl) menuEl.innerHTML = hasMenu ? `<div class="m-muted">Lade.</div>` : `<div class="m-muted">Keine Karte fuer diesen Typ.</div>`;
+  if (hasMenu) {
+    try {
+      const items = await loadPublicMenuItems(row.id);
+      renderMenuPreview(menuEl, items);
+    } catch (err) {
+      console.error(err);
+      if (menuEl) menuEl.innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
+    }
+  }
+
+  const socialEl = $("customerEditSocial");
+  if (socialEl) socialEl.innerHTML = `<div class="m-muted">Lade.</div>`;
+  try {
+    const posts = await loadRecentSocialPosts(row.id, 8);
+    const formatted = posts.map((p) => ({
+      title: (p.caption || p.captionShort || "").slice(0, 80) || "Post",
+      meta: `${p.postType || "-"} • ${p.status || "-"} • ${formatDateShort(p.createdAt)}`
+    }));
+    renderDetailList(socialEl, formatted, "Keine Social Posts.");
+  } catch (err) {
+    console.error(err);
+    if (socialEl) socialEl.innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
+  }
+
+  const storiesEl = $("customerEditStories");
+  if (storiesEl) storiesEl.innerHTML = `<div class="m-muted">Lade.</div>`;
+  try {
+    const stories = await listActiveStories(row.id, 8);
+    const formatted = (stories || []).map((s) => ({
+      title: s.title || "Story",
+      meta: `${s.status || "-"} • Ablauf: ${formatDateShort(s.expiresAt)}`
+    }));
+    renderDetailList(storiesEl, formatted, "Keine aktiven Stories.");
+  } catch (err) {
+    console.error(err);
+    if (storiesEl) storiesEl.innerHTML = `<div class="m-muted">Fehler beim Laden.</div>`;
+  }
+}
+
 function hideCustomerDetail() {
   currentCustomerDetail = null;
   const detailCard = $("customerDetailCard");
@@ -1505,6 +1582,13 @@ function openCustomerModal(mode, data = {}) {
   if (typeSel) typeSel.value = data.type || "cafe";
 
   setText("customerModalStatus", "");
+  renderCustomerEditDetails(data);
+  const editQrBtn = $("customerEditQrBtn");
+  if (editQrBtn) {
+    editQrBtn.onclick = () => {
+      if (data?.id) openQrModal(data);
+    };
+  }
   if (!editCard) show(overlay);
 }
 
@@ -1515,6 +1599,7 @@ function closeCustomerModal() {
     editCard.classList.add("is-hidden");
     $("customersList")?.classList.remove("is-hidden");
   }
+  $("customerEditDetails")?.classList.add("is-hidden");
   if (overlay) hide(overlay);
 }
 
