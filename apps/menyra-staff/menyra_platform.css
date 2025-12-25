@@ -110,6 +110,8 @@ html.m-boot,
 html.m-login {
   overflow: hidden;
   height: 100%;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 
 body.m-boot,
@@ -120,6 +122,8 @@ body.m-login {
   width: 100%;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
   touch-action: none;
   overscroll-behavior: none;
 }
