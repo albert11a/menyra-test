@@ -421,6 +421,7 @@ function setBootStatus(text) {
 function finishBoot() {
   document.body.classList.remove("m-app-hidden");
   document.body.classList.remove("m-boot");
+  document.documentElement.classList.remove("m-boot");
   const ov = $("mBootOverlay");
   if (ov) {
     ov.classList.add("is-done");
@@ -2896,6 +2897,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
 
 export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", restrictRestaurantId = null } = {}) {
   const nav = initNav();
+  document.documentElement.classList.add("m-boot");
 
   // Logout
   const logoutBtn = $("logoutButton");
@@ -3724,6 +3726,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
     if (!user) {
       document.body.classList.add("m-login");
+      document.documentElement.classList.add("m-login");
 
       if (loginOverlay) {
         loginShowTimer = setTimeout(() => {
@@ -3741,6 +3744,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
     if (loginOverlay) hide(loginOverlay);
     document.body.classList.remove("m-login");
+    document.documentElement.classList.remove("m-login");
 
     setText("adminStatus", `Eingeloggt: ${user.email || user.uid}`);
 
