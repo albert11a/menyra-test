@@ -217,8 +217,6 @@
           <section class="m-view" data-view="customers" style="display:none;">
             <div class="m-page-header">
               <div>
-                <h1 class="m-page-title">Kunden</h1>
-                <p class="m-page-subtitle">Kunden anlegen, suchen und QR-Links anzeigen.</p>
               </div>
               <div class="m-page-actions">
                 <button class="m-btn" type="button" id="newCustomerBtn">+ Neuer Kunde</button>
@@ -226,21 +224,27 @@
               </div>
             </div>
 
+            <div class="m-customer-toolbar">
+              <div class="m-search m-search--wide">
+                <span class="m-search-icon">?</span>
+                <input id="customerSearch" class="m-search-input" placeholder="Suche nach Name, Inhaber, Ort." />
+              </div>
+              <div class="m-customer-toolbar-actions">
+                <div class="m-customer-meta" id="customersMeta">-</div>
+                <button class="m-btn m-btn--ghost m-customer-back is-hidden" type="button" id="customerEditBackTop">Zurueck</button>
+              </div>
+            </div>
+
             <section class="m-card m-table-card">
-              <div class="m-table-toolbar">
+              <div class="m-table-toolbar" style="display:none;">
                 <div>
                   <div class="m-search m-search--small" style="max-width:520px;">
                     <span class="m-search-icon">⌕</span>
-                    <input id="customerSearch" class="m-search-input" placeholder="Suche nach Name, Inhaber, Ort…" />
+                    <input class="m-search-input" placeholder="Suche nach Name, Inhaber, Ort…" />
                   </div>
-                  <div class="m-table-meta" id="customersMeta">–</div>
+                  <div class="m-table-meta">-</div>
                 </div>
-                <div class="m-inline">
-                  <label class="m-inline" style="gap:6px; font-size:12px;">
-                    <input type="checkbox" id="customersOnlyActive" checked />
-                    Nur aktive
-                  </label>
-                </div>
+                
               </div>
 
               <div id="customersList" class="m-customer-list"></div>
@@ -288,15 +292,7 @@
               </div>
 
               <div class="m-card m-customer-edit is-hidden" id="customerEditCard">
-                <div class="m-card-head">
-                  <div>
-                    <h2 class="m-section-title" id="customerEditTitle">Kunde bearbeiten</h2>
-                    <div class="m-muted">Alle Felder bearbeiten, danach speichern.</div>
-                  </div>
-                  <div class="m-inline">
-                    <button class="m-btn m-btn--ghost" type="button" id="customerEditBackBtn">Zurueck</button>
-                  </div>
-                </div>
+                
                 <div id="customerEditSlot"></div>
                 <div class="m-customer-detail m-customer-edit-details is-hidden" id="customerEditDetails">
                   <div class="m-customer-detail-grid">

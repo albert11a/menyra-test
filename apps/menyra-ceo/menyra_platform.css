@@ -939,7 +939,7 @@ body.theme-dark .m-sidebar {
   padding: 12px 14px;
   border-bottom: 1px solid var(--border-subtle);
   font-size: 13px;
-  min-width: 760px;
+  min-width: 0;
 }
 
 .m-customer-row:last-child {
@@ -992,7 +992,41 @@ body.theme-dark .m-sidebar {
 }
 
 .m-customer-list {
-  overflow-x: auto;
+  overflow: hidden;
+}
+
+.m-customer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 14px 0 16px;
+}
+
+.m-customer-toolbar .m-search {
+  flex: 1;
+  max-width: 520px;
+}
+
+.m-customer-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  min-width: 64px;
+  text-align: right;
+}
+
+.m-customer-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.m-customer-back {
+  white-space: nowrap;
 }
 
 @media (max-width: 720px) {
@@ -1018,6 +1052,17 @@ body.theme-dark .m-sidebar {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.m-customer-edit {
+  padding: 20px;
+  border-radius: calc(var(--radius-card) + 4px);
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
+}
+
+.m-customer-edit:hover {
+  transform: none;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
 }
 
 .m-customer-title {
@@ -1171,18 +1216,50 @@ body.theme-dark .m-sidebar {
   max-width: none;
   width: 100%;
   box-shadow: none;
-  border-radius: 16px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  max-height: none;
 }
 
 .m-customer-edit .m-modal-header {
-  padding: 0 0 12px;
-  border-bottom: 1px solid var(--border-subtle);
+  display: none;
 }
 
 .m-customer-edit .m-modal-body,
 .m-customer-edit .m-modal-footer {
-  padding-left: 0;
-  padding-right: 0;
+  padding: 0;
+  overflow: visible;
+}
+
+.m-customer-edit-details {
+  margin-top: 18px;
+}
+
+.m-edit-toolbar {
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+}
+
+.m-edit-back {
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+}
+
+@media (max-width: 720px) {
+  .m-customer-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .m-customer-toolbar .m-search {
+    max-width: none;
+  }
+
+  .m-customer-meta {
+    align-self: flex-end;
+  }
 }
 
 .m-modal-body {
