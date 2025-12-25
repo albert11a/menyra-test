@@ -678,7 +678,7 @@
 
 
 
-            <div class="m-sidebar-meta-line">• Kunden / Angebote / Leads</div>
+            <div class="m-sidebar-meta-line">• Kunden / Leads / Staff</div>
 
 
 
@@ -838,7 +838,6 @@
 
 
 
-              <li><a href="#" data-section="offers"><span class="m-nav-icon">🎯</span><span class="m-nav-label">Angebote</span></a></li>
 
 
 
@@ -854,7 +853,9 @@
 
 
 
-              <li><a href="#" data-section="leads"><span class="m-nav-icon">🧲</span><span class="m-nav-label">Leads</span></a></li>
+              <li><a href="#" data-section="leads"><span class="m-nav-icon">🧲</span><span class="m-nav-label">Leads</span></a></li>
+
+              <li><a href="#" data-section="staff"><span class="m-nav-icon">🧑‍💼</span><span class="m-nav-label">Staff</span></a></li>
 
 
 
@@ -1191,7 +1192,8 @@
 
 
 
-                <button class="m-btn" type="button" id="newCustomerBtn">+ Neuer Kunde</button>
+                <button class="m-btn" type="button" id="newCustomerBtn">+ Neuer Kunde</button>
+                <button class="m-btn m-btn--ghost" type="button" id="newDemoCustomerBtn">+ Demo Kunde</button>
 
 
 
@@ -1359,7 +1361,64 @@
 
 
 
-              <div class="m-table">
+              <div id="customersList" class="m-customer-list"></div>
+
+              <div class="m-card m-customer-detail is-hidden" id="customerDetailCard">
+                <div class="m-card-head">
+                  <div>
+                    <h2 class="m-section-title" id="customerDetailTitle">Kunde</h2>
+                    <div class="m-muted" id="customerDetailMeta">-</div>
+                  </div>
+                  <div class="m-inline">
+                    <button class="m-btn m-btn--ghost" type="button" id="customerDetailBackBtn">Zurueck</button>
+                    <button class="m-btn" type="button" id="customerDetailEditBtn">Bearbeiten</button>
+                  </div>
+                </div>
+                <div class="m-customer-detail-grid">
+                  <div class="m-detail-card">
+                    <h3 class="m-section-title">Profil</h3>
+                    <div class="m-kv-list" id="customerDetailProfile"></div>
+                  </div>
+                  <div class="m-detail-card">
+                    <h3 class="m-section-title">Links</h3>
+                    <div class="m-link-grid" id="customerDetailLinks"></div>
+                  </div>
+                  <div class="m-detail-card">
+                    <h3 class="m-section-title">QR Codes</h3>
+                    <div class="m-qr-preview">
+                      <button class="m-btn m-btn--ghost" type="button" id="customerDetailQrBtn">QR & Links</button>
+                      <div class="m-qr-list" id="customerDetailQrList"></div>
+                    </div>
+                  </div>
+                  <div class="m-detail-card">
+                    <h3 class="m-section-title">Speisekarte</h3>
+                    <div class="m-menu-list" id="customerDetailMenu"></div>
+                  </div>
+                  <div class="m-detail-card">
+                    <h3 class="m-section-title">Social</h3>
+                    <div class="m-detail-list" id="customerDetailSocial"></div>
+                  </div>
+                  <div class="m-detail-card">
+                    <h3 class="m-section-title">Stories</h3>
+                    <div class="m-detail-list" id="customerDetailStories"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="m-card m-customer-edit is-hidden" id="customerEditCard">
+                <div class="m-card-head">
+                  <div>
+                    <h2 class="m-section-title" id="customerEditTitle">Kunde bearbeiten</h2>
+                    <div class="m-muted">Alle Felder bearbeiten, danach speichern.</div>
+                  </div>
+                  <div class="m-inline">
+                    <button class="m-btn m-btn--ghost" type="button" id="customerEditBackBtn">Zurueck</button>
+                  </div>
+                </div>
+                <div id="customerEditSlot"></div>
+              </div>
+
+              <div class="m-table" style="display:none;">
 
 
 
@@ -1463,7 +1522,7 @@
 
 
 
-              <div class="m-table-footer">
+              <div class="m-table-footer" style="display:none;">
 
 
 
@@ -3711,7 +3770,52 @@
 
 
 
-      </main>
+          <section class="m-view" data-view="staff" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title">Staff</h1>
+                <p class="m-page-subtitle">Uebersicht aller Staff-Admins und ihrer Kunden.</p>
+              </div>
+            </div>
+
+            <section class="m-card m-table-card">
+              <div class="m-table-toolbar">
+                <div>
+                  <div class="m-search m-search--small" style="max-width:520px;">
+                    <span class="m-search-icon">?</span>
+                    <input id="staffSearch" class="m-search-input" placeholder="Suche nach Name oder Email." />
+                  </div>
+                  <div class="m-table-meta" id="staffMeta">-</div>
+                </div>
+              </div>
+
+              <div id="staffList" class="m-customer-grid"></div>
+
+              <div class="m-card m-staff-detail is-hidden" id="staffDetailCard">
+                <div class="m-card-head">
+                  <div>
+                    <h2 class="m-section-title" id="staffDetailTitle">Staff</h2>
+                    <div class="m-muted" id="staffDetailMeta">-</div>
+                  </div>
+                  <div class="m-inline">
+                    <button class="m-btn m-btn--ghost" type="button" id="staffDetailBackBtn">Zurueck</button>
+                  </div>
+                </div>
+                <div class="m-staff-detail-grid">
+                  <div class="m-detail-card">
+                    <h3 class="m-section-title">Kunden</h3>
+                    <div class="m-detail-list" id="staffDetailCustomers"></div>
+                  </div>
+                  <div class="m-detail-card">
+                    <h3 class="m-section-title">Leads</h3>
+                    <div class="m-detail-list" id="staffDetailLeads"></div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </section>
+
+      </main>
 
 
 
@@ -3823,7 +3927,7 @@
 
 
 
-            <div class="m-input-row">
+            <div class="m-input-row m-input-row--3">
 
 
 
@@ -3831,7 +3935,7 @@
 
 
 
-              <div class="m-input-group">
+              <div class="m-input-group">
 
 
 
@@ -3935,7 +4039,7 @@
 
 
 
-                <input id="customerCity" class="m-input" placeholder="z.B. Prishtina" />
+                <input id="customerCity" class="m-input" placeholder="z.B. Prishtina" />
 
 
 
@@ -3943,7 +4047,12 @@
 
 
 
-              </div>
+              </div>
+
+              <div class="m-input-group">
+                <label for="customerCountry">Land</label>
+                <input id="customerCountry" class="m-input" placeholder="z.B. Kosovo" />
+              </div>
 
 
 
@@ -3951,7 +4060,7 @@
 
 
 
-              <div class="m-input-group">
+              <div class="m-input-group">
 
 
 
@@ -4231,7 +4340,8 @@
 
 
 
-                <option value="active">Aktiv</option>
+                <option value="active">Aktiv</option>
+                <option value="demo">Demo</option>
 
 
 

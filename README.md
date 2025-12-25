@@ -1,73 +1,79 @@
-# MENYRA System 1 – Aktueller Stand (2025-12-24)
+# MENYRA Platform - Current Overview (2025-12-24)
 
-System 1 deckt Restaurants/Cafés ab: QR-Guest, Bestellungen, Admins (CEO/Staff/Owner), Stories. Dieses README beschreibt, was funktioniert, welche Logik aktiv ist und was kürzlich geändert wurde.
+This repo hosts System 1 (Restaurants) and System 2 (Social). It summarizes apps,
+roles, data flow, and the current working features.
 
-## Apps & Rollen
-- **CEO Platform** (`apps/menyra-ceo/`): sieht alle Kunden, volle Admin-Funktion.
-- **Staff Platform** (`apps/menyra-staff/`): sieht nur eigene Kunden, volle Admin-Funktion für diese.
-- **Owner Admin** (`apps/menyra-owner/`): nur für einen Kunden (per `?r=<id>`), Menüs/Offers/Stories pflegen.
-- **Main Page** (`apps/menyra-main/`): public Hauptseite pro Kunde (Entry zu Menu/Story).
-- **Guest** (`apps/menyra-restaurants/guest/`): Karte/Detajet/Porosia/Story, liest nur `public/*`.
-- **Social** (`apps/menyra-social/`): System 2 (Feed/Discover/Post/Profile + User Login/Register).
-- **Waiter/Kitchen**: Platzhalter (UI da, Logik TODO).
+## Apps and Roles
+- CEO Platform (`apps/menyra-ceo/`): full access to all customers and dashboards.
+- Staff Platform (`apps/menyra-staff/`): scoped to assigned customers.
+- Owner Admin (`apps/menyra-owner/`): per customer via `?r=<id>`.
+- Main Page (`apps/menyra-main/`): public landing page per business.
+- Guest (`apps/menyra-restaurants/guest/`): menu, details, ordering, stories.
+- Social (`apps/menyra-social/`): feed, discover, post detail, profile, login/register.
+- Waiter (`apps/menyra-restaurants/waiter/`): live orders for a restaurant.
+- Kitchen (`apps/menyra-restaurants/kitchen/`): food-only items + status updates.
 
-## Boot & Access (CEO/Staff/Owner)
-- Body startet mit `m-boot m-app-hidden`; UI bleibt unsichtbar bis Auth + Access OK.
-- Overlay zeigt Status; verschwindet nach erstem erfolgreichen Laden.
-- Access-Checks:
-  - CEO: `superadmins/{uid}` muss existieren.
-  - Staff: `staffAdmins/{uid}` oder `superadmins/{uid}`.
-  - Owner: `restaurants/{rid}/staff/{uid}` Rolle `owner|admin|manager`.
-- Erst danach: Daten laden, dann UI einblenden (kein Drawer-/Login-Flash mehr).
+## Auth and Access
+- Boot overlay: body starts with `m-boot m-app-hidden`; UI shows after auth + access.
+- CEO: `superadmins/{uid}` must exist.
+- Staff: `staffAdmins/{uid}` or `superadmins/{uid}`.
+- Owner: `restaurants/{rid}/staff/{uid}` role `owner|admin|manager`.
+- Waiter/Kitchen: same staff role checks (basic; rules hardening still needed).
 
-## Admin Dashboard (CEO/Staff)
-- Keine statischen Charts, nur schnelle Zahlen/Listen. Light refresh alle ~50s, plus Live wo nötig.
-- **Aktive Kunden & Einnahmen**
-  - Zählt nur `status=="active"`.
-  - Jahresbetrag: yearly price oder monthly*12; zeigt Jahr/Monat/Tag (Intl EUR).
-  - LIVE-Badge wenn frische Daten; Count-Up Animation bei Änderungen.
-  - Updated-Label unten links.
-- **Demo Kunden**: Trial/Demo/Test Zählung, LIVE-Badge, updated-Label unten.
-- **Leads**: Gesamt & Offen; LIVE-Badge, updated-Label.
-- **Nächster Zahltag**: sortiert nach `nextBillingAt` (fallback: zeigt einige Kunden mit „kein Datum“), Expand-Button, Safe-Area Padding.
-- **Aktive Storys**: Summiert aktive Storys per Restaurant via `countActiveStories`, Liste zeigt Kunde + Story-Anzahl, Expand-Button.
-- **Live Stats (Swipe)**: Zwei Slides (Live Users, Orders today). LIVE-Badge, keine Dots/Auto-Slide. Listener auf `system/liveStats` (onSnapshot); Fallback: Orders heute via `restaurants/{rid}/orders` (max 4 Kunden, seit 00:00).
-- **Checks**: Liest `systemLogs` (letzte 20), listet bis 5 Errors mit App + „vor X min“. Zeigt „Keine Errors heute“ wenn leer.
-- Alle Cards: einheitliche Abstände, `updated` unten links, Live-Badges stabil sichtbar.
+## System 1 (Restaurants) - Current Capabilities
+- Guest ordering via QR: reads `public/meta`, `public/menu`, `public/offers`.
+- Orders are written to `restaurants/{rid}/orders`.
+- Stories via Bunny Stream, TTL cleanup from Owner.
+- Admin dashboard: active customers, revenue, demos, leads, next billing,
+  active stories, live stats, system logs.
+- Caching: localStorage TTL (~2 min), refresh (~50s). Live only where needed.
+- Waiter/Kitchen: real-time orders + status updates
+  (`new/accepted/cooking/ready/done/cancelled`).
 
-## Admin Kernlogik (platform-admin-core.js)
-- Datenquellen:
-  - Restaurants: `restaurants` (CEO alle, Staff scoped).
-  - Leads: `/leads` (CEO alles, Staff scoped via `assignedStaffId|createdByStaffId`).
-  - Storys: `restaurants/{rid}/stories` (countActiveStories).
-  - System Logs: `systemLogs` (Errors heute).
-  - Live Stats: `system/liveStats` (optional), Orders Fallback.
-- Caching: LocalStorage Cache für Restaurants/Leads (TTL ~2min), regelmäßige Refreshes (~50s).
-- Updated-Timer: labels refresht alle 10s; Live-Badge läuft ~20s nach Update.
-- Menü/Offers/Stories/QR/Lead-Modal Logik wie bisher; Owner-Mode geprüft.
+## System 2 (Social) - Current Capabilities
+- Social feed with tabs + "All" tab (reads `socialFeed` index).
+- Discover by city/type; links to Main Page.
+- Post detail page (image/video).
+- User login/register + profile (MVP).
+- Owner/Staff/CEO can post for a restaurant:
+  - upload image to Bunny Storage
+  - write to `restaurants/{rid}/socialPosts`
+  - mirror into `socialFeed` index
+- City selection is manual in Owner (datalist from existing restaurant cities).
 
-## Guest (Karte/Detajet/Porosia/Story)
-- Liest primär `public/meta`, `public/menu`, `public/offers` (Single-Doc-Reads, günstig).
-- Orders schreiben nach `restaurants/{rid}/orders`.
-- Stories: aktive Storys mit Bunny Stream Embeds (TTL, Cleanup via Owner).
+## Data Model (Core)
+- Restaurants: `restaurants/{rid}` (type, status, city, geo, plan, assignedStaffId, etc)
+- Public profile: `restaurants/{rid}/publicProfile/profile`
+- Social source: `restaurants/{rid}/socialPosts/{postId}`
+- Social index: `socialFeed/{postId}`
+- Orders: `restaurants/{rid}/orders/{orderId}` (items include type + category)
+- Stories: `restaurants/{rid}/stories/{storyId}` (Bunny Stream videoId)
+- System logs: `systemLogs/{logId}`
 
-## Performance-Regeln
-- Live Listener nur: Swipe-Stats (system doc) und aktive Story Counts (per countActiveStories). Rest Poll/Cache.
-- Public Docs werden beim Admin-Login gesichert (`ensurePublicDocs`), damit Guest schnell bleibt.
+Note: the main collection is still named `restaurants`, but `type` supports
+non-restaurant businesses (services, ecommerce, etc).
 
-## Bekannte offene Punkte / TODO
-- Waiter/Kitchen Logik (Orders Live, Status Updates) fehlt.
-- Auth/Roles für Owner/Waiter/Kitchen nur Basis; Production-Härtung/Rules nötig.
-- Guest Orders/Story weitere Hardening/Edge-Cases.
+## Bunny Edge (Uploads + Stories)
+- Script: `bunny-edge/menyra-edge.js`
+- Base URL: `shared/bunny-edge.js` (`BUNNY_EDGE_BASE`)
+- Endpoints:
+  - `POST /story/start`
+  - `POST /story/delete`
+  - `POST /image/upload` (multipart/form-data: `file`, `restaurantId`)
+- CORS is controlled by `ALLOWED_ORIGINS`.
 
-## Start (lokal)
-1) Static Server / Live Server starten im Repo.
-2) `/index.html` öffnen zum Testen/Verlinken.
+## Local Start
+1) Run a static server in the repo root.
+2) Open `/index.html`.
 
-## Änderungsnotizen (letzte Iteration)
-- Neues Boot-Overlay + Zugriffsgate (kein Drawer-/Login-Flash).
-- Dashboard neu gestaltet (Cards, Live-Badges, Updated-Badges unten, einheitlicher Grid, kleinere Typo).
-- Zahltag-Fallback wenn kein nextBillingAt; Story-Liste zeigt Story-Counts je Kunde.
-- Live Stats reduziert (2 Slides, keine Dots), Checks zeigen Fehlerliste statt Counter.
-- Quick-Select/Offers-Button aus „Aktive Kunden“ entfernt.
-- Live-Badge stabilisiert (sichtbar, softer Animation).
+## Known TODO
+- Production rules hardening for Owner/Waiter/Kitchen.
+- Social moderation tools for CEO/Staff (not implemented yet).
+- E-commerce phase (themes/products/orders) not implemented yet.
+- Guest edge-case hardening.
+
+## Recent Changes
+- Owner and Main moved to `apps/menyra-owner` and `apps/menyra-main`.
+- Social feed improvements (All tab + URL normalization).
+- Waiter/Kitchen baseline implemented.
+- Bunny Edge upload endpoints for images + stories.
