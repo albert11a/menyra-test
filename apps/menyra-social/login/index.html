@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MENYRA Social - Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../social.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "@shared/": "/shared/",
+      "@apps/": "/apps/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo"></span>
+        <div>MENYRA Social</div>
+      </div>
+      <nav class="nav">
+        <a href="/apps/menyra-social/index.html">Feed</a>
+        <a href="/apps/menyra-social/discover/index.html">Discover</a>
+        <a href="/apps/menyra-social/profile/index.html">Profile</a>
+      </nav>
+      <div class="header-actions">
+        <a class="btn btn--ghost" href="/apps/menyra-social/register/index.html">Register</a>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h1>Login</h1>
+      <p>Sign in to like posts, report issues, and manage your profile.</p>
+    </section>
+
+    <form class="card" id="loginForm">
+      <div class="grid cols-3">
+        <div>
+          <label class="meta">Email</label>
+          <input class="input" id="loginEmail" placeholder="email@example.com" />
+        </div>
+        <div>
+          <label class="meta">Password</label>
+          <input class="input" id="loginPass" type="password" placeholder="Password" />
+        </div>
+        <div style="display:flex; align-items:flex-end;">
+          <button class="btn" type="submit">Login</button>
+        </div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <span class="meta" id="loginStatus"></span>
+      </div>
+    </form>
+  </div>
+
+  <script type="module" src="./login.js"></script>
+</body>
+</html>

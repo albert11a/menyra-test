@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MENYRA Social - Discover</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../social.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "@shared/": "/shared/",
+      "@apps/": "/apps/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo"></span>
+        <div>MENYRA Social</div>
+      </div>
+      <nav class="nav">
+        <a href="/apps/menyra-social/index.html">Feed</a>
+        <a class="is-active" href="/apps/menyra-social/discover/index.html">Discover</a>
+        <a href="/apps/menyra-social/profile/index.html">Profile</a>
+      </nav>
+      <div class="header-actions">
+        <span class="meta" id="authUser">guest</span>
+        <a class="btn btn--ghost" id="authLink">Login</a>
+      </div>
+    </header>
+
+    <section class="hero">
+      <h1>Discover nearby businesses.</h1>
+      <p>We show the closest places first, then expand outward. Use your location for accuracy or filter by city.</p>
+    </section>
+
+    <section class="toolbar">
+      <input class="input" id="cityInput" placeholder="City" value="Prishtina" />
+      <button class="btn btn--ghost" id="geoBtn" type="button">Use my location</button>
+      <span class="meta" id="geoStatus">Location not set</span>
+      <button class="btn btn--ghost" id="refreshBtn" type="button">Refresh</button>
+    </section>
+
+    <div id="discoverStatus" class="meta"></div>
+    <div id="discoverList" class="grid cols-3"></div>
+  </div>
+
+  <script type="module" src="./discover.js"></script>
+</body>
+</html>
