@@ -1399,15 +1399,32 @@ body.m-app-hidden .m-app {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(246, 247, 251, 0.95);
+  z-index: 70;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+body.theme-dark .m-boot-overlay {
+  background: rgba(11, 18, 32, 0.94);
+}
+
+.m-boot-overlay::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: env(safe-area-inset-top, 0px);
+  bottom: env(safe-area-inset-bottom, 0px);
   background:
     radial-gradient(circle at 18% 20%, rgba(105, 108, 255, 0.18), transparent 40%),
     radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.12), transparent 38%),
     rgba(246, 247, 251, 0.95);
-  z-index: 70;
-  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 0;
 }
 
-body.theme-dark .m-boot-overlay {
+body.theme-dark .m-boot-overlay::before {
   background:
     radial-gradient(circle at 16% 18%, rgba(99, 102, 241, 0.25), transparent 42%),
     radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.18), transparent 40%),
@@ -1432,6 +1449,8 @@ body.theme-dark .m-boot-overlay {
   gap: 8px;
   align-items: center;
   text-align: center;
+  position: relative;
+  z-index: 1;
 }
 
 .m-boot-logo {
