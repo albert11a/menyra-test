@@ -3723,11 +3723,11 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     if (loginShowTimer) { clearTimeout(loginShowTimer); loginShowTimer = null; }
 
     if (!user) {
+      document.body.classList.add("m-login");
 
       if (loginOverlay) {
         loginShowTimer = setTimeout(() => {
           show(loginOverlay);
-          document.body.classList.add("m-login");
         }, 160);
       }
 

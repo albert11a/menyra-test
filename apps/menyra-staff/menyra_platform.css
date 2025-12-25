@@ -85,16 +85,30 @@ body {
 
   body.m-boot,
   body.m-login {
-    padding-top: 0;
-    padding-bottom: 0;
-    padding-left: 0;
-    padding-right: 0;
+    padding: 0 !important;
   }
 
   body.m-boot .m-app,
   body.m-login .m-app {
     min-height: 100vh;
   }
+}
+
+body.m-boot,
+body.m-login {
+  overflow: hidden;
+  height: 100vh;
+  position: fixed;
+  width: 100%;
+  top: 0;
+  left: 0;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+body.m-login .m-modal-overlay,
+body.m-boot .m-boot-overlay {
+  overscroll-behavior: none;
 }
 
 
@@ -1208,6 +1222,17 @@ body.theme-dark .m-sidebar {
   color: var(--text-main);
 }
 .m-textarea { min-height: 92px; resize: vertical; }
+
+@supports (-webkit-touch-callout: none) {
+  .m-input,
+  .m-textarea,
+  .m-select2,
+  .m-input-group input,
+  .m-input-group select,
+  .m-input-group textarea {
+    font-size: 16px;
+  }
+}
 
 .m-input:focus, .m-textarea:focus, .m-select2:focus {
   outline: none;
