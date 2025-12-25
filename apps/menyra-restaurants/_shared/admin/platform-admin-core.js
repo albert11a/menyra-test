@@ -3727,6 +3727,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       if (loginOverlay) {
         loginShowTimer = setTimeout(() => {
           show(loginOverlay);
+          document.body.classList.add("m-login");
         }, 160);
       }
 
@@ -3739,6 +3740,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     }
 
     if (loginOverlay) hide(loginOverlay);
+    document.body.classList.remove("m-login");
 
     setText("adminStatus", `Eingeloggt: ${user.email || user.uid}`);
 
