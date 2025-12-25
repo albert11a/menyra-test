@@ -14,7 +14,15 @@
   <link rel="stylesheet" href="./menyra_platform.css" />
 </head>
 
-<body>
+<body class="m-boot m-app-hidden">
+  <div class="m-boot-overlay" id="mBootOverlay">
+    <div class="m-boot-card">
+      <div class="m-boot-logo">MENYRA</div>
+      <div class="m-boot-sub" id="mBootLabel">Owner Admin</div>
+      <div class="m-boot-loader"><span></span><span></span><span></span></div>
+      <div class="m-boot-status" id="mBootStatus">Zugang wird geladen...</div>
+    </div>
+  </div>
   <div class="m-app">
 
     <!-- ========================================================= -->
@@ -37,7 +45,7 @@
       <div class="m-topbar-right">
         <button class="m-icon-btn" id="themeToggle" type="button" aria-label="Theme umschalten">🌙</button>
         <div class="m-profile">
-          <span class="m-profile-name">Albert</span>
+          <span class="m-profile-name">Account</span>
           <img class="m-profile-avatar" alt="Profil" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb'/%3E%3Ccircle cx='32' cy='26' r='12' fill='%239ca3af'/%3E%3Cpath d='M12 58c4-12 16-18 20-18s16 6 20 18' fill='%239ca3af'/%3E%3C/svg%3E" />
         </div>
       </div>
@@ -67,7 +75,7 @@
 
         <div class="m-mobile-menu-section">
           <div class="m-profile m-profile--mobile">
-            <span class="m-profile-name">Albert</span>
+            <span class="m-profile-name">Account</span>
             <img class="m-profile-avatar" alt="Profil" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb'/%3E%3Ccircle cx='32' cy='26' r='12' fill='%239ca3af'/%3E%3Cpath d='M12 58c4-12 16-18 20-18s16 6 20 18' fill='%239ca3af'/%3E%3C/svg%3E" />
           </div>
         </div>

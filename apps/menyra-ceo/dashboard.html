@@ -750,7 +750,7 @@
 
 
 
-          <span class="m-profile-name">Albert</span>
+          <span class="m-profile-name">Account</span>
 
 
 
@@ -1230,7 +1230,7 @@
 
 
 
-            <span class="m-profile-name">Albert</span>
+            <span class="m-profile-name">Account</span>
 
 
 
@@ -1694,6 +1694,7 @@
 
 
               <li><a href="#" data-section="menu"><span class="m-nav-icon">🍽️</span><span class="m-nav-label">Speisekarte</span></a></li>
+              <li><a href="#" data-section="staff"><span class="m-nav-icon">👥</span><span class="m-nav-label">Staff</span></a></li>
 
 
 
@@ -4575,6 +4576,99 @@
 
 
 </div>
+
+<!-- VIEW: STAFF -->
+          <section class="m-view" data-view="staff" style="display:none;">
+            <div class="m-page-header">
+              <div>
+                <h1 class="m-page-title">Staff</h1>
+                <p class="m-page-subtitle">Menyra Staff und Kunden Staff verwalten.</p>
+              </div>
+            </div>
+
+            <section class="m-card" id="staffRequestsCard">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title">Anfragen</h2>
+                  <p class="m-section-subtitle m-muted">Neue Staff-Anfragen bestaetigen.</p>
+                </div>
+              </div>
+              <div class="m-table">
+                <div class="m-table-row m-table-row--header" style="grid-template-columns: 1.2fr 1.4fr 1.6fr 1fr 1.2fr 0.9fr;">
+                  <div>Typ</div>
+                  <div>Name</div>
+                  <div>Email</div>
+                  <div>Rolle</div>
+                  <div>Kunde</div>
+                  <div class="m-table-col-actions">Aktion</div>
+                </div>
+                <div id="staffRequestsBody"></div>
+              </div>
+              <div class="m-table-meta" id="staffRequestsMeta">-</div>
+            </section>
+
+            <section class="m-card">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title">Menyra Staff</h2>
+                  <p class="m-section-subtitle m-muted">CEO und Staff Admins.</p>
+                </div>
+                <div class="m-page-actions">
+                  <button class="m-btn" type="button" id="newSystemStaffBtn">+ Neuer Menyra Staff</button>
+                </div>
+              </div>
+              <div class="m-table">
+                <div class="m-table-row m-table-row--header" style="grid-template-columns: 1.4fr 1.8fr 1fr 1fr 0.9fr;">
+                  <div>Name</div>
+                  <div>Email</div>
+                  <div>Rolle</div>
+                  <div>Zustaendig</div>
+                  <div class="m-table-col-actions">Aktion</div>
+                </div>
+                <div id="systemStaffTableBody"></div>
+              </div>
+              <div class="m-table-meta" id="systemStaffMeta">-</div>
+            </section>
+
+            <section class="m-card">
+              <div class="m-section-header">
+                <div>
+                  <h2 class="m-section-title">Kunden Staff</h2>
+                  <p class="m-section-subtitle m-muted">Owner, Kamarier, Kuzhina.</p>
+                </div>
+                <div class="m-page-actions">
+                  <button class="m-btn" type="button" id="newRestaurantStaffBtn">+ Neuer Kunden Staff</button>
+                </div>
+              </div>
+
+              <div class="m-input-row">
+                <div class="m-input-group">
+                  <label for="staffRestaurantSelect">Kunde</label>
+                  <select id="staffRestaurantSelect" class="m-select2"></select>
+                </div>
+                <div class="m-input-group">
+                  <label for="staffAssignSelect">Zustaendig (Menyra)</label>
+                  <select id="staffAssignSelect" class="m-select2"></select>
+                </div>
+                <div class="m-input-group">
+                  <label>&nbsp;</label>
+                  <button class="m-btn m-btn--ghost" type="button" id="staffAssignBtn">Zuweisen</button>
+                </div>
+              </div>
+
+              <div class="m-table">
+                <div class="m-table-row m-table-row--header" style="grid-template-columns: 1.4fr 1.8fr 1fr 1fr 0.9fr;">
+                  <div>Name</div>
+                  <div>Email</div>
+                  <div>Rolle</div>
+                  <div>Status</div>
+                  <div class="m-table-col-actions">Aktion</div>
+                </div>
+                <div id="restaurantStaffTableBody"></div>
+              </div>
+              <div class="m-table-meta" id="restaurantStaffMeta">-</div>
+            </section>
+          </section>
 
 <!-- VIEW: LEADS -->
 
@@ -7470,6 +7564,100 @@
 
 
 
+
+    <!-- MODAL: STAFF -->
+    <div class="m-modal-overlay is-hidden" id="staffModalOverlay">
+      <div class="m-modal">
+        <div class="m-modal-header">
+          <h3 class="m-modal-title" id="staffModalTitle">Neuer Staff</h3>
+          <button class="m-icon-btn" id="staffModalClose" type="button" aria-label="Schliessen">x</button>
+        </div>
+        <div class="m-modal-body">
+          <form id="staffForm">
+            <input type="hidden" id="staffFormMode" value="new" />
+            <input type="hidden" id="staffFormKind" value="system" />
+            <input type="hidden" id="staffFormUid" />
+            <input type="hidden" id="staffFormCurrentRole" />
+            <input type="hidden" id="staffFormRequestId" />
+            <input type="hidden" id="staffFormRestaurantId" />
+            <input type="hidden" id="staffFormPhotoUrl" />
+
+            <div class="m-input-row">
+              <div class="m-input-group">
+                <label for="staffName">Name</label>
+                <input id="staffName" class="m-input" placeholder="Vorname Nachname" />
+              </div>
+              <div class="m-input-group">
+                <label for="staffEmail">Email</label>
+                <input id="staffEmail" class="m-input" placeholder="name@menyra.com" />
+              </div>
+            </div>
+
+            <div class="m-input-row">
+              <div class="m-input-group">
+                <label for="staffPhoto">Foto</label>
+                <input id="staffPhoto" class="m-input" type="file" accept="image/*" />
+              </div>
+              <div class="m-input-group"></div>
+            </div>
+
+            <div class="m-input-row" id="staffSystemRoleRow">
+              <div class="m-input-group">
+                <label for="staffSystemRole">Rolle</label>
+                <select id="staffSystemRole" class="m-select2">
+                  <option value="ceo">CEO</option>
+                  <option value="staff">Staff Admin</option>
+                </select>
+              </div>
+              <div class="m-input-group"></div>
+            </div>
+
+            <div class="m-input-row" id="staffRestaurantRow">
+              <div class="m-input-group">
+                <label for="staffRestaurantSelectModal">Kunde</label>
+                <select id="staffRestaurantSelectModal" class="m-select2"></select>
+              </div>
+              <div class="m-input-group">
+                <label>Rollen</label>
+                <div id="staffRestaurantRoles" style="display:flex; flex-wrap:wrap; gap:6px 12px; padding-top:6px;">
+                  <label style="display:flex; align-items:center; gap:6px;">
+                    <input type="checkbox" name="staffRestaurantRoles" value="owner" />
+                    <span>Owner</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap:6px;">
+                    <input type="checkbox" name="staffRestaurantRoles" value="manager" />
+                    <span>Manager</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap:6px;">
+                    <input type="checkbox" name="staffRestaurantRoles" value="waiter" />
+                    <span>Kamarier</span>
+                  </label>
+                  <label style="display:flex; align-items:center; gap:6px;">
+                    <input type="checkbox" name="staffRestaurantRoles" value="kitchen" />
+                    <span>Kuzhina</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="m-input-row" id="staffPasswordRow">
+              <div class="m-input-group">
+                <label for="staffPassword">Password</label>
+                <input id="staffPassword" class="m-input" type="password" placeholder="Mind. 6 Zeichen" />
+              </div>
+              <div class="m-input-group"></div>
+            </div>
+
+            <div class="m-modal-footer">
+              <button class="m-btn m-btn--ghost" id="staffCancelBtn" type="button">Abbrechen</button>
+              <button class="m-btn" id="staffSaveBtn" type="submit">Speichern</button>
+            </div>
+
+            <div class="m-muted" id="staffModalStatus" style="margin-top:10px;"></div>
+          </form>
+        </div>
+      </div>
+    </div>
 
     <!-- MODAL: LEAD -->
 

@@ -1,14 +1,18 @@
 import { db, auth } from "@shared/firebase-config.js";
 import {
   collection,
+  collectionGroup,
   doc,
+  documentId,
   getDoc,
+  getDocs,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
-  updateDoc
+  updateDoc,
+  where
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
   onAuthStateChanged,
@@ -17,7 +21,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 
 const params = new URLSearchParams(window.location.search);
-const restaurantId = params.get("r") || "";
+let restaurantId = params.get("r") || "";
 
 const restaurantNameEl = document.getElementById("restaurantName");
 const authCard = document.getElementById("authCard");
@@ -36,6 +40,35 @@ let unsubscribe = null;
 let currentOrders = [];
 
 const allowedRoles = new Set(["owner", "admin", "manager", "kitchen"]);
+
+function normalizeRoleList(value) {
+  const raw = Array.isArray(value) ? value : (value ? [value] : []);
+  const out = [];
+  const seen = new Set();
+  raw.forEach((role) => {
+    const keyRaw = String(role || "").trim().toLowerCase();
+    const aliases = {
+      kamarier: "waiter",
+      kamarieri: "waiter",
+      garson: "waiter",
+      kuzhina: "kitchen",
+      kuzhinier: "kitchen",
+      kuzhinieri: "kitchen",
+      chef: "kitchen",
+      cook: "kitchen"
+    };
+    const key = aliases[keyRaw] || keyRaw;
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(key);
+  });
+  return out;
+}
+
+function hasAllowedRole(data) {
+  const roles = normalizeRoleList(data?.roles || data?.role || "");
+  return roles.some(r => allowedRoles.has(r));
+}
 
 function setAuthStatus(text, isError = false) {
   if (!authStatus) return;
@@ -63,6 +96,52 @@ function statusLabel(status) {
     case "cancelled": return "Cancelled";
     default: return status || "New";
   }
+}
+
+async function collectStaffRestaurants(field, value, limitCount = 5) {
+  if (!field || !value) return [];
+  try {
+    const snap = await getDocs(query(collectionGroup(db, "staff"), where(field, "==", value), limit(limitCount)));
+    if (snap.empty) return [];
+    const ids = [];
+    snap.forEach((docSnap) => {
+      const rid = docSnap.ref.parent?.parent?.id || "";
+      if (rid) ids.push(rid);
+    });
+    return ids;
+  } catch (err) {
+    console.warn(err);
+    return [];
+  }
+}
+
+async function collectStaffIndexRestaurants(uid) {
+  if (!uid) return [];
+  try {
+    const snap = await getDoc(doc(db, "staffIndex", uid));
+    if (!snap.exists()) return [];
+    const data = snap.data() || {};
+    const ids = [];
+    if (data.restaurantId) ids.push(data.restaurantId);
+    if (Array.isArray(data.restaurantIds)) ids.push(...data.restaurantIds);
+    return ids.filter(Boolean);
+  } catch (err) {
+    console.warn("staffIndex lookup failed", err);
+    return [];
+  }
+}
+
+async function resolveRestaurantIds(user) {
+  if (!user) return [];
+  const uid = user.uid || "";
+  const email = user.email || "";
+  const ids = new Set();
+  (await collectStaffIndexRestaurants(uid)).forEach(id => ids.add(id));
+  (await collectStaffRestaurants(documentId(), uid)).forEach(id => ids.add(id));
+  (await collectStaffRestaurants("uid", uid)).forEach(id => ids.add(id));
+  (await collectStaffRestaurants("userId", uid)).forEach(id => ids.add(id));
+  (await collectStaffRestaurants("email", email)).forEach(id => ids.add(id));
+  return Array.from(ids);
 }
 
 async function updateStatus(orderId, nextStatus) {
@@ -156,9 +235,28 @@ async function checkAccess(user) {
 
   if (superSnap?.exists?.() || staffAdminSnap?.exists?.()) return true;
 
-  if (!staffSnap?.exists?.()) return false;
-  const role = staffSnap.data()?.role || "";
-  return allowedRoles.has(role);
+  if (staffSnap?.exists?.()) {
+    return hasAllowedRole(staffSnap.data());
+  }
+
+  const email = user.email || "";
+  const candidates = [
+    ["uid", user.uid],
+    ["userId", user.uid],
+    ["email", email]
+  ];
+  for (const [field, value] of candidates) {
+    if (!value) continue;
+    try {
+      const qs = await getDocs(query(collection(db, "restaurants", restaurantId, "staff"), where(field, "==", value), limit(1)));
+      if (!qs.empty) {
+        return hasAllowedRole(qs.docs[0].data());
+      }
+    } catch (err) {
+      console.warn(err);
+    }
+  }
+  return false;
 }
 
 async function loadRestaurantName() {
@@ -235,6 +333,19 @@ onAuthStateChanged(auth, async (user) => {
     setAuthStatus("Please login.");
     if (unsubscribe) unsubscribe();
     return;
+  }
+
+  if (!restaurantId) {
+    const ids = await resolveRestaurantIds(user);
+    if (!ids.length) {
+      setAuthStatus("No restaurant assigned. Ask admin to assign.", true);
+      return;
+    }
+    if (ids.length > 1) {
+      setAuthStatus("Multiple restaurants found. Use ?r= in the link.", true);
+      return;
+    }
+    restaurantId = ids[0];
   }
 
   const ok = await checkAccess(user);

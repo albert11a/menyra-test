@@ -5,8 +5,9 @@
 // - No realtime listeners (no onSnapshot)
 // =========================================================
 
-import { db, auth } from "../../../../shared/firebase-config.js";
+import { app, db, auth, storage } from "../../../../shared/firebase-config.js";
 import { BUNNY_EDGE_BASE } from "../../../../shared/bunny-edge.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
   listActiveStories,
   countActiveStories,
@@ -16,20 +17,30 @@ import {
 } from "../firebase/stories.js";
 import {
   onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  getAuth,
   signInWithEmailAndPassword,
   signOut
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
 
 import {
 collection,
   addDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
   onSnapshot,
   query,
   where,
+  collectionGroup,
   setDoc,
+  arrayUnion,
   updateDoc,
   orderBy,
   limit,
@@ -69,6 +80,21 @@ function cacheGet(key, ttlMs) {
 }
 function cacheSet(key, data) { lsSet(key, { t: nowMs(), data }); }
 function cacheDel(key) { try { localStorage.removeItem(key); } catch {} }
+
+function getCachedRestaurantId(uid) {
+  if (!uid) return "";
+  const v = lsGet(`menyra_owner_rid_${uid}`);
+  return typeof v === "string" ? v : "";
+}
+
+function setCachedRestaurantId(uid, rid) {
+  if (!uid || !rid) return;
+  lsSet(`menyra_owner_rid_${uid}`, String(rid));
+}
+function clearCachedRestaurantId(uid) {
+  if (!uid) return;
+  try { localStorage.removeItem(`menyra_owner_rid_${uid}`); } catch {}
+}
 
 // -------------------------
 // Bunny Edge + TUS helpers (Stories)
@@ -268,8 +294,9 @@ function animateValue(el, target, formatter = (v) => formatNumber(Math.round(v |
 // -------------------------
 // Login Modal (uses existing modal styles)
 // -------------------------
-function mountLoginModal(roleLabel = "Login") {
+function mountLoginModal(roleLabel = "Login", opts = {}) {
   if (document.getElementById("loginModalOverlay")) return;
+  const allowBootstrap = !!opts.allowBootstrap;
 
   const overlay = document.createElement("div");
   overlay.className = "m-modal-overlay is-hidden";
@@ -291,6 +318,12 @@ function mountLoginModal(roleLabel = "Login") {
         <div class="m-inline" style="justify-content:flex-end; gap:10px; margin-top:14px;">
           <button class="m-btn" id="loginDoBtn" type="button">Login</button>
         </div>
+        ${allowBootstrap ? `
+        <div class="m-inline" style="justify-content:flex-end; gap:10px; margin-top:10px;">
+          <button class="m-btn m-btn--ghost" id="loginBootstrapBtn" type="button">CEO wiederherstellen</button>
+        </div>
+        <div class="m-muted" id="loginBootstrapNote" style="margin-top:8px;">Nur nutzen, wenn kein CEO mehr vorhanden ist.</div>
+        ` : ""}
         <div class="m-muted" id="loginStatus" style="margin-top:10px;"></div>
       </div>
     </div>
@@ -315,6 +348,61 @@ function mountLoginModal(roleLabel = "Login") {
       status.textContent = err?.message || "Login fehlgeschlagen.";
     }
   });
+
+  const bootstrapBtn = overlay.querySelector("#loginBootstrapBtn");
+  if (bootstrapBtn) {
+    const note = overlay.querySelector("#loginBootstrapNote");
+    bootstrapBtn.addEventListener("click", async () => {
+      const email = overlay.querySelector("#loginEmail").value.trim();
+      const pass = overlay.querySelector("#loginPass").value;
+      const status = overlay.querySelector("#loginStatus");
+      status.textContent = "";
+      if (!email || !pass) {
+        status.textContent = "Bitte Email und Passwort eingeben.";
+        return;
+      }
+      status.textContent = "CEO wird erstellt...";
+      try {
+        let cred = null;
+        try {
+          cred = await createUserWithEmailAndPassword(auth, email, pass);
+        } catch (err) {
+          if (err?.code === "auth/email-already-in-use") {
+            cred = await signInWithEmailAndPassword(auth, email, pass);
+          } else {
+            throw err;
+          }
+        }
+        const uid = cred?.user?.uid;
+        if (!uid) throw new Error("Kein Benutzer gefunden.");
+        await setDoc(doc(db, "superadmins", uid), {
+          email,
+          name: email.split("@")[0] || "",
+          role: "ceo",
+          status: "active",
+          createdAt: serverTimestamp()
+        }, { merge: true });
+        status.textContent = "CEO aktiviert. Bitte neu laden.";
+        setTimeout(() => window.location.reload(), 800);
+      } catch (err) {
+        console.error(err);
+        status.textContent = err?.message || "Fehler beim Erstellen.";
+      }
+    });
+
+    (async () => {
+      try {
+        const snap = await getDocs(query(collection(db, "superadmins"), limit(1)));
+        if (snap.size > 0) {
+          bootstrapBtn.disabled = true;
+          if (note) note.textContent = "Bereits ein CEO vorhanden.";
+        }
+      } catch (err) {
+        console.warn("bootstrap check failed", err);
+        if (note) note.textContent = "Bootstrap-Check nicht moeglich.";
+      }
+    })();
+  }
 }
 
 // -------------------------
@@ -616,8 +704,25 @@ async function ensureOwnerStaffDoc(restaurantId, user) {
   try {
     await setDoc(staffRef, {
       role: "owner",
+      roles: ["owner"],
+      uid: user.uid,
+      userId: user.uid,
+      email: user.email || "",
+      name: user.displayName || "",
       createdAt: serverTimestamp(),
       createdByUid: user.uid
+    }, { merge: true });
+    await upsertStaffIndex({
+      uid: user.uid,
+      restaurantId,
+      name: user.displayName || "",
+      email: user.email || ""
+    });
+    await setDoc(doc(db, "restaurants", restaurantId), {
+      ownerUid: user.uid,
+      ownerEmail: user.email || "",
+      ownerName: user.displayName || "",
+      updatedAt: serverTimestamp()
     }, { merge: true });
   } catch (err) {
     console.warn("ensureOwnerStaffDoc failed:", err?.message || err);
@@ -1894,6 +1999,224 @@ function closeLeadModal(){
   if (overlay) hide(overlay);
 }
 
+function closeStaffModal(){
+  const overlay = $("staffModalOverlay");
+  if (overlay) hide(overlay);
+}
+
+function updateProfileUi({ name, email, photoUrl }) {
+  const label = name || email || "Account";
+  qsa(".m-profile-name").forEach((el) => { el.textContent = label; });
+  const avatars = qsa(".m-profile-avatar");
+  if (!avatars.length) return;
+  if (!window.__MENYRA_DEFAULT_AVATAR) {
+    window.__MENYRA_DEFAULT_AVATAR = avatars[0].getAttribute("src") || "";
+  }
+  const src = photoUrl || window.__MENYRA_DEFAULT_AVATAR;
+  if (!src) return;
+  avatars.forEach((el) => { el.src = src; });
+}
+
+async function findStaffEntryForRestaurant(restaurantId, user) {
+  if (!restaurantId || !user?.uid) return null;
+  try {
+    const direct = await getDoc(doc(db, "restaurants", restaurantId, "staff", user.uid));
+    if (direct.exists()) return { id: direct.id, data: direct.data() || {} };
+  } catch {}
+
+  const uid = user.uid || "";
+  const email = user.email || "";
+  const candidates = [
+    ["uid", uid],
+    ["userId", uid],
+    ["email", email]
+  ];
+
+  for (const [field, value] of candidates) {
+    if (!value) continue;
+    try {
+      const snap = await getDocs(query(collection(db, "restaurants", restaurantId, "staff"), where(field, "==", value), limit(1)));
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        return { id: docSnap.id, data: docSnap.data() || {} };
+      }
+    } catch (err) {
+      console.warn("staff lookup failed", field, err);
+    }
+  }
+  return null;
+}
+
+async function loadProfileForUser(role, user, restaurantId) {
+  if (!user) return;
+  let data = null;
+  let restaurantName = "";
+  try {
+    if (role === "owner") {
+      if (restaurantId) {
+        const entry = await findStaffEntryForRestaurant(restaurantId, user);
+        if (entry) data = entry.data;
+        const rsnap = await getDoc(doc(db, "restaurants", restaurantId));
+        if (rsnap.exists()) {
+          const rdata = rsnap.data() || {};
+          restaurantName = rdata.name || rdata.restaurantName || "";
+        }
+      }
+    } else if (role === "ceo") {
+      const snap = await getDoc(doc(db, "superadmins", user.uid));
+      if (snap.exists()) data = snap.data();
+    } else if (role === "staff") {
+      let snap = await getDoc(doc(db, "staffAdmins", user.uid));
+      if (!snap.exists()) snap = await getDoc(doc(db, "superadmins", user.uid));
+      if (snap.exists()) data = snap.data();
+    }
+  } catch (err) {
+    console.error("profile load failed", err);
+  }
+  const email = user.email || data?.email || "";
+  let name = data?.name || user.displayName || (email ? email.split("@")[0] : "");
+  if (role === "owner" && restaurantName) name = `${name} • ${restaurantName}`;
+  const photoUrl = data?.photoUrl || user.photoURL || "";
+  updateProfileUi({ name, email, photoUrl });
+}
+
+async function collectRestaurantsByStaffField(field, value, limitCount = 10) {
+  if (!field || !value) return [];
+  try {
+    const snap = await getDocs(query(collectionGroup(db, "staff"), where(field, "==", value), limit(limitCount)));
+    if (snap.empty) return [];
+    const ids = [];
+    snap.forEach((docSnap) => {
+      const rid = docSnap.ref.parent?.parent?.id || "";
+      if (rid) ids.push(rid);
+    });
+    return ids;
+  } catch (err) {
+    console.warn("staff lookup failed", field, err);
+    return [];
+  }
+}
+
+async function findRestaurantsByOwner(user) {
+  if (!user) return [];
+  const ids = new Set();
+  const uid = user.uid || "";
+  const email = user.email || "";
+  try {
+    if (uid) {
+      const snap = await getDocs(query(collection(db, "restaurants"), where("ownerUid", "==", uid), limit(10)));
+      snap.forEach((docSnap) => ids.add(docSnap.id));
+    }
+  } catch (err) {
+    console.warn("ownerUid lookup failed", err);
+  }
+  try {
+    if (email) {
+      const snap = await getDocs(query(collection(db, "restaurants"), where("ownerEmail", "==", email), limit(10)));
+      snap.forEach((docSnap) => ids.add(docSnap.id));
+    }
+  } catch (err) {
+    console.warn("ownerEmail lookup failed", err);
+  }
+  const list = Array.from(ids);
+  if (!list.length) return [];
+  const docs = await Promise.all(list.map(id => getDoc(doc(db, "restaurants", id)).catch(() => null)));
+  return list.map((id, idx) => {
+    const rsnap = docs[idx];
+    const rdata = (rsnap && typeof rsnap.exists === "function" && rsnap.exists()) ? (rsnap.data() || {}) : {};
+    const name = rdata?.name || rdata?.restaurantName || id;
+    return { id, name };
+  });
+}
+
+async function findRestaurantsForStaffUser(user) {
+  if (!user) return [];
+  const uid = user.uid || "";
+  const email = user.email || "";
+  const ids = new Set();
+
+  (await collectRestaurantsByStaffField(documentId(), uid)).forEach(id => ids.add(id));
+  (await collectRestaurantsByStaffField("uid", uid)).forEach(id => ids.add(id));
+  (await collectRestaurantsByStaffField("userId", uid)).forEach(id => ids.add(id));
+  (await collectRestaurantsByStaffField("email", email)).forEach(id => ids.add(id));
+  (await findRestaurantsByOwner(user)).forEach(r => ids.add(r.id));
+
+  const uniqueIds = Array.from(ids);
+  if (!uniqueIds.length) return [];
+  const docs = await Promise.all(uniqueIds.map(id => getDoc(doc(db, "restaurants", id)).catch(() => null)));
+  return uniqueIds.map((id, idx) => {
+    const rsnap = docs[idx];
+    const rdata = (rsnap && typeof rsnap.exists === "function" && rsnap.exists()) ? (rsnap.data() || {}) : {};
+    const name = rdata?.name || rdata?.restaurantName || id;
+    return { id, name };
+  });
+}
+
+function showRestaurantPicker(restaurants, preferredId = "") {
+  return new Promise((resolve) => {
+    if (!Array.isArray(restaurants) || !restaurants.length) return resolve("");
+    const existing = document.getElementById("ownerRestaurantPickerOverlay");
+    if (existing) existing.remove();
+    const overlay = document.createElement("div");
+    overlay.className = "m-modal-overlay";
+    overlay.id = "ownerRestaurantPickerOverlay";
+    overlay.innerHTML = `
+      <div class="m-modal" style="max-width:420px;">
+        <div class="m-modal-header">
+          <h3 class="m-modal-title">Restaurant waehlen</h3>
+          <button class="m-icon-btn" type="button" id="ownerRestaurantPickerClose">x</button>
+        </div>
+        <div class="m-modal-body">
+          <div class="m-input-group">
+            <label for="ownerRestaurantPick">Restaurant</label>
+            <select id="ownerRestaurantPick" class="m-select2"></select>
+          </div>
+          <div class="m-inline" style="justify-content:flex-end; gap:10px; margin-top:14px;">
+            <button class="m-btn" type="button" id="ownerRestaurantPickBtn">Weiter</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    const sel = overlay.querySelector("#ownerRestaurantPick");
+    restaurants.forEach((r) => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name || r.id;
+      sel.appendChild(opt);
+    });
+    if (preferredId && restaurants.some(r => r.id === preferredId)) {
+      sel.value = preferredId;
+    }
+    const close = () => {
+      try { overlay.remove(); } catch {}
+      resolve("");
+    };
+    overlay.querySelector("#ownerRestaurantPickerClose")?.addEventListener("click", close);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+    overlay.querySelector("#ownerRestaurantPickBtn")?.addEventListener("click", () => {
+      const value = sel.value;
+      try { overlay.remove(); } catch {}
+      resolve(value || "");
+    });
+  });
+}
+
+async function resolveOwnerRestaurantId(user, preferredId = "", listOverride = null) {
+  const list = Array.isArray(listOverride) ? listOverride : await findRestaurantsForStaffUser(user);
+  if (list.length === 1) return list[0].id;
+  if (list.length > 1) {
+    const preferredOk = preferredId && list.some(r => r.id === preferredId);
+    const chosen = await showRestaurantPicker(list, preferredOk ? preferredId : "");
+    if (chosen) return chosen;
+    if (preferredOk) return preferredId;
+    return list[0]?.id || "";
+  }
+  return "";
+}
+
 function applyLeadsFilter(allRows){
   const term = foldText(($("leadsSearch")?.value || "").trim());
   const statusFilter = normalizeLeadStatusKey($("leadsStatusFilter")?.value || "");
@@ -1957,7 +2280,303 @@ function renderLeadsTable(rows){
     `;
     body.appendChild(row);
   });
-  setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "—");
+  setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+}
+
+// =========================================================
+// STAFF MANAGEMENT (CEO/Staff)
+// =========================================================
+
+const SYSTEM_STAFF_ROLE_LABELS = {
+  ceo: "CEO",
+  staff: "Staff Admin"
+};
+
+const RESTAURANT_STAFF_ROLE_LABELS = {
+  owner: "Owner",
+  admin: "Owner",
+  manager: "Manager",
+  waiter: "Kamarier",
+  kitchen: "Kuzhina"
+};
+
+const RESTAURANT_STAFF_ROLE_ORDER = ["owner", "admin", "manager", "waiter", "kitchen"];
+
+function normalizeRoleValue(value) {
+  const key = String(value || "").trim().toLowerCase();
+  const aliases = {
+    kamarier: "waiter",
+    kamarieri: "waiter",
+    garson: "waiter",
+    kuzhina: "kitchen",
+    kuzhinier: "kitchen",
+    kuzhinieri: "kitchen",
+    chef: "kitchen",
+    cook: "kitchen"
+  };
+  return aliases[key] || key;
+}
+
+function normalizeRoleList(value) {
+  const raw = Array.isArray(value) ? value : (value ? [value] : []);
+  const out = [];
+  const seen = new Set();
+  raw.forEach((role) => {
+    const key = normalizeRoleValue(role);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    out.push(key);
+  });
+  return out;
+}
+
+function normalizeRestaurantRoles(value) {
+  const roles = normalizeRoleList(value);
+  return roles.filter(r => RESTAURANT_STAFF_ROLE_ORDER.includes(r));
+}
+
+function pickRoleValue(...values) {
+  for (const v of values) {
+    if (Array.isArray(v)) {
+      if (v.length) return v;
+      continue;
+    }
+    if (v) return v;
+  }
+  return "";
+}
+
+function pickPrimaryRestaurantRole(roles) {
+  const list = normalizeRestaurantRoles(roles);
+  for (const role of RESTAURANT_STAFF_ROLE_ORDER) {
+    if (list.includes(role)) return role;
+  }
+  return list[0] || "waiter";
+}
+
+function staffRoleLabel(roleOrRoles, kind) {
+  const roles = normalizeRoleList(roleOrRoles);
+  if (!roles.length) return "-";
+  const map = (kind === "restaurant") ? RESTAURANT_STAFF_ROLE_LABELS : SYSTEM_STAFF_ROLE_LABELS;
+  const labels = roles.map((r) => map[r] || r);
+  return labels.join(", ");
+}
+
+function isOwnerRole(roleOrRoles) {
+  const roles = normalizeRoleList(roleOrRoles);
+  return roles.includes("owner") || roles.includes("admin");
+}
+
+async function upsertStaffIndex({ uid, restaurantId, name, email }) {
+  if (!uid || !restaurantId) return;
+  const payload = {
+    uid,
+    userId: uid,
+    name: name || "",
+    email: email || "",
+    emailLower: String(email || "").toLowerCase(),
+    restaurantIds: arrayUnion(restaurantId),
+    updatedAt: serverTimestamp()
+  };
+  try {
+    await setDoc(doc(db, "staffIndex", uid), payload, { merge: true });
+  } catch (err) {
+    console.warn("staffIndex update failed", err);
+  }
+}
+
+function fileExtFromName(name) {
+  const base = String(name || "").trim();
+  if (!base || !base.includes(".")) return "jpg";
+  const ext = base.split(".").pop().toLowerCase().replace(/[^a-z0-9]/g, "");
+  return ext || "jpg";
+}
+
+async function uploadStaffPhotoFile({ file, pathBase }) {
+  if (!file || !pathBase) return "";
+  const ext = fileExtFromName(file.name);
+  const path = `${pathBase}.${ext}`;
+  const ref = storageRef(storage, path);
+  await uploadBytes(ref, file);
+  return await getDownloadURL(ref);
+}
+
+let __secondaryAuth = null;
+function getSecondaryAuth() {
+  if (__secondaryAuth) return __secondaryAuth;
+  const existing = getApps().find((a) => a.name === "menyra-secondary");
+  const secondaryApp = existing || initializeApp(app.options, "menyra-secondary");
+  __secondaryAuth = getAuth(secondaryApp);
+  return __secondaryAuth;
+}
+
+async function createAuthUser(email, password) {
+  const auth2 = getSecondaryAuth();
+  const cred = await createUserWithEmailAndPassword(auth2, email, password);
+  try { await signOut(auth2); } catch {}
+  return cred.user;
+}
+
+async function fetchSystemStaff() {
+  const [supSnap, staffSnap] = await Promise.all([
+    getDocs(collection(db, "superadmins")),
+    getDocs(collection(db, "staffAdmins"))
+  ]);
+  const rows = [];
+  supSnap.forEach((d) => rows.push({ id: d.id, ...(d.data() || {}), role: "ceo", kind: "system" }));
+  staffSnap.forEach((d) => rows.push({ id: d.id, ...(d.data() || {}), role: "staff", kind: "system" }));
+  return rows;
+}
+
+async function fetchStaffRequests(role, uid) {
+  const ref = collection(db, "staffRequests");
+  let snap = null;
+  if (role === "staff" && uid) {
+    try {
+      snap = await getDocs(query(ref, where("createdByUid", "==", uid)));
+    } catch (_) { snap = null; }
+  }
+  if (!snap) snap = await getDocs(ref);
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+}
+
+async function fetchRestaurantStaff(restaurantId) {
+  if (!restaurantId) return [];
+  const snap = await getDocs(collection(db, "restaurants", restaurantId, "staff"));
+  return snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
+}
+
+async function createSystemStaffAccount({ name, email, password, role, photoUrl, createdByUid, createdByRole }) {
+  const user = await createAuthUser(email, password);
+  const payload = {
+    uid: user.uid,
+    userId: user.uid,
+    name: name || "",
+    email: email || "",
+    role: role || "staff",
+    photoUrl: photoUrl || "",
+    status: "active",
+    createdAt: serverTimestamp(),
+    createdByUid: createdByUid || null,
+    createdByRole: createdByRole || null
+  };
+  const col = role === "ceo" ? "superadmins" : "staffAdmins";
+  await setDoc(doc(db, col, user.uid), payload, { merge: true });
+  return user.uid;
+}
+
+async function createRestaurantStaffAccount({ restaurantId, name, email, password, role, roles, photoUrl, createdByUid, createdByRole }) {
+  const user = await createAuthUser(email, password);
+  const normalizedRoles = normalizeRestaurantRoles(roles || role || "waiter");
+  const primaryRole = pickPrimaryRestaurantRole(normalizedRoles);
+  const payload = {
+    uid: user.uid,
+    userId: user.uid,
+    name: name || "",
+    email: email || "",
+    role: primaryRole,
+    roles: normalizedRoles,
+    photoUrl: photoUrl || "",
+    status: "active",
+    createdAt: serverTimestamp(),
+    createdByUid: createdByUid || null,
+    createdByRole: createdByRole || null
+  };
+  await setDoc(doc(db, "restaurants", restaurantId, "staff", user.uid), payload, { merge: true });
+  await upsertStaffIndex({
+    uid: user.uid,
+    restaurantId,
+    name: name || "",
+    email: email || ""
+  });
+  if (isOwnerRole(normalizedRoles)) {
+    await setDoc(doc(db, "restaurants", restaurantId), {
+      ownerUid: user.uid,
+      ownerEmail: email || "",
+      ownerName: name || "",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
+  return user.uid;
+}
+
+async function updateSystemStaffAccount({ uid, currentRole, nextRole, name, email, photoUrl, updatedByUid, updatedByRole }) {
+  if (!uid) return;
+  const payload = {
+    name: name || "",
+    email: email || "",
+    role: nextRole || currentRole || "staff",
+    photoUrl: photoUrl || "",
+    updatedAt: serverTimestamp(),
+    updatedByUid: updatedByUid || null,
+    updatedByRole: updatedByRole || null
+  };
+  const fromCol = currentRole === "ceo" ? "superadmins" : "staffAdmins";
+  const toCol = nextRole === "ceo" ? "superadmins" : "staffAdmins";
+  if (fromCol === toCol) {
+    await setDoc(doc(db, fromCol, uid), payload, { merge: true });
+    return;
+  }
+  await setDoc(doc(db, toCol, uid), payload, { merge: true });
+  await deleteDoc(doc(db, fromCol, uid));
+}
+
+async function updateRestaurantStaffAccount({ restaurantId, uid, role, roles, name, email, photoUrl, updatedByUid, updatedByRole }) {
+  if (!restaurantId || !uid) return;
+  const normalizedRoles = normalizeRestaurantRoles(roles || role || "waiter");
+  const primaryRole = pickPrimaryRestaurantRole(normalizedRoles);
+  const payload = {
+    uid,
+    userId: uid,
+    name: name || "",
+    email: email || "",
+    role: primaryRole,
+    roles: normalizedRoles,
+    photoUrl: photoUrl || "",
+    updatedAt: serverTimestamp(),
+    updatedByUid: updatedByUid || null,
+    updatedByRole: updatedByRole || null
+  };
+  await setDoc(doc(db, "restaurants", restaurantId, "staff", uid), payload, { merge: true });
+  await upsertStaffIndex({
+    uid,
+    restaurantId,
+    name: name || "",
+    email: email || ""
+  });
+  if (isOwnerRole(normalizedRoles)) {
+    await setDoc(doc(db, "restaurants", restaurantId), {
+      ownerUid: uid,
+      ownerEmail: email || "",
+      ownerName: name || "",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
+}
+
+async function deleteSystemStaffAccount(uid, role) {
+  if (!uid) return;
+  const col = role === "ceo" ? "superadmins" : "staffAdmins";
+  await deleteDoc(doc(db, col, uid));
+}
+
+async function deleteRestaurantStaffAccount(restaurantId, uid) {
+  if (!restaurantId || !uid) return;
+  await deleteDoc(doc(db, "restaurants", restaurantId, "staff", uid));
+}
+
+async function createStaffRequest(payload) {
+  const ref = await addDoc(collection(db, "staffRequests"), {
+    ...payload,
+    status: "pending",
+    createdAt: serverTimestamp()
+  });
+  return ref.id;
+}
+
+async function updateStaffRequest(requestId, payload) {
+  if (!requestId) return;
+  await setDoc(doc(db, "staffRequests", requestId), payload, { merge: true });
 }
 
 // =========================================================
@@ -2293,12 +2912,15 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   $("qrModalClose")?.addEventListener("click", closeQrModal);
   $("leadModalClose")?.addEventListener("click", closeLeadModal);
   $("leadCancelBtn")?.addEventListener("click", closeLeadModal);
+  $("staffModalClose")?.addEventListener("click", closeStaffModal);
+  $("staffCancelBtn")?.addEventListener("click", closeStaffModal);
 
 
   // When clicking outside (overlay)
   $("customerModalOverlay")?.addEventListener("click", (e) => { if (e.target?.id === "customerModalOverlay") closeCustomerModal(); });
   $("qrModalOverlay")?.addEventListener("click", (e) => { if (e.target?.id === "qrModalOverlay") closeQrModal(); });
   $("leadModalOverlay")?.addEventListener("click", (e) => { if (e.target?.id === "leadModalOverlay") closeLeadModal(); });
+  $("staffModalOverlay")?.addEventListener("click", (e) => { if (e.target?.id === "staffModalOverlay") closeStaffModal(); });
 
 
   // Owner mode: restrict restaurant id from URL if not passed
@@ -2309,7 +2931,7 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   // Hide sections depending on role
   if (role === "owner") {
     // hide customers/leads in nav & mobile nav
-    qsa('[data-section="customers"], [data-section="leads"]').forEach(a => a.style.display = "none");
+    qsa('[data-section="customers"], [data-section="leads"], [data-section="staff"]').forEach(a => a.style.display = "none");
     const newBtn = $("newCustomerBtn");
     if (newBtn) newBtn.style.display = "none";
     // show offers as default
@@ -2317,13 +2939,16 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   }
 
   // Sign in gate
-  mountLoginModal(`${roleLabel} Login`);
+  mountLoginModal(`${roleLabel} Login`, { allowBootstrap: role === "ceo" });
   setBootLabel(roleLabel);
   setBootStatus("Zugang wird geladen …");
 
   let currentUser = null;
   const restaurants = [];
   const leadsAll = [];
+  const systemStaff = [];
+  const staffRequests = [];
+  let restaurantStaff = [];
   let activeStoriesCache = [];
   let nextPayExpanded = false;
   let storiesExpanded = false;
@@ -2420,6 +3045,675 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
 
 
+  // Staff UI (CEO/Staff)
+  let systemStaffMap = new Map();
+  const staffIndexBackfillDone = new Set();
+
+  function setStaffModalStatus(text) {
+    setText("staffModalStatus", text || "");
+  }
+
+  function setStaffModalMode(mode) {
+    const btn = $("staffSaveBtn");
+    if (!btn) return;
+    if (mode === "request") btn.textContent = "Anfrage senden";
+    else if (mode === "approve") btn.textContent = "Approve";
+    else btn.textContent = "Speichern";
+  }
+
+  function configureStaffModal(kind, mode) {
+    const systemRow = $("staffSystemRoleRow");
+    const restaurantRow = $("staffRestaurantRow");
+    const passwordRow = $("staffPasswordRow");
+    if (kind === "restaurant") {
+      if (restaurantRow) restaurantRow.style.display = "";
+      if (systemRow) systemRow.style.display = "none";
+    } else {
+      if (systemRow) systemRow.style.display = "";
+      if (restaurantRow) restaurantRow.style.display = "none";
+    }
+    const showPassword = (mode === "new" || mode === "approve");
+    if (passwordRow) passwordRow.style.display = showPassword ? "" : "none";
+  }
+
+  function fillStaffRestaurantSelects() {
+    const viewSel = $("staffRestaurantSelect");
+    const modalSel = $("staffRestaurantSelectModal");
+    const restaurantsList = restaurants || [];
+    const options = restaurantsList.map(r => ({ id: r.id, name: r.name || r.restaurantName || r.id }));
+
+    [viewSel, modalSel].forEach((sel) => {
+      if (!sel) return;
+      const current = sel.value;
+      sel.innerHTML = "";
+      if (!options.length) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "Keine Kunden";
+        sel.appendChild(opt);
+        return;
+      }
+      options.forEach((optData) => {
+        const opt = document.createElement("option");
+        opt.value = optData.id;
+        opt.textContent = optData.name;
+        sel.appendChild(opt);
+      });
+      if (current && options.some(o => o.id === current)) sel.value = current;
+    });
+  }
+
+  function fillStaffAssignSelect() {
+    const sel = $("staffAssignSelect");
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = "";
+    const opt0 = document.createElement("option");
+    opt0.value = "";
+    opt0.textContent = "Kein Staff";
+    sel.appendChild(opt0);
+    systemStaff.forEach((row) => {
+      const opt = document.createElement("option");
+      opt.value = row.id;
+      opt.textContent = row.name || row.email || row.id;
+      sel.appendChild(opt);
+    });
+    if (current && systemStaffMap.has(current)) sel.value = current;
+  }
+
+  function syncStaffAssignSelect() {
+    const sel = $("staffAssignSelect");
+    const rid = $("staffRestaurantSelect")?.value || "";
+    if (!sel || !rid) return;
+    const row = restaurants.find(r => r.id === rid);
+    sel.value = row?.assignedStaffId || "";
+  }
+
+  function getRestaurantRolesFromForm() {
+    const boxes = Array.from(document.querySelectorAll('input[name="staffRestaurantRoles"]'));
+    const selected = boxes.filter(b => b.checked).map(b => b.value);
+    return normalizeRestaurantRoles(selected);
+  }
+
+  function setRestaurantRolesInForm(roles) {
+    const list = new Set(normalizeRestaurantRoles(roles));
+    const boxes = Array.from(document.querySelectorAll('input[name="staffRestaurantRoles"]'));
+    boxes.forEach((b) => { b.checked = list.has(String(b.value || "").trim()); });
+  }
+
+  function openStaffModal({ mode = "new", kind = "system", data = {} } = {}) {
+    const overlay = $("staffModalOverlay");
+    if (!overlay) return;
+    const title = $("staffModalTitle");
+    const staffName = $("staffName");
+    const staffEmail = $("staffEmail");
+    const staffPass = $("staffPassword");
+    const systemRole = $("staffSystemRole");
+    const restaurantSel = $("staffRestaurantSelectModal");
+
+    const modeTitle = (mode === "edit") ? "bearbeiten" : (mode === "request" ? "Anfrage" : (mode === "approve" ? "bestaetigen" : "neu"));
+    if (title) title.textContent = (kind === "restaurant") ? `Kunden Staff ${modeTitle}` : `Menyra Staff ${modeTitle}`;
+
+    $("staffFormMode").value = mode;
+    $("staffFormKind").value = kind;
+    $("staffFormUid").value = data.id || data.uid || "";
+    $("staffFormCurrentRole").value = data.role || data.targetRole || "";
+    $("staffFormRequestId").value = data.requestId || data.id || "";
+    $("staffFormRestaurantId").value = data.restaurantId || "";
+    $("staffFormPhotoUrl").value = data.photoUrl || "";
+
+    if (staffName) staffName.value = data.name || data.displayName || "";
+    if (staffEmail) {
+      staffEmail.value = data.email || "";
+      staffEmail.disabled = (mode === "edit");
+    }
+    if (staffPass) staffPass.value = "";
+    const staffPhoto = $("staffPhoto");
+    if (staffPhoto) staffPhoto.value = "";
+
+    fillStaffRestaurantSelects();
+    if (restaurantSel) {
+      const preferred = data.restaurantId || $("staffRestaurantSelect")?.value || "";
+      if (preferred) restaurantSel.value = preferred;
+      if (kind === "restaurant") restaurantSel.disabled = (mode === "edit");
+    }
+
+    if (systemRole && kind === "system") {
+      systemRole.value = data.role || data.targetRole || "staff";
+    }
+    if (kind === "restaurant") {
+      const rolesValue = data.roles || data.targetRoles || data.role || data.targetRole || [];
+      if (!normalizeRestaurantRoles(rolesValue).length) {
+        setRestaurantRolesInForm(["waiter"]);
+      } else {
+        setRestaurantRolesInForm(rolesValue);
+      }
+    }
+
+    configureStaffModal(kind, mode);
+    setStaffModalMode(mode);
+    setStaffModalStatus("");
+    show(overlay);
+  }
+
+  function renderStaffRequestsTable(rows) {
+    const body = $("staffRequestsBody");
+    if (!body) return;
+    body.innerHTML = "";
+    if (!rows.length) {
+      body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Anfragen.</div>`;
+      setText("staffRequestsMeta", "-");
+      return;
+    }
+    rows.forEach((req) => {
+      const row = document.createElement("div");
+      row.className = "m-table-row";
+      row.style.gridTemplateColumns = "1.2fr 1.4fr 1.6fr 1fr 1.2fr 0.9fr";
+      const kindLabel = req.kind === "restaurant" ? "Kunde" : "Menyra";
+      const roleValue = pickRoleValue(req.targetRoles, req.roles, req.targetRole, req.role, "");
+      const roleLabel = staffRoleLabel(roleValue, req.kind === "restaurant" ? "restaurant" : "system");
+      const restaurantLabel = req.restaurantName || req.restaurantId || "-";
+      let actionHtml = `<span class="m-muted">${esc(req.status || "pending")}</span>`;
+      if (role === "ceo") {
+        actionHtml = `
+          <button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="staff-request-approve" data-id="${esc(req.id)}">Approve</button>
+          <button class="m-btn m-btn--small" type="button" data-act="staff-request-reject" data-id="${esc(req.id)}">Reject</button>
+        `;
+      }
+      row.innerHTML = `
+        <div>${esc(kindLabel)}</div>
+        <div>${esc(req.name || "-")}</div>
+        <div>${esc(req.email || "-")}</div>
+        <div>${esc(roleLabel)}</div>
+        <div>${esc(restaurantLabel)}</div>
+        <div class="m-table-col-actions">${actionHtml}</div>
+      `;
+      body.appendChild(row);
+    });
+    setText("staffRequestsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+  }
+
+  function renderSystemStaffTable(rows) {
+    const body = $("systemStaffTableBody");
+    if (!body) return;
+    body.innerHTML = "";
+    rows.forEach((r) => {
+      const row = document.createElement("div");
+      row.className = "m-table-row";
+      row.style.gridTemplateColumns = "1.4fr 1.8fr 1fr 1fr 0.9fr";
+      const assignedCount = restaurants.filter(x => x.assignedStaffId === r.id).length;
+      const assignedLabel = assignedCount ? `${assignedCount} Kunden` : "-";
+      const actionHtml = (role === "ceo")
+        ? `<button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="system-staff-edit" data-id="${esc(r.id)}">Edit</button>
+           <button class="m-btn m-btn--small" type="button" data-act="system-staff-delete" data-id="${esc(r.id)}">Delete</button>`
+        : `<span class="m-muted">-</span>`;
+      row.innerHTML = `
+        <div>${esc(r.name || r.email || r.id)}</div>
+        <div>${esc(r.email || "-")}</div>
+        <div>${esc(staffRoleLabel(r.roles || r.role, "system"))}</div>
+        <div>${esc(assignedLabel)}</div>
+        <div class="m-table-col-actions">${actionHtml}</div>
+      `;
+      body.appendChild(row);
+    });
+    setText("systemStaffMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+  }
+
+  function renderRestaurantStaffTable(rows) {
+    const body = $("restaurantStaffTableBody");
+    if (!body) return;
+    body.innerHTML = "";
+    if (!rows.length) {
+      body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Staff vorhanden.</div>`;
+      setText("restaurantStaffMeta", "-");
+      return;
+    }
+    rows.forEach((r) => {
+      const row = document.createElement("div");
+      row.className = "m-table-row";
+      row.style.gridTemplateColumns = "1.4fr 1.8fr 1fr 1fr 0.9fr";
+      const status = r.status || "active";
+      const actionHtml = (role === "ceo")
+        ? `<button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="restaurant-staff-edit" data-id="${esc(r.id)}">Edit</button>
+           <button class="m-btn m-btn--small" type="button" data-act="restaurant-staff-delete" data-id="${esc(r.id)}">Delete</button>`
+        : `<span class="m-muted">-</span>`;
+      row.innerHTML = `
+        <div>${esc(r.name || r.email || r.id)}</div>
+        <div>${esc(r.email || "-")}</div>
+        <div>${esc(staffRoleLabel(r.roles || r.role, "restaurant"))}</div>
+        <div>${esc(status)}</div>
+        <div class="m-table-col-actions">${actionHtml}</div>
+      `;
+      body.appendChild(row);
+    });
+    setText("restaurantStaffMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+  }
+
+  async function ensureRestaurantOwnerMapping(restaurantId, rows) {
+    if (!restaurantId || !Array.isArray(rows)) return;
+    const ownerRow = rows.find(r => isOwnerRole(r.roles || r.role));
+    if (!ownerRow) return;
+    const existing = restaurants.find(r => r.id === restaurantId) || {};
+    const patch = {};
+    if (!existing.ownerUid && ownerRow.uid) patch.ownerUid = ownerRow.uid;
+    if (!existing.ownerEmail && ownerRow.email) patch.ownerEmail = ownerRow.email;
+    if (!existing.ownerName && ownerRow.name) patch.ownerName = ownerRow.name;
+    if (!Object.keys(patch).length) return;
+    try {
+      await setDoc(doc(db, "restaurants", restaurantId), { ...patch, updatedAt: serverTimestamp() }, { merge: true });
+      Object.assign(existing, patch);
+    } catch (err) {
+      console.warn("owner mapping update failed", err);
+    }
+  }
+
+  async function refreshSystemStaff() {
+    try {
+      const rows = await fetchSystemStaff();
+      systemStaff.splice(0, systemStaff.length, ...(rows || []));
+      systemStaffMap = new Map(systemStaff.map(r => [r.id, r]));
+      renderSystemStaffTable(systemStaff);
+      fillStaffAssignSelect();
+    } catch (err) {
+      console.error(err);
+      renderSystemStaffTable([]);
+      setText("systemStaffMeta", "Fehler beim Laden.");
+    }
+  }
+
+  async function refreshStaffRequests() {
+    if (!currentUser) return;
+    try {
+      const rows = await fetchStaffRequests(role, currentUser.uid);
+      let filtered = rows || [];
+      if (role === "ceo") filtered = filtered.filter(r => (r.status || "pending") === "pending");
+      else filtered = filtered.filter(r => r.createdByUid === currentUser.uid);
+      filtered.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      staffRequests.splice(0, staffRequests.length, ...filtered);
+      renderStaffRequestsTable(filtered);
+    } catch (err) {
+      console.error(err);
+      renderStaffRequestsTable([]);
+      setText("staffRequestsMeta", "Fehler beim Laden.");
+    }
+  }
+
+  async function refreshRestaurantStaff(rid) {
+    if (!rid) {
+      renderRestaurantStaffTable([]);
+      return;
+    }
+    try {
+      const rows = await fetchRestaurantStaff(rid);
+      restaurantStaff = rows || [];
+      renderRestaurantStaffTable(restaurantStaff);
+      await ensureRestaurantOwnerMapping(rid, restaurantStaff);
+      if (!staffIndexBackfillDone.has(rid)) {
+        staffIndexBackfillDone.add(rid);
+        await Promise.all((restaurantStaff || []).map((r) => {
+          const uid = r.uid || r.userId || r.id || "";
+          if (!uid) return Promise.resolve();
+          return upsertStaffIndex({
+            uid,
+            restaurantId: rid,
+            name: r.name || "",
+            email: r.email || ""
+          });
+        }));
+      }
+    } catch (err) {
+      console.error(err);
+      renderRestaurantStaffTable([]);
+      setText("restaurantStaffMeta", "Fehler beim Laden.");
+    }
+  }
+
+  async function refreshStaffUi() {
+    if (role === "owner") return;
+    const sysBtn = $("newSystemStaffBtn");
+    if (sysBtn) sysBtn.textContent = (role === "ceo") ? "+ Neuer Menyra Staff" : "+ Neue Anfrage";
+    const restBtn = $("newRestaurantStaffBtn");
+    if (restBtn) restBtn.textContent = (role === "ceo") ? "+ Neuer Kunden Staff" : "+ Neue Anfrage";
+    fillStaffRestaurantSelects();
+    await refreshSystemStaff();
+    await refreshStaffRequests();
+    const rid = $("staffRestaurantSelect")?.value || restaurants[0]?.id || "";
+    if ($("staffRestaurantSelect") && rid) $("staffRestaurantSelect").value = rid;
+    if (rid) {
+      await refreshRestaurantStaff(rid);
+      syncStaffAssignSelect();
+    } else {
+      renderRestaurantStaffTable([]);
+    }
+  }
+
+  $("newSystemStaffBtn")?.addEventListener("click", () => {
+    const mode = (role === "ceo") ? "new" : "request";
+    openStaffModal({ mode, kind: "system", data: {} });
+  });
+
+  $("newRestaurantStaffBtn")?.addEventListener("click", () => {
+    const mode = (role === "ceo") ? "new" : "request";
+    openStaffModal({ mode, kind: "restaurant", data: { restaurantId: $("staffRestaurantSelect")?.value || "" } });
+  });
+
+  $("staffRestaurantSelect")?.addEventListener("change", async () => {
+    const rid = $("staffRestaurantSelect")?.value || "";
+    await refreshRestaurantStaff(rid);
+    syncStaffAssignSelect();
+  });
+
+  $("staffAssignBtn")?.addEventListener("click", async () => {
+    if (!currentUser) return;
+    const rid = $("staffRestaurantSelect")?.value || "";
+    if (!rid) return;
+    const staffId = $("staffAssignSelect")?.value || "";
+    const staffRow = systemStaffMap.get(staffId);
+    const staffName = staffRow?.name || staffRow?.email || "";
+    try {
+      await setDoc(doc(db, "restaurants", rid), {
+        assignedStaffId: staffId || null,
+        assignedStaffName: staffName || "",
+        updatedAt: serverTimestamp(),
+        updatedByUid: currentUser.uid,
+        updatedByRole: role
+      }, { merge: true });
+      const local = restaurants.find(r => r.id === rid);
+      if (local) {
+        local.assignedStaffId = staffId || "";
+        local.assignedStaffName = staffName || "";
+      }
+      setText("restaurantStaffMeta", "Zuweisung gespeichert.");
+      renderSystemStaffTable(systemStaff);
+    } catch (err) {
+      console.error(err);
+      setText("restaurantStaffMeta", "Zuweisung fehlgeschlagen.");
+    }
+  });
+
+  $("staffRequestsBody")?.addEventListener("click", async (e) => {
+    const btn = e.target?.closest?.("[data-act]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-id");
+    if (!id) return;
+    const act = btn.getAttribute("data-act");
+    const req = staffRequests.find(r => r.id === id);
+    if (!req) return;
+    if (act === "staff-request-approve") {
+      openStaffModal({
+        mode: "approve",
+        kind: req.kind || "system",
+        data: {
+          ...req,
+          requestId: req.id,
+          role: req.targetRole || req.role || "",
+          roles: req.targetRoles || req.roles || req.targetRole || req.role || "",
+          restaurantId: req.restaurantId || ""
+        }
+      });
+    }
+    if (act === "staff-request-reject" && role === "ceo") {
+      if (!confirm("Anfrage wirklich ablehnen?")) return;
+      try {
+        await updateStaffRequest(id, {
+          status: "rejected",
+          rejectedAt: serverTimestamp(),
+          rejectedByUid: currentUser?.uid || null,
+          rejectedByRole: role
+        });
+        await refreshStaffRequests();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  });
+
+  $("systemStaffTableBody")?.addEventListener("click", async (e) => {
+    if (role !== "ceo") return;
+    const btn = e.target?.closest?.("[data-act]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-id");
+    const act = btn.getAttribute("data-act");
+    const row = systemStaff.find(r => r.id === id);
+    if (!row) return;
+    if (act === "system-staff-edit") {
+      openStaffModal({ mode: "edit", kind: "system", data: row });
+    }
+    if (act === "system-staff-delete") {
+      if (!confirm("Staff wirklich loeschen?")) return;
+      try {
+        await deleteSystemStaffAccount(id, row.role);
+        await refreshSystemStaff();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  });
+
+  $("restaurantStaffTableBody")?.addEventListener("click", async (e) => {
+    if (role !== "ceo") return;
+    const btn = e.target?.closest?.("[data-act]");
+    if (!btn) return;
+    const id = btn.getAttribute("data-id");
+    const act = btn.getAttribute("data-act");
+    const row = restaurantStaff.find(r => r.id === id);
+    const rid = $("staffRestaurantSelect")?.value || "";
+    if (!row || !rid) return;
+    if (act === "restaurant-staff-edit") {
+      openStaffModal({ mode: "edit", kind: "restaurant", data: { ...row, restaurantId: rid } });
+    }
+    if (act === "restaurant-staff-delete") {
+      if (!confirm("Staff wirklich loeschen?")) return;
+      try {
+        await deleteRestaurantStaffAccount(rid, id);
+        await refreshRestaurantStaff(rid);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  });
+
+  $("staffForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const user = currentUser;
+    if (!user) return;
+
+    const mode = $("staffFormMode")?.value || "new";
+    const kind = $("staffFormKind")?.value || "system";
+    const uid = $("staffFormUid")?.value || "";
+    const requestId = $("staffFormRequestId")?.value || "";
+    const currentRole = $("staffFormCurrentRole")?.value || "";
+    const name = ($("staffName")?.value || "").trim();
+    const email = ($("staffEmail")?.value || "").trim();
+    const password = ($("staffPassword")?.value || "").trim();
+    const photoFile = $("staffPhoto")?.files?.[0] || null;
+    const existingPhotoUrl = ($("staffFormPhotoUrl")?.value || "").trim();
+    const systemRole = ($("staffSystemRole")?.value || "staff").trim();
+    const restaurantRoles = getRestaurantRolesFromForm();
+    const primaryRestaurantRole = pickPrimaryRestaurantRole(restaurantRoles);
+    const restaurantId = ($("staffRestaurantSelectModal")?.value || $("staffRestaurantSelect")?.value || "").trim();
+
+    if (!name || !email) {
+      setStaffModalStatus("Name und Email erforderlich.");
+      return;
+    }
+    if (kind === "restaurant" && !restaurantId) {
+      setStaffModalStatus("Kunde fehlt.");
+      return;
+    }
+    if (kind === "restaurant" && !restaurantRoles.length) {
+      setStaffModalStatus("Mindestens eine Rolle waehlen.");
+      return;
+    }
+    if ((mode === "new" || mode === "approve") && !password) {
+      setStaffModalStatus("Password erforderlich.");
+      return;
+    }
+
+    try {
+      if (mode === "request") {
+        const payload = {
+          kind,
+          targetRole: (kind === "restaurant") ? primaryRestaurantRole : systemRole,
+          targetRoles: (kind === "restaurant") ? restaurantRoles : [],
+          name,
+          email,
+          restaurantId: (kind === "restaurant") ? restaurantId : "",
+          restaurantName: (kind === "restaurant") ? (restaurants.find(r => r.id === restaurantId)?.name || restaurantId) : "",
+          createdByUid: user.uid,
+          createdByRole: role
+        };
+        const requestId = await createStaffRequest(payload);
+        if (photoFile) {
+          const url = await uploadStaffPhotoFile({
+            file: photoFile,
+            pathBase: `staff-requests/${requestId}/${Date.now()}`
+          });
+          await updateStaffRequest(requestId, { photoUrl: url });
+        }
+        closeStaffModal();
+        await refreshStaffRequests();
+        return;
+      }
+
+      if (mode === "approve") {
+        const targetRole = (kind === "restaurant") ? primaryRestaurantRole : systemRole;
+        let createdUid = "";
+        if (kind === "restaurant") {
+          createdUid = await createRestaurantStaffAccount({
+            restaurantId,
+            name,
+            email,
+            password,
+            role: targetRole,
+            roles: restaurantRoles,
+            photoUrl: existingPhotoUrl,
+            createdByUid: user.uid,
+            createdByRole: role
+          });
+        } else {
+          createdUid = await createSystemStaffAccount({
+            name,
+            email,
+            password,
+            role: targetRole,
+            photoUrl: existingPhotoUrl,
+            createdByUid: user.uid,
+            createdByRole: role
+          });
+        }
+        if (photoFile) {
+          const pathBase = (kind === "restaurant")
+            ? `staff-photos/restaurants/${restaurantId}/${createdUid}-${Date.now()}`
+            : `staff-photos/system/${createdUid}-${Date.now()}`;
+          const url = await uploadStaffPhotoFile({ file: photoFile, pathBase });
+          if (kind === "restaurant") {
+            await setDoc(doc(db, "restaurants", restaurantId, "staff", createdUid), { photoUrl: url }, { merge: true });
+          } else {
+            const col = targetRole === "ceo" ? "superadmins" : "staffAdmins";
+            await setDoc(doc(db, col, createdUid), { photoUrl: url }, { merge: true });
+          }
+        }
+        await updateStaffRequest(requestId, {
+          status: "approved",
+          approvedAt: serverTimestamp(),
+          approvedByUid: user.uid,
+          approvedByRole: role,
+          createdUserUid: createdUid
+        });
+        closeStaffModal();
+        await refreshStaffUi();
+        return;
+      }
+
+      if (mode === "edit") {
+        if (kind === "restaurant") {
+          let photoUrl = existingPhotoUrl;
+          if (photoFile) {
+            const pathBase = `staff-photos/restaurants/${restaurantId}/${uid}-${Date.now()}`;
+            photoUrl = await uploadStaffPhotoFile({ file: photoFile, pathBase });
+          }
+          await updateRestaurantStaffAccount({
+            restaurantId,
+            uid,
+            role: primaryRestaurantRole,
+            roles: restaurantRoles,
+            name,
+            email,
+            photoUrl,
+            updatedByUid: user.uid,
+            updatedByRole: role
+          });
+          closeStaffModal();
+          await refreshRestaurantStaff(restaurantId);
+          return;
+        }
+        let photoUrl = existingPhotoUrl;
+        if (photoFile) {
+          const pathBase = `staff-photos/system/${uid}-${Date.now()}`;
+          photoUrl = await uploadStaffPhotoFile({ file: photoFile, pathBase });
+        }
+        await updateSystemStaffAccount({
+          uid,
+          currentRole,
+          nextRole: systemRole,
+          name,
+          email,
+          photoUrl,
+          updatedByUid: user.uid,
+          updatedByRole: role
+        });
+        closeStaffModal();
+        await refreshSystemStaff();
+        return;
+      }
+
+      if (mode === "new") {
+        if (kind === "restaurant") {
+          const createdUid = await createRestaurantStaffAccount({
+            restaurantId,
+            name,
+            email,
+            password,
+            role: primaryRestaurantRole,
+            roles: restaurantRoles,
+            photoUrl: existingPhotoUrl,
+            createdByUid: user.uid,
+            createdByRole: role
+          });
+          if (photoFile && createdUid) {
+            const pathBase = `staff-photos/restaurants/${restaurantId}/${createdUid}-${Date.now()}`;
+            const url = await uploadStaffPhotoFile({ file: photoFile, pathBase });
+            await setDoc(doc(db, "restaurants", restaurantId, "staff", createdUid), { photoUrl: url }, { merge: true });
+          }
+          closeStaffModal();
+          await refreshRestaurantStaff(restaurantId);
+          return;
+        }
+        const createdUid = await createSystemStaffAccount({
+          name,
+          email,
+          password,
+          role: systemRole,
+          photoUrl: existingPhotoUrl,
+          createdByUid: user.uid,
+          createdByRole: role
+        });
+        if (photoFile && createdUid) {
+          const pathBase = `staff-photos/system/${createdUid}-${Date.now()}`;
+          const url = await uploadStaffPhotoFile({ file: photoFile, pathBase });
+          const col = systemRole === "ceo" ? "superadmins" : "staffAdmins";
+          await setDoc(doc(db, col, createdUid), { photoUrl: url }, { merge: true });
+        }
+        closeStaffModal();
+        await refreshSystemStaff();
+      }
+    } catch (err) {
+      console.error(err);
+      setStaffModalStatus(err?.message || "Fehler beim Speichern.");
+    }
+  });
+
   onAuthStateChanged(auth, async (user) => {
 
     currentUser = user;
@@ -2453,13 +3747,44 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
     if (role === "owner") {
 
-      const rid = restrictRestaurantId;
+      setBootStatus("Restaurant wird gesucht...");
+      const cachedRid = getCachedRestaurantId(user.uid) || "";
+      const urlRid = restrictRestaurantId || "";
+      const list = await findRestaurantsForStaffUser(user);
+      const validIds = new Set((list || []).map(r => r.id));
+
+      if (cachedRid && !validIds.has(cachedRid)) {
+        clearCachedRestaurantId(user.uid);
+      }
+      if (urlRid && !validIds.has(urlRid)) {
+        try {
+          const nextUrl = new URL(window.location.href);
+          nextUrl.searchParams.delete("r");
+          window.history.replaceState({}, "", nextUrl.toString());
+        } catch {}
+      }
+
+      let rid = "";
+      if (urlRid && validIds.has(urlRid)) {
+        rid = urlRid;
+      } else {
+        rid = await resolveOwnerRestaurantId(user, cachedRid, list);
+      }
+      if (rid) {
+        restrictRestaurantId = rid;
+        setCachedRestaurantId(user.uid, rid);
+        try {
+          const nextUrl = new URL(window.location.href);
+          nextUrl.searchParams.set("r", rid);
+          window.history.replaceState({}, "", nextUrl.toString());
+        } catch {}
+      }
 
       if (!rid) {
 
-        setText("offersStatus", "Fehler: ?r=RESTAURANT_ID fehlt.");
+        setText("offersStatus", "Kein Restaurant gefunden. Bitte im CEO/Staff zuweisen.");
 
-        setBootStatus("Fehler: ?r=RESTAURANT_ID fehlt.");
+        setBootStatus("Kein Restaurant gefunden. Bitte im CEO/Staff zuweisen.");
 
         return;
 
@@ -2469,11 +3794,11 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
         await ensureOwnerStaffDoc(rid, user);
 
-        const staffSnap = await getDoc(doc(db, "restaurants", rid, "staff", user.uid));
+        const staffEntry = await findStaffEntryForRestaurant(rid, user);
+        const staffRoles = normalizeRoleList(staffEntry?.data?.roles || staffEntry?.data?.role || "");
+        const ownerAllowed = ["owner","admin","manager"];
 
-        const staffRole = staffSnap.exists() ? (staffSnap.data()?.role || "") : "";
-
-        if (!["owner","admin","manager"].includes(staffRole)) {
+        if (!staffRoles.some(r => ownerAllowed.includes(r))) {
 
           setText("offersStatus", "Kein Zugriff (restaurants/{r}/staff/{uid}.role).");
 
@@ -2509,6 +3834,8 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
     }
 
+    await loadProfileForUser(role, user, restrictRestaurantId);
+
 
 
     async function refreshRestaurantsUi(force = false) {
@@ -2534,6 +3861,17 @@ $("leadForm")?.addEventListener("submit", async (e) => {
         try { refreshCustomers(); } catch (_) {}
 
         markLive("cardNextPay");
+        if (role !== "owner") {
+          for (const r of restaurants.slice(0, 30)) {
+            if (r.ownerUid || r.ownerEmail) continue;
+            try {
+              const staffSnap = await getDocs(collection(db, "restaurants", r.id, "staff"));
+              const rows = staffSnap.docs.map(d => ({ id: d.id, ...(d.data() || {}) }));
+              await ensureRestaurantOwnerMapping(r.id, rows);
+            } catch (_) {}
+          }
+        }
+        try { await refreshStaffUi(); } catch (_) {}
 
       } catch (err) {
 

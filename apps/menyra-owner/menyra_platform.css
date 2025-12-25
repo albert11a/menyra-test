@@ -1341,6 +1341,98 @@ body.theme-dark .m-mobile-menu-content {
   border: 1px solid rgba(148, 163, 184, 0.22);
 }
 
+/* ========================================================================== */
+/* Boot Overlay + Live Dashboard                                             */
+/* ========================================================================== */
+body.m-app-hidden .m-app {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(8px);
+  filter: blur(2px);
+  transition: opacity 0.24s ease, transform 0.24s ease, filter 0.24s ease;
+}
+
+.m-boot-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(105, 108, 255, 0.18), transparent 40%),
+    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.12), transparent 38%),
+    rgba(246, 247, 251, 0.95);
+  z-index: 70;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+body.theme-dark .m-boot-overlay {
+  background:
+    radial-gradient(circle at 16% 18%, rgba(99, 102, 241, 0.25), transparent 42%),
+    radial-gradient(circle at 80% 0%, rgba(14, 165, 233, 0.18), transparent 40%),
+    rgba(11, 18, 32, 0.94);
+}
+
+.m-boot-overlay.is-done {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
+}
+
+.m-boot-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 18px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow-soft);
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  text-align: center;
+}
+
+.m-boot-logo {
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  font-size: 14px;
+}
+
+.m-boot-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.m-boot-status {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.m-boot-loader {
+  display: inline-flex;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.m-boot-loader span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: mBootPulse 1s infinite ease-in-out;
+}
+
+.m-boot-loader span:nth-child(2) { animation-delay: 0.12s; }
+.m-boot-loader span:nth-child(3) { animation-delay: 0.24s; }
+
+@keyframes mBootPulse {
+  0% { opacity: 0.4; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(-4px); }
+  100% { opacity: 0.4; transform: translateY(0); }
+}
+
 
 /* ============================================================= */
 /* === STORIES (Owner) ========================================= */
@@ -1415,6 +1507,5 @@ body.theme-dark .m-story-row{
   gap: 10px;
   align-items: center;
 }
-
 
 
