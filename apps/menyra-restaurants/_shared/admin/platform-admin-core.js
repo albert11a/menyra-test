@@ -1591,6 +1591,7 @@ function openCustomerModal(mode, data = {}) {
   }
   const topBack = $("customerEditBackTop");
   if (topBack) {
+    topBack.classList.remove("is-hidden");
     topBack.onclick = closeCustomerModal;
   }
   if (!editCard) show(overlay);
@@ -1604,6 +1605,7 @@ function closeCustomerModal() {
     $("customersList")?.classList.remove("is-hidden");
   }
   $("customerEditDetails")?.classList.add("is-hidden");
+  $("customerEditBackTop")?.classList.add("is-hidden");
   if (overlay) hide(overlay);
 }
 
