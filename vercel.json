@@ -19,6 +19,7 @@
     { "source": "/kitchen/", "destination": "/apps/menyra-restaurants/kitchen/index.html" },
     { "source": "/kitchen/:path*", "destination": "/apps/menyra-restaurants/kitchen/:path*" },
     { "source": "/social/", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" }
+    { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" },
+    { "source": "/menyra-restaurants/:path*", "destination": "/apps/menyra-restaurants/:path*" }
   ]
 }
