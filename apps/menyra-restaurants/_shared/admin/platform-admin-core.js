@@ -1710,7 +1710,19 @@ function renderMenuTable(items, filterType, canDelete) {
     row.className = "m-table-row";
 
     const name = document.createElement("div");
-    name.innerHTML = `<strong>${escapeHtml(it.name || "Item")}</strong><div class="m-muted">${escapeHtml(it.category || "")}</div>`;
+    const imgSrc = (it.imageUrl || (Array.isArray(it.imageUrls) ? it.imageUrls[0] : "")) || "";
+    const thumbHtml = imgSrc
+      ? `<img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(it.name || "Item")}" style="width:44px;height:44px;border-radius:12px;object-fit:cover;border:1px solid rgba(148,163,184,0.35);" />`
+      : `<div style="width:44px;height:44px;border-radius:12px;border:1px dashed rgba(148,163,184,0.45);display:flex;align-items:center;justify-content:center;font-size:10px;color:#94a3b8;">No image</div>`;
+    name.innerHTML = `
+      <div style="display:flex;gap:10px;align-items:center;">
+        ${thumbHtml}
+        <div style="display:flex;flex-direction:column;gap:2px;">
+          <strong>${escapeHtml(it.name || "Item")}</strong>
+          <div class="m-muted">${escapeHtml(it.category || "")}</div>
+        </div>
+      </div>
+    `;
 
     const price = document.createElement("div");
     price.textContent = (it.price ?? "") === "" ? "—" : `${Number(it.price||0).toFixed(2)} €`;
