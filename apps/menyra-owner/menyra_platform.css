@@ -922,6 +922,30 @@ body.theme-dark .m-sidebar {
   }
 }
 
+@media (max-width: 800px) {
+  #menuTableBody .m-table-row,
+  #leadsTableBody .m-table-row {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 6px;
+    align-items: start;
+  }
+
+  #menuTableBody .m-table-row > :nth-child(3),
+  #menuTableBody .m-table-row > :nth-child(4),
+  #menuTableBody .m-table-row > :nth-child(5),
+  #leadsTableBody .m-table-row > :nth-child(3),
+  #leadsTableBody .m-table-row > :nth-child(4) {
+    display: block;
+  }
+
+  #menuTableBody .m-table-actions,
+  #leadsTableBody .m-table-col-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap;
+  }
+}
+
 /* ==========================================================================
    10. MODAL & FORMULAR-UI
    ========================================================================== */
