@@ -29,6 +29,12 @@
       --shadow-premium: 0 20px 50px -12px rgba(15, 23, 42, 0.08);
       --shadow-soft: 0 10px 30px -5px rgba(0, 0, 0, 0.04);
       --border-soft: rgba(15, 23, 42, 0.08);
+      --safe-top: 0px;
+      --safe-bottom: 0px;
+      --safe-blend: 0px;
+      --safe-fade: 64px;
+      --safe-solid: #eef0ff;
+      --dock-offset: 0px;
     }
 
     html.is-dark {
@@ -39,23 +45,67 @@
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --border-soft: rgba(148, 163, 184, 0.2);
+      --safe-solid: #0b1220;
+    }
+
+    @supports (padding: env(safe-area-inset-top)) {
+      :root {
+        --safe-top: env(safe-area-inset-top);
+        --safe-bottom: env(safe-area-inset-bottom);
+        --safe-blend: 24px;
+        --safe-fade: 90px;
+      }
+    }
+
+    @supports (padding: constant(safe-area-inset-top)) {
+      :root {
+        --safe-top: constant(safe-area-inset-top);
+        --safe-bottom: constant(safe-area-inset-bottom);
+        --safe-blend: 24px;
+        --safe-fade: 90px;
+      }
     }
 
     * {
       box-sizing: border-box;
     }
 
+    html {
+      background: var(--safe-solid);
+    }
+
     body {
       font-family: "Plus Jakarta Sans", sans-serif;
-      background: var(--brand-bg);
-      background-image:
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0, transparent 42%),
-        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0, transparent 42%);
+      background: var(--safe-solid);
       color: var(--text-main);
       margin: 0;
       min-height: 100vh;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+      position: relative;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: calc(var(--safe-top) + var(--safe-blend));
+      bottom: var(--safe-bottom);
+      background:
+        linear-gradient(to bottom, var(--safe-solid) 0, rgba(238, 240, 255, 0) var(--safe-fade)),
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0, transparent 42%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0, transparent 42%),
+        var(--brand-bg);
+      z-index: -1;
+    }
+
+    body.m-boot,
+    body.m-login {
+      padding: 0;
+      background: var(--safe-solid);
     }
 
     a {
@@ -758,14 +808,14 @@
 
     .mobile-dock {
       position: fixed;
-      bottom: calc(20px + env(safe-area-inset-bottom));
+      bottom: calc(20px + var(--safe-bottom));
       left: 18px;
       right: 18px;
       height: 74px;
       background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(30px);
       border-radius: 28px;
-      display: flex;
+      display: none;
       justify-content: space-around;
       align-items: center;
       z-index: 2000;
@@ -805,6 +855,22 @@
       margin-top: -35px;
       box-shadow: 0 12px 25px rgba(99, 102, 241, 0.35);
       border: 3px solid #fff;
+    }
+
+    @media (max-width: 991px) and (display-mode: standalone),
+           (max-width: 991px) and (display-mode: fullscreen),
+           (max-width: 991px) and (display-mode: minimal-ui) {
+      :root {
+        --dock-offset: 110px;
+      }
+
+      .mobile-dock {
+        display: flex;
+      }
+
+      .burger-btn {
+        display: none;
+      }
     }
 
     .m-mobile-menu-overlay {
@@ -890,8 +956,20 @@
         display: flex;
       }
 
+      html.is-pwa {
+        --dock-offset: 110px;
+      }
+
+      html.is-pwa .mobile-dock {
+        display: flex;
+      }
+
+      html.is-pwa .burger-btn {
+        display: none;
+      }
+
       .content-area {
-        padding: 20px 18px calc(120px + env(safe-area-inset-bottom));
+        padding: 20px 18px calc(24px + var(--dock-offset) + var(--safe-bottom));
       }
 
       .kpi-grid {
@@ -1547,6 +1625,15 @@
   <script src="./pwa.js" defer></script>
   <script type="module" src="./test-ceo.js"></script>
   <script>
+    const isPwa =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.matchMedia("(display-mode: fullscreen)").matches ||
+      window.matchMedia("(display-mode: minimal-ui)").matches ||
+      window.navigator.standalone;
+    if (isPwa) {
+      document.documentElement.classList.add("is-pwa");
+    }
+
     function switchRevenue(type, btn) {
       document.querySelectorAll(".rev-tab").forEach((tab) => tab.classList.remove("active"));
       if (btn) btn.classList.add("active");
