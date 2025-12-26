@@ -1025,6 +1025,32 @@ body.theme-dark .m-sidebar {
   }
 }
 
+@media (max-width: 720px) {
+  .m-modal-overlay {
+    align-items: flex-start;
+    justify-content: center;
+    padding: calc(12px + var(--safe-top)) 12px calc(12px + var(--safe-bottom));
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .m-modal {
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    border-radius: 18px;
+  }
+
+  .m-modal-body {
+    max-height: none;
+  }
+
+  .m-table {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 /* ==========================================================================
    11. SUPERADMIN-ICON IN TABELLEN
    ========================================================================== */
