@@ -190,6 +190,30 @@ function fullUrl(rel) {
   return new URL(rel, window.location.href).toString();
 }
 
+const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen"]);
+
+function getRoleOrigin(role) {
+  const host = window.location.hostname;
+  const proto = window.location.protocol;
+  const isLocal = host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
+  if (isLocal || host.endsWith(".vercel.app")) return window.location.origin;
+  const parts = host.split(".");
+  const root = ROLE_HOSTS.has(parts[0]) ? parts.slice(1).join(".") : host;
+  return `${proto}//${role}.${root}`;
+}
+
+function roleBasePath(role) {
+  const origin = getRoleOrigin(role);
+  return origin === window.location.origin ? `/${role}/` : "/";
+}
+
+function buildRoleUrl(role, params = "") {
+  const origin = getRoleOrigin(role);
+  const basePath = roleBasePath(role);
+  const suffix = params ? `?${params}` : "";
+  return `${origin}${basePath}${suffix}`;
+}
+
 // -------------------------
 // UI helpers: format, timers, live badges
 // -------------------------
@@ -1323,9 +1347,9 @@ function openQrModal(restaurant) {
   }
 
   // owner/staff codes
-  const ownerRel = `../menyra-owner/index.html?r=${encodeURIComponent(rid)}`;
-  const waiterRel = `../menyra-restaurants/waiter/index.html?r=${encodeURIComponent(rid)}`;
-  const kitchenRel = `../menyra-restaurants/kitchen/index.html?r=${encodeURIComponent(rid)}`;
+  const ownerRel = buildRoleUrl("owner", `r=${encodeURIComponent(rid)}`);
+  const waiterRel = buildRoleUrl("waiter", `r=${encodeURIComponent(rid)}`);
+  const kitchenRel = buildRoleUrl("kitchen", `r=${encodeURIComponent(rid)}`);
 
   setText("ownerAdminLink", ownerRel);
   setText("staffLoginLink", waiterRel);
