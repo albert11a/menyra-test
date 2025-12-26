@@ -3,18 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>MENYRA - Premium CEO Platform</title>
+  <meta name="theme-color" content="#6366f1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./assets/menyra-ceo-logo.png" />
+  <title>MENYRA - CEO Platform</title>
 
-  <!-- Frameworks -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <style>
     :root {
       --brand-primary: #6366f1;
       --brand-bg: #f8fafc;
-      --card-bg: rgba(255, 255, 255, 0.78);
+      --card-bg: rgba(255, 255, 255, 0.85);
       --sidebar-bg: rgba(255, 255, 255, 0.7);
       --card-border: rgba(255, 255, 255, 0.9);
       --text-main: #0f172a;
@@ -23,32 +27,45 @@
       --glass-blur: blur(24px);
       --sidebar-width: 280px;
       --shadow-premium: 0 20px 50px -12px rgba(15, 23, 42, 0.08);
+      --shadow-soft: 0 10px 30px -5px rgba(0, 0, 0, 0.04);
+      --border-soft: rgba(15, 23, 42, 0.08);
     }
 
-    [data-theme="dark"] {
+    html.is-dark {
       --brand-bg: #020617;
       --card-bg: rgba(15, 23, 42, 0.75);
       --sidebar-bg: rgba(15, 23, 42, 0.6);
       --card-border: rgba(255, 255, 255, 0.05);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
+      --border-soft: rgba(148, 163, 184, 0.2);
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
       font-family: "Plus Jakarta Sans", sans-serif;
       background: var(--brand-bg);
+      background-image:
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0, transparent 42%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0, transparent 42%);
       color: var(--text-main);
       margin: 0;
+      min-height: 100vh;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
     }
 
+    a {
+      color: inherit;
+    }
     .app-layout {
       display: flex;
       min-height: 100vh;
     }
 
-    /* PREMIUM SIDEBAR */
     .sidebar {
       width: var(--sidebar-width);
       background: var(--sidebar-bg);
@@ -78,7 +95,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      color: white;
+      color: #fff;
       font-weight: 800;
       font-size: 1.2rem;
       box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25);
@@ -93,24 +110,56 @@
       -webkit-text-fill-color: transparent;
     }
 
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 32px;
+    }
+
+    .m-sidebar-nav {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
     .menu-item {
       display: flex;
       align-items: center;
       padding: 14px 18px;
       border-radius: 16px;
       color: var(--text-muted);
-      text-decoration: none !important;
+      text-decoration: none;
       font-weight: 600;
       font-size: 0.95rem;
-      margin-bottom: 6px;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
       cursor: pointer;
     }
 
-    .menu-item.active {
+    .menu-item.is-active {
       color: var(--brand-primary);
-      background: white;
+      background: #fff;
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03);
+    }
+
+    .menu-item.is-disabled {
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .sidebar-meta {
+      font-size: 0.75rem;
+      color: var(--text-muted);
     }
 
     .content-area {
@@ -121,18 +170,17 @@
       width: 100%;
     }
 
-    /* Header */
     .header-main {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 35px;
-      gap: 16px;
+      gap: 12px;
+      margin-bottom: 28px;
       flex-wrap: wrap;
     }
 
     .header-user-card {
-      background: white;
+      background: #fff;
       padding: 6px 6px 6px 16px;
       border-radius: 20px;
       display: flex;
@@ -141,28 +189,28 @@
       box-shadow: 0 8px 25px rgba(0, 0, 0, 0.03);
     }
 
-    /* Revenue Banner */
+    html.is-dark .header-user-card {
+      background: rgba(15, 23, 42, 0.8);
+    }
     .rev-banner {
       background: var(--accent-grad);
       border-radius: 36px;
-      padding: 40px;
-      color: white;
-      margin-bottom: 40px;
+      padding: 36px;
+      color: #fff;
+      margin-bottom: 28px;
       box-shadow: 0 30px 60px -15px rgba(99, 102, 241, 0.3);
       position: relative;
       overflow: hidden;
     }
 
     .rev-tabs {
-      display: flex;
+      display: inline-flex;
       gap: 8px;
       background: rgba(255, 255, 255, 0.12);
       padding: 5px;
       border-radius: 18px;
-      margin-bottom: 30px;
-      width: fit-content;
+      margin-bottom: 22px;
       backdrop-filter: blur(10px);
-      flex-wrap: wrap;
     }
 
     .rev-tab {
@@ -171,17 +219,130 @@
       font-size: 0.85rem;
       font-weight: 700;
       cursor: pointer;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.2s ease;
       border: none;
       background: transparent;
-      color: white;
+      color: #fff;
       opacity: 0.65;
     }
 
     .rev-tab.active {
-      background: white;
+      background: #fff;
       color: var(--brand-primary);
       opacity: 1;
+    }
+
+    .kpi-grid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      backdrop-filter: var(--glass-blur);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 24px;
+      height: 100%;
+      box-shadow: var(--shadow-premium);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .kpi-card:hover {
+      transform: translateY(-4px);
+      background: #fff;
+    }
+
+    html.is-dark .kpi-card:hover {
+      background: rgba(15, 23, 42, 0.85);
+    }
+
+    .kpi-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: rgba(99, 102, 241, 0.08);
+      color: var(--brand-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      margin-bottom: 16px;
+    }
+
+    .action-card {
+      background: #fff;
+      border-radius: 22px;
+      padding: 20px;
+      border: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .action-card:hover {
+      border-color: var(--brand-primary);
+      transform: scale(1.02);
+      box-shadow: var(--shadow-soft);
+    }
+
+    .action-icon {
+      font-size: 1.4rem;
+      color: var(--brand-primary);
+    }
+
+    .timeline-item {
+      display: flex;
+      gap: 15px;
+      padding-bottom: 20px;
+      position: relative;
+    }
+
+    .timeline-item:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 7px;
+      top: 20px;
+      bottom: 0;
+      width: 2px;
+      background: #f1f5f9;
+    }
+
+    .timeline-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--brand-primary);
+      border: 3px solid #fff;
+      z-index: 2;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .table-card {
+      background: #fff;
+      border-radius: 32px;
+      overflow: hidden;
+      box-shadow: var(--shadow-premium);
+      border: 1px solid var(--card-border);
+    }
+
+    html.is-dark .table-card {
+      background: rgba(15, 23, 42, 0.8);
+    }
+
+    .menu-thumb {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
     }
 
     .view-content {
@@ -189,99 +350,39 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-
-    .kpi-card {
-      background: var(--card-bg);
-      backdrop-filter: var(--glass-blur);
-      border: 1px solid var(--card-border);
-      border-radius: 32px;
-      padding: 30px;
-      height: 100%;
-      box-shadow: var(--shadow-premium);
-      transition: transform 0.3s ease;
-      cursor: pointer;
-    }
-
-    .kpi-card:hover { transform: translateY(-5px); }
-
-    /* Leads Table Styling */
-    .lead-table-card {
-      background: white;
-      border-radius: 32px;
-      overflow: hidden;
-      box-shadow: var(--shadow-premium);
-      border: 1px solid var(--card-border);
-    }
-
-    .lead-table-head,
-    .m-table-row {
-      display: grid;
-      grid-template-columns: var(--row-cols, 2.2fr 1.4fr 1fr 1.2fr);
-      gap: 12px;
-      align-items: center;
-    }
-
-    .lead-table-head {
-      padding: 12px 8px;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-muted);
-      font-weight: 800;
-      border-bottom: 1px solid #f1f5f9;
-    }
-
-    .m-table-row {
-      padding: 12px 8px;
-      border-bottom: 1px solid #f1f5f9;
-      transition: background 0.2s;
-    }
-
-    .m-table-row:hover { background: #f8fafc; }
-
-    .status-badge,
-    .m-badge {
-      padding: 5px 12px;
-      border-radius: 10px;
-      font-size: 0.75rem;
-      font-weight: 700;
+    .m-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      background: rgba(99, 102, 241, 0.1);
-      color: #6366f1;
-    }
-
-    .m-badge--green { background: rgba(34, 197, 94, 0.12); color: #16a34a; }
-    .m-badge--yellow { background: rgba(245, 158, 11, 0.12); color: #f59e0b; }
-    .m-badge--gray { background: rgba(148, 163, 184, 0.16); color: #64748b; }
-
-    .m-table-col-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-      flex-wrap: wrap;
-    }
-
-    .m-btn {
       border: none;
       border-radius: 999px;
-      padding: 6px 12px;
-      font-size: 0.75rem;
+      padding: 8px 16px;
       font-weight: 700;
+      font-size: 0.85rem;
+      color: #fff;
       background: var(--accent-grad);
-      color: white;
       cursor: pointer;
-      box-shadow: 0 10px 20px rgba(99, 102, 241, 0.12);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 10px 24px rgba(99, 102, 241, 0.2);
+    }
+
+    .m-btn:active {
+      transform: scale(0.98);
     }
 
     .m-btn--ghost {
       background: transparent;
-      color: var(--brand-primary);
-      border: 1px solid rgba(99, 102, 241, 0.2);
+      color: var(--text-main);
+      border: 1px solid var(--border-soft);
       box-shadow: none;
     }
 
@@ -290,45 +391,47 @@
       font-size: 0.75rem;
     }
 
-    .m-muted { color: var(--text-muted); }
-    .m-inline { display: inline-flex; align-items: center; gap: 8px; }
-
-    .is-hidden { display: none !important; }
-
-    .m-modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.45);
-      backdrop-filter: blur(8px);
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-      z-index: 3000;
-      padding: 18px;
+    .m-btn--xs {
+      padding: 4px 10px;
+      font-size: 0.7rem;
     }
 
-    .m-modal {
-      background: white;
+    .m-btn--danger {
+      background: #ef4444;
+      color: #fff;
+      box-shadow: 0 10px 20px rgba(239, 68, 68, 0.2);
+    }
+
+    .m-input,
+    .m-select2,
+    .m-textarea {
       width: 100%;
-      max-width: 560px;
-      border-radius: 28px;
-      padding: 24px;
-      box-shadow: var(--shadow-premium);
-      max-height: 85vh;
-      overflow-y: auto;
+      border-radius: 14px;
+      border: 1px solid #e2e8f0;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--text-main);
     }
 
-    .m-modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 18px;
+    html.is-dark .m-input,
+    html.is-dark .m-select2,
+    html.is-dark .m-textarea {
+      background: rgba(15, 23, 42, 0.7);
+      border-color: rgba(148, 163, 184, 0.3);
     }
 
-    .m-modal-title {
-      font-weight: 800;
-      margin: 0;
+    .m-input:focus,
+    .m-select2:focus,
+    .m-textarea:focus {
+      outline: none;
+      border-color: var(--brand-primary);
+      box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    }
+
+    .m-textarea {
+      min-height: 90px;
+      resize: vertical;
     }
 
     .m-input-group {
@@ -338,27 +441,328 @@
       margin-bottom: 12px;
     }
 
-    .m-input {
-      border-radius: 14px;
-      padding: 12px 16px;
-      border: 1px solid #e2e8f0;
-      font-weight: 500;
-      width: 100%;
+    .m-input-group label {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--text-muted);
     }
 
-    /* Mobile Parts */
-    .mobile-header-branding {
+    .m-input-row {
+      display: grid;
+      gap: 12px;
+    }
+
+    .m-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      background: rgba(99, 102, 241, 0.12);
+      color: var(--brand-primary);
+    }
+
+    .m-badge--green {
+      background: rgba(34, 197, 94, 0.12);
+      color: #22c55e;
+    }
+
+    .m-badge--yellow {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f59e0b;
+    }
+
+    .m-badge--gray {
+      background: rgba(148, 163, 184, 0.18);
+      color: #64748b;
+    }
+
+    .m-badge--success {
+      background: rgba(34, 197, 94, 0.12);
+      color: #22c55e;
+    }
+
+    .m-badge--ghost {
+      background: rgba(148, 163, 184, 0.15);
+      color: #64748b;
+    }
+
+    .m-table {
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    html.is-dark .m-table {
+      background: rgba(15, 23, 42, 0.7);
+    }
+
+    .m-table-row {
+      display: grid;
+      grid-template-columns: var(--row-cols, 1fr);
+      gap: 10px;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.9rem;
+    }
+
+    html.is-dark .m-table-row {
+      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    .m-table-row:last-child {
+      border-bottom: none;
+    }
+
+    .m-table-row--header {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      background: rgba(99, 102, 241, 0.06);
+    }
+
+    .m-table-col-actions,
+    .m-table-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .m-table-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .m-empty {
+      padding: 16px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+
+    .m-seg {
+      display: inline-flex;
+      gap: 6px;
+      background: rgba(148, 163, 184, 0.15);
+      padding: 4px;
+      border-radius: 999px;
+    }
+
+    .m-seg-btn {
+      border: none;
+      background: transparent;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .m-seg-btn.is-active {
+      background: #fff;
+      color: var(--brand-primary);
+    }
+
+    .m-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .m-profile-name {
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+
+    .m-profile-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      object-fit: cover;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+    }
+
+    .is-hidden {
+      display: none !important;
+    }
+
+    .m-app-hidden .app-layout {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(8px);
+      filter: blur(2px);
+      transition: opacity 0.2s ease, transform 0.2s ease, filter 0.2s ease;
+    }
+
+    .m-boot-overlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.18), rgba(168, 85, 247, 0.12)), #f8fafc;
+      z-index: 4000;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    html.is-dark .m-boot-overlay {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.25), rgba(168, 85, 247, 0.18)), #020617;
+    }
+
+    .m-boot-overlay.is-done {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-8px);
+    }
+
+    .m-boot-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 22px 26px;
+      text-align: center;
+      box-shadow: var(--shadow-premium);
+      border: 1px solid var(--card-border);
+      min-width: 240px;
+    }
+
+    html.is-dark .m-boot-card {
+      background: rgba(15, 23, 42, 0.9);
+    }
+
+    .m-boot-logo {
+      font-weight: 800;
+      letter-spacing: 0.16em;
+    }
+
+    .m-boot-status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .m-boot-loader {
+      display: inline-flex;
+      gap: 6px;
+      margin: 10px 0;
+    }
+
+    .m-boot-loader span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--brand-primary);
+      animation: bootPulse 1s infinite ease-in-out;
+    }
+
+    .m-boot-loader span:nth-child(2) {
+      animation-delay: 0.12s;
+    }
+
+    .m-boot-loader span:nth-child(3) {
+      animation-delay: 0.24s;
+    }
+
+    @keyframes bootPulse {
+      0% { opacity: 0.4; transform: translateY(0); }
+      50% { opacity: 1; transform: translateY(-4px); }
+      100% { opacity: 0.4; transform: translateY(0); }
+    }
+
+    .m-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 3000;
+    }
+
+    .m-modal {
+      background: #fff;
+      border-radius: 24px;
+      width: 100%;
+      max-width: 560px;
+      border: 1px solid var(--card-border);
+      box-shadow: var(--shadow-premium);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    html.is-dark .m-modal {
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    .m-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .m-modal-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .m-modal-body {
+      padding: 18px 20px 22px;
+      overflow-y: auto;
+    }
+
+    .m-modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    @media (min-width: 640px) {
+      .m-input-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .mobile-header {
       display: none;
-      margin-bottom: 30px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .burger-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid var(--border-soft);
+      background: rgba(255, 255, 255, 0.9);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      color: var(--text-main);
     }
 
     .mobile-dock {
       position: fixed;
-      bottom: 25px;
-      left: 20px;
-      right: 20px;
-      height: 75px;
-      background: rgba(255, 255, 255, 0.92);
+      bottom: calc(20px + env(safe-area-inset-bottom));
+      left: 18px;
+      right: 18px;
+      height: 74px;
+      background: rgba(255, 255, 255, 0.95);
       backdrop-filter: blur(30px);
       border-radius: 28px;
       display: flex;
@@ -368,410 +772,818 @@
       box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
     }
 
+    html.is-dark .mobile-dock {
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    .dock-item {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+    }
+
+    .dock-item.is-active {
+      color: var(--brand-primary);
+    }
+
+    .dock-center {
+      width: 54px;
+      height: 54px;
+      background: var(--accent-grad);
+      border-radius: 18px;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: -35px;
+      box-shadow: 0 12px 25px rgba(99, 102, 241, 0.35);
+      border: 3px solid #fff;
+    }
+
+    .m-mobile-menu-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 2400;
+    }
+
+    .m-mobile-menu-overlay.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .m-mobile-menu {
+      position: fixed;
+      inset: 0;
+      background: var(--brand-bg);
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      z-index: 2500;
+      display: flex;
+      flex-direction: column;
+    }
+
+    html.is-dark .m-mobile-menu {
+      background: #020617;
+    }
+
+    .m-mobile-menu.is-open {
+      transform: translateX(0);
+    }
+
+    .m-mobile-menu-inner {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      padding: 24px 20px 32px;
+      gap: 18px;
+    }
+
+    .m-mobile-menu-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .m-mobile-menu-close {
+      border: none;
+      background: transparent;
+      font-size: 1.4rem;
+      color: var(--text-main);
+    }
+
+    .m-mobile-menu-section {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
     @media (min-width: 992px) {
-      .sidebar { display: flex; }
-      .mobile-dock { display: none; }
-      .content-area { padding: 40px 60px; }
-      .m-modal-overlay { align-items: center; }
+      .sidebar {
+        display: flex;
+      }
+
+      .mobile-header,
+      .mobile-dock,
+      .m-mobile-menu,
+      .m-mobile-menu-overlay {
+        display: none;
+      }
+
+      .content-area {
+        padding: 40px 60px 60px;
+      }
     }
 
     @media (max-width: 991px) {
-      .mobile-header-branding { display: flex; justify-content: space-between; align-items: center; }
-      .lead-table-head { display: none; }
-      .m-table-row { grid-template-columns: 1fr; gap: 8px; }
-      .m-table-col-actions { justify-content: flex-start; }
-      .content-area { padding: 20px; padding-bottom: 130px; }
-      .header-user-card { width: 100%; justify-content: space-between; }
-      .rev-banner { padding: 28px; border-radius: 28px; }
-      .rev-tab { padding: 8px 14px; font-size: 0.78rem; }
-      .lead-table-card { border-radius: 24px; }
+      .mobile-header {
+        display: flex;
+      }
+
+      .content-area {
+        padding: 20px 18px calc(120px + env(safe-area-inset-bottom));
+      }
+
+      .kpi-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .rev-banner {
+        padding: 26px;
+        border-radius: 28px;
+      }
+
+      .rev-banner h1 {
+        font-size: 2rem;
+      }
     }
 
-    @media (max-width: 520px) {
-      .content-area { padding: 16px; padding-bottom: 130px; }
-      .header-main { margin-bottom: 24px; }
-      .header-user-card { padding: 8px 10px; }
-      .rev-banner { padding: 22px; margin-bottom: 28px; }
-      .rev-banner h1 { font-size: clamp(1.6rem, 6vw, 2.6rem); }
-      .kpi-card { padding: 20px; border-radius: 24px; }
-      .lead-table-card { padding: 20px !important; }
-      .mobile-dock { height: 70px; bottom: 18px; left: 14px; right: 14px; }
-    }
+    @media (max-width: 720px) {
+      .m-table-row {
+        grid-template-columns: 1fr;
+      }
 
-    @media (max-width: 380px) {
-      .rev-tabs { width: 100%; justify-content: space-between; }
-      .rev-tab { flex: 1; text-align: center; padding: 8px 10px; }
-      .kpi-card { padding: 18px; }
+      .m-table-row--header {
+        display: none;
+      }
+
+      .m-table-col-actions,
+      .m-table-actions {
+        justify-content: flex-start;
+      }
+
+      .m-modal-overlay {
+        align-items: flex-end;
+      }
+
+      .m-modal {
+        border-radius: 24px 24px 0 0;
+        max-width: none;
+      }
     }
   </style>
 </head>
-<body>
+<body class="m-boot m-app-hidden">
+  <div class="m-boot-overlay" id="mBootOverlay">
+    <div class="m-boot-card">
+      <div class="m-boot-logo">MENYRA</div>
+      <div class="m-boot-sub" id="mBootLabel">CEO Platform</div>
+      <div class="m-boot-loader"><span></span><span></span><span></span></div>
+      <div class="m-boot-status" id="mBootStatus">Loading.</div>
+    </div>
+  </div>
+
+  <div class="m-mobile-menu-overlay" id="mobileMenuOverlay"></div>
+  <aside class="m-mobile-menu" id="mobileMenu" aria-hidden="true">
+    <div class="m-mobile-menu-inner">
+      <div class="m-mobile-menu-header">
+        <div class="brand-logo-container">
+          <div class="brand-logo">M</div>
+          <div class="brand-name">MENYRA</div>
+        </div>
+        <button class="m-mobile-menu-close" id="mobileMenuClose" type="button" aria-label="Close menu">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="m-mobile-menu-section">
+        <div class="m-profile">
+          <span class="m-profile-name">Account</span>
+          <img class="m-profile-avatar" alt="Profile" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb'/%3E%3Ccircle cx='32' cy='26' r='12' fill='%239ca3af'/%3E%3Cpath d='M12 58c4-12 16-18 20-18s16 6 20 18' fill='%239ca3af'/%3E%3C/svg%3E" />
+        </div>
+      </div>
+      <div class="m-mobile-menu-section">
+        <div id="mobileNavHost"></div>
+      </div>
+      <div class="m-mobile-menu-section">
+        <button class="m-btn m-btn--ghost" id="logoutButtonMobile" type="button">Logout</button>
+        <div class="sidebar-meta" id="adminStatusMobile">System ready</div>
+      </div>
+    </div>
+  </aside>
 
   <div class="app-layout">
-    <!-- SIDEBAR -->
     <aside class="sidebar">
-      <div class="brand-logo-container mb-5 px-1" onclick="switchView('dashboard')">
+      <div class="brand-logo-container" onclick="return false;">
         <div class="brand-logo">M</div>
         <div class="brand-name">MENYRA</div>
       </div>
-      <nav>
-        <div class="menu-item active" id="menu-dashboard" onclick="switchView('dashboard')">
-          <i class="fas fa-th-large me-3"></i> Dashboard
-        </div>
-        <div class="menu-item" id="menu-leads" onclick="switchView('leads')">
-          <i class="fas fa-chart-line me-3"></i> Leads
-        </div>
-        <div class="menu-item"><i class="fas fa-utensils me-3"></i> Speisekarte</div>
-        <div class="menu-item"><i class="fas fa-calendar-check me-3"></i> Buchungen</div>
-        <div class="menu-item" id="menu-customers" onclick="switchView('customers')"><i class="fas fa-users me-3"></i> Kundenstamm</div>
+      <nav id="sidebarNav" class="sidebar-nav">
+        <a href="#" class="menu-item is-active" data-section="dashboard"><i class="fas fa-th-large me-3"></i>Dashboard</a>
+        <a href="#" class="menu-item" data-section="leads"><i class="fas fa-chart-line me-3"></i>Leads</a>
+        <a href="#" class="menu-item" data-section="menu"><i class="fas fa-utensils me-3"></i>Menu</a>
+        <a href="#" class="menu-item" data-section="customers"><i class="fas fa-users me-3"></i>Customers</a>
+        <div class="menu-item is-disabled"><i class="fas fa-calendar-check me-3"></i>Bookings</div>
       </nav>
-
-      <div class="mt-auto px-2">
-         <div class="d-flex align-items-center gap-2 px-2">
-            <div style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%;"></div>
-            <span class="small fw-700">System online</span>
-         </div>
+      <div class="sidebar-footer">
+        <button class="m-btn m-btn--ghost" id="logoutButton" type="button">Logout</button>
+        <div class="sidebar-meta" id="adminStatus">System ready</div>
       </div>
     </aside>
 
     <main class="content-area">
-      <!-- MOBILE BRANDING -->
-      <div class="mobile-header-branding">
-        <div class="brand-logo-container" onclick="switchView('dashboard')">
-          <div class="brand-logo" style="width: 34px; height: 34px; font-size: 1rem;">M</div>
-          <div class="brand-name" style="font-size: 1.3rem;">MENYRA</div>
+      <div class="mobile-header">
+        <button class="burger-btn" id="burgerToggle" type="button" aria-label="Open menu">
+          <i class="fas fa-bars"></i>
+        </button>
+        <div class="brand-logo-container">
+          <div class="brand-logo" style="width:34px;height:34px;font-size:1rem;">M</div>
+          <div class="brand-name" style="font-size:1.2rem;">MENYRA</div>
         </div>
-        <div class="status-pill" style="background: rgba(99, 102, 241, 0.1); color: #6366f1; padding: 6px 14px; border-radius: 14px; font-weight: 800; font-size: 0.65rem;">CEO</div>
+        <img class="m-profile-avatar" alt="Profile" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb'/%3E%3Ccircle cx='32' cy='26' r='12' fill='%239ca3af'/%3E%3Cpath d='M12 58c4-12 16-18 20-18s16 6 20 18' fill='%239ca3af'/%3E%3C/svg%3E" />
       </div>
-
-      <!-- VIEW: DASHBOARD -->
-      <div id="view-dashboard" class="view-content">
+      <section class="m-view view-content" data-view="dashboard">
         <header class="header-main">
           <div>
-            <h2 class="fw-800 m-0" style="letter-spacing: -0.8px;">Performance</h2>
-            <p class="text-muted small fw-600 m-0">Echtzeit-Daten Ihrer Betriebe</p>
+            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Hello, CEO</h2>
+            <p class="text-muted small fw-600 m-0">Live performance for your locations.</p>
           </div>
-          <div class="header-user-card">
-            <div class="text-end d-none d-sm-block">
-              <div class="fw-800 small m-profile-name">CEO Platform</div>
-              <div style="font-size: 0.6rem; font-weight: 700; color: #6366f1; text-transform: uppercase;">Administrator</div>
+          <div class="header-user-card d-none d-lg-flex">
+            <div class="text-end">
+              <div class="m-profile-name">Account</div>
+              <div class="small fw-700 text-muted">Administrator</div>
             </div>
-            <img src="https://ui-avatars.com/api/?name=CEO&background=6366f1&color=fff&bold=true" class="rounded-circle m-profile-avatar" width="42" height="42" alt="Avatar">
+            <img class="m-profile-avatar" alt="Profile" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64'%3E%3Crect width='64' height='64' fill='%23e5e7eb'/%3E%3Ccircle cx='32' cy='26' r='12' fill='%239ca3af'/%3E%3Cpath d='M12 58c4-12 16-18 20-18s16 6 20 18' fill='%239ca3af'/%3E%3C/svg%3E" />
           </div>
         </header>
 
         <div class="rev-banner">
           <div class="rev-tabs">
-            <button class="rev-tab active" onclick="switchRevenue('all', this)">Komplett</button>
-            <button class="rev-tab" onclick="switchRevenue('month', this)">Monatlich</button>
-            <button class="rev-tab" onclick="switchRevenue('day', this)">Taeglich</button>
+            <button class="rev-tab active" type="button" onclick="switchRevenue('all', this)">Total</button>
+            <button class="rev-tab" type="button" onclick="switchRevenue('month', this)">Month</button>
           </div>
-          <div id="rev-all" class="rev-content">
-            <p class="fw-700 m-0 opacity-75 small text-uppercase">Gesamtumsatz Plattform</p>
-            <h1 class="fw-800 display-4 m-0" id="dashRevenueYearly" style="letter-spacing: -2px;">EUR 0,00</h1>
+          <div id="rev-all">
+            <p class="fw-700 m-0 opacity-75 small text-uppercase">Platform revenue</p>
+            <h1 class="fw-800 display-5 m-0" style="letter-spacing:-2px;" id="dashRevenueYearly">EUR 0</h1>
+            <div class="small fw-700 mt-2">Active customers: <span>0</span></div>
           </div>
-          <div id="rev-month" class="rev-content d-none">
-            <p class="fw-700 m-0 opacity-75 small text-uppercase">Umsatz Monat</p>
-            <h1 class="fw-800 display-4 m-0">EUR 0,00</h1>
+          <div id="rev-month" class="d-none">
+            <p class="fw-700 m-0 opacity-75 small text-uppercase">Monthly revenue</p>
+            <h1 class="fw-800 display-5 m-0" id="dashRevenueMonthly">EUR 0</h1>
           </div>
-          <div id="rev-day" class="rev-content d-none">
-            <p class="fw-700 m-0 opacity-75 small text-uppercase">Umsatz Heute</p>
-            <h1 class="fw-800 display-4 m-0">EUR 0,00</h1>
+          <span id="dashRevenueDaily" class="d-none">0</span>
+        </div>
+
+        <div class="kpi-grid mb-4">
+          <div class="kpi-card" onclick="document.querySelector('[data-section=leads]')?.click();">
+            <div class="kpi-icon"><i class="fas fa-bolt"></i></div>
+            <div class="text-muted small fw-800">LEADS</div>
+            <h3 class="fw-800 m-0" id="dashLeadsTotal">0</h3>
+            <div class="small text-muted mt-2">Open: <span id="dashLeadsOpen">0</span></div>
+          </div>
+          <div class="kpi-card" onclick="document.querySelector('[data-section=customers]')?.click();">
+            <div class="kpi-icon" style="background: rgba(34, 197, 94, 0.08); color:#22c55e;"><i class="fas fa-users"></i></div>
+            <div class="text-muted small fw-800">CUSTOMERS</div>
+            <h3 class="fw-800 m-0" id="dashActiveCustomersCount">0</h3>
+            <div class="small text-muted mt-2">Active accounts</div>
+          </div>
+          <div class="kpi-card" onclick="document.querySelector('[data-section=menu]')?.click();">
+            <div class="kpi-icon" style="background: rgba(168, 85, 247, 0.08); color:#a855f7;"><i class="fas fa-utensils"></i></div>
+            <div class="text-muted small fw-800">MENUS</div>
+            <h3 class="fw-800 m-0">Live</h3>
+            <div class="small text-muted mt-2">Tap to manage</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background: rgba(249, 115, 22, 0.08); color:#f97316;"><i class="fas fa-star"></i></div>
+            <div class="text-muted small fw-800">STATUS</div>
+            <h3 class="fw-800 m-0">Online</h3>
+            <div class="small text-muted mt-2">All systems</div>
           </div>
         </div>
 
-        <div class="row g-4">
-          <div class="col-6 col-md-3" onclick="switchView('leads')">
-            <div class="kpi-card text-center">
-            <div class="text-muted small fw-800 mb-2">LEADS</div>
-            <h3 class="fw-800 m-0" id="dashLeadsOpen" style="color: var(--brand-primary);">0</h3>
-            <span id="dashLeadsTotal" class="visually-hidden">0</span>
-              <div class="small fw-700 text-success mt-2">Live</div>
+        <div class="row g-4 mb-5">
+          <div class="col-12 col-lg-7">
+            <h5 class="fw-800 mb-4 px-1">Quick actions</h5>
+            <div class="row g-3">
+              <div class="col-6">
+                <button class="action-card" type="button" onclick="document.querySelector('[data-section=menu]')?.click();">
+                  <div class="action-icon"><i class="fas fa-plus-circle"></i></div>
+                  <div>
+                    <div class="fw-800 small">Menu editor</div>
+                    <div class="text-muted small" style="font-size:0.65rem;">Manage cards</div>
+                  </div>
+                </button>
+              </div>
+              <div class="col-6">
+                <button class="action-card" type="button" id="openNewCustomerFromDashboard">
+                  <div class="action-icon" style="color:#22c55e;"><i class="fas fa-user-plus"></i></div>
+                  <div>
+                    <div class="fw-800 small">New customer</div>
+                    <div class="text-muted small" style="font-size:0.65rem;">Add a restaurant</div>
+                  </div>
+                </button>
+              </div>
+              <div class="col-6">
+                <button class="action-card" type="button" id="openNewLeadFromDashboard">
+                  <div class="action-icon" style="color:#6366f1;"><i class="fas fa-bolt"></i></div>
+                  <div>
+                    <div class="fw-800 small">New lead</div>
+                    <div class="text-muted small" style="font-size:0.65rem;">Add pipeline</div>
+                  </div>
+                </button>
+              </div>
+              <div class="col-6">
+                <button class="action-card" type="button">
+                  <div class="action-icon" style="color:#64748b;"><i class="fas fa-file-export"></i></div>
+                  <div>
+                    <div class="fw-800 small">Export</div>
+                    <div class="text-muted small" style="font-size:0.65rem;">Reports</div>
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
-          <div class="col-6 col-md-3">
-            <div class="kpi-card text-center">
-              <div class="text-muted small fw-800 mb-2">KUNDEN</div>
-              <h3 class="fw-800 m-0" id="dashActiveCustomersCount">0</h3>
-              <div class="small fw-700 text-muted mt-2">Aktiv</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="kpi-card text-center">
-              <div class="text-muted small fw-800 mb-2">USER</div>
-              <h3 class="fw-800 m-0">2.140</h3>
-              <div class="small fw-700 text-success mt-2">Aktiv</div>
-            </div>
-          </div>
-          <div class="col-6 col-md-3">
-            <div class="kpi-card text-center">
-              <div class="text-muted small fw-800 mb-2">Oe ORDER</div>
-              <h3 class="fw-800 m-0">EUR 42.50</h3>
-              <div class="small fw-700 text-primary mt-2">Target</div>
+          <div class="col-12 col-lg-5">
+            <div class="kpi-card">
+              <h5 class="fw-800 mb-4">Activity</h5>
+              <div class="timeline">
+                <div class="timeline-item">
+                  <div class="timeline-dot"></div>
+                  <div>
+                    <div class="fw-800 small">New lead added</div>
+                    <div class="text-muted small" style="font-size:0.7rem;">Just now</div>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-dot" style="background:#22c55e;"></div>
+                  <div>
+                    <div class="fw-800 small">Payment received</div>
+                    <div class="text-muted small" style="font-size:0.7rem;">12 min ago</div>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-dot" style="background:#a855f7;"></div>
+                  <div>
+                    <div class="fw-800 small">Menu published</div>
+                    <div class="text-muted small" style="font-size:0.7rem;">2 hours ago</div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-
-      <!-- VIEW: LEADS -->
-      <div id="view-leads" class="view-content d-none">
+      </section>
+      <section class="m-view view-content" data-view="leads" style="display:none;">
         <header class="header-main">
           <div>
-            <h2 class="fw-800 m-0" style="letter-spacing: -0.8px;">Lead Management</h2>
-            <p class="text-muted small fw-600 m-0">Pipeline Uebersicht</p>
+            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Lead management</h2>
+            <p class="text-muted small fw-600 m-0">Pipeline overview</p>
           </div>
           <div class="d-flex gap-2">
-            <button class="btn btn-primary rounded-pill px-4 fw-800" id="newLeadBtn">
-              <i class="fas fa-plus me-2"></i> Neu
-            </button>
-            <button class="btn btn-light rounded-pill px-4 fw-800" onclick="switchView('dashboard')">
-              <i class="fas fa-arrow-left me-2"></i> Zurueck
-            </button>
+            <button class="m-btn" id="newLeadBtn" type="button">New lead</button>
+            <button class="m-btn m-btn--ghost" type="button" data-section="dashboard">Back</button>
           </div>
         </header>
 
-        <div class="lead-table-card p-4" style="--row-cols: 2.2fr 1.4fr 1fr 1.2fr;">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="text-muted small fw-700" id="leadsMeta">-</div>
+        <div class="table-card p-3 p-md-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
+            <div class="flex-grow-1">
+              <input id="leadsSearch" class="m-input" placeholder="Search leads" />
+              <div class="small text-muted mt-2" id="leadsMeta">-</div>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <select id="leadsStatusFilter" class="m-select2">
+                <option value="">All status</option>
+                <option value="new">Open</option>
+                <option value="contacted">Contacted</option>
+                <option value="waiting">Waiting</option>
+                <option value="follow_up">Follow up</option>
+                <option value="interested">Interested</option>
+                <option value="no_interest">No interest</option>
+                <option value="converted">Converted</option>
+              </select>
+              <select id="leadsTypeFilter" class="m-select2">
+                <option value="">All types</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="cafe">Cafe</option>
+                <option value="hotel">Hotel</option>
+                <option value="ecommerce">Ecommerce</option>
+                <option value="service">Service</option>
+              </select>
+              <select id="leadsLabelFilter" class="m-select2">
+                <option value="">All labels</option>
+              </select>
+              <button class="m-btn m-btn--ghost m-btn--small" id="leadsClearFilters" type="button">Reset</button>
+            </div>
           </div>
-          <div class="lead-table-head">
-            <div>NAME / BETRIEB</div>
-            <div>Kontakt</div>
-            <div>Status</div>
-            <div class="text-end">Aktion</div>
+
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="m-badge">Total: <span id="leadsTotalBadge">0</span></span>
+            <span class="m-badge m-badge--ghost" id="leadsStatNew"></span>
+            <span class="m-badge m-badge--ghost" id="leadsStatContacted"></span>
+            <span class="m-badge m-badge--ghost" id="leadsStatInterested"></span>
+            <span class="m-badge m-badge--ghost" id="leadsStatNoInterest"></span>
           </div>
-          <div id="leadsTableBody">
-            <div class="text-center py-4 opacity-50 small">Lade Leads...</div>
+
+          <div class="m-table" style="--row-cols: 2fr 1.4fr 1fr 1.2fr;">
+            <div class="m-table-row m-table-row--header">
+              <div>Business</div>
+              <div>Contact</div>
+              <div>Status</div>
+              <div class="m-table-col-actions">Action</div>
+            </div>
+            <div id="leadsTableBody"></div>
+          </div>
+
+          <div class="m-table-footer">
+            <span>Limit: 200</span>
+            <span>Page 1 of 1</span>
           </div>
         </div>
-      </div>
-
-      <!-- VIEW: CUSTOMERS -->
-      <div id="view-customers" class="view-content d-none">
+      </section>
+      <section class="m-view view-content" data-view="customers" style="display:none;">
         <header class="header-main">
           <div>
-            <h2 class="fw-800 m-0" style="letter-spacing: -0.8px;">Kundenstamm</h2>
-            <p class="text-muted small fw-600 m-0">Aktive Restaurants</p>
+            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Customers</h2>
+            <p class="text-muted small fw-600 m-0">Manage active restaurants</p>
           </div>
           <div class="d-flex gap-2">
-            <button class="btn btn-primary rounded-pill px-4 fw-800" id="newCustomerBtn">
-              <i class="fas fa-plus me-2"></i> Neu
-            </button>
-            <button class="btn btn-light rounded-pill px-4 fw-800" onclick="switchView('dashboard')">
-              <i class="fas fa-arrow-left me-2"></i> Zurueck
-            </button>
+            <button class="m-btn" id="newCustomerBtn" type="button">New customer</button>
+            <button class="m-btn m-btn--ghost" type="button" data-section="dashboard">Back</button>
           </div>
         </header>
 
-        <div class="lead-table-card p-4" style="--row-cols: 2fr 1.2fr 1fr 1fr 1fr 1.2fr;">
-          <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="text-muted small fw-700" id="customersMeta">-</div>
+        <div class="table-card p-3 p-md-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
+            <div class="flex-grow-1">
+              <input id="customerSearch" class="m-input" placeholder="Search customers" />
+              <div class="small text-muted mt-2" id="customersMeta">-</div>
+            </div>
+            <label class="d-flex align-items-center gap-2 small fw-700">
+              <input type="checkbox" id="customersOnlyActive" checked />
+              Only active
+            </label>
           </div>
-          <div class="lead-table-head">
-            <div>Name</div>
-            <div>Owner</div>
-            <div>Stadt</div>
-            <div>Preis</div>
-            <div>Status</div>
-            <div class="text-end">Aktion</div>
+
+          <div class="m-table" style="--row-cols: 1.6fr 1.2fr 1fr 1fr 0.9fr 1.2fr;">
+            <div class="m-table-row m-table-row--header">
+              <div>Customer</div>
+              <div>Owner</div>
+              <div>City</div>
+              <div>Plan</div>
+              <div>Status</div>
+              <div class="m-table-col-actions">Action</div>
+            </div>
+            <div id="customersTableBody"></div>
           </div>
-          <div id="customersTableBody">
-            <div class="text-center py-4 opacity-50 small">Lade Kunden...</div>
+
+          <div class="m-table-footer">
+            <span id="customersFooter">-</span>
+            <span>Page 1 of 1</span>
           </div>
-          <div id="customersFooter" class="text-muted small mt-2">-</div>
         </div>
-      </div>
+      </section>
+      <section class="m-view view-content" data-view="menu" style="display:none;">
+        <header class="header-main">
+          <div>
+            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Menus</h2>
+            <p class="text-muted small fw-600 m-0">Manage food and drink cards</p>
+          </div>
+          <div class="d-flex flex-wrap gap-2">
+            <select id="menuRestaurantSelect" class="m-select2" style="min-width:200px;"></select>
+            <button class="m-btn" id="menuAddBtn" type="button">New item</button>
+            <button class="m-btn m-btn--ghost" id="menuPublishBtn" type="button">Publish</button>
+            <button class="m-btn m-btn--ghost" type="button" data-section="dashboard">Back</button>
+          </div>
+        </header>
+
+        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+          <div class="m-seg" id="menuTypeSeg" role="tablist" aria-label="Type">
+            <button class="m-seg-btn is-active" type="button" data-menu-type="all">All</button>
+            <button class="m-seg-btn" type="button" data-menu-type="food">Food</button>
+            <button class="m-seg-btn" type="button" data-menu-type="drink">Drink</button>
+          </div>
+          <div class="small text-muted" id="menuStatus">-</div>
+        </div>
+
+        <div class="table-card p-3 p-md-4">
+          <div class="m-table" style="--row-cols: 1.8fr 0.8fr 1fr 1fr 1.2fr;">
+            <div class="m-table-row m-table-row--header">
+              <div>Item</div>
+              <div>Price</div>
+              <div>Type</div>
+              <div>Status</div>
+              <div class="m-table-col-actions">Action</div>
+            </div>
+            <div id="menuTableBody"></div>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
 
-  <!-- MOBILE DOCK -->
   <nav class="mobile-dock">
-    <a href="#" onclick="switchView('dashboard')" class="text-primary"><i class="fas fa-th-large fs-5"></i></a>
-    <a href="#" onclick="switchView('leads')" class="text-muted"><i class="fas fa-paper-plane fs-5"></i></a>
-    <button id="openNewLeadFromDashboard" type="button" style="width: 54px; height: 54px; background: var(--accent-grad); border-radius: 18px; color: white; display: flex; align-items: center; justify-content: center; margin-top: -45px; box-shadow: 0 12px 25px rgba(99, 102, 241, 0.35); border: 3px solid white;">
-      <i class="fas fa-plus"></i>
-    </button>
-    <a href="#" onclick="switchView('customers')" class="text-muted"><i class="fas fa-users fs-5"></i></a>
-    <a href="#" class="text-muted"><i class="fas fa-cog fs-5"></i></a>
+    <button class="dock-item is-active" type="button" data-section="dashboard"><i class="fas fa-th-large"></i></button>
+    <button class="dock-item" type="button" data-section="leads"><i class="fas fa-paper-plane"></i></button>
+    <button class="dock-center" type="button" data-section="menu"><i class="fas fa-utensils"></i></button>
+    <button class="dock-item" type="button" data-section="customers"><i class="fas fa-users"></i></button>
+    <button class="dock-item" type="button"><i class="fas fa-cog"></i></button>
   </nav>
-
-  <!-- LEAD MODAL -->
-  <div class="m-modal-overlay is-hidden" id="leadModalOverlay">
-    <div class="m-modal">
-      <div class="m-modal-header">
-        <h5 class="m-modal-title" id="leadModalTitle">Neuer Lead</h5>
-        <button class="btn-close" id="leadModalClose" type="button"></button>
-      </div>
-      <form id="leadForm">
-        <input type="hidden" id="leadId">
-        <div class="mb-3">
-          <label class="form-label">Betrieb</label>
-          <input type="text" id="leadBusinessName" class="form-control" required>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Kontakt</label>
-          <input type="text" id="leadContactName" class="form-control" placeholder="Name der Kontaktperson">
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label">Telefon</label>
-            <input type="tel" id="leadPhone" class="form-control">
-          </div>
-          <div class="col-6">
-            <label class="form-label">Instagram</label>
-            <input type="text" id="leadInstagram" class="form-control">
-          </div>
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label">Stadt</label>
-            <input type="text" id="leadCity" class="form-control">
-          </div>
-          <div class="col-6">
-            <label class="form-label">Kategorie</label>
-            <select id="leadCustomerType" class="form-select">
-              <option value="restaurant">Restaurant</option>
-              <option value="cafe">Cafe</option>
-              <option value="ecommerce">E-Commerce</option>
-              <option value="hotel">Hotel</option>
-              <option value="service">Dienstleistung</option>
-            </select>
-          </div>
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label">Status</label>
-            <select id="leadStatus" class="form-select">
-              <option value="new">Offen</option>
-              <option value="contacted">Kontaktiert</option>
-              <option value="qualified">Qualifiziert</option>
-              <option value="offer_sent">Angebot gesendet</option>
-              <option value="no_interest">Kein Interesse</option>
-            </select>
-          </div>
-          <div class="col-6">
-            <label class="form-label">Labels</label>
-            <input type="text" id="leadLabels" class="form-control" placeholder="z.B. hot, IG, premium">
-          </div>
-        </div>
-        <div class="mb-3">
-          <label class="form-label">Notiz</label>
-          <textarea id="leadNote" class="form-control" rows="2"></textarea>
-        </div>
-        <div id="leadModalStatus" class="small text-muted mb-3"></div>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-light rounded-pill flex-grow-1 fw-bold" data-modal-close="leadModalClose">Abbrechen</button>
-          <button type="submit" class="btn btn-primary rounded-pill flex-grow-1 fw-bold" style="background: var(--accent-grad); border:none;">Speichern</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
-  <!-- CUSTOMER MODAL -->
   <div class="m-modal-overlay is-hidden" id="customerModalOverlay">
     <div class="m-modal">
       <div class="m-modal-header">
-        <h5 class="m-modal-title" id="customerModalTitle">Neuer Kunde</h5>
-        <button class="btn-close" id="customerModalClose" type="button"></button>
+        <h3 class="m-modal-title" id="customerModalTitle">New customer</h3>
+        <button class="m-btn m-btn--ghost m-btn--small" id="customerModalClose" type="button">Close</button>
       </div>
-      <form id="customerForm">
-        <input type="hidden" id="customerId">
-        <div class="mb-3">
-          <label class="form-label">Restaurant Name</label>
-          <input type="text" id="customerName" class="form-control" required>
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label">Owner</label>
-            <input type="text" id="customerOwner" class="form-control">
+      <div class="m-modal-body">
+        <form id="customerForm">
+          <input type="hidden" id="customerId" />
+
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="customerName">Business name</label>
+              <input id="customerName" class="m-input" placeholder="Restaurant or cafe" />
+            </div>
+            <div class="m-input-group">
+              <label for="customerOwner">Owner</label>
+              <input id="customerOwner" class="m-input" placeholder="Owner name" />
+            </div>
           </div>
-          <div class="col-6">
-            <label class="form-label">Stadt</label>
-            <input type="text" id="customerCity" class="form-control">
+
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="customerCity">City</label>
+              <input id="customerCity" class="m-input" placeholder="City" />
+            </div>
+            <div class="m-input-group">
+              <label for="customerPhone">Phone</label>
+              <input id="customerPhone" class="m-input" placeholder="+00" />
+            </div>
           </div>
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label">Telefon</label>
-            <input type="tel" id="customerPhone" class="form-control">
+
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="customerTableCount">Table count</label>
+              <input id="customerTableCount" class="m-input" placeholder="10" />
+            </div>
+            <div class="m-input-group">
+              <label for="customerYearPrice">Year price</label>
+              <input id="customerYearPrice" class="m-input" placeholder="490" />
+            </div>
           </div>
-          <div class="col-6">
-            <label class="form-label">Logo URL</label>
-            <input type="url" id="customerLogoUrl" class="form-control">
-          </div>
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label">Tische</label>
-            <input type="number" id="customerTableCount" class="form-control" min="0">
-          </div>
-          <div class="col-6">
-            <label class="form-label">Jahrespreis</label>
-            <input type="number" id="customerYearPrice" class="form-control" min="0" step="1">
-          </div>
-        </div>
-        <div class="row g-2 mb-3">
-          <div class="col-6">
-            <label class="form-label">Typ</label>
-            <select id="customerType" class="form-select">
-              <option value="restaurant">Restaurant</option>
+
+          <div class="m-input-group">
+            <label for="customerType">Type</label>
+            <select id="customerType" class="m-select2">
               <option value="cafe">Cafe</option>
-              <option value="ecommerce">E-Commerce</option>
-              <option value="hotel">Hotel</option>
-              <option value="service">Dienstleistung</option>
+              <option value="restaurant">Restaurant</option>
             </select>
           </div>
-          <div class="col-6">
-            <label class="form-label">Status</label>
-            <select id="customerStatus" class="form-select">
-              <option value="active">Aktiv</option>
+
+          <div class="m-input-group">
+            <label for="customerLogoUrl">Logo URL</label>
+            <input id="customerLogoUrl" class="m-input" placeholder="https://" />
+          </div>
+
+          <div class="m-input-group">
+            <label for="customerStatus">Status</label>
+            <select id="customerStatus" class="m-select2">
+              <option value="active">Active</option>
               <option value="trial">Trial</option>
-              <option value="paused">Pausiert</option>
+              <option value="paused">Paused</option>
             </select>
           </div>
-        </div>
-        <div id="customerModalStatus" class="small text-muted mb-3"></div>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-light rounded-pill flex-grow-1 fw-bold" data-modal-close="customerModalClose">Abbrechen</button>
-          <button type="submit" class="btn btn-primary rounded-pill flex-grow-1 fw-bold" style="background: var(--accent-grad); border:none;">Speichern</button>
-        </div>
-      </form>
+
+          <div class="m-modal-footer">
+            <button class="m-btn m-btn--ghost" id="customerCancelBtn" type="button">Cancel</button>
+            <button class="m-btn" id="customerSaveBtn" type="submit">Save</button>
+          </div>
+
+          <div class="small text-muted" id="customerModalStatus" style="margin-top:10px;"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="m-modal-overlay is-hidden" id="leadModalOverlay">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title" id="leadModalTitle">New lead</h3>
+        <button class="m-btn m-btn--ghost m-btn--small" id="leadModalClose" type="button">Close</button>
+      </div>
+      <div class="m-modal-body">
+        <form id="leadForm">
+          <input type="hidden" id="leadId" />
+
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="leadBusinessName">Business</label>
+              <input id="leadBusinessName" class="m-input" placeholder="Cafe name" />
+            </div>
+            <div class="m-input-group">
+              <label for="leadCustomerType">Type</label>
+              <select id="leadCustomerType" class="m-select2">
+                <option value="restaurant">Restaurant</option>
+                <option value="cafe">Cafe</option>
+                <option value="ecommerce">Ecommerce</option>
+                <option value="hotel">Hotel</option>
+                <option value="service">Service</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="leadContactName">Contact</label>
+              <input id="leadContactName" class="m-input" placeholder="Contact name" />
+            </div>
+            <div class="m-input-group">
+              <label for="leadPhone">Phone</label>
+              <input id="leadPhone" class="m-input" placeholder="+00" />
+            </div>
+          </div>
+
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="leadInstagram">Instagram</label>
+              <input id="leadInstagram" class="m-input" placeholder="@handle" />
+            </div>
+            <div class="m-input-group">
+              <label for="leadCity">City</label>
+              <input id="leadCity" class="m-input" placeholder="City" />
+            </div>
+          </div>
+
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="leadStatus">Status</label>
+              <select id="leadStatus" class="m-select2">
+                <option value="new">Open</option>
+                <option value="contacted">Contacted</option>
+                <option value="waiting">Waiting</option>
+                <option value="follow_up">Follow up</option>
+                <option value="qualified">Qualified</option>
+                <option value="meeting">Meeting</option>
+                <option value="proposal_sent">Proposal sent</option>
+                <option value="negotiation">Negotiation</option>
+                <option value="interested">Interested</option>
+                <option value="no_answer">No answer</option>
+                <option value="no_interest">No interest</option>
+                <option value="lost">Lost</option>
+                <option value="converted">Converted</option>
+              </select>
+            </div>
+            <div class="m-input-group">
+              <label for="leadLabels">Labels</label>
+              <input id="leadLabels" class="m-input" placeholder="IG, warm, vip" />
+            </div>
+          </div>
+
+          <div class="m-input-group">
+            <label for="leadNote">Note</label>
+            <textarea id="leadNote" class="m-textarea" placeholder="Short note"></textarea>
+          </div>
+
+          <div class="m-modal-footer">
+            <button class="m-btn m-btn--ghost" id="leadCancelBtn" type="button">Cancel</button>
+            <button class="m-btn" id="leadSaveBtn" type="submit">Save</button>
+          </div>
+
+          <div class="small text-muted" id="leadModalStatus" style="margin-top:10px;"></div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="m-modal-overlay" id="menuItemModalOverlay" style="display:none;">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title" id="menuItemModalTitle">Menu item</h3>
+        <button class="m-btn m-btn--ghost m-btn--small" id="menuItemModalClose" type="button">Close</button>
+      </div>
+      <div class="m-modal-body">
+        <form id="menuItemForm">
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="miType">Type</label>
+              <select id="miType" class="m-select2">
+                <option value="food">Food</option>
+                <option value="drink">Drink</option>
+              </select>
+            </div>
+            <div class="m-input-group">
+              <label for="miCategory">Category</label>
+              <input id="miCategory" class="m-input" placeholder="Category" />
+            </div>
+          </div>
+
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="miName">Name</label>
+              <input id="miName" class="m-input" placeholder="Menu item" />
+            </div>
+            <div class="m-input-group">
+              <label for="miPrice">Price</label>
+              <input id="miPrice" class="m-input" placeholder="0.00" />
+            </div>
+          </div>
+
+          <div class="m-input-group">
+            <label for="miDesc">Description</label>
+            <textarea id="miDesc" class="m-textarea" placeholder="Short description"></textarea>
+          </div>
+
+          <div class="m-input-group">
+            <label for="miImageUrl">Image URL</label>
+            <input id="miImageUrl" class="m-input" placeholder="https://" />
+          </div>
+
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <input id="miAvailable" type="checkbox" checked />
+            <label for="miAvailable" class="small fw-700">Available</label>
+          </div>
+
+          <div class="m-modal-footer">
+            <button class="m-btn m-btn--ghost" id="miCancel" type="button">Cancel</button>
+            <button class="m-btn" type="submit">Save</button>
+          </div>
+
+          <div class="small text-muted" id="menuItemModalStatus" style="margin-top:10px;"></div>
+        </form>
+      </div>
     </div>
   </div>
 
+  <div class="m-modal-overlay is-hidden" id="qrModalOverlay">
+    <div class="m-modal">
+      <div class="m-modal-header">
+        <h3 class="m-modal-title" id="qrModalTitle">QR and links</h3>
+        <button class="m-btn m-btn--ghost m-btn--small" id="qrModalClose" type="button">Close</button>
+      </div>
+      <div class="m-modal-body">
+        <div class="m-input-group">
+          <div class="d-flex justify-content-between align-items-center">
+            <strong>Guest template</strong>
+            <button class="m-btn m-btn--ghost m-btn--small" id="copyGuestTemplateBtn" type="button">Copy</button>
+          </div>
+          <code id="guestTemplateCode" style="font-size:0.8rem;">../menyra-restaurants/guest/karte/index.html?r=RESTAURANT_ID&amp;t=T1</code>
+          <div id="guestLinksList" class="small text-muted" style="margin-top:10px;"></div>
+        </div>
+
+        <div class="m-input-group">
+          <div class="d-flex justify-content-between align-items-center">
+            <strong>Owner / Staff</strong>
+            <button class="m-btn m-btn--ghost m-btn--small" id="copyCodesBtn" type="button">Copy</button>
+          </div>
+          <div class="small text-muted">Owner admin:</div>
+          <code id="ownerAdminLink" style="font-size:0.8rem;">../menyra-restaurants/owner/index.html?r=RESTAURANT_ID</code>
+          <div class="small text-muted" style="margin-top:10px;">Staff login:</div>
+          <code id="staffLoginLink" style="font-size:0.8rem;">../menyra-restaurants/staff/index.html</code>
+          <div class="small text-muted" style="margin-top:10px;">Codes:</div>
+          <div id="qrCodesBox" class="small text-muted">-</div>
+        </div>
+
+        <div class="small text-muted" id="qrModalStatus" style="margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+  <script src="./pwa.js" defer></script>
+  <script type="module" src="./test-ceo.js"></script>
   <script>
     function switchRevenue(type, btn) {
-      document.querySelectorAll('.rev-tab').forEach(t => t.classList.remove('active'));
-      btn.classList.add('active');
-      const contents = ['rev-all', 'rev-month', 'rev-day'];
-      contents.forEach(id => {
-        document.getElementById(id).classList.toggle('d-none', id !== 'rev-' + type);
+      document.querySelectorAll(".rev-tab").forEach((tab) => tab.classList.remove("active"));
+      if (btn) btn.classList.add("active");
+      ["rev-all", "rev-month"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.classList.toggle("d-none", id !== "rev-" + type);
       });
     }
 
-    function switchView(viewName) {
-      const views = ['dashboard', 'leads', 'customers'];
-      views.forEach(view => {
-        const el = document.getElementById('view-' + view);
-        if (el) el.classList.toggle('d-none', view !== viewName);
+    window.addEventListener("load", () => {
+      const mobileLogout = document.getElementById("logoutButtonMobile");
+      const desktopLogout = document.getElementById("logoutButton");
+      if (mobileLogout && desktopLogout) {
+        mobileLogout.addEventListener("click", () => desktopLogout.click());
+      }
+      const quickLead = document.getElementById("openNewLeadFromDashboard");
+      if (quickLead) {
+        quickLead.addEventListener("click", () => {
+          document.querySelector("[data-section=leads]")?.click();
+          const leadBtn = document.getElementById("newLeadBtn");
+          if (leadBtn) leadBtn.click();
+        });
+      }
+
+      document.addEventListener("click", (event) => {
+        const link = event.target.closest("[data-section]");
+        if (!link) return;
+        const view = link.dataset.section;
+        if (!view) return;
+        setTimeout(() => {
+          document.dispatchEvent(new CustomEvent("menyra:viewchange", { detail: { view } }));
+        }, 0);
       });
 
-      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-      const activeMenu = document.getElementById('menu-' + viewName);
-      if (activeMenu) activeMenu.classList.add('active');
-
-      window.scrollTo(0, 0);
-    }
-
-    document.querySelectorAll("[data-modal-close]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const targetId = btn.getAttribute("data-modal-close");
-        const target = document.getElementById(targetId);
-        if (target) target.click();
-      });
+      document.dispatchEvent(new CustomEvent("menyra:viewchange", { detail: { view: "dashboard" } }));
     });
   </script>
-
-  <script type="module" src="./test-ceo.js"></script>
 </body>
 </html>

@@ -1,0 +1,17 @@
+{
+  "name": "MENYRA CEO Platform",
+  "short_name": "MENYRA CEO",
+  "start_url": "/apps/menyra-ceo/test-ceo.html",
+  "scope": "/apps/menyra-ceo/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#6366f1",
+  "icons": [
+    {
+      "src": "/apps/menyra-ceo/assets/menyra-ceo-logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
