@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>MENYRA - CEO Platform (Test)</title>
+
+  <!-- Frameworks -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --brand-primary: #6366f1;
+      --brand-secondary: #a855f7;
+      --brand-bg: #f3f4f9;
+      --sidebar-width: 280px;
+      --glass-bg: rgba(255, 255, 255, 0.85);
+      --glass-border: rgba(255, 255, 255, 0.5);
+      --card-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05);
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+    }
+
+    body {
+      font-family: "Plus Jakarta Sans", sans-serif;
+      background: var(--brand-bg);
+      background-image:
+        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0px, transparent 40%),
+        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0px, transparent 40%);
+      background-attachment: fixed;
+      color: #1e293b;
+      margin: 0;
+      min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Layout */
+    .sidebar {
+      width: var(--sidebar-width);
+      height: calc(100vh - 40px);
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      position: fixed;
+      left: 20px;
+      top: 20px;
+      border-radius: 30px;
+      border: 1px solid var(--glass-border);
+      padding: 30px;
+      display: none;
+      flex-direction: column;
+      z-index: 1100;
+      box-shadow: var(--card-shadow);
+    }
+
+    .brand-logo {
+      font-weight: 800;
+      font-size: 1.6rem;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -1px;
+      margin-bottom: 40px;
+    }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 14px 20px;
+      color: #64748b;
+      text-decoration: none;
+      border-radius: 18px;
+      margin-bottom: 8px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .sidebar-link.active {
+      background: white;
+      color: var(--brand-primary);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+    }
+
+    .main-wrapper {
+      padding: 16px;
+      transition: margin 0.3s ease;
+    }
+
+    /* UI Components */
+    .app-header {
+      background: var(--glass-bg);
+      backdrop-filter: blur(20px);
+      padding: 12px 20px;
+      border-radius: 24px;
+      margin-bottom: 24px;
+      border: 1px solid var(--glass-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 10px;
+      z-index: 1000;
+    }
+
+    .kpi-card,
+    .list-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(15px);
+      border-radius: 28px;
+      padding: 24px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--card-shadow);
+      margin-bottom: 20px;
+    }
+
+    .quick-actions-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .action-bubble {
+      background: white;
+      border-radius: 22px;
+      padding: 14px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 1px solid var(--glass-border);
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .action-bubble:active { transform: scale(0.92); }
+
+    .action-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 6px;
+      font-size: 1.1rem;
+    }
+
+    /* Mobile Cards fuer Leads & Kunden */
+    .m-card-item {
+      background: white;
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+    }
+
+    .m-card-item:active { transform: scale(0.98); border-color: var(--brand-primary); }
+
+    .status-pill {
+      padding: 4px 12px;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .status-active { background: #dcfce7; color: #16a34a; }
+    .status-pending { background: #fef9c3; color: #a16207; }
+    .status-new { background: #e0f2fe; color: #0284c7; }
+
+    /* Modal Styling */
+    .m-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 3000;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .m-modal-overlay.active { display: flex; }
+
+    .m-modal-content {
+      background: white;
+      width: 100%;
+      max-width: 500px;
+      border-radius: 32px 32px 0 0;
+      padding: 30px;
+      animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    .form-label {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .form-control,
+    .form-select,
+    .form-textarea {
+      border-radius: 14px;
+      padding: 12px 16px;
+      border: 1px solid #e2e8f0;
+      font-weight: 500;
+      width: 100%;
+    }
+
+    /* Bottom Nav */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(20px);
+      display: flex;
+      padding: 12px 10px 24px;
+      border-top: 1px solid rgba(0, 0, 0, 0.05);
+      z-index: 2000;
+    }
+
+    .nav-item {
+      flex: 1;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .nav-item.active { color: var(--brand-primary); }
+    .nav-item i { font-size: 1.3rem; display: block; margin-bottom: 4px; }
+
+    @media (min-width: 992px) {
+      .sidebar { display: flex; }
+      .main-wrapper { margin-left: calc(var(--sidebar-width) + 40px); padding: 40px; }
+      .bottom-nav { display: none; }
+      .m-modal-overlay { align-items: center; }
+      .m-modal-content { border-radius: 32px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar (Desktop) -->
+  <aside class="sidebar">
+    <div class="brand-logo">MENYRA</div>
+    <nav class="flex-grow-1">
+      <div class="sidebar-link active" onclick="switchSection('dashboard')"><i class="fas fa-th-large"></i> Dashboard</div>
+      <div class="sidebar-link" onclick="switchSection('leads')"><i class="fas fa-paper-plane"></i> Leads</div>
+      <div class="sidebar-link" onclick="switchSection('customers')"><i class="fas fa-users"></i> Kunden</div>
+    </nav>
+  </aside>
+
+  <div class="main-wrapper">
+    <header class="app-header">
+      <div class="brand-logo d-lg-none m-0" style="font-size: 1.1rem;">MENYRA</div>
+      <h6 class="m-0 fw-800 d-none d-lg-block" id="pageTitle">Dashboard</h6>
+      <div class="d-flex align-items-center gap-2">
+         <span id="userNameDisplay" class="small fw-800 d-none d-sm-block">CEO Platform</span>
+         <img id="userAvatar" src="https://ui-avatars.com/api/?name=CEO&background=6366f1&color=fff" class="rounded-circle" width="32" alt="Avatar">
+      </div>
+    </header>
+
+    <!-- SECTION: DASHBOARD -->
+    <section id="dashboardSection" class="content-section">
+      <div class="kpi-card" style="background: var(--accent-gradient); color: white; border: none;">
+        <span class="small fw-bold opacity-75">GESAMTUMSATZ</span>
+        <h1 class="display-5 fw-800 m-0" id="totalRevenue">EUR 0,00</h1>
+      </div>
+
+      <div class="quick-actions-grid">
+        <div class="action-bubble" onclick="switchSection('leads')">
+          <div class="action-icon" style="background: #eef2ff; color: #6366f1;"><i class="fas fa-bolt"></i></div>
+          <span class="fw-bold small">Leads</span>
+        </div>
+        <div class="action-bubble" onclick="openLeadModal()">
+          <div class="action-icon" style="background: #f0fdf4; color: #22c55e;"><i class="fas fa-plus"></i></div>
+          <span class="fw-bold small">Neu Lead</span>
+        </div>
+        <div class="action-bubble" onclick="switchSection('customers')">
+          <div class="action-icon" style="background: #fff7ed; color: #f97316;"><i class="fas fa-users"></i></div>
+          <span class="fw-bold small">Kunden</span>
+        </div>
+        <div class="action-bubble">
+          <div class="action-icon" style="background: #f1f5f9; color: #64748b;"><i class="fas fa-cog"></i></div>
+          <span class="fw-bold small">Tools</span>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-6">
+            <div class="kpi-card text-center py-4">
+                <h2 class="fw-800 mb-0" id="customerCount">0</h2>
+                <span class="small text-muted fw-bold">Kunden</span>
+            </div>
+        </div>
+        <div class="col-6">
+            <div class="kpi-card text-center py-4">
+                <h2 class="fw-800 mb-0" id="leadCount">0</h2>
+                <span class="small text-muted fw-bold">Offene Leads</span>
+            </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: LEADS -->
+    <section id="leadsSection" class="content-section" style="display:none;">
+      <div class="list-card">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h6 class="fw-800 m-0">Interessenten</h6>
+            <button class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" onclick="openLeadModal()">+ Neu</button>
+        </div>
+        <div id="leadContainer">
+            <div class="text-center py-4 opacity-50 small">Lade Leads...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION: CUSTOMERS -->
+    <section id="customersSection" class="content-section" style="display:none;">
+      <div class="list-card">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h6 class="fw-800 m-0">Partner & Kunden</h6>
+        </div>
+        <div id="customerContainer">
+            <div class="text-center py-4 opacity-50 small">Lade Kunden...</div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- LEAD MODAL -->
+  <div class="m-modal-overlay" id="leadModal">
+    <div class="m-modal-content">
+      <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-800 m-0" id="leadModalTitle">Lead Details</h5>
+        <button class="btn-close" onclick="closeModals()"></button>
+      </div>
+      <form id="leadForm">
+        <input type="hidden" id="leadId">
+        <div class="mb-3">
+          <label class="form-label">Name / Restaurant</label>
+          <input type="text" id="leadName" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">E-Mail</label>
+          <input type="email" id="leadEmail" class="form-control">
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-6">
+                <label class="form-label">Quelle</label>
+                <select id="leadSource" class="form-select">
+                    <option value="instagram">Instagram</option>
+                    <option value="web">Webseite</option>
+                    <option value="referral">Empfehlung</option>
+                    <option value="other">Sonstiges</option>
+                </select>
+            </div>
+            <div class="col-6">
+                <label class="form-label">Status</label>
+                <select id="leadStatus" class="form-select">
+                    <option value="new">Neu</option>
+                    <option value="contacted">Kontaktiert</option>
+                    <option value="converted">Konvertiert</option>
+                </select>
+            </div>
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Notiz</label>
+          <textarea id="leadNote" class="form-textarea" rows="2"></textarea>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-light rounded-pill flex-grow-1 fw-bold" onclick="closeModals()">Abbrechen</button>
+          <button type="submit" class="btn btn-primary rounded-pill flex-grow-1 fw-bold" style="background: var(--accent-gradient); border:none;">Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="bottom-nav">
+    <div class="nav-item active" onclick="switchSection('dashboard')"><i class="fas fa-home-alt"></i>Home</div>
+    <div class="nav-item" onclick="switchSection('leads')"><i class="fas fa-paper-plane"></i>Leads</div>
+    <div class="nav-item" onclick="switchSection('customers')"><i class="fas fa-user-friends"></i>Kunden</div>
+    <div class="nav-item"><i class="fas fa-ellipsis-h"></i>Menu</div>
+  </nav>
+
+  <script>
+    function switchSection(id) {
+        document.querySelectorAll('.content-section').forEach(s => s.style.display = 'none');
+        document.getElementById(id + 'Section').style.display = 'block';
+
+        document.querySelectorAll('.nav-item, .sidebar-link').forEach(el => el.classList.remove('active'));
+        document.getElementById('pageTitle').innerText = id.charAt(0).toUpperCase() + id.slice(1);
+
+        if (id === 'dashboard') document.querySelectorAll('.nav-item')[0].classList.add('active');
+        if (id === 'leads') document.querySelectorAll('.nav-item')[1].classList.add('active');
+        if (id === 'customers') document.querySelectorAll('.nav-item')[2].classList.add('active');
+    }
+
+    function openLeadModal(data = null) {
+        const modal = document.getElementById('leadModal');
+        const form = document.getElementById('leadForm');
+        form.reset();
+
+        if (data) {
+            document.getElementById('leadId').value = data.id || '';
+            document.getElementById('leadName').value = data.name || '';
+            document.getElementById('leadEmail').value = data.email || '';
+            document.getElementById('leadStatus').value = data.status || 'new';
+        }
+
+        modal.classList.add('active');
+    }
+
+    function closeModals() {
+        document.querySelectorAll('.m-modal-overlay').forEach(m => m.classList.remove('active'));
+    }
+
+    function renderLeadItem(lead) {
+        return `
+            <div class="m-card-item" onclick="openLeadModal(${JSON.stringify(lead).replace(/"/g, '&quot;')})">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="action-icon m-0" style="background:#eef2ff; color:#6366f1;"><i class="fas fa-envelope"></i></div>
+                    <div>
+                        <div class="fw-800 small">${lead.name}</div>
+                        <div class="text-muted" style="font-size: 0.65rem;">${lead.source || 'Quelle unbekannt'}</div>
+                    </div>
+                </div>
+                <span class="status-pill status-${lead.status === 'new' ? 'new' : 'pending'}">${lead.status}</span>
+            </div>
+        `;
+    }
+
+    function renderCustomerItem(customer) {
+        return `
+            <div class="m-card-item">
+                <div class="d-flex align-items-center gap-3">
+                    <img src="https://ui-avatars.com/api/?name=${customer.name}&background=6366f1&color=fff" class="rounded-circle" width="38" alt="Avatar">
+                    <div>
+                        <div class="fw-800 small">${customer.name}</div>
+                        <div class="text-muted" style="font-size: 0.65rem;">${customer.plan || 'Premium'} • ${customer.revenue || 'EUR 0'}</div>
+                    </div>
+                </div>
+                <span class="status-pill status-active">Aktiv</span>
+            </div>
+        `;
+    }
+
+    document.getElementById('leadForm').onsubmit = function(e) {
+        e.preventDefault();
+        console.log("Lead gespeichert:", new FormData(this));
+        alert("Daten erfolgreich gespeichert!");
+        closeModals();
+    };
+
+    window.onclick = function(event) {
+        if (event.target.classList.contains('m-modal-overlay')) closeModals();
+    };
+  </script>
+</body>
+</html>
