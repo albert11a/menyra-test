@@ -112,6 +112,7 @@ html.m-login {
   height: 100%;
   overscroll-behavior: none;
   touch-action: none;
+  background: #eef0ff;
 }
 
 body.m-boot,
@@ -126,6 +127,12 @@ body.m-login {
   bottom: 0;
   touch-action: none;
   overscroll-behavior: none;
+  background: #eef0ff;
+}
+
+body.theme-dark.m-boot,
+body.theme-dark.m-login {
+  background: #0b1220;
 }
 
 body.m-login .m-modal-overlay,
