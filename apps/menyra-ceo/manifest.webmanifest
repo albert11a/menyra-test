@@ -4,8 +4,8 @@
   "start_url": "/apps/menyra-ceo/test-ceo.html",
   "scope": "/apps/menyra-ceo/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#6366f1",
+  "background_color": "#eef0ff",
+  "theme_color": "#eef0ff",
   "icons": [
     {
       "src": "/apps/menyra-ceo/assets/menyra-ceo-logo.png",
