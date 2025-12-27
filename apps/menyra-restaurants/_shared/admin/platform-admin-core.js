@@ -490,6 +490,8 @@ function initNav() {
       ov.classList.remove("is-open");
       ov.classList.remove("is-visible");
     }
+    document.documentElement.classList.remove("menu-open");
+    document.body?.classList.remove("menu-open");
   }
 
   function showView(name) {
@@ -532,6 +534,8 @@ function initNav() {
       overlay.classList.add("is-visible");
       overlay.classList.add("is-open"); // keep compatibility if some CSS uses is-open
     }
+    document.documentElement.classList.add("menu-open");
+    document.body?.classList.add("menu-open");
   }
   function toggleMobileMenu() {
     if (!mobileMenu) return;
