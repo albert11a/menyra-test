@@ -72,6 +72,7 @@
 
     html {
       background: var(--safe-solid);
+      height: 100%;
     }
 
     body {
@@ -96,6 +97,7 @@
       bottom: var(--safe-bottom);
       background:
         linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0, transparent 42%),
         var(--brand-bg);
@@ -105,6 +107,9 @@
     html.menu-open,
     body.menu-open {
       background: var(--safe-solid);
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
     }
 
     body.menu-open::before {
@@ -872,6 +877,7 @@
       bottom: var(--safe-bottom);
       background:
         linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.14) 0, transparent 42%),
         var(--brand-bg);
@@ -886,6 +892,7 @@
     html.is-dark .m-boot-overlay::before {
       background:
         linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.25) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.18) 0, transparent 42%),
         var(--brand-bg);
@@ -983,6 +990,7 @@
       bottom: var(--safe-bottom);
       background:
         linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.14) 0, transparent 42%),
         var(--brand-bg);
@@ -1131,6 +1139,9 @@
       position: fixed;
       inset: 0;
       background: var(--safe-solid);
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease;
@@ -1153,6 +1164,7 @@
       bottom: var(--safe-bottom);
       background:
         linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.14) 0, transparent 42%),
         var(--brand-bg);
@@ -1164,8 +1176,12 @@
       position: fixed;
       inset: 0;
       background: var(--safe-solid);
-      transform: translateX(-100%);
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      transform: translate3d(-100%, 0, 0);
       transition: transform 0.25s ease;
+      will-change: transform;
       z-index: 2500;
       display: flex;
       flex-direction: column;
@@ -1178,7 +1194,7 @@
     }
 
     .m-mobile-menu.is-open {
-      transform: translateX(0);
+      transform: translate3d(0, 0, 0);
     }
 
     .m-mobile-menu::before {
@@ -1190,6 +1206,7 @@
       bottom: var(--safe-bottom);
       background:
         linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.14) 0, transparent 42%),
         var(--brand-bg);
@@ -1201,7 +1218,7 @@
       height: 100%;
       display: flex;
       flex-direction: column;
-      padding: 24px 20px 32px;
+      padding: calc(24px + var(--safe-top)) 20px calc(32px + var(--safe-bottom));
       gap: 18px;
       position: relative;
       z-index: 1;
