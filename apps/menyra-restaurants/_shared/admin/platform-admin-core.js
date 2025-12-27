@@ -1244,34 +1244,77 @@ function updateSystemStatsCard({ restaurants = [], leadsCount = 0, storiesCount 
 function renderCustomersTable(rows, role) {
   const body = $("customersTableBody");
   if (!body) return;
+  const isTable = body.tagName === "TBODY";
+  const list = Array.isArray(rows) ? rows : [];
 
   body.innerHTML = "";
-  rows.forEach((r) => {
+
+  if (!list.length) {
+    if (isTable) {
+      const emptyRow = document.createElement("tr");
+      emptyRow.className = "table-row";
+      emptyRow.innerHTML = `<td colspan="3" class="text-center text-muted">Keine Kunden.</td>`;
+      body.appendChild(emptyRow);
+    } else {
+      body.innerHTML = `<div class="m-empty">Keine Kunden.</div>`;
+    }
+    const footer = $("customersFooter");
+    if (footer) footer.textContent = "-";
+    return;
+  }
+
+  list.forEach((r) => {
+    if (isTable) {
+      const statusKey = String(r.status || "active").toLowerCase();
+      let badgeStyle = "background: rgba(168, 85, 247, 0.12); color: #a855f7;";
+      if (statusKey === "trial") badgeStyle = "background: rgba(245, 158, 11, 0.12); color: #f59e0b;";
+      if (statusKey === "paused") badgeStyle = "background: rgba(100, 116, 139, 0.12); color: #64748b;";
+      const statusLabel = (r.status || "active").toUpperCase();
+      const sub = r.slug || r.type || "";
+      const subHtml = sub ? `<div class="small text-muted">${esc(sub)}</div>` : "";
+
+      const row = document.createElement("tr");
+      row.className = "table-row";
+      row.innerHTML = `
+        <td>
+          <div class="fw-800">${esc(r.name || "-")}</div>
+          ${subHtml}
+        </td>
+        <td class="text-center">
+          <span class="status-badge" style="${badgeStyle}">${esc(statusLabel)}</span>
+        </td>
+        <td class="text-end">
+          <button class="btn btn-light btn-sm rounded-circle" type="button" data-act="qr" data-id="${esc(r.id)}"><i class="fas fa-qrcode"></i></button>
+          <button class="btn btn-light btn-sm rounded-circle" type="button" data-act="edit" data-id="${esc(r.id)}"><i class="fas fa-pen"></i></button>
+        </td>
+      `;
+      body.appendChild(row);
+      return;
+    }
+
     const row = document.createElement("div");
     row.className = "m-table-row";
     row.innerHTML = `
       <div>
         <div style="display:flex; flex-direction:column; gap:2px;">
-          <b>${esc(r.name || "—")}</b>
-          <span class="m-muted" style="font-size:12px;">${esc(r.type || "")}${r.slug ? " • "+esc(r.slug) : ""}</span>
+          <b>${esc(r.name || "-")}</b>
+          <span class="m-muted" style="font-size:12px;">${esc(r.type || "")}${r.slug ? " - " + esc(r.slug) : ""}</span>
         </div>
       </div>
-      <div>${esc(r.ownerName || "—")}</div>
-      <div>${esc(r.city || "—")}</div>
-      <div>${esc(r.yearPrice != null ? (String(r.yearPrice)+" €/Jahr") : "—")}</div>
-      <div><span class="m-badge ${r.status === "active" ? "m-badge--green" : (r.status === "trial" ? "m-badge--yellow" : "m-badge--gray")}">${esc(r.status || "—")}</span></div>
+      <div>${esc(r.ownerName || "-")}</div>
+      <div>${esc(r.city || "-")}</div>
+      <div>${esc(r.yearPrice != null ? (String(r.yearPrice) + " EUR/Jahr") : "-")}</div>
+      <div><span class="m-badge ${r.status === "active" ? "m-badge--green" : (r.status === "trial" ? "m-badge--yellow" : "m-badge--gray")}">${esc(r.status || "-")}</span></div>
       <div class="m-table-col-actions" style="display:flex; gap:8px; justify-content:flex-end;">
         <button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="qr" data-id="${esc(r.id)}">QR & Links</button>
         <button class="m-btn m-btn--small" type="button" data-act="edit" data-id="${esc(r.id)}">Edit</button>
       </div>
     `;
-    // staff can't edit other than basic? still allow
     body.appendChild(row);
   });
 
-  // footer
   const footer = $("customersFooter");
-  if (footer) footer.textContent = rows.length ? `Zeilen: ${rows.length}` : "—";
+  if (footer) footer.textContent = list.length ? `Zeilen: ${list.length}` : "-";
 }
 
 function applyCustomersFilter(allRows) {
@@ -1722,59 +1765,79 @@ function menuRowBadge(type) {
 function renderMenuTable(items, filterType, canDelete) {
   const body = $("menuTableBody");
   if (!body) return;
+  const isTable = body.tagName === "TBODY";
   body.innerHTML = "";
 
   const list = Array.isArray(items) ? items.slice() : [];
-  const ft = (filterType || "all");
-  const filtered = (ft === "all") ? list : list.filter(i => normalizeMenuType(i.type) === ft);
+  const ft = filterType || "all";
+  const filtered = ft === "all" ? list : list.filter(i => normalizeMenuType(i.type) === ft);
 
   if (!filtered.length) {
-    body.innerHTML = `<div class="m-empty">Keine Items.</div>`;
+    if (isTable) {
+      const emptyRow = document.createElement("tr");
+      emptyRow.className = "table-row";
+      emptyRow.innerHTML = `<td colspan="4" class="text-center text-muted">Keine Items.</td>`;
+      body.appendChild(emptyRow);
+    } else {
+      body.innerHTML = `<div class="m-empty">Keine Items.</div>`;
+    }
     return;
   }
 
   filtered.forEach((it, idx) => {
+    const imgSrc = (it.imageUrl || (Array.isArray(it.imageUrls) ? it.imageUrls[0] : "")) || "";
+    const previewHtml = imgSrc
+      ? `<img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(it.name || "Item")}" class="menu-thumb" />`
+      : `<div class="menu-thumb d-flex align-items-center justify-content-center text-muted small">No image</div>`;
+    const statusLabel = it.available === false ? "NICHT VERFUEGBAR" : "VERFUEGBAR";
+    const statusStyle = it.available === false
+      ? "background: rgba(100, 116, 139, 0.12); color: #64748b;"
+      : "background: rgba(34, 197, 94, 0.12); color: #22c55e;";
+    const subtitle = it.category ? `<div class="small text-muted d-none d-sm-block">${escapeHtml(it.category)}</div>` : "";
+
+    if (isTable) {
+      const row = document.createElement("tr");
+      row.className = "table-row";
+      row.innerHTML = `
+        <td>${previewHtml}</td>
+        <td>
+          <div class="fw-800">${escapeHtml(it.name || "Item")}</div>
+          ${subtitle}
+        </td>
+        <td class="text-center">
+          <span class="status-badge" style="${statusStyle}">${statusLabel}</span>
+        </td>
+        <td class="text-end">
+          <button class="btn btn-light btn-sm rounded-pill fw-700 px-3" type="button" data-mi-edit="${idx}"><i class="fas fa-edit me-1"></i> Edit</button>
+          ${canDelete ? `<button class="btn btn-light btn-sm rounded-pill fw-700 px-3 text-danger" type="button" data-mi-del="${idx}"><i class="fas fa-trash me-1"></i> Loeschen</button>` : ""}
+        </td>
+      `;
+      body.appendChild(row);
+      return;
+    }
+
     const row = document.createElement("div");
     row.className = "m-table-row";
-
-    const name = document.createElement("div");
-    const imgSrc = (it.imageUrl || (Array.isArray(it.imageUrls) ? it.imageUrls[0] : "")) || "";
-    const thumbHtml = imgSrc
-      ? `<img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(it.name || "Item")}" style="width:44px;height:44px;border-radius:12px;object-fit:cover;border:1px solid rgba(148,163,184,0.35);" />`
-      : `<div style="width:44px;height:44px;border-radius:12px;border:1px dashed rgba(148,163,184,0.45);display:flex;align-items:center;justify-content:center;font-size:10px;color:#94a3b8;">No image</div>`;
-    name.innerHTML = `
-      <div style="display:flex;gap:10px;align-items:center;">
-        ${thumbHtml}
-        <div style="display:flex;flex-direction:column;gap:2px;">
-          <strong>${escapeHtml(it.name || "Item")}</strong>
-          <div class="m-muted">${escapeHtml(it.category || "")}</div>
+    const priceLabel = (it.price ?? "") === "" ? "-" : `${Number(it.price || 0).toFixed(2)} EUR`;
+    const typeLabel = normalizeMenuType(it.type) === "drink" ? "Drink" : "Food";
+    row.innerHTML = `
+      <div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          ${previewHtml}
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <strong>${escapeHtml(it.name || "Item")}</strong>
+            <div class="m-muted">${escapeHtml(it.category || "")}</div>
+          </div>
         </div>
       </div>
+      <div>${priceLabel}</div>
+      <div>${typeLabel}</div>
+      <div><span class="m-badge ${it.available === false ? "m-badge--gray" : "m-badge--success"}">${statusLabel}</span></div>
+      <div class="m-table-actions">
+        <button class="m-btn m-btn--xs m-btn--ghost" data-mi-edit="${idx}">Bearbeiten</button>
+        ${canDelete ? `<button class="m-btn m-btn--xs m-btn--danger" data-mi-del="${idx}">Loeschen</button>` : ""}
+      </div>
     `;
-
-    const price = document.createElement("div");
-    price.textContent = (it.price ?? "") === "" ? "—" : `${Number(it.price||0).toFixed(2)} €`;
-
-    const typ = document.createElement("div");
-    typ.textContent = menuRowBadge(it.type);
-
-    const st = document.createElement("div");
-    st.innerHTML = it.available === false
-      ? `<span class="m-badge m-badge--ghost">Nicht verfügbar</span>`
-      : `<span class="m-badge m-badge--success">Verfügbar</span>`;
-
-    const act = document.createElement("div");
-    act.className = "m-table-actions";
-    act.innerHTML = `
-      <button class="m-btn m-btn--xs m-btn--ghost" data-mi-edit="${idx}">Bearbeiten</button>
-      ${canDelete ? `<button class="m-btn m-btn--xs m-btn--danger" data-mi-del="${idx}">Löschen</button>` : ""}
-    `;
-
-    row.appendChild(name);
-    row.appendChild(price);
-    row.appendChild(typ);
-    row.appendChild(st);
-    row.appendChild(act);
     body.appendChild(row);
   });
 }
@@ -2286,11 +2349,75 @@ function renderLeadsTable(rows){
   const body = $("leadsTableBody");
   if (!body) return;
   body.innerHTML = "";
+
+  const useSwipe = body.classList.contains("swipe-list") || body.dataset.viewStyle === "swipe";
+  if (useSwipe) {
+    if (!rows.length) {
+      body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Leads.</div>`;
+      setText("leadsMeta", "-");
+      return;
+    }
+
+    const toneForStatus = (value) => {
+      const key = normalizeLeadStatusKey(value || "");
+      if (key === "new") return { bg: "rgba(99, 102, 241, 0.12)", color: "#6366f1" };
+      if (["contacted", "waiting", "follow_up", "meeting", "proposal_sent", "negotiation", "qualified"].includes(key)) {
+        return { bg: "rgba(245, 158, 11, 0.12)", color: "#f59e0b" };
+      }
+      if (["interested", "converted"].includes(key)) return { bg: "rgba(34, 197, 94, 0.12)", color: "#22c55e" };
+      if (["no_interest", "lost"].includes(key)) return { bg: "rgba(100, 116, 139, 0.12)", color: "#64748b" };
+      return { bg: "rgba(148, 163, 184, 0.16)", color: "#64748b" };
+    };
+
+    rows.forEach((r) => {
+      const row = document.createElement("div");
+      row.className = "swipe-container";
+      const statusLabel = leadStatusLabel(r.status || "");
+      const tone = toneForStatus(r.status || "");
+      const insta = String(r.insta || r.instagram || "").trim();
+      const phone = String(r.phone || "").trim();
+      const email = String(r.email || "").trim();
+      let metaIcon = "fas fa-circle-info text-muted";
+      let metaText = "Kontakt";
+      if (insta) {
+        metaIcon = "fab fa-instagram text-danger";
+        metaText = insta.startsWith("@") ? insta : `@${insta}`;
+      } else if (phone) {
+        metaIcon = "fas fa-phone text-success";
+        metaText = phone;
+      } else if (email) {
+        metaIcon = "fas fa-envelope text-primary";
+        metaText = email;
+      }
+
+      row.innerHTML = `
+        <div class="swipe-actions-left"><i class="fas fa-archive mb-1 fs-5"></i><span>Archiv</span></div>
+        <div class="swipe-actions-right"><i class="fas fa-trash mb-1 fs-5"></i><span>Loeschen</span></div>
+        <div class="swipe-content" data-act="lead-edit" data-id="${esc(r.id)}">
+          <div class="d-flex align-items-center gap-3">
+            <div class="bg-light rounded-circle p-3 d-none d-sm-block"><i class="fas fa-store text-muted"></i></div>
+            <div>
+              <div class="fw-800">${esc(r.businessName || "-")}</div>
+              <div class="small text-muted"><i class="${metaIcon} me-1"></i>${esc(metaText)}</div>
+            </div>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <span class="status-badge" style="background:${tone.bg};color:${tone.color};">${esc(statusLabel)}</span>
+          </div>
+        </div>
+      `;
+      body.appendChild(row);
+    });
+
+    setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+    return;
+  }
+
   rows.forEach(r=>{
     const typeLabel = leadTypeLabel(r.customerType || "");
     const labels = normalizeLeadLabels(r.labels || r.tags || r.label);
     const labelsHtml = renderLeadLabels(labels);
-    const city = r.city ? ` • ${esc(r.city)}` : "";
+    const city = r.city ? ` - ${esc(r.city)}` : "";
     const contactName = r.contactName || r.contact || "";
     const phone = r.phone || "";
     const insta = r.insta || r.instagram || "";
@@ -2301,14 +2428,14 @@ function renderLeadsTable(rows){
     row.innerHTML = `
       <div>
         <div style="display:flex; flex-direction:column; gap:2px;">
-          <b>${esc(r.businessName || "—")}</b>
+          <b>${esc(r.businessName || "-")}</b>
           <span class="m-muted" style="font-size:12px;">${esc(typeLabel)}${city}</span>
           ${labelsHtml}
         </div>
       </div>
       <div>
         <div style="display:flex; flex-direction:column; gap:2px;">
-          <span>${esc(contactName || phone || "—")}</span>
+          <span>${esc(contactName || phone || "-")}</span>
           <span class="m-muted" style="font-size:12px;">${esc(contactLine2 || "")}</span>
           ${contactName && insta ? `<span class="m-muted" style="font-size:12px;">${esc(insta)}</span>` : ""}
         </div>
@@ -2316,7 +2443,7 @@ function renderLeadsTable(rows){
       <div><span class="m-badge">${esc(statusLabel)}</span></div>
       <div class="m-table-col-actions" style="display:flex; gap:8px; justify-content:flex-end;">
         <button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="lead-edit" data-id="${esc(r.id)}">Edit</button>
-        <button class="m-btn m-btn--small" type="button" data-act="lead-to-customer" data-id="${esc(r.id)}">→ Kunde</button>
+        <button class="m-btn m-btn--small" type="button" data-act="lead-to-customer" data-id="${esc(r.id)}">-> Kunde</button>
       </div>
     `;
     body.appendChild(row);
@@ -3241,27 +3368,53 @@ $("leadForm")?.addEventListener("submit", async (e) => {
   function renderStaffRequestsTable(rows) {
     const body = $("staffRequestsBody");
     if (!body) return;
+    const isTable = body.tagName === "TBODY";
     body.innerHTML = "";
+
     if (!rows.length) {
-      body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Anfragen.</div>`;
+      if (isTable) {
+        const emptyRow = document.createElement("tr");
+        emptyRow.className = "table-row";
+        emptyRow.innerHTML = `<td colspan="6" class="text-center text-muted">Keine Anfragen.</td>`;
+        body.appendChild(emptyRow);
+      } else {
+        body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Anfragen.</div>`;
+      }
       setText("staffRequestsMeta", "-");
       return;
     }
+
     rows.forEach((req) => {
-      const row = document.createElement("div");
-      row.className = "m-table-row";
-      row.style.gridTemplateColumns = "1.2fr 1.4fr 1.6fr 1fr 1.2fr 0.9fr";
       const kindLabel = req.kind === "restaurant" ? "Kunde" : "Menyra";
       const roleValue = pickRoleValue(req.targetRoles, req.roles, req.targetRole, req.role, "");
       const roleLabel = staffRoleLabel(roleValue, req.kind === "restaurant" ? "restaurant" : "system");
       const restaurantLabel = req.restaurantName || req.restaurantId || "-";
-      let actionHtml = `<span class="m-muted">${esc(req.status || "pending")}</span>`;
+      let actionHtml = `<span class="text-muted">${esc(req.status || "pending")}</span>`;
       if (role === "ceo") {
         actionHtml = `
-          <button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="staff-request-approve" data-id="${esc(req.id)}">Approve</button>
-          <button class="m-btn m-btn--small" type="button" data-act="staff-request-reject" data-id="${esc(req.id)}">Reject</button>
+          <button class="btn btn-light btn-sm rounded-pill fw-700" type="button" data-act="staff-request-approve" data-id="${esc(req.id)}">Approve</button>
+          <button class="btn btn-light btn-sm rounded-pill fw-700 text-danger" type="button" data-act="staff-request-reject" data-id="${esc(req.id)}">Reject</button>
         `;
       }
+
+      if (isTable) {
+        const row = document.createElement("tr");
+        row.className = "table-row";
+        row.innerHTML = `
+          <td>${esc(kindLabel)}</td>
+          <td>${esc(req.name || "-")}</td>
+          <td>${esc(req.email || "-")}</td>
+          <td>${esc(roleLabel)}</td>
+          <td>${esc(restaurantLabel)}</td>
+          <td class="text-end">${actionHtml}</td>
+        `;
+        body.appendChild(row);
+        return;
+      }
+
+      const row = document.createElement("div");
+      row.className = "m-table-row";
+      row.style.gridTemplateColumns = "1.2fr 1.4fr 1.6fr 1fr 1.2fr 0.9fr";
       row.innerHTML = `
         <div>${esc(kindLabel)}</div>
         <div>${esc(req.name || "-")}</div>
@@ -3278,17 +3431,45 @@ $("leadForm")?.addEventListener("submit", async (e) => {
   function renderSystemStaffTable(rows) {
     const body = $("systemStaffTableBody");
     if (!body) return;
+    const isTable = body.tagName === "TBODY";
     body.innerHTML = "";
+
+    if (!rows.length) {
+      if (isTable) {
+        const emptyRow = document.createElement("tr");
+        emptyRow.className = "table-row";
+        emptyRow.innerHTML = `<td colspan="5" class="text-center text-muted">Keine Staff.</td>`;
+        body.appendChild(emptyRow);
+      }
+      setText("systemStaffMeta", "-");
+      return;
+    }
+
     rows.forEach((r) => {
-      const row = document.createElement("div");
-      row.className = "m-table-row";
-      row.style.gridTemplateColumns = "1.4fr 1.8fr 1fr 1fr 0.9fr";
       const assignedCount = restaurants.filter(x => x.assignedStaffId === r.id).length;
       const assignedLabel = assignedCount ? `${assignedCount} Kunden` : "-";
       const actionHtml = (role === "ceo")
-        ? `<button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="system-staff-edit" data-id="${esc(r.id)}">Edit</button>
-           <button class="m-btn m-btn--small" type="button" data-act="system-staff-delete" data-id="${esc(r.id)}">Delete</button>`
-        : `<span class="m-muted">-</span>`;
+        ? `<button class="btn btn-light btn-sm rounded-pill fw-700" type="button" data-act="system-staff-edit" data-id="${esc(r.id)}">Edit</button>
+           <button class="btn btn-light btn-sm rounded-pill fw-700 text-danger" type="button" data-act="system-staff-delete" data-id="${esc(r.id)}">Delete</button>`
+        : `<span class="text-muted">-</span>`;
+
+      if (isTable) {
+        const row = document.createElement("tr");
+        row.className = "table-row";
+        row.innerHTML = `
+          <td>${esc(r.name || r.email || r.id)}</td>
+          <td>${esc(r.email || "-")}</td>
+          <td>${esc(staffRoleLabel(r.roles || r.role, "system"))}</td>
+          <td>${esc(assignedLabel)}</td>
+          <td class="text-end">${actionHtml}</td>
+        `;
+        body.appendChild(row);
+        return;
+      }
+
+      const row = document.createElement("div");
+      row.className = "m-table-row";
+      row.style.gridTemplateColumns = "1.4fr 1.8fr 1fr 1fr 0.9fr";
       row.innerHTML = `
         <div>${esc(r.name || r.email || r.id)}</div>
         <div>${esc(r.email || "-")}</div>
@@ -3304,26 +3485,54 @@ $("leadForm")?.addEventListener("submit", async (e) => {
   function renderRestaurantStaffTable(rows) {
     const body = $("restaurantStaffTableBody");
     if (!body) return;
+    const isTable = body.tagName === "TBODY";
     body.innerHTML = "";
+
     if (!rows.length) {
-      body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Staff vorhanden.</div>`;
+      if (isTable) {
+        const emptyRow = document.createElement("tr");
+        emptyRow.className = "table-row";
+        emptyRow.innerHTML = `<td colspan="5" class="text-center text-muted">Keine Staff vorhanden.</td>`;
+        body.appendChild(emptyRow);
+      } else {
+        body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Staff vorhanden.</div>`;
+      }
       setText("restaurantStaffMeta", "-");
       return;
     }
+
     rows.forEach((r) => {
+      const statusKey = String(r.status || "active").toLowerCase();
+      let badgeStyle = "background: rgba(34, 197, 94, 0.12); color: #22c55e;";
+      if (statusKey !== "active") badgeStyle = "background: rgba(100, 116, 139, 0.12); color: #64748b;";
+      const statusLabel = (r.status || "active").toUpperCase();
+      const actionHtml = (role === "ceo")
+        ? `<button class="btn btn-light btn-sm rounded-pill fw-700" type="button" data-act="restaurant-staff-edit" data-id="${esc(r.id)}">Edit</button>
+           <button class="btn btn-light btn-sm rounded-pill fw-700 text-danger" type="button" data-act="restaurant-staff-delete" data-id="${esc(r.id)}">Delete</button>`
+        : `<span class="text-muted">-</span>`;
+
+      if (isTable) {
+        const row = document.createElement("tr");
+        row.className = "table-row";
+        row.innerHTML = `
+          <td>${esc(r.name || r.email || r.id)}</td>
+          <td>${esc(r.email || "-")}</td>
+          <td>${esc(staffRoleLabel(r.roles || r.role, "restaurant"))}</td>
+          <td class="text-center"><span class="status-badge" style="${badgeStyle}">${statusLabel}</span></td>
+          <td class="text-end">${actionHtml}</td>
+        `;
+        body.appendChild(row);
+        return;
+      }
+
       const row = document.createElement("div");
       row.className = "m-table-row";
       row.style.gridTemplateColumns = "1.4fr 1.8fr 1fr 1fr 0.9fr";
-      const status = r.status || "active";
-      const actionHtml = (role === "ceo")
-        ? `<button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="restaurant-staff-edit" data-id="${esc(r.id)}">Edit</button>
-           <button class="m-btn m-btn--small" type="button" data-act="restaurant-staff-delete" data-id="${esc(r.id)}">Delete</button>`
-        : `<span class="m-muted">-</span>`;
       row.innerHTML = `
         <div>${esc(r.name || r.email || r.id)}</div>
         <div>${esc(r.email || "-")}</div>
         <div>${esc(staffRoleLabel(r.roles || r.role, "restaurant"))}</div>
-        <div>${esc(status)}</div>
+        <div>${esc(statusLabel)}</div>
         <div class="m-table-col-actions">${actionHtml}</div>
       `;
       body.appendChild(row);
@@ -4282,7 +4491,7 @@ async function refreshLeads(force = false) {
 
     // row actions (event delegation)
     $("leadsTableBody")?.addEventListener("click", async (e) => {
-      const btn = e.target?.closest?.("button[data-act]");
+      const btn = e.target?.closest?.("[data-act]");
       if (!btn) return;
       const act = btn.getAttribute("data-act");
       const id = btn.getAttribute("data-id");

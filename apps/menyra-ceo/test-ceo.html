@@ -470,6 +470,25 @@
       border: 1px solid #e2e8f0;
     }
 
+    .table-row {
+      border-bottom: 1px solid #f1f5f9;
+      transition: background 0.2s ease;
+    }
+
+    .table-row:hover {
+      background: #f8fafc;
+    }
+
+    .status-badge {
+      padding: 5px 12px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
     .view-content {
       animation: fadeIn 0.4s ease-out;
     }
@@ -1460,69 +1479,51 @@
       <section class="m-view view-content" data-view="leads" style="display:none;">
         <header class="header-main">
           <div>
-            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Lead management</h2>
-            <p class="text-muted small fw-600 m-0">Pipeline overview</p>
+            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Lead Management</h2>
+            <p class="text-muted small fw-600 m-0">Wischen: Rechts = Archiv | Links = Loeschen</p>
           </div>
           <div class="d-flex gap-2">
-            <button class="m-btn" id="newLeadBtn" type="button">New lead</button>
-            <button class="m-btn m-btn--ghost" type="button" data-section="dashboard">Back</button>
+            <button class="btn btn-primary rounded-pill px-4 fw-800" id="newLeadBtn" type="button">
+              <i class="fas fa-plus me-2"></i> Neuer Lead
+            </button>
+            <button class="btn btn-light rounded-pill px-4 fw-800" type="button" data-section="dashboard">
+              <i class="fas fa-arrow-left"></i>
+            </button>
           </div>
         </header>
 
-        <div class="table-card p-3 p-md-4">
-          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
-            <div class="flex-grow-1">
-              <input id="leadsSearch" class="m-input" placeholder="Search leads" />
-              <div class="small text-muted mt-2" id="leadsMeta">-</div>
-            </div>
-            <div class="d-flex flex-wrap gap-2">
-              <select id="leadsStatusFilter" class="m-select2">
-                <option value="">All status</option>
-                <option value="new">Open</option>
-                <option value="contacted">Contacted</option>
-                <option value="waiting">Waiting</option>
-                <option value="follow_up">Follow up</option>
-                <option value="interested">Interested</option>
-                <option value="no_interest">No interest</option>
-                <option value="converted">Converted</option>
-              </select>
-              <select id="leadsTypeFilter" class="m-select2">
-                <option value="">All types</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="cafe">Cafe</option>
-                <option value="hotel">Hotel</option>
-                <option value="ecommerce">Ecommerce</option>
-                <option value="service">Service</option>
-              </select>
-              <select id="leadsLabelFilter" class="m-select2">
-                <option value="">All labels</option>
-              </select>
-              <button class="m-btn m-btn--ghost m-btn--small" id="leadsClearFilters" type="button">Reset</button>
-            </div>
-          </div>
+        <div class="swipe-list" id="leadsTableBody" data-view-style="swipe"></div>
 
-          <div class="d-flex flex-wrap gap-2 mb-3">
-            <span class="m-badge">Total: <span id="leadsTotalBadge">0</span></span>
-            <span class="m-badge m-badge--ghost" id="leadsStatNew"></span>
-            <span class="m-badge m-badge--ghost" id="leadsStatContacted"></span>
-            <span class="m-badge m-badge--ghost" id="leadsStatInterested"></span>
-            <span class="m-badge m-badge--ghost" id="leadsStatNoInterest"></span>
-          </div>
-
-          <div class="m-table" style="--row-cols: 2fr 1.4fr 1fr 1.2fr;">
-            <div class="m-table-row m-table-row--header">
-              <div>Business</div>
-              <div>Contact</div>
-              <div>Status</div>
-              <div class="m-table-col-actions">Action</div>
-            </div>
-            <div id="leadsTableBody"></div>
-          </div>
-
-          <div class="m-table-footer">
-            <span>Limit: 200</span>
-            <span>Page 1 of 1</span>
-          </div>
+        <div style="display:none;">
+          <input id="leadsSearch" class="m-input" placeholder="Search leads" />
+          <select id="leadsStatusFilter" class="m-select2">
+            <option value="">All status</option>
+            <option value="new">Open</option>
+            <option value="contacted">Contacted</option>
+            <option value="waiting">Waiting</option>
+            <option value="follow_up">Follow up</option>
+            <option value="interested">Interested</option>
+            <option value="no_interest">No interest</option>
+            <option value="converted">Converted</option>
+          </select>
+          <select id="leadsTypeFilter" class="m-select2">
+            <option value="">All types</option>
+            <option value="restaurant">Restaurant</option>
+            <option value="cafe">Cafe</option>
+            <option value="hotel">Hotel</option>
+            <option value="ecommerce">Ecommerce</option>
+            <option value="service">Service</option>
+          </select>
+          <select id="leadsLabelFilter" class="m-select2">
+            <option value="">All labels</option>
+          </select>
+          <button class="m-btn m-btn--ghost m-btn--small" id="leadsClearFilters" type="button">Reset</button>
+          <div class="small text-muted mt-2" id="leadsMeta">-</div>
+          <span id="leadsTotalBadge">0</span>
+          <span id="leadsStatNew"></span>
+          <span id="leadsStatContacted"></span>
+          <span id="leadsStatInterested"></span>
+          <span id="leadsStatNoInterest"></span>
         </div>
       </section>
       <section class="m-view view-content" data-view="staff" style="display:none;">
@@ -1531,60 +1532,72 @@
             <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Staff</h2>
             <p class="text-muted small fw-600 m-0">Menyra Staff und Kunden Staff verwalten.</p>
           </div>
-          <div class="d-flex gap-2">
-            <button class="m-btn m-btn--ghost" type="button" data-section="dashboard">Back</button>
-          </div>
+          <button class="btn btn-primary rounded-pill px-4 fw-800" type="button" data-section="dashboard">
+            <i class="fas fa-arrow-left me-2"></i> Zurueck
+          </button>
         </header>
 
-        <div class="table-card p-3 p-md-4 mb-4" id="staffRequestsCard">
-          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
+        <div class="table-card p-4 mb-4" id="staffRequestsCard">
+          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
             <div>
-              <h5 class="fw-800 m-0">Anfragen</h5>
+              <h6 class="fw-800 m-0">Anfragen</h6>
               <p class="text-muted small m-0">Neue Staff-Anfragen bestaetigen.</p>
             </div>
           </div>
-          <div class="m-table" style="--row-cols: 1fr 1.4fr 1.6fr 1fr 1.2fr 1fr;">
-            <div class="m-table-row m-table-row--header">
-              <div>Typ</div>
-              <div>Name</div>
-              <div>Email</div>
-              <div>Rolle</div>
-              <div>Kunde</div>
-              <div class="m-table-col-actions">Aktion</div>
-            </div>
-            <div id="staffRequestsBody"></div>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr class="text-muted small fw-800">
+                  <th class="border-0">TYP</th>
+                  <th class="border-0">NAME</th>
+                  <th class="border-0">EMAIL</th>
+                  <th class="border-0">ROLLE</th>
+                  <th class="border-0">KUNDE</th>
+                  <th class="border-0 text-end">AKTION</th>
+                </tr>
+              </thead>
+              <tbody id="staffRequestsBody"></tbody>
+            </table>
           </div>
           <div class="small text-muted mt-2" id="staffRequestsMeta">-</div>
         </div>
 
-        <div class="table-card p-3 p-md-4 mb-4">
-          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
+        <div class="table-card p-4 mb-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
             <div>
-              <h5 class="fw-800 m-0">Menyra Staff</h5>
+              <h6 class="fw-800 m-0">Menyra Staff</h6>
               <p class="text-muted small m-0">CEO und Staff Admins.</p>
             </div>
-            <button class="m-btn" type="button" id="newSystemStaffBtn">+ Neuer Menyra Staff</button>
+            <button class="btn btn-primary rounded-pill px-4 fw-800" type="button" id="newSystemStaffBtn">
+              <i class="fas fa-plus me-2"></i> Neuer Menyra Staff
+            </button>
           </div>
-          <div class="m-table" style="--row-cols: 1.4fr 1.8fr 1fr 1fr 1fr;">
-            <div class="m-table-row m-table-row--header">
-              <div>Name</div>
-              <div>Email</div>
-              <div>Rolle</div>
-              <div>Zustaendig</div>
-              <div class="m-table-col-actions">Aktion</div>
-            </div>
-            <div id="systemStaffTableBody"></div>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr class="text-muted small fw-800">
+                  <th class="border-0">NAME</th>
+                  <th class="border-0">EMAIL</th>
+                  <th class="border-0">ROLLE</th>
+                  <th class="border-0">ZUSTAENDIG</th>
+                  <th class="border-0 text-end">AKTION</th>
+                </tr>
+              </thead>
+              <tbody id="systemStaffTableBody"></tbody>
+            </table>
           </div>
           <div class="small text-muted mt-2" id="systemStaffMeta">-</div>
         </div>
 
-        <div class="table-card p-3 p-md-4">
-          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
+        <div class="table-card p-4">
+          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-4">
             <div>
-              <h5 class="fw-800 m-0">Kunden Staff</h5>
+              <h6 class="fw-800 m-0">Kunden Staff</h6>
               <p class="text-muted small m-0">Owner, Kamarier, Kuzhina.</p>
             </div>
-            <button class="m-btn" type="button" id="newRestaurantStaffBtn">+ Neuer Kunden Staff</button>
+            <button class="btn btn-primary rounded-pill px-4 fw-800" type="button" id="newRestaurantStaffBtn">
+              <i class="fas fa-plus me-2"></i> Neuer Kunden Staff
+            </button>
           </div>
 
           <div class="m-input-row mb-3">
@@ -1602,15 +1615,19 @@
             </div>
           </div>
 
-          <div class="m-table" style="--row-cols: 1.4fr 1.8fr 1fr 1fr 1fr;">
-            <div class="m-table-row m-table-row--header">
-              <div>Name</div>
-              <div>Email</div>
-              <div>Rolle</div>
-              <div>Status</div>
-              <div class="m-table-col-actions">Aktion</div>
-            </div>
-            <div id="restaurantStaffTableBody"></div>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr class="text-muted small fw-800">
+                  <th class="border-0">NAME</th>
+                  <th class="border-0">EMAIL</th>
+                  <th class="border-0">ROLLE</th>
+                  <th class="border-0">STATUS</th>
+                  <th class="border-0 text-end">AKTION</th>
+                </tr>
+              </thead>
+              <tbody id="restaurantStaffTableBody"></tbody>
+            </table>
           </div>
           <div class="small text-muted mt-2" id="restaurantStaffMeta">-</div>
         </div>
@@ -1618,78 +1635,83 @@
       <section class="m-view view-content" data-view="customers" style="display:none;">
         <header class="header-main">
           <div>
-            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Customers</h2>
-            <p class="text-muted small fw-600 m-0">Manage active restaurants</p>
+            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Kundenstamm</h2>
+            <p class="text-muted small fw-600 m-0">Verwaltung aktiver Betriebe</p>
           </div>
-          <div class="d-flex gap-2">
-            <button class="m-btn" id="newCustomerBtn" type="button">New customer</button>
-            <button class="m-btn m-btn--ghost" type="button" data-section="dashboard">Back</button>
-          </div>
+          <button class="btn btn-primary rounded-pill px-4 fw-800" type="button" data-section="dashboard">
+            <i class="fas fa-arrow-left me-2"></i> Zurueck
+          </button>
         </header>
 
-        <div class="table-card p-3 p-md-4">
-          <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mb-3">
-            <div class="flex-grow-1">
-              <input id="customerSearch" class="m-input" placeholder="Search customers" />
-              <div class="small text-muted mt-2" id="customersMeta">-</div>
-            </div>
-            <label class="d-flex align-items-center gap-2 small fw-700">
+        <button class="btn btn-primary rounded-pill px-4 fw-800" id="newCustomerBtn" type="button" style="display:none;">
+          Neuer Kunde
+        </button>
+
+        <div class="table-card p-4">
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr class="text-muted small fw-800">
+                  <th class="border-0">BETRIEB</th>
+                  <th class="border-0 text-center">TREUE-STATUS</th>
+                  <th class="border-0 text-end">INFO</th>
+                </tr>
+              </thead>
+              <tbody id="customersTableBody"></tbody>
+            </table>
+          </div>
+
+          <div style="display:none;">
+            <input id="customerSearch" class="m-input" placeholder="Search customers" />
+            <div class="small text-muted mt-2" id="customersMeta">-</div>
+            <label>
               <input type="checkbox" id="customersOnlyActive" checked />
               Only active
             </label>
-          </div>
-
-          <div class="m-table" style="--row-cols: 1.6fr 1.2fr 1fr 1fr 0.9fr 1.2fr;">
-            <div class="m-table-row m-table-row--header">
-              <div>Customer</div>
-              <div>Owner</div>
-              <div>City</div>
-              <div>Plan</div>
-              <div>Status</div>
-              <div class="m-table-col-actions">Action</div>
-            </div>
-            <div id="customersTableBody"></div>
-          </div>
-
-          <div class="m-table-footer">
             <span id="customersFooter">-</span>
-            <span>Page 1 of 1</span>
           </div>
         </div>
       </section>
       <section class="m-view view-content" data-view="menu" style="display:none;">
         <header class="header-main">
           <div>
-            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Menus</h2>
-            <p class="text-muted small fw-600 m-0">Manage food and drink cards</p>
+            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Speisekarten</h2>
+            <p class="text-muted small fw-600 m-0">Uebersicht Ihrer Menues</p>
           </div>
-          <div class="d-flex flex-wrap gap-2">
-            <select id="menuRestaurantSelect" class="m-select2" style="min-width:200px;"></select>
-            <button class="m-btn" id="menuAddBtn" type="button">New item</button>
-            <button class="m-btn m-btn--ghost" id="menuPublishBtn" type="button">Publish</button>
-            <button class="m-btn m-btn--ghost" type="button" data-section="dashboard">Back</button>
+          <div class="d-flex gap-2">
+            <button class="btn btn-primary rounded-pill px-4 fw-800" id="menuAddBtn" type="button">
+              <i class="fas fa-plus me-2"></i> Neu
+            </button>
+            <button class="btn btn-light rounded-pill px-4 fw-800" type="button" data-section="dashboard">
+              <i class="fas fa-arrow-left"></i>
+            </button>
           </div>
         </header>
 
-        <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+        <div style="display:none;">
+          <select id="menuRestaurantSelect" class="m-select2" style="min-width:200px;"></select>
+          <button class="m-btn m-btn--ghost" id="menuPublishBtn" type="button">Publish</button>
+          <div class="small text-muted" id="menuStatus">-</div>
           <div class="m-seg" id="menuTypeSeg" role="tablist" aria-label="Type">
             <button class="m-seg-btn is-active" type="button" data-menu-type="all">All</button>
             <button class="m-seg-btn" type="button" data-menu-type="food">Food</button>
             <button class="m-seg-btn" type="button" data-menu-type="drink">Drink</button>
           </div>
-          <div class="small text-muted" id="menuStatus">-</div>
         </div>
 
         <div class="table-card p-3 p-md-4">
-          <div class="m-table" style="--row-cols: 1.8fr 0.8fr 1fr 1fr 1.2fr;">
-            <div class="m-table-row m-table-row--header">
-              <div>Item</div>
-              <div>Price</div>
-              <div>Type</div>
-              <div>Status</div>
-              <div class="m-table-col-actions">Action</div>
-            </div>
-            <div id="menuTableBody"></div>
+          <div class="table-responsive">
+            <table class="table align-middle">
+              <thead>
+                <tr class="text-muted small fw-800">
+                  <th class="border-0">VORSCHAU</th>
+                  <th class="border-0">NAME</th>
+                  <th class="border-0 text-center">STATUS</th>
+                  <th class="border-0 text-end">AKTION</th>
+                </tr>
+              </thead>
+              <tbody id="menuTableBody"></tbody>
+            </table>
           </div>
         </div>
       </section>
