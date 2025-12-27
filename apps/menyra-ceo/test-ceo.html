@@ -793,6 +793,32 @@
       color: var(--brand-primary);
     }
 
+    .menu-tools {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .menu-tools .m-input-group {
+      margin-bottom: 0;
+      min-width: 220px;
+      flex: 1;
+    }
+
+    .menu-tools .menu-status {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      min-width: 140px;
+    }
+
+    .menu-tools .menu-actions {
+      display: inline-flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
     .m-profile {
       display: flex;
       align-items: center;
@@ -1688,15 +1714,20 @@
           </div>
         </header>
 
-        <div style="display:none;">
-          <select id="menuRestaurantSelect" class="m-select2" style="min-width:200px;"></select>
-          <button class="m-btn m-btn--ghost" id="menuPublishBtn" type="button">Publish</button>
-          <div class="small text-muted" id="menuStatus">-</div>
-          <div class="m-seg" id="menuTypeSeg" role="tablist" aria-label="Type">
-            <button class="m-seg-btn is-active" type="button" data-menu-type="all">All</button>
-            <button class="m-seg-btn" type="button" data-menu-type="food">Food</button>
-            <button class="m-seg-btn" type="button" data-menu-type="drink">Drink</button>
+        <div class="menu-tools">
+          <div class="m-input-group">
+            <label for="menuRestaurantSelect">Kunde</label>
+            <select id="menuRestaurantSelect" class="m-select2"></select>
           </div>
+          <div class="menu-actions">
+            <button class="m-btn m-btn--ghost" id="menuPublishBtn" type="button">Publish</button>
+            <div class="m-seg" id="menuTypeSeg" role="tablist" aria-label="Type">
+              <button class="m-seg-btn is-active" type="button" data-menu-type="all">All</button>
+              <button class="m-seg-btn" type="button" data-menu-type="food">Food</button>
+              <button class="m-seg-btn" type="button" data-menu-type="drink">Drink</button>
+            </div>
+          </div>
+          <div class="menu-status" id="menuStatus">-</div>
         </div>
 
         <div class="table-card p-3 p-md-4">
