@@ -133,8 +133,9 @@
     .brand-logo-container {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 0;
       cursor: pointer;
+      text-decoration: none;
     }
 
     .brand-logo {
@@ -151,10 +152,16 @@
       box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25);
     }
 
+    .sidebar .brand-logo,
+    .m-mobile-menu .brand-logo,
+    .mobile-header .brand-logo {
+      display: none;
+    }
+
     .brand-name {
       font-weight: 800;
-      font-size: 1.5rem;
-      letter-spacing: -1.3px;
+      font-size: 1.65rem;
+      letter-spacing: -1.5px;
       background: linear-gradient(to right, #6366f1, #a855f7);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
@@ -189,7 +196,8 @@
       cursor: pointer;
     }
 
-    .menu-item.is-active {
+    .menu-item.is-active,
+    .menu-item.active {
       color: var(--brand-primary);
       background: #fff;
       box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03);
@@ -374,6 +382,64 @@
       box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
     }
 
+    .swipe-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .swipe-container {
+      position: relative;
+      overflow: hidden;
+      background: #f1f5f9;
+      border-radius: 24px;
+      touch-action: pan-y;
+      user-select: none;
+    }
+
+    .swipe-actions-left,
+    .swipe-actions-right {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100px;
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.75rem;
+      z-index: 1;
+    }
+
+    .swipe-actions-left {
+      left: 0;
+      background: #3b82f6;
+    }
+
+    .swipe-actions-right {
+      right: 0;
+      background: #ef4444;
+    }
+
+    .swipe-content {
+      position: relative;
+      background: #fff;
+      z-index: 2;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+    }
+
+    .swipe-content.swiping {
+      transition: none;
+    }
+
     .table-card {
       background: #fff;
       border-radius: 32px;
@@ -408,6 +474,83 @@
         opacity: 1;
         transform: translateY(0);
       }
+    }
+
+    .modal-backdrop.show {
+      backdrop-filter: blur(10px);
+      background-color: rgba(0, 0, 0, 0.3);
+    }
+
+    .ios-modal .modal-content {
+      border-radius: 32px;
+      border: none;
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.2);
+      padding: 10px;
+    }
+
+    .ios-modal .modal-header {
+      border-bottom: none;
+      padding: 20px 24px 10px;
+    }
+
+    .ios-modal .modal-body {
+      padding: 10px 24px 30px;
+    }
+
+    .ios-modal .modal-title {
+      font-weight: 800;
+      font-size: 1.5rem;
+      letter-spacing: -0.5px;
+    }
+
+    .ios-input-group {
+      margin-bottom: 20px;
+    }
+
+    .ios-input-group label {
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-left: 5px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .ios-input {
+      background: #f1f5f9;
+      border: none;
+      border-radius: 16px;
+      padding: 14px 18px;
+      width: 100%;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .ios-input:focus {
+      outline: none;
+      background: #e2e8f0;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    }
+
+    .ios-select {
+      appearance: none;
+      cursor: pointer;
+    }
+
+    .ios-btn-main {
+      background: var(--accent-grad);
+      color: #fff;
+      border: none;
+      border-radius: 18px;
+      padding: 16px;
+      width: 100%;
+      font-weight: 800;
+      box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+      transition: transform 0.2s;
+    }
+
+    .ios-btn-main:active {
+      transform: scale(0.97);
     }
     .m-btn {
       display: inline-flex;
@@ -1117,7 +1260,7 @@
         <a href="#" class="menu-item" data-section="leads"><i class="fas fa-chart-line me-3"></i>Leads</a>
         <a href="#" class="menu-item" data-section="menu"><i class="fas fa-utensils me-3"></i>Menu</a>
         <a href="#" class="menu-item" data-section="customers"><i class="fas fa-users me-3"></i>Customers</a>
-        <div class="menu-item is-disabled"><i class="fas fa-calendar-check me-3"></i>Bookings</div>
+        <div class="menu-item is-disabled"><i class="fas fa-user-tie me-3"></i>Staff</div>
       </nav>
       <div class="sidebar-footer">
         <button class="m-btn m-btn--ghost" id="logoutButton" type="button">Logout</button>
