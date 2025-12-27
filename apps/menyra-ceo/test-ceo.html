@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#6366f1" />
+  <meta name="theme-color" content="#eef0ff" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="./manifest.webmanifest" />
@@ -73,6 +73,9 @@
     html {
       background: var(--safe-solid);
       height: 100%;
+      min-height: 100%;
+      width: 100%;
+      overscroll-behavior: none;
     }
 
     body {
@@ -81,11 +84,15 @@
       color: var(--text-main);
       margin: 0;
       min-height: 100vh;
+      min-height: 100svh;
+      min-height: 100dvh;
+      width: 100%;
       overflow-x: hidden;
       -webkit-font-smoothing: antialiased;
       padding-top: var(--safe-top);
       padding-bottom: var(--safe-bottom);
       position: relative;
+      overscroll-behavior: none;
     }
 
     body::before {
@@ -93,11 +100,21 @@
       position: fixed;
       left: 0;
       right: 0;
-      top: calc(var(--safe-top) + var(--safe-blend));
-      bottom: var(--safe-bottom);
+      top: 0;
+      bottom: 0;
       background:
-        linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
-        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(
+          to bottom,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-top) + var(--safe-blend)),
+          transparent calc(var(--safe-top) + var(--safe-fade))
+        ),
+        linear-gradient(
+          to top,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-bottom) + var(--safe-blend)),
+          transparent calc(var(--safe-bottom) + var(--safe-fade))
+        ),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0, transparent 42%),
         var(--brand-bg);
@@ -110,6 +127,15 @@
       overflow: hidden;
       overscroll-behavior: none;
       touch-action: none;
+      height: 100dvh;
+    }
+
+    html.modal-open,
+    body.modal-open {
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
+      height: 100dvh;
     }
 
     body.menu-open::before {
@@ -120,6 +146,16 @@
     body.m-login {
       padding: 0;
       background: var(--safe-solid);
+    }
+
+    html.m-boot,
+    html.m-login,
+    body.m-boot,
+    body.m-login {
+      overflow: hidden;
+      height: 100dvh;
+      overscroll-behavior: none;
+      touch-action: none;
     }
 
     a {
@@ -352,6 +388,7 @@
       display: flex;
       align-items: center;
       gap: 15px;
+      width: 100%;
       transition: all 0.2s ease;
       cursor: pointer;
       text-decoration: none;
@@ -858,6 +895,9 @@
     .m-boot-overlay {
       position: fixed;
       inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -873,11 +913,21 @@
       position: absolute;
       left: 0;
       right: 0;
-      top: calc(var(--safe-top) + var(--safe-blend));
-      bottom: var(--safe-bottom);
+      top: 0;
+      bottom: 0;
       background:
-        linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
-        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(
+          to bottom,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-top) + var(--safe-blend)),
+          transparent calc(var(--safe-top) + var(--safe-fade))
+        ),
+        linear-gradient(
+          to top,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-bottom) + var(--safe-blend)),
+          transparent calc(var(--safe-bottom) + var(--safe-fade))
+        ),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.14) 0, transparent 42%),
         var(--brand-bg);
@@ -891,8 +941,18 @@
 
     html.is-dark .m-boot-overlay::before {
       background:
-        linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
-        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(
+          to bottom,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-top) + var(--safe-blend)),
+          transparent calc(var(--safe-top) + var(--safe-fade))
+        ),
+        linear-gradient(
+          to top,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-bottom) + var(--safe-blend)),
+          transparent calc(var(--safe-bottom) + var(--safe-fade))
+        ),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.25) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.18) 0, transparent 42%),
         var(--brand-bg);
@@ -966,6 +1026,9 @@
     .m-modal-overlay {
       position: fixed;
       inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
       background: rgba(15, 23, 42, 0.4);
       backdrop-filter: blur(6px);
       display: flex;
@@ -986,11 +1049,21 @@
       position: absolute;
       left: 0;
       right: 0;
-      top: calc(var(--safe-top) + var(--safe-blend));
-      bottom: var(--safe-bottom);
+      top: 0;
+      bottom: 0;
       background:
-        linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
-        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(
+          to bottom,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-top) + var(--safe-blend)),
+          transparent calc(var(--safe-top) + var(--safe-fade))
+        ),
+        linear-gradient(
+          to top,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-bottom) + var(--safe-blend)),
+          transparent calc(var(--safe-bottom) + var(--safe-fade))
+        ),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.14) 0, transparent 42%),
         var(--brand-bg);
@@ -1138,10 +1211,10 @@
     .m-mobile-menu-overlay {
       position: fixed;
       inset: 0;
-      background: var(--safe-solid);
       width: 100vw;
       height: 100vh;
       height: 100dvh;
+      background: var(--safe-solid);
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease;
@@ -1160,11 +1233,21 @@
       position: absolute;
       left: 0;
       right: 0;
-      top: calc(var(--safe-top) + var(--safe-blend));
-      bottom: var(--safe-bottom);
+      top: 0;
+      bottom: 0;
       background:
-        linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
-        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(
+          to bottom,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-top) + var(--safe-blend)),
+          transparent calc(var(--safe-top) + var(--safe-fade))
+        ),
+        linear-gradient(
+          to top,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-bottom) + var(--safe-blend)),
+          transparent calc(var(--safe-bottom) + var(--safe-fade))
+        ),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.14) 0, transparent 42%),
         var(--brand-bg);
@@ -1202,11 +1285,21 @@
       position: absolute;
       left: 0;
       right: 0;
-      top: calc(var(--safe-top) + var(--safe-blend));
-      bottom: var(--safe-bottom);
+      top: 0;
+      bottom: 0;
       background:
-        linear-gradient(to bottom, var(--safe-solid) 0, transparent var(--safe-fade)),
-        linear-gradient(to top, var(--safe-solid) 0, transparent var(--safe-fade)),
+        linear-gradient(
+          to bottom,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-top) + var(--safe-blend)),
+          transparent calc(var(--safe-top) + var(--safe-fade))
+        ),
+        linear-gradient(
+          to top,
+          var(--safe-solid) 0,
+          var(--safe-solid) calc(var(--safe-bottom) + var(--safe-blend)),
+          transparent calc(var(--safe-bottom) + var(--safe-fade))
+        ),
         radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.18) 0, transparent 42%),
         radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.14) 0, transparent 42%),
         var(--brand-bg);

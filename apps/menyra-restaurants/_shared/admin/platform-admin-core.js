@@ -160,8 +160,35 @@ function setText(id, txt) {
   if (el) el.textContent = txt;
 }
 
-function show(el) { if (el) el.classList.remove("is-hidden"); }
-function hide(el) { if (el) el.classList.add("is-hidden"); }
+function syncModalLock() {
+  const root = document.documentElement;
+  const body = document.body;
+  if (!root || !body) return;
+  const overlays = document.querySelectorAll(".m-modal-overlay, .m-boot-overlay");
+  let open = false;
+  overlays.forEach((el) => {
+    if (open) return;
+    if (el.classList.contains("is-hidden") || el.classList.contains("is-done")) return;
+    if (el.style && el.style.display === "none") return;
+    const style = window.getComputedStyle(el);
+    if (style.display === "none") return;
+    open = true;
+  });
+  root.classList.toggle("modal-open", open);
+  body.classList.toggle("modal-open", open);
+}
+
+function show(el) {
+  if (!el) return;
+  el.classList.remove("is-hidden");
+  syncModalLock();
+}
+
+function hide(el) {
+  if (!el) return;
+  el.classList.add("is-hidden");
+  syncModalLock();
+}
 
 function parseIntSafe(v, fallback = 0) {
   const n = parseInt(String(v ?? "").trim(), 10);
@@ -449,6 +476,7 @@ function finishBoot() {
   const ov = $("mBootOverlay");
   if (ov) {
     ov.classList.add("is-done");
+    syncModalLock();
     setTimeout(() => {
       try { ov.remove(); } catch {}
     }, 400);
@@ -4628,6 +4656,8 @@ function canDeleteMenuItems(){
 function openMenuModal(mode){
   if(!menuOverlay) return;
   menuOverlay.style.display = "";
+  menuOverlay.classList.remove("is-hidden");
+  syncModalLock();
   miStatus && (miStatus.textContent = "");
   if(mode === "new"){
     miTitle && (miTitle.textContent = "Neues Item");
@@ -4638,6 +4668,8 @@ function openMenuModal(mode){
 function closeMenuModal(){
   if(!menuOverlay) return;
   menuOverlay.style.display = "none";
+  menuOverlay.classList.add("is-hidden");
+  syncModalLock();
   editMenuIndex = -1;
 }
 

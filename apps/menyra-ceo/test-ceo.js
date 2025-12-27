@@ -9,6 +9,8 @@ const showLoginFallback = () => {
   if (!overlay || auth.currentUser) return;
   document.body.classList.add("m-login");
   document.documentElement.classList.add("m-login");
+  document.body.classList.add("modal-open");
+  document.documentElement.classList.add("modal-open");
   overlay.classList.remove("is-hidden");
 };
 
