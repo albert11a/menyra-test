@@ -33,6 +33,7 @@
       --safe-bottom: 0px;
       --safe-blend: 28px;
       --safe-fade: 90px;
+      --safe-fade-bottom: 160px;
       --safe-solid: var(--brand-bg);
       --dock-offset: 0px;
       --app-bg:
@@ -46,7 +47,7 @@
           to top,
           var(--safe-solid) 0,
           var(--safe-solid) calc(var(--safe-bottom) + var(--safe-blend)),
-          transparent calc(var(--safe-bottom) + var(--safe-fade))
+          transparent calc(var(--safe-bottom) + var(--safe-fade-bottom))
         ),
         radial-gradient(circle at 0% 18%, rgba(99, 102, 241, 0.08) 0, transparent 45%),
         radial-gradient(circle at 100% 82%, rgba(168, 85, 247, 0.08) 0, transparent 45%),
@@ -70,6 +71,7 @@
         --safe-bottom: env(safe-area-inset-bottom);
         --safe-blend: 28px;
         --safe-fade: 90px;
+        --safe-fade-bottom: 160px;
       }
     }
 
@@ -79,6 +81,7 @@
         --safe-bottom: constant(safe-area-inset-bottom);
         --safe-blend: 28px;
         --safe-fade: 90px;
+        --safe-fade-bottom: 160px;
       }
     }
 
@@ -1155,6 +1158,7 @@
       height: 100vh;
       height: 100dvh;
       background: var(--app-bg);
+      background-color: var(--safe-solid);
       visibility: hidden;
       opacity: 0;
       pointer-events: none;
@@ -1178,6 +1182,7 @@
       position: fixed;
       inset: 0;
       background: var(--app-bg);
+      background-color: var(--safe-solid);
       width: 100vw;
       height: 100vh;
       height: 100dvh;
