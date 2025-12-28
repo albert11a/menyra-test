@@ -17,7 +17,7 @@
   <style>
     :root {
       --brand-primary: #6366f1;
-      --brand-bg: #f8fafc;
+      --brand-bg: #eef0ff;
       --card-bg: rgba(255, 255, 255, 0.85);
       --sidebar-bg: rgba(255, 255, 255, 0.7);
       --card-border: rgba(255, 255, 255, 0.9);
@@ -31,9 +31,9 @@
       --border-soft: rgba(15, 23, 42, 0.08);
       --safe-top: 0px;
       --safe-bottom: 0px;
-      --safe-blend: 32px;
-      --safe-fade: 220px;
-      --safe-solid: #eef0ff;
+      --safe-blend: 28px;
+      --safe-fade: 90px;
+      --safe-solid: var(--brand-bg);
       --dock-offset: 0px;
       --app-bg:
         linear-gradient(
@@ -54,22 +54,22 @@
     }
 
     html.is-dark {
-      --brand-bg: #020617;
+      --brand-bg: #0b1220;
       --card-bg: rgba(15, 23, 42, 0.75);
       --sidebar-bg: rgba(15, 23, 42, 0.6);
       --card-border: rgba(255, 255, 255, 0.05);
       --text-main: #f8fafc;
       --text-muted: #94a3b8;
       --border-soft: rgba(148, 163, 184, 0.2);
-      --safe-solid: #0b1220;
+      --safe-solid: var(--brand-bg);
     }
 
     @supports (padding: env(safe-area-inset-top)) {
       :root {
         --safe-top: env(safe-area-inset-top);
         --safe-bottom: env(safe-area-inset-bottom);
-        --safe-blend: 32px;
-        --safe-fade: 220px;
+        --safe-blend: 28px;
+        --safe-fade: 90px;
       }
     }
 
@@ -77,8 +77,8 @@
       :root {
         --safe-top: constant(safe-area-inset-top);
         --safe-bottom: constant(safe-area-inset-bottom);
-        --safe-blend: 32px;
-        --safe-fade: 220px;
+        --safe-blend: 28px;
+        --safe-fade: 90px;
       }
     }
 
