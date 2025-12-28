@@ -96,7 +96,7 @@
 
     body {
       font-family: "Plus Jakarta Sans", sans-serif;
-      background: var(--app-bg);
+      background: transparent;
       color: var(--text-main);
       margin: 0;
       min-height: 100vh;
@@ -117,7 +117,6 @@
 
     html.menu-open,
     body.menu-open {
-      background: var(--safe-solid);
       overflow: hidden;
       overscroll-behavior: none;
       touch-action: none;
@@ -1417,12 +1416,12 @@
     }
 
     /* Safe-area blend fix: keep gradient continuous in Safari/PWA */
-    html,
-    body {
-      background: var(--brand-bg);
+    html {
+      background: var(--app-bg);
     }
 
     body {
+      background: transparent;
       min-height: 100dvh;
     }
 
