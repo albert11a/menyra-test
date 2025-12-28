@@ -2027,7 +2027,8 @@ const LEAD_STATUS_LABELS = {
   no_answer: "Keine Antwort",
   no_interest: "Kein Interesse",
   lost: "Verloren",
-  converted: "Kunde erstellt"
+  converted: "Kunde erstellt",
+  archived: "Archiviert"
 };
 
 const LEAD_TYPE_LABELS = {
@@ -2357,6 +2358,8 @@ function applyLeadsFilter(allRows){
 
   return (allRows || []).filter(r=>{
     const statusKey = normalizeLeadStatusKey(r.status || "");
+    const hideArchived = !statusFilter && $("leadsTableBody")?.dataset.viewStyle === "swipe";
+    if (hideArchived && statusKey === "archived") return false;
     if (statusFilter && statusKey !== statusFilter) return false;
 
     const typeKey = normalizeLeadTypeKey(r.customerType || "");
@@ -2393,6 +2396,7 @@ function renderLeadsTable(rows){
         return { bg: "rgba(245, 158, 11, 0.12)", color: "#f59e0b" };
       }
       if (["interested", "converted"].includes(key)) return { bg: "rgba(34, 197, 94, 0.12)", color: "#22c55e" };
+      if (key === "archived") return { bg: "rgba(148, 163, 184, 0.18)", color: "#64748b" };
       if (["no_interest", "lost"].includes(key)) return { bg: "rgba(100, 116, 139, 0.12)", color: "#64748b" };
       return { bg: "rgba(148, 163, 184, 0.16)", color: "#64748b" };
     };
@@ -2419,8 +2423,8 @@ function renderLeadsTable(rows){
       }
 
       row.innerHTML = `
-        <div class="swipe-actions-left"><i class="fas fa-archive mb-1 fs-5"></i><span>Archiv</span></div>
-        <div class="swipe-actions-right"><i class="fas fa-trash mb-1 fs-5"></i><span>Loeschen</span></div>
+        <div class="swipe-actions-left" data-act="lead-archive" data-id="${esc(r.id)}"><i class="fas fa-archive mb-1 fs-5"></i><span>Archiv</span></div>
+        <div class="swipe-actions-right" data-act="lead-delete" data-id="${esc(r.id)}"><i class="fas fa-trash mb-1 fs-5"></i><span>Loeschen</span></div>
         <div class="swipe-content" data-act="lead-edit" data-id="${esc(r.id)}">
           <div class="d-flex align-items-center gap-3">
             <div class="bg-light rounded-circle p-3 d-none d-sm-block"><i class="fas fa-store text-muted"></i></div>
@@ -2438,6 +2442,7 @@ function renderLeadsTable(rows){
     });
 
     setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+    bindLeadsSwipeHandlers(body);
     return;
   }
 
@@ -2477,6 +2482,128 @@ function renderLeadsTable(rows){
     body.appendChild(row);
   });
   setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+}
+
+const LEAD_SWIPE_MAX = 110;
+const LEAD_SWIPE_TRIGGER = 70;
+const LEAD_SWIPE_SLOP = 6;
+
+function bindLeadsSwipeHandlers(body){
+  if (!body) return;
+  const rows = body.querySelectorAll(".swipe-container");
+  rows.forEach((row) => {
+    if (row.dataset.swipeBound) return;
+    row.dataset.swipeBound = "1";
+    const content = row.querySelector(".swipe-content");
+    if (!content) return;
+
+    let startX = 0;
+    let startY = 0;
+    let currentX = 0;
+    let tracking = false;
+    let locked = false;
+
+    const resetTransform = () => {
+      content.style.transform = "translate3d(0, 0, 0)";
+      currentX = 0;
+    };
+
+    const endSwipe = (evt) => {
+      if (!tracking) return;
+      tracking = false;
+      content.classList.remove("swiping");
+      try {
+        if (evt && evt.pointerId !== undefined) content.releasePointerCapture(evt.pointerId);
+      } catch {}
+
+      if (Math.abs(currentX) > LEAD_SWIPE_SLOP) {
+        row.dataset.swipeIgnoreClick = "1";
+        setTimeout(() => {
+          delete row.dataset.swipeIgnoreClick;
+        }, 260);
+      }
+
+      const shouldTrigger = Math.abs(currentX) >= LEAD_SWIPE_TRIGGER;
+      const action = currentX > 0 ? "lead-archive" : "lead-delete";
+      const leadId = content.getAttribute("data-id") || "";
+      resetTransform();
+      if (shouldTrigger && leadId) {
+        handleLeadSwipeAction(action, leadId);
+      }
+    };
+
+    row.addEventListener("pointerdown", (evt) => {
+      if (evt.pointerType === "mouse" && evt.button !== 0) return;
+      tracking = true;
+      locked = false;
+      currentX = 0;
+      startX = evt.clientX;
+      startY = evt.clientY;
+      content.classList.add("swiping");
+      try { content.setPointerCapture(evt.pointerId); } catch {}
+    });
+
+    row.addEventListener("pointermove", (evt) => {
+      if (!tracking) return;
+      const dx = evt.clientX - startX;
+      const dy = evt.clientY - startY;
+      if (!locked) {
+        if (Math.abs(dx) < LEAD_SWIPE_SLOP) return;
+        if (Math.abs(dy) > Math.abs(dx)) {
+          tracking = false;
+          content.classList.remove("swiping");
+          resetTransform();
+          return;
+        }
+        locked = true;
+      }
+      const clamped = Math.max(-LEAD_SWIPE_MAX, Math.min(LEAD_SWIPE_MAX, dx));
+      currentX = clamped;
+      content.style.transform = `translate3d(${clamped}px, 0, 0)`;
+    });
+
+    row.addEventListener("pointerup", endSwipe);
+    row.addEventListener("pointercancel", endSwipe);
+    row.addEventListener("pointerleave", endSwipe);
+  });
+}
+
+async function handleLeadSwipeAction(action, leadId){
+  if (!leadId) return;
+  const row = leadsAll.find(x => x.id === leadId);
+  if (!row) return;
+  await handleLeadAction(action, row);
+}
+
+async function handleLeadAction(action, row){
+  if (!row || !row.id) return;
+  if (!currentUser) return;
+
+  if (action === "lead-archive") {
+    try {
+      await setDoc(doc(db, "leads", row.id), {
+        status: "archived",
+        archivedAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      cacheDel(`${LEADS_CACHE_KEY}_${role}_${currentUser.uid}`);
+      refreshLeads(true);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  if (action === "lead-delete") {
+    const ok = window.confirm("Sind Sie sicher, dass Sie diesen Lead loeschen wollen?");
+    if (!ok) return;
+    try {
+      await deleteDoc(doc(db, "leads", row.id));
+      cacheDel(`${LEADS_CACHE_KEY}_${role}_${currentUser.uid}`);
+      refreshLeads(true);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 }
 
 // =========================================================
@@ -4509,7 +4636,7 @@ async function refreshLeads(force = false) {
     setText("leadsStatNoInterest", `Kein Interesse: ${st.counts.no_interest}`);
     const openCount = leadsAll.filter(r => {
       const s = normalizeLeadStatusKey(r.status || "");
-      return !["no_interest", "lost", "converted", "closed", "done"].includes(s);
+      return !["no_interest", "lost", "converted", "closed", "done", "archived"].includes(s);
     }).length;
     animateValue($("dashLeadsTotal"), leadsAll.length, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
     animateValue($("dashLeadsOpen"), openCount, (v) => formatNumber(Math.round(v || 0)), { maxDiff: 5000 });
@@ -4517,22 +4644,33 @@ async function refreshLeads(force = false) {
     markLive("cardLeads");
     updateSystemStatsCard({ restaurants, leadsCount: leadsAll.length, storiesCount: activeStoriesCache.length });
 
-    // row actions (event delegation)
-    $("leadsTableBody")?.addEventListener("click", async (e) => {
-      const btn = e.target?.closest?.("[data-act]");
-      if (!btn) return;
-      const act = btn.getAttribute("data-act");
-      const id = btn.getAttribute("data-id");
-      if (!id) return;
-      const row = leadsAll.find(x => x.id === id);
-      if (!row) return;
+    const leadsBody = $("leadsTableBody");
+    if (leadsBody && !leadsBody.dataset.leadsBound) {
+      leadsBody.dataset.leadsBound = "1";
+      // row actions (event delegation)
+      leadsBody.addEventListener("click", async (e) => {
+        const swipeRow = e.target?.closest?.(".swipe-container");
+        if (swipeRow && swipeRow.dataset.swipeIgnoreClick === "1") return;
 
-      if (act === "lead-edit") {
-        openLeadModal("edit", row);
-        return;
-      }
+        const btn = e.target?.closest?.("[data-act]");
+        if (!btn) return;
+        const act = btn.getAttribute("data-act");
+        const id = btn.getAttribute("data-id");
+        if (!id) return;
+        const row = leadsAll.find(x => x.id === id);
+        if (!row) return;
 
-      if (act === "lead-to-customer") {
+        if (act === "lead-edit") {
+          openLeadModal("edit", row);
+          return;
+        }
+
+        if (act === "lead-archive" || act === "lead-delete") {
+          await handleLeadAction(act, row);
+          return;
+        }
+
+        if (act === "lead-to-customer") {
         // Convert lead -> new customer (restaurant doc)
         setText("adminStatus", "Erstelle Kunde…");
         try {
@@ -4565,8 +4703,9 @@ async function refreshLeads(force = false) {
           setText("adminStatus", "Fehler beim Erstellen (Rules/Auth?).");
         }
         return;
-      }
-    }, { once: true });
+        }
+      });
+    }
 
     setText("leadsMeta", filtered.length ? `Zeilen: ${filtered.length}` : "—");
   } catch (err) {
