@@ -993,6 +993,19 @@
       justify-content: center;
       padding: 24px;
       z-index: 3000;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 0.2s ease, visibility 0s linear 0s;
+      will-change: opacity;
+    }
+
+    .m-modal-overlay.is-hidden {
+      display: flex !important;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.2s ease, visibility 0s linear 0.2s;
     }
 
     body.m-login .m-modal-overlay {
@@ -1023,10 +1036,19 @@
       flex-direction: column;
       position: relative;
       z-index: 1;
+      opacity: 1;
+      transform: translateY(0);
+      transition: transform 0.2s ease, opacity 0.2s ease;
+      will-change: transform, opacity;
     }
 
     html.is-dark .m-modal {
       background: rgba(15, 23, 42, 0.95);
+    }
+
+    .m-modal-overlay.is-hidden .m-modal {
+      opacity: 0;
+      transform: translateY(12px);
     }
 
     .m-modal-header {
