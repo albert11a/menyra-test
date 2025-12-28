@@ -88,6 +88,7 @@
 
     html {
       background: var(--app-bg);
+      background-color: var(--safe-solid);
       height: 100%;
       min-height: 100%;
       width: 100%;
@@ -1151,6 +1152,7 @@
       height: 100vh;
       height: 100dvh;
       background: var(--app-bg);
+      visibility: hidden;
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease;
@@ -1162,6 +1164,7 @@
     .m-mobile-menu-overlay.is-visible {
       opacity: 1;
       pointer-events: auto;
+      visibility: visible;
     }
 
     .m-mobile-menu-overlay::before {
@@ -1175,6 +1178,7 @@
       width: 100vw;
       height: 100vh;
       height: 100dvh;
+      visibility: hidden;
       transform: translate3d(-100%, 0, 0);
       transition: transform 0.25s ease;
       will-change: transform;
@@ -1191,6 +1195,7 @@
 
     .m-mobile-menu.is-open {
       transform: translate3d(0, 0, 0);
+      visibility: visible;
     }
 
     .m-mobile-menu::before {
