@@ -986,8 +986,8 @@
       width: 100vw;
       height: 100vh;
       height: 100dvh;
-      background: rgba(15, 23, 42, 0.4);
-      backdrop-filter: blur(6px);
+      background: transparent;
+      backdrop-filter: none;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1335,34 +1335,6 @@
     }
 
     @media (max-width: 991px) {
-      .m-modal-overlay {
-        align-items: stretch;
-        justify-content: stretch;
-        padding: 0;
-        background: var(--app-bg);
-        background-color: var(--safe-solid);
-        backdrop-filter: none;
-      }
-
-      .m-modal {
-        width: 100vw;
-        height: 100dvh;
-        max-width: none;
-        max-height: none;
-        border-radius: 0;
-        border: none;
-        box-shadow: none;
-        background: transparent;
-      }
-
-      .m-modal-header {
-        padding-top: 18px;
-      }
-
-      .m-modal-body {
-        padding-bottom: 22px;
-      }
-
       body.m-login .m-modal-overlay {
         align-items: center;
         justify-content: center;
