@@ -898,6 +898,7 @@
       isolation: isolate;
       z-index: 4000;
       transition: opacity 0.3s ease, transform 0.3s ease;
+      visibility: visible;
     }
 
     .m-boot-overlay::before {
@@ -916,11 +917,13 @@
       opacity: 0;
       pointer-events: none;
       transform: translateY(-8px);
+      visibility: hidden;
     }
 
     body.m-login .m-boot-overlay {
       opacity: 0;
       pointer-events: none;
+      visibility: hidden;
     }
 
     .m-boot-card {
