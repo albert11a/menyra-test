@@ -1413,57 +1413,10 @@
       min-height: 100dvh;
     }
 
-    /* Safe-area blend fix: keep gradient continuous in Safari/PWA */
-    html {
-      background: var(--app-bg);
-    }
-
-    body {
-      background: transparent;
-      min-height: 100dvh;
-    }
-
-    body::before,
-    .m-boot-overlay::before,
-    body.m-login .m-modal-overlay::before,
-    .m-mobile-menu::before,
-    .m-mobile-menu-overlay::before {
-      background:
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.08) 0, transparent 42%),
-        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.08) 0, transparent 42%),
-        var(--brand-bg) !important;
-    }
-
-    html.is-dark body::before,
-    html.is-dark .m-boot-overlay::before,
-    html.is-dark body.m-login .m-modal-overlay::before,
-    html.is-dark .m-mobile-menu::before,
-    html.is-dark .m-mobile-menu-overlay::before {
-      background:
-        radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.25) 0, transparent 42%),
-        radial-gradient(at 100% 100%, rgba(168, 85, 247, 0.18) 0, transparent 42%),
-        var(--brand-bg) !important;
-    }
-
-    body.menu-open::before {
-      opacity: 1;
-    }
-
+    /* Safe-area stability for iOS Safari */
     .m-boot-overlay,
     .m-mobile-menu,
     .m-mobile-menu-overlay,
-    body.m-login .m-modal-overlay {
-      background: var(--brand-bg);
-    }
-
-    body.m-login .m-modal-overlay {
-      align-items: center !important;
-      justify-content: center !important;
-    }
-
-    .m-boot-overlay,
-    .m-mobile-menu-overlay,
-    .m-mobile-menu,
     body.m-login .m-modal-overlay {
       background: var(--app-bg);
     }
@@ -1473,6 +1426,11 @@
     .m-mobile-menu::before,
     body.m-login .m-modal-overlay::before {
       content: none;
+    }
+
+    html.modal-open body::before,
+    html.menu-open body::before {
+      opacity: 0.999;
     }
 
     body.m-login .m-modal-overlay {
