@@ -1159,7 +1159,7 @@
       visibility: hidden;
       opacity: 0;
       pointer-events: none;
-      transition: opacity 0.2s ease;
+      transition: opacity 0.2s ease, visibility 0s linear 0.2s;
       overflow: hidden;
       isolation: isolate;
       z-index: 2400;
@@ -1169,6 +1169,7 @@
       opacity: 1;
       pointer-events: auto;
       visibility: visible;
+      transition: opacity 0.2s ease;
     }
 
     .m-mobile-menu-overlay::before {
@@ -1184,8 +1185,9 @@
       height: 100vh;
       height: 100dvh;
       visibility: hidden;
+      opacity: 0;
       transform: translate3d(-100%, 0, 0);
-      transition: transform 0.25s ease;
+      transition: transform 0.25s ease, opacity 0.2s ease, visibility 0s linear 0.25s;
       will-change: transform;
       z-index: 2500;
       display: flex;
@@ -1201,6 +1203,8 @@
     .m-mobile-menu.is-open {
       transform: translate3d(0, 0, 0);
       visibility: visible;
+      opacity: 1;
+      transition: transform 0.25s ease, opacity 0.2s ease;
     }
 
     .m-mobile-menu::before {
