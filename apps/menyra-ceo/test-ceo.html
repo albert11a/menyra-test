@@ -502,11 +502,40 @@
       flex-wrap: wrap;
     }
 
-    .leads-stats-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+    .leads-card {
+      overflow: hidden;
+    }
+
+    .leads-tabs-bar {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 6px;
       align-items: center;
+      padding: 8px;
+      background: rgba(99, 102, 241, 0.08);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .leads-tab {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 6px 8px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 12px 12px 10px 10px;
+      box-shadow: 0 6px 12px -10px rgba(15, 23, 42, 0.3);
+      text-align: center;
+      white-space: nowrap;
+    }
+
+    .leads-tab--primary {
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #4f46e5;
     }
 
     @media (min-width: 900px) {
@@ -527,8 +556,7 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      border-radius: 20px;
-      overflow: hidden;
+      padding: 12px;
     }
 
     .lead-row {
@@ -622,17 +650,15 @@
         justify-content: flex-end;
       }
 
-      .leads-stats-row {
-        display: grid;
+      .leads-tabs-bar {
         grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 6px;
+        gap: 5px;
+        padding: 6px;
       }
 
-      .leads-stats-row .m-badge {
-        font-size: 0.6rem;
-        padding: 2px 6px;
-        text-align: center;
-        justify-content: center;
+      .leads-tab {
+        font-size: 0.58rem;
+        padding: 4px 6px;
       }
 
       .lead-row {
@@ -1808,15 +1834,14 @@
           </div>
         </div>
 
-        <div class="leads-stats-row mb-3">
-          <span class="m-badge">Gesamt: <span id="leadsTotalBadge">0</span></span>
-          <span class="m-badge m-badge--ghost" id="leadsStatNew"></span>
-          <span class="m-badge m-badge--ghost" id="leadsStatContacted"></span>
-          <span class="m-badge m-badge--ghost" id="leadsStatInterested"></span>
-          <span class="m-badge m-badge--ghost" id="leadsStatNoInterest"></span>
-        </div>
-
-        <div class="table-card p-3 p-md-4">
+        <div class="table-card p-0 leads-card">
+          <div class="leads-tabs-bar">
+            <div class="leads-tab leads-tab--primary">Gesamt: <span id="leadsTotalBadge">0</span></div>
+            <div class="leads-tab" id="leadsStatNew"></div>
+            <div class="leads-tab" id="leadsStatContacted"></div>
+            <div class="leads-tab" id="leadsStatInterested"></div>
+            <div class="leads-tab" id="leadsStatNoInterest"></div>
+          </div>
           <div class="leads-list" id="leadsTableBody" data-view-style="list"></div>
         </div>
       </section>
