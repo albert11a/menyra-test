@@ -2115,6 +2115,7 @@ function openLeadModal(mode, data={}){
   $("leadId").value = data.id || "";
   $("leadBusinessName").value = data.businessName || "";
   $("leadCustomerType").value = data.customerType || "cafe";
+  $("leadLogoUrl") && ($("leadLogoUrl").value = data.logoUrl || data.logo || data.imageUrl || "");
   $("leadContactName") && ($("leadContactName").value = data.contactName || data.contact || "");
   $("leadCity") && ($("leadCity").value = data.city || "");
   $("leadPhone").value = data.phone || "";
@@ -2358,7 +2359,8 @@ function applyLeadsFilter(allRows){
 
   return (allRows || []).filter(r=>{
     const statusKey = normalizeLeadStatusKey(r.status || "");
-    const hideArchived = !statusFilter && $("leadsTableBody")?.dataset.viewStyle === "swipe";
+    const viewStyle = $("leadsTableBody")?.dataset.viewStyle || "";
+    const hideArchived = !statusFilter && (viewStyle === "swipe" || viewStyle === "list");
     if (hideArchived && statusKey === "archived") return false;
     if (statusFilter && statusKey !== statusFilter) return false;
 
@@ -2381,7 +2383,9 @@ function renderLeadsTable(rows){
   if (!body) return;
   body.innerHTML = "";
 
-  const useSwipe = body.classList.contains("swipe-list") || body.dataset.viewStyle === "swipe";
+  const viewStyle = body.dataset.viewStyle || "";
+  const useSwipe = body.classList.contains("swipe-list") || viewStyle === "swipe";
+  const useList = viewStyle === "list";
   if (useSwipe) {
     if (!rows.length) {
       body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Leads.</div>`;
@@ -2443,6 +2447,43 @@ function renderLeadsTable(rows){
 
     setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
     bindLeadsSwipeHandlers(body);
+    return;
+  }
+
+  if (useList) {
+    if (!rows.length) {
+      body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Leads.</div>`;
+      setText("leadsMeta", "-");
+      return;
+    }
+
+    rows.forEach((r) => {
+      const logoUrl = String(r.logoUrl || r.logo || r.imageUrl || "").trim();
+      const name = String(r.businessName || "-");
+      const initial = name.trim() ? name.trim().charAt(0).toUpperCase() : "?";
+      const labels = normalizeLeadLabels(r.labels || r.tags || r.label);
+      const labelsHtml = labels.length
+        ? `<div class="lead-labels">${labels.map(l => `<span class="m-badge">${esc(l)}</span>`).join("")}</div>`
+        : "";
+
+      const row = document.createElement("div");
+      row.className = "lead-row";
+      row.innerHTML = `
+        <div class="lead-avatar">
+          ${logoUrl ? `<img src="${esc(logoUrl)}" alt="" loading="lazy" />` : `<span>${esc(initial)}</span>`}
+        </div>
+        <div class="lead-details">
+          <div class="lead-name">${esc(name)}</div>
+          ${labelsHtml}
+        </div>
+        <div class="lead-actions">
+          <button class="m-btn m-btn--ghost m-btn--xs" type="button" data-act="lead-edit" data-id="${esc(r.id)}">Bearbeiten</button>
+        </div>
+      `;
+      body.appendChild(row);
+    });
+
+    setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
     return;
   }
 
@@ -3342,6 +3383,9 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     note: ($("leadNote")?.value || "").trim(),
     updatedAt: serverTimestamp()
   };
+
+  const logoInput = $("leadLogoUrl");
+  if (logoInput) payload.logoUrl = (logoInput.value || "").trim();
 
   // Staff scoping fields (so staff sees only own leads)
   if (role === "staff") {

@@ -483,6 +483,182 @@
       transition: none;
     }
 
+    .leads-filters {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      align-items: end;
+      margin-bottom: 16px;
+    }
+
+    .leads-filters .leads-search {
+      grid-column: 1 / -1;
+    }
+
+    .leads-filter-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .leads-stats-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    @media (min-width: 900px) {
+      .leads-filters {
+        grid-template-columns: 2fr 1fr 1fr 1fr auto;
+      }
+
+      .leads-filters .leads-search {
+        grid-column: auto;
+      }
+
+      .leads-filter-actions {
+        justify-content: flex-end;
+      }
+    }
+
+    .leads-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .lead-row {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 10px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .lead-row:last-child {
+      border-bottom: none;
+    }
+
+    .lead-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      color: #64748b;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .lead-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .lead-details {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .lead-name {
+      font-weight: 800;
+      font-size: 0.92rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    .lead-labels {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .lead-labels .m-badge {
+      font-size: 0.62rem;
+      padding: 2px 8px;
+    }
+
+    .lead-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    @media (max-width: 720px) {
+      .leads-filters {
+        grid-template-columns: 1fr 1fr auto;
+        gap: 8px;
+      }
+
+      .leads-filter-search {
+        grid-column: 1 / 3;
+      }
+
+      .leads-filters label {
+        display: none;
+      }
+
+      .leads-filter-type,
+      .leads-filter-label {
+        display: none;
+      }
+
+      .leads-filter-actions {
+        justify-content: flex-end;
+      }
+
+      .leads-stats-row {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .leads-stats-row .m-badge {
+        font-size: 0.6rem;
+        padding: 2px 6px;
+        text-align: center;
+        justify-content: center;
+      }
+
+      .lead-row {
+        padding: 10px 6px;
+        gap: 10px;
+      }
+
+      .lead-avatar {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+      }
+
+      .lead-name {
+        font-size: 0.86rem;
+      }
+
+      .lead-labels .m-badge:nth-child(n+2) {
+        display: none;
+      }
+
+      .lead-actions {
+        margin-left: auto;
+      }
+    }
+
     .table-card {
       background: #fff;
       border-radius: 32px;
@@ -1578,7 +1754,7 @@
         <header class="header-main">
           <div>
             <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Lead Management</h2>
-            <p class="text-muted small fw-600 m-0">Wischen: Rechts = Archiv | Links = Loeschen</p>
+            <p class="text-muted small fw-600 m-0">Leads uebersichtlich verwalten</p>
           </div>
           <div class="d-flex gap-2">
             <button class="btn btn-primary rounded-pill px-4 fw-800" id="newLeadBtn" type="button">
@@ -1590,12 +1766,12 @@
           </div>
         </header>
 
-        <div class="menu-tools">
-          <div class="m-input-group">
+        <div class="leads-filters">
+          <div class="m-input-group leads-search leads-filter-search">
             <label for="leadsSearch">Suche</label>
-            <input id="leadsSearch" class="m-input" placeholder="Suche nach Betrieb, Kontakt, IG, Label..." />
+            <input id="leadsSearch" class="m-input" placeholder="Betrieb, Kontakt, IG, Label..." />
           </div>
-          <div class="m-input-group">
+          <div class="m-input-group leads-filter-status">
             <label for="leadsStatusFilter">Status</label>
             <select id="leadsStatusFilter" class="m-select2">
               <option value="">Alle Status</option>
@@ -1609,7 +1785,7 @@
               <option value="archived">Archiv</option>
             </select>
           </div>
-          <div class="m-input-group">
+          <div class="m-input-group leads-filter-type">
             <label for="leadsTypeFilter">Typ</label>
             <select id="leadsTypeFilter" class="m-select2">
               <option value="">Alle Typen</option>
@@ -1620,19 +1796,19 @@
               <option value="service">Service</option>
             </select>
           </div>
-          <div class="m-input-group">
+          <div class="m-input-group leads-filter-label">
             <label for="leadsLabelFilter">Label</label>
             <select id="leadsLabelFilter" class="m-select2">
               <option value="">Alle Labels</option>
             </select>
           </div>
-          <div class="menu-actions">
+          <div class="leads-filter-actions">
             <button class="m-btn m-btn--ghost m-btn--small" id="leadsClearFilters" type="button">Reset</button>
+            <div class="menu-status" id="leadsMeta">-</div>
           </div>
-          <div class="menu-status" id="leadsMeta">-</div>
         </div>
 
-        <div class="d-flex flex-wrap gap-2 mb-3">
+        <div class="leads-stats-row mb-3">
           <span class="m-badge">Gesamt: <span id="leadsTotalBadge">0</span></span>
           <span class="m-badge m-badge--ghost" id="leadsStatNew"></span>
           <span class="m-badge m-badge--ghost" id="leadsStatContacted"></span>
@@ -1641,7 +1817,7 @@
         </div>
 
         <div class="table-card p-3 p-md-4">
-          <div class="swipe-list" id="leadsTableBody" data-view-style="swipe"></div>
+          <div class="leads-list" id="leadsTableBody" data-view-style="list"></div>
         </div>
       </section>
       <section class="m-view view-content" data-view="staff" style="display:none;">
@@ -2043,6 +2219,14 @@
                 <option value="service">Service</option>
               </select>
             </div>
+          </div>
+
+          <div class="m-input-row">
+            <div class="m-input-group">
+              <label for="leadLogoUrl">Logo URL</label>
+              <input id="leadLogoUrl" class="m-input" placeholder="https://" />
+            </div>
+            <div class="m-input-group"></div>
           </div>
 
           <div class="m-input-row">
