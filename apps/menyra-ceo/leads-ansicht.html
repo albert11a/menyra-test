@@ -250,6 +250,17 @@
       max-width: 100%;
     }
 
+    .lead-subline,
+    .lead-statusline {
+      margin: 4px 0 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .lead-statusline {
+      display: none;
+    }
+
     .lead-labels {
       display: flex;
       flex-wrap: wrap;
@@ -362,6 +373,14 @@
 
       .lead-labels .m-badge:nth-child(n+2) {
         display: none;
+      }
+
+      .lead-subline {
+        display: none;
+      }
+
+      .lead-statusline {
+        display: block;
       }
     }
   </style>
@@ -678,6 +697,10 @@
         const logoUrl = String(r.logoUrl || "").trim();
         const name = String(r.businessName || "-");
         const initial = name.trim() ? name.trim().charAt(0).toUpperCase() : "?";
+        const contact = String(r.contactName || r.contact || "").trim();
+        const city = String(r.city || "").trim();
+        const subline = [contact || "Kein Kontakt", city].filter(Boolean).join(" • ");
+        const statusLabel = leadStatusLabel(r.status || "");
         const labels = normalizeLeadLabels(r.labels || []);
         const labelsHtml = labels.length
           ? `<div class="lead-labels">${labels.map((l) => `<span class="m-badge">${l}</span>`).join("")}</div>`
@@ -691,6 +714,8 @@
           </div>
           <div class="lead-details">
             <div class="lead-name">${name}</div>
+            <div class="lead-subline">${subline}</div>
+            <div class="lead-statusline">${statusLabel}</div>
             ${labelsHtml}
           </div>
           <div class="lead-actions">
