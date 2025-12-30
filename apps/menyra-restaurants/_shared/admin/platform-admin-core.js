@@ -2150,7 +2150,7 @@ async function createCustomerFromLead({ lead, user, role, demo = true } = {}) {
     ownerName: lead.contactName || "",
     tableCount: (typeKey === "restaurant" || typeKey === "cafe" || typeKey === "hotel") ? 10 : 0,
     yearPrice: 490,
-    logoUrl: lead.logoUrl || "",
+    logoUrl: lead.logoUrl || lead.logo || lead.imageUrl || "",
     status: demo ? "demo" : "active"
   };
 
