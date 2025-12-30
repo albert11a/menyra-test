@@ -508,38 +508,218 @@
 
     .leads-tabs-bar {
       display: flex;
-      flex-wrap: nowrap;
-      gap: 8px;
-      width: 100%;
+      gap: 12px;
+      margin-bottom: 24px;
       overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
+      padding: 4px;
+      scrollbar-width: none;
     }
 
-    .leads-tabs-bar .rev-tab {
-      flex: 0 0 auto;
-      justify-content: center;
-      padding: 10px 18px;
-      font-size: 0.85rem;
+    .leads-tab-btn {
       background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.05);
+      padding: 12px 24px;
+      border-radius: 14px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .leads-tab-btn.active {
       color: var(--brand-primary);
-      opacity: 1;
-      border: 1px solid rgba(99, 102, 241, 0.2);
-      box-shadow: var(--shadow-soft);
+      border-color: var(--brand-primary);
+      box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.15);
+    }
+
+    .leads-tab-count {
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
     }
 
     .leads-tabs-bar::-webkit-scrollbar {
       display: none;
     }
 
-    .leads-tabs-bar .rev-tab.active {
-      border-color: rgba(99, 102, 241, 0.45);
-      box-shadow: 0 12px 24px -18px rgba(99, 102, 241, 0.6);
+    .leads-pro-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      gap: 16px;
+      flex-wrap: wrap;
     }
 
-    html.is-dark .leads-tabs-bar .rev-tab {
-      background: rgba(15, 23, 42, 0.9);
-      color: #c7d2fe;
-      border-color: rgba(148, 163, 184, 0.25);
+    .leads-pro-title h2 {
+      margin: 0;
+      font-size: 2.2rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      background: linear-gradient(to right, #0f172a, #6366f1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .leads-pro-sub {
+      margin: 6px 0 0;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .leads-pro-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .leads-glass-card {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      border-radius: 32px;
+      padding: 26px;
+      box-shadow: var(--shadow-premium);
+      margin-bottom: 24px;
+    }
+
+    .leads-filter-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr;
+      gap: 18px;
+      align-items: flex-end;
+    }
+
+    .leads-filter-grid label {
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .leads-meta {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .lead-table-container {
+      background: #fff;
+      border-radius: 32px;
+      border: 1px solid rgba(15, 23, 42, 0.05);
+      box-shadow: var(--shadow-premium);
+      overflow: hidden;
+    }
+
+    .lead-item {
+      display: grid;
+      grid-template-columns: 3fr 1.5fr 1.5fr auto;
+      align-items: center;
+      padding: 22px 28px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .lead-item:hover {
+      background: #f8fafc;
+    }
+
+    .lead-main {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .avatar-glow {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 800;
+      font-size: 1.2rem;
+      box-shadow: 0 8px 16px -4px rgba(99, 102, 241, 0.4);
+      overflow: hidden;
+    }
+
+    .avatar-glow img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .lead-info h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .lead-info p {
+      margin: 4px 0 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      background: #f1f5f9;
+      color: var(--text-main);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .status-new .status-dot { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.6); }
+    .status-contacted .status-dot { background: #3b82f6; }
+    .status-interested .status-dot { background: #f59e0b; }
+    .status-archived .status-dot { background: #94a3b8; }
+
+    .lead-type {
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .lead-action-btn {
+      padding: 10px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+    }
+
+    .lead-action-btn:hover {
+      border-color: rgba(99, 102, 241, 0.35);
+      color: #4f46e5;
     }
 
     @media (min-width: 900px) {
@@ -644,6 +824,18 @@
     }
 
     @media (max-width: 720px) {
+      .leads-pro-title h2 {
+        font-size: 1.6rem;
+      }
+
+      .leads-glass-card {
+        padding: 20px;
+      }
+
+      .leads-filter-grid {
+        grid-template-columns: 1fr;
+      }
+
       .leads-filters {
         grid-template-columns: 1fr 1fr auto;
         gap: 8px;
@@ -670,9 +862,25 @@
         gap: 6px;
       }
 
-      .leads-tabs-bar .rev-tab {
-        font-size: 0.72rem;
-        padding: 8px 10px;
+      .leads-tab-btn {
+        font-size: 0.75rem;
+        padding: 10px 14px;
+      }
+
+      .lead-item {
+        grid-template-columns: 1fr auto;
+        gap: 16px;
+      }
+
+      .lead-item > div:nth-child(2),
+      .lead-item > div:nth-child(3) {
+        display: none;
+      }
+
+      .avatar-glow {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
       }
 
 
@@ -1797,73 +2005,65 @@
         </div>
       </section>
       <section class="m-view view-content" data-view="leads" style="display:none;">
-        <header class="header-main">
-          <div>
-            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Lead Management</h2>
-            <p class="text-muted small fw-600 m-0">Leads uebersichtlich verwalten</p>
+        <header class="leads-pro-header">
+          <div class="leads-pro-title">
+            <h2>Leads Pro</h2>
+            <p class="leads-pro-sub">Uebersichtliche Lead-Verwaltung</p>
           </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-primary rounded-pill px-4 fw-800" id="newLeadBtn" type="button">
-              <i class="fas fa-plus me-2"></i> Neuer Lead
-            </button>
-            <button class="btn btn-light rounded-pill px-4 fw-800" type="button" data-section="dashboard">
-              <i class="fas fa-arrow-left"></i>
-            </button>
+          <div class="leads-pro-actions">
+            <button class="m-btn" id="newLeadBtn" type="button">Neuer Lead</button>
+            <button class="m-btn m-btn--ghost" type="button" data-section="dashboard">Zurueck</button>
           </div>
         </header>
 
-        <div class="leads-filters">
-          <div class="m-input-group leads-search leads-filter-search">
-            <label for="leadsSearch">Suche</label>
-            <input id="leadsSearch" class="m-input" placeholder="Betrieb, Kontakt, IG, Label..." />
+        <div class="leads-glass-card">
+          <div class="leads-filter-grid">
+            <div>
+              <label for="leadsSearch">Intelligente Suche</label>
+              <input id="leadsSearch" class="m-input leads-input" placeholder="Firma, Kontakt oder Stadt..." />
+            </div>
+            <div>
+              <label for="leadsTypeFilter">Kategorie</label>
+              <select id="leadsTypeFilter" class="m-select2 leads-input">
+                <option value="">Alle Typen</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="cafe">Cafe</option>
+                <option value="hotel">Hotel</option>
+                <option value="ecommerce">Ecommerce</option>
+                <option value="service">Service</option>
+              </select>
+            </div>
+            <div>
+              <label for="leadsStatusFilter">Status</label>
+              <select id="leadsStatusFilter" class="m-select2 leads-input">
+                <option value="">Alle Status</option>
+                <option value="new">Offen</option>
+                <option value="contacted">Kontakt</option>
+                <option value="interested">Interesse</option>
+                <option value="archived">Archiv</option>
+              </select>
+            </div>
+            <div>
+              <label for="leadsLabelFilter">Label</label>
+              <select id="leadsLabelFilter" class="m-select2 leads-input">
+                <option value="">Alle Labels</option>
+              </select>
+            </div>
           </div>
-          <div class="m-input-group leads-filter-status">
-            <label for="leadsStatusFilter">Status</label>
-            <select id="leadsStatusFilter" class="m-select2">
-              <option value="">Alle Status</option>
-              <option value="new">Open</option>
-              <option value="contacted">Contacted</option>
-              <option value="waiting">Waiting</option>
-              <option value="follow_up">Follow up</option>
-              <option value="interested">Interested</option>
-              <option value="no_interest">No interest</option>
-              <option value="converted">Converted</option>
-              <option value="archived">Archiv</option>
-            </select>
-          </div>
-          <div class="m-input-group leads-filter-type">
-            <label for="leadsTypeFilter">Typ</label>
-            <select id="leadsTypeFilter" class="m-select2">
-              <option value="">Alle Typen</option>
-              <option value="restaurant">Restaurant</option>
-              <option value="cafe">Cafe</option>
-              <option value="hotel">Hotel</option>
-              <option value="ecommerce">Ecommerce</option>
-              <option value="service">Service</option>
-            </select>
-          </div>
-          <div class="m-input-group leads-filter-label">
-            <label for="leadsLabelFilter">Label</label>
-            <select id="leadsLabelFilter" class="m-select2">
-              <option value="">Alle Labels</option>
-            </select>
-          </div>
-          <div class="leads-filter-actions">
-            <div class="menu-status" id="leadsMeta">-</div>
-          </div>
+          <div class="leads-meta" id="leadsMeta"></div>
         </div>
 
-        <div class="rev-tabs leads-tabs-bar mb-3">
-          <button class="rev-tab active" type="button">Gesamt <span id="leadsTotalBadge">0</span></button>
-          <button class="rev-tab" type="button" id="leadsStatNew"></button>
-          <button class="rev-tab" type="button" id="leadsStatContacted"></button>
-          <button class="rev-tab" type="button" id="leadsStatInterested"></button>
-          <button class="rev-tab" type="button" id="leadsStatNoInterest"></button>
-          <button class="rev-tab" type="button" id="leadsStatArchived"></button>
+        <div class="leads-tabs-bar mb-3">
+          <button class="leads-tab-btn active" type="button">Gesamt <span class="leads-tab-count" id="leadsTotalBadge">0</span></button>
+          <button class="leads-tab-btn" type="button" id="leadsStatNew"></button>
+          <button class="leads-tab-btn" type="button" id="leadsStatContacted"></button>
+          <button class="leads-tab-btn" type="button" id="leadsStatInterested"></button>
+          <button class="leads-tab-btn" type="button" id="leadsStatNoInterest"></button>
+          <button class="leads-tab-btn" type="button" id="leadsStatArchived"></button>
         </div>
 
-        <div class="table-card p-0 leads-card">
-          <div class="leads-list" id="leadsTableBody" data-view-style="list"></div>
+        <div class="lead-table-container">
+          <div id="leadsTableBody" data-view-style="pro"></div>
         </div>
       </section>
       <section class="m-view view-content" data-view="staff" style="display:none;">

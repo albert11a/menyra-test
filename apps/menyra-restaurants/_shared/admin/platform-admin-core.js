@@ -2360,7 +2360,7 @@ function applyLeadsFilter(allRows){
   return (allRows || []).filter(r=>{
     const statusKey = normalizeLeadStatusKey(r.status || "");
     const viewStyle = $("leadsTableBody")?.dataset.viewStyle || "";
-    const hideArchived = !statusFilter && (viewStyle === "swipe" || viewStyle === "list");
+    const hideArchived = !statusFilter && (viewStyle === "swipe" || viewStyle === "list" || viewStyle === "pro");
     if (hideArchived && statusKey === "archived") return false;
     if (statusFilter && statusKey !== statusFilter) return false;
 
@@ -2386,6 +2386,7 @@ function renderLeadsTable(rows){
   const viewStyle = body.dataset.viewStyle || "";
   const useSwipe = body.classList.contains("swipe-list") || viewStyle === "swipe";
   const useList = viewStyle === "list";
+  const usePro = viewStyle === "pro";
   if (useSwipe) {
     if (!rows.length) {
       body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Leads.</div>`;
@@ -2447,6 +2448,60 @@ function renderLeadsTable(rows){
 
     setText("leadsMeta", "");
     bindLeadsSwipeHandlers(body);
+    return;
+  }
+
+  if (usePro) {
+    if (!rows.length) {
+      body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Leads.</div>`;
+      return;
+    }
+
+    const statusClass = (value) => {
+      const key = normalizeLeadStatusKey(value || "");
+      if (key === "new") return "status-new";
+      if (["contacted", "waiting", "follow_up", "meeting", "proposal_sent", "negotiation", "qualified"].includes(key)) {
+        return "status-contacted";
+      }
+      if (["interested", "converted"].includes(key)) return "status-interested";
+      if (key === "archived") return "status-archived";
+      return "";
+    };
+
+    rows.forEach((r) => {
+      const logoUrl = String(r.logoUrl || r.logo || r.imageUrl || "").trim();
+      const name = String(r.businessName || "-");
+      const initial = name.trim() ? name.trim().charAt(0).toUpperCase() : "?";
+      const contact = String(r.contactName || r.contact || "").trim();
+      const city = String(r.city || "").trim();
+      const statusLabel = leadStatusLabel(r.status || "");
+      const typeLabel = leadTypeLabel(r.customerType || "");
+      const subline = [contact || "Kein Kontakt", city].filter(Boolean).join(" • ");
+      const row = document.createElement("div");
+      row.className = "lead-item";
+      row.innerHTML = `
+        <div class="lead-main">
+          <div class="avatar-glow">
+            ${logoUrl ? `<img src="${esc(logoUrl)}" alt="" loading="lazy" />` : `<span>${esc(initial)}</span>`}
+          </div>
+          <div class="lead-info">
+            <h3>${esc(name)}</h3>
+            <p>${esc(subline)}</p>
+          </div>
+        </div>
+        <div>
+          <span class="status-pill ${statusClass(r.status)}">
+            <span class="status-dot"></span>
+            ${esc(statusLabel)}
+          </span>
+        </div>
+        <div class="lead-type">${esc(typeLabel)}</div>
+        <button class="lead-action-btn" type="button" data-act="lead-edit" data-id="${esc(r.id)}">
+          <i class="fas fa-chevron-right"></i>
+        </button>
+      `;
+      body.appendChild(row);
+    });
     return;
   }
 
