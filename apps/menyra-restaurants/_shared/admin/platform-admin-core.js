@@ -1,5 +1,5 @@
 // =========================================================
-// MENYRA System 1 — Platform Admin Core
+// MENYRA System 1 ÔÇö Platform Admin Core
 // - Uses MENYRA admin demo UI (menyra_platform.css/html)
 // - Cost-optimized: prefers public/* single docs (1 read)
 // - No realtime listeners (no onSnapshot)
@@ -253,7 +253,7 @@ const currencyFmt = new Intl.NumberFormat("de-AT", { style: "currency", currency
 const numberFmt = new Intl.NumberFormat("de-AT", { maximumFractionDigits: 0 });
 
 function formatCurrency(v) {
-  try { return currencyFmt.format(Number(v || 0)); } catch { return `€ ${Math.round(v || 0)}`; }
+  try { return currencyFmt.format(Number(v || 0)); } catch { return `Ôé¼ ${Math.round(v || 0)}`; }
 }
 function formatNumber(v) {
   try { return numberFmt.format(Math.round(v || 0)); } catch { return String(Math.round(v || 0)); }
@@ -364,7 +364,7 @@ function mountLoginModal(roleLabel = "Login", opts = {}) {
         </div>
         <div class="m-input-group">
           <label for="loginPass">Passwort</label>
-          <input id="loginPass" class="m-input" type="password" placeholder="••••••••" autocomplete="current-password"/>
+          <input id="loginPass" class="m-input" type="password" placeholder="ÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇóÔÇó" autocomplete="current-password"/>
         </div>
         <div class="m-inline" style="justify-content:flex-end; gap:10px; margin-top:14px;">
           <button class="m-btn" id="loginDoBtn" type="button">Login</button>
@@ -875,7 +875,7 @@ async function initSocialPostsUI({ restaurantId, restaurants, user }) {
 
   async function loadPosts() {
     if (!restaurantId) {
-      setStatus("Kein Lokal ausgewählt.");
+      setStatus("Kein Lokal ausgew├ñhlt.");
       return;
     }
     setStatus("Lade Posts.");
@@ -925,7 +925,7 @@ async function initSocialPostsUI({ restaurantId, restaurants, user }) {
     uploadBtn.addEventListener("click", async () => {
       const file = mediaFileInp?.files?.[0];
       if (!file) {
-        setStatus("Bitte ein Bild auswählen.");
+        setStatus("Bitte ein Bild ausw├ñhlen.");
         return;
       }
       const maxBytes = 15 * 1024 * 1024;
@@ -967,7 +967,7 @@ async function initSocialPostsUI({ restaurantId, restaurants, user }) {
   if (publishBtn) {
     publishBtn.addEventListener("click", async () => {
       if (!restaurantId) {
-        setStatus("Kein Lokal ausgewählt.");
+        setStatus("Kein Lokal ausgew├ñhlt.");
         return;
       }
       const caption = captionInp?.value?.trim() || "";
@@ -1391,7 +1391,7 @@ function openQrModal(restaurant) {
   if (!overlay) return;
   const rid = restaurant.id;
 
-  setText("qrModalTitle", `QR & Links — ${restaurant.name || rid}`);
+  setText("qrModalTitle", `QR & Links ÔÇö ${restaurant.name || rid}`);
 
   // Build template based on our real structure
   const guestTemplateRel = `../menyra-restaurants/guest/karte/index.html?r=${encodeURIComponent(rid)}&t=T1`;
@@ -1404,7 +1404,7 @@ function openQrModal(restaurant) {
     list.innerHTML = "";
     if (max <= 0) {
       const div = document.createElement("div");
-      div.textContent = "Keine Tische (0) – nur Main Page.";
+      div.textContent = "Keine Tische (0) ÔÇô nur Main Page.";
       list.appendChild(div);
     } else {
       for (let i = 1; i <= max; i++) {
@@ -1446,7 +1446,7 @@ function openQrModal(restaurant) {
         await navigator.clipboard.writeText(fullUrl(guestTemplateRel));
         setText("qrModalStatus", "Template kopiert.");
       } catch {
-        setText("qrModalStatus", "Copy nicht möglich (Browser).");
+        setText("qrModalStatus", "Copy nicht m├Âglich (Browser).");
       }
     };
   }
@@ -1462,7 +1462,7 @@ function openQrModal(restaurant) {
         await navigator.clipboard.writeText(txt);
         setText("qrModalStatus", "Codes kopiert.");
       } catch {
-        setText("qrModalStatus", "Copy nicht möglich (Browser).");
+        setText("qrModalStatus", "Copy nicht m├Âglich (Browser).");
       }
     };
   }
@@ -1624,13 +1624,13 @@ function inferMenuTypeFromItem(d){
     "getranke","getraenke","drinks","drink","beverage","beverages",
     "pije","pijet","gazuze","gazuara","alkool","alkoolike","alkoolik",
     "kafe","cafe","coffee","espresso","cappuccino","latte","macchiato",
-    "caj","çaj","tea",
+    "caj","├ºaj","tea",
     "uje","uj","water","mineral","sparkling","still",
     "leng","lengje","juice","sok","smoothie",
     "cola","coca","pepsi","fanta","sprite","tonic","soda","icetea","iced tea",
     "energy","energjike","red bull","monster",
     "birra","beer","bier","lager","pils",
-    "vere","ver","verë","wine","wein","prosecco","champagne",
+    "vere","ver","ver├½","wine","wein","prosecco","champagne",
     "koktej","cocktail","mojito","spritz",
     "vodka","whiskey","whisky","gin","rum","tequila","raki","rakia"
   ];
@@ -1723,7 +1723,7 @@ function normalizeOfferDoc(data, id){
   const d = data || {};
   return {
     id: d.id || id,
-    title: d.title || d.name || "Sot në fokus",
+    title: d.title || d.name || "Sot n├½ fokus",
     price: d.price ?? "",
     desc: d.desc || d.description || "",
     imageUrl: d.imageUrl || d.image || d.photoUrl || null,
@@ -1736,7 +1736,7 @@ function toPublicOffer(o){
   const x = o || {};
   return {
     id: x.id,
-    title: x.title || "Sot në fokus",
+    title: x.title || "Sot n├½ fokus",
     price: x.price ?? "",
     desc: x.desc || "",
     imageUrl: x.imageUrl || null,
@@ -1774,20 +1774,20 @@ async function loadOffersHybrid(restaurantId){
 
 
 /* =========================================================
-   MENU VIEW LOGIC (Speisekarte) — CEO/STAFF/OWNER
+   MENU VIEW LOGIC (Speisekarte) ÔÇö CEO/STAFF/OWNER
    - Data source: menuItems subcollection (canonical) + auto-publish snapshot to public/menu
    - Each item must have type: "food" | "drink"
    ========================================================= */
 
 function normalizeMenuType(v) {
   const t = String(v || "").toLowerCase().trim();
-  if (t === "drink" || t === "drinks" || t === "beverage" || t === "getränke" || t === "getraenke") return "drink";
+  if (t === "drink" || t === "drinks" || t === "beverage" || t === "getr├ñnke" || t === "getraenke") return "drink";
   return "food";
 }
 
 function menuRowBadge(type) {
   const t = normalizeMenuType(type);
-  return t === "drink" ? "🥤 Getränk" : "🍲 Speise";
+  return t === "drink" ? "­ƒÑñ Getr├ñnk" : "­ƒì▓ Speise";
 }
 
 function renderMenuTable(items, filterType, canDelete) {
@@ -1873,7 +1873,7 @@ function renderMenuTable(items, filterType, canDelete) {
 function fillOfferMenuSelect(items) {
   const sel = $("offerMenuItem");
   if (!sel) return;
-  sel.innerHTML = `<option value="">— optional —</option>`;
+  sel.innerHTML = `<option value="">ÔÇö optional ÔÇö</option>`;
   items.forEach(i => {
     const opt = document.createElement("option");
     opt.value = i.id || "";
@@ -1894,12 +1894,12 @@ function renderOffersTable(items) {
     row.innerHTML = `
       <div>
         <div style="display:flex; flex-direction:column; gap:2px;">
-          <b>${esc(o.title || "—")}</b>
+          <b>${esc(o.title || "ÔÇö")}</b>
           <span class="m-muted" style="font-size:12px;">${esc(o.desc || "")}</span>
         </div>
       </div>
       <div><span class="m-badge ${status === "aktiv" ? "m-badge--green" : "m-badge--gray"}">${esc(status)}</span></div>
-      <div>${esc(o.price != null ? (String(o.price)+" €") : "—")}</div>
+      <div>${esc(o.price != null ? (String(o.price)+" Ôé¼") : "ÔÇö")}</div>
       <div class="m-table-col-actions" style="display:flex; gap:8px; justify-content:flex-end;">
         <button class="m-btn m-btn--small" type="button" data-offer="edit" data-idx="${idx}">Edit</button>
         <button class="m-btn m-btn--small m-btn--danger" type="button" data-offer="del" data-idx="${idx}">Del</button>
@@ -2033,10 +2033,26 @@ const LEAD_STATUS_LABELS = {
 
 const LEAD_TYPE_LABELS = {
   restaurant: "Restaurant",
-  cafe: "Café",
+  cafe: "Caf├®",
   ecommerce: "E-Commerce",
   hotel: "Hotel",
   service: "Dienstleistung"
+};
+
+const DEMO_DEFAULT_PASSWORD = "MenyraDemo123!";
+const DEMO_ROLE_MATRIX = {
+  restaurant: ["owner", "waiter", "kitchen"],
+  cafe: ["owner", "waiter"],
+  hotel: ["owner", "waiter", "kitchen"],
+  ecommerce: ["owner"],
+  service: ["owner"]
+};
+const CUSTOMER_MODULE_MATRIX = {
+  restaurant: { mainpage: true, menu: true, waiter: true, kitchen: true, catalog: false },
+  cafe: { mainpage: true, menu: true, waiter: true, kitchen: false, catalog: false },
+  hotel: { mainpage: true, menu: true, waiter: true, kitchen: true, catalog: false },
+  ecommerce: { mainpage: true, menu: false, waiter: false, kitchen: false, catalog: true },
+  service: { mainpage: true, menu: false, waiter: false, kitchen: false, catalog: false }
 };
 
 function normalizeLeadStatusKey(value){
@@ -2048,14 +2064,118 @@ function normalizeLeadTypeKey(value){
   return key === "e_commerce" ? "ecommerce" : key;
 }
 
+function resolveCustomerType(value) {
+  const key = normalizeLeadTypeKey(value || "");
+  return key || "cafe";
+}
+
+function getCustomerModules(typeKey) {
+  const key = resolveCustomerType(typeKey);
+  return CUSTOMER_MODULE_MATRIX[key] || { mainpage: true, menu: false, waiter: false, kitchen: false, catalog: false };
+}
+
+function getDemoRolesForType(typeKey) {
+  const key = resolveCustomerType(typeKey);
+  return DEMO_ROLE_MATRIX[key] || ["owner"];
+}
+
+function demoRoleLabel(role) {
+  if (role === "owner") return "Owner";
+  if (role === "waiter") return "Waiter";
+  if (role === "kitchen") return "Kitchen";
+  return "Staff";
+}
+
+function buildDemoStaffEmail(restaurantId, role) {
+  const safeRole = foldText(role || "staff").replace(/[^a-z0-9]+/g, "");
+  const safeId = String(restaurantId || "").replace(/[^a-z0-9]+/gi, "");
+  return `demo.${safeRole}.${safeId}@menyra.app`;
+}
+
+function buildDemoStaffName(businessName, role) {
+  const base = String(businessName || "Demo").trim() || "Demo";
+  return `${base} ${demoRoleLabel(role)} (Demo)`;
+}
+
+async function applyCustomerModules(restaurantId, modules) {
+  if (!restaurantId || !modules) return;
+  await setDoc(doc(db, "restaurants", restaurantId), { modules }, { merge: true });
+}
+
+async function autoCreateDemoStaff({ restaurantId, businessName, customerType, createdByUid, createdByRole } = {}) {
+  if (!restaurantId) return [];
+  const roles = getDemoRolesForType(customerType);
+  if (!roles.length) return [];
+
+  let existing = [];
+  try {
+    existing = await fetchRestaurantStaff(restaurantId);
+  } catch (err) {
+    console.warn("demo staff lookup failed", err);
+  }
+  const existingEmails = new Set((existing || []).map((row) => foldText(row.email || "")));
+  const created = [];
+
+  for (const role of roles) {
+    const email = buildDemoStaffEmail(restaurantId, role);
+    if (existingEmails.has(foldText(email))) continue;
+    try {
+      const createdUid = await createRestaurantStaffAccount({
+        restaurantId,
+        name: buildDemoStaffName(businessName, role),
+        email,
+        password: DEMO_DEFAULT_PASSWORD,
+        role,
+        roles: [role],
+        createdByUid,
+        createdByRole
+      });
+      created.push({ role, uid: createdUid, email });
+    } catch (err) {
+      console.warn("demo staff create failed", role, err);
+    }
+  }
+
+  return created;
+}
+
+async function createCustomerFromLead({ lead, user, role, demo = true } = {}) {
+  if (!lead || !user) throw new Error("Lead oder User fehlt");
+  const typeKey = resolveCustomerType(lead.customerType);
+  const payload = {
+    name: lead.businessName || "Neuer Kunde",
+    type: typeKey,
+    city: lead.city || "",
+    phone: lead.phone || "",
+    ownerName: lead.contactName || "",
+    tableCount: (typeKey === "restaurant" || typeKey === "cafe" || typeKey === "hotel") ? 10 : 0,
+    yearPrice: 490,
+    logoUrl: lead.logoUrl || "",
+    status: demo ? "demo" : "active"
+  };
+
+  const createdId = await createRestaurantDoc(role, user, payload);
+  await applyCustomerModules(createdId, getCustomerModules(typeKey));
+  if (demo) {
+    await autoCreateDemoStaff({
+      restaurantId: createdId,
+      businessName: payload.name,
+      customerType: typeKey,
+      createdByUid: user.uid,
+      createdByRole: role
+    });
+  }
+  return createdId;
+}
+
 function leadStatusLabel(value){
   const key = normalizeLeadStatusKey(value || "");
-  return LEAD_STATUS_LABELS[key] || value || "—";
+  return LEAD_STATUS_LABELS[key] || value || "ÔÇö";
 }
 
 function leadTypeLabel(value){
   const key = normalizeLeadTypeKey(value || "");
-  return LEAD_TYPE_LABELS[key] || value || "—";
+  return LEAD_TYPE_LABELS[key] || value || "ÔÇö";
 }
 
 function normalizeLeadLabels(value){
@@ -2209,7 +2329,7 @@ async function loadProfileForUser(role, user, restaurantId) {
   }
   const email = user.email || data?.email || "";
   let name = data?.name || user.displayName || (email ? email.split("@")[0] : "");
-  if (role === "owner" && restaurantName) name = `${name} • ${restaurantName}`;
+  if (role === "owner" && restaurantName) name = `${name} ÔÇó ${restaurantName}`;
   const photoUrl = data?.photoUrl || user.photoURL || "";
   updateProfileUi({ name, email, photoUrl });
 }
@@ -2476,7 +2596,7 @@ function renderLeadsTable(rows){
       const city = String(r.city || "").trim();
       const statusLabel = leadStatusLabel(r.status || "");
       const typeLabel = leadTypeLabel(r.customerType || "");
-      const subline = [contact || "Kein Kontakt", city].filter(Boolean).join(" • ");
+      const subline = [contact || "Kein Kontakt", city].filter(Boolean).join(" ÔÇó ");
       const row = document.createElement("div");
       row.className = "lead-item";
       row.innerHTML = `
@@ -3024,7 +3144,7 @@ async function refreshOwnerStories(restaurantId){
   if (!listEl) return;
 
   listEl.innerHTML = "";
-  metaEl && (metaEl.textContent = "Lade…");
+  metaEl && (metaEl.textContent = "LadeÔÇª");
 
   let rows = [];
   try {
@@ -3038,7 +3158,7 @@ async function refreshOwnerStories(restaurantId){
 
   metaEl && (metaEl.textContent = rows.length ? `${rows.length} aktiv` : "Keine aktiven Stories");
   if (!rows.length){
-    listEl.innerHTML = `<div class="m-muted">Noch keine Storys – lade oben ein Video hoch.</div>`;
+    listEl.innerHTML = `<div class="m-muted">Noch keine Storys ÔÇô lade oben ein Video hoch.</div>`;
     return;
   }
 
@@ -3063,7 +3183,7 @@ async function refreshOwnerStories(restaurantId){
     info.className = "m-story-info";
     const titleHtml = s.title ? `<div style="font-weight:600; margin-bottom:4px;">${esc(s.title)}</div>` : '';
     const descHtml = s.description ? `<div class="m-muted" style="font-size:13px; margin-bottom:6px;">${esc(s.description)}</div>` : '';
-    const menuLinkHtml = s.menuItemId ? `<div class="m-muted" style="font-size:12px;">🔗 Verlinkt mit Menu Item</div>` : '';
+    const menuLinkHtml = s.menuItemId ? `<div class="m-muted" style="font-size:12px;">­ƒöù Verlinkt mit Menu Item</div>` : '';
     info.innerHTML = `
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <b>Story</b>
@@ -3072,8 +3192,8 @@ async function refreshOwnerStories(restaurantId){
       ${titleHtml}
       ${descHtml}
       ${menuLinkHtml}
-      <div class="m-muted" style="font-size:12px;">VideoID: ${esc(s.videoId || "—")}</div>
-      <div class="m-muted" style="font-size:12px;">Ablauf: ${fmtTs(s.expiresAt) || "—"}</div>
+      <div class="m-muted" style="font-size:12px;">VideoID: ${esc(s.videoId || "ÔÇö")}</div>
+      <div class="m-muted" style="font-size:12px;">Ablauf: ${fmtTs(s.expiresAt) || "ÔÇö"}</div>
     `;
 
     left.appendChild(iframe);
@@ -3085,21 +3205,21 @@ async function refreshOwnerStories(restaurantId){
     const delBtn = document.createElement("button");
     delBtn.type = "button";
     delBtn.className = "m-btn m-btn--small m-btn--ghost";
-    delBtn.textContent = "Löschen";
+    delBtn.textContent = "L├Âschen";
     delBtn.addEventListener("click", async () => {
       const st = $("storyStatus");
       delBtn.disabled = true;
-      st && (st.textContent = "Lösche Story…");
+      st && (st.textContent = "L├Âsche StoryÔÇª");
       try {
         if (s.videoId) {
           try { await postJson(`${BUNNY_EDGE_BASE}/story/delete`, { videoId: s.videoId }); } catch (e) { console.warn(e); }
         }
         await deleteStoryDoc(restaurantId, s.id);
-        st && (st.textContent = "Story gelöscht.");
+        st && (st.textContent = "Story gel├Âscht.");
         await refreshOwnerStories(restaurantId);
       } catch (err){
         console.error(err);
-        st && (st.textContent = "Löschen fehlgeschlagen.");
+        st && (st.textContent = "L├Âschen fehlgeschlagen.");
       } finally {
         delBtn.disabled = false;
       }
@@ -3118,7 +3238,7 @@ async function cleanupExpiredStories(restaurantId, { userInitiated = false } = {
   const btn = $("storyCleanupBtn");
   btn && (btn.disabled = true);
   try {
-    st && (st.textContent = userInitiated ? "Cleanup läuft…" : "Cleanup…");
+    st && (st.textContent = userInitiated ? "Cleanup l├ñuftÔÇª" : "CleanupÔÇª");
     const expired = await listExpiredStories(restaurantId, 25);
     if (!expired.length){
       st && (st.textContent = "Keine abgelaufenen Stories.");
@@ -3148,7 +3268,7 @@ async function loadMenuItemsForStorySelect(restaurantId) {
 
   try {
     const items = await loadPublicMenuItems(restaurantId);
-    select.innerHTML = `<option value="">— Kein Link —</option>`;
+    select.innerHTML = `<option value="">ÔÇö Kein Link ÔÇö</option>`;
     items.forEach(item => {
       const option = document.createElement("option");
       option.value = item.id;
@@ -3157,7 +3277,7 @@ async function loadMenuItemsForStorySelect(restaurantId) {
     });
   } catch (err) {
     console.warn("Failed to load menu items for story select:", err);
-    select.innerHTML = `<option value="">— Fehler beim Laden —</option>`;
+    select.innerHTML = `<option value="">ÔÇö Fehler beim Laden ÔÇö</option>`;
   }
 }
 
@@ -3180,7 +3300,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
     openGuest.href = `../guest/story/index.html?r=${encodeURIComponent(restaurantId)}`;
   }
 
-  // Menu items für Story-Verlinkung laden
+  // Menu items f├╝r Story-Verlinkung laden
   await loadMenuItemsForStorySelect(restaurantId);
 
   // Cleanup button
@@ -3199,7 +3319,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
     } catch {}
   }
 
-  // Upload - zurück zu Stream, aber speichere direkte Stream-URL
+  // Upload - zur├╝ck zu Stream, aber speichere direkte Stream-URL
   const input = $("storyFileInput");
   const btn = $("storyUploadBtn");
   const prog = $("storyProgress");
@@ -3208,13 +3328,13 @@ async function initOwnerStoriesUI({ restaurantId, user }){
   btn.addEventListener("click", async () => {
     const file = input?.files?.[0];
     if (!file) {
-      st && (st.textContent = "Bitte ein Video auswählen.");
+      st && (st.textContent = "Bitte ein Video ausw├ñhlen.");
       return;
     }
 
     btn.disabled = true;
     try {
-      st && (st.textContent = "Prüfe Video…");
+      st && (st.textContent = "Pr├╝fe VideoÔÇª");
       const dur = await getVideoDurationSeconds(file);
       if (!dur || dur <= 0) {
         st && (st.textContent = "Video-Dauer konnte nicht gelesen werden.");
@@ -3225,7 +3345,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
         return;
       }
 
-      st && (st.textContent = "Prüfe aktive Stories…");
+      st && (st.textContent = "Pr├╝fe aktive StoriesÔÇª");
       const activeCount = await countActiveStories(restaurantId, 10);
       if (activeCount >= 10) {
         st && (st.textContent = "Limit erreicht: max. 10 aktive Stories.");
@@ -3233,7 +3353,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
       }
 
       await ensureTus();
-      st && (st.textContent = "Upload startet…");
+      st && (st.textContent = "Upload startetÔÇª");
       prog && (prog.value = 0);
 
       const start = await postJson(`${BUNNY_EDGE_BASE}/story/start`, { restaurantId });
@@ -3260,10 +3380,10 @@ async function initOwnerStoriesUI({ restaurantId, user }){
         },
         onSuccess: async () => {
           prog && (prog.value = 100);
-          st && (st.textContent = "Upload fertig. Speichere Story…");
+          st && (st.textContent = "Upload fertig. Speichere StoryÔÇª");
           try {
             const ttlHours = start?.limits?.ttlHours || start?.ttlHours || 24;
-            // Speichere HLS-URL für Bunny Stream (funktioniert in allen Browsern mit hls.js)
+            // Speichere HLS-URL f├╝r Bunny Stream (funktioniert in allen Browsern mit hls.js)
             const videoUrl = `https://vz-de.b-cdn.net/${encodeURIComponent(String(start.videoId))}/index.m3u8`;
 
             // Neue Felder auslesen
@@ -3274,7 +3394,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
             await addStoryDoc(restaurantId, {
               libraryId: start.libraryId,
               videoId: start.videoId,
-              videoUrl, // Direkte Stream-URL für <video> Element
+              videoUrl, // Direkte Stream-URL f├╝r <video> Element
               createdByUid: user.uid,
               ttlHours,
               status: "active",
@@ -3285,7 +3405,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
             });
 
             st && (st.textContent = "Story gespeichert.");
-            // Felder zurücksetzen
+            // Felder zur├╝cksetzen
             if (input) input.value = "";
             if (titleInput) titleInput.value = "";
             if (descInput) descInput.value = "";
@@ -3293,7 +3413,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
             await refreshOwnerStories(restaurantId);
           } catch (err){
             console.error(err);
-            st && (st.textContent = "Speichern fehlgeschlagen. Lösche Video…");
+            st && (st.textContent = "Speichern fehlgeschlagen. L├Âsche VideoÔÇª");
             try { await postJson(`${BUNNY_EDGE_BASE}/story/delete`, { videoId: start.videoId }); } catch {}
           } finally {
             btn.disabled = false;
@@ -3362,7 +3482,7 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   // Sign in gate
   mountLoginModal(`${roleLabel} Login`, { allowBootstrap: role === "ceo" });
   setBootLabel(roleLabel);
-  setBootStatus("Zugang wird geladen …");
+  setBootStatus("Zugang wird geladen ÔÇª");
 
   let currentUser = null;
   const restaurants = [];
@@ -3391,14 +3511,14 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   $("dashNextPayToggle")?.addEventListener("click", () => {
     nextPayExpanded = !nextPayExpanded;
     const icon = $("dashNextPayToggleIcon");
-    if (icon) icon.textContent = nextPayExpanded ? "↑" : "↓";
+    if (icon) icon.textContent = nextPayExpanded ? "Ôåæ" : "Ôåô";
     renderNextPayList(buildNextPayItems(restaurants), nextPayExpanded, false);
   });
 
   $("dashActiveStoriesToggle")?.addEventListener("click", () => {
     storiesExpanded = !storiesExpanded;
     const btn = $("dashActiveStoriesToggle");
-    if (btn) btn.textContent = storiesExpanded ? "↑" : "↓";
+    if (btn) btn.textContent = storiesExpanded ? "Ôåæ" : "Ôåô";
     renderStoriesList(activeStoriesCache, storiesExpanded, false);
   });
 
@@ -3451,11 +3571,31 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
   setText("leadModalStatus", "Speichere…");
   try {
+    let savedLeadId = leadId;
+    const existingLead = leadId ? leadsAll.find(x => x.id === leadId) : null;
     if (leadId) {
       await setDoc(doc(db, "leads", leadId), payload, { merge: true });
     } else {
       payload.createdAt = serverTimestamp();
-      await addDoc(collection(db, "leads"), payload);
+      const docRef = await addDoc(collection(db, "leads"), payload);
+      savedLeadId = docRef.id;
+    }
+    const shouldConvert = normalizeLeadStatusKey(payload.status || "") === "converted";
+    if (shouldConvert && !existingLead?.convertedRestaurantId) {
+      setText("leadModalStatus", "Erstelle Demo…");
+      const createdId = await createCustomerFromLead({
+        lead: { ...(existingLead || {}), ...payload, id: savedLeadId },
+        user,
+        role,
+        demo: true
+      });
+      await setDoc(doc(db, "leads", savedLeadId), {
+        status: "converted",
+        convertedRestaurantId: createdId,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      try { localStorage.removeItem(REST_CACHE_KEY + "_" + role + "_" + user.uid); } catch {}
+      setText("adminStatus", `Demo erstellt: ${createdId}`);
     }
     cacheDel(`${LEADS_CACHE_KEY}_${role}_${user.uid}`);
     closeLeadModal();
@@ -3589,7 +3729,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     if (staffName) staffName.value = data.name || data.displayName || "";
     if (staffEmail) {
       staffEmail.value = data.email || "";
-      staffEmail.disabled = (mode === "edit");
+      staffEmail.disabled = false;
     }
     if (staffPass) staffPass.value = "";
     const staffPhoto = $("staffPhoto");
@@ -4498,7 +4638,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
               const li = document.createElement("li");
               li.innerHTML = `
                 <div class="m-error-title">${esc(r.message || r.msg || "Error")}</div>
-                <div class="m-error-meta">${esc(r.app || r.source || "-")} · ${ts ? relativeFromNow(ts.getTime()) : ""}</div>
+                <div class="m-error-meta">${esc(r.app || r.source || "-")} ┬À ${ts ? relativeFromNow(ts.getTime()) : ""}</div>
               `;
               listEl.appendChild(li);
             });
@@ -4774,27 +4914,16 @@ async function refreshLeads(force = false) {
 
         if (act === "lead-to-customer") {
         // Convert lead -> new customer (restaurant doc)
-        setText("adminStatus", "Erstelle Kunde…");
+        setText("adminStatus", "Erstelle Demo.");
         try {
-          const payload = {
-            name: row.businessName || "Neuer Kunde",
-            type: (row.customerType === "restaurant" ? "restaurant" : "cafe"),
-            city: row.city || "",
-            phone: row.phone || "",
-            ownerName: "",
-            tableCount: 10,
-            yearPrice: 490,
-            logoUrl: "",
-            status: "active"
-          };
-          const createdId = await createRestaurantDoc(role, currentUser, payload);
+          const createdId = await createCustomerFromLead({ lead: row, user: currentUser, role, demo: true });
           await setDoc(doc(db, "leads", id), { status: "converted", convertedRestaurantId: createdId, updatedAt: serverTimestamp() }, { merge: true });
 
           // clear caches
           try { localStorage.removeItem(REST_CACHE_KEY + "_" + role + "_" + currentUser.uid); } catch {}
           cacheDel(`${LEADS_CACHE_KEY}_${role}_${currentUser.uid}`);
 
-          setText("adminStatus", `Lead → Kunde erstellt: ${createdId}`);
+          setText("adminStatus", `Demo erstellt: ${createdId}`);
           // refresh customers UI & leads
           const updated = await fetchRestaurants(role, currentUser.uid, restrictRestaurantId);
           restaurants.splice(0, restaurants.length, ...updated);
@@ -4821,7 +4950,7 @@ await refreshLeads(true);
 // Offers view
     const offersSel = $("offersRestaurantSelect");
     if (offersSel) {
-      offersSel.innerHTML = `<option value="">— Lokal wählen —</option>`;
+      offersSel.innerHTML = `<option value="">ÔÇö Lokal w├ñhlen ÔÇö</option>`;
       restaurants.forEach(r => {
         const opt = document.createElement("option");
         opt.value = r.id;
@@ -4930,11 +5059,11 @@ function fillMenuRestaurantSelect(restaurants){
 
 async function loadMenuUI(rid){
   if(!rid){
-    setMenuStatus("Bitte ein Lokal auswählen.");
+    setMenuStatus("Bitte ein Lokal ausw├ñhlen.");
     renderMenuTable([], menuFilterType, canDeleteMenuItems());
     return;
   }
-  setMenuStatus("Lade…");
+  setMenuStatus("LadeÔÇª");
   try{
     await ensurePublicDocs(rid, { name:"", type:"cafe", city:"", logoUrl:"" });
     currentMenuItems = await loadMenuHybrid(rid);
@@ -4958,7 +5087,7 @@ async function loadMenuUI(rid){
 
 async function saveMenuUI(){
   if(!currentRestaurantId){ return; }
-  setMenuStatus("Speichere…");
+  setMenuStatus("SpeichereÔÇª");
   try{
     await setDoc(doc(db, "restaurants", currentRestaurantId, "public", "menu"), {
       items: currentMenuItems || [],
@@ -5010,7 +5139,7 @@ function bindMenuClicks(){
       const idx = Number(delBtn.getAttribute("data-mi-del"));
       const it = currentMenuItems[idx];
       if(!it) return;
-      if(!confirm(`Item löschen: ${it.name || "Item"} ?`)) return;
+      if(!confirm(`Item l├Âschen: ${it.name || "Item"} ?`)) return;
       currentMenuItems.splice(idx, 1);
       await saveMenuUI();
     }
@@ -5044,7 +5173,7 @@ function bindMenuModal(){
       miStatus && (miStatus.textContent = "");
 
       if(!currentRestaurantId){
-        miStatus && (miStatus.textContent = "Kein Lokal ausgewählt.");
+        miStatus && (miStatus.textContent = "Kein Lokal ausgew├ñhlt.");
         return;
       }
 
@@ -5099,12 +5228,12 @@ function bindMenuModal(){
         menuPublishBtn.addEventListener("click", async () => {
           try{
             if (!currentRestaurantId) {
-              menuStatus.textContent = "Kein Lokal ausgewählt.";
+              menuStatus.textContent = "Kein Lokal ausgew├ñhlt.";
               return;
             }
-            menuStatus.textContent = "Publishing…";
+            menuStatus.textContent = "PublishingÔÇª";
             await publishMenuToPublic(currentRestaurantId, currentMenuItems);
-            menuStatus.textContent = "Published ✓";
+            menuStatus.textContent = "Published Ô£ô";
           }catch(err){
             console.error(err);
             menuStatus.textContent = "Publish error";
@@ -5150,7 +5279,7 @@ function initMenuView(){
       currentRestaurantId = rid;
       loadMenuUI(rid);
     } else {
-      setMenuStatus("Bitte ein Lokal ausw„hlen.");
+      setMenuStatus("Bitte ein Lokal auswÔÇ×hlen.");
       renderMenuTable([], menuFilterType, canDeleteMenuItems());
     }
   });
@@ -5161,10 +5290,10 @@ initMenuView();
 
     async function loadOffersUI(rid) {
       if (!rid) {
-        setText("offersStatus", "Bitte ein Lokal auswählen.");
+        setText("offersStatus", "Bitte ein Lokal ausw├ñhlen.");
         return;
       }
-      setText("offersStatus", "Lade…");
+      setText("offersStatus", "LadeÔÇª");
       setText("offersSelectedBadge", rid);
       currentRestaurantId = rid;
 
@@ -5222,7 +5351,7 @@ initMenuView();
           setText("offersStatus", `Gespeichert (${currentOffers.length})`);
         } catch (err) {
           console.error(err);
-          setText("offersStatus", err?.message || "Löschen fehlgeschlagen.");
+          setText("offersStatus", err?.message || "L├Âschen fehlgeschlagen.");
         }
       }
     });
@@ -5293,7 +5422,7 @@ initMenuView();
   });
 
 
-// URL → open a specific view (used by menu pages): ?view=customers|offers|...
+// URL ÔåÆ open a specific view (used by menu pages): ?view=customers|offers|...
 try {
   const params = new URLSearchParams(window.location.search || "");
   const view = params.get("view");
