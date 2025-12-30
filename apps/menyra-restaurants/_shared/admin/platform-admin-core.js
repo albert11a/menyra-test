@@ -4675,7 +4675,7 @@ async function refreshLeads(force = false) {
     const st = leadsStats(leadsAll);
     setText("leadsTotalBadge", String(st.total));
     setText("leadsStatNew", `Offen: ${st.counts.new}`);
-    setText("leadsStatContacted", `Kontaktiert/Warten: ${st.counts.contacted}`);
+    setText("leadsStatContacted", `Kontaktiert: ${st.counts.contacted}`);
     setText("leadsStatInterested", `Interesse: ${st.counts.interested}`);
     setText("leadsStatNoInterest", `Kein Interesse: ${st.counts.no_interest}`);
     const archivedCount = leadsAll.filter(r => normalizeLeadStatusKey(r.status || "") === "archived").length;
