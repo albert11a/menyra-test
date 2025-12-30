@@ -2445,7 +2445,7 @@ function renderLeadsTable(rows){
       body.appendChild(row);
     });
 
-    setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+    setText("leadsMeta", "");
     bindLeadsSwipeHandlers(body);
     return;
   }
@@ -2453,7 +2453,7 @@ function renderLeadsTable(rows){
   if (useList) {
     if (!rows.length) {
       body.innerHTML = `<div class="m-muted" style="padding:10px;">Keine Leads.</div>`;
-      setText("leadsMeta", "-");
+      setText("leadsMeta", "");
       return;
     }
 
@@ -2483,7 +2483,7 @@ function renderLeadsTable(rows){
       body.appendChild(row);
     });
 
-    setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+    setText("leadsMeta", "");
     return;
   }
 
@@ -2522,7 +2522,7 @@ function renderLeadsTable(rows){
     `;
     body.appendChild(row);
   });
-  setText("leadsMeta", rows.length ? `Zeilen: ${rows.length}` : "-");
+  setText("leadsMeta", "");
 }
 
 const LEAD_SWIPE_MAX = 110;
@@ -4753,7 +4753,7 @@ async function refreshLeads(force = false) {
       });
     }
 
-    setText("leadsMeta", filtered.length ? `Zeilen: ${filtered.length}` : "—");
+    setText("leadsMeta", "");
   } catch (err) {
     console.error(err);
     setText("leadsMeta", "Fehler beim Laden (Rules/Auth?).");
@@ -5234,7 +5234,6 @@ initMenuView();
     });
 
     // Leads placeholders
-    setText("leadsMeta", "Demo – später.");
   });
 
 

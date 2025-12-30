@@ -506,26 +506,24 @@
       overflow: hidden;
     }
 
-    .leads-tabs-shell {
-      background: var(--accent-grad);
-      border-radius: 28px;
-      padding: 16px;
-      box-shadow: 0 26px 50px -22px rgba(99, 102, 241, 0.45);
-    }
-
     .leads-tabs-bar {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      display: flex;
+      flex-wrap: nowrap;
       gap: 8px;
       width: 100%;
-      margin-bottom: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .leads-tabs-bar .rev-tab {
-      width: 100%;
+      flex: 0 0 auto;
       justify-content: center;
       padding: 10px 18px;
       font-size: 0.85rem;
+    }
+
+    .leads-tabs-bar::-webkit-scrollbar {
+      display: none;
     }
 
     @media (min-width: 900px) {
@@ -607,8 +605,20 @@
     }
 
     .lead-labels .m-badge {
-      font-size: 0.62rem;
-      padding: 2px 8px;
+      font-size: 0.68rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(99, 102, 241, 0.18);
+      background: rgba(99, 102, 241, 0.12);
+      color: #4f46e5;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    html.is-dark .lead-labels .m-badge {
+      background: rgba(99, 102, 241, 0.2);
+      border-color: rgba(99, 102, 241, 0.3);
+      color: #c7d2fe;
     }
 
     .lead-actions {
@@ -641,7 +651,6 @@
       }
 
       .leads-tabs-bar {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 6px;
       }
 
@@ -667,6 +676,11 @@
 
       .lead-labels .m-badge:nth-child(n+2) {
         display: none;
+      }
+
+      .lead-labels .m-badge {
+        font-size: 0.6rem;
+        padding: 3px 8px;
       }
 
       .lead-actions {
@@ -1818,20 +1832,17 @@
             </select>
           </div>
           <div class="leads-filter-actions">
-            <button class="m-btn m-btn--ghost m-btn--small" id="leadsClearFilters" type="button">Reset</button>
             <div class="menu-status" id="leadsMeta">-</div>
           </div>
         </div>
 
-        <div class="leads-tabs-shell mb-3">
-          <div class="rev-tabs leads-tabs-bar">
-            <button class="rev-tab active" type="button">Gesamt <span id="leadsTotalBadge">0</span></button>
-            <button class="rev-tab" type="button" id="leadsStatNew"></button>
-            <button class="rev-tab" type="button" id="leadsStatContacted"></button>
-            <button class="rev-tab" type="button" id="leadsStatInterested"></button>
-            <button class="rev-tab" type="button" id="leadsStatNoInterest"></button>
-            <button class="rev-tab" type="button" id="leadsStatArchived"></button>
-          </div>
+        <div class="rev-tabs leads-tabs-bar mb-3">
+          <button class="rev-tab active" type="button">Gesamt <span id="leadsTotalBadge">0</span></button>
+          <button class="rev-tab" type="button" id="leadsStatNew"></button>
+          <button class="rev-tab" type="button" id="leadsStatContacted"></button>
+          <button class="rev-tab" type="button" id="leadsStatInterested"></button>
+          <button class="rev-tab" type="button" id="leadsStatNoInterest"></button>
+          <button class="rev-tab" type="button" id="leadsStatArchived"></button>
         </div>
 
         <div class="table-card p-0 leads-card">
