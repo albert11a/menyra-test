@@ -4678,6 +4678,8 @@ async function refreshLeads(force = false) {
     setText("leadsStatContacted", `Kontaktiert/Warten: ${st.counts.contacted}`);
     setText("leadsStatInterested", `Interesse: ${st.counts.interested}`);
     setText("leadsStatNoInterest", `Kein Interesse: ${st.counts.no_interest}`);
+    const archivedCount = leadsAll.filter(r => normalizeLeadStatusKey(r.status || "") === "archived").length;
+    setText("leadsStatArchived", `Archiv: ${archivedCount}`);
     const openCount = leadsAll.filter(r => {
       const s = normalizeLeadStatusKey(r.status || "");
       return !["no_interest", "lost", "converted", "closed", "done", "archived"].includes(s);

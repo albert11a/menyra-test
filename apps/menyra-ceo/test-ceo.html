@@ -508,12 +508,14 @@
 
     .leads-tabs-bar {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 6px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
       align-items: center;
-      padding: 8px;
-      background: rgba(99, 102, 241, 0.08);
-      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      padding: 12px;
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.05));
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 18px;
+      box-shadow: var(--shadow-soft);
     }
 
     .leads-tab {
@@ -521,21 +523,33 @@
       align-items: center;
       justify-content: center;
       gap: 4px;
-      padding: 6px 8px;
+      padding: 8px 10px;
       font-size: 0.7rem;
       font-weight: 700;
       color: var(--text-main);
-      background: rgba(255, 255, 255, 0.95);
-      border: 1px solid rgba(148, 163, 184, 0.25);
-      border-radius: 12px 12px 10px 10px;
-      box-shadow: 0 6px 12px -10px rgba(15, 23, 42, 0.3);
+      background: rgba(255, 255, 255, 0.98);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 14px 14px 12px 12px;
+      box-shadow: 0 10px 22px -18px rgba(15, 23, 42, 0.5);
       text-align: center;
       white-space: nowrap;
     }
 
     .leads-tab--primary {
-      border-color: rgba(99, 102, 241, 0.4);
-      color: #4f46e5;
+      background: var(--accent-grad);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 14px 26px -18px rgba(99, 102, 241, 0.6);
+    }
+
+    html.is-dark .leads-tab {
+      background: rgba(15, 23, 42, 0.9);
+      border-color: rgba(148, 163, 184, 0.2);
+    }
+
+    html.is-dark .leads-tab--primary {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(168, 85, 247, 0.95));
+      color: #fff;
     }
 
     @media (min-width: 900px) {
@@ -651,14 +665,14 @@
       }
 
       .leads-tabs-bar {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
-        gap: 5px;
-        padding: 6px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        padding: 10px;
       }
 
       .leads-tab {
-        font-size: 0.58rem;
-        padding: 4px 6px;
+        font-size: 0.6rem;
+        padding: 6px 6px;
       }
 
       .lead-row {
@@ -1834,14 +1848,16 @@
           </div>
         </div>
 
+        <div class="leads-tabs-bar mb-3">
+          <div class="leads-tab leads-tab--primary">Gesamt: <span id="leadsTotalBadge">0</span></div>
+          <div class="leads-tab" id="leadsStatNew"></div>
+          <div class="leads-tab" id="leadsStatContacted"></div>
+          <div class="leads-tab" id="leadsStatInterested"></div>
+          <div class="leads-tab" id="leadsStatNoInterest"></div>
+          <div class="leads-tab" id="leadsStatArchived"></div>
+        </div>
+
         <div class="table-card p-0 leads-card">
-          <div class="leads-tabs-bar">
-            <div class="leads-tab leads-tab--primary">Gesamt: <span id="leadsTotalBadge">0</span></div>
-            <div class="leads-tab" id="leadsStatNew"></div>
-            <div class="leads-tab" id="leadsStatContacted"></div>
-            <div class="leads-tab" id="leadsStatInterested"></div>
-            <div class="leads-tab" id="leadsStatNoInterest"></div>
-          </div>
           <div class="leads-list" id="leadsTableBody" data-view-style="list"></div>
         </div>
       </section>
