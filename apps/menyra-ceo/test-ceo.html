@@ -506,50 +506,26 @@
       overflow: hidden;
     }
 
+    .leads-tabs-shell {
+      background: var(--accent-grad);
+      border-radius: 28px;
+      padding: 16px;
+      box-shadow: 0 26px 50px -22px rgba(99, 102, 241, 0.45);
+    }
+
     .leads-tabs-bar {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
-      align-items: center;
-      padding: 12px;
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(168, 85, 247, 0.05));
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      border-radius: 18px;
-      box-shadow: var(--shadow-soft);
+      width: 100%;
+      margin-bottom: 0;
     }
 
-    .leads-tab {
-      display: inline-flex;
-      align-items: center;
+    .leads-tabs-bar .rev-tab {
+      width: 100%;
       justify-content: center;
-      gap: 4px;
       padding: 8px 10px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--text-main);
-      background: rgba(255, 255, 255, 0.98);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      border-radius: 14px 14px 12px 12px;
-      box-shadow: 0 10px 22px -18px rgba(15, 23, 42, 0.5);
-      text-align: center;
-      white-space: nowrap;
-    }
-
-    .leads-tab--primary {
-      background: var(--accent-grad);
-      color: #fff;
-      border-color: transparent;
-      box-shadow: 0 14px 26px -18px rgba(99, 102, 241, 0.6);
-    }
-
-    html.is-dark .leads-tab {
-      background: rgba(15, 23, 42, 0.9);
-      border-color: rgba(148, 163, 184, 0.2);
-    }
-
-    html.is-dark .leads-tab--primary {
-      background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(168, 85, 247, 0.95));
-      color: #fff;
+      font-size: 0.72rem;
     }
 
     @media (min-width: 900px) {
@@ -665,12 +641,11 @@
       }
 
       .leads-tabs-bar {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 6px;
-        padding: 10px;
       }
 
-      .leads-tab {
+      .leads-tabs-bar .rev-tab {
         font-size: 0.6rem;
         padding: 6px 6px;
       }
@@ -1848,13 +1823,15 @@
           </div>
         </div>
 
-        <div class="leads-tabs-bar mb-3">
-          <div class="leads-tab leads-tab--primary">Gesamt: <span id="leadsTotalBadge">0</span></div>
-          <div class="leads-tab" id="leadsStatNew"></div>
-          <div class="leads-tab" id="leadsStatContacted"></div>
-          <div class="leads-tab" id="leadsStatInterested"></div>
-          <div class="leads-tab" id="leadsStatNoInterest"></div>
-          <div class="leads-tab" id="leadsStatArchived"></div>
+        <div class="leads-tabs-shell mb-3">
+          <div class="rev-tabs leads-tabs-bar">
+            <button class="rev-tab active" type="button">Gesamt <span id="leadsTotalBadge">0</span></button>
+            <button class="rev-tab" type="button" id="leadsStatNew"></button>
+            <button class="rev-tab" type="button" id="leadsStatContacted"></button>
+            <button class="rev-tab" type="button" id="leadsStatInterested"></button>
+            <button class="rev-tab" type="button" id="leadsStatNoInterest"></button>
+            <button class="rev-tab" type="button" id="leadsStatArchived"></button>
+          </div>
         </div>
 
         <div class="table-card p-0 leads-card">
