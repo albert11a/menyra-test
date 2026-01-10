@@ -2607,7 +2607,7 @@ function renderLeadsTable(rows){
           <div class="lead-info">
             <h3>${esc(name)}</h3>
             <p class="lead-subline">${esc(subline)}</p>
-            <p class="lead-statusline">${esc(statusLabel)}</p>
+            <p class="lead-statusline ${statusClass(r.status)}"><span class="status-dot"></span>${esc(statusLabel)}</p>
           </div>
         </div>
         <div>
