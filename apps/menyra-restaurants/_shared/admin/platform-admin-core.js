@@ -3169,15 +3169,31 @@ async function refreshOwnerStories(restaurantId){
     const left = document.createElement("div");
     left.className = "m-story-left";
 
-    const iframe = document.createElement("iframe");
-    iframe.className = "m-story-thumb";
-    iframe.allow = "autoplay; fullscreen; picture-in-picture";
-    iframe.setAttribute("allowfullscreen", "");
     const embedUrl = (s.embedUrl || "").trim() || (s.libraryId && s.videoId
       ? `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(s.libraryId))}/${encodeURIComponent(String(s.videoId))}`
       : "");
-    iframe.src = embedUrl ? `${embedUrl}?autoplay=false&loop=true&muted=true&preload=true` : "about:blank";
-    iframe.loading = "lazy";
+
+    let mediaEl = null;
+    if (embedUrl) {
+      const iframe = document.createElement("iframe");
+      iframe.className = "m-story-thumb";
+      iframe.allow = "autoplay; fullscreen; picture-in-picture";
+      iframe.setAttribute("allowfullscreen", "");
+      iframe.src = `${embedUrl}?autoplay=false&loop=true&muted=true&preload=true`;
+      iframe.loading = "lazy";
+      mediaEl = iframe;
+    } else if (s.videoUrl) {
+      const video = document.createElement("video");
+      video.className = "m-story-thumb";
+      video.src = String(s.videoUrl || "").trim();
+      video.muted = true;
+      video.loop = true;
+      video.autoplay = true;
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.preload = "metadata";
+      mediaEl = video;
+    }
 
     const info = document.createElement("div");
     info.className = "m-story-info";
@@ -3196,7 +3212,7 @@ async function refreshOwnerStories(restaurantId){
       <div class="m-muted" style="font-size:12px;">Ablauf: ${fmtTs(s.expiresAt) || "-"}</div>
     `;
 
-    left.appendChild(iframe);
+    if (mediaEl) left.appendChild(mediaEl);
     left.appendChild(info);
 
     const actions = document.createElement("div");
@@ -3325,6 +3341,14 @@ async function initOwnerStoriesUI({ restaurantId, user }){
   const prog = $("storyProgress");
   const st = $("storyStatus");
 
+  function normalizeUrl(raw) {
+    const value = String(raw || "").trim();
+    if (!value) return "";
+    if (/^https?:\/\//i.test(value)) return value;
+    if (value.startsWith("//")) return `https:${value}`;
+    return `https://${value.replace(/^\/+/, "")}`;
+  }
+
   btn.addEventListener("click", async () => {
     const file = input?.files?.[0];
     if (!file) {
@@ -3352,76 +3376,65 @@ async function initOwnerStoriesUI({ restaurantId, user }){
         return;
       }
 
-      await ensureTus();
       st && (st.textContent = "Upload startet...");
       prog && (prog.value = 0);
 
-      const start = await postJson(`${BUNNY_EDGE_BASE}/story/start`, { restaurantId });
+      const form = new FormData();
+      form.append("file", file, file.name || "story.mp4");
+      form.append("restaurantId", restaurantId || "");
 
-      const tus = window.tus;
-      const upload = new tus.Upload(file, {
-        endpoint: start.tusEndpoint,
-        headers: start.uploadHeaders,
-        retryDelays: [0, 1000, 3000, 5000],
-        metadata: {
-          filename: file.name,
-          filetype: file.type
-        },
-        onError: async (error) => {
-          console.error(error);
-          st && (st.textContent = "Upload Fehler.");
-          try { await postJson(`${BUNNY_EDGE_BASE}/story/delete`, { videoId: start.videoId }); } catch {}
-          btn.disabled = false;
-        },
-        onProgress: (bytesUploaded, bytesTotal) => {
-          const pct = bytesTotal ? Math.floor((bytesUploaded / bytesTotal) * 100) : 0;
-          prog && (prog.value = pct);
-          st && (st.textContent = `Upload: ${pct}%`);
-        },
-        onSuccess: async () => {
-          prog && (prog.value = 100);
-          st && (st.textContent = "Upload fertig. Speichere Story...");
-          try {
-            const ttlHours = start?.limits?.ttlHours || start?.ttlHours || 24;
-            // Speichere HLS-URL f├╝r Bunny Stream (funktioniert in allen Browsern mit hls.js)
-            const videoUrl = `https://vz-de.b-cdn.net/${encodeURIComponent(String(start.videoId))}/index.m3u8`;
-
-            // Neue Felder auslesen
-            const titleInput = $("storyTitleInput");
-            const descInput = $("storyDescInput");
-            const menuItemSelect = $("storyMenuItemSelect");
-
-            await addStoryDoc(restaurantId, {
-              libraryId: start.libraryId,
-              videoId: start.videoId,
-              videoUrl, // Direkte Stream-URL f├╝r <video> Element
-              createdByUid: user.uid,
-              ttlHours,
-              status: "active",
-              embedUrl: `https://iframe.mediadelivery.net/embed/${encodeURIComponent(String(start.libraryId))}/${encodeURIComponent(String(start.videoId))}`,
-              title: titleInput?.value?.trim() || null,
-              description: descInput?.value?.trim() || null,
-              menuItemId: menuItemSelect?.value?.trim() || null
-            });
-
-            st && (st.textContent = "Story gespeichert.");
-            // Felder zur├╝cksetzen
-            if (input) input.value = "";
-            if (titleInput) titleInput.value = "";
-            if (descInput) descInput.value = "";
-            if (menuItemSelect) menuItemSelect.value = "";
-            await refreshOwnerStories(restaurantId);
-          } catch (err){
-            console.error(err);
-            st && (st.textContent = "Speichern fehlgeschlagen. Loesche Video...");
-            try { await postJson(`${BUNNY_EDGE_BASE}/story/delete`, { videoId: start.videoId }); } catch {}
-          } finally {
-            btn.disabled = false;
-          }
-        }
+      const res = await fetch(`${BUNNY_EDGE_BASE}/story/upload`, {
+        method: "POST",
+        body: form
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.url) {
+        st && (st.textContent = data?.error || "Upload fehlgeschlagen.");
+        btn.disabled = false;
+        return;
+      }
 
-      upload.start();
+      prog && (prog.value = 100);
+      st && (st.textContent = "Upload fertig. Speichere Story...");
+
+      const ttlHours = Number(data?.ttlHours || 24);
+      const videoUrl = normalizeUrl(data.url);
+      const videoId = String(data?.videoId || data?.path || data?.key || "").trim();
+
+      // Neue Felder auslesen
+      const titleInput = $("storyTitleInput");
+      const descInput = $("storyDescInput");
+      const menuItemSelect = $("storyMenuItemSelect");
+
+      try {
+        await addStoryDoc(restaurantId, {
+          libraryId: "",
+          videoId,
+          videoUrl,
+          createdByUid: user.uid,
+          ttlHours,
+          status: "active",
+          embedUrl: "",
+          title: titleInput?.value?.trim() || null,
+          description: descInput?.value?.trim() || null,
+          menuItemId: menuItemSelect?.value?.trim() || null
+        });
+
+        st && (st.textContent = "Story gespeichert.");
+        if (input) input.value = "";
+        if (titleInput) titleInput.value = "";
+        if (descInput) descInput.value = "";
+        if (menuItemSelect) menuItemSelect.value = "";
+        await refreshOwnerStories(restaurantId);
+      } catch (err){
+        console.error(err);
+        st && (st.textContent = "Speichern fehlgeschlagen. Loesche Video...");
+        if (videoId) {
+          try { await postJson(`${BUNNY_EDGE_BASE}/story/delete`, { videoId }); } catch {}
+        }
+      } finally {
+        btn.disabled = false;
+      }
     } catch (err) {
       console.error(err);
       st && (st.textContent = "Fehler: " + (err.message || "Unbekannt"));

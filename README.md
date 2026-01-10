@@ -53,12 +53,12 @@ roles, data flow, and the current working features.
 Note: the main collection is still named `restaurants`, but `type` supports
 non-restaurant businesses (services, ecommerce, etc).
 
-## Bunny Edge (Uploads + Stories)
-- Script: `bunny-edge/menyra-edge.js`
+## Media Edge (Cloudflare R2)
+- Script: `cloudflare-edge/menyra-media-worker.js`
 - Base URL: `shared/bunny-edge.js` (`BUNNY_EDGE_BASE`)
 - Endpoints:
-  - `POST /story/start`
-  - `POST /story/delete`
+  - `POST /story/upload` (multipart/form-data: `file`, `restaurantId`)
+  - `POST /story/delete` (json: `videoId`)
   - `POST /image/upload` (multipart/form-data: `file`, `restaurantId`)
 - CORS is controlled by `ALLOWED_ORIGINS`.
 

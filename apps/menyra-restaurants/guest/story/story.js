@@ -82,7 +82,7 @@ function renderStories(stories, container, meta){
       : "");
 
     if (embedUrl) {
-      // Verwende iframe für alle Videos - zuverlässig und ohne CORS-Probleme
+      // Verwende iframe fuer alle Videos - zuverlaessig und ohne CORS-Probleme
       const iframe = document.createElement("iframe");
       iframe.className = "reel-video";
       iframe.allow = "autoplay; fullscreen; picture-in-picture";
@@ -90,6 +90,17 @@ function renderStories(stories, container, meta){
       iframe.frameBorder = "0";
       iframe.src = `${embedUrl}?autoplay=true&loop=true&muted=true&preload=true&controls=0&disableAnalytics=true&noRUM=true&disableRUM=true`;
       videoElement = iframe;
+    } else if (story.videoUrl) {
+      const video = document.createElement("video");
+      video.className = "reel-video";
+      video.src = String(story.videoUrl || "").trim();
+      video.autoplay = true;
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.setAttribute("playsinline", "");
+      video.preload = "auto";
+      videoElement = video;
     }
 
     if (videoElement) {

@@ -1,6 +1,6 @@
 // =========================================================
-// MENYRA System 1 — Stories (Firestore)
-// - Stores references to Bunny Stream videos
+// MENYRA System 1 - Stories (Firestore)
+// - Stores references to R2-hosted videos
 // - Guest reads active stories only (expiresAt > now)
 // =========================================================
 
