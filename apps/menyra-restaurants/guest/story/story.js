@@ -97,6 +97,7 @@ function renderStories(stories, container, meta){
       video.autoplay = true;
       video.loop = true;
       video.muted = true;
+      video.volume = 1;
       video.playsInline = true;
       video.setAttribute("playsinline", "");
       video.preload = "auto";
@@ -220,6 +221,13 @@ function setupAutoplay(){
     hasUserInteracted = true;
     const tapHint = qs("tapHint");
     tapHint.style.display = "none";
+    videos.forEach((videoEl) => {
+      if (videoEl && videoEl.tagName === "VIDEO") {
+        videoEl.muted = false;
+        videoEl.volume = 1;
+        videoEl.play().catch(() => {});
+      }
+    });
     document.removeEventListener('touchstart', handleFirstInteraction);
     document.removeEventListener('click', handleFirstInteraction);
   };
@@ -239,6 +247,12 @@ function setupAutoplay(){
         // Video ist sichtbar und User hat interagiert - autoplay aktivieren
         if (videoElement.tagName === 'VIDEO') {
           // Für <video> Elemente können wir play() direkt aufrufen
+          if (hasUserInteracted) {
+            videoElement.muted = false;
+            videoElement.volume = 1;
+          } else {
+            videoElement.muted = true;
+          }
           if (videoElement.paused) {
             videoElement.play().catch(() => {}); // Ignore errors
           }
