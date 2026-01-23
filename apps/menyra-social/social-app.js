@@ -352,6 +352,9 @@ function bindMapSheetEvents() {
   if (mapCloseBtn) {
     mapCloseBtn.addEventListener("click", () => {
       state.selectedBusiness = null;
+      leafletBizMarkers.forEach((item) => {
+        try { item.setIcon(makeBizDivIcon(item.__biz)); } catch {}
+      });
       updateMapSheet();
     });
   }
@@ -1226,6 +1229,11 @@ function bindAppEvents() {
       btn.addEventListener("click", async () => {
         await signOut(auth);
         safeStorage.removeItem(STORAGE_KEYS.profile);
+        safeStorage.removeItem(STORAGE_KEYS.following);
+        state.followingHandles = [];
+        state.profileModal = { open: false, profile: null };
+        state.selectedBusiness = null;
+        cleanupLeaflet();
         setState({ activeTab: "feed", drawerOpen: false });
       });
     }
@@ -1235,19 +1243,32 @@ function bindAppEvents() {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.nav;
       if (!tab) return;
-      setState({ activeTab: tab, drawerOpen: false, settingsView: "main" });
+      setState({
+        activeTab: tab,
+        drawerOpen: false,
+        settingsView: "main",
+        selectedBusiness: null,
+        profileModal: { open: false, profile: null }
+      });
     });
   });
 
-  document.querySelectorAll("[data-map-id]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      setState({ selectedBusinessId: btn.dataset.mapId });
-    });
-  });
+  const mapLocateBtn = document.getElementById("mapLocateBtn");
+  if (mapLocateBtn) {
+    mapLocateBtn.addEventListener("click", () => mapLocate({ checkin: false }));
+  }
 
-  const mapClose = document.querySelector("[data-map-close]");
-  if (mapClose) {
-    mapClose.addEventListener("click", () => setState({ selectedBusinessId: null }));
+  const mapCheckinBtn = document.getElementById("mapCheckinBtn");
+  if (mapCheckinBtn) {
+    mapCheckinBtn.addEventListener("click", () => mapLocate({ checkin: true }));
+  }
+
+  const profileCheckinBtn = document.getElementById("profileCheckinBtn");
+  if (profileCheckinBtn) {
+    profileCheckinBtn.addEventListener("click", () => {
+      setState({ activeTab: "map" });
+      window.setTimeout(() => mapLocate({ checkin: true }), 250);
+    });
   }
 
   const markAll = document.getElementById("markAllRead");
@@ -1318,6 +1339,29 @@ function bindAppEvents() {
     });
   }
 
+  document.querySelectorAll("[data-profile-business]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openProfileFromBusiness(btn.dataset.profileBusiness);
+    });
+  });
+
+  const profileModalOverlay = document.getElementById("profileModalOverlay");
+  const profileModalClose = document.getElementById("profileModalClose");
+  const profileFollowBtn = document.getElementById("profileFollowBtn");
+  const closeProfileModal = () => {
+    state.profileModal = { open: false, profile: null };
+    render();
+  };
+
+  if (profileModalOverlay) profileModalOverlay.addEventListener("click", closeProfileModal);
+  if (profileModalClose) profileModalClose.addEventListener("click", closeProfileModal);
+  if (profileFollowBtn) {
+    profileFollowBtn.addEventListener("click", () => {
+      const handle = profileFollowBtn.dataset.handle;
+      if (handle) toggleFollow(handle);
+    });
+  }
+
   const uploadFileInput = document.getElementById("uploadFileInput");
   const uploadTrigger = document.getElementById("uploadFileTrigger");
   if (uploadTrigger && uploadFileInput) {
@@ -1349,13 +1393,6 @@ function bindAppEvents() {
   if (uploadCaption) {
     uploadCaption.addEventListener("input", () => {
       state.upload.caption = uploadCaption.value;
-    });
-  }
-
-  const uploadRestaurantSelect = document.getElementById("uploadRestaurantSelect");
-  if (uploadRestaurantSelect) {
-    uploadRestaurantSelect.addEventListener("change", async () => {
-      await updateRestaurantSelection(uploadRestaurantSelect.value);
     });
   }
 
@@ -1459,7 +1496,7 @@ async function handleUploadPost() {
   const restaurantId = state.userProfile.restaurantId || document.getElementById("uploadRestaurantSelect")?.value || "";
 
   if (isBusiness && !restaurantId) {
-    state.upload.status = "Bitte Business waehlen.";
+    state.upload.status = "Bitte Business im Account waehlen.";
     render();
     return;
   }
@@ -1513,6 +1550,8 @@ async function createBusinessPost({ restaurantId, caption, mediaUrl, mediaType }
     city: base.city || "Prishtina",
     createdAt: serverTimestamp(),
     createdByUid: state.user?.uid || "",
+    likesCount: 0,
+    commentsCount: 0,
     status: "active"
   };
 
@@ -1524,6 +1563,8 @@ async function createBusinessPost({ restaurantId, caption, mediaUrl, mediaType }
     captionShort: caption.slice(0, 90),
     thumbUrl: mediaType === "image" ? mediaUrl : "",
     mediaType,
+    likesCount: 0,
+    commentsCount: 0,
     status: "active",
     businessName: base.name || base.restaurantName || ""
   };
@@ -1538,6 +1579,8 @@ async function createUserPost({ uid, caption, url }) {
     url,
     caption,
     type: "square",
+    likesCount: 0,
+    commentsCount: 0,
     createdAt: serverTimestamp()
   });
 }
@@ -1559,6 +1602,7 @@ async function loadRestaurants() {
     snap.forEach((docSnap) => list.push({ id: docSnap.id, ...docSnap.data() }));
     state.restaurants = list;
     state.businessLocations = list.map((rest, idx) => normalizeBusinessLocation(rest, idx));
+    cleanupLeaflet();
     render();
   } catch (err) {
     console.error(err);
@@ -1620,7 +1664,10 @@ async function loadUserPosts() {
       id: row.id,
       url: row.url,
       type: row.type || "square",
-      title: row.title || ""
+      title: row.title || row.caption || "",
+      likes: row.likesCount ?? row.likes ?? 0,
+      comments: row.commentsCount ?? row.comments ?? 0,
+      isVideo: !!row.isVideo
     }));
     render();
   } catch (err) {
@@ -1651,7 +1698,10 @@ async function loadBusinessPosts() {
         id: row.id,
         url: row.media?.[0]?.url || row.mediaUrl || "",
         type: "square",
-        title: row.caption || ""
+        title: row.caption || "",
+        likes: row.likesCount ?? row.likes ?? 0,
+        comments: row.commentsCount ?? row.comments ?? 0,
+        isVideo: row.media?.[0]?.type === "video"
       }))
       .filter((row) => row.url);
     render();
