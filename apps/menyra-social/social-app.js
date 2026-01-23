@@ -24,6 +24,7 @@ import {
 import {
   ensureUserProfile,
   formatRelative,
+  getGeo,
   toDateSafe,
   buildUrl
 } from "./_shared/social-core.js";
@@ -46,7 +47,8 @@ const safeStorage = {
 const STORAGE_KEYS = {
   profile: "menyra_social_profile_v3",
   settings: "menyra_social_settings_v3",
-  notifications: "menyra_social_notifications_v1"
+  notifications: "menyra_social_notifications_v1",
+  following: "menyra_social_following_v1"
 };
 
 const ADMIN_LOGINS = {
@@ -133,14 +135,20 @@ const state = {
   drawerOpen: false,
   feedCategory: "all",
   settingsView: "main",
-  selectedBusinessId: null,
+  selectedBusiness: null,
   isLoading: false,
   feedPosts: [],
   restaurants: [],
+  businessLocations: [],
   stories: [],
   userPosts: [],
   businessPosts: [],
   userProfile: { ...DEFAULT_PROFILE },
+  followingHandles: [],
+  profileModal: {
+    open: false,
+    profile: null
+  },
   settings: { ...DEFAULT_SETTINGS },
   notifications: [...DEFAULT_NOTIFICATIONS],
   upload: {
@@ -184,6 +192,10 @@ function saveNotifications(notifications) {
   safeStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(notifications));
 }
 
+function saveFollowing(handles) {
+  safeStorage.setItem(STORAGE_KEYS.following, JSON.stringify(handles));
+}
+
 function loadPersisted() {
   const savedSettings = safeStorage.getItem(STORAGE_KEYS.settings);
   if (savedSettings) {
@@ -198,6 +210,11 @@ function loadPersisted() {
   const savedProfile = safeStorage.getItem(STORAGE_KEYS.profile);
   if (savedProfile) {
     try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch {}
+  }
+
+  const savedFollowing = safeStorage.getItem(STORAGE_KEYS.following);
+  if (savedFollowing) {
+    try { state.followingHandles = JSON.parse(savedFollowing) || []; } catch {}
   }
 }
 
@@ -265,6 +282,176 @@ function businessIcon(type) {
   if (["live", "nightlife", "club", "bar"].includes(value)) return "radio";
   if (["drink", "cocktail"].includes(value)) return "zap";
   return "zap";
+}
+
+let leafletMap = null;
+let leafletBizMarkers = [];
+let leafletUserMarker = null;
+
+function hashValue(input) {
+  return Array.from(String(input || "")).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+}
+
+function normalizeBusinessLocation(rest, idx) {
+  const geo = getGeo(rest);
+  const baseLat = 42.6629;
+  const baseLng = 21.1655;
+  const hash = hashValue(rest.id || rest.name || idx);
+  const lat = geo?.lat ?? (baseLat + (((hash % 200) - 100) * 0.0025));
+  const lng = geo?.lng ?? (baseLng + ((((hash >> 3) % 200) - 100) * 0.003));
+
+  return {
+    id: rest.id,
+    name: rest.name || rest.restaurantName || "Business",
+    type: rest.type || "food",
+    lat,
+    lng,
+    hours: rest.hours || rest.openHours || "08:00 - 23:00",
+    rating: rest.rating || rest.score || 4.6,
+    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+    desc: rest.description || rest.bio || "Menyra Business",
+    raw: rest
+  };
+}
+
+function cleanupLeaflet() {
+  try {
+    if (leafletMap) leafletMap.remove();
+  } catch {}
+  leafletMap = null;
+  leafletBizMarkers = [];
+  leafletUserMarker = null;
+}
+
+function makeBizDivIcon(b) {
+  const isSelected = state.selectedBusiness?.id === b.id;
+  const html = `
+    <div class="w-12 h-12 rounded-2xl shadow-2xl flex items-center justify-center border-2 border-white transition-colors ${isSelected ? "bg-indigo-600 text-white scale-110" : "bg-white text-indigo-600"}">
+      <div class="pointer-events-none">${icon(businessIcon(b.type), "w-4 h-4")}</div>
+    </div>
+  `;
+
+  return window.L.divIcon({
+    className: "",
+    html,
+    iconSize: [48, 48],
+    iconAnchor: [24, 48]
+  });
+}
+
+function updateMapSheet() {
+  const slot = document.getElementById("mapSheetSlot");
+  if (!slot) return;
+  slot.innerHTML = state.selectedBusiness ? renderMapSheet(state.selectedBusiness) : "";
+  bindMapSheetEvents();
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+}
+
+function bindMapSheetEvents() {
+  const mapCloseBtn = document.getElementById("mapCloseBtn");
+  if (mapCloseBtn) {
+    mapCloseBtn.addEventListener("click", () => {
+      state.selectedBusiness = null;
+      updateMapSheet();
+    });
+  }
+
+  const mapOpenMapsBtn = document.getElementById("mapOpenMapsBtn");
+  if (mapOpenMapsBtn) {
+    mapOpenMapsBtn.addEventListener("click", () => {
+      if (!state.selectedBusiness) return;
+      const { lat, lng } = state.selectedBusiness;
+      if (typeof lat !== "number" || typeof lng !== "number") return;
+      const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+      window.open(url, "_blank");
+    });
+  }
+}
+
+function initLeafletIfNeeded() {
+  if (!state.user || state.activeTab !== "map") {
+    cleanupLeaflet();
+    return;
+  }
+
+  const el = document.getElementById("leafletMap");
+  if (!el || !window.L) return;
+
+  if (leafletMap) {
+    try { leafletMap.invalidateSize(); } catch {}
+    return;
+  }
+
+  leafletMap = window.L.map(el, {
+    zoomControl: false,
+    attributionControl: false,
+    preferCanvas: true
+  }).setView([42.6026, 20.9029], 8);
+
+  window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19
+  }).addTo(leafletMap);
+
+  leafletBizMarkers = state.businessLocations.map((b) => {
+    const marker = window.L.marker([b.lat, b.lng], { icon: makeBizDivIcon(b) }).addTo(leafletMap);
+    marker.__biz = b;
+    marker.on("click", () => {
+      state.selectedBusiness = b;
+      leafletBizMarkers.forEach((item) => {
+        try { item.setIcon(makeBizDivIcon(item.__biz)); } catch {}
+      });
+      updateMapSheet();
+      try { leafletMap.panTo([b.lat, b.lng], { animate: true, duration: 0.35 }); } catch {}
+    });
+    return marker;
+  });
+
+  updateMapSheet();
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+}
+
+function setUserMarker(lat, lng, label = "Deine Position") {
+  if (!leafletMap || !window.L) return;
+  const html = `
+    <div class="w-12 h-12 rounded-2xl shadow-2xl flex items-center justify-center border-2 border-white bg-slate-900 text-white">
+      <div class="pointer-events-none">${icon("user", "w-4 h-4")}</div>
+    </div>
+  `;
+  const markerIcon = window.L.divIcon({
+    className: "",
+    html,
+    iconSize: [48, 48],
+    iconAnchor: [24, 48]
+  });
+
+  if (!leafletUserMarker) {
+    leafletUserMarker = window.L.marker([lat, lng], { icon: markerIcon }).addTo(leafletMap);
+  } else {
+    leafletUserMarker.setLatLng([lat, lng]);
+    leafletUserMarker.setIcon(markerIcon);
+  }
+
+  try { leafletUserMarker.bindPopup(`<b>${escapeHtml(label)}</b>`).openPopup(); } catch {}
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+}
+
+function mapLocate({ checkin = false } = {}) {
+  if (!navigator.geolocation) {
+    alert("Geolocation nicht verfuegbar.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      if (leafletMap) {
+        try { leafletMap.setView([lat, lng], 15, { animate: true }); } catch {}
+        setUserMarker(lat, lng, checkin ? "Check-In gesetzt" : "Deine Position");
+      }
+    },
+    () => alert("Standort konnte nicht abgerufen werden (Berechtigung?)."),
+    { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+  );
 }
 
 function renderAuthScreen() {
@@ -368,7 +555,7 @@ function renderFeedView() {
   const stories = state.stories;
   const feedPosts = state.feedPosts.filter((p) => state.feedCategory === "all" || p.category === state.feedCategory);
   return `
-    <div class="animate-in">
+    <div class="animate-in fade-in duration-500">
       <div class="flex gap-4 overflow-x-auto px-8 pb-8 no-scrollbar">
         <div class="flex-shrink-0 flex flex-col items-center gap-2">
           <div data-nav="upload" class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
@@ -403,7 +590,7 @@ function renderFeedView() {
         ${feedPosts.length ? feedPosts.map((post) => `
           <div class="group">
             <div class="flex items-center justify-between mb-5 px-2">
-              <div class="flex items-center gap-3">
+              <button data-profile-business="${escapeHtml(post.business)}" class="flex items-center gap-3 text-left">
                 <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-white">
                   <img src="${escapeHtml(post.logo || post.image)}" class="w-full h-full object-cover" />
                 </div>
@@ -411,7 +598,7 @@ function renderFeedView() {
                   <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
                   <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(post.location)}</p>
                 </div>
-              </div>
+              </button>
               ${icon("more-horizontal", "w-5 h-5 text-slate-400")}
             </div>
             <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
@@ -447,48 +634,48 @@ function renderFeedView() {
   `;
 }
 
-function renderMapView() {
-  const mapped = state.restaurants.map(mapRestaurantToCard);
-  const selected = mapped.find((b) => b.id === state.selectedBusinessId);
+function renderMapSheet(selected) {
   return `
-    <div class="p-6 h-full flex flex-col animate-in">
+    <div class="absolute bottom-6 left-6 right-6 animate-in slide-in-from-bottom-6 duration-300 z-50">
+      <div class="bg-white rounded-[2.5rem] p-5 shadow-2xl border border-slate-100 relative">
+        <button id="mapCloseBtn" class="absolute top-4 right-4 w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors">
+          ${icon("x", "w-4 h-4")}
+        </button>
+        <div class="flex gap-4">
+          <img src="${escapeHtml(selected.img)}" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
+          <div class="flex-1">
+            <h3 class="text-lg font-black tracking-tight text-slate-900">${escapeHtml(selected.name || "Business")}</h3>
+            <div class="flex items-center gap-1.5 mt-1 text-[10px] font-black uppercase text-indigo-600">
+              ${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)} • <span class="text-emerald-500">Geoeffnet</span>
+            </div>
+            <div class="flex items-center gap-2 mt-3 text-slate-400 text-[10px] font-bold">${icon("clock", "w-4 h-4")} ${escapeHtml(selected.hours)}</div>
+          </div>
+        </div>
+        <p class="text-xs text-slate-500 mt-3 font-medium px-1 line-clamp-2 leading-relaxed">${escapeHtml(selected.desc)}</p>
+        <div class="grid grid-cols-2 gap-3 mt-4">
+          <button id="mapOpenMapsBtn" class="w-full bg-slate-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-slate-200">In Maps oeffnen</button>
+          <button class="w-full bg-indigo-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-indigo-500/20">Menue & Karte</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMapView() {
+  const hasLeaflet = !!window.L;
+  return `
+    <div class="p-6 h-full flex flex-col animate-in fade-in duration-700">
       <div class="mb-6 px-2">
         <h2 class="text-2xl font-black italic uppercase tracking-tighter">Business Karte</h2>
         <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Kosovo Explorer</p>
       </div>
       <div class="relative flex-1 bg-slate-900 rounded-[3.5rem] overflow-hidden shadow-2xl border-[8px] border-white min-h-[500px]">
-        <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-          <svg viewBox="0 0 100 100" class="w-[85%] h-[85%] fill-indigo-500"><path d="M30,15 Q50,5 75,10 T85,35 T75,75 T45,85 T20,65 T15,40 Z" /></svg>
+        ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-white text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
+        <div class="absolute top-6 right-6 z-50 flex flex-col gap-3">
+          <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-white/95 backdrop-blur-xl border border-white/40 shadow-xl flex items-center justify-center text-slate-900 active:scale-95 transition-transform">${icon("navigation", "w-4 h-4")}</button>
+          <button id="mapCheckinBtn" class="w-12 h-12 rounded-2xl bg-indigo-600 shadow-2xl shadow-indigo-500/30 flex items-center justify-center text-white active:scale-95 transition-transform">${icon("map-pin", "w-4 h-4")}</button>
         </div>
-        ${mapped.map((b) => `
-          <div data-map-id="${b.id}" class="absolute cursor-pointer transition-all duration-300 hover:scale-125 active:scale-90" style="left:${b.x}; top:${b.y};">
-            <div class="w-12 h-12 rounded-2xl shadow-2xl flex items-center justify-center border-2 border-white transition-colors ${state.selectedBusinessId === b.id ? "bg-indigo-600 text-white scale-110" : "bg-white text-indigo-600"}">
-              ${icon(businessIcon(b.type), "w-4 h-4")}
-            </div>
-            ${state.selectedBusinessId === b.id ? "<div class=\"absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping border-2 border-white\"></div>" : ""}
-          </div>
-        `).join("")}
-        ${selected ? `
-          <div class="absolute bottom-6 left-6 right-6 slide-in-from-bottom-6 z-50">
-            <div class="bg-white rounded-[2.5rem] p-5 shadow-2xl border border-slate-100 relative">
-              <button data-map-close="true" class="absolute top-4 right-4 w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors">
-                ${icon("x", "w-4 h-4")}
-              </button>
-              <div class="flex gap-4">
-                <img src="${escapeHtml(selected.img)}" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
-                <div class="flex-1">
-                  <h3 class="text-lg font-black tracking-tight text-slate-900">${escapeHtml(selected.name || "Business")}</h3>
-                  <div class="flex items-center gap-1.5 mt-1 text-[10px] font-black uppercase text-indigo-600">
-                    ${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)} <span class="text-emerald-500">Geoeffnet</span>
-                  </div>
-                  <div class="flex items-center gap-2 mt-3 text-slate-400 text-[10px] font-bold">${icon("clock", "w-4 h-4")} ${escapeHtml(selected.hours)}</div>
-                </div>
-              </div>
-              <p class="text-xs text-slate-500 mt-3 font-medium px-1 line-clamp-2 leading-relaxed">${escapeHtml(selected.desc)}</p>
-              <button class="w-full mt-4 bg-slate-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-slate-200">Menue & Karte oeffnen</button>
-            </div>
-          </div>
-        ` : ""}
+        <div id="mapSheetSlot"></div>
       </div>
     </div>
   `;
@@ -502,19 +689,32 @@ function renderProfilePosts(posts) {
       </div>
     `;
   }
-  return posts.map((item) => `
+  return posts.map((item) => renderProfileGridItem(item)).join("");
+}
+
+function renderProfileGridItem(item) {
+  return `
     <div class="rounded-[2.5rem] overflow-hidden shadow-md relative group ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
       <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
       ${item.title ? `<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end"><h3 class="text-white text-lg font-black italic">${escapeHtml(item.title)}</h3></div>` : ""}
+      <div class="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
+        <div class="flex items-center justify-between text-white">
+          <div class="flex items-center gap-3 text-[10px] font-black">
+            <div class="flex items-center gap-1">${icon("heart", "w-3 h-3")}${escapeHtml(item.likes ?? 0)}</div>
+            <div class="flex items-center gap-1">${icon("message-circle", "w-3 h-3")}${escapeHtml(item.comments ?? 0)}</div>
+          </div>
+          ${item.isVideo ? `<div class="w-9 h-9 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center">${icon("play", "w-4 h-4")}</div>` : ""}
+        </div>
+      </div>
     </div>
-  `).join("");
+  `;
 }
 
 function renderProfileView() {
   const profile = state.userProfile;
   const posts = profile.role === "business" ? state.businessPosts : state.userPosts;
   return `
-    <div class="p-8 slide-in-from-bottom-10 pb-24">
+    <div class="p-8 animate-in slide-in-from-bottom-10 duration-700 pb-24">
       <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
       <div class="flex flex-col items-center text-center mb-10">
         <div id="profileAvatarTrigger" class="relative mb-6 group cursor-pointer">
@@ -527,12 +727,14 @@ function renderProfileView() {
         <p class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">${profile.role === "business" ? "Business Account" : "Explorer"} • ${escapeHtml(profile.location || "-")}</p>
         <div class="flex gap-3 mt-6 w-full max-w-xs justify-center">
           <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${posts.length}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Posts</span></div>
-          <div class="w-px h-8 bg-slate-200 mx-2"></div>
+          <div class="w-px h-8 bg-slate-200 mx-1"></div>
           <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${profile.followers}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Follower</span></div>
+          <div class="w-px h-8 bg-slate-200 mx-1"></div>
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${profile.following}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Following</span></div>
         </div>
         <div class="flex gap-3 mt-8 w-full">
           <button data-nav="upload" class="flex-1 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">${icon("plus-square", "w-4 h-4")} Status</button>
-          <button data-nav="map" class="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform">${icon("map-pin", "w-4 h-4")} Check-In</button>
+          <button id="profileCheckinBtn" class="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform">${icon("map-pin", "w-4 h-4")} Check-In</button>
         </div>
       </div>
       <div class="grid grid-cols-2 gap-3">
@@ -546,13 +748,120 @@ function renderProfileView() {
   `;
 }
 
+function openProfileFromBusiness(name) {
+  const safeName = String(name || "").trim();
+  if (!safeName) return;
+  const handle = safeName.toLowerCase().split(/\s+/).filter(Boolean).join("_");
+  const rest = state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {};
+  const posts = state.feedPosts
+    .filter((p) => p.business === safeName)
+    .map((p, idx) => ({
+      id: `biz_${idx}`,
+      url: p.image,
+      type: "square",
+      likes: p.likes ?? 0,
+      comments: p.comments ?? 0
+    }));
+
+  state.profileModal = {
+    open: true,
+    profile: {
+      name: safeName,
+      handle: handle || "business",
+      bio: rest.description || "Offizieller Account auf MENYRA Social.",
+      avatar: rest.logoUrl || rest.logo || "https://i.pravatar.cc/300?u=business",
+      location: rest.city || "Kosovo",
+      followers: rest.followers || 1200 + Math.floor(Math.random() * 8000),
+      following: rest.following || 40 + Math.floor(Math.random() * 140),
+      role: "business",
+      posts
+    }
+  };
+  render();
+}
+
+function toggleFollow(handle) {
+  if (!handle) return;
+  const idx = state.followingHandles.indexOf(handle);
+  const profile = state.profileModal.profile;
+
+  if (idx >= 0) {
+    state.followingHandles.splice(idx, 1);
+    state.userProfile.following = Math.max(0, (state.userProfile.following || 0) - 1);
+    if (profile) profile.followers = Math.max(0, (profile.followers || 0) - 1);
+  } else {
+    state.followingHandles.unshift(handle);
+    state.userProfile.following = (state.userProfile.following || 0) + 1;
+    if (profile) profile.followers = (profile.followers || 0) + 1;
+  }
+
+  saveFollowing(state.followingHandles);
+  render();
+}
+
+function renderProfileModal() {
+  if (!state.profileModal.open || !state.profileModal.profile) return "";
+  const p = state.profileModal.profile;
+  const isFollowing = state.followingHandles.includes(p.handle);
+
+  return `
+    <div class="fixed inset-0 z-[60]">
+      <div id="profileModalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 animate-in slide-in-from-bottom-10">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Profil</span>
+              <h3 class="text-2xl font-black italic tracking-tighter">${escapeHtml(p.name)}</h3>
+            </div>
+            <button id="profileModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+          </div>
+
+          <div class="flex items-center gap-4">
+            <img src="${escapeHtml(p.avatar)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
+            <div class="flex-1 min-w-0">
+              <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
+              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} • Business</p>
+            </div>
+            <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+              ${isFollowing ? "Following" : "Follow"}
+            </button>
+          </div>
+
+          <p class="mt-5 text-sm font-medium text-slate-600 leading-relaxed">${escapeHtml(p.bio)}</p>
+
+          <div class="flex gap-3 mt-6">
+            <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+              <div class="text-lg font-black text-slate-900">${escapeHtml(p.posts?.length || 0)}</div>
+              <div class="text-[9px] font-bold text-slate-400 uppercase">Posts</div>
+            </div>
+            <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+              <div class="text-lg font-black text-slate-900">${escapeHtml(p.followers)}</div>
+              <div class="text-[9px] font-bold text-slate-400 uppercase">Follower</div>
+            </div>
+            <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+              <div class="text-lg font-black text-slate-900">${escapeHtml(p.following)}</div>
+              <div class="text-[9px] font-bold text-slate-400 uppercase">Following</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 mt-7">
+            ${(p.posts || []).slice(0, 6).map((it) => renderProfileGridItem(it)).join("")}
+          </div>
+          <div class="h-5"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderSettingsView() {
   const settings = state.settings;
   const profile = state.userProfile;
 
   if (state.settingsView === "main") {
     return `
-      <div class="p-6 slide-in-from-left-10 pb-24">
+      <div class="p-6 animate-in slide-in-from-left-10 duration-500 pb-24">
         <h2 class="text-2xl font-black italic uppercase mb-8 px-2">Einstellungen</h2>
         <div class="space-y-3 mb-8">
           ${[
@@ -585,7 +894,7 @@ function renderSettingsView() {
     }).join("");
 
     return `
-      <div class="p-6 slide-in-from-right-10">
+      <div class="p-6 animate-in slide-in-from-right-10 duration-500">
         <header class="flex items-center gap-4 mb-8">
           <button data-settings-back="true" class="p-3 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
           <h2 class="text-xl font-black italic uppercase tracking-tighter">Account</h2>
@@ -631,7 +940,7 @@ function renderSettingsView() {
 
   if (state.settingsView === "privacy") {
     return `
-      <div class="p-6 slide-in-from-right-10">
+      <div class="p-6 animate-in slide-in-from-right-10 duration-500">
         <header class="flex items-center gap-4 mb-8">
           <button data-settings-back="true" class="p-3 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
           <h2 class="text-xl font-black italic uppercase tracking-tighter">Privatsphaere</h2>
@@ -662,7 +971,7 @@ function renderSettingsView() {
 
   if (state.settingsView === "notifs") {
     return `
-      <div class="p-6 slide-in-from-right-10">
+      <div class="p-6 animate-in slide-in-from-right-10 duration-500">
         <header class="flex items-center gap-4 mb-8">
           <button data-settings-back="true" class="p-3 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
           <h2 class="text-xl font-black italic uppercase tracking-tighter">Mitteilungen</h2>
@@ -692,7 +1001,7 @@ function renderSettingsView() {
   }
 
   return `
-    <div class="p-6 slide-in-from-right-10">
+    <div class="p-6 animate-in slide-in-from-right-10 duration-500">
       <header class="flex items-center gap-4 mb-8">
         <button data-settings-back="true" class="p-3 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
         <h2 class="text-xl font-black italic uppercase tracking-tighter">Gespeichert</h2>
@@ -709,7 +1018,7 @@ function renderSettingsView() {
 
 function renderNotificationsView() {
   return `
-    <div class="p-6 slide-in-from-right-10 h-full">
+    <div class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
       <div class="flex justify-between items-end mb-8 px-2">
         <h2 class="text-2xl font-black italic uppercase">Updates</h2>
         <button id="markAllRead" class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-indigo-500">Alle gelesen</button>
@@ -736,29 +1045,13 @@ function renderNotificationsView() {
 
 function renderUploadView() {
   const profile = state.userProfile;
-  const restaurantOptions = state.restaurants.map((r) => {
-    const label = escapeHtml(r.name || r.restaurantName || "Business");
-    return `<option value="${r.id}" ${r.id === profile.restaurantId ? "selected" : ""}>${label}</option>`;
-  }).join("");
-
   return `
-    <div class="p-6 slide-in-from-bottom-10 min-h-[70vh] flex flex-col">
+    <div class="p-6 animate-in slide-in-from-bottom-10 duration-700 min-h-[70vh] flex flex-col">
       <header class="flex items-center justify-between mb-8">
         <button data-nav="feed" class="p-3 rounded-2xl bg-slate-100 text-slate-500">${icon("arrow-left", "w-4 h-4")}</button>
         <h2 class="text-xl font-black italic uppercase text-slate-900">Neuer Post</h2>
         <div class="w-10"></div>
       </header>
-
-      ${profile.role === "business" ? `
-        <div class="mb-4">
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business</label>
-          <select id="uploadRestaurantSelect" class="w-full px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100">
-            <option value="">Bitte waehlen</option>
-            ${restaurantOptions}
-          </select>
-        </div>
-      ` : ""}
-
       <input type="file" id="uploadFileInput" class="hidden" accept="image/*" />
       ${state.upload.preview ? `
         <div class="space-y-6">
@@ -813,6 +1106,7 @@ function renderMain() {
       ${renderDrawer()}
       ${renderHeader()}
       <main class="flex-1 overflow-y-auto no-scrollbar pb-24">${view}</main>
+      ${renderProfileModal()}
     </div>
   `;
 }
@@ -838,6 +1132,15 @@ function render() {
 
   if (window.lucide?.createIcons) {
     window.lucide.createIcons();
+  }
+
+  if (state.user && state.activeTab === "map") {
+    window.setTimeout(() => {
+      initLeafletIfNeeded();
+      updateMapSheet();
+    }, 0);
+  } else {
+    cleanupLeaflet();
   }
 }
 
@@ -1255,6 +1558,7 @@ async function loadRestaurants() {
     const list = [];
     snap.forEach((docSnap) => list.push({ id: docSnap.id, ...docSnap.data() }));
     state.restaurants = list;
+    state.businessLocations = list.map((rest, idx) => normalizeBusinessLocation(rest, idx));
     render();
   } catch (err) {
     console.error(err);
@@ -1449,3 +1753,4 @@ window.addEventListener("load", () => {
     window.lucide.createIcons();
   }
 });
+
