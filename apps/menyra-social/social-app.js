@@ -48,7 +48,9 @@ const STORAGE_KEYS = {
   profile: "menyra_social_profile_v3",
   settings: "menyra_social_settings_v3",
   notifications: "menyra_social_notifications_v1",
-  following: "menyra_social_following_v1"
+  following: "menyra_social_following_v1",
+  postMeta: "menyra_social_post_meta_v1",
+  checkins: "menyra_social_checkins_v1"
 };
 
 const ADMIN_LOGINS = {
@@ -151,6 +153,18 @@ const state = {
   },
   settings: { ...DEFAULT_SETTINGS },
   notifications: [...DEFAULT_NOTIFICATIONS],
+  postMeta: {},
+  checkins: [],
+  postModal: {
+    open: false,
+    post: null,
+    commentText: "",
+    replyTo: null
+  },
+  likesModal: {
+    open: false,
+    postId: ""
+  },
   upload: {
     preview: "",
     caption: "",
@@ -196,6 +210,14 @@ function saveFollowing(handles) {
   safeStorage.setItem(STORAGE_KEYS.following, JSON.stringify(handles));
 }
 
+function savePostMeta(meta) {
+  safeStorage.setItem(STORAGE_KEYS.postMeta, JSON.stringify(meta));
+}
+
+function saveCheckins(checkins) {
+  safeStorage.setItem(STORAGE_KEYS.checkins, JSON.stringify(checkins));
+}
+
 function loadPersisted() {
   const savedSettings = safeStorage.getItem(STORAGE_KEYS.settings);
   if (savedSettings) {
@@ -215,6 +237,16 @@ function loadPersisted() {
   const savedFollowing = safeStorage.getItem(STORAGE_KEYS.following);
   if (savedFollowing) {
     try { state.followingHandles = JSON.parse(savedFollowing) || []; } catch {}
+  }
+
+  const savedMeta = safeStorage.getItem(STORAGE_KEYS.postMeta);
+  if (savedMeta) {
+    try { state.postMeta = JSON.parse(savedMeta) || {}; } catch {}
+  }
+
+  const savedCheckins = safeStorage.getItem(STORAGE_KEYS.checkins);
+  if (savedCheckins) {
+    try { state.checkins = JSON.parse(savedCheckins) || []; } catch {}
   }
 }
 
@@ -369,6 +401,11 @@ function bindMapSheetEvents() {
       window.open(url, "_blank");
     });
   }
+
+  const mapCheckinSheetBtn = document.getElementById("mapCheckinSheetBtn");
+  if (mapCheckinSheetBtn) {
+    mapCheckinSheetBtn.addEventListener("click", () => mapCheckin());
+  }
 }
 
 function initLeafletIfNeeded() {
@@ -451,12 +488,214 @@ function mapLocate({ checkin = false } = {}) {
         try { leafletMap.setView([lat, lng], 15, { animate: true }); } catch {}
         setUserMarker(lat, lng, checkin ? "Check-In gesetzt" : "Deine Position");
       }
+      if (checkin) {
+        addCheckin({
+          name: "Deine Position",
+          detail: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          lat,
+          lng
+        });
+      }
     },
     () => alert("Standort konnte nicht abgerufen werden (Berechtigung?)."),
     { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
   );
 }
 
+function currentUserBadge() {
+  return {
+    name: state.userProfile.name || "User",
+    handle: state.userProfile.handle || "user",
+    avatar: state.userProfile.avatar || "https://i.pravatar.cc/120?u=menyra"
+  };
+}
+
+function formatDateLabel(value) {
+  const date = toDateSafe(value) || new Date();
+  return date.toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatDateTimeLabel(value) {
+  const date = toDateSafe(value) || new Date();
+  return date.toLocaleString("de-DE", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function ensurePostMeta(postId) {
+  if (!postId) return { likes: [], comments: [] };
+  if (!state.postMeta[postId]) {
+    state.postMeta[postId] = { likes: [], comments: [] };
+    savePostMeta(state.postMeta);
+  }
+  return state.postMeta[postId];
+}
+
+function resolvePostCounts(post) {
+  const meta = ensurePostMeta(post.id);
+  const likeBase = typeof post.likes === "number" ? post.likes : 0;
+  const commentBase = typeof post.comments === "number" ? post.comments : 0;
+  const likeCount = likeBase + (meta.likes?.length || 0);
+  const commentCount = commentBase + (meta.comments?.length || 0);
+
+  const likeLabel = meta.likes?.length
+    ? String(likeCount)
+    : (typeof post.likes === "number" ? String(likeCount) : String(post.likes ?? 0));
+
+  const commentLabel = meta.comments?.length
+    ? String(commentCount)
+    : (typeof post.comments === "number" ? String(commentCount) : String(post.comments ?? 0));
+
+  return { likeLabel, commentLabel };
+}
+
+function findPostById(postId) {
+  const all = [...state.userPosts, ...state.businessPosts];
+  const found = all.find((item) => String(item.id) === String(postId));
+  if (found) return found;
+  const modalPosts = state.profileModal.profile?.posts || [];
+  return modalPosts.find((item) => String(item.id) === String(postId)) || null;
+}
+
+function openPostModal(post) {
+  if (!post) return;
+  ensurePostMeta(post.id);
+  state.profileModal = { open: false, profile: null };
+  state.postModal = {
+    open: true,
+    post,
+    commentText: "",
+    replyTo: null
+  };
+  render();
+}
+
+function closePostModal() {
+  state.postModal = { open: false, post: null, commentText: "", replyTo: null };
+  state.likesModal = { open: false, postId: "" };
+  render();
+}
+
+function addCheckin(entry) {
+  const item = {
+    id: `checkin_${Date.now()}`,
+    name: entry.name || "Check-In",
+    detail: entry.detail || "",
+    createdAt: new Date().toISOString(),
+    lat: entry.lat ?? null,
+    lng: entry.lng ?? null
+  };
+  state.checkins = [item, ...state.checkins].slice(0, 20);
+  saveCheckins(state.checkins);
+  render();
+}
+
+function mapCheckin() {
+  if (state.selectedBusiness) {
+    if (leafletMap && typeof state.selectedBusiness.lat === "number" && typeof state.selectedBusiness.lng === "number") {
+      try { leafletMap.setView([state.selectedBusiness.lat, state.selectedBusiness.lng], 15, { animate: true }); } catch {}
+      setUserMarker(state.selectedBusiness.lat, state.selectedBusiness.lng, "Check-In gesetzt");
+    }
+    addCheckin({
+      name: state.selectedBusiness.name || "Business",
+      detail: state.selectedBusiness.hours || "Geoeffnet",
+      lat: state.selectedBusiness.lat,
+      lng: state.selectedBusiness.lng
+    });
+    return;
+  }
+  mapLocate({ checkin: true });
+}
+
+function ensureCommentShape(comment) {
+  return {
+    id: comment.id,
+    author: comment.author || "User",
+    handle: comment.handle || "user",
+    avatar: comment.avatar || "https://i.pravatar.cc/120?u=menyra",
+    text: comment.text || "",
+    createdAt: comment.createdAt || new Date().toISOString(),
+    likes: comment.likes || [],
+    replies: (comment.replies || []).map((reply) => ({
+      id: reply.id,
+      author: reply.author || "User",
+      handle: reply.handle || "user",
+      avatar: reply.avatar || "https://i.pravatar.cc/120?u=menyra",
+      text: reply.text || "",
+      createdAt: reply.createdAt || new Date().toISOString(),
+      likes: reply.likes || []
+    }))
+  };
+}
+
+function addComment(postId, text, replyTo) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return;
+  const meta = ensurePostMeta(postId);
+  const user = currentUserBadge();
+  const newComment = {
+    id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    author: user.name,
+    handle: user.handle,
+    avatar: user.avatar,
+    text: trimmed,
+    createdAt: new Date().toISOString(),
+    likes: [],
+    replies: []
+  };
+
+  if (replyTo) {
+    const target = meta.comments.find((item) => item.id === replyTo);
+    if (target) {
+      target.replies = [newComment, ...(target.replies || [])];
+    } else {
+      meta.comments = [newComment, ...(meta.comments || [])];
+    }
+  } else {
+    meta.comments = [newComment, ...(meta.comments || [])];
+  }
+
+  state.postMeta[postId] = meta;
+  savePostMeta(state.postMeta);
+  state.postModal.commentText = "";
+  state.postModal.replyTo = null;
+  render();
+}
+
+function togglePostLike(postId) {
+  const meta = ensurePostMeta(postId);
+  const user = currentUserBadge();
+  const idx = meta.likes.findIndex((item) => item.handle === user.handle);
+  if (idx >= 0) {
+    meta.likes.splice(idx, 1);
+  } else {
+    meta.likes.unshift(user);
+  }
+  state.postMeta[postId] = meta;
+  savePostMeta(state.postMeta);
+  render();
+}
+
+function toggleCommentLike(postId, commentId, replyId) {
+  const meta = ensurePostMeta(postId);
+  const user = currentUserBadge();
+  const list = meta.comments || [];
+  const comment = list.find((item) => item.id === commentId);
+  if (!comment) return;
+
+  const target = replyId ? (comment.replies || []).find((item) => item.id === replyId) : comment;
+  if (!target) return;
+
+  const likes = target.likes || [];
+  const idx = likes.findIndex((item) => item.handle === user.handle);
+  if (idx >= 0) {
+    likes.splice(idx, 1);
+  } else {
+    likes.unshift(user);
+  }
+  target.likes = likes;
+  state.postMeta[postId] = meta;
+  savePostMeta(state.postMeta);
+  render();
+}
 function renderAuthScreen() {
   const isRegister = state.auth.mode === "register";
   return `
@@ -647,9 +886,10 @@ function renderMapSheet(selected) {
         <div class="flex gap-4">
           <img src="${escapeHtml(selected.img)}" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
           <div class="flex-1">
-            <h3 class="text-lg font-black tracking-tight text-slate-900">${escapeHtml(selected.name || "Business")}</h3>
-            <div class="flex items-center gap-1.5 mt-1 text-[10px] font-black uppercase text-indigo-600">
-              ${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)} • <span class="text-emerald-500">Geoeffnet</span>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Business</span>
+            <h3 class="text-lg font-black tracking-tight text-slate-900 mt-1">${escapeHtml(selected.name || "Business")}</h3>
+            <div class="flex items-center gap-1.5 mt-2 text-[10px] font-black uppercase text-indigo-600">
+              ${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)} / <span class="text-emerald-500">Geoeffnet</span>
             </div>
             <div class="flex items-center gap-2 mt-3 text-slate-400 text-[10px] font-bold">${icon("clock", "w-4 h-4")} ${escapeHtml(selected.hours)}</div>
           </div>
@@ -657,7 +897,9 @@ function renderMapSheet(selected) {
         <p class="text-xs text-slate-500 mt-3 font-medium px-1 line-clamp-2 leading-relaxed">${escapeHtml(selected.desc)}</p>
         <div class="grid grid-cols-2 gap-3 mt-4">
           <button id="mapOpenMapsBtn" class="w-full bg-slate-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-slate-200">In Maps oeffnen</button>
-          <button class="w-full bg-indigo-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-indigo-500/20">Menue & Karte</button>
+          <button id="mapCheckinSheetBtn" class="w-full bg-indigo-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-2">
+            ${icon("map-pin", "w-3 h-3")} Check-In
+          </button>
         </div>
       </div>
     </div>
@@ -695,21 +937,56 @@ function renderProfilePosts(posts) {
   return posts.map((item) => renderProfileGridItem(item)).join("");
 }
 
-function renderProfileGridItem(item) {
+function renderCheckins() {
+  if (!state.checkins.length) {
+    return `
+      <div class="mt-8 p-4 rounded-[2rem] border border-dashed border-slate-200 text-center text-[10px] font-bold uppercase text-slate-400">
+        Noch keine Check-Ins
+      </div>
+    `;
+  }
+
   return `
-    <div class="rounded-[2.5rem] overflow-hidden shadow-md relative group ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
+    <div class="mt-8">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Check-Ins</h3>
+        <span class="text-[10px] font-bold text-slate-300">${state.checkins.length}</span>
+      </div>
+      <div class="space-y-3">
+        ${state.checkins.slice(0, 4).map((item) => `
+          <div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">${icon("map-pin", "w-4 h-4")}</div>
+              <div>
+                <div class="text-sm font-black text-slate-900">${escapeHtml(item.name)}</div>
+                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${escapeHtml(item.detail || "")}</div>
+              </div>
+            </div>
+            <div class="text-[10px] font-bold text-slate-400">${escapeHtml(formatDateLabel(item.createdAt))}</div>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderProfileGridItem(item) {
+  const counts = resolvePostCounts(item);
+  const postAttr = item.id ? `data-open-post="${escapeHtml(item.id)}"` : "";
+  return `
+    <button type="button" ${postAttr} class="rounded-[2.5rem] overflow-hidden shadow-md relative group text-left ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
       <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
       ${item.title ? `<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end"><h3 class="text-white text-lg font-black italic">${escapeHtml(item.title)}</h3></div>` : ""}
-      <div class="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/70 to-transparent">
-        <div class="flex items-center justify-between text-white">
+      <div class="absolute inset-x-0 bottom-0 p-3">
+        <div class="flex items-center justify-between text-white bg-black/45 backdrop-blur rounded-2xl px-3 py-2">
           <div class="flex items-center gap-3 text-[10px] font-black">
-            <div class="flex items-center gap-1">${icon("heart", "w-3 h-3")}${escapeHtml(item.likes ?? 0)}</div>
-            <div class="flex items-center gap-1">${icon("message-circle", "w-3 h-3")}${escapeHtml(item.comments ?? 0)}</div>
+            <div class="flex items-center gap-1">${icon("heart", "w-3 h-3")}${escapeHtml(counts.likeLabel)}</div>
+            <div class="flex items-center gap-1">${icon("message-circle", "w-3 h-3")}${escapeHtml(counts.commentLabel)}</div>
           </div>
           ${item.isVideo ? `<div class="w-9 h-9 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center">${icon("play", "w-4 h-4")}</div>` : ""}
         </div>
       </div>
-    </div>
+    </button>
   `;
 }
 
@@ -727,7 +1004,7 @@ function renderProfileView() {
           <div class="absolute -bottom-2 -right-2 w-10 h-10 rounded-2xl shadow-xl flex items-center justify-center text-indigo-600 bg-white">${icon("camera", "w-4 h-4")}</div>
         </div>
         <h2 class="text-3xl font-black tracking-tighter text-slate-900">${escapeHtml(profile.name || "User")}</h2>
-        <p class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">${profile.role === "business" ? "Business Account" : "Explorer"} • ${escapeHtml(profile.location || "-")}</p>
+        <p class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">${profile.role === "business" ? "Business Account" : "Explorer"} / ${escapeHtml(profile.location || "-")}</p>
         <div class="flex gap-3 mt-6 w-full max-w-xs justify-center">
           <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${posts.length}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Posts</span></div>
           <div class="w-px h-8 bg-slate-200 mx-1"></div>
@@ -740,6 +1017,7 @@ function renderProfileView() {
           <button id="profileCheckinBtn" class="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform">${icon("map-pin", "w-4 h-4")} Check-In</button>
         </div>
       </div>
+      ${renderCheckins()}
       <div class="grid grid-cols-2 gap-3">
         ${renderProfilePosts(posts)}
         <div data-nav="upload" class="aspect-square rounded-[2rem] border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-indigo-50/10 hover:border-indigo-500/50 group border-slate-200">
@@ -762,6 +1040,8 @@ function openProfileFromBusiness(name) {
       id: `biz_${idx}`,
       url: p.image,
       type: "square",
+      caption: p.content || "",
+      createdAt: p.createdAt,
       likes: p.likes ?? 0,
       comments: p.comments ?? 0
     }));
@@ -824,7 +1104,7 @@ function renderProfileModal() {
             <img src="${escapeHtml(p.avatar)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
             <div class="flex-1 min-w-0">
               <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} • Business</p>
+              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / Business</p>
             </div>
             <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
               ${isFollowing ? "Following" : "Follow"}
@@ -852,6 +1132,139 @@ function renderProfileModal() {
             ${(p.posts || []).slice(0, 6).map((it) => renderProfileGridItem(it)).join("")}
           </div>
           <div class="h-5"></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCommentItem(postId, comment, parentId = "") {
+  const likeCount = comment.likes?.length || 0;
+  const isReply = !!parentId;
+  return `
+    <div class="flex gap-3 ${isReply ? "ml-10" : ""}">
+      <img src="${escapeHtml(comment.avatar)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
+      <div class="flex-1">
+        <div class="flex items-center justify-between">
+          <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author)}</div>
+          <div class="text-[10px] font-bold text-slate-400">${escapeHtml(formatDateTimeLabel(comment.createdAt))}</div>
+        </div>
+        <div class="text-sm text-slate-600 leading-relaxed mt-1">${escapeHtml(comment.text)}</div>
+        <div class="flex items-center gap-3 mt-2 text-[10px] font-bold uppercase tracking-widest">
+          <button data-comment-like="true" data-post-id="${escapeHtml(postId)}" data-comment-id="${escapeHtml(parentId || comment.id)}" data-reply-id="${isReply ? escapeHtml(comment.id) : ""}" class="flex items-center gap-1 text-slate-400 hover:text-rose-500">
+            ${icon("heart", "w-3 h-3")} ${escapeHtml(likeCount)}
+          </button>
+          ${!isReply ? `<button data-comment-reply="true" data-post-id="${escapeHtml(postId)}" data-comment-id="${escapeHtml(comment.id)}" class="text-slate-400 hover:text-slate-900">Antworten</button>` : ""}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPostModal() {
+  if (!state.postModal.open || !state.postModal.post) return "";
+  const post = state.postModal.post;
+  const meta = ensurePostMeta(post.id);
+  const counts = resolvePostCounts(post);
+  const caption = post.caption || post.title || "";
+  const imageUrl = post.url || post.image || "";
+  const comments = (meta.comments || []).map(ensureCommentShape);
+  const isLiked = meta.likes?.some((item) => item.handle === currentUserBadge().handle);
+  const replyTarget = comments.find((item) => item.id === state.postModal.replyTo);
+
+  return `
+    <div class="fixed inset-0 z-[70]">
+      <div id="postModalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 animate-in slide-in-from-bottom-10">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
+              <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(formatDateLabel(post.createdAt || new Date()))}</h3>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
+            </div>
+            <button id="postModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+          </div>
+
+          <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
+            <img src="${escapeHtml(imageUrl)}" class="w-full h-[22rem] object-cover" />
+          </div>
+
+          ${caption ? `
+            <div class="mt-4 text-sm text-slate-600 leading-relaxed">${escapeHtml(caption)}</div>
+          ` : ""}
+
+          <div class="mt-4 flex items-center justify-between">
+            <button id="postLikeBtn" data-post-id="${escapeHtml(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
+              ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+            </button>
+            <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <button id="postLikesBtn" data-post-id="${escapeHtml(post.id)}" class="hover:text-slate-700">${escapeHtml(counts.likeLabel)} Likes</button>
+              <span>${escapeHtml(counts.commentLabel)} Kommentare</span>
+            </div>
+          </div>
+
+          <div class="mt-5 space-y-4 max-h-56 overflow-y-auto no-scrollbar">
+            ${comments.length ? comments.map((comment) => `
+              <div class="space-y-3">
+                ${renderCommentItem(post.id, comment)}
+                ${(comment.replies || []).map((reply) => renderCommentItem(post.id, reply, comment.id)).join("")}
+              </div>
+            `).join("") : `
+              <div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>
+            `}
+          </div>
+
+          ${replyTarget ? `
+            <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${escapeHtml(replyTarget.handle)}</div>
+              <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
+            </div>
+          ` : ""}
+
+          <div class="mt-4 flex gap-3">
+            <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.postModal.commentText || "")}</textarea>
+            <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
+              ${icon("send", "w-4 h-4")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderLikesModal() {
+  if (!state.likesModal.open || !state.likesModal.postId) return "";
+  const meta = ensurePostMeta(state.likesModal.postId);
+  const likes = meta.likes || [];
+
+  return `
+    <div class="fixed inset-0 z-[80]">
+      <div id="likesModalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 animate-in slide-in-from-bottom-10">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
+              <h3 class="text-xl font-black italic tracking-tighter">${likes.length} Likes</h3>
+            </div>
+            <button id="likesModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+          </div>
+
+          <div class="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
+            ${likes.length ? likes.map((user) => `
+              <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <img src="${escapeHtml(user.avatar)}" class="w-10 h-10 rounded-2xl object-cover" />
+                <div>
+                  <div class="text-xs font-black">${escapeHtml(user.name)}</div>
+                  <div class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(user.handle)}</div>
+                </div>
+              </div>
+            `).join("") : `
+              <div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Likes</div>
+            `}
+          </div>
         </div>
       </div>
     </div>
@@ -1110,6 +1523,8 @@ function renderMain() {
       ${renderHeader()}
       <main class="flex-1 overflow-y-auto no-scrollbar pb-24">${view}</main>
       ${renderProfileModal()}
+      ${renderPostModal()}
+      ${renderLikesModal()}
     </div>
   `;
 }
@@ -1230,8 +1645,14 @@ function bindAppEvents() {
         await signOut(auth);
         safeStorage.removeItem(STORAGE_KEYS.profile);
         safeStorage.removeItem(STORAGE_KEYS.following);
+        safeStorage.removeItem(STORAGE_KEYS.postMeta);
+        safeStorage.removeItem(STORAGE_KEYS.checkins);
         state.followingHandles = [];
+        state.postMeta = {};
+        state.checkins = [];
         state.profileModal = { open: false, profile: null };
+        state.postModal = { open: false, post: null, commentText: "", replyTo: null };
+        state.likesModal = { open: false, postId: "" };
         state.selectedBusiness = null;
         cleanupLeaflet();
         setState({ activeTab: "feed", drawerOpen: false });
@@ -1248,7 +1669,9 @@ function bindAppEvents() {
         drawerOpen: false,
         settingsView: "main",
         selectedBusiness: null,
-        profileModal: { open: false, profile: null }
+        profileModal: { open: false, profile: null },
+        postModal: { open: false, post: null, commentText: "", replyTo: null },
+        likesModal: { open: false, postId: "" }
       });
     });
   });
@@ -1260,7 +1683,7 @@ function bindAppEvents() {
 
   const mapCheckinBtn = document.getElementById("mapCheckinBtn");
   if (mapCheckinBtn) {
-    mapCheckinBtn.addEventListener("click", () => mapLocate({ checkin: true }));
+    mapCheckinBtn.addEventListener("click", () => mapCheckin());
   }
 
   const profileCheckinBtn = document.getElementById("profileCheckinBtn");
@@ -1362,6 +1785,80 @@ function bindAppEvents() {
     });
   }
 
+  document.querySelectorAll("[data-open-post]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const postId = btn.dataset.openPost;
+      const post = findPostById(postId);
+      if (post) openPostModal(post);
+    });
+  });
+
+  const postModalOverlay = document.getElementById("postModalOverlay");
+  const postModalClose = document.getElementById("postModalClose");
+  if (postModalOverlay) postModalOverlay.addEventListener("click", closePostModal);
+  if (postModalClose) postModalClose.addEventListener("click", closePostModal);
+
+  const postLikeBtn = document.getElementById("postLikeBtn");
+  if (postLikeBtn) {
+    postLikeBtn.addEventListener("click", () => {
+      const postId = postLikeBtn.dataset.postId;
+      if (postId) togglePostLike(postId);
+    });
+  }
+
+  const postLikesBtn = document.getElementById("postLikesBtn");
+  if (postLikesBtn) {
+    postLikesBtn.addEventListener("click", () => {
+      const postId = postLikesBtn.dataset.postId;
+      if (!postId) return;
+      state.likesModal = { open: true, postId };
+      render();
+    });
+  }
+
+  const likesModalOverlay = document.getElementById("likesModalOverlay");
+  const likesModalClose = document.getElementById("likesModalClose");
+  const closeLikes = () => {
+    state.likesModal = { open: false, postId: "" };
+    render();
+  };
+  if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
+  if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
+
+  const postReplyCancel = document.getElementById("postReplyCancel");
+  if (postReplyCancel) {
+    postReplyCancel.addEventListener("click", () => {
+      state.postModal.replyTo = null;
+      render();
+    });
+  }
+
+  const postCommentSend = document.getElementById("postCommentSend");
+  if (postCommentSend) {
+    postCommentSend.addEventListener("click", () => {
+      const postId = postCommentSend.dataset.postId;
+      if (!postId) return;
+      addComment(postId, state.postModal.commentText, state.postModal.replyTo);
+    });
+  }
+
+  document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.postModal.replyTo = btn.dataset.commentId || null;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-comment-like]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const postId = btn.dataset.postId;
+      const commentId = btn.dataset.commentId;
+      const replyId = btn.dataset.replyId || "";
+      if (!postId || !commentId) return;
+      toggleCommentLike(postId, commentId, replyId || null);
+    });
+  });
+
   const uploadFileInput = document.getElementById("uploadFileInput");
   const uploadTrigger = document.getElementById("uploadFileTrigger");
   if (uploadTrigger && uploadFileInput) {
@@ -1393,6 +1890,13 @@ function bindAppEvents() {
   if (uploadCaption) {
     uploadCaption.addEventListener("input", () => {
       state.upload.caption = uploadCaption.value;
+    });
+  }
+
+  const postCommentInput = document.getElementById("postCommentInput");
+  if (postCommentInput) {
+    postCommentInput.addEventListener("input", () => {
+      state.postModal.commentText = postCommentInput.value;
     });
   }
 
@@ -1623,6 +2127,7 @@ function normalizeFeedPost(row) {
     likes: row.likesCount || "0",
     comments: row.commentsCount || "0",
     time: formatRelative(toDateSafe(row.createdAt)),
+    createdAt: row.createdAt,
     category: row.postType || "food",
     isLive: row.isLive || false
   };
@@ -1664,7 +2169,9 @@ async function loadUserPosts() {
       id: row.id,
       url: row.url,
       type: row.type || "square",
-      title: row.title || row.caption || "",
+      title: row.title || "",
+      caption: row.caption || "",
+      createdAt: row.createdAt,
       likes: row.likesCount ?? row.likes ?? 0,
       comments: row.commentsCount ?? row.comments ?? 0,
       isVideo: !!row.isVideo
@@ -1698,7 +2205,9 @@ async function loadBusinessPosts() {
         id: row.id,
         url: row.media?.[0]?.url || row.mediaUrl || "",
         type: "square",
-        title: row.caption || "",
+        title: "",
+        caption: row.caption || "",
+        createdAt: row.createdAt,
         likes: row.likesCount ?? row.likes ?? 0,
         comments: row.commentsCount ?? row.comments ?? 0,
         isVideo: row.media?.[0]?.type === "video"
