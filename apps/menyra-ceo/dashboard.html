@@ -1895,6 +1895,7 @@
         <a href="#" class="menu-item" data-section="leads"><i class="fas fa-chart-line me-3"></i>Leads</a>
         <a href="#" class="menu-item" data-section="menu"><i class="fas fa-utensils me-3"></i>Menu</a>
         <a href="#" class="menu-item" data-section="customers"><i class="fas fa-users me-3"></i>Customers</a>
+        <a href="#" class="menu-item" data-section="social-users"><i class="fas fa-user-group me-3"></i>Social Users</a>
         <a href="#" class="menu-item" data-section="staff"><i class="fas fa-user-tie me-3"></i>Staff</a>
       </nav>
       <div class="sidebar-footer">
@@ -2328,6 +2329,55 @@
             <span id="customersFooter">-</span>
           </div>
         </div>
+      </section>
+      <section class="m-view view-content" data-view="social-users" style="display:none;">
+        <header class="header-main">
+          <div>
+            <h2 class="fw-800 m-0" style="letter-spacing:-0.8px;">Social Users</h2>
+            <p class="text-muted small fw-600 m-0">Registrierte MENYRA Social Accounts</p>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-light rounded-pill px-4 fw-800" type="button" data-section="dashboard">
+              <i class="fas fa-arrow-left"></i>
+            </button>
+            <button class="btn btn-primary rounded-pill px-4 fw-800" id="socialUsersReload" type="button">
+              <i class="fas fa-rotate-right me-2"></i> Reload
+            </button>
+          </div>
+        </header>
+
+        <div class="leads-glass-card">
+          <div class="leads-filter-grid">
+            <div>
+              <label for="socialUsersSearch">Suche</label>
+              <input id="socialUsersSearch" class="m-input" placeholder="Name, Email, Stadt" />
+            </div>
+            <div>
+              <label for="socialUsersRole">Rolle</label>
+              <select id="socialUsersRole" class="m-select2">
+                <option value="">Alle</option>
+                <option value="user">User</option>
+                <option value="business">Business</option>
+              </select>
+            </div>
+            <div>
+              <label for="socialUsersSort">Sortierung</label>
+              <select id="socialUsersSort" class="m-select2">
+                <option value="created">Neueste</option>
+                <option value="name">Name</option>
+              </select>
+            </div>
+            <div>
+              <label>Status</label>
+              <div class="leads-meta" id="socialUsersMeta">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="lead-table-container">
+          <div id="socialUsersList" class="leads-list"></div>
+        </div>
+        <div class="small text-muted mt-2" id="socialUsersStatus">-</div>
       </section>
       <section class="m-view view-content" data-view="menu" style="display:none;">
         <header class="header-main">

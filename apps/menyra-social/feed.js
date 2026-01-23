@@ -1,16 +1,21 @@
 import { db } from "@shared/firebase-config.js";
 import {
   collection,
+  collectionGroup,
   query,
   where,
   orderBy,
   limit,
-  getDocs
+  getDocs,
+  getDoc,
+  doc,
+  Timestamp
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
   attachAuthHeader,
   buildUrl,
   formatRelative,
+  initials,
   toDateSafe
 } from "./_shared/social-core.js";
 
@@ -19,6 +24,8 @@ const feedList = document.getElementById("feedList");
 const feedStatus = document.getElementById("feedStatus");
 const cityInput = document.getElementById("cityInput");
 const refreshBtn = document.getElementById("refreshBtn");
+const storiesList = document.getElementById("storiesList");
+const storiesStatus = document.getElementById("storiesStatus");
 
 let currentType = "all";
 
@@ -80,6 +87,85 @@ function renderFeed(items) {
   });
 }
 
+function renderStories(items) {
+  if (!storiesList) return;
+  if (!items.length) {
+    storiesList.innerHTML = "<div class='empty'>No active stories yet.</div>";
+    return;
+  }
+  storiesList.innerHTML = items.map((item) => {
+    const name = item.name || "Business";
+    const city = item.city || "";
+    const logo = item.logo || "";
+    const avatar = logo
+      ? `<img src="${logo}" alt="${name}"/>`
+      : `<span>${initials(name)}</span>`;
+    const link = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: item.id });
+    return `
+      <a class="story-card" href="${link}">
+        <div class="story-avatar">${avatar}</div>
+        <div class="story-name">${name}</div>
+        <div class="story-meta">${city}</div>
+      </a>
+    `;
+  }).join("");
+}
+
+async function loadStories() {
+  if (!storiesList) return;
+  if (storiesStatus) storiesStatus.textContent = "Loading stories...";
+
+  try {
+    const now = Timestamp.now();
+    const snap = await getDocs(
+      query(
+        collectionGroup(db, "stories"),
+        where("expiresAt", ">", now),
+        orderBy("expiresAt", "desc"),
+        limit(40)
+      )
+    );
+
+    const byRestaurant = new Map();
+    snap.forEach((docSnap) => {
+      const rid = docSnap.ref.parent?.parent?.id;
+      if (!rid || byRestaurant.has(rid)) return;
+      const data = docSnap.data() || {};
+      if (data.status === "deleted") return;
+      byRestaurant.set(rid, data);
+    });
+
+    const restaurantIds = Array.from(byRestaurant.keys());
+    if (!restaurantIds.length) {
+      renderStories([]);
+      if (storiesStatus) storiesStatus.textContent = "No active stories.";
+      return;
+    }
+
+    const restaurantSnaps = await Promise.all(
+      restaurantIds.map((rid) => getDoc(doc(db, "restaurants", rid)))
+    );
+
+    const items = restaurantSnaps.map((snap, idx) => {
+      if (!snap.exists()) return null;
+      const data = snap.data() || {};
+      return {
+        id: restaurantIds[idx],
+        name: data.name || data.restaurantName || "Business",
+        logo: data.logoUrl || data.logo || "",
+        city: data.city || "",
+        story: byRestaurant.get(restaurantIds[idx])
+      };
+    }).filter(Boolean);
+
+    renderStories(items);
+    if (storiesStatus) storiesStatus.textContent = "";
+  } catch (err) {
+    console.error(err);
+    if (storiesStatus) storiesStatus.textContent = "Failed to load stories.";
+  }
+}
+
 async function queryFeed(city, type) {
   const ref = collection(db, "socialFeed");
   const trimmedCity = String(city || "").trim();
@@ -136,8 +222,12 @@ feedTabs.addEventListener("click", (e) => {
   loadFeed();
 });
 
-refreshBtn.addEventListener("click", loadFeed);
+refreshBtn.addEventListener("click", () => {
+  loadFeed();
+  loadStories();
+});
 
 const initialTab = feedTabs?.querySelector("button.is-active") || feedTabs?.querySelector("button");
 if (initialTab) setActiveTab(initialTab);
 loadFeed();
+loadStories();

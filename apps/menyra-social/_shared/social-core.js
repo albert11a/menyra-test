@@ -101,6 +101,7 @@ export async function ensureUserProfile(user, overrides = {}) {
   const displayName = overrides.displayName || user.displayName || user.email?.split("@")[0] || "User";
   const payload = {
     displayName,
+    email: overrides.email || user.email || "",
     bio: "",
     city: overrides.city || "Prishtina",
     score: 0,
@@ -109,6 +110,8 @@ export async function ensureUserProfile(user, overrides = {}) {
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp()
   };
+  if (overrides.role) payload.role = overrides.role;
+  if (overrides.avatarUrl) payload.avatarUrl = overrides.avatarUrl;
   await setDoc(ref, payload, { merge: true });
   return payload;
 }

@@ -13,6 +13,7 @@ const registerForm = document.getElementById("registerForm");
 const regName = document.getElementById("regName");
 const regCity = document.getElementById("regCity");
 const regEmail = document.getElementById("regEmail");
+const regRole = document.getElementById("regRole");
 const regPass = document.getElementById("regPass");
 const regPass2 = document.getElementById("regPass2");
 const registerStatus = document.getElementById("registerStatus");
@@ -24,6 +25,7 @@ registerForm.addEventListener("submit", async (e) => {
   const name = regName.value.trim() || "User";
   const city = regCity.value.trim() || "Prishtina";
   const email = regEmail.value.trim();
+  const role = regRole?.value || "user";
   const pass = regPass.value;
   const pass2 = regPass2.value;
 
@@ -45,6 +47,8 @@ registerForm.addEventListener("submit", async (e) => {
       {
         displayName: name,
         city,
+        email,
+        role,
         bio: "",
         score: 0,
         followersCount: 0,

@@ -274,6 +274,81 @@ textarea {
   font-size: 28px;
 }
 
+.storybar {
+  margin-bottom: 18px;
+}
+
+.storybar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.storybar-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.story-list {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: none;
+}
+
+.story-list::-webkit-scrollbar {
+  display: none;
+}
+
+.story-card {
+  text-decoration: none;
+  color: inherit;
+  width: 88px;
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+
+.story-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  padding: 3px;
+  background: linear-gradient(135deg, var(--accent), #ffb347);
+  box-shadow: var(--shadow);
+  display: grid;
+  place-items: center;
+}
+
+.story-avatar img,
+.story-avatar span {
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--accent-2);
+}
+
+.story-name {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.story-meta {
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+}
+
 @media (max-width: 720px) {
   .topbar {
     flex-direction: column;

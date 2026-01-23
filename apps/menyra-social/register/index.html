@@ -65,6 +65,13 @@
       </div>
       <div class="grid cols-3" style="margin-top:12px;">
         <div>
+          <label class="meta">Account type</label>
+          <select class="input" id="regRole">
+            <option value="user">User</option>
+            <option value="business">Business</option>
+          </select>
+        </div>
+        <div>
           <label class="meta">Password</label>
           <input class="input" id="regPass" type="password" placeholder="Password" />
         </div>
@@ -72,9 +79,9 @@
           <label class="meta">Confirm</label>
           <input class="input" id="regPass2" type="password" placeholder="Repeat password" />
         </div>
-        <div style="display:flex; align-items:flex-end;">
-          <button class="btn" type="submit">Register</button>
-        </div>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn" type="submit">Register</button>
       </div>
       <div class="row" style="margin-top:12px;">
         <span class="meta" id="registerStatus"></span>
