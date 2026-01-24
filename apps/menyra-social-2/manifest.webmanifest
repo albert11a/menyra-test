@@ -1,0 +1,19 @@
+{
+  "name": "MENYRA Social 2",
+  "short_name": "MENYRA",
+  "description": "MENYRA Social 2 unified social and admin.",
+  "id": "/apps/menyra-social-2/index.html",
+  "start_url": "/apps/menyra-social-2/index.html",
+  "scope": "/apps/menyra-social-2/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f3ea",
+  "theme_color": "#f6f3ea",
+  "icons": [
+    {
+      "src": "/apps/menyra-social-2/assets/menyra-social-logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}

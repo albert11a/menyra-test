@@ -5967,6 +5967,40 @@
 
             </div>
 
+            <div class="m-input-row">
+              <div class="m-input-group">
+                <label for="customerLoginEmail">Login email</label>
+                <input id="customerLoginEmail" class="m-input" placeholder="owner@menyra.com" />
+              </div>
+              <div class="m-input-group">
+                <label for="customerLoginPass">Login password</label>
+                <input id="customerLoginPass" class="m-input" type="password" placeholder="Mind. 6 Zeichen" />
+              </div>
+            </div>
+
+            <div class="m-input-group">
+              <label>Roles (Social/Staff)</label>
+              <div id="customerLoginRoles" style="display:flex; flex-wrap:wrap; gap:6px 12px; padding-top:6px;">
+                <label style="display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" name="customerLoginRoles" value="owner" checked />
+                  <span>Owner</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" name="customerLoginRoles" value="manager" checked />
+                  <span>Manager</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" name="customerLoginRoles" value="waiter" checked />
+                  <span>Kamarier</span>
+                </label>
+                <label style="display:flex; align-items:center; gap:6px;">
+                  <input type="checkbox" name="customerLoginRoles" value="kitchen" checked />
+                  <span>Kuzhina</span>
+                </label>
+              </div>
+            </div>
+
+
 
 
 
@@ -6414,53 +6448,9 @@
 
 
               <select id="customerType" class="m-select2">
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-                <option value="cafe">Café</option>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 <option value="restaurant">Restaurant</option>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+                <option value="ecommerce">Online Shop</option>
+                <option value="hotel">Hotel</option>
               </select>
 
 

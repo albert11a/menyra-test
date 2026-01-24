@@ -1375,7 +1375,16 @@ function openCustomerModal(mode, data = {}) {
   const statusSel = $("customerStatus");
   if (statusSel) statusSel.value = data.status || "active";
   const typeSel = $("customerType");
-  if (typeSel) typeSel.value = data.type || "cafe";
+  if (typeSel) typeSel.value = data.type || "restaurant";
+
+  const loginEmail = $("customerLoginEmail");
+  if (loginEmail) loginEmail.value = data.ownerEmail || "";
+  const loginPass = $("customerLoginPass");
+  if (loginPass) loginPass.value = "";
+  qsa('input[name="customerLoginRoles"]').forEach((el) => {
+    const val = String(el.value || "").toLowerCase();
+    el.checked = ["owner", "manager", "waiter", "kitchen"].includes(val);
+  });
 
   setText("customerModalStatus", "");
   show(overlay);
@@ -1384,6 +1393,11 @@ function openCustomerModal(mode, data = {}) {
 function closeCustomerModal() {
   const overlay = $("customerModalOverlay");
   if (overlay) hide(overlay);
+}
+
+function getCustomerLoginRoles() {
+  const roles = qsa('input[name="customerLoginRoles"]:checked').map((el) => el.value);
+  return roles.length ? roles : ["owner"];
 }
 
 function openQrModal(restaurant) {
@@ -3038,6 +3052,23 @@ async function createRestaurantStaffAccount({ restaurantId, name, email, passwor
     }, { merge: true });
   }
   return user.uid;
+}
+
+async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, city, logoUrl, roles }) {
+  if (!uid) return;
+  const payload = {
+    displayName: name || email || "",
+    email: email || "",
+    bio: "",
+    city: city || "Prishtina",
+    role: "business",
+    roles: normalizeRoleList(roles || "owner"),
+    restaurantId: restaurantId || "",
+    avatarUrl: logoUrl || "",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+  await setDoc(doc(db, "users", uid), payload, { merge: true });
 }
 
 async function updateSystemStaffAccount({ uid, currentRole, nextRole, name, email, photoUrl, updatedByUid, updatedByRole }) {
@@ -4823,12 +4854,19 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       const yearPrice = parseFloatSafe($("customerYearPrice")?.value, 0);
       const logoUrl = $("customerLogoUrl")?.value?.trim();
       const status = $("customerStatus")?.value || "active";
-      const type = $("customerType")?.value || "cafe";
+      const type = $("customerType")?.value || "restaurant";
       const slug = slugify(name);
       const customerId = ($("customerId")?.value || "").trim();
+      const loginEmail = ($("customerLoginEmail")?.value || "").trim().toLowerCase();
+      const loginPass = $("customerLoginPass")?.value || "";
+      const loginRoles = getCustomerLoginRoles();
 
       if (!name) {
         if (statusEl) statusEl.textContent = "Name fehlt.";
+        return;
+      }
+      if (!customerId && (!loginEmail || !loginPass)) {
+        if (statusEl) statusEl.textContent = "Login Email/Passwort fehlt.";
         return;
       }
 
@@ -4837,6 +4875,28 @@ $("leadForm")?.addEventListener("submit", async (e) => {
         const id = customerId
           ? await updateRestaurantDoc(role, user, customerId, payload)
           : await createRestaurantDoc(role, user, payload);
+        if (!customerId && loginEmail && loginPass) {
+          const ownerLabel = ownerName || name || loginEmail;
+          const createdUid = await createRestaurantStaffAccount({
+            restaurantId: id,
+            name: ownerLabel,
+            email: loginEmail,
+            password: loginPass,
+            role: "owner",
+            roles: loginRoles,
+            createdByUid: user.uid,
+            createdByRole: role
+          });
+          await ensureSocialBusinessProfile({
+            uid: createdUid,
+            email: loginEmail,
+            name: ownerLabel,
+            restaurantId: id,
+            city,
+            logoUrl,
+            roles: loginRoles
+          });
+        }
         // refresh cache and UI
         try { localStorage.removeItem(REST_CACHE_KEY + "_" + role + "_" + user.uid); } catch {}
         const updated = await fetchRestaurants(role, user.uid, restrictRestaurantId);
