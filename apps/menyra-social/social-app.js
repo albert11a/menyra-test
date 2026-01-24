@@ -154,6 +154,7 @@ const state = {
   businessPosts: [],
   userProfile: { ...DEFAULT_PROFILE },
   roleSwitchRoles: [],
+  roleSwitchRestaurantId: "",
   followingHandles: [],
   profileModal: {
     open: false,
@@ -332,9 +333,10 @@ function buildRoleUrl(role, params = "") {
   return `${origin}${basePath}${suffix}`;
 }
 
-function buildRoleSwitchUrl(role, profile) {
+function buildRoleSwitchUrl(role, profile, restaurantIdOverride = "") {
   const params = new URLSearchParams();
-  if (role === "owner" && profile?.restaurantId) params.set("r", profile.restaurantId);
+  const ownerRestaurantId = restaurantIdOverride || profile?.restaurantId || "";
+  if (role === "owner" && ownerRestaurantId) params.set("r", ownerRestaurantId);
   const query = params.toString();
   const path = window.location.pathname || "";
   const fileMap = {
@@ -350,15 +352,54 @@ function buildRoleSwitchUrl(role, profile) {
   return buildRoleUrl(role, query);
 }
 
+async function findOwnerRestaurantId(user) {
+  if (!user) return "";
+  const uid = user.uid || "";
+  const email = user.email || "";
+  if (uid) {
+    try {
+      const snap = await getDocs(query(collection(db, "restaurants"), where("ownerUid", "==", uid), limit(1)));
+      if (!snap.empty) return snap.docs[0].id;
+    } catch {}
+  }
+  if (email) {
+    try {
+      const snap = await getDocs(query(collection(db, "restaurants"), where("ownerEmail", "==", email), limit(1)));
+      if (!snap.empty) return snap.docs[0].id;
+    } catch {}
+  }
+  return "";
+}
+
+async function findOwnerRestaurantFromStaffIndex(user) {
+  const uid = user?.uid || "";
+  if (!uid) return "";
+  try {
+    const snap = await getDoc(doc(db, "staffIndex", uid));
+    if (!snap.exists()) return "";
+    const ids = snap.data()?.restaurantIds || [];
+    for (const rid of ids.slice(0, 4)) {
+      const staffSnap = await getDoc(doc(db, "restaurants", rid, "staff", uid));
+      if (!staffSnap.exists()) continue;
+      const row = staffSnap.data() || {};
+      const roles = normalizeRoleList(row.roles || row.role || "");
+      if (roles.includes("owner") || roles.includes("admin")) return rid;
+    }
+  } catch {}
+  return "";
+}
+
 async function resolveRoleSwitchTargets(user) {
   if (!user) {
     state.roleSwitchRoles = [];
+    state.roleSwitchRestaurantId = "";
     return;
   }
 
   const roles = new Set();
   const profile = state.userProfile || {};
   const profileRoles = normalizeRoleList(profile.roles || profile.role || "");
+  let ownerRestaurantId = profile.restaurantId || "";
 
   if (profileRoles.includes("ceo")) roles.add("ceo");
   if (profileRoles.includes("staff")) roles.add("staff");
@@ -378,12 +419,21 @@ async function resolveRoleSwitchTargets(user) {
       const staffSnap = await getDoc(doc(db, "restaurants", profile.restaurantId, "staff", user.uid));
       if (staffSnap.exists()) {
         const staffRoles = normalizeRoleList(staffSnap.data()?.roles || staffSnap.data()?.role || "");
-        if (staffRoles.includes("owner")) roles.add("owner");
+        if (staffRoles.includes("owner") || staffRoles.includes("admin")) roles.add("owner");
       }
     } catch {}
   }
 
+  if (!ownerRestaurantId) {
+    ownerRestaurantId = await findOwnerRestaurantId(user);
+  }
+  if (!ownerRestaurantId) {
+    ownerRestaurantId = await findOwnerRestaurantFromStaffIndex(user);
+  }
+  if (ownerRestaurantId) roles.add("owner");
+
   state.roleSwitchRoles = ROLE_SWITCH_ORDER.filter((role) => roles.has(role));
+  state.roleSwitchRestaurantId = ownerRestaurantId || profile.restaurantId || "";
   render();
 }
 
@@ -810,7 +860,7 @@ function renderDrawer() {
           <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Switch</p>
           ${state.roleSwitchRoles.map((role) => {
             const label = roleLabel(role);
-            const url = buildRoleSwitchUrl(role, state.userProfile);
+            const url = buildRoleSwitchUrl(role, state.userProfile, state.roleSwitchRestaurantId);
             return `
             <a href="${escapeHtml(url)}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all bg-slate-900 text-white hover:bg-slate-800">
               <div class="flex items-center gap-4">${icon("arrow-right-left", "w-4 h-4")} Switch to ${escapeHtml(label)}</div>
@@ -1990,6 +2040,7 @@ async function saveAccountSettings() {
 async function updateRestaurantSelection(restaurantId) {
   if (!state.user) return;
   state.userProfile.restaurantId = restaurantId || "";
+  state.roleSwitchRestaurantId = restaurantId || state.roleSwitchRestaurantId || "";
   safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
   render();
   try {
@@ -2316,6 +2367,7 @@ onAuthStateChanged(auth, (user) => {
     bootstrapUser(user);
   } else {
     state.roleSwitchRoles = [];
+    state.roleSwitchRestaurantId = "";
     render();
   }
 });
