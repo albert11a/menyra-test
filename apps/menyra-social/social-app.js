@@ -191,6 +191,8 @@ const state = {
 
 let renderSuspended = 0;
 let renderQueued = false;
+let scrollLocked = false;
+let scrollYBeforeLock = 0;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -1730,8 +1732,29 @@ function renderOverlays() {
   const root = ensureOverlayRoot();
   root.innerHTML = `${renderProfileModal()}${renderPostModal()}${renderLikesModal()}`;
   const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open);
-  document.documentElement.classList.toggle("modal-open", open);
-  document.body.classList.toggle("modal-open", open);
+  if (open && !scrollLocked) {
+    scrollYBeforeLock = window.scrollY || document.documentElement.scrollTop || 0;
+    document.documentElement.classList.add("modal-open");
+    document.body.classList.add("modal-open");
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollYBeforeLock}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    document.body.style.overflow = "hidden";
+    scrollLocked = true;
+  } else if (!open && scrollLocked) {
+    document.documentElement.classList.remove("modal-open");
+    document.body.classList.remove("modal-open");
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    document.body.style.overflow = "";
+    window.scrollTo(0, scrollYBeforeLock);
+    scrollLocked = false;
+  }
   if (window.lucide?.createIcons) {
     window.lucide.createIcons();
   }
