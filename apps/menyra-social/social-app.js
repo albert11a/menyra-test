@@ -49,8 +49,7 @@ const STORAGE_KEYS = {
   settings: "menyra_social_settings_v3",
   notifications: "menyra_social_notifications_v1",
   following: "menyra_social_following_v1",
-  postMeta: "menyra_social_post_meta_v1",
-  checkins: "menyra_social_checkins_v1"
+  postMeta: "menyra_social_post_meta_v1"
 };
 
 const ADMIN_LOGINS = {
@@ -154,7 +153,6 @@ const state = {
   settings: { ...DEFAULT_SETTINGS },
   notifications: [...DEFAULT_NOTIFICATIONS],
   postMeta: {},
-  checkins: [],
   postModal: {
     open: false,
     post: null,
@@ -214,10 +212,6 @@ function savePostMeta(meta) {
   safeStorage.setItem(STORAGE_KEYS.postMeta, JSON.stringify(meta));
 }
 
-function saveCheckins(checkins) {
-  safeStorage.setItem(STORAGE_KEYS.checkins, JSON.stringify(checkins));
-}
-
 function loadPersisted() {
   const savedSettings = safeStorage.getItem(STORAGE_KEYS.settings);
   if (savedSettings) {
@@ -242,11 +236,6 @@ function loadPersisted() {
   const savedMeta = safeStorage.getItem(STORAGE_KEYS.postMeta);
   if (savedMeta) {
     try { state.postMeta = JSON.parse(savedMeta) || {}; } catch {}
-  }
-
-  const savedCheckins = safeStorage.getItem(STORAGE_KEYS.checkins);
-  if (savedCheckins) {
-    try { state.checkins = JSON.parse(savedCheckins) || []; } catch {}
   }
 }
 
@@ -401,11 +390,6 @@ function bindMapSheetEvents() {
       window.open(url, "_blank");
     });
   }
-
-  const mapCheckinSheetBtn = document.getElementById("mapCheckinSheetBtn");
-  if (mapCheckinSheetBtn) {
-    mapCheckinSheetBtn.addEventListener("click", () => mapCheckin());
-  }
 }
 
 function initLeafletIfNeeded() {
@@ -475,7 +459,7 @@ function setUserMarker(lat, lng, label = "Deine Position") {
   if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 
-function mapLocate({ checkin = false } = {}) {
+function mapLocate() {
   if (!navigator.geolocation) {
     alert("Geolocation nicht verfuegbar.");
     return;
@@ -486,15 +470,7 @@ function mapLocate({ checkin = false } = {}) {
       const lng = pos.coords.longitude;
       if (leafletMap) {
         try { leafletMap.setView([lat, lng], 15, { animate: true }); } catch {}
-        setUserMarker(lat, lng, checkin ? "Check-In gesetzt" : "Deine Position");
-      }
-      if (checkin) {
-        addCheckin({
-          name: "Deine Position",
-          detail: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
-          lat,
-          lng
-        });
+        setUserMarker(lat, lng, "Deine Position");
       }
     },
     () => alert("Standort konnte nicht abgerufen werden (Berechtigung?)."),
@@ -572,37 +548,6 @@ function closePostModal() {
   state.postModal = { open: false, post: null, commentText: "", replyTo: null };
   state.likesModal = { open: false, postId: "" };
   render();
-}
-
-function addCheckin(entry) {
-  const item = {
-    id: `checkin_${Date.now()}`,
-    name: entry.name || "Check-In",
-    detail: entry.detail || "",
-    createdAt: new Date().toISOString(),
-    lat: entry.lat ?? null,
-    lng: entry.lng ?? null
-  };
-  state.checkins = [item, ...state.checkins].slice(0, 20);
-  saveCheckins(state.checkins);
-  render();
-}
-
-function mapCheckin() {
-  if (state.selectedBusiness) {
-    if (leafletMap && typeof state.selectedBusiness.lat === "number" && typeof state.selectedBusiness.lng === "number") {
-      try { leafletMap.setView([state.selectedBusiness.lat, state.selectedBusiness.lng], 15, { animate: true }); } catch {}
-      setUserMarker(state.selectedBusiness.lat, state.selectedBusiness.lng, "Check-In gesetzt");
-    }
-    addCheckin({
-      name: state.selectedBusiness.name || "Business",
-      detail: state.selectedBusiness.hours || "Geoeffnet",
-      lat: state.selectedBusiness.lat,
-      lng: state.selectedBusiness.lng
-    });
-    return;
-  }
-  mapLocate({ checkin: true });
 }
 
 function ensureCommentShape(comment) {
@@ -895,11 +840,8 @@ function renderMapSheet(selected) {
           </div>
         </div>
         <p class="text-xs text-slate-500 mt-3 font-medium px-1 line-clamp-2 leading-relaxed">${escapeHtml(selected.desc)}</p>
-        <div class="grid grid-cols-2 gap-3 mt-4">
+        <div class="mt-4">
           <button id="mapOpenMapsBtn" class="w-full bg-slate-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-slate-200">In Maps oeffnen</button>
-          <button id="mapCheckinSheetBtn" class="w-full bg-indigo-600 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-indigo-500/20 flex items-center justify-center gap-2">
-            ${icon("map-pin", "w-3 h-3")} Check-In
-          </button>
         </div>
       </div>
     </div>
@@ -918,7 +860,6 @@ function renderMapView() {
         ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-white text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
         <div class="absolute top-6 right-6 z-50 flex flex-col gap-3">
           <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-white/95 backdrop-blur-xl border border-white/40 shadow-xl flex items-center justify-center text-slate-900 active:scale-95 transition-transform">${icon("navigation", "w-4 h-4")}</button>
-          <button id="mapCheckinBtn" class="w-12 h-12 rounded-2xl bg-indigo-600 shadow-2xl shadow-indigo-500/30 flex items-center justify-center text-white active:scale-95 transition-transform">${icon("map-pin", "w-4 h-4")}</button>
         </div>
         <div id="mapSheetSlot"></div>
       </div>
@@ -935,39 +876,6 @@ function renderProfilePosts(posts) {
     `;
   }
   return posts.map((item) => renderProfileGridItem(item)).join("");
-}
-
-function renderCheckins() {
-  if (!state.checkins.length) {
-    return `
-      <div class="mt-8 p-4 rounded-[2rem] border border-dashed border-slate-200 text-center text-[10px] font-bold uppercase text-slate-400">
-        Noch keine Check-Ins
-      </div>
-    `;
-  }
-
-  return `
-    <div class="mt-8">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-xs font-black uppercase tracking-widest text-slate-400">Check-Ins</h3>
-        <span class="text-[10px] font-bold text-slate-300">${state.checkins.length}</span>
-      </div>
-      <div class="space-y-3">
-        ${state.checkins.slice(0, 4).map((item) => `
-          <div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">${icon("map-pin", "w-4 h-4")}</div>
-              <div>
-                <div class="text-sm font-black text-slate-900">${escapeHtml(item.name)}</div>
-                <div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${escapeHtml(item.detail || "")}</div>
-              </div>
-            </div>
-            <div class="text-[10px] font-bold text-slate-400">${escapeHtml(formatDateLabel(item.createdAt))}</div>
-          </div>
-        `).join("")}
-      </div>
-    </div>
-  `;
 }
 
 function renderProfileGridItem(item) {
@@ -1014,10 +922,8 @@ function renderProfileView() {
         </div>
         <div class="flex gap-3 mt-8 w-full">
           <button data-nav="upload" class="flex-1 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">${icon("plus-square", "w-4 h-4")} Status</button>
-          <button id="profileCheckinBtn" class="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-transform">${icon("map-pin", "w-4 h-4")} Check-In</button>
         </div>
       </div>
-      ${renderCheckins()}
       <div class="grid grid-cols-2 gap-3">
         ${renderProfilePosts(posts)}
         <div data-nav="upload" class="aspect-square rounded-[2rem] border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-indigo-50/10 hover:border-indigo-500/50 group border-slate-200">
@@ -1646,10 +1552,8 @@ function bindAppEvents() {
         safeStorage.removeItem(STORAGE_KEYS.profile);
         safeStorage.removeItem(STORAGE_KEYS.following);
         safeStorage.removeItem(STORAGE_KEYS.postMeta);
-        safeStorage.removeItem(STORAGE_KEYS.checkins);
         state.followingHandles = [];
         state.postMeta = {};
-        state.checkins = [];
         state.profileModal = { open: false, profile: null };
         state.postModal = { open: false, post: null, commentText: "", replyTo: null };
         state.likesModal = { open: false, postId: "" };
@@ -1678,20 +1582,7 @@ function bindAppEvents() {
 
   const mapLocateBtn = document.getElementById("mapLocateBtn");
   if (mapLocateBtn) {
-    mapLocateBtn.addEventListener("click", () => mapLocate({ checkin: false }));
-  }
-
-  const mapCheckinBtn = document.getElementById("mapCheckinBtn");
-  if (mapCheckinBtn) {
-    mapCheckinBtn.addEventListener("click", () => mapCheckin());
-  }
-
-  const profileCheckinBtn = document.getElementById("profileCheckinBtn");
-  if (profileCheckinBtn) {
-    profileCheckinBtn.addEventListener("click", () => {
-      setState({ activeTab: "map" });
-      window.setTimeout(() => mapLocate({ checkin: true }), 250);
-    });
+    mapLocateBtn.addEventListener("click", () => mapLocate());
   }
 
   const markAll = document.getElementById("markAllRead");
