@@ -1729,6 +1729,9 @@ function ensureOverlayRoot() {
 function renderOverlays() {
   const root = ensureOverlayRoot();
   root.innerHTML = `${renderProfileModal()}${renderPostModal()}${renderLikesModal()}`;
+  const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open);
+  document.documentElement.classList.toggle("modal-open", open);
+  document.body.classList.toggle("modal-open", open);
   if (window.lucide?.createIcons) {
     window.lucide.createIcons();
   }
