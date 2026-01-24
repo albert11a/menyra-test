@@ -3585,6 +3585,7 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   let storiesExpanded = false;
   let swipeLiveUnsub = null;
   let loginShowTimer = null;
+  let bootHiddenEarly = false;
 
   function initSwipeUi() {
     const viewport = $("dashSwipeViewport");
@@ -4477,6 +4478,11 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
       return;
 
+    }
+
+    if (!bootHiddenEarly) {
+      bootHiddenEarly = true;
+      finishBoot();
     }
 
     if (loginOverlay) hide(loginOverlay);
