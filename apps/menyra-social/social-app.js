@@ -158,6 +158,9 @@ const state = {
   roleSwitchRestaurantId: "",
   followingHandles: [],
   profileView: null,
+  profileViewMode: "grid",
+  profileContentTab: "posts",
+  profileCheckins: [],
   profileModal: {
     open: false,
     profile: null
@@ -1098,6 +1101,123 @@ function renderProfileGridItem(item) {
   `;
 }
 
+function renderProfilePostCardFancy(item, isGrid) {
+  const counts = resolvePostCounts(item);
+  const postAttr = item.id ? `data-open-post="${escapeHtml(item.id)}"` : "";
+  const isWide = item.type === "wide" || item.type === "hero";
+  const colClass = isGrid && isWide ? "col-span-2" : "";
+  const aspectClass = isGrid
+    ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
+    : "aspect-[4/5]";
+  return `
+    <button type="button" ${postAttr} class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
+      <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
+        <img src="${escapeHtml(item.url)}" loading="lazy" class="w-full h-full object-cover" />
+        ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
+          <div class="w-full flex items-end justify-center">
+            <div class="flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+              <div class="flex items-center gap-1">
+                ${icon("heart", "w-3 h-3 fill-rose-500 text-rose-500")}
+                <span class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.likeLabel)}</span>
+              </div>
+              <div class="w-px h-3 bg-white/20"></div>
+              <div class="flex items-center gap-1">
+                ${icon("message-circle", "w-3 h-3 text-indigo-200")}
+                <span class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.commentLabel)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </button>
+  `;
+}
+
+function renderProfilePostsFancy(posts, viewMode) {
+  const isGrid = viewMode === "grid";
+  if (!posts.length) {
+    return `
+      <div class="col-span-2 py-24 text-center">
+        <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
+          ${icon("image", "w-9 h-9")}
+        </div>
+        <p class="text-slate-400 text-sm font-bold tracking-wide">Keine Inhalte gefunden</p>
+      </div>
+    `;
+  }
+  return posts.map((post) => renderProfilePostCardFancy(post, isGrid)).join("");
+}
+
+function renderProfileCheckins() {
+  const checkins = state.profileCheckins || [];
+  if (!checkins.length) {
+    return `
+      <div class="px-6 pb-24 text-center">
+        <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
+          ${icon("map-pin", "w-9 h-9")}
+        </div>
+        <p class="text-slate-400 text-sm font-bold tracking-wide">Keine Check-ins gefunden</p>
+      </div>
+    `;
+  }
+  return `
+    <div class="px-6 flex flex-col gap-4 pb-24 animate-in fade-in duration-300">
+      ${checkins.map((place) => `
+        <div class="flex items-center gap-4 bg-white p-4 rounded-[2rem] border border-slate-50 shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] active:scale-[0.98] transition-all cursor-pointer group">
+          <div class="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden shrink-0 shadow-inner group-hover:shadow-md transition-all">
+            <img src="${escapeHtml(place.image || "")}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+          </div>
+          <div class="flex-1">
+            <h4 class="font-black text-slate-900 text-sm mb-1">${escapeHtml(place.name || "Ort")}</h4>
+            <div class="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
+              ${icon("map-pin", "w-3 h-3 text-indigo-500 fill-indigo-500/20")} ${escapeHtml(place.city || "Stadt")}
+            </div>
+          </div>
+          <button class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-300 group-hover:text-indigo-500 group-hover:bg-indigo-50 transition-colors">
+            ${icon("arrow-right", "w-4 h-4")}
+          </button>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderProfileTabs() {
+  return `
+    <div class="px-6 mb-6 mt-4">
+      <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm">
+        ${[
+          { id: "posts", label: "Beitraege" },
+          { id: "media", label: "Medien" },
+          { id: "checkins", label: "Check-ins" }
+        ].map((tab) => `
+          <button data-profile-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${state.profileContentTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
+            ${tab.label}
+          </button>
+        `).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderProfileViewControls() {
+  if (state.profileContentTab === "checkins") return "";
+  return `
+    <div class="flex items-center justify-between px-8 mb-6">
+      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Ansicht</span>
+      <div class="flex gap-1 bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
+        <button data-profile-view="grid" class="p-2.5 rounded-xl transition-all active:scale-95 ${state.profileViewMode === "grid" ? "bg-slate-900 text-white shadow-md" : "text-slate-300 active:text-slate-500"}">
+          ${icon("layout-grid", "w-4 h-4")}
+        </button>
+        <button data-profile-view="feed" class="p-2.5 rounded-xl transition-all active:scale-95 ${state.profileViewMode === "feed" ? "bg-slate-900 text-white shadow-md" : "text-slate-300 active:text-slate-500"}">
+          ${icon("square", "w-4 h-4")}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 function renderPublicProfileView() {
   const view = state.profileView;
   if (!view || !view.profile) return "";
@@ -1142,36 +1262,87 @@ function renderPublicProfileView() {
 function renderProfileView() {
   const profile = state.userProfile;
   const posts = profile.role === "business" ? state.businessPosts : state.userPosts;
+  const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
+  const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
+  const bioHtml = safeBio || "Noch keine Bio.";
+  const isMediaTab = state.profileContentTab === "media";
+  const isCheckinTab = state.profileContentTab === "checkins";
+  const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   return `
-    <div class="p-8 animate-in slide-in-from-bottom-10 duration-700 pb-24">
-      <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
-      <div class="flex flex-col items-center text-center mb-10">
-        <div id="profileAvatarTrigger" class="relative mb-6 group cursor-pointer">
-          <div class="w-32 h-32 rounded-[3.5rem] bg-gradient-to-tr from-indigo-600 to-purple-500 p-1 shadow-2xl shadow-indigo-500/20">
-            <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[3.2rem] object-cover border-4 border-white" />
+    <div class="pb-24">
+      <div class="px-5 pb-2 pt-10">
+        <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
+        <div class="bg-white rounded-[2.5rem] p-8 shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] relative overflow-hidden z-10 border border-slate-100">
+          <div class="absolute top-[-60px] right-[-60px] w-64 h-64 bg-gradient-to-bl from-indigo-100 via-purple-100 to-transparent rounded-full blur-3xl opacity-60 pointer-events-none mix-blend-multiply"></div>
+          <div class="absolute top-[-20px] right-[-20px] w-32 h-32 bg-white/40 rounded-full blur-xl pointer-events-none"></div>
+
+          <div class="relative z-10">
+            <div class="flex justify-between items-start mb-8">
+              <div id="profileAvatarTrigger" class="relative cursor-pointer group">
+                <div class="absolute -inset-2 bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 rounded-[2.5rem] blur-md group-hover:blur-lg transition-all duration-500"></div>
+                <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-white to-slate-50 shadow-sm">
+                  <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[1.8rem] object-cover" />
+                </div>
+                ${profile.isPremium ? `
+                  <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
+                    ${icon("badge-check", "w-4 h-4 fill-blue-500 text-white")}
+                  </div>
+                ` : ""}
+              </div>
+
+              <div class="flex items-center gap-6 pt-3 pr-2">
+                 <div class="flex flex-col items-center">
+                    <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.followers))}</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span>
+                 </div>
+                 <div class="w-px h-8 bg-slate-100"></div>
+                 <div class="flex flex-col items-center">
+                    <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.following))}</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Folgt</span>
+                 </div>
+              </div>
+            </div>
+
+            <div class="mb-8">
+              <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profile.name || "User")}</h1>
+              <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>
+              <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")}</p>
+            </div>
+
+            <div class="flex gap-4">
+              <button data-nav="upload" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent group">
+                <span class="relative z-10 flex items-center gap-2">${icon("plus", "w-4 h-4")} Status</span>
+                <div class="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+              </button>
+              <button data-nav="settings" class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 bg-white text-slate-900 active:scale-[0.95] transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
+                ${icon("settings", "w-5 h-5")}
+              </button>
+            </div>
           </div>
-          <div class="absolute -bottom-2 -right-2 w-10 h-10 rounded-2xl shadow-xl flex items-center justify-center text-indigo-600 bg-white">${icon("camera", "w-4 h-4")}</div>
-        </div>
-        <h2 class="text-3xl font-black tracking-tighter text-slate-900">${escapeHtml(profile.name || "User")}</h2>
-        <p class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">${profile.role === "business" ? "Business Account" : "Explorer"} / ${escapeHtml(profile.location || "-")}</p>
-        <div class="flex gap-3 mt-6 w-full max-w-xs justify-center">
-          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(posts.length))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Posts</span></div>
-          <div class="w-px h-8 bg-slate-200 mx-1"></div>
-          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.followers))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Follower</span></div>
-          <div class="w-px h-8 bg-slate-200 mx-1"></div>
-          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.following))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Following</span></div>
-        </div>
-        <div class="flex gap-3 mt-8 w-full">
-          <button data-nav="upload" class="flex-1 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">${icon("plus-square", "w-4 h-4")} Status</button>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-3">
-        ${renderProfilePosts(posts)}
-        <div data-nav="upload" class="aspect-square rounded-[2rem] border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-indigo-50/10 hover:border-indigo-500/50 group border-slate-200">
-          ${icon("plus-square", "w-6 h-6 text-slate-300 group-hover:text-indigo-500")}
-          <span class="text-[9px] font-black uppercase text-slate-400 group-hover:text-indigo-600">Neu</span>
+
+      ${renderProfileTabs()}
+      ${renderProfileViewControls()}
+
+      ${isCheckinTab ? `
+        ${renderProfileCheckins()}
+      ` : `
+        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6" : "flex flex-col gap-8 px-6"}">
+          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
         </div>
-      </div>
+        ${state.profileContentTab === "posts" ? `
+          <div class="px-6 mt-8 mb-4">
+            <button data-nav="upload" class="w-full py-5 rounded-[2rem] bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-95 transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
+              <span class="relative z-10 flex items-center gap-2">
+                ${icon("plus", "w-4 h-4")} Neuen Beitrag
+              </span>
+              <div class="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            </button>
+          </div>
+        ` : ""}
+      `}
     </div>
   `;
 }
@@ -2008,6 +2179,24 @@ function bindAppEvents() {
         postModal: { open: false, post: null, commentText: "", replyTo: null },
         likesModal: { open: false, postId: "" }
       });
+    });
+  });
+
+  document.querySelectorAll("[data-profile-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.profileTab;
+      if (!tab) return;
+      state.profileContentTab = tab;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-profile-view]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.profileView;
+      if (!mode) return;
+      state.profileViewMode = mode;
+      render();
     });
   });
 
