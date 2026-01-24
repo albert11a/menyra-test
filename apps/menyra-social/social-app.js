@@ -724,13 +724,13 @@ function openPostModal(post) {
     commentText: "",
     replyTo: null
   };
-  render();
+  renderOverlays();
 }
 
 function closePostModal() {
   state.postModal = { open: false, post: null, commentText: "", replyTo: null };
   state.likesModal = { open: false, postId: "" };
-  render();
+  renderOverlays();
 }
 
 function ensureCommentShape(comment) {
@@ -785,7 +785,7 @@ function addComment(postId, text, replyTo) {
   savePostMeta(state.postMeta);
   state.postModal.commentText = "";
   state.postModal.replyTo = null;
-  render();
+  renderOverlays();
 }
 
 function togglePostLike(postId) {
@@ -799,7 +799,7 @@ function togglePostLike(postId) {
   }
   state.postMeta[postId] = meta;
   savePostMeta(state.postMeta);
-  render();
+  renderOverlays();
 }
 
 function toggleCommentLike(postId, commentId, replyId) {
@@ -822,7 +822,7 @@ function toggleCommentLike(postId, commentId, replyId) {
   target.likes = likes;
   state.postMeta[postId] = meta;
   savePostMeta(state.postMeta);
-  render();
+  renderOverlays();
 }
 function renderAuthScreen() {
   const isRegister = state.auth.mode === "register";
@@ -1199,10 +1199,10 @@ async function openProfileFromBusiness(input) {
     const cacheKey = restaurantId || safeName;
     const cached = businessProfileCache.get(cacheKey);
     if (cached) {
-      state.profileModal = { open: true, profile: cached };
-      render();
-      return;
-    }
+    state.profileModal = { open: true, profile: cached };
+    renderOverlays();
+    return;
+  }
 
     const placeholderProfile = normalizeExternalProfile({
       profileDoc: null,
@@ -1212,7 +1212,7 @@ async function openProfileFromBusiness(input) {
     });
 
     state.profileModal = { open: true, profile: placeholderProfile };
-    render();
+    renderOverlays();
 
     const [profileSnap, posts] = await Promise.all([
       fetchBusinessProfileDoc({ restaurantId, restaurant: rest }),
@@ -1229,7 +1229,7 @@ async function openProfileFromBusiness(input) {
 
     businessProfileCache.set(cacheKey, resolved);
     state.profileModal = { open: true, profile: resolved };
-    render();
+    renderOverlays();
   } catch (err) {
     console.error(err);
   }
@@ -1272,7 +1272,11 @@ function toggleFollow(handle) {
   });
 
   saveFollowing(state.followingHandles);
-  render();
+  if (state.profileModal.open && !state.profileView) {
+    renderOverlays();
+  } else {
+    render();
+  }
 }
 
 function renderProfileModal() {
@@ -1282,9 +1286,9 @@ function renderProfileModal() {
 
   return `
     <div class="fixed inset-0 z-[60]">
-      <div id="profileModalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div id="profileModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 animate-in slide-in-from-bottom-10">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7">
           <div class="flex justify-end mb-4">
             <button id="profileModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
           </div>
@@ -1708,11 +1712,27 @@ function renderMain() {
       ${renderDrawer()}
       ${renderHeader()}
       <main class="flex-1 overflow-y-auto no-scrollbar pb-24">${view}</main>
-      ${renderProfileModal()}
-      ${renderPostModal()}
-      ${renderLikesModal()}
     </div>
   `;
+}
+
+function ensureOverlayRoot() {
+  let root = document.getElementById("overlayRoot");
+  if (!root) {
+    root = document.createElement("div");
+    root.id = "overlayRoot";
+    document.body.appendChild(root);
+  }
+  return root;
+}
+
+function renderOverlays() {
+  const root = ensureOverlayRoot();
+  root.innerHTML = `${renderProfileModal()}${renderPostModal()}${renderLikesModal()}`;
+  if (window.lucide?.createIcons) {
+    window.lucide.createIcons();
+  }
+  bindOverlayEvents();
 }
 
 function renderLoading() {
@@ -1738,9 +1758,7 @@ function render() {
     bindAppEvents();
   }
 
-  if (window.lucide?.createIcons) {
-    window.lucide.createIcons();
-  }
+  renderOverlays();
 
   if (state.user && state.activeTab === "map") {
     window.setTimeout(() => {
@@ -1814,6 +1832,111 @@ function bindAuthEvents() {
         state.auth.loading = false;
         render();
       }
+    });
+  }
+}
+
+function bindOverlayEvents() {
+  const profileModalOverlay = document.getElementById("profileModalOverlay");
+  const profileModalClose = document.getElementById("profileModalClose");
+  const profileFollowBtn = document.getElementById("profileFollowBtn");
+  const profileOpenBtn = document.getElementById("profileOpenBtn");
+  const closeProfileModal = () => {
+    state.profileModal = { open: false, profile: null };
+    renderOverlays();
+  };
+
+  if (profileModalOverlay) profileModalOverlay.addEventListener("click", closeProfileModal);
+  if (profileModalClose) profileModalClose.addEventListener("click", closeProfileModal);
+  if (profileFollowBtn) {
+    profileFollowBtn.addEventListener("click", () => {
+      const handle = profileFollowBtn.dataset.handle;
+      if (handle) toggleFollow(handle);
+    });
+  }
+  if (profileOpenBtn) {
+    profileOpenBtn.addEventListener("click", () => {
+      if (!state.profileModal.profile) return;
+      state.profileView = {
+        profile: state.profileModal.profile,
+        posts: state.profileModal.profile.posts || []
+      };
+      state.profileModal = { open: false, profile: null };
+      state.activeTab = "profile";
+      render();
+    });
+  }
+
+  const postModalOverlay = document.getElementById("postModalOverlay");
+  const postModalClose = document.getElementById("postModalClose");
+  if (postModalOverlay) postModalOverlay.addEventListener("click", closePostModal);
+  if (postModalClose) postModalClose.addEventListener("click", closePostModal);
+
+  const postLikeBtn = document.getElementById("postLikeBtn");
+  if (postLikeBtn) {
+    postLikeBtn.addEventListener("click", () => {
+      const postId = postLikeBtn.dataset.postId;
+      if (postId) togglePostLike(postId);
+    });
+  }
+
+  const postLikesBtn = document.getElementById("postLikesBtn");
+  if (postLikesBtn) {
+    postLikesBtn.addEventListener("click", () => {
+      const postId = postLikesBtn.dataset.postId;
+      if (!postId) return;
+      state.likesModal = { open: true, postId };
+      renderOverlays();
+    });
+  }
+
+  const likesModalOverlay = document.getElementById("likesModalOverlay");
+  const likesModalClose = document.getElementById("likesModalClose");
+  const closeLikes = () => {
+    state.likesModal = { open: false, postId: "" };
+    renderOverlays();
+  };
+  if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
+  if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
+
+  const postReplyCancel = document.getElementById("postReplyCancel");
+  if (postReplyCancel) {
+    postReplyCancel.addEventListener("click", () => {
+      state.postModal.replyTo = null;
+      renderOverlays();
+    });
+  }
+
+  const postCommentSend = document.getElementById("postCommentSend");
+  if (postCommentSend) {
+    postCommentSend.addEventListener("click", () => {
+      const postId = postCommentSend.dataset.postId;
+      if (!postId) return;
+      addComment(postId, state.postModal.commentText, state.postModal.replyTo);
+    });
+  }
+
+  document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.postModal.replyTo = btn.dataset.commentId || null;
+      renderOverlays();
+    });
+  });
+
+  document.querySelectorAll("[data-comment-like]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const postId = btn.dataset.postId;
+      const commentId = btn.dataset.commentId;
+      const replyId = btn.dataset.replyId || "";
+      if (!postId || !commentId) return;
+      toggleCommentLike(postId, commentId, replyId || null);
+    });
+  });
+
+  const postCommentInput = document.getElementById("postCommentInput");
+  if (postCommentInput) {
+    postCommentInput.addEventListener("input", () => {
+      state.postModal.commentText = postCommentInput.value;
     });
   }
 }
@@ -1948,36 +2071,6 @@ function bindAppEvents() {
     });
   });
 
-  const profileModalOverlay = document.getElementById("profileModalOverlay");
-  const profileModalClose = document.getElementById("profileModalClose");
-  const profileFollowBtn = document.getElementById("profileFollowBtn");
-  const profileOpenBtn = document.getElementById("profileOpenBtn");
-  const closeProfileModal = () => {
-    state.profileModal = { open: false, profile: null };
-    render();
-  };
-
-  if (profileModalOverlay) profileModalOverlay.addEventListener("click", closeProfileModal);
-  if (profileModalClose) profileModalClose.addEventListener("click", closeProfileModal);
-  if (profileFollowBtn) {
-    profileFollowBtn.addEventListener("click", () => {
-      const handle = profileFollowBtn.dataset.handle;
-      if (handle) toggleFollow(handle);
-    });
-  }
-  if (profileOpenBtn) {
-    profileOpenBtn.addEventListener("click", () => {
-      if (!state.profileModal.profile) return;
-      state.profileView = {
-        profile: state.profileModal.profile,
-        posts: state.profileModal.profile.posts || []
-      };
-      state.profileModal = { open: false, profile: null };
-      state.activeTab = "profile";
-      render();
-    });
-  }
-
   document.querySelectorAll("[data-open-post]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const postId = btn.dataset.openPost;
@@ -1998,72 +2091,6 @@ function bindAppEvents() {
     btn.addEventListener("click", () => {
       const handle = btn.dataset.publicProfileFollow;
       if (handle) toggleFollow(handle);
-    });
-  });
-
-  const postModalOverlay = document.getElementById("postModalOverlay");
-  const postModalClose = document.getElementById("postModalClose");
-  if (postModalOverlay) postModalOverlay.addEventListener("click", closePostModal);
-  if (postModalClose) postModalClose.addEventListener("click", closePostModal);
-
-  const postLikeBtn = document.getElementById("postLikeBtn");
-  if (postLikeBtn) {
-    postLikeBtn.addEventListener("click", () => {
-      const postId = postLikeBtn.dataset.postId;
-      if (postId) togglePostLike(postId);
-    });
-  }
-
-  const postLikesBtn = document.getElementById("postLikesBtn");
-  if (postLikesBtn) {
-    postLikesBtn.addEventListener("click", () => {
-      const postId = postLikesBtn.dataset.postId;
-      if (!postId) return;
-      state.likesModal = { open: true, postId };
-      render();
-    });
-  }
-
-  const likesModalOverlay = document.getElementById("likesModalOverlay");
-  const likesModalClose = document.getElementById("likesModalClose");
-  const closeLikes = () => {
-    state.likesModal = { open: false, postId: "" };
-    render();
-  };
-  if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
-  if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
-
-  const postReplyCancel = document.getElementById("postReplyCancel");
-  if (postReplyCancel) {
-    postReplyCancel.addEventListener("click", () => {
-      state.postModal.replyTo = null;
-      render();
-    });
-  }
-
-  const postCommentSend = document.getElementById("postCommentSend");
-  if (postCommentSend) {
-    postCommentSend.addEventListener("click", () => {
-      const postId = postCommentSend.dataset.postId;
-      if (!postId) return;
-      addComment(postId, state.postModal.commentText, state.postModal.replyTo);
-    });
-  }
-
-  document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.postModal.replyTo = btn.dataset.commentId || null;
-      render();
-    });
-  });
-
-  document.querySelectorAll("[data-comment-like]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const postId = btn.dataset.postId;
-      const commentId = btn.dataset.commentId;
-      const replyId = btn.dataset.replyId || "";
-      if (!postId || !commentId) return;
-      toggleCommentLike(postId, commentId, replyId || null);
     });
   });
 
@@ -2098,13 +2125,6 @@ function bindAppEvents() {
   if (uploadCaption) {
     uploadCaption.addEventListener("input", () => {
       state.upload.caption = uploadCaption.value;
-    });
-  }
-
-  const postCommentInput = document.getElementById("postCommentInput");
-  if (postCommentInput) {
-    postCommentInput.addEventListener("input", () => {
-      state.postModal.commentText = postCommentInput.value;
     });
   }
 
