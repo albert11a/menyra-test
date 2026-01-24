@@ -3527,6 +3527,7 @@ export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", 
   mountRoleSwitchLink(role);
   const nav = initNav();
   document.documentElement.classList.add("m-boot");
+  finishBoot();
 
   // Logout
   const logoutBtn = $("logoutButton");
