@@ -3011,7 +3011,16 @@ function getSecondaryAuth() {
 
 async function createAuthUser(email, password) {
   const auth2 = getSecondaryAuth();
-  const cred = await createUserWithEmailAndPassword(auth2, email, password);
+  let cred = null;
+  try {
+    cred = await createUserWithEmailAndPassword(auth2, email, password);
+  } catch (err) {
+    if (err?.code === "auth/email-already-in-use") {
+      cred = await signInWithEmailAndPassword(auth2, email, password);
+    } else {
+      throw err;
+    }
+  }
   try { await signOut(auth2); } catch {}
   return cred.user;
 }
@@ -4916,6 +4925,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       const loginEmail = ($("customerLoginEmail")?.value || "").trim().toLowerCase();
       const loginPass = $("customerLoginPass")?.value || "";
       const loginRoles = getCustomerLoginRoles();
+      const ownerSelected = loginRoles.some((r) => ["owner", "admin"].includes(String(r || "").toLowerCase()));
 
       if (!name) {
         if (statusEl) statusEl.textContent = "Name fehlt.";
@@ -4931,27 +4941,48 @@ $("leadForm")?.addEventListener("submit", async (e) => {
         const id = customerId
           ? await updateRestaurantDoc(role, user, customerId, payload)
           : await createRestaurantDoc(role, user, payload);
-        if (!customerId && loginEmail && loginPass) {
-          const ownerLabel = ownerName || name || loginEmail;
+        const ownerLabel = ownerName || name || loginEmail;
+        const businessName = name || ownerLabel;
+        const existingRow = restaurants.find((r) => r.id === id) || {};
+        let ownerUid = "";
+
+        if (ownerSelected && loginEmail) {
+          await setDoc(doc(db, "restaurants", id), {
+            ownerEmail: loginEmail,
+            ownerName: ownerLabel,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
+
+        if (loginEmail && loginPass) {
+          const primaryRole = ownerSelected ? "owner" : (loginRoles[0] || "waiter");
           const createdUid = await createRestaurantStaffAccount({
             restaurantId: id,
             name: ownerLabel,
             email: loginEmail,
             password: loginPass,
-            role: "owner",
+            role: primaryRole,
             roles: loginRoles,
             createdByUid: user.uid,
             createdByRole: role
           });
-          await ensureSocialBusinessProfile({
-            uid: createdUid,
-            email: loginEmail,
-            name: ownerLabel,
-            restaurantId: id,
-            city,
-            logoUrl,
-            roles: loginRoles
-          });
+          ownerUid = createdUid || "";
+        }
+
+        if (ownerSelected) {
+          const syncUid = ownerUid || existingRow.ownerUid || "";
+          const syncEmail = loginEmail || existingRow.ownerEmail || "";
+          if (syncUid && syncEmail) {
+            await ensureSocialBusinessProfile({
+              uid: syncUid,
+              email: syncEmail,
+              name: businessName,
+              restaurantId: id,
+              city,
+              logoUrl,
+              roles: loginRoles
+            });
+          }
         }
         // refresh cache and UI
         try { localStorage.removeItem(REST_CACHE_KEY + "_" + role + "_" + user.uid); } catch {}

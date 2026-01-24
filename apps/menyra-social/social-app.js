@@ -136,6 +136,7 @@ const ROLE_SWITCH_LABELS = {
   staff: "Staff"
 };
 const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen", "social"]);
+const businessProfileCache = new Map();
 
 const state = {
   sessionReady: false,
@@ -156,6 +157,7 @@ const state = {
   roleSwitchRoles: [],
   roleSwitchRestaurantId: "",
   followingHandles: [],
+  profileView: null,
   profileModal: {
     open: false,
     profile: null
@@ -210,6 +212,14 @@ function escapeHtml(value) {
     '"': "&quot;",
     "'": "&#39;"
   }[ch] || ch));
+}
+
+function formatCount(value) {
+  if (typeof value === "number" && Number.isFinite(value)) return String(value);
+  const num = Number(value);
+  if (Number.isFinite(num)) return String(num);
+  const str = String(value ?? "").trim();
+  return str || "0";
 }
 
 function icon(name, className = "") {
@@ -697,6 +707,9 @@ function findPostById(postId) {
   const all = [...state.userPosts, ...state.businessPosts];
   const found = all.find((item) => String(item.id) === String(postId));
   if (found) return found;
+  const viewPosts = state.profileView?.posts || [];
+  const viewFound = viewPosts.find((item) => String(item.id) === String(postId));
+  if (viewFound) return viewFound;
   const modalPosts = state.profileModal.profile?.posts || [];
   return modalPosts.find((item) => String(item.id) === String(postId)) || null;
 }
@@ -962,7 +975,7 @@ function renderFeedView() {
         ${feedPosts.length ? feedPosts.map((post) => `
           <div class="group">
             <div class="flex items-center justify-between mb-5 px-2">
-              <button data-profile-business="${escapeHtml(post.business)}" class="flex items-center gap-3 text-left">
+              <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
                 <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-white">
                   <img src="${escapeHtml(post.logo || post.image)}" class="w-full h-full object-cover" />
                 </div>
@@ -1083,6 +1096,47 @@ function renderProfileGridItem(item) {
   `;
 }
 
+function renderPublicProfileView() {
+  const view = state.profileView;
+  if (!view || !view.profile) return "";
+  const profile = view.profile;
+  const posts = view.posts || profile.posts || [];
+  const isFollowing = state.followingHandles.includes(profile.handle);
+  return `
+    <div class="p-8 animate-in slide-in-from-bottom-10 duration-700 pb-24">
+      <div class="flex items-center gap-3 mb-8">
+        <button data-public-profile-back="true" class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
+        <div>
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Profil</p>
+          <h2 class="text-xl font-black italic tracking-tighter">${escapeHtml(profile.name || "Business")}</h2>
+        </div>
+      </div>
+      <div class="flex flex-col items-center text-center mb-10">
+        <div class="w-32 h-32 rounded-[3.5rem] bg-gradient-to-tr from-indigo-600 to-purple-500 p-1 shadow-2xl shadow-indigo-500/20">
+          <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[3.2rem] object-cover border-4 border-white" />
+        </div>
+        <p class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-3">${escapeHtml(profile.location || "-")} / Business</p>
+        <div class="flex gap-3 mt-6 w-full max-w-xs justify-center">
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(posts.length))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Posts</span></div>
+          <div class="w-px h-8 bg-slate-200 mx-1"></div>
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.followers))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Follower</span></div>
+          <div class="w-px h-8 bg-slate-200 mx-1"></div>
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.following))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Following</span></div>
+        </div>
+        <div class="flex gap-3 mt-8 w-full max-w-xs">
+          <button data-public-profile-follow="${escapeHtml(profile.handle)}" class="flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+            ${isFollowing ? "Following" : "Follow"}
+          </button>
+        </div>
+        <p class="mt-5 text-sm font-medium text-slate-600 leading-relaxed">${escapeHtml(profile.bio || "")}</p>
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        ${renderProfilePosts(posts)}
+      </div>
+    </div>
+  `;
+}
+
 function renderProfileView() {
   const profile = state.userProfile;
   const posts = profile.role === "business" ? state.businessPosts : state.userPosts;
@@ -1099,11 +1153,11 @@ function renderProfileView() {
         <h2 class="text-3xl font-black tracking-tighter text-slate-900">${escapeHtml(profile.name || "User")}</h2>
         <p class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-1">${profile.role === "business" ? "Business Account" : "Explorer"} / ${escapeHtml(profile.location || "-")}</p>
         <div class="flex gap-3 mt-6 w-full max-w-xs justify-center">
-          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${posts.length}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Posts</span></div>
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(posts.length))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Posts</span></div>
           <div class="w-px h-8 bg-slate-200 mx-1"></div>
-          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${profile.followers}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Follower</span></div>
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.followers))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Follower</span></div>
           <div class="w-px h-8 bg-slate-200 mx-1"></div>
-          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${profile.following}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Following</span></div>
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.following))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Following</span></div>
         </div>
         <div class="flex gap-3 mt-8 w-full">
           <button data-nav="upload" class="flex-1 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 active:scale-95 transition-transform">${icon("plus-square", "w-4 h-4")} Status</button>
@@ -1120,54 +1174,102 @@ function renderProfileView() {
   `;
 }
 
-function openProfileFromBusiness(name) {
-  const safeName = String(name || "").trim();
-  if (!safeName) return;
-  const handle = safeName.toLowerCase().split(/\s+/).filter(Boolean).join("_");
-  const rest = state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {};
-  const posts = state.feedPosts
-    .filter((p) => p.business === safeName)
-    .map((p, idx) => ({
-      id: `biz_${idx}`,
-      url: p.image,
-      type: "square",
-      caption: p.content || "",
-      createdAt: p.createdAt,
-      likes: p.likes ?? 0,
-      comments: p.comments ?? 0
-    }));
+async function openProfileFromBusiness(input) {
+  try {
+    const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
+    const restaurantId = typeof input === "string" ? "" : (input?.id || "");
+    if (!safeName && !restaurantId) return;
 
-  state.profileModal = {
-    open: true,
-    profile: {
-      name: safeName,
-      handle: handle || "business",
-      bio: rest.description || "Offizieller Account auf MENYRA Social.",
-      avatar: rest.logoUrl || rest.logo || "https://i.pravatar.cc/300?u=business",
-      location: rest.city || "Kosovo",
-      followers: rest.followers || 1200 + Math.floor(Math.random() * 8000),
-      following: rest.following || 40 + Math.floor(Math.random() * 140),
-      role: "business",
-      posts
+    const rest = restaurantId
+      ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
+      : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
+
+    const fallbackPosts = state.feedPosts
+      .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
+      .map((p, idx) => ({
+        id: p.id || `feed_${idx}`,
+        url: p.image,
+        type: "square",
+        caption: p.content || "",
+        createdAt: p.createdAt,
+        likes: p.likes ?? 0,
+        comments: p.comments ?? 0
+      }));
+
+    const cacheKey = restaurantId || safeName;
+    const cached = businessProfileCache.get(cacheKey);
+    if (cached) {
+      state.profileModal = { open: true, profile: cached };
+      render();
+      return;
     }
-  };
-  render();
+
+    const placeholderProfile = normalizeExternalProfile({
+      profileDoc: null,
+      restaurant: rest,
+      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
+      posts: fallbackPosts
+    });
+
+    state.profileModal = { open: true, profile: placeholderProfile };
+    render();
+
+    const [profileSnap, posts] = await Promise.all([
+      fetchBusinessProfileDoc({ restaurantId, restaurant: rest }),
+      restaurantId ? loadBusinessPostsForRestaurant(restaurantId) : Promise.resolve(fallbackPosts)
+    ]);
+
+    const profileDoc = profileSnap?.data || null;
+    const resolved = normalizeExternalProfile({
+      profileDoc,
+      restaurant: rest,
+      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
+      posts: posts && posts.length ? posts : fallbackPosts
+    });
+
+    businessProfileCache.set(cacheKey, resolved);
+    state.profileModal = { open: true, profile: resolved };
+    render();
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 function toggleFollow(handle) {
   if (!handle) return;
   const idx = state.followingHandles.indexOf(handle);
-  const profile = state.profileModal.profile;
+  const profileModal = state.profileModal.profile;
+  const profileView = state.profileView?.profile || null;
+  const toNum = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const delta = idx >= 0 ? -1 : 1;
 
   if (idx >= 0) {
     state.followingHandles.splice(idx, 1);
-    state.userProfile.following = Math.max(0, (state.userProfile.following || 0) - 1);
-    if (profile) profile.followers = Math.max(0, (profile.followers || 0) - 1);
+    state.userProfile.following = Math.max(0, toNum(state.userProfile.following) - 1);
+    if (profileModal && profileModal.handle === handle) {
+      profileModal.followers = Math.max(0, toNum(profileModal.followers) - 1);
+    }
+    if (profileView && profileView.handle === handle) {
+      profileView.followers = Math.max(0, toNum(profileView.followers) - 1);
+    }
   } else {
     state.followingHandles.unshift(handle);
-    state.userProfile.following = (state.userProfile.following || 0) + 1;
-    if (profile) profile.followers = (profile.followers || 0) + 1;
+    state.userProfile.following = toNum(state.userProfile.following) + 1;
+    if (profileModal && profileModal.handle === handle) {
+      profileModal.followers = toNum(profileModal.followers) + 1;
+    }
+    if (profileView && profileView.handle === handle) {
+      profileView.followers = toNum(profileView.followers) + 1;
+    }
   }
+
+  businessProfileCache.forEach((cached) => {
+    if (cached?.handle !== handle) return;
+    cached.followers = Math.max(0, toNum(cached.followers) + delta);
+  });
 
   saveFollowing(state.followingHandles);
   render();
@@ -1183,11 +1285,7 @@ function renderProfileModal() {
       <div id="profileModalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 animate-in slide-in-from-bottom-10">
-          <div class="flex items-center justify-between mb-6">
-            <div>
-              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Profil</span>
-              <h3 class="text-2xl font-black italic tracking-tighter">${escapeHtml(p.name)}</h3>
-            </div>
+          <div class="flex justify-end mb-4">
             <button id="profileModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
           </div>
 
@@ -1206,23 +1304,20 @@ function renderProfileModal() {
 
           <div class="flex gap-3 mt-6">
             <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-              <div class="text-lg font-black text-slate-900">${escapeHtml(p.posts?.length || 0)}</div>
+              <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.posts?.length || 0))}</div>
               <div class="text-[9px] font-bold text-slate-400 uppercase">Posts</div>
             </div>
             <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-              <div class="text-lg font-black text-slate-900">${escapeHtml(p.followers)}</div>
+              <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.followers))}</div>
               <div class="text-[9px] font-bold text-slate-400 uppercase">Follower</div>
             </div>
             <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-              <div class="text-lg font-black text-slate-900">${escapeHtml(p.following)}</div>
+              <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.following))}</div>
               <div class="text-[9px] font-bold text-slate-400 uppercase">Following</div>
             </div>
           </div>
 
-          <div class="grid grid-cols-2 gap-3 mt-7">
-            ${(p.posts || []).slice(0, 6).map((it) => renderProfileGridItem(it)).join("")}
-          </div>
-          <div class="h-5"></div>
+          <div class="h-2"></div>
         </div>
       </div>
     </div>
@@ -1603,7 +1698,7 @@ function renderMain() {
   let view = "";
   if (state.activeTab === "feed") view = renderFeedView();
   if (state.activeTab === "map") view = renderMapView();
-  if (state.activeTab === "profile") view = renderProfileView();
+  if (state.activeTab === "profile") view = state.profileView ? renderPublicProfileView() : renderProfileView();
   if (state.activeTab === "settings") view = renderSettingsView();
   if (state.activeTab === "notifications") view = renderNotificationsView();
   if (state.activeTab === "upload") view = renderUploadView();
@@ -1744,6 +1839,7 @@ function bindAppEvents() {
         state.followingHandles = [];
         state.postMeta = {};
         state.profileModal = { open: false, profile: null };
+        state.profileView = null;
         state.postModal = { open: false, post: null, commentText: "", replyTo: null };
         state.likesModal = { open: false, postId: "" };
         state.selectedBusiness = null;
@@ -1762,6 +1858,7 @@ function bindAppEvents() {
         drawerOpen: false,
         settingsView: "main",
         selectedBusiness: null,
+        profileView: null,
         profileModal: { open: false, profile: null },
         postModal: { open: false, post: null, commentText: "", replyTo: null },
         likesModal: { open: false, postId: "" }
@@ -1844,13 +1941,17 @@ function bindAppEvents() {
 
   document.querySelectorAll("[data-profile-business]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      openProfileFromBusiness(btn.dataset.profileBusiness);
+      openProfileFromBusiness({
+        id: btn.dataset.profileId || "",
+        name: btn.dataset.profileBusiness || ""
+      });
     });
   });
 
   const profileModalOverlay = document.getElementById("profileModalOverlay");
   const profileModalClose = document.getElementById("profileModalClose");
   const profileFollowBtn = document.getElementById("profileFollowBtn");
+  const profileOpenBtn = document.getElementById("profileOpenBtn");
   const closeProfileModal = () => {
     state.profileModal = { open: false, profile: null };
     render();
@@ -1864,12 +1965,39 @@ function bindAppEvents() {
       if (handle) toggleFollow(handle);
     });
   }
+  if (profileOpenBtn) {
+    profileOpenBtn.addEventListener("click", () => {
+      if (!state.profileModal.profile) return;
+      state.profileView = {
+        profile: state.profileModal.profile,
+        posts: state.profileModal.profile.posts || []
+      };
+      state.profileModal = { open: false, profile: null };
+      state.activeTab = "profile";
+      render();
+    });
+  }
 
   document.querySelectorAll("[data-open-post]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const postId = btn.dataset.openPost;
       const post = findPostById(postId);
       if (post) openPostModal(post);
+    });
+  });
+
+  document.querySelectorAll("[data-public-profile-back]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.profileView = null;
+      state.activeTab = "feed";
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-public-profile-follow]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const handle = btn.dataset.publicProfileFollow;
+      if (handle) toggleFollow(handle);
     });
   });
 
@@ -2200,6 +2328,7 @@ function normalizeFeedPost(row) {
   const caption = row.caption || row.captionShort || "";
   return {
     id: row.id,
+    restaurantId: row.rid || row.restaurantId || "",
     business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
     logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || thumb,
     location: row.city || restaurant.city || "Prishtina",
@@ -2212,6 +2341,86 @@ function normalizeFeedPost(row) {
     category: row.postType || "food",
     isLive: row.isLive || false
   };
+}
+
+function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
+  const displayName = profileDoc?.displayName || fallbackName || restaurant?.name || restaurant?.restaurantName || "Business";
+  const handle = profileDoc?.handle || normalizeHandle(displayName);
+  return {
+    name: displayName,
+    handle: handle || "business",
+    bio: profileDoc?.bio || restaurant?.description || restaurant?.bio || "Offizieller Account auf MENYRA Social.",
+    avatar: profileDoc?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || "https://i.pravatar.cc/300?u=business",
+    location: profileDoc?.city || restaurant?.city || "Kosovo",
+    followers: profileDoc?.followersCount ?? profileDoc?.followers ?? 0,
+    following: profileDoc?.followingCount ?? profileDoc?.following ?? 0,
+    role: "business",
+    restaurantId: profileDoc?.restaurantId || restaurant?.id || "",
+    posts: posts || []
+  };
+}
+
+async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
+  const rest = restaurant || (restaurantId ? state.restaurants.find((r) => r.id === restaurantId) : null) || {};
+  const ownerUid = rest.ownerUid || "";
+  const ownerEmail = rest.ownerEmail || "";
+  if (ownerUid) {
+    try {
+      const snap = await getDoc(doc(db, "users", ownerUid));
+      if (snap.exists()) return { id: snap.id, data: snap.data() || {} };
+    } catch {}
+  }
+  if (restaurantId) {
+    try {
+      const snap = await getDocs(query(collection(db, "users"), where("restaurantId", "==", restaurantId), limit(1)));
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        return { id: docSnap.id, data: docSnap.data() || {} };
+      }
+    } catch {}
+  }
+  if (ownerEmail) {
+    try {
+      const snap = await getDocs(query(collection(db, "users"), where("email", "==", ownerEmail), limit(1)));
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        return { id: docSnap.id, data: docSnap.data() || {} };
+      }
+    } catch {}
+  }
+  return null;
+}
+
+async function loadBusinessPostsForRestaurant(restaurantId) {
+  if (!restaurantId) return [];
+  try {
+    const ref = collection(db, "restaurants", restaurantId, "socialPosts");
+    let snap = null;
+    try {
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(50)));
+    } catch (err) {
+      snap = await getDocs(ref);
+    }
+    const rows = [];
+    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+    return rows
+      .filter((row) => (row.status || "active") === "active")
+      .map((row) => ({
+        id: row.id,
+        url: row.media?.[0]?.url || row.mediaUrl || "",
+        type: "square",
+        title: "",
+        caption: row.caption || "",
+        createdAt: row.createdAt,
+        likes: row.likesCount ?? row.likes ?? 0,
+        comments: row.commentsCount ?? row.comments ?? 0,
+        isVideo: row.media?.[0]?.type === "video"
+      }))
+      .filter((row) => row.url);
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
 }
 
 async function loadFeedPosts() {
