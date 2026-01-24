@@ -217,7 +217,7 @@ function fullUrl(rel) {
   return new URL(rel, window.location.href).toString();
 }
 
-const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen"]);
+const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen", "social"]);
 
 function getRoleOrigin(role) {
   const host = window.location.hostname;
@@ -234,11 +234,55 @@ function roleBasePath(role) {
   return origin === window.location.origin ? `/${role}/` : "/";
 }
 
+function roleAppPath(role) {
+  const map = {
+    ceo: "/apps/menyra-ceo/dashboard.html",
+    owner: "/apps/menyra-owner/index.html",
+    staff: "/apps/menyra-staff/dashboard.html",
+    waiter: "/apps/menyra-restaurants/waiter/index.html",
+    kitchen: "/apps/menyra-restaurants/kitchen/index.html",
+    social: "/apps/menyra-social/index.html"
+  };
+  return map[String(role || "").toLowerCase()] || "";
+}
+
 function buildRoleUrl(role, params = "") {
+  const suffix = params ? `?${params}` : "";
+  if (window.location.pathname.includes("/apps/")) {
+    const appPath = roleAppPath(role);
+    if (appPath) return `${window.location.origin}${appPath}${suffix}`;
+  }
   const origin = getRoleOrigin(role);
   const basePath = roleBasePath(role);
-  const suffix = params ? `?${params}` : "";
   return `${origin}${basePath}${suffix}`;
+}
+
+const ROLE_LABELS = {
+  ceo: "CEO",
+  owner: "Owner",
+  staff: "Staff"
+};
+
+function roleLabel(role) {
+  if (!role) return "";
+  const key = String(role || "").toLowerCase();
+  if (ROLE_LABELS[key]) return ROLE_LABELS[key];
+  return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function mountRoleSwitchLink(role) {
+  if (!role) return;
+  const nav = $("sidebarNav");
+  if (!nav) return;
+  if (nav.querySelector("[data-role-switch]")) return;
+  const label = roleLabel(role);
+  if (!label) return;
+  const link = document.createElement("a");
+  link.className = "menu-item";
+  link.href = buildRoleUrl("social");
+  link.dataset.roleSwitch = "social";
+  link.innerHTML = `<i class="fas fa-right-left me-3"></i>Switch to ${esc(label)} User`;
+  nav.appendChild(link);
 }
 
 // -------------------------
@@ -605,15 +649,16 @@ function initNav() {
     if (!host) return;
 
     // Build list
-    const desktopLinks = Array.from(document.querySelectorAll("#sidebarNav a[data-section]"));
+    const desktopLinks = Array.from(document.querySelectorAll("#sidebarNav a[data-section], #sidebarNav a[data-role-switch]"));
     const list = document.createElement("ul");
     list.className = "m-sidebar-nav m-sidebar-nav--mobile";
 
     desktopLinks.forEach((dl) => {
       const li = document.createElement("li");
       const a = document.createElement("a");
-      a.href = "#";
-      a.dataset.section = dl.dataset.section;
+      a.href = dl.getAttribute("href") || "#";
+      if (dl.dataset.section) a.dataset.section = dl.dataset.section;
+      if (dl.dataset.roleSwitch) a.dataset.roleSwitch = dl.dataset.roleSwitch;
       a.className = dl.className || "";
       // keep visuals
       a.innerHTML = dl.innerHTML;
@@ -3479,6 +3524,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
 }
 
 export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", restrictRestaurantId = null } = {}) {
+  mountRoleSwitchLink(role);
   const nav = initNav();
   document.documentElement.classList.add("m-boot");
 

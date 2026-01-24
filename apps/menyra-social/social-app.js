@@ -129,6 +129,14 @@ const DEFAULT_NOTIFICATIONS = [
   }
 ];
 
+const ROLE_SWITCH_ORDER = ["ceo", "owner", "staff"];
+const ROLE_SWITCH_LABELS = {
+  ceo: "CEO",
+  owner: "Owner",
+  staff: "Staff"
+};
+const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen", "social"]);
+
 const state = {
   sessionReady: false,
   user: null,
@@ -145,6 +153,7 @@ const state = {
   userPosts: [],
   businessPosts: [],
   userProfile: { ...DEFAULT_PROFILE },
+  roleSwitchRoles: [],
   followingHandles: [],
   profileModal: {
     open: false,
@@ -280,6 +289,102 @@ function normalizeProfile(data, user) {
     restaurantId: data?.restaurantId || "",
     posts: []
   };
+}
+
+function normalizeRoleList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || "").trim().toLowerCase())
+      .filter(Boolean);
+  }
+  return String(value)
+    .split(/[,\s]+/)
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function roleLabel(role) {
+  if (!role) return "";
+  const key = String(role || "").toLowerCase();
+  return ROLE_SWITCH_LABELS[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+}
+
+function getRoleOrigin(role) {
+  const host = window.location.hostname;
+  const proto = window.location.protocol;
+  const isLocal = host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
+  if (isLocal || host.endsWith(".vercel.app")) return window.location.origin;
+  const parts = host.split(".");
+  const root = ROLE_HOSTS.has(parts[0]) ? parts.slice(1).join(".") : host;
+  return `${proto}//${role}.${root}`;
+}
+
+function roleBasePath(role) {
+  const origin = getRoleOrigin(role);
+  return origin === window.location.origin ? `/${role}/` : "/";
+}
+
+function buildRoleUrl(role, params = "") {
+  const origin = getRoleOrigin(role);
+  const basePath = roleBasePath(role);
+  const suffix = params ? `?${params}` : "";
+  return `${origin}${basePath}${suffix}`;
+}
+
+function buildRoleSwitchUrl(role, profile) {
+  const params = new URLSearchParams();
+  if (role === "owner" && profile?.restaurantId) params.set("r", profile.restaurantId);
+  const query = params.toString();
+  const path = window.location.pathname || "";
+  const fileMap = {
+    ceo: "/apps/menyra-ceo/dashboard.html",
+    owner: "/apps/menyra-owner/index.html",
+    staff: "/apps/menyra-staff/dashboard.html"
+  };
+
+  if (path.includes("/apps/") && fileMap[role]) {
+    return `${window.location.origin}${fileMap[role]}${query ? `?${query}` : ""}`;
+  }
+
+  return buildRoleUrl(role, query);
+}
+
+async function resolveRoleSwitchTargets(user) {
+  if (!user) {
+    state.roleSwitchRoles = [];
+    return;
+  }
+
+  const roles = new Set();
+  const profile = state.userProfile || {};
+  const profileRoles = normalizeRoleList(profile.roles || profile.role || "");
+
+  if (profileRoles.includes("ceo")) roles.add("ceo");
+  if (profileRoles.includes("staff")) roles.add("staff");
+  if (profileRoles.includes("owner")) roles.add("owner");
+  if (String(profile.role || "").toLowerCase() === "business") roles.add("owner");
+
+  const [ceoSnap, staffSnap] = await Promise.all([
+    getDoc(doc(db, "superadmins", user.uid)).catch(() => null),
+    getDoc(doc(db, "staffAdmins", user.uid)).catch(() => null)
+  ]);
+
+  if (ceoSnap?.exists?.()) roles.add("ceo");
+  if (staffSnap?.exists?.()) roles.add("staff");
+
+  if (!roles.has("owner") && profile?.restaurantId) {
+    try {
+      const staffSnap = await getDoc(doc(db, "restaurants", profile.restaurantId, "staff", user.uid));
+      if (staffSnap.exists()) {
+        const staffRoles = normalizeRoleList(staffSnap.data()?.roles || staffSnap.data()?.role || "");
+        if (staffRoles.includes("owner")) roles.add("owner");
+      }
+    } catch {}
+  }
+
+  state.roleSwitchRoles = ROLE_SWITCH_ORDER.filter((role) => roles.has(role));
+  render();
 }
 
 function mapRestaurantToCard(rest, idx) {
@@ -700,6 +805,20 @@ function renderAuthScreen() {
 
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
+  const switchLinks = (state.user && state.roleSwitchRoles.length) ? `
+        <div class="mt-6 space-y-2">
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Switch</p>
+          ${state.roleSwitchRoles.map((role) => {
+            const label = roleLabel(role);
+            const url = buildRoleSwitchUrl(role, state.userProfile);
+            return `
+            <a href="${escapeHtml(url)}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all bg-slate-900 text-white hover:bg-slate-800">
+              <div class="flex items-center gap-4">${icon("arrow-right-left", "w-4 h-4")} Switch to ${escapeHtml(label)}</div>
+            </a>
+          `;
+          }).join("")}
+        </div>
+      ` : "";
   return `
     <div class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
@@ -732,6 +851,7 @@ function renderDrawer() {
             </button>
           `).join("")}
         </nav>
+        ${switchLinks}
         <button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} Abmelden</button>
       </div>
     </div>
@@ -2174,6 +2294,7 @@ async function bootstrapUser(user) {
   state.isLoading = true;
   render();
   await loadUserProfile(user);
+  await resolveRoleSwitchTargets(user);
   await loadRestaurants();
   await loadFeedPosts();
   await loadUserPosts();
@@ -2194,6 +2315,7 @@ onAuthStateChanged(auth, (user) => {
   if (user) {
     bootstrapUser(user);
   } else {
+    state.roleSwitchRoles = [];
     render();
   }
 });
