@@ -187,6 +187,21 @@ const state = {
   }
 };
 
+let renderSuspended = 0;
+let renderQueued = false;
+
+function suspendRender() {
+  renderSuspended += 1;
+}
+
+function resumeRender() {
+  if (renderSuspended > 0) renderSuspended -= 1;
+  if (renderSuspended === 0 && renderQueued) {
+    renderQueued = false;
+    render();
+  }
+}
+
 function escapeHtml(value) {
   return String(value || "").replace(/[&<>"']/g, (ch) => ({
     "&": "&amp;",
@@ -1614,6 +1629,10 @@ function renderLoading() {
 }
 
 function render() {
+  if (renderSuspended > 0) {
+    renderQueued = true;
+    return;
+  }
   if (!state.sessionReady) {
     appEl.innerHTML = renderLoading();
   } else if (!state.user) {
@@ -2344,17 +2363,21 @@ async function bootstrapUser(user) {
   if (!user) return;
   state.isLoading = true;
   render();
-  await loadUserProfile(user);
-  await resolveRoleSwitchTargets(user);
-  await loadRestaurants();
-  await loadFeedPosts();
-  await loadUserPosts();
-  if (state.userProfile.role === "business") {
-    await loadBusinessPosts();
+  suspendRender();
+  try {
+    await loadUserProfile(user);
+    await resolveRoleSwitchTargets(user);
+    await loadRestaurants();
+    await loadFeedPosts();
+    await loadUserPosts();
+    if (state.userProfile.role === "business") {
+      await loadBusinessPosts();
+    }
+    await loadStories();
+  } finally {
+    state.isLoading = false;
+    resumeRender();
   }
-  await loadStories();
-  state.isLoading = false;
-  render();
 }
 
 loadPersisted();

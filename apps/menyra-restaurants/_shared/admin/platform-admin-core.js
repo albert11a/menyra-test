@@ -4459,13 +4459,16 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     if (loginShowTimer) { clearTimeout(loginShowTimer); loginShowTimer = null; }
 
     if (!user) {
-      document.body.classList.add("m-login");
-      document.documentElement.classList.add("m-login");
-
       if (loginOverlay) {
         loginShowTimer = setTimeout(() => {
+          if (auth.currentUser) return;
+          document.body.classList.add("m-login");
+          document.documentElement.classList.add("m-login");
           show(loginOverlay);
-        }, 160);
+        }, 600);
+      } else {
+        document.body.classList.add("m-login");
+        document.documentElement.classList.add("m-login");
       }
 
       setText("adminStatus", "Nicht eingeloggt.");
