@@ -19,6 +19,10 @@ import {
   limit,
   deleteDoc,
   setDoc,
+  updateDoc,
+  increment,
+  arrayUnion,
+  arrayRemove,
   serverTimestamp,
   Timestamp
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
@@ -174,7 +178,8 @@ const state = {
     open: false,
     post: null,
     commentText: "",
-    replyTo: null
+    replyTo: null,
+    loading: false
   },
   likesModal: {
     open: false,
@@ -199,6 +204,7 @@ let renderQueued = false;
 let bodyScrollLocked = false;
 let bodyScrollTop = 0;
 let profileMenuBound = false;
+let overlayCache = { profile: "", post: "", likes: "" };
 
 function suspendRender() {
   renderSuspended += 1;
@@ -248,11 +254,11 @@ function saveNotifications(notifications) {
 }
 
 function saveFollowing(handles) {
-  safeStorage.setItem(STORAGE_KEYS.following, JSON.stringify(handles));
+  void handles;
 }
 
 function savePostMeta(meta) {
-  safeStorage.setItem(STORAGE_KEYS.postMeta, JSON.stringify(meta));
+  void meta;
 }
 
 function loadPersisted() {
@@ -271,15 +277,8 @@ function loadPersisted() {
     try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch {}
   }
 
-  const savedFollowing = safeStorage.getItem(STORAGE_KEYS.following);
-  if (savedFollowing) {
-    try { state.followingHandles = JSON.parse(savedFollowing) || []; } catch {}
-  }
-
-  const savedMeta = safeStorage.getItem(STORAGE_KEYS.postMeta);
-  if (savedMeta) {
-    try { state.postMeta = JSON.parse(savedMeta) || {}; } catch {}
-  }
+  state.followingHandles = [];
+  state.postMeta = {};
 }
 
 function resolveAdminLogin(email, pass) {
@@ -668,6 +667,7 @@ function mapLocate() {
 
 function currentUserBadge() {
   return {
+    uid: state.user?.uid || "",
     name: state.userProfile.name || "User",
     handle: state.userProfile.handle || "user",
     avatar: state.userProfile.avatar || "https://i.pravatar.cc/120?u=menyra"
@@ -688,27 +688,14 @@ function ensurePostMeta(postId) {
   if (!postId) return { likes: [], comments: [] };
   if (!state.postMeta[postId]) {
     state.postMeta[postId] = { likes: [], comments: [] };
-    savePostMeta(state.postMeta);
   }
   return state.postMeta[postId];
 }
 
 function resolvePostCounts(post) {
-  const meta = ensurePostMeta(post.id);
-  const likeBase = typeof post.likes === "number" ? post.likes : 0;
-  const commentBase = typeof post.comments === "number" ? post.comments : 0;
-  const likeCount = likeBase + (meta.likes?.length || 0);
-  const commentCount = commentBase + (meta.comments?.length || 0);
-
-  const likeLabel = meta.likes?.length
-    ? String(likeCount)
-    : (typeof post.likes === "number" ? String(likeCount) : String(post.likes ?? 0));
-
-  const commentLabel = meta.comments?.length
-    ? String(commentCount)
-    : (typeof post.comments === "number" ? String(commentCount) : String(post.comments ?? 0));
-
-  return { likeLabel, commentLabel };
+  const likeCount = typeof post.likes === "number" ? post.likes : Number(post.likes) || 0;
+  const commentCount = typeof post.comments === "number" ? post.comments : Number(post.comments) || 0;
+  return { likeLabel: String(likeCount), commentLabel: String(commentCount) };
 }
 
 function findPostById(postId) {
@@ -722,7 +709,7 @@ function findPostById(postId) {
   return modalPosts.find((item) => String(item.id) === String(postId)) || null;
 }
 
-function openPostModal(post) {
+async function openPostModal(post) {
   if (!post) return;
   ensurePostMeta(post.id);
   state.profileModal = { open: false, profile: null };
@@ -730,18 +717,24 @@ function openPostModal(post) {
     open: true,
     post,
     commentText: "",
-    replyTo: null
+    replyTo: null,
+    loading: true
   };
+  renderOverlays();
+  await loadPostMetaFromFirebase(post);
+  state.postModal.loading = false;
   renderOverlays();
 }
 
 function closePostModal() {
-  state.postModal = { open: false, post: null, commentText: "", replyTo: null };
+  state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false };
   state.likesModal = { open: false, postId: "" };
   renderOverlays();
 }
 
 function ensureCommentShape(comment) {
+  const likes = Array.isArray(comment.likes) ? comment.likes : [];
+  const likesCount = Number.isFinite(Number(comment.likesCount)) ? Number(comment.likesCount) : likes.length;
   return {
     id: comment.id,
     author: comment.author || "User",
@@ -749,7 +742,8 @@ function ensureCommentShape(comment) {
     avatar: comment.avatar || "https://i.pravatar.cc/120?u=menyra",
     text: comment.text || "",
     createdAt: comment.createdAt || new Date().toISOString(),
-    likes: comment.likes || [],
+    likes,
+    likesCount,
     replies: (comment.replies || []).map((reply) => ({
       id: reply.id,
       author: reply.author || "User",
@@ -757,60 +751,130 @@ function ensureCommentShape(comment) {
       avatar: reply.avatar || "https://i.pravatar.cc/120?u=menyra",
       text: reply.text || "",
       createdAt: reply.createdAt || new Date().toISOString(),
-      likes: reply.likes || []
+      likes: Array.isArray(reply.likes) ? reply.likes : [],
+      likesCount: Number.isFinite(Number(reply.likesCount)) ? Number(reply.likesCount) : (reply.likes ? reply.likes.length : 0)
     }))
   };
 }
 
-function addComment(postId, text, replyTo) {
+async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0 } = {}) {
+  if (!post) return;
+  const likeBase = Number(post.likes) || 0;
+  const commentBase = Number(post.comments) || 0;
+  if (likesDelta) post.likes = Math.max(0, likeBase + likesDelta);
+  if (commentsDelta) post.comments = Math.max(0, commentBase + commentsDelta);
+  const feedMatch = state.feedPosts.find((item) => String(item.id) === String(post.id));
+  if (feedMatch) {
+    if (likesDelta) feedMatch.likes = Math.max(0, (Number(feedMatch.likes) || 0) + likesDelta);
+    if (commentsDelta) feedMatch.comments = Math.max(0, (Number(feedMatch.comments) || 0) + commentsDelta);
+  }
+
+  const updates = {};
+  if (likesDelta) updates.likesCount = increment(likesDelta);
+  if (commentsDelta) updates.commentsCount = increment(commentsDelta);
+
+  const postRef = getPostDocRef(post);
+  if (postRef && Object.keys(updates).length) {
+    try {
+      await updateDoc(postRef, updates);
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  if (post.restaurantId && Object.keys(updates).length) {
+    const feedRef = getFeedDocRef(post);
+    if (feedRef) {
+      try {
+        await updateDoc(feedRef, updates);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+}
+
+async function addComment(postId, text, replyTo) {
   const trimmed = String(text || "").trim();
-  if (!trimmed) return;
+  if (!trimmed || !state.user) return;
+  const post = findPostById(postId);
+  const postRef = getPostDocRef(post);
+  if (!post || !postRef) return;
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
-  const newComment = {
-    id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+  const commentRef = doc(collection(postRef, "comments"));
+  const payload = {
     author: user.name,
     handle: user.handle,
     avatar: user.avatar,
     text: trimmed,
-    createdAt: new Date().toISOString(),
-    likes: [],
-    replies: []
+    createdAt: serverTimestamp(),
+    parentId: replyTo || null,
+    likes: []
   };
 
-  if (replyTo) {
-    const target = meta.comments.find((item) => item.id === replyTo);
-    if (target) {
-      target.replies = [newComment, ...(target.replies || [])];
+  try {
+    await setDoc(commentRef, payload);
+    await updatePostCounts(post, { commentsDelta: 1 });
+    const newComment = ensureCommentShape({
+      id: commentRef.id,
+      ...payload,
+      createdAt: new Date().toISOString()
+    });
+    if (replyTo) {
+      const target = meta.comments.find((item) => item.id === replyTo);
+      if (target) {
+        target.replies = [newComment, ...(target.replies || [])];
+      } else {
+        meta.comments = [newComment, ...(meta.comments || [])];
+      }
     } else {
       meta.comments = [newComment, ...(meta.comments || [])];
     }
-  } else {
-    meta.comments = [newComment, ...(meta.comments || [])];
+    state.postMeta[postId] = meta;
+    state.postModal.commentText = "";
+    state.postModal.replyTo = null;
+    renderOverlays();
+  } catch (err) {
+    console.error(err);
   }
-
-  state.postMeta[postId] = meta;
-  savePostMeta(state.postMeta);
-  state.postModal.commentText = "";
-  state.postModal.replyTo = null;
-  renderOverlays();
 }
 
-function togglePostLike(postId) {
+async function togglePostLike(postId) {
+  if (!state.user) return;
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
-  const idx = meta.likes.findIndex((item) => item.handle === user.handle);
-  if (idx >= 0) {
-    meta.likes.splice(idx, 1);
-  } else {
-    meta.likes.unshift(user);
+  const post = findPostById(postId);
+  const postRef = getPostDocRef(post);
+  if (!post || !postRef) return;
+  const likeId = user.uid || user.handle;
+  const likeRef = doc(collection(postRef, "likes"), likeId);
+  const idx = meta.likes.findIndex((item) => item.uid === user.uid || item.handle === user.handle);
+  try {
+    if (idx >= 0) {
+      await deleteDoc(likeRef);
+      meta.likes.splice(idx, 1);
+      await updatePostCounts(post, { likesDelta: -1 });
+    } else {
+      await setDoc(likeRef, {
+        uid: user.uid,
+        name: user.name,
+        handle: user.handle,
+        avatar: user.avatar,
+        createdAt: serverTimestamp()
+      });
+      meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
+      await updatePostCounts(post, { likesDelta: 1 });
+    }
+    state.postMeta[postId] = meta;
+    renderOverlays();
+  } catch (err) {
+    console.error(err);
   }
-  state.postMeta[postId] = meta;
-  savePostMeta(state.postMeta);
-  renderOverlays();
 }
 
-function toggleCommentLike(postId, commentId, replyId) {
+async function toggleCommentLike(postId, commentId, replyId) {
+  if (!state.user) return;
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
   const list = meta.comments || [];
@@ -820,17 +884,29 @@ function toggleCommentLike(postId, commentId, replyId) {
   const target = replyId ? (comment.replies || []).find((item) => item.id === replyId) : comment;
   if (!target) return;
 
-  const likes = target.likes || [];
-  const idx = likes.findIndex((item) => item.handle === user.handle);
-  if (idx >= 0) {
-    likes.splice(idx, 1);
-  } else {
-    likes.unshift(user);
+  const post = findPostById(postId);
+  const postRef = getPostDocRef(post);
+  if (!post || !postRef) return;
+  const commentDocId = replyId || commentId;
+  const commentRef = doc(collection(postRef, "comments"), String(commentDocId));
+  const likeId = user.uid || user.handle;
+  const likes = Array.isArray(target.likes) ? target.likes : [];
+  const idx = likes.findIndex((item) => item === likeId);
+  try {
+    if (idx >= 0) {
+      await updateDoc(commentRef, { likes: arrayRemove(likeId) });
+      likes.splice(idx, 1);
+    } else {
+      await updateDoc(commentRef, { likes: arrayUnion(likeId) });
+      likes.unshift(likeId);
+    }
+    target.likes = likes;
+    target.likesCount = likes.length;
+    state.postMeta[postId] = meta;
+    renderOverlays();
+  } catch (err) {
+    console.error(err);
   }
-  target.likes = likes;
-  state.postMeta[postId] = meta;
-  savePostMeta(state.postMeta);
-  renderOverlays();
 }
 function renderAuthScreen() {
   const isRegister = state.auth.mode === "register";
@@ -1316,12 +1392,73 @@ function setProfileMenuOpen(postId) {
   });
 }
 
+function getPostDocRef(post) {
+  if (!post || !post.id) return null;
+  const id = String(post.id);
+  if (post.ownerType === "restaurant" && post.ownerId) {
+    return doc(db, "restaurants", post.ownerId, "socialPosts", id);
+  }
+  if (post.ownerType === "user" && post.ownerId) {
+    return doc(db, "users", post.ownerId, "posts", id);
+  }
+  if (post.restaurantId) {
+    return doc(db, "restaurants", post.restaurantId, "socialPosts", id);
+  }
+  if (state.user?.uid) {
+    return doc(db, "users", state.user.uid, "posts", id);
+  }
+  return null;
+}
+
+function getFeedDocRef(post) {
+  if (!post?.id) return null;
+  return doc(db, "socialFeed", String(post.id));
+}
+
+async function loadPostMetaFromFirebase(post) {
+  const postRef = getPostDocRef(post);
+  if (!postRef) return { likes: [], comments: [] };
+  const meta = { likes: [], comments: [] };
+  try {
+    const likesSnap = await getDocs(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(100)));
+    meta.likes = likesSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  } catch (err) {
+    console.error(err);
+  }
+  try {
+    const commentsSnap = await getDocs(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(200)));
+    const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    const byId = new Map();
+    const top = [];
+    rows.forEach((row) => {
+      const item = ensureCommentShape(row);
+      byId.set(item.id, item);
+    });
+    rows.forEach((row) => {
+      const item = byId.get(row.id);
+      const parentId = row.parentId || null;
+      if (parentId && byId.has(parentId)) {
+        const parent = byId.get(parentId);
+        parent.replies = [item, ...(parent.replies || [])];
+      } else if (item) {
+        top.push(item);
+      }
+    });
+    meta.comments = top;
+  } catch (err) {
+    console.error(err);
+  }
+  state.postMeta[post.id] = meta;
+  return meta;
+}
+
 function renderPublicProfileView() {
   const view = state.profileView;
   if (!view || !view.profile) return "";
   const profile = view.profile;
   const posts = view.posts || profile.posts || [];
-  const isFollowing = state.followingHandles.includes(profile.handle);
+  const followKey = String(profile.handle || "").replace(/^@/, "");
+  const isFollowing = state.followingHandles.includes(followKey);
   return `
     <div class="p-8 animate-in slide-in-from-bottom-10 duration-700 pb-24">
       <div class="flex items-center gap-3 mb-8">
@@ -1344,7 +1481,7 @@ function renderPublicProfileView() {
           <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.following))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Following</span></div>
         </div>
         <div class="flex gap-3 mt-8 w-full max-w-xs">
-          <button data-public-profile-follow="${escapeHtml(profile.handle)}" class="flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+          <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" class="flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
             ${isFollowing ? "Following" : "Follow"}
           </button>
         </div>
@@ -1456,11 +1593,13 @@ async function openProfileFromBusiness(input) {
       .map((p, idx) => ({
         id: p.id || `feed_${idx}`,
         url: p.image,
-        type: row.type || "square",
+        type: p.type || "square",
         caption: p.content || "",
         createdAt: p.createdAt,
         likes: p.likes ?? 0,
-        comments: p.comments ?? 0
+        comments: p.comments ?? 0,
+        ownerType: "restaurant",
+        ownerId: restaurantId || p.restaurantId || ""
       }));
 
     const cacheKey = restaurantId || safeName;
@@ -1486,9 +1625,8 @@ async function openProfileFromBusiness(input) {
       restaurantId ? loadBusinessPostsForRestaurant(restaurantId) : Promise.resolve(fallbackPosts)
     ]);
 
-    const profileDoc = profileSnap?.data || null;
     const resolved = normalizeExternalProfile({
-      profileDoc,
+      profileDoc: profileSnap,
       restaurant: rest,
       fallbackName: safeName || rest.name || rest.restaurantName || "Business",
       posts: posts && posts.length ? posts : fallbackPosts
@@ -1502,43 +1640,128 @@ async function openProfileFromBusiness(input) {
   }
 }
 
-function toggleFollow(handle) {
-  if (!handle) return;
-  const idx = state.followingHandles.indexOf(handle);
-  const profileModal = state.profileModal.profile;
-  const profileView = state.profileView?.profile || null;
+async function loadFollowingFromFirebase() {
+  if (!state.user) return;
+  try {
+    const ref = collection(db, "users", state.user.uid, "following");
+    const snap = await getDocs(ref);
+    const handles = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() || {};
+      if (data.handle) handles.push(String(data.handle));
+    });
+    state.followingHandles = handles;
+  } catch (err) {
+    console.error(err);
+    state.followingHandles = [];
+  }
+}
+
+async function resolveUserByHandle(handle) {
+  if (!handle) return null;
+  const safeHandle = String(handle || "").replace(/^@/, "");
+  try {
+    const snap = await getDocs(query(collection(db, "users"), where("handle", "==", safeHandle), limit(1)));
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      return { id: docSnap.id, data: docSnap.data() || {} };
+    }
+  } catch (err) {
+    console.error(err);
+  }
+  return null;
+}
+
+async function toggleFollow(handle, target = {}) {
+  if (!state.user) return;
+  const safeHandle = String(handle || "").replace(/^@/, "");
+  if (!safeHandle) return;
+
+  let targetType = target.type || "";
+  let targetId = target.id || "";
+  if (!targetType) {
+    if (target.restaurantId) {
+      targetType = "restaurant";
+      targetId = target.restaurantId;
+    } else if (target.uid) {
+      targetType = "user";
+      targetId = target.uid;
+    }
+  }
+
+  if (!targetId && safeHandle) {
+    const userSnap = await resolveUserByHandle(safeHandle);
+    if (userSnap?.id) {
+      targetType = "user";
+      targetId = userSnap.id;
+    }
+  }
+
+  const docId = `${targetType || "handle"}_${targetId || safeHandle}`;
+  const followRef = doc(db, "users", state.user.uid, "following", docId);
+  const idx = state.followingHandles.indexOf(safeHandle);
+  const isUnfollow = idx >= 0;
+  const delta = isUnfollow ? -1 : 1;
   const toNum = (value) => {
     const n = Number(value);
     return Number.isFinite(n) ? n : 0;
   };
-  const delta = idx >= 0 ? -1 : 1;
 
-  if (idx >= 0) {
-    state.followingHandles.splice(idx, 1);
-    state.userProfile.following = Math.max(0, toNum(state.userProfile.following) - 1);
-    if (profileModal && profileModal.handle === handle) {
-      profileModal.followers = Math.max(0, toNum(profileModal.followers) - 1);
+  try {
+    if (isUnfollow) {
+      await deleteDoc(followRef);
+      state.followingHandles.splice(idx, 1);
+    } else {
+      await setDoc(followRef, {
+        handle: safeHandle,
+        targetType: targetType || "handle",
+        targetId: targetId || "",
+        name: target.name || "",
+        avatar: target.avatar || "",
+        createdAt: serverTimestamp()
+      });
+      state.followingHandles.unshift(safeHandle);
     }
-    if (profileView && profileView.handle === handle) {
-      profileView.followers = Math.max(0, toNum(profileView.followers) - 1);
+
+    state.userProfile.following = Math.max(0, toNum(state.userProfile.following) + delta);
+    try {
+      await updateDoc(doc(db, "users", state.user.uid), { followingCount: increment(delta) });
+    } catch (err) {
+      console.error(err);
     }
-  } else {
-    state.followingHandles.unshift(handle);
-    state.userProfile.following = toNum(state.userProfile.following) + 1;
-    if (profileModal && profileModal.handle === handle) {
-      profileModal.followers = toNum(profileModal.followers) + 1;
+
+    if (targetType === "user" && targetId) {
+      try {
+        await updateDoc(doc(db, "users", targetId), { followersCount: increment(delta) });
+      } catch (err) {
+        console.error(err);
+      }
     }
-    if (profileView && profileView.handle === handle) {
-      profileView.followers = toNum(profileView.followers) + 1;
+    if (targetType === "restaurant" && targetId) {
+      try {
+        await updateDoc(doc(db, "restaurants", targetId), { followersCount: increment(delta) });
+      } catch (err) {
+        console.error(err);
+      }
     }
+
+    const profileModal = state.profileModal.profile;
+    const profileView = state.profileView?.profile || null;
+    if (profileModal && profileModal.handle === safeHandle) {
+      profileModal.followers = Math.max(0, toNum(profileModal.followers) + delta);
+    }
+    if (profileView && profileView.handle === safeHandle) {
+      profileView.followers = Math.max(0, toNum(profileView.followers) + delta);
+    }
+
+    businessProfileCache.forEach((cached) => {
+      if (cached?.handle !== safeHandle) return;
+      cached.followers = Math.max(0, toNum(cached.followers) + delta);
+    });
+  } catch (err) {
+    console.error(err);
   }
 
-  businessProfileCache.forEach((cached) => {
-    if (cached?.handle !== handle) return;
-    cached.followers = Math.max(0, toNum(cached.followers) + delta);
-  });
-
-  saveFollowing(state.followingHandles);
   if (state.profileModal.open && !state.profileView) {
     renderOverlays();
   } else {
@@ -1549,7 +1772,8 @@ function toggleFollow(handle) {
 function renderProfileModal() {
   if (!state.profileModal.open || !state.profileModal.profile) return "";
   const p = state.profileModal.profile;
-  const isFollowing = state.followingHandles.includes(p.handle);
+  const followKey = String(p.handle || "").replace(/^@/, "");
+  const isFollowing = state.followingHandles.includes(followKey);
 
   return `
     <div class="fixed inset-0 z-[60]">
@@ -1566,7 +1790,7 @@ function renderProfileModal() {
               <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
               <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / Business</p>
             </div>
-            <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+            <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
               ${isFollowing ? "Following" : "Follow"}
             </button>
           </div>
@@ -1596,7 +1820,7 @@ function renderProfileModal() {
 }
 
 function renderCommentItem(postId, comment, parentId = "") {
-  const likeCount = comment.likes?.length || 0;
+  const likeCount = Array.isArray(comment.likes) ? comment.likes.length : (Number(comment.likesCount) || 0);
   const isReply = !!parentId;
   return `
     <div class="flex gap-3 ${isReply ? "ml-10" : ""}">
@@ -1626,7 +1850,8 @@ function renderPostModal() {
   const caption = post.caption || post.title || "";
   const imageUrl = post.url || post.image || "";
   const comments = (meta.comments || []).map(ensureCommentShape);
-  const isLiked = meta.likes?.some((item) => item.handle === currentUserBadge().handle);
+  const userBadge = currentUserBadge();
+  const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
   const replyTarget = comments.find((item) => item.id === state.postModal.replyTo);
 
   return `
@@ -1662,14 +1887,16 @@ function renderPostModal() {
           </div>
 
           <div class="mt-5 space-y-4 max-h-56 overflow-y-auto no-scrollbar">
-            ${comments.length ? comments.map((comment) => `
+            ${state.postModal.loading ? `
+              <div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>
+            ` : (comments.length ? comments.map((comment) => `
               <div class="space-y-3">
                 ${renderCommentItem(post.id, comment)}
                 ${(comment.replies || []).map((reply) => renderCommentItem(post.id, reply, comment.id)).join("")}
               </div>
             `).join("") : `
               <div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>
-            `}
+            `)}
           </div>
 
           ${replyTarget ? `
@@ -1990,12 +2217,48 @@ function ensureOverlayRoot() {
     root.id = "overlayRoot";
     document.body.appendChild(root);
   }
+  if (!document.getElementById("profileOverlayRoot")) {
+    const profileRoot = document.createElement("div");
+    profileRoot.id = "profileOverlayRoot";
+    root.appendChild(profileRoot);
+  }
+  if (!document.getElementById("postOverlayRoot")) {
+    const postRoot = document.createElement("div");
+    postRoot.id = "postOverlayRoot";
+    root.appendChild(postRoot);
+  }
+  if (!document.getElementById("likesOverlayRoot")) {
+    const likesRoot = document.createElement("div");
+    likesRoot.id = "likesOverlayRoot";
+    root.appendChild(likesRoot);
+  }
   return root;
 }
 
 function renderOverlays() {
   const root = ensureOverlayRoot();
-  root.innerHTML = `${renderProfileModal()}${renderPostModal()}${renderLikesModal()}`;
+  const profileRoot = document.getElementById("profileOverlayRoot");
+  const postRoot = document.getElementById("postOverlayRoot");
+  const likesRoot = document.getElementById("likesOverlayRoot");
+  const profileHtml = renderProfileModal();
+  const postHtml = renderPostModal();
+  const likesHtml = renderLikesModal();
+  const profileChanged = profileHtml !== overlayCache.profile;
+  const postChanged = postHtml !== overlayCache.post;
+  const likesChanged = likesHtml !== overlayCache.likes;
+
+  if (profileRoot && profileChanged) {
+    profileRoot.innerHTML = profileHtml;
+    overlayCache.profile = profileHtml;
+  }
+  if (postRoot && postChanged) {
+    postRoot.innerHTML = postHtml;
+    overlayCache.post = postHtml;
+  }
+  if (likesRoot && likesChanged) {
+    likesRoot.innerHTML = likesHtml;
+    overlayCache.likes = likesHtml;
+  }
   const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open);
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
@@ -2016,10 +2279,10 @@ function renderOverlays() {
     window.scrollTo(0, bodyScrollTop);
     bodyScrollLocked = false;
   }
-  if (window.lucide?.createIcons) {
+  if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged)) {
     window.lucide.createIcons();
   }
-  bindOverlayEvents();
+  bindOverlayEvents({ profileChanged, postChanged, likesChanged });
 }
 
 function renderLoading() {
@@ -2123,108 +2386,120 @@ function bindAuthEvents() {
   }
 }
 
-function bindOverlayEvents() {
-  const profileModalOverlay = document.getElementById("profileModalOverlay");
-  const profileModalClose = document.getElementById("profileModalClose");
-  const profileFollowBtn = document.getElementById("profileFollowBtn");
-  const profileOpenBtn = document.getElementById("profileOpenBtn");
-  const closeProfileModal = () => {
-    state.profileModal = { open: false, profile: null };
-    renderOverlays();
-  };
-
-  if (profileModalOverlay) profileModalOverlay.addEventListener("click", closeProfileModal);
-  if (profileModalClose) profileModalClose.addEventListener("click", closeProfileModal);
-  if (profileFollowBtn) {
-    profileFollowBtn.addEventListener("click", () => {
-      const handle = profileFollowBtn.dataset.handle;
-      if (handle) toggleFollow(handle);
-    });
-  }
-  if (profileOpenBtn) {
-    profileOpenBtn.addEventListener("click", () => {
-      if (!state.profileModal.profile) return;
-      state.profileView = {
-        profile: state.profileModal.profile,
-        posts: state.profileModal.profile.posts || []
-      };
+function bindOverlayEvents({ profileChanged = true, postChanged = true, likesChanged = true } = {}) {
+  if (profileChanged) {
+    const profileModalOverlay = document.getElementById("profileModalOverlay");
+    const profileModalClose = document.getElementById("profileModalClose");
+    const profileFollowBtn = document.getElementById("profileFollowBtn");
+    const profileOpenBtn = document.getElementById("profileOpenBtn");
+    const closeProfileModal = () => {
       state.profileModal = { open: false, profile: null };
-      state.activeTab = "profile";
-      render();
-    });
-  }
-
-  const postModalOverlay = document.getElementById("postModalOverlay");
-  const postModalClose = document.getElementById("postModalClose");
-  if (postModalOverlay) postModalOverlay.addEventListener("click", closePostModal);
-  if (postModalClose) postModalClose.addEventListener("click", closePostModal);
-
-  const postLikeBtn = document.getElementById("postLikeBtn");
-  if (postLikeBtn) {
-    postLikeBtn.addEventListener("click", () => {
-      const postId = postLikeBtn.dataset.postId;
-      if (postId) togglePostLike(postId);
-    });
-  }
-
-  const postLikesBtn = document.getElementById("postLikesBtn");
-  if (postLikesBtn) {
-    postLikesBtn.addEventListener("click", () => {
-      const postId = postLikesBtn.dataset.postId;
-      if (!postId) return;
-      state.likesModal = { open: true, postId };
       renderOverlays();
-    });
+    };
+
+    if (profileModalOverlay) profileModalOverlay.addEventListener("click", closeProfileModal);
+    if (profileModalClose) profileModalClose.addEventListener("click", closeProfileModal);
+    if (profileFollowBtn) {
+      profileFollowBtn.addEventListener("click", () => {
+        const handle = profileFollowBtn.dataset.handle;
+        if (!handle) return;
+        toggleFollow(handle, {
+          type: profileFollowBtn.dataset.targetType || "",
+          id: profileFollowBtn.dataset.targetId || "",
+          name: profileFollowBtn.dataset.targetName || "",
+          avatar: profileFollowBtn.dataset.targetAvatar || ""
+        });
+      });
+    }
+    if (profileOpenBtn) {
+      profileOpenBtn.addEventListener("click", () => {
+        if (!state.profileModal.profile) return;
+        state.profileView = {
+          profile: state.profileModal.profile,
+          posts: state.profileModal.profile.posts || []
+        };
+        state.profileModal = { open: false, profile: null };
+        state.activeTab = "profile";
+        render();
+      });
+    }
   }
 
-  const likesModalOverlay = document.getElementById("likesModalOverlay");
-  const likesModalClose = document.getElementById("likesModalClose");
-  const closeLikes = () => {
-    state.likesModal = { open: false, postId: "" };
-    renderOverlays();
-  };
-  if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
-  if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
+  if (postChanged) {
+    const postModalOverlay = document.getElementById("postModalOverlay");
+    const postModalClose = document.getElementById("postModalClose");
+    if (postModalOverlay) postModalOverlay.addEventListener("click", closePostModal);
+    if (postModalClose) postModalClose.addEventListener("click", closePostModal);
 
-  const postReplyCancel = document.getElementById("postReplyCancel");
-  if (postReplyCancel) {
-    postReplyCancel.addEventListener("click", () => {
-      state.postModal.replyTo = null;
+    const postLikeBtn = document.getElementById("postLikeBtn");
+    if (postLikeBtn) {
+      postLikeBtn.addEventListener("click", () => {
+        const postId = postLikeBtn.dataset.postId;
+        if (postId) togglePostLike(postId);
+      });
+    }
+
+    const postLikesBtn = document.getElementById("postLikesBtn");
+    if (postLikesBtn) {
+      postLikesBtn.addEventListener("click", () => {
+        const postId = postLikesBtn.dataset.postId;
+        if (!postId) return;
+        state.likesModal = { open: true, postId };
+        renderOverlays();
+      });
+    }
+
+    const postReplyCancel = document.getElementById("postReplyCancel");
+    if (postReplyCancel) {
+      postReplyCancel.addEventListener("click", () => {
+        state.postModal.replyTo = null;
+        renderOverlays();
+      });
+    }
+
+    const postCommentSend = document.getElementById("postCommentSend");
+    if (postCommentSend) {
+      postCommentSend.addEventListener("click", () => {
+        const postId = postCommentSend.dataset.postId;
+        if (!postId) return;
+        addComment(postId, state.postModal.commentText, state.postModal.replyTo);
+      });
+    }
+
+    document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.postModal.replyTo = btn.dataset.commentId || null;
+        renderOverlays();
+      });
+    });
+
+    document.querySelectorAll("[data-comment-like]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const postId = btn.dataset.postId;
+        const commentId = btn.dataset.commentId;
+        const replyId = btn.dataset.replyId || "";
+        if (!postId || !commentId) return;
+        toggleCommentLike(postId, commentId, replyId || null);
+      });
+    });
+
+    const postCommentInput = document.getElementById("postCommentInput");
+    if (postCommentInput) {
+      postCommentInput.addEventListener("input", () => {
+        state.postModal.commentText = postCommentInput.value;
+      });
+    }
+  }
+
+  if (likesChanged) {
+    const likesModalOverlay = document.getElementById("likesModalOverlay");
+    const likesModalClose = document.getElementById("likesModalClose");
+    const closeLikes = () => {
+      state.likesModal = { open: false, postId: "" };
       renderOverlays();
-    });
-  }
-
-  const postCommentSend = document.getElementById("postCommentSend");
-  if (postCommentSend) {
-    postCommentSend.addEventListener("click", () => {
-      const postId = postCommentSend.dataset.postId;
-      if (!postId) return;
-      addComment(postId, state.postModal.commentText, state.postModal.replyTo);
-    });
-  }
-
-  document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.postModal.replyTo = btn.dataset.commentId || null;
-      renderOverlays();
-    });
-  });
-
-  document.querySelectorAll("[data-comment-like]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const postId = btn.dataset.postId;
-      const commentId = btn.dataset.commentId;
-      const replyId = btn.dataset.replyId || "";
-      if (!postId || !commentId) return;
-      toggleCommentLike(postId, commentId, replyId || null);
-    });
-  });
-
-  const postCommentInput = document.getElementById("postCommentInput");
-  if (postCommentInput) {
-    postCommentInput.addEventListener("input", () => {
-      state.postModal.commentText = postCommentInput.value;
-    });
+    };
+    if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
+    if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
   }
 }
 
@@ -2250,7 +2525,7 @@ function bindAppEvents() {
         state.postMeta = {};
         state.profileModal = { open: false, profile: null };
         state.profileView = null;
-        state.postModal = { open: false, post: null, commentText: "", replyTo: null };
+        state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false };
         state.likesModal = { open: false, postId: "" };
         state.selectedBusiness = null;
         cleanupLeaflet();
@@ -2270,7 +2545,7 @@ function bindAppEvents() {
         selectedBusiness: null,
         profileView: null,
         profileModal: { open: false, profile: null },
-        postModal: { open: false, post: null, commentText: "", replyTo: null },
+        postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false },
         likesModal: { open: false, postId: "" }
       });
     });
@@ -2442,7 +2717,13 @@ function bindAppEvents() {
   document.querySelectorAll("[data-public-profile-follow]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const handle = btn.dataset.publicProfileFollow;
-      if (handle) toggleFollow(handle);
+      if (!handle) return;
+      toggleFollow(handle, {
+        type: btn.dataset.targetType || "",
+        id: btn.dataset.targetId || "",
+        name: btn.dataset.targetName || "",
+        avatar: btn.dataset.targetAvatar || ""
+      });
     });
   });
 
@@ -2676,6 +2957,7 @@ async function loadUserProfile(user) {
   const snap = await getDoc(doc(db, "users", user.uid));
   const data = snap.exists() ? snap.data() : {};
   state.userProfile = normalizeProfile(data, user);
+  state.userProfile.uid = user.uid;
   safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
   render();
 }
@@ -2711,23 +2993,27 @@ function normalizeFeedPost(row) {
     time: formatRelative(toDateSafe(row.createdAt)),
     createdAt: row.createdAt,
     category: row.postType || "food",
-    isLive: row.isLive || false
+    isLive: row.isLive || false,
+    ownerType: "restaurant",
+    ownerId: row.rid || row.restaurantId || ""
   };
 }
 
 function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
-  const displayName = profileDoc?.displayName || fallbackName || restaurant?.name || restaurant?.restaurantName || "Business";
-  const handle = profileDoc?.handle || normalizeHandle(displayName);
+  const data = profileDoc?.data || profileDoc || {};
+  const displayName = data?.displayName || fallbackName || restaurant?.name || restaurant?.restaurantName || "Business";
+  const handle = data?.handle || normalizeHandle(displayName);
   return {
     name: displayName,
     handle: handle || "business",
-    bio: profileDoc?.bio || restaurant?.description || restaurant?.bio || "Offizieller Account auf MENYRA Social.",
-    avatar: profileDoc?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || "https://i.pravatar.cc/300?u=business",
-    location: profileDoc?.city || restaurant?.city || "Kosovo",
-    followers: profileDoc?.followersCount ?? profileDoc?.followers ?? 0,
-    following: profileDoc?.followingCount ?? profileDoc?.following ?? 0,
+    uid: profileDoc?.id || data?.uid || "",
+    bio: data?.bio || restaurant?.description || restaurant?.bio || "Offizieller Account auf MENYRA Social.",
+    avatar: data?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || "https://i.pravatar.cc/300?u=business",
+    location: data?.city || restaurant?.city || "Kosovo",
+    followers: data?.followersCount ?? data?.followers ?? 0,
+    following: data?.followingCount ?? data?.following ?? 0,
     role: "business",
-    restaurantId: profileDoc?.restaurantId || restaurant?.id || "",
+    restaurantId: data?.restaurantId || restaurant?.id || "",
     posts: posts || []
   };
 }
@@ -2780,13 +3066,16 @@ async function loadBusinessPostsForRestaurant(restaurantId) {
       .map((row) => ({
         id: row.id,
         url: row.media?.[0]?.url || row.mediaUrl || "",
-        type: "square",
+        type: row.type || "square",
         title: "",
         caption: row.caption || "",
         createdAt: row.createdAt,
         likes: row.likesCount ?? row.likes ?? 0,
         comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: row.media?.[0]?.type === "video"
+        isVideo: row.media?.[0]?.type === "video",
+        ownerType: "restaurant",
+        ownerId: restaurantId,
+        restaurantId
       }))
       .filter((row) => row.url);
   } catch (err) {
@@ -2836,7 +3125,9 @@ async function loadUserPosts() {
       createdAt: row.createdAt,
       likes: row.likesCount ?? row.likes ?? 0,
       comments: row.commentsCount ?? row.comments ?? 0,
-      isVideo: !!row.isVideo
+      isVideo: !!row.isVideo,
+      ownerType: "user",
+      ownerId: state.user.uid
     }));
     render();
   } catch (err) {
@@ -2866,13 +3157,16 @@ async function loadBusinessPosts() {
       .map((row) => ({
         id: row.id,
         url: row.media?.[0]?.url || row.mediaUrl || "",
-        type: "square",
+        type: row.type || "square",
         title: "",
         caption: row.caption || "",
         createdAt: row.createdAt,
         likes: row.likesCount ?? row.likes ?? 0,
         comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: row.media?.[0]?.type === "video"
+        isVideo: row.media?.[0]?.type === "video",
+        ownerType: "restaurant",
+        ownerId: restaurantId,
+        restaurantId
       }))
       .filter((row) => row.url);
     render();
@@ -2947,6 +3241,7 @@ async function bootstrapUser(user) {
   suspendRender();
   try {
     await loadUserProfile(user);
+    await loadFollowingFromFirebase();
     await resolveRoleSwitchTargets(user);
     await loadRestaurants();
     await loadFeedPosts();
