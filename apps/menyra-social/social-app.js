@@ -13,6 +13,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   query,
   where,
   orderBy,
@@ -267,6 +268,9 @@ let feedDeltaTimer = null;
 let searchTimer = null;
 let searchToken = 0;
 const searchCache = new Map();
+let notificationsUnsub = null;
+let userDocUnsub = null;
+let profileViewUnsub = null;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -1785,6 +1789,107 @@ function updateDrawerDom() {
   panel.classList.toggle("-translate-x-full", !state.drawerOpen);
 }
 
+function stopLiveListeners() {
+  if (notificationsUnsub) {
+    notificationsUnsub();
+    notificationsUnsub = null;
+  }
+  if (userDocUnsub) {
+    userDocUnsub();
+    userDocUnsub = null;
+  }
+  if (profileViewUnsub) {
+    profileViewUnsub();
+    profileViewUnsub = null;
+  }
+}
+
+function handleNotificationsUpdate(items) {
+  state.notifications = items;
+  saveNotifications(items);
+  if (state.activeTab === "search" && refreshSearchView()) return;
+  render();
+}
+
+function startLiveListeners(user) {
+  stopLiveListeners();
+  if (!user) return;
+
+  const userRef = doc(db, "users", user.uid);
+  userDocUnsub = onSnapshot(userRef, (snap) => {
+    if (!snap.exists()) return;
+    const data = snap.data() || {};
+    const next = {
+      name: data.displayName || state.userProfile.name,
+      handle: data.handle || state.userProfile.handle,
+      avatar: data.avatarUrl || state.userProfile.avatar,
+      followers: data.followersCount ?? state.userProfile.followers,
+      following: data.followingCount ?? state.userProfile.following,
+      role: data.role || state.userProfile.role,
+      location: data.city || state.userProfile.location,
+      bio: data.bio || state.userProfile.bio
+    };
+    Object.assign(state.userProfile, next);
+    safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+    updateShellDom();
+    if (state.activeTab === "profile" && !state.profileView) {
+      render();
+    } else if (state.activeTab === "search") {
+      refreshSearchView();
+    }
+  });
+
+  const notifRef = collection(db, "users", user.uid, "notifications");
+  notificationsUnsub = onSnapshot(query(notifRef, orderBy("createdAt", "desc"), limit(60)), (snap) => {
+    const items = snap.docs.map((docSnap) => {
+      const data = docSnap.data() || {};
+      return {
+        id: docSnap.id,
+        type: data.type || "system",
+        user: data.user || data.userName || "User",
+        text: data.text || "folgt dir jetzt",
+        time: formatRelative(toDateSafe(data.createdAt)),
+        img: data.avatar || data.img || "https://i.pravatar.cc/100?u=notify",
+        read: !!data.read,
+        createdAt: data.createdAt
+      };
+    });
+    handleNotificationsUpdate(items);
+  });
+}
+
+function attachProfileViewListener(profile) {
+  if (profileViewUnsub) {
+    profileViewUnsub();
+    profileViewUnsub = null;
+  }
+  if (!profile) return;
+  const ref = profile.restaurantId
+    ? doc(db, "restaurants", profile.restaurantId)
+    : (profile.uid ? doc(db, "users", profile.uid) : null);
+  if (!ref) return;
+  profileViewUnsub = onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return;
+    const data = snap.data() || {};
+    const viewProfile = state.profileView?.profile;
+    if (!viewProfile) return;
+    if (profile.restaurantId) {
+      viewProfile.followers = data.followersCount ?? viewProfile.followers;
+      viewProfile.following = data.followingCount ?? viewProfile.following;
+      viewProfile.avatar = data.logoUrl || data.logo || viewProfile.avatar;
+      viewProfile.name = data.name || data.restaurantName || viewProfile.name;
+      viewProfile.location = data.city || viewProfile.location;
+    } else {
+      viewProfile.followers = data.followersCount ?? viewProfile.followers;
+      viewProfile.following = data.followingCount ?? viewProfile.following;
+      viewProfile.avatar = data.avatarUrl || viewProfile.avatar;
+      viewProfile.name = data.displayName || viewProfile.name;
+      viewProfile.location = data.city || viewProfile.location;
+    }
+    render();
+  });
+}
+
 function renderMapSheet(selected) {
   return `
     <div class="absolute bottom-6 left-6 right-6 animate-in slide-in-from-bottom-6 duration-300 z-50">
@@ -2390,6 +2495,7 @@ function showPublicProfile(profile, posts) {
   state.profileBackTab = state.activeTab || "feed";
   state.activeTab = "profile";
   render();
+  attachProfileViewListener(profile);
 }
 
 async function openProfileViewFromBusiness(input) {
@@ -3874,6 +3980,10 @@ function bindAppEvents() {
       state.profileView = null;
       const backTab = state.profileBackTab || "feed";
       state.profileBackTab = "feed";
+      if (profileViewUnsub) {
+        profileViewUnsub();
+        profileViewUnsub = null;
+      }
       setState({ activeTab: backTab, drawerOpen: false });
     });
   });
@@ -4739,6 +4849,11 @@ async function bootstrapUser(user) {
     dataLoaded.following = true;
     void loadFollowingFromFirebase();
   }
+  if (!dataLoaded.notifications) {
+    dataLoaded.notifications = true;
+    void loadNotificationsFromFirebase({ force: true });
+  }
+  startLiveListeners(user);
   ensureTabData(state.activeTab);
 }
 
@@ -4757,6 +4872,7 @@ onAuthStateChanged(auth, (user) => {
   } else {
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";
+    stopLiveListeners();
     render();
   }
 });
