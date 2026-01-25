@@ -142,6 +142,17 @@ const ROLE_SWITCH_LABELS = {
 };
 const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen", "social"]);
 const businessProfileCache = new Map();
+const FAST_LIMITS = {
+  feed: 20,
+  feedFallback: 40,
+  userPosts: 24,
+  businessPosts: 24,
+  restaurants: 80,
+  stories: 24,
+  storiesFallback: 30,
+  likes: 40,
+  comments: 80
+};
 
 const state = {
   sessionReady: false,
@@ -207,6 +218,13 @@ let bodyScrollLocked = false;
 let bodyScrollTop = 0;
 let profileMenuBound = false;
 let overlayCache = { profile: "", post: "", likes: "" };
+let dataLoaded = {
+  feed: false,
+  profile: false,
+  restaurants: false,
+  stories: false,
+  following: false
+};
 
 function suspendRender() {
   renderSuspended += 1;
@@ -243,8 +261,12 @@ function icon(name, className = "") {
 }
 
 function setState(patch) {
+  const prevTab = state.activeTab;
   Object.assign(state, patch);
   render();
+  if (patch.activeTab && patch.activeTab !== prevTab) {
+    queueMicrotask(() => ensureTabData(state.activeTab));
+  }
 }
 
 function saveSettings(settings) {
@@ -719,6 +741,36 @@ function updatePostCountNodes(post) {
   document.querySelectorAll(`[data-post-comment-count="${postId}"]`).forEach((el) => {
     el.textContent = commentLabel;
   });
+}
+
+function ensureTabData(tab) {
+  if (!state.user) return;
+
+  if ((tab === "feed" || tab === "map") && !dataLoaded.restaurants) {
+    dataLoaded.restaurants = true;
+    loadRestaurants().then(() => {
+      if (!dataLoaded.stories && (state.activeTab === "feed" || state.activeTab === "map")) {
+        dataLoaded.stories = true;
+        void loadStories();
+      }
+    }).catch((err) => console.error(err));
+  } else if ((tab === "feed" || tab === "map") && !dataLoaded.stories) {
+    dataLoaded.stories = true;
+    void loadStories();
+  }
+
+  if (tab === "feed" && !dataLoaded.feed) {
+    dataLoaded.feed = true;
+    void loadFeedPosts();
+  }
+
+  if (tab === "profile" && !dataLoaded.profile) {
+    dataLoaded.profile = true;
+    void loadUserPosts();
+    if (state.userProfile.role === "business") {
+      void loadBusinessPosts();
+    }
+  }
 }
 
 function findPostById(postId) {
@@ -1479,13 +1531,13 @@ async function loadPostMetaFromFirebase(post) {
   if (!postRef) return { likes: [], comments: [] };
   const meta = { likes: [], comments: [] };
   try {
-    const likesSnap = await getDocs(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(100)));
+    const likesSnap = await getDocs(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)));
     meta.likes = likesSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
   } catch (err) {
     console.error(err);
   }
   try {
-    const commentsSnap = await getDocs(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(200)));
+    const commentsSnap = await getDocs(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)));
     const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
     const byId = new Map();
     const top = [];
@@ -3075,7 +3127,7 @@ async function loadUserProfile(user) {
 
 async function loadRestaurants() {
   try {
-    const snap = await getDocs(query(collection(db, "restaurants"), limit(200)));
+    const snap = await getDocs(query(collection(db, "restaurants"), limit(FAST_LIMITS.restaurants)));
     const list = [];
     snap.forEach((docSnap) => list.push({ id: docSnap.id, ...docSnap.data() }));
     state.restaurants = list;
@@ -3200,9 +3252,9 @@ async function loadFeedPosts() {
     const ref = collection(db, "socialFeed");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, where("status", "==", "active"), orderBy("createdAt", "desc"), limit(30)));
+      snap = await getDocs(query(ref, where("status", "==", "active"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.feed)));
     } catch (err) {
-      snap = await getDocs(query(ref, limit(60)));
+      snap = await getDocs(query(ref, limit(FAST_LIMITS.feedFallback)));
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
@@ -3221,7 +3273,7 @@ async function loadUserPosts() {
     const ref = collection(db, "users", state.user.uid, "posts");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(50)));
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.userPosts)));
     } catch (err) {
       snap = await getDocs(ref);
     }
@@ -3257,7 +3309,7 @@ async function loadBusinessPosts() {
     const ref = collection(db, "restaurants", restaurantId, "socialPosts");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(50)));
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.businessPosts)));
     } catch (err) {
       snap = await getDocs(ref);
     }
@@ -3289,7 +3341,7 @@ async function loadBusinessPosts() {
 async function loadStoriesFallback(restaurants) {
   const now = Timestamp.now();
   const items = [];
-  const slice = restaurants.slice(0, 60);
+  const slice = restaurants.slice(0, FAST_LIMITS.storiesFallback);
   for (const rest of slice) {
     try {
       const ref = collection(db, "restaurants", rest.id, "stories");
@@ -3316,7 +3368,7 @@ async function loadStories() {
       collectionGroup(db, "stories"),
       where("expiresAt", ">", now),
       orderBy("expiresAt", "desc"),
-      limit(40)
+      limit(FAST_LIMITS.stories)
     ));
 
     const map = new Map();
@@ -3349,22 +3401,18 @@ async function bootstrapUser(user) {
   if (!user) return;
   state.isLoading = true;
   render();
-  suspendRender();
   try {
     await loadUserProfile(user);
-    await loadFollowingFromFirebase();
     await resolveRoleSwitchTargets(user);
-    await loadRestaurants();
-    await loadFeedPosts();
-    await loadUserPosts();
-    if (state.userProfile.role === "business") {
-      await loadBusinessPosts();
-    }
-    await loadStories();
   } finally {
     state.isLoading = false;
-    resumeRender();
+    render();
   }
+  if (!dataLoaded.following) {
+    dataLoaded.following = true;
+    void loadFollowingFromFirebase();
+  }
+  ensureTabData(state.activeTab);
 }
 
 loadPersisted();
