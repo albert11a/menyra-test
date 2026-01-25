@@ -1113,7 +1113,6 @@ function renderProfilePostCardFancy(item, isGrid) {
   const aspectClass = isGrid
     ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
     : "aspect-[4/5]";
-  const menuOpen = postId && String(state.profilePostMenuId) === postId;
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
@@ -1140,19 +1139,17 @@ function renderProfilePostCardFancy(item, isGrid) {
         <button type="button" data-profile-menu-button="${escapeHtml(postId)}" class="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/90 z-20 active:bg-black/40 hover:bg-black/30 transition-colors">
           ${icon("more-horizontal", "w-3.5 h-3.5")}
         </button>
-        ${menuOpen ? `
-          <div data-profile-menu="${escapeHtml(postId)}" class="absolute top-12 right-3 w-40 bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.1)] border border-slate-100 p-1.5 z-30 animate-in fade-in duration-200 origin-top-right flex flex-col gap-1">
-            <button type="button" data-profile-post-toggle="${escapeHtml(postId)}" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors text-left w-full">
-              ${icon(isWide ? "minimize-2" : "maximize-2", "w-3.5 h-3.5")}
-              ${isWide ? "Schmaler" : "Breiter"}
-            </button>
-            <div class="h-px bg-slate-100 w-full my-0.5"></div>
-            <button type="button" data-profile-post-delete="${escapeHtml(postId)}" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-colors text-left w-full">
-              ${icon("trash-2", "w-3.5 h-3.5")}
-              Loeschen
-            </button>
-          </div>
-        ` : ""}
+        <div data-profile-menu="${escapeHtml(postId)}" class="absolute top-12 right-3 w-40 bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.1)] border border-slate-100 p-1.5 z-30 hidden origin-top-right flex flex-col gap-1">
+          <button type="button" data-profile-post-toggle="${escapeHtml(postId)}" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors text-left w-full">
+            ${icon(isWide ? "minimize-2" : "maximize-2", "w-3.5 h-3.5")}
+            ${isWide ? "Schmaler" : "Breiter"}
+          </button>
+          <div class="h-px bg-slate-100 w-full my-0.5"></div>
+          <button type="button" data-profile-post-delete="${escapeHtml(postId)}" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-colors text-left w-full">
+            ${icon("trash-2", "w-3.5 h-3.5")}
+            Loeschen
+          </button>
+        </div>
       ` : ""}
     </div>
   `;
@@ -1305,8 +1302,18 @@ async function deleteProfilePost(postId) {
 
 function toggleProfilePostMenu(postId) {
   if (!postId) return;
-  state.profilePostMenuId = String(state.profilePostMenuId) === String(postId) ? null : String(postId);
-  render();
+  const next = String(state.profilePostMenuId) === String(postId) ? null : String(postId);
+  state.profilePostMenuId = next;
+  setProfileMenuOpen(next);
+}
+
+function setProfileMenuOpen(postId) {
+  const menus = document.querySelectorAll("[data-profile-menu]");
+  const next = postId ? String(postId) : "";
+  menus.forEach((menu) => {
+    const isOpen = next && menu.dataset.profileMenu === next;
+    menu.classList.toggle("hidden", !isOpen);
+  });
 }
 
 function renderPublicProfileView() {
@@ -2321,9 +2328,13 @@ function bindAppEvents() {
       if (!(target instanceof Element)) return;
       if (target.closest("[data-profile-menu]") || target.closest("[data-profile-menu-button]")) return;
       state.profilePostMenuId = null;
-      render();
+      setProfileMenuOpen(null);
     });
     profileMenuBound = true;
+  }
+
+  if (state.profilePostMenuId) {
+    setProfileMenuOpen(state.profilePostMenuId);
   }
 
   const mapLocateBtn = document.getElementById("mapLocateBtn");
@@ -2409,7 +2420,11 @@ function bindAppEvents() {
   });
 
   document.querySelectorAll("[data-open-post]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      const target = e.target;
+      if (target instanceof Element) {
+        if (target.closest("[data-profile-menu]") || target.closest("[data-profile-menu-button]")) return;
+      }
       const postId = btn.dataset.openPost;
       const post = findPostById(postId);
       if (post) openPostModal(post);
