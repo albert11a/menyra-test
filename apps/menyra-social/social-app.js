@@ -198,6 +198,7 @@ const state = {
   roleSwitchRestaurantId: "",
   followingHandles: [],
   profileView: null,
+  profileBackTab: "feed",
   profileViewMode: "grid",
   profileContentTab: "posts",
   profileCheckins: [],
@@ -294,6 +295,14 @@ function formatCount(value) {
   if (Number.isFinite(num)) return String(num);
   const str = String(value ?? "").trim();
   return str || "0";
+}
+
+function sanitizeDisplayName(value, fallback) {
+  const cleaned = String(value || "").trim();
+  if (!cleaned) return fallback;
+  const lower = cleaned.toLowerCase();
+  if (lower === "data" || lower === "undefined" || lower === "null") return fallback;
+  return cleaned;
 }
 
 function normalizeSearchQuery(value) {
@@ -633,11 +642,12 @@ async function resolveRoleSwitchTargets(user) {
 
   state.roleSwitchRoles = ROLE_SWITCH_ORDER.filter((role) => roles.has(role));
   state.roleSwitchRestaurantId = ownerRestaurantId || profile.restaurantId || "";
-  if (state.activeTab === "feed" && lastRenderMode === "main") {
+  if (lastRenderMode === "main") {
     updateShellDom();
-  } else {
-    render();
+    if (state.activeTab === "search" && refreshSearchView()) return;
+    if (state.activeTab === "feed") return;
   }
+  render();
 }
 
 function mapRestaurantToCard(rest, idx) {
@@ -964,8 +974,9 @@ function buildLocalBusinessResults(queryKey) {
 
 function normalizeUserSearchResult(doc) {
   const data = typeof doc?.data === "function" ? doc.data() : (doc?.data || doc || {});
-  const name = data.displayName || data.name || data.handle || "User";
-  const handle = data.handle || normalizeHandle(name);
+  const rawName = data.displayName || data.name || data.handle || "";
+  const handle = data.handle || normalizeHandle(rawName || "user");
+  const name = sanitizeDisplayName(rawName, handle || "User");
   return {
     uid: doc?.id || data.uid || "",
     name,
@@ -2142,13 +2153,13 @@ function renderPublicProfileView() {
   return `
     <div class="pb-24">
       <div class="px-5 pb-2 pt-10">
-        <div class="flex items-center gap-3 mb-6">
-          <button data-public-profile-back="true" class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
-          <div>
-            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Profil</p>
-            <h2 class="text-xl font-black italic tracking-tighter">${escapeHtml(profile.name || "Profil")}</h2>
-          </div>
+      <div class="flex items-center gap-3 mb-6">
+        <button data-public-profile-back="true" class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
+        <div>
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Suche</p>
+          <h2 class="text-xl font-black italic tracking-tighter">${escapeHtml(sanitizeDisplayName(profile.name, profile.handle || "Profil"))}</h2>
         </div>
+      </div>
 
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
           <div class="relative z-10">
@@ -2366,6 +2377,7 @@ function showPublicProfile(profile, posts) {
   state.profileViewMode = "grid";
   state.profilePostMenuId = null;
   state.drawerOpen = false;
+  state.profileBackTab = state.activeTab || "feed";
   state.activeTab = "profile";
   render();
 }
@@ -3010,11 +3022,12 @@ function renderNotificationsView() {
 
 function renderSearchUserItem(user) {
   const handle = user.handle || normalizeHandle(user.name || "user");
+  const displayName = sanitizeDisplayName(user.name, handle || "User");
   return `
-    <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(user.name)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
+    <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
       <img src="${escapeHtml(user.avatar)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(user.name)}</p>
+        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
       </div>
       <span class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">User</span>
@@ -3078,22 +3091,22 @@ function renderSearchView() {
       <div id="searchStatusError" class="text-xs font-bold text-rose-500 mb-4 ${state.search.error ? "" : "hidden"}">${escapeHtml(state.search.error || "")}</div>
       <div id="searchEmptyState" class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em] ${!hasResults && !query ? "" : "hidden"}">Tippe, um zu suchen</div>
 
-      <div id="searchUsersSection" class="space-y-3 mb-8 ${showUsers ? "" : "hidden"}">
+      <div id="searchUsersSection" class="space-y-4 mb-10 ${showUsers ? "" : "hidden"}">
         <div class="flex items-center justify-between px-1">
           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">User</p>
           <p id="searchUsersCount" class="text-[10px] font-bold text-slate-300">${users.length}</p>
         </div>
-        <div id="searchUsersList">
+        <div id="searchUsersList" class="space-y-4">
           ${users.length ? users.map(renderSearchUserItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "")}
         </div>
       </div>
 
-      <div id="searchBizSection" class="space-y-3 ${showBusinesses ? "" : "hidden"}">
+      <div id="searchBizSection" class="space-y-4 ${showBusinesses ? "" : "hidden"}">
         <div class="flex items-center justify-between px-1">
           <p id="searchBizLabel" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${localLabel}</p>
           <p id="searchBizCount" class="text-[10px] font-bold text-slate-300">${businesses.length}</p>
         </div>
-        <div id="searchBizList">
+        <div id="searchBizList" class="space-y-4">
           ${businesses.length ? businesses.map(renderSearchBusinessItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine ${localLabel} gefunden.</div>` : "")}
         </div>
       </div>
@@ -3797,8 +3810,9 @@ function bindAppEvents() {
   document.querySelectorAll("[data-public-profile-back]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.profileView = null;
-      state.activeTab = "feed";
-      render();
+      const backTab = state.profileBackTab || "feed";
+      state.profileBackTab = "feed";
+      setState({ activeTab: backTab, drawerOpen: false });
     });
   });
 
@@ -4118,11 +4132,12 @@ async function loadUserProfile(user, { force = false } = {}) {
   state.userProfile = normalizeProfile(data, user);
   state.userProfile.uid = user.uid;
   safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
-  if (state.activeTab === "feed" && lastRenderMode === "main") {
+  if (lastRenderMode === "main") {
     updateShellDom();
-  } else {
-    render();
+    if (state.activeTab === "search" && refreshSearchView()) return;
+    if (state.activeTab === "feed") return;
   }
+  render();
 }
 
 async function loadRestaurants({ force = false } = {}) {
@@ -4132,7 +4147,9 @@ async function loadRestaurants({ force = false } = {}) {
       state.restaurants = cached.data;
       state.businessLocations = cached.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
       cleanupLeaflet();
-      render();
+      if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
+        render();
+      }
     }
     if (FAST_MODE && !force) return;
     if (cached.fresh && !force) return;
@@ -4148,7 +4165,9 @@ async function loadRestaurants({ force = false } = {}) {
     state.restaurants = list;
     state.businessLocations = list.map((rest, idx) => normalizeBusinessLocation(rest, idx));
     cleanupLeaflet();
-    render();
+    if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
+      render();
+    }
   } catch (err) {
     console.error(err);
   }
@@ -4223,12 +4242,12 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
 }
 
 function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
-  const data = userDoc?.data || userDoc || {};
+  const data = typeof userDoc?.data === "function" ? userDoc.data() : (userDoc?.data || userDoc || {});
   const fallbackName = fallback?.name || fallback?.handle || "User";
-  const displayName = data?.displayName || data?.name || fallbackName;
-  const handle = data?.handle || normalizeHandle(displayName);
+  const displayName = sanitizeDisplayName(data?.displayName || data?.name, fallbackName);
+  const handle = data?.handle || normalizeHandle(displayName || fallbackName);
   return {
-    name: displayName,
+    name: displayName || fallbackName,
     handle: handle || "user",
     uid: userDoc?.id || data?.uid || fallback?.uid || "",
     bio: data?.bio || fallback?.bio || "",
