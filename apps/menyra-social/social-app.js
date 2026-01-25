@@ -17,6 +17,7 @@ import {
   where,
   orderBy,
   limit,
+  deleteDoc,
   setDoc,
   serverTimestamp,
   Timestamp
@@ -161,6 +162,7 @@ const state = {
   profileViewMode: "grid",
   profileContentTab: "posts",
   profileCheckins: [],
+  profilePostMenuId: null,
   profileModal: {
     open: false,
     profile: null
@@ -196,6 +198,7 @@ let renderSuspended = 0;
 let renderQueued = false;
 let bodyScrollLocked = false;
 let bodyScrollTop = 0;
+let profileMenuBound = false;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -1103,14 +1106,16 @@ function renderProfileGridItem(item) {
 
 function renderProfilePostCardFancy(item, isGrid) {
   const counts = resolvePostCounts(item);
-  const postAttr = item.id ? `data-open-post="${escapeHtml(item.id)}"` : "";
+  const postId = item.id ? String(item.id) : "";
+  const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
   const isWide = item.type === "wide" || item.type === "hero";
   const colClass = isGrid && isWide ? "col-span-2" : "";
   const aspectClass = isGrid
     ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
     : "aspect-[4/5]";
+  const menuOpen = postId && String(state.profilePostMenuId) === postId;
   return `
-    <button type="button" ${postAttr} class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
+    <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
         <img src="${escapeHtml(item.url)}" loading="lazy" class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
@@ -1130,7 +1135,26 @@ function renderProfilePostCardFancy(item, isGrid) {
           </div>
         </div>
       </div>
-    </button>
+
+      ${postId ? `
+        <button type="button" data-profile-menu-button="${escapeHtml(postId)}" class="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/90 z-20 active:bg-black/40 hover:bg-black/30 transition-colors">
+          ${icon("more-horizontal", "w-3.5 h-3.5")}
+        </button>
+        ${menuOpen ? `
+          <div data-profile-menu="${escapeHtml(postId)}" class="absolute top-12 right-3 w-40 bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.1)] border border-slate-100 p-1.5 z-30 animate-in fade-in duration-200 origin-top-right flex flex-col gap-1">
+            <button type="button" data-profile-post-toggle="${escapeHtml(postId)}" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors text-left w-full">
+              ${icon(isWide ? "minimize-2" : "maximize-2", "w-3.5 h-3.5")}
+              ${isWide ? "Schmaler" : "Breiter"}
+            </button>
+            <div class="h-px bg-slate-100 w-full my-0.5"></div>
+            <button type="button" data-profile-post-delete="${escapeHtml(postId)}" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-colors text-left w-full">
+              ${icon("trash-2", "w-3.5 h-3.5")}
+              Loeschen
+            </button>
+          </div>
+        ` : ""}
+      ` : ""}
+    </div>
   `;
 }
 
@@ -1216,6 +1240,73 @@ function renderProfileViewControls() {
       </div>
     </div>
   `;
+}
+
+function getProfilePostList() {
+  return state.userProfile.role === "business" ? state.businessPosts : state.userPosts;
+}
+
+function findProfilePost(postId) {
+  const list = getProfilePostList();
+  const idx = list.findIndex((item) => String(item.id) === String(postId));
+  return { list, idx, post: idx >= 0 ? list[idx] : null };
+}
+
+async function updateProfilePostType(postId, nextType) {
+  if (!postId || !state.user) return;
+  const isBusiness = state.userProfile.role === "business";
+  if (isBusiness) {
+    const restaurantId = state.userProfile.restaurantId;
+    if (!restaurantId) return;
+    await setDoc(doc(db, "restaurants", restaurantId, "socialPosts", postId), { type: nextType }, { merge: true });
+  } else {
+    await setDoc(doc(db, "users", state.user.uid, "posts", postId), { type: nextType }, { merge: true });
+  }
+}
+
+async function toggleProfilePostWidth(postId) {
+  if (!postId) return;
+  const { post } = findProfilePost(postId);
+  if (!post) return;
+  const isWide = post.type === "wide" || post.type === "hero";
+  const nextType = isWide ? "square" : "wide";
+  post.type = nextType;
+  state.profilePostMenuId = null;
+  render();
+  try {
+    await updateProfilePostType(postId, nextType);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function deleteProfilePost(postId) {
+  if (!postId || !state.user) return;
+  if (!confirm("Beitrag wirklich loeschen?")) return;
+  const { list, idx } = findProfilePost(postId);
+  if (idx < 0) return;
+  list.splice(idx, 1);
+  state.profilePostMenuId = null;
+  render();
+  try {
+    if (state.userProfile.role === "business") {
+      const restaurantId = state.userProfile.restaurantId;
+      if (restaurantId) {
+        await deleteDoc(doc(db, "restaurants", restaurantId, "socialPosts", postId));
+      }
+      await deleteDoc(doc(db, "socialFeed", postId));
+    } else {
+      await deleteDoc(doc(db, "users", state.user.uid, "posts", postId));
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function toggleProfilePostMenu(postId) {
+  if (!postId) return;
+  state.profilePostMenuId = String(state.profilePostMenuId) === String(postId) ? null : String(postId);
+  render();
 }
 
 function renderPublicProfileView() {
@@ -1358,7 +1449,7 @@ async function openProfileFromBusiness(input) {
       .map((p, idx) => ({
         id: p.id || `feed_${idx}`,
         url: p.image,
-        type: "square",
+        type: row.type || "square",
         caption: p.content || "",
         createdAt: p.createdAt,
         likes: p.likes ?? 0,
@@ -2195,6 +2286,45 @@ function bindAppEvents() {
       render();
     });
   });
+
+  document.querySelectorAll("[data-profile-menu-button]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const postId = btn.dataset.profileMenuButton;
+      if (!postId) return;
+      toggleProfilePostMenu(postId);
+    });
+  });
+
+  document.querySelectorAll("[data-profile-post-toggle]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const postId = btn.dataset.profilePostToggle;
+      if (!postId) return;
+      toggleProfilePostWidth(postId);
+    });
+  });
+
+  document.querySelectorAll("[data-profile-post-delete]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const postId = btn.dataset.profilePostDelete;
+      if (!postId) return;
+      deleteProfilePost(postId);
+    });
+  });
+
+  if (!profileMenuBound) {
+    document.addEventListener("click", (e) => {
+      if (!state.profilePostMenuId) return;
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("[data-profile-menu]") || target.closest("[data-profile-menu-button]")) return;
+      state.profilePostMenuId = null;
+      render();
+    });
+    profileMenuBound = true;
+  }
 
   const mapLocateBtn = document.getElementById("mapLocateBtn");
   if (mapLocateBtn) {
