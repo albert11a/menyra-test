@@ -2235,29 +2235,38 @@ function ensureOverlayRoot() {
   return root;
 }
 
-function renderOverlays() {
+function renderOverlays({ updateProfile = true, updatePost = true, updateLikes = true } = {}) {
   const root = ensureOverlayRoot();
   const profileRoot = document.getElementById("profileOverlayRoot");
   const postRoot = document.getElementById("postOverlayRoot");
   const likesRoot = document.getElementById("likesOverlayRoot");
-  const profileHtml = renderProfileModal();
-  const postHtml = renderPostModal();
-  const likesHtml = renderLikesModal();
-  const profileChanged = profileHtml !== overlayCache.profile;
-  const postChanged = postHtml !== overlayCache.post;
-  const likesChanged = likesHtml !== overlayCache.likes;
+  let profileChanged = false;
+  let postChanged = false;
+  let likesChanged = false;
 
-  if (profileRoot && profileChanged) {
-    profileRoot.innerHTML = profileHtml;
-    overlayCache.profile = profileHtml;
+  if (updateProfile) {
+    const profileHtml = renderProfileModal();
+    profileChanged = profileHtml !== overlayCache.profile;
+    if (profileRoot && profileChanged) {
+      profileRoot.innerHTML = profileHtml;
+      overlayCache.profile = profileHtml;
+    }
   }
-  if (postRoot && postChanged) {
-    postRoot.innerHTML = postHtml;
-    overlayCache.post = postHtml;
+  if (updatePost) {
+    const postHtml = renderPostModal();
+    postChanged = postHtml !== overlayCache.post;
+    if (postRoot && postChanged) {
+      postRoot.innerHTML = postHtml;
+      overlayCache.post = postHtml;
+    }
   }
-  if (likesRoot && likesChanged) {
-    likesRoot.innerHTML = likesHtml;
-    overlayCache.likes = likesHtml;
+  if (updateLikes) {
+    const likesHtml = renderLikesModal();
+    likesChanged = likesHtml !== overlayCache.likes;
+    if (likesRoot && likesChanged) {
+      likesRoot.innerHTML = likesHtml;
+      overlayCache.likes = likesHtml;
+    }
   }
   const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open);
   document.documentElement.classList.toggle("modal-open", open);
@@ -2303,9 +2312,11 @@ function render() {
   } else if (!state.user) {
     appEl.innerHTML = renderAuthScreen();
     bindAuthEvents();
+    if (window.lucide?.createIcons) window.lucide.createIcons();
   } else {
     appEl.innerHTML = renderMain();
     bindAppEvents();
+    if (window.lucide?.createIcons) window.lucide.createIcons();
   }
 
   renderOverlays();
@@ -2445,7 +2456,7 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
         const postId = postLikesBtn.dataset.postId;
         if (!postId) return;
         state.likesModal = { open: true, postId };
-        renderOverlays();
+        renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
       });
     }
 
@@ -2496,7 +2507,7 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
     const likesModalClose = document.getElementById("likesModalClose");
     const closeLikes = () => {
       state.likesModal = { open: false, postId: "" };
-      renderOverlays();
+      renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
     };
     if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
     if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
