@@ -147,6 +147,7 @@ const ROLE_SWITCH_LABELS = {
 const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen", "social"]);
 const businessProfileCache = new Map();
 const userProfileCache = new Map();
+const restaurantOwnerCache = new Map();
 const FAST_LIMITS = {
   feed: 20,
   feedFallback: 40,
@@ -1341,6 +1342,17 @@ async function addComment(postId, text, replyTo) {
 
   try {
     await setDoc(commentRef, payload);
+    const ownerUid = await resolvePostOwnerUid(post);
+    if (ownerUid && ownerUid !== state.user.uid) {
+      await pushUserNotification(ownerUid, {
+        type: "comment",
+        user: user.name,
+        userHandle: user.handle,
+        avatar: user.avatar,
+        text: "hat deinen Beitrag kommentiert",
+        postId: String(post.id || "")
+      });
+    }
     await updatePostCounts(post, { commentsDelta: 1 });
     updatePostCountNodes(post);
     const newComment = ensureCommentShape({
@@ -1409,6 +1421,17 @@ async function togglePostLike(postId) {
         avatar: user.avatar,
         createdAt: serverTimestamp()
       });
+      const ownerUid = await resolvePostOwnerUid(post);
+      if (ownerUid && ownerUid !== state.user.uid) {
+        await pushUserNotification(ownerUid, {
+          type: "like",
+          user: user.name,
+          userHandle: user.handle,
+          avatar: user.avatar,
+          text: "hat deinen Beitrag geliked",
+          postId: String(post.id || "")
+        });
+      }
     }
   } catch (err) {
     console.error(err);
@@ -2506,6 +2529,43 @@ function getPostDocRef(post) {
 function getFeedDocRef(post) {
   if (!post?.id) return null;
   return doc(db, "socialFeed", String(post.id));
+}
+
+async function resolveRestaurantOwnerUid(restaurantId) {
+  if (!restaurantId) return "";
+  if (restaurantOwnerCache.has(restaurantId)) {
+    return restaurantOwnerCache.get(restaurantId) || "";
+  }
+  const cached = state.restaurants.find((r) => r.id === restaurantId);
+  const ownerUid = cached?.ownerUid || cached?.ownerId || "";
+  if (ownerUid) {
+    restaurantOwnerCache.set(restaurantId, ownerUid);
+    return ownerUid;
+  }
+  try {
+    const snap = await getDoc(doc(db, "restaurants", restaurantId));
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      const uid = data.ownerUid || data.ownerId || "";
+      restaurantOwnerCache.set(restaurantId, uid);
+      return uid;
+    }
+  } catch (err) {
+    console.error(err);
+  }
+  return "";
+}
+
+async function resolvePostOwnerUid(post) {
+  if (!post) return "";
+  if (post.ownerType === "user" && post.ownerId) return post.ownerId;
+  if (post.ownerType === "restaurant" && post.ownerId) {
+    return resolveRestaurantOwnerUid(post.ownerId);
+  }
+  if (post.restaurantId) {
+    return resolveRestaurantOwnerUid(post.restaurantId);
+  }
+  return "";
 }
 
 async function loadPostMetaFromFirebase(post) {
