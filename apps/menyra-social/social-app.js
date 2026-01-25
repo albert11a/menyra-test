@@ -37,6 +37,26 @@ import {
   buildUrl
 } from "./_shared/social-core.js";
 
+// Image helper: build proxied/optimized image URLs via media edge
+function optimizeImageUrl(src, width = 120, opts = {}) {
+  try {
+    if (!src) return src || "";
+    const s = String(src || "").trim();
+    if (!s) return s;
+    // if already proxied through our edge, return as-is
+    if (s.includes(BUNNY_EDGE_BASE)) return s;
+    // fallback: use edge fetch endpoint which proxies source and resizes
+    const url = encodeURIComponent(s);
+    const q = [`url=${url}`, `w=${Math.round(width)}`];
+    if (opts.q) q.push(`q=${Number(opts.q)}`);
+    else q.push(`q=80`);
+    if (opts.fit) q.push(`fit=${opts.fit}`);
+    return `${BUNNY_EDGE_BASE}/image/fetch?${q.join("&")}`;
+  } catch (err) {
+    return src;
+  }
+}
+
 const appEl = document.getElementById("app");
 
 // --- SAFE STORAGE HELPER ---
@@ -1597,7 +1617,7 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-10 h-10 rounded-xl object-cover" />
+          <img id="drawerAvatar" src="${escapeHtml(optimizeImageUrl(state.userProfile.avatar || "https://via.placeholder.com/80", 80))}" srcset="${escapeHtml(optimizeImageUrl(state.userProfile.avatar || "https://via.placeholder.com/80", 160))} 2x" loading="lazy" decoding="async" class="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
             <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
@@ -1836,14 +1856,18 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  const avatar = escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80");
+  const rawAvatar = state.userProfile.avatar || "https://via.placeholder.com/80";
+  const avatarSrc = optimizeImageUrl(rawAvatar, 120);
+  const avatarSrc2x = optimizeImageUrl(rawAvatar, 240);
   const headerAvatar = document.getElementById("headerAvatar");
-  if (headerAvatar && headerAvatar.getAttribute("src") !== avatar) {
-    headerAvatar.setAttribute("src", avatar);
+  if (headerAvatar && headerAvatar.getAttribute("src") !== avatarSrc) {
+    headerAvatar.setAttribute("src", avatarSrc);
+    headerAvatar.setAttribute("srcset", avatarSrc2x + " 2x");
   }
   const drawerAvatar = document.getElementById("drawerAvatar");
-  if (drawerAvatar && drawerAvatar.getAttribute("src") !== avatar) {
-    drawerAvatar.setAttribute("src", avatar);
+  if (drawerAvatar && drawerAvatar.getAttribute("src") !== avatarSrc) {
+    drawerAvatar.setAttribute("src", optimizeImageUrl(rawAvatar, 80));
+    drawerAvatar.setAttribute("srcset", optimizeImageUrl(rawAvatar, 160) + " 2x");
   }
   const drawerName = document.getElementById("drawerName");
   if (drawerName) drawerName.textContent = state.userProfile.name || "User";
@@ -3751,9 +3775,11 @@ function renderNotificationsView() {
 function renderSearchUserItem(user) {
   const handle = user.handle || normalizeHandle(user.name || "user");
   const displayName = sanitizeDisplayName(user.name, handle || "User");
+  const src = optimizeImageUrl(user.avatar || `https://i.pravatar.cc/120?u=${encodeURIComponent(handle)}`, 120);
+  const src2x = optimizeImageUrl(user.avatar || `https://i.pravatar.cc/120?u=${encodeURIComponent(handle)}`, 240);
   return `
     <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(user.avatar)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <img src="${escapeHtml(src)}" srcset="${escapeHtml(src2x)} 2x" loading="lazy" decoding="async" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
@@ -3994,8 +4020,8 @@ function renderHeader() {
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">Social</span>
       </div>
       <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-        <img id="headerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-full h-full rounded-[1.4rem] object-cover" />
-      </button>
+          <img id="headerAvatar" src="${escapeHtml(optimizeImageUrl(state.userProfile.avatar || "https://via.placeholder.com/80", 120))}" srcset="${escapeHtml(optimizeImageUrl(state.userProfile.avatar || "https://via.placeholder.com/80", 240))} 2x" loading="lazy" decoding="async" class="w-full h-full rounded-[1.4rem] object-cover" />
+        </button>
     </header>
   `;
 }
