@@ -145,8 +145,9 @@
 
     window.togglePostMenu = (e, id) => {
       e.stopPropagation();
-      state.menuOpenId = state.menuOpenId === id ? null : id;
-      renderApp();
+      const next = state.menuOpenId === id ? null : id;
+      state.menuOpenId = next;
+      setMenuOpen(next);
     };
 
     window.deletePost = (e, id) => {
@@ -191,13 +192,14 @@
       state.modal.open = true;
       state.modal.postId = id;
       state.menuOpenId = null;
-      renderApp();
+      setMenuOpen(null);
+      renderModal();
     };
 
     window.closePostModal = () => {
       state.modal.open = false;
       state.modal.postId = null;
-      renderApp();
+      renderModal();
     };
 
     window.togglePostLike = () => {
@@ -206,7 +208,8 @@
       post.liked = !post.liked;
       const base = Number(post.likes) || 0;
       post.likes = Math.max(0, base + (post.liked ? 1 : -1));
-      renderApp();
+      updatePostCardCounts(post);
+      renderModal();
     };
 
     window.triggerAvatarPicker = () => {
@@ -224,11 +227,15 @@
       reader.readAsDataURL(file);
     };
 
-    document.addEventListener("click", () => {
+    document.addEventListener("click", (event) => {
       if (state.modal.open) return;
+      const target = event.target;
+      if (target instanceof Element) {
+        if (target.closest("[data-post-menu]") || target.closest("[data-post-menu-button]")) return;
+      }
       if (state.menuOpenId !== null) {
         state.menuOpenId = null;
-        renderApp();
+        setMenuOpen(null);
       }
     });
 
@@ -240,6 +247,32 @@
 
     const Icon = (name, size = 18, className = "") =>
       `<i data-lucide="${name}" width="${size}" height="${size}" class="${className}"></i>`;
+
+    const setMenuOpen = (postId) => {
+      const menus = document.querySelectorAll("[data-post-menu]");
+      const next = postId ? String(postId) : "";
+      menus.forEach((menu) => {
+        const isOpen = next && menu.dataset.postMenu === next;
+        menu.classList.toggle("hidden", !isOpen);
+      });
+    };
+
+    const ensureModalRoot = () => {
+      let root = document.getElementById("modalRoot");
+      if (!root) {
+        root = document.createElement("div");
+        root.id = "modalRoot";
+        appEl.appendChild(root);
+      }
+      return root;
+    };
+
+    const updatePostCardCounts = (post) => {
+      const likeEl = document.querySelector(`[data-post-like-count="${post.id}"]`);
+      if (likeEl) likeEl.textContent = post.likes;
+      const commentEl = document.querySelector(`[data-post-comment-count="${post.id}"]`);
+      if (commentEl) commentEl.textContent = post.comments;
+    };
 
     const ProfileSection = () => `
       <div class="px-5 pb-2 pt-10">
@@ -395,12 +428,12 @@
                    <div class="flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 text-white shadow-capsule">
                       <div class="flex items-center gap-1">
                         ${Icon("heart", 12, "fill-rose-500 text-rose-500")}
-                        <span class="text-[10px] font-bold tracking-wide">${post.likes}</span>
+                        <span data-post-like-count="${post.id}" class="text-[10px] font-bold tracking-wide">${post.likes}</span>
                       </div>
                       <div class="w-px h-3 bg-white/20"></div>
                       <div class="flex items-center gap-1">
                         ${Icon("message-circle", 12, "text-indigo-200")}
-                        <span class="text-[10px] font-bold tracking-wide">${post.comments}</span>
+                        <span data-post-comment-count="${post.id}" class="text-[10px] font-bold tracking-wide">${post.comments}</span>
                       </div>
                    </div>
                 </div>
@@ -418,23 +451,21 @@
                     </div>
                   </div>
 
-                  <button onclick="togglePostMenu(event, ${post.id})" class="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/90 z-20 active:bg-black/40 hover:bg-black/30 transition-colors">
+                  <button data-post-menu-button="${post.id}" onclick="togglePostMenu(event, ${post.id})" class="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/90 z-20 active:bg-black/40 hover:bg-black/30 transition-colors">
                     ${Icon("more-horizontal", 14)}
                   </button>
 
-                  ${state.menuOpenId === post.id ? `
-                    <div onclick="event.stopPropagation()" class="absolute top-12 right-3 w-40 bg-white/95 backdrop-blur-xl rounded-2xl shadow-menu border border-slate-100 p-1.5 z-30 animate-fade-in origin-top-right flex flex-col gap-1">
-                        <button onclick="togglePostWidth(event, ${post.id})" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors text-left w-full">
-                            ${Icon(post.isWide ? "minimize-2" : "maximize-2", 14)}
-                            ${post.isWide ? "Schmaler" : "Breiter"}
-                        </button>
-                        <div class="h-px bg-slate-100 w-full my-0.5"></div>
-                        <button onclick="deletePost(event, ${post.id})" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors text-left w-full">
-                            ${Icon("trash-2", 14)}
-                            Loeschen
-                        </button>
-                    </div>
-                  ` : ""}
+                  <div data-post-menu="${post.id}" onclick="event.stopPropagation()" class="absolute top-12 right-3 w-40 bg-white/95 backdrop-blur-xl rounded-2xl shadow-menu border border-slate-100 p-1.5 z-30 animate-fade-in origin-top-right flex flex-col gap-1 hidden">
+                      <button onclick="togglePostWidth(event, ${post.id})" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors text-left w-full">
+                          ${Icon(post.isWide ? "minimize-2" : "maximize-2", 14)}
+                          ${post.isWide ? "Schmaler" : "Breiter"}
+                      </button>
+                      <div class="h-px bg-slate-100 w-full my-0.5"></div>
+                      <button onclick="deletePost(event, ${post.id})" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-red-500 hover:bg-red-50 rounded-xl transition-colors text-left w-full">
+                          ${Icon("trash-2", 14)}
+                          Loeschen
+                      </button>
+                  </div>
                 </div>
               `;
             }).join("")}
@@ -502,9 +533,20 @@
           ${ViewControls()}
           ${ContentArea()}
         </main>
-        ${PostModal()}
+        <div id="modalRoot"></div>
       `;
 
+      renderModal();
+      setMenuOpen(state.menuOpenId);
+      if (window.lucide) window.lucide.createIcons();
+    };
+
+    const renderModal = () => {
+      const root = ensureModalRoot();
+      const nextHtml = PostModal();
+      if (root.innerHTML !== nextHtml) {
+        root.innerHTML = nextHtml;
+      }
       if (window.lucide) window.lucide.createIcons();
       document.body.style.overflow = state.modal.open ? "hidden" : "";
     };

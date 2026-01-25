@@ -179,11 +179,13 @@ const state = {
     post: null,
     commentText: "",
     replyTo: null,
-    loading: false
+    loading: false,
+    animate: false
   },
   likesModal: {
     open: false,
-    postId: ""
+    postId: "",
+    animate: false
   },
   upload: {
     preview: "",
@@ -718,17 +720,19 @@ async function openPostModal(post) {
     post,
     commentText: "",
     replyTo: null,
-    loading: true
+    loading: true,
+    animate: true
   };
   renderOverlays();
+  state.postModal.animate = false;
   await loadPostMetaFromFirebase(post);
   state.postModal.loading = false;
-  renderOverlays();
+  updatePostModalMeta();
 }
 
 function closePostModal() {
-  state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false };
-  state.likesModal = { open: false, postId: "" };
+  state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false };
+  state.likesModal = { open: false, postId: "", animate: false };
   renderOverlays();
 }
 
@@ -831,14 +835,18 @@ async function addComment(postId, text, replyTo) {
     } else {
       meta.comments = [newComment, ...(meta.comments || [])];
     }
-    state.postMeta[postId] = meta;
-    state.postModal.commentText = "";
-    state.postModal.replyTo = null;
-    renderOverlays();
-  } catch (err) {
-    console.error(err);
+      state.postMeta[postId] = meta;
+      state.postModal.commentText = "";
+      state.postModal.replyTo = null;
+      if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+        updatePostModalMeta();
+      } else {
+        renderOverlays();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
-}
 
 async function togglePostLike(postId) {
   if (!state.user) return;
@@ -866,12 +874,16 @@ async function togglePostLike(postId) {
       meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
       await updatePostCounts(post, { likesDelta: 1 });
     }
-    state.postMeta[postId] = meta;
-    renderOverlays();
-  } catch (err) {
-    console.error(err);
+      state.postMeta[postId] = meta;
+      if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+        updatePostModalMeta();
+      } else {
+        renderOverlays();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
-}
 
 async function toggleCommentLike(postId, commentId, replyId) {
   if (!state.user) return;
@@ -900,14 +912,18 @@ async function toggleCommentLike(postId, commentId, replyId) {
       await updateDoc(commentRef, { likes: arrayUnion(likeId) });
       likes.unshift(likeId);
     }
-    target.likes = likes;
-    target.likesCount = likes.length;
-    state.postMeta[postId] = meta;
-    renderOverlays();
-  } catch (err) {
-    console.error(err);
+      target.likes = likes;
+      target.likesCount = likes.length;
+      state.postMeta[postId] = meta;
+      if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+        updatePostModalMeta();
+      } else {
+        renderOverlays();
+      }
+    } catch (err) {
+      console.error(err);
+    }
   }
-}
 function renderAuthScreen() {
   const isRegister = state.auth.mode === "register";
   return `
@@ -1842,6 +1858,21 @@ function renderCommentItem(postId, comment, parentId = "") {
   `;
 }
 
+function renderPostComments(comments) {
+  if (state.postModal.loading) {
+    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
+  }
+  if (!comments.length) {
+    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
+  }
+  return comments.map((comment) => `
+    <div class="space-y-3">
+      ${renderCommentItem(state.postModal.post.id, comment)}
+      ${(comment.replies || []).map((reply) => renderCommentItem(state.postModal.post.id, reply, comment.id)).join("")}
+    </div>
+  `).join("");
+}
+
 function renderPostModal() {
   if (!state.postModal.open || !state.postModal.post) return "";
   const post = state.postModal.post;
@@ -1853,12 +1884,13 @@ function renderPostModal() {
   const userBadge = currentUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
   const replyTarget = comments.find((item) => item.id === state.postModal.replyTo);
+  const animClass = state.postModal.animate ? "animate-in slide-in-from-bottom-10" : "";
 
   return `
-    <div class="fixed inset-0 z-[70]">
-      <div id="postModalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 animate-in slide-in-from-bottom-10">
+      <div class="fixed inset-0 z-[70]">
+        <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
+        <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 ${animClass}">
           <div class="flex items-center justify-between mb-4">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
@@ -1880,24 +1912,15 @@ function renderPostModal() {
             <button id="postLikeBtn" data-post-id="${escapeHtml(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
               ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
             </button>
-            <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              <button id="postLikesBtn" data-post-id="${escapeHtml(post.id)}" class="hover:text-slate-700">${escapeHtml(counts.likeLabel)} Likes</button>
-              <span>${escapeHtml(counts.commentLabel)} Kommentare</span>
-            </div>
-          </div>
-
-          <div class="mt-5 space-y-4 max-h-56 overflow-y-auto no-scrollbar">
-            ${state.postModal.loading ? `
-              <div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>
-            ` : (comments.length ? comments.map((comment) => `
-              <div class="space-y-3">
-                ${renderCommentItem(post.id, comment)}
-                ${(comment.replies || []).map((reply) => renderCommentItem(post.id, reply, comment.id)).join("")}
+              <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <button id="postLikesBtn" data-post-id="${escapeHtml(post.id)}" class="hover:text-slate-700">${escapeHtml(counts.likeLabel)} Likes</button>
+                <span id="postCommentsCount">${escapeHtml(counts.commentLabel)} Kommentare</span>
               </div>
-            `).join("") : `
-              <div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>
-            `)}
-          </div>
+            </div>
+
+            <div id="postModalComments" class="mt-5 space-y-4 max-h-56 overflow-y-auto no-scrollbar">
+              ${renderPostComments(comments)}
+            </div>
 
           ${replyTarget ? `
             <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
@@ -1922,12 +1945,13 @@ function renderLikesModal() {
   if (!state.likesModal.open || !state.likesModal.postId) return "";
   const meta = ensurePostMeta(state.likesModal.postId);
   const likes = meta.likes || [];
+  const animClass = state.likesModal.animate ? "animate-in slide-in-from-bottom-10" : "";
 
   return `
-    <div class="fixed inset-0 z-[80]">
-      <div id="likesModalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="fixed inset-0 z-[80]">
+        <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 animate-in slide-in-from-bottom-10">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 ${animClass}">
           <div class="flex items-center justify-between mb-6">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
@@ -1953,6 +1977,30 @@ function renderLikesModal() {
       </div>
     </div>
   `;
+}
+
+function updatePostModalMeta() {
+  if (!state.postModal.open || !state.postModal.post) return;
+  const post = state.postModal.post;
+  const meta = ensurePostMeta(post.id);
+  const counts = resolvePostCounts(post);
+  const comments = (meta.comments || []).map(ensureCommentShape);
+  const userBadge = currentUserBadge();
+  const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
+
+  const postLikeBtn = document.getElementById("postLikeBtn");
+  if (postLikeBtn) {
+    postLikeBtn.classList.toggle("text-rose-500", !!isLiked);
+    postLikeBtn.classList.toggle("text-slate-700", !isLiked);
+    postLikeBtn.innerHTML = `${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}`;
+  }
+  const postLikesBtn = document.getElementById("postLikesBtn");
+  if (postLikesBtn) postLikesBtn.textContent = `${counts.likeLabel} Likes`;
+  const postCommentsCount = document.getElementById("postCommentsCount");
+  if (postCommentsCount) postCommentsCount.textContent = `${counts.commentLabel} Kommentare`;
+  const postComments = document.getElementById("postModalComments");
+  if (postComments) postComments.innerHTML = renderPostComments(comments);
+  if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 
 function renderSettingsView() {
@@ -2235,7 +2283,16 @@ function ensureOverlayRoot() {
   return root;
 }
 
-function renderOverlays({ updateProfile = true, updatePost = true, updateLikes = true } = {}) {
+function renderOverlays(options = {}) {
+  const updateProfile = Object.prototype.hasOwnProperty.call(options, "updateProfile")
+    ? options.updateProfile
+    : !state.likesModal.open;
+  const updatePost = Object.prototype.hasOwnProperty.call(options, "updatePost")
+    ? options.updatePost
+    : !state.likesModal.open;
+  const updateLikes = Object.prototype.hasOwnProperty.call(options, "updateLikes")
+    ? options.updateLikes
+    : !state.likesModal.open;
   const root = ensureOverlayRoot();
   const profileRoot = document.getElementById("profileOverlayRoot");
   const postRoot = document.getElementById("postOverlayRoot");
@@ -2455,7 +2512,7 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
       postLikesBtn.addEventListener("click", () => {
         const postId = postLikesBtn.dataset.postId;
         if (!postId) return;
-        state.likesModal = { open: true, postId };
+        state.likesModal = { open: true, postId, animate: false };
         renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
       });
     }
@@ -2506,8 +2563,8 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
     const likesModalOverlay = document.getElementById("likesModalOverlay");
     const likesModalClose = document.getElementById("likesModalClose");
     const closeLikes = () => {
-      state.likesModal = { open: false, postId: "" };
-      renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
+      state.likesModal = { open: false, postId: "", animate: false };
+      renderOverlays({ updateLikes: true });
     };
     if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
     if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
@@ -2536,8 +2593,8 @@ function bindAppEvents() {
         state.postMeta = {};
         state.profileModal = { open: false, profile: null };
         state.profileView = null;
-        state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false };
-        state.likesModal = { open: false, postId: "" };
+        state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false };
+        state.likesModal = { open: false, postId: "", animate: false };
         state.selectedBusiness = null;
         cleanupLeaflet();
         setState({ activeTab: "feed", drawerOpen: false });
@@ -2549,16 +2606,16 @@ function bindAppEvents() {
     btn.addEventListener("click", () => {
       const tab = btn.dataset.nav;
       if (!tab) return;
-      setState({
-        activeTab: tab,
-        drawerOpen: false,
-        settingsView: "main",
-        selectedBusiness: null,
-        profileView: null,
-        profileModal: { open: false, profile: null },
-        postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false },
-        likesModal: { open: false, postId: "" }
-      });
+        setState({
+          activeTab: tab,
+          drawerOpen: false,
+          settingsView: "main",
+          selectedBusiness: null,
+          profileView: null,
+          profileModal: { open: false, profile: null },
+          postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false },
+          likesModal: { open: false, postId: "", animate: false }
+        });
     });
   });
 
