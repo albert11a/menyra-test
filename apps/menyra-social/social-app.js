@@ -154,6 +154,20 @@ const FAST_LIMITS = {
   likes: 40,
   comments: 80
 };
+const FAST_MODE = true;
+const CACHE_KEYS = {
+  feed: "menyra_social_feed_cache_v1",
+  userPosts: "menyra_social_user_posts_cache_v1",
+  businessPosts: "menyra_social_business_posts_cache_v1",
+  restaurants: "menyra_social_restaurants_cache_v1",
+  stories: "menyra_social_stories_cache_v1"
+};
+const CACHE_TTL_MS = {
+  feed: 10 * 60 * 1000,
+  posts: 10 * 60 * 1000,
+  restaurants: 60 * 60 * 1000,
+  stories: 10 * 60 * 1000
+};
 
 const state = {
   sessionReady: false,
@@ -279,18 +293,42 @@ function saveNotifications(notifications) {
 }
 
 function saveFollowing(handles) {
-  void handles;
+  if (!Array.isArray(handles)) return;
+  try {
+    safeStorage.setItem(STORAGE_KEYS.following, JSON.stringify(handles.slice(0, 500)));
+  } catch {}
 }
 
 function savePostMeta(meta) {
   void meta;
 }
 
+function readCache(key, ttlMs) {
+  const raw = safeStorage.getItem(key);
+  if (!raw) return null;
+  try {
+    const payload = JSON.parse(raw);
+    if (Array.isArray(payload)) {
+      return { data: payload, fresh: false };
+    }
+    if (!payload || !Array.isArray(payload.data)) return null;
+    const age = Date.now() - (payload.ts || 0);
+    return { data: payload.data, fresh: ttlMs ? age <= ttlMs : true };
+  } catch {
+    return null;
+  }
+}
+
+function writeCache(key, data) {
+  if (!Array.isArray(data)) return;
+  try {
+    safeStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+  } catch {}
+}
+
 function saveFeedPosts(posts) {
   if (!Array.isArray(posts)) return;
-  try {
-    safeStorage.setItem(STORAGE_KEYS.feed, JSON.stringify(posts.slice(0, FAST_LIMITS.feedFallback)));
-  } catch {}
+  writeCache(CACHE_KEYS.feed, posts.slice(0, FAST_LIMITS.feedFallback));
 }
 
 function loadPersisted() {
@@ -309,15 +347,30 @@ function loadPersisted() {
     try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch {}
   }
 
-  const savedFeed = safeStorage.getItem(STORAGE_KEYS.feed);
-  if (savedFeed) {
-    try {
-      const feed = JSON.parse(savedFeed);
-      if (Array.isArray(feed)) state.feedPosts = feed;
-    } catch {}
+  const feedCache = readCache(CACHE_KEYS.feed);
+  if (feedCache?.data?.length) state.feedPosts = feedCache.data;
+
+  const userPostsCache = readCache(CACHE_KEYS.userPosts);
+  if (userPostsCache?.data?.length) state.userPosts = userPostsCache.data;
+
+  const businessPostsCache = readCache(CACHE_KEYS.businessPosts);
+  if (businessPostsCache?.data?.length) state.businessPosts = businessPostsCache.data;
+
+  const restaurantsCache = readCache(CACHE_KEYS.restaurants);
+  if (restaurantsCache?.data?.length) {
+    state.restaurants = restaurantsCache.data;
+    state.businessLocations = restaurantsCache.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
   }
 
-  state.followingHandles = [];
+  const storiesCache = readCache(CACHE_KEYS.stories);
+  if (storiesCache?.data?.length) state.stories = storiesCache.data;
+
+  const savedFollowing = safeStorage.getItem(STORAGE_KEYS.following);
+  if (savedFollowing) {
+    try { state.followingHandles = JSON.parse(savedFollowing); } catch { state.followingHandles = []; }
+  } else {
+    state.followingHandles = [];
+  }
   state.postMeta = {};
 }
 
@@ -776,7 +829,8 @@ function ensureTabData(tab) {
     void loadFeedPosts();
   }
 
-  if ((tab === "feed" || tab === "map") && !dataLoaded.restaurants) {
+  const needsRestaurants = tab === "map" || (!FAST_MODE && tab === "feed");
+  if (needsRestaurants && !dataLoaded.restaurants) {
     dataLoaded.restaurants = true;
     scheduleIdle(() => {
       loadRestaurants().then(() => {
@@ -1169,7 +1223,7 @@ function renderFeedView() {
           return `
             <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
               <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass}">
-                <img src="${escapeHtml(s.img)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+                <img src="${escapeHtml(s.img)}" loading="lazy" decoding="async" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
               </div>
               <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
             </a>
@@ -1191,11 +1245,11 @@ function renderFeedView() {
           const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
           const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
           return `
-          <div class="group">
+          <div class="group feed-card">
             <div class="flex items-center justify-between mb-5 px-2">
               <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
                 <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-white">
-                  <img src="${escapeHtml(post.logo || post.image)}" class="w-full h-full object-cover" />
+                  <img src="${escapeHtml(post.logo || post.image)}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
                 </div>
                 <div>
                   <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
@@ -1780,8 +1834,9 @@ async function openProfileFromBusiness(input) {
   }
 }
 
-async function loadFollowingFromFirebase() {
+async function loadFollowingFromFirebase({ force = false } = {}) {
   if (!state.user) return;
+  if (FAST_MODE && state.followingHandles.length && !force) return;
   try {
     const ref = collection(db, "users", state.user.uid, "following");
     const snap = await getDocs(ref);
@@ -1791,6 +1846,7 @@ async function loadFollowingFromFirebase() {
       if (data.handle) handles.push(String(data.handle));
     });
     state.followingHandles = handles;
+    saveFollowing(handles);
   } catch (err) {
     console.error(err);
     state.followingHandles = [];
@@ -1884,6 +1940,7 @@ async function toggleFollow(handle, target = {}) {
         console.error(err);
       }
     }
+    saveFollowing(state.followingHandles);
 
     const profileModal = state.profileModal.profile;
     const profileView = state.profileView?.profile || null;
@@ -2488,6 +2545,7 @@ function render() {
     renderQueued = true;
     return;
   }
+  document.body.classList.toggle("fast-mode", FAST_MODE);
   if (!state.sessionReady) {
     appEl.innerHTML = renderLoading();
   } else if (!state.user) {
@@ -3073,14 +3131,15 @@ async function handleUploadPost() {
         mediaUrl: url,
         mediaType: "image"
       });
-      await loadFeedPosts();
+      await loadFeedPosts({ force: true });
+      await loadBusinessPosts({ force: true });
     } else {
       await createUserPost({
         uid: state.user.uid,
         caption,
         url
       });
-      await loadUserPosts();
+      await loadUserPosts({ force: true });
     }
 
     state.upload = { preview: "", caption: "", file: null, status: "" };
@@ -3143,8 +3202,9 @@ async function createUserPost({ uid, caption, url }) {
   });
 }
 
-async function loadUserProfile(user) {
+async function loadUserProfile(user, { force = false } = {}) {
   if (!user) return;
+  if (FAST_MODE && state.userProfile?.uid === user.uid && state.userProfile?.name && !force) return;
   await ensureUserProfile(user, { city: "Prishtina" });
   const snap = await getDoc(doc(db, "users", user.uid));
   const data = snap.exists() ? snap.data() : {};
@@ -3154,11 +3214,26 @@ async function loadUserProfile(user) {
   render();
 }
 
-async function loadRestaurants() {
+async function loadRestaurants({ force = false } = {}) {
+  const cached = readCache(CACHE_KEYS.restaurants, CACHE_TTL_MS.restaurants);
+  if (cached?.data?.length) {
+    if (!state.restaurants.length) {
+      state.restaurants = cached.data;
+      state.businessLocations = cached.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
+      cleanupLeaflet();
+      render();
+    }
+    if (FAST_MODE && !force) return;
+    if (cached.fresh && !force) return;
+  }
   try {
     const snap = await getDocs(query(collection(db, "restaurants"), limit(FAST_LIMITS.restaurants)));
     const list = [];
     snap.forEach((docSnap) => list.push({ id: docSnap.id, ...docSnap.data() }));
+    writeCache(CACHE_KEYS.restaurants, list);
+    const prevIds = state.restaurants.map((item) => String(item.id)).join("|");
+    const nextIds = list.map((item) => String(item.id)).join("|");
+    if (prevIds === nextIds) return;
     state.restaurants = list;
     state.businessLocations = list.map((rest, idx) => normalizeBusinessLocation(rest, idx));
     cleanupLeaflet();
@@ -3247,7 +3322,7 @@ async function loadBusinessPostsForRestaurant(restaurantId) {
     const ref = collection(db, "restaurants", restaurantId, "socialPosts");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(50)));
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.businessPosts)));
     } catch (err) {
       snap = await getDocs(ref);
     }
@@ -3276,7 +3351,17 @@ async function loadBusinessPostsForRestaurant(restaurantId) {
   }
 }
 
-async function loadFeedPosts() {
+async function loadFeedPosts({ force = false } = {}) {
+  const cached = readCache(CACHE_KEYS.feed, CACHE_TTL_MS.feed);
+  if (cached?.data?.length) {
+    if (!state.feedPosts.length) {
+      state.feedPosts = cached.data;
+      render();
+    }
+    if (FAST_MODE && !force) return;
+    if (cached.fresh && !force) return;
+  }
+
   try {
     const ref = collection(db, "socialFeed");
     let snap = null;
@@ -3287,19 +3372,34 @@ async function loadFeedPosts() {
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    state.feedPosts = rows
+    const next = rows
       .filter((row) => (row.status || "active") === "active")
       .map(normalizeFeedPost)
       .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-    saveFeedPosts(state.feedPosts);
+    saveFeedPosts(next);
+
+    const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
+    const nextIds = next.map((item) => String(item.id)).join("|");
+    if (prevIds === nextIds) return;
+
+    state.feedPosts = next;
     render();
   } catch (err) {
     console.error(err);
   }
 }
 
-async function loadUserPosts() {
+async function loadUserPosts({ force = false } = {}) {
   if (!state.user) return;
+  const cached = readCache(CACHE_KEYS.userPosts, CACHE_TTL_MS.posts);
+  if (cached?.data?.length) {
+    if (!state.userPosts.length) {
+      state.userPosts = cached.data;
+      render();
+    }
+    if (FAST_MODE && !force) return;
+    if (cached.fresh && !force) return;
+  }
   try {
     const ref = collection(db, "users", state.user.uid, "posts");
     let snap = null;
@@ -3310,7 +3410,7 @@ async function loadUserPosts() {
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    state.userPosts = rows.map((row) => ({
+    const next = rows.map((row) => ({
       id: row.id,
       url: row.url,
       type: row.type || "square",
@@ -3323,18 +3423,32 @@ async function loadUserPosts() {
       ownerType: "user",
       ownerId: state.user.uid
     }));
+    writeCache(CACHE_KEYS.userPosts, next);
+    const prevIds = state.userPosts.map((item) => String(item.id)).join("|");
+    const nextIds = next.map((item) => String(item.id)).join("|");
+    if (prevIds === nextIds) return;
+    state.userPosts = next;
     render();
   } catch (err) {
     console.error(err);
   }
 }
 
-async function loadBusinessPosts() {
+async function loadBusinessPosts({ force = false } = {}) {
   const restaurantId = state.userProfile.restaurantId;
   if (!restaurantId) {
     state.businessPosts = [];
     render();
     return;
+  }
+  const cached = readCache(CACHE_KEYS.businessPosts, CACHE_TTL_MS.posts);
+  if (cached?.data?.length) {
+    if (!state.businessPosts.length) {
+      state.businessPosts = cached.data;
+      render();
+    }
+    if (FAST_MODE && !force) return;
+    if (cached.fresh && !force) return;
   }
   try {
     const ref = collection(db, "restaurants", restaurantId, "socialPosts");
@@ -3346,7 +3460,7 @@ async function loadBusinessPosts() {
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    state.businessPosts = rows
+    const next = rows
       .filter((row) => (row.status || "active") === "active")
       .map((row) => ({
         id: row.id,
@@ -3363,6 +3477,11 @@ async function loadBusinessPosts() {
         restaurantId
       }))
       .filter((row) => row.url);
+    writeCache(CACHE_KEYS.businessPosts, next);
+    const prevIds = state.businessPosts.map((item) => String(item.id)).join("|");
+    const nextIds = next.map((item) => String(item.id)).join("|");
+    if (prevIds === nextIds) return;
+    state.businessPosts = next;
     render();
   } catch (err) {
     console.error(err);
@@ -3370,6 +3489,7 @@ async function loadBusinessPosts() {
 }
 
 async function loadStoriesFallback(restaurants) {
+  if (FAST_MODE) return [];
   const now = Timestamp.now();
   const items = [];
   const slice = restaurants.slice(0, FAST_LIMITS.storiesFallback);
@@ -3393,6 +3513,15 @@ async function loadStoriesFallback(restaurants) {
 }
 
 async function loadStories() {
+  const cached = readCache(CACHE_KEYS.stories, CACHE_TTL_MS.stories);
+  if (cached?.data?.length) {
+    if (!state.stories.length) {
+      state.stories = cached.data;
+      render();
+    }
+    if (FAST_MODE) return;
+    if (cached.fresh) return;
+  }
   try {
     const now = Timestamp.now();
     const snap = await getDocs(query(
@@ -3419,11 +3548,20 @@ async function loadStories() {
       };
     });
 
+    writeCache(CACHE_KEYS.stories, items);
+    const prevIds = state.stories.map((item) => String(item.restaurantId)).join("|");
+    const nextIds = items.map((item) => String(item.restaurantId)).join("|");
+    if (prevIds === nextIds) return;
     state.stories = items;
     render();
   } catch (err) {
     console.warn("stories fallback", err);
-    state.stories = await loadStoriesFallback(state.restaurants);
+    const fallback = await loadStoriesFallback(state.restaurants);
+    writeCache(CACHE_KEYS.stories, fallback);
+    const prevIds = state.stories.map((item) => String(item.restaurantId)).join("|");
+    const nextIds = fallback.map((item) => String(item.restaurantId)).join("|");
+    if (prevIds === nextIds) return;
+    state.stories = fallback;
     render();
   }
 }

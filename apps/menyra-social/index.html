@@ -60,6 +60,27 @@
     .slide-in-from-right-10 { animation: slide-in-right 0.5s ease-out forwards; }
     .slide-in-from-bottom-10 { animation: slide-in-bottom 0.6s ease-out forwards; }
     .slide-in-from-bottom-6 { animation: slide-in-bottom 0.3s ease-out forwards; }
+    body.fast-mode .animate-in,
+    body.fast-mode .slide-in-from-left-10,
+    body.fast-mode .slide-in-from-right-10,
+    body.fast-mode .slide-in-from-bottom-10,
+    body.fast-mode .slide-in-from-bottom-6 { animation: none !important; }
+    body.fast-mode .backdrop-blur,
+    body.fast-mode .backdrop-blur-sm,
+    body.fast-mode .backdrop-blur-md,
+    body.fast-mode .backdrop-blur-lg,
+    body.fast-mode .backdrop-blur-xl { backdrop-filter: none !important; }
+    body.fast-mode .shadow-2xl,
+    body.fast-mode .shadow-xl,
+    body.fast-mode .shadow-lg,
+    body.fast-mode .shadow-md,
+    body.fast-mode .shadow-sm { box-shadow: none !important; }
+    body.fast-mode img { background: #e2e8f0; }
+    body.fast-mode .transition-transform,
+    body.fast-mode .transition-all { transition: none !important; }
+    body.fast-mode .feed-card { content-visibility: auto; contain-intrinsic-size: 320px 620px; }
+    body.fast-mode .animate-pulse { animation: none !important; }
+    body.fast-mode .group-hover\:scale-105 { transform: none !important; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
