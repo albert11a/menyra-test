@@ -366,7 +366,10 @@ function loadPersisted() {
   }
 
   const feedCache = readCache(CACHE_KEYS.feed);
-  if (feedCache?.data?.length) state.feedPosts = feedCache.data;
+  if (feedCache?.data?.length) {
+    state.feedPosts = feedCache.data;
+    ensureStoriesFromFeedIfNeeded(feedCache.data);
+  }
 
   const userPostsCache = readCache(CACHE_KEYS.userPosts);
   if (userPostsCache?.data?.length) state.userPosts = userPostsCache.data;
@@ -1241,7 +1244,7 @@ function renderFeedView() {
           const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
           return `
             <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
-              <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass}">
+              <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
                 <img src="${escapeHtml(s.img)}" loading="lazy" decoding="async" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
               </div>
               <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
@@ -1267,7 +1270,7 @@ function renderFeedView() {
           <div class="group feed-card">
             <div class="flex items-center justify-between mb-5 px-2">
               <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
-                <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-white">
+                <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
                   <img src="${escapeHtml(post.logo || post.image)}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
                 </div>
                 <div>
@@ -1278,7 +1281,7 @@ function renderFeedView() {
               ${icon("more-horizontal", "w-5 h-5 text-slate-400")}
             </div>
             <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
-              <div class="relative h-[30rem] rounded-[3rem] overflow-hidden">
+              <div class="relative h-[30rem] rounded-[3rem] overflow-hidden bg-slate-200">
                 <img src="${escapeHtml(post.image)}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
                 ${post.isLive ? `
                   <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
@@ -3319,6 +3322,16 @@ function buildStoriesFromFeed(posts) {
   return Array.from(map.values()).slice(0, FAST_LIMITS.stories);
 }
 
+function ensureStoriesFromFeedIfNeeded(posts) {
+  if (!FAST_MODE) return false;
+  if (state.stories.length) return false;
+  const storySeed = buildStoriesFromFeed(posts);
+  if (!storySeed.length) return false;
+  state.stories = storySeed;
+  writeCache(CACHE_KEYS.stories, storySeed);
+  return true;
+}
+
 function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
   const data = profileDoc?.data || profileDoc || {};
   const displayName = data?.displayName || fallbackName || restaurant?.name || restaurant?.restaurantName || "Business";
@@ -3411,6 +3424,9 @@ async function loadFeedPosts({ force = false } = {}) {
       state.feedPosts = cached.data;
       render();
     }
+    if (ensureStoriesFromFeedIfNeeded(cached.data)) {
+      render();
+    }
     if (FAST_MODE && !force) return;
     if (cached.fresh && !force) return;
   }
@@ -3435,7 +3451,7 @@ async function loadFeedPosts({ force = false } = {}) {
     const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
     const nextIds = next.map((item) => String(item.id)).join("|");
     let storiesChanged = false;
-    if (FAST_MODE && !state.stories.length) {
+    if (FAST_MODE) {
       const storySeed = buildStoriesFromFeed(next);
       if (storySeed.length) {
         const prevStoryIds = state.stories.map((item) => String(item.restaurantId)).join("|");
@@ -3493,9 +3509,25 @@ async function loadFeedDelta({ force = false } = {}) {
       return true;
     }).sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
 
+    let storiesChanged = false;
+    if (FAST_MODE) {
+      const storySeed = buildStoriesFromFeed(unique);
+      if (storySeed.length) {
+        const prevStoryIds = state.stories.map((item) => String(item.restaurantId)).join("|");
+        const nextStoryIds = storySeed.map((item) => String(item.restaurantId)).join("|");
+        if (prevStoryIds !== nextStoryIds) {
+          state.stories = storySeed;
+          writeCache(CACHE_KEYS.stories, storySeed);
+          storiesChanged = true;
+        }
+      }
+    }
+
     state.feedPosts = unique;
     saveFeedPosts(unique, { lastDeltaCheck: Date.now() });
-    render();
+    if (storiesChanged || unique.length) {
+      render();
+    }
   } catch (err) {
     console.error(err);
   }
