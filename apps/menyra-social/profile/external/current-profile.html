@@ -72,6 +72,53 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
     }
+
+    .post-modal-root {
+      position: fixed;
+      inset: 0;
+      z-index: 70;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 1;
+      pointer-events: none;
+      visibility: hidden;
+    }
+
+    .post-modal-root.is-open {
+      pointer-events: auto;
+      visibility: visible;
+    }
+
+    .post-modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      opacity: 1;
+    }
+
+    .post-modal-sheet {
+      position: relative;
+      width: 100%;
+      max-width: 28rem;
+      margin: 0 auto;
+      transform: translateY(24px);
+      opacity: 1;
+      transition: transform 240ms ease;
+      will-change: transform;
+    }
+
+    .post-modal-root.is-open .post-modal-sheet {
+      transform: translateY(0);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .post-modal-root,
+      .post-modal-backdrop,
+      .post-modal-sheet {
+        transition: none;
+      }
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900 selection:bg-indigo-100">
@@ -264,7 +311,31 @@
         root.id = "modalRoot";
         appEl.appendChild(root);
       }
+      if (!root.dataset.ready) {
+        root.innerHTML = `
+          <div id="postModalRoot" class="post-modal-root" aria-hidden="true">
+            <div class="post-modal-backdrop"></div>
+            <div class="post-modal-sheet">
+              <div id="postModalContent"></div>
+            </div>
+          </div>
+        `;
+        root.dataset.ready = "true";
+      }
+      bindModalEvents();
       return root;
+    };
+
+    const bindModalEvents = () => {
+      const modalRoot = document.getElementById("postModalRoot");
+      if (!modalRoot || modalRoot.dataset.bound) return;
+      modalRoot.addEventListener("click", (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        if (target.closest(".post-modal-sheet")) return;
+        if (state.modal.open) closePostModal();
+      });
+      modalRoot.dataset.bound = "true";
     };
 
     const updatePostCardCounts = (post) => {
@@ -493,32 +564,27 @@
       const isLiked = !!post.liked;
 
       return `
-        <div class="fixed inset-0 z-[70]" onclick="closePostModal()">
-          <div class="absolute inset-0 bg-black/60"></div>
-          <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto" onclick="event.stopPropagation()">
-            <div class="bg-white rounded-t-[2.5rem] shadow-2xl border border-slate-100 p-7 animate-pop">
-              <div class="flex items-center justify-between mb-4">
-                <div>
-                  <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
-                  <h3 class="text-xl font-black italic tracking-tighter">Status</h3>
-                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${post.type === "video" ? "Video" : "Foto"}</p>
-                </div>
-                <button onclick="closePostModal()" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${Icon("x", 16)}</button>
-              </div>
+        <div class="bg-white rounded-t-[2.5rem] shadow-2xl border border-slate-100 p-7">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
+              <h3 class="text-xl font-black italic tracking-tighter">Status</h3>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${post.type === "video" ? "Video" : "Foto"}</p>
+            </div>
+            <button onclick="closePostModal()" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${Icon("x", 16)}</button>
+          </div>
 
-              <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                <img src="${post.url}" class="w-full h-[22rem] object-cover" />
-              </div>
+          <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
+            <img src="${post.url}" class="w-full h-[22rem] object-cover" />
+          </div>
 
-              <div class="mt-4 flex items-center justify-between">
-                <button onclick="togglePostLike()" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
-                  ${Icon("heart", 18)} ${isLiked ? "Gefaellt" : "Like"}
-                </button>
-                <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  <span>${post.likes} Likes</span>
-                  <span>${post.comments} Kommentare</span>
-                </div>
-              </div>
+          <div class="mt-4 flex items-center justify-between">
+            <button onclick="togglePostLike()" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
+              ${Icon("heart", 18)} ${isLiked ? "Gefaellt" : "Like"}
+            </button>
+            <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <span>${post.likes} Likes</span>
+              <span>${post.comments} Kommentare</span>
             </div>
           </div>
         </div>
@@ -542,10 +608,24 @@
     };
 
     const renderModal = () => {
-      const root = ensureModalRoot();
-      const nextHtml = PostModal();
-      if (root.innerHTML !== nextHtml) {
-        root.innerHTML = nextHtml;
+      ensureModalRoot();
+      const modalRoot = document.getElementById("postModalRoot");
+      const modalContent = document.getElementById("postModalContent");
+      if (!modalRoot || !modalContent) return;
+      if (state.modal.open) {
+        const nextHtml = PostModal();
+        if (modalContent.innerHTML !== nextHtml) {
+          modalContent.innerHTML = nextHtml;
+        }
+        modalRoot.setAttribute("aria-hidden", "false");
+        if (!modalRoot.classList.contains("is-open")) {
+          requestAnimationFrame(() => {
+            modalRoot.classList.add("is-open");
+          });
+        }
+      } else {
+        modalRoot.classList.remove("is-open");
+        modalRoot.setAttribute("aria-hidden", "true");
       }
       if (window.lucide) window.lucide.createIcons();
       document.body.style.overflow = state.modal.open ? "hidden" : "";

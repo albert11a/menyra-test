@@ -1884,7 +1884,7 @@ function renderPostModal() {
   const userBadge = currentUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
   const replyTarget = comments.find((item) => item.id === state.postModal.replyTo);
-  const animClass = state.postModal.animate ? "animate-in slide-in-from-bottom-10" : "";
+  const animClass = "";
 
   return `
       <div class="fixed inset-0 z-[70]">
@@ -1945,7 +1945,7 @@ function renderLikesModal() {
   if (!state.likesModal.open || !state.likesModal.postId) return "";
   const meta = ensurePostMeta(state.likesModal.postId);
   const likes = meta.likes || [];
-  const animClass = state.likesModal.animate ? "animate-in slide-in-from-bottom-10" : "";
+  const animClass = "";
 
   return `
       <div class="fixed inset-0 z-[80]">
