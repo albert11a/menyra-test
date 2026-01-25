@@ -146,6 +146,7 @@ const businessProfileCache = new Map();
 const FAST_LIMITS = {
   feed: 20,
   feedFallback: 40,
+  feedDelta: 8,
   userPosts: 24,
   businessPosts: 24,
   restaurants: 80,
@@ -168,6 +169,7 @@ const CACHE_TTL_MS = {
   restaurants: 60 * 60 * 1000,
   stories: 10 * 60 * 1000
 };
+const FEED_DELTA_MIN_MS = 3 * 60 * 1000;
 
 const state = {
   sessionReady: false,
@@ -313,22 +315,36 @@ function readCache(key, ttlMs) {
     }
     if (!payload || !Array.isArray(payload.data)) return null;
     const age = Date.now() - (payload.ts || 0);
-    return { data: payload.data, fresh: ttlMs ? age <= ttlMs : true };
+    return { data: payload.data, meta: payload.meta || null, fresh: ttlMs ? age <= ttlMs : true };
   } catch {
     return null;
   }
 }
 
-function writeCache(key, data) {
+function writeCache(key, data, meta = null) {
   if (!Array.isArray(data)) return;
   try {
-    safeStorage.setItem(key, JSON.stringify({ ts: Date.now(), data }));
+    safeStorage.setItem(key, JSON.stringify({ ts: Date.now(), data, meta }));
   } catch {}
 }
 
-function saveFeedPosts(posts) {
+function computeLatestTimestamp(posts) {
+  let latest = 0;
+  posts.forEach((post) => {
+    const ts = toDateSafe(post.createdAt)?.getTime() || 0;
+    if (ts > latest) latest = ts;
+  });
+  return latest;
+}
+
+function saveFeedPosts(posts, extraMeta = {}) {
   if (!Array.isArray(posts)) return;
-  writeCache(CACHE_KEYS.feed, posts.slice(0, FAST_LIMITS.feedFallback));
+  const latestTs = computeLatestTimestamp(posts);
+  writeCache(
+    CACHE_KEYS.feed,
+    posts.slice(0, FAST_LIMITS.feedFallback),
+    { latestTs, ...extraMeta }
+  );
 }
 
 function loadPersisted() {
@@ -827,6 +843,7 @@ function ensureTabData(tab) {
   if (tab === "feed" && !dataLoaded.feed) {
     dataLoaded.feed = true;
     void loadFeedPosts();
+    scheduleIdle(() => void loadFeedDelta());
   }
 
   const needsRestaurants = tab === "map" || (!FAST_MODE && tab === "feed");
@@ -2071,8 +2088,8 @@ function renderPostModal() {
       <div class="fixed inset-0 z-[70]">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
         <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh]">
-            <div class="flex-1 overflow-y-auto no-scrollbar p-7">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden">
+            <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
               <div class="flex items-center justify-between mb-4">
                 <div>
                   <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
@@ -2137,7 +2154,7 @@ function renderLikesModal() {
       <div class="fixed inset-0 z-[80]">
         <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[80vh]">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[80vh] overflow-hidden">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
@@ -2146,7 +2163,7 @@ function renderLikesModal() {
             <button id="likesModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
           </div>
 
-          <div class="px-7 pb-7 space-y-3 overflow-y-auto no-scrollbar flex-1">
+          <div class="px-7 pb-7 space-y-3 overflow-y-auto no-scrollbar modal-scroll flex-1">
             ${likes.length ? likes.map((user) => `
               <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
                 <img src="${escapeHtml(user.avatar)}" class="w-10 h-10 rounded-2xl object-cover" />
@@ -3381,13 +3398,59 @@ async function loadFeedPosts({ force = false } = {}) {
       .filter((row) => (row.status || "active") === "active")
       .map(normalizeFeedPost)
       .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-    saveFeedPosts(next);
+    const cached = readCache(CACHE_KEYS.feed);
+    saveFeedPosts(next, { lastDeltaCheck: cached?.meta?.lastDeltaCheck || 0 });
 
     const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
     const nextIds = next.map((item) => String(item.id)).join("|");
     if (prevIds === nextIds) return;
 
     state.feedPosts = next;
+    render();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function loadFeedDelta({ force = false } = {}) {
+  const cached = readCache(CACHE_KEYS.feed);
+  const latestTs = cached?.meta?.latestTs || computeLatestTimestamp(state.feedPosts);
+  if (!latestTs) return;
+  const lastCheck = cached?.meta?.lastDeltaCheck || 0;
+  if (!force && Date.now() - lastCheck < FEED_DELTA_MIN_MS) return;
+
+  try {
+    const ref = collection(db, "socialFeed");
+    const snap = await getDocs(query(
+      ref,
+      where("createdAt", ">", Timestamp.fromMillis(latestTs)),
+      orderBy("createdAt", "desc"),
+      limit(FAST_LIMITS.feedDelta)
+    ));
+    if (snap.empty) {
+      saveFeedPosts(state.feedPosts, { lastDeltaCheck: Date.now() });
+      return;
+    }
+    const rows = [];
+    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+    const fresh = rows
+      .filter((row) => (row.status || "active") === "active")
+      .map(normalizeFeedPost);
+    if (!fresh.length) {
+      saveFeedPosts(state.feedPosts, { lastDeltaCheck: Date.now() });
+      return;
+    }
+    const merged = [...fresh, ...state.feedPosts];
+    const seen = new Set();
+    const unique = merged.filter((item) => {
+      const id = String(item.id);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    }).sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+
+    state.feedPosts = unique;
+    saveFeedPosts(unique, { lastDeltaCheck: Date.now() });
     render();
   } catch (err) {
     console.error(err);

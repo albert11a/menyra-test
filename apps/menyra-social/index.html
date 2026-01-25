@@ -78,9 +78,11 @@
     body.fast-mode img { background: #e2e8f0; }
     body.fast-mode .transition-transform,
     body.fast-mode .transition-all { transition: none !important; }
-    body.fast-mode .feed-card { content-visibility: auto; contain-intrinsic-size: 320px 620px; }
+    body.fast-mode .feed-card { contain: content; }
     body.fast-mode .animate-pulse { animation: none !important; }
     body.fast-mode .group-hover\:scale-105 { transform: none !important; }
+    img { display: block; background: #e2e8f0; }
+    .modal-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
