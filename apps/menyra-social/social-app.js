@@ -242,6 +242,8 @@ let dataLoaded = {
   stories: false,
   following: false
 };
+let lastAppHtml = "";
+let lastRenderMode = "";
 
 function suspendRender() {
   renderSuspended += 1;
@@ -2568,15 +2570,28 @@ function render() {
     return;
   }
   document.body.classList.toggle("fast-mode", FAST_MODE);
+  let nextHtml = "";
+  let mode = "";
   if (!state.sessionReady) {
-    appEl.innerHTML = renderLoading();
+    nextHtml = renderLoading();
+    mode = "loading";
   } else if (!state.user) {
-    appEl.innerHTML = renderAuthScreen();
-    bindAuthEvents();
-    if (window.lucide?.createIcons) window.lucide.createIcons();
+    nextHtml = renderAuthScreen();
+    mode = "auth";
   } else {
-    appEl.innerHTML = renderMain();
-    bindAppEvents();
+    nextHtml = renderMain();
+    mode = "main";
+  }
+  const changed = nextHtml !== lastAppHtml || mode !== lastRenderMode;
+  if (changed) {
+    appEl.innerHTML = nextHtml;
+    lastAppHtml = nextHtml;
+    lastRenderMode = mode;
+    if (mode === "auth") {
+      bindAuthEvents();
+    } else if (mode === "main") {
+      bindAppEvents();
+    }
     if (window.lucide?.createIcons) window.lucide.createIcons();
   }
 
@@ -3288,6 +3303,22 @@ function normalizeFeedPost(row) {
   };
 }
 
+function buildStoriesFromFeed(posts) {
+  if (!Array.isArray(posts)) return [];
+  const map = new Map();
+  posts.forEach((post) => {
+    const rid = post.restaurantId || post.ownerId || post.id;
+    if (!rid || map.has(rid)) return;
+    map.set(rid, {
+      restaurantId: rid,
+      name: post.business || post.restaurantName || "Business",
+      img: post.logo || post.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
+      isLive: false
+    });
+  });
+  return Array.from(map.values()).slice(0, FAST_LIMITS.stories);
+}
+
 function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
   const data = profileDoc?.data || profileDoc || {};
   const displayName = data?.displayName || fallbackName || restaurant?.name || restaurant?.restaurantName || "Business";
@@ -3403,7 +3434,20 @@ async function loadFeedPosts({ force = false } = {}) {
 
     const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
     const nextIds = next.map((item) => String(item.id)).join("|");
-    if (prevIds === nextIds) return;
+    let storiesChanged = false;
+    if (FAST_MODE && !state.stories.length) {
+      const storySeed = buildStoriesFromFeed(next);
+      if (storySeed.length) {
+        const prevStoryIds = state.stories.map((item) => String(item.restaurantId)).join("|");
+        const nextStoryIds = storySeed.map((item) => String(item.restaurantId)).join("|");
+        if (prevStoryIds !== nextStoryIds) {
+          state.stories = storySeed;
+          writeCache(CACHE_KEYS.stories, storySeed);
+          storiesChanged = true;
+        }
+      }
+    }
+    if (prevIds === nextIds && !storiesChanged) return;
 
     state.feedPosts = next;
     render();
