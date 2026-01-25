@@ -1272,7 +1272,7 @@ function renderProfileView() {
     <div class="pb-24">
       <div class="px-5 pb-2 pt-10">
         <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
-        <div class="bg-white rounded-[2.5rem] p-8 shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] relative overflow-hidden z-10 border border-slate-100">
+        <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
           <div class="absolute top-[-60px] right-[-60px] w-64 h-64 bg-gradient-to-bl from-indigo-100 via-purple-100 to-transparent rounded-full blur-3xl opacity-60 pointer-events-none mix-blend-multiply"></div>
           <div class="absolute top-[-20px] right-[-20px] w-32 h-32 bg-white/40 rounded-full blur-xl pointer-events-none"></div>
 
