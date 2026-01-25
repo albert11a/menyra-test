@@ -700,6 +700,27 @@ function resolvePostCounts(post) {
   return { likeLabel: String(likeCount), commentLabel: String(commentCount) };
 }
 
+function escapeSelector(value) {
+  const str = String(value);
+  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
+    return CSS.escape(str);
+  }
+  return str.replace(/["\\]/g, "\\$&");
+}
+
+function updatePostCountNodes(post) {
+  if (!post || !post.id) return;
+  const postId = escapeSelector(post.id);
+  const likeLabel = formatCount(post.likes);
+  const commentLabel = formatCount(post.comments);
+  document.querySelectorAll(`[data-post-like-count="${postId}"]`).forEach((el) => {
+    el.textContent = likeLabel;
+  });
+  document.querySelectorAll(`[data-post-comment-count="${postId}"]`).forEach((el) => {
+    el.textContent = commentLabel;
+  });
+}
+
 function findPostById(postId) {
   const all = [...state.userPosts, ...state.businessPosts];
   const found = all.find((item) => String(item.id) === String(postId));
@@ -820,6 +841,7 @@ async function addComment(postId, text, replyTo) {
   try {
     await setDoc(commentRef, payload);
     await updatePostCounts(post, { commentsDelta: 1 });
+    updatePostCountNodes(post);
     const newComment = ensureCommentShape({
       id: commentRef.id,
       ...payload,
@@ -858,11 +880,26 @@ async function togglePostLike(postId) {
   const likeId = user.uid || user.handle;
   const likeRef = doc(collection(postRef, "likes"), likeId);
   const idx = meta.likes.findIndex((item) => item.uid === user.uid || item.handle === user.handle);
+  const isUnlike = idx >= 0;
+  const delta = isUnlike ? -1 : 1;
   try {
-    if (idx >= 0) {
-      await deleteDoc(likeRef);
+    if (isUnlike) {
       meta.likes.splice(idx, 1);
-      await updatePostCounts(post, { likesDelta: -1 });
+    } else {
+      meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
+    }
+
+    state.postMeta[postId] = meta;
+    void updatePostCounts(post, { likesDelta: delta });
+    updatePostCountNodes(post);
+    if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+      updatePostModalMeta();
+    } else {
+      renderOverlays();
+    }
+
+    if (isUnlike) {
+      await deleteDoc(likeRef);
     } else {
       await setDoc(likeRef, {
         uid: user.uid,
@@ -871,19 +908,11 @@ async function togglePostLike(postId) {
         avatar: user.avatar,
         createdAt: serverTimestamp()
       });
-      meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
-      await updatePostCounts(post, { likesDelta: 1 });
     }
-      state.postMeta[postId] = meta;
-      if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-        updatePostModalMeta();
-      } else {
-        renderOverlays();
-      }
-    } catch (err) {
-      console.error(err);
-    }
+  } catch (err) {
+    console.error(err);
   }
+}
 
 async function toggleCommentLike(postId, commentId, replyId) {
   if (!state.user) return;
@@ -906,24 +935,28 @@ async function toggleCommentLike(postId, commentId, replyId) {
   const idx = likes.findIndex((item) => item === likeId);
   try {
     if (idx >= 0) {
-      await updateDoc(commentRef, { likes: arrayRemove(likeId) });
       likes.splice(idx, 1);
     } else {
-      await updateDoc(commentRef, { likes: arrayUnion(likeId) });
       likes.unshift(likeId);
     }
-      target.likes = likes;
-      target.likesCount = likes.length;
-      state.postMeta[postId] = meta;
-      if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-        updatePostModalMeta();
-      } else {
-        renderOverlays();
-      }
-    } catch (err) {
-      console.error(err);
+    target.likes = likes;
+    target.likesCount = likes.length;
+    state.postMeta[postId] = meta;
+    if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+      updatePostModalMeta();
+    } else {
+      renderOverlays();
     }
+
+    if (idx >= 0) {
+      await updateDoc(commentRef, { likes: arrayRemove(likeId) });
+    } else {
+      await updateDoc(commentRef, { likes: arrayUnion(likeId) });
+    }
+  } catch (err) {
+    console.error(err);
   }
+}
 function renderAuthScreen() {
   const isRegister = state.auth.mode === "register";
   return `
@@ -1072,7 +1105,11 @@ function renderFeedView() {
         </div>
       ` : ""}
       <div class="px-8 py-4 space-y-12">
-        ${feedPosts.length ? feedPosts.map((post) => `
+        ${feedPosts.length ? feedPosts.map((post) => {
+          const postId = post.id ? String(post.id) : "";
+          const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
+          const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
+          return `
           <div class="group">
             <div class="flex items-center justify-between mb-5 px-2">
               <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
@@ -1088,7 +1125,7 @@ function renderFeedView() {
             </div>
             <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
               <div class="relative h-[30rem] rounded-[3rem] overflow-hidden">
-                <img src="${escapeHtml(post.image)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+                <img src="${escapeHtml(post.image)}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
                 ${post.isLive ? `
                   <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
                     <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
@@ -1099,10 +1136,10 @@ function renderFeedView() {
                   <div class="flex items-center justify-between">
                     <div class="flex gap-4">
                       <button class="flex items-center gap-2 hover:text-red-400 transition-colors">
-                        ${icon("heart", "w-5 h-5")} <span class="text-[10px] font-black">${escapeHtml(post.likes)}</span>
+                        ${icon("heart", "w-5 h-5")} <span ${likeAttr} class="text-[10px] font-black">${escapeHtml(post.likes)}</span>
                       </button>
                       <button class="flex items-center gap-2 text-white/70 hover:text-white">
-                        ${icon("message-circle", "w-5 h-5")} <span class="text-[10px] font-black">${escapeHtml(post.comments)}</span>
+                        ${icon("message-circle", "w-5 h-5")} <span ${commentAttr} class="text-[10px] font-black">${escapeHtml(post.comments)}</span>
                       </button>
                     </div>
                     <button class="text-white/70 hover:text-white">${icon("share-2", "w-4 h-4")}</button>
@@ -1111,7 +1148,8 @@ function renderFeedView() {
               </div>
             </div>
           </div>
-        `).join("") : `
+        `;
+        }).join("") : `
           <div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>
         `}
       </div>
@@ -1178,16 +1216,19 @@ function renderProfilePosts(posts) {
 
 function renderProfileGridItem(item) {
   const counts = resolvePostCounts(item);
-  const postAttr = item.id ? `data-open-post="${escapeHtml(item.id)}"` : "";
+  const postId = item.id ? String(item.id) : "";
+  const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
+  const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
+  const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   return `
     <button type="button" ${postAttr} class="rounded-[2.5rem] overflow-hidden shadow-md relative group text-left ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
-      <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
+      <img src="${escapeHtml(item.url)}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
       ${item.title ? `<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end"><h3 class="text-white text-lg font-black italic">${escapeHtml(item.title)}</h3></div>` : ""}
       <div class="absolute inset-x-0 bottom-0 p-3">
         <div class="flex items-center justify-between text-white bg-black/45 backdrop-blur rounded-2xl px-3 py-2">
           <div class="flex items-center gap-3 text-[10px] font-black">
-            <div class="flex items-center gap-1">${icon("heart", "w-3 h-3")}${escapeHtml(counts.likeLabel)}</div>
-            <div class="flex items-center gap-1">${icon("message-circle", "w-3 h-3")}${escapeHtml(counts.commentLabel)}</div>
+            <div class="flex items-center gap-1">${icon("heart", "w-3 h-3")}<span ${likeAttr}>${escapeHtml(counts.likeLabel)}</span></div>
+            <div class="flex items-center gap-1">${icon("message-circle", "w-3 h-3")}<span ${commentAttr}>${escapeHtml(counts.commentLabel)}</span></div>
           </div>
           ${item.isVideo ? `<div class="w-9 h-9 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center">${icon("play", "w-4 h-4")}</div>` : ""}
         </div>
@@ -1200,6 +1241,8 @@ function renderProfilePostCardFancy(item, isGrid) {
   const counts = resolvePostCounts(item);
   const postId = item.id ? String(item.id) : "";
   const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
+  const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
+  const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   const isWide = item.type === "wide" || item.type === "hero";
   const colClass = isGrid && isWide ? "col-span-2" : "";
   const aspectClass = isGrid
@@ -1208,19 +1251,19 @@ function renderProfilePostCardFancy(item, isGrid) {
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(item.url)}" loading="lazy" class="w-full h-full object-cover" />
+        <img src="${escapeHtml(item.url)}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">
             <div class="flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
               <div class="flex items-center gap-1">
                 ${icon("heart", "w-3 h-3 fill-rose-500 text-rose-500")}
-                <span class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.likeLabel)}</span>
+                <span ${likeAttr} class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.likeLabel)}</span>
               </div>
               <div class="w-px h-3 bg-white/20"></div>
               <div class="flex items-center gap-1">
                 ${icon("message-circle", "w-3 h-3 text-indigo-200")}
-                <span class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.commentLabel)}</span>
+                <span ${commentAttr} class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.commentLabel)}</span>
               </div>
             </div>
           </div>
