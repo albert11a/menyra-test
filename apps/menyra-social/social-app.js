@@ -218,7 +218,8 @@ const state = {
     commentText: "",
     replyTo: null,
     loading: false,
-    animate: false
+    animate: false,
+    sending: false
   },
   likesModal: {
     open: false,
@@ -253,6 +254,9 @@ let renderQueued = false;
 let bodyScrollLocked = false;
 let bodyScrollTop = 0;
 let profileMenuBound = false;
+let pendingCommentHighlight = "";
+let lastCommentKey = "";
+let lastCommentAt = 0;
 let overlayCache = { profile: "", post: "", likes: "" };
 let dataLoaded = {
   feed: false,
@@ -1220,7 +1224,7 @@ function ensureTabData(tab) {
 }
 
 function findPostById(postId) {
-  const all = [...state.userPosts, ...state.businessPosts];
+  const all = [...state.userPosts, ...state.businessPosts, ...state.feedPosts];
   const found = all.find((item) => String(item.id) === String(postId));
   if (found) return found;
   const viewPosts = state.profileView?.posts || [];
@@ -1240,7 +1244,8 @@ async function openPostModal(post) {
     commentText: "",
     replyTo: null,
     loading: true,
-    animate: true
+    animate: true,
+    sending: false
   };
   renderOverlays();
   state.postModal.animate = false;
@@ -1251,8 +1256,9 @@ async function openPostModal(post) {
 }
 
 function closePostModal() {
-  state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false };
+  state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
   state.likesModal = { open: false, postId: "", animate: false };
+  pendingCommentHighlight = "";
   stopPostMetaListeners();
   renderOverlays();
 }
@@ -1324,9 +1330,20 @@ async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0 } = {}
 async function addComment(postId, text, replyTo) {
   const trimmed = String(text || "").trim();
   if (!trimmed || !state.user) return;
+  const key = `${postId}|${state.user.uid || ""}|${trimmed}`;
+  const now = Date.now();
+  if (key === lastCommentKey && now - lastCommentAt < 1500) return;
+  lastCommentKey = key;
+  lastCommentAt = now;
   const post = findPostById(postId);
   const postRef = getPostDocRef(post);
-  if (!post || !postRef) return;
+  if (!post || !postRef) {
+    lastCommentKey = "";
+    lastCommentAt = 0;
+    return;
+  }
+  if (state.postModal.sending) return;
+  state.postModal.sending = true;
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
   const commentRef = doc(collection(postRef, "comments"));
@@ -1342,19 +1359,23 @@ async function addComment(postId, text, replyTo) {
 
   try {
     await setDoc(commentRef, payload);
-    const ownerUid = await resolvePostOwnerUid(post);
-    if (ownerUid && ownerUid !== state.user.uid) {
-      await pushUserNotification(ownerUid, {
-        type: "comment",
-        user: user.name,
-        userHandle: user.handle,
-        avatar: user.avatar,
-        text: "hat deinen Beitrag kommentiert",
-        postId: String(post.id || "")
-      });
-    }
+  } catch (err) {
+    console.error(err);
+    lastCommentKey = "";
+    lastCommentAt = 0;
+    state.postModal.sending = false;
+    return;
+  }
+
+  try {
     await updatePostCounts(post, { commentsDelta: 1 });
-    updatePostCountNodes(post);
+  } catch (err) {
+    console.error(err);
+  }
+
+  updatePostCountNodes(post);
+  const hasLiveComments = typeof modalCommentsUnsub === "function";
+  if (!hasLiveComments) {
     const newComment = ensureCommentShape({
       id: commentRef.id,
       ...payload,
@@ -1370,18 +1391,37 @@ async function addComment(postId, text, replyTo) {
     } else {
       meta.comments = [newComment, ...(meta.comments || [])];
     }
-      state.postMeta[postId] = meta;
-      state.postModal.commentText = "";
-      state.postModal.replyTo = null;
-      if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-        updatePostModalMeta();
-      } else {
-        renderOverlays();
-      }
-    } catch (err) {
-      console.error(err);
-    }
+    state.postMeta[postId] = meta;
   }
+  state.postModal.commentText = "";
+  const commentInput = document.getElementById("postCommentInput");
+  if (commentInput) commentInput.value = "";
+  state.postModal.replyTo = null;
+  if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+    updatePostModalMeta();
+  } else {
+    renderOverlays();
+  }
+  state.postModal.sending = false;
+  const ownerUid = await resolvePostOwnerUid(post);
+  if (ownerUid && ownerUid !== state.user.uid) {
+    try {
+      await pushUserNotification(ownerUid, {
+        type: "comment",
+        user: user.name,
+        userHandle: user.handle,
+        userUid: user.uid || "",
+        avatar: user.avatar,
+        text: "hat deinen Beitrag kommentiert",
+        postId: String(post.id || ""),
+        commentId: String(commentRef.id || ""),
+        ownerType: post.ownerType || "",
+        ownerId: post.ownerId || "",
+        restaurantId: post.restaurantId || ""
+      });
+    } catch {}
+  }
+}
 
 async function togglePostLike(postId) {
   if (!state.user) return;
@@ -1427,9 +1467,13 @@ async function togglePostLike(postId) {
           type: "like",
           user: user.name,
           userHandle: user.handle,
+          userUid: user.uid || "",
           avatar: user.avatar,
           text: "hat deinen Beitrag geliked",
-          postId: String(post.id || "")
+          postId: String(post.id || ""),
+          ownerType: post.ownerType || "",
+          ownerId: post.ownerId || "",
+          restaurantId: post.restaurantId || ""
         });
       }
     }
@@ -1774,7 +1818,7 @@ function bindFeedDelegation() {
           selectedBusiness: null,
           profileView: null,
           profileModal: { open: false, profile: null },
-          postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false },
+          postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
           likesModal: { open: false, postId: "", animate: false }
         });
       }
@@ -1915,7 +1959,14 @@ function startLiveListeners(user) {
         time: formatRelative(toDateSafe(data.createdAt)),
         img: data.avatar || data.img || "https://i.pravatar.cc/100?u=notify",
         read: !!data.read,
-        createdAt: data.createdAt
+        createdAt: data.createdAt,
+        postId: data.postId || "",
+        commentId: data.commentId || "",
+        userHandle: data.userHandle || data.handle || "",
+        userUid: data.userUid || data.uid || "",
+        ownerType: data.ownerType || "",
+        ownerId: data.ownerId || "",
+        restaurantId: data.restaurantId || ""
       };
     });
     handleNotificationsUpdate(items);
@@ -2983,7 +3034,14 @@ async function loadNotificationsFromFirebase({ force = false } = {}) {
         time: formatRelative(toDateSafe(data.createdAt)),
         img: data.avatar || data.img || "https://i.pravatar.cc/100?u=notify",
         read: !!data.read,
-        createdAt: data.createdAt
+        createdAt: data.createdAt,
+        postId: data.postId || "",
+        commentId: data.commentId || "",
+        userHandle: data.userHandle || data.handle || "",
+        userUid: data.userUid || data.uid || "",
+        ownerType: data.ownerType || "",
+        ownerId: data.ownerId || "",
+        restaurantId: data.restaurantId || ""
       });
     });
     state.notifications = items;
@@ -3005,6 +3063,147 @@ async function pushUserNotification(targetUid, payload) {
     });
   } catch (err) {
     console.error(err);
+  }
+}
+
+async function markNotificationRead(id) {
+  if (!id) return;
+  const idx = state.notifications.findIndex((n) => n.id === id);
+  if (idx >= 0 && !state.notifications[idx].read) {
+    state.notifications[idx].read = true;
+    saveNotifications(state.notifications);
+    render();
+  }
+  if (state.user?.uid) {
+    try {
+      await updateDoc(doc(db, "users", state.user.uid, "notifications", id), { read: true });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+}
+
+async function markAllNotificationsRead() {
+  const unread = state.notifications.filter((n) => !n.read);
+  if (!unread.length) return;
+  state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
+  saveNotifications(state.notifications);
+  render();
+  if (state.user?.uid) {
+    await Promise.allSettled(unread.map((n) =>
+      updateDoc(doc(db, "users", state.user.uid, "notifications", n.id), { read: true })
+    ));
+  }
+}
+
+function normalizeUserPostDoc(postId, data, ownerId) {
+  return {
+    id: postId,
+    url: data.url || "",
+    type: data.type || "square",
+    title: data.title || "",
+    caption: data.caption || "",
+    createdAt: data.createdAt,
+    likes: data.likesCount ?? data.likes ?? 0,
+    comments: data.commentsCount ?? data.comments ?? 0,
+    isVideo: !!data.isVideo,
+    ownerType: "user",
+    ownerId: ownerId || ""
+  };
+}
+
+function normalizeRestaurantPostDoc(postId, data, restaurantId) {
+  return {
+    id: postId,
+    url: data.media?.[0]?.url || data.mediaUrl || "",
+    type: data.type || "square",
+    title: data.title || "",
+    caption: data.caption || "",
+    createdAt: data.createdAt,
+    likes: data.likesCount ?? data.likes ?? 0,
+    comments: data.commentsCount ?? data.comments ?? 0,
+    isVideo: data.media?.[0]?.type === "video",
+    ownerType: "restaurant",
+    ownerId: restaurantId || "",
+    restaurantId: restaurantId || ""
+  };
+}
+
+async function fetchPostForNotification(notif) {
+  const postId = String(notif.postId || "");
+  if (!postId) return null;
+  const ownerType = notif.ownerType || "";
+  const ownerId = notif.ownerId || notif.restaurantId || "";
+
+  try {
+    if (ownerType === "user" && ownerId) {
+      const snap = await getDoc(doc(db, "users", ownerId, "posts", postId));
+      if (snap.exists()) return normalizeUserPostDoc(postId, snap.data() || {}, ownerId);
+    }
+    if (ownerType === "restaurant" && ownerId) {
+      const snap = await getDoc(doc(db, "restaurants", ownerId, "socialPosts", postId));
+      if (snap.exists()) return normalizeRestaurantPostDoc(postId, snap.data() || {}, ownerId);
+    }
+    const feedSnap = await getDoc(doc(db, "socialFeed", postId));
+    if (feedSnap.exists()) return normalizeFeedPost({ id: feedSnap.id, ...feedSnap.data() });
+  } catch (err) {
+    console.error(err);
+  }
+  return null;
+}
+
+function highlightCommentInModal(commentId) {
+  const commentsRoot = document.getElementById("postModalComments");
+  if (!commentsRoot) return false;
+  const safeId = String(commentId || "");
+  if (!safeId) return false;
+  const target = commentsRoot.querySelector(`[data-comment-id="${safeId}"]`);
+  if (!target) return false;
+  target.classList.add("ring-2", "ring-indigo-300", "bg-indigo-50/70");
+  target.scrollIntoView({ behavior: "smooth", block: "center" });
+  setTimeout(() => {
+    target.classList.remove("ring-2", "ring-indigo-300", "bg-indigo-50/70");
+  }, 2000);
+  return true;
+}
+
+async function openPostFromNotification(notif) {
+  const postId = String(notif.postId || "");
+  if (!postId) return;
+  let post = findPostById(postId) || state.feedPosts.find((item) => String(item.id) === postId) || null;
+  if (!post) {
+    post = await fetchPostForNotification(notif);
+  }
+  if (!post) {
+    pendingCommentHighlight = "";
+    return;
+  }
+  if (notif.type === "comment" && notif.commentId) {
+    pendingCommentHighlight = String(notif.commentId);
+  }
+  await openPostModal(post);
+  if (pendingCommentHighlight) {
+    if (highlightCommentInModal(pendingCommentHighlight)) {
+      pendingCommentHighlight = "";
+    }
+  }
+}
+
+async function openNotificationTarget(id) {
+  const notif = state.notifications.find((n) => n.id === id);
+  if (!notif) return;
+  void markNotificationRead(id);
+  if (notif.type === "follow") {
+    openProfileFromUser({
+      uid: notif.userUid || "",
+      handle: notif.userHandle || notif.user || "",
+      name: notif.user || "User",
+      avatar: notif.img || ""
+    });
+    return;
+  }
+  if (notif.type === "like" || notif.type === "comment") {
+    await openPostFromNotification(notif);
   }
 }
 
@@ -3090,6 +3289,7 @@ async function toggleFollow(handle, target = {}) {
             type: "follow",
             user: actor.name,
             userHandle: actor.handle,
+            userUid: actor.uid,
             avatar: actor.avatar,
             text: "folgt dir jetzt"
           });
@@ -3186,7 +3386,7 @@ function renderCommentItem(postId, comment, parentId = "") {
   const likeCount = Array.isArray(comment.likes) ? comment.likes.length : (Number(comment.likesCount) || 0);
   const isReply = !!parentId;
   return `
-    <div class="flex gap-3 ${isReply ? "ml-10" : ""}">
+    <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}">
       <img src="${escapeHtml(comment.avatar)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
       <div class="flex-1">
         <div class="flex items-center justify-between">
@@ -3353,6 +3553,11 @@ function updatePostModalMeta() {
   const postComments = document.getElementById("postModalComments");
   if (postComments) postComments.innerHTML = renderPostComments(comments);
   if (window.lucide?.createIcons) window.lucide.createIcons();
+  if (pendingCommentHighlight) {
+    if (highlightCommentInModal(pendingCommentHighlight)) {
+      pendingCommentHighlight = "";
+    }
+  }
 }
 
 function renderSettingsView() {
@@ -3526,7 +3731,7 @@ function renderNotificationsView() {
       <div class="space-y-3">
         ${state.notifications.length === 0 ? "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>" :
           state.notifications.map((n) => `
-            <div class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
+            <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
               <img src="${escapeHtml(n.img)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
@@ -3743,12 +3948,15 @@ function renderUploadView() {
 }
 
 function renderHeader() {
+  const unread = state.notifications.filter((n) => !n.read).length;
+  const badge = unread > 9 ? "9+" : String(unread || "");
   return `
     <header class="p-6 pb-2 flex justify-between items-center sticky top-0 z-40 backdrop-blur-xl bg-slate-50/80">
-      <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
+      <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
         <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
+        ${unread ? `<span class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
       </button>
       <div class="text-center cursor-pointer" data-nav="feed">
         <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MENYRA</h1>
@@ -4084,7 +4292,11 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
       postCommentSend.addEventListener("click", () => {
         const postId = postCommentSend.dataset.postId;
         if (!postId) return;
-        addComment(postId, state.postModal.commentText, state.postModal.replyTo);
+        const inputEl = document.getElementById("postCommentInput");
+        const text = inputEl ? inputEl.value : state.postModal.commentText;
+        if (!String(text || "").trim() || state.postModal.sending) return;
+        state.postModal.commentText = text;
+        addComment(postId, text, state.postModal.replyTo);
       });
     }
 
@@ -4147,7 +4359,7 @@ function bindAppEvents() {
         state.postMeta = {};
         state.profileModal = { open: false, profile: null };
         state.profileView = null;
-        state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false };
+        state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
         state.likesModal = { open: false, postId: "", animate: false };
         state.selectedBusiness = null;
         cleanupLeaflet();
@@ -4168,7 +4380,7 @@ function bindAppEvents() {
         selectedBusiness: null,
         profileView: null,
         profileModal: { open: false, profile: null },
-        postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false },
+        postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
         likesModal: { open: false, postId: "", animate: false }
       });
     });
@@ -4243,18 +4455,28 @@ function bindAppEvents() {
   const markAll = document.getElementById("markAllRead");
   if (markAll) {
     markAll.addEventListener("click", () => {
-      state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
-      saveNotifications(state.notifications);
-      render();
+      void markAllNotificationsRead();
     });
   }
 
+  document.querySelectorAll("[data-notif-open]").forEach((row) => {
+    row.addEventListener("click", () => {
+      const id = row.dataset.notifOpen;
+      if (!id) return;
+      void openNotificationTarget(id);
+    });
+  });
+
   document.querySelectorAll("[data-notif-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
       const id = btn.dataset.notifDelete;
       state.notifications = state.notifications.filter((n) => n.id !== id);
       saveNotifications(state.notifications);
       render();
+      if (state.user?.uid && id) {
+        void deleteDoc(doc(db, "users", state.user.uid, "notifications", id));
+      }
     });
   });
 
