@@ -54,7 +54,8 @@ const STORAGE_KEYS = {
   settings: "menyra_social_settings_v3",
   notifications: "menyra_social_notifications_v1",
   following: "menyra_social_following_v1",
-  postMeta: "menyra_social_post_meta_v1"
+  postMeta: "menyra_social_post_meta_v1",
+  feed: "menyra_social_feed_v1"
 };
 
 const ADMIN_LOGINS = {
@@ -285,6 +286,13 @@ function savePostMeta(meta) {
   void meta;
 }
 
+function saveFeedPosts(posts) {
+  if (!Array.isArray(posts)) return;
+  try {
+    safeStorage.setItem(STORAGE_KEYS.feed, JSON.stringify(posts.slice(0, FAST_LIMITS.feedFallback)));
+  } catch {}
+}
+
 function loadPersisted() {
   const savedSettings = safeStorage.getItem(STORAGE_KEYS.settings);
   if (savedSettings) {
@@ -299,6 +307,14 @@ function loadPersisted() {
   const savedProfile = safeStorage.getItem(STORAGE_KEYS.profile);
   if (savedProfile) {
     try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch {}
+  }
+
+  const savedFeed = safeStorage.getItem(STORAGE_KEYS.feed);
+  if (savedFeed) {
+    try {
+      const feed = JSON.parse(savedFeed);
+      if (Array.isArray(feed)) state.feedPosts = feed;
+    } catch {}
   }
 
   state.followingHandles = [];
@@ -743,25 +759,36 @@ function updatePostCountNodes(post) {
   });
 }
 
+function scheduleIdle(fn) {
+  if (typeof window === "undefined") return;
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(fn, { timeout: 800 });
+  } else {
+    window.setTimeout(fn, 0);
+  }
+}
+
 function ensureTabData(tab) {
   if (!state.user) return;
-
-  if ((tab === "feed" || tab === "map") && !dataLoaded.restaurants) {
-    dataLoaded.restaurants = true;
-    loadRestaurants().then(() => {
-      if (!dataLoaded.stories && (state.activeTab === "feed" || state.activeTab === "map")) {
-        dataLoaded.stories = true;
-        void loadStories();
-      }
-    }).catch((err) => console.error(err));
-  } else if ((tab === "feed" || tab === "map") && !dataLoaded.stories) {
-    dataLoaded.stories = true;
-    void loadStories();
-  }
 
   if (tab === "feed" && !dataLoaded.feed) {
     dataLoaded.feed = true;
     void loadFeedPosts();
+  }
+
+  if ((tab === "feed" || tab === "map") && !dataLoaded.restaurants) {
+    dataLoaded.restaurants = true;
+    scheduleIdle(() => {
+      loadRestaurants().then(() => {
+        if (!dataLoaded.stories && (state.activeTab === "feed" || state.activeTab === "map")) {
+          dataLoaded.stories = true;
+          scheduleIdle(() => void loadStories());
+        }
+      }).catch((err) => console.error(err));
+    });
+  } else if ((tab === "feed" || tab === "map") && !dataLoaded.stories) {
+    dataLoaded.stories = true;
+    scheduleIdle(() => void loadStories());
   }
 
   if (tab === "profile" && !dataLoaded.profile) {
@@ -1123,9 +1150,11 @@ function renderDrawer() {
 
 function renderFeedView() {
   const stories = state.stories;
-  const feedPosts = state.feedPosts.filter((p) => state.feedCategory === "all" || p.category === state.feedCategory);
+  const feedPosts = state.feedPosts
+    .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
+    .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
   return `
-    <div class="animate-in fade-in duration-500">
+    <div>
       <div class="flex gap-4 overflow-x-auto px-8 pb-8 no-scrollbar">
         <div class="flex-shrink-0 flex flex-col items-center gap-2">
           <div data-nav="upload" class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
@@ -3260,7 +3289,9 @@ async function loadFeedPosts() {
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
     state.feedPosts = rows
       .filter((row) => (row.status || "active") === "active")
-      .map(normalizeFeedPost);
+      .map(normalizeFeedPost)
+      .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+    saveFeedPosts(state.feedPosts);
     render();
   } catch (err) {
     console.error(err);
