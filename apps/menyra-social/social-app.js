@@ -271,6 +271,15 @@ const searchCache = new Map();
 let notificationsUnsub = null;
 let userDocUnsub = null;
 let profileViewUnsub = null;
+let feedUnsub = null;
+let storiesUnsub = null;
+let userPostsUnsub = null;
+let businessPostsUnsub = null;
+let modalLikesUnsub = null;
+let modalCommentsUnsub = null;
+let storyRefreshTimer = null;
+let liveFeedDisabled = false;
+let liveStoriesDisabled = false;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -1235,6 +1244,7 @@ async function openPostModal(post) {
   renderOverlays();
   state.postModal.animate = false;
   await loadPostMetaFromFirebase(post);
+  attachPostMetaListeners(post);
   state.postModal.loading = false;
   updatePostModalMeta();
 }
@@ -1242,6 +1252,7 @@ async function openPostModal(post) {
 function closePostModal() {
   state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false };
   state.likesModal = { open: false, postId: "", animate: false };
+  stopPostMetaListeners();
   renderOverlays();
 }
 
@@ -1802,6 +1813,34 @@ function stopLiveListeners() {
     profileViewUnsub();
     profileViewUnsub = null;
   }
+  if (feedUnsub) {
+    feedUnsub();
+    feedUnsub = null;
+  }
+  if (storiesUnsub) {
+    storiesUnsub();
+    storiesUnsub = null;
+  }
+  if (userPostsUnsub) {
+    userPostsUnsub();
+    userPostsUnsub = null;
+  }
+  if (businessPostsUnsub) {
+    businessPostsUnsub();
+    businessPostsUnsub = null;
+  }
+  if (modalLikesUnsub) {
+    modalLikesUnsub();
+    modalLikesUnsub = null;
+  }
+  if (modalCommentsUnsub) {
+    modalCommentsUnsub();
+    modalCommentsUnsub = null;
+  }
+  if (storyRefreshTimer) {
+    clearInterval(storyRefreshTimer);
+    storyRefreshTimer = null;
+  }
 }
 
 function handleNotificationsUpdate(items) {
@@ -1814,6 +1853,8 @@ function handleNotificationsUpdate(items) {
 function startLiveListeners(user) {
   stopLiveListeners();
   if (!user) return;
+  liveFeedDisabled = false;
+  liveStoriesDisabled = false;
 
   const userRef = doc(db, "users", user.uid);
   userDocUnsub = onSnapshot(userRef, (snap) => {
@@ -1856,6 +1897,13 @@ function startLiveListeners(user) {
     });
     handleNotificationsUpdate(items);
   });
+
+  startFeedListener();
+  startStoriesListener();
+  startUserPostsListener(user.uid);
+  if (state.userProfile.role === "business" && state.userProfile.restaurantId) {
+    startBusinessPostsListener(state.userProfile.restaurantId);
+  }
 }
 
 function attachProfileViewListener(profile) {
@@ -1887,6 +1935,253 @@ function attachProfileViewListener(profile) {
       viewProfile.location = data.city || viewProfile.location;
     }
     render();
+  });
+}
+
+function startFeedListener() {
+  if (liveFeedDisabled) return;
+  if (feedUnsub) {
+    feedUnsub();
+    feedUnsub = null;
+  }
+  const ref = collection(db, "socialFeed");
+  const feedQuery = query(ref, where("status", "==", "active"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.feedFallback));
+  feedUnsub = onSnapshot(feedQuery, (snap) => {
+    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    const next = rows
+      .filter((row) => (row.status || "active") === "active")
+      .map(normalizeFeedPost)
+      .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+    const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
+    const nextIds = next.map((item) => String(item.id)).join("|");
+    if (prevIds === nextIds) {
+      state.feedPosts = next;
+      updateFeedDom();
+      return;
+    }
+    state.feedPosts = next;
+    saveFeedPosts(next);
+    if (liveStoriesDisabled) {
+      const storySeed = buildStoriesFromFeed(next);
+      if (storySeed.length) {
+        state.stories = storySeed;
+        writeCache(CACHE_KEYS.stories, storySeed);
+      }
+    }
+    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+      render();
+    }
+  }, (err) => {
+    if (err?.code === "failed-precondition") {
+      liveFeedDisabled = true;
+      if (feedUnsub) {
+        feedUnsub();
+        feedUnsub = null;
+      }
+      startFeedFallbackListener();
+    } else {
+      console.error(err);
+    }
+  });
+}
+
+function startFeedFallbackListener() {
+  if (feedUnsub) {
+    feedUnsub();
+    feedUnsub = null;
+  }
+  const ref = collection(db, "socialFeed");
+  const feedQuery = query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.feedFallback));
+  feedUnsub = onSnapshot(feedQuery, (snap) => {
+    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    const next = rows
+      .filter((row) => (row.status || "active") === "active")
+      .map(normalizeFeedPost)
+      .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+    state.feedPosts = next;
+    saveFeedPosts(next);
+    if (liveStoriesDisabled) {
+      const storySeed = buildStoriesFromFeed(next);
+      if (storySeed.length) {
+        state.stories = storySeed;
+        writeCache(CACHE_KEYS.stories, storySeed);
+      }
+    }
+    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+      render();
+    }
+  }, (err) => console.error(err));
+}
+
+function startStoriesListener() {
+  if (liveStoriesDisabled) return;
+  if (storiesUnsub) {
+    storiesUnsub();
+    storiesUnsub = null;
+  }
+  const now = Timestamp.now();
+  const storyQuery = query(
+    collectionGroup(db, "stories"),
+    where("expiresAt", ">", now),
+    orderBy("expiresAt", "desc"),
+    limit(FAST_LIMITS.stories)
+  );
+  storiesUnsub = onSnapshot(storyQuery, (snap) => {
+    const map = new Map();
+    snap.forEach((docSnap) => {
+      const rid = docSnap.ref.parent?.parent?.id;
+      if (!rid || map.has(rid)) return;
+      const rest = state.restaurants.find((r) => r.id === rid) || {};
+      map.set(rid, {
+        restaurantId: rid,
+        name: rest.name || rest.restaurantName || docSnap.data()?.restaurantName || "Business",
+        img: rest.logoUrl || rest.logo || docSnap.data()?.thumbUrl || docSnap.data()?.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
+        isLive: true
+      });
+    });
+    const items = Array.from(map.values());
+    state.stories = items;
+    writeCache(CACHE_KEYS.stories, items);
+    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+      render();
+    }
+  }, (err) => {
+    if (err?.code === "failed-precondition") {
+      liveStoriesDisabled = true;
+      if (storiesUnsub) {
+        storiesUnsub();
+        storiesUnsub = null;
+      }
+      const storySeed = buildStoriesFromFeed(state.feedPosts);
+      if (storySeed.length) {
+        state.stories = storySeed;
+        writeCache(CACHE_KEYS.stories, storySeed);
+      }
+      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+        render();
+      }
+    } else {
+      console.error(err);
+    }
+  });
+
+  if (!storyRefreshTimer) {
+    storyRefreshTimer = setInterval(() => {
+      startStoriesListener();
+    }, 2 * 60 * 1000);
+  }
+}
+
+function startUserPostsListener(uid) {
+  if (!uid) return;
+  if (userPostsUnsub) {
+    userPostsUnsub();
+    userPostsUnsub = null;
+  }
+  const ref = collection(db, "users", uid, "posts");
+  const userQuery = query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.userPosts));
+  userPostsUnsub = onSnapshot(userQuery, (snap) => {
+    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    const next = rows.map((row) => ({
+      id: row.id,
+      url: row.url || row.mediaUrl || row.media?.[0]?.url || "",
+      type: row.type || "square",
+      title: "",
+      caption: row.caption || "",
+      createdAt: row.createdAt,
+      likes: row.likesCount ?? row.likes ?? 0,
+      comments: row.commentsCount ?? row.comments ?? 0,
+      isVideo: row.media?.[0]?.type === "video",
+      ownerType: "user",
+      ownerId: uid
+    })).filter((row) => row.url);
+    state.userPosts = next;
+    writeCache(CACHE_KEYS.userPosts, next);
+    if (state.activeTab === "profile" && !state.profileView) {
+      render();
+    }
+  });
+}
+
+function startBusinessPostsListener(restaurantId) {
+  if (!restaurantId) return;
+  if (businessPostsUnsub) {
+    businessPostsUnsub();
+    businessPostsUnsub = null;
+  }
+  const ref = collection(db, "restaurants", restaurantId, "socialPosts");
+  const bizQuery = query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.businessPosts));
+  businessPostsUnsub = onSnapshot(bizQuery, (snap) => {
+    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    const next = rows
+      .filter((row) => (row.status || "active") === "active")
+      .map((row) => ({
+        id: row.id,
+        url: row.media?.[0]?.url || row.mediaUrl || "",
+        type: row.type || "square",
+        title: "",
+        caption: row.caption || "",
+        createdAt: row.createdAt,
+        likes: row.likesCount ?? row.likes ?? 0,
+        comments: row.commentsCount ?? row.comments ?? 0,
+        isVideo: row.media?.[0]?.type === "video",
+        ownerType: "restaurant",
+        ownerId: restaurantId,
+        restaurantId
+      }))
+      .filter((row) => row.url);
+    state.businessPosts = next;
+    writeCache(CACHE_KEYS.businessPosts, next);
+    if (state.activeTab === "profile" && !state.profileView) {
+      render();
+    }
+  });
+}
+
+function stopPostMetaListeners() {
+  if (modalLikesUnsub) {
+    modalLikesUnsub();
+    modalLikesUnsub = null;
+  }
+  if (modalCommentsUnsub) {
+    modalCommentsUnsub();
+    modalCommentsUnsub = null;
+  }
+}
+
+function attachPostMetaListeners(post) {
+  stopPostMetaListeners();
+  const postRef = getPostDocRef(post);
+  if (!postRef || !post?.id) return;
+  const postId = String(post.id);
+  modalLikesUnsub = onSnapshot(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)), (snap) => {
+    const meta = ensurePostMeta(postId);
+    meta.likes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    state.postMeta[postId] = meta;
+    updatePostModalMeta();
+  });
+  modalCommentsUnsub = onSnapshot(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)), (snap) => {
+    const meta = ensurePostMeta(postId);
+    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    const byId = new Map();
+    const top = [];
+    rows.forEach((row) => {
+      const item = ensureCommentShape(row);
+      byId.set(item.id, item);
+    });
+    rows.forEach((row) => {
+      const item = byId.get(row.id);
+      const parentId = row.parentId || null;
+      if (parentId && byId.has(parentId)) {
+        const parent = byId.get(parentId);
+        parent.replies = [item, ...(parent.replies || [])];
+      } else if (item) {
+        top.push(item);
+      }
+    });
+    meta.comments = top;
+    state.postMeta[postId] = meta;
+    updatePostModalMeta();
   });
 }
 
@@ -4825,6 +5120,18 @@ async function loadStories() {
       render();
     }
   } catch (err) {
+    if (err?.code === "failed-precondition") {
+      liveStoriesDisabled = true;
+      const fallbackSeed = buildStoriesFromFeed(state.feedPosts);
+      if (fallbackSeed.length) {
+        state.stories = fallbackSeed;
+        writeCache(CACHE_KEYS.stories, fallbackSeed);
+        if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+          render();
+        }
+      }
+      return;
+    }
     console.warn("stories fallback", err);
     const fallback = await loadStoriesFallback(state.restaurants);
     writeCache(CACHE_KEYS.stories, fallback);
