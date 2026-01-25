@@ -257,7 +257,8 @@ let dataLoaded = {
   profile: false,
   restaurants: false,
   stories: false,
-  following: false
+  following: false,
+  notifications: false
 };
 let lastAppHtml = "";
 let lastRenderMode = "";
@@ -1193,6 +1194,14 @@ function ensureTabData(tab) {
     if (state.userProfile.role === "business") {
       void loadBusinessPosts();
     }
+  }
+  if (tab === "profile") {
+    void loadUserProfile(state.user, { force: true });
+  }
+
+  if (tab === "notifications" && !dataLoaded.notifications) {
+    dataLoaded.notifications = true;
+    void loadNotificationsFromFirebase({ force: true });
   }
 }
 
@@ -2145,6 +2154,7 @@ function renderPublicProfileView() {
   const isFollowing = state.followingHandles.includes(followKey);
   const typeLabel = profile.restaurantId ? "Business" : "User";
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
+  const backLabel = state.profileBackTab === "search" ? "Suche" : "Profil";
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
   const isMediaTab = state.profileContentTab === "media";
@@ -2156,7 +2166,7 @@ function renderPublicProfileView() {
       <div class="flex items-center gap-3 mb-6">
         <button data-public-profile-back="true" class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
         <div>
-          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Suche</p>
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${backLabel}</p>
           <h2 class="text-xl font-black italic tracking-tighter">${escapeHtml(sanitizeDisplayName(profile.name, profile.handle || "Profil"))}</h2>
         </div>
       </div>
@@ -2495,6 +2505,48 @@ async function loadFollowingFromFirebase({ force = false } = {}) {
   }
 }
 
+async function loadNotificationsFromFirebase({ force = false } = {}) {
+  if (!state.user) return;
+  if (FAST_MODE && state.notifications.length && !force) return;
+  try {
+    const ref = collection(db, "users", state.user.uid, "notifications");
+    const snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(60)));
+    const items = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() || {};
+      items.push({
+        id: docSnap.id,
+        type: data.type || "system",
+        user: data.user || data.userName || "User",
+        text: data.text || "folgt dir jetzt",
+        time: formatRelative(toDateSafe(data.createdAt)),
+        img: data.avatar || data.img || "https://i.pravatar.cc/100?u=notify",
+        read: !!data.read,
+        createdAt: data.createdAt
+      });
+    });
+    state.notifications = items;
+    saveNotifications(items);
+    render();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function pushUserNotification(targetUid, payload) {
+  if (!targetUid) return;
+  try {
+    const ref = doc(collection(db, "users", targetUid, "notifications"));
+    await setDoc(ref, {
+      ...payload,
+      read: false,
+      createdAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 async function resolveUserByHandle(handle) {
   if (!handle) return null;
   const safeHandle = String(handle || "").replace(/^@/, "");
@@ -2571,6 +2623,16 @@ async function toggleFollow(handle, target = {}) {
     if (targetType === "user" && targetId) {
       try {
         await updateDoc(doc(db, "users", targetId), { followersCount: increment(delta) });
+        if (delta > 0) {
+          const actor = currentUserBadge();
+          await pushUserNotification(targetId, {
+            type: "follow",
+            user: actor.name,
+            userHandle: actor.handle,
+            avatar: actor.avatar,
+            text: "folgt dir jetzt"
+          });
+        }
       } catch (err) {
         console.error(err);
       }
