@@ -16,6 +16,8 @@ import {
   query,
   where,
   orderBy,
+  startAt,
+  endAt,
   limit,
   deleteDoc,
   setDoc,
@@ -143,6 +145,7 @@ const ROLE_SWITCH_LABELS = {
 };
 const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen", "social"]);
 const businessProfileCache = new Map();
+const userProfileCache = new Map();
 const FAST_LIMITS = {
   feed: 20,
   feedFallback: 40,
@@ -154,6 +157,10 @@ const FAST_LIMITS = {
   storiesFallback: 30,
   likes: 40,
   comments: 80
+};
+const SEARCH_LIMITS = {
+  users: 10,
+  businesses: 12
 };
 const FAST_MODE = true;
 const CACHE_KEYS = {
@@ -221,6 +228,15 @@ const state = {
     file: null,
     status: ""
   },
+  search: {
+    query: "",
+    filter: "all",
+    userResults: [],
+    businessResults: [],
+    loading: false,
+    error: "",
+    keepFocus: false
+  },
   auth: {
     mode: "login",
     role: "user",
@@ -246,6 +262,9 @@ let lastAppHtml = "";
 let lastRenderMode = "";
 let authReadyTimer = null;
 let feedDeltaTimer = null;
+let searchTimer = null;
+let searchToken = 0;
+const searchCache = new Map();
 
 function suspendRender() {
   renderSuspended += 1;
@@ -277,13 +296,45 @@ function formatCount(value) {
   return str || "0";
 }
 
+function normalizeSearchQuery(value) {
+  return String(value || "").trim();
+}
+
+function normalizeSearchKey(value) {
+  return normalizeSearchQuery(value).toLowerCase();
+}
+
+function scoreSearchMatch(text, query) {
+  if (!text || !query) return 0;
+  const hay = String(text).toLowerCase();
+  if (hay.startsWith(query)) return 3;
+  if (hay.includes(query)) return 1;
+  return 0;
+}
+
 function icon(name, className = "") {
   return `<i data-lucide="${name}" class="${className}"></i>`;
 }
 
+function focusSearchInput() {
+  const input = document.getElementById("searchInput");
+  if (!input) return;
+  input.focus({ preventScroll: true });
+  const len = input.value.length;
+  try {
+    input.setSelectionRange(len, len);
+  } catch {}
+}
+
 function setState(patch) {
   const prevTab = state.activeTab;
+  const keys = Object.keys(patch || {});
+  const drawerOnly = keys.length === 1 && keys[0] === "drawerOpen";
   Object.assign(state, patch);
+  if (drawerOnly && lastRenderMode === "main") {
+    updateDrawerDom();
+    return;
+  }
   render();
   if (patch.activeTab && patch.activeTab !== prevTab) {
     queueMicrotask(() => ensureTabData(state.activeTab));
@@ -862,6 +913,236 @@ function scheduleIdle(fn) {
   }
 }
 
+function normalizeBusinessResult(rest) {
+  const name = rest.name || rest.restaurantName || "Business";
+  return {
+    id: rest.id || rest.restaurantId || "",
+    name,
+    city: rest.city || rest.location || rest.address || "Prishtina",
+    logo: rest.logoUrl || rest.logo || rest.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200"
+  };
+}
+
+function buildBusinessResultsFromFeed(posts) {
+  const map = new Map();
+  posts.forEach((post) => {
+    const id = post.restaurantId || post.ownerId || "";
+    const key = id || String(post.business || "").toLowerCase();
+    if (!key || map.has(key)) return;
+    map.set(key, {
+      id: id || "",
+      name: post.business || "Business",
+      city: post.location || "Prishtina",
+      logo: post.logo || post.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200"
+    });
+  });
+  return Array.from(map.values()).slice(0, SEARCH_LIMITS.businesses);
+}
+
+function buildLocalBusinessResults(queryKey) {
+  const list = state.restaurants.length ? state.restaurants.map(normalizeBusinessResult) : buildBusinessResultsFromFeed(state.feedPosts);
+  const localKey = normalizeSearchKey(state.userProfile.location || "");
+  const isLocalQuery = queryKey === "lokal" || queryKey === "local" || (!queryKey && localKey);
+  const filtered = list.filter((item) => {
+    if (isLocalQuery && localKey) {
+      return normalizeSearchKey(item.city).includes(localKey);
+    }
+    const score = Math.max(
+      scoreSearchMatch(item.name, queryKey),
+      scoreSearchMatch(item.city, queryKey)
+    );
+    return score > 0;
+  }).map((item) => {
+    const score = queryKey ? Math.max(
+      scoreSearchMatch(item.name, queryKey),
+      scoreSearchMatch(item.city, queryKey)
+    ) : 0;
+    return { ...item, _score: score };
+  });
+  return filtered.sort((a, b) => (b._score || 0) - (a._score || 0)).slice(0, SEARCH_LIMITS.businesses);
+}
+
+function normalizeUserSearchResult(doc) {
+  const data = typeof doc?.data === "function" ? doc.data() : (doc?.data || doc || {});
+  const name = data.displayName || data.name || data.handle || "User";
+  const handle = data.handle || normalizeHandle(name);
+  return {
+    uid: doc?.id || data.uid || "",
+    name,
+    handle,
+    avatar: data.avatarUrl || data.avatar || `https://i.pravatar.cc/120?u=${encodeURIComponent(handle)}`,
+    location: data.city || "Prishtina",
+    followers: data.followersCount ?? data.followers ?? 0,
+    following: data.followingCount ?? data.following ?? 0,
+    role: data.role || "user",
+    bio: data.bio || ""
+  };
+}
+
+async function searchUsersRemote(queryRaw, token) {
+  const queryKey = normalizeSearchKey(queryRaw);
+  const nameKey = normalizeSearchQuery(queryRaw);
+  if (!queryKey) {
+    state.search.userResults = [];
+    return;
+  }
+  const cacheKey = `users:${queryKey}`;
+  const cached = searchCache.get(cacheKey);
+  if (cached) {
+    state.search.userResults = cached;
+    return;
+  }
+  try {
+    const handleKey = normalizeHandle(queryKey);
+    const users = new Map();
+    if (handleKey) {
+      const snap = await getDocs(query(
+        collection(db, "users"),
+        orderBy("handle"),
+        startAt(handleKey),
+        endAt(`${handleKey}\uf8ff`),
+        limit(SEARCH_LIMITS.users)
+      ));
+      snap.forEach((docSnap) => {
+        const item = normalizeUserSearchResult(docSnap);
+        if (item.uid) users.set(item.uid, item);
+      });
+    }
+    const nameVariants = new Set();
+    if (nameKey) {
+      nameVariants.add(nameKey);
+      const cap = nameKey.charAt(0).toUpperCase() + nameKey.slice(1);
+      nameVariants.add(cap);
+    }
+    for (const variant of nameVariants) {
+      const nameSnap = await getDocs(query(
+        collection(db, "users"),
+        orderBy("displayName"),
+        startAt(variant),
+        endAt(`${variant}\uf8ff`),
+        limit(SEARCH_LIMITS.users)
+      ));
+      nameSnap.forEach((docSnap) => {
+        const item = normalizeUserSearchResult(docSnap);
+        if (item.uid) users.set(item.uid, item);
+      });
+    }
+    if (token !== searchToken) return;
+    const key = normalizeSearchKey(queryRaw);
+    const results = Array.from(users.values())
+      .map((item) => ({
+        ...item,
+        _score: Math.max(
+          scoreSearchMatch(item.handle, key),
+          scoreSearchMatch(item.name, key)
+        )
+      }))
+      .sort((a, b) => (b._score || 0) - (a._score || 0));
+    searchCache.set(cacheKey, results);
+    state.search.userResults = results;
+  } catch (err) {
+    if (token !== searchToken) return;
+    state.search.error = "Suche fehlgeschlagen.";
+  }
+}
+
+async function searchBusinessesRemote(queryRaw, token) {
+  const queryKey = normalizeSearchQuery(queryRaw);
+  const key = normalizeSearchKey(queryRaw);
+  if (!key) return;
+  const cacheKey = `biz:${key}`;
+  const cached = searchCache.get(cacheKey);
+  if (cached) {
+    state.search.businessResults = cached;
+    return;
+  }
+  try {
+    const results = new Map();
+    const restRef = collection(db, "restaurants");
+    try {
+      const snap = await getDocs(query(
+        restRef,
+        orderBy("name"),
+        startAt(queryKey),
+        endAt(`${queryKey}\uf8ff`),
+        limit(SEARCH_LIMITS.businesses)
+      ));
+      snap.forEach((docSnap) => {
+        const row = normalizeBusinessResult({ id: docSnap.id, ...docSnap.data() });
+        if (row.id) results.set(row.id, row);
+      });
+    } catch {}
+    try {
+      const snap = await getDocs(query(
+        restRef,
+        orderBy("restaurantName"),
+        startAt(queryKey),
+        endAt(`${queryKey}\uf8ff`),
+        limit(SEARCH_LIMITS.businesses)
+      ));
+      snap.forEach((docSnap) => {
+        const row = normalizeBusinessResult({ id: docSnap.id, ...docSnap.data() });
+        if (row.id) results.set(row.id, row);
+      });
+    } catch {}
+    if (token !== searchToken) return;
+    const list = Array.from(results.values())
+      .map((item) => ({
+        ...item,
+        _score: Math.max(
+          scoreSearchMatch(item.name, key),
+          scoreSearchMatch(item.city, key)
+        )
+      }))
+      .sort((a, b) => (b._score || 0) - (a._score || 0));
+    if (list.length) {
+      searchCache.set(cacheKey, list);
+      state.search.businessResults = list;
+    }
+  } catch (err) {
+    if (token !== searchToken) return;
+    state.search.error = "Suche fehlgeschlagen.";
+  }
+}
+
+async function searchRemote(queryRaw) {
+  const token = ++searchToken;
+  state.search.loading = true;
+  state.search.error = "";
+  if (!refreshSearchView()) render();
+  await Promise.all([
+    searchUsersRemote(queryRaw, token),
+    searchBusinessesRemote(queryRaw, token)
+  ]);
+  if (token === searchToken) {
+    state.search.loading = false;
+    if (!refreshSearchView()) render();
+  }
+}
+
+function handleSearchInput(value) {
+  const raw = normalizeSearchQuery(value);
+  const queryKey = normalizeSearchKey(raw);
+  state.search.query = raw;
+  state.search.businessResults = buildLocalBusinessResults(queryKey);
+  state.search.keepFocus = true;
+  if (searchTimer) {
+    clearTimeout(searchTimer);
+    searchTimer = null;
+  }
+  if (!queryKey) {
+    state.search.userResults = [];
+    state.search.loading = false;
+    state.search.error = "";
+    if (!refreshSearchView()) render();
+    return;
+  }
+  if (!refreshSearchView()) render();
+  searchTimer = window.setTimeout(() => {
+    void searchRemote(raw);
+  }, 180);
+}
+
 function ensureTabData(tab) {
   if (!state.user) return;
 
@@ -879,7 +1160,7 @@ function ensureTabData(tab) {
     }, FEED_DELTA_MIN_MS);
   }
 
-  const needsRestaurants = tab === "map" || (!FAST_MODE && tab === "feed");
+  const needsRestaurants = tab === "map" || tab === "search" || (!FAST_MODE && tab === "feed");
   if (needsRestaurants && !dataLoaded.restaurants) {
     dataLoaded.restaurants = true;
     scheduleIdle(() => {
@@ -1203,9 +1484,9 @@ function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const switchLinks = renderRoleSwitchLinks();
   return `
-    <div class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
+    <div id="drawerRoot" class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
-      <div class="absolute left-0 top-0 bottom-0 w-80 bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}">
+      <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}">
         <div class="flex justify-between items-center mb-10">
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Menue</span>
@@ -1223,6 +1504,7 @@ function renderDrawer() {
         <nav class="space-y-2 flex-1">
           ${[
             { id: "feed", label: "Feed", icon: "home" },
+            { id: "search", label: "Suche", icon: "search" },
             { id: "map", label: "Karte", icon: "map" },
             { id: "profile", label: "Profil", icon: "user" },
             { id: "notifications", label: "Updates", icon: "bell", badge: unread },
@@ -1470,6 +1752,19 @@ function updateShellDom() {
   if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 
+function updateDrawerDom() {
+  const root = document.getElementById("drawerRoot");
+  const overlay = document.getElementById("drawerOverlay");
+  const panel = document.getElementById("drawerPanel");
+  if (!root || !overlay || !panel) return;
+  root.classList.toggle("visible", state.drawerOpen);
+  root.classList.toggle("invisible", !state.drawerOpen);
+  overlay.classList.toggle("opacity-100", state.drawerOpen);
+  overlay.classList.toggle("opacity-0", !state.drawerOpen);
+  panel.classList.toggle("translate-x-0", state.drawerOpen);
+  panel.classList.toggle("-translate-x-full", !state.drawerOpen);
+}
+
 function renderMapSheet(selected) {
   return `
     <div class="absolute bottom-6 left-6 right-6 animate-in slide-in-from-bottom-6 duration-300 z-50">
@@ -1550,7 +1845,7 @@ function renderProfileGridItem(item) {
   `;
 }
 
-function renderProfilePostCardFancy(item, isGrid) {
+function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   const counts = resolvePostCounts(item);
   const postId = item.id ? String(item.id) : "";
   const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
@@ -1583,7 +1878,7 @@ function renderProfilePostCardFancy(item, isGrid) {
         </div>
       </div>
 
-      ${postId ? `
+      ${postId && allowMenu ? `
         <button type="button" data-profile-menu-button="${escapeHtml(postId)}" class="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/90 z-20 active:bg-black/40 hover:bg-black/30 transition-colors">
           ${icon("more-horizontal", "w-3.5 h-3.5")}
         </button>
@@ -1603,7 +1898,7 @@ function renderProfilePostCardFancy(item, isGrid) {
   `;
 }
 
-function renderProfilePostsFancy(posts, viewMode) {
+function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
   const isGrid = viewMode === "grid";
   if (!posts.length) {
     return `
@@ -1615,7 +1910,7 @@ function renderProfilePostsFancy(posts, viewMode) {
       </div>
     `;
   }
-  return posts.map((post) => renderProfilePostCardFancy(post, isGrid)).join("");
+  return posts.map((post) => renderProfilePostCardFancy(post, isGrid, allowMenu)).join("");
 }
 
 function renderProfileCheckins() {
@@ -1837,37 +2132,83 @@ function renderPublicProfileView() {
   const posts = view.posts || profile.posts || [];
   const followKey = String(profile.handle || "").replace(/^@/, "");
   const isFollowing = state.followingHandles.includes(followKey);
+  const typeLabel = profile.restaurantId ? "Business" : "User";
+  const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
+  const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
+  const bioHtml = safeBio || "Noch keine Bio.";
+  const isMediaTab = state.profileContentTab === "media";
+  const isCheckinTab = state.profileContentTab === "checkins";
+  const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   return `
-    <div class="p-8 animate-in slide-in-from-bottom-10 duration-700 pb-24">
-      <div class="flex items-center gap-3 mb-8">
-        <button data-public-profile-back="true" class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
-        <div>
-          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Profil</p>
-          <h2 class="text-xl font-black italic tracking-tighter">${escapeHtml(profile.name || "Business")}</h2>
+    <div class="pb-24">
+      <div class="px-5 pb-2 pt-10">
+        <div class="flex items-center gap-3 mb-6">
+          <button data-public-profile-back="true" class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
+          <div>
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Profil</p>
+            <h2 class="text-xl font-black italic tracking-tighter">${escapeHtml(profile.name || "Profil")}</h2>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
+          <div class="relative z-10">
+            <div class="flex justify-between items-start mb-8">
+              <div class="relative">
+                <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
+                  <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                </div>
+                ${profile.isPremium ? `
+                  <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
+                    ${icon("badge-check", "w-4 h-4 fill-blue-500 text-white")}
+                  </div>
+                ` : ""}
+              </div>
+
+              <div class="flex items-center gap-6 pt-3 pr-2">
+                 <div class="flex flex-col items-center">
+                    <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.followers))}</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span>
+                 </div>
+                 <div class="w-px h-8 bg-slate-100"></div>
+                 <div class="flex flex-col items-center">
+                    <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.following))}</span>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Folgt</span>
+                 </div>
+              </div>
+            </div>
+
+            <div class="mb-8">
+              <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profile.name || "User")}</h1>
+              <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>
+              <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / ${typeLabel}</p>
+            </div>
+
+            <div class="flex gap-4">
+              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${isFollowing ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200" : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent"}">
+                <span class="relative z-10 flex items-center gap-2">
+                  ${isFollowing ? icon("check", "w-4 h-4") : ""}
+                  ${isFollowing ? "Following" : "Follow"}
+                </span>
+              </button>
+              <button class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 bg-white text-slate-900 active:scale-[0.95] transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
+                ${icon("message-circle", "w-5 h-5")}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="flex flex-col items-center text-center mb-10">
-        <div class="w-32 h-32 rounded-[3.5rem] bg-gradient-to-tr from-indigo-600 to-purple-500 p-1 shadow-2xl shadow-indigo-500/20">
-          <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[3.2rem] object-cover border-4 border-white" />
+
+      ${renderProfileTabs()}
+      ${renderProfileViewControls()}
+
+      ${isCheckinTab ? `
+        ${renderProfileCheckins()}
+      ` : `
+        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6" : "flex flex-col gap-8 px-6"}">
+          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
         </div>
-        <p class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-3">${escapeHtml(profile.location || "-")} / Business</p>
-        <div class="flex gap-3 mt-6 w-full max-w-xs justify-center">
-          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(posts.length))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Posts</span></div>
-          <div class="w-px h-8 bg-slate-200 mx-1"></div>
-          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.followers))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Follower</span></div>
-          <div class="w-px h-8 bg-slate-200 mx-1"></div>
-          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.following))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Following</span></div>
-        </div>
-        <div class="flex gap-3 mt-8 w-full max-w-xs">
-          <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" class="flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
-            ${isFollowing ? "Following" : "Follow"}
-          </button>
-        </div>
-        <p class="mt-5 text-sm font-medium text-slate-600 leading-relaxed">${escapeHtml(profile.bio || "")}</p>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        ${renderProfilePosts(posts)}
-      </div>
+      `}
     </div>
   `;
 }
@@ -2018,6 +2359,111 @@ async function openProfileFromBusiness(input) {
   }
 }
 
+function showPublicProfile(profile, posts) {
+  state.profileView = { profile, posts: posts || profile.posts || [] };
+  state.profileModal = { open: false, profile: null };
+  state.profileContentTab = "posts";
+  state.profileViewMode = "grid";
+  state.profilePostMenuId = null;
+  state.drawerOpen = false;
+  state.activeTab = "profile";
+  render();
+}
+
+async function openProfileViewFromBusiness(input) {
+  try {
+    const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
+    const restaurantId = typeof input === "string" ? "" : (input?.id || "");
+    if (!safeName && !restaurantId) return;
+
+    const rest = restaurantId
+      ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
+      : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
+
+    const fallbackPosts = state.feedPosts
+      .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
+      .map((p, idx) => ({
+        id: p.id || `feed_${idx}`,
+        url: p.image,
+        type: p.type || "square",
+        caption: p.content || "",
+        createdAt: p.createdAt,
+        likes: p.likes ?? 0,
+        comments: p.comments ?? 0,
+        ownerType: "restaurant",
+        ownerId: restaurantId || p.restaurantId || ""
+      }));
+
+    const placeholderProfile = normalizeExternalProfile({
+      profileDoc: null,
+      restaurant: rest,
+      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
+      posts: fallbackPosts
+    });
+
+    showPublicProfile(placeholderProfile, placeholderProfile.posts);
+
+    const [profileSnap, posts] = await Promise.all([
+      fetchBusinessProfileDoc({ restaurantId, restaurant: rest }),
+      restaurantId ? loadBusinessPostsForRestaurant(restaurantId) : Promise.resolve(fallbackPosts)
+    ]);
+
+    const resolved = normalizeExternalProfile({
+      profileDoc: profileSnap,
+      restaurant: rest,
+      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
+      posts: posts && posts.length ? posts : fallbackPosts
+    });
+
+    if (state.activeTab !== "profile") return;
+    if (restaurantId && state.profileView?.profile?.restaurantId !== restaurantId) return;
+    showPublicProfile(resolved, resolved.posts);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function openProfileFromUser(input) {
+  try {
+    const uid = typeof input === "string" ? input : (input?.uid || "");
+    const handle = String(typeof input === "string" ? "" : (input?.handle || input?.name || "")).replace(/^@/, "");
+    if (!uid && !handle) return;
+
+    const cacheKey = uid || handle;
+    const cached = userProfileCache.get(cacheKey);
+    if (cached) {
+      showPublicProfile(cached, cached.posts || []);
+      return;
+    }
+
+    const fallbackProfile = normalizeExternalUserProfile({ userDoc: null, fallback: input || {}, posts: [] });
+    showPublicProfile(fallbackProfile, []);
+
+    let userDoc = null;
+    if (uid) {
+      const snap = await getDoc(doc(db, "users", uid));
+      if (snap.exists()) userDoc = snap;
+    } else if (handle) {
+      const resolved = await resolveUserByHandle(handle);
+      if (resolved?.id) userDoc = { id: resolved.id, data: resolved.data };
+    }
+
+    if (!userDoc) return;
+    const posts = await loadUserPostsForUser(userDoc.id);
+    const resolvedProfile = normalizeExternalUserProfile({
+      userDoc,
+      fallback: input || {},
+      posts
+    });
+    userProfileCache.set(cacheKey, resolvedProfile);
+    if (state.activeTab !== "profile") return;
+    if (uid && state.profileView?.profile?.uid !== uid) return;
+    showPublicProfile(resolvedProfile, resolvedProfile.posts);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 async function loadFollowingFromFirebase({ force = false } = {}) {
   if (!state.user) return;
   if (FAST_MODE && state.followingHandles.length && !force) return;
@@ -2155,6 +2601,7 @@ function renderProfileModal() {
   const p = state.profileModal.profile;
   const followKey = String(p.handle || "").replace(/^@/, "");
   const isFollowing = state.followingHandles.includes(followKey);
+  const typeLabel = p.restaurantId ? "Business" : "User";
 
   return `
     <div class="fixed inset-0 z-[60]">
@@ -2169,7 +2616,7 @@ function renderProfileModal() {
             <img src="${escapeHtml(p.avatar)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
             <div class="flex-1 min-w-0">
               <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / Business</p>
+              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
             </div>
             <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
               ${isFollowing ? "Following" : "Follow"}
@@ -2561,6 +3008,174 @@ function renderNotificationsView() {
   `;
 }
 
+function renderSearchUserItem(user) {
+  const handle = user.handle || normalizeHandle(user.name || "user");
+  return `
+    <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(user.name)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
+      <img src="${escapeHtml(user.avatar)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(user.name)}</p>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
+      </div>
+      <span class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">User</span>
+    </button>
+  `;
+}
+
+function renderSearchBusinessItem(biz) {
+  const name = biz.name || "Business";
+  return `
+    <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
+      <img src="${escapeHtml(biz.logo)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <div class="flex-1 min-w-0">
+        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
+      </div>
+      <span class="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Business</span>
+    </button>
+  `;
+}
+
+function renderSearchView() {
+  const query = state.search.query;
+  const queryKey = normalizeSearchKey(query);
+  const filter = state.search.filter;
+  const users = state.search.userResults || [];
+  const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
+  const showUsers = filter === "all" || filter === "users";
+  const showBusinesses = filter === "all" || filter === "business" || filter === "local";
+  const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
+  const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
+
+  return `
+    <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
+      <div class="mb-6 px-1">
+        <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Entdecken</p>
+        <h2 class="text-2xl font-black italic uppercase tracking-tighter">Suche</h2>
+      </div>
+
+      <div class="relative mb-5">
+        <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Suche nach User, Name oder Lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
+        <button id="searchClearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 hover:text-slate-700 transition">
+          ${icon("x", "w-4 h-4")}
+        </button>
+      </div>
+
+      <div class="flex gap-2 mb-6">
+        ${[
+          { id: "all", label: "Alles" },
+          { id: "users", label: "User" },
+          { id: "business", label: "Business" },
+          { id: "local", label: "Lokal" }
+        ].map((item) => `
+          <button data-search-filter="${item.id}" class="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition ${filter === item.id ? "bg-slate-900 text-white shadow-md" : "bg-white text-slate-400 border border-slate-100"}">
+            ${item.label}
+          </button>
+        `).join("")}
+      </div>
+
+      <div id="searchStatusLoading" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ${state.search.loading ? "" : "hidden"}">Suche...</div>
+      <div id="searchStatusError" class="text-xs font-bold text-rose-500 mb-4 ${state.search.error ? "" : "hidden"}">${escapeHtml(state.search.error || "")}</div>
+      <div id="searchEmptyState" class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em] ${!hasResults && !query ? "" : "hidden"}">Tippe, um zu suchen</div>
+
+      <div id="searchUsersSection" class="space-y-3 mb-8 ${showUsers ? "" : "hidden"}">
+        <div class="flex items-center justify-between px-1">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">User</p>
+          <p id="searchUsersCount" class="text-[10px] font-bold text-slate-300">${users.length}</p>
+        </div>
+        <div id="searchUsersList">
+          ${users.length ? users.map(renderSearchUserItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "")}
+        </div>
+      </div>
+
+      <div id="searchBizSection" class="space-y-3 ${showBusinesses ? "" : "hidden"}">
+        <div class="flex items-center justify-between px-1">
+          <p id="searchBizLabel" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${localLabel}</p>
+          <p id="searchBizCount" class="text-[10px] font-bold text-slate-300">${businesses.length}</p>
+        </div>
+        <div id="searchBizList">
+          ${businesses.length ? businesses.map(renderSearchBusinessItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine ${localLabel} gefunden.</div>` : "")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function updateSearchDom() {
+  const searchView = document.getElementById("searchView");
+  if (!searchView) return false;
+
+  const query = state.search.query;
+  const queryKey = normalizeSearchKey(query);
+  const filter = state.search.filter;
+  const users = state.search.userResults || [];
+  const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
+  const showUsers = filter === "all" || filter === "users";
+  const showBusinesses = filter === "all" || filter === "business" || filter === "local";
+  const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
+  const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
+
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput && document.activeElement !== searchInput && searchInput.value !== query) {
+    searchInput.value = query;
+  }
+
+  const loadingEl = document.getElementById("searchStatusLoading");
+  if (loadingEl) loadingEl.classList.toggle("hidden", !state.search.loading);
+  const errorEl = document.getElementById("searchStatusError");
+  if (errorEl) {
+    errorEl.textContent = state.search.error || "";
+    errorEl.classList.toggle("hidden", !state.search.error);
+  }
+  const emptyEl = document.getElementById("searchEmptyState");
+  if (emptyEl) emptyEl.classList.toggle("hidden", !!query || hasResults);
+
+  const usersSection = document.getElementById("searchUsersSection");
+  if (usersSection) usersSection.classList.toggle("hidden", !showUsers);
+  const usersCount = document.getElementById("searchUsersCount");
+  if (usersCount) usersCount.textContent = String(users.length);
+  const usersList = document.getElementById("searchUsersList");
+  if (usersList) {
+    usersList.innerHTML = users.length
+      ? users.map(renderSearchUserItem).join("")
+      : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "");
+  }
+
+  const bizSection = document.getElementById("searchBizSection");
+  if (bizSection) bizSection.classList.toggle("hidden", !showBusinesses);
+  const bizLabel = document.getElementById("searchBizLabel");
+  if (bizLabel) bizLabel.textContent = localLabel;
+  const bizCount = document.getElementById("searchBizCount");
+  if (bizCount) bizCount.textContent = String(businesses.length);
+  const bizList = document.getElementById("searchBizList");
+  if (bizList) {
+    bizList.innerHTML = businesses.length
+      ? businesses.map(renderSearchBusinessItem).join("")
+      : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine ${localLabel} gefunden.</div>` : "");
+  }
+
+  document.querySelectorAll("[data-search-filter]").forEach((btn) => {
+    const isActive = btn.dataset.searchFilter === filter;
+    btn.classList.toggle("bg-slate-900", isActive);
+    btn.classList.toggle("text-white", isActive);
+    btn.classList.toggle("shadow-md", isActive);
+    btn.classList.toggle("bg-white", !isActive);
+    btn.classList.toggle("text-slate-400", !isActive);
+    btn.classList.toggle("border", !isActive);
+    btn.classList.toggle("border-slate-100", !isActive);
+  });
+
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+  return true;
+}
+
+function refreshSearchView() {
+  if (state.activeTab === "search" && lastRenderMode === "main") {
+    if (updateSearchDom()) return true;
+  }
+  return false;
+}
+
 function renderUploadView() {
   const profile = state.userProfile;
   return `
@@ -2613,6 +3228,7 @@ function renderHeader() {
 function renderMain() {
   let view = "";
   if (state.activeTab === "feed") view = renderFeedView();
+  if (state.activeTab === "search") view = renderSearchView();
   if (state.activeTab === "map") view = renderMapView();
   if (state.activeTab === "profile") view = state.profileView ? renderPublicProfileView() : renderProfileView();
   if (state.activeTab === "settings") view = renderSettingsView();
@@ -2772,6 +3388,10 @@ function render() {
       updateFeedDom();
     }
     if (window.lucide?.createIcons) window.lucide.createIcons();
+    if (state.activeTab === "search" && state.search.keepFocus) {
+      state.search.keepFocus = false;
+      focusSearchInput();
+    }
   }
 
   renderOverlays();
@@ -3235,6 +3855,75 @@ function bindAppEvents() {
       await updateRestaurantSelection(settingsRestaurant.value);
     });
   }
+
+  bindSearchEvents();
+}
+
+function bindSearchEvents() {
+  const searchView = document.getElementById("searchView");
+  if (!searchView || searchView.dataset.bound === "true") return;
+
+  searchView.addEventListener("input", (e) => {
+    const target = e.target;
+    if (target instanceof HTMLInputElement && target.id === "searchInput") {
+      handleSearchInput(target.value);
+    }
+  });
+
+  searchView.addEventListener("keydown", (e) => {
+    const target = e.target;
+    if (target instanceof HTMLInputElement && target.id === "searchInput" && e.key === "Enter") {
+      e.preventDefault();
+    }
+  });
+
+  searchView.addEventListener("click", (e) => {
+    const target = e.target;
+    if (!(target instanceof Element)) return;
+
+    const clearBtn = target.closest("#searchClearBtn");
+    if (clearBtn) {
+      state.search.query = "";
+      state.search.userResults = [];
+      state.search.businessResults = buildLocalBusinessResults("");
+      state.search.loading = false;
+      state.search.error = "";
+      state.search.keepFocus = true;
+      if (!refreshSearchView()) render();
+      focusSearchInput();
+      return;
+    }
+
+    const filterBtn = target.closest("[data-search-filter]");
+    if (filterBtn) {
+      const filter = filterBtn.dataset.searchFilter || "all";
+      state.search.filter = filter;
+      if (!refreshSearchView()) render();
+      return;
+    }
+
+    const userBtn = target.closest("[data-search-user]");
+    if (userBtn) {
+      openProfileFromUser({
+        uid: userBtn.dataset.searchUser || "",
+        handle: userBtn.dataset.searchHandle || "",
+        name: userBtn.dataset.searchName || "",
+        avatar: userBtn.dataset.searchAvatar || "",
+        location: userBtn.dataset.searchLocation || ""
+      });
+      return;
+    }
+
+    const bizBtn = target.closest("[data-search-business]");
+    if (bizBtn) {
+      openProfileViewFromBusiness({
+        id: bizBtn.dataset.searchBusiness || "",
+        name: bizBtn.dataset.searchName || ""
+      });
+    }
+  });
+
+  searchView.dataset.bound = "true";
 }
 
 async function uploadImage(file, ownerId) {
@@ -3533,6 +4222,25 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
   };
 }
 
+function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
+  const data = userDoc?.data || userDoc || {};
+  const fallbackName = fallback?.name || fallback?.handle || "User";
+  const displayName = data?.displayName || data?.name || fallbackName;
+  const handle = data?.handle || normalizeHandle(displayName);
+  return {
+    name: displayName,
+    handle: handle || "user",
+    uid: userDoc?.id || data?.uid || fallback?.uid || "",
+    bio: data?.bio || fallback?.bio || "",
+    avatar: data?.avatarUrl || fallback?.avatar || `https://i.pravatar.cc/300?u=${encodeURIComponent(handle)}`,
+    location: data?.city || fallback?.location || "Prishtina",
+    followers: data?.followersCount ?? data?.followers ?? fallback?.followers ?? 0,
+    following: data?.followingCount ?? data?.following ?? fallback?.following ?? 0,
+    role: data?.role || fallback?.role || "user",
+    posts: posts || []
+  };
+}
+
 async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
   const rest = restaurant || (restaurantId ? state.restaurants.find((r) => r.id === restaurantId) : null) || {};
   const ownerUid = rest.ownerUid || "";
@@ -3720,6 +4428,39 @@ async function loadFeedDelta({ force = false } = {}) {
     }
   } catch (err) {
     console.error(err);
+  }
+}
+
+async function loadUserPostsForUser(uid) {
+  if (!uid) return [];
+  try {
+    const ref = collection(db, "users", uid, "posts");
+    let snap = null;
+    try {
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.userPosts)));
+    } catch (err) {
+      snap = await getDocs(ref);
+    }
+    const rows = [];
+    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+    return rows
+      .map((row) => ({
+        id: row.id,
+        url: row.url || row.mediaUrl || row.media?.[0]?.url || "",
+        type: row.type || "square",
+        title: "",
+        caption: row.caption || "",
+        createdAt: row.createdAt,
+        likes: row.likesCount ?? row.likes ?? 0,
+        comments: row.commentsCount ?? row.comments ?? 0,
+        isVideo: row.media?.[0]?.type === "video",
+        ownerType: "user",
+        ownerId: uid
+      }))
+      .filter((row) => row.url);
+  } catch (err) {
+    console.error(err);
+    return [];
   }
 }
 
