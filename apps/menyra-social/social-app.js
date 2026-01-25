@@ -244,6 +244,8 @@ let dataLoaded = {
 };
 let lastAppHtml = "";
 let lastRenderMode = "";
+let authReadyTimer = null;
+let feedDeltaTimer = null;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -580,7 +582,11 @@ async function resolveRoleSwitchTargets(user) {
 
   state.roleSwitchRoles = ROLE_SWITCH_ORDER.filter((role) => roles.has(role));
   state.roleSwitchRestaurantId = ownerRestaurantId || profile.restaurantId || "";
-  render();
+  if (state.activeTab === "feed" && lastRenderMode === "main") {
+    updateShellDom();
+  } else {
+    render();
+  }
 }
 
 function mapRestaurantToCard(rest, idx) {
@@ -833,6 +839,20 @@ function updatePostCountNodes(post) {
   });
 }
 
+function updatePostCaches(post) {
+  if (!post?.id) return;
+  const postId = String(post.id);
+  const inUser = state.userPosts.some((item) => String(item.id) === postId);
+  const inBusiness = state.businessPosts.some((item) => String(item.id) === postId);
+  const inFeed = state.feedPosts.some((item) => String(item.id) === postId);
+  if (inUser) writeCache(CACHE_KEYS.userPosts, state.userPosts);
+  if (inBusiness) writeCache(CACHE_KEYS.businessPosts, state.businessPosts);
+  if (inFeed) {
+    const cached = readCache(CACHE_KEYS.feed);
+    saveFeedPosts(state.feedPosts, { lastDeltaCheck: cached?.meta?.lastDeltaCheck || 0 });
+  }
+}
+
 function scheduleIdle(fn) {
   if (typeof window === "undefined") return;
   if ("requestIdleCallback" in window) {
@@ -849,6 +869,14 @@ function ensureTabData(tab) {
     dataLoaded.feed = true;
     void loadFeedPosts();
     scheduleIdle(() => void loadFeedDelta());
+  }
+
+  if (tab === "feed" && !feedDeltaTimer) {
+    feedDeltaTimer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      if (state.activeTab !== "feed") return;
+      void loadFeedDelta();
+    }, FEED_DELTA_MIN_MS);
   }
 
   const needsRestaurants = tab === "map" || (!FAST_MODE && tab === "feed");
@@ -972,6 +1000,8 @@ async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0 } = {}
       }
     }
   }
+  updatePostCountNodes(post);
+  updatePostCaches(post);
 }
 
 async function addComment(postId, text, replyTo) {
@@ -1171,20 +1201,7 @@ function renderAuthScreen() {
 
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
-  const switchLinks = (state.user && state.roleSwitchRoles.length) ? `
-        <div class="mt-6 space-y-2">
-          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Switch</p>
-          ${state.roleSwitchRoles.map((role) => {
-            const label = roleLabel(role);
-            const url = buildRoleSwitchUrl(role, state.userProfile, state.roleSwitchRestaurantId);
-            return `
-            <a href="${escapeHtml(url)}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all bg-slate-900 text-white hover:bg-slate-800">
-              <div class="flex items-center gap-4">${icon("arrow-right-left", "w-4 h-4")} Switch to ${escapeHtml(label)}</div>
-            </a>
-          `;
-          }).join("")}
-        </div>
-      ` : "";
+  const switchLinks = renderRoleSwitchLinks();
   return `
     <div class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
@@ -1197,10 +1214,10 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-10 h-10 rounded-xl object-cover" />
+          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-10 h-10 rounded-xl object-cover" />
           <div>
-            <p class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
-            <p class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
+            <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
+            <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
           </div>
         </div>
         <nav class="space-y-2 flex-1">
@@ -1217,42 +1234,40 @@ function renderDrawer() {
             </button>
           `).join("")}
         </nav>
-        ${switchLinks}
+        <div id="drawerSwitchLinks">${switchLinks}</div>
         <button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} Abmelden</button>
       </div>
     </div>
   `;
 }
 
+function renderRoleSwitchLinks() {
+  if (!(state.user && state.roleSwitchRoles.length)) return "";
+  return `
+    <div class="mt-6 space-y-2">
+      <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Switch</p>
+      ${state.roleSwitchRoles.map((role) => {
+        const label = roleLabel(role);
+        const url = buildRoleSwitchUrl(role, state.userProfile, state.roleSwitchRestaurantId);
+        return `
+        <a href="${escapeHtml(url)}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all bg-slate-900 text-white hover:bg-slate-800">
+          <div class="flex items-center gap-4">${icon("arrow-right-left", "w-4 h-4")} Switch to ${escapeHtml(label)}</div>
+        </a>
+      `;
+      }).join("")}
+    </div>
+  `;
+}
+
 function renderFeedView() {
-  const stories = state.stories;
   const feedPosts = state.feedPosts
     .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
     .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+  const stories = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeed(feedPosts) : state.stories);
   return `
-    <div>
-      <div class="flex gap-4 overflow-x-auto px-8 pb-8 no-scrollbar">
-        <div class="flex-shrink-0 flex flex-col items-center gap-2">
-          <div data-nav="upload" class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
-            <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
-            ${icon("camera", "w-7 h-7 relative z-10")}
-          </div>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Story</span>
-        </div>
-        ${stories.length ? stories.map((s) => {
-          const borderClass = s.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
-          const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
-          return `
-            <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
-              <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-                <img src="${escapeHtml(s.img)}" loading="lazy" decoding="async" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
-              </div>
-              <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
-            </a>
-          `;
-        }).join("") : `
-          <div class="flex items-center text-slate-400 text-xs font-bold uppercase">Keine Stories</div>
-        `}
+    <div id="feedView">
+      <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pb-8 no-scrollbar">
+        ${renderStoriesRow(stories)}
       </div>
       ${state.userProfile.role === "business" ? `
         <div class="px-8 mb-6">
@@ -1261,57 +1276,198 @@ function renderFeedView() {
           </button>
         </div>
       ` : ""}
-      <div class="px-8 py-4 space-y-12">
-        ${feedPosts.length ? feedPosts.map((post) => {
-          const postId = post.id ? String(post.id) : "";
-          const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
-          const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
-          return `
-          <div class="group feed-card">
-            <div class="flex items-center justify-between mb-5 px-2">
-              <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
-                <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-                  <img src="${escapeHtml(post.logo || post.image)}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
-                </div>
-                <div>
-                  <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
-                  <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(post.location)}</p>
-                </div>
-              </button>
-              ${icon("more-horizontal", "w-5 h-5 text-slate-400")}
-            </div>
-            <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
-              <div class="relative h-[30rem] rounded-[3rem] overflow-hidden bg-slate-200">
-                <img src="${escapeHtml(post.image)}" loading="lazy" decoding="async" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
-                ${post.isLive ? `
-                  <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
-                    <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
-                  </div>
-                ` : ""}
-                <div class="absolute bottom-6 left-6 right-6 p-6 bg-black/40 backdrop-blur-xl rounded-[2.5rem] border border-white/10 text-white">
-                  <p class="text-sm font-medium mb-4 line-clamp-2 leading-relaxed">${escapeHtml(post.content)}</p>
-                  <div class="flex items-center justify-between">
-                    <div class="flex gap-4">
-                      <button class="flex items-center gap-2 hover:text-red-400 transition-colors">
-                        ${icon("heart", "w-5 h-5")} <span ${likeAttr} class="text-[10px] font-black">${escapeHtml(post.likes)}</span>
-                      </button>
-                      <button class="flex items-center gap-2 text-white/70 hover:text-white">
-                        ${icon("message-circle", "w-5 h-5")} <span ${commentAttr} class="text-[10px] font-black">${escapeHtml(post.comments)}</span>
-                      </button>
-                    </div>
-                    <button class="text-white/70 hover:text-white">${icon("share-2", "w-4 h-4")}</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        `;
-        }).join("") : `
-          <div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>
-        `}
+      <div id="feedList" class="px-8 py-4 space-y-12">
+        ${renderFeedList(feedPosts)}
       </div>
     </div>
   `;
+}
+
+function renderStoriesRow(stories) {
+  return `
+    <div class="flex-shrink-0 flex flex-col items-center gap-2">
+      <div data-nav="upload" class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
+        <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
+        ${icon("camera", "w-7 h-7 relative z-10")}
+      </div>
+      <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Story</span>
+    </div>
+    ${stories.length ? stories.map((s) => {
+      const borderClass = s.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
+      const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
+      return `
+        <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
+          <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
+            <img src="${escapeHtml(s.img)}" loading="lazy" decoding="async" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+          </div>
+          <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
+        </a>
+      `;
+    }).join("") : `
+      <div class="flex items-center text-slate-400 text-xs font-bold uppercase">Keine Stories</div>
+    `}
+  `;
+}
+
+function renderFeedItem(post, index) {
+  const postId = post.id ? String(post.id) : "";
+  const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
+  const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
+  const feedAttr = postId ? `data-feed-id="${escapeHtml(postId)}"` : `data-feed-id=""`;
+  const eager = index < 2;
+  const heroAttrs = eager ? `loading="eager" fetchpriority="high"` : `loading="lazy" decoding="async"`;
+  const logoAttrs = eager ? `loading="eager"` : `loading="lazy" decoding="async"`;
+  return `
+    <div class="group feed-card" ${feedAttr}>
+      <div class="flex items-center justify-between mb-5 px-2">
+        <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
+          <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
+            <img src="${escapeHtml(post.logo || post.image)}" ${logoAttrs} class="w-full h-full object-cover" />
+          </div>
+          <div>
+            <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
+            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(post.location)}</p>
+          </div>
+        </button>
+        ${icon("more-horizontal", "w-5 h-5 text-slate-400")}
+      </div>
+      <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
+        <div class="relative h-[30rem] rounded-[3rem] overflow-hidden bg-slate-200">
+          <img src="${escapeHtml(post.image)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+          ${post.isLive ? `
+            <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
+              <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
+            </div>
+          ` : ""}
+          <div class="absolute bottom-6 left-6 right-6 p-6 bg-black/40 backdrop-blur-xl rounded-[2.5rem] border border-white/10 text-white">
+            <p class="text-sm font-medium mb-4 line-clamp-2 leading-relaxed">${escapeHtml(post.content)}</p>
+            <div class="flex items-center justify-between">
+              <div class="flex gap-4">
+                <button class="flex items-center gap-2 hover:text-red-400 transition-colors">
+                  ${icon("heart", "w-5 h-5")} <span ${likeAttr} class="text-[10px] font-black">${escapeHtml(post.likes)}</span>
+                </button>
+                <button class="flex items-center gap-2 text-white/70 hover:text-white">
+                  ${icon("message-circle", "w-5 h-5")} <span ${commentAttr} class="text-[10px] font-black">${escapeHtml(post.comments)}</span>
+                </button>
+              </div>
+              <button class="text-white/70 hover:text-white">${icon("share-2", "w-4 h-4")}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderFeedList(feedPosts) {
+  if (!feedPosts.length) {
+    return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>`;
+  }
+  return feedPosts.map((post, index) => renderFeedItem(post, index)).join("");
+}
+
+function patchFeedList(feedPosts) {
+  const feedList = document.getElementById("feedList");
+  if (!feedList) return false;
+  if (!feedPosts.length) {
+    feedList.innerHTML = renderFeedList(feedPosts);
+    return true;
+  }
+  const existingItems = Array.from(feedList.querySelectorAll("[data-feed-id]"));
+  const currentIds = existingItems.map((el) => el.dataset.feedId || "");
+  const nextIds = feedPosts.map((post) => String(post.id || ""));
+  if (currentIds.join("|") === nextIds.join("|")) {
+    feedPosts.forEach(updatePostCountNodes);
+    return true;
+  }
+  const existingMap = new Map();
+  existingItems.forEach((el) => existingMap.set(el.dataset.feedId || "", el));
+  const fragment = document.createDocumentFragment();
+  feedPosts.forEach((post, index) => {
+    const postId = String(post.id || "");
+    const existing = postId ? existingMap.get(postId) : null;
+    if (existing) {
+      existingMap.delete(postId);
+      fragment.appendChild(existing);
+    } else {
+      const tpl = document.createElement("template");
+      tpl.innerHTML = renderFeedItem(post, index);
+      const node = tpl.content.firstElementChild;
+      if (node) fragment.appendChild(node);
+    }
+  });
+  feedList.replaceChildren(fragment);
+  feedPosts.forEach(updatePostCountNodes);
+  return true;
+}
+
+function updateFeedDom() {
+  const feedView = document.getElementById("feedView");
+  if (!feedView) return false;
+  const feedPosts = state.feedPosts
+    .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
+    .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+  const stories = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeed(feedPosts) : state.stories);
+  const storiesRow = document.getElementById("storiesRow");
+  const storiesHtml = renderStoriesRow(stories);
+  if (storiesRow && storiesRow.innerHTML !== storiesHtml) storiesRow.innerHTML = storiesHtml;
+  patchFeedList(feedPosts);
+  bindFeedDelegation();
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+  return true;
+}
+
+function bindFeedDelegation() {
+  const feedView = document.getElementById("feedView");
+  if (!feedView || feedView.dataset.bound === "true") return;
+  feedView.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const navBtn = target.closest("[data-nav]");
+    if (navBtn) {
+      const tab = navBtn.dataset.nav;
+      if (tab) {
+        setState({
+          activeTab: tab,
+          drawerOpen: false,
+          settingsView: "main",
+          selectedBusiness: null,
+          profileView: null,
+          profileModal: { open: false, profile: null },
+          postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false },
+          likesModal: { open: false, postId: "", animate: false }
+        });
+      }
+      return;
+    }
+    const profileBtn = target.closest("[data-profile-business]");
+    if (profileBtn) {
+      openProfileFromBusiness({
+        id: profileBtn.dataset.profileId || "",
+        name: profileBtn.dataset.profileBusiness || ""
+      });
+    }
+  });
+  feedView.dataset.bound = "true";
+}
+
+function updateShellDom() {
+  const avatar = escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80");
+  const headerAvatar = document.getElementById("headerAvatar");
+  if (headerAvatar && headerAvatar.getAttribute("src") !== avatar) {
+    headerAvatar.setAttribute("src", avatar);
+  }
+  const drawerAvatar = document.getElementById("drawerAvatar");
+  if (drawerAvatar && drawerAvatar.getAttribute("src") !== avatar) {
+    drawerAvatar.setAttribute("src", avatar);
+  }
+  const drawerName = document.getElementById("drawerName");
+  if (drawerName) drawerName.textContent = state.userProfile.name || "User";
+  const drawerHandle = document.getElementById("drawerHandle");
+  if (drawerHandle) drawerHandle.textContent = `@${state.userProfile.handle || "user"}`;
+  const switchLinks = document.getElementById("drawerSwitchLinks");
+  if (switchLinks) switchLinks.innerHTML = renderRoleSwitchLinks();
+  if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 
 function renderMapSheet(selected) {
@@ -1562,6 +1718,7 @@ async function toggleProfilePostWidth(postId) {
   post.type = nextType;
   state.profilePostMenuId = null;
   render();
+  updatePostCaches(post);
   try {
     await updateProfilePostType(postId, nextType);
   } catch (err) {
@@ -1577,6 +1734,11 @@ async function deleteProfilePost(postId) {
   list.splice(idx, 1);
   state.profilePostMenuId = null;
   render();
+  if (state.userProfile.role === "business") {
+    writeCache(CACHE_KEYS.businessPosts, state.businessPosts);
+  } else {
+    writeCache(CACHE_KEYS.userPosts, state.userPosts);
+  }
   try {
     if (state.userProfile.role === "business") {
       const restaurantId = state.userProfile.restaurantId;
@@ -2442,7 +2604,7 @@ function renderHeader() {
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">Social</span>
       </div>
       <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-        <img src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-full h-full rounded-[1.4rem] object-cover" />
+        <img id="headerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-full h-full rounded-[1.4rem] object-cover" />
       </button>
     </header>
   `;
@@ -2587,6 +2749,10 @@ function render() {
   }
   const changed = nextHtml !== lastAppHtml || mode !== lastRenderMode;
   if (changed) {
+    const reuseFeed = mode === "main" && lastRenderMode === "main" && state.activeTab === "feed"
+      ? document.getElementById("feedView")
+      : null;
+    const prevScrollTop = reuseFeed ? document.querySelector("main")?.scrollTop ?? 0 : 0;
     appEl.innerHTML = nextHtml;
     lastAppHtml = nextHtml;
     lastRenderMode = mode;
@@ -2594,6 +2760,16 @@ function render() {
       bindAuthEvents();
     } else if (mode === "main") {
       bindAppEvents();
+      bindFeedDelegation();
+    }
+    if (reuseFeed) {
+      const nextFeed = document.getElementById("feedView");
+      if (nextFeed && reuseFeed !== nextFeed) {
+        nextFeed.replaceWith(reuseFeed);
+      }
+      const nextMain = document.querySelector("main");
+      if (nextMain) nextMain.scrollTop = prevScrollTop;
+      updateFeedDom();
     }
     if (window.lucide?.createIcons) window.lucide.createIcons();
   }
@@ -2825,19 +3001,20 @@ function bindAppEvents() {
   });
 
   document.querySelectorAll("[data-nav]").forEach((btn) => {
+    if (btn.closest("#feedView")) return;
     btn.addEventListener("click", () => {
       const tab = btn.dataset.nav;
       if (!tab) return;
-        setState({
-          activeTab: tab,
-          drawerOpen: false,
-          settingsView: "main",
-          selectedBusiness: null,
-          profileView: null,
-          profileModal: { open: false, profile: null },
-          postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false },
-          likesModal: { open: false, postId: "", animate: false }
-        });
+      setState({
+        activeTab: tab,
+        drawerOpen: false,
+        settingsView: "main",
+        selectedBusiness: null,
+        profileView: null,
+        profileModal: { open: false, profile: null },
+        postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false },
+        likesModal: { open: false, postId: "", animate: false }
+      });
     });
   });
 
@@ -2976,6 +3153,7 @@ function bindAppEvents() {
   }
 
   document.querySelectorAll("[data-profile-business]").forEach((btn) => {
+    if (btn.closest("#feedView")) return;
     btn.addEventListener("click", () => {
       openProfileFromBusiness({
         id: btn.dataset.profileId || "",
@@ -3251,7 +3429,11 @@ async function loadUserProfile(user, { force = false } = {}) {
   state.userProfile = normalizeProfile(data, user);
   state.userProfile.uid = user.uid;
   safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
-  render();
+  if (state.activeTab === "feed" && lastRenderMode === "main") {
+    updateShellDom();
+  } else {
+    render();
+  }
 }
 
 async function loadRestaurants({ force = false } = {}) {
@@ -3422,10 +3604,14 @@ async function loadFeedPosts({ force = false } = {}) {
   if (cached?.data?.length) {
     if (!state.feedPosts.length) {
       state.feedPosts = cached.data;
-      render();
+      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+        render();
+      }
     }
     if (ensureStoriesFromFeedIfNeeded(cached.data)) {
-      render();
+      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+        render();
+      }
     }
     if (FAST_MODE && !force) return;
     if (cached.fresh && !force) return;
@@ -3466,7 +3652,9 @@ async function loadFeedPosts({ force = false } = {}) {
     if (prevIds === nextIds && !storiesChanged) return;
 
     state.feedPosts = next;
-    render();
+    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+      render();
+    }
   } catch (err) {
     console.error(err);
   }
@@ -3526,7 +3714,9 @@ async function loadFeedDelta({ force = false } = {}) {
     state.feedPosts = unique;
     saveFeedPosts(unique, { lastDeltaCheck: Date.now() });
     if (storiesChanged || unique.length) {
-      render();
+      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+        render();
+      }
     }
   } catch (err) {
     console.error(err);
@@ -3661,7 +3851,9 @@ async function loadStories() {
   if (cached?.data?.length) {
     if (!state.stories.length) {
       state.stories = cached.data;
-      render();
+      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+        render();
+      }
     }
     if (FAST_MODE) return;
     if (cached.fresh) return;
@@ -3697,7 +3889,9 @@ async function loadStories() {
     const nextIds = items.map((item) => String(item.restaurantId)).join("|");
     if (prevIds === nextIds) return;
     state.stories = items;
-    render();
+    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+      render();
+    }
   } catch (err) {
     console.warn("stories fallback", err);
     const fallback = await loadStoriesFallback(state.restaurants);
@@ -3706,20 +3900,18 @@ async function loadStories() {
     const nextIds = fallback.map((item) => String(item.restaurantId)).join("|");
     if (prevIds === nextIds) return;
     state.stories = fallback;
-    render();
+    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+      render();
+    }
   }
 }
 
 async function bootstrapUser(user) {
   if (!user) return;
-  state.isLoading = true;
-  render();
   try {
     await loadUserProfile(user);
     await resolveRoleSwitchTargets(user);
   } finally {
-    state.isLoading = false;
-    render();
   }
   if (!dataLoaded.following) {
     dataLoaded.following = true;
@@ -3732,6 +3924,10 @@ loadPersisted();
 render();
 
 onAuthStateChanged(auth, (user) => {
+  if (authReadyTimer) {
+    clearTimeout(authReadyTimer);
+    authReadyTimer = null;
+  }
   state.user = user;
   state.sessionReady = true;
   if (user) {
@@ -3742,6 +3938,13 @@ onAuthStateChanged(auth, (user) => {
     render();
   }
 });
+
+authReadyTimer = window.setTimeout(() => {
+  if (!state.sessionReady) {
+    state.sessionReady = true;
+    render();
+  }
+}, 4000);
 
 window.addEventListener("load", () => {
   if (window.lucide?.createIcons) {
