@@ -244,6 +244,24 @@ body.theme-dark .m-search {
   color: var(--text-main);
 }
 
+.m-search-clear {
+  position: absolute;
+  right: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-elevated);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  font-size: 12px;
+  padding: 0;
+}
+
+.m-search .m-search-input { padding: 8px 40px 8px 8px; }
+.m-search-clear.hidden { display: none; }
+
 /* Profile */
 .m-profile {
   display: flex;
