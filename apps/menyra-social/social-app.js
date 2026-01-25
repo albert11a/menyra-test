@@ -1604,7 +1604,7 @@ function renderStoriesRow(stories) {
       return `
         <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
           <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-            <img src="${escapeHtml(s.img)}" loading="lazy" decoding="async" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+            <img src="${escapeHtml(s.img)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
           </div>
           <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
         </a>
@@ -1621,8 +1621,8 @@ function renderFeedItem(post, index) {
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   const feedAttr = postId ? `data-feed-id="${escapeHtml(postId)}"` : `data-feed-id=""`;
   const eager = index < 2;
-  const heroAttrs = eager ? `loading="eager" fetchpriority="high"` : `loading="lazy" decoding="async"`;
-  const logoAttrs = eager ? `loading="eager"` : `loading="lazy" decoding="async"`;
+  const heroAttrs = eager ? `fetchpriority="high"` : "";
+  const logoAttrs = "";
   return `
     <div class="group feed-card" ${feedAttr}>
       <div class="flex items-center justify-between mb-5 px-2">
@@ -1955,7 +1955,7 @@ function renderProfileGridItem(item) {
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   return `
     <button type="button" ${postAttr} class="rounded-[2.5rem] overflow-hidden shadow-md relative group text-left ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
-      <img src="${escapeHtml(item.url)}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
+      <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
       ${item.title ? `<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end"><h3 class="text-white text-lg font-black italic">${escapeHtml(item.title)}</h3></div>` : ""}
       <div class="absolute inset-x-0 bottom-0 p-3">
         <div class="flex items-center justify-between text-white bg-black/45 backdrop-blur rounded-2xl px-3 py-2">
@@ -1984,7 +1984,7 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(item.url)}" loading="lazy" decoding="async" class="w-full h-full object-cover" />
+        <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">
