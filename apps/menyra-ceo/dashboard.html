@@ -2350,13 +2350,7 @@
           <div class="leads-filter-grid">
             <div>
               <label for="socialUsersSearch">Suche</label>
-              <div class="m-search">
-                <i class="m-search-icon fas fa-search"></i>
-                <input id="socialUsersSearch" class="m-search-input" placeholder="Name, Email, Stadt" />
-                <button id="socialUsersClear" class="m-icon-btn m-search-clear" type="button" aria-label="clear">
-                  <i class="fas fa-xmark"></i>
-                </button>
-              </div>
+              <input id="socialUsersSearch" class="m-input" placeholder="Name, Email, Stadt" />
             </div>
             <div>
               <label for="socialUsersRole">Rolle</label>
@@ -2364,7 +2358,6 @@
                 <option value="">Alle</option>
                 <option value="user">User</option>
                 <option value="business">Business</option>
-                <option value="ceo">CEO</option>
               </select>
             </div>
             <div>
@@ -2386,44 +2379,6 @@
         </div>
         <div class="small text-muted mt-2" id="socialUsersStatus">-</div>
       </section>
-
-      <!-- Social User Edit Modal -->
-      <div id="socialUserModalOverlay" class="m-modal-overlay is-hidden">
-        <div class="m-modal" style="max-width:520px;">
-          <div class="m-modal-header">
-            <h3 id="socialUserModalTitle">User bearbeiten</h3>
-          </div>
-          <div class="m-modal-body">
-            <div class="m-input-group">
-              <label for="socialUserName">Name</label>
-              <input id="socialUserName" class="m-input" />
-            </div>
-            <div class="m-input-group">
-              <label for="socialUserCity">Stadt</label>
-              <input id="socialUserCity" class="m-input" />
-            </div>
-            <div class="m-input-group">
-              <label for="socialUserRole">Rolle</label>
-              <select id="socialUserRole" class="m-select2">
-                <option value="user">User</option>
-                <option value="business">Business</option>
-                <option value="staff">Staff</option>
-                <option value="ceo">CEO</option>
-              </select>
-            </div>
-            <div class="m-input-group">
-              <label for="socialUserId">ID</label>
-              <div id="socialUserId" class="m-muted small"></div>
-            </div>
-            <div class="small text-muted mt-2" id="socialUserModalStatus">-</div>
-          </div>
-          <div class="m-modal-actions">
-            <button id="socialUserSaveBtn" class="btn btn-primary">Speichern</button>
-            <button id="socialUserDeleteBtn" class="btn btn-danger">Löschen</button>
-            <button id="socialUserCancelBtn" class="btn btn-light">Abbrechen</button>
-          </div>
-        </div>
-      </div>
       <section class="m-view view-content" data-view="menu" style="display:none;">
         <header class="header-main">
           <div>

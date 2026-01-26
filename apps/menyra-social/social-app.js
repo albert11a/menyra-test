@@ -37,30 +37,6 @@ import {
   buildUrl
 } from "./_shared/social-core.js";
 
-// Image helper: build proxied/optimized image URLs via media edge
-function optimizeImageUrl(src, width = 120, opts = {}) {
-  try {
-    if (!src) return src || "";
-    const s = String(src || "").trim();
-    if (!s) return s;
-    // if already proxied through our edge, return as-is
-    if (s.includes(BUNNY_EDGE_BASE)) return s;
-    // if it's a data/blob URI or a local/relative path, don't proxy it
-    if (s.startsWith("data:") || s.startsWith("blob:") || !/^(https?:)?\/\//i.test(s)) {
-      return s;
-    }
-    // fallback: use edge fetch endpoint which proxies source and resizes
-    const url = encodeURIComponent(s);
-    const q = [`url=${url}`, `w=${Math.round(width)}`];
-    if (opts.q) q.push(`q=${Number(opts.q)}`);
-    else q.push(`q=80`);
-    if (opts.fit) q.push(`fit=${opts.fit}`);
-    return `${BUNNY_EDGE_BASE}/image/fetch?${q.join("&")}`;
-  } catch (err) {
-    return src;
-  }
-}
-
 const appEl = document.getElementById("app");
 
 // --- SAFE STORAGE HELPER ---
@@ -1621,7 +1597,7 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(optimizeImageUrl(state.userProfile.avatar || "https://via.placeholder.com/80", 80))}" srcset="${escapeHtml(optimizeImageUrl(state.userProfile.avatar || "https://via.placeholder.com/80", 160))} 2x" loading="lazy" decoding="async" class="w-10 h-10 rounded-xl object-cover" onerror="this.onerror=null;this.src='${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}';this.srcset='';" />
+          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
             <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
@@ -1860,18 +1836,14 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  const rawAvatar = state.userProfile.avatar || "https://via.placeholder.com/80";
-  const avatarSrc = optimizeImageUrl(rawAvatar, 120);
-  const avatarSrc2x = optimizeImageUrl(rawAvatar, 240);
+  const avatar = escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80");
   const headerAvatar = document.getElementById("headerAvatar");
-  if (headerAvatar && headerAvatar.getAttribute("src") !== avatarSrc) {
-    headerAvatar.setAttribute("src", avatarSrc);
-    headerAvatar.setAttribute("srcset", avatarSrc2x + " 2x");
+  if (headerAvatar && headerAvatar.getAttribute("src") !== avatar) {
+    headerAvatar.setAttribute("src", avatar);
   }
   const drawerAvatar = document.getElementById("drawerAvatar");
-  if (drawerAvatar && drawerAvatar.getAttribute("src") !== avatarSrc) {
-    drawerAvatar.setAttribute("src", optimizeImageUrl(rawAvatar, 80));
-    drawerAvatar.setAttribute("srcset", optimizeImageUrl(rawAvatar, 160) + " 2x");
+  if (drawerAvatar && drawerAvatar.getAttribute("src") !== avatar) {
+    drawerAvatar.setAttribute("src", avatar);
   }
   const drawerName = document.getElementById("drawerName");
   if (drawerName) drawerName.textContent = state.userProfile.name || "User";
@@ -3779,11 +3751,9 @@ function renderNotificationsView() {
 function renderSearchUserItem(user) {
   const handle = user.handle || normalizeHandle(user.name || "user");
   const displayName = sanitizeDisplayName(user.name, handle || "User");
-  const src = optimizeImageUrl(user.avatar || `https://i.pravatar.cc/120?u=${encodeURIComponent(handle)}`, 120);
-  const src2x = optimizeImageUrl(user.avatar || `https://i.pravatar.cc/120?u=${encodeURIComponent(handle)}`, 240);
   return `
     <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(src)}" srcset="${escapeHtml(src2x)} 2x" loading="lazy" decoding="async" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" onerror="this.onerror=null;this.src='${escapeHtml(user.avatar || `https://i.pravatar.cc/120?u=${encodeURIComponent(handle)}`)}';this.srcset='';" />
+      <img src="${escapeHtml(user.avatar)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
@@ -3812,27 +3782,11 @@ function renderSearchView() {
   const queryKey = normalizeSearchKey(query);
   const filter = state.search.filter;
   const users = state.search.userResults || [];
-  // filter out business-role accounts from the user list so businesses don't appear as users
-  const displayedUsers = Array.isArray(users) ? users.filter((u) => String(u.role || "").toLowerCase() !== "business") : [];
   const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
-  let showUsers = filter === "users";
-  let showBusinesses = filter === "business" || filter === "local";
-  if (filter === "all") {
-    const topUser = (users && users[0] && users[0]._score) ? users[0]._score : 0;
-    const topBiz = (businesses && businesses[0] && businesses[0]._score) ? businesses[0]._score : 0;
-    if (topBiz > topUser) {
-      showBusinesses = true;
-      showUsers = false;
-    } else if (topUser > topBiz) {
-      showUsers = true;
-      showBusinesses = false;
-    } else {
-      showUsers = true;
-      showBusinesses = true;
-    }
-  }
+  const showUsers = filter === "all" || filter === "users";
+  const showBusinesses = filter === "all" || filter === "business" || filter === "local";
   const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
-  const hasResults = (showUsers && displayedUsers.length) || (showBusinesses && businesses.length);
+  const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
 
   return `
     <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
@@ -3843,7 +3797,7 @@ function renderSearchView() {
 
       <div class="relative mb-5">
         <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Suche nach User, Name oder Lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
-        <button id="searchClearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 hover:text-slate-700 transition flex items-center justify-center">
+        <button id="searchClearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 hover:text-slate-700 transition">
           ${icon("x", "w-4 h-4")}
         </button>
       </div>
@@ -3868,10 +3822,10 @@ function renderSearchView() {
       <div id="searchUsersSection" class="space-y-4 mb-10 ${showUsers ? "" : "hidden"}">
         <div class="flex items-center justify-between px-1">
           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">User</p>
-          <p id="searchUsersCount" class="text-[10px] font-bold text-slate-300">${displayedUsers.length}</p>
+          <p id="searchUsersCount" class="text-[10px] font-bold text-slate-300">${users.length}</p>
         </div>
         <div id="searchUsersList" class="space-y-4">
-          ${displayedUsers.length ? displayedUsers.map(renderSearchUserItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "")}
+          ${users.length ? users.map(renderSearchUserItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "")}
         </div>
       </div>
 
@@ -3896,26 +3850,11 @@ function updateSearchDom() {
   const queryKey = normalizeSearchKey(query);
   const filter = state.search.filter;
   const users = state.search.userResults || [];
-  const displayedUsers = Array.isArray(users) ? users.filter((u) => String(u.role || "").toLowerCase() !== "business") : [];
   const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
-  let showUsers = filter === "users";
-  let showBusinesses = filter === "business" || filter === "local";
-  if (filter === "all") {
-    const topUser = (users && users[0] && users[0]._score) ? users[0]._score : 0;
-    const topBiz = (businesses && businesses[0] && businesses[0]._score) ? businesses[0]._score : 0;
-    if (topBiz > topUser) {
-      showBusinesses = true;
-      showUsers = false;
-    } else if (topUser > topBiz) {
-      showUsers = true;
-      showBusinesses = false;
-    } else {
-      showUsers = true;
-      showBusinesses = true;
-    }
-  }
+  const showUsers = filter === "all" || filter === "users";
+  const showBusinesses = filter === "all" || filter === "business" || filter === "local";
   const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
-  const hasResults = (showUsers && displayedUsers.length) || (showBusinesses && businesses.length);
+  const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
 
   const searchInput = document.getElementById("searchInput");
   if (searchInput && document.activeElement !== searchInput && searchInput.value !== query) {
@@ -3935,11 +3874,11 @@ function updateSearchDom() {
   const usersSection = document.getElementById("searchUsersSection");
   if (usersSection) usersSection.classList.toggle("hidden", !showUsers);
   const usersCount = document.getElementById("searchUsersCount");
-  if (usersCount) usersCount.textContent = String(displayedUsers.length);
+  if (usersCount) usersCount.textContent = String(users.length);
   const usersList = document.getElementById("searchUsersList");
   if (usersList) {
-    usersList.innerHTML = displayedUsers.length
-      ? displayedUsers.map(renderSearchUserItem).join("")
+    usersList.innerHTML = users.length
+      ? users.map(renderSearchUserItem).join("")
       : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "");
   }
 
@@ -4024,8 +3963,8 @@ function renderHeader() {
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">Social</span>
       </div>
       <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-          <img id="headerAvatar" src="${escapeHtml(optimizeImageUrl(state.userProfile.avatar || "https://via.placeholder.com/80", 120))}" srcset="${escapeHtml(optimizeImageUrl(state.userProfile.avatar || "https://via.placeholder.com/80", 240))} 2x" loading="lazy" decoding="async" class="w-full h-full rounded-[1.4rem] object-cover" onerror="this.onerror=null;this.src='${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}';this.srcset='';" />
-        </button>
+        <img id="headerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-full h-full rounded-[1.4rem] object-cover" />
+      </button>
     </header>
   `;
 }

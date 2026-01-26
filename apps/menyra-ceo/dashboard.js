@@ -3,15 +3,10 @@ import { auth, db } from "../../shared/firebase-config.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import {
   collection,
-  collectionGroup,
-  doc,
   getDocs,
   query,
-  where,
   orderBy,
-  limit,
-  updateDoc,
-  deleteDoc
+  limit
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 bootPlatformAdmin({ role: "ceo", roleLabel: "CEO Platform" });
@@ -96,10 +91,6 @@ function renderSocialUsers(items) {
           <div class="small text-muted">${email}</div>
         </div>
         <div class="meta">${createdAt}</div>
-        <div class="lead-actions">
-          <button class="btn btn-sm btn-outline-primary btn-edit-user" data-id="${user.id}"><i class="fas fa-edit"></i></button>
-          <button class="btn btn-sm btn-outline-danger btn-delete-user" data-id="${user.id}"><i class="fas fa-trash"></i></button>
-        </div>
       </div>
     `;
   }).join("");
@@ -118,35 +109,15 @@ function applySocialFilters() {
     items = items.filter((item) => String(item.role || "user").toLowerCase() === role);
   }
   if (term) {
-    if (role) {
-      items = items.filter((item) => {
-        const haystack = [item.displayName, item.name, item.email, item.city].filter(Boolean).join(" ").toLowerCase();
-        return haystack.includes(term);
-      });
-    } else {
-      // role not selected: prefer role-specific matches
-      const all = items.slice();
-      const matchesBusiness = all.filter((item) => {
-        if (String(item.role || "").toLowerCase() !== "business") return false;
-        const hay = ((item.businessName || item.displayName || "") + " " + (item.city || "")).toLowerCase();
-        return hay.includes(term);
-      });
-      const matchesUser = all.filter((item) => {
-        if (String(item.role || "").toLowerCase() !== "user") return false;
-        const hay = [item.displayName, item.name, item.email, item.city].filter(Boolean).join(" ").toLowerCase();
-        return hay.includes(term);
-      });
-      if (matchesBusiness.length > 0 && matchesUser.length === 0) {
-        items = matchesBusiness;
-      } else if (matchesUser.length > 0 && matchesBusiness.length === 0) {
-        items = matchesUser;
-      } else if (matchesBusiness.length > 0) {
-        // both matched: prefer businesses to avoid mixing
-        items = matchesBusiness;
-      } else {
-        items = matchesUser;
-      }
-    }
+    items = items.filter((item) => {
+      const haystack = [
+        item.displayName,
+        item.name,
+        item.email,
+        item.city
+      ].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(term);
+    });
   }
 
   if (sort === "name") {
@@ -204,25 +175,6 @@ if (socialUsers.role) socialUsers.role.addEventListener("change", applySocialFil
 if (socialUsers.sort) socialUsers.sort.addEventListener("change", applySocialFilters);
 if (socialUsers.reload) socialUsers.reload.addEventListener("click", () => loadSocialUsers({ force: true }));
 
-// Clear button for search
-const socialUsersClear = document.getElementById("socialUsersClear");
-if (socialUsersClear && socialUsers.search) {
-  const toggleClear = () => {
-    const v = String(socialUsers.search.value || "").trim();
-    socialUsersClear.classList.toggle("hidden", !v);
-  };
-  socialUsersClear.addEventListener("click", () => {
-    if (!socialUsers.search) return;
-    socialUsers.search.value = "";
-    toggleClear();
-    applySocialFilters();
-    socialUsers.search.focus();
-  });
-  socialUsers.search.addEventListener("input", toggleClear);
-  // init
-  setTimeout(() => toggleClear(), 50);
-}
-
 document.addEventListener("menyra:viewchange", (e) => {
   if (e?.detail?.view === "social-users") loadSocialUsers();
 });
@@ -253,113 +205,3 @@ onAuthStateChanged(auth, (user) => {
     }
   }
 });
-
-// -------------------------
-// Social user edit/delete modal + handlers
-// -------------------------
-const socialUserModal = {
-  overlay: document.getElementById("socialUserModalOverlay"),
-  name: document.getElementById("socialUserName"),
-  city: document.getElementById("socialUserCity"),
-  role: document.getElementById("socialUserRole"),
-  idDisplay: document.getElementById("socialUserId"),
-  status: document.getElementById("socialUserModalStatus"),
-  saveBtn: document.getElementById("socialUserSaveBtn"),
-  deleteBtn: document.getElementById("socialUserDeleteBtn"),
-  cancelBtn: document.getElementById("socialUserCancelBtn")
-};
-
-function showSocialUserModal() {
-  if (!socialUserModal.overlay) return;
-  socialUserModal.overlay.classList.remove("is-hidden");
-  document.documentElement.classList.add("modal-open");
-  document.body.classList.add("modal-open");
-}
-function hideSocialUserModal() {
-  if (!socialUserModal.overlay) return;
-  socialUserModal.overlay.classList.add("is-hidden");
-  document.documentElement.classList.remove("modal-open");
-  document.body.classList.remove("modal-open");
-}
-
-let _editingUserId = null;
-
-function openSocialUserEditor(id) {
-  _editingUserId = id;
-  const u = socialUsersCache.find((x) => x.id === id) || null;
-  if (!u) return;
-  if (socialUserModal.name) socialUserModal.name.value = u.displayName || u.name || "";
-  if (socialUserModal.city) socialUserModal.city.value = u.city || "";
-  if (socialUserModal.role) socialUserModal.role.value = u.role || "user";
-  if (socialUserModal.idDisplay) socialUserModal.idDisplay.textContent = id;
-  if (socialUserModal.status) socialUserModal.status.textContent = "";
-  showSocialUserModal();
-}
-
-async function saveSocialUser() {
-  if (!_editingUserId) return;
-  try {
-    if (socialUserModal.status) socialUserModal.status.textContent = "Speichere...";
-    const ref = doc(db, "users", _editingUserId);
-    const payload = {
-      displayName: (socialUserModal.name?.value || "").trim(),
-      city: (socialUserModal.city?.value || "").trim(),
-      role: (socialUserModal.role?.value || "user").trim()
-    };
-    await updateDoc(ref, payload);
-    if (socialUserModal.status) socialUserModal.status.textContent = "Gespeichert.";
-    socialUsersCache = socialUsersCache.map((u) => u.id === _editingUserId ? { ...u, ...payload } : u);
-    applySocialFilters();
-    setTimeout(() => { hideSocialUserModal(); }, 600);
-  } catch (err) {
-    console.error(err);
-    if (socialUserModal.status) socialUserModal.status.textContent = "Fehler beim Speichern.";
-  }
-}
-
-async function deleteSocialUserById(id) {
-  if (!id) return;
-  if (!confirm("Benutzer wirklich löschen? Dies entfernt auch Social-Posts dieses Users.")) return;
-  try {
-    if (socialUserModal.status) socialUserModal.status.textContent = "Lösche...";
-    // delete user doc
-    await deleteDoc(doc(db, "users", id));
-    // delete social posts authored by this user (collectionGroup search)
-    try {
-      const q = query(collectionGroup(db, "socialPosts"), where("authorId", "==", id));
-      const snap = await getDocs(q);
-      const deletes = snap.docs.map((d) => deleteDoc(d.ref));
-      await Promise.all(deletes);
-    } catch (err) {
-      console.warn("Fehler beim Löschen der Social-Posts:", err);
-    }
-    socialUsersCache = socialUsersCache.filter((u) => u.id !== id);
-    applySocialFilters();
-    if (socialUserModal.status) socialUserModal.status.textContent = "Gelöscht.";
-    hideSocialUserModal();
-  } catch (err) {
-    console.error(err);
-    if (socialUserModal.status) socialUserModal.status.textContent = "Fehler beim Löschen.";
-  }
-}
-
-// delegation for list buttons
-if (socialUsers.list) {
-  socialUsers.list.addEventListener("click", (ev) => {
-    const btn = ev.target.closest && ev.target.closest("button");
-    if (!btn) return;
-    const id = btn.dataset && btn.dataset.id;
-    if (!id) return;
-    if (btn.classList.contains("btn-edit-user")) {
-      openSocialUserEditor(id);
-    } else if (btn.classList.contains("btn-delete-user")) {
-      // quick delete from list
-      deleteSocialUserById(id);
-    }
-  });
-}
-
-if (socialUserModal.saveBtn) socialUserModal.saveBtn.addEventListener("click", saveSocialUser);
-if (socialUserModal.deleteBtn) socialUserModal.deleteBtn.addEventListener("click", () => deleteSocialUserById(_editingUserId));
-if (socialUserModal.cancelBtn) socialUserModal.cancelBtn.addEventListener("click", hideSocialUserModal);
-
