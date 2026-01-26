@@ -178,103 +178,6 @@ const CACHE_TTL_MS = {
   restaurants: 60 * 60 * 1000,
   stories: 10 * 60 * 1000
 };
-// Image cache name must match service worker
-const IMAGE_CACHE_NAME = 'menyra-images-v1';
-
-async function prefetchTopAvatars(limit = 20) {
-  try {
-    const urls = new Set();
-    const addIfUrl = (val) => {
-      if (!val || typeof val !== 'string') return;
-      const s = val.trim();
-      if (s.startsWith('http')) urls.add(s);
-    };
-
-    // common places to look for avatars
-    addIfUrl(state.userProfile?.avatar);
-    state.stories?.forEach((s) => addIfUrl(s.img));
-    state.restaurants?.forEach((r) => addIfUrl(r.logoUrl || r.logo || r.img));
-    state.feedPosts?.forEach((p) => {
-      // inspect common keys
-      addIfUrl(p.avatar || p.authorAvatar || p.ownerAvatar || p.userAvatar || p.img || p.url);
-      // also try nested objects
-      if (p.owner && typeof p.owner === 'object') addIfUrl(p.owner.avatar || p.owner.avatarUrl || p.owner.logo);
-    });
-
-    // fall back: scan feedPosts for any http-like string values
-    if (urls.size < limit) {
-      for (const p of (state.feedPosts || [])) {
-        const stack = [p];
-        while (stack.length && urls.size < limit) {
-          const cur = stack.pop();
-          if (!cur) continue;
-          if (typeof cur === 'string') addIfUrl(cur);
-          else if (Array.isArray(cur)) cur.forEach((v) => stack.push(v));
-          else if (typeof cur === 'object') Object.values(cur).forEach((v) => stack.push(v));
-        }
-      }
-    }
-
-    const list = Array.from(urls).slice(0, limit);
-    if (!list.length) return;
-    const cache = await caches.open(IMAGE_CACHE_NAME);
-    const actions = list.map(async (u) => {
-      try {
-        const matched = await cache.match(u);
-        if (matched) return;
-        const res = await fetch(u, { mode: 'cors', credentials: 'omit' });
-        if (res && res.ok) await cache.put(u, res.clone());
-      } catch (err) {
-        // ignore single failures
-      }
-    });
-    await Promise.allSettled(actions);
-  } catch (err) {
-    console.warn('prefetchTopAvatars error', err);
-  }
-}
-
-function enhanceAvatarDom() {
-  try {
-    const sel = 'img';
-    const imgs = Array.from(document.querySelectorAll(sel));
-    imgs.forEach((img) => {
-      if (!img || img.dataset?.lqipBound) return;
-      const src = img.getAttribute('src') || '';
-      if (!src || !src.startsWith('http')) return;
-      // heuristic: only apply to likely avatar sizes
-      const w = img.clientWidth || img.width || 0;
-      const h = img.clientHeight || img.height || 0;
-      const small = Math.max(w, h) <= 120 || img.className?.includes('rounded-2xl') || img.className?.includes('avatar');
-      if (!small) return;
-      img.dataset.lqipBound = '1';
-      img.style.transition = 'filter 240ms ease, transform 240ms ease, opacity 240ms ease';
-      img.style.filter = 'blur(10px)';
-      img.style.transform = 'scale(1.02)';
-      img.style.willChange = 'filter, transform';
-
-      const applyLoaded = () => {
-        try {
-          img.style.filter = 'none';
-          img.style.transform = 'none';
-          img.style.opacity = '';
-        } catch {}
-      };
-
-      if (img.complete) {
-        // if already loaded (from cache) remove blur asynchronously
-        setTimeout(() => applyLoaded(), 20);
-      } else {
-        const tmp = new Image();
-        tmp.onload = () => applyLoaded();
-        tmp.onerror = () => applyLoaded();
-        tmp.src = src;
-      }
-    });
-  } catch (err) {
-    console.warn('enhanceAvatarDom error', err);
-  }
-}
 const FEED_DELTA_MIN_MS = 3 * 60 * 1000;
 
 const state = {
@@ -5572,15 +5475,6 @@ async function bootstrapUser(user) {
   }
   startLiveListeners(user);
   ensureTabData(state.activeTab);
-  // warm avatar cache & apply LQIP after live listeners start
-  try {
-    setTimeout(() => {
-      void prefetchTopAvatars(32);
-      enhanceAvatarDom();
-    }, 300);
-  } catch (err) {
-    console.warn('bootstrap avatar warmup failed', err);
-  }
 }
 
 loadPersisted();
@@ -5613,18 +5507,6 @@ authReadyTimer = window.setTimeout(() => {
 window.addEventListener("load", () => {
   if (window.lucide?.createIcons) {
     window.lucide.createIcons();
-  }
-  try {
-    // apply LQIP blur-up to avatar images on first load
-    enhanceAvatarDom();
-    // warm top avatars into image cache in background
-    setTimeout(() => {
-      void prefetchTopAvatars(24);
-    }, 400);
-    // also re-run after initial render pass
-    setTimeout(() => enhanceAvatarDom(), 800);
-  } catch (err) {
-    console.warn('avatar warmup failed', err);
   }
 });
 
