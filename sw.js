@@ -1,10 +1,31 @@
 // MENYRA service worker: network-first with safe caching and auto-activate
 const CACHE_NAME = 'menyra-cache-v1';
+const IMAGE_CACHE = 'menyra-images-v1';
 const MAX_AGE = 24 * 60 * 60 * 1000; // 24h (not strictly enforced here)
 
+// Assets to precache on install to improve first-load experience
+const PRECACHE_ASSETS = [
+  '/apps/menyra-social/index.html',
+  '/apps/menyra-social/manifest.webmanifest',
+  '/apps/menyra-social/assets/menyra-social-logo.png',
+  '/apps/menyra-social/social-app.js',
+  '/apps/menyra-social/pwa.js'
+];
+
 self.addEventListener('install', (event) => {
-  // Activate new SW immediately
-  self.skipWaiting();
+  // Pre-cache key assets to speed up first visit and make PWA installs fresher
+  event.waitUntil((async () => {
+    try {
+      const cache = await caches.open(CACHE_NAME);
+      await Promise.all(PRECACHE_ASSETS.map(async (url) => {
+        try { await cache.add(url); } catch (e) { /* ignore individual failures */ }
+      }));
+    } catch (err) {
+      // ignore
+    }
+    // Activate new SW immediately
+    self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
