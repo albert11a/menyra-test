@@ -513,7 +513,7 @@
               return `
                 <div onclick="openPostModal(${post.id})" class="${colClass} ${animClass} relative ${isGrid ? aspectClass : "aspect-[4/5]"} rounded-[2rem] overflow-visible bg-white shadow-dribbble cursor-pointer transition-transform">
                   <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-                    <img src="${post.url}" loading="lazy" class="w-full h-full object-cover" />
+                    <img src="${post.url}" loading="eager" class="w-full h-full object-cover" />
 
                     ${post.type === "video" ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${Icon("play", 12, "fill-white")}</div>` : ""}
 
