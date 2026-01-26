@@ -49,17 +49,32 @@ self.addEventListener('fetch', (event) => {
   const isImage = req.destination === 'image' || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname) || url.href.includes('/image/fetch');
 
   if (isImage) {
-    // stale-while-revalidate: return cache quickly if available, update cache in background
+    // CACHE-FIRST with background update (stale-while-revalidate behavior)
+    // Ensures images show instantly from cache if available and updates cache in background.
+    const IMAGE_CACHE = 'menyra-images-v1';
     event.respondWith((async () => {
       try {
-        const cache = await caches.open(CACHE_NAME);
+        const cache = await caches.open(IMAGE_CACHE);
         const cached = await cache.match(req);
-        const networkPromise = fetch(req).then((res) => {
-          if (res && res.ok) cache.put(req, res.clone());
+
+        const networkFetch = fetch(req).then((res) => {
+          try {
+            if (res && res.ok) cache.put(req, res.clone());
+          } catch (e) {}
           return res;
         }).catch(() => null);
-        // Return cached if present immediately, otherwise wait for network
-        return cached || await networkPromise || new Response('', { status: 404 });
+
+        if (cached) {
+          // update cache in background, but return cached immediately
+          networkFetch.then(() => {});
+          return cached;
+        }
+
+        // no cached image -> wait for network, cache and return
+        const net = await networkFetch;
+        if (net) return net;
+        // fallback to any cached response if network failed
+        return cached || new Response('', { status: 404 });
       } catch (err) {
         return fetch(req).catch(() => new Response('', { status: 404 }));
       }
