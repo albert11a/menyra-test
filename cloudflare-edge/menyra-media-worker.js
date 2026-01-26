@@ -140,7 +140,10 @@ async function handleImageUpload(request, env, cors) {
   const key = `social/${rid}/${stamp}-${randomToken()}.${ext}`;
 
   await env.MEDIA_BUCKET.put(key, await file.arrayBuffer(), {
-    httpMetadata: { contentType: mime || "application/octet-stream" }
+    httpMetadata: {
+      contentType: mime || "application/octet-stream",
+      cacheControl: "public, max-age=31536000, immutable"
+    }
   });
 
   const base = publicBase(env);
@@ -176,7 +179,10 @@ async function handleStoryUpload(request, env, cors) {
   const key = `stories/${rid}/${stamp}-${randomToken()}.${ext}`;
 
   await env.MEDIA_BUCKET.put(key, await file.arrayBuffer(), {
-    httpMetadata: { contentType: mime || "application/octet-stream" }
+    httpMetadata: {
+      contentType: mime || "application/octet-stream",
+      cacheControl: "public, max-age=31536000, immutable"
+    }
   });
 
   const base = publicBase(env);
