@@ -14,6 +14,13 @@ self.addEventListener('activate', (event) => {
     // Optionally cleanup old caches
     const keys = await caches.keys();
     await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
+    // Notify clients that a new service worker is active (so pages can reload)
+    try {
+      const all = await self.clients.matchAll({ includeUncontrolled: true });
+      all.forEach((client) => {
+        try { client.postMessage({ type: 'NEW_SW_ACTIVATED', cache: CACHE_NAME }); } catch (e) {}
+      });
+    } catch (e) {}
   })());
 });
 

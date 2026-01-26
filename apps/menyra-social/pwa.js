@@ -7,6 +7,9 @@ if ('serviceWorker' in navigator) {
     try {
       const reg = await navigator.serviceWorker.register(SW_URL, { scope: SW_SCOPE });
 
+      // Ensure we immediately check for updates on load
+      try { await reg.update(); } catch (e) {}
+
       // If there's an active waiting worker, tell it to skip waiting
       if (reg.waiting) {
         reg.waiting.postMessage({ type: 'SKIP_WAITING' });
@@ -31,6 +34,18 @@ if ('serviceWorker' in navigator) {
         refreshing = true;
         window.location.reload();
       });
+
+      // Listen for messages from the SW to force refresh when activated
+      navigator.serviceWorker.addEventListener('message', (ev) => {
+        try {
+          const data = ev.data || {};
+          if (data && data.type === 'NEW_SW_ACTIVATED') {
+            // If a new SW is activated, reload so the app shows latest version
+            window.location.reload();
+          }
+        } catch (e) {}
+      });
+
     } catch (err) {
       console.warn('MENYRA Social PWA SW register failed:', err);
     }
