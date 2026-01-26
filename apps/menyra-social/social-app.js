@@ -1682,7 +1682,7 @@ function renderStoriesRow(stories) {
       return `
         <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
           <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-            <img src="${escapeHtml(s.img)}" loading="eager" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+            <img src="${escapeHtml(s.img)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
           </div>
           <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
         </a>
@@ -1706,7 +1706,7 @@ function renderFeedItem(post, index) {
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-            <img src="${escapeHtml(post.logo || post.image)}" loading="eager" ${logoAttrs} class="w-full h-full object-cover" />
+            <img src="${escapeHtml(post.logo || post.image)}" ${logoAttrs} class="w-full h-full object-cover" />
           </div>
           <div>
             <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
@@ -1717,7 +1717,7 @@ function renderFeedItem(post, index) {
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative h-[30rem] rounded-[3rem] overflow-hidden bg-slate-200">
-          <img src="${escapeHtml(post.image)}" loading="eager" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+          <img src="${escapeHtml(post.image)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
           ${post.isLive ? `
             <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
@@ -2267,7 +2267,7 @@ function renderMapSheet(selected) {
           ${icon("x", "w-4 h-4")}
         </button>
         <div class="flex gap-4">
-          <img src="${escapeHtml(selected.img)}" loading="eager" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
+          <img src="${escapeHtml(selected.img)}" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
           <div class="flex-1">
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Business</span>
             <h3 class="text-lg font-black tracking-tight text-slate-900 mt-1">${escapeHtml(selected.name || "Business")}</h3>
@@ -2324,7 +2324,7 @@ function renderProfileGridItem(item) {
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   return `
     <button type="button" ${postAttr} class="rounded-[2.5rem] overflow-hidden shadow-md relative group text-left ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
-      <img src="${escapeHtml(item.url)}" loading="eager" class="w-full h-full object-cover" />
+      <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
       ${item.title ? `<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end"><h3 class="text-white text-lg font-black italic">${escapeHtml(item.title)}</h3></div>` : ""}
       <div class="absolute inset-x-0 bottom-0 p-3">
         <div class="flex items-center justify-between text-white bg-black/45 backdrop-blur rounded-2xl px-3 py-2">
@@ -2353,7 +2353,7 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(item.url)}" loading="eager" class="w-full h-full object-cover" />
+        <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">
@@ -2424,7 +2424,7 @@ function renderProfileCheckins() {
       ${checkins.map((place) => `
         <div class="flex items-center gap-4 bg-white p-4 rounded-[2rem] border border-slate-50 shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] active:scale-[0.98] transition-all cursor-pointer group">
           <div class="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden shrink-0 shadow-inner group-hover:shadow-md transition-all">
-            <img src="${escapeHtml(place.image || "")}" loading="eager" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+            <img src="${escapeHtml(place.image || "")}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
           </div>
           <div class="flex-1">
             <h4 class="font-black text-slate-900 text-sm mb-1">${escapeHtml(place.name || "Ort")}</h4>
@@ -2687,7 +2687,7 @@ function renderPublicProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div class="relative">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" loading="eager" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -2763,7 +2763,7 @@ function renderProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" loading="eager" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -3348,7 +3348,7 @@ function renderProfileModal() {
           </div>
 
           <div class="flex items-center gap-4">
-            <img src="${escapeHtml(p.avatar)}" loading="eager" class="w-16 h-16 rounded-2xl object-cover shadow" />
+            <img src="${escapeHtml(p.avatar)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
             <div class="flex-1 min-w-0">
               <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
               <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
@@ -3387,7 +3387,7 @@ function renderCommentItem(postId, comment, parentId = "") {
   const isReply = !!parentId;
   return `
     <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}">
-      <img src="${escapeHtml(comment.avatar)}" loading="eager" class="w-9 h-9 rounded-2xl object-cover shadow" />
+      <img src="${escapeHtml(comment.avatar)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
       <div class="flex-1">
         <div class="flex items-center justify-between">
           <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author)}</div>
@@ -3449,7 +3449,7 @@ function renderPostModal() {
               </div>
 
               <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                <img src="${escapeHtml(imageUrl)}" loading="eager" class="w-full h-[22rem] object-cover" />
+                <img src="${escapeHtml(imageUrl)}" class="w-full h-[22rem] object-cover" />
               </div>
 
               ${caption ? `
@@ -3515,7 +3515,7 @@ function renderLikesModal() {
           <div class="px-7 pb-7 space-y-3 overflow-y-auto no-scrollbar modal-scroll flex-1">
             ${likes.length ? likes.map((user) => `
               <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                <img src="${escapeHtml(user.avatar)}" loading="eager" class="w-10 h-10 rounded-2xl object-cover" />
+                <img src="${escapeHtml(user.avatar)}" class="w-10 h-10 rounded-2xl object-cover" />
                 <div>
                   <div class="text-xs font-black">${escapeHtml(user.name)}</div>
                   <div class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(user.handle)}</div>
@@ -3607,7 +3607,7 @@ function renderSettingsView() {
         <div class="flex flex-col items-center mb-8">
           <input type="file" id="settingsAvatarInput" class="hidden" accept="image/*" />
           <div id="settingsAvatarTrigger" class="relative group cursor-pointer">
-            <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" loading="eager" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
+            <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
             <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">${icon("camera", "w-4 h-4")}</div>
           </div>
         </div>
@@ -3732,7 +3732,7 @@ function renderNotificationsView() {
         ${state.notifications.length === 0 ? "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>" :
           state.notifications.map((n) => `
             <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
-              <img src="${escapeHtml(n.img)}" loading="eager" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
+              <img src="${escapeHtml(n.img)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
                 <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
@@ -3753,7 +3753,7 @@ function renderSearchUserItem(user) {
   const displayName = sanitizeDisplayName(user.name, handle || "User");
   return `
     <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(src)}" srcset="${escapeHtml(src2x)} 2x" loading="lazy" decoding="async" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" onerror="this.onerror=null;this.src='${escapeHtml(user.avatar || `https://i.pravatar.cc/120?u=${encodeURIComponent(handle)}`)}';this.srcset='';" />
+      <img src="${escapeHtml(user.avatar)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
@@ -3767,7 +3767,7 @@ function renderSearchBusinessItem(biz) {
   const name = biz.name || "Business";
   return `
     <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(biz.logo)}" loading="eager" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <img src="${escapeHtml(biz.logo)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
@@ -3782,11 +3782,27 @@ function renderSearchView() {
   const queryKey = normalizeSearchKey(query);
   const filter = state.search.filter;
   const users = state.search.userResults || [];
+  // filter out business-role accounts from the user list so businesses don't appear as users
+  const displayedUsers = Array.isArray(users) ? users.filter((u) => String(u.role || "").toLowerCase() !== "business") : [];
   const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
-  const showUsers = filter === "all" || filter === "users";
-  const showBusinesses = filter === "all" || filter === "business" || filter === "local";
+  let showUsers = filter === "users";
+  let showBusinesses = filter === "business" || filter === "local";
+  if (filter === "all") {
+    const topUser = (users && users[0] && users[0]._score) ? users[0]._score : 0;
+    const topBiz = (businesses && businesses[0] && businesses[0]._score) ? businesses[0]._score : 0;
+    if (topBiz > topUser) {
+      showBusinesses = true;
+      showUsers = false;
+    } else if (topUser > topBiz) {
+      showUsers = true;
+      showBusinesses = false;
+    } else {
+      showUsers = true;
+      showBusinesses = true;
+    }
+  }
   const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
-  const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
+  const hasResults = (showUsers && displayedUsers.length) || (showBusinesses && businesses.length);
 
   return `
     <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
@@ -3797,7 +3813,7 @@ function renderSearchView() {
 
       <div class="relative mb-5">
         <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Suche nach User, Name oder Lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
-        <button id="searchClearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 hover:text-slate-700 transition">
+        <button id="searchClearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 hover:text-slate-700 transition flex items-center justify-center">
           ${icon("x", "w-4 h-4")}
         </button>
       </div>
@@ -3822,10 +3838,10 @@ function renderSearchView() {
       <div id="searchUsersSection" class="space-y-4 mb-10 ${showUsers ? "" : "hidden"}">
         <div class="flex items-center justify-between px-1">
           <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">User</p>
-          <p id="searchUsersCount" class="text-[10px] font-bold text-slate-300">${users.length}</p>
+          <p id="searchUsersCount" class="text-[10px] font-bold text-slate-300">${displayedUsers.length}</p>
         </div>
         <div id="searchUsersList" class="space-y-4">
-          ${users.length ? users.map(renderSearchUserItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "")}
+          ${displayedUsers.length ? displayedUsers.map(renderSearchUserItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "")}
         </div>
       </div>
 
@@ -3850,11 +3866,26 @@ function updateSearchDom() {
   const queryKey = normalizeSearchKey(query);
   const filter = state.search.filter;
   const users = state.search.userResults || [];
+  const displayedUsers = Array.isArray(users) ? users.filter((u) => String(u.role || "").toLowerCase() !== "business") : [];
   const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
-  const showUsers = filter === "all" || filter === "users";
-  const showBusinesses = filter === "all" || filter === "business" || filter === "local";
+  let showUsers = filter === "users";
+  let showBusinesses = filter === "business" || filter === "local";
+  if (filter === "all") {
+    const topUser = (users && users[0] && users[0]._score) ? users[0]._score : 0;
+    const topBiz = (businesses && businesses[0] && businesses[0]._score) ? businesses[0]._score : 0;
+    if (topBiz > topUser) {
+      showBusinesses = true;
+      showUsers = false;
+    } else if (topUser > topBiz) {
+      showUsers = true;
+      showBusinesses = false;
+    } else {
+      showUsers = true;
+      showBusinesses = true;
+    }
+  }
   const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
-  const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
+  const hasResults = (showUsers && displayedUsers.length) || (showBusinesses && businesses.length);
 
   const searchInput = document.getElementById("searchInput");
   if (searchInput && document.activeElement !== searchInput && searchInput.value !== query) {
@@ -3874,11 +3905,11 @@ function updateSearchDom() {
   const usersSection = document.getElementById("searchUsersSection");
   if (usersSection) usersSection.classList.toggle("hidden", !showUsers);
   const usersCount = document.getElementById("searchUsersCount");
-  if (usersCount) usersCount.textContent = String(users.length);
+  if (usersCount) usersCount.textContent = String(displayedUsers.length);
   const usersList = document.getElementById("searchUsersList");
   if (usersList) {
-    usersList.innerHTML = users.length
-      ? users.map(renderSearchUserItem).join("")
+    usersList.innerHTML = displayedUsers.length
+      ? displayedUsers.map(renderSearchUserItem).join("")
       : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "");
   }
 
@@ -3929,7 +3960,7 @@ function renderUploadView() {
       <input type="file" id="uploadFileInput" class="hidden" accept="image/*" />
       ${state.upload.preview ? `
         <div class="space-y-6">
-          <img src="${escapeHtml(state.upload.preview)}" loading="eager" class="w-full h-64 object-cover rounded-[2.5rem] shadow-lg" />
+          <img src="${escapeHtml(state.upload.preview)}" class="w-full h-64 object-cover rounded-[2.5rem] shadow-lg" />
           <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
             <textarea id="uploadCaption" placeholder="Bildunterschrift..." class="w-full bg-transparent text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.upload.caption)}</textarea>
           </div>
