@@ -27,36 +27,70 @@ self.addEventListener('message', (event) => {
   } catch (err) {}
 });
 
-// Network-first strategy: try network, fall back to cache
+// Smarter fetch handling:
+// - Images: stale-while-revalidate (fast show, update in background)
+// - Navigations & HTML: network-first with timeout, then cache fallback
+// - Other GETs: network-first, cache on success
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  // Only handle GET requests
   if (req.method !== 'GET') return;
 
+  const url = new URL(req.url);
   const acceptHeader = req.headers.get('Accept') || '';
   const isNavigation = acceptHeader.includes('text/html') || req.mode === 'navigate';
 
-  event.respondWith((async () => {
-    try {
-      const networkResponse = await fetch(req);
-      // Save a clone in cache for later fallback
+  const isImage = req.destination === 'image' || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname) || url.href.includes('/image/fetch');
+
+  if (isImage) {
+    // stale-while-revalidate: return cache quickly if available, update cache in background
+    event.respondWith((async () => {
       try {
         const cache = await caches.open(CACHE_NAME);
-        cache.put(req, networkResponse.clone());
-      } catch (err) {}
-      return networkResponse;
-    } catch (err) {
-      // Network failed, try cache
-      try {
-        const cached = await caches.match(req);
-        if (cached) return cached;
-      } catch (e) {}
-      // If navigation and no cache, return an offline fallback (optional)
-      if (isNavigation) {
-        const fallback = await caches.match('/offline.html');
-        if (fallback) return fallback;
+        const cached = await cache.match(req);
+        const networkPromise = fetch(req).then((res) => {
+          if (res && res.ok) cache.put(req, res.clone());
+          return res;
+        }).catch(() => null);
+        // Return cached if present immediately, otherwise wait for network
+        return cached || await networkPromise || new Response('', { status: 404 });
+      } catch (err) {
+        return fetch(req).catch(() => new Response('', { status: 404 }));
       }
-      // Final fallback: return network error
+    })());
+    return;
+  }
+
+  // For navigations/HTML do a network-first with short timeout
+  if (isNavigation) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(req);
+      const NETWORK_TIMEOUT = 3000; // ms
+
+      const networkPromise = fetch(req).then((res) => {
+        if (res && res.ok) cache.put(req, res.clone());
+        return res;
+      }).catch(() => null);
+
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve(null), NETWORK_TIMEOUT));
+      const result = await Promise.race([networkPromise, timeoutPromise]);
+      if (result) return result;
+      if (cached) return cached;
+      const fallback = await cache.match('/offline.html');
+      return fallback || new Response('Offline', { status: 503, statusText: 'Offline' });
+    })());
+    return;
+  }
+
+  // Default: network-first, cache on success, fallback to cache
+  event.respondWith((async () => {
+    try {
+      const networkResp = await fetch(req);
+      try { const cache = await caches.open(CACHE_NAME); cache.put(req, networkResp.clone()); } catch (e) {}
+      return networkResp;
+    } catch (err) {
+      const cached = await caches.match(req);
+      if (cached) return cached;
       throw err;
     }
   })());
