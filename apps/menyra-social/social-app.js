@@ -4954,14 +4954,16 @@ function normalizeFeedPost(row) {
   const restaurant = state.restaurants.find((r) => r.id === (row.rid || row.restaurantId)) || {};
   const thumb = row.thumbUrl || row.mediaUrl || row.media?.[0]?.thumbUrl || row.media?.[0]?.url || "";
   const caption = row.caption || row.captionShort || "";
+  const logo = row.logoUrl || restaurant.logoUrl || restaurant.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+  const noImageSvg = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOUI5QkE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iMC4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4=";
   return {
     id: row.id,
     restaurantId: row.rid || row.restaurantId || "",
     business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
-    logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    logo,
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
-    image: row.logoUrl || restaurant.logoUrl || restaurant.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    image: thumb || noImageSvg,
     likes: row.likesCount || "0",
     comments: row.commentsCount || "0",
     time: formatRelative(toDateSafe(row.createdAt)),
