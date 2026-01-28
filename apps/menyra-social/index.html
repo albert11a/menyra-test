@@ -1,102 +1,92 @@
 <!doctype html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>MENYRA Social</title>
-  <meta name="theme-color" content="#f8fafc" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="MENYRA Social" />
-  <meta name="application-name" content="MENYRA Social" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
-  <link rel="icon" type="image/png" sizes="1024x1024" href="/apps/menyra-social/assets/menyra-social-logo.png" />
-  <link rel="apple-touch-icon" href="/apps/menyra-social/assets/menyra-social-logo.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script>
-    tailwind = {
-      config: {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ["Plus Jakarta Sans", "sans-serif"]
-            }
-          }
-        }
-      }
-    };
-  </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>MENYRA – Test Hub</title>
+  <link rel="stylesheet" href="./shared/styles/base.css">
+  <link rel="stylesheet" href="./shared/styles/ui-kit.css">
+
+  <!-- Import Map (für ES-Module Imports ohne Bundler) -->
   <script type="importmap">
   {
     "imports": {
       "@shared/": "/shared/",
-      "@apps/": "/apps/"
+      "@apps/": "/apps/",
+      "@s1/": "/apps/menyra-restaurants/_shared/"
     }
   }
   </script>
-  <style>
-    body { background: #f8fafc; color: #0f172a; }
-    #app { min-height: 100vh; }
-    html.modal-open,
-    body.modal-open { overflow: hidden; touch-action: none; }
-    .no-scrollbar::-webkit-scrollbar { display: none; }
-    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .leaflet-container { background: #0f172a; }
-    .leaflet-control-attribution { display: none !important; }
-    .leaflet-control-zoom { display: none !important; }
-    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-    @keyframes slide-in-left { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-    @keyframes slide-in-right { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
-    @keyframes slide-in-bottom { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    .animate-in { animation: fade-in 0.4s ease-out forwards; }
-    .slide-in-from-left-10 { animation: slide-in-left 0.5s ease-out forwards; }
-    .slide-in-from-right-10 { animation: slide-in-right 0.5s ease-out forwards; }
-    .slide-in-from-bottom-10 { animation: slide-in-bottom 0.6s ease-out forwards; }
-    .slide-in-from-bottom-6 { animation: slide-in-bottom 0.3s ease-out forwards; }
-    body.fast-mode .animate-in,
-    body.fast-mode .slide-in-from-left-10,
-    body.fast-mode .slide-in-from-right-10,
-    body.fast-mode .slide-in-from-bottom-10,
-    body.fast-mode .slide-in-from-bottom-6 { animation: none !important; }
-    body.fast-mode .backdrop-blur,
-    body.fast-mode .backdrop-blur-sm,
-    body.fast-mode .backdrop-blur-md,
-    body.fast-mode .backdrop-blur-lg,
-    body.fast-mode .backdrop-blur-xl { backdrop-filter: none !important; }
-    body.fast-mode .shadow-2xl,
-    body.fast-mode .shadow-xl,
-    body.fast-mode .shadow-lg,
-    body.fast-mode .shadow-md,
-    body.fast-mode .shadow-sm { box-shadow: none !important; }
-    body.fast-mode img { background: #e2e8f0; }
-    body.fast-mode .transition-transform,
-    body.fast-mode .transition-all { transition: none !important; }
-    body.fast-mode .feed-card { contain: content; }
-    body.fast-mode .animate-pulse { animation: none !important; }
-    body.fast-mode .group-hover\:scale-105 { transform: none !important; }
-    img { display: block; background: #e2e8f0; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
-    .modal-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
-    @media (max-width: 768px) {
-      input,
-      textarea,
-      select {
-        font-size: 16px !important;
-      }
-    }
-  </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
-  <div id="app"></div>
+<body>
+  <div class="container">
+    <div class="card" style="padding:16px">
+      <div class="h1">MENYRA – Test Hub</div>
+      <div class="muted" id="subLine">Login → Kunden auswählen → Links testen.</div>
+      <div class="sep"></div>
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script type="module" src="./social-app.js"></script>
-  <script type="module" src="/apps/menyra-social/pwa.js"></script>
+      <!-- =========================
+           LOGIN (nur wenn nötig)
+           ========================= -->
+      <div id="loginBox" class="grid two" style="margin-bottom:12px">
+        <div>
+          <div class="label">Email</div>
+          <input class="inp" id="emailInp" placeholder="email" />
+        </div>
+        <div>
+          <div class="label">Password</div>
+          <input class="inp" id="passInp" placeholder="password" type="password" />
+        </div>
+        <div>
+          <button class="btn primary" id="loginBtn">Login</button>
+        </div>
+        <div class="muted" id="loginMsg"></div>
+      </div>
+
+      <div class="row" style="align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="muted" id="userLine">nicht eingeloggt</div>
+        <button class="btn" id="logoutBtn">Logout</button>
+      </div>
+
+      <!-- =========================
+           CUSTOMER PICKER
+           ========================= -->
+      <div class="grid two">
+        <div style="min-width:260px">
+          <div class="label">Bestehender Kunde (Firestore)</div>
+          <select class="inp" id="customerSel">
+            <option value="">— lädt… —</option>
+          </select>
+          <div class="muted" style="margin-top:6px" id="customerMeta">—</div>
+        </div>
+
+        <div>
+          <div class="label">Suche (Name/ID)</div>
+          <input class="inp" id="searchInp" placeholder="z.B. Nachtbar oder ABC123" />
+          <div class="muted" style="margin-top:6px">Tipp: Auswahl bleibt erhalten, TableId unten optional.</div>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="row">
+        <div style="min-width:260px;flex:1">
+          <div class="label">restaurantId (auto aus Auswahl)</div>
+          <input class="inp" id="rid" placeholder="z.B. ABC123" />
+        </div>
+        <div style="min-width:180px">
+          <div class="label">tableId (optional)</div>
+          <input class="inp" id="tid" placeholder="z.B. 5" />
+        </div>
+        <div style="align-self:end">
+          <button class="btn primary" id="go">Links aktualisieren</button>
+        </div>
+      </div>
+
+      <div id="links" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <script type="module" src="./index.js"></script>
 </body>
 </html>

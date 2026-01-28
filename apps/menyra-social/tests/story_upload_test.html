@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MENYRA Story Upload Test</title>
+  <style>
+    body { font-family: system-ui, Arial; padding: 16px; }
+    .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    progress { width: 320px; height: 18px; }
+    pre { background:#111; color:#0f0; padding:12px; border-radius:10px; overflow:auto; }
+    iframe { width: 360px; height: 640px; border:0; border-radius:16px; }
+  </style>
+</head>
+<body>
+  <h2>Story Upload Test (Bunny Stream TUS)</h2>
+
+  <div class="row">
+    <input id="file" type="file" accept="video/*" />
+    <button id="btn">Upload</button>
+  </div>
+
+  <p id="status">Status: idle</p>
+  <progress id="prog" value="0" max="100"></progress>
+
+  <h3>Response</h3>
+  <pre id="out">-</pre>
+
+  <h3>Preview</h3>
+  <div id="preview"></div>
+
+  <!-- tus client (no install) -->
+  <script src="https://unpkg.com/tus-js-client/dist/tus.min.js"></script>
+
+  <script>
+    const SCRIPT_BASE = "https://menyra-edge-v2-q15e1.bunny.run"; // dein Script
+
+    function setStatus(t){ document.getElementById("status").textContent = "Status: " + t; }
+    function setOut(t){ document.getElementById("out").textContent = t; }
+
+    async function getVideoDurationSeconds(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const v = document.createElement("video");
+        v.preload = "metadata";
+        v.onloadedmetadata = () => {
+          URL.revokeObjectURL(url);
+          resolve(v.duration || 0);
+        };
+        v.onerror = () => reject(new Error("Kann Video-Metadaten nicht lesen"));
+        v.src = url;
+      });
+    }
+
+    document.getElementById("btn").onclick = async () => {
+      const file = document.getElementById("file").files[0];
+      if (!file) return alert("Bitte Video auswählen");
+
+      setStatus("prüfe Dauer…");
+      const dur = await getVideoDurationSeconds(file);
+      if (dur > 15.01) return alert("Video ist länger als 15 Sekunden (" + dur.toFixed(2) + "s)");
+
+      setStatus("hole Upload Session…");
+
+      const startRes = await fetch(SCRIPT_BASE + "/story/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ restaurantId: "test123" }) // später echte restaurantId
+      });
+
+      const startText = await startRes.text();
+      setOut(startText);
+
+      if (!startRes.ok) {
+        setStatus("Fehler bei /story/start");
+        return;
+      }
+
+      const data = JSON.parse(startText);
+      const { tusEndpoint, uploadHeaders, libraryId, videoId } = data;
+
+      // tus-js-client erwartet String Header-Werte
+      const headers = {
+        "AuthorizationSignature": String(uploadHeaders.AuthorizationSignature),
+        "AuthorizationExpire": String(uploadHeaders.AuthorizationExpire),
+        "LibraryId": String(uploadHeaders.LibraryId),
+        "VideoId": String(uploadHeaders.VideoId),
+      };
+
+      setStatus("upload läuft…");
+      document.getElementById("prog").value = 0;
+
+      const upload = new tus.Upload(file, {
+        endpoint: tusEndpoint,
+        headers,
+        metadata: {
+          filename: file.name,
+          filetype: file.type
+        },
+        onError: (error) => {
+          console.error(error);
+          setStatus("Upload Fehler: " + error);
+        },
+        onProgress: (bytesUploaded, bytesTotal) => {
+          const pct = (bytesUploaded / bytesTotal) * 100;
+          document.getElementById("prog").value = pct;
+        },
+        onSuccess: () => {
+          setStatus("Upload fertig ✅ (Encoding kann kurz dauern)");
+          const embedUrl = `https://iframe.mediadelivery.net/embed/${libraryId}/${videoId}`;
+          document.getElementById("preview").innerHTML = `
+            <p><b>Embed:</b> ${embedUrl}</p>
+            <iframe allow="autoplay; fullscreen" src="${embedUrl}"></iframe>
+          `;
+        }
+      });
+
+      upload.start();
+    };
+  </script>
+</body>
+</html>

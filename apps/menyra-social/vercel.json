@@ -1,0 +1,35 @@
+{
+  "redirects": [
+    { "source": "/ceo", "destination": "/ceo/", "permanent": false },
+    { "source": "/owner", "destination": "/owner/", "permanent": false },
+    { "source": "/staff", "destination": "/staff/", "permanent": false },
+    { "source": "/waiter", "destination": "/waiter/", "permanent": false },
+    { "source": "/kitchen", "destination": "/kitchen/", "permanent": false },
+    { "source": "/social", "destination": "/social/", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/", "has": [{ "type": "host", "value": "ceo.menyra.com" }], "destination": "/apps/menyra-ceo/dashboard.html" },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "ceo.menyra.com" }], "destination": "/apps/menyra-ceo/:path*" },
+    { "source": "/", "has": [{ "type": "host", "value": "owner.menyra.com" }], "destination": "/apps/menyra-owner/index.html" },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "owner.menyra.com" }], "destination": "/apps/menyra-owner/:path*" },
+    { "source": "/", "has": [{ "type": "host", "value": "staff.menyra.com" }], "destination": "/apps/menyra-staff/dashboard.html" },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "staff.menyra.com" }], "destination": "/apps/menyra-staff/:path*" },
+    { "source": "/", "has": [{ "type": "host", "value": "waiter.menyra.com" }], "destination": "/apps/menyra-restaurants/waiter/index.html" },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "waiter.menyra.com" }], "destination": "/apps/menyra-restaurants/waiter/:path*" },
+    { "source": "/", "has": [{ "type": "host", "value": "kitchen.menyra.com" }], "destination": "/apps/menyra-restaurants/kitchen/index.html" },
+    { "source": "/:path*", "has": [{ "type": "host", "value": "kitchen.menyra.com" }], "destination": "/apps/menyra-restaurants/kitchen/:path*" },
+    { "source": "/ceo/", "destination": "/apps/menyra-ceo/dashboard.html" },
+    { "source": "/ceo/:path*", "destination": "/apps/menyra-ceo/:path*" },
+    { "source": "/owner/", "destination": "/apps/menyra-owner/index.html" },
+    { "source": "/owner/:path*", "destination": "/apps/menyra-owner/:path*" },
+    { "source": "/staff/", "destination": "/apps/menyra-staff/dashboard.html" },
+    { "source": "/staff/:path*", "destination": "/apps/menyra-staff/:path*" },
+    { "source": "/waiter/", "destination": "/apps/menyra-restaurants/waiter/index.html" },
+    { "source": "/waiter/:path*", "destination": "/apps/menyra-restaurants/waiter/:path*" },
+    { "source": "/kitchen/", "destination": "/apps/menyra-restaurants/kitchen/index.html" },
+    { "source": "/kitchen/:path*", "destination": "/apps/menyra-restaurants/kitchen/:path*" },
+    { "source": "/social/", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" },
+    { "source": "/menyra-restaurants/:path*", "destination": "/apps/menyra-restaurants/:path*" }
+  ]
+}

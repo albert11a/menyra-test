@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+  <meta charset="UTF-8" />
+  <title>MENYRA – Detajet</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f3f4f6" />
+  <link rel="stylesheet" href="../_shared/guest.css" />
+  <link rel="stylesheet" href="./detajet.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "/shared/firebase-config.js": "/shared/firebase-config.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main class="page page--karte">
+    <!-- =========================================================
+    ABSCHNITT 1: HEADER-CARD (gleich wie Karte/Porosia)
+    ========================================================= -->
+    <header class="karte-topbar">
+      <section class="card restaurant-card">
+        <div class="restaurant-header">
+          <button type="button" id="backBtn" class="btn btn-ghost btn-small">← Mbrapa</button>
+
+          <img id="detailRestaurantLogo" class="rest-logo" style="display:none;" alt="Logo" />
+
+          <div>
+            <div class="restaurant-name" id="detailRestaurantName">Lokal</div>
+            <div class="restaurant-meta" id="detailRestaurantMeta">Detajet e produktit</div>
+          </div>
+
+          <div class="header-card-actions">
+            <span class="table-pill" id="detailTableBadge">Tisch</span>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <!-- =========================================================
+    ABSCHNITT 2: PRODUKT-CARD
+    ========================================================= -->
+    <section class="card detail-product-card" id="detailProductCard">
+      <!-- Bildbereich mit Slider -->
+      <div class="drawer-image-wrap">
+        <div class="detail-slider" id="detailSliderWrapper">
+          <button type="button" class="detail-slider-arrow detail-slider-arrow--left" id="detailSliderPrev">‹</button>
+
+          <div class="detail-slider-viewport" id="detailSliderViewport">
+            <div class="detail-slider-track" id="detailSliderTrack"></div>
+          </div>
+
+          <button type="button" class="detail-slider-arrow detail-slider-arrow--right" id="detailSliderNext">›</button>
+        </div>
+      </div>
+
+      <!-- Titel + Preis -->
+      <div class="drawer-title-row">
+        <h3 id="detailName">Emri i produktit</h3>
+        <span id="detailPrice">0.00 €</span>
+      </div>
+
+      <!-- Meta (statisch) -->
+      <div class="drawer-meta-row">
+        <div class="drawer-rating" id="detailRating">⭐️ 0.0 · 0 vlerësime</div>
+        <button type="button" class="drawer-like-btn" id="detailLikeBtn">❤️ Pëlqeje</button>
+      </div>
+
+      <p class="drawer-long-desc" id="detailLongDesc">Këtu do të shfaqet përshkrimi i plotë i produktit.</p>
+      <p class="drawer-zutaten" id="detailZutaten">Përbërësit: —</p>
+
+      <div class="drawer-qty-row">
+        <button type="button" class="btn btn-ghost" id="detailQtyMinus">−</button>
+        <span id="detailQtyValue">1</span>
+        <button type="button" class="btn btn-primary" id="detailQtyPlus">+</button>
+
+        <button type="button" class="btn btn-primary drawer-add-btn" id="detailAddBtn">Shto në porosi</button>
+      </div>
+
+      <button type="button" class="btn btn-primary drawer-cart-btn" id="detailViewCartBtn">Shiko porosin</button>
+    </section>
+  </main>
+
+  <!-- Floating Cart Button -->
+  <button class="cart-fab" id="cartFab" type="button" aria-label="Cart">
+    <span class="cart-fab-icon"></span>
+    <span class="cart-fab-badge" id="cartBadge">0</span>
+    <span class="cart-fab-label" id="cartFabLabel">Shiko porosin</span>
+  </button>
+
+  <script type="module" src="./detajet.js"></script>
+</body>
+</html>
