@@ -991,7 +991,7 @@ function buildLocalBusinessResults(queryKey) {
   return filtered.sort((a, b) => (b._score || 0) - (a._score || 0)).slice(0, SEARCH_LIMITS.businesses);
 }
 
-function normalizeUserSearchResult(doc) {
+function normalizeUserSearchResult(doc) 
   const data = typeof doc?.data === "function" ? doc.data() : (doc?.data || doc || {});
   const rawName = data.displayName || data.name || data.handle || "";
   const handle = data.handle || normalizeHandle(rawName || "user");
@@ -1007,7 +1007,7 @@ function normalizeUserSearchResult(doc) {
     role: data.role || "user",
     bio: data.bio || ""
   };
-}
+
 
 async function searchUsersRemote(queryRaw, token) {
   const queryKey = normalizeSearchKey(queryRaw);
