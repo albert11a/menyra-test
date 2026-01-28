@@ -99,8 +99,8 @@ const DEFAULT_PROFILE = {
   posts: []
 };
 
-const noImageSvg = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-const storyPlaceholder = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+const noImageSvg = "https://images.menyra.com/placeholder.gif";
+const storyPlaceholder = "https://images.menyra.com/placeholder.gif";
 
 const DEFAULT_SETTINGS = {
   darkMode: false,
@@ -118,7 +118,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Marco",
     text: "hat dein Foto geliked",
     time: "10m",
-    img: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    img: "https://images.menyra.com/placeholder.gif",
     read: false
   },
   {
@@ -127,7 +127,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Elena",
     text: "folgt dir jetzt",
     time: "1h",
-    img: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    img: "https://images.menyra.com/placeholder.gif",
     read: false
   },
   {
@@ -136,7 +136,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Menyra Team",
     text: "Willkommen zurueck!",
     time: "2h",
-    img: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    img: "https://images.menyra.com/placeholder.gif",
     read: true
   }
 ];
