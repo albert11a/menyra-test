@@ -1705,9 +1705,6 @@ function renderFeedItem(post, index) {
     <div class="group feed-card" ${feedAttr}>
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
-          <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-            <img src="${escapeHtml(post.logo)}" ${logoAttrs} class="w-full h-full object-cover" />
-          </div>
           <div>
             <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
             <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(post.location)}</p>
