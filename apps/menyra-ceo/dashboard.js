@@ -11,8 +11,7 @@ import {
   orderBy,
   limit,
   updateDoc,
-  deleteDoc,
-  serverTimestamp
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 bootPlatformAdmin({ role: "ceo", roleLabel: "CEO Platform" });
@@ -30,9 +29,6 @@ const socialUsers = {
 let socialUsersCache = [];
 let socialUsersLoading = false;
 let currentUser = null;
-
-const ALLOWED_SOCIAL_ROLES = ["staff", "owner", "ceo"];
-
 
 function toDateSafe(value) {
   if (!value) return null;
@@ -82,7 +78,7 @@ function renderSocialUsers(items) {
     const name = user.displayName || user.name || "User";
     const email = user.email || "-";
     const city = user.city || "-";
-    const role = String(user.role || "").toLowerCase();
+    const role = user.role || "user";
     const avatarUrl = user.avatarUrl || "";
     const createdAt = formatRelative(toDateSafe(user.createdAt));
     const avatar = avatarUrl
@@ -96,6 +92,19 @@ function renderSocialUsers(items) {
 
     const safeRole = ALLOWED_SOCIAL_ROLES.includes(role) ? role : "staff";
 
+    const roleSelect = `
+      <select class="lead-select user-role-select" data-id="${user.id}" aria-label="role">
+        ${ALLOWED_SOCIAL_ROLES.map((r) => {
+          const sel = (r === role) ? "selected" : "";
+          return `<option value="${r}" ${sel}>${r}</option>`;
+        }).join("")}
+      </select>
+    `;
+
+    const delLabel = user.disabled || String(user.status || "").toLowerCase() === "deleted"
+      ? "Deaktiviert"
+      : "Löschen";
+
     return `
       <div class="lead-row" data-id="${user.id}">
         <div class="lead-avatar">${avatar}</div>
@@ -108,12 +117,10 @@ function renderSocialUsers(items) {
           <div class="lead-labels">${badges}</div>
           <div class="small text-muted">${email}</div>
         </div>
-        <div class="meta">
-          <div class="small text-muted">${createdAt}</div>
-          <select class="lead-select user-role-select" data-id="${user.id}">
-            ${roleOptions}
-          </select>
-          <button class="lead-danger user-soft-delete-btn" data-id="${user.id}" type="button">Soft delete</button>
+        <div class="meta">${createdAt}</div>
+        <div class="lead-actions">
+          <button class="btn btn-sm btn-outline-primary btn-edit-user" data-id="${user.id}"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-sm btn-outline-danger btn-delete-user" data-id="${user.id}"><i class="fas fa-trash"></i></button>
         </div>
       </div>
     `;
@@ -147,10 +154,35 @@ function applySocialFilters() {
   }
 
   if (term) {
-    items = items.filter((item) => {
-      const haystack = [item.displayName, item.name, item.email, item.city, item.role].filter(Boolean).join(" ").toLowerCase();
-      return haystack.includes(term);
-    });
+    if (role) {
+      items = items.filter((item) => {
+        const haystack = [item.displayName, item.name, item.email, item.city].filter(Boolean).join(" ").toLowerCase();
+        return haystack.includes(term);
+      });
+    } else {
+      // role not selected: prefer role-specific matches
+      const all = items.slice();
+      const matchesBusiness = all.filter((item) => {
+        if (String(item.role || "").toLowerCase() !== "business") return false;
+        const hay = ((item.businessName || item.displayName || "") + " " + (item.city || "")).toLowerCase();
+        return hay.includes(term);
+      });
+      const matchesUser = all.filter((item) => {
+        if (String(item.role || "").toLowerCase() !== "user") return false;
+        const hay = [item.displayName, item.name, item.email, item.city].filter(Boolean).join(" ").toLowerCase();
+        return hay.includes(term);
+      });
+      if (matchesBusiness.length > 0 && matchesUser.length === 0) {
+        items = matchesBusiness;
+      } else if (matchesUser.length > 0 && matchesBusiness.length === 0) {
+        items = matchesUser;
+      } else if (matchesBusiness.length > 0) {
+        // both matched: prefer businesses to avoid mixing
+        items = matchesBusiness;
+      } else {
+        items = matchesUser;
+      }
+    }
   }
 
   if (sort === "name") {
@@ -294,7 +326,7 @@ function openSocialUserEditor(id) {
   if (!u) return;
   if (socialUserModal.name) socialUserModal.name.value = u.displayName || u.name || "";
   if (socialUserModal.city) socialUserModal.city.value = u.city || "";
-  if (socialUserModal.role) socialUserModal.role.value = ALLOWED_SOCIAL_ROLES.includes(String(u.role||" ").toLowerCase()) ? String(u.role).toLowerCase() : "staff";
+  if (socialUserModal.role) socialUserModal.role.value = u.role || "user";
   if (socialUserModal.idDisplay) socialUserModal.idDisplay.textContent = id;
   if (socialUserModal.status) socialUserModal.status.textContent = "";
   showSocialUserModal();
@@ -305,10 +337,11 @@ async function saveSocialUser() {
   try {
     if (socialUserModal.status) socialUserModal.status.textContent = "Speichere...";
     const ref = doc(db, "users", _editingUserId);
+    const chosenRole = String(socialUserModal.role?.value || "").trim().toLowerCase();
     const payload = {
       displayName: (socialUserModal.name?.value || "").trim(),
       city: (socialUserModal.city?.value || "").trim(),
-      role: (ALLOWED_SOCIAL_ROLES.includes(String(socialUserModal.role?.value||"staff").toLowerCase()) ? String(socialUserModal.role?.value||"staff").toLowerCase() : "staff")
+      role: (socialUserModal.role?.value || "user").trim()
     };
     await updateDoc(ref, payload);
     if (socialUserModal.status) socialUserModal.status.textContent = "Gespeichert.";
@@ -323,30 +356,52 @@ async function saveSocialUser() {
 
 async function deleteSocialUserById(id) {
   if (!id) return;
-  if (!confirm("User wirklich SOFT löschen? (disabled + status=deleted)")) return;
+  if (!confirm("Benutzer wirklich löschen? Dies entfernt auch Social-Posts dieses Users.")) return;
   try {
-    if (socialUserModal.status) socialUserModal.status.textContent = "Soft delete...";
-    const ref = doc(db, "users", id);
-    const payload = {
-      disabled: true,
-      status: "deleted",
-      deletedAt: serverTimestamp()
-    };
-    await updateDoc(ref, payload);
-
-    socialUsersCache = socialUsersCache.map((u) => u.id === id ? { ...u, ...payload } : u);
+    if (socialUserModal.status) socialUserModal.status.textContent = "Lösche...";
+    // delete user doc
+    await deleteDoc(doc(db, "users", id));
+    // delete social posts authored by this user (collectionGroup search)
+    try {
+      const q = query(collectionGroup(db, "socialPosts"), where("authorId", "==", id));
+      const snap = await getDocs(q);
+      const deletes = snap.docs.map((d) => deleteDoc(d.ref));
+      await Promise.all(deletes);
+    } catch (err) {
+      console.warn("Fehler beim Löschen der Social-Posts:", err);
+    }
+    socialUsersCache = socialUsersCache.filter((u) => u.id !== id);
     applySocialFilters();
-
-    if (socialUserModal.status) socialUserModal.status.textContent = "Soft deleted.";
+    if (socialUserModal.status) socialUserModal.status.textContent = "Gelöscht.";
     hideSocialUserModal();
   } catch (err) {
     console.error(err);
-    if (socialUserModal.status) socialUserModal.status.textContent = "Fehler beim Soft delete.";
+    if (socialUserModal.status) socialUserModal.status.textContent = "Fehler beim Löschen.";
   }
 }
 
 // delegation for list buttons + role select
 if (socialUsers.list) {
+  // Inline role updates (low friction)
+  socialUsers.list.addEventListener("change", async (ev) => {
+    const sel = ev.target && ev.target.closest ? ev.target.closest("select.user-role-select") : null;
+    if (!sel) return;
+    const id = sel.dataset && sel.dataset.id;
+    if (!id) return;
+    const nextRole = String(sel.value || "").trim().toLowerCase();
+    if (!ALLOWED_SOCIAL_ROLES.includes(nextRole)) return;
+    try {
+      setSocialStatus("Speichere Rolle...");
+      await updateDoc(doc(db, "users", id), { role: nextRole });
+      socialUsersCache = socialUsersCache.map((u) => u.id === id ? { ...u, role: nextRole } : u);
+      applySocialFilters();
+      setSocialStatus("");
+    } catch (err) {
+      console.error(err);
+      setSocialStatus("Fehler beim Speichern der Rolle.");
+    }
+  });
+
   socialUsers.list.addEventListener("click", (ev) => {
     const btn = ev.target.closest && ev.target.closest("button");
     if (!btn) return;
@@ -354,7 +409,8 @@ if (socialUsers.list) {
     if (!id) return;
     if (btn.classList.contains("btn-edit-user")) {
       openSocialUserEditor(id);
-    } else if (btn.classList.contains("user-soft-delete-btn")) {
+    } else if (btn.classList.contains("btn-delete-user")) {
+      // quick delete from list
       deleteSocialUserById(id);
     }
   });
