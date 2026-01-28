@@ -1845,6 +1845,40 @@
       }
     }
   </style>
+
+  <!-- Extra UI polish for Social Users role/edit controls -->
+  <style>
+    .meta{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:10px;
+    }
+
+    .lead-select{
+      padding:6px 10px;
+      border-radius:12px;
+      border:1px solid rgba(99,102,241,0.25);
+      background:#fff;
+      font-weight:800;
+      font-size:12px;
+    }
+
+    .lead-danger{
+      padding:6px 10px;
+      border-radius:12px;
+      border:1px solid rgba(244,63,94,0.35);
+      background:rgba(244,63,94,0.08);
+      color:#e11d48;
+      font-weight:900;
+      font-size:12px;
+      cursor:pointer;
+    }
+
+    .lead-danger:hover{
+      background:rgba(244,63,94,0.15);
+    }
+  </style>
 </head>
 <body class="m-boot m-app-hidden">
   <div class="m-boot-overlay" id="mBootOverlay">
@@ -2362,8 +2396,8 @@
               <label for="socialUsersRole">Rolle</label>
               <select id="socialUsersRole" class="m-select2">
                 <option value="">Alle</option>
-                <option value="user">User</option>
-                <option value="business">Business</option>
+                <option value="staff">Staff</option>
+                <option value="owner">Owner</option>
                 <option value="ceo">CEO</option>
               </select>
             </div>
@@ -2405,9 +2439,8 @@
             <div class="m-input-group">
               <label for="socialUserRole">Rolle</label>
               <select id="socialUserRole" class="m-select2">
-                <option value="user">User</option>
-                <option value="business">Business</option>
                 <option value="staff">Staff</option>
+                <option value="owner">Owner</option>
                 <option value="ceo">CEO</option>
               </select>
             </div>

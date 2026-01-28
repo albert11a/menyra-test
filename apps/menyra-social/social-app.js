@@ -69,7 +69,7 @@ const ADMIN_LOGINS = {
       displayName: "Menyra HQ",
       city: "Prishtina",
       role: "business",
-      avatarUrl: "https://via.placeholder.com/300/4f46e5/ffffff?text=HQ"
+      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
     }
   },
   admin1: {
@@ -79,7 +79,7 @@ const ADMIN_LOGINS = {
       displayName: "Max Mustermann",
       city: "Prishtina",
       role: "user",
-      avatarUrl: "https://i.pravatar.cc/300?u=max"
+      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
     }
   }
 };
@@ -115,7 +115,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Marco",
     text: "hat dein Foto geliked",
     time: "10m",
-    img: "https://i.pravatar.cc/100?u=1",
+    img: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     read: false
   },
   {
@@ -124,7 +124,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Elena",
     text: "folgt dir jetzt",
     time: "1h",
-    img: "https://i.pravatar.cc/100?u=2",
+    img: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     read: false
   },
   {
@@ -133,7 +133,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Menyra Team",
     text: "Willkommen zurueck!",
     time: "2h",
-    img: "https://via.placeholder.com/100/6366f1/ffffff?text=M",
+    img: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     read: true
   }
 ];
@@ -679,7 +679,7 @@ function mapRestaurantToCard(rest, idx) {
     y: `${y}%`,
     rating: rest.rating || rest.score || 4.6,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     desc: rest.description || rest.bio || "Menyra Business"
   };
 }
@@ -716,7 +716,7 @@ function normalizeBusinessLocation(rest, idx) {
     lng,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.6,
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
+    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     desc: rest.description || rest.bio || "Menyra Business",
     raw: rest
   };
@@ -870,7 +870,7 @@ function currentUserBadge() {
     uid: state.user?.uid || "",
     name: state.userProfile.name || "User",
     handle: state.userProfile.handle || "user",
-    avatar: state.userProfile.avatar || "https://i.pravatar.cc/120?u=menyra"
+    avatar: state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
   };
 }
 
@@ -948,7 +948,7 @@ function normalizeBusinessResult(rest) {
     id: rest.id || rest.restaurantId || "",
     name,
     city: rest.city || rest.location || rest.address || "Prishtina",
-    logo: rest.logoUrl || rest.logo || rest.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200"
+    logo: rest.logoUrl || rest.logo || rest.image || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
   };
 }
 
@@ -962,7 +962,7 @@ function buildBusinessResultsFromFeed(posts) {
       id: id || "",
       name: post.business || "Business",
       city: post.location || "Prishtina",
-      logo: post.logo || post.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=200"
+      logo: post.logo || post.image || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
     });
   });
   return Array.from(map.values()).slice(0, SEARCH_LIMITS.businesses);
@@ -1000,7 +1000,7 @@ function normalizeUserSearchResult(doc) {
     uid: doc?.id || data.uid || "",
     name,
     handle,
-    avatar: data.avatarUrl || data.avatar || `https://i.pravatar.cc/120?u=${encodeURIComponent(handle)}`,
+    avatar: data.avatarUrl || data.avatar || `data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=
     location: data.city || "Prishtina",
     followers: data.followersCount ?? data.followers ?? 0,
     following: data.followingCount ?? data.following ?? 0,
@@ -1270,7 +1270,7 @@ function ensureCommentShape(comment) {
     id: comment.id,
     author: comment.author || "User",
     handle: comment.handle || "user",
-    avatar: comment.avatar || "https://i.pravatar.cc/120?u=menyra",
+    avatar: comment.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     text: comment.text || "",
     createdAt: comment.createdAt || new Date().toISOString(),
     likes,
@@ -1279,7 +1279,7 @@ function ensureCommentShape(comment) {
       id: reply.id,
       author: reply.author || "User",
       handle: reply.handle || "user",
-      avatar: reply.avatar || "https://i.pravatar.cc/120?u=menyra",
+      avatar: reply.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
       text: reply.text || "",
       createdAt: reply.createdAt || new Date().toISOString(),
       likes: Array.isArray(reply.likes) ? reply.likes : [],
@@ -1597,7 +1597,7 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-10 h-10 rounded-xl object-cover" />
+          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
             <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
@@ -1836,7 +1836,7 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  const avatar = escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80");
+  const avatar = escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
   const headerAvatar = document.getElementById("headerAvatar");
   if (headerAvatar && headerAvatar.getAttribute("src") !== avatar) {
     headerAvatar.setAttribute("src", avatar);
@@ -1957,7 +1957,7 @@ function startLiveListeners(user) {
         user: data.user || data.userName || "User",
         text: data.text || "folgt dir jetzt",
         time: formatRelative(toDateSafe(data.createdAt)),
-        img: data.avatar || data.img || "https://i.pravatar.cc/100?u=notify",
+        img: data.avatar || data.img || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
         read: !!data.read,
         createdAt: data.createdAt,
         postId: data.postId || "",
@@ -2109,7 +2109,7 @@ function startStoriesListener() {
       map.set(rid, {
         restaurantId: rid,
         name: rest.name || rest.restaurantName || docSnap.data()?.restaurantName || "Business",
-        img: rest.logoUrl || rest.logo || docSnap.data()?.thumbUrl || docSnap.data()?.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
+        img: rest.logoUrl || rest.logo || docSnap.data()?.thumbUrl || docSnap.data()?.image || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
         isLive: true
       });
     });
@@ -2687,7 +2687,7 @@ function renderPublicProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div class="relative">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -2763,7 +2763,7 @@ function renderProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -3032,7 +3032,7 @@ async function loadNotificationsFromFirebase({ force = false } = {}) {
         user: data.user || data.userName || "User",
         text: data.text || "folgt dir jetzt",
         time: formatRelative(toDateSafe(data.createdAt)),
-        img: data.avatar || data.img || "https://i.pravatar.cc/100?u=notify",
+        img: data.avatar || data.img || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
         read: !!data.read,
         createdAt: data.createdAt,
         postId: data.postId || "",
@@ -3607,7 +3607,7 @@ function renderSettingsView() {
         <div class="flex flex-col items-center mb-8">
           <input type="file" id="settingsAvatarInput" class="hidden" accept="image/*" />
           <div id="settingsAvatarTrigger" class="relative group cursor-pointer">
-            <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
+            <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
             <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">${icon("camera", "w-4 h-4")}</div>
           </div>
         </div>
@@ -3994,7 +3994,7 @@ function renderHeader() {
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">Social</span>
       </div>
       <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-        <img id="headerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-full h-full rounded-[1.4rem] object-cover" />
+        <img id="headerAvatar" src="${escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-full h-full rounded-[1.4rem] object-cover" />
       </button>
     </header>
   `;
@@ -4964,7 +4964,7 @@ function normalizeFeedPost(row) {
     logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || thumb,
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
-    image: thumb || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800",
+    image: thumb || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     likes: row.likesCount || "0",
     comments: row.commentsCount || "0",
     time: formatRelative(toDateSafe(row.createdAt)),
@@ -4985,7 +4985,7 @@ function buildStoriesFromFeed(posts) {
     map.set(rid, {
       restaurantId: rid,
       name: post.business || post.restaurantName || "Business",
-      img: post.logo || post.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
+      img: post.logo || post.image || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
       isLive: false
     });
   });
@@ -5011,7 +5011,7 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
     handle: handle || "business",
     uid: profileDoc?.id || data?.uid || "",
     bio: data?.bio || restaurant?.description || restaurant?.bio || "Offizieller Account auf MENYRA Social.",
-    avatar: data?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || "https://i.pravatar.cc/300?u=business",
+    avatar: data?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     location: data?.city || restaurant?.city || "Kosovo",
     followers: data?.followersCount ?? data?.followers ?? 0,
     following: data?.followingCount ?? data?.following ?? 0,
@@ -5031,7 +5031,7 @@ function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
     handle: handle || "user",
     uid: userDoc?.id || data?.uid || fallback?.uid || "",
     bio: data?.bio || fallback?.bio || "",
-    avatar: data?.avatarUrl || fallback?.avatar || `https://i.pravatar.cc/300?u=${encodeURIComponent(handle)}`,
+    avatar: data?.avatarUrl || fallback?.avatar || `data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=
     location: data?.city || fallback?.location || "Prishtina",
     followers: data?.followersCount ?? data?.followers ?? fallback?.followers ?? 0,
     following: data?.followingCount ?? data?.following ?? fallback?.following ?? 0,
@@ -5375,7 +5375,7 @@ async function loadStoriesFallback(restaurants) {
         items.push({
           restaurantId: rest.id,
           name: rest.name || rest.restaurantName || "Business",
-          img: rest.logoUrl || rest.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
+          img: rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
           isLive: true
         });
       }
@@ -5419,7 +5419,7 @@ async function loadStories() {
       return {
         restaurantId: rid,
         name: rest.name || rest.restaurantName || "Business",
-        img: rest.logoUrl || rest.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
+        img: rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
         isLive: true
       };
     });

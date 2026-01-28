@@ -19,7 +19,7 @@ const ADMIN_LOGINS = {
       displayName: "Menyra HQ",
       city: "Prishtina",
       role: "business",
-      avatarUrl: "https://via.placeholder.com/300/4f46e5/ffffff?text=HQ"
+      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
     }
   },
   admin1: {
@@ -29,7 +29,7 @@ const ADMIN_LOGINS = {
       displayName: "Max Mustermann",
       city: "Prishtina",
       role: "user",
-      avatarUrl: "https://i.pravatar.cc/300?u=max"
+      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
     }
   }
 };
