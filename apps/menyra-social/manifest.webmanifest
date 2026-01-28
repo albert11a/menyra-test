@@ -1,0 +1,19 @@
+{
+  "name": "MENYRA Social",
+  "short_name": "MENYRA",
+  "description": "MENYRA Social feed, discover, and profile.",
+  "id": "/apps/menyra-social/index.html",
+  "start_url": "/apps/menyra-social/index.html",
+  "scope": "/apps/menyra-social/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f3ea",
+  "theme_color": "#f6f3ea",
+  "icons": [
+    {
+      "src": "/apps/menyra-social/assets/menyra-social-logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}
