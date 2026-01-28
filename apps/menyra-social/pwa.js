@@ -1,38 +1,51 @@
-// =========================================================
-// MENYRA Social - PWA bootstrap
-// Service Worker registration (fast cache for images/assets)
-// =========================================================
+// MENYRA Social – PWA bootstrap
+// Registers the root service worker so images and static assets cache aggressively.
 
-(function registerSW() {
+// Note: Service workers only work on HTTPS (or localhost).
+
+function log(...args) {
+  // keep silent in prod – uncomment if needed
+  // console.log("[PWA]", ...args);
+}
+
+async function registerSW() {
+  if (!('serviceWorker' in navigator)) return;
+
   try {
-    if (!('serviceWorker' in navigator)) return;
+    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    log('registered', reg);
 
-    const swUrl = '/sw.js';
+    // If there's already a waiting worker, activate it.
+    if (reg.waiting) {
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
 
-    window.addEventListener('load', async () => {
-      try {
-        const reg = await navigator.serviceWorker.register(swUrl, { scope: '/' });
-
-        // If a new worker is already waiting, activate immediately.
-        if (reg && reg.waiting) {
-          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    // Listen for future updates.
+    reg.addEventListener('updatefound', () => {
+      const newWorker = reg.installing;
+      if (!newWorker) return;
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed') {
+          // If there's an existing controller, this is an update.
+          if (navigator.serviceWorker.controller) {
+            newWorker.postMessage({ type: 'SKIP_WAITING' });
+          }
         }
+      });
+    });
 
-        // When updates are found, auto-activate when installed.
-        reg.addEventListener('updatefound', () => {
-          const nw = reg.installing;
-          if (!nw) return;
-          nw.addEventListener('statechange', () => {
-            if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-              nw.postMessage({ type: 'SKIP_WAITING' });
-            }
-          });
-        });
-      } catch (err) {
-        console.warn('[MENYRA] SW registration failed', err);
-      }
+    // Reload once when a new SW takes control to ensure fresh caches.
+    let hasRefreshed = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (hasRefreshed) return;
+      hasRefreshed = true;
+      window.location.reload();
     });
   } catch (err) {
-    // silent
+    console.warn('[PWA] SW registration failed', err);
   }
-})();
+}
+
+window.addEventListener('load', () => {
+  registerSW();
+});
