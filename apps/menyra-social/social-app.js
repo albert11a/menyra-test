@@ -4961,7 +4961,7 @@ function normalizeFeedPost(row) {
     logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
-    image: thumb || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    image: row.logoUrl || restaurant.logoUrl || restaurant.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     likes: row.likesCount || "0",
     comments: row.commentsCount || "0",
     time: formatRelative(toDateSafe(row.createdAt)),
