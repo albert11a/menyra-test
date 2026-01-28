@@ -1007,6 +1007,7 @@ function normalizeUserSearchResult(doc) {
     role: data.role || "user",
     bio: data.bio || ""
   };
+}
 
 
 async function searchUsersRemote(queryRaw, token) {
