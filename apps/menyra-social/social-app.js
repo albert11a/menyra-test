@@ -962,7 +962,7 @@ function buildBusinessResultsFromFeed(posts) {
       id: id || "",
       name: post.business || "Business",
       city: post.location || "Prishtina",
-      logo: post.logo || post.image || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+      logo: post.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
     });
   });
   return Array.from(map.values()).slice(0, SEARCH_LIMITS.businesses);
