@@ -1000,7 +1000,7 @@ function normalizeUserSearchResult(doc) {
     uid: doc?.id || data.uid || "",
     name,
     handle,
-    avatar: data.avatarUrl || data.avatar || `data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=
+    avatar: data.avatarUrl || data.avatar || `data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=`,
     location: data.city || "Prishtina",
     followers: data.followersCount ?? data.followers ?? 0,
     following: data.followingCount ?? data.following ?? 0,
@@ -5031,7 +5031,7 @@ function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
     handle: handle || "user",
     uid: userDoc?.id || data?.uid || fallback?.uid || "",
     bio: data?.bio || fallback?.bio || "",
-    avatar: data?.avatarUrl || fallback?.avatar || `data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=
+    avatar: data?.avatarUrl || fallback?.avatar || `data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=`,
     location: data?.city || fallback?.location || "Prishtina",
     followers: data?.followersCount ?? data?.followers ?? fallback?.followers ?? 0,
     following: data?.followingCount ?? data?.following ?? fallback?.following ?? 0,
