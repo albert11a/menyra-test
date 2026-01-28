@@ -39,9 +39,6 @@ import {
 
 const appEl = document.getElementById("app");
 
-// 1x1 transparent pixel (no fake placeholder photos)
-const BLANK_IMG = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
-
 // --- SAFE STORAGE HELPER ---
 const safeStorage = {
   getItem: (key) => {
@@ -72,7 +69,7 @@ const ADMIN_LOGINS = {
       displayName: "Menyra HQ",
       city: "Prishtina",
       role: "business",
-      avatarUrl: BLANK_IMG
+      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
     }
   },
   admin1: {
@@ -82,7 +79,7 @@ const ADMIN_LOGINS = {
       displayName: "Max Mustermann",
       city: "Prishtina",
       role: "user",
-      avatarUrl: BLANK_IMG
+      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
     }
   }
 };
@@ -118,7 +115,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Marco",
     text: "hat dein Foto geliked",
     time: "10m",
-    img: BLANK_IMG,
+    img: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     read: false
   },
   {
@@ -127,7 +124,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Elena",
     text: "folgt dir jetzt",
     time: "1h",
-    img: BLANK_IMG,
+    img: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     read: false
   },
   {
@@ -136,7 +133,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Menyra Team",
     text: "Willkommen zurueck!",
     time: "2h",
-    img: BLANK_IMG,
+    img: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     read: true
   }
 ];
@@ -310,6 +307,21 @@ function escapeHtml(value) {
     "'": "&#39;"
   }[ch] || ch));
 }
+
+// --- IMG HELPERS (no external placeholders) ---
+const __TRANSPARENT_PIXEL__ = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==";
+function imgOrEmpty(url) {
+  const u = (url || "").toString().trim();
+  return u ? escapeHtml(u) : __TRANSPARENT_PIXEL__;
+}
+
+function getAvatarUrl(profile) {
+  const p = profile || {};
+  const u = (p.avatar || p.avatarUrl || p.photoURL || p.photoUrl || p.img || p.image || "").toString().trim();
+  return u;
+}
+
+
 
 function formatCount(value) {
   if (typeof value === "number" && Number.isFinite(value)) return String(value);
@@ -682,7 +694,7 @@ function mapRestaurantToCard(rest, idx) {
     y: `${y}%`,
     rating: rest.rating || rest.score || 4.6,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || BLANK_IMG,
+    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     desc: rest.description || rest.bio || "Menyra Business"
   };
 }
@@ -719,7 +731,7 @@ function normalizeBusinessLocation(rest, idx) {
     lng,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.6,
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || BLANK_IMG,
+    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     desc: rest.description || rest.bio || "Menyra Business",
     raw: rest
   };
@@ -873,7 +885,7 @@ function currentUserBadge() {
     uid: state.user?.uid || "",
     name: state.userProfile.name || "User",
     handle: state.userProfile.handle || "user",
-    avatar: state.userProfile.avatar || BLANK_IMG
+    avatar: getAvatarUrl(state.userProfile) || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
   };
 }
 
@@ -951,7 +963,7 @@ function normalizeBusinessResult(rest) {
     id: rest.id || rest.restaurantId || "",
     name,
     city: rest.city || rest.location || rest.address || "Prishtina",
-    logo: rest.logoUrl || rest.logo || rest.image || BLANK_IMG
+    logo: rest.logoUrl || rest.logo || rest.image || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
   };
 }
 
@@ -965,7 +977,7 @@ function buildBusinessResultsFromFeed(posts) {
       id: id || "",
       name: post.business || "Business",
       city: post.location || "Prishtina",
-      logo: post.logo || post.image || BLANK_IMG
+      logo: post.logo || post.image || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
     });
   });
   return Array.from(map.values()).slice(0, SEARCH_LIMITS.businesses);
@@ -1003,7 +1015,7 @@ function normalizeUserSearchResult(doc) {
     uid: doc?.id || data.uid || "",
     name,
     handle,
-    avatar: data.avatarUrl || data.avatar || BLANK_IMG,
+    avatar: data.avatarUrl || data.avatar || `data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==
     location: data.city || "Prishtina",
     followers: data.followersCount ?? data.followers ?? 0,
     following: data.followingCount ?? data.following ?? 0,
@@ -1273,7 +1285,7 @@ function ensureCommentShape(comment) {
     id: comment.id,
     author: comment.author || "User",
     handle: comment.handle || "user",
-    avatar: comment.avatar || BLANK_IMG,
+    avatar: comment.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     text: comment.text || "",
     createdAt: comment.createdAt || new Date().toISOString(),
     likes,
@@ -1282,7 +1294,7 @@ function ensureCommentShape(comment) {
       id: reply.id,
       author: reply.author || "User",
       handle: reply.handle || "user",
-      avatar: reply.avatar || BLANK_IMG,
+      avatar: reply.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
       text: reply.text || "",
       createdAt: reply.createdAt || new Date().toISOString(),
       likes: Array.isArray(reply.likes) ? reply.likes : [],
@@ -1600,7 +1612,7 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || BLANK_IMG)}" class="w-10 h-10 rounded-xl object-cover" />
+          <img decoding="async" id="drawerAvatar" src="${imgOrEmpty(getAvatarUrl(state.userProfile))}" class="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
             <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
@@ -1685,7 +1697,7 @@ function renderStoriesRow(stories) {
       return `
         <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
           <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-            <img src="${escapeHtml(s.img)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+            <img decoding="async" src="${escapeHtml(s.img)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
           </div>
           <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
         </a>
@@ -1709,7 +1721,7 @@ function renderFeedItem(post, index) {
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-            <img src="${escapeHtml(post.logo || post.image)}" ${logoAttrs} class="w-full h-full object-cover" />
+            <img decoding="async" src="${escapeHtml(post.logo || post.image)}" ${logoAttrs} class="w-full h-full object-cover" />
           </div>
           <div>
             <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
@@ -1720,7 +1732,7 @@ function renderFeedItem(post, index) {
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative h-[30rem] rounded-[3rem] overflow-hidden bg-slate-200">
-          <img src="${escapeHtml(post.image)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+          <img decoding="async" src="${escapeHtml(post.image)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
           ${post.isLive ? `
             <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
@@ -1839,7 +1851,7 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  const avatar = escapeHtml(state.userProfile.avatar || BLANK_IMG);
+  const avatar = imgOrEmpty(getAvatarUrl(state.userProfile));
   const headerAvatar = document.getElementById("headerAvatar");
   if (headerAvatar && headerAvatar.getAttribute("src") !== avatar) {
     headerAvatar.setAttribute("src", avatar);
@@ -1933,7 +1945,7 @@ function startLiveListeners(user) {
     const next = {
       name: data.displayName || state.userProfile.name,
       handle: data.handle || state.userProfile.handle,
-      avatar: data.avatarUrl || state.userProfile.avatar,
+      avatar: data.avatarUrl || getAvatarUrl(state.userProfile),
       followers: data.followersCount ?? state.userProfile.followers,
       following: data.followingCount ?? state.userProfile.following,
       role: data.role || state.userProfile.role,
@@ -1960,7 +1972,7 @@ function startLiveListeners(user) {
         user: data.user || data.userName || "User",
         text: data.text || "folgt dir jetzt",
         time: formatRelative(toDateSafe(data.createdAt)),
-        img: data.avatar || data.img || BLANK_IMG,
+        img: data.avatar || data.img || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
         read: !!data.read,
         createdAt: data.createdAt,
         postId: data.postId || "",
@@ -2112,7 +2124,7 @@ function startStoriesListener() {
       map.set(rid, {
         restaurantId: rid,
         name: rest.name || rest.restaurantName || docSnap.data()?.restaurantName || "Business",
-        img: rest.logoUrl || rest.logo || docSnap.data()?.thumbUrl || docSnap.data()?.image || BLANK_IMG,
+        img: rest.logoUrl || rest.logo || docSnap.data()?.thumbUrl || docSnap.data()?.image || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
         isLive: true
       });
     });
@@ -2270,7 +2282,7 @@ function renderMapSheet(selected) {
           ${icon("x", "w-4 h-4")}
         </button>
         <div class="flex gap-4">
-          <img src="${escapeHtml(selected.img)}" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
+          <img decoding="async" src="${escapeHtml(selected.img)}" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
           <div class="flex-1">
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Business</span>
             <h3 class="text-lg font-black tracking-tight text-slate-900 mt-1">${escapeHtml(selected.name || "Business")}</h3>
@@ -2327,7 +2339,7 @@ function renderProfileGridItem(item) {
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   return `
     <button type="button" ${postAttr} class="rounded-[2.5rem] overflow-hidden shadow-md relative group text-left ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
-      <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
+      <img decoding="async" src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
       ${item.title ? `<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end"><h3 class="text-white text-lg font-black italic">${escapeHtml(item.title)}</h3></div>` : ""}
       <div class="absolute inset-x-0 bottom-0 p-3">
         <div class="flex items-center justify-between text-white bg-black/45 backdrop-blur rounded-2xl px-3 py-2">
@@ -2356,7 +2368,7 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
+        <img decoding="async" src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">
@@ -2427,7 +2439,7 @@ function renderProfileCheckins() {
       ${checkins.map((place) => `
         <div class="flex items-center gap-4 bg-white p-4 rounded-[2rem] border border-slate-50 shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] active:scale-[0.98] transition-all cursor-pointer group">
           <div class="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden shrink-0 shadow-inner group-hover:shadow-md transition-all">
-            <img src="${escapeHtml(place.image || "")}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+            <img decoding="async" src="${escapeHtml(place.image || "")}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
           </div>
           <div class="flex-1">
             <h4 class="font-black text-slate-900 text-sm mb-1">${escapeHtml(place.name || "Ort")}</h4>
@@ -2690,7 +2702,7 @@ function renderPublicProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div class="relative">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || BLANK_IMG)}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img decoding="async" src="${imgOrEmpty(getAvatarUrl(profile))}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -2720,7 +2732,7 @@ function renderPublicProfileView() {
             </div>
 
             <div class="flex gap-4">
-              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${isFollowing ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200" : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent"}">
+              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${imgOrEmpty(getAvatarUrl(profile))}" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${isFollowing ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200" : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent"}">
                 <span class="relative z-10 flex items-center gap-2">
                   ${isFollowing ? icon("check", "w-4 h-4") : ""}
                   ${isFollowing ? "Following" : "Follow"}
@@ -2766,7 +2778,7 @@ function renderProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || BLANK_IMG)}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img decoding="async" src="${imgOrEmpty(getAvatarUrl(profile))}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -3035,7 +3047,7 @@ async function loadNotificationsFromFirebase({ force = false } = {}) {
         user: data.user || data.userName || "User",
         text: data.text || "folgt dir jetzt",
         time: formatRelative(toDateSafe(data.createdAt)),
-        img: data.avatar || data.img || BLANK_IMG,
+        img: data.avatar || data.img || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
         read: !!data.read,
         createdAt: data.createdAt,
         postId: data.postId || "",
@@ -3351,12 +3363,12 @@ function renderProfileModal() {
           </div>
 
           <div class="flex items-center gap-4">
-            <img src="${escapeHtml(p.avatar)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
+            <img decoding="async" src="${escapeHtml(p.avatar)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
             <div class="flex-1 min-w-0">
               <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
               <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
             </div>
-            <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+            <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${imgOrEmpty(p.avatar)}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
               ${isFollowing ? "Following" : "Follow"}
             </button>
           </div>
@@ -3390,7 +3402,7 @@ function renderCommentItem(postId, comment, parentId = "") {
   const isReply = !!parentId;
   return `
     <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}">
-      <img src="${escapeHtml(comment.avatar)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
+      <img decoding="async" src="${escapeHtml(comment.avatar)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
       <div class="flex-1">
         <div class="flex items-center justify-between">
           <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author)}</div>
@@ -3452,7 +3464,7 @@ function renderPostModal() {
               </div>
 
               <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                <img src="${escapeHtml(imageUrl)}" class="w-full h-[22rem] object-cover" />
+                <img decoding="async" src="${escapeHtml(imageUrl)}" class="w-full h-[22rem] object-cover" />
               </div>
 
               ${caption ? `
@@ -3518,7 +3530,7 @@ function renderLikesModal() {
           <div class="px-7 pb-7 space-y-3 overflow-y-auto no-scrollbar modal-scroll flex-1">
             ${likes.length ? likes.map((user) => `
               <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                <img src="${escapeHtml(user.avatar)}" class="w-10 h-10 rounded-2xl object-cover" />
+                <img decoding="async" src="${escapeHtml(user.avatar)}" class="w-10 h-10 rounded-2xl object-cover" />
                 <div>
                   <div class="text-xs font-black">${escapeHtml(user.name)}</div>
                   <div class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(user.handle)}</div>
@@ -3610,7 +3622,7 @@ function renderSettingsView() {
         <div class="flex flex-col items-center mb-8">
           <input type="file" id="settingsAvatarInput" class="hidden" accept="image/*" />
           <div id="settingsAvatarTrigger" class="relative group cursor-pointer">
-            <img src="${escapeHtml(profile.avatar || BLANK_IMG)}" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
+            <img decoding="async" src="${imgOrEmpty(getAvatarUrl(profile))}" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
             <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">${icon("camera", "w-4 h-4")}</div>
           </div>
         </div>
@@ -3735,7 +3747,7 @@ function renderNotificationsView() {
         ${state.notifications.length === 0 ? "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>" :
           state.notifications.map((n) => `
             <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
-              <img src="${escapeHtml(n.img)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
+              <img decoding="async" src="${escapeHtml(n.img)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
                 <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
@@ -3756,7 +3768,7 @@ function renderSearchUserItem(user) {
   const displayName = sanitizeDisplayName(user.name, handle || "User");
   return `
     <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(user.avatar)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <img decoding="async" src="${escapeHtml(user.avatar)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
@@ -3770,7 +3782,7 @@ function renderSearchBusinessItem(biz) {
   const name = biz.name || "Business";
   return `
     <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(biz.logo)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <img decoding="async" src="${escapeHtml(biz.logo)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
@@ -3963,7 +3975,7 @@ function renderUploadView() {
       <input type="file" id="uploadFileInput" class="hidden" accept="image/*" />
       ${state.upload.preview ? `
         <div class="space-y-6">
-          <img src="${escapeHtml(state.upload.preview)}" class="w-full h-64 object-cover rounded-[2.5rem] shadow-lg" />
+          <img decoding="async" src="${escapeHtml(state.upload.preview)}" class="w-full h-64 object-cover rounded-[2.5rem] shadow-lg" />
           <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
             <textarea id="uploadCaption" placeholder="Bildunterschrift..." class="w-full bg-transparent text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.upload.caption)}</textarea>
           </div>
@@ -3997,7 +4009,7 @@ function renderHeader() {
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">Social</span>
       </div>
       <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-        <img id="headerAvatar" src="${escapeHtml(state.userProfile.avatar || BLANK_IMG)}" class="w-full h-full rounded-[1.4rem] object-cover" />
+        <img decoding="async" id="headerAvatar" src="${imgOrEmpty(getAvatarUrl(state.userProfile))}" class="w-full h-full rounded-[1.4rem] object-cover" />
       </button>
     </header>
   `;
@@ -4749,7 +4761,7 @@ async function uploadAvatar(file) {
       avatarUrl: url,
       updatedAt: serverTimestamp()
     }, { merge: true });
-    state.userProfile.avatar = url;
+    getAvatarUrl(state.userProfile) = url;
     safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
     render();
   } catch (err) {
@@ -4967,7 +4979,7 @@ function normalizeFeedPost(row) {
     logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || thumb,
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
-    image: thumb || BLANK_IMG,
+    image: thumb || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     likes: row.likesCount || "0",
     comments: row.commentsCount || "0",
     time: formatRelative(toDateSafe(row.createdAt)),
@@ -4988,7 +5000,7 @@ function buildStoriesFromFeed(posts) {
     map.set(rid, {
       restaurantId: rid,
       name: post.business || post.restaurantName || "Business",
-      img: post.logo || post.image || BLANK_IMG,
+      img: post.logo || post.image || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
       isLive: false
     });
   });
@@ -5014,7 +5026,7 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
     handle: handle || "business",
     uid: profileDoc?.id || data?.uid || "",
     bio: data?.bio || restaurant?.description || restaurant?.bio || "Offizieller Account auf MENYRA Social.",
-    avatar: data?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || BLANK_IMG,
+    avatar: data?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
     location: data?.city || restaurant?.city || "Kosovo",
     followers: data?.followersCount ?? data?.followers ?? 0,
     following: data?.followingCount ?? data?.following ?? 0,
@@ -5034,7 +5046,7 @@ function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
     handle: handle || "user",
     uid: userDoc?.id || data?.uid || fallback?.uid || "",
     bio: data?.bio || fallback?.bio || "",
-    avatar: data?.avatarUrl || fallback?.avatar || BLANK_IMG,
+    avatar: data?.avatarUrl || fallback?.avatar || `data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==
     location: data?.city || fallback?.location || "Prishtina",
     followers: data?.followersCount ?? data?.followers ?? fallback?.followers ?? 0,
     following: data?.followingCount ?? data?.following ?? fallback?.following ?? 0,
@@ -5378,7 +5390,7 @@ async function loadStoriesFallback(restaurants) {
         items.push({
           restaurantId: rest.id,
           name: rest.name || rest.restaurantName || "Business",
-          img: rest.logoUrl || rest.logo || BLANK_IMG,
+          img: rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
           isLive: true
         });
       }
@@ -5422,7 +5434,7 @@ async function loadStories() {
       return {
         restaurantId: rid,
         name: rest.name || rest.restaurantName || "Business",
-        img: rest.logoUrl || rest.logo || BLANK_IMG,
+        img: rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==",
         isLive: true
       };
     });
