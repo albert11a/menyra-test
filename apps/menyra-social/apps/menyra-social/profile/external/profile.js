@@ -34,10 +34,10 @@ const profileData = {
     followers: 1200,
     following: 320,
     posts: [
-      { url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", likes: 240, comments: 12 },
-      { url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", likes: 512, comments: 38 },
-      { url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", likes: 98, comments: 6 },
-      { url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", likes: 180, comments: 20, wide: true }
+      { url: "https://images.unsplash.com/photo-1499028344343-cd173ffc68a9?auto=format&fit=crop&w=600&q=80", likes: 240, comments: 12 },
+      { url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80", likes: 512, comments: 38 },
+      { url: "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?auto=format&fit=crop&w=600&q=80", likes: 98, comments: 6 },
+      { url: "https://images.unsplash.com/photo-1458642849426-cfb724f15ef7?auto=format&fit=crop&w=900&q=80", likes: 180, comments: 20, wide: true }
     ]
   },
   public: {
@@ -48,10 +48,10 @@ const profileData = {
     followers: 8450,
     following: 64,
     posts: [
-      { url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", likes: 320, comments: 26 },
-      { url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", likes: 210, comments: 14 },
-      { url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", likes: 430, comments: 40 },
-      { url: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==", likes: 112, comments: 9, wide: true }
+      { url: "https://images.unsplash.com/photo-1466978913421-dad2ebd01d17?auto=format&fit=crop&w=600&q=80", likes: 320, comments: 26 },
+      { url: "https://images.unsplash.com/photo-1481931098730-318b6f776db0?auto=format&fit=crop&w=600&q=80", likes: 210, comments: 14 },
+      { url: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&w=600&q=80", likes: 430, comments: 40 },
+      { url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80", likes: 112, comments: 9, wide: true }
     ]
   }
 };

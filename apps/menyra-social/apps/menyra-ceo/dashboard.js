@@ -11,7 +11,8 @@ import {
   orderBy,
   limit,
   updateDoc,
-  deleteDoc
+  deleteDoc,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 
 bootPlatformAdmin({ role: "ceo", roleLabel: "CEO Platform" });
@@ -29,6 +30,9 @@ const socialUsers = {
 let socialUsersCache = [];
 let socialUsersLoading = false;
 let currentUser = null;
+
+const ALLOWED_SOCIAL_ROLES = ["staff", "owner", "ceo"];
+
 
 function toDateSafe(value) {
   if (!value) return null;
@@ -72,81 +76,81 @@ function renderSocialUsers(items) {
     return;
   }
 
+  const roleOptions = ALLOWED_SOCIAL_ROLES.map((r) => `<option value="${r}">${r.toUpperCase()}</option>`).join("");
+
   socialUsers.list.innerHTML = items.map((user) => {
     const name = user.displayName || user.name || "User";
     const email = user.email || "-";
     const city = user.city || "-";
-    const role = user.role || "user";
+    const role = String(user.role || "").toLowerCase();
     const avatarUrl = user.avatarUrl || "";
     const createdAt = formatRelative(toDateSafe(user.createdAt));
     const avatar = avatarUrl
-      ? `<img src="${avatarUrl}" alt="${name}" />`
-      : initials(name);
+      ? `<img src="${avatarUrl}" alt="${name}" loading="lazy" decoding="async" />`
+      : `<div class="lead-initials">${initials(name)}</div>`;
+
     const badges = [
-      `<span class="m-badge">${role}</span>`,
+      `<span class="m-badge">${role || "-"}</span>`,
       `<span class="m-badge">${city}</span>`
     ].join("");
 
+    const safeRole = ALLOWED_SOCIAL_ROLES.includes(role) ? role : "staff";
+
     return `
-      <div class="lead-row">
+      <div class="lead-row" data-id="${user.id}">
         <div class="lead-avatar">${avatar}</div>
         <div class="lead-details">
-          <div class="lead-name">${name}</div>
+          <div class="lead-name">${name}
+            <button class="btn btn-sm btn-outline-primary btn-edit-user" data-id="${user.id}" title="Bearbeiten" style="margin-left:10px;">
+              <i class="fas fa-edit"></i>
+            </button>
+          </div>
           <div class="lead-labels">${badges}</div>
           <div class="small text-muted">${email}</div>
         </div>
-        <div class="meta">${createdAt}</div>
-        <div class="lead-actions">
-          <button class="btn btn-sm btn-outline-primary btn-edit-user" data-id="${user.id}"><i class="fas fa-edit"></i></button>
-          <button class="btn btn-sm btn-outline-danger btn-delete-user" data-id="${user.id}"><i class="fas fa-trash"></i></button>
+        <div class="meta">
+          <div class="small text-muted">${createdAt}</div>
+          <select class="lead-select user-role-select" data-id="${user.id}">
+            ${roleOptions}
+          </select>
+          <button class="lead-danger user-soft-delete-btn" data-id="${user.id}" type="button">Soft delete</button>
         </div>
       </div>
     `;
   }).join("");
+
+  // Set the current value for each select after render (avoid HTML injection edge cases)
+  socialUsers.list.querySelectorAll('select.user-role-select').forEach((sel) => {
+    const id = sel.getAttribute('data-id');
+    const u = items.find((x) => x.id === id);
+    const role = String(u?.role || '').toLowerCase();
+    sel.value = ALLOWED_SOCIAL_ROLES.includes(role) ? role : 'staff';
+  });
 
   if (socialUsers.meta) socialUsers.meta.textContent = `Users: ${items.length}`;
 }
 
 function applySocialFilters() {
   if (!socialUsers.list) return;
+
   const term = String(socialUsers.search?.value || "").trim().toLowerCase();
-  const role = String(socialUsers.role?.value || "").trim().toLowerCase();
+  const roleFilter = String(socialUsers.role?.value || "").trim().toLowerCase();
   const sort = String(socialUsers.sort?.value || "created");
 
   let items = socialUsersCache.slice();
-  if (role) {
-    items = items.filter((item) => String(item.role || "user").toLowerCase() === role);
+
+  // Hide soft-deleted users by default
+  items = items.filter((u) => !u.disabled && String(u.status || "").toLowerCase() !== "deleted");
+
+  if (roleFilter) {
+    items = items.filter((item) => String(item.role || "").toLowerCase() === roleFilter);
   }
+
   if (term) {
-    if (role) {
-      items = items.filter((item) => {
-        const haystack = [item.displayName, item.name, item.email, item.city].filter(Boolean).join(" ").toLowerCase();
-        return haystack.includes(term);
-      });
-    } else {
-      // role not selected: prefer role-specific matches
-      const all = items.slice();
-      const matchesBusiness = all.filter((item) => {
-        if (String(item.role || "").toLowerCase() !== "business") return false;
-        const hay = ((item.businessName || item.displayName || "") + " " + (item.city || "")).toLowerCase();
-        return hay.includes(term);
-      });
-      const matchesUser = all.filter((item) => {
-        if (String(item.role || "").toLowerCase() !== "user") return false;
-        const hay = [item.displayName, item.name, item.email, item.city].filter(Boolean).join(" ").toLowerCase();
-        return hay.includes(term);
-      });
-      if (matchesBusiness.length > 0 && matchesUser.length === 0) {
-        items = matchesBusiness;
-      } else if (matchesUser.length > 0 && matchesBusiness.length === 0) {
-        items = matchesUser;
-      } else if (matchesBusiness.length > 0) {
-        // both matched: prefer businesses to avoid mixing
-        items = matchesBusiness;
-      } else {
-        items = matchesUser;
-      }
-    }
+    items = items.filter((item) => {
+      const haystack = [item.displayName, item.name, item.email, item.city, item.role].filter(Boolean).join(" ").toLowerCase();
+      return haystack.includes(term);
+    });
   }
 
   if (sort === "name") {
@@ -290,7 +294,7 @@ function openSocialUserEditor(id) {
   if (!u) return;
   if (socialUserModal.name) socialUserModal.name.value = u.displayName || u.name || "";
   if (socialUserModal.city) socialUserModal.city.value = u.city || "";
-  if (socialUserModal.role) socialUserModal.role.value = u.role || "user";
+  if (socialUserModal.role) socialUserModal.role.value = ALLOWED_SOCIAL_ROLES.includes(String(u.role||" ").toLowerCase()) ? String(u.role).toLowerCase() : "staff";
   if (socialUserModal.idDisplay) socialUserModal.idDisplay.textContent = id;
   if (socialUserModal.status) socialUserModal.status.textContent = "";
   showSocialUserModal();
@@ -304,7 +308,7 @@ async function saveSocialUser() {
     const payload = {
       displayName: (socialUserModal.name?.value || "").trim(),
       city: (socialUserModal.city?.value || "").trim(),
-      role: (socialUserModal.role?.value || "user").trim()
+      role: (ALLOWED_SOCIAL_ROLES.includes(String(socialUserModal.role?.value||"staff").toLowerCase()) ? String(socialUserModal.role?.value||"staff").toLowerCase() : "staff")
     };
     await updateDoc(ref, payload);
     if (socialUserModal.status) socialUserModal.status.textContent = "Gespeichert.";
@@ -319,31 +323,29 @@ async function saveSocialUser() {
 
 async function deleteSocialUserById(id) {
   if (!id) return;
-  if (!confirm("Benutzer wirklich löschen? Dies entfernt auch Social-Posts dieses Users.")) return;
+  if (!confirm("User wirklich SOFT löschen? (disabled + status=deleted)")) return;
   try {
-    if (socialUserModal.status) socialUserModal.status.textContent = "Lösche...";
-    // delete user doc
-    await deleteDoc(doc(db, "users", id));
-    // delete social posts authored by this user (collectionGroup search)
-    try {
-      const q = query(collectionGroup(db, "socialPosts"), where("authorId", "==", id));
-      const snap = await getDocs(q);
-      const deletes = snap.docs.map((d) => deleteDoc(d.ref));
-      await Promise.all(deletes);
-    } catch (err) {
-      console.warn("Fehler beim Löschen der Social-Posts:", err);
-    }
-    socialUsersCache = socialUsersCache.filter((u) => u.id !== id);
+    if (socialUserModal.status) socialUserModal.status.textContent = "Soft delete...";
+    const ref = doc(db, "users", id);
+    const payload = {
+      disabled: true,
+      status: "deleted",
+      deletedAt: serverTimestamp()
+    };
+    await updateDoc(ref, payload);
+
+    socialUsersCache = socialUsersCache.map((u) => u.id === id ? { ...u, ...payload } : u);
     applySocialFilters();
-    if (socialUserModal.status) socialUserModal.status.textContent = "Gelöscht.";
+
+    if (socialUserModal.status) socialUserModal.status.textContent = "Soft deleted.";
     hideSocialUserModal();
   } catch (err) {
     console.error(err);
-    if (socialUserModal.status) socialUserModal.status.textContent = "Fehler beim Löschen.";
+    if (socialUserModal.status) socialUserModal.status.textContent = "Fehler beim Soft delete.";
   }
 }
 
-// delegation for list buttons
+// delegation for list buttons + role select
 if (socialUsers.list) {
   socialUsers.list.addEventListener("click", (ev) => {
     const btn = ev.target.closest && ev.target.closest("button");
@@ -352,9 +354,31 @@ if (socialUsers.list) {
     if (!id) return;
     if (btn.classList.contains("btn-edit-user")) {
       openSocialUserEditor(id);
-    } else if (btn.classList.contains("btn-delete-user")) {
-      // quick delete from list
+    } else if (btn.classList.contains("user-soft-delete-btn")) {
       deleteSocialUserById(id);
+    }
+  });
+
+  socialUsers.list.addEventListener("change", async (ev) => {
+    const sel = ev.target;
+    if (!(sel && sel.classList && sel.classList.contains("user-role-select"))) return;
+    const id = sel.getAttribute("data-id");
+    const newRole = String(sel.value || "").toLowerCase();
+    if (!id || !ALLOWED_SOCIAL_ROLES.includes(newRole)) {
+      sel.value = "staff";
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "users", id), { role: newRole });
+      socialUsersCache = socialUsersCache.map((u) => u.id === id ? { ...u, role: newRole } : u);
+      applySocialFilters();
+    } catch (err) {
+      console.error(err);
+      // revert
+      const u = socialUsersCache.find((x) => x.id === id);
+      const oldRole = ALLOWED_SOCIAL_ROLES.includes(String(u?.role || "").toLowerCase()) ? String(u.role).toLowerCase() : "staff";
+      sel.value = oldRole;
+      alert("Role update fehlgeschlagen.");
     }
   });
 }

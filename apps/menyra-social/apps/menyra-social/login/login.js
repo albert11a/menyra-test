@@ -19,7 +19,7 @@ const ADMIN_LOGINS = {
       displayName: "Menyra HQ",
       city: "Prishtina",
       role: "business",
-      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+      avatarUrl: "https://via.placeholder.com/300/4f46e5/ffffff?text=HQ"
     }
   },
   admin1: {

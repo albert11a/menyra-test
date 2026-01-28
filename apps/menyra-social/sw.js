@@ -1,5 +1,5 @@
 // MENYRA service worker: network-first with safe caching and auto-activate
-const CACHE_NAME = 'menyra-cache-v2';
+const CACHE_NAME = 'menyra-cache-v1';
 const MAX_AGE = 24 * 60 * 60 * 1000; // 24h (not strictly enforced here)
 
 self.addEventListener('install', (event) => {
@@ -48,7 +48,7 @@ self.addEventListener('fetch', (event) => {
         const cache = await caches.open(CACHE_NAME);
         const cached = await cache.match(req);
         const networkPromise = fetch(req).then((res) => {
-          if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+          if (res && res.ok) cache.put(req, res.clone());
           return res;
         }).catch(() => null);
         // Return cached if present immediately, otherwise wait for network
@@ -68,7 +68,7 @@ self.addEventListener('fetch', (event) => {
       const NETWORK_TIMEOUT = 3000; // ms
 
       const networkPromise = fetch(req).then((res) => {
-        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+        if (res && res.ok) cache.put(req, res.clone());
         return res;
       }).catch(() => null);
 
