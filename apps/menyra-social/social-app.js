@@ -99,6 +99,9 @@ const DEFAULT_PROFILE = {
   posts: []
 };
 
+const noImageSvg = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+const storyPlaceholder = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+
 const DEFAULT_SETTINGS = {
   darkMode: false,
   privateAccount: false,
@@ -4984,7 +4987,7 @@ function buildStoriesFromFeed(posts) {
     map.set(rid, {
       restaurantId: rid,
       name: post.business || post.restaurantName || "Business",
-      img: post.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+      img: storyPlaceholder,
       isLive: false
     });
   });
