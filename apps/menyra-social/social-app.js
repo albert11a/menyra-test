@@ -4961,7 +4961,7 @@ function normalizeFeedPost(row) {
     id: row.id,
     restaurantId: row.rid || row.restaurantId || "",
     business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
-    logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || thumb,
+    logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
     image: thumb || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
