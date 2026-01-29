@@ -3976,6 +3976,7 @@ function refreshSearchView() {
 
 function renderUploadView() {
   const profile = state.userProfile;
+  const previewUrl = getOptimizedImageUrl(state.upload.preview, "large");
   return `
     <div class="p-6 animate-in slide-in-from-bottom-10 duration-700 min-h-[70vh] flex flex-col">
       <header class="flex items-center justify-between mb-8">
@@ -3986,7 +3987,7 @@ function renderUploadView() {
       <input type="file" id="uploadFileInput" class="hidden" accept="image/*" />
       ${state.upload.preview ? `
         <div class="space-y-6">
-          <img src="${escapeHtml(state.upload.preview)}" class="w-full h-64 object-cover rounded-[2.5rem] shadow-lg" />
+          <img src="${escapeHtml(previewUrl)}" class="w-full h-64 object-cover rounded-[2.5rem] shadow-lg" />
           <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
             <textarea id="uploadCaption" placeholder="Bildunterschrift..." class="w-full bg-transparent text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.upload.caption)}</textarea>
           </div>
@@ -4007,6 +4008,7 @@ function renderUploadView() {
 function renderHeader() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const badge = unread > 9 ? "9+" : String(unread || "");
+  const avatarUrl = getOptimizedImageUrl(state.userProfile.avatar, "avatar");
   return `
     <header class="p-6 pb-2 flex justify-between items-center sticky top-0 z-40 backdrop-blur-xl bg-slate-50/80">
       <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
@@ -4020,7 +4022,7 @@ function renderHeader() {
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">Social</span>
       </div>
       <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-        <img id="headerAvatar" src="${escapeHtml(state.userProfile.avatar || "")}" class="w-full h-full rounded-[1.4rem] object-cover" />
+        <img id="headerAvatar" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] object-cover" />
       </button>
     </header>
   `;
