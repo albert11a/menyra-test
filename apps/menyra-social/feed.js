@@ -29,14 +29,32 @@ const storiesStatus = document.getElementById("storiesStatus");
 
 let currentType = "all";
 
-attachAuthHeader({ linkId: "authLink", userId: "authUser" });
-
-function normalizeUrl(raw) {
+function toCloudflareImageUrl(raw, options = {}) {
   const value = String(raw || "").trim();
   if (!value) return "";
-  if (/^https?:\/\//i.test(value)) return value;
-  if (value.startsWith("//")) return `https:${value}`;
-  return `https://${value.replace(/^\/+/, "")}`;
+
+  let path = value;
+  try {
+    const url = new URL(value);
+    // If it's a full R2 public URL, just take the pathname
+    if (url.hostname.endsWith(".r2.dev")) {
+      path = url.pathname;
+    }
+  } catch (e) {
+    // Not a full URL, assume it's a path already
+  }
+
+  // Ensure path starts with a slash
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+
+  const params = new URLSearchParams();
+  for (const [key, val] of Object.entries(options)) {
+    if (val !== undefined) params.set(key, String(val));
+  }
+  const query = params.toString().replace(/&/g, ",");
+
+  // Format: /cdn-cgi/image/width=400,quality=75/path/to/image.jpg
+  return `/cdn-cgi/image/${query}${cleanPath}`;
 }
 
 function setActiveTab(btn) {
@@ -60,7 +78,7 @@ function renderFeed(items) {
     const title = item.businessName || item.restaurantName || item.name || "Business";
     const caption = item.captionShort || shortText(item.caption || "");
     const rawThumb = item.thumbUrl || item.mediaUrl || item.media?.[0]?.thumbUrl || item.media?.[0]?.url || "";
-    const thumb = normalizeUrl(rawThumb);
+    const thumb = toCloudflareImageUrl(rawThumb, { width: 400, quality: 75, format: "auto" });
     const mediaType = item.mediaType || item.media?.[0]?.type || "image";
     const showType = currentType === "all";
     const typeBadge = showType ? `<span class="badge">${item.postType || "-"}</span>` : "";
@@ -96,7 +114,8 @@ function renderStories(items) {
   storiesList.innerHTML = items.map((item) => {
     const name = item.name || "Business";
     const city = item.city || "";
-    const logo = item.logo || "";
+    const rawLogo = item.logo || "";
+    const logo = toCloudflareImageUrl(rawLogo, { width: 80, height: 80, fit: "cover", quality: 75, format: "auto" });
     const avatar = logo
       ? `<img src="${logo}" alt="${name}"/>`
       : `<span>${initials(name)}</span>`;
