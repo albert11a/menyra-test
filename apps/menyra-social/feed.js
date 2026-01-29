@@ -29,34 +29,6 @@ const storiesStatus = document.getElementById("storiesStatus");
 
 let currentType = "all";
 
-function toCloudflareImageUrl(raw, options = {}) {
-  const value = String(raw || "").trim();
-  if (!value) return "";
-
-  let path = value;
-  try {
-    const url = new URL(value);
-    // If it's a full R2 public URL, just take the pathname
-    if (url.hostname.endsWith(".r2.dev")) {
-      path = url.pathname;
-    }
-  } catch (e) {
-    // Not a full URL, assume it's a path already
-  }
-
-  // Ensure path starts with a slash
-  const cleanPath = path.startsWith("/") ? path : `/${path}`;
-
-  const params = new URLSearchParams();
-  for (const [key, val] of Object.entries(options)) {
-    if (val !== undefined) params.set(key, String(val));
-  }
-  const query = params.toString().replace(/&/g, ",");
-
-  // Format: /cdn-cgi/image/width=400,quality=75/path/to/image.jpg
-  return `/cdn-cgi/image/${query}${cleanPath}`;
-}
-
 function setActiveTab(btn) {
   feedTabs.querySelectorAll("button").forEach((b) => b.classList.toggle("is-active", b === btn));
   currentType = btn.dataset.type || "offer";
@@ -78,7 +50,7 @@ function renderFeed(items) {
     const title = item.businessName || item.restaurantName || item.name || "Business";
     const caption = item.captionShort || shortText(item.caption || "");
     const rawThumb = item.thumbUrl || item.mediaUrl || item.media?.[0]?.thumbUrl || item.media?.[0]?.url || "";
-    const thumb = toCloudflareImageUrl(rawThumb, { width: 400, quality: 75, format: "auto" });
+    const thumb = rawThumb; // Use URL directly from database
     const mediaType = item.mediaType || item.media?.[0]?.type || "image";
     const showType = currentType === "all";
     const typeBadge = showType ? `<span class="badge">${item.postType || "-"}</span>` : "";
@@ -115,7 +87,7 @@ function renderStories(items) {
     const name = item.name || "Business";
     const city = item.city || "";
     const rawLogo = item.logo || "";
-    const logo = toCloudflareImageUrl(rawLogo, { width: 80, height: 80, fit: "cover", quality: 75, format: "auto" });
+    const logo = rawLogo; // Use URL directly from database
     const avatar = logo
       ? `<img src="${logo}" alt="${name}"/>`
       : `<span>${initials(name)}</span>`;
