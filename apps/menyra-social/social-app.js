@@ -873,7 +873,7 @@ function currentUserBadge() {
     uid: state.user?.uid || "",
     name: state.userProfile.name || "User",
     handle: state.userProfile.handle || "user",
-    avatar: state.userProfile.avatar || "https://images.menyra.com/placeholder.gif"
+    avatar: state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
   };
 }
 
@@ -1600,7 +1600,7 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://images.menyra.com/placeholder.gif")}" class="w-10 h-10 rounded-xl object-cover" />
+          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==")}" class="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
             <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
@@ -1836,7 +1836,7 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  const avatar = escapeHtml(state.userProfile.avatar || "https://images.menyra.com/placeholder.gif");
+  const avatar = escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==");
   const headerAvatar = document.getElementById("headerAvatar");
   if (headerAvatar && headerAvatar.getAttribute("src") !== avatar) {
     headerAvatar.setAttribute("src", avatar);
@@ -2691,7 +2691,7 @@ function renderPublicProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div class="relative">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "https://images.menyra.com/placeholder.gif")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -2767,7 +2767,7 @@ function renderProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "https://images.menyra.com/placeholder.gif")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
