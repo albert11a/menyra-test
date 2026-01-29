@@ -3392,6 +3392,7 @@ function renderProfileModal() {
   const followKey = String(p.handle || "").replace(/^@/, "");
   const isFollowing = state.followingHandles.includes(followKey);
   const typeLabel = p.restaurantId ? "Business" : "User";
+  const avatarUrl = getOptimizedImageUrl(p.avatar, "avatar");
 
   return `
     <div class="fixed inset-0 z-[60]">
@@ -3403,7 +3404,7 @@ function renderProfileModal() {
           </div>
 
           <div class="flex items-center gap-4">
-            <img src="${escapeHtml(p.avatar)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
+            <img src="${escapeHtml(avatarUrl)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
             <div class="flex-1 min-w-0">
               <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
               <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
@@ -3440,9 +3441,10 @@ function renderProfileModal() {
 function renderCommentItem(postId, comment, parentId = "") {
   const likeCount = Array.isArray(comment.likes) ? comment.likes.length : (Number(comment.likesCount) || 0);
   const isReply = !!parentId;
+  const avatarUrl = getOptimizedImageUrl(comment.avatar, "avatar");
   return `
     <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}">
-      <img src="${escapeHtml(comment.avatar)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
+      <img src="${escapeHtml(avatarUrl)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
       <div class="flex-1">
         <div class="flex items-center justify-between">
           <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author)}</div>
@@ -3481,7 +3483,8 @@ function renderPostModal() {
   const meta = ensurePostMeta(post.id);
   const counts = resolvePostCounts(post);
   const caption = post.caption || post.title || "";
-  const imageUrl = post.url || post.image || "";
+  const rawImageUrl = post.url || post.image || "";
+  const imageUrl = getOptimizedImageUrl(rawImageUrl, "large");
   const comments = (meta.comments || []).map(ensureCommentShape);
   const userBadge = currentUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
@@ -3568,15 +3571,17 @@ function renderLikesModal() {
           </div>
 
           <div class="px-7 pb-7 space-y-3 overflow-y-auto no-scrollbar modal-scroll flex-1">
-            ${likes.length ? likes.map((user) => `
+            ${likes.length ? likes.map((user) => {
+              const avatarUrl = getOptimizedImageUrl(user.avatar, "avatar");
+              return `
               <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                <img src="${escapeHtml(user.avatar)}" class="w-10 h-10 rounded-2xl object-cover" />
+                <img src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-2xl object-cover" />
                 <div>
                   <div class="text-xs font-black">${escapeHtml(user.name)}</div>
                   <div class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(user.handle)}</div>
                 </div>
               </div>
-            `).join("") : `
+            `}).join("") : `
               <div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Likes</div>
             `}
           </div>
@@ -3585,6 +3590,7 @@ function renderLikesModal() {
     </div>
   `;
 }
+
 
 function updatePostModalMeta() {
   if (!state.postModal.open || !state.postModal.post) return;
