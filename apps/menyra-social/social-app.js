@@ -2400,10 +2400,11 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   const aspectClass = isGrid
     ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
     : "aspect-[4/5]";
+  const imageUrl = getOptimizedImageUrl(item.url, isWide ? "large" : "medium");
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
+        <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">
@@ -2471,10 +2472,12 @@ function renderProfileCheckins() {
   }
   return `
     <div class="px-6 flex flex-col gap-4 pb-24 animate-in fade-in duration-300">
-      ${checkins.map((place) => `
+      ${checkins.map((place) => {
+        const imageUrl = getOptimizedImageUrl(place.image, "thumb");
+        return `
         <div class="flex items-center gap-4 bg-white p-4 rounded-[2rem] border border-slate-50 shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] active:scale-[0.98] transition-all cursor-pointer group">
           <div class="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden shrink-0 shadow-inner group-hover:shadow-md transition-all">
-            <img src="${escapeHtml(place.image || "")}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
           </div>
           <div class="flex-1">
             <h4 class="font-black text-slate-900 text-sm mb-1">${escapeHtml(place.name || "Ort")}</h4>
@@ -2486,7 +2489,7 @@ function renderProfileCheckins() {
             ${icon("arrow-right", "w-4 h-4")}
           </button>
         </div>
-      `).join("")}
+      `}).join("")}
     </div>
   `;
 }
@@ -2721,6 +2724,7 @@ function renderPublicProfileView() {
   const isMediaTab = state.profileContentTab === "media";
   const isCheckinTab = state.profileContentTab === "checkins";
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
+  const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   return `
     <div class="pb-24">
       <div class="px-5 pb-2 pt-10">
@@ -2737,7 +2741,7 @@ function renderPublicProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div class="relative">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -2804,6 +2808,7 @@ function renderProfileView() {
   const isMediaTab = state.profileContentTab === "media";
   const isCheckinTab = state.profileContentTab === "checkins";
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
+  const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   return `
     <div class="pb-24">
       <div class="px-5 pb-2 pt-10">
@@ -2813,7 +2818,7 @@ function renderProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -3801,9 +3806,10 @@ function renderNotificationsView() {
 function renderSearchUserItem(user) {
   const handle = user.handle || normalizeHandle(user.name || "user");
   const displayName = sanitizeDisplayName(user.name, handle || "User");
+  const avatarUrl = getOptimizedImageUrl(user.avatar, "avatar");
   return `
     <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(user.avatar)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <img src="${escapeHtml(avatarUrl)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
@@ -3815,9 +3821,10 @@ function renderSearchUserItem(user) {
 
 function renderSearchBusinessItem(biz) {
   const name = biz.name || "Business";
+  const logoUrl = getOptimizedImageUrl(biz.logo, "avatar");
   return `
     <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(biz.logo)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <img src="${escapeHtml(logoUrl)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
