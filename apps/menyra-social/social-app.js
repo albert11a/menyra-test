@@ -1707,6 +1707,7 @@ function renderFeedItem(post, index) {
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
             <img src="${escapeHtml(post.logo || post.image)}" ${logoAttrs} class="w-full h-full object-cover" />
+            <img src="${escapeHtml(post.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150")}" ${logoAttrs} class="w-full h-full object-cover" />
           </div>
           <div>
             <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
@@ -4931,6 +4932,7 @@ function normalizeFeedPost(row) {
     restaurantId: row.rid || row.restaurantId || "",
     business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
     logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || "",
+    logo: restaurant.logoUrl || restaurant.logo || (row.logoUrl !== thumb ? row.logoUrl : "") || "",
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
     image: thumb || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800",
@@ -4951,10 +4953,13 @@ function buildStoriesFromFeed(posts) {
   posts.forEach((post) => {
     const rid = post.restaurantId || post.ownerId || post.id;
     if (!rid || map.has(rid)) return;
+    const rest = state.restaurants.find(r => r.id === rid) || {};
+    const logo = rest.logoUrl || rest.logo || post.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150";
     map.set(rid, {
       restaurantId: rid,
       name: post.business || post.restaurantName || "Business",
       img: post.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
+      img: logo,
       isLive: false
     });
   });
