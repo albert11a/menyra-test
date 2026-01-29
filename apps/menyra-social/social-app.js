@@ -69,7 +69,7 @@ const ADMIN_LOGINS = {
       displayName: "Menyra HQ",
       city: "Prishtina",
       role: "business",
-      avatarUrl: "https://images.menyra.com/placeholder.gif"
+      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
     }
   },
   admin1: {
@@ -79,7 +79,7 @@ const ADMIN_LOGINS = {
       displayName: "Max Mustermann",
       city: "Prishtina",
       role: "user",
-      avatarUrl: "https://images.menyra.com/placeholder.gif"
+      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
     }
   }
 };
@@ -99,8 +99,8 @@ const DEFAULT_PROFILE = {
   posts: []
 };
 
-const noImageSvg = "https://images.menyra.com/placeholder.gif";
-const storyPlaceholder = "https://images.menyra.com/placeholder.gif";
+const noImageSvg = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjNGNEY2Ii8+PC9zdmc+";
+const storyPlaceholder = "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
 
 const DEFAULT_SETTINGS = {
   darkMode: false,
@@ -118,7 +118,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Marco",
     text: "hat dein Foto geliked",
     time: "10m",
-    img: "https://images.menyra.com/placeholder.gif",
+    img: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
     read: false
   },
   {
@@ -127,7 +127,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Elena",
     text: "folgt dir jetzt",
     time: "1h",
-    img: "https://images.menyra.com/placeholder.gif",
+    img: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
     read: false
   },
   {
@@ -136,7 +136,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Menyra Team",
     text: "Willkommen zurueck!",
     time: "2h",
-    img: "https://images.menyra.com/placeholder.gif",
+    img: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
     read: true
   }
 ];
@@ -719,7 +719,7 @@ function normalizeBusinessLocation(rest, idx) {
     lng,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.6,
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "https://images.menyra.com/placeholder.gif",
+    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
     desc: rest.description || rest.bio || "Menyra Business",
     raw: rest
   };
@@ -965,7 +965,7 @@ function buildBusinessResultsFromFeed(posts) {
       id: id || "",
       name: post.business || "Business",
       city: post.location || "Prishtina",
-      logo: post.logo || "https://images.menyra.com/placeholder.gif"
+      logo: post.logo || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
     });
   });
   return Array.from(map.values()).slice(0, SEARCH_LIMITS.businesses);
@@ -1003,7 +1003,7 @@ function normalizeUserSearchResult(doc) {
     uid: doc?.id || data.uid || "",
     name,
     handle,
-    avatar: data.avatarUrl || data.avatar || `https://images.menyra.com/placeholder.gif`,
+    avatar: data.avatarUrl || data.avatar || `data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==`,
     location: data.city || "Prishtina",
     followers: data.followersCount ?? data.followers ?? 0,
     following: data.followingCount ?? data.following ?? 0,
@@ -1913,7 +1913,7 @@ function stopLiveListeners() {
 function handleNotificationsUpdate(items) {
   const processed = items.map((item) => ({
     ...item,
-    img: item.img || "https://images.menyra.com/placeholder.gif"
+    img: item.img || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
   }));
   state.notifications = processed;
   saveNotifications(processed);
@@ -4981,7 +4981,7 @@ function buildStoriesFromFeed(posts) {
     map.set(rid, {
       restaurantId: rid,
       name: post.business || post.restaurantName || "Business",
-      img: storyPlaceholder,
+      img: post.logo || storyPlaceholder,
       isLive: false
     });
   });
