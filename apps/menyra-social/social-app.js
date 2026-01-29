@@ -298,6 +298,51 @@ function resumeRender() {
   }
 }
 
+function getOptimizedImageUrl(path, size = "large") {
+  const base = BUNNY_EDGE_BASE || "https://menyra-media.alberthoti-vsa.workers.dev/";
+  const placeholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3C/svg%3E";
+  
+  if (!path || typeof path !== "string") {
+    return placeholder;
+  }
+  if (path.startsWith("data:") || path.startsWith("blob:")) {
+    return path;
+  }
+  // This handles fully qualified URLs from the upload process and external URLs
+  if (path.startsWith("http")) {
+    // If it's already a new media worker URL, return it as is.
+    if (path.includes("workers.dev/")) return path;
+    // For other absolute URLs, we can't optimize them, so return them directly.
+    return path;
+  }
+
+  const cleanedPath = path.replace(/^\//, "");
+  
+  const params = new URLSearchParams();
+  params.set("format", "auto");
+  params.set("quality", "80");
+
+  switch (size) {
+    case "avatar":
+      params.set("width", "128");
+      params.set("height", "128");
+      break;
+    case "thumb":
+      params.set("width", "400");
+       params.set("height", "400");
+      break;
+    case "medium":
+      params.set("width", "600");
+      break;
+    case "large":
+    default:
+      params.set("width", "800");
+      break;
+  }
+
+  return `${base}${cleanedPath}?${params.toString()}`;
+}
+
 function escapeHtml(value) {
   return String(value || "").replace(/[&<>"']/g, (ch) => ({
     "&": "&amp;",
