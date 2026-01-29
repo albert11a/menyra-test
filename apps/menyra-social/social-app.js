@@ -1630,6 +1630,7 @@ function renderAuthScreen() {
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const switchLinks = renderRoleSwitchLinks();
+  const avatarUrl = getOptimizedImageUrl(state.userProfile.avatar, "avatar");
   return `
     <div id="drawerRoot" class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
@@ -1642,7 +1643,7 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "")}" class="w-10 h-10 rounded-xl object-cover" />
+          <img id="drawerAvatar" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
             <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
@@ -1724,10 +1725,11 @@ function renderStoriesRow(stories) {
     ${stories.length ? stories.map((s) => {
       const borderClass = s.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
       const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
+      const imgUrl = getOptimizedImageUrl(s.img, "thumb");
       return `
         <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
           <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-            <img src="${escapeHtml(s.img)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+            <img src="${escapeHtml(imgUrl)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
           </div>
           <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
         </a>
@@ -1883,14 +1885,14 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  const avatar = escapeHtml(state.userProfile.avatar || "");
+  const avatarUrl = getOptimizedImageUrl(state.userProfile.avatar, "avatar");
   const headerAvatar = document.getElementById("headerAvatar");
-  if (headerAvatar && headerAvatar.getAttribute("src") !== avatar) {
-    headerAvatar.setAttribute("src", avatar);
+  if (headerAvatar && headerAvatar.getAttribute("src") !== avatarUrl) {
+    headerAvatar.setAttribute("src", avatarUrl);
   }
   const drawerAvatar = document.getElementById("drawerAvatar");
-  if (drawerAvatar && drawerAvatar.getAttribute("src") !== avatar) {
-    drawerAvatar.setAttribute("src", avatar);
+  if (drawerAvatar && drawerAvatar.getAttribute("src") !== avatarUrl) {
+    drawerAvatar.setAttribute("src", avatarUrl);
   }
   const drawerName = document.getElementById("drawerName");
   if (drawerName) drawerName.textContent = state.userProfile.name || "User";
@@ -2307,6 +2309,7 @@ function attachPostMetaListeners(post) {
 }
 
 function renderMapSheet(selected) {
+  const imageUrl = getOptimizedImageUrl(selected.img, "thumb");
   return `
     <div class="absolute bottom-6 left-6 right-6 animate-in slide-in-from-bottom-6 duration-300 z-50">
       <div class="bg-white rounded-[2.5rem] p-5 shadow-2xl border border-slate-100 relative">
@@ -2314,7 +2317,7 @@ function renderMapSheet(selected) {
           ${icon("x", "w-4 h-4")}
         </button>
         <div class="flex gap-4">
-          <img src="${escapeHtml(selected.img)}" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
+          <img src="${escapeHtml(imageUrl)}" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
           <div class="flex-1">
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Business</span>
             <h3 class="text-lg font-black tracking-tight text-slate-900 mt-1">${escapeHtml(selected.name || "Business")}</h3>
