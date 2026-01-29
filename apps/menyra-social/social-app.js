@@ -308,26 +308,15 @@ function getOptimizedImageUrl(path, size = "large") {
   if (path.startsWith("data:") || path.startsWith("blob:")) {
     return path;
   }
-
-  let imagePath = path;
-
-  // If the path is a full R2 public URL, extract the path part to re-base it
-  if (path.startsWith("https://") && path.includes(".r2.dev/")) {
-    try {
-      const url = new URL(path);
-      imagePath = url.pathname;
-    } catch (e) {
-      // If URL parsing fails, it's not a valid URL, so we can't optimize.
-      return placeholder;
-    }
-  }
-  
-  // If it's a different full URL, we can't optimize it.
-  if (imagePath.startsWith("http")) {
-    return imagePath;
+  // This handles fully qualified URLs from the upload process and external URLs
+  if (path.startsWith("http")) {
+    // If it's already a new media worker URL, return it as is.
+    if (path.includes("workers.dev/")) return path;
+    // For other absolute URLs, we can't optimize them, so return them directly.
+    return path;
   }
 
-  const cleanedPath = imagePath.replace(/^\//, "");
+  const cleanedPath = path.replace(/^\//, "");
   
   const params = new URLSearchParams();
   params.set("format", "auto");
