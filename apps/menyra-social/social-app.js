@@ -1706,7 +1706,6 @@ function renderFeedItem(post, index) {
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-            <img src="${escapeHtml(post.logo || post.image)}" ${logoAttrs} class="w-full h-full object-cover" />
             <img src="${escapeHtml(post.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150")}" ${logoAttrs} class="w-full h-full object-cover" />
           </div>
           <div>
@@ -4931,7 +4930,6 @@ function normalizeFeedPost(row) {
     id: row.id,
     restaurantId: row.rid || row.restaurantId || "",
     business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
-    logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || "",
     logo: restaurant.logoUrl || restaurant.logo || (row.logoUrl !== thumb ? row.logoUrl : "") || "",
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
@@ -4958,7 +4956,6 @@ function buildStoriesFromFeed(posts) {
     map.set(rid, {
       restaurantId: rid,
       name: post.business || post.restaurantName || "Business",
-      img: post.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
       img: logo,
       isLive: false
     });
