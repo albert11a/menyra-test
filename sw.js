@@ -41,30 +41,6 @@ self.addEventListener('fetch', (event) => {
 
   const isImage = req.destination === 'image' || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname) || url.href.includes('/image/fetch');
 
-  if (isImage) {
-    // Network-first, fallback to cache
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE_NAME);
-      try {
-        const networkResp = await fetch(req);
-        // If the fetch is successful, update the cache and return the response
-        if (networkResp) {
-          cache.put(req, networkResp.clone());
-          return networkResp;
-        }
-      } catch (err) {
-        // If the network fails, try to serve from cache
-        const cached = await cache.match(req);
-        if (cached) {
-          return cached;
-        }
-        // If not in cache either, throw the error
-        throw err;
-      }
-    })());
-    return;
-  }
-
   // For navigations/HTML do a network-first with short timeout
   if (isNavigation) {
     event.respondWith((async () => {
