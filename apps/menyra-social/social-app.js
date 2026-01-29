@@ -2109,7 +2109,6 @@ function startStoriesListener() {
       map.set(rid, {
         restaurantId: rid,
         name: rest.name || rest.restaurantName || docSnap.data()?.restaurantName || "Business",
-        img: rest.logoUrl || rest.logo || docSnap.data()?.thumbUrl || docSnap.data()?.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
         img: rest.logoUrl || rest.logo || docSnap.data()?.logoUrl || docSnap.data()?.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
         isLive: true
       });
@@ -4931,7 +4930,6 @@ function normalizeFeedPost(row) {
     id: row.id,
     restaurantId: row.rid || row.restaurantId || "",
     business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
-    logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || thumb,
     logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || "",
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
@@ -4956,7 +4954,6 @@ function buildStoriesFromFeed(posts) {
     map.set(rid, {
       restaurantId: rid,
       name: post.business || post.restaurantName || "Business",
-      img: post.logo || post.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
       img: post.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
       isLive: false
     });
@@ -5481,4 +5478,3 @@ window.addEventListener("load", () => {
     window.lucide.createIcons();
   }
 });
-
