@@ -69,7 +69,7 @@ const ADMIN_LOGINS = {
       displayName: "Menyra HQ",
       city: "Prishtina",
       role: "business",
-      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+      avatarUrl: "https://images.menyra.com/placeholder.gif"
     }
   },
   admin1: {
@@ -79,7 +79,7 @@ const ADMIN_LOGINS = {
       displayName: "Max Mustermann",
       city: "Prishtina",
       role: "user",
-      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+      avatarUrl: "https://images.menyra.com/placeholder.gif"
     }
   }
 };
@@ -719,7 +719,7 @@ function normalizeBusinessLocation(rest, idx) {
     lng,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.6,
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "https://images.menyra.com/placeholder.gif",
     desc: rest.description || rest.bio || "Menyra Business",
     raw: rest
   };
@@ -873,7 +873,7 @@ function currentUserBadge() {
     uid: state.user?.uid || "",
     name: state.userProfile.name || "User",
     handle: state.userProfile.handle || "user",
-    avatar: state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+    avatar: state.userProfile.avatar || "https://images.menyra.com/placeholder.gif"
   };
 }
 
@@ -965,7 +965,7 @@ function buildBusinessResultsFromFeed(posts) {
       id: id || "",
       name: post.business || "Business",
       city: post.location || "Prishtina",
-      logo: post.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+      logo: post.logo || "https://images.menyra.com/placeholder.gif"
     });
   });
   return Array.from(map.values()).slice(0, SEARCH_LIMITS.businesses);
@@ -1003,7 +1003,7 @@ function normalizeUserSearchResult(doc) {
     uid: doc?.id || data.uid || "",
     name,
     handle,
-    avatar: data.avatarUrl || data.avatar || `data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=`,
+    avatar: data.avatarUrl || data.avatar || `https://images.menyra.com/placeholder.gif`,
     location: data.city || "Prishtina",
     followers: data.followersCount ?? data.followers ?? 0,
     following: data.followingCount ?? data.following ?? 0,
@@ -1600,7 +1600,7 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-10 h-10 rounded-xl object-cover" />
+          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "https://images.menyra.com/placeholder.gif")}" class="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
             <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
@@ -1836,7 +1836,7 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  const avatar = escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
+  const avatar = escapeHtml(state.userProfile.avatar || "https://images.menyra.com/placeholder.gif");
   const headerAvatar = document.getElementById("headerAvatar");
   if (headerAvatar && headerAvatar.getAttribute("src") !== avatar) {
     headerAvatar.setAttribute("src", avatar);
@@ -1911,8 +1911,12 @@ function stopLiveListeners() {
 }
 
 function handleNotificationsUpdate(items) {
-  state.notifications = items;
-  saveNotifications(items);
+  const processed = items.map((item) => ({
+    ...item,
+    img: item.img || "https://images.menyra.com/placeholder.gif"
+  }));
+  state.notifications = processed;
+  saveNotifications(processed);
   if (state.activeTab === "search" && refreshSearchView()) return;
   render();
 }
@@ -2687,7 +2691,7 @@ function renderPublicProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div class="relative">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(profile.avatar || "https://images.menyra.com/placeholder.gif")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -2763,7 +2767,7 @@ function renderProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(profile.avatar || "https://images.menyra.com/placeholder.gif")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -2812,18 +2816,8 @@ function renderProfileView() {
         ${renderProfileCheckins()}
       ` : `
         <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6" : "flex flex-col gap-8 px-6"}">
-          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
+          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, true)}
         </div>
-        ${state.profileContentTab === "posts" ? `
-          <div class="px-6 mt-8 mb-4">
-            <button data-nav="upload" class="w-full py-5 rounded-[2rem] bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-95 transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
-              <span class="relative z-10 flex items-center gap-2">
-                ${icon("plus", "w-4 h-4")} Neuen Beitrag
-              </span>
-              <div class="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-            </button>
-          </div>
-        ` : ""}
       `}
     </div>
   `;
@@ -5511,4 +5505,3 @@ window.addEventListener("load", () => {
     window.lucide.createIcons();
   }
 });
-
