@@ -1585,6 +1585,7 @@ function renderAuthScreen() {
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const switchLinks = renderRoleSwitchLinks();
+  const avatarUrl = getOptimizedImageUrl(state.userProfile.avatar, "avatar");
   return `
     <div id="drawerRoot" class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
@@ -1597,7 +1598,7 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "")}" class="w-10 h-10 rounded-xl object-cover" />
+          <img id="drawerAvatar" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl object-cover" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
             <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
@@ -1679,10 +1680,11 @@ function renderStoriesRow(stories) {
     ${stories.length ? stories.map((s) => {
       const borderClass = s.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
       const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
+      const imgUrl = getOptimizedImageUrl(s.img, "thumb");
       return `
         <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
           <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-            <img src="${escapeHtml(s.img)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+            <img src="${escapeHtml(imgUrl)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
           </div>
           <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
         </a>
@@ -1701,12 +1703,14 @@ function renderFeedItem(post, index) {
   const eager = index < 2;
   const heroAttrs = eager ? `fetchpriority="high"` : "";
   const logoAttrs = "";
+  const logoUrl = getOptimizedImageUrl(post.logo, "avatar");
+  const imageUrl = getOptimizedImageUrl(post.image, "large");
   return `
     <div class="group feed-card" ${feedAttr}>
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-            <img src="${escapeHtml(post.logo || "")}" ${logoAttrs} class="w-full h-full object-cover" />
+            <img src="${escapeHtml(logoUrl)}" ${logoAttrs} class="w-full h-full object-cover" />
           </div>
           <div>
             <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
@@ -1717,7 +1721,7 @@ function renderFeedItem(post, index) {
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative h-[30rem] rounded-[3rem] overflow-hidden bg-slate-200">
-          <img src="${escapeHtml(post.image)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+          <img src="${escapeHtml(imageUrl)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
           ${post.isLive ? `
             <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
