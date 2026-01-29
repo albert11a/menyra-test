@@ -351,7 +351,7 @@ function getOptimizedImageUrl(path, size = "large") {
       break;
   }
 
-  return `${base}${cleanedPath}?${params.toString()}`;
+  return `${base}/${cleanedPath}?${params.toString()}`;
 }
 
 function escapeHtml(value) {
