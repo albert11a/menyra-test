@@ -18,8 +18,7 @@ const ADMIN_LOGINS = {
     profile: {
       displayName: "Menyra HQ",
       city: "Prishtina",
-      role: "business",
-      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+      avatarUrl: ""
     }
   },
   admin1: {
@@ -29,7 +28,7 @@ const ADMIN_LOGINS = {
       displayName: "Max Mustermann",
       city: "Prishtina",
       role: "user",
-      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
+      avatarUrl: ""
     }
   }
 };
