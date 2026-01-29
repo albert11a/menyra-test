@@ -42,19 +42,24 @@ self.addEventListener('fetch', (event) => {
   const isImage = req.destination === 'image' || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname) || url.href.includes('/image/fetch');
 
   if (isImage) {
-    // stale-while-revalidate: return cache quickly if available, update cache in background
+    // Network-first, fallback to cache
     event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
       try {
-        const cache = await caches.open(CACHE_NAME);
-        const cached = await cache.match(req);
-        const networkPromise = fetch(req).then((res) => {
-          if (res && res.ok) cache.put(req, res.clone());
-          return res;
-        }).catch(() => null);
-        // Return cached if present immediately, otherwise wait for network
-        return cached || await networkPromise || new Response('', { status: 404 });
+        const networkResp = await fetch(req);
+        // If the fetch is successful, update the cache and return the response
+        if (networkResp) {
+          cache.put(req, networkResp.clone());
+          return networkResp;
+        }
       } catch (err) {
-        return fetch(req).catch(() => new Response('', { status: 404 }));
+        // If the network fails, try to serve from cache
+        const cached = await cache.match(req);
+        if (cached) {
+          return cached;
+        }
+        // If not in cache either, throw the error
+        throw err;
       }
     })());
     return;
