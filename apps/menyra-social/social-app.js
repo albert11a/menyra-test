@@ -13,19 +13,11 @@ import {
   doc,
   getDoc,
   getDocs,
-  onSnapshot,
   query,
   where,
   orderBy,
-  startAt,
-  endAt,
   limit,
-  deleteDoc,
   setDoc,
-  updateDoc,
-  increment,
-  arrayUnion,
-  arrayRemove,
   serverTimestamp,
   Timestamp
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
@@ -57,8 +49,7 @@ const STORAGE_KEYS = {
   settings: "menyra_social_settings_v3",
   notifications: "menyra_social_notifications_v1",
   following: "menyra_social_following_v1",
-  postMeta: "menyra_social_post_meta_v1",
-  feed: "menyra_social_feed_v1"
+  postMeta: "menyra_social_post_meta_v1"
 };
 
 const ADMIN_LOGINS = {
@@ -69,7 +60,7 @@ const ADMIN_LOGINS = {
       displayName: "Menyra HQ",
       city: "Prishtina",
       role: "business",
-      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
+      avatarUrl: "https://via.placeholder.com/300/4f46e5/ffffff?text=HQ"
     }
   },
   admin1: {
@@ -79,7 +70,7 @@ const ADMIN_LOGINS = {
       displayName: "Max Mustermann",
       city: "Prishtina",
       role: "user",
-      avatarUrl: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
+      avatarUrl: "https://i.pravatar.cc/300?u=max"
     }
   }
 };
@@ -99,9 +90,6 @@ const DEFAULT_PROFILE = {
   posts: []
 };
 
-const noImageSvg = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjNGNEY2Ii8+PC9zdmc+";
-const storyPlaceholder = "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==";
-
 const DEFAULT_SETTINGS = {
   darkMode: false,
   privateAccount: false,
@@ -118,7 +106,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Marco",
     text: "hat dein Foto geliked",
     time: "10m",
-    img: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+    img: "https://i.pravatar.cc/100?u=1",
     read: false
   },
   {
@@ -127,7 +115,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Elena",
     text: "folgt dir jetzt",
     time: "1h",
-    img: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+    img: "https://i.pravatar.cc/100?u=2",
     read: false
   },
   {
@@ -136,7 +124,7 @@ const DEFAULT_NOTIFICATIONS = [
     user: "Menyra Team",
     text: "Willkommen zurueck!",
     time: "2h",
-    img: "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+    img: "https://via.placeholder.com/100/6366f1/ffffff?text=M",
     read: true
   }
 ];
@@ -149,39 +137,6 @@ const ROLE_SWITCH_LABELS = {
 };
 const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen", "social"]);
 const businessProfileCache = new Map();
-const userProfileCache = new Map();
-const restaurantOwnerCache = new Map();
-const FAST_LIMITS = {
-  feed: 20,
-  feedFallback: 40,
-  feedDelta: 8,
-  userPosts: 24,
-  businessPosts: 24,
-  restaurants: 80,
-  stories: 24,
-  storiesFallback: 30,
-  likes: 40,
-  comments: 80
-};
-const SEARCH_LIMITS = {
-  users: 10,
-  businesses: 12
-};
-const FAST_MODE = true;
-const CACHE_KEYS = {
-  feed: "menyra_social_feed_cache_v1",
-  userPosts: "menyra_social_user_posts_cache_v1",
-  businessPosts: "menyra_social_business_posts_cache_v1",
-  restaurants: "menyra_social_restaurants_cache_v1",
-  stories: "menyra_social_stories_cache_v1"
-};
-const CACHE_TTL_MS = {
-  feed: 10 * 60 * 1000,
-  posts: 10 * 60 * 1000,
-  restaurants: 60 * 60 * 1000,
-  stories: 10 * 60 * 1000
-};
-const FEED_DELTA_MIN_MS = 3 * 60 * 1000;
 
 const state = {
   sessionReady: false,
@@ -203,11 +158,9 @@ const state = {
   roleSwitchRestaurantId: "",
   followingHandles: [],
   profileView: null,
-  profileBackTab: "feed",
   profileViewMode: "grid",
   profileContentTab: "posts",
   profileCheckins: [],
-  profilePostMenuId: null,
   profileModal: {
     open: false,
     profile: null
@@ -219,30 +172,17 @@ const state = {
     open: false,
     post: null,
     commentText: "",
-    replyTo: null,
-    loading: false,
-    animate: false,
-    sending: false
+    replyTo: null
   },
   likesModal: {
     open: false,
-    postId: "",
-    animate: false
+    postId: ""
   },
   upload: {
     preview: "",
     caption: "",
     file: null,
     status: ""
-  },
-  search: {
-    query: "",
-    filter: "all",
-    userResults: [],
-    businessResults: [],
-    loading: false,
-    error: "",
-    keepFocus: false
   },
   auth: {
     mode: "login",
@@ -256,38 +196,6 @@ let renderSuspended = 0;
 let renderQueued = false;
 let bodyScrollLocked = false;
 let bodyScrollTop = 0;
-let profileMenuBound = false;
-let pendingCommentHighlight = "";
-let lastCommentKey = "";
-let lastCommentAt = 0;
-let overlayCache = { profile: "", post: "", likes: "" };
-let dataLoaded = {
-  feed: false,
-  profile: false,
-  restaurants: false,
-  stories: false,
-  following: false,
-  notifications: false
-};
-let lastAppHtml = "";
-let lastRenderMode = "";
-let authReadyTimer = null;
-let feedDeltaTimer = null;
-let searchTimer = null;
-let searchToken = 0;
-const searchCache = new Map();
-let notificationsUnsub = null;
-let userDocUnsub = null;
-let profileViewUnsub = null;
-let feedUnsub = null;
-let storiesUnsub = null;
-let userPostsUnsub = null;
-let businessPostsUnsub = null;
-let modalLikesUnsub = null;
-let modalCommentsUnsub = null;
-let storyRefreshTimer = null;
-let liveFeedDisabled = false;
-let liveStoriesDisabled = false;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -319,57 +227,13 @@ function formatCount(value) {
   return str || "0";
 }
 
-function sanitizeDisplayName(value, fallback) {
-  const cleaned = String(value || "").trim();
-  if (!cleaned) return fallback;
-  const lower = cleaned.toLowerCase();
-  if (lower === "data" || lower === "undefined" || lower === "null") return fallback;
-  return cleaned;
-}
-
-function normalizeSearchQuery(value) {
-  return String(value || "").trim();
-}
-
-function normalizeSearchKey(value) {
-  return normalizeSearchQuery(value).toLowerCase();
-}
-
-function scoreSearchMatch(text, query) {
-  if (!text || !query) return 0;
-  const hay = String(text).toLowerCase();
-  if (hay.startsWith(query)) return 3;
-  if (hay.includes(query)) return 1;
-  return 0;
-}
-
 function icon(name, className = "") {
   return `<i data-lucide="${name}" class="${className}"></i>`;
 }
 
-function focusSearchInput() {
-  const input = document.getElementById("searchInput");
-  if (!input) return;
-  input.focus({ preventScroll: true });
-  const len = input.value.length;
-  try {
-    input.setSelectionRange(len, len);
-  } catch {}
-}
-
 function setState(patch) {
-  const prevTab = state.activeTab;
-  const keys = Object.keys(patch || {});
-  const drawerOnly = keys.length === 1 && keys[0] === "drawerOpen";
   Object.assign(state, patch);
-  if (drawerOnly && lastRenderMode === "main") {
-    updateDrawerDom();
-    return;
-  }
   render();
-  if (patch.activeTab && patch.activeTab !== prevTab) {
-    queueMicrotask(() => ensureTabData(state.activeTab));
-  }
 }
 
 function saveSettings(settings) {
@@ -381,56 +245,11 @@ function saveNotifications(notifications) {
 }
 
 function saveFollowing(handles) {
-  if (!Array.isArray(handles)) return;
-  try {
-    safeStorage.setItem(STORAGE_KEYS.following, JSON.stringify(handles.slice(0, 500)));
-  } catch {}
+  safeStorage.setItem(STORAGE_KEYS.following, JSON.stringify(handles));
 }
 
 function savePostMeta(meta) {
-  void meta;
-}
-
-function readCache(key, ttlMs) {
-  const raw = safeStorage.getItem(key);
-  if (!raw) return null;
-  try {
-    const payload = JSON.parse(raw);
-    if (Array.isArray(payload)) {
-      return { data: payload, fresh: false };
-    }
-    if (!payload || !Array.isArray(payload.data)) return null;
-    const age = Date.now() - (payload.ts || 0);
-    return { data: payload.data, meta: payload.meta || null, fresh: ttlMs ? age <= ttlMs : true };
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(key, data, meta = null) {
-  if (!Array.isArray(data)) return;
-  try {
-    safeStorage.setItem(key, JSON.stringify({ ts: Date.now(), data, meta }));
-  } catch {}
-}
-
-function computeLatestTimestamp(posts) {
-  let latest = 0;
-  posts.forEach((post) => {
-    const ts = toDateSafe(post.createdAt)?.getTime() || 0;
-    if (ts > latest) latest = ts;
-  });
-  return latest;
-}
-
-function saveFeedPosts(posts, extraMeta = {}) {
-  if (!Array.isArray(posts)) return;
-  const latestTs = computeLatestTimestamp(posts);
-  writeCache(
-    CACHE_KEYS.feed,
-    posts.slice(0, FAST_LIMITS.feedFallback),
-    { latestTs, ...extraMeta }
-  );
+  safeStorage.setItem(STORAGE_KEYS.postMeta, JSON.stringify(meta));
 }
 
 function loadPersisted() {
@@ -449,34 +268,15 @@ function loadPersisted() {
     try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch {}
   }
 
-  const feedCache = readCache(CACHE_KEYS.feed);
-  if (feedCache?.data?.length) {
-    state.feedPosts = feedCache.data;
-    ensureStoriesFromFeedIfNeeded(feedCache.data);
-  }
-
-  const userPostsCache = readCache(CACHE_KEYS.userPosts);
-  if (userPostsCache?.data?.length) state.userPosts = userPostsCache.data;
-
-  const businessPostsCache = readCache(CACHE_KEYS.businessPosts);
-  if (businessPostsCache?.data?.length) state.businessPosts = businessPostsCache.data;
-
-  const restaurantsCache = readCache(CACHE_KEYS.restaurants);
-  if (restaurantsCache?.data?.length) {
-    state.restaurants = restaurantsCache.data;
-    state.businessLocations = restaurantsCache.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
-  }
-
-  const storiesCache = readCache(CACHE_KEYS.stories);
-  if (storiesCache?.data?.length) state.stories = storiesCache.data;
-
   const savedFollowing = safeStorage.getItem(STORAGE_KEYS.following);
   if (savedFollowing) {
-    try { state.followingHandles = JSON.parse(savedFollowing); } catch { state.followingHandles = []; }
-  } else {
-    state.followingHandles = [];
+    try { state.followingHandles = JSON.parse(savedFollowing) || []; } catch {}
   }
-  state.postMeta = {};
+
+  const savedMeta = safeStorage.getItem(STORAGE_KEYS.postMeta);
+  if (savedMeta) {
+    try { state.postMeta = JSON.parse(savedMeta) || {}; } catch {}
+  }
 }
 
 function resolveAdminLogin(email, pass) {
@@ -664,11 +464,6 @@ async function resolveRoleSwitchTargets(user) {
 
   state.roleSwitchRoles = ROLE_SWITCH_ORDER.filter((role) => roles.has(role));
   state.roleSwitchRestaurantId = ownerRestaurantId || profile.restaurantId || "";
-  if (lastRenderMode === "main") {
-    updateShellDom();
-    if (state.activeTab === "search" && refreshSearchView()) return;
-    if (state.activeTab === "feed") return;
-  }
   render();
 }
 
@@ -682,7 +477,7 @@ function mapRestaurantToCard(rest, idx) {
     y: `${y}%`,
     rating: rest.rating || rest.score || 4.6,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
     desc: rest.description || rest.bio || "Menyra Business"
   };
 }
@@ -719,7 +514,7 @@ function normalizeBusinessLocation(rest, idx) {
     lng,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.6,
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400",
     desc: rest.description || rest.bio || "Menyra Business",
     raw: rest
   };
@@ -870,10 +665,9 @@ function mapLocate() {
 
 function currentUserBadge() {
   return {
-    uid: state.user?.uid || "",
     name: state.userProfile.name || "User",
     handle: state.userProfile.handle || "user",
-    avatar: state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
+    avatar: state.userProfile.avatar || "https://i.pravatar.cc/120?u=menyra"
   };
 }
 
@@ -891,343 +685,31 @@ function ensurePostMeta(postId) {
   if (!postId) return { likes: [], comments: [] };
   if (!state.postMeta[postId]) {
     state.postMeta[postId] = { likes: [], comments: [] };
+    savePostMeta(state.postMeta);
   }
   return state.postMeta[postId];
 }
 
 function resolvePostCounts(post) {
-  const likeCount = typeof post.likes === "number" ? post.likes : Number(post.likes) || 0;
-  const commentCount = typeof post.comments === "number" ? post.comments : Number(post.comments) || 0;
-  return { likeLabel: String(likeCount), commentLabel: String(commentCount) };
-}
+  const meta = ensurePostMeta(post.id);
+  const likeBase = typeof post.likes === "number" ? post.likes : 0;
+  const commentBase = typeof post.comments === "number" ? post.comments : 0;
+  const likeCount = likeBase + (meta.likes?.length || 0);
+  const commentCount = commentBase + (meta.comments?.length || 0);
 
-function escapeSelector(value) {
-  const str = String(value);
-  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-    return CSS.escape(str);
-  }
-  return str.replace(/["\\]/g, "\\$&");
-}
+  const likeLabel = meta.likes?.length
+    ? String(likeCount)
+    : (typeof post.likes === "number" ? String(likeCount) : String(post.likes ?? 0));
 
-function updatePostCountNodes(post) {
-  if (!post || !post.id) return;
-  const postId = escapeSelector(post.id);
-  const likeLabel = formatCount(post.likes);
-  const commentLabel = formatCount(post.comments);
-  document.querySelectorAll(`[data-post-like-count="${postId}"]`).forEach((el) => {
-    el.textContent = likeLabel;
-  });
-  document.querySelectorAll(`[data-post-comment-count="${postId}"]`).forEach((el) => {
-    el.textContent = commentLabel;
-  });
-}
+  const commentLabel = meta.comments?.length
+    ? String(commentCount)
+    : (typeof post.comments === "number" ? String(commentCount) : String(post.comments ?? 0));
 
-function updatePostCaches(post) {
-  if (!post?.id) return;
-  const postId = String(post.id);
-  const inUser = state.userPosts.some((item) => String(item.id) === postId);
-  const inBusiness = state.businessPosts.some((item) => String(item.id) === postId);
-  const inFeed = state.feedPosts.some((item) => String(item.id) === postId);
-  if (inUser) writeCache(CACHE_KEYS.userPosts, state.userPosts);
-  if (inBusiness) writeCache(CACHE_KEYS.businessPosts, state.businessPosts);
-  if (inFeed) {
-    const cached = readCache(CACHE_KEYS.feed);
-    saveFeedPosts(state.feedPosts, { lastDeltaCheck: cached?.meta?.lastDeltaCheck || 0 });
-  }
-}
-
-function scheduleIdle(fn) {
-  if (typeof window === "undefined") return;
-  if ("requestIdleCallback" in window) {
-    window.requestIdleCallback(fn, { timeout: 800 });
-  } else {
-    window.setTimeout(fn, 0);
-  }
-}
-
-function normalizeBusinessResult(rest) {
-  const name = rest.name || rest.restaurantName || "Business";
-  return {
-    id: rest.id || rest.restaurantId || "",
-    name,
-    city: rest.city || rest.location || rest.address || "Prishtina",
-    logo: rest.logoUrl || rest.logo || rest.image || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-  };
-}
-
-function buildBusinessResultsFromFeed(posts) {
-  const map = new Map();
-  posts.forEach((post) => {
-    const id = post.restaurantId || post.ownerId || "";
-    const key = id || String(post.business || "").toLowerCase();
-    if (!key || map.has(key)) return;
-    map.set(key, {
-      id: id || "",
-      name: post.business || "Business",
-      city: post.location || "Prishtina",
-      logo: post.logo || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
-    });
-  });
-  return Array.from(map.values()).slice(0, SEARCH_LIMITS.businesses);
-}
-
-function buildLocalBusinessResults(queryKey) {
-  const list = state.restaurants.length ? state.restaurants.map(normalizeBusinessResult) : buildBusinessResultsFromFeed(state.feedPosts);
-  const localKey = normalizeSearchKey(state.userProfile.location || "");
-  const isLocalQuery = queryKey === "lokal" || queryKey === "local" || (!queryKey && localKey);
-  const filtered = list.filter((item) => {
-    if (isLocalQuery && localKey) {
-      return normalizeSearchKey(item.city).includes(localKey);
-    }
-    const score = Math.max(
-      scoreSearchMatch(item.name, queryKey),
-      scoreSearchMatch(item.city, queryKey)
-    );
-    return score > 0;
-  }).map((item) => {
-    const score = queryKey ? Math.max(
-      scoreSearchMatch(item.name, queryKey),
-      scoreSearchMatch(item.city, queryKey)
-    ) : 0;
-    return { ...item, _score: score };
-  });
-  return filtered.sort((a, b) => (b._score || 0) - (a._score || 0)).slice(0, SEARCH_LIMITS.businesses);
-}
-
-function normalizeUserSearchResult(doc) {
-  const data = typeof doc?.data === "function" ? doc.data() : (doc?.data || doc || {});
-  const rawName = data.displayName || data.name || data.handle || "";
-  const handle = data.handle || normalizeHandle(rawName || "user");
-  const name = sanitizeDisplayName(rawName, handle || "User");
-  return {
-    uid: doc?.id || data.uid || "",
-    name,
-    handle,
-    avatar: data.avatarUrl || data.avatar || `data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==`,
-    location: data.city || "Prishtina",
-    followers: data.followersCount ?? data.followers ?? 0,
-    following: data.followingCount ?? data.following ?? 0,
-    role: data.role || "user",
-    bio: data.bio || ""
-  };
-}
-
-async function searchUsersRemote(queryRaw, token) {
-  const queryKey = normalizeSearchKey(queryRaw);
-  const nameKey = normalizeSearchQuery(queryRaw);
-  if (!queryKey) {
-    state.search.userResults = [];
-    return;
-  }
-  const cacheKey = `users:${queryKey}`;
-  const cached = searchCache.get(cacheKey);
-  if (cached) {
-    state.search.userResults = cached;
-    return;
-  }
-  try {
-    const handleKey = normalizeHandle(queryKey);
-    const users = new Map();
-    if (handleKey) {
-      const snap = await getDocs(query(
-        collection(db, "users"),
-        orderBy("handle"),
-        startAt(handleKey),
-        endAt(`${handleKey}\uf8ff`),
-        limit(SEARCH_LIMITS.users)
-      ));
-      snap.forEach((docSnap) => {
-        const item = normalizeUserSearchResult(docSnap);
-        if (item.uid) users.set(item.uid, item);
-      });
-    }
-    const nameVariants = new Set();
-    if (nameKey) {
-      nameVariants.add(nameKey);
-      const cap = nameKey.charAt(0).toUpperCase() + nameKey.slice(1);
-      nameVariants.add(cap);
-    }
-    for (const variant of nameVariants) {
-      const nameSnap = await getDocs(query(
-        collection(db, "users"),
-        orderBy("displayName"),
-        startAt(variant),
-        endAt(`${variant}\uf8ff`),
-        limit(SEARCH_LIMITS.users)
-      ));
-      nameSnap.forEach((docSnap) => {
-        const item = normalizeUserSearchResult(docSnap);
-        if (item.uid) users.set(item.uid, item);
-      });
-    }
-    if (token !== searchToken) return;
-    const key = normalizeSearchKey(queryRaw);
-    const results = Array.from(users.values())
-      .map((item) => ({
-        ...item,
-        _score: Math.max(
-          scoreSearchMatch(item.handle, key),
-          scoreSearchMatch(item.name, key)
-        )
-      }))
-      .sort((a, b) => (b._score || 0) - (a._score || 0));
-    searchCache.set(cacheKey, results);
-    state.search.userResults = results;
-  } catch (err) {
-    if (token !== searchToken) return;
-    state.search.error = "Suche fehlgeschlagen.";
-  }
-}
-
-async function searchBusinessesRemote(queryRaw, token) {
-  const queryKey = normalizeSearchQuery(queryRaw);
-  const key = normalizeSearchKey(queryRaw);
-  if (!key) return;
-  const cacheKey = `biz:${key}`;
-  const cached = searchCache.get(cacheKey);
-  if (cached) {
-    state.search.businessResults = cached;
-    return;
-  }
-  try {
-    const results = new Map();
-    const restRef = collection(db, "restaurants");
-    try {
-      const snap = await getDocs(query(
-        restRef,
-        orderBy("name"),
-        startAt(queryKey),
-        endAt(`${queryKey}\uf8ff`),
-        limit(SEARCH_LIMITS.businesses)
-      ));
-      snap.forEach((docSnap) => {
-        const row = normalizeBusinessResult({ id: docSnap.id, ...docSnap.data() });
-        if (row.id) results.set(row.id, row);
-      });
-    } catch {}
-    try {
-      const snap = await getDocs(query(
-        restRef,
-        orderBy("restaurantName"),
-        startAt(queryKey),
-        endAt(`${queryKey}\uf8ff`),
-        limit(SEARCH_LIMITS.businesses)
-      ));
-      snap.forEach((docSnap) => {
-        const row = normalizeBusinessResult({ id: docSnap.id, ...docSnap.data() });
-        if (row.id) results.set(row.id, row);
-      });
-    } catch {}
-    if (token !== searchToken) return;
-    const list = Array.from(results.values())
-      .map((item) => ({
-        ...item,
-        _score: Math.max(
-          scoreSearchMatch(item.name, key),
-          scoreSearchMatch(item.city, key)
-        )
-      }))
-      .sort((a, b) => (b._score || 0) - (a._score || 0));
-    if (list.length) {
-      searchCache.set(cacheKey, list);
-      state.search.businessResults = list;
-    }
-  } catch (err) {
-    if (token !== searchToken) return;
-    state.search.error = "Suche fehlgeschlagen.";
-  }
-}
-
-async function searchRemote(queryRaw) {
-  const token = ++searchToken;
-  state.search.loading = true;
-  state.search.error = "";
-  if (!refreshSearchView()) render();
-  await Promise.all([
-    searchUsersRemote(queryRaw, token),
-    searchBusinessesRemote(queryRaw, token)
-  ]);
-  if (token === searchToken) {
-    state.search.loading = false;
-    if (!refreshSearchView()) render();
-  }
-}
-
-function handleSearchInput(value) {
-  const raw = normalizeSearchQuery(value);
-  const queryKey = normalizeSearchKey(raw);
-  state.search.query = raw;
-  state.search.businessResults = buildLocalBusinessResults(queryKey);
-  state.search.keepFocus = true;
-  if (searchTimer) {
-    clearTimeout(searchTimer);
-    searchTimer = null;
-  }
-  if (!queryKey) {
-    state.search.userResults = [];
-    state.search.loading = false;
-    state.search.error = "";
-    if (!refreshSearchView()) render();
-    return;
-  }
-  if (!refreshSearchView()) render();
-  searchTimer = window.setTimeout(() => {
-    void searchRemote(raw);
-  }, 180);
-}
-
-function ensureTabData(tab) {
-  if (!state.user) return;
-
-  if (tab === "feed" && !dataLoaded.feed) {
-    dataLoaded.feed = true;
-    void loadFeedPosts();
-    scheduleIdle(() => void loadFeedDelta());
-  }
-
-  if (tab === "feed" && !feedDeltaTimer) {
-    feedDeltaTimer = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      if (state.activeTab !== "feed") return;
-      void loadFeedDelta();
-    }, FEED_DELTA_MIN_MS);
-  }
-
-  const needsRestaurants = tab === "map" || tab === "search" || (!FAST_MODE && tab === "feed");
-  if (needsRestaurants && !dataLoaded.restaurants) {
-    dataLoaded.restaurants = true;
-    scheduleIdle(() => {
-      loadRestaurants().then(() => {
-        if (!dataLoaded.stories && (state.activeTab === "feed" || state.activeTab === "map")) {
-          dataLoaded.stories = true;
-          scheduleIdle(() => void loadStories());
-        }
-      }).catch((err) => console.error(err));
-    });
-  } else if ((tab === "feed" || tab === "map") && !dataLoaded.stories) {
-    dataLoaded.stories = true;
-    scheduleIdle(() => void loadStories());
-  }
-
-  if (tab === "profile" && !dataLoaded.profile) {
-    dataLoaded.profile = true;
-    void loadUserPosts();
-    if (state.userProfile.role === "business") {
-      void loadBusinessPosts();
-    }
-  }
-  if (tab === "profile") {
-    void loadUserProfile(state.user, { force: true });
-  }
-
-  if (tab === "notifications" && !dataLoaded.notifications) {
-    dataLoaded.notifications = true;
-    void loadNotificationsFromFirebase({ force: true });
-  }
+  return { likeLabel, commentLabel };
 }
 
 function findPostById(postId) {
-  const all = [...state.userPosts, ...state.businessPosts, ...state.feedPosts];
+  const all = [...state.userPosts, ...state.businessPosts];
   const found = all.find((item) => String(item.id) === String(postId));
   if (found) return found;
   const viewPosts = state.profileView?.posts || [];
@@ -1237,7 +719,7 @@ function findPostById(postId) {
   return modalPosts.find((item) => String(item.id) === String(postId)) || null;
 }
 
-async function openPostModal(post) {
+function openPostModal(post) {
   if (!post) return;
   ensurePostMeta(post.id);
   state.profileModal = { open: false, profile: null };
@@ -1245,248 +727,87 @@ async function openPostModal(post) {
     open: true,
     post,
     commentText: "",
-    replyTo: null,
-    loading: true,
-    animate: true,
-    sending: false
+    replyTo: null
   };
   renderOverlays();
-  state.postModal.animate = false;
-  await loadPostMetaFromFirebase(post);
-  attachPostMetaListeners(post);
-  state.postModal.loading = false;
-  updatePostModalMeta();
 }
 
 function closePostModal() {
-  state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
-  state.likesModal = { open: false, postId: "", animate: false };
-  pendingCommentHighlight = "";
-  stopPostMetaListeners();
+  state.postModal = { open: false, post: null, commentText: "", replyTo: null };
+  state.likesModal = { open: false, postId: "" };
   renderOverlays();
 }
 
 function ensureCommentShape(comment) {
-  const likes = Array.isArray(comment.likes) ? comment.likes : [];
-  const likesCount = Number.isFinite(Number(comment.likesCount)) ? Number(comment.likesCount) : likes.length;
   return {
     id: comment.id,
     author: comment.author || "User",
     handle: comment.handle || "user",
-    avatar: comment.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+    avatar: comment.avatar || "https://i.pravatar.cc/120?u=menyra",
     text: comment.text || "",
     createdAt: comment.createdAt || new Date().toISOString(),
-    likes,
-    likesCount,
+    likes: comment.likes || [],
     replies: (comment.replies || []).map((reply) => ({
       id: reply.id,
       author: reply.author || "User",
       handle: reply.handle || "user",
-      avatar: reply.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+      avatar: reply.avatar || "https://i.pravatar.cc/120?u=menyra",
       text: reply.text || "",
       createdAt: reply.createdAt || new Date().toISOString(),
-      likes: Array.isArray(reply.likes) ? reply.likes : [],
-      likesCount: Number.isFinite(Number(reply.likesCount)) ? Number(reply.likesCount) : (reply.likes ? reply.likes.length : 0)
+      likes: reply.likes || []
     }))
   };
 }
 
-async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0 } = {}) {
-  if (!post) return;
-  const likeBase = Number(post.likes) || 0;
-  const commentBase = Number(post.comments) || 0;
-  if (likesDelta) post.likes = Math.max(0, likeBase + likesDelta);
-  if (commentsDelta) post.comments = Math.max(0, commentBase + commentsDelta);
-  const feedMatch = state.feedPosts.find((item) => String(item.id) === String(post.id));
-  if (feedMatch) {
-    if (likesDelta) feedMatch.likes = Math.max(0, (Number(feedMatch.likes) || 0) + likesDelta);
-    if (commentsDelta) feedMatch.comments = Math.max(0, (Number(feedMatch.comments) || 0) + commentsDelta);
-  }
-
-  const updates = {};
-  if (likesDelta) updates.likesCount = increment(likesDelta);
-  if (commentsDelta) updates.commentsCount = increment(commentsDelta);
-
-  const postRef = getPostDocRef(post);
-  if (postRef && Object.keys(updates).length) {
-    try {
-      await updateDoc(postRef, updates);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  if (post.restaurantId && Object.keys(updates).length) {
-    const feedRef = getFeedDocRef(post);
-    if (feedRef) {
-      try {
-        await updateDoc(feedRef, updates);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  }
-  updatePostCountNodes(post);
-  updatePostCaches(post);
-}
-
-async function addComment(postId, text, replyTo) {
+function addComment(postId, text, replyTo) {
   const trimmed = String(text || "").trim();
-  if (!trimmed || !state.user) return;
-  const key = `${postId}|${state.user.uid || ""}|${trimmed}`;
-  const now = Date.now();
-  if (key === lastCommentKey && now - lastCommentAt < 1500) return;
-  lastCommentKey = key;
-  lastCommentAt = now;
-  const post = findPostById(postId);
-  const postRef = getPostDocRef(post);
-  if (!post || !postRef) {
-    lastCommentKey = "";
-    lastCommentAt = 0;
-    return;
-  }
-  if (state.postModal.sending) return;
-  state.postModal.sending = true;
+  if (!trimmed) return;
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
-  const commentRef = doc(collection(postRef, "comments"));
-  const payload = {
+  const newComment = {
+    id: `c_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
     author: user.name,
     handle: user.handle,
     avatar: user.avatar,
     text: trimmed,
-    createdAt: serverTimestamp(),
-    parentId: replyTo || null,
-    likes: []
+    createdAt: new Date().toISOString(),
+    likes: [],
+    replies: []
   };
 
-  try {
-    await setDoc(commentRef, payload);
-  } catch (err) {
-    console.error(err);
-    lastCommentKey = "";
-    lastCommentAt = 0;
-    state.postModal.sending = false;
-    return;
-  }
-
-  try {
-    await updatePostCounts(post, { commentsDelta: 1 });
-  } catch (err) {
-    console.error(err);
-  }
-
-  updatePostCountNodes(post);
-  const hasLiveComments = typeof modalCommentsUnsub === "function";
-  if (!hasLiveComments) {
-    const newComment = ensureCommentShape({
-      id: commentRef.id,
-      ...payload,
-      createdAt: new Date().toISOString()
-    });
-    if (replyTo) {
-      const target = meta.comments.find((item) => item.id === replyTo);
-      if (target) {
-        target.replies = [newComment, ...(target.replies || [])];
-      } else {
-        meta.comments = [newComment, ...(meta.comments || [])];
-      }
+  if (replyTo) {
+    const target = meta.comments.find((item) => item.id === replyTo);
+    if (target) {
+      target.replies = [newComment, ...(target.replies || [])];
     } else {
       meta.comments = [newComment, ...(meta.comments || [])];
     }
-    state.postMeta[postId] = meta;
-  }
-  state.postModal.commentText = "";
-  const commentInput = document.getElementById("postCommentInput");
-  if (commentInput) commentInput.value = "";
-  state.postModal.replyTo = null;
-  if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-    updatePostModalMeta();
   } else {
-    renderOverlays();
+    meta.comments = [newComment, ...(meta.comments || [])];
   }
-  state.postModal.sending = false;
-  const ownerUid = await resolvePostOwnerUid(post);
-  if (ownerUid && ownerUid !== state.user.uid) {
-    try {
-      await pushUserNotification(ownerUid, {
-        type: "comment",
-        user: user.name,
-        userHandle: user.handle,
-        userUid: user.uid || "",
-        avatar: user.avatar,
-        text: "hat deinen Beitrag kommentiert",
-        postId: String(post.id || ""),
-        commentId: String(commentRef.id || ""),
-        ownerType: post.ownerType || "",
-        ownerId: post.ownerId || "",
-        restaurantId: post.restaurantId || ""
-      });
-    } catch {}
-  }
+
+  state.postMeta[postId] = meta;
+  savePostMeta(state.postMeta);
+  state.postModal.commentText = "";
+  state.postModal.replyTo = null;
+  renderOverlays();
 }
 
-async function togglePostLike(postId) {
-  if (!state.user) return;
+function togglePostLike(postId) {
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
-  const post = findPostById(postId);
-  const postRef = getPostDocRef(post);
-  if (!post || !postRef) return;
-  const likeId = user.uid || user.handle;
-  const likeRef = doc(collection(postRef, "likes"), likeId);
-  const idx = meta.likes.findIndex((item) => item.uid === user.uid || item.handle === user.handle);
-  const isUnlike = idx >= 0;
-  const delta = isUnlike ? -1 : 1;
-  try {
-    if (isUnlike) {
-      meta.likes.splice(idx, 1);
-    } else {
-      meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
-    }
-
-    state.postMeta[postId] = meta;
-    void updatePostCounts(post, { likesDelta: delta });
-    updatePostCountNodes(post);
-    if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-      updatePostModalMeta();
-    } else {
-      renderOverlays();
-    }
-
-    if (isUnlike) {
-      await deleteDoc(likeRef);
-    } else {
-      await setDoc(likeRef, {
-        uid: user.uid,
-        name: user.name,
-        handle: user.handle,
-        avatar: user.avatar,
-        createdAt: serverTimestamp()
-      });
-      const ownerUid = await resolvePostOwnerUid(post);
-      if (ownerUid && ownerUid !== state.user.uid) {
-        await pushUserNotification(ownerUid, {
-          type: "like",
-          user: user.name,
-          userHandle: user.handle,
-          userUid: user.uid || "",
-          avatar: user.avatar,
-          text: "hat deinen Beitrag geliked",
-          postId: String(post.id || ""),
-          ownerType: post.ownerType || "",
-          ownerId: post.ownerId || "",
-          restaurantId: post.restaurantId || ""
-        });
-      }
-    }
-  } catch (err) {
-    console.error(err);
+  const idx = meta.likes.findIndex((item) => item.handle === user.handle);
+  if (idx >= 0) {
+    meta.likes.splice(idx, 1);
+  } else {
+    meta.likes.unshift(user);
   }
+  state.postMeta[postId] = meta;
+  savePostMeta(state.postMeta);
+  renderOverlays();
 }
 
-async function toggleCommentLike(postId, commentId, replyId) {
-  if (!state.user) return;
+function toggleCommentLike(postId, commentId, replyId) {
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
   const list = meta.comments || [];
@@ -1496,37 +817,17 @@ async function toggleCommentLike(postId, commentId, replyId) {
   const target = replyId ? (comment.replies || []).find((item) => item.id === replyId) : comment;
   if (!target) return;
 
-  const post = findPostById(postId);
-  const postRef = getPostDocRef(post);
-  if (!post || !postRef) return;
-  const commentDocId = replyId || commentId;
-  const commentRef = doc(collection(postRef, "comments"), String(commentDocId));
-  const likeId = user.uid || user.handle;
-  const likes = Array.isArray(target.likes) ? target.likes : [];
-  const idx = likes.findIndex((item) => item === likeId);
-  try {
-    if (idx >= 0) {
-      likes.splice(idx, 1);
-    } else {
-      likes.unshift(likeId);
-    }
-    target.likes = likes;
-    target.likesCount = likes.length;
-    state.postMeta[postId] = meta;
-    if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-      updatePostModalMeta();
-    } else {
-      renderOverlays();
-    }
-
-    if (idx >= 0) {
-      await updateDoc(commentRef, { likes: arrayRemove(likeId) });
-    } else {
-      await updateDoc(commentRef, { likes: arrayUnion(likeId) });
-    }
-  } catch (err) {
-    console.error(err);
+  const likes = target.likes || [];
+  const idx = likes.findIndex((item) => item.handle === user.handle);
+  if (idx >= 0) {
+    likes.splice(idx, 1);
+  } else {
+    likes.unshift(user);
   }
+  target.likes = likes;
+  state.postMeta[postId] = meta;
+  savePostMeta(state.postMeta);
+  renderOverlays();
 }
 function renderAuthScreen() {
   const isRegister = state.auth.mode === "register";
@@ -1587,11 +888,24 @@ function renderAuthScreen() {
 
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
-  const switchLinks = renderRoleSwitchLinks();
+  const switchLinks = (state.user && state.roleSwitchRoles.length) ? `
+        <div class="mt-6 space-y-2">
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Switch</p>
+          ${state.roleSwitchRoles.map((role) => {
+            const label = roleLabel(role);
+            const url = buildRoleSwitchUrl(role, state.userProfile, state.roleSwitchRestaurantId);
+            return `
+            <a href="${escapeHtml(url)}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all bg-slate-900 text-white hover:bg-slate-800">
+              <div class="flex items-center gap-4">${icon("arrow-right-left", "w-4 h-4")} Switch to ${escapeHtml(label)}</div>
+            </a>
+          `;
+          }).join("")}
+        </div>
+      ` : "";
   return `
-    <div id="drawerRoot" class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
+    <div class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
-      <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}">
+      <div class="absolute left-0 top-0 bottom-0 w-80 bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}">
         <div class="flex justify-between items-center mb-10">
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Menue</span>
@@ -1600,16 +914,15 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==")}" class="w-10 h-10 rounded-xl object-cover" />
+          <img src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-10 h-10 rounded-xl object-cover" />
           <div>
-            <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
-            <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
+            <p class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
+            <p class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
           </div>
         </div>
         <nav class="space-y-2 flex-1">
           ${[
             { id: "feed", label: "Feed", icon: "home" },
-            { id: "search", label: "Suche", icon: "search" },
             { id: "map", label: "Karte", icon: "map" },
             { id: "profile", label: "Profil", icon: "user" },
             { id: "notifications", label: "Updates", icon: "bell", badge: unread },
@@ -1621,40 +934,40 @@ function renderDrawer() {
             </button>
           `).join("")}
         </nav>
-        <div id="drawerSwitchLinks">${switchLinks}</div>
+        ${switchLinks}
         <button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} Abmelden</button>
       </div>
     </div>
   `;
 }
 
-function renderRoleSwitchLinks() {
-  if (!(state.user && state.roleSwitchRoles.length)) return "";
-  return `
-    <div class="mt-6 space-y-2">
-      <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Switch</p>
-      ${state.roleSwitchRoles.map((role) => {
-        const label = roleLabel(role);
-        const url = buildRoleSwitchUrl(role, state.userProfile, state.roleSwitchRestaurantId);
-        return `
-        <a href="${escapeHtml(url)}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all bg-slate-900 text-white hover:bg-slate-800">
-          <div class="flex items-center gap-4">${icon("arrow-right-left", "w-4 h-4")} Switch to ${escapeHtml(label)}</div>
-        </a>
-      `;
-      }).join("")}
-    </div>
-  `;
-}
-
 function renderFeedView() {
-  const feedPosts = state.feedPosts
-    .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
-    .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-  const stories = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeed(feedPosts) : state.stories);
+  const stories = state.stories;
+  const feedPosts = state.feedPosts.filter((p) => state.feedCategory === "all" || p.category === state.feedCategory);
   return `
-    <div id="feedView">
-      <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pb-8 no-scrollbar">
-        ${renderStoriesRow(stories)}
+    <div class="animate-in fade-in duration-500">
+      <div class="flex gap-4 overflow-x-auto px-8 pb-8 no-scrollbar">
+        <div class="flex-shrink-0 flex flex-col items-center gap-2">
+          <div data-nav="upload" class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
+            <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
+            ${icon("camera", "w-7 h-7 relative z-10")}
+          </div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Story</span>
+        </div>
+        ${stories.length ? stories.map((s) => {
+          const borderClass = s.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
+          const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
+          return `
+            <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
+              <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass}">
+                <img src="${escapeHtml(s.img)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+              </div>
+              <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
+            </a>
+          `;
+        }).join("") : `
+          <div class="flex items-center text-slate-400 text-xs font-bold uppercase">Keine Stories</div>
+        `}
       </div>
       ${state.userProfile.role === "business" ? `
         <div class="px-8 mb-6">
@@ -1663,604 +976,52 @@ function renderFeedView() {
           </button>
         </div>
       ` : ""}
-      <div id="feedList" class="px-8 py-4 space-y-12">
-        ${renderFeedList(feedPosts)}
-      </div>
-    </div>
-  `;
-}
-
-function renderStoriesRow(stories) {
-  return `
-    <div class="flex-shrink-0 flex flex-col items-center gap-2">
-      <div data-nav="upload" class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
-        <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
-        ${icon("camera", "w-7 h-7 relative z-10")}
-      </div>
-      <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Story</span>
-    </div>
-    ${stories.length ? stories.map((s) => {
-      const borderClass = s.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
-      const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
-      return `
-        <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
-          <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-            <img src="${escapeHtml(s.img)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
-          </div>
-          <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
-        </a>
-      `;
-    }).join("") : `
-      <div class="flex items-center text-slate-400 text-xs font-bold uppercase">Keine Stories</div>
-    `}
-  `;
-}
-
-function renderFeedItem(post, index) {
-  const postId = post.id ? String(post.id) : "";
-  const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
-  const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
-  const feedAttr = postId ? `data-feed-id="${escapeHtml(postId)}"` : `data-feed-id=""`;
-  const eager = index < 2;
-  const heroAttrs = eager ? `fetchpriority="high"` : "";
-  const logoAttrs = "";
-  return `
-    <div class="group feed-card" ${feedAttr}>
-      <div class="flex items-center justify-between mb-5 px-2">
-        <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
-          <div>
-            <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
-            <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(post.location)}</p>
-          </div>
-        </button>
-        ${icon("more-horizontal", "w-5 h-5 text-slate-400")}
-      </div>
-      <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
-        <div class="relative h-[30rem] rounded-[3rem] overflow-hidden bg-slate-200">
-          <img src="${escapeHtml(post.image)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
-          ${post.isLive ? `
-            <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
-              <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
+      <div class="px-8 py-4 space-y-12">
+        ${feedPosts.length ? feedPosts.map((post) => `
+          <div class="group">
+            <div class="flex items-center justify-between mb-5 px-2">
+              <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
+                <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-white">
+                  <img src="${escapeHtml(post.logo || post.image)}" class="w-full h-full object-cover" />
+                </div>
+                <div>
+                  <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
+                  <p class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(post.location)}</p>
+                </div>
+              </button>
+              ${icon("more-horizontal", "w-5 h-5 text-slate-400")}
             </div>
-          ` : ""}
-          <div class="absolute bottom-6 left-6 right-6 p-6 bg-black/40 backdrop-blur-xl rounded-[2.5rem] border border-white/10 text-white">
-            <p class="text-sm font-medium mb-4 line-clamp-2 leading-relaxed">${escapeHtml(post.content)}</p>
-            <div class="flex items-center justify-between">
-              <div class="flex gap-4">
-                <button class="flex items-center gap-2 hover:text-red-400 transition-colors">
-                  ${icon("heart", "w-5 h-5")} <span ${likeAttr} class="text-[10px] font-black">${escapeHtml(post.likes)}</span>
-                </button>
-                <button class="flex items-center gap-2 text-white/70 hover:text-white">
-                  ${icon("message-circle", "w-5 h-5")} <span ${commentAttr} class="text-[10px] font-black">${escapeHtml(post.comments)}</span>
-                </button>
+            <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
+              <div class="relative h-[30rem] rounded-[3rem] overflow-hidden">
+                <img src="${escapeHtml(post.image)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+                ${post.isLive ? `
+                  <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
+                    <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
+                  </div>
+                ` : ""}
+                <div class="absolute bottom-6 left-6 right-6 p-6 bg-black/40 backdrop-blur-xl rounded-[2.5rem] border border-white/10 text-white">
+                  <p class="text-sm font-medium mb-4 line-clamp-2 leading-relaxed">${escapeHtml(post.content)}</p>
+                  <div class="flex items-center justify-between">
+                    <div class="flex gap-4">
+                      <button class="flex items-center gap-2 hover:text-red-400 transition-colors">
+                        ${icon("heart", "w-5 h-5")} <span class="text-[10px] font-black">${escapeHtml(post.likes)}</span>
+                      </button>
+                      <button class="flex items-center gap-2 text-white/70 hover:text-white">
+                        ${icon("message-circle", "w-5 h-5")} <span class="text-[10px] font-black">${escapeHtml(post.comments)}</span>
+                      </button>
+                    </div>
+                    <button class="text-white/70 hover:text-white">${icon("share-2", "w-4 h-4")}</button>
+                  </div>
+                </div>
               </div>
-              <button class="text-white/70 hover:text-white">${icon("share-2", "w-4 h-4")}</button>
             </div>
           </div>
-        </div>
+        `).join("") : `
+          <div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>
+        `}
       </div>
     </div>
   `;
-}
-
-function renderFeedList(feedPosts) {
-  if (!feedPosts.length) {
-    return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>`;
-  }
-  return feedPosts.map((post, index) => renderFeedItem(post, index)).join("");
-}
-
-function patchFeedList(feedPosts) {
-  const feedList = document.getElementById("feedList");
-  if (!feedList) return false;
-  if (!feedPosts.length) {
-    feedList.innerHTML = renderFeedList(feedPosts);
-    return true;
-  }
-  const existingItems = Array.from(feedList.querySelectorAll("[data-feed-id]"));
-  const currentIds = existingItems.map((el) => el.dataset.feedId || "");
-  const nextIds = feedPosts.map((post) => String(post.id || ""));
-  if (currentIds.join("|") === nextIds.join("|")) {
-    feedPosts.forEach(updatePostCountNodes);
-    return true;
-  }
-  const existingMap = new Map();
-  existingItems.forEach((el) => existingMap.set(el.dataset.feedId || "", el));
-  const fragment = document.createDocumentFragment();
-  feedPosts.forEach((post, index) => {
-    const postId = String(post.id || "");
-    const existing = postId ? existingMap.get(postId) : null;
-    if (existing) {
-      existingMap.delete(postId);
-      fragment.appendChild(existing);
-    } else {
-      const tpl = document.createElement("template");
-      tpl.innerHTML = renderFeedItem(post, index);
-      const node = tpl.content.firstElementChild;
-      if (node) fragment.appendChild(node);
-    }
-  });
-  feedList.replaceChildren(fragment);
-  feedPosts.forEach(updatePostCountNodes);
-  return true;
-}
-
-function updateFeedDom() {
-  const feedView = document.getElementById("feedView");
-  if (!feedView) return false;
-  const feedPosts = state.feedPosts
-    .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
-    .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-  const stories = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeed(feedPosts) : state.stories);
-  const storiesRow = document.getElementById("storiesRow");
-  const storiesHtml = renderStoriesRow(stories);
-  if (storiesRow && storiesRow.innerHTML !== storiesHtml) storiesRow.innerHTML = storiesHtml;
-  patchFeedList(feedPosts);
-  bindFeedDelegation();
-  if (window.lucide?.createIcons) window.lucide.createIcons();
-  return true;
-}
-
-function bindFeedDelegation() {
-  const feedView = document.getElementById("feedView");
-  if (!feedView || feedView.dataset.bound === "true") return;
-  feedView.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof Element)) return;
-    const navBtn = target.closest("[data-nav]");
-    if (navBtn) {
-      const tab = navBtn.dataset.nav;
-      if (tab) {
-        setState({
-          activeTab: tab,
-          drawerOpen: false,
-          settingsView: "main",
-          selectedBusiness: null,
-          profileView: null,
-          profileModal: { open: false, profile: null },
-          postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
-          likesModal: { open: false, postId: "", animate: false }
-        });
-      }
-      return;
-    }
-    const profileBtn = target.closest("[data-profile-business]");
-    if (profileBtn) {
-      openProfileFromBusiness({
-        id: profileBtn.dataset.profileId || "",
-        name: profileBtn.dataset.profileBusiness || ""
-      });
-    }
-  });
-  feedView.dataset.bound = "true";
-}
-
-function updateShellDom() {
-  const avatar = escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==");
-  const headerAvatar = document.getElementById("headerAvatar");
-  if (headerAvatar && headerAvatar.getAttribute("src") !== avatar) {
-    headerAvatar.setAttribute("src", avatar);
-  }
-  const drawerAvatar = document.getElementById("drawerAvatar");
-  if (drawerAvatar && drawerAvatar.getAttribute("src") !== avatar) {
-    drawerAvatar.setAttribute("src", avatar);
-  }
-  const drawerName = document.getElementById("drawerName");
-  if (drawerName) drawerName.textContent = state.userProfile.name || "User";
-  const drawerHandle = document.getElementById("drawerHandle");
-  if (drawerHandle) drawerHandle.textContent = `@${state.userProfile.handle || "user"}`;
-  const switchLinks = document.getElementById("drawerSwitchLinks");
-  if (switchLinks) switchLinks.innerHTML = renderRoleSwitchLinks();
-  if (window.lucide?.createIcons) window.lucide.createIcons();
-}
-
-function updateDrawerDom() {
-  const root = document.getElementById("drawerRoot");
-  const overlay = document.getElementById("drawerOverlay");
-  const panel = document.getElementById("drawerPanel");
-  if (!root || !overlay || !panel) return;
-  root.classList.toggle("visible", state.drawerOpen);
-  root.classList.toggle("invisible", !state.drawerOpen);
-  overlay.classList.toggle("opacity-100", state.drawerOpen);
-  overlay.classList.toggle("opacity-0", !state.drawerOpen);
-  panel.classList.toggle("translate-x-0", state.drawerOpen);
-  panel.classList.toggle("-translate-x-full", !state.drawerOpen);
-}
-
-function stopLiveListeners() {
-  if (notificationsUnsub) {
-    notificationsUnsub();
-    notificationsUnsub = null;
-  }
-  if (userDocUnsub) {
-    userDocUnsub();
-    userDocUnsub = null;
-  }
-  if (profileViewUnsub) {
-    profileViewUnsub();
-    profileViewUnsub = null;
-  }
-  if (feedUnsub) {
-    feedUnsub();
-    feedUnsub = null;
-  }
-  if (storiesUnsub) {
-    storiesUnsub();
-    storiesUnsub = null;
-  }
-  if (userPostsUnsub) {
-    userPostsUnsub();
-    userPostsUnsub = null;
-  }
-  if (businessPostsUnsub) {
-    businessPostsUnsub();
-    businessPostsUnsub = null;
-  }
-  if (modalLikesUnsub) {
-    modalLikesUnsub();
-    modalLikesUnsub = null;
-  }
-  if (modalCommentsUnsub) {
-    modalCommentsUnsub();
-    modalCommentsUnsub = null;
-  }
-  if (storyRefreshTimer) {
-    clearInterval(storyRefreshTimer);
-    storyRefreshTimer = null;
-  }
-}
-
-function handleNotificationsUpdate(items) {
-  const processed = items.map((item) => ({
-    ...item,
-    img: item.img || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw=="
-  }));
-  state.notifications = processed;
-  saveNotifications(processed);
-  if (state.activeTab === "search" && refreshSearchView()) return;
-  render();
-}
-
-function startLiveListeners(user) {
-  stopLiveListeners();
-  if (!user) return;
-  liveFeedDisabled = false;
-  liveStoriesDisabled = false;
-
-  const userRef = doc(db, "users", user.uid);
-  userDocUnsub = onSnapshot(userRef, (snap) => {
-    if (!snap.exists()) return;
-    const data = snap.data() || {};
-    const next = {
-      name: data.displayName || state.userProfile.name,
-      handle: data.handle || state.userProfile.handle,
-      avatar: data.avatarUrl || state.userProfile.avatar,
-      followers: data.followersCount ?? state.userProfile.followers,
-      following: data.followingCount ?? state.userProfile.following,
-      role: data.role || state.userProfile.role,
-      location: data.city || state.userProfile.location,
-      bio: data.bio || state.userProfile.bio
-    };
-    Object.assign(state.userProfile, next);
-    safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
-    updateShellDom();
-    if (state.activeTab === "profile" && !state.profileView) {
-      render();
-    } else if (state.activeTab === "search") {
-      refreshSearchView();
-    }
-  });
-
-  const notifRef = collection(db, "users", user.uid, "notifications");
-  notificationsUnsub = onSnapshot(query(notifRef, orderBy("createdAt", "desc"), limit(60)), (snap) => {
-    const items = snap.docs.map((docSnap) => {
-      const data = docSnap.data() || {};
-      return {
-        id: docSnap.id,
-        type: data.type || "system",
-        user: data.user || data.userName || "User",
-        text: data.text || "folgt dir jetzt",
-        time: formatRelative(toDateSafe(data.createdAt)),
-        img: data.avatar || data.img || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
-        read: !!data.read,
-        createdAt: data.createdAt,
-        postId: data.postId || "",
-        commentId: data.commentId || "",
-        userHandle: data.userHandle || data.handle || "",
-        userUid: data.userUid || data.uid || "",
-        ownerType: data.ownerType || "",
-        ownerId: data.ownerId || "",
-        restaurantId: data.restaurantId || ""
-      };
-    });
-    handleNotificationsUpdate(items);
-  });
-
-  startFeedListener();
-  startStoriesListener();
-  startUserPostsListener(user.uid);
-  if (state.userProfile.role === "business" && state.userProfile.restaurantId) {
-    startBusinessPostsListener(state.userProfile.restaurantId);
-  }
-}
-
-function attachProfileViewListener(profile) {
-  if (profileViewUnsub) {
-    profileViewUnsub();
-    profileViewUnsub = null;
-  }
-  if (!profile) return;
-  const ref = profile.restaurantId
-    ? doc(db, "restaurants", profile.restaurantId)
-    : (profile.uid ? doc(db, "users", profile.uid) : null);
-  if (!ref) return;
-  profileViewUnsub = onSnapshot(ref, (snap) => {
-    if (!snap.exists()) return;
-    const data = snap.data() || {};
-    const viewProfile = state.profileView?.profile;
-    if (!viewProfile) return;
-    if (profile.restaurantId) {
-      viewProfile.followers = data.followersCount ?? viewProfile.followers;
-      viewProfile.following = data.followingCount ?? viewProfile.following;
-      viewProfile.avatar = data.logoUrl || data.logo || viewProfile.avatar;
-      viewProfile.name = data.name || data.restaurantName || viewProfile.name;
-      viewProfile.location = data.city || viewProfile.location;
-    } else {
-      viewProfile.followers = data.followersCount ?? viewProfile.followers;
-      viewProfile.following = data.followingCount ?? viewProfile.following;
-      viewProfile.avatar = data.avatarUrl || viewProfile.avatar;
-      viewProfile.name = data.displayName || viewProfile.name;
-      viewProfile.location = data.city || viewProfile.location;
-    }
-    render();
-  });
-}
-
-function startFeedListener() {
-  if (liveFeedDisabled) return;
-  if (feedUnsub) {
-    feedUnsub();
-    feedUnsub = null;
-  }
-  const ref = collection(db, "socialFeed");
-  const feedQuery = query(ref, where("status", "==", "active"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.feedFallback));
-  feedUnsub = onSnapshot(feedQuery, (snap) => {
-    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    const next = rows
-      .filter((row) => (row.status || "active") === "active")
-      .map(normalizeFeedPost)
-      .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-    const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
-    const nextIds = next.map((item) => String(item.id)).join("|");
-    if (prevIds === nextIds) {
-      state.feedPosts = next;
-      updateFeedDom();
-      return;
-    }
-    state.feedPosts = next;
-    saveFeedPosts(next);
-    if (liveStoriesDisabled) {
-      const storySeed = buildStoriesFromFeed(next);
-      if (storySeed.length) {
-        state.stories = storySeed;
-        writeCache(CACHE_KEYS.stories, storySeed);
-      }
-    }
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-      render();
-    }
-  }, (err) => {
-    if (err?.code === "failed-precondition") {
-      liveFeedDisabled = true;
-      if (feedUnsub) {
-        feedUnsub();
-        feedUnsub = null;
-      }
-      startFeedFallbackListener();
-    } else {
-      console.error(err);
-    }
-  });
-}
-
-function startFeedFallbackListener() {
-  if (feedUnsub) {
-    feedUnsub();
-    feedUnsub = null;
-  }
-  const ref = collection(db, "socialFeed");
-  const feedQuery = query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.feedFallback));
-  feedUnsub = onSnapshot(feedQuery, (snap) => {
-    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    const next = rows
-      .filter((row) => (row.status || "active") === "active")
-      .map(normalizeFeedPost)
-      .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-    state.feedPosts = next;
-    saveFeedPosts(next);
-    if (liveStoriesDisabled) {
-      const storySeed = buildStoriesFromFeed(next);
-      if (storySeed.length) {
-        state.stories = storySeed;
-        writeCache(CACHE_KEYS.stories, storySeed);
-      }
-    }
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-      render();
-    }
-  }, (err) => console.error(err));
-}
-
-function startStoriesListener() {
-  if (liveStoriesDisabled) return;
-  if (storiesUnsub) {
-    storiesUnsub();
-    storiesUnsub = null;
-  }
-  const now = Timestamp.now();
-  const storyQuery = query(
-    collectionGroup(db, "stories"),
-    where("expiresAt", ">", now),
-    orderBy("expiresAt", "desc"),
-    limit(FAST_LIMITS.stories)
-  );
-  storiesUnsub = onSnapshot(storyQuery, (snap) => {
-    const map = new Map();
-    snap.forEach((docSnap) => {
-      const rid = docSnap.ref.parent?.parent?.id;
-      if (!rid || map.has(rid)) return;
-      const rest = state.restaurants.find((r) => r.id === rid) || {};
-      map.set(rid, {
-        restaurantId: rid,
-        name: rest.name || rest.restaurantName || docSnap.data()?.restaurantName || "Business",
-        img: rest.logoUrl || rest.logo || docSnap.data()?.thumbUrl || docSnap.data()?.image || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
-        isLive: true
-      });
-    });
-    const items = Array.from(map.values());
-    state.stories = items;
-    writeCache(CACHE_KEYS.stories, items);
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-      render();
-    }
-  }, (err) => {
-    if (err?.code === "failed-precondition") {
-      liveStoriesDisabled = true;
-      if (storiesUnsub) {
-        storiesUnsub();
-        storiesUnsub = null;
-      }
-      const storySeed = buildStoriesFromFeed(state.feedPosts);
-      if (storySeed.length) {
-        state.stories = storySeed;
-        writeCache(CACHE_KEYS.stories, storySeed);
-      }
-      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-        render();
-      }
-    } else {
-      console.error(err);
-    }
-  });
-
-  if (!storyRefreshTimer) {
-    storyRefreshTimer = setInterval(() => {
-      startStoriesListener();
-    }, 2 * 60 * 1000);
-  }
-}
-
-function startUserPostsListener(uid) {
-  if (!uid) return;
-  if (userPostsUnsub) {
-    userPostsUnsub();
-    userPostsUnsub = null;
-  }
-  const ref = collection(db, "users", uid, "posts");
-  const userQuery = query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.userPosts));
-  userPostsUnsub = onSnapshot(userQuery, (snap) => {
-    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    const next = rows.map((row) => ({
-      id: row.id,
-      url: row.url || row.mediaUrl || row.media?.[0]?.url || "",
-      type: row.type || "square",
-      title: "",
-      caption: row.caption || "",
-      createdAt: row.createdAt,
-      likes: row.likesCount ?? row.likes ?? 0,
-      comments: row.commentsCount ?? row.comments ?? 0,
-      isVideo: row.media?.[0]?.type === "video",
-      ownerType: "user",
-      ownerId: uid
-    })).filter((row) => row.url);
-    state.userPosts = next;
-    writeCache(CACHE_KEYS.userPosts, next);
-    if (state.activeTab === "profile" && !state.profileView) {
-      render();
-    }
-  });
-}
-
-function startBusinessPostsListener(restaurantId) {
-  if (!restaurantId) return;
-  if (businessPostsUnsub) {
-    businessPostsUnsub();
-    businessPostsUnsub = null;
-  }
-  const ref = collection(db, "restaurants", restaurantId, "socialPosts");
-  const bizQuery = query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.businessPosts));
-  businessPostsUnsub = onSnapshot(bizQuery, (snap) => {
-    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    const next = rows
-      .filter((row) => (row.status || "active") === "active")
-      .map((row) => ({
-        id: row.id,
-        url: row.media?.[0]?.url || row.mediaUrl || "",
-        type: row.type || "square",
-        title: "",
-        caption: row.caption || "",
-        createdAt: row.createdAt,
-        likes: row.likesCount ?? row.likes ?? 0,
-        comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: row.media?.[0]?.type === "video",
-        ownerType: "restaurant",
-        ownerId: restaurantId,
-        restaurantId
-      }))
-      .filter((row) => row.url);
-    state.businessPosts = next;
-    writeCache(CACHE_KEYS.businessPosts, next);
-    if (state.activeTab === "profile" && !state.profileView) {
-      render();
-    }
-  });
-}
-
-function stopPostMetaListeners() {
-  if (modalLikesUnsub) {
-    modalLikesUnsub();
-    modalLikesUnsub = null;
-  }
-  if (modalCommentsUnsub) {
-    modalCommentsUnsub();
-    modalCommentsUnsub = null;
-  }
-}
-
-function attachPostMetaListeners(post) {
-  stopPostMetaListeners();
-  const postRef = getPostDocRef(post);
-  if (!postRef || !post?.id) return;
-  const postId = String(post.id);
-  modalLikesUnsub = onSnapshot(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)), (snap) => {
-    const meta = ensurePostMeta(postId);
-    meta.likes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    state.postMeta[postId] = meta;
-    updatePostModalMeta();
-  });
-  modalCommentsUnsub = onSnapshot(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)), (snap) => {
-    const meta = ensurePostMeta(postId);
-    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    const byId = new Map();
-    const top = [];
-    rows.forEach((row) => {
-      const item = ensureCommentShape(row);
-      byId.set(item.id, item);
-    });
-    rows.forEach((row) => {
-      const item = byId.get(row.id);
-      const parentId = row.parentId || null;
-      if (parentId && byId.has(parentId)) {
-        const parent = byId.get(parentId);
-        parent.replies = [item, ...(parent.replies || [])];
-      } else if (item) {
-        top.push(item);
-      }
-    });
-    meta.comments = top;
-    state.postMeta[postId] = meta;
-    updatePostModalMeta();
-  });
 }
 
 function renderMapSheet(selected) {
@@ -2322,10 +1083,7 @@ function renderProfilePosts(posts) {
 
 function renderProfileGridItem(item) {
   const counts = resolvePostCounts(item);
-  const postId = item.id ? String(item.id) : "";
-  const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
-  const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
-  const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
+  const postAttr = item.id ? `data-open-post="${escapeHtml(item.id)}"` : "";
   return `
     <button type="button" ${postAttr} class="rounded-[2.5rem] overflow-hidden shadow-md relative group text-left ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
       <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
@@ -2333,8 +1091,8 @@ function renderProfileGridItem(item) {
       <div class="absolute inset-x-0 bottom-0 p-3">
         <div class="flex items-center justify-between text-white bg-black/45 backdrop-blur rounded-2xl px-3 py-2">
           <div class="flex items-center gap-3 text-[10px] font-black">
-            <div class="flex items-center gap-1">${icon("heart", "w-3 h-3")}<span ${likeAttr}>${escapeHtml(counts.likeLabel)}</span></div>
-            <div class="flex items-center gap-1">${icon("message-circle", "w-3 h-3")}<span ${commentAttr}>${escapeHtml(counts.commentLabel)}</span></div>
+            <div class="flex items-center gap-1">${icon("heart", "w-3 h-3")}${escapeHtml(counts.likeLabel)}</div>
+            <div class="flex items-center gap-1">${icon("message-circle", "w-3 h-3")}${escapeHtml(counts.commentLabel)}</div>
           </div>
           ${item.isVideo ? `<div class="w-9 h-9 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center">${icon("play", "w-4 h-4")}</div>` : ""}
         </div>
@@ -2343,60 +1101,40 @@ function renderProfileGridItem(item) {
   `;
 }
 
-function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
+function renderProfilePostCardFancy(item, isGrid) {
   const counts = resolvePostCounts(item);
-  const postId = item.id ? String(item.id) : "";
-  const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
-  const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
-  const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
+  const postAttr = item.id ? `data-open-post="${escapeHtml(item.id)}"` : "";
   const isWide = item.type === "wide" || item.type === "hero";
   const colClass = isGrid && isWide ? "col-span-2" : "";
   const aspectClass = isGrid
     ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
     : "aspect-[4/5]";
   return `
-    <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
+    <button type="button" ${postAttr} class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
+        <img src="${escapeHtml(item.url)}" loading="lazy" class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">
             <div class="flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
               <div class="flex items-center gap-1">
                 ${icon("heart", "w-3 h-3 fill-rose-500 text-rose-500")}
-                <span ${likeAttr} class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.likeLabel)}</span>
+                <span class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.likeLabel)}</span>
               </div>
               <div class="w-px h-3 bg-white/20"></div>
               <div class="flex items-center gap-1">
                 ${icon("message-circle", "w-3 h-3 text-indigo-200")}
-                <span ${commentAttr} class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.commentLabel)}</span>
+                <span class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.commentLabel)}</span>
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      ${postId && allowMenu ? `
-        <button type="button" data-profile-menu-button="${escapeHtml(postId)}" class="absolute top-3 right-3 p-2 bg-black/20 backdrop-blur-md rounded-full text-white/90 z-20 active:bg-black/40 hover:bg-black/30 transition-colors">
-          ${icon("more-horizontal", "w-3.5 h-3.5")}
-        </button>
-        <div data-profile-menu="${escapeHtml(postId)}" class="absolute top-12 right-3 w-40 bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1),0_0_1px_rgba(0,0,0,0.1)] border border-slate-100 p-1.5 z-30 hidden origin-top-right flex flex-col gap-1">
-          <button type="button" data-profile-post-toggle="${escapeHtml(postId)}" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl transition-colors text-left w-full">
-            ${icon(isWide ? "minimize-2" : "maximize-2", "w-3.5 h-3.5")}
-            ${isWide ? "Schmaler" : "Breiter"}
-          </button>
-          <div class="h-px bg-slate-100 w-full my-0.5"></div>
-          <button type="button" data-profile-post-delete="${escapeHtml(postId)}" class="flex items-center gap-3 px-3 py-2.5 text-xs font-bold text-rose-500 hover:bg-rose-50 rounded-xl transition-colors text-left w-full">
-            ${icon("trash-2", "w-3.5 h-3.5")}
-            Loeschen
-          </button>
-        </div>
-      ` : ""}
-    </div>
+    </button>
   `;
 }
 
-function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
+function renderProfilePostsFancy(posts, viewMode) {
   const isGrid = viewMode === "grid";
   if (!posts.length) {
     return `
@@ -2408,7 +1146,7 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
       </div>
     `;
   }
-  return posts.map((post) => renderProfilePostCardFancy(post, isGrid, allowMenu)).join("");
+  return posts.map((post) => renderProfilePostCardFancy(post, isGrid)).join("");
 }
 
 function renderProfileCheckins() {
@@ -2480,271 +1218,43 @@ function renderProfileViewControls() {
   `;
 }
 
-function getProfilePostList() {
-  return state.userProfile.role === "business" ? state.businessPosts : state.userPosts;
-}
-
-function findProfilePost(postId) {
-  const list = getProfilePostList();
-  const idx = list.findIndex((item) => String(item.id) === String(postId));
-  return { list, idx, post: idx >= 0 ? list[idx] : null };
-}
-
-async function updateProfilePostType(postId, nextType) {
-  if (!postId || !state.user) return;
-  const isBusiness = state.userProfile.role === "business";
-  if (isBusiness) {
-    const restaurantId = state.userProfile.restaurantId;
-    if (!restaurantId) return;
-    await setDoc(doc(db, "restaurants", restaurantId, "socialPosts", postId), { type: nextType }, { merge: true });
-  } else {
-    await setDoc(doc(db, "users", state.user.uid, "posts", postId), { type: nextType }, { merge: true });
-  }
-}
-
-async function toggleProfilePostWidth(postId) {
-  if (!postId) return;
-  const { post } = findProfilePost(postId);
-  if (!post) return;
-  const isWide = post.type === "wide" || post.type === "hero";
-  const nextType = isWide ? "square" : "wide";
-  post.type = nextType;
-  state.profilePostMenuId = null;
-  render();
-  updatePostCaches(post);
-  try {
-    await updateProfilePostType(postId, nextType);
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function deleteProfilePost(postId) {
-  if (!postId || !state.user) return;
-  if (!confirm("Beitrag wirklich loeschen?")) return;
-  const { list, idx } = findProfilePost(postId);
-  if (idx < 0) return;
-  list.splice(idx, 1);
-  state.profilePostMenuId = null;
-  render();
-  if (state.userProfile.role === "business") {
-    writeCache(CACHE_KEYS.businessPosts, state.businessPosts);
-  } else {
-    writeCache(CACHE_KEYS.userPosts, state.userPosts);
-  }
-  try {
-    if (state.userProfile.role === "business") {
-      const restaurantId = state.userProfile.restaurantId;
-      if (restaurantId) {
-        await deleteDoc(doc(db, "restaurants", restaurantId, "socialPosts", postId));
-      }
-      await deleteDoc(doc(db, "socialFeed", postId));
-    } else {
-      await deleteDoc(doc(db, "users", state.user.uid, "posts", postId));
-    }
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-function toggleProfilePostMenu(postId) {
-  if (!postId) return;
-  const next = String(state.profilePostMenuId) === String(postId) ? null : String(postId);
-  state.profilePostMenuId = next;
-  setProfileMenuOpen(next);
-}
-
-function setProfileMenuOpen(postId) {
-  const menus = document.querySelectorAll("[data-profile-menu]");
-  const next = postId ? String(postId) : "";
-  menus.forEach((menu) => {
-    const isOpen = next && menu.dataset.profileMenu === next;
-    menu.classList.toggle("hidden", !isOpen);
-  });
-}
-
-function getPostDocRef(post) {
-  if (!post || !post.id) return null;
-  const id = String(post.id);
-  if (post.ownerType === "restaurant" && post.ownerId) {
-    return doc(db, "restaurants", post.ownerId, "socialPosts", id);
-  }
-  if (post.ownerType === "user" && post.ownerId) {
-    return doc(db, "users", post.ownerId, "posts", id);
-  }
-  if (post.restaurantId) {
-    return doc(db, "restaurants", post.restaurantId, "socialPosts", id);
-  }
-  if (state.user?.uid) {
-    return doc(db, "users", state.user.uid, "posts", id);
-  }
-  return null;
-}
-
-function getFeedDocRef(post) {
-  if (!post?.id) return null;
-  return doc(db, "socialFeed", String(post.id));
-}
-
-async function resolveRestaurantOwnerUid(restaurantId) {
-  if (!restaurantId) return "";
-  if (restaurantOwnerCache.has(restaurantId)) {
-    return restaurantOwnerCache.get(restaurantId) || "";
-  }
-  const cached = state.restaurants.find((r) => r.id === restaurantId);
-  const ownerUid = cached?.ownerUid || cached?.ownerId || "";
-  if (ownerUid) {
-    restaurantOwnerCache.set(restaurantId, ownerUid);
-    return ownerUid;
-  }
-  try {
-    const snap = await getDoc(doc(db, "restaurants", restaurantId));
-    if (snap.exists()) {
-      const data = snap.data() || {};
-      const uid = data.ownerUid || data.ownerId || "";
-      restaurantOwnerCache.set(restaurantId, uid);
-      return uid;
-    }
-  } catch (err) {
-    console.error(err);
-  }
-  return "";
-}
-
-async function resolvePostOwnerUid(post) {
-  if (!post) return "";
-  if (post.ownerType === "user" && post.ownerId) return post.ownerId;
-  if (post.ownerType === "restaurant" && post.ownerId) {
-    return resolveRestaurantOwnerUid(post.ownerId);
-  }
-  if (post.restaurantId) {
-    return resolveRestaurantOwnerUid(post.restaurantId);
-  }
-  return "";
-}
-
-async function loadPostMetaFromFirebase(post) {
-  const postRef = getPostDocRef(post);
-  if (!postRef) return { likes: [], comments: [] };
-  const meta = { likes: [], comments: [] };
-  try {
-    const likesSnap = await getDocs(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)));
-    meta.likes = likesSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-  } catch (err) {
-    console.error(err);
-  }
-  try {
-    const commentsSnap = await getDocs(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)));
-    const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    const byId = new Map();
-    const top = [];
-    rows.forEach((row) => {
-      const item = ensureCommentShape(row);
-      byId.set(item.id, item);
-    });
-    rows.forEach((row) => {
-      const item = byId.get(row.id);
-      const parentId = row.parentId || null;
-      if (parentId && byId.has(parentId)) {
-        const parent = byId.get(parentId);
-        parent.replies = [item, ...(parent.replies || [])];
-      } else if (item) {
-        top.push(item);
-      }
-    });
-    meta.comments = top;
-  } catch (err) {
-    console.error(err);
-  }
-  state.postMeta[post.id] = meta;
-  return meta;
-}
-
 function renderPublicProfileView() {
   const view = state.profileView;
   if (!view || !view.profile) return "";
   const profile = view.profile;
   const posts = view.posts || profile.posts || [];
-  const followKey = String(profile.handle || "").replace(/^@/, "");
-  const isFollowing = state.followingHandles.includes(followKey);
-  const typeLabel = profile.restaurantId ? "Business" : "User";
-  const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
-  const backLabel = state.profileBackTab === "search" ? "Suche" : "Profil";
-  const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
-  const bioHtml = safeBio || "Noch keine Bio.";
-  const isMediaTab = state.profileContentTab === "media";
-  const isCheckinTab = state.profileContentTab === "checkins";
-  const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
+  const isFollowing = state.followingHandles.includes(profile.handle);
   return `
-    <div class="pb-24">
-      <div class="px-5 pb-2 pt-10">
-      <div class="flex items-center gap-3 mb-6">
+    <div class="p-8 animate-in slide-in-from-bottom-10 duration-700 pb-24">
+      <div class="flex items-center gap-3 mb-8">
         <button data-public-profile-back="true" class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
         <div>
-          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${backLabel}</p>
-          <h2 class="text-xl font-black italic tracking-tighter">${escapeHtml(sanitizeDisplayName(profile.name, profile.handle || "Profil"))}</h2>
+          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Profil</p>
+          <h2 class="text-xl font-black italic tracking-tighter">${escapeHtml(profile.name || "Business")}</h2>
         </div>
       </div>
-
-        <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
-          <div class="relative z-10">
-            <div class="flex justify-between items-start mb-8">
-              <div class="relative">
-                <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
-                </div>
-                ${profile.isPremium ? `
-                  <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
-                    ${icon("badge-check", "w-4 h-4 fill-blue-500 text-white")}
-                  </div>
-                ` : ""}
-              </div>
-
-              <div class="flex items-center gap-6 pt-3 pr-2">
-                 <div class="flex flex-col items-center">
-                    <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.followers))}</span>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span>
-                 </div>
-                 <div class="w-px h-8 bg-slate-100"></div>
-                 <div class="flex flex-col items-center">
-                    <span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.following))}</span>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Folgt</span>
-                 </div>
-              </div>
-            </div>
-
-            <div class="mb-8">
-              <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profile.name || "User")}</h1>
-              <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>
-              <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
-              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / ${typeLabel}</p>
-            </div>
-
-            <div class="flex gap-4">
-              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${isFollowing ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200" : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent"}">
-                <span class="relative z-10 flex items-center gap-2">
-                  ${isFollowing ? icon("check", "w-4 h-4") : ""}
-                  ${isFollowing ? "Following" : "Follow"}
-                </span>
-              </button>
-              <button class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 bg-white text-slate-900 active:scale-[0.95] transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
-                ${icon("message-circle", "w-5 h-5")}
-              </button>
-            </div>
-          </div>
+      <div class="flex flex-col items-center text-center mb-10">
+        <div class="w-32 h-32 rounded-[3.5rem] bg-gradient-to-tr from-indigo-600 to-purple-500 p-1 shadow-2xl shadow-indigo-500/20">
+          <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[3.2rem] object-cover border-4 border-white" />
         </div>
+        <p class="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-3">${escapeHtml(profile.location || "-")} / Business</p>
+        <div class="flex gap-3 mt-6 w-full max-w-xs justify-center">
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(posts.length))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Posts</span></div>
+          <div class="w-px h-8 bg-slate-200 mx-1"></div>
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.followers))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Follower</span></div>
+          <div class="w-px h-8 bg-slate-200 mx-1"></div>
+          <div class="flex flex-col items-center"><span class="text-lg font-black text-slate-900">${escapeHtml(formatCount(profile.following))}</span><span class="text-[9px] font-bold text-slate-400 uppercase">Following</span></div>
+        </div>
+        <div class="flex gap-3 mt-8 w-full max-w-xs">
+          <button data-public-profile-follow="${escapeHtml(profile.handle)}" class="flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+            ${isFollowing ? "Following" : "Follow"}
+          </button>
+        </div>
+        <p class="mt-5 text-sm font-medium text-slate-600 leading-relaxed">${escapeHtml(profile.bio || "")}</p>
       </div>
-
-      ${renderProfileTabs()}
-      ${renderProfileViewControls()}
-
-      ${isCheckinTab ? `
-        ${renderProfileCheckins()}
-      ` : `
-        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6" : "flex flex-col gap-8 px-6"}">
-          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
-        </div>
-      `}
+      <div class="grid grid-cols-2 gap-3">
+        ${renderProfilePosts(posts)}
+      </div>
     </div>
   `;
 }
@@ -2762,12 +1272,16 @@ function renderProfileView() {
     <div class="pb-24">
       <div class="px-5 pb-2 pt-10">
         <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
-        <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
+        <div class="bg-white rounded-[2.5rem] p-8 shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] relative overflow-hidden z-10 border border-slate-100">
+          <div class="absolute top-[-60px] right-[-60px] w-64 h-64 bg-gradient-to-bl from-indigo-100 via-purple-100 to-transparent rounded-full blur-3xl opacity-60 pointer-events-none mix-blend-multiply"></div>
+          <div class="absolute top-[-20px] right-[-20px] w-32 h-32 bg-white/40 rounded-full blur-xl pointer-events-none"></div>
+
           <div class="relative z-10">
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
-                <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAIAAAMLCwgAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==")}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                <div class="absolute -inset-2 bg-gradient-to-tr from-indigo-500/20 to-purple-500/20 rounded-[2.5rem] blur-md group-hover:blur-lg transition-all duration-500"></div>
+                <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-white to-slate-50 shadow-sm">
+                  <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-full h-full rounded-[1.8rem] object-cover" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -2816,8 +1330,18 @@ function renderProfileView() {
         ${renderProfileCheckins()}
       ` : `
         <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6" : "flex flex-col gap-8 px-6"}">
-          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, true)}
+          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
         </div>
+        ${state.profileContentTab === "posts" ? `
+          <div class="px-6 mt-8 mb-4">
+            <button data-nav="upload" class="w-full py-5 rounded-[2rem] bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-95 transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
+              <span class="relative z-10 flex items-center gap-2">
+                ${icon("plus", "w-4 h-4")} Neuen Beitrag
+              </span>
+              <div class="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+            </button>
+          </div>
+        ` : ""}
       `}
     </div>
   `;
@@ -2838,13 +1362,11 @@ async function openProfileFromBusiness(input) {
       .map((p, idx) => ({
         id: p.id || `feed_${idx}`,
         url: p.image,
-        type: p.type || "square",
+        type: "square",
         caption: p.content || "",
         createdAt: p.createdAt,
         likes: p.likes ?? 0,
-        comments: p.comments ?? 0,
-        ownerType: "restaurant",
-        ownerId: restaurantId || p.restaurantId || ""
+        comments: p.comments ?? 0
       }));
 
     const cacheKey = restaurantId || safeName;
@@ -2870,8 +1392,9 @@ async function openProfileFromBusiness(input) {
       restaurantId ? loadBusinessPostsForRestaurant(restaurantId) : Promise.resolve(fallbackPosts)
     ]);
 
+    const profileDoc = profileSnap?.data || null;
     const resolved = normalizeExternalProfile({
-      profileDoc: profileSnap,
+      profileDoc,
       restaurant: rest,
       fallbackName: safeName || rest.name || rest.restaurantName || "Business",
       posts: posts && posts.length ? posts : fallbackPosts
@@ -2885,439 +1408,43 @@ async function openProfileFromBusiness(input) {
   }
 }
 
-function showPublicProfile(profile, posts) {
-  state.profileView = { profile, posts: posts || profile.posts || [] };
-  state.profileModal = { open: false, profile: null };
-  state.profileContentTab = "posts";
-  state.profileViewMode = "grid";
-  state.profilePostMenuId = null;
-  state.drawerOpen = false;
-  state.profileBackTab = state.activeTab || "feed";
-  state.activeTab = "profile";
-  render();
-  attachProfileViewListener(profile);
-}
-
-async function openProfileViewFromBusiness(input) {
-  try {
-    const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
-    const restaurantId = typeof input === "string" ? "" : (input?.id || "");
-    if (!safeName && !restaurantId) return;
-
-    const rest = restaurantId
-      ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
-      : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
-
-    const fallbackPosts = state.feedPosts
-      .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
-      .map((p, idx) => ({
-        id: p.id || `feed_${idx}`,
-        url: p.image,
-        type: p.type || "square",
-        caption: p.content || "",
-        createdAt: p.createdAt,
-        likes: p.likes ?? 0,
-        comments: p.comments ?? 0,
-        ownerType: "restaurant",
-        ownerId: restaurantId || p.restaurantId || ""
-      }));
-
-    const placeholderProfile = normalizeExternalProfile({
-      profileDoc: null,
-      restaurant: rest,
-      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-      posts: fallbackPosts
-    });
-
-    showPublicProfile(placeholderProfile, placeholderProfile.posts);
-
-    const [profileSnap, posts] = await Promise.all([
-      fetchBusinessProfileDoc({ restaurantId, restaurant: rest }),
-      restaurantId ? loadBusinessPostsForRestaurant(restaurantId) : Promise.resolve(fallbackPosts)
-    ]);
-
-    const resolved = normalizeExternalProfile({
-      profileDoc: profileSnap,
-      restaurant: rest,
-      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-      posts: posts && posts.length ? posts : fallbackPosts
-    });
-
-    if (state.activeTab !== "profile") return;
-    if (restaurantId && state.profileView?.profile?.restaurantId !== restaurantId) return;
-    showPublicProfile(resolved, resolved.posts);
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function openProfileFromUser(input) {
-  try {
-    const uid = typeof input === "string" ? input : (input?.uid || "");
-    const handle = String(typeof input === "string" ? "" : (input?.handle || input?.name || "")).replace(/^@/, "");
-    if (!uid && !handle) return;
-
-    const cacheKey = uid || handle;
-    const cached = userProfileCache.get(cacheKey);
-    if (cached) {
-      showPublicProfile(cached, cached.posts || []);
-      return;
-    }
-
-    const fallbackProfile = normalizeExternalUserProfile({ userDoc: null, fallback: input || {}, posts: [] });
-    showPublicProfile(fallbackProfile, []);
-
-    let userDoc = null;
-    if (uid) {
-      const snap = await getDoc(doc(db, "users", uid));
-      if (snap.exists()) userDoc = snap;
-    } else if (handle) {
-      const resolved = await resolveUserByHandle(handle);
-      if (resolved?.id) userDoc = { id: resolved.id, data: resolved.data };
-    }
-
-    if (!userDoc) return;
-    const posts = await loadUserPostsForUser(userDoc.id);
-    const resolvedProfile = normalizeExternalUserProfile({
-      userDoc,
-      fallback: input || {},
-      posts
-    });
-    userProfileCache.set(cacheKey, resolvedProfile);
-    if (state.activeTab !== "profile") return;
-    if (uid && state.profileView?.profile?.uid !== uid) return;
-    showPublicProfile(resolvedProfile, resolvedProfile.posts);
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function loadFollowingFromFirebase({ force = false } = {}) {
-  if (!state.user) return;
-  if (FAST_MODE && state.followingHandles.length && !force) return;
-  try {
-    const ref = collection(db, "users", state.user.uid, "following");
-    const snap = await getDocs(ref);
-    const handles = [];
-    snap.forEach((docSnap) => {
-      const data = docSnap.data() || {};
-      if (data.handle) handles.push(String(data.handle));
-    });
-    state.followingHandles = handles;
-    saveFollowing(handles);
-  } catch (err) {
-    console.error(err);
-    state.followingHandles = [];
-  }
-}
-
-async function loadNotificationsFromFirebase({ force = false } = {}) {
-  if (!state.user) return;
-  if (FAST_MODE && state.notifications.length && !force) return;
-  try {
-    const ref = collection(db, "users", state.user.uid, "notifications");
-    const snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(60)));
-    const items = [];
-    snap.forEach((docSnap) => {
-      const data = docSnap.data() || {};
-      items.push({
-        id: docSnap.id,
-        type: data.type || "system",
-        user: data.user || data.userName || "User",
-        text: data.text || "folgt dir jetzt",
-        time: formatRelative(toDateSafe(data.createdAt)),
-        img: data.avatar || data.img || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
-        read: !!data.read,
-        createdAt: data.createdAt,
-        postId: data.postId || "",
-        commentId: data.commentId || "",
-        userHandle: data.userHandle || data.handle || "",
-        userUid: data.userUid || data.uid || "",
-        ownerType: data.ownerType || "",
-        ownerId: data.ownerId || "",
-        restaurantId: data.restaurantId || ""
-      });
-    });
-    state.notifications = items;
-    saveNotifications(items);
-    render();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function pushUserNotification(targetUid, payload) {
-  if (!targetUid) return;
-  try {
-    const ref = doc(collection(db, "users", targetUid, "notifications"));
-    await setDoc(ref, {
-      ...payload,
-      read: false,
-      createdAt: serverTimestamp()
-    });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function markNotificationRead(id) {
-  if (!id) return;
-  const idx = state.notifications.findIndex((n) => n.id === id);
-  if (idx >= 0 && !state.notifications[idx].read) {
-    state.notifications[idx].read = true;
-    saveNotifications(state.notifications);
-    render();
-  }
-  if (state.user?.uid) {
-    try {
-      await updateDoc(doc(db, "users", state.user.uid, "notifications", id), { read: true });
-    } catch (err) {
-      console.error(err);
-    }
-  }
-}
-
-async function markAllNotificationsRead() {
-  const unread = state.notifications.filter((n) => !n.read);
-  if (!unread.length) return;
-  state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
-  saveNotifications(state.notifications);
-  render();
-  if (state.user?.uid) {
-    await Promise.allSettled(unread.map((n) =>
-      updateDoc(doc(db, "users", state.user.uid, "notifications", n.id), { read: true })
-    ));
-  }
-}
-
-function normalizeUserPostDoc(postId, data, ownerId) {
-  return {
-    id: postId,
-    url: data.url || "",
-    type: data.type || "square",
-    title: data.title || "",
-    caption: data.caption || "",
-    createdAt: data.createdAt,
-    likes: data.likesCount ?? data.likes ?? 0,
-    comments: data.commentsCount ?? data.comments ?? 0,
-    isVideo: !!data.isVideo,
-    ownerType: "user",
-    ownerId: ownerId || ""
-  };
-}
-
-function normalizeRestaurantPostDoc(postId, data, restaurantId) {
-  return {
-    id: postId,
-    url: data.media?.[0]?.url || data.mediaUrl || "",
-    type: data.type || "square",
-    title: data.title || "",
-    caption: data.caption || "",
-    createdAt: data.createdAt,
-    likes: data.likesCount ?? data.likes ?? 0,
-    comments: data.commentsCount ?? data.comments ?? 0,
-    isVideo: data.media?.[0]?.type === "video",
-    ownerType: "restaurant",
-    ownerId: restaurantId || "",
-    restaurantId: restaurantId || ""
-  };
-}
-
-async function fetchPostForNotification(notif) {
-  const postId = String(notif.postId || "");
-  if (!postId) return null;
-  const ownerType = notif.ownerType || "";
-  const ownerId = notif.ownerId || notif.restaurantId || "";
-
-  try {
-    if (ownerType === "user" && ownerId) {
-      const snap = await getDoc(doc(db, "users", ownerId, "posts", postId));
-      if (snap.exists()) return normalizeUserPostDoc(postId, snap.data() || {}, ownerId);
-    }
-    if (ownerType === "restaurant" && ownerId) {
-      const snap = await getDoc(doc(db, "restaurants", ownerId, "socialPosts", postId));
-      if (snap.exists()) return normalizeRestaurantPostDoc(postId, snap.data() || {}, ownerId);
-    }
-    const feedSnap = await getDoc(doc(db, "socialFeed", postId));
-    if (feedSnap.exists()) return normalizeFeedPost({ id: feedSnap.id, ...feedSnap.data() });
-  } catch (err) {
-    console.error(err);
-  }
-  return null;
-}
-
-function highlightCommentInModal(commentId) {
-  const commentsRoot = document.getElementById("postModalComments");
-  if (!commentsRoot) return false;
-  const safeId = String(commentId || "");
-  if (!safeId) return false;
-  const target = commentsRoot.querySelector(`[data-comment-id="${safeId}"]`);
-  if (!target) return false;
-  target.classList.add("ring-2", "ring-indigo-300", "bg-indigo-50/70");
-  target.scrollIntoView({ behavior: "smooth", block: "center" });
-  setTimeout(() => {
-    target.classList.remove("ring-2", "ring-indigo-300", "bg-indigo-50/70");
-  }, 2000);
-  return true;
-}
-
-async function openPostFromNotification(notif) {
-  const postId = String(notif.postId || "");
-  if (!postId) return;
-  let post = findPostById(postId) || state.feedPosts.find((item) => String(item.id) === postId) || null;
-  if (!post) {
-    post = await fetchPostForNotification(notif);
-  }
-  if (!post) {
-    pendingCommentHighlight = "";
-    return;
-  }
-  if (notif.type === "comment" && notif.commentId) {
-    pendingCommentHighlight = String(notif.commentId);
-  }
-  await openPostModal(post);
-  if (pendingCommentHighlight) {
-    if (highlightCommentInModal(pendingCommentHighlight)) {
-      pendingCommentHighlight = "";
-    }
-  }
-}
-
-async function openNotificationTarget(id) {
-  const notif = state.notifications.find((n) => n.id === id);
-  if (!notif) return;
-  void markNotificationRead(id);
-  if (notif.type === "follow") {
-    openProfileFromUser({
-      uid: notif.userUid || "",
-      handle: notif.userHandle || notif.user || "",
-      name: notif.user || "User",
-      avatar: notif.img || ""
-    });
-    return;
-  }
-  if (notif.type === "like" || notif.type === "comment") {
-    await openPostFromNotification(notif);
-  }
-}
-
-async function resolveUserByHandle(handle) {
-  if (!handle) return null;
-  const safeHandle = String(handle || "").replace(/^@/, "");
-  try {
-    const snap = await getDocs(query(collection(db, "users"), where("handle", "==", safeHandle), limit(1)));
-    if (!snap.empty) {
-      const docSnap = snap.docs[0];
-      return { id: docSnap.id, data: docSnap.data() || {} };
-    }
-  } catch (err) {
-    console.error(err);
-  }
-  return null;
-}
-
-async function toggleFollow(handle, target = {}) {
-  if (!state.user) return;
-  const safeHandle = String(handle || "").replace(/^@/, "");
-  if (!safeHandle) return;
-
-  let targetType = target.type || "";
-  let targetId = target.id || "";
-  if (!targetType) {
-    if (target.restaurantId) {
-      targetType = "restaurant";
-      targetId = target.restaurantId;
-    } else if (target.uid) {
-      targetType = "user";
-      targetId = target.uid;
-    }
-  }
-
-  if (!targetId && safeHandle) {
-    const userSnap = await resolveUserByHandle(safeHandle);
-    if (userSnap?.id) {
-      targetType = "user";
-      targetId = userSnap.id;
-    }
-  }
-
-  const docId = `${targetType || "handle"}_${targetId || safeHandle}`;
-  const followRef = doc(db, "users", state.user.uid, "following", docId);
-  const idx = state.followingHandles.indexOf(safeHandle);
-  const isUnfollow = idx >= 0;
-  const delta = isUnfollow ? -1 : 1;
+function toggleFollow(handle) {
+  if (!handle) return;
+  const idx = state.followingHandles.indexOf(handle);
+  const profileModal = state.profileModal.profile;
+  const profileView = state.profileView?.profile || null;
   const toNum = (value) => {
     const n = Number(value);
     return Number.isFinite(n) ? n : 0;
   };
+  const delta = idx >= 0 ? -1 : 1;
 
-  try {
-    if (isUnfollow) {
-      await deleteDoc(followRef);
-      state.followingHandles.splice(idx, 1);
-    } else {
-      await setDoc(followRef, {
-        handle: safeHandle,
-        targetType: targetType || "handle",
-        targetId: targetId || "",
-        name: target.name || "",
-        avatar: target.avatar || "",
-        createdAt: serverTimestamp()
-      });
-      state.followingHandles.unshift(safeHandle);
+  if (idx >= 0) {
+    state.followingHandles.splice(idx, 1);
+    state.userProfile.following = Math.max(0, toNum(state.userProfile.following) - 1);
+    if (profileModal && profileModal.handle === handle) {
+      profileModal.followers = Math.max(0, toNum(profileModal.followers) - 1);
     }
-
-    state.userProfile.following = Math.max(0, toNum(state.userProfile.following) + delta);
-    try {
-      await updateDoc(doc(db, "users", state.user.uid), { followingCount: increment(delta) });
-    } catch (err) {
-      console.error(err);
+    if (profileView && profileView.handle === handle) {
+      profileView.followers = Math.max(0, toNum(profileView.followers) - 1);
     }
-
-    if (targetType === "user" && targetId) {
-      try {
-        await updateDoc(doc(db, "users", targetId), { followersCount: increment(delta) });
-        if (delta > 0) {
-          const actor = currentUserBadge();
-          await pushUserNotification(targetId, {
-            type: "follow",
-            user: actor.name,
-            userHandle: actor.handle,
-            userUid: actor.uid,
-            avatar: actor.avatar,
-            text: "folgt dir jetzt"
-          });
-        }
-      } catch (err) {
-        console.error(err);
-      }
+  } else {
+    state.followingHandles.unshift(handle);
+    state.userProfile.following = toNum(state.userProfile.following) + 1;
+    if (profileModal && profileModal.handle === handle) {
+      profileModal.followers = toNum(profileModal.followers) + 1;
     }
-    if (targetType === "restaurant" && targetId) {
-      try {
-        await updateDoc(doc(db, "restaurants", targetId), { followersCount: increment(delta) });
-      } catch (err) {
-        console.error(err);
-      }
+    if (profileView && profileView.handle === handle) {
+      profileView.followers = toNum(profileView.followers) + 1;
     }
-    saveFollowing(state.followingHandles);
-
-    const profileModal = state.profileModal.profile;
-    const profileView = state.profileView?.profile || null;
-    if (profileModal && profileModal.handle === safeHandle) {
-      profileModal.followers = Math.max(0, toNum(profileModal.followers) + delta);
-    }
-    if (profileView && profileView.handle === safeHandle) {
-      profileView.followers = Math.max(0, toNum(profileView.followers) + delta);
-    }
-
-    businessProfileCache.forEach((cached) => {
-      if (cached?.handle !== safeHandle) return;
-      cached.followers = Math.max(0, toNum(cached.followers) + delta);
-    });
-  } catch (err) {
-    console.error(err);
   }
 
+  businessProfileCache.forEach((cached) => {
+    if (cached?.handle !== handle) return;
+    cached.followers = Math.max(0, toNum(cached.followers) + delta);
+  });
+
+  saveFollowing(state.followingHandles);
   if (state.profileModal.open && !state.profileView) {
     renderOverlays();
   } else {
@@ -3328,9 +1455,7 @@ async function toggleFollow(handle, target = {}) {
 function renderProfileModal() {
   if (!state.profileModal.open || !state.profileModal.profile) return "";
   const p = state.profileModal.profile;
-  const followKey = String(p.handle || "").replace(/^@/, "");
-  const isFollowing = state.followingHandles.includes(followKey);
-  const typeLabel = p.restaurantId ? "Business" : "User";
+  const isFollowing = state.followingHandles.includes(p.handle);
 
   return `
     <div class="fixed inset-0 z-[60]">
@@ -3345,9 +1470,9 @@ function renderProfileModal() {
             <img src="${escapeHtml(p.avatar)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
             <div class="flex-1 min-w-0">
               <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
+              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / Business</p>
             </div>
-            <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+            <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
               ${isFollowing ? "Following" : "Follow"}
             </button>
           </div>
@@ -3377,10 +1502,10 @@ function renderProfileModal() {
 }
 
 function renderCommentItem(postId, comment, parentId = "") {
-  const likeCount = Array.isArray(comment.likes) ? comment.likes.length : (Number(comment.likesCount) || 0);
+  const likeCount = comment.likes?.length || 0;
   const isReply = !!parentId;
   return `
-    <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}">
+    <div class="flex gap-3 ${isReply ? "ml-10" : ""}">
       <img src="${escapeHtml(comment.avatar)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
       <div class="flex-1">
         <div class="flex items-center justify-between">
@@ -3399,21 +1524,6 @@ function renderCommentItem(postId, comment, parentId = "") {
   `;
 }
 
-function renderPostComments(comments) {
-  if (state.postModal.loading) {
-    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
-  }
-  if (!comments.length) {
-    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
-  }
-  return comments.map((comment) => `
-    <div class="space-y-3">
-      ${renderCommentItem(state.postModal.post.id, comment)}
-      ${(comment.replies || []).map((reply) => renderCommentItem(state.postModal.post.id, reply, comment.id)).join("")}
-    </div>
-  `).join("");
-}
-
 function renderPostModal() {
   if (!state.postModal.open || !state.postModal.post) return "";
   const post = state.postModal.post;
@@ -3422,64 +1532,64 @@ function renderPostModal() {
   const caption = post.caption || post.title || "";
   const imageUrl = post.url || post.image || "";
   const comments = (meta.comments || []).map(ensureCommentShape);
-  const userBadge = currentUserBadge();
-  const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
+  const isLiked = meta.likes?.some((item) => item.handle === currentUserBadge().handle);
   const replyTarget = comments.find((item) => item.id === state.postModal.replyTo);
-  const animClass = "";
 
   return `
-      <div class="fixed inset-0 z-[70]">
-        <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
-        <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden">
-            <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
-              <div class="flex items-center justify-between mb-4">
-                <div>
-                  <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
-                  <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(formatDateLabel(post.createdAt || new Date()))}</h3>
-                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
-                </div>
-                <button id="postModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
-              </div>
-
-              <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                <img src="${escapeHtml(imageUrl)}" class="w-full h-[22rem] object-cover" />
-              </div>
-
-              ${caption ? `
-                <div class="mt-4 text-sm text-slate-600 leading-relaxed">${escapeHtml(caption)}</div>
-              ` : ""}
-
-              <div class="mt-4 flex items-center justify-between">
-                <button id="postLikeBtn" data-post-id="${escapeHtml(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
-                  ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
-                </button>
-                <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  <button id="postLikesBtn" data-post-id="${escapeHtml(post.id)}" class="hover:text-slate-700">${escapeHtml(counts.likeLabel)} Likes</button>
-                  <span id="postCommentsCount">${escapeHtml(counts.commentLabel)} Kommentare</span>
-                </div>
-              </div>
-
-              <div id="postModalComments" class="mt-5 space-y-4">
-                ${renderPostComments(comments)}
-              </div>
-
-              ${replyTarget ? `
-                <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                  <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${escapeHtml(replyTarget.handle)}</div>
-                  <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
-                </div>
-              ` : ""}
+    <div class="fixed inset-0 z-[70]">
+      <div id="postModalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 animate-in slide-in-from-bottom-10">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
+              <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(formatDateLabel(post.createdAt || new Date()))}</h3>
+              <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
             </div>
+            <button id="postModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+          </div>
 
-            <div class="p-7 pt-4 border-t border-slate-100 bg-white">
-              <div class="flex gap-3">
-                <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.postModal.commentText || "")}</textarea>
-                <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
-                  ${icon("send", "w-4 h-4")}
-                </button>
-              </div>
+          <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
+            <img src="${escapeHtml(imageUrl)}" class="w-full h-[22rem] object-cover" />
+          </div>
+
+          ${caption ? `
+            <div class="mt-4 text-sm text-slate-600 leading-relaxed">${escapeHtml(caption)}</div>
+          ` : ""}
+
+          <div class="mt-4 flex items-center justify-between">
+            <button id="postLikeBtn" data-post-id="${escapeHtml(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
+              ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+            </button>
+            <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <button id="postLikesBtn" data-post-id="${escapeHtml(post.id)}" class="hover:text-slate-700">${escapeHtml(counts.likeLabel)} Likes</button>
+              <span>${escapeHtml(counts.commentLabel)} Kommentare</span>
             </div>
+          </div>
+
+          <div class="mt-5 space-y-4 max-h-56 overflow-y-auto no-scrollbar">
+            ${comments.length ? comments.map((comment) => `
+              <div class="space-y-3">
+                ${renderCommentItem(post.id, comment)}
+                ${(comment.replies || []).map((reply) => renderCommentItem(post.id, reply, comment.id)).join("")}
+              </div>
+            `).join("") : `
+              <div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>
+            `}
+          </div>
+
+          ${replyTarget ? `
+            <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+              <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${escapeHtml(replyTarget.handle)}</div>
+              <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
+            </div>
+          ` : ""}
+
+          <div class="mt-4 flex gap-3">
+            <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.postModal.commentText || "")}</textarea>
+            <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
+              ${icon("send", "w-4 h-4")}
+            </button>
           </div>
         </div>
       </div>
@@ -3491,14 +1601,13 @@ function renderLikesModal() {
   if (!state.likesModal.open || !state.likesModal.postId) return "";
   const meta = ensurePostMeta(state.likesModal.postId);
   const likes = meta.likes || [];
-  const animClass = "";
 
   return `
-      <div class="fixed inset-0 z-[80]">
-        <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
+    <div class="fixed inset-0 z-[80]">
+      <div id="likesModalOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[80vh] overflow-hidden">
-          <div class="p-7 pb-4 flex items-center justify-between">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7 animate-in slide-in-from-bottom-10">
+          <div class="flex items-center justify-between mb-6">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
               <h3 class="text-xl font-black italic tracking-tighter">${likes.length} Likes</h3>
@@ -3506,7 +1615,7 @@ function renderLikesModal() {
             <button id="likesModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
           </div>
 
-          <div class="px-7 pb-7 space-y-3 overflow-y-auto no-scrollbar modal-scroll flex-1">
+          <div class="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
             ${likes.length ? likes.map((user) => `
               <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
                 <img src="${escapeHtml(user.avatar)}" class="w-10 h-10 rounded-2xl object-cover" />
@@ -3523,35 +1632,6 @@ function renderLikesModal() {
       </div>
     </div>
   `;
-}
-
-function updatePostModalMeta() {
-  if (!state.postModal.open || !state.postModal.post) return;
-  const post = state.postModal.post;
-  const meta = ensurePostMeta(post.id);
-  const counts = resolvePostCounts(post);
-  const comments = (meta.comments || []).map(ensureCommentShape);
-  const userBadge = currentUserBadge();
-  const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
-
-  const postLikeBtn = document.getElementById("postLikeBtn");
-  if (postLikeBtn) {
-    postLikeBtn.classList.toggle("text-rose-500", !!isLiked);
-    postLikeBtn.classList.toggle("text-slate-700", !isLiked);
-    postLikeBtn.innerHTML = `${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}`;
-  }
-  const postLikesBtn = document.getElementById("postLikesBtn");
-  if (postLikesBtn) postLikesBtn.textContent = `${counts.likeLabel} Likes`;
-  const postCommentsCount = document.getElementById("postCommentsCount");
-  if (postCommentsCount) postCommentsCount.textContent = `${counts.commentLabel} Kommentare`;
-  const postComments = document.getElementById("postModalComments");
-  if (postComments) postComments.innerHTML = renderPostComments(comments);
-  if (window.lucide?.createIcons) window.lucide.createIcons();
-  if (pendingCommentHighlight) {
-    if (highlightCommentInModal(pendingCommentHighlight)) {
-      pendingCommentHighlight = "";
-    }
-  }
 }
 
 function renderSettingsView() {
@@ -3601,7 +1681,7 @@ function renderSettingsView() {
         <div class="flex flex-col items-center mb-8">
           <input type="file" id="settingsAvatarInput" class="hidden" accept="image/*" />
           <div id="settingsAvatarTrigger" class="relative group cursor-pointer">
-            <img src="${escapeHtml(profile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
+            <img src="${escapeHtml(profile.avatar || "https://via.placeholder.com/300")}" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
             <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">${icon("camera", "w-4 h-4")}</div>
           </div>
         </div>
@@ -3725,7 +1805,7 @@ function renderNotificationsView() {
       <div class="space-y-3">
         ${state.notifications.length === 0 ? "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>" :
           state.notifications.map((n) => `
-            <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
+            <div class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
               <img src="${escapeHtml(n.img)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
@@ -3740,206 +1820,6 @@ function renderNotificationsView() {
       </div>
     </div>
   `;
-}
-
-function renderSearchUserItem(user) {
-  const handle = user.handle || normalizeHandle(user.name || "user");
-  const displayName = sanitizeDisplayName(user.name, handle || "User");
-  return `
-    <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(user.avatar)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
-      </div>
-      <span class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">User</span>
-    </button>
-  `;
-}
-
-function renderSearchBusinessItem(biz) {
-  const name = biz.name || "Business";
-  return `
-    <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(biz.logo)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
-      <div class="flex-1 min-w-0">
-        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
-      </div>
-      <span class="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Business</span>
-    </button>
-  `;
-}
-
-function renderSearchView() {
-  const query = state.search.query;
-  const queryKey = normalizeSearchKey(query);
-  const filter = state.search.filter;
-  const users = state.search.userResults || [];
-  // filter out business-role accounts from the user list so businesses don't appear as users
-  const displayedUsers = Array.isArray(users) ? users.filter((u) => String(u.role || "").toLowerCase() !== "business") : [];
-  const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
-  let showUsers = filter === "users";
-  let showBusinesses = filter === "business" || filter === "local";
-  if (filter === "all") {
-    const topUser = (users && users[0] && users[0]._score) ? users[0]._score : 0;
-    const topBiz = (businesses && businesses[0] && businesses[0]._score) ? businesses[0]._score : 0;
-    if (topBiz > topUser) {
-      showBusinesses = true;
-      showUsers = false;
-    } else if (topUser > topBiz) {
-      showUsers = true;
-      showBusinesses = false;
-    } else {
-      showUsers = true;
-      showBusinesses = true;
-    }
-  }
-  const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
-  const hasResults = (showUsers && displayedUsers.length) || (showBusinesses && businesses.length);
-
-  return `
-    <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
-      <div class="mb-6 px-1">
-        <p class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Entdecken</p>
-        <h2 class="text-2xl font-black italic uppercase tracking-tighter">Suche</h2>
-      </div>
-
-      <div class="relative mb-5">
-        <input id="searchInput" type="text" value="${escapeHtml(query)}" placeholder="Suche nach User, Name oder Lokal..." class="w-full h-14 rounded-[2rem] border border-slate-100 bg-white px-5 pr-12 text-sm font-semibold outline-none shadow-sm focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition" />
-        <button id="searchClearBtn" class="absolute right-4 top-1/2 -translate-y-1/2 w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 hover:text-slate-700 transition flex items-center justify-center">
-          ${icon("x", "w-4 h-4")}
-        </button>
-      </div>
-
-      <div class="flex gap-2 mb-6">
-        ${[
-          { id: "all", label: "Alles" },
-          { id: "users", label: "User" },
-          { id: "business", label: "Business" },
-          { id: "local", label: "Lokal" }
-        ].map((item) => `
-          <button data-search-filter="${item.id}" class="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition ${filter === item.id ? "bg-slate-900 text-white shadow-md" : "bg-white text-slate-400 border border-slate-100"}">
-            ${item.label}
-          </button>
-        `).join("")}
-      </div>
-
-      <div id="searchStatusLoading" class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ${state.search.loading ? "" : "hidden"}">Suche...</div>
-      <div id="searchStatusError" class="text-xs font-bold text-rose-500 mb-4 ${state.search.error ? "" : "hidden"}">${escapeHtml(state.search.error || "")}</div>
-      <div id="searchEmptyState" class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em] ${!hasResults && !query ? "" : "hidden"}">Tippe, um zu suchen</div>
-
-      <div id="searchUsersSection" class="space-y-4 mb-10 ${showUsers ? "" : "hidden"}">
-        <div class="flex items-center justify-between px-1">
-          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">User</p>
-          <p id="searchUsersCount" class="text-[10px] font-bold text-slate-300">${displayedUsers.length}</p>
-        </div>
-        <div id="searchUsersList" class="space-y-4">
-          ${displayedUsers.length ? displayedUsers.map(renderSearchUserItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "")}
-        </div>
-      </div>
-
-      <div id="searchBizSection" class="space-y-4 ${showBusinesses ? "" : "hidden"}">
-        <div class="flex items-center justify-between px-1">
-          <p id="searchBizLabel" class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${localLabel}</p>
-          <p id="searchBizCount" class="text-[10px] font-bold text-slate-300">${businesses.length}</p>
-        </div>
-        <div id="searchBizList" class="space-y-4">
-          ${businesses.length ? businesses.map(renderSearchBusinessItem).join("") : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine ${localLabel} gefunden.</div>` : "")}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function updateSearchDom() {
-  const searchView = document.getElementById("searchView");
-  if (!searchView) return false;
-
-  const query = state.search.query;
-  const queryKey = normalizeSearchKey(query);
-  const filter = state.search.filter;
-  const users = state.search.userResults || [];
-  const displayedUsers = Array.isArray(users) ? users.filter((u) => String(u.role || "").toLowerCase() !== "business") : [];
-  const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
-  let showUsers = filter === "users";
-  let showBusinesses = filter === "business" || filter === "local";
-  if (filter === "all") {
-    const topUser = (users && users[0] && users[0]._score) ? users[0]._score : 0;
-    const topBiz = (businesses && businesses[0] && businesses[0]._score) ? businesses[0]._score : 0;
-    if (topBiz > topUser) {
-      showBusinesses = true;
-      showUsers = false;
-    } else if (topUser > topBiz) {
-      showUsers = true;
-      showBusinesses = false;
-    } else {
-      showUsers = true;
-      showBusinesses = true;
-    }
-  }
-  const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
-  const hasResults = (showUsers && displayedUsers.length) || (showBusinesses && businesses.length);
-
-  const searchInput = document.getElementById("searchInput");
-  if (searchInput && document.activeElement !== searchInput && searchInput.value !== query) {
-    searchInput.value = query;
-  }
-
-  const loadingEl = document.getElementById("searchStatusLoading");
-  if (loadingEl) loadingEl.classList.toggle("hidden", !state.search.loading);
-  const errorEl = document.getElementById("searchStatusError");
-  if (errorEl) {
-    errorEl.textContent = state.search.error || "";
-    errorEl.classList.toggle("hidden", !state.search.error);
-  }
-  const emptyEl = document.getElementById("searchEmptyState");
-  if (emptyEl) emptyEl.classList.toggle("hidden", !!query || hasResults);
-
-  const usersSection = document.getElementById("searchUsersSection");
-  if (usersSection) usersSection.classList.toggle("hidden", !showUsers);
-  const usersCount = document.getElementById("searchUsersCount");
-  if (usersCount) usersCount.textContent = String(displayedUsers.length);
-  const usersList = document.getElementById("searchUsersList");
-  if (usersList) {
-    usersList.innerHTML = displayedUsers.length
-      ? displayedUsers.map(renderSearchUserItem).join("")
-      : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "");
-  }
-
-  const bizSection = document.getElementById("searchBizSection");
-  if (bizSection) bizSection.classList.toggle("hidden", !showBusinesses);
-  const bizLabel = document.getElementById("searchBizLabel");
-  if (bizLabel) bizLabel.textContent = localLabel;
-  const bizCount = document.getElementById("searchBizCount");
-  if (bizCount) bizCount.textContent = String(businesses.length);
-  const bizList = document.getElementById("searchBizList");
-  if (bizList) {
-    bizList.innerHTML = businesses.length
-      ? businesses.map(renderSearchBusinessItem).join("")
-      : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine ${localLabel} gefunden.</div>` : "");
-  }
-
-  document.querySelectorAll("[data-search-filter]").forEach((btn) => {
-    const isActive = btn.dataset.searchFilter === filter;
-    btn.classList.toggle("bg-slate-900", isActive);
-    btn.classList.toggle("text-white", isActive);
-    btn.classList.toggle("shadow-md", isActive);
-    btn.classList.toggle("bg-white", !isActive);
-    btn.classList.toggle("text-slate-400", !isActive);
-    btn.classList.toggle("border", !isActive);
-    btn.classList.toggle("border-slate-100", !isActive);
-  });
-
-  if (window.lucide?.createIcons) window.lucide.createIcons();
-  return true;
-}
-
-function refreshSearchView() {
-  if (state.activeTab === "search" && lastRenderMode === "main") {
-    if (updateSearchDom()) return true;
-  }
-  return false;
 }
 
 function renderUploadView() {
@@ -3973,22 +1853,19 @@ function renderUploadView() {
 }
 
 function renderHeader() {
-  const unread = state.notifications.filter((n) => !n.read).length;
-  const badge = unread > 9 ? "9+" : String(unread || "");
   return `
     <header class="p-6 pb-2 flex justify-between items-center sticky top-0 z-40 backdrop-blur-xl bg-slate-50/80">
-      <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
+      <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
         <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
-        ${unread ? `<span class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
       </button>
       <div class="text-center cursor-pointer" data-nav="feed">
         <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MENYRA</h1>
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">Social</span>
       </div>
       <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-        <img id="headerAvatar" src="${escapeHtml(state.userProfile.avatar || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=")}" class="w-full h-full rounded-[1.4rem] object-cover" />
+        <img src="${escapeHtml(state.userProfile.avatar || "https://via.placeholder.com/80")}" class="w-full h-full rounded-[1.4rem] object-cover" />
       </button>
     </header>
   `;
@@ -3997,7 +1874,6 @@ function renderHeader() {
 function renderMain() {
   let view = "";
   if (state.activeTab === "feed") view = renderFeedView();
-  if (state.activeTab === "search") view = renderSearchView();
   if (state.activeTab === "map") view = renderMapView();
   if (state.activeTab === "profile") view = state.profileView ? renderPublicProfileView() : renderProfileView();
   if (state.activeTab === "settings") view = renderSettingsView();
@@ -4020,66 +1896,12 @@ function ensureOverlayRoot() {
     root.id = "overlayRoot";
     document.body.appendChild(root);
   }
-  if (!document.getElementById("profileOverlayRoot")) {
-    const profileRoot = document.createElement("div");
-    profileRoot.id = "profileOverlayRoot";
-    root.appendChild(profileRoot);
-  }
-  if (!document.getElementById("postOverlayRoot")) {
-    const postRoot = document.createElement("div");
-    postRoot.id = "postOverlayRoot";
-    root.appendChild(postRoot);
-  }
-  if (!document.getElementById("likesOverlayRoot")) {
-    const likesRoot = document.createElement("div");
-    likesRoot.id = "likesOverlayRoot";
-    root.appendChild(likesRoot);
-  }
   return root;
 }
 
-function renderOverlays(options = {}) {
-  const updateProfile = Object.prototype.hasOwnProperty.call(options, "updateProfile")
-    ? options.updateProfile
-    : !state.likesModal.open;
-  const updatePost = Object.prototype.hasOwnProperty.call(options, "updatePost")
-    ? options.updatePost
-    : !state.likesModal.open;
-  const updateLikes = Object.prototype.hasOwnProperty.call(options, "updateLikes")
-    ? options.updateLikes
-    : !state.likesModal.open;
+function renderOverlays() {
   const root = ensureOverlayRoot();
-  const profileRoot = document.getElementById("profileOverlayRoot");
-  const postRoot = document.getElementById("postOverlayRoot");
-  const likesRoot = document.getElementById("likesOverlayRoot");
-  let profileChanged = false;
-  let postChanged = false;
-  let likesChanged = false;
-
-  if (updateProfile) {
-    const profileHtml = renderProfileModal();
-    profileChanged = profileHtml !== overlayCache.profile;
-    if (profileRoot && profileChanged) {
-      profileRoot.innerHTML = profileHtml;
-      overlayCache.profile = profileHtml;
-    }
-  }
-  if (updatePost) {
-    const postHtml = renderPostModal();
-    postChanged = postHtml !== overlayCache.post;
-    if (postRoot && postChanged) {
-      postRoot.innerHTML = postHtml;
-      overlayCache.post = postHtml;
-    }
-  }
-  if (updateLikes) {
-    const likesHtml = renderLikesModal();
-    likesChanged = likesHtml !== overlayCache.likes;
-    if (likesRoot && likesChanged) {
-      likesRoot.innerHTML = likesHtml;
-      overlayCache.likes = likesHtml;
-    }
-  }
+  root.innerHTML = `${renderProfileModal()}${renderPostModal()}${renderLikesModal()}`;
   const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open);
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
@@ -4100,10 +1922,10 @@ function renderOverlays(options = {}) {
     window.scrollTo(0, bodyScrollTop);
     bodyScrollLocked = false;
   }
-  if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged)) {
+  if (window.lucide?.createIcons) {
     window.lucide.createIcons();
   }
-  bindOverlayEvents({ profileChanged, postChanged, likesChanged });
+  bindOverlayEvents();
 }
 
 function renderLoading() {
@@ -4119,48 +1941,14 @@ function render() {
     renderQueued = true;
     return;
   }
-  document.body.classList.toggle("fast-mode", FAST_MODE);
-  let nextHtml = "";
-  let mode = "";
   if (!state.sessionReady) {
-    nextHtml = renderLoading();
-    mode = "loading";
+    appEl.innerHTML = renderLoading();
   } else if (!state.user) {
-    nextHtml = renderAuthScreen();
-    mode = "auth";
+    appEl.innerHTML = renderAuthScreen();
+    bindAuthEvents();
   } else {
-    nextHtml = renderMain();
-    mode = "main";
-  }
-  const changed = nextHtml !== lastAppHtml || mode !== lastRenderMode;
-  if (changed) {
-    const reuseFeed = mode === "main" && lastRenderMode === "main" && state.activeTab === "feed"
-      ? document.getElementById("feedView")
-      : null;
-    const prevScrollTop = reuseFeed ? document.querySelector("main")?.scrollTop ?? 0 : 0;
-    appEl.innerHTML = nextHtml;
-    lastAppHtml = nextHtml;
-    lastRenderMode = mode;
-    if (mode === "auth") {
-      bindAuthEvents();
-    } else if (mode === "main") {
-      bindAppEvents();
-      bindFeedDelegation();
-    }
-    if (reuseFeed) {
-      const nextFeed = document.getElementById("feedView");
-      if (nextFeed && reuseFeed !== nextFeed) {
-        nextFeed.replaceWith(reuseFeed);
-      }
-      const nextMain = document.querySelector("main");
-      if (nextMain) nextMain.scrollTop = prevScrollTop;
-      updateFeedDom();
-    }
-    if (window.lucide?.createIcons) window.lucide.createIcons();
-    if (state.activeTab === "search" && state.search.keepFocus) {
-      state.search.keepFocus = false;
-      focusSearchInput();
-    }
+    appEl.innerHTML = renderMain();
+    bindAppEvents();
   }
 
   renderOverlays();
@@ -4241,124 +2029,108 @@ function bindAuthEvents() {
   }
 }
 
-function bindOverlayEvents({ profileChanged = true, postChanged = true, likesChanged = true } = {}) {
-  if (profileChanged) {
-    const profileModalOverlay = document.getElementById("profileModalOverlay");
-    const profileModalClose = document.getElementById("profileModalClose");
-    const profileFollowBtn = document.getElementById("profileFollowBtn");
-    const profileOpenBtn = document.getElementById("profileOpenBtn");
-    const closeProfileModal = () => {
+function bindOverlayEvents() {
+  const profileModalOverlay = document.getElementById("profileModalOverlay");
+  const profileModalClose = document.getElementById("profileModalClose");
+  const profileFollowBtn = document.getElementById("profileFollowBtn");
+  const profileOpenBtn = document.getElementById("profileOpenBtn");
+  const closeProfileModal = () => {
+    state.profileModal = { open: false, profile: null };
+    renderOverlays();
+  };
+
+  if (profileModalOverlay) profileModalOverlay.addEventListener("click", closeProfileModal);
+  if (profileModalClose) profileModalClose.addEventListener("click", closeProfileModal);
+  if (profileFollowBtn) {
+    profileFollowBtn.addEventListener("click", () => {
+      const handle = profileFollowBtn.dataset.handle;
+      if (handle) toggleFollow(handle);
+    });
+  }
+  if (profileOpenBtn) {
+    profileOpenBtn.addEventListener("click", () => {
+      if (!state.profileModal.profile) return;
+      state.profileView = {
+        profile: state.profileModal.profile,
+        posts: state.profileModal.profile.posts || []
+      };
       state.profileModal = { open: false, profile: null };
+      state.activeTab = "profile";
+      render();
+    });
+  }
+
+  const postModalOverlay = document.getElementById("postModalOverlay");
+  const postModalClose = document.getElementById("postModalClose");
+  if (postModalOverlay) postModalOverlay.addEventListener("click", closePostModal);
+  if (postModalClose) postModalClose.addEventListener("click", closePostModal);
+
+  const postLikeBtn = document.getElementById("postLikeBtn");
+  if (postLikeBtn) {
+    postLikeBtn.addEventListener("click", () => {
+      const postId = postLikeBtn.dataset.postId;
+      if (postId) togglePostLike(postId);
+    });
+  }
+
+  const postLikesBtn = document.getElementById("postLikesBtn");
+  if (postLikesBtn) {
+    postLikesBtn.addEventListener("click", () => {
+      const postId = postLikesBtn.dataset.postId;
+      if (!postId) return;
+      state.likesModal = { open: true, postId };
       renderOverlays();
-    };
-
-    if (profileModalOverlay) profileModalOverlay.addEventListener("click", closeProfileModal);
-    if (profileModalClose) profileModalClose.addEventListener("click", closeProfileModal);
-    if (profileFollowBtn) {
-      profileFollowBtn.addEventListener("click", () => {
-        const handle = profileFollowBtn.dataset.handle;
-        if (!handle) return;
-        toggleFollow(handle, {
-          type: profileFollowBtn.dataset.targetType || "",
-          id: profileFollowBtn.dataset.targetId || "",
-          name: profileFollowBtn.dataset.targetName || "",
-          avatar: profileFollowBtn.dataset.targetAvatar || ""
-        });
-      });
-    }
-    if (profileOpenBtn) {
-      profileOpenBtn.addEventListener("click", () => {
-        if (!state.profileModal.profile) return;
-        state.profileView = {
-          profile: state.profileModal.profile,
-          posts: state.profileModal.profile.posts || []
-        };
-        state.profileModal = { open: false, profile: null };
-        state.activeTab = "profile";
-        render();
-      });
-    }
+    });
   }
 
-  if (postChanged) {
-    const postModalOverlay = document.getElementById("postModalOverlay");
-    const postModalClose = document.getElementById("postModalClose");
-    if (postModalOverlay) postModalOverlay.addEventListener("click", closePostModal);
-    if (postModalClose) postModalClose.addEventListener("click", closePostModal);
+  const likesModalOverlay = document.getElementById("likesModalOverlay");
+  const likesModalClose = document.getElementById("likesModalClose");
+  const closeLikes = () => {
+    state.likesModal = { open: false, postId: "" };
+    renderOverlays();
+  };
+  if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
+  if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
 
-    const postLikeBtn = document.getElementById("postLikeBtn");
-    if (postLikeBtn) {
-      postLikeBtn.addEventListener("click", () => {
-        const postId = postLikeBtn.dataset.postId;
-        if (postId) togglePostLike(postId);
-      });
-    }
-
-    const postLikesBtn = document.getElementById("postLikesBtn");
-    if (postLikesBtn) {
-      postLikesBtn.addEventListener("click", () => {
-        const postId = postLikesBtn.dataset.postId;
-        if (!postId) return;
-        state.likesModal = { open: true, postId, animate: false };
-        renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
-      });
-    }
-
-    const postReplyCancel = document.getElementById("postReplyCancel");
-    if (postReplyCancel) {
-      postReplyCancel.addEventListener("click", () => {
-        state.postModal.replyTo = null;
-        renderOverlays();
-      });
-    }
-
-    const postCommentSend = document.getElementById("postCommentSend");
-    if (postCommentSend) {
-      postCommentSend.addEventListener("click", () => {
-        const postId = postCommentSend.dataset.postId;
-        if (!postId) return;
-        const inputEl = document.getElementById("postCommentInput");
-        const text = inputEl ? inputEl.value : state.postModal.commentText;
-        if (!String(text || "").trim() || state.postModal.sending) return;
-        state.postModal.commentText = text;
-        addComment(postId, text, state.postModal.replyTo);
-      });
-    }
-
-    document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        state.postModal.replyTo = btn.dataset.commentId || null;
-        renderOverlays();
-      });
+  const postReplyCancel = document.getElementById("postReplyCancel");
+  if (postReplyCancel) {
+    postReplyCancel.addEventListener("click", () => {
+      state.postModal.replyTo = null;
+      renderOverlays();
     });
-
-    document.querySelectorAll("[data-comment-like]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const postId = btn.dataset.postId;
-        const commentId = btn.dataset.commentId;
-        const replyId = btn.dataset.replyId || "";
-        if (!postId || !commentId) return;
-        toggleCommentLike(postId, commentId, replyId || null);
-      });
-    });
-
-    const postCommentInput = document.getElementById("postCommentInput");
-    if (postCommentInput) {
-      postCommentInput.addEventListener("input", () => {
-        state.postModal.commentText = postCommentInput.value;
-      });
-    }
   }
 
-  if (likesChanged) {
-    const likesModalOverlay = document.getElementById("likesModalOverlay");
-    const likesModalClose = document.getElementById("likesModalClose");
-    const closeLikes = () => {
-      state.likesModal = { open: false, postId: "", animate: false };
-      renderOverlays({ updateLikes: true });
-    };
-    if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
-    if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
+  const postCommentSend = document.getElementById("postCommentSend");
+  if (postCommentSend) {
+    postCommentSend.addEventListener("click", () => {
+      const postId = postCommentSend.dataset.postId;
+      if (!postId) return;
+      addComment(postId, state.postModal.commentText, state.postModal.replyTo);
+    });
+  }
+
+  document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.postModal.replyTo = btn.dataset.commentId || null;
+      renderOverlays();
+    });
+  });
+
+  document.querySelectorAll("[data-comment-like]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const postId = btn.dataset.postId;
+      const commentId = btn.dataset.commentId;
+      const replyId = btn.dataset.replyId || "";
+      if (!postId || !commentId) return;
+      toggleCommentLike(postId, commentId, replyId || null);
+    });
+  });
+
+  const postCommentInput = document.getElementById("postCommentInput");
+  if (postCommentInput) {
+    postCommentInput.addEventListener("input", () => {
+      state.postModal.commentText = postCommentInput.value;
+    });
   }
 }
 
@@ -4384,8 +2156,8 @@ function bindAppEvents() {
         state.postMeta = {};
         state.profileModal = { open: false, profile: null };
         state.profileView = null;
-        state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
-        state.likesModal = { open: false, postId: "", animate: false };
+        state.postModal = { open: false, post: null, commentText: "", replyTo: null };
+        state.likesModal = { open: false, postId: "" };
         state.selectedBusiness = null;
         cleanupLeaflet();
         setState({ activeTab: "feed", drawerOpen: false });
@@ -4394,7 +2166,6 @@ function bindAppEvents() {
   });
 
   document.querySelectorAll("[data-nav]").forEach((btn) => {
-    if (btn.closest("#feedView")) return;
     btn.addEventListener("click", () => {
       const tab = btn.dataset.nav;
       if (!tab) return;
@@ -4405,8 +2176,8 @@ function bindAppEvents() {
         selectedBusiness: null,
         profileView: null,
         profileModal: { open: false, profile: null },
-        postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
-        likesModal: { open: false, postId: "", animate: false }
+        postModal: { open: false, post: null, commentText: "", replyTo: null },
+        likesModal: { open: false, postId: "" }
       });
     });
   });
@@ -4429,49 +2200,6 @@ function bindAppEvents() {
     });
   });
 
-  document.querySelectorAll("[data-profile-menu-button]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const postId = btn.dataset.profileMenuButton;
-      if (!postId) return;
-      toggleProfilePostMenu(postId);
-    });
-  });
-
-  document.querySelectorAll("[data-profile-post-toggle]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const postId = btn.dataset.profilePostToggle;
-      if (!postId) return;
-      toggleProfilePostWidth(postId);
-    });
-  });
-
-  document.querySelectorAll("[data-profile-post-delete]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const postId = btn.dataset.profilePostDelete;
-      if (!postId) return;
-      deleteProfilePost(postId);
-    });
-  });
-
-  if (!profileMenuBound) {
-    document.addEventListener("click", (e) => {
-      if (!state.profilePostMenuId) return;
-      const target = e.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest("[data-profile-menu]") || target.closest("[data-profile-menu-button]")) return;
-      state.profilePostMenuId = null;
-      setProfileMenuOpen(null);
-    });
-    profileMenuBound = true;
-  }
-
-  if (state.profilePostMenuId) {
-    setProfileMenuOpen(state.profilePostMenuId);
-  }
-
   const mapLocateBtn = document.getElementById("mapLocateBtn");
   if (mapLocateBtn) {
     mapLocateBtn.addEventListener("click", () => mapLocate());
@@ -4480,28 +2208,18 @@ function bindAppEvents() {
   const markAll = document.getElementById("markAllRead");
   if (markAll) {
     markAll.addEventListener("click", () => {
-      void markAllNotificationsRead();
+      state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
+      saveNotifications(state.notifications);
+      render();
     });
   }
 
-  document.querySelectorAll("[data-notif-open]").forEach((row) => {
-    row.addEventListener("click", () => {
-      const id = row.dataset.notifOpen;
-      if (!id) return;
-      void openNotificationTarget(id);
-    });
-  });
-
   document.querySelectorAll("[data-notif-delete]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
+    btn.addEventListener("click", () => {
       const id = btn.dataset.notifDelete;
       state.notifications = state.notifications.filter((n) => n.id !== id);
       saveNotifications(state.notifications);
       render();
-      if (state.user?.uid && id) {
-        void deleteDoc(doc(db, "users", state.user.uid, "notifications", id));
-      }
     });
   });
 
@@ -4556,7 +2274,6 @@ function bindAppEvents() {
   }
 
   document.querySelectorAll("[data-profile-business]").forEach((btn) => {
-    if (btn.closest("#feedView")) return;
     btn.addEventListener("click", () => {
       openProfileFromBusiness({
         id: btn.dataset.profileId || "",
@@ -4566,11 +2283,7 @@ function bindAppEvents() {
   });
 
   document.querySelectorAll("[data-open-post]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const target = e.target;
-      if (target instanceof Element) {
-        if (target.closest("[data-profile-menu]") || target.closest("[data-profile-menu-button]")) return;
-      }
+    btn.addEventListener("click", () => {
       const postId = btn.dataset.openPost;
       const post = findPostById(postId);
       if (post) openPostModal(post);
@@ -4580,26 +2293,15 @@ function bindAppEvents() {
   document.querySelectorAll("[data-public-profile-back]").forEach((btn) => {
     btn.addEventListener("click", () => {
       state.profileView = null;
-      const backTab = state.profileBackTab || "feed";
-      state.profileBackTab = "feed";
-      if (profileViewUnsub) {
-        profileViewUnsub();
-        profileViewUnsub = null;
-      }
-      setState({ activeTab: backTab, drawerOpen: false });
+      state.activeTab = "feed";
+      render();
     });
   });
 
   document.querySelectorAll("[data-public-profile-follow]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const handle = btn.dataset.publicProfileFollow;
-      if (!handle) return;
-      toggleFollow(handle, {
-        type: btn.dataset.targetType || "",
-        id: btn.dataset.targetId || "",
-        name: btn.dataset.targetName || "",
-        avatar: btn.dataset.targetAvatar || ""
-      });
+      if (handle) toggleFollow(handle);
     });
   });
 
@@ -4643,75 +2345,6 @@ function bindAppEvents() {
       await updateRestaurantSelection(settingsRestaurant.value);
     });
   }
-
-  bindSearchEvents();
-}
-
-function bindSearchEvents() {
-  const searchView = document.getElementById("searchView");
-  if (!searchView || searchView.dataset.bound === "true") return;
-
-  searchView.addEventListener("input", (e) => {
-    const target = e.target;
-    if (target instanceof HTMLInputElement && target.id === "searchInput") {
-      handleSearchInput(target.value);
-    }
-  });
-
-  searchView.addEventListener("keydown", (e) => {
-    const target = e.target;
-    if (target instanceof HTMLInputElement && target.id === "searchInput" && e.key === "Enter") {
-      e.preventDefault();
-    }
-  });
-
-  searchView.addEventListener("click", (e) => {
-    const target = e.target;
-    if (!(target instanceof Element)) return;
-
-    const clearBtn = target.closest("#searchClearBtn");
-    if (clearBtn) {
-      state.search.query = "";
-      state.search.userResults = [];
-      state.search.businessResults = buildLocalBusinessResults("");
-      state.search.loading = false;
-      state.search.error = "";
-      state.search.keepFocus = true;
-      if (!refreshSearchView()) render();
-      focusSearchInput();
-      return;
-    }
-
-    const filterBtn = target.closest("[data-search-filter]");
-    if (filterBtn) {
-      const filter = filterBtn.dataset.searchFilter || "all";
-      state.search.filter = filter;
-      if (!refreshSearchView()) render();
-      return;
-    }
-
-    const userBtn = target.closest("[data-search-user]");
-    if (userBtn) {
-      openProfileFromUser({
-        uid: userBtn.dataset.searchUser || "",
-        handle: userBtn.dataset.searchHandle || "",
-        name: userBtn.dataset.searchName || "",
-        avatar: userBtn.dataset.searchAvatar || "",
-        location: userBtn.dataset.searchLocation || ""
-      });
-      return;
-    }
-
-    const bizBtn = target.closest("[data-search-business]");
-    if (bizBtn) {
-      openProfileViewFromBusiness({
-        id: bizBtn.dataset.searchBusiness || "",
-        name: bizBtn.dataset.searchName || ""
-      });
-    }
-  });
-
-  searchView.dataset.bound = "true";
 }
 
 async function uploadImage(file, ownerId) {
@@ -4826,15 +2459,14 @@ async function handleUploadPost() {
         mediaUrl: url,
         mediaType: "image"
       });
-      await loadFeedPosts({ force: true });
-      await loadBusinessPosts({ force: true });
+      await loadFeedPosts();
     } else {
       await createUserPost({
         uid: state.user.uid,
         caption,
         url
       });
-      await loadUserPosts({ force: true });
+      await loadUserPosts();
     }
 
     state.upload = { preview: "", caption: "", file: null, status: "" };
@@ -4897,51 +2529,25 @@ async function createUserPost({ uid, caption, url }) {
   });
 }
 
-async function loadUserProfile(user, { force = false } = {}) {
+async function loadUserProfile(user) {
   if (!user) return;
-  if (FAST_MODE && state.userProfile?.uid === user.uid && state.userProfile?.name && !force) return;
   await ensureUserProfile(user, { city: "Prishtina" });
   const snap = await getDoc(doc(db, "users", user.uid));
   const data = snap.exists() ? snap.data() : {};
   state.userProfile = normalizeProfile(data, user);
-  state.userProfile.uid = user.uid;
   safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
-  if (lastRenderMode === "main") {
-    updateShellDom();
-    if (state.activeTab === "search" && refreshSearchView()) return;
-    if (state.activeTab === "feed") return;
-  }
   render();
 }
 
-async function loadRestaurants({ force = false } = {}) {
-  const cached = readCache(CACHE_KEYS.restaurants, CACHE_TTL_MS.restaurants);
-  if (cached?.data?.length) {
-    if (!state.restaurants.length) {
-      state.restaurants = cached.data;
-      state.businessLocations = cached.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
-      cleanupLeaflet();
-      if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
-        render();
-      }
-    }
-    if (FAST_MODE && !force) return;
-    if (cached.fresh && !force) return;
-  }
+async function loadRestaurants() {
   try {
-    const snap = await getDocs(query(collection(db, "restaurants"), limit(FAST_LIMITS.restaurants)));
+    const snap = await getDocs(query(collection(db, "restaurants"), limit(200)));
     const list = [];
     snap.forEach((docSnap) => list.push({ id: docSnap.id, ...docSnap.data() }));
-    writeCache(CACHE_KEYS.restaurants, list);
-    const prevIds = state.restaurants.map((item) => String(item.id)).join("|");
-    const nextIds = list.map((item) => String(item.id)).join("|");
-    if (prevIds === nextIds) return;
     state.restaurants = list;
     state.businessLocations = list.map((rest, idx) => normalizeBusinessLocation(rest, idx));
     cleanupLeaflet();
-    if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
-      render();
-    }
+    render();
   } catch (err) {
     console.error(err);
   }
@@ -4951,87 +2557,36 @@ function normalizeFeedPost(row) {
   const restaurant = state.restaurants.find((r) => r.id === (row.rid || row.restaurantId)) || {};
   const thumb = row.thumbUrl || row.mediaUrl || row.media?.[0]?.thumbUrl || row.media?.[0]?.url || "";
   const caption = row.caption || row.captionShort || "";
-  const logo = row.logoUrl || restaurant.logoUrl || restaurant.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-  const noImageSvg = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSIjOUI5QkE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iMC4zZW0iPk5vIEltYWdlPC90ZXh0Pgo8L3N2Zz4=";
   return {
     id: row.id,
     restaurantId: row.rid || row.restaurantId || "",
     business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
-    logo,
+    logo: row.logoUrl || restaurant.logoUrl || restaurant.logo || thumb,
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
-    image: thumb || noImageSvg,
+    image: thumb || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800",
     likes: row.likesCount || "0",
     comments: row.commentsCount || "0",
     time: formatRelative(toDateSafe(row.createdAt)),
     createdAt: row.createdAt,
     category: row.postType || "food",
-    isLive: row.isLive || false,
-    ownerType: "restaurant",
-    ownerId: row.rid || row.restaurantId || ""
+    isLive: row.isLive || false
   };
-}
-
-function buildStoriesFromFeed(posts) {
-  if (!Array.isArray(posts)) return [];
-  const map = new Map();
-  posts.forEach((post) => {
-    const rid = post.restaurantId || post.ownerId || post.id;
-    if (!rid || map.has(rid)) return;
-    map.set(rid, {
-      restaurantId: rid,
-      name: post.business || post.restaurantName || "Business",
-      img: post.logo || storyPlaceholder,
-      isLive: false
-    });
-  });
-  return Array.from(map.values()).slice(0, FAST_LIMITS.stories);
-}
-
-function ensureStoriesFromFeedIfNeeded(posts) {
-  if (!FAST_MODE) return false;
-  if (state.stories.length) return false;
-  const storySeed = buildStoriesFromFeed(posts);
-  if (!storySeed.length) return false;
-  state.stories = storySeed;
-  writeCache(CACHE_KEYS.stories, storySeed);
-  return true;
 }
 
 function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
-  const data = profileDoc?.data || profileDoc || {};
-  const displayName = data?.displayName || fallbackName || restaurant?.name || restaurant?.restaurantName || "Business";
-  const handle = data?.handle || normalizeHandle(displayName);
+  const displayName = profileDoc?.displayName || fallbackName || restaurant?.name || restaurant?.restaurantName || "Business";
+  const handle = profileDoc?.handle || normalizeHandle(displayName);
   return {
     name: displayName,
     handle: handle || "business",
-    uid: profileDoc?.id || data?.uid || "",
-    bio: data?.bio || restaurant?.description || restaurant?.bio || "Offizieller Account auf MENYRA Social.",
-    avatar: data?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
-    location: data?.city || restaurant?.city || "Kosovo",
-    followers: data?.followersCount ?? data?.followers ?? 0,
-    following: data?.followingCount ?? data?.following ?? 0,
+    bio: profileDoc?.bio || restaurant?.description || restaurant?.bio || "Offizieller Account auf MENYRA Social.",
+    avatar: profileDoc?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || "https://i.pravatar.cc/300?u=business",
+    location: profileDoc?.city || restaurant?.city || "Kosovo",
+    followers: profileDoc?.followersCount ?? profileDoc?.followers ?? 0,
+    following: profileDoc?.followingCount ?? profileDoc?.following ?? 0,
     role: "business",
-    restaurantId: data?.restaurantId || restaurant?.id || "",
-    posts: posts || []
-  };
-}
-
-function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
-  const data = typeof userDoc?.data === "function" ? userDoc.data() : (userDoc?.data || userDoc || {});
-  const fallbackName = fallback?.name || fallback?.handle || "User";
-  const displayName = sanitizeDisplayName(data?.displayName || data?.name, fallbackName);
-  const handle = data?.handle || normalizeHandle(displayName || fallbackName);
-  return {
-    name: displayName || fallbackName,
-    handle: handle || "user",
-    uid: userDoc?.id || data?.uid || fallback?.uid || "",
-    bio: data?.bio || fallback?.bio || "",
-    avatar: data?.avatarUrl || fallback?.avatar || `data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=`,
-    location: data?.city || fallback?.location || "Prishtina",
-    followers: data?.followersCount ?? data?.followers ?? fallback?.followers ?? 0,
-    following: data?.followingCount ?? data?.following ?? fallback?.following ?? 0,
-    role: data?.role || fallback?.role || "user",
+    restaurantId: profileDoc?.restaurantId || restaurant?.id || "",
     posts: posts || []
   };
 }
@@ -5073,7 +2628,7 @@ async function loadBusinessPostsForRestaurant(restaurantId) {
     const ref = collection(db, "restaurants", restaurantId, "socialPosts");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.businessPosts)));
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(50)));
     } catch (err) {
       snap = await getDocs(ref);
     }
@@ -5084,16 +2639,13 @@ async function loadBusinessPostsForRestaurant(restaurantId) {
       .map((row) => ({
         id: row.id,
         url: row.media?.[0]?.url || row.mediaUrl || "",
-        type: row.type || "square",
+        type: "square",
         title: "",
         caption: row.caption || "",
         createdAt: row.createdAt,
         likes: row.likesCount ?? row.likes ?? 0,
         comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: row.media?.[0]?.type === "video",
-        ownerType: "restaurant",
-        ownerId: restaurantId,
-        restaurantId
+        isVideo: row.media?.[0]?.type === "video"
       }))
       .filter((row) => row.url);
   } catch (err) {
@@ -5102,185 +2654,39 @@ async function loadBusinessPostsForRestaurant(restaurantId) {
   }
 }
 
-async function loadFeedPosts({ force = false } = {}) {
-  const cached = readCache(CACHE_KEYS.feed, CACHE_TTL_MS.feed);
-  if (cached?.data?.length) {
-    if (!state.feedPosts.length) {
-      state.feedPosts = cached.data;
-      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-        render();
-      }
-    }
-    if (ensureStoriesFromFeedIfNeeded(cached.data)) {
-      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-        render();
-      }
-    }
-    if (FAST_MODE && !force) return;
-    if (cached.fresh && !force) return;
-  }
-
+async function loadFeedPosts() {
   try {
     const ref = collection(db, "socialFeed");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, where("status", "==", "active"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.feed)));
+      snap = await getDocs(query(ref, where("status", "==", "active"), orderBy("createdAt", "desc"), limit(30)));
     } catch (err) {
-      snap = await getDocs(query(ref, limit(FAST_LIMITS.feedFallback)));
+      snap = await getDocs(query(ref, limit(60)));
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    const next = rows
-      .filter((row) => (row.status || "active") === "active")
-      .map(normalizeFeedPost)
-      .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-    const cached = readCache(CACHE_KEYS.feed);
-    saveFeedPosts(next, { lastDeltaCheck: cached?.meta?.lastDeltaCheck || 0 });
-
-    const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
-    const nextIds = next.map((item) => String(item.id)).join("|");
-    let storiesChanged = false;
-    if (FAST_MODE) {
-      const storySeed = buildStoriesFromFeed(next);
-      if (storySeed.length) {
-        const prevStoryIds = state.stories.map((item) => String(item.restaurantId)).join("|");
-        const nextStoryIds = storySeed.map((item) => String(item.restaurantId)).join("|");
-        if (prevStoryIds !== nextStoryIds) {
-          state.stories = storySeed;
-          writeCache(CACHE_KEYS.stories, storySeed);
-          storiesChanged = true;
-        }
-      }
-    }
-    if (prevIds === nextIds && !storiesChanged) return;
-
-    state.feedPosts = next;
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-      render();
-    }
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function loadFeedDelta({ force = false } = {}) {
-  const cached = readCache(CACHE_KEYS.feed);
-  const latestTs = cached?.meta?.latestTs || computeLatestTimestamp(state.feedPosts);
-  if (!latestTs) return;
-  const lastCheck = cached?.meta?.lastDeltaCheck || 0;
-  if (!force && Date.now() - lastCheck < FEED_DELTA_MIN_MS) return;
-
-  try {
-    const ref = collection(db, "socialFeed");
-    const snap = await getDocs(query(
-      ref,
-      where("createdAt", ">", Timestamp.fromMillis(latestTs)),
-      orderBy("createdAt", "desc"),
-      limit(FAST_LIMITS.feedDelta)
-    ));
-    if (snap.empty) {
-      saveFeedPosts(state.feedPosts, { lastDeltaCheck: Date.now() });
-      return;
-    }
-    const rows = [];
-    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    const fresh = rows
+    state.feedPosts = rows
       .filter((row) => (row.status || "active") === "active")
       .map(normalizeFeedPost);
-    if (!fresh.length) {
-      saveFeedPosts(state.feedPosts, { lastDeltaCheck: Date.now() });
-      return;
-    }
-    const merged = [...fresh, ...state.feedPosts];
-    const seen = new Set();
-    const unique = merged.filter((item) => {
-      const id = String(item.id);
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    }).sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-
-    let storiesChanged = false;
-    if (FAST_MODE) {
-      const storySeed = buildStoriesFromFeed(unique);
-      if (storySeed.length) {
-        const prevStoryIds = state.stories.map((item) => String(item.restaurantId)).join("|");
-        const nextStoryIds = storySeed.map((item) => String(item.restaurantId)).join("|");
-        if (prevStoryIds !== nextStoryIds) {
-          state.stories = storySeed;
-          writeCache(CACHE_KEYS.stories, storySeed);
-          storiesChanged = true;
-        }
-      }
-    }
-
-    state.feedPosts = unique;
-    saveFeedPosts(unique, { lastDeltaCheck: Date.now() });
-    if (storiesChanged || unique.length) {
-      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-        render();
-      }
-    }
+    render();
   } catch (err) {
     console.error(err);
   }
 }
 
-async function loadUserPostsForUser(uid) {
-  if (!uid) return [];
-  try {
-    const ref = collection(db, "users", uid, "posts");
-    let snap = null;
-    try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.userPosts)));
-    } catch (err) {
-      snap = await getDocs(ref);
-    }
-    const rows = [];
-    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    return rows
-      .map((row) => ({
-        id: row.id,
-        url: row.url || row.mediaUrl || row.media?.[0]?.url || "",
-        type: row.type || "square",
-        title: "",
-        caption: row.caption || "",
-        createdAt: row.createdAt,
-        likes: row.likesCount ?? row.likes ?? 0,
-        comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: row.media?.[0]?.type === "video",
-        ownerType: "user",
-        ownerId: uid
-      }))
-      .filter((row) => row.url);
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
-}
-
-async function loadUserPosts({ force = false } = {}) {
+async function loadUserPosts() {
   if (!state.user) return;
-  const cached = readCache(CACHE_KEYS.userPosts, CACHE_TTL_MS.posts);
-  if (cached?.data?.length) {
-    if (!state.userPosts.length) {
-      state.userPosts = cached.data;
-      render();
-    }
-    if (FAST_MODE && !force) return;
-    if (cached.fresh && !force) return;
-  }
   try {
     const ref = collection(db, "users", state.user.uid, "posts");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.userPosts)));
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(50)));
     } catch (err) {
       snap = await getDocs(ref);
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    const next = rows.map((row) => ({
+    state.userPosts = rows.map((row) => ({
       id: row.id,
       url: row.url,
       type: row.type || "square",
@@ -5289,69 +2695,45 @@ async function loadUserPosts({ force = false } = {}) {
       createdAt: row.createdAt,
       likes: row.likesCount ?? row.likes ?? 0,
       comments: row.commentsCount ?? row.comments ?? 0,
-      isVideo: !!row.isVideo,
-      ownerType: "user",
-      ownerId: state.user.uid
+      isVideo: !!row.isVideo
     }));
-    writeCache(CACHE_KEYS.userPosts, next);
-    const prevIds = state.userPosts.map((item) => String(item.id)).join("|");
-    const nextIds = next.map((item) => String(item.id)).join("|");
-    if (prevIds === nextIds) return;
-    state.userPosts = next;
     render();
   } catch (err) {
     console.error(err);
   }
 }
 
-async function loadBusinessPosts({ force = false } = {}) {
+async function loadBusinessPosts() {
   const restaurantId = state.userProfile.restaurantId;
   if (!restaurantId) {
     state.businessPosts = [];
     render();
     return;
   }
-  const cached = readCache(CACHE_KEYS.businessPosts, CACHE_TTL_MS.posts);
-  if (cached?.data?.length) {
-    if (!state.businessPosts.length) {
-      state.businessPosts = cached.data;
-      render();
-    }
-    if (FAST_MODE && !force) return;
-    if (cached.fresh && !force) return;
-  }
   try {
     const ref = collection(db, "restaurants", restaurantId, "socialPosts");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.businessPosts)));
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(50)));
     } catch (err) {
       snap = await getDocs(ref);
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    const next = rows
+    state.businessPosts = rows
       .filter((row) => (row.status || "active") === "active")
       .map((row) => ({
         id: row.id,
         url: row.media?.[0]?.url || row.mediaUrl || "",
-        type: row.type || "square",
+        type: "square",
         title: "",
         caption: row.caption || "",
         createdAt: row.createdAt,
         likes: row.likesCount ?? row.likes ?? 0,
         comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: row.media?.[0]?.type === "video",
-        ownerType: "restaurant",
-        ownerId: restaurantId,
-        restaurantId
+        isVideo: row.media?.[0]?.type === "video"
       }))
       .filter((row) => row.url);
-    writeCache(CACHE_KEYS.businessPosts, next);
-    const prevIds = state.businessPosts.map((item) => String(item.id)).join("|");
-    const nextIds = next.map((item) => String(item.id)).join("|");
-    if (prevIds === nextIds) return;
-    state.businessPosts = next;
     render();
   } catch (err) {
     console.error(err);
@@ -5359,10 +2741,9 @@ async function loadBusinessPosts({ force = false } = {}) {
 }
 
 async function loadStoriesFallback(restaurants) {
-  if (FAST_MODE) return [];
   const now = Timestamp.now();
   const items = [];
-  const slice = restaurants.slice(0, FAST_LIMITS.storiesFallback);
+  const slice = restaurants.slice(0, 60);
   for (const rest of slice) {
     try {
       const ref = collection(db, "restaurants", rest.id, "stories");
@@ -5371,7 +2752,7 @@ async function loadStoriesFallback(restaurants) {
         items.push({
           restaurantId: rest.id,
           name: rest.name || rest.restaurantName || "Business",
-          img: rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+          img: rest.logoUrl || rest.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
           isLive: true
         });
       }
@@ -5383,24 +2764,13 @@ async function loadStoriesFallback(restaurants) {
 }
 
 async function loadStories() {
-  const cached = readCache(CACHE_KEYS.stories, CACHE_TTL_MS.stories);
-  if (cached?.data?.length) {
-    if (!state.stories.length) {
-      state.stories = cached.data;
-      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-        render();
-      }
-    }
-    if (FAST_MODE) return;
-    if (cached.fresh) return;
-  }
   try {
     const now = Timestamp.now();
     const snap = await getDocs(query(
       collectionGroup(db, "stories"),
       where("expiresAt", ">", now),
       orderBy("expiresAt", "desc"),
-      limit(FAST_LIMITS.stories)
+      limit(40)
     ));
 
     const map = new Map();
@@ -5415,72 +2785,45 @@ async function loadStories() {
       return {
         restaurantId: rid,
         name: rest.name || rest.restaurantName || "Business",
-        img: rest.logoUrl || rest.logo || "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=",
+        img: rest.logoUrl || rest.logo || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=150",
         isLive: true
       };
     });
 
-    writeCache(CACHE_KEYS.stories, items);
-    const prevIds = state.stories.map((item) => String(item.restaurantId)).join("|");
-    const nextIds = items.map((item) => String(item.restaurantId)).join("|");
-    if (prevIds === nextIds) return;
     state.stories = items;
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-      render();
-    }
+    render();
   } catch (err) {
-    if (err?.code === "failed-precondition") {
-      liveStoriesDisabled = true;
-      const fallbackSeed = buildStoriesFromFeed(state.feedPosts);
-      if (fallbackSeed.length) {
-        state.stories = fallbackSeed;
-        writeCache(CACHE_KEYS.stories, fallbackSeed);
-        if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-          render();
-        }
-      }
-      return;
-    }
     console.warn("stories fallback", err);
-    const fallback = await loadStoriesFallback(state.restaurants);
-    writeCache(CACHE_KEYS.stories, fallback);
-    const prevIds = state.stories.map((item) => String(item.restaurantId)).join("|");
-    const nextIds = fallback.map((item) => String(item.restaurantId)).join("|");
-    if (prevIds === nextIds) return;
-    state.stories = fallback;
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-      render();
-    }
+    state.stories = await loadStoriesFallback(state.restaurants);
+    render();
   }
 }
 
 async function bootstrapUser(user) {
   if (!user) return;
+  state.isLoading = true;
+  render();
+  suspendRender();
   try {
     await loadUserProfile(user);
     await resolveRoleSwitchTargets(user);
+    await loadRestaurants();
+    await loadFeedPosts();
+    await loadUserPosts();
+    if (state.userProfile.role === "business") {
+      await loadBusinessPosts();
+    }
+    await loadStories();
   } finally {
+    state.isLoading = false;
+    resumeRender();
   }
-  if (!dataLoaded.following) {
-    dataLoaded.following = true;
-    void loadFollowingFromFirebase();
-  }
-  if (!dataLoaded.notifications) {
-    dataLoaded.notifications = true;
-    void loadNotificationsFromFirebase({ force: true });
-  }
-  startLiveListeners(user);
-  ensureTabData(state.activeTab);
 }
 
 loadPersisted();
 render();
 
 onAuthStateChanged(auth, (user) => {
-  if (authReadyTimer) {
-    clearTimeout(authReadyTimer);
-    authReadyTimer = null;
-  }
   state.user = user;
   state.sessionReady = true;
   if (user) {
@@ -5488,20 +2831,13 @@ onAuthStateChanged(auth, (user) => {
   } else {
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";
-    stopLiveListeners();
     render();
   }
 });
-
-authReadyTimer = window.setTimeout(() => {
-  if (!state.sessionReady) {
-    state.sessionReady = true;
-    render();
-  }
-}, 4000);
 
 window.addEventListener("load", () => {
   if (window.lucide?.createIcons) {
     window.lucide.createIcons();
   }
 });
+
