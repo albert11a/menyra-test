@@ -1746,12 +1746,14 @@ function renderFeedItem(post, index) {
   const eager = index < 2;
   const heroAttrs = eager ? `fetchpriority="high"` : "";
   const logoAttrs = "";
+  const logoUrl = getOptimizedImageUrl(post.logo, "avatar");
+  const imageUrl = getOptimizedImageUrl(post.image, "large");
   return `
     <div class="group feed-card" ${feedAttr}>
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-            <img src="${escapeHtml(post.logo || "")}" ${logoAttrs} class="w-full h-full object-cover" />
+            <img src="${escapeHtml(logoUrl)}" ${logoAttrs} class="w-full h-full object-cover" />
           </div>
           <div>
             <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
@@ -1762,7 +1764,7 @@ function renderFeedItem(post, index) {
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative h-[30rem] rounded-[3rem] overflow-hidden bg-slate-200">
-          <img src="${escapeHtml(post.image)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+          <img src="${escapeHtml(imageUrl)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
           ${post.isLive ? `
             <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
