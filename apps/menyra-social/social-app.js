@@ -2896,7 +2896,11 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
     `;
   }
   const cards = posts.map((post) => renderProfilePostCardFancy(post, isGrid, allowMenu));
-  if (isGrid && (cards.length % 2 === 1)) {
+  const slotCount = posts.reduce((total, post) => {
+    const isWide = post?.type === "wide" || post?.type === "hero";
+    return total + (isWide ? 2 : 1);
+  }, 0);
+  if (isGrid && (slotCount % 2 === 1)) {
     cards.unshift(`
       <div class="col-start-2 aspect-[4/5] rounded-[2rem] invisible pointer-events-none"></div>
     `);
@@ -3238,7 +3242,7 @@ function renderPublicProfileView() {
       ${isCheckinTab ? `
         ${renderProfileCheckins()}
       ` : `
-        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6" : "flex flex-col gap-8 px-6"}">
+        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
           ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
         </div>
       `}
@@ -3314,7 +3318,7 @@ function renderProfileView() {
       ${isCheckinTab ? `
         ${renderProfileCheckins()}
       ` : `
-        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6" : "flex flex-col gap-8 px-6"}">
+        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
           ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
         </div>
         ${state.profileContentTab === "posts" ? `
