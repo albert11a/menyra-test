@@ -1171,7 +1171,7 @@ function currentUserBadge() {
     uid: state.user?.uid || "",
     name: state.userProfile.name || "User",
     handle: state.userProfile.handle || "user",
-    avatar: state.userProfile.avatar || ""
+    avatar: resolveUserAvatar(state.userProfile.avatar)
   };
 }
 
