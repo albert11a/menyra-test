@@ -1,4 +1,4 @@
-import { auth, db } from "@shared/firebase-config.js";
+﻿import { auth, db } from "@shared/firebase-config.js";
 import { BUNNY_EDGE_BASE } from "@shared/bunny-edge.js";
 import {
   signInWithEmailAndPassword,
@@ -290,6 +290,7 @@ let storyRefreshTimer = null;
 let liveFeedDisabled = false;
 let liveStoriesDisabled = false;
 let feedStoriesSignature = "";
+let feedStoriesSignature = "";
 
 function suspendRender() {
   renderSuspended += 1;
@@ -489,6 +490,7 @@ function loadPersisted() {
   if (feedCache?.data?.length) {
     state.feedPosts = feedCache.data;
     refreshFeedStories({ posts: feedCache.data, force: true });
+    preloadFeedHeroImages(state.feedPosts);
   }
 
   const userPostsCache = readCache(CACHE_KEYS.userPosts);
@@ -518,9 +520,15 @@ function loadPersisted() {
 async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
   if (!Array.isArray(restaurantIds) || restaurantIds.length === 0) return;
 
-  // bereits vorhandene IDs sammeln
-  const existing = new Set((state.restaurants || []).map(r => r.id));
-  const missing = restaurantIds.filter(id => id && !existing.has(id)).slice(0, max);
+  const uniqueIds = Array.from(new Set(restaurantIds.filter(Boolean)));
+  if (!uniqueIds.length) return;
+
+  const existing = new Map((state.restaurants || []).map((rest) => [rest.id, rest]));
+  const missing = uniqueIds.filter((id) => {
+    const stored = existing.get(id);
+    if (!stored) return true;
+    return !(stored.logoUrl || stored.logo || stored.logoURL);
+  }).slice(0, max);
   if (missing.length === 0) return;
 
   const loaded = [];
@@ -529,7 +537,7 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
     try {
       const snap = await getDoc(doc(db, "restaurants", rid));
       if (snap.exists()) {
-        const d = snap.data();
+        const d = snap.data() || {};
         loaded.push({
           id: rid,
           name: d.name || d.restaurantName || "",
@@ -542,9 +550,70 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
   }
 
   if (loaded.length) {
-    state.restaurants = [...(state.restaurants || []), ...loaded];
-    refreshFeedStories({ force: true });
+    state.restaurants = mergeRestaurants(state.restaurants, loaded);
+    rebuildBusinessLocations();
+    const feedUpdated = syncFeedPostLogos();
+    const storiesUpdated = refreshFeedStories({ force: feedUpdated });
+    if ((feedUpdated || storiesUpdated) && state.activeTab === "feed" && lastRenderMode === "main") {
+      updateFeedDom();
+    } else if (feedUpdated || storiesUpdated) {
+      render();
+    }
   }
+}
+
+function mergeRestaurants(existing = [], additions = []) {
+  if (!additions.length) return existing;
+  const orderedIds = [];
+  const map = new Map();
+  existing.forEach((rest) => {
+    if (!rest?.id) return;
+    orderedIds.push(rest.id);
+    map.set(rest.id, rest);
+  });
+  additions.forEach((rest) => {
+    if (!rest?.id) return;
+    if (!map.has(rest.id)) orderedIds.push(rest.id);
+    const previous = map.get(rest.id) || {};
+    map.set(rest.id, { ...previous, ...rest });
+  });
+  return orderedIds.map((id) => map.get(id)).filter(Boolean);
+}
+
+function rebuildBusinessLocations() {
+  state.businessLocations = state.restaurants.map((rest, idx) => normalizeBusinessLocation(rest, idx));
+}
+
+function syncFeedPostLogos() {
+  if (!state.feedPosts.length) return false;
+  const restMap = new Map();
+  state.restaurants.forEach((rest) => {
+    if (rest?.id) restMap.set(rest.id, rest);
+  });
+  let changed = false;
+  const next = state.feedPosts.map((post) => {
+    const restaurant = restMap.get(post.restaurantId) || restMap.get(post.ownerId) || {};
+    const bestLogo = restaurant.logoUrl || restaurant.logo || restaurant.logoURL || post.logo || "";
+    if (!bestLogo || bestLogo === post.logo) return post;
+    changed = true;
+    return { ...post, logo: bestLogo };
+  });
+  if (!changed) return false;
+  state.feedPosts = next;
+  return true;
+}
+
+function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
+  if (!FAST_MODE) return false;
+  if (!Array.isArray(posts) || !posts.length) return false;
+  const storySeed = buildStoriesFromFeed(posts);
+  if (!storySeed.length) return false;
+  const nextSig = buildStoriesSignature(storySeed);
+  if (!force && feedStoriesSignature === nextSig) return false;
+  feedStoriesSignature = nextSig;
+  state.stories = storySeed;
+  writeCache(CACHE_KEYS.stories, storySeed);
+  return true;
 }
 
 function preloadFeedHeroImages(feedPosts, { limit = FEED_PRELOAD_LIMIT } = {}) {
@@ -5015,9 +5084,10 @@ async function loadRestaurants({ force = false } = {}) {
   if (cached?.data?.length) {
     if (!state.restaurants.length) {
       state.restaurants = cached.data;
-      state.businessLocations = cached.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
-      cleanupLeaflet();
+      rebuildBusinessLocations();
+      syncFeedPostLogos();
       refreshFeedStories({ force: true });
+      cleanupLeaflet();
       if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
         render();
       }
@@ -5034,7 +5104,8 @@ async function loadRestaurants({ force = false } = {}) {
     const nextIds = list.map((item) => String(item.id)).join("|");
     if (prevIds === nextIds) return;
     state.restaurants = list;
-    state.businessLocations = list.map((rest, idx) => normalizeBusinessLocation(rest, idx));
+    rebuildBusinessLocations();
+    syncFeedPostLogos();
     refreshFeedStories({ force: true });
     cleanupLeaflet();
     if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
@@ -5085,19 +5156,6 @@ function buildStoriesFromFeed(posts) {
     });
   });
   return Array.from(map.values()).slice(0, FAST_LIMITS.stories);
-}
-
-function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
-  if (!FAST_MODE) return false;
-  if (!Array.isArray(posts) || !posts.length) return false;
-  const storySeed = buildStoriesFromFeed(posts);
-  if (!storySeed.length) return false;
-  const nextSig = buildStoriesSignature(storySeed);
-  if (!force && feedStoriesSignature === nextSig) return false;
-  feedStoriesSignature = nextSig;
-  state.stories = storySeed;
-  writeCache(CACHE_KEYS.stories, storySeed);
-  return true;
 }
 
 function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
@@ -5211,12 +5269,14 @@ async function loadFeedPosts({ force = false } = {}) {
     if (wasEmpty) {
       state.feedPosts = cached.data;
     }
+    syncFeedPostLogos();
     const storiesUpdated = refreshFeedStories({ force: wasEmpty });
     if (wasEmpty || storiesUpdated) {
       if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
         render();
       }
     }
+    preloadFeedHeroImages(state.feedPosts);
     if (FAST_MODE && !force) return;
     if (cached.fresh && !force) return;
   }
@@ -5241,13 +5301,14 @@ async function loadFeedPosts({ force = false } = {}) {
       .filter((row) => (row.status || "active") === "active")
       .map(normalizeFeedPost)
       .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-    const cached = readCache(CACHE_KEYS.feed);
-    saveFeedPosts(next, { lastDeltaCheck: cached?.meta?.lastDeltaCheck || 0 });
+    const cachedFeed = readCache(CACHE_KEYS.feed);
+    saveFeedPosts(next, { lastDeltaCheck: cachedFeed?.meta?.lastDeltaCheck || 0 });
 
     const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
     const nextIds = next.map((item) => String(item.id)).join("|");
     state.feedPosts = next;
     const storiesChanged = refreshFeedStories({ posts: next });
+    preloadFeedHeroImages(next);
     if (prevIds === nextIds && !storiesChanged) return;
     if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
       render();
@@ -5578,3 +5639,4 @@ window.addEventListener("load", () => {
     window.lucide.createIcons();
   }
 });
+
