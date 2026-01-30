@@ -1150,6 +1150,18 @@ function updateFeedLogoNodes(post) {
   });
 }
 
+function updateStoryLogoNodes(story) {
+  if (!story?.restaurantId) return;
+  const storyId = escapeSelector(story.restaurantId);
+  const restaurant = state.restaurants.find((r) => r.id === story.restaurantId) || {};
+  const logoSource = restaurant.logoUrl || restaurant.logo || story.img || "";
+  const logoUrl = getOptimizedImageUrl(logoSource, "thumb");
+  document.querySelectorAll(`[data-story-logo="${storyId}"]`).forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
+  });
+}
+
 function updatePostCaches(post) {
   if (!post?.id) return;
   const postId = String(post.id);
@@ -1914,10 +1926,11 @@ function renderStoriesRow(stories) {
     const restaurant = state.restaurants.find((r) => r.id === s.restaurantId) || {};
     const logoSource = restaurant.logoUrl || restaurant.logo || s.img || "";
     const imgUrl = getOptimizedImageUrl(logoSource, "thumb");
+    const storyAttr = s.restaurantId ? `data-story-logo="${escapeHtml(s.restaurantId)}"` : "";
       return `
         <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
           <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-            <img src="${escapeHtml(imgUrl)}" loading="lazy" decoding="async" width="80" height="80" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+            <img src="${escapeHtml(imgUrl)}" loading="lazy" decoding="async" width="80" height="80" ${storyAttr} class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
           </div>
           <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
         </a>
@@ -2036,6 +2049,7 @@ function updateFeedDom() {
   const storiesRow = document.getElementById("storiesRow");
   const storiesHtml = renderStoriesRow(stories);
   if (storiesRow && storiesRow.innerHTML !== storiesHtml) storiesRow.innerHTML = storiesHtml;
+  stories.forEach(updateStoryLogoNodes);
   patchFeedList(feedPosts);
   feedPosts.forEach(updateFeedLogoNodes);
   bindFeedDelegation();
