@@ -2010,7 +2010,7 @@ function renderDrawer() {
           ].map((item) => `
             <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${state.activeTab === item.id ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">${icon(item.icon, "w-4 h-4")} ${item.label}</div>
-              ${item.badge ? `<span class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge}</span>` : ""}
+              ${item.badge ? `<span data-unread-badge="drawer" class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge}</span>` : ""}
             </button>
           `).join("")}
         </nav>
@@ -2380,11 +2380,93 @@ function stopLiveListeners() {
   }
 }
 
+function updateNotificationBadges() {
+  const unread = state.notifications.filter((n) => !n.read).length;
+  const badgeText = unread > 9 ? "9+" : String(unread);
+  const drawerToggle = document.getElementById("drawerToggle");
+  if (drawerToggle) {
+    let badge = drawerToggle.querySelector("[data-unread-badge=\"header\"]");
+    if (unread > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.dataset.unreadBadge = "header";
+        badge.className = "absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg";
+        drawerToggle.appendChild(badge);
+      }
+      if (badge.textContent !== badgeText) badge.textContent = badgeText;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+
+  const drawerNotifBtn = document.querySelector("[data-nav=\"notifications\"]");
+  if (drawerNotifBtn) {
+    let badge = drawerNotifBtn.querySelector("[data-unread-badge=\"drawer\"]");
+    if (unread > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.dataset.unreadBadge = "drawer";
+        badge.className = "bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md";
+        drawerNotifBtn.appendChild(badge);
+      }
+      if (badge.textContent !== badgeText) badge.textContent = badgeText;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+}
+
+function updateNotificationsDom() {
+  updateNotificationBadges();
+  if (state.activeTab !== "notifications" || lastRenderMode !== "main") return false;
+  const list = document.getElementById("notificationsList");
+  if (!list) return false;
+  list.innerHTML = renderNotificationsList(state.notifications);
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+  bindNotificationsDelegation();
+  return true;
+}
+
+function bindNotificationsDelegation() {
+  const view = document.getElementById("notificationsView");
+  if (!view || view.dataset.bound === "true") return;
+  view.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const markAll = target.closest("#markAllRead");
+    if (markAll) {
+      void markAllNotificationsRead();
+      return;
+    }
+    const deleteBtn = target.closest("[data-notif-delete]");
+    if (deleteBtn) {
+      const id = deleteBtn.dataset.notifDelete;
+      if (!id) return;
+      state.notifications = state.notifications.filter((n) => n.id !== id);
+      saveNotifications(state.notifications);
+      updateNotificationsDom();
+      if (state.user?.uid) {
+        void deleteDoc(doc(db, "users", state.user.uid, "notifications", id));
+      }
+      return;
+    }
+    const openBtn = target.closest("[data-notif-open]");
+    if (openBtn) {
+      const id = openBtn.dataset.notifOpen;
+      if (!id) return;
+      void openNotificationTarget(id);
+    }
+  });
+  view.dataset.bound = "true";
+}
+
 function handleNotificationsUpdate(items) {
   state.notifications = items;
   saveNotifications(items);
-  if (state.activeTab === "search" && refreshSearchView()) return;
-  render();
+  const updated = updateNotificationsDom();
+  if (!updated && state.activeTab === "notifications") {
+    render();
+  }
 }
 
 function startLiveListeners(user) {
@@ -3645,7 +3727,10 @@ async function loadNotificationsFromFirebase({ force = false } = {}) {
     });
     state.notifications = items;
     saveNotifications(items);
-    render();
+    const updated = updateNotificationsDom();
+    if (!updated && state.activeTab === "notifications") {
+      render();
+    }
   } catch (err) {
     console.error(err);
   }
@@ -3671,7 +3756,10 @@ async function markNotificationRead(id) {
   if (idx >= 0 && !state.notifications[idx].read) {
     state.notifications[idx].read = true;
     saveNotifications(state.notifications);
-    render();
+    const updated = updateNotificationsDom();
+    if (!updated && state.activeTab === "notifications") {
+      render();
+    }
   }
   if (state.user?.uid) {
     try {
@@ -3687,7 +3775,10 @@ async function markAllNotificationsRead() {
   if (!unread.length) return;
   state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
   saveNotifications(state.notifications);
-  render();
+  const updated = updateNotificationsDom();
+  if (!updated && state.activeTab === "notifications") {
+    render();
+  }
   if (state.user?.uid) {
     await Promise.allSettled(unread.map((n) =>
       updateDoc(doc(db, "users", state.user.uid, "notifications", n.id), { read: true })
@@ -4329,29 +4420,35 @@ function renderSettingsView() {
 
 function renderNotificationsView() {
   return `
-    <div class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
+    <div id="notificationsView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
       <div class="flex justify-between items-end mb-8 px-2">
         <h2 class="text-2xl font-black italic uppercase">Updates</h2>
         <button id="markAllRead" class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-indigo-500">Alle gelesen</button>
       </div>
-      <div class="space-y-3">
-        ${state.notifications.length === 0 ? "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>" :
-          state.notifications.map((n) => `
-            <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
-              <img src="${escapeHtml(getOptimizedImageUrl(n.img, "avatar"))}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
-              <div class="flex-1 min-w-0">
-                <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
-                <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
-              </div>
-              <div class="flex items-center gap-2">
-                ${!n.read ? "<div class=\"w-2 h-2 bg-indigo-500 rounded-full\"></div>" : ""}
-                <button data-notif-delete="${n.id}" class="p-2 text-slate-300 hover:text-rose-500">${icon("trash-2", "w-4 h-4")}</button>
-              </div>
-            </div>
-          `).join("")}
+      <div id="notificationsList" class="space-y-3">
+        ${renderNotificationsList(state.notifications)}
       </div>
     </div>
   `;
+}
+
+function renderNotificationsList(items) {
+  if (!items.length) {
+    return "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>";
+  }
+  return items.map((n) => `
+    <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
+      <img src="${escapeHtml(getOptimizedImageUrl(n.img, "avatar"))}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
+        <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        ${!n.read ? "<div class=\"w-2 h-2 bg-indigo-500 rounded-full\"></div>" : ""}
+        <button data-notif-delete="${n.id}" class="p-2 text-slate-300 hover:text-rose-500">${icon("trash-2", "w-4 h-4")}</button>
+      </div>
+    </div>
+  `).join("");
 }
 
 function renderSearchUserItem(user) {
@@ -4637,7 +4734,7 @@ function renderHeader() {
         <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
-        ${unread ? `<span class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
+        ${unread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
       </button>
       <div class="text-center cursor-pointer" data-nav="feed">
         <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MENYRA</h1>
@@ -5133,33 +5230,7 @@ function bindAppEvents() {
     mapLocateBtn.addEventListener("click", () => mapLocate());
   }
 
-  const markAll = document.getElementById("markAllRead");
-  if (markAll) {
-    markAll.addEventListener("click", () => {
-      void markAllNotificationsRead();
-    });
-  }
-
-  document.querySelectorAll("[data-notif-open]").forEach((row) => {
-    row.addEventListener("click", () => {
-      const id = row.dataset.notifOpen;
-      if (!id) return;
-      void openNotificationTarget(id);
-    });
-  });
-
-  document.querySelectorAll("[data-notif-delete]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.notifDelete;
-      state.notifications = state.notifications.filter((n) => n.id !== id);
-      saveNotifications(state.notifications);
-      render();
-      if (state.user?.uid && id) {
-        void deleteDoc(doc(db, "users", state.user.uid, "notifications", id));
-      }
-    });
-  });
+  bindNotificationsDelegation();
 
   document.querySelectorAll("[data-settings]").forEach((btn) => {
     btn.addEventListener("click", () => {
