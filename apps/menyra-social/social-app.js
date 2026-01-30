@@ -1138,6 +1138,18 @@ function updatePostCountNodes(post) {
   });
 }
 
+function updateFeedLogoNodes(post) {
+  if (!post || !post.id) return;
+  const postId = escapeSelector(post.id);
+  const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
+  const logoSource = post.logo || restaurant.logoUrl || restaurant.logo || restaurant.logoURL || "";
+  const logoUrl = getOptimizedImageUrl(logoSource, "avatar");
+  document.querySelectorAll(`[data-feed-logo="${postId}"]`).forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
+  });
+}
+
 function updatePostCaches(post) {
   if (!post?.id) return;
   const postId = String(post.id);
@@ -1921,6 +1933,7 @@ function renderFeedItem(post, index) {
   const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   const feedAttr = postId ? `data-feed-id="${escapeHtml(postId)}"` : `data-feed-id=""`;
+  const logoAttr = postId ? `data-feed-logo="${escapeHtml(postId)}"` : "";
   const eager = index < 2;
   const heroAttrs = eager ? `fetchpriority="high"` : `loading="lazy"`;
   const logoAttrs = `loading="lazy"`;
@@ -1933,7 +1946,7 @@ function renderFeedItem(post, index) {
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-            <img src="${escapeHtml(logoUrl)}" ${logoAttrs} decoding="async" width="48" height="48" class="w-full h-full object-cover" />
+            <img src="${escapeHtml(logoUrl)}" ${logoAttrs} ${logoAttr} decoding="async" width="48" height="48" class="w-full h-full object-cover" />
           </div>
           <div>
             <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
@@ -2009,6 +2022,7 @@ function patchFeedList(feedPosts) {
   });
   feedList.replaceChildren(fragment);
   feedPosts.forEach(updatePostCountNodes);
+  feedPosts.forEach(updateFeedLogoNodes);
   return true;
 }
 
@@ -2023,6 +2037,7 @@ function updateFeedDom() {
   const storiesHtml = renderStoriesRow(stories);
   if (storiesRow && storiesRow.innerHTML !== storiesHtml) storiesRow.innerHTML = storiesHtml;
   patchFeedList(feedPosts);
+  feedPosts.forEach(updateFeedLogoNodes);
   bindFeedDelegation();
   preloadFeedHeroImages(feedPosts);
   if (window.lucide?.createIcons) window.lucide.createIcons();
