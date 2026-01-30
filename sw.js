@@ -66,6 +66,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Images: stale-while-revalidate (fast cached response, update in background)
+  if (isImage) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(req);
+      const networkPromise = fetch(req).then((res) => {
+        if (res && res.ok) cache.put(req, res.clone());
+        return res;
+      }).catch(() => null);
+      if (cached) {
+        networkPromise.catch(() => null);
+        return cached;
+      }
+      const network = await networkPromise;
+      return network || cached || new Response("", { status: 504, statusText: "Image fetch failed" });
+    })());
+    return;
+  }
+
   // Default: network-first, cache on success, fallback to cache
   event.respondWith((async () => {
     try {

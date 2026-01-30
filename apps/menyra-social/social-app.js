@@ -1,4 +1,4 @@
-﻿import { auth, db } from "@shared/firebase-config.js";
+import { auth, db } from "@shared/firebase-config.js";
 import { BUNNY_EDGE_BASE } from "@shared/bunny-edge.js";
 import {
   signInWithEmailAndPassword,
@@ -37,9 +37,9 @@ import {
   buildUrl
 } from "./_shared/social-core.js";
 import { compressImage } from "./_shared/image-compressor.js";
+import { getOptimizedImageUrl, isPlaceholderUrl } from "./_shared/image-resolver.js";
 
 const appEl = document.getElementById("app");
-const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3C/svg%3E";
 
 // --- SAFE STORAGE HELPER ---
 const safeStorage = {
@@ -307,49 +307,6 @@ function resumeRender() {
   }
 }
 
-function getOptimizedImageUrl(path, size = "large") {
-  const CDN_BASE = (BUNNY_EDGE_BASE || "https://menyra-media.alberthoti-vsa.workers.dev/").replace(/\/+$/, "") + '/media/';
-  
-  if (!path || typeof path !== "string") {
-    return PLACEHOLDER_IMAGE;
-  }
-  const trimmed = path.trim();
-  if (!trimmed || trimmed === "undefined" || trimmed === "null" || trimmed === "data") {
-    return PLACEHOLDER_IMAGE;
-  }
-  if (path.startsWith("data:") || path.startsWith("blob:")) {
-    return path;
-  }
-  
-  if (path.includes(".workers.dev/media/")) {
-    return path;
-  }
-
-  const stripMediaPrefix = (value) => value.startsWith("media/") ? value.slice(6) : value;
-
-  if (path.includes("cdn.menyra.com") || path.includes("r2.dev") || path.includes("digitaloceanspaces")) {
-    const key = path.split("/").slice(3).join("/");
-    return CDN_BASE + stripMediaPrefix(key);
-  }
-
-  const r2Match = path.match(/https?:\/\/pub-[a-zA-Z0-9]+\.r2\.dev\/(.*)/);
-  if (r2Match && r2Match[1]) {
-      return CDN_BASE + stripMediaPrefix(r2Match[1]);
-  }
-
-  if (path.startsWith("http")) {
-    return path;
-  }
-
-  // Handle bare keys
-  const cleanedPath = path.replace(/^\//, "");
-  return CDN_BASE + stripMediaPrefix(cleanedPath);
-}
-
-function isPlaceholderUrl(url) {
-  if (!url) return true;
-  return url === PLACEHOLDER_IMAGE;
-}
 
 const restaurantLogoCache = new Map();
 const userSearchAvatarCache = new Map();
@@ -1395,7 +1352,7 @@ function buildBusinessResultsFromFeed(posts) {
       id: id || key,
       name: post.business || "Business",
       city: post.location || "Prishtina",
-      logo: post.logo || post.image || ""
+      logo: post.logo || ""
     });
   });
   return Array.from(map.values()).slice(0, SEARCH_LIMITS.businesses);
@@ -2101,7 +2058,7 @@ function renderFeedView() {
   `;
 }
 
-function renderStoryItem(story) {
+function renderStoryItem(story, index = 0) {
   const borderClass = story.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
   const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: story.restaurantId });
   const restaurant = state.restaurants.find((r) => r.id === story.restaurantId) || {};
@@ -2112,10 +2069,12 @@ function renderStoryItem(story) {
   const storyBorderAttr = storyId ? `data-story-border="${storyId}"` : "";
   const storyNameAttr = storyId ? `data-story-name="${storyId}"` : "";
   const storyItemAttr = storyId ? `data-story-item="${storyId}"` : "";
+  const eager = index < 6;
+  const imgAttrs = eager ? `fetchpriority="high"` : `loading="lazy"`;
   return `
     <a href="${storyUrl}" ${storyItemAttr} class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
       <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200" ${storyBorderAttr}>
-        <img src="${escapeHtml(imgUrl)}" loading="lazy" decoding="async" width="80" height="80" ${storyAttr} class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+        <img src="${escapeHtml(imgUrl)}" ${imgAttrs} decoding="async" width="80" height="80" ${storyAttr} class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
       </div>
       <span class="text-[9px] font-bold tracking-tighter text-slate-800" ${storyNameAttr}>${escapeHtml(story.name)}</span>
     </a>
@@ -2131,7 +2090,7 @@ function renderStoriesRow(stories) {
       </div>
       <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Story</span>
     </div>
-    ${stories.length ? stories.map(renderStoryItem).join("") : `
+    ${stories.length ? stories.map((story, index) => renderStoryItem(story, index)).join("") : `
       <div class="flex items-center text-slate-400 text-xs font-bold uppercase">Keine Stories</div>
     `}
   `;
@@ -2145,7 +2104,7 @@ function renderFeedItem(post, index) {
   const logoAttr = postId ? `data-feed-logo="${escapeHtml(postId)}"` : "";
   const eager = index < 2;
   const heroAttrs = eager ? `fetchpriority="high"` : `loading="lazy"`;
-  const logoAttrs = `loading="lazy"`;
+  const logoAttrs = index < 2 ? `fetchpriority="high"` : `loading="lazy"`;
   const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
   const logoSource = post.logo || restaurant.logoUrl || restaurant.logo || "";
   const logoUrl = resolveRestaurantLogo(post.restaurantId || post.ownerId, logoSource, "avatar");
@@ -2538,7 +2497,16 @@ function startFeedListener() {
         writeCache(CACHE_KEYS.stories, storySeed);
       }
     }
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+    const inMain = lastRenderMode === "main";
+    const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+    if (updatedFeed) return;
+    const updatedSearch = state.activeTab === "search" && inMain && refreshSearchView();
+    if (updatedSearch) return;
+    if (!inMain) {
+      render();
+      return;
+    }
+    if (state.activeTab === "feed" || state.activeTab === "search") {
       render();
     }
   }, (err) => {
@@ -2577,7 +2545,14 @@ function startFeedFallbackListener() {
         writeCache(CACHE_KEYS.stories, storySeed);
       }
     }
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+    const inMain = lastRenderMode === "main";
+    const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+    if (updatedFeed) return;
+    if (!inMain) {
+      render();
+      return;
+    }
+    if (state.activeTab === "feed") {
       render();
     }
   }, (err) => console.error(err));
@@ -4117,7 +4092,7 @@ function renderSettingsView() {
         <div class="flex flex-col items-center mb-8">
           <input type="file" id="settingsAvatarInput" class="hidden" accept="image/*" />
           <div id="settingsAvatarTrigger" class="relative group cursor-pointer">
-            <img src="${escapeHtml(profile.avatar || "")}" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
+            <img src="${escapeHtml(resolveUserAvatar(profile.avatar))}" class="w-28 h-28 rounded-[3rem] object-cover border-4 border-white shadow-xl" />
             <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">${icon("camera", "w-4 h-4")}</div>
           </div>
         </div>
@@ -4242,7 +4217,7 @@ function renderNotificationsView() {
         ${state.notifications.length === 0 ? "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>" :
           state.notifications.map((n) => `
             <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
-              <img src="${escapeHtml(n.img)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
+              <img src="${escapeHtml(getOptimizedImageUrl(n.img, "avatar"))}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
               <div class="flex-1 min-w-0">
                 <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
                 <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
@@ -5484,8 +5459,17 @@ async function loadRestaurants({ force = false } = {}) {
       syncFeedPostLogos();
       refreshFeedStories({ force: true });
       cleanupLeaflet();
-      if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
-        render();
+      const inMain = lastRenderMode === "main";
+      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+      const updatedSearch = state.activeTab === "search" && inMain && refreshSearchView();
+      if (!updatedFeed && !updatedSearch) {
+        if (!inMain) {
+          render();
+        } else if (state.activeTab === "map") {
+          render();
+        } else if (state.activeTab === "feed" || state.activeTab === "search") {
+          render();
+        }
       }
     }
     if (FAST_MODE && !force) return;
@@ -5505,8 +5489,17 @@ async function loadRestaurants({ force = false } = {}) {
     syncFeedPostLogos();
     refreshFeedStories({ force: true });
     cleanupLeaflet();
-    if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
-      render();
+    const inMain = lastRenderMode === "main";
+    const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+    const updatedSearch = state.activeTab === "search" && inMain && refreshSearchView();
+    if (!updatedFeed && !updatedSearch) {
+      if (!inMain) {
+        render();
+      } else if (state.activeTab === "map") {
+        render();
+      } else if (state.activeTab === "feed" || state.activeTab === "search") {
+        render();
+      }
     }
   } catch (err) {
     console.error(err);
@@ -5541,7 +5534,7 @@ function buildStoriesFromFeed(posts) {
   if (!Array.isArray(posts)) return [];
   const map = new Map();
   posts.forEach((post) => {
-    const rid = post.restaurantId || post.ownerId || post.id;
+    const rid = post.restaurantId || post.ownerId || "";
     if (!rid || map.has(rid)) return;
     const rest = state.restaurants.find(r => r.id === rid) || {};
     const logo = rest.logoUrl || rest.logo || post.logo || "";
@@ -5675,7 +5668,14 @@ async function loadFeedPosts({ force = false } = {}) {
     syncFeedPostLogos();
     const storiesUpdated = refreshFeedStories({ force: wasEmpty });
     if (wasEmpty || storiesUpdated) {
-      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+      const inMain = lastRenderMode === "main";
+      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+      if (updatedFeed) return;
+      if (!inMain) {
+        render();
+        return;
+      }
+      if (state.activeTab === "feed") {
         render();
       }
     }
@@ -5713,7 +5713,16 @@ async function loadFeedPosts({ force = false } = {}) {
     const storiesChanged = refreshFeedStories({ posts: next });
     preloadFeedHeroImages(next);
     if (prevIds === nextIds && !storiesChanged) return;
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
+    const inMain = lastRenderMode === "main";
+    const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+    if (updatedFeed) return;
+    const updatedSearch = state.activeTab === "search" && inMain && refreshSearchView();
+    if (updatedSearch) return;
+    if (!inMain) {
+      render();
+      return;
+    }
+    if (state.activeTab === "feed" || state.activeTab === "search") {
       render();
     }
   } catch (err) {
@@ -5923,13 +5932,26 @@ async function loadStories() {
   if (cached?.data?.length) {
     if (cached.fresh) {
       state.stories = cached.data;
-      if (updateFeedDom()) return;
-      render();
+      const inMain = lastRenderMode === "main";
+      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+      if (updatedFeed) return;
+      if (!inMain) {
+        render();
+        return;
+      }
+      if (state.activeTab === "feed") {
+        render();
+      }
       return;
     }
     state.stories = cached.data;
-    if (updateFeedDom()) return;
-    render();
+    const inMain = lastRenderMode === "main";
+    const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+    if (!updatedFeed && !inMain) {
+      render();
+    } else if (!updatedFeed && state.activeTab === "feed") {
+      render();
+    }
   }
 
   try {
@@ -5983,8 +6005,16 @@ async function loadStories() {
 
     state.stories = finalStories;
     writeCache(CACHE_KEYS.stories, finalStories);
-    if (updateFeedDom()) return;
-    render();
+    const inMain = lastRenderMode === "main";
+    const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+    if (updatedFeed) return;
+    if (!inMain) {
+      render();
+      return;
+    }
+    if (state.activeTab === "feed") {
+      render();
+    }
   } catch (err) {
     console.error("Failed to load stories:", err);
     liveStoriesDisabled = true;

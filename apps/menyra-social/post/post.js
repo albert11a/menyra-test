@@ -13,6 +13,7 @@ import {
   qs,
   toDateSafe
 } from "../_shared/social-core.js";
+import { getOptimizedImageUrl, isPlaceholderUrl } from "../_shared/image-resolver.js";
 
 const postTitle = document.getElementById("postTitle");
 const postMeta = document.getElementById("postMeta");
@@ -84,14 +85,19 @@ async function loadPost() {
     postMeta.textContent = `${data.city || "-"} ? ${createdAt}`;
     postCaption.textContent = data.caption || data.captionShort || "";
 
-    const thumbUrl = normalizeUrl(data.thumbUrl || data.media?.[0]?.thumbUrl);
-    const mediaUrl = normalizeUrl(data.mediaUrl || data.media?.[0]?.url);
+    const mediaType = data.mediaType || data.media?.[0]?.type || "image";
+    const rawThumb = data.thumbUrl || data.media?.[0]?.thumbUrl || "";
+    const thumbUrl = getOptimizedImageUrl(rawThumb, "large");
+    const hasThumb = !isPlaceholderUrl(thumbUrl);
+    const rawMedia = data.mediaUrl || data.media?.[0]?.url || "";
+    const mediaUrl = mediaType === "video" ? normalizeUrl(rawMedia) : getOptimizedImageUrl(rawMedia, "large");
+    const hasMediaImage = mediaType !== "video" && !isPlaceholderUrl(mediaUrl);
 
-    if (thumbUrl && data.mediaType !== "video") {
+    if (hasThumb && mediaType !== "video") {
       postMedia.innerHTML = `<img src="${thumbUrl}" alt="${title}" />`;
-    } else if (mediaUrl && data.mediaType === "video") {
+    } else if (mediaType === "video" && mediaUrl) {
       postMedia.innerHTML = `<video controls src="${mediaUrl}"></video>`;
-    } else if (mediaUrl) {
+    } else if (hasMediaImage) {
       postMedia.innerHTML = `<img src="${mediaUrl}" alt="${title}" />`;
     } else {
       postMedia.innerHTML = "<div class='meta'>No media</div>";

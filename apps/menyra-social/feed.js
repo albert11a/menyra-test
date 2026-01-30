@@ -18,6 +18,7 @@ import {
   initials,
   toDateSafe
 } from "./_shared/social-core.js";
+import { getOptimizedImageUrl, isPlaceholderUrl } from "./_shared/image-resolver.js";
 
 const feedTabs = document.getElementById("feedTabs");
 const feedList = document.getElementById("feedList");
@@ -50,7 +51,8 @@ function renderFeed(items) {
     const title = item.businessName || item.restaurantName || item.name || "Business";
     const caption = item.captionShort || shortText(item.caption || "");
     const rawThumb = item.thumbUrl || item.mediaUrl || item.media?.[0]?.thumbUrl || item.media?.[0]?.url || "";
-    const thumb = rawThumb; // Use URL directly from database
+    const thumb = getOptimizedImageUrl(rawThumb, "large");
+    const hasThumb = !isPlaceholderUrl(thumb);
     const mediaType = item.mediaType || item.media?.[0]?.type || "image";
     const showType = currentType === "all";
     const typeBadge = showType ? `<span class="badge">${item.postType || "-"}</span>` : "";
@@ -60,7 +62,7 @@ function renderFeed(items) {
     card.className = "card";
     card.innerHTML = `
       <div class="media">
-        ${thumb ? `<img src="${thumb}" alt="${title}"/>` : `<div class="meta">${mediaType}</div>`}
+        ${hasThumb ? `<img src="${thumb}" alt="${title}"/>` : `<div class="meta">${mediaType}</div>`}
       </div>
       <h3>${title}</h3>
       <div class="meta">${caption}</div>
@@ -87,8 +89,8 @@ function renderStories(items) {
     const name = item.name || "Business";
     const city = item.city || "";
     const rawLogo = item.logo || "";
-    const logo = rawLogo; // Use URL directly from database
-    const avatar = logo
+    const logo = getOptimizedImageUrl(rawLogo, "avatar");
+    const avatar = !isPlaceholderUrl(logo)
       ? `<img src="${logo}" alt="${name}"/>`
       : `<span>${initials(name)}</span>`;
     const link = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: item.id });
@@ -134,17 +136,23 @@ async function loadStories() {
     }
 
     const restaurantSnaps = await Promise.all(
-      restaurantIds.map((rid) => getDoc(doc(db, "restaurants", rid)))
+      restaurantIds.map((rid) => Promise.all([
+        getDoc(doc(db, "restaurants", rid)),
+        getDoc(doc(db, "restaurants", rid, "public", "meta"))
+      ]))
     );
 
-    const items = restaurantSnaps.map((snap, idx) => {
-      if (!snap.exists()) return null;
-      const data = snap.data() || {};
+    const items = restaurantSnaps.map(([snap, metaSnap], idx) => {
+      const hasRestaurant = snap?.exists?.();
+      const hasMeta = metaSnap?.exists?.();
+      if (!hasRestaurant && !hasMeta) return null;
+      const data = hasRestaurant ? (snap.data() || {}) : {};
+      const meta = hasMeta ? (metaSnap.data() || {}) : {};
       return {
         id: restaurantIds[idx],
-        name: data.name || data.restaurantName || "Business",
-        logo: data.logoUrl || data.logo || "",
-        city: data.city || "",
+        name: meta.name || meta.restaurantName || data.name || data.restaurantName || "Business",
+        logo: meta.logoUrl || meta.logo || data.logoUrl || data.logo || "",
+        city: meta.city || data.city || "",
         story: byRestaurant.get(restaurantIds[idx])
       };
     }).filter(Boolean);
