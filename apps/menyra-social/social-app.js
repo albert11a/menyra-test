@@ -61,7 +61,8 @@ const STORAGE_KEYS = {
   following: "menyra_social_following_v1",
   postMeta: "menyra_social_post_meta_v1",
   feed: "menyra_social_feed_v1",
-  logoCache: "menyra_social_logo_cache_v1"
+  logoCache: "menyra_social_logo_cache_v1",
+  avatarCache: "menyra_social_avatar_cache_v1"
 };
 
 const ADMIN_LOGINS = {
@@ -292,6 +293,7 @@ let storyRefreshTimer = null;
 let liveFeedDisabled = false;
 let liveStoriesDisabled = false;
 let feedStoriesSignature = "";
+let storiesRowSignature = "";
 
 function suspendRender() {
   renderSuspended += 1;
@@ -352,6 +354,7 @@ function isPlaceholderUrl(url) {
 const restaurantLogoCache = new Map();
 let userAvatarCache = "";
 let logoCacheWriteTimer = null;
+let avatarCacheWriteTimer = null;
 
 function loadLogoCache() {
   const raw = safeStorage.getItem(STORAGE_KEYS.logoCache);
@@ -380,6 +383,24 @@ function scheduleLogoCacheWrite() {
   }, 400);
 }
 
+function loadAvatarCache() {
+  const raw = safeStorage.getItem(STORAGE_KEYS.avatarCache);
+  if (!raw) return;
+  const trimmed = String(raw || "").trim();
+  if (!trimmed || trimmed === "undefined" || trimmed === "null") return;
+  userAvatarCache = trimmed;
+}
+
+function scheduleAvatarCacheWrite(url) {
+  if (typeof window === "undefined") return;
+  if (!url || isPlaceholderUrl(url)) return;
+  if (avatarCacheWriteTimer) return;
+  avatarCacheWriteTimer = window.setTimeout(() => {
+    avatarCacheWriteTimer = null;
+    safeStorage.setItem(STORAGE_KEYS.avatarCache, url);
+  }, 300);
+}
+
 function resolveRestaurantLogo(restaurantId, raw, size = "avatar") {
   const url = getOptimizedImageUrl(raw, size);
   if (restaurantId) {
@@ -400,6 +421,7 @@ function resolveUserAvatar(raw) {
   const url = getOptimizedImageUrl(raw, "avatar");
   if (!isPlaceholderUrl(url)) {
     userAvatarCache = url;
+    scheduleAvatarCacheWrite(url);
     return url;
   }
   return userAvatarCache || url;
@@ -539,6 +561,7 @@ function saveFeedPosts(posts, extraMeta = {}) {
 
 function loadPersisted() {
   loadLogoCache();
+  loadAvatarCache();
   const savedSettings = safeStorage.getItem(STORAGE_KEYS.settings);
   if (savedSettings) {
     try { state.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) }; } catch {}
@@ -1296,7 +1319,7 @@ function buildBusinessResultsFromFeed(posts) {
     const key = id || String(post.business || "").toLowerCase();
     if (!key || map.has(key)) return;
     map.set(key, {
-      id: id || "",
+      id: id || key,
       name: post.business || "Business",
       city: post.location || "Prishtina",
       logo: post.logo || post.image || ""
@@ -2141,9 +2164,14 @@ function updateFeedDom() {
     .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
   const stories = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeed(feedPosts) : state.stories);
   const storiesRow = document.getElementById("storiesRow");
-  const storiesHtml = renderStoriesRow(stories);
-  if (storiesRow && storiesRow.innerHTML !== storiesHtml) storiesRow.innerHTML = storiesHtml;
-  stories.forEach(updateStoryLogoNodes);
+  const nextSig = buildStoriesRowSignature(stories);
+  if (storiesRow) {
+    if (storiesRowSignature !== nextSig) {
+      storiesRow.innerHTML = renderStoriesRow(stories);
+      storiesRowSignature = nextSig;
+    }
+    stories.forEach(updateStoryLogoNodes);
+  }
   patchFeedList(feedPosts);
   feedPosts.forEach(updateFeedLogoNodes);
   bindFeedDelegation();
@@ -5374,6 +5402,12 @@ function buildStoriesFromFeed(posts) {
     });
   });
   return Array.from(map.values()).slice(0, FAST_LIMITS.stories);
+}
+
+function buildStoriesRowSignature(items) {
+  return (items || [])
+    .map((item) => `${item.restaurantId || ""}|${item.isLive ? 1 : 0}|${item.name || ""}`)
+    .join(";");
 }
 
 function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
