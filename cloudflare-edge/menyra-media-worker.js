@@ -179,16 +179,16 @@ async function handleStoryUpload(request, env, cors) {
   const ext = extFromMime(mime, "mp4");
   const key = `stories/${rid}/${stamp}-${randomToken()}.${ext}`;
 
+  const ttlHours = clampMb(env.STORY_TTL_HOURS, 24);
   await env.MEDIA_BUCKET.put(key, await file.arrayBuffer(), {
     httpMetadata: {
       contentType: mime || "application/octet-stream",
-      cacheControl: "public, max-age=31536000, immutable"
+      cacheControl: `public, max-age=${ttlHours * 3600}`
     }
   });
 
   const origin = new URL(request.url).origin;
   const cdnUrl = `${origin}/media/${key}`;
-  const ttlHours = clampMb(env.STORY_TTL_HOURS, 24);
   return json({ ok: true, videoId: key, url: cdnUrl, cdnUrl, ttlHours }, 200, cors);
 }
 
