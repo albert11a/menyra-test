@@ -11,7 +11,7 @@
  * @param {string} mimeType The desired MIME type (e.g., "image/jpeg").
  * @returns {Promise<File>} A promise that resolves with the compressed file.
  */
-export async function compressImage(file, maxSize, quality, mimeType = "image/webp") {
+export async function compressImage(file, maxSize, quality, mimeType = "image/jpeg") {
   try {
     const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
     const { width, height } = bitmap;
@@ -37,7 +37,7 @@ export async function compressImage(file, maxSize, quality, mimeType = "image/we
       throw new Error("Canvas toBlob returned null");
     }
 
-    const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".webp";
+    const newFileName = file.name.replace(/\.[^/.]+$/, "") + ".jpg";
 
     return new File([blob], newFileName, {
       type: mimeType,

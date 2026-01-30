@@ -492,6 +492,8 @@ function loadPersisted() {
   const restaurantsCache = readCache(CACHE_KEYS.restaurants);
   if (restaurantsCache?.data?.length) {
     state.restaurants = restaurantsCache.data;
+    state.restaurantMap.clear();
+    state.restaurants.forEach(r => state.restaurantMap.set(r.id, r));
     state.businessLocations = restaurantsCache.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
   }
 
@@ -4949,6 +4951,8 @@ async function loadRestaurants({ force = false } = {}) {
   if (cached?.data?.length) {
     if (!state.restaurants.length) {
       state.restaurants = cached.data;
+      state.restaurantMap.clear();
+      cached.data.forEach(r => state.restaurantMap.set(r.id, r));
       state.businessLocations = cached.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
       cleanupLeaflet();
       if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
@@ -4967,6 +4971,8 @@ async function loadRestaurants({ force = false } = {}) {
     const nextIds = list.map((item) => String(item.id)).join("|");
     if (prevIds === nextIds) return;
     state.restaurants = list;
+    state.restaurantMap.clear();
+    list.forEach(r => state.restaurantMap.set(r.id, r));
     state.businessLocations = list.map((rest, idx) => normalizeBusinessLocation(rest, idx));
     cleanupLeaflet();
     if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
