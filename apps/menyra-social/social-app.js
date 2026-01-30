@@ -4867,6 +4867,88 @@ function renderLoading() {
   `;
 }
 
+function cacheCurrentImages() {
+  if (!appEl) return new Map();
+  const cache = new Map();
+  appEl.querySelectorAll("img").forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    const src = img.currentSrc || img.getAttribute("src") || "";
+    if (!src || isPlaceholderUrl(src)) return;
+    const list = cache.get(src);
+    if (list) {
+      list.push(img);
+    } else {
+      cache.set(src, [img]);
+    }
+  });
+  return cache;
+}
+
+function syncImageAttributes(target, source) {
+  if (!target || !source) return;
+  target.className = source.className;
+  target.style.cssText = source.style.cssText || "";
+  target.width = source.width;
+  target.height = source.height;
+  if (source.alt) {
+    target.alt = source.alt;
+  } else {
+    target.removeAttribute("alt");
+  }
+  if (source.loading) {
+    target.loading = source.loading;
+  } else {
+    target.removeAttribute("loading");
+  }
+  if (source.decoding) {
+    target.decoding = source.decoding;
+  } else {
+    target.removeAttribute("decoding");
+  }
+  const fetchPriority = source.getAttribute("fetchpriority");
+  if (fetchPriority) {
+    target.setAttribute("fetchpriority", fetchPriority);
+  } else {
+    target.removeAttribute("fetchpriority");
+  }
+  if (source.referrerPolicy) {
+    target.referrerPolicy = source.referrerPolicy;
+  } else {
+    target.removeAttribute("referrerpolicy");
+  }
+  if (source.sizes) {
+    target.sizes = source.sizes;
+  } else {
+    target.removeAttribute("sizes");
+  }
+  if (source.srcset) {
+    target.srcset = source.srcset;
+  } else {
+    target.removeAttribute("srcset");
+  }
+  Object.keys(target.dataset).forEach((key) => {
+    if (!(key in source.dataset)) delete target.dataset[key];
+  });
+  Object.keys(source.dataset).forEach((key) => {
+    target.dataset[key] = source.dataset[key];
+  });
+}
+
+function rehydrateImages(cache) {
+  if (!appEl || !cache || cache.size === 0) return;
+  appEl.querySelectorAll("img").forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    const src = img.currentSrc || img.getAttribute("src") || "";
+    if (!src || isPlaceholderUrl(src)) return;
+    const pool = cache.get(src);
+    if (!pool || !pool.length) return;
+    const candidate = pool.shift();
+    if (!candidate || candidate === img) return;
+    syncImageAttributes(candidate, img);
+    img.replaceWith(candidate);
+  });
+}
+
 function render() {
   if (renderSuspended > 0) {
     renderQueued = true;
@@ -4887,6 +4969,7 @@ function render() {
   }
   const changed = nextHtml !== lastAppHtml || mode !== lastRenderMode;
   if (changed) {
+    const imageCache = cacheCurrentImages();
     const reuseFeed = mode === "main" && lastRenderMode === "main" && state.activeTab === "feed"
       ? document.getElementById("feedView")
       : null;
@@ -4909,6 +4992,7 @@ function render() {
       if (nextMain) nextMain.scrollTop = prevScrollTop;
       updateFeedDom();
     }
+    rehydrateImages(imageCache);
     if (window.lucide?.createIcons) window.lucide.createIcons();
     if (state.activeTab === "search" && state.search.keepFocus) {
       state.search.keepFocus = false;
