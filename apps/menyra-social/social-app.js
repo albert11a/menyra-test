@@ -530,7 +530,7 @@ function loadPersisted() {
   }
 
   const storiesCache = readCache(CACHE_KEYS.stories);
-  if (storiesCache?.data?.length) state.stories = storiesCache.data;
+  if (!state.stories.length && storiesCache?.data?.length) state.stories = storiesCache.data;
 
   const savedFollowing = safeStorage.getItem(STORAGE_KEYS.following);
   if (savedFollowing) {
@@ -584,7 +584,7 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
     state.restaurants = mergeRestaurants(state.restaurants, loaded);
     rebuildBusinessLocations();
     const feedUpdated = syncFeedPostLogos();
-    const storiesUpdated = refreshFeedStories({ force: feedUpdated });
+    const storiesUpdated = refreshFeedStories({ force: true });
     if ((feedUpdated || storiesUpdated) && state.activeTab === "feed" && lastRenderMode === "main") {
       updateFeedDom();
     } else if (feedUpdated || storiesUpdated) {
@@ -1157,6 +1157,18 @@ function updateStoryLogoNodes(story) {
   const logoSource = restaurant.logoUrl || restaurant.logo || story.img || "";
   const logoUrl = getOptimizedImageUrl(logoSource, "thumb");
   document.querySelectorAll(`[data-story-logo="${storyId}"]`).forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
+  });
+}
+
+function updateSearchLogoNodes(biz) {
+  if (!biz?.id) return;
+  const bizId = escapeSelector(biz.id);
+  const restaurant = state.restaurants.find((r) => r.id === biz.id) || {};
+  const logoSource = restaurant.logoUrl || restaurant.logo || biz.logo || biz.image || "";
+  const logoUrl = getOptimizedImageUrl(logoSource, "avatar");
+  document.querySelectorAll(`[data-search-logo="${bizId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
     if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
   });
@@ -4039,9 +4051,10 @@ function renderSearchUserItem(user) {
 function renderSearchBusinessItem(biz) {
   const name = biz.name || "Business";
   const logoUrl = getOptimizedImageUrl(biz.logo, "avatar");
+  const logoAttr = biz.id ? `data-search-logo="${escapeHtml(biz.id)}"` : "";
   return `
     <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(logoUrl)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <img src="${escapeHtml(logoUrl)}" ${logoAttr} class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
         <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
@@ -4164,9 +4177,14 @@ function updateSearchDom() {
   if (bizCount) bizCount.textContent = String(businesses.length);
   const bizList = document.getElementById("searchBizList");
   if (bizList) {
-    bizList.innerHTML = businesses.length
-      ? businesses.map(renderSearchBusinessItem).join("")
-      : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine ${localLabel} gefunden.</div>` : "");
+    if (!businesses.length) {
+      bizList.innerHTML = query
+        ? `<div class="text-xs font-bold text-slate-300 px-2">Keine ${localLabel} gefunden.</div>`
+        : "";
+    } else {
+      patchSearchBusinessList(businesses);
+      businesses.forEach(updateSearchLogoNodes);
+    }
   }
 
   document.querySelectorAll("[data-search-filter]").forEach((btn) => {
@@ -4181,6 +4199,35 @@ function updateSearchDom() {
   });
 
   if (window.lucide?.createIcons) window.lucide.createIcons();
+  return true;
+}
+
+function patchSearchBusinessList(businesses) {
+  const bizList = document.getElementById("searchBizList");
+  if (!bizList) return false;
+  const existingItems = Array.from(bizList.querySelectorAll("[data-search-business]"));
+  const currentIds = existingItems.map((el) => el.dataset.searchBusiness || "");
+  const nextIds = businesses.map((biz) => String(biz.id || ""));
+  if (currentIds.join("|") === nextIds.join("|")) {
+    return true;
+  }
+  const existingMap = new Map();
+  existingItems.forEach((el) => existingMap.set(el.dataset.searchBusiness || "", el));
+  const fragment = document.createDocumentFragment();
+  businesses.forEach((biz) => {
+    const id = String(biz.id || "");
+    const existing = id ? existingMap.get(id) : null;
+    if (existing) {
+      existingMap.delete(id);
+      fragment.appendChild(existing);
+    } else {
+      const tpl = document.createElement("template");
+      tpl.innerHTML = renderSearchBusinessItem(biz);
+      const node = tpl.content.firstElementChild;
+      if (node) fragment.appendChild(node);
+    }
+  });
+  bizList.replaceChildren(fragment);
   return true;
 }
 
