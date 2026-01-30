@@ -2633,6 +2633,26 @@ function startStoriesListener() {
   }
 }
 
+function areProfilePostsEquivalent(prev, next) {
+  if (prev.length !== next.length) return false;
+  for (let i = 0; i < next.length; i += 1) {
+    const a = prev[i];
+    const b = next[i];
+    if (!a || !b) return false;
+    if (String(a.id) !== String(b.id)) return false;
+    if ((a.url || "") !== (b.url || "")) return false;
+    if ((a.type || "square") !== (b.type || "square")) return false;
+    if (!!a.isVideo !== !!b.isVideo) return false;
+    const aLikes = Number(a.likes) || 0;
+    const bLikes = Number(b.likes) || 0;
+    if (aLikes !== bLikes) return false;
+    const aComments = Number(a.comments) || 0;
+    const bComments = Number(b.comments) || 0;
+    if (aComments !== bComments) return false;
+  }
+  return true;
+}
+
 function startUserPostsListener(uid) {
   if (!uid) return;
   if (userPostsUnsub) {
@@ -2656,9 +2676,11 @@ function startUserPostsListener(uid) {
       ownerType: "user",
       ownerId: uid
     })).filter((row) => row.url);
+    const prev = state.userPosts || [];
+    const shouldRender = state.activeTab === "profile" && !state.profileView && !areProfilePostsEquivalent(prev, next);
     state.userPosts = next;
     writeCache(CACHE_KEYS.userPosts, next);
-    if (state.activeTab === "profile" && !state.profileView) {
+    if (shouldRender) {
       render();
     }
   });
@@ -2691,9 +2713,11 @@ function startBusinessPostsListener(restaurantId) {
         restaurantId
       }))
       .filter((row) => row.url);
+    const prev = state.businessPosts || [];
+    const shouldRender = state.activeTab === "profile" && !state.profileView && !areProfilePostsEquivalent(prev, next);
     state.businessPosts = next;
     writeCache(CACHE_KEYS.businessPosts, next);
-    if (state.activeTab === "profile" && !state.profileView) {
+    if (shouldRender) {
       render();
     }
   });
