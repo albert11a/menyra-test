@@ -4984,7 +4984,7 @@ async function loadRestaurants({ force = false } = {}) {
 }
 
 function normalizeFeedPost(row) {
-  const restaurant = state.restaurants.find((r) => r.id === (row.rid || row.restaurantId)) || {};
+  const restaurant = state.restaurantMap.get(row.rid || row.restaurantId) || {};
   const thumb = row.thumbUrl || row.mediaUrl || row.media?.[0]?.thumbUrl || row.media?.[0]?.url || "";
   const caption = row.caption || row.captionShort || "";
   return {
