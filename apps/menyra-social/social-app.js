@@ -512,6 +512,37 @@ function loadPersisted() {
   state.postMeta = {};
 }
 
+async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
+  if (!Array.isArray(restaurantIds) || restaurantIds.length === 0) return;
+
+  // bereits vorhandene IDs sammeln
+  const existing = new Set((state.restaurants || []).map(r => r.id));
+  const missing = restaurantIds.filter(id => id && !existing.has(id)).slice(0, max);
+  if (missing.length === 0) return;
+
+  const loaded = [];
+
+  for (const rid of missing) {
+    try {
+      const snap = await getDoc(doc(db, "restaurants", rid));
+      if (snap.exists()) {
+        const d = snap.data();
+        loaded.push({
+          id: rid,
+          name: d.name || d.restaurantName || "",
+          logoUrl: d.logoUrl || d.logo || d.logoURL || ""
+        });
+      }
+    } catch (e) {
+      console.warn("hydrateRestaurantsByIds failed for", rid, e);
+    }
+  }
+
+  if (loaded.length) {
+    state.restaurants = [...(state.restaurants || []), ...loaded];
+  }
+}
+
 function resolveAdminLogin(email, pass) {
   const key = String(email || "").trim().toLowerCase();
   if (!key || pass !== key) return null;
