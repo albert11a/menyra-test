@@ -289,6 +289,7 @@ let modalCommentsUnsub = null;
 let storyRefreshTimer = null;
 let liveFeedDisabled = false;
 let liveStoriesDisabled = false;
+let feedStoriesSignature = "";
 
 function suspendRender() {
   renderSuspended += 1;
@@ -487,7 +488,7 @@ function loadPersisted() {
   const feedCache = readCache(CACHE_KEYS.feed);
   if (feedCache?.data?.length) {
     state.feedPosts = feedCache.data;
-    ensureStoriesFromFeedIfNeeded(feedCache.data);
+    refreshFeedStories({ posts: feedCache.data, force: true });
   }
 
   const userPostsCache = readCache(CACHE_KEYS.userPosts);
@@ -542,6 +543,7 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
 
   if (loaded.length) {
     state.restaurants = [...(state.restaurants || []), ...loaded];
+    refreshFeedStories({ force: true });
   }
 }
 
@@ -1767,9 +1769,11 @@ function renderStoriesRow(stories) {
       <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Story</span>
     </div>
     ${stories.length ? stories.map((s) => {
-      const borderClass = s.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
-      const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
-      const imgUrl = getOptimizedImageUrl(s.img, "thumb");
+    const borderClass = s.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
+    const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
+    const restaurant = state.restaurants.find((r) => r.id === s.restaurantId) || {};
+    const logoSource = restaurant.logoUrl || restaurant.logo || s.img || "";
+    const imgUrl = getOptimizedImageUrl(logoSource, "thumb");
       return `
         <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
           <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
@@ -1792,7 +1796,9 @@ function renderFeedItem(post, index) {
   const eager = index < 2;
   const heroAttrs = eager ? `fetchpriority="high"` : `loading="lazy"`;
   const logoAttrs = `loading="lazy"`;
-  const logoUrl = getOptimizedImageUrl(post.logo, "avatar");
+  const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
+  const logoSource = post.logo || restaurant.logoUrl || restaurant.logo || "";
+  const logoUrl = getOptimizedImageUrl(logoSource, "avatar");
   const imageUrl = getOptimizedImageUrl(post.image, "large");
   return `
     <div class="group feed-card" ${feedAttr}>
@@ -5011,6 +5017,7 @@ async function loadRestaurants({ force = false } = {}) {
       state.restaurants = cached.data;
       state.businessLocations = cached.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
       cleanupLeaflet();
+      refreshFeedStories({ force: true });
       if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
         render();
       }
@@ -5028,6 +5035,7 @@ async function loadRestaurants({ force = false } = {}) {
     if (prevIds === nextIds) return;
     state.restaurants = list;
     state.businessLocations = list.map((rest, idx) => normalizeBusinessLocation(rest, idx));
+    refreshFeedStories({ force: true });
     cleanupLeaflet();
     if (!(state.activeTab === "search" && lastRenderMode === "main" && refreshSearchView())) {
       render();
@@ -5079,11 +5087,14 @@ function buildStoriesFromFeed(posts) {
   return Array.from(map.values()).slice(0, FAST_LIMITS.stories);
 }
 
-function ensureStoriesFromFeedIfNeeded(posts) {
+function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
   if (!FAST_MODE) return false;
-  if (state.stories.length) return false;
+  if (!Array.isArray(posts) || !posts.length) return false;
   const storySeed = buildStoriesFromFeed(posts);
   if (!storySeed.length) return false;
+  const nextSig = buildStoriesSignature(storySeed);
+  if (!force && feedStoriesSignature === nextSig) return false;
+  feedStoriesSignature = nextSig;
   state.stories = storySeed;
   writeCache(CACHE_KEYS.stories, storySeed);
   return true;
@@ -5196,13 +5207,12 @@ async function loadBusinessPostsForRestaurant(restaurantId) {
 async function loadFeedPosts({ force = false } = {}) {
   const cached = readCache(CACHE_KEYS.feed, CACHE_TTL_MS.feed);
   if (cached?.data?.length) {
-    if (!state.feedPosts.length) {
+    const wasEmpty = !state.feedPosts.length;
+    if (wasEmpty) {
       state.feedPosts = cached.data;
-      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-        render();
-      }
     }
-    if (ensureStoriesFromFeedIfNeeded(cached.data)) {
+    const storiesUpdated = refreshFeedStories({ force: wasEmpty });
+    if (wasEmpty || storiesUpdated) {
       if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
         render();
       }
@@ -5236,22 +5246,9 @@ async function loadFeedPosts({ force = false } = {}) {
 
     const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
     const nextIds = next.map((item) => String(item.id)).join("|");
-    let storiesChanged = false;
-    if (FAST_MODE) {
-      const storySeed = buildStoriesFromFeed(next);
-      if (storySeed.length) {
-        const prevStoryIds = state.stories.map((item) => String(item.restaurantId)).join("|");
-        const nextStoryIds = storySeed.map((item) => String(item.restaurantId)).join("|");
-        if (prevStoryIds !== nextStoryIds) {
-          state.stories = storySeed;
-          writeCache(CACHE_KEYS.stories, storySeed);
-          storiesChanged = true;
-        }
-      }
-    }
-    if (prevIds === nextIds && !storiesChanged) return;
-
     state.feedPosts = next;
+    const storiesChanged = refreshFeedStories({ posts: next });
+    if (prevIds === nextIds && !storiesChanged) return;
     if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
       render();
     }
@@ -5303,21 +5300,8 @@ async function loadFeedDelta({ force = false } = {}) {
       return true;
     }).sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
 
-    let storiesChanged = false;
-    if (FAST_MODE) {
-      const storySeed = buildStoriesFromFeed(unique);
-      if (storySeed.length) {
-        const prevStoryIds = state.stories.map((item) => String(item.restaurantId)).join("|");
-        const nextStoryIds = storySeed.map((item) => String(item.restaurantId)).join("|");
-        if (prevStoryIds !== nextStoryIds) {
-          state.stories = storySeed;
-          writeCache(CACHE_KEYS.stories, storySeed);
-          storiesChanged = true;
-        }
-      }
-    }
-
     state.feedPosts = unique;
+    const storiesChanged = refreshFeedStories({ posts: unique });
     preloadFeedHeroImages(unique);
     saveFeedPosts(unique, { lastDeltaCheck: Date.now() });
     if (storiesChanged || unique.length) {
