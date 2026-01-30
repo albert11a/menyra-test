@@ -36,6 +36,7 @@ import {
   toDateSafe,
   buildUrl
 } from "./_shared/social-core.js";
+import { compressImage } from "./_shared/image-compressor.js";
 
 const appEl = document.getElementById("app");
 
@@ -299,7 +300,7 @@ function resumeRender() {
 }
 
 function getOptimizedImageUrl(path, size = "large") {
-  const base = BUNNY_EDGE_BASE || "https://menyra-media.alberthoti-vsa.workers.dev/";
+  const CDN_BASE = (BUNNY_EDGE_BASE || "https://menyra-media.alberthoti-vsa.workers.dev/").replace(/\/+$/, "") + '/media/';
   const placeholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3C/svg%3E";
   
   if (!path || typeof path !== "string") {
@@ -308,39 +309,23 @@ function getOptimizedImageUrl(path, size = "large") {
   if (path.startsWith("data:") || path.startsWith("blob:")) {
     return path;
   }
-  // This handles fully qualified URLs from the upload process and external URLs
-  if (path.startsWith("http")) {
-    // If it's already a new media worker URL, return it as is.
-    if (path.includes("workers.dev/")) return path;
-    // For other absolute URLs, we can't optimize them, so return them directly.
+  
+  if (path.includes(".workers.dev/media/")) {
     return path;
   }
 
-  const cleanedPath = path.replace(/^\//, "");
-  
-  const params = new URLSearchParams();
-  params.set("format", "auto");
-  params.set("quality", "80");
-
-  switch (size) {
-    case "avatar":
-      params.set("width", "128");
-      params.set("height", "128");
-      break;
-    case "thumb":
-      params.set("width", "400");
-       params.set("height", "400");
-      break;
-    case "medium":
-      params.set("width", "600");
-      break;
-    case "large":
-    default:
-      params.set("width", "800");
-      break;
+  const r2Match = path.match(/https?:\/\/pub-[a-zA-Z0-9]+\.r2\.dev\/(.*)/);
+  if (r2Match && r2Match[1]) {
+      return CDN_BASE + r2Match[1];
   }
 
-  return `${base}${cleanedPath}?${params.toString()}`;
+  if (path.startsWith("http")) {
+    return path;
+  }
+
+  // Handle bare keys
+  const cleanedPath = path.replace(/^\//, "");
+  return CDN_BASE + cleanedPath;
 }
 
 function escapeHtml(value) {
@@ -1729,7 +1714,7 @@ function renderStoriesRow(stories) {
       return `
         <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
           <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-            <img src="${escapeHtml(imgUrl)}" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+            <img src="${escapeHtml(imgUrl)}" loading="lazy" decoding="async" width="80" height="80" class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
           </div>
           <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
         </a>
@@ -1746,8 +1731,8 @@ function renderFeedItem(post, index) {
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   const feedAttr = postId ? `data-feed-id="${escapeHtml(postId)}"` : `data-feed-id=""`;
   const eager = index < 2;
-  const heroAttrs = eager ? `fetchpriority="high"` : "";
-  const logoAttrs = "";
+  const heroAttrs = eager ? `fetchpriority="high"` : `loading="lazy"`;
+  const logoAttrs = `loading="lazy"`;
   const logoUrl = getOptimizedImageUrl(post.logo, "avatar");
   const imageUrl = getOptimizedImageUrl(post.image, "large");
   return `
@@ -1755,7 +1740,7 @@ function renderFeedItem(post, index) {
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-            <img src="${escapeHtml(logoUrl)}" ${logoAttrs} class="w-full h-full object-cover" />
+            <img src="${escapeHtml(logoUrl)}" ${logoAttrs} decoding="async" width="48" height="48" class="w-full h-full object-cover" />
           </div>
           <div>
             <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
@@ -1766,7 +1751,7 @@ function renderFeedItem(post, index) {
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative h-[30rem] rounded-[3rem] overflow-hidden bg-slate-200">
-          <img src="${escapeHtml(imageUrl)}" ${heroAttrs} class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
+          <img src="${escapeHtml(imageUrl)}" ${heroAttrs} decoding="async" width="600" height="600" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-1000" />
           ${post.isLive ? `
             <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
@@ -1796,7 +1781,7 @@ function renderFeedList(feedPosts) {
   if (!feedPosts.length) {
     return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>`;
   }
-  return feedPosts.map((post, index) => renderFeedItem(post, index)).join("");
+  return feedPosts.slice(0, 10).map((post, index) => renderFeedItem(post, index)).join("");
 }
 
 function patchFeedList(feedPosts) {
@@ -2374,7 +2359,7 @@ function renderProfileGridItem(item) {
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   return `
     <button type="button" ${postAttr} class="rounded-[2.5rem] overflow-hidden shadow-md relative group text-left ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
-      <img src="${escapeHtml(item.url)}" class="w-full h-full object-cover" />
+      <img src="${escapeHtml(item.url)}" loading="lazy" decoding="async" width="400" height="400" class="w-full h-full object-cover" />
       ${item.title ? `<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end"><h3 class="text-white text-lg font-black italic">${escapeHtml(item.title)}</h3></div>` : ""}
       <div class="absolute inset-x-0 bottom-0 p-3">
         <div class="flex items-center justify-between text-white bg-black/45 backdrop-blur rounded-2xl px-3 py-2">
@@ -2401,10 +2386,12 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
     ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
     : "aspect-[4/5]";
   const imageUrl = getOptimizedImageUrl(item.url, isWide ? "large" : "medium");
+  const width = isWide ? 800 : 400;
+  const height = isWide ? 400 : 500;
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover" />
+        <img src="${escapeHtml(imageUrl)}" loading="lazy" decoding="async" width="${width}" height="${height}" class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">
@@ -2741,7 +2728,7 @@ function renderPublicProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div class="relative">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -2818,7 +2805,7 @@ function renderProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                  <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -4754,13 +4741,15 @@ function bindSearchEvents() {
   searchView.dataset.bound = "true";
 }
 
-async function uploadImage(file, ownerId) {
+async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType }) {
   const maxBytes = 15 * 1024 * 1024;
   if (file.size > maxBytes) throw new Error("Max 15MB pro Bild.");
   if (!String(file.type || "").startsWith("image/")) throw new Error("Nur Bilder erlaubt.");
 
+  const compressedFile = await compressImage(file, maxSize, quality, mimeType);
+
   const form = new FormData();
-  form.append("file", file, file.name || "image.jpg");
+  form.append("file", compressedFile, compressedFile.name || "image.jpg");
   form.append("restaurantId", ownerId || "");
 
   const res = await fetch(`${BUNNY_EDGE_BASE}/image/upload`, {
@@ -4769,18 +4758,18 @@ async function uploadImage(file, ownerId) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.url) throw new Error(data?.error || "Upload fehlgeschlagen.");
-  return String(data.url);
+  return {url: String(data.url), cdnUrl: String(data.cdnUrl) };
 }
 
 async function uploadAvatar(file) {
   if (!state.user) return;
   try {
-    const url = await uploadImage(file, state.user.uid);
+    const { cdnUrl } = await uploadCompressedImage(file, state.user.uid, { maxSize: 512, quality: 0.80, mimeType: 'image/jpeg'});
     await setDoc(doc(db, "users", state.user.uid), {
-      avatarUrl: url,
+      avatarUrl: cdnUrl,
       updatedAt: serverTimestamp()
     }, { merge: true });
-    state.userProfile.avatar = url;
+    state.userProfile.avatar = cdnUrl;
     safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
     render();
   } catch (err) {
@@ -4857,13 +4846,13 @@ async function handleUploadPost() {
     render();
 
     const ownerId = isBusiness ? restaurantId : state.user.uid;
-    const url = await uploadImage(state.upload.file, ownerId);
+    const { cdnUrl } = await uploadCompressedImage(state.upload.file, ownerId, {maxSize: 1080, quality: 0.78, mimeType: 'image/jpeg'});
 
     if (isBusiness) {
       await createBusinessPost({
         restaurantId,
         caption,
-        mediaUrl: url,
+        mediaUrl: cdnUrl,
         mediaType: "image"
       });
       await loadFeedPosts({ force: true });
@@ -4872,7 +4861,7 @@ async function handleUploadPost() {
       await createUserPost({
         uid: state.user.uid,
         caption,
-        url
+        url: cdnUrl
       });
       await loadUserPosts({ force: true });
     }

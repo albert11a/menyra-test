@@ -146,9 +146,10 @@ async function handleImageUpload(request, env, cors) {
     }
   });
 
-  const base = publicBase(env);
-  const url = base ? `${base}/${key}` : "";
-  return json({ ok: true, path: key, url }, 200, cors);
+  const origin = new URL(request.url).origin;
+  const cdnUrl = `${origin}/media/${key}`;
+
+  return json({ ok: true, path: key, url: cdnUrl, cdnUrl }, 200, cors);
 }
 
 async function handleStoryUpload(request, env, cors) {
@@ -185,10 +186,10 @@ async function handleStoryUpload(request, env, cors) {
     }
   });
 
-  const base = publicBase(env);
-  const url = base ? `${base}/${key}` : "";
+  const origin = new URL(request.url).origin;
+  const cdnUrl = `${origin}/media/${key}`;
   const ttlHours = clampMb(env.STORY_TTL_HOURS, 24);
-  return json({ ok: true, videoId: key, url, ttlHours }, 200, cors);
+  return json({ ok: true, videoId: key, url: cdnUrl, cdnUrl, ttlHours }, 200, cors);
 }
 
 async function handleStoryDelete(request, env, cors) {
@@ -205,14 +206,62 @@ async function handleStoryDelete(request, env, cors) {
   return json({ ok: true }, 200, cors);
 }
 
+async function handleMedia(request, env, ctx) {
+    const url = new URL(request.url);
+    const key = url.pathname.replace(/^\/media\//, '');
+
+    if (!key) {
+        return new Response('Not found', { status: 404 });
+    }
+
+    const cache = caches.default;
+    const cachedResponse = await cache.match(request);
+    if (cachedResponse) {
+        return cachedResponse;
+    }
+
+    const object = await env.MEDIA_BUCKET.get(key);
+    if (object === null) {
+        return new Response('Not found', { status: 404 });
+    }
+
+    const headers = new Headers();
+    object.writeHttpMetadata(headers);
+    headers.set('etag', object.httpEtag);
+
+    let cacheControl = 'public, max-age=31536000, immutable'; // Default for images
+    if (key.startsWith('stories/')) {
+        const storyTtl = (env.STORY_TTL_HOURS || 24) * 3600;
+        cacheControl = `public, max-age=${storyTtl}`;
+    }
+    
+    headers.set('cache-control', cacheControl);
+    headers.set('access-control-allow-origin', '*');
+
+
+    const response = new Response(object.body, {
+        headers,
+    });
+
+    ctx.waitUntil(cache.put(request, response.clone()));
+
+    return response;
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const origin = request.headers.get("origin") || "";
     const cors = corsHeaders(origin, env);
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: cors });
+    }
+
+    if (request.method === "GET" || request.method === "HEAD") {
+        if (url.pathname.startsWith("/media/")) {
+            return handleMedia(request, env, ctx);
+        }
     }
 
     if (request.method !== "POST") {
