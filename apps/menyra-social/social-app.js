@@ -2902,10 +2902,74 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
   }, 0);
   if (isGrid && (slotCount % 2 === 1)) {
     cards.unshift(`
-      <div class="col-start-2 aspect-[4/5] rounded-[2rem] invisible pointer-events-none"></div>
+      <div data-profile-grid-placeholder="true" class="col-start-2 aspect-[4/5] rounded-[2rem] invisible pointer-events-none"></div>
     `);
   }
   return cards.join("");
+}
+
+function findProfilePostCardNode(postId) {
+  const targetId = String(postId || "");
+  const nodes = document.querySelectorAll("[data-open-post]");
+  for (const node of nodes) {
+    if (node.dataset.openPost === targetId) return node;
+  }
+  return null;
+}
+
+function findProfilePostToggleButton(card, postId) {
+  if (!card) return null;
+  const targetId = String(postId || "");
+  const nodes = card.querySelectorAll("[data-profile-post-toggle]");
+  for (const node of nodes) {
+    if (node.dataset.profilePostToggle === targetId) return node;
+  }
+  return null;
+}
+
+function updateProfileGridPlaceholder(container) {
+  if (!container) return false;
+  const existing = container.querySelector("[data-profile-grid-placeholder]");
+  if (state.profileViewMode !== "grid") {
+    if (existing) existing.remove();
+    return true;
+  }
+  let slotCount = 0;
+  container.querySelectorAll("[data-open-post]").forEach((node) => {
+    slotCount += node.classList.contains("col-span-2") ? 2 : 1;
+  });
+  const needsPlaceholder = slotCount % 2 === 1;
+  if (needsPlaceholder && !existing) {
+    const placeholder = document.createElement("div");
+    placeholder.dataset.profileGridPlaceholder = "true";
+    placeholder.className = "col-start-2 aspect-[4/5] rounded-[2rem] invisible pointer-events-none";
+    container.prepend(placeholder);
+  } else if (!needsPlaceholder && existing) {
+    existing.remove();
+  }
+  return true;
+}
+
+function updateProfilePostCardDom(postId, nextType) {
+  const card = findProfilePostCardNode(postId);
+  if (!card) return false;
+  const isWide = nextType === "wide" || nextType === "hero";
+  const isGrid = state.profileViewMode === "grid";
+  card.classList.toggle("col-span-2", isGrid && isWide);
+  card.classList.remove("aspect-[1.8/1]", "aspect-[4/5]");
+  card.classList.add(isGrid ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]") : "aspect-[4/5]");
+  const img = card.querySelector("img");
+  if (img) {
+    img.width = isWide ? 800 : 400;
+    img.height = isWide ? 400 : 500;
+  }
+  const toggleBtn = findProfilePostToggleButton(card, postId);
+  if (toggleBtn) {
+    toggleBtn.innerHTML = `${icon(isWide ? "minimize-2" : "maximize-2", "w-3.5 h-3.5")} ${isWide ? "Schmaler" : "Breiter"}`;
+  }
+  updateProfileGridPlaceholder(card.parentElement);
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+  return true;
 }
 
 function renderProfileCheckins() {
@@ -3009,7 +3073,11 @@ async function toggleProfilePostWidth(postId) {
   const nextType = isWide ? "square" : "wide";
   post.type = nextType;
   state.profilePostMenuId = null;
-  render();
+  setProfileMenuOpen(null);
+  const updated = updateProfilePostCardDom(postId, nextType);
+  if (!updated && state.activeTab === "profile") {
+    render();
+  }
   updatePostCaches(post);
   try {
     await updateProfilePostType(postId, nextType);
