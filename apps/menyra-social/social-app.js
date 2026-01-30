@@ -315,6 +315,11 @@ function getOptimizedImageUrl(path, size = "large") {
     return path;
   }
 
+  if (path.includes("cdn.menyra.com") || path.includes("r2.dev") || path.includes("digitaloceanspaces")) {
+    const key = path.split("/").slice(3).join("/");
+    return CDN_BASE + key;
+  }
+
   const r2Match = path.match(/https?:\/\/pub-[a-zA-Z0-9]+\.r2\.dev\/(.*)/);
   if (r2Match && r2Match[1]) {
       return CDN_BASE + r2Match[1];
