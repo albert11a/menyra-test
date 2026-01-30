@@ -192,6 +192,7 @@ const state = {
   isLoading: false,
   feedPosts: [],
   restaurants: [],
+  restaurantMap: new Map(),
   businessLocations: [],
   stories: [],
   userPosts: [],
@@ -4764,7 +4765,7 @@ async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType
 async function uploadAvatar(file) {
   if (!state.user) return;
   try {
-    const { cdnUrl } = await uploadCompressedImage(file, state.user.uid, { maxSize: 512, quality: 0.80, mimeType: 'image/jpeg'});
+    const { cdnUrl } = await uploadCompressedImage(file, state.user.uid, { maxSize: 512, quality: 0.80, mimeType: 'image/webp'});
     await setDoc(doc(db, "users", state.user.uid), {
       avatarUrl: cdnUrl,
       updatedAt: serverTimestamp()
@@ -4846,7 +4847,7 @@ async function handleUploadPost() {
     render();
 
     const ownerId = isBusiness ? restaurantId : state.user.uid;
-    const { cdnUrl } = await uploadCompressedImage(state.upload.file, ownerId, {maxSize: 1080, quality: 0.78, mimeType: 'image/jpeg'});
+    const { cdnUrl } = await uploadCompressedImage(state.upload.file, ownerId, {maxSize: 1080, quality: 0.78, mimeType: 'image/webp'});
 
     if (isBusiness) {
       await createBusinessPost({
