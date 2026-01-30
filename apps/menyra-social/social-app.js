@@ -5424,99 +5424,84 @@ async function loadBusinessPosts({ force = false } = {}) {
   }
 }
 
-async function loadStoriesFallback(restaurants) {
-  if (FAST_MODE) return [];
-  const now = Timestamp.now();
-  const items = [];
-  const slice = restaurants.slice(0, FAST_LIMITS.storiesFallback);
-  for (const rest of slice) {
-    try {
-      const ref = collection(db, "restaurants", rest.id, "stories");
-      const snap = await getDocs(query(ref, where("expiresAt", ">", now), limit(1)));
-      if (!snap.empty) {
-        items.push({
-          restaurantId: rest.id,
-          name: rest.name || rest.restaurantName || "Business",
-          img: rest.logoUrl || rest.logo || "",
-          isLive: true
-        });
-      }
-    } catch (err) {
-      console.warn(err);
-    }
-  }
-  return items;
+function buildStoriesSignature(storyItems) {
+  return storyItems
+    .map(x => `${x.id}|${x.img || ""}`)
+    .join(",");
 }
 
 async function loadStories() {
+  if (liveStoriesDisabled) return;
+
   const cached = readCache(CACHE_KEYS.stories, CACHE_TTL_MS.stories);
   if (cached?.data?.length) {
-    if (!state.stories.length) {
+    if (cached.fresh) {
       state.stories = cached.data;
-      if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-        render();
-      }
+      if (updateFeedDom()) return;
+      render();
+      return;
     }
-    if (FAST_MODE) return;
-    if (cached.fresh) return;
+    state.stories = cached.data;
+    if (updateFeedDom()) return;
+    render();
   }
+
   try {
-    const now = Timestamp.now();
-    const snap = await getDocs(query(
+    const live = await getDocs(query(
       collectionGroup(db, "stories"),
-      where("expiresAt", ">", now),
-      orderBy("expiresAt", "desc"),
+      where("active", "==", true),
+      orderBy("createdAt", "desc"),
       limit(FAST_LIMITS.stories)
     ));
 
-    const map = new Map();
-    snap.forEach((docSnap) => {
-      const rid = docSnap.ref.parent?.parent?.id;
-      if (!rid || map.has(rid)) return;
-      map.set(rid, docSnap.data() || {});
+    const storyItems = [];
+    const seen = new Set();
+    
+    const rids = [...new Set(live.docs.map(docSnap => (docSnap.data().restaurantId || docSnap.data().ownerId)).filter(Boolean))];
+    await hydrateRestaurantsByIds(rids, { max: 24 });
+
+    live.forEach((docSnap) => {
+      const data = docSnap.data() || {};
+      const restId = data.restaurantId || data.ownerId || "";
+      if (!restId || seen.has(restId)) return;
+
+      const rest = state.restaurants.find(r => r.id === restId);
+      storyItems.push({
+        id: docSnap.id,
+        restaurantId: restId,
+        name: rest?.name || data.restaurantName || "Restaurant",
+        img: rest?.logoUrl || rest?.logo || data.logoUrl || data.logo || "",
+        isLive: data.isLive || false,
+        createdAt: toDateSafe(data.createdAt)?.toISOString() || new Date().toISOString()
+      });
+      seen.add(restId);
     });
 
-    const items = Array.from(map.keys()).map((rid) => {
-      const rest = state.restaurants.find((r) => r.id === rid) || {};
-      return {
-        restaurantId: rid,
-        name: rest.name || rest.restaurantName || "Business",
-        img: rest.logoUrl || rest.logo || "",
-        isLive: true
-      };
-    });
-
-    writeCache(CACHE_KEYS.stories, items);
-    const prevIds = state.stories.map((item) => String(item.restaurantId)).join("|");
-    const nextIds = items.map((item) => String(item.restaurantId)).join("|");
-    if (prevIds === nextIds) return;
-    state.stories = items;
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-      render();
-    }
-  } catch (err) {
-    if (err?.code === "failed-precondition") {
-      liveStoriesDisabled = true;
-      const fallbackSeed = buildStoriesFromFeed(state.feedPosts);
-      if (fallbackSeed.length) {
-        state.stories = fallbackSeed;
-        writeCache(CACHE_KEYS.stories, fallbackSeed);
-        if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-          render();
+    if (storyItems.length < FAST_LIMITS.stories) {
+      const fallback = await loadStoriesFallback(state.restaurants);
+      fallback.forEach(item => {
+        if (!seen.has(item.restaurantId)) {
+          storyItems.push(item);
+          seen.add(item.restaurantId);
         }
-      }
-      return;
+      });
     }
-    console.warn("stories fallback", err);
-    const fallback = await loadStoriesFallback(state.restaurants);
-    writeCache(CACHE_KEYS.stories, fallback);
-    const prevIds = state.stories.map((item) => String(item.restaurantId)).join("|");
-    const nextIds = fallback.map((item) => String(item.restaurantId)).join("|");
-    if (prevIds === nextIds) return;
-    state.stories = fallback;
-    if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
-      render();
-    }
+
+    const finalStories = storyItems
+      .sort((a, b) => (b.isLive ? 1 : 0) - (a.isLive ? 1 : 0))
+      .slice(0, FAST_LIMITS.stories);
+    
+    const nextSig = buildStoriesSignature(finalStories);
+    if (state._storiesSig === nextSig) return;
+    state._storiesSig = nextSig;
+
+    state.stories = finalStories;
+    writeCache(CACHE_KEYS.stories, finalStories);
+    if (updateFeedDom()) return;
+    render();
+  } catch (err) {
+    console.error("Failed to load stories:", err);
+    liveStoriesDisabled = true;
   }
 }
 
