@@ -2834,15 +2834,13 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   const isWide = item.type === "wide" || item.type === "hero";
-  // In grid mode we keep all cards the same size to avoid mid-grid holes.
-  const spanWide = isGrid ? false : isWide;
-  const colClass = spanWide ? "col-span-2" : "";
+  const colClass = isGrid && isWide ? "col-span-2" : "";
   const aspectClass = isGrid
-    ? "aspect-[4/5]"
-    : (spanWide ? "aspect-[1.8/1]" : "aspect-[4/5]");
-  const imageUrl = getOptimizedImageUrl(item.url, spanWide ? "large" : "medium");
-  const width = spanWide ? 800 : 400;
-  const height = spanWide ? 400 : 500;
+    ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
+    : "aspect-[4/5]";
+  const imageUrl = getOptimizedImageUrl(item.url, isWide ? "large" : "medium");
+  const width = isWide ? 800 : 400;
+  const height = isWide ? 400 : 500;
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
@@ -2898,6 +2896,11 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
     `;
   }
   const cards = posts.map((post) => renderProfilePostCardFancy(post, isGrid, allowMenu));
+  if (isGrid && (cards.length % 2 === 1)) {
+    cards.unshift(`
+      <div class="col-start-2 aspect-[4/5] rounded-[2rem] invisible pointer-events-none"></div>
+    `);
+  }
   return cards.join("");
 }
 
