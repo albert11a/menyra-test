@@ -39,6 +39,7 @@ import {
 import { compressImage } from "./_shared/image-compressor.js";
 
 const appEl = document.getElementById("app");
+const PLACEHOLDER_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3C/svg%3E";
 
 // --- SAFE STORAGE HELPER ---
 const safeStorage = {
@@ -59,7 +60,8 @@ const STORAGE_KEYS = {
   notifications: "menyra_social_notifications_v1",
   following: "menyra_social_following_v1",
   postMeta: "menyra_social_post_meta_v1",
-  feed: "menyra_social_feed_v1"
+  feed: "menyra_social_feed_v1",
+  logoCache: "menyra_social_logo_cache_v1"
 };
 
 const ADMIN_LOGINS = {
@@ -305,14 +307,13 @@ function resumeRender() {
 
 function getOptimizedImageUrl(path, size = "large") {
   const CDN_BASE = (BUNNY_EDGE_BASE || "https://menyra-media.alberthoti-vsa.workers.dev/").replace(/\/+$/, "") + '/media/';
-  const placeholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23f0f0f0'/%3E%3C/svg%3E";
   
   if (!path || typeof path !== "string") {
-    return placeholder;
+    return PLACEHOLDER_IMAGE;
   }
   const trimmed = path.trim();
   if (!trimmed || trimmed === "undefined" || trimmed === "null" || trimmed === "data") {
-    return placeholder;
+    return PLACEHOLDER_IMAGE;
   }
   if (path.startsWith("data:") || path.startsWith("blob:")) {
     return path;
@@ -341,6 +342,67 @@ function getOptimizedImageUrl(path, size = "large") {
   // Handle bare keys
   const cleanedPath = path.replace(/^\//, "");
   return CDN_BASE + stripMediaPrefix(cleanedPath);
+}
+
+function isPlaceholderUrl(url) {
+  if (!url) return true;
+  return url === PLACEHOLDER_IMAGE;
+}
+
+const restaurantLogoCache = new Map();
+let userAvatarCache = "";
+let logoCacheWriteTimer = null;
+
+function loadLogoCache() {
+  const raw = safeStorage.getItem(STORAGE_KEYS.logoCache);
+  if (!raw) return;
+  try {
+    const data = JSON.parse(raw);
+    if (!data || typeof data !== "object") return;
+    Object.entries(data).forEach(([id, url]) => {
+      if (id && url && !isPlaceholderUrl(url)) restaurantLogoCache.set(id, url);
+    });
+  } catch {}
+}
+
+function scheduleLogoCacheWrite() {
+  if (typeof window === "undefined") return;
+  if (logoCacheWriteTimer) return;
+  logoCacheWriteTimer = window.setTimeout(() => {
+    logoCacheWriteTimer = null;
+    try {
+      const payload = {};
+      restaurantLogoCache.forEach((url, id) => {
+        if (id && url) payload[id] = url;
+      });
+      safeStorage.setItem(STORAGE_KEYS.logoCache, JSON.stringify(payload));
+    } catch {}
+  }, 400);
+}
+
+function resolveRestaurantLogo(restaurantId, raw, size = "avatar") {
+  const url = getOptimizedImageUrl(raw, size);
+  if (restaurantId) {
+    if (!isPlaceholderUrl(url)) {
+      if (restaurantLogoCache.get(restaurantId) !== url) {
+        restaurantLogoCache.set(restaurantId, url);
+        scheduleLogoCacheWrite();
+      }
+      return url;
+    }
+    const cached = restaurantLogoCache.get(restaurantId);
+    if (cached) return cached;
+  }
+  return url;
+}
+
+function resolveUserAvatar(raw) {
+  const url = getOptimizedImageUrl(raw, "avatar");
+  if (!isPlaceholderUrl(url)) {
+    userAvatarCache = url;
+    return url;
+  }
+  return userAvatarCache || url;
 }
 
 function escapeHtml(value) {
@@ -476,6 +538,7 @@ function saveFeedPosts(posts, extraMeta = {}) {
 }
 
 function loadPersisted() {
+  loadLogoCache();
   const savedSettings = safeStorage.getItem(STORAGE_KEYS.settings);
   if (savedSettings) {
     try { state.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) }; } catch {}
@@ -503,6 +566,19 @@ function loadPersisted() {
     rebuildBusinessLocations();
     syncFeedPostLogos();
     refreshFeedStories({ force: true });
+    const needsMeta = restaurantsCache.data.some((rest) => !(rest?.logoUrl || rest?.logo || rest?.logoURL));
+    if (needsMeta) {
+      suspendRender();
+      Promise.resolve(enrichRestaurantsWithPublicMeta(restaurantsCache.data))
+        .then((list) => {
+          state.restaurants = list;
+          rebuildBusinessLocations();
+          syncFeedPostLogos();
+          refreshFeedStories({ force: true });
+          writeCache(CACHE_KEYS.restaurants, list);
+        })
+        .finally(() => resumeRender());
+    }
   }
 
   const feedCache = readCache(CACHE_KEYS.feed);
@@ -613,6 +689,11 @@ function mergeRestaurants(existing = [], additions = []) {
 
 function rebuildBusinessLocations() {
   state.businessLocations = state.restaurants.map((rest, idx) => normalizeBusinessLocation(rest, idx));
+  state.restaurants.forEach((rest) => {
+    if (!rest?.id) return;
+    const rawLogo = rest.logoUrl || rest.logo || rest.logoURL || "";
+    if (rawLogo) resolveRestaurantLogo(rest.id, rawLogo, "avatar");
+  });
 }
 
 function mergeRestaurantMeta(rest, meta) {
@@ -653,9 +734,10 @@ function syncFeedPostLogos() {
   const next = state.feedPosts.map((post) => {
     const restaurant = restMap.get(post.restaurantId) || restMap.get(post.ownerId) || {};
     const bestLogo = restaurant.logoUrl || restaurant.logo || restaurant.logoURL || post.logo || "";
-    if (!bestLogo || bestLogo === post.logo) return post;
+    const resolved = resolveRestaurantLogo(post.restaurantId || post.ownerId, bestLogo, "avatar");
+    if (isPlaceholderUrl(resolved) || resolved === post.logo) return post;
     changed = true;
-    return { ...post, logo: bestLogo };
+    return { ...post, logo: resolved };
   });
   if (!changed) return false;
   state.feedPosts = next;
@@ -1143,7 +1225,7 @@ function updateFeedLogoNodes(post) {
   const postId = escapeSelector(post.id);
   const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
   const logoSource = post.logo || restaurant.logoUrl || restaurant.logo || restaurant.logoURL || "";
-  const logoUrl = getOptimizedImageUrl(logoSource, "avatar");
+  const logoUrl = resolveRestaurantLogo(post.restaurantId || post.ownerId, logoSource, "avatar");
   document.querySelectorAll(`[data-feed-logo="${postId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
     if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
@@ -1155,7 +1237,7 @@ function updateStoryLogoNodes(story) {
   const storyId = escapeSelector(story.restaurantId);
   const restaurant = state.restaurants.find((r) => r.id === story.restaurantId) || {};
   const logoSource = restaurant.logoUrl || restaurant.logo || story.img || "";
-  const logoUrl = getOptimizedImageUrl(logoSource, "thumb");
+  const logoUrl = resolveRestaurantLogo(story.restaurantId, logoSource, "thumb");
   document.querySelectorAll(`[data-story-logo="${storyId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
     if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
@@ -1167,7 +1249,7 @@ function updateSearchLogoNodes(biz) {
   const bizId = escapeSelector(biz.id);
   const restaurant = state.restaurants.find((r) => r.id === biz.id) || {};
   const logoSource = restaurant.logoUrl || restaurant.logo || biz.logo || biz.image || "";
-  const logoUrl = getOptimizedImageUrl(logoSource, "avatar");
+  const logoUrl = resolveRestaurantLogo(biz.id, logoSource, "avatar");
   document.querySelectorAll(`[data-search-logo="${bizId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
     if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
@@ -1840,7 +1922,7 @@ function renderAuthScreen() {
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const switchLinks = renderRoleSwitchLinks();
-  const avatarUrl = getOptimizedImageUrl(state.userProfile.avatar, "avatar");
+  const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
   return `
     <div id="drawerRoot" class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
@@ -1937,7 +2019,7 @@ function renderStoriesRow(stories) {
     const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
     const restaurant = state.restaurants.find((r) => r.id === s.restaurantId) || {};
     const logoSource = restaurant.logoUrl || restaurant.logo || s.img || "";
-    const imgUrl = getOptimizedImageUrl(logoSource, "thumb");
+    const imgUrl = resolveRestaurantLogo(s.restaurantId, logoSource, "thumb");
     const storyAttr = s.restaurantId ? `data-story-logo="${escapeHtml(s.restaurantId)}"` : "";
       return `
         <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
@@ -1964,7 +2046,7 @@ function renderFeedItem(post, index) {
   const logoAttrs = `loading="lazy"`;
   const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
   const logoSource = post.logo || restaurant.logoUrl || restaurant.logo || "";
-  const logoUrl = getOptimizedImageUrl(logoSource, "avatar");
+  const logoUrl = resolveRestaurantLogo(post.restaurantId || post.ownerId, logoSource, "avatar");
   const imageUrl = getOptimizedImageUrl(post.image, "large");
   return `
     <div class="group feed-card" ${feedAttr}>
@@ -2105,7 +2187,7 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  const avatarUrl = getOptimizedImageUrl(state.userProfile.avatar, "avatar");
+  const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
   const headerAvatar = document.getElementById("headerAvatar");
   if (headerAvatar && headerAvatar.getAttribute("src") !== avatarUrl) {
     headerAvatar.setAttribute("src", avatarUrl);
@@ -4050,7 +4132,7 @@ function renderSearchUserItem(user) {
 
 function renderSearchBusinessItem(biz) {
   const name = biz.name || "Business";
-  const logoUrl = getOptimizedImageUrl(biz.logo, "avatar");
+  const logoUrl = resolveRestaurantLogo(biz.id, biz.logo, "avatar");
   const logoAttr = biz.id ? `data-search-logo="${escapeHtml(biz.id)}"` : "";
   return `
     <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
@@ -4272,7 +4354,7 @@ function renderUploadView() {
 function renderHeader() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const badge = unread > 9 ? "9+" : String(unread || "");
-  const avatarUrl = getOptimizedImageUrl(state.userProfile.avatar, "avatar");
+  const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
   return `
     <header class="p-6 pb-2 flex justify-between items-center sticky top-0 z-40 backdrop-blur-xl bg-slate-50/80">
       <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
