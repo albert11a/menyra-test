@@ -63,6 +63,11 @@
       transition: transform 0.2s ease, box-shadow 0.2s ease;
       box-shadow: 0 10px 24px rgba(99, 102, 241, 0.2);
     }
+    .m-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
 
     .m-btn--ghost {
       background: transparent;
@@ -296,6 +301,7 @@
       pointer-events: none;
       transition: opacity 0.2s ease, visibility 0.2s ease;
       padding: 24px;
+      z-index: 999;
     }
 
     .m-modal-overlay.is-visible {
@@ -335,6 +341,47 @@
       display: grid;
       gap: 12px;
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+    .lead-logo-upload-area {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 10px;
+      border: 1px dashed #e2e8f0;
+      border-radius: 14px;
+    }
+    .lead-logo-preview {
+      width: 64px;
+      height: 64px;
+      border-radius: 12px;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .lead-logo-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .lead-logo-upload-area .m-input-group {
+      gap: 8px;
+    }
+    .upload-progress {
+        width: 100%;
+        height: 4px;
+        background-color: #e2e8f0;
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 4px;
+    }
+    .upload-progress-bar {
+        width: 0%;
+        height: 100%;
+        background-color: var(--brand-primary);
+        transition: width 0.2s ease-in-out;
     }
 
     @media (max-width: 720px) {
@@ -471,31 +518,44 @@
             </select>
           </div>
         </div>
+
+        <div class="m-input-group">
+            <label>Logo</label>
+            <div class="lead-logo-upload-area">
+                <div class="lead-logo-preview">
+                    <img id="leadLogoPreview" src="" alt="Logo Vorschau" />
+                </div>
+                <div class="m-input-group">
+                    <input type="file" id="leadLogoFile" class="m-input" accept="image/*" />
+                    <div class="upload-progress">
+                        <div id="leadLogoUploadProgress" class="upload-progress-bar"></div>
+                    </div>
+                    <input id="leadLogoUrl" class="m-input" placeholder="Logo URL" readonly />
+                </div>
+            </div>
+        </div>
+
         <div class="m-input-row">
-          <div class="m-input-group">
-            <label for="leadLogoUrl">Logo URL</label>
-            <input id="leadLogoUrl" class="m-input" placeholder="https://" />
-          </div>
           <div class="m-input-group">
             <label for="leadContactName">Contact</label>
             <input id="leadContactName" class="m-input" placeholder="Contact name" />
           </div>
-        </div>
-        <div class="m-input-row">
           <div class="m-input-group">
             <label for="leadPhone">Phone</label>
             <input id="leadPhone" class="m-input" placeholder="+00" />
           </div>
+        </div>
+        <div class="m-input-row">
           <div class="m-input-group">
             <label for="leadInstagram">Instagram</label>
             <input id="leadInstagram" class="m-input" placeholder="@handle" />
           </div>
-        </div>
-        <div class="m-input-row">
-          <div class="m-input-group">
+           <div class="m-input-group">
             <label for="leadCity">City</label>
             <input id="leadCity" class="m-input" placeholder="City" />
           </div>
+        </div>
+        <div class="m-input-row">
           <div class="m-input-group">
             <label for="leadStatus">Status</label>
             <select id="leadStatus" class="m-select2">
@@ -526,45 +586,27 @@
     </div>
   </div>
 
-  <script>
-    const leadsAll = [
-      {
-        id: "l1",
-        businessName: "Cafe Aurora",
-        customerType: "cafe",
-        contactName: "Mira",
-        phone: "+49 170 11111",
-        instagram: "@aurora",
-        city: "Berlin",
-        labels: ["IG", "warm"],
-        status: "new",
-        logoUrl: ""
-      },
-      {
-        id: "l2",
-        businessName: "Ristorante Luna",
-        customerType: "restaurant",
-        contactName: "Paolo",
-        phone: "+49 170 22222",
-        instagram: "@luna",
-        city: "Hamburg",
-        labels: ["vip"],
-        status: "contacted",
-        logoUrl: ""
-      },
-      {
-        id: "l3",
-        businessName: "Hotel Nord",
-        customerType: "hotel",
-        contactName: "Sina",
-        phone: "+49 170 33333",
-        instagram: "",
-        city: "Koeln",
-        labels: ["hotel", "warm"],
-        status: "interested",
-        logoUrl: ""
-      }
-    ];
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, doc, setDoc, addDoc, serverTimestamp, orderBy, query } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAq5kzdGITDekgajC0uUBny63JjS1DIPEU",
+      authDomain: "menyra-c0e68.firebaseapp.com",
+      projectId: "menyra-c0e68",
+      storageBucket: "menyra-c0e68.appspot.com",
+      messagingSenderId: "528471049588",
+      appId: "1:528471049588:web:c507d87c0832562a855821",
+      measurementId: "G-YLFKC8726B"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+    const leadsCollection = collection(db, "leads");
+
+    let leadsAll = [];
 
     const statusLabels = {
       new: "Offen",
@@ -734,6 +776,18 @@
       renderLeads(filtered);
     }
 
+    async function loadLeads() {
+        try {
+            const q = query(leadsCollection, orderBy("businessName"));
+            const snapshot = await getDocs(q);
+            leadsAll = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            refresh();
+        } catch(err) {
+            console.error("Error loading leads:", err);
+            alert("Konnte Leads nicht laden.");
+        }
+    }
+
     function openLeadModal(data) {
       $("leadModalTitle").textContent = data?.id ? "Lead bearbeiten" : "Neuer Lead";
       $("leadId").value = data?.id || "";
@@ -747,6 +801,16 @@
       $("leadStatus").value = data?.status || "new";
       $("leadLabels").value = normalizeLeadLabels(data?.labels || []).join(", ");
       $("leadNote").value = data?.note || "";
+
+      const preview = $("leadLogoPreview");
+      preview.src = data?.logoUrl || '';
+      preview.style.display = data?.logoUrl ? 'block' : 'none';
+      
+      $("leadLogoFile").value = "";
+      $("leadLogoUploadProgress").style.width = "0%";
+      $("leadSaveBtn").disabled = false;
+
+
       $("leadModalOverlay").classList.add("is-visible");
     }
 
@@ -754,26 +818,70 @@
       $("leadModalOverlay").classList.remove("is-visible");
     }
 
-    function saveLead() {
-      const id = $("leadId").value || `l${Date.now()}`;
+    async function saveLead() {
+        const id = $("leadId").value;
+        const fileInput = $("leadLogoFile");
+        const file = fileInput.files[0];
+        let logoUrl = $("leadLogoUrl").value.trim();
+
+        $("leadSaveBtn").disabled = true;
+
+        if (file) {
+            const fileId = `lead-logos/${Date.now()}-${file.name}`;
+            const storageRef = ref(storage, fileId);
+            const uploadTask = uploadBytesResumable(storageRef, file);
+
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    $("leadLogoUploadProgress").style.width = progress + '%';
+                },
+                (error) => {
+                    console.error("Upload Error:", error);
+                    alert("Fehler beim Logo-Upload.");
+                    $("leadSaveBtn").disabled = false;
+                },
+                async () => {
+                    logoUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                    $("leadLogoUrl").value = logoUrl;
+                    await finishSave(id, logoUrl);
+                }
+            );
+        } else {
+            await finishSave(id, logoUrl);
+        }
+    }
+
+    async function finishSave(id, logoUrl) {
       const payload = {
-        id,
         businessName: $("leadBusinessName").value.trim(),
         customerType: $("leadCustomerType").value.trim(),
-        logoUrl: $("leadLogoUrl").value.trim(),
+        logoUrl: logoUrl,
         contactName: $("leadContactName").value.trim(),
         phone: $("leadPhone").value.trim(),
         instagram: $("leadInstagram").value.trim(),
         city: $("leadCity").value.trim(),
         status: $("leadStatus").value.trim(),
         labels: normalizeLeadLabels($("leadLabels").value || ""),
-        note: $("leadNote").value.trim()
+        note: $("leadNote").value.trim(),
+        updatedAt: serverTimestamp(),
       };
-      const idx = leadsAll.findIndex((l) => l.id === id);
-      if (idx === -1) leadsAll.unshift(payload);
-      else leadsAll[idx] = payload;
-      closeLeadModal();
-      refresh();
+
+      try {
+        if (id) {
+            const docRef = doc(db, "leads", id);
+            await setDoc(docRef, payload, { merge: true });
+        } else {
+            payload.createdAt = serverTimestamp();
+            await addDoc(leadsCollection, payload);
+        }
+        closeLeadModal();
+        await loadLeads();
+      } catch(err) {
+        console.error("Error saving lead:", err);
+        alert("Fehler beim Speichern des Leads.");
+        $("leadSaveBtn").disabled = false;
+      }
     }
 
     $("newLeadBtn").addEventListener("click", () => openLeadModal({}));
@@ -783,13 +891,25 @@
     $("leadModalOverlay").addEventListener("click", (e) => {
       if (e.target.id === "leadModalOverlay") closeLeadModal();
     });
+     $("leadLogoFile").addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const preview = $("leadLogoPreview");
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        }
+    });
 
     ["leadsSearch", "leadsStatusFilter", "leadsTypeFilter", "leadsLabelFilter"].forEach((id) => {
       $(id).addEventListener("input", refresh);
       $(id).addEventListener("change", refresh);
     });
 
-    refresh();
+    loadLeads();
   </script>
 </body>
 </html>
