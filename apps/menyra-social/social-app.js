@@ -352,6 +352,7 @@ function isPlaceholderUrl(url) {
 }
 
 const restaurantLogoCache = new Map();
+const userSearchAvatarCache = new Map();
 let userAvatarCache = "";
 let logoCacheWriteTimer = null;
 let avatarCacheWriteTimer = null;
@@ -425,6 +426,21 @@ function resolveUserAvatar(raw) {
     return url;
   }
   return userAvatarCache || url;
+}
+
+function resolveSearchUserAvatar(uid, raw) {
+  const url = getOptimizedImageUrl(raw, "avatar");
+  if (uid) {
+    if (!isPlaceholderUrl(url)) {
+      if (userSearchAvatarCache.get(uid) !== url) {
+        userSearchAvatarCache.set(uid, url);
+      }
+      return url;
+    }
+    const cached = userSearchAvatarCache.get(uid);
+    if (cached) return cached;
+  }
+  return url;
 }
 
 function escapeHtml(value) {
@@ -1267,6 +1283,23 @@ function updateStoryLogoNodes(story) {
   });
 }
 
+function updateStoryMetaNodes(story) {
+  if (!story?.restaurantId) return;
+  const storyId = escapeSelector(story.restaurantId);
+  const label = story.name || "Business";
+  const live = !!story.isLive;
+  document.querySelectorAll(`[data-story-border="${storyId}"]`).forEach((el) => {
+    if (!(el instanceof HTMLElement)) return;
+    el.classList.toggle("border-red-500", live);
+    el.classList.toggle("animate-pulse", live);
+    el.classList.toggle("border-slate-200", !live);
+  });
+  document.querySelectorAll(`[data-story-name="${storyId}"]`).forEach((el) => {
+    if (!(el instanceof HTMLElement)) return;
+    if (el.textContent !== label) el.textContent = label;
+  });
+}
+
 function updateSearchLogoNodes(biz) {
   if (!biz?.id) return;
   const bizId = escapeSelector(biz.id);
@@ -1276,6 +1309,46 @@ function updateSearchLogoNodes(biz) {
   document.querySelectorAll(`[data-search-logo="${bizId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
     if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
+  });
+}
+
+function updateSearchBusinessNodes(biz) {
+  if (!biz?.id) return;
+  const bizId = escapeSelector(biz.id);
+  const name = biz.name || "Business";
+  const city = biz.city || "Prishtina";
+  document.querySelectorAll(`[data-search-business="${bizId}"]`).forEach((el) => {
+    if (!(el instanceof HTMLElement)) return;
+    el.dataset.searchName = name;
+    const nameEl = el.querySelector("[data-search-business-name]");
+    if (nameEl && nameEl.textContent !== name) nameEl.textContent = name;
+    const cityEl = el.querySelector("[data-search-business-city]");
+    if (cityEl && cityEl.textContent !== city) cityEl.textContent = city;
+  });
+  updateSearchLogoNodes(biz);
+}
+
+function updateSearchUserNodes(user) {
+  if (!user?.uid) return;
+  const uid = escapeSelector(user.uid);
+  const handle = user.handle || normalizeHandle(user.name || "user");
+  const displayName = sanitizeDisplayName(user.name, handle || "User");
+  const avatarUrl = resolveSearchUserAvatar(user.uid, user.avatar);
+  document.querySelectorAll(`[data-search-user="${uid}"]`).forEach((el) => {
+    if (!(el instanceof HTMLElement)) return;
+    el.dataset.searchHandle = handle;
+    el.dataset.searchName = displayName;
+    el.dataset.searchAvatar = user.avatar || "";
+    el.dataset.searchLocation = user.location || "";
+    const nameEl = el.querySelector("[data-search-user-name]");
+    if (nameEl && nameEl.textContent !== displayName) nameEl.textContent = displayName;
+    const handleEl = el.querySelector("[data-search-user-handle]");
+    const handleLabel = `@${handle}`;
+    if (handleEl && handleEl.textContent !== handleLabel) handleEl.textContent = handleLabel;
+    const img = el.querySelector("img");
+    if (img instanceof HTMLImageElement && img.getAttribute("src") !== avatarUrl) {
+      img.setAttribute("src", avatarUrl);
+    }
   });
 }
 
@@ -2028,31 +2101,37 @@ function renderFeedView() {
   `;
 }
 
+function renderStoryItem(story) {
+  const borderClass = story.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
+  const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: story.restaurantId });
+  const restaurant = state.restaurants.find((r) => r.id === story.restaurantId) || {};
+  const logoSource = restaurant.logoUrl || restaurant.logo || story.img || "";
+  const imgUrl = resolveRestaurantLogo(story.restaurantId, logoSource, "thumb");
+  const storyId = story.restaurantId ? escapeHtml(story.restaurantId) : "";
+  const storyAttr = storyId ? `data-story-logo="${storyId}"` : "";
+  const storyBorderAttr = storyId ? `data-story-border="${storyId}"` : "";
+  const storyNameAttr = storyId ? `data-story-name="${storyId}"` : "";
+  const storyItemAttr = storyId ? `data-story-item="${storyId}"` : "";
+  return `
+    <a href="${storyUrl}" ${storyItemAttr} class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
+      <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200" ${storyBorderAttr}>
+        <img src="${escapeHtml(imgUrl)}" loading="lazy" decoding="async" width="80" height="80" ${storyAttr} class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
+      </div>
+      <span class="text-[9px] font-bold tracking-tighter text-slate-800" ${storyNameAttr}>${escapeHtml(story.name)}</span>
+    </a>
+  `;
+}
+
 function renderStoriesRow(stories) {
   return `
     <div class="flex-shrink-0 flex flex-col items-center gap-2">
-      <div data-nav="upload" class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
+      <div data-nav="upload" data-story-upload class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
         <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
         ${icon("camera", "w-7 h-7 relative z-10")}
       </div>
       <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Story</span>
     </div>
-    ${stories.length ? stories.map((s) => {
-    const borderClass = s.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
-    const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: s.restaurantId });
-    const restaurant = state.restaurants.find((r) => r.id === s.restaurantId) || {};
-    const logoSource = restaurant.logoUrl || restaurant.logo || s.img || "";
-    const imgUrl = resolveRestaurantLogo(s.restaurantId, logoSource, "thumb");
-    const storyAttr = s.restaurantId ? `data-story-logo="${escapeHtml(s.restaurantId)}"` : "";
-      return `
-        <a href="${storyUrl}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
-          <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200">
-            <img src="${escapeHtml(imgUrl)}" loading="lazy" decoding="async" width="80" height="80" ${storyAttr} class="w-full h-full rounded-[1.8rem] object-cover group-hover:scale-105 transition-transform" />
-          </div>
-          <span class="text-[9px] font-bold tracking-tighter text-slate-800">${escapeHtml(s.name)}</span>
-        </a>
-      `;
-    }).join("") : `
+    ${stories.length ? stories.map(renderStoryItem).join("") : `
       <div class="flex items-center text-slate-400 text-xs font-bold uppercase">Keine Stories</div>
     `}
   `;
@@ -2156,6 +2235,40 @@ function patchFeedList(feedPosts) {
   return true;
 }
 
+function patchStoriesRow(stories) {
+  const storiesRow = document.getElementById("storiesRow");
+  if (!storiesRow) return false;
+  if (!Array.isArray(stories) || stories.length === 0) {
+    storiesRow.innerHTML = renderStoriesRow([]);
+    return true;
+  }
+  const uploadNode = storiesRow.querySelector("[data-story-upload]");
+  if (!uploadNode) {
+    storiesRow.innerHTML = renderStoriesRow(stories);
+    return true;
+  }
+  const existingItems = Array.from(storiesRow.querySelectorAll("[data-story-item]"));
+  const existingMap = new Map();
+  existingItems.forEach((el) => existingMap.set(el.dataset.storyItem || "", el));
+  const fragment = document.createDocumentFragment();
+  fragment.appendChild(uploadNode);
+  stories.forEach((story) => {
+    const id = String(story.restaurantId || "");
+    const existing = id ? existingMap.get(id) : null;
+    if (existing) {
+      existingMap.delete(id);
+      fragment.appendChild(existing);
+    } else {
+      const tpl = document.createElement("template");
+      tpl.innerHTML = renderStoryItem(story);
+      const node = tpl.content.firstElementChild;
+      if (node) fragment.appendChild(node);
+    }
+  });
+  storiesRow.replaceChildren(fragment);
+  return true;
+}
+
 function updateFeedDom() {
   const feedView = document.getElementById("feedView");
   if (!feedView) return false;
@@ -2167,10 +2280,13 @@ function updateFeedDom() {
   const nextSig = buildStoriesRowSignature(stories);
   if (storiesRow) {
     if (storiesRowSignature !== nextSig) {
-      storiesRow.innerHTML = renderStoriesRow(stories);
+      patchStoriesRow(stories);
       storiesRowSignature = nextSig;
     }
-    stories.forEach(updateStoryLogoNodes);
+    stories.forEach((story) => {
+      updateStoryLogoNodes(story);
+      updateStoryMetaNodes(story);
+    });
   }
   patchFeedList(feedPosts);
   feedPosts.forEach(updateFeedLogoNodes);
@@ -4145,13 +4261,13 @@ function renderNotificationsView() {
 function renderSearchUserItem(user) {
   const handle = user.handle || normalizeHandle(user.name || "user");
   const displayName = sanitizeDisplayName(user.name, handle || "User");
-  const avatarUrl = getOptimizedImageUrl(user.avatar, "avatar");
+  const avatarUrl = resolveSearchUserAvatar(user.uid, user.avatar);
   return `
     <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
       <img src="${escapeHtml(avatarUrl)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
+        <p data-search-user-name class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
+        <p data-search-user-handle class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
       </div>
       <span class="text-[9px] font-black text-indigo-500 uppercase tracking-widest">User</span>
     </button>
@@ -4166,8 +4282,8 @@ function renderSearchBusinessItem(biz) {
     <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
       <img src="${escapeHtml(logoUrl)}" ${logoAttr} class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
-        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
+        <p data-search-business-name class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
+        <p data-search-business-city class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
       </div>
       <span class="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Business</span>
     </button>
@@ -4274,9 +4390,13 @@ function updateSearchDom() {
   if (usersCount) usersCount.textContent = String(users.length);
   const usersList = document.getElementById("searchUsersList");
   if (usersList) {
-    usersList.innerHTML = users.length
-      ? users.map(renderSearchUserItem).join("")
-      : (query ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>` : "");
+    if (!users.length) {
+      usersList.innerHTML = query
+        ? `<div class="text-xs font-bold text-slate-300 px-2">Keine User gefunden.</div>`
+        : "";
+    } else {
+      patchSearchUserList(users);
+    }
   }
 
   const bizSection = document.getElementById("searchBizSection");
@@ -4293,7 +4413,7 @@ function updateSearchDom() {
         : "";
     } else {
       patchSearchBusinessList(businesses);
-      businesses.forEach(updateSearchLogoNodes);
+      businesses.forEach(updateSearchBusinessNodes);
     }
   }
 
@@ -4346,6 +4466,37 @@ function refreshSearchView() {
     if (updateSearchDom()) return true;
   }
   return false;
+}
+
+function patchSearchUserList(users) {
+  const usersList = document.getElementById("searchUsersList");
+  if (!usersList) return false;
+  const existingItems = Array.from(usersList.querySelectorAll("[data-search-user]"));
+  const currentIds = existingItems.map((el) => el.dataset.searchUser || "");
+  const nextIds = users.map((user) => String(user.uid || ""));
+  if (currentIds.join("|") === nextIds.join("|")) {
+    users.forEach(updateSearchUserNodes);
+    return true;
+  }
+  const existingMap = new Map();
+  existingItems.forEach((el) => existingMap.set(el.dataset.searchUser || "", el));
+  const fragment = document.createDocumentFragment();
+  users.forEach((user) => {
+    const id = String(user.uid || "");
+    const existing = id ? existingMap.get(id) : null;
+    if (existing) {
+      existingMap.delete(id);
+      fragment.appendChild(existing);
+    } else {
+      const tpl = document.createElement("template");
+      tpl.innerHTML = renderSearchUserItem(user);
+      const node = tpl.content.firstElementChild;
+      if (node) fragment.appendChild(node);
+    }
+  });
+  usersList.replaceChildren(fragment);
+  users.forEach(updateSearchUserNodes);
+  return true;
 }
 
 function renderUploadView() {
@@ -5406,7 +5557,7 @@ function buildStoriesFromFeed(posts) {
 
 function buildStoriesRowSignature(items) {
   return (items || [])
-    .map((item) => `${item.restaurantId || ""}|${item.isLive ? 1 : 0}|${item.name || ""}`)
+    .map((item) => item.restaurantId || "")
     .join(";");
 }
 
