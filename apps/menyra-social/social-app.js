@@ -491,19 +491,6 @@ function loadPersisted() {
     try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch {}
   }
 
-  const feedCache = readCache(CACHE_KEYS.feed);
-  if (feedCache?.data?.length) {
-    state.feedPosts = feedCache.data;
-    refreshFeedStories({ posts: feedCache.data, force: true });
-    preloadFeedHeroImages(state.feedPosts);
-    const cachedRestaurantIds = Array.from(new Set(feedCache.data
-      .map((post) => post.restaurantId || post.ownerId || "")
-      .filter(Boolean)));
-    if (cachedRestaurantIds.length) {
-      void hydrateRestaurantsByIds(cachedRestaurantIds, { max: cachedRestaurantIds.length });
-    }
-  }
-
   const userPostsCache = readCache(CACHE_KEYS.userPosts);
   if (userPostsCache?.data?.length) state.userPosts = userPostsCache.data;
 
@@ -513,7 +500,33 @@ function loadPersisted() {
   const restaurantsCache = readCache(CACHE_KEYS.restaurants);
   if (restaurantsCache?.data?.length) {
     state.restaurants = restaurantsCache.data;
-    state.businessLocations = restaurantsCache.data.map((rest, idx) => normalizeBusinessLocation(rest, idx));
+    rebuildBusinessLocations();
+    syncFeedPostLogos();
+    refreshFeedStories({ force: true });
+  }
+
+  const feedCache = readCache(CACHE_KEYS.feed);
+  if (feedCache?.data?.length) {
+    state.feedPosts = feedCache.data;
+    syncFeedPostLogos();
+    refreshFeedStories({ posts: feedCache.data, force: true });
+    preloadFeedHeroImages(state.feedPosts);
+    const cachedRestaurantIds = Array.from(new Set(feedCache.data
+      .map((post) => post.restaurantId || post.ownerId || "")
+      .filter(Boolean)));
+    if (cachedRestaurantIds.length) {
+      const needsHydrate = cachedRestaurantIds.some((id) => {
+        const rest = state.restaurants.find((item) => item.id === id);
+        return !rest || !(rest.logoUrl || rest.logo || rest.logoURL);
+      });
+      if (needsHydrate) {
+        suspendRender();
+        Promise.resolve(hydrateRestaurantsByIds(cachedRestaurantIds, { max: cachedRestaurantIds.length }))
+          .finally(() => resumeRender());
+      } else {
+        void hydrateRestaurantsByIds(cachedRestaurantIds, { max: cachedRestaurantIds.length });
+      }
+    }
   }
 
   const storiesCache = readCache(CACHE_KEYS.stories);
