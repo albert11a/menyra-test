@@ -180,6 +180,8 @@ const CACHE_TTL_MS = {
   stories: 10 * 60 * 1000
 };
 const FEED_DELTA_MIN_MS = 3 * 60 * 1000;
+const FEED_PRELOAD_LIMIT = 3;
+const FEED_PRELOAD_ATTR = "data-menyrasocial-feed-preload";
 
 const state = {
   sessionReady: false,
@@ -541,6 +543,26 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
   if (loaded.length) {
     state.restaurants = [...(state.restaurants || []), ...loaded];
   }
+}
+
+function preloadFeedHeroImages(feedPosts, { limit = FEED_PRELOAD_LIMIT } = {}) {
+  if (!Array.isArray(feedPosts)) return;
+  if (typeof document === "undefined") return;
+  const head = document.head || document.querySelector("head");
+  if (!head) return;
+  const wildcard = `[${FEED_PRELOAD_ATTR}]`;
+  head.querySelectorAll(wildcard).forEach((node) => node.remove());
+  feedPosts.slice(0, limit).forEach((post, index) => {
+    const imageUrl = getOptimizedImageUrl(post.image, "large");
+    if (!imageUrl) return;
+    const link = document.createElement("link");
+    link.rel = "preload";
+    link.as = "image";
+    link.href = imageUrl;
+    link.setAttribute(FEED_PRELOAD_ATTR, "hero");
+    if (index === 0) link.setAttribute("fetchpriority", "high");
+    head.appendChild(link);
+  });
 }
 
 function resolveAdminLogin(email, pass) {
@@ -1868,6 +1890,7 @@ function updateFeedDom() {
   if (storiesRow && storiesRow.innerHTML !== storiesHtml) storiesRow.innerHTML = storiesHtml;
   patchFeedList(feedPosts);
   bindFeedDelegation();
+  preloadFeedHeroImages(feedPosts);
   if (window.lucide?.createIcons) window.lucide.createIcons();
   return true;
 }
@@ -2105,6 +2128,7 @@ function startFeedListener() {
       return;
     }
     state.feedPosts = next;
+    preloadFeedHeroImages(next);
     saveFeedPosts(next);
     if (liveStoriesDisabled) {
       const storySeed = buildStoriesFromFeed(next);
@@ -5016,12 +5040,13 @@ async function loadRestaurants({ force = false } = {}) {
 function normalizeFeedPost(row) {
   const restaurant = state.restaurants.find((r) => r.id === (row.rid || row.restaurantId)) || {};
   const thumb = row.thumbUrl || row.mediaUrl || row.media?.[0]?.thumbUrl || row.media?.[0]?.url || "";
+  const rowLogo = row.logoUrl || row.logo || row.logoURL || "";
   const caption = row.caption || row.captionShort || "";
   return {
     id: row.id,
     restaurantId: row.rid || row.restaurantId || "",
     business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
-    logo: restaurant.logoUrl || restaurant.logo || (row.logoUrl !== thumb ? row.logoUrl : "") || "",
+    logo: restaurant.logoUrl || restaurant.logo || rowLogo || "",
     location: row.city || restaurant.city || "Prishtina",
     content: caption,
     image: thumb || "",
@@ -5196,6 +5221,12 @@ async function loadFeedPosts({ force = false } = {}) {
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+    const restaurantIds = Array.from(new Set(rows
+      .map((row) => row.rid || row.restaurantId || "")
+      .filter(Boolean)));
+    if (restaurantIds.length) {
+      await hydrateRestaurantsByIds(restaurantIds, { max: restaurantIds.length });
+    }
     const next = rows
       .filter((row) => (row.status || "active") === "active")
       .map(normalizeFeedPost)
@@ -5250,6 +5281,12 @@ async function loadFeedDelta({ force = false } = {}) {
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+    const restaurantIds = Array.from(new Set(rows
+      .map((row) => row.rid || row.restaurantId || "")
+      .filter(Boolean)));
+    if (restaurantIds.length) {
+      await hydrateRestaurantsByIds(restaurantIds, { max: restaurantIds.length });
+    }
     const fresh = rows
       .filter((row) => (row.status || "active") === "active")
       .map(normalizeFeedPost);
@@ -5281,6 +5318,7 @@ async function loadFeedDelta({ force = false } = {}) {
     }
 
     state.feedPosts = unique;
+    preloadFeedHeroImages(unique);
     saveFeedPosts(unique, { lastDeltaCheck: Date.now() });
     if (storiesChanged || unique.length) {
       if (!(state.activeTab === "feed" && lastRenderMode === "main" && updateFeedDom())) {
