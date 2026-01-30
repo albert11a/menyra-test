@@ -2881,8 +2881,8 @@ async function openProfileFromBusiness(input) {
     if (!safeName && !restaurantId) return;
 
     const rest = restaurantId
-      ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
-      : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
+      ? (state.restaurantMap.get(restaurantId) || { id: restaurantId })
+      : (Array.from(state.restaurantMap.values()).find((r) => (r.name || r.restaurantName || "") === safeName) || {});
 
     const fallbackPosts = state.feedPosts
       .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
@@ -2956,8 +2956,8 @@ async function openProfileViewFromBusiness(input) {
     if (!safeName && !restaurantId) return;
 
     const rest = restaurantId
-      ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
-      : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
+      ? (state.restaurantMap.get(restaurantId) || { id: restaurantId })
+      : (Array.from(state.restaurantMap.values()).find((r) => (r.name || r.restaurantName || "") === safeName) || {});
 
     const fallbackPosts = state.feedPosts
       .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
