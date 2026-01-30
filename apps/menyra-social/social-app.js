@@ -496,6 +496,12 @@ function loadPersisted() {
     state.feedPosts = feedCache.data;
     refreshFeedStories({ posts: feedCache.data, force: true });
     preloadFeedHeroImages(state.feedPosts);
+    const cachedRestaurantIds = Array.from(new Set(feedCache.data
+      .map((post) => post.restaurantId || post.ownerId || "")
+      .filter(Boolean)));
+    if (cachedRestaurantIds.length) {
+      void hydrateRestaurantsByIds(cachedRestaurantIds, { max: cachedRestaurantIds.length });
+    }
   }
 
   const userPostsCache = readCache(CACHE_KEYS.userPosts);
@@ -540,13 +546,20 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
 
   for (const rid of missing) {
     try {
-      const snap = await getDoc(doc(db, "restaurants", rid));
-      if (snap.exists()) {
-        const d = snap.data() || {};
+      const [restSnap, metaSnap] = await Promise.all([
+        getDoc(doc(db, "restaurants", rid)),
+        getDoc(doc(db, "restaurants", rid, "public", "meta"))
+      ]);
+      const restData = restSnap.exists() ? (restSnap.data() || {}) : {};
+      const metaData = metaSnap.exists() ? (metaSnap.data() || {}) : {};
+      const name = metaData.name || metaData.restaurantName || restData.name || restData.restaurantName || "";
+      const logoUrl = metaData.logoUrl || metaData.logo || restData.logoUrl || restData.logo || restData.logoURL || "";
+      if (name || logoUrl) {
         loaded.push({
           id: rid,
-          name: d.name || d.restaurantName || "",
-          logoUrl: d.logoUrl || d.logo || d.logoURL || ""
+          name,
+          restaurantName: restData.restaurantName || "",
+          logoUrl
         });
       }
     } catch (e) {
