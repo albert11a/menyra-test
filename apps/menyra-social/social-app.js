@@ -2895,7 +2895,13 @@ function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
       </div>
     `;
   }
-  return posts.map((post) => renderProfilePostCardFancy(post, isGrid, allowMenu)).join("");
+  const cards = posts.map((post) => renderProfilePostCardFancy(post, isGrid, allowMenu));
+  if (isGrid && (cards.length % 2 === 1)) {
+    cards.unshift(`
+      <div class="col-start-2 aspect-[4/5] rounded-[2rem] invisible pointer-events-none"></div>
+    `);
+  }
+  return cards.join("");
 }
 
 function renderProfileCheckins() {
