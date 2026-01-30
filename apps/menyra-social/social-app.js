@@ -615,6 +615,34 @@ function rebuildBusinessLocations() {
   state.businessLocations = state.restaurants.map((rest, idx) => normalizeBusinessLocation(rest, idx));
 }
 
+function mergeRestaurantMeta(rest, meta) {
+  if (!rest) return rest;
+  const data = meta || {};
+  const name = data.name || data.restaurantName || rest.name || rest.restaurantName || "";
+  const logoUrl = data.logoUrl || data.logo || rest.logoUrl || rest.logo || rest.logoURL || "";
+  return {
+    ...rest,
+    name: name || rest.name || "",
+    restaurantName: rest.restaurantName || "",
+    logoUrl
+  };
+}
+
+async function enrichRestaurantsWithPublicMeta(restaurants) {
+  if (!Array.isArray(restaurants) || !restaurants.length) return restaurants || [];
+  const lookups = restaurants.map((rest) => {
+    const rid = rest?.id || "";
+    if (!rid) return Promise.resolve(null);
+    return getDoc(doc(db, "restaurants", rid, "public", "meta")).catch(() => null);
+  });
+  const metaSnaps = await Promise.all(lookups);
+  return restaurants.map((rest, idx) => {
+    const snap = metaSnaps[idx];
+    const meta = snap && typeof snap.exists === "function" && snap.exists() ? (snap.data() || {}) : {};
+    return mergeRestaurantMeta(rest, meta);
+  });
+}
+
 function syncFeedPostLogos() {
   if (!state.feedPosts.length) return false;
   const restMap = new Map();
@@ -5114,7 +5142,7 @@ async function loadRestaurants({ force = false } = {}) {
   const cached = readCache(CACHE_KEYS.restaurants, CACHE_TTL_MS.restaurants);
   if (cached?.data?.length) {
     if (!state.restaurants.length) {
-      state.restaurants = cached.data;
+      state.restaurants = await enrichRestaurantsWithPublicMeta(cached.data);
       rebuildBusinessLocations();
       syncFeedPostLogos();
       refreshFeedStories({ force: true });
@@ -5128,8 +5156,9 @@ async function loadRestaurants({ force = false } = {}) {
   }
   try {
     const snap = await getDocs(query(collection(db, "restaurants"), limit(FAST_LIMITS.restaurants)));
-    const list = [];
-    snap.forEach((docSnap) => list.push({ id: docSnap.id, ...docSnap.data() }));
+    const rawList = [];
+    snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
+    const list = await enrichRestaurantsWithPublicMeta(rawList);
     writeCache(CACHE_KEYS.restaurants, list);
     const prevIds = state.restaurants.map((item) => String(item.id)).join("|");
     const nextIds = list.map((item) => String(item.id)).join("|");
