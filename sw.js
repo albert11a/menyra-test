@@ -36,6 +36,9 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+  const scheme = url.protocol;
+  const isHttp = scheme === 'http:' || scheme === 'https:';
+  if (!isHttp) return;
   const acceptHeader = req.headers.get('Accept') || '';
   const isNavigation = acceptHeader.includes('text/html') || req.mode === 'navigate';
 
@@ -67,7 +70,12 @@ self.addEventListener('fetch', (event) => {
   event.respondWith((async () => {
     try {
       const networkResp = await fetch(req);
-      try { const cache = await caches.open(CACHE_NAME); cache.put(req, networkResp.clone()); } catch (e) {}
+      try {
+        if (networkResp && networkResp.ok) {
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(req, networkResp.clone());
+        }
+      } catch (e) {}
       return networkResp;
     } catch (err) {
       const cached = await caches.match(req);

@@ -290,7 +290,6 @@ let storyRefreshTimer = null;
 let liveFeedDisabled = false;
 let liveStoriesDisabled = false;
 let feedStoriesSignature = "";
-let feedStoriesSignature = "";
 
 function suspendRender() {
   renderSuspended += 1;
