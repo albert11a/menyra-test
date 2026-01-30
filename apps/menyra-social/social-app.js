@@ -3250,6 +3250,7 @@ function renderProfileView() {
   const isCheckinTab = state.profileContentTab === "checkins";
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
+  const avatarFit = logoFitClass(profile.role === "business");
   return `
     <div class="pb-24">
       <div class="px-5 pb-2 pt-10">
