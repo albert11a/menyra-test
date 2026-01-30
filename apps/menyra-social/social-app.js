@@ -1993,7 +1993,7 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl ${avatarFit}" />
+          <img id="drawerAvatar" data-img-key="avatar:drawer" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl ${avatarFit}" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
             <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
@@ -2071,6 +2071,7 @@ function renderStoryItem(story, index = 0) {
   const imgUrl = resolveRestaurantLogo(story.restaurantId, logoSource, "thumb");
   const storyId = story.restaurantId ? escapeHtml(story.restaurantId) : "";
   const storyAttr = storyId ? `data-story-logo="${storyId}"` : "";
+  const storyKeyAttr = storyId ? `data-img-key="story-logo:${storyId}"` : "";
   const storyBorderAttr = storyId ? `data-story-border="${storyId}"` : "";
   const storyNameAttr = storyId ? `data-story-name="${storyId}"` : "";
   const storyItemAttr = storyId ? `data-story-item="${storyId}"` : "";
@@ -2079,7 +2080,7 @@ function renderStoryItem(story, index = 0) {
   return `
     <a href="${storyUrl}" ${storyItemAttr} class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
       <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200" ${storyBorderAttr}>
-        <img src="${escapeHtml(imgUrl)}" ${imgAttrs} decoding="async" width="80" height="80" ${storyAttr} class="w-full h-full rounded-[1.8rem] object-contain bg-white group-hover:scale-105 transition-transform" />
+        <img src="${escapeHtml(imgUrl)}" ${imgAttrs} decoding="async" width="80" height="80" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-[1.8rem] object-contain bg-white group-hover:scale-105 transition-transform" />
       </div>
       <span class="text-[9px] font-bold tracking-tighter text-slate-800" ${storyNameAttr}>${escapeHtml(story.name)}</span>
     </a>
@@ -2107,6 +2108,8 @@ function renderFeedItem(post, index) {
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
   const feedAttr = postId ? `data-feed-id="${escapeHtml(postId)}"` : `data-feed-id=""`;
   const logoAttr = postId ? `data-feed-logo="${escapeHtml(postId)}"` : "";
+  const logoKeyAttr = postId ? `data-img-key="feed-logo:${escapeHtml(postId)}"` : "";
+  const heroKeyAttr = postId ? `data-img-key="feed-hero:${escapeHtml(postId)}"` : "";
   const eager = index < 2;
   const heroAttrs = eager ? `fetchpriority="high"` : `loading="lazy"`;
   const logoAttrs = index < 2 ? `fetchpriority="high"` : `loading="lazy"`;
@@ -2119,7 +2122,7 @@ function renderFeedItem(post, index) {
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtml(post.business)}" data-profile-id="${escapeHtml(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
-            <img src="${escapeHtml(logoUrl)}" ${logoAttrs} ${logoAttr} decoding="async" width="48" height="48" class="w-full h-full object-contain bg-white" />
+            <img src="${escapeHtml(logoUrl)}" ${logoAttrs} ${logoAttr} ${logoKeyAttr} decoding="async" width="48" height="48" class="w-full h-full object-contain bg-white" />
           </div>
           <div>
             <h4 class="text-sm font-black flex items-center gap-1.5 uppercase tracking-tighter italic text-slate-900">${escapeHtml(post.business)} ${icon("star", "w-3 h-3 text-indigo-500")}</h4>
@@ -2130,7 +2133,7 @@ function renderFeedItem(post, index) {
       </div>
       <div class="p-2.5 rounded-[3.5rem] shadow-2xl overflow-hidden relative bg-white shadow-slate-200/50 border border-slate-50">
         <div class="relative rounded-[3rem] overflow-hidden bg-slate-200">
-          <img src="${escapeHtml(imageUrl)}" ${heroAttrs} decoding="async" class="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-1000" />
+          <img src="${escapeHtml(imageUrl)}" ${heroAttrs} ${heroKeyAttr} decoding="async" class="w-full h-auto block object-cover group-hover:scale-105 transition-transform duration-1000" />
           ${post.isLive ? `
             <div class="absolute top-6 left-6 bg-red-600 text-white text-[9px] font-black px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <div class="w-1.5 h-1.5 bg-white rounded-full animate-ping"></div> LIVE
@@ -2916,9 +2919,10 @@ function renderProfileGridItem(item) {
   const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
   const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
+  const imgKeyAttr = postId ? `data-img-key="profile-post:${escapeHtml(postId)}"` : "";
   return `
     <button type="button" ${postAttr} class="rounded-[2.5rem] overflow-hidden shadow-md relative group text-left ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
-      <img src="${escapeHtml(item.url)}" loading="lazy" decoding="async" width="400" height="400" class="w-full h-full object-cover" />
+      <img src="${escapeHtml(item.url)}" loading="lazy" decoding="async" width="400" height="400" ${imgKeyAttr} class="w-full h-full object-cover" />
       ${item.title ? `<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end"><h3 class="text-white text-lg font-black italic">${escapeHtml(item.title)}</h3></div>` : ""}
       <div class="absolute inset-x-0 bottom-0 p-3">
         <div class="flex items-center justify-between text-white bg-black/45 backdrop-blur rounded-2xl px-3 py-2">
@@ -2939,6 +2943,7 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
   const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
   const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
+  const imgKeyAttr = postId ? `data-img-key="profile-post:${escapeHtml(postId)}"` : "";
   const isWide = item.type === "wide" || item.type === "hero";
   const colClass = isGrid && isWide ? "col-span-2" : "";
   const aspectClass = isGrid
@@ -2950,7 +2955,7 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   return `
     <div ${postAttr} role="button" tabindex="0" class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)] cursor-pointer transition-transform">
       <div class="absolute inset-0 rounded-[2rem] overflow-hidden active:scale-[0.98] transition-transform">
-        <img src="${escapeHtml(imageUrl)}" loading="lazy" decoding="async" width="${width}" height="${height}" class="w-full h-full object-cover" />
+        <img src="${escapeHtml(imageUrl)}" loading="lazy" decoding="async" width="${width}" height="${height}" ${imgKeyAttr} class="w-full h-full object-cover" />
         ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3 fill-white")}</div>` : ""}
         <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
           <div class="w-full flex items-end justify-center">
@@ -3350,6 +3355,7 @@ function renderPublicProfileView() {
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(!!profile.restaurantId);
+  const avatarKey = profile.uid || profile.restaurantId || handle || "public";
   return `
     <div class="pb-24">
       <div class="px-5 pb-2 pt-10">
@@ -3366,7 +3372,7 @@ function renderPublicProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div class="relative">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />
+                  <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" data-img-key="avatar:public:${escapeHtml(avatarKey)}" class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -3444,7 +3450,7 @@ function renderProfileView() {
             <div class="flex justify-between items-start mb-8">
               <div id="profileAvatarTrigger" class="relative cursor-pointer group">
                 <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
-                  <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />
+                  <img src="${escapeHtml(avatarUrl)}" decoding="async" width="100" height="100" data-img-key="avatar:self" class="w-full h-full rounded-[1.8rem] ${avatarFit} border-2 border-white" />
                 </div>
                 ${profile.isPremium ? `
                   <div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">
@@ -4079,7 +4085,7 @@ function renderCommentItem(postId, comment, parentId = "") {
   const avatarUrl = getOptimizedImageUrl(comment.avatar, "avatar");
   return `
     <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}">
-      <img src="${escapeHtml(avatarUrl)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
+      <img src="${escapeHtml(avatarUrl)}" data-img-key="comment-avatar:${escapeHtml(comment.id)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
       <div class="flex-1">
         <div class="flex items-center justify-between">
           <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author)}</div>
@@ -4142,7 +4148,7 @@ function renderPostModal() {
               </div>
 
               <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                <img src="${escapeHtml(imageUrl)}" class="w-full h-[22rem] object-cover" />
+                <img src="${escapeHtml(imageUrl)}" data-img-key="post-modal:${escapeHtml(post.id)}" class="w-full h-[22rem] object-cover" />
               </div>
 
               ${caption ? `
@@ -4247,7 +4253,11 @@ function updatePostModalMeta() {
   const postCommentsCount = document.getElementById("postCommentsCount");
   if (postCommentsCount) postCommentsCount.textContent = `${counts.commentLabel} Kommentare`;
   const postComments = document.getElementById("postModalComments");
-  if (postComments) postComments.innerHTML = renderPostComments(comments);
+  if (postComments) {
+    const cache = cacheCurrentImages(postComments);
+    postComments.innerHTML = renderPostComments(comments);
+    rehydrateImages(cache, postComments);
+  }
   if (window.lucide?.createIcons) window.lucide.createIcons();
   if (pendingCommentHighlight) {
     if (highlightCommentInModal(pendingCommentHighlight)) {
@@ -4438,7 +4448,7 @@ function renderNotificationsList(items) {
   }
   return items.map((n) => `
     <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
-      <img src="${escapeHtml(getOptimizedImageUrl(n.img, "avatar"))}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
+      <img src="${escapeHtml(getOptimizedImageUrl(n.img, "avatar"))}" data-img-key="notif:${escapeHtml(n.id)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
       <div class="flex-1 min-w-0">
         <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
         <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
@@ -4457,7 +4467,7 @@ function renderSearchUserItem(user) {
   const avatarUrl = resolveSearchUserAvatar(user.uid, user.avatar);
   return `
     <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(avatarUrl)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
+      <img src="${escapeHtml(avatarUrl)}" data-img-key="search-user:${escapeHtml(user.uid)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p data-search-user-name class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
         <p data-search-user-handle class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(handle)}</p>
@@ -4473,7 +4483,7 @@ function renderSearchBusinessItem(biz) {
   const logoAttr = biz.id ? `data-search-logo="${escapeHtml(biz.id)}"` : "";
   return `
     <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
-      <img src="${escapeHtml(logoUrl)}" ${logoAttr} class="w-12 h-12 rounded-2xl object-contain bg-white" />
+      <img src="${escapeHtml(logoUrl)}" ${logoAttr} data-img-key="search-biz:${escapeHtml(biz.id)}" class="w-12 h-12 rounded-2xl object-contain bg-white" />
       <div class="flex-1 min-w-0">
         <p data-search-business-name class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
         <p data-search-business-city class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
@@ -4741,7 +4751,7 @@ function renderHeader() {
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">Social</span>
       </div>
       <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-        <img id="headerAvatar" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
+        <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
       </button>
     </header>
   `;
@@ -4805,6 +4815,9 @@ function renderOverlays(options = {}) {
   const profileRoot = document.getElementById("profileOverlayRoot");
   const postRoot = document.getElementById("postOverlayRoot");
   const likesRoot = document.getElementById("likesOverlayRoot");
+  const profileCache = updateProfile ? cacheCurrentImages(profileRoot) : null;
+  const postCache = updatePost ? cacheCurrentImages(postRoot) : null;
+  const likesCache = updateLikes ? cacheCurrentImages(likesRoot) : null;
   let profileChanged = false;
   let postChanged = false;
   let likesChanged = false;
@@ -4814,6 +4827,7 @@ function renderOverlays(options = {}) {
     profileChanged = profileHtml !== overlayCache.profile;
     if (profileRoot && profileChanged) {
       profileRoot.innerHTML = profileHtml;
+      rehydrateImages(profileCache, profileRoot);
       overlayCache.profile = profileHtml;
     }
   }
@@ -4822,6 +4836,7 @@ function renderOverlays(options = {}) {
     postChanged = postHtml !== overlayCache.post;
     if (postRoot && postChanged) {
       postRoot.innerHTML = postHtml;
+      rehydrateImages(postCache, postRoot);
       overlayCache.post = postHtml;
     }
   }
@@ -4830,6 +4845,7 @@ function renderOverlays(options = {}) {
     likesChanged = likesHtml !== overlayCache.likes;
     if (likesRoot && likesChanged) {
       likesRoot.innerHTML = likesHtml;
+      rehydrateImages(likesCache, likesRoot);
       overlayCache.likes = likesHtml;
     }
   }
@@ -4867,24 +4883,50 @@ function renderLoading() {
   `;
 }
 
-function cacheCurrentImages() {
-  if (!appEl) return new Map();
-  const cache = new Map();
-  appEl.querySelectorAll("img").forEach((img) => {
+function getImageKey(img) {
+  if (!img) return "";
+  const direct = img.dataset.imgKey;
+  if (direct) return direct;
+  if (img.id) return `id:${img.id}`;
+  if (img.dataset.feedLogo) return `feed-logo:${img.dataset.feedLogo}`;
+  if (img.dataset.storyLogo) return `story-logo:${img.dataset.storyLogo}`;
+  if (img.dataset.searchLogo) return `search-logo:${img.dataset.searchLogo}`;
+  const feed = img.closest("[data-feed-id]");
+  if (feed?.dataset.feedId) return `feed-image:${feed.dataset.feedId}`;
+  const profilePost = img.closest("[data-open-post]");
+  if (profilePost?.dataset.openPost) return `profile-post:${profilePost.dataset.openPost}`;
+  const searchUser = img.closest("[data-search-user]");
+  if (searchUser?.dataset.searchUser) return `search-user:${searchUser.dataset.searchUser}`;
+  const searchBiz = img.closest("[data-search-business]");
+  if (searchBiz?.dataset.searchBusiness) return `search-biz:${searchBiz.dataset.searchBusiness}`;
+  const comment = img.closest("[data-comment-id]");
+  if (comment?.dataset.commentId) return `comment-avatar:${comment.dataset.commentId}`;
+  const notif = img.closest("[data-notif-open]");
+  if (notif?.dataset.notifOpen) return `notif-avatar:${notif.dataset.notifOpen}`;
+  return "";
+}
+
+function cacheCurrentImages(root = appEl) {
+  const cache = { byKey: new Map(), bySrc: new Map() };
+  if (!root) return cache;
+  root.querySelectorAll("img").forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
     const src = img.currentSrc || img.getAttribute("src") || "";
     if (!src || isPlaceholderUrl(src)) return;
-    const list = cache.get(src);
-    if (list) {
-      list.push(img);
-    } else {
-      cache.set(src, [img]);
+    const key = getImageKey(img);
+    if (key) {
+      const list = cache.byKey.get(key);
+      if (list) list.push(img);
+      else cache.byKey.set(key, [img]);
     }
+    const bySrc = cache.bySrc.get(src);
+    if (bySrc) bySrc.push(img);
+    else cache.bySrc.set(src, [img]);
   });
   return cache;
 }
 
-function syncImageAttributes(target, source) {
+function syncImageAttributes(target, source, { preserveSource = true } = {}) {
   if (!target || !source) return;
   target.className = source.className;
   target.style.cssText = source.style.cssText || "";
@@ -4916,15 +4958,17 @@ function syncImageAttributes(target, source) {
   } else {
     target.removeAttribute("referrerpolicy");
   }
-  if (source.sizes) {
-    target.sizes = source.sizes;
-  } else {
-    target.removeAttribute("sizes");
-  }
-  if (source.srcset) {
-    target.srcset = source.srcset;
-  } else {
-    target.removeAttribute("srcset");
+  if (!preserveSource) {
+    if (source.sizes) {
+      target.sizes = source.sizes;
+    } else {
+      target.removeAttribute("sizes");
+    }
+    if (source.srcset) {
+      target.srcset = source.srcset;
+    } else {
+      target.removeAttribute("srcset");
+    }
   }
   Object.keys(target.dataset).forEach((key) => {
     if (!(key in source.dataset)) delete target.dataset[key];
@@ -4934,18 +4978,63 @@ function syncImageAttributes(target, source) {
   });
 }
 
-function rehydrateImages(cache) {
-  if (!appEl || !cache || cache.size === 0) return;
-  appEl.querySelectorAll("img").forEach((img) => {
+function queueImageSwap(target, source) {
+  if (!target || !source) return;
+  const nextSrc = source.currentSrc || source.getAttribute("src") || "";
+  if (!nextSrc || isPlaceholderUrl(nextSrc)) return;
+  if (target.dataset.pendingSrc === nextSrc) return;
+  target.dataset.pendingSrc = nextSrc;
+  const loader = new Image();
+  const nextSrcset = source.getAttribute("srcset") || "";
+  const nextSizes = source.getAttribute("sizes") || "";
+  if (nextSrcset) loader.srcset = nextSrcset;
+  if (nextSizes) loader.sizes = nextSizes;
+  loader.decoding = "async";
+  loader.onload = () => {
+    if (target.dataset.pendingSrc !== nextSrc) return;
+    target.src = nextSrc;
+    if (nextSrcset) {
+      target.srcset = nextSrcset;
+    } else {
+      target.removeAttribute("srcset");
+    }
+    if (nextSizes) {
+      target.sizes = nextSizes;
+    } else {
+      target.removeAttribute("sizes");
+    }
+    delete target.dataset.pendingSrc;
+  };
+  loader.onerror = () => {
+    if (target.dataset.pendingSrc === nextSrc) {
+      delete target.dataset.pendingSrc;
+    }
+  };
+  loader.src = nextSrc;
+}
+
+function rehydrateImages(cache, root = appEl) {
+  if (!root || !cache || (!cache.byKey?.size && !cache.bySrc?.size)) return;
+  root.querySelectorAll("img").forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
-    const src = img.currentSrc || img.getAttribute("src") || "";
-    if (!src || isPlaceholderUrl(src)) return;
-    const pool = cache.get(src);
-    if (!pool || !pool.length) return;
-    const candidate = pool.shift();
+    const key = getImageKey(img);
+    const nextSrc = img.currentSrc || img.getAttribute("src") || "";
+    let candidate = null;
+    if (key && cache.byKey.has(key)) {
+      const pool = cache.byKey.get(key);
+      if (pool?.length) candidate = pool.shift();
+    }
+    if (!candidate && nextSrc && cache.bySrc.has(nextSrc)) {
+      const pool = cache.bySrc.get(nextSrc);
+      if (pool?.length) candidate = pool.shift();
+    }
     if (!candidate || candidate === img) return;
-    syncImageAttributes(candidate, img);
+    const prevSrc = candidate.currentSrc || candidate.getAttribute("src") || "";
+    syncImageAttributes(candidate, img, { preserveSource: true });
     img.replaceWith(candidate);
+    if (nextSrc && !isPlaceholderUrl(nextSrc) && prevSrc && prevSrc !== nextSrc) {
+      queueImageSwap(candidate, img);
+    }
   });
 }
 
