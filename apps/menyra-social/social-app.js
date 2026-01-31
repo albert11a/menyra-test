@@ -314,6 +314,7 @@ const userSearchAvatarCache = new Map();
 const commentAvatarCache = new Map();
 const commentAvatarPending = new Set();
 let userAvatarCache = "";
+let lastShellAvatarUrl = "";
 let logoCacheWriteTimer = null;
 let avatarCacheWriteTimer = null;
 
@@ -393,9 +394,22 @@ function resolveUserAvatar(raw) {
 function resolveShellAvatarUrl() {
   const raw = state.userProfile.avatar || state.user?.photoURL || userAvatarCache || "";
   const resolved = getOptimizedImageUrl(raw, "avatar");
-  if (!isPlaceholderUrl(resolved)) return resolved;
+  if (!isPlaceholderUrl(resolved)) {
+    userAvatarCache = resolved;
+    scheduleAvatarCacheWrite(resolved);
+    lastShellAvatarUrl = resolved;
+    return resolved;
+  }
   const live = getLiveAvatarFromDom();
-  if (live) return live;
+  if (live) {
+    if (!isPlaceholderUrl(live)) {
+      userAvatarCache = live;
+      scheduleAvatarCacheWrite(live);
+      lastShellAvatarUrl = live;
+    }
+    return live;
+  }
+  if (lastShellAvatarUrl && !isPlaceholderUrl(lastShellAvatarUrl)) return lastShellAvatarUrl;
   return PLACEHOLDER_IMAGE;
 }
 
@@ -408,6 +422,7 @@ function captureShellAvatarFromDom() {
   }
   userAvatarCache = live;
   scheduleAvatarCacheWrite(live);
+  lastShellAvatarUrl = live;
 }
 
 function getLiveAvatarFromDom() {
@@ -915,6 +930,9 @@ function loadPersisted() {
   }
   if (!state.userProfile.avatar && userAvatarCache && !isPlaceholderUrl(userAvatarCache)) {
     state.userProfile.avatar = userAvatarCache;
+  }
+  if (userAvatarCache && !isPlaceholderUrl(userAvatarCache)) {
+    lastShellAvatarUrl = userAvatarCache;
   }
 
   const userPostsCache = readCache(CACHE_KEYS.userPosts);
@@ -2589,8 +2607,8 @@ function renderStoryItem(story, index = 0) {
 
 function renderStoriesRow(stories) {
   return `
-    <div class="flex-shrink-0 flex flex-col items-center gap-2">
-      <div data-nav="upload" data-story-upload class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
+    <div class="flex-shrink-0 flex flex-col items-center gap-2" data-story-upload-wrap data-nav="upload">
+      <div data-story-upload class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
         <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
         ${icon("camera", "w-7 h-7 relative z-10")}
       </div>
@@ -2990,10 +3008,13 @@ function startLiveListeners(user) {
   userDocUnsub = onSnapshot(userRef, (snap) => {
     if (!snap.exists()) return;
     const data = snap.data() || {};
+    const rawAvatar = data.avatarUrl || data.avatar || "";
+    const resolvedAvatarCandidate = getOptimizedImageUrl(rawAvatar, "avatar");
+    const safeAvatar = (!rawAvatar || isPlaceholderUrl(resolvedAvatarCandidate)) ? state.userProfile.avatar : rawAvatar;
     const next = {
       name: data.displayName || state.userProfile.name,
       handle: data.handle || state.userProfile.handle,
-      avatar: data.avatarUrl || data.avatar || state.userProfile.avatar,
+      avatar: safeAvatar,
       followers: data.followersCount ?? state.userProfile.followers,
       following: data.followingCount ?? state.userProfile.following,
       role: data.role || state.userProfile.role,
@@ -4640,15 +4661,19 @@ function renderPostComments(comments) {
   if (state.postModal.loading) {
     return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
   }
+  const hasLiveComments = typeof modalCommentsUnsub === "function";
+  const sendingRow = state.postModal.sending && hasLiveComments
+    ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Senden...</div>`
+    : "";
   if (!comments.length) {
-    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
+    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
   }
-  return comments.map((comment) => `
+  return `${sendingRow}${comments.map((comment) => `
     <div class="space-y-3">
       ${renderCommentItem(state.postModal.post.id, comment)}
       ${(comment.replies || []).map((reply) => renderCommentItem(state.postModal.post.id, reply, comment.id)).join("")}
     </div>
-  `).join("");
+  `).join("")}`;
 }
 
 function renderPostModal() {
@@ -4787,9 +4812,7 @@ function updatePostModalMeta() {
   if (postCommentsCount) postCommentsCount.textContent = `${counts.commentLabel} Kommentare`;
   const postComments = document.getElementById("postModalComments");
   if (postComments) {
-    const cache = cacheCurrentImages(postComments);
     postComments.innerHTML = renderPostComments(comments);
-    rehydrateImages(cache, postComments);
     applyCommentAvatarCache(postComments);
     hydrateCommentAvatars(postComments, { postId: post.id });
   }
@@ -5351,9 +5374,6 @@ function renderOverlays(options = {}) {
   const profileRoot = document.getElementById("profileOverlayRoot");
   const postRoot = document.getElementById("postOverlayRoot");
   const likesRoot = document.getElementById("likesOverlayRoot");
-  const profileCache = updateProfile ? cacheCurrentImages(profileRoot) : null;
-  const postCache = updatePost ? cacheCurrentImages(postRoot) : null;
-  const likesCache = updateLikes ? cacheCurrentImages(likesRoot) : null;
   let profileChanged = false;
   let postChanged = false;
   let likesChanged = false;
@@ -5363,7 +5383,6 @@ function renderOverlays(options = {}) {
     profileChanged = profileHtml !== overlayCache.profile;
     if (profileRoot && profileChanged) {
       profileRoot.innerHTML = profileHtml;
-      rehydrateImages(profileCache, profileRoot);
       overlayCache.profile = profileHtml;
     }
   }
@@ -5372,7 +5391,6 @@ function renderOverlays(options = {}) {
     postChanged = postHtml !== overlayCache.post;
     if (postRoot && postChanged) {
       postRoot.innerHTML = postHtml;
-      rehydrateImages(postCache, postRoot);
       overlayCache.post = postHtml;
     }
   }
@@ -5381,7 +5399,6 @@ function renderOverlays(options = {}) {
     likesChanged = likesHtml !== overlayCache.likes;
     if (likesRoot && likesChanged) {
       likesRoot.innerHTML = likesHtml;
-      rehydrateImages(likesCache, likesRoot);
       overlayCache.likes = likesHtml;
     }
   }
@@ -5549,29 +5566,8 @@ function queueImageSwap(target, source) {
   loader.src = nextSrc;
 }
 
-function rehydrateImages(cache, root = appEl) {
-  if (!root || !cache || (!cache.byKey?.size && !cache.bySrc?.size)) return;
-  root.querySelectorAll("img").forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    const key = getImageKey(img);
-    const nextSrc = img.currentSrc || img.getAttribute("src") || "";
-    let candidate = null;
-    if (key && cache.byKey.has(key)) {
-      const pool = cache.byKey.get(key);
-      if (pool?.length) candidate = pool.shift();
-    }
-    if (!candidate && nextSrc && cache.bySrc.has(nextSrc)) {
-      const pool = cache.bySrc.get(nextSrc);
-      if (pool?.length) candidate = pool.shift();
-    }
-    if (!candidate || candidate === img) return;
-    const prevSrc = candidate.currentSrc || candidate.getAttribute("src") || "";
-    syncImageAttributes(candidate, img, { preserveSource: true });
-    img.replaceWith(candidate);
-    if (nextSrc && !isPlaceholderUrl(nextSrc) && prevSrc && prevSrc !== nextSrc) {
-      queueImageSwap(candidate, img);
-    }
-  });
+function rehydrateImages() {
+  return;
 }
 
 function render() {
@@ -5594,7 +5590,6 @@ function render() {
   }
   const changed = nextHtml !== lastAppHtml || mode !== lastRenderMode;
   if (changed) {
-    const imageCache = cacheCurrentImages();
     const reuseFeed = mode === "main" && lastRenderMode === "main" && state.activeTab === "feed"
       ? document.getElementById("feedView")
       : null;
@@ -5617,7 +5612,6 @@ function render() {
       if (nextMain) nextMain.scrollTop = prevScrollTop;
       updateFeedDom();
     }
-    rehydrateImages(imageCache);
     if (window.lucide?.createIcons) window.lucide.createIcons();
     if (state.activeTab === "search" && state.search.keepFocus) {
       state.search.keepFocus = false;
@@ -6348,7 +6342,8 @@ async function loadUserProfile(user, { force = false } = {}) {
   const data = snap.exists() ? snap.data() : {};
   const prevAvatar = state.userProfile?.avatar || "";
   const normalized = normalizeProfile(data, user);
-  if (!normalized.avatar && prevAvatar) normalized.avatar = prevAvatar;
+  const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
+  if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
   state.userProfile = normalized;
   state.userProfile.uid = user.uid;
   safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
