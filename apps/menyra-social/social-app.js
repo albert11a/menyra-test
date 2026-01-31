@@ -25,8 +25,6 @@ import {
   setDoc,
   updateDoc,
   increment,
-  arrayUnion,
-  arrayRemove,
   serverTimestamp,
   Timestamp
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
@@ -65,6 +63,9 @@ const STORAGE_KEYS = {
   logoCache: "menyra_social_logo_cache_v1",
   avatarCache: "menyra_social_avatar_cache_v1"
 };
+
+const profileKey = (uid) => (uid ? `${STORAGE_KEYS.profile}::${uid}` : "");
+const avatarKey = (uid) => (uid ? `${STORAGE_KEYS.avatarCache}::${uid}` : "");
 
 const ADMIN_LOGINS = {
   admin: {
@@ -172,11 +173,11 @@ const SEARCH_LIMITS = {
 const FAST_MODE = true;
 const CACHE_KEYS = {
   feed: "menyra_social_feed_cache_v1",
-  userPosts: "menyra_social_user_posts_cache_v1",
-  businessPosts: "menyra_social_business_posts_cache_v1",
   restaurants: "menyra_social_restaurants_cache_v1",
   stories: "menyra_social_stories_cache_v1"
 };
+const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v1::${uid}` : "");
+const businessPostsKey = (rid) => (rid ? `menyra_social_business_posts_cache_v1::${rid}` : "");
 const CACHE_TTL_MS = {
   feed: 10 * 60 * 1000,
   posts: 10 * 60 * 1000,
@@ -317,6 +318,19 @@ let userAvatarCache = "";
 let lastShellAvatarUrl = "";
 let logoCacheWriteTimer = null;
 let avatarCacheWriteTimer = null;
+let lastAuthUid = "";
+
+function getActiveUid() {
+  return state.user?.uid || state.userProfile?.uid || "";
+}
+
+function saveUserProfileToStorage(profile = state.userProfile) {
+  const uid = profile?.uid || state.user?.uid || "";
+  if (!uid) return;
+  try {
+    safeStorage.setItem(profileKey(uid), JSON.stringify(profile));
+  } catch {}
+}
 
 function loadLogoCache() {
   const raw = safeStorage.getItem(STORAGE_KEYS.logoCache);
@@ -345,21 +359,23 @@ function scheduleLogoCacheWrite() {
   }, 400);
 }
 
-function loadAvatarCache() {
-  const raw = safeStorage.getItem(STORAGE_KEYS.avatarCache);
+function loadAvatarCache(uid) {
+  if (!uid) return;
+  const raw = safeStorage.getItem(avatarKey(uid));
   if (!raw) return;
   const trimmed = String(raw || "").trim();
   if (!trimmed || trimmed === "undefined" || trimmed === "null") return;
   userAvatarCache = trimmed;
 }
 
-function scheduleAvatarCacheWrite(url) {
+function scheduleAvatarCacheWrite(url, uid = getActiveUid()) {
   if (typeof window === "undefined") return;
   if (!url || isPlaceholderUrl(url)) return;
+  if (!uid) return;
   if (avatarCacheWriteTimer) return;
   avatarCacheWriteTimer = window.setTimeout(() => {
     avatarCacheWriteTimer = null;
-    safeStorage.setItem(STORAGE_KEYS.avatarCache, url);
+    safeStorage.setItem(avatarKey(uid), url);
   }, 300);
 }
 
@@ -400,49 +416,19 @@ function resolveShellAvatarUrl() {
     lastShellAvatarUrl = resolved;
     return resolved;
   }
-  const live = getLiveAvatarFromDom();
-  if (live) {
-    if (!isPlaceholderUrl(live)) {
-      userAvatarCache = live;
-      scheduleAvatarCacheWrite(live);
-      lastShellAvatarUrl = live;
-    }
-    return live;
-  }
   if (lastShellAvatarUrl && !isPlaceholderUrl(lastShellAvatarUrl)) return lastShellAvatarUrl;
   return PLACEHOLDER_IMAGE;
 }
 
 function captureShellAvatarFromDom() {
-  const live = getLiveAvatarFromDom();
-  if (!live || isPlaceholderUrl(live)) return;
-  if (state.userProfile.avatar !== live) {
-    state.userProfile.avatar = live;
-    try { safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile)); } catch {}
-  }
-  userAvatarCache = live;
-  scheduleAvatarCacheWrite(live);
-  lastShellAvatarUrl = live;
+  return;
 }
 
 function getLiveAvatarFromDom() {
-  if (typeof document === "undefined") return "";
-  const headerAvatar = document.getElementById("headerAvatar");
-  if (headerAvatar instanceof HTMLImageElement) {
-    const src = headerAvatar.currentSrc || headerAvatar.getAttribute("src") || "";
-    if (src && !isPlaceholderUrl(src)) return src;
-  }
-  const drawerAvatar = document.getElementById("drawerAvatar");
-  if (drawerAvatar instanceof HTMLImageElement) {
-    const src = drawerAvatar.currentSrc || drawerAvatar.getAttribute("src") || "";
-    if (src && !isPlaceholderUrl(src)) return src;
-  }
   return "";
 }
 
 function getSelfAvatarUrl() {
-  const domAvatar = getLiveAvatarFromDom();
-  if (domAvatar) return domAvatar;
   const raw = state.userProfile.avatar || state.user?.photoURL || userAvatarCache || "";
   const url = getOptimizedImageUrl(raw, "avatar");
   return isPlaceholderUrl(url) ? "" : url;
@@ -465,27 +451,7 @@ function primeSelfAvatarCache(url) {
 }
 
 function resolveUserAvatarInstant(raw) {
-  const url = resolveUserAvatar(raw);
-  if (!isPlaceholderUrl(url)) return url;
-  const headerAvatar = document.getElementById("headerAvatar");
-  if (headerAvatar instanceof HTMLImageElement) {
-    const headerSrc = headerAvatar.currentSrc || headerAvatar.getAttribute("src") || "";
-    if (headerSrc && !isPlaceholderUrl(headerSrc)) {
-      userAvatarCache = headerSrc;
-      scheduleAvatarCacheWrite(headerSrc);
-      return headerSrc;
-    }
-  }
-  const drawerAvatar = document.getElementById("drawerAvatar");
-  if (drawerAvatar instanceof HTMLImageElement) {
-    const drawerSrc = drawerAvatar.currentSrc || drawerAvatar.getAttribute("src") || "";
-    if (drawerSrc && !isPlaceholderUrl(drawerSrc)) {
-      userAvatarCache = drawerSrc;
-      scheduleAvatarCacheWrite(drawerSrc);
-      return drawerSrc;
-    }
-  }
-  return url;
+  return resolveUserAvatar(raw);
 }
 
 function resolveSearchUserAvatar(uid, raw) {
@@ -836,9 +802,6 @@ function setState(patch) {
   const prevTab = state.activeTab;
   const keys = Object.keys(patch || {});
   const drawerOnly = keys.length === 1 && keys[0] === "drawerOpen";
-  if (!drawerOnly) {
-    captureShellAvatarFromDom();
-  }
   Object.assign(state, patch);
   if (drawerOnly && lastRenderMode === "main") {
     updateDrawerDom();
@@ -913,7 +876,6 @@ function saveFeedPosts(posts, extraMeta = {}) {
 
 function loadPersisted() {
   loadLogoCache();
-  loadAvatarCache();
   const savedSettings = safeStorage.getItem(STORAGE_KEYS.settings);
   if (savedSettings) {
     try { state.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) }; } catch {}
@@ -924,22 +886,7 @@ function loadPersisted() {
     try { state.notifications = JSON.parse(savedNotifs); } catch {}
   }
 
-  const savedProfile = safeStorage.getItem(STORAGE_KEYS.profile);
-  if (savedProfile) {
-    try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch {}
-  }
-  if (!state.userProfile.avatar && userAvatarCache && !isPlaceholderUrl(userAvatarCache)) {
-    state.userProfile.avatar = userAvatarCache;
-  }
-  if (userAvatarCache && !isPlaceholderUrl(userAvatarCache)) {
-    lastShellAvatarUrl = userAvatarCache;
-  }
-
-  const userPostsCache = readCache(CACHE_KEYS.userPosts);
-  if (userPostsCache?.data?.length) state.userPosts = userPostsCache.data;
-
-  const businessPostsCache = readCache(CACHE_KEYS.businessPosts);
-  if (businessPostsCache?.data?.length) state.businessPosts = businessPostsCache.data;
+  // user-scoped profile/avatar loaded after login
 
   const restaurantsCache = readCache(CACHE_KEYS.restaurants);
   if (restaurantsCache?.data?.length) {
@@ -996,14 +943,70 @@ function loadPersisted() {
     state.followingHandles = [];
   }
   state.postMeta = {};
-  // --- PRIME SELF AVATAR CACHE EARLY (fix comment avatar after send) ---
+}
+
+function loadUserScopedPersisted(user) {
+  if (!user?.uid) return;
+  const uid = user.uid;
+  const savedProfile = safeStorage.getItem(profileKey(uid));
+  if (savedProfile) {
+    try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch { state.userProfile = { ...DEFAULT_PROFILE }; }
+  } else {
+    state.userProfile = { ...DEFAULT_PROFILE };
+  }
+  state.userProfile.uid = uid;
+
+  userAvatarCache = "";
+  lastShellAvatarUrl = "";
+  loadAvatarCache(uid);
+  if (!state.userProfile.avatar && userAvatarCache && !isPlaceholderUrl(userAvatarCache)) {
+    state.userProfile.avatar = userAvatarCache;
+  }
+  if (userAvatarCache && !isPlaceholderUrl(userAvatarCache)) {
+    lastShellAvatarUrl = userAvatarCache;
+  }
+
   try {
-    const raw = state.userProfile.avatar || state.user?.photoURL || userAvatarCache || "";
+    const raw = state.userProfile.avatar || userAvatarCache || "";
     const url = getOptimizedImageUrl(raw, "avatar");
     if (url && !isPlaceholderUrl(url)) {
       primeSelfAvatarCache(url);
     }
   } catch {}
+
+  const userPostsCache = readCache(userPostsKey(uid));
+  state.userPosts = userPostsCache?.data?.length ? userPostsCache.data : [];
+
+  const rid = state.userProfile.restaurantId || "";
+  if (rid) {
+    const businessCache = readCache(businessPostsKey(rid));
+    state.businessPosts = businessCache?.data?.length ? businessCache.data : [];
+  } else {
+    state.businessPosts = [];
+  }
+}
+
+function resetUserScopedState() {
+  commentAvatarCache.clear();
+  commentAvatarPending.clear();
+  userSearchAvatarCache.clear();
+  businessProfileCache.clear();
+  userProfileCache.clear();
+  state.postMeta = {};
+  state.userPosts = [];
+  state.businessPosts = [];
+  state.profileView = null;
+  state.profileModal = { open: false, profile: null };
+  state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
+  state.likesModal = { open: false, postId: "", animate: false };
+  state.selectedBusiness = null;
+  state.followingHandles = [];
+  state.notifications = [];
+  state.roleSwitchRoles = [];
+  state.roleSwitchRestaurantId = "";
+  state.userProfile = { ...DEFAULT_PROFILE };
+  userAvatarCache = "";
+  lastShellAvatarUrl = "";
 }
 
 async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
@@ -1797,8 +1800,8 @@ function updatePostCaches(post) {
   const inUser = state.userPosts.some((item) => String(item.id) === postId);
   const inBusiness = state.businessPosts.some((item) => String(item.id) === postId);
   const inFeed = state.feedPosts.some((item) => String(item.id) === postId);
-  if (inUser) writeCache(CACHE_KEYS.userPosts, state.userPosts);
-  if (inBusiness) writeCache(CACHE_KEYS.businessPosts, state.businessPosts);
+  if (inUser && state.user?.uid) writeCache(userPostsKey(state.user.uid), state.userPosts);
+  if (inBusiness && state.userProfile.restaurantId) writeCache(businessPostsKey(state.userProfile.restaurantId), state.businessPosts);
   if (inFeed) {
     const cached = readCache(CACHE_KEYS.feed);
     saveFeedPosts(state.feedPosts, { lastDeltaCheck: cached?.meta?.lastDeltaCheck || 0 });
@@ -2136,8 +2139,8 @@ function closePostModal() {
 }
 
 function ensureCommentShape(comment) {
-  const likes = Array.isArray(comment.likes) ? comment.likes : [];
-  const likesCount = Number.isFinite(Number(comment.likesCount)) ? Number(comment.likesCount) : likes.length;
+  const rawLikes = Array.isArray(comment.likes) ? comment.likes : [];
+  const likesCount = Number.isFinite(Number(comment.likesCount)) ? Number(comment.likesCount) : rawLikes.length;
   const avatar = comment.avatar || comment.avatarUrl || comment.avatarURL || comment.photoURL || "";
   const avatarUrl = comment.avatarUrl || comment.avatarURL || "";
   return {
@@ -2149,7 +2152,7 @@ function ensureCommentShape(comment) {
     avatarUrl,
     text: comment.text || "",
     createdAt: comment.createdAt || new Date().toISOString(),
-    likes,
+    likes: [],
     likesCount,
     replies: (comment.replies || []).map((reply) => ({
       id: reply.id,
@@ -2160,8 +2163,8 @@ function ensureCommentShape(comment) {
       avatarUrl: reply.avatarUrl || reply.avatarURL || "",
       text: reply.text || "",
       createdAt: reply.createdAt || new Date().toISOString(),
-      likes: Array.isArray(reply.likes) ? reply.likes : [],
-      likesCount: Number.isFinite(Number(reply.likesCount)) ? Number(reply.likesCount) : (reply.likes ? reply.likes.length : 0)
+      likes: [],
+      likesCount: Number.isFinite(Number(reply.likesCount)) ? Number(reply.likesCount) : (Array.isArray(reply.likes) ? reply.likes.length : 0)
     }))
   };
 }
@@ -2244,7 +2247,7 @@ async function addComment(postId, text, replyTo) {
     text: trimmed,
     createdAt: serverTimestamp(),
     parentId: replyTo || null,
-    likes: []
+    likesCount: 0
   };
 
   try {
@@ -2409,17 +2412,13 @@ async function toggleCommentLike(postId, commentId, replyId) {
   if (!post || !postRef) return;
   const commentDocId = replyId || commentId;
   const commentRef = doc(collection(postRef, "comments"), String(commentDocId));
-  const likeId = user.uid || user.handle;
-  const likes = Array.isArray(target.likes) ? target.likes : [];
-  const idx = likes.findIndex((item) => item === likeId);
   try {
-    if (idx >= 0) {
-      likes.splice(idx, 1);
-    } else {
-      likes.unshift(likeId);
-    }
-    target.likes = likes;
-    target.likesCount = likes.length;
+    const likeId = user.uid || user.handle;
+    const likeRef = doc(collection(commentRef, "likes"), likeId);
+    const likeSnap = await getDoc(likeRef);
+    const isUnlike = likeSnap.exists();
+    const delta = isUnlike ? -1 : 1;
+    target.likesCount = Math.max(0, (Number(target.likesCount) || 0) + delta);
     state.postMeta[postId] = meta;
     if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
       updatePostModalMeta();
@@ -2427,11 +2426,18 @@ async function toggleCommentLike(postId, commentId, replyId) {
       renderOverlays();
     }
 
-    if (idx >= 0) {
-      await updateDoc(commentRef, { likes: arrayRemove(likeId) });
+    if (isUnlike) {
+      await deleteDoc(likeRef);
     } else {
-      await updateDoc(commentRef, { likes: arrayUnion(likeId) });
+      await setDoc(likeRef, {
+        uid: user.uid,
+        name: user.name,
+        handle: user.handle,
+        avatar: user.avatar,
+        createdAt: serverTimestamp()
+      });
     }
+    await updateDoc(commentRef, { likesCount: increment(delta) });
     updateShellDom();
   } catch (err) {
     console.error(err);
@@ -2816,7 +2822,6 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  captureShellAvatarFromDom();
   const avatarUrl = resolveShellAvatarUrl();
   const isBusiness = state.userProfile.role === "business";
   const headerAvatar = document.getElementById("headerAvatar");
@@ -3022,7 +3027,7 @@ function startLiveListeners(user) {
       bio: data.bio || state.userProfile.bio
     };
     Object.assign(state.userProfile, next);
-    safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+    saveUserProfileToStorage();
     const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
     if (!isPlaceholderUrl(resolvedAvatar)) {
       userAvatarCache = resolvedAvatar;
@@ -3307,7 +3312,7 @@ function startUserPostsListener(uid) {
     const prev = state.userPosts || [];
     const shouldRender = state.activeTab === "profile" && !state.profileView && !areProfilePostsEquivalent(prev, next);
     state.userPosts = next;
-    writeCache(CACHE_KEYS.userPosts, next);
+    writeCache(userPostsKey(uid), next);
     if (shouldRender) {
       render();
     }
@@ -3344,7 +3349,7 @@ function startBusinessPostsListener(restaurantId) {
     const prev = state.businessPosts || [];
     const shouldRender = state.activeTab === "profile" && !state.profileView && !areProfilePostsEquivalent(prev, next);
     state.businessPosts = next;
-    writeCache(CACHE_KEYS.businessPosts, next);
+    writeCache(businessPostsKey(restaurantId), next);
     if (shouldRender) {
       render();
     }
@@ -3749,9 +3754,13 @@ async function deleteProfilePost(postId) {
   state.profilePostMenuId = null;
   render();
   if (state.userProfile.role === "business") {
-    writeCache(CACHE_KEYS.businessPosts, state.businessPosts);
+    if (state.userProfile.restaurantId) {
+      writeCache(businessPostsKey(state.userProfile.restaurantId), state.businessPosts);
+    }
   } else {
-    writeCache(CACHE_KEYS.userPosts, state.userPosts);
+    if (state.user?.uid) {
+      writeCache(userPostsKey(state.user.uid), state.userPosts);
+    }
   }
   try {
     if (state.userProfile.role === "business") {
@@ -4230,7 +4239,6 @@ async function openProfileFromUser(input) {
 
 async function loadFollowingFromFirebase({ force = false } = {}) {
   if (!state.user) return;
-  if (FAST_MODE && state.followingHandles.length && !force) return;
   try {
     const ref = collection(db, "users", state.user.uid, "following");
     const snap = await getDocs(ref);
@@ -4249,7 +4257,6 @@ async function loadFollowingFromFirebase({ force = false } = {}) {
 
 async function loadNotificationsFromFirebase({ force = false } = {}) {
   if (!state.user) return;
-  if (FAST_MODE && state.notifications.length && !force) return;
   try {
     const ref = collection(db, "users", state.user.uid, "notifications");
     const snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(60)));
@@ -4623,7 +4630,9 @@ function renderProfileModal() {
 }
 
 function renderCommentItem(postId, comment, parentId = "") {
-  const likeCount = Array.isArray(comment.likes) ? comment.likes.length : (Number(comment.likesCount) || 0);
+  const likeCount = Number.isFinite(Number(comment.likesCount))
+    ? Number(comment.likesCount)
+    : (Array.isArray(comment.likes) ? comment.likes.length : 0);
   const isReply = !!parentId;
   const handleKey = normalizeHandle(comment.handle || comment.author || "");
   let avatarUrl = resolveCommentAvatar(comment);
@@ -5833,16 +5842,13 @@ function bindAppEvents() {
     if (btn) {
       btn.addEventListener("click", async () => {
         await signOut(auth);
-        safeStorage.removeItem(STORAGE_KEYS.profile);
+        if (state.user?.uid) {
+          safeStorage.removeItem(profileKey(state.user.uid));
+          safeStorage.removeItem(avatarKey(state.user.uid));
+        }
         safeStorage.removeItem(STORAGE_KEYS.following);
         safeStorage.removeItem(STORAGE_KEYS.postMeta);
-        state.followingHandles = [];
-        state.postMeta = {};
-        state.profileModal = { open: false, profile: null };
-        state.profileView = null;
-        state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
-        state.likesModal = { open: false, postId: "", animate: false };
-        state.selectedBusiness = null;
+        resetUserScopedState();
         cleanupLeaflet();
         setState({ activeTab: "feed", drawerOpen: false });
       });
@@ -6173,7 +6179,7 @@ async function uploadAvatar(file) {
       updatedAt: serverTimestamp()
     }, { merge: true });
     state.userProfile.avatar = cdnUrl;
-    safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+    saveUserProfileToStorage();
     primeSelfAvatarCache(getOptimizedImageUrl(cdnUrl, "avatar"));
     refreshSelfCommentAvatars();
     render();
@@ -6210,7 +6216,7 @@ async function saveAccountSettings() {
       location: city,
       restaurantId
     };
-    safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+    saveUserProfileToStorage();
   } catch (err) {
     console.error(err);
   }
@@ -6220,7 +6226,7 @@ async function updateRestaurantSelection(restaurantId) {
   if (!state.user) return;
   state.userProfile.restaurantId = restaurantId || "";
   state.roleSwitchRestaurantId = restaurantId || state.roleSwitchRestaurantId || "";
-  safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+  saveUserProfileToStorage();
   render();
   try {
     await setDoc(doc(db, "users", state.user.uid), {
@@ -6333,10 +6339,6 @@ async function createUserPost({ uid, caption, url }) {
 
 async function loadUserProfile(user, { force = false } = {}) {
   if (!user) return;
-  if (FAST_MODE && state.userProfile?.uid === user.uid && state.userProfile?.name && !force) {
-    const cachedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
-    if (!isPlaceholderUrl(cachedAvatar)) return;
-  }
   await ensureUserProfile(user, { city: "Prishtina" });
   const snap = await getDoc(doc(db, "users", user.uid));
   const data = snap.exists() ? snap.data() : {};
@@ -6346,7 +6348,7 @@ async function loadUserProfile(user, { force = false } = {}) {
   if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
   state.userProfile = normalized;
   state.userProfile.uid = user.uid;
-  safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+  saveUserProfileToStorage();
   const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
   if (!isPlaceholderUrl(resolvedAvatar)) {
     userAvatarCache = resolvedAvatar;
@@ -6391,7 +6393,6 @@ async function loadRestaurants({ force = false } = {}) {
         }
       }
     }
-    if (FAST_MODE && !force) return;
     if (cached.fresh && !force) return;
   }
   try {
@@ -6599,7 +6600,6 @@ async function loadFeedPosts({ force = false } = {}) {
       }
     }
     preloadFeedHeroImages(state.feedPosts);
-    if (FAST_MODE && !force) return;
     if (cached.fresh && !force) return;
   }
 
@@ -6741,13 +6741,12 @@ async function loadUserPostsForUser(uid) {
 
 async function loadUserPosts({ force = false } = {}) {
   if (!state.user) return;
-  const cached = readCache(CACHE_KEYS.userPosts, CACHE_TTL_MS.posts);
+  const cached = readCache(userPostsKey(state.user.uid), CACHE_TTL_MS.posts);
   if (cached?.data?.length) {
     if (!state.userPosts.length) {
       state.userPosts = cached.data;
       render();
     }
-    if (FAST_MODE && !force) return;
     if (cached.fresh && !force) return;
   }
   try {
@@ -6773,7 +6772,7 @@ async function loadUserPosts({ force = false } = {}) {
       ownerType: "user",
       ownerId: state.user.uid
     }));
-    writeCache(CACHE_KEYS.userPosts, next);
+    writeCache(userPostsKey(state.user.uid), next);
     const prevIds = state.userPosts.map((item) => String(item.id)).join("|");
     const nextIds = next.map((item) => String(item.id)).join("|");
     if (prevIds === nextIds) return;
@@ -6791,13 +6790,12 @@ async function loadBusinessPosts({ force = false } = {}) {
     render();
     return;
   }
-  const cached = readCache(CACHE_KEYS.businessPosts, CACHE_TTL_MS.posts);
+  const cached = readCache(businessPostsKey(restaurantId), CACHE_TTL_MS.posts);
   if (cached?.data?.length) {
     if (!state.businessPosts.length) {
       state.businessPosts = cached.data;
       render();
     }
-    if (FAST_MODE && !force) return;
     if (cached.fresh && !force) return;
   }
   try {
@@ -6827,7 +6825,7 @@ async function loadBusinessPosts({ force = false } = {}) {
         restaurantId
       }))
       .filter((row) => row.url);
-    writeCache(CACHE_KEYS.businessPosts, next);
+    writeCache(businessPostsKey(restaurantId), next);
     const prevIds = state.businessPosts.map((item) => String(item.id)).join("|");
     const nextIds = next.map((item) => String(item.id)).join("|");
     if (prevIds === nextIds) return;
@@ -6967,9 +6965,16 @@ onAuthStateChanged(auth, (user) => {
     clearTimeout(authReadyTimer);
     authReadyTimer = null;
   }
+  const nextUid = user?.uid || "";
+  const prevUid = lastAuthUid;
+  if ((prevUid && !nextUid) || (prevUid && nextUid && prevUid !== nextUid)) {
+    resetUserScopedState();
+  }
   state.user = user;
   state.sessionReady = true;
   if (user) {
+    loadUserScopedPersisted(user);
+    render();
     bootstrapUser(user);
   } else {
     state.roleSwitchRoles = [];
@@ -6977,6 +6982,7 @@ onAuthStateChanged(auth, (user) => {
     stopLiveListeners();
     render();
   }
+  lastAuthUid = nextUid;
 });
 
 authReadyTimer = window.setTimeout(() => {

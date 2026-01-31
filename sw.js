@@ -1,6 +1,11 @@
 // MENYRA service worker: network-first with safe caching
-const CACHE_NAME = 'menyra-cache-v4';
+const CACHE_NAME = 'menyra-cache-v5';
 const MAX_AGE = 24 * 60 * 60 * 1000; // 24h (not strictly enforced here)
+
+self.addEventListener('install', (event) => {
+  // Activate new SW immediately
+  self.skipWaiting();
+});
 
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
@@ -10,6 +15,16 @@ self.addEventListener('activate', (event) => {
     const keys = await caches.keys();
     await Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)));
   })());
+});
+
+// Listen for messages from the page (e.g., to trigger skipWaiting)
+self.addEventListener('message', (event) => {
+  try {
+    const data = event.data || {};
+    if (data && data.type === 'SKIP_WAITING') {
+      self.skipWaiting();
+    }
+  } catch (err) {}
 });
 
 // Smarter fetch handling:
@@ -49,7 +64,7 @@ self.addEventListener('fetch', (event) => {
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match(req);
       const networkPromise = fetch(req).then((res) => {
-        if (res && res.ok) cache.put(req, res.clone());
+        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
         return res;
       }).catch(() => null);
       if (cached) {
