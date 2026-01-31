@@ -25,6 +25,7 @@ import {
   setDoc,
   updateDoc,
   increment,
+  runTransaction,
   serverTimestamp,
   Timestamp
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
@@ -2152,7 +2153,6 @@ function ensureCommentShape(comment) {
     avatarUrl,
     text: comment.text || "",
     createdAt: comment.createdAt || new Date().toISOString(),
-    likes: [],
     likesCount,
     replies: (comment.replies || []).map((reply) => ({
       id: reply.id,
@@ -2163,7 +2163,6 @@ function ensureCommentShape(comment) {
       avatarUrl: reply.avatarUrl || reply.avatarURL || "",
       text: reply.text || "",
       createdAt: reply.createdAt || new Date().toISOString(),
-      likes: [],
       likesCount: Number.isFinite(Number(reply.likesCount)) ? Number(reply.likesCount) : (Array.isArray(reply.likes) ? reply.likes.length : 0)
     }))
   };
@@ -2415,29 +2414,33 @@ async function toggleCommentLike(postId, commentId, replyId) {
   try {
     const likeId = user.uid || user.handle;
     const likeRef = doc(collection(commentRef, "likes"), likeId);
-    const likeSnap = await getDoc(likeRef);
-    const isUnlike = likeSnap.exists();
-    const delta = isUnlike ? -1 : 1;
-    target.likesCount = Math.max(0, (Number(target.likesCount) || 0) + delta);
-    state.postMeta[postId] = meta;
-    if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-      updatePostModalMeta();
-    } else {
-      renderOverlays();
+    let delta = 0;
+    await runTransaction(db, async (tx) => {
+      const likeSnap = await tx.get(likeRef);
+      if (likeSnap.exists()) {
+        tx.delete(likeRef);
+        delta = -1;
+      } else {
+        tx.set(likeRef, {
+          uid: user.uid,
+          name: user.name,
+          handle: user.handle,
+          avatar: user.avatar,
+          createdAt: serverTimestamp()
+        });
+        delta = 1;
+      }
+      tx.update(commentRef, { likesCount: increment(delta) });
+    });
+    if (delta) {
+      target.likesCount = Math.max(0, (Number(target.likesCount) || 0) + delta);
+      state.postMeta[postId] = meta;
+      if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+        updatePostModalMeta();
+      } else {
+        renderOverlays();
+      }
     }
-
-    if (isUnlike) {
-      await deleteDoc(likeRef);
-    } else {
-      await setDoc(likeRef, {
-        uid: user.uid,
-        name: user.name,
-        handle: user.handle,
-        avatar: user.avatar,
-        createdAt: serverTimestamp()
-      });
-    }
-    await updateDoc(commentRef, { likesCount: increment(delta) });
     updateShellDom();
   } catch (err) {
     console.error(err);
@@ -2733,8 +2736,8 @@ function patchStoriesRow(stories) {
     storiesRow.innerHTML = renderStoriesRow([]);
     return true;
   }
-  const uploadNode = storiesRow.querySelector("[data-story-upload]");
-  if (!uploadNode) {
+  const uploadWrap = storiesRow.querySelector("[data-story-upload-wrap]");
+  if (!uploadWrap) {
     storiesRow.innerHTML = renderStoriesRow(stories);
     return true;
   }
@@ -2742,7 +2745,7 @@ function patchStoriesRow(stories) {
   const existingMap = new Map();
   existingItems.forEach((el) => existingMap.set(el.dataset.storyItem || "", el));
   const fragment = document.createDocumentFragment();
-  fragment.appendChild(uploadNode);
+  fragment.appendChild(uploadWrap);
   stories.forEach((story) => {
     const id = String(story.restaurantId || "");
     const existing = id ? existingMap.get(id) : null;
