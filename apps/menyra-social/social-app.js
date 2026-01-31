@@ -67,6 +67,8 @@ const STORAGE_KEYS = {
 
 const profileKey = (uid) => (uid ? `${STORAGE_KEYS.profile}::${uid}` : "");
 const avatarKey = (uid) => (uid ? `${STORAGE_KEYS.avatarCache}::${uid}` : "");
+const notificationsKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::${uid}` : "");
+const followingKey = (uid) => (uid ? `${STORAGE_KEYS.following}::${uid}` : "");
 
 const ADMIN_LOGINS = {
   admin: {
@@ -819,13 +821,17 @@ function saveSettings(settings) {
 }
 
 function saveNotifications(notifications) {
-  safeStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(notifications));
+  const uid = state.user?.uid || "";
+  if (!uid) return;
+  safeStorage.setItem(notificationsKey(uid), JSON.stringify(notifications));
 }
 
 function saveFollowing(handles) {
   if (!Array.isArray(handles)) return;
   try {
-    safeStorage.setItem(STORAGE_KEYS.following, JSON.stringify(handles.slice(0, 500)));
+    const uid = state.user?.uid || "";
+    if (!uid) return;
+    safeStorage.setItem(followingKey(uid), JSON.stringify(handles.slice(0, 500)));
   } catch {}
 }
 
@@ -882,11 +888,6 @@ function loadPersisted() {
     try { state.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) }; } catch {}
   }
 
-  const savedNotifs = safeStorage.getItem(STORAGE_KEYS.notifications);
-  if (savedNotifs) {
-    try { state.notifications = JSON.parse(savedNotifs); } catch {}
-  }
-
   // user-scoped profile/avatar loaded after login
 
   const restaurantsCache = readCache(CACHE_KEYS.restaurants);
@@ -937,12 +938,6 @@ function loadPersisted() {
   const storiesCache = readCache(CACHE_KEYS.stories);
   if (!state.stories.length && storiesCache?.data?.length) state.stories = storiesCache.data;
 
-  const savedFollowing = safeStorage.getItem(STORAGE_KEYS.following);
-  if (savedFollowing) {
-    try { state.followingHandles = JSON.parse(savedFollowing); } catch { state.followingHandles = []; }
-  } else {
-    state.followingHandles = [];
-  }
   state.postMeta = {};
 }
 
@@ -985,6 +980,42 @@ function loadUserScopedPersisted(user) {
   } else {
     state.businessPosts = [];
   }
+
+  const scopedNotifs = safeStorage.getItem(notificationsKey(uid));
+  if (scopedNotifs) {
+    try { state.notifications = JSON.parse(scopedNotifs); } catch { state.notifications = []; }
+  } else {
+    const legacyNotifs = safeStorage.getItem(STORAGE_KEYS.notifications);
+    if (legacyNotifs) {
+      try {
+        state.notifications = JSON.parse(legacyNotifs);
+        safeStorage.setItem(notificationsKey(uid), JSON.stringify(state.notifications));
+        safeStorage.removeItem(STORAGE_KEYS.notifications);
+      } catch {
+        state.notifications = [];
+      }
+    } else {
+      state.notifications = [];
+    }
+  }
+
+  const scopedFollowing = safeStorage.getItem(followingKey(uid));
+  if (scopedFollowing) {
+    try { state.followingHandles = JSON.parse(scopedFollowing); } catch { state.followingHandles = []; }
+  } else {
+    const legacyFollowing = safeStorage.getItem(STORAGE_KEYS.following);
+    if (legacyFollowing) {
+      try {
+        state.followingHandles = JSON.parse(legacyFollowing);
+        safeStorage.setItem(followingKey(uid), JSON.stringify(state.followingHandles.slice(0, 500)));
+        safeStorage.removeItem(STORAGE_KEYS.following);
+      } catch {
+        state.followingHandles = [];
+      }
+    } else {
+      state.followingHandles = [];
+    }
+  }
 }
 
 function resetUserScopedState() {
@@ -1008,6 +1039,9 @@ function resetUserScopedState() {
   state.userProfile = { ...DEFAULT_PROFILE };
   userAvatarCache = "";
   lastShellAvatarUrl = "";
+  dataLoaded.profile = false;
+  dataLoaded.following = false;
+  dataLoaded.notifications = false;
 }
 
 async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
@@ -2339,10 +2373,11 @@ async function togglePostLike(postId) {
   if (!state.user) return;
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
+  if (!user.uid) return;
   const post = findPostById(postId);
   const postRef = getPostDocRef(post);
   if (!post || !postRef) return;
-  const likeId = user.uid || user.handle;
+  const likeId = user.uid;
   const likeRef = doc(collection(postRef, "likes"), likeId);
   const idx = meta.likes.findIndex((item) => item.uid === user.uid || item.handle === user.handle);
   const isUnlike = idx >= 0;
@@ -2356,12 +2391,12 @@ async function togglePostLike(postId) {
 
     state.postMeta[postId] = meta;
     void updatePostCounts(post, { likesDelta: delta });
-    updatePostCountNodes(post);
-    if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-      updatePostModalMeta();
-    } else {
-      renderOverlays();
-    }
+  updatePostCountNodes(post);
+  if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+    updatePostModalCountsOnly();
+  } else {
+    renderOverlays();
+  }
 
     if (isUnlike) {
       await deleteDoc(likeRef);
@@ -2399,6 +2434,7 @@ async function toggleCommentLike(postId, commentId, replyId) {
   if (!state.user) return;
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
+  if (!user.uid) return;
   const list = meta.comments || [];
   const comment = list.find((item) => item.id === commentId);
   if (!comment) return;
@@ -2412,7 +2448,7 @@ async function toggleCommentLike(postId, commentId, replyId) {
   const commentDocId = replyId || commentId;
   const commentRef = doc(collection(postRef, "comments"), String(commentDocId));
   try {
-    const likeId = user.uid || user.handle;
+    const likeId = user.uid;
     const likeRef = doc(collection(commentRef, "likes"), likeId);
     let delta = 0;
     await runTransaction(db, async (tx) => {
@@ -2436,7 +2472,7 @@ async function toggleCommentLike(postId, commentId, replyId) {
       target.likesCount = Math.max(0, (Number(target.likesCount) || 0) + delta);
       state.postMeta[postId] = meta;
       if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-        updatePostModalMeta();
+        updateCommentLikeButton(postId, commentId, replyId, target.likesCount);
       } else {
         renderOverlays();
       }
@@ -3379,7 +3415,13 @@ function attachPostMetaListeners(post) {
     const meta = ensurePostMeta(postId);
     meta.likes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
     state.postMeta[postId] = meta;
-    updatePostModalMeta();
+    const likeTotal = meta.likes.length;
+    if (state.postModal.post && String(state.postModal.post.id) === postId) {
+      state.postModal.post.likes = likeTotal;
+    }
+    post.likes = likeTotal;
+    updatePostCountNodes(post);
+    updatePostModalCountsOnly();
   });
   modalCommentsUnsub = onSnapshot(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)), (snap) => {
     const meta = ensurePostMeta(postId);
@@ -3402,7 +3444,9 @@ function attachPostMetaListeners(post) {
     });
     meta.comments = top;
     state.postMeta[postId] = meta;
-    updatePostModalMeta();
+    updatePostCountNodes(post);
+    updatePostModalCountsOnly();
+    updatePostModalCommentsOnly();
   });
 }
 
@@ -4805,10 +4849,16 @@ function renderLikesModal() {
 
 function updatePostModalMeta() {
   if (!state.postModal.open || !state.postModal.post) return;
+  updatePostModalCountsOnly();
+  updatePostModalCommentsOnly();
+}
+
+function updatePostModalCountsOnly() {
+  if (!state.postModal.open || !state.postModal.post) return;
   const post = state.postModal.post;
   const meta = ensurePostMeta(post.id);
-  const counts = resolvePostCounts(post);
-  const comments = (meta.comments || []).map(ensureCommentShape);
+  const likeCount = Array.isArray(meta.likes) ? meta.likes.length : (Number(post.likes) || 0);
+  const commentCount = Number(post.comments) || 0;
   const userBadge = currentUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
 
@@ -4819,9 +4869,17 @@ function updatePostModalMeta() {
     postLikeBtn.innerHTML = `${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}`;
   }
   const postLikesBtn = document.getElementById("postLikesBtn");
-  if (postLikesBtn) postLikesBtn.textContent = `${counts.likeLabel} Likes`;
+  if (postLikesBtn) postLikesBtn.textContent = `${formatCount(likeCount)} Likes`;
   const postCommentsCount = document.getElementById("postCommentsCount");
-  if (postCommentsCount) postCommentsCount.textContent = `${counts.commentLabel} Kommentare`;
+  if (postCommentsCount) postCommentsCount.textContent = `${formatCount(commentCount)} Kommentare`;
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+}
+
+function updatePostModalCommentsOnly() {
+  if (!state.postModal.open || !state.postModal.post) return;
+  const post = state.postModal.post;
+  const meta = ensurePostMeta(post.id);
+  const comments = (meta.comments || []).map(ensureCommentShape);
   const postComments = document.getElementById("postModalComments");
   if (postComments) {
     postComments.innerHTML = renderPostComments(comments);
@@ -4834,6 +4892,20 @@ function updatePostModalMeta() {
       pendingCommentHighlight = "";
     }
   }
+}
+
+function updateCommentLikeButton(postId, commentId, replyId, likeCount) {
+  if (!postId || !commentId) return;
+  const safePost = escapeSelector(postId);
+  const safeComment = escapeSelector(commentId);
+  const selector = `[data-comment-like="true"][data-post-id="${safePost}"][data-comment-id="${safeComment}"]`;
+  const replyKey = replyId ? String(replyId) : "";
+  document.querySelectorAll(selector).forEach((btn) => {
+    const btnReply = btn.getAttribute("data-reply-id") || "";
+    if (replyKey !== btnReply) return;
+    btn.innerHTML = `${icon("heart", "w-3 h-3")} ${escapeHtml(String(likeCount))}`;
+  });
+  if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 
 function renderSettingsView() {
@@ -5848,8 +5920,9 @@ function bindAppEvents() {
         if (state.user?.uid) {
           safeStorage.removeItem(profileKey(state.user.uid));
           safeStorage.removeItem(avatarKey(state.user.uid));
+          safeStorage.removeItem(notificationsKey(state.user.uid));
+          safeStorage.removeItem(followingKey(state.user.uid));
         }
-        safeStorage.removeItem(STORAGE_KEYS.following);
         safeStorage.removeItem(STORAGE_KEYS.postMeta);
         resetUserScopedState();
         cleanupLeaflet();
