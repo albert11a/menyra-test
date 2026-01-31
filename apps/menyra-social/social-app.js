@@ -191,6 +191,7 @@ const CACHE_TTL_MS = {
 const FEED_DELTA_MIN_MS = 3 * 60 * 1000;
 const FEED_PRELOAD_LIMIT = 3;
 const FEED_PRELOAD_ATTR = "data-menyrasocial-feed-preload";
+const FEED_META_LISTEN_LIMIT = 20;
 
 const state = {
   sessionReady: false,
@@ -296,6 +297,7 @@ let businessPostsUnsub = null;
 let modalPostDocUnsub = null;
 let modalLikesUnsub = null;
 let modalCommentsUnsub = null;
+let restaurantMetaUnsubs = new Map();
 let storyRefreshTimer = null;
 let liveFeedDisabled = false;
 let liveStoriesDisabled = false;
@@ -1021,6 +1023,7 @@ function loadUserScopedPersisted(user) {
 }
 
 function resetUserScopedState() {
+  stopRestaurantMetaListeners();
   commentAvatarCache.clear();
   commentAvatarPending.clear();
   userSearchAvatarCache.clear();
@@ -1136,6 +1139,90 @@ function mergeRestaurantMeta(rest, meta) {
     restaurantName: rest.restaurantName || "",
     logoUrl
   };
+}
+
+function applyRestaurantMetaUpdate(restaurantId, meta) {
+  if (!restaurantId) return;
+  const idx = state.restaurants.findIndex((r) => r.id === restaurantId);
+  const base = idx >= 0 ? state.restaurants[idx] : { id: restaurantId };
+  const merged = mergeRestaurantMeta(base, meta);
+  const prevLogo = base.logoUrl || base.logo || base.logoURL || "";
+  const nextLogo = merged.logoUrl || merged.logo || merged.logoURL || "";
+  const prevName = base.name || base.restaurantName || "";
+  const nextName = merged.name || merged.restaurantName || "";
+  const logoChanged = !!nextLogo && nextLogo !== prevLogo;
+  const nameChanged = !!nextName && nextName !== prevName;
+
+  if (idx >= 0) {
+    state.restaurants[idx] = { ...base, ...merged };
+  } else {
+    state.restaurants = [...state.restaurants, merged];
+  }
+
+  if (logoChanged || nameChanged) {
+    state.feedPosts.forEach((post) => {
+      const rid = post.restaurantId || post.ownerId || "";
+      if (String(rid) === String(restaurantId)) {
+        updateFeedLogoNodes(post);
+      }
+    });
+
+    const storyIdx = state.stories.findIndex((s) => s.restaurantId === restaurantId);
+    if (storyIdx >= 0) {
+      const prevStory = state.stories[storyIdx];
+      const nextStory = {
+        ...prevStory,
+        img: logoChanged ? (nextLogo || prevStory.img || "") : prevStory.img,
+        name: nameChanged ? (nextName || prevStory.name || "") : prevStory.name
+      };
+      state.stories[storyIdx] = nextStory;
+      updateStoryLogoNodes(nextStory);
+      if (nameChanged) updateStoryMetaNodes(nextStory);
+    } else if (logoChanged) {
+      updateStoryLogoNodes({ restaurantId, img: nextLogo });
+    }
+  }
+}
+
+function stopRestaurantMetaListeners() {
+  restaurantMetaUnsubs.forEach((unsub) => {
+    try { unsub(); } catch {}
+  });
+  restaurantMetaUnsubs.clear();
+}
+
+function ensureFeedRestaurantMetaListeners(feedPosts = state.feedPosts, { limit = FEED_META_LISTEN_LIMIT } = {}) {
+  if (!Array.isArray(feedPosts) || !feedPosts.length) {
+    stopRestaurantMetaListeners();
+    return;
+  }
+  const ids = [];
+  const seen = new Set();
+  for (const post of feedPosts) {
+    const rid = post.restaurantId || post.ownerId || "";
+    if (!rid || seen.has(rid)) continue;
+    seen.add(rid);
+    ids.push(rid);
+    if (ids.length >= limit) break;
+  }
+  const nextSet = new Set(ids);
+
+  restaurantMetaUnsubs.forEach((unsub, rid) => {
+    if (!nextSet.has(rid)) {
+      try { unsub(); } catch {}
+      restaurantMetaUnsubs.delete(rid);
+    }
+  });
+
+  ids.forEach((rid) => {
+    if (restaurantMetaUnsubs.has(rid)) return;
+    const ref = doc(db, "restaurants", rid, "public", "meta");
+    const unsub = onSnapshot(ref, (snap) => {
+      if (!snap.exists()) return;
+      applyRestaurantMetaUpdate(rid, snap.data() || {});
+    });
+    restaurantMetaUnsubs.set(rid, unsub);
+  });
 }
 
 async function enrichRestaurantsWithPublicMeta(restaurants) {
@@ -1742,7 +1829,7 @@ function updateFeedLogoNodes(post) {
   if (!post || !post.id) return;
   const postId = escapeSelector(post.id);
   const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
-  const logoSource = post.logo || restaurant.logoUrl || restaurant.logo || restaurant.logoURL || "";
+  const logoSource = restaurant.logoUrl || restaurant.logo || restaurant.logoURL || post.logo || "";
   const logoUrl = resolveRestaurantLogo(post.restaurantId || post.ownerId, logoSource, "avatar");
   document.querySelectorAll(`[data-feed-logo="${postId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
@@ -2704,7 +2791,7 @@ function renderFeedItem(post, index) {
   const heroAttrs = eager ? `fetchpriority="high"` : `loading="lazy"`;
   const logoAttrs = index < 2 ? `fetchpriority="high"` : `loading="lazy"`;
   const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
-  const logoSource = post.logo || restaurant.logoUrl || restaurant.logo || "";
+  const logoSource = restaurant.logoUrl || restaurant.logo || post.logo || "";
   const logoUrl = resolveRestaurantLogo(post.restaurantId || post.ownerId, logoSource, "avatar");
   const imageUrl = getOptimizedImageUrl(post.image, "large");
   return `
@@ -2847,6 +2934,7 @@ function updateFeedDom() {
   }
   patchFeedList(feedPosts);
   feedPosts.forEach(updateFeedLogoNodes);
+  ensureFeedRestaurantMetaListeners(feedPosts);
   bindFeedDelegation();
   preloadFeedHeroImages(feedPosts);
   if (window.lucide?.createIcons) window.lucide.createIcons();

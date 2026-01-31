@@ -10,6 +10,8 @@ import {
   where,
   orderBy,
   limit,
+  setDoc,
+  deleteDoc,
   updateDoc,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
@@ -31,7 +33,56 @@ let socialUsersLoading = false;
 let currentUser = null;
 
 // Only these roles are allowed to be assigned from CEO UI
-const ALLOWED_SOCIAL_ROLES = ["staff", "owner", "ceo"];
+const ALLOWED_SOCIAL_ROLES = ["user", "staff", "owner", "ceo"];
+const SYSTEM_ROLE_SET = new Set(["ceo", "staff", "owner"]);
+
+function normalizeRoleList(value) {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((v) => String(v || "").trim().toLowerCase()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value.split(",").map((v) => String(v || "").trim().toLowerCase()).filter(Boolean);
+  }
+  return [];
+}
+
+function resolveSystemRole(user) {
+  const roles = normalizeRoleList(user?.roles);
+  if (roles.includes("ceo")) return "ceo";
+  if (roles.includes("staff")) return "staff";
+  if (roles.includes("owner")) return "owner";
+  return "user";
+}
+
+function mergeSystemRoles(existingRoles, nextRole) {
+  const kept = normalizeRoleList(existingRoles).filter((r) => !SYSTEM_ROLE_SET.has(r));
+  if (nextRole && nextRole !== "user") kept.push(nextRole);
+  return Array.from(new Set(kept));
+}
+
+async function syncSystemRoleDocs({ uid, nextRole, user }) {
+  if (!uid) return;
+  const basePayload = {
+    uid,
+    userId: uid,
+    email: user?.email || "",
+    name: user?.displayName || user?.name || "",
+    role: nextRole,
+    roles: nextRole && nextRole !== "user" ? [nextRole] : [],
+    updatedAt: serverTimestamp()
+  };
+  if (nextRole === "ceo") {
+    await setDoc(doc(db, "superadmins", uid), basePayload, { merge: true });
+    await deleteDoc(doc(db, "staffAdmins", uid)).catch(() => {});
+  } else if (nextRole === "staff") {
+    await setDoc(doc(db, "staffAdmins", uid), basePayload, { merge: true });
+    await deleteDoc(doc(db, "superadmins", uid)).catch(() => {});
+  } else {
+    await deleteDoc(doc(db, "superadmins", uid)).catch(() => {});
+    await deleteDoc(doc(db, "staffAdmins", uid)).catch(() => {});
+  }
+}
 
 function toDateSafe(value) {
   if (!value) return null;
@@ -79,21 +130,23 @@ function renderSocialUsers(items) {
     const name = user.displayName || user.name || "User";
     const email = user.email || "-";
     const city = user.city || "-";
-    const role = String(user.role || "").trim().toLowerCase();
+    const systemRole = resolveSystemRole(user);
+    const accountType = String(user.role || "user").trim().toLowerCase();
     const avatarUrl = user.avatarUrl || "";
     const createdAt = formatRelative(toDateSafe(user.createdAt));
     const avatar = avatarUrl
       ? `<img src="${avatarUrl}" alt="${name}" />`
       : initials(name);
     const badges = [
-      `<span class="m-badge">${role || "-"}</span>`,
+      `<span class="m-badge">${systemRole || "-"}</span>`,
+      `<span class="m-badge">${accountType}</span>`,
       `<span class="m-badge">${city}</span>`
     ].join("");
 
     const roleSelect = `
       <select class="lead-select user-role-select" data-id="${user.id}" aria-label="role">
         ${ALLOWED_SOCIAL_ROLES.map((r) => {
-          const sel = (r === role) ? "selected" : "";
+          const sel = (r === systemRole) ? "selected" : "";
           return `<option value="${r}" ${sel}>${r}</option>`;
         }).join("")}
       </select>
@@ -134,7 +187,7 @@ function applySocialFilters() {
 
   let items = socialUsersCache.slice();
   if (role) {
-    items = items.filter((item) => String(item.role || "user").toLowerCase() === role);
+    items = items.filter((item) => resolveSystemRole(item) === role);
   }
   if (term) {
     items = items.filter((item) => {
@@ -288,8 +341,8 @@ function openSocialUserEditor(id) {
   if (socialUserModal.name) socialUserModal.name.value = u.displayName || u.name || "";
   if (socialUserModal.city) socialUserModal.city.value = u.city || "";
   if (socialUserModal.role) {
-    const r = String(u.role || "").trim().toLowerCase();
-    socialUserModal.role.value = ALLOWED_SOCIAL_ROLES.includes(r) ? r : "staff";
+    const r = resolveSystemRole(u);
+    socialUserModal.role.value = ALLOWED_SOCIAL_ROLES.includes(r) ? r : "user";
   }
   if (socialUserModal.idDisplay) socialUserModal.idDisplay.textContent = id;
   if (socialUserModal.status) socialUserModal.status.textContent = "";
@@ -302,12 +355,17 @@ async function saveSocialUser() {
     if (socialUserModal.status) socialUserModal.status.textContent = "Speichere...";
     const ref = doc(db, "users", _editingUserId);
     const chosenRole = String(socialUserModal.role?.value || "").trim().toLowerCase();
+    const safeRole = ALLOWED_SOCIAL_ROLES.includes(chosenRole) ? chosenRole : "user";
+    const current = socialUsersCache.find((x) => x.id === _editingUserId) || {};
+    const nextRoles = mergeSystemRoles(current.roles, safeRole);
     const payload = {
       displayName: (socialUserModal.name?.value || "").trim(),
       city: (socialUserModal.city?.value || "").trim(),
-      role: ALLOWED_SOCIAL_ROLES.includes(chosenRole) ? chosenRole : "staff"
+      roles: nextRoles,
+      updatedAt: serverTimestamp()
     };
     await updateDoc(ref, payload);
+    await syncSystemRoleDocs({ uid: _editingUserId, nextRole: safeRole, user: { ...current, ...payload } });
     if (socialUserModal.status) socialUserModal.status.textContent = "Gespeichert.";
     socialUsersCache = socialUsersCache.map((u) => u.id === _editingUserId ? { ...u, ...payload } : u);
     applySocialFilters();
@@ -354,8 +412,11 @@ if (socialUsers.list) {
     if (!ALLOWED_SOCIAL_ROLES.includes(nextRole)) return;
     try {
       setSocialStatus("Speichere Rolle...");
-      await updateDoc(doc(db, "users", id), { role: nextRole });
-      socialUsersCache = socialUsersCache.map((u) => u.id === id ? { ...u, role: nextRole } : u);
+      const current = socialUsersCache.find((u) => u.id === id) || {};
+      const nextRoles = mergeSystemRoles(current.roles, nextRole);
+      await updateDoc(doc(db, "users", id), { roles: nextRoles, updatedAt: serverTimestamp() });
+      await syncSystemRoleDocs({ uid: id, nextRole, user: current });
+      socialUsersCache = socialUsersCache.map((u) => u.id === id ? { ...u, roles: nextRoles } : u);
       applySocialFilters();
       setSocialStatus("");
     } catch (err) {
@@ -380,4 +441,3 @@ if (socialUsers.list) {
 if (socialUserModal.saveBtn) socialUserModal.saveBtn.addEventListener("click", saveSocialUser);
 if (socialUserModal.deleteBtn) socialUserModal.deleteBtn.addEventListener("click", () => deleteSocialUserById(_editingUserId));
 if (socialUserModal.cancelBtn) socialUserModal.cancelBtn.addEventListener("click", hideSocialUserModal);
-

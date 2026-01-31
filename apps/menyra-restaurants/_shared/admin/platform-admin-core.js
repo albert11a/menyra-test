@@ -76,6 +76,14 @@ function cacheGet(key, ttlMs) {
 function cacheSet(key, data) { lsSet(key, { t: nowMs(), data }); }
 function cacheDel(key) { try { localStorage.removeItem(key); } catch {} }
 
+function normalizeUrl(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return "";
+  if (/^https?:\/\//i.test(value)) return value;
+  if (value.startsWith("//")) return `https:${value}`;
+  return `https://${value.replace(/^\/+/, "")}`;
+}
+
 function getCachedRestaurantId(uid) {
   if (!uid) return "";
   const v = lsGet(`menyra_owner_rid_${uid}`);
@@ -1412,6 +1420,8 @@ function openCustomerModal(mode, data = {}) {
   $("customerTableCount").value = (data.tableCount != null ? String(data.tableCount) : "");
   $("customerYearPrice").value = (data.yearPrice != null ? String(data.yearPrice) : "");
   $("customerLogoUrl").value = data.logoUrl || "";
+  const logoFile = $("customerLogoFile");
+  if (logoFile) logoFile.value = "";
   const statusSel = $("customerStatus");
   if (statusSel) statusSel.value = data.status || "active";
   const typeSel = $("customerType");
@@ -2988,6 +2998,25 @@ async function uploadStaffPhotoFile({ file, restaurantId }) {
   const form = new FormData();
   form.append("file", file, file.name || "image.jpg");
   form.append("restaurantId", restaurantId || "staff");
+
+  const res = await fetch(`${BUNNY_EDGE_BASE}/image/upload`, {
+    method: "POST",
+    body: form
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.url) throw new Error(data?.error || "Upload fehlgeschlagen.");
+  return String(data.cdnUrl || data.url);
+}
+
+async function uploadCustomerLogoFile({ file, restaurantId }) {
+  if (!file) return "";
+  const maxBytes = 15 * 1024 * 1024;
+  if (file.size > maxBytes) throw new Error("Max 15MB pro Bild.");
+  if (!String(file.type || "").startsWith("image/")) throw new Error("Nur Bilder erlaubt.");
+
+  const form = new FormData();
+  form.append("file", file, file.name || "logo.jpg");
+  form.append("restaurantId", restaurantId || "customer");
 
   const res = await fetch(`${BUNNY_EDGE_BASE}/image/upload`, {
     method: "POST",
@@ -4891,6 +4920,32 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       if (role === "owner") return;
       nav.showView("customers");
       openCustomerModal("new", {});
+    });
+
+    // Customer logo upload
+    $("customerLogoUploadBtn")?.addEventListener("click", async () => {
+      if (role === "owner") return;
+      const statusEl = $("customerModalStatus");
+      const fileInput = $("customerLogoFile");
+      const urlInput = $("customerLogoUrl");
+      const file = fileInput?.files?.[0];
+      if (!file) {
+        if (statusEl) statusEl.textContent = "Bitte ein Logo auswaehlen.";
+        return;
+      }
+      const customerId = ($("customerId")?.value || "").trim();
+      const fallbackId = slugify($("customerName")?.value || "") || "customer";
+      const uploadId = customerId || fallbackId;
+      try {
+        if (statusEl) statusEl.textContent = "Logo wird hochgeladen...";
+        const url = await uploadCustomerLogoFile({ file, restaurantId: uploadId });
+        const safeUrl = normalizeUrl(url);
+        if (urlInput) urlInput.value = safeUrl;
+        if (statusEl) statusEl.textContent = "Logo Upload OK.";
+      } catch (err) {
+        console.error(err);
+        if (statusEl) statusEl.textContent = err?.message || "Upload fehlgeschlagen.";
+      }
     });
 
     // Customer modal submit
