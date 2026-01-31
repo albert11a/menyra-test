@@ -2227,14 +2227,12 @@ async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0 } = {}
     }
   }
 
-  if (post.restaurantId && Object.keys(updates).length) {
+  if (Object.keys(updates).length) {
     const feedRef = getFeedDocRef(post);
     if (feedRef) {
       try {
         await updateDoc(feedRef, updates);
-      } catch (err) {
-        console.error(err);
-      }
+      } catch {}
     }
   }
   updatePostCountNodes(post);
@@ -3325,6 +3323,44 @@ function areProfilePostsEquivalent(prev, next) {
   return true;
 }
 
+function areProfilePostsStructureEquivalent(prev, next) {
+  if (prev.length !== next.length) return false;
+  for (let i = 0; i < next.length; i += 1) {
+    const a = prev[i];
+    const b = next[i];
+    if (!a || !b) return false;
+    if (String(a.id) !== String(b.id)) return false;
+    if ((a.url || "") !== (b.url || "")) return false;
+    if ((a.type || "square") !== (b.type || "square")) return false;
+    if (!!a.isVideo !== !!b.isVideo) return false;
+  }
+  return true;
+}
+
+function patchProfilePostCounts(prev, next) {
+  const prevMap = new Map((prev || []).map((post) => [String(post.id), post]));
+  (next || []).forEach((post) => {
+    const old = prevMap.get(String(post.id));
+    const oldLikes = Number(old?.likes) || 0;
+    const oldComments = Number(old?.comments) || 0;
+    const newLikes = Number(post?.likes) || 0;
+    const newComments = Number(post?.comments) || 0;
+    if (oldLikes !== newLikes || oldComments !== newComments) {
+      updatePostCountNodes(post);
+    }
+  });
+
+  if (state.postModal?.open && state.postModal?.post?.id) {
+    const pid = String(state.postModal.post.id);
+    const match = (next || []).find((item) => String(item.id) === pid);
+    if (match) {
+      state.postModal.post.likes = Number(match.likes) || 0;
+      state.postModal.post.comments = Number(match.comments) || 0;
+      updatePostModalCountsOnly();
+    }
+  }
+}
+
 function startUserPostsListener(uid) {
   if (!uid) return;
   if (userPostsUnsub) {
@@ -3349,11 +3385,16 @@ function startUserPostsListener(uid) {
       ownerId: uid
     })).filter((row) => row.url);
     const prev = state.userPosts || [];
-    const shouldRender = state.activeTab === "profile" && !state.profileView && !areProfilePostsEquivalent(prev, next);
+    const isOnOwnProfile = state.activeTab === "profile" && !state.profileView;
+    const structureSame = areProfilePostsStructureEquivalent(prev, next);
     state.userPosts = next;
     writeCache(userPostsKey(uid), next);
-    if (shouldRender) {
-      render();
+    if (isOnOwnProfile) {
+      if (structureSame) {
+        patchProfilePostCounts(prev, next);
+      } else {
+        render();
+      }
     }
   });
 }
@@ -3386,11 +3427,16 @@ function startBusinessPostsListener(restaurantId) {
       }))
       .filter((row) => row.url);
     const prev = state.businessPosts || [];
-    const shouldRender = state.activeTab === "profile" && !state.profileView && !areProfilePostsEquivalent(prev, next);
+    const isOnOwnProfile = state.activeTab === "profile" && !state.profileView;
+    const structureSame = areProfilePostsStructureEquivalent(prev, next);
     state.businessPosts = next;
     writeCache(businessPostsKey(restaurantId), next);
-    if (shouldRender) {
-      render();
+    if (isOnOwnProfile) {
+      if (structureSame) {
+        patchProfilePostCounts(prev, next);
+      } else {
+        render();
+      }
     }
   });
 }
@@ -3443,6 +3489,11 @@ function attachPostMetaListeners(post) {
       }
     });
     meta.comments = top;
+    const totalComments = snap.size;
+    post.comments = totalComments;
+    if (state.postModal.post && String(state.postModal.post.id) === postId) {
+      state.postModal.post.comments = totalComments;
+    }
     state.postMeta[postId] = meta;
     updatePostCountNodes(post);
     updatePostModalCountsOnly();
