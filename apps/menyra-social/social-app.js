@@ -12,6 +12,7 @@ import {
   collectionGroup,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
   onSnapshot,
   query,
@@ -37,7 +38,7 @@ import {
   buildUrl
 } from "./_shared/social-core.js";
 import { compressImage } from "./_shared/image-compressor.js";
-import { getOptimizedImageUrl, isPlaceholderUrl } from "./_shared/image-resolver.js";
+import { getOptimizedImageUrl, isPlaceholderUrl, PLACEHOLDER_IMAGE } from "./_shared/image-resolver.js";
 
 const appEl = document.getElementById("app");
 
@@ -416,9 +417,16 @@ function primeSelfAvatarCache(url) {
   if (!url || isPlaceholderUrl(url)) return;
   userAvatarCache = url;
   scheduleAvatarCacheWrite(url);
-  if (state.user?.uid) commentAvatarCache.set(state.user.uid, url);
+  const canTouchDom = typeof document !== "undefined";
+  if (state.user?.uid) {
+    commentAvatarCache.set(state.user.uid, url);
+    if (canTouchDom) updateCommentAvatarNodesByUid(state.user.uid, url);
+  }
   const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-  if (handleKey) commentAvatarCache.set(handleKey, url);
+  if (handleKey) {
+    commentAvatarCache.set(handleKey, url);
+    if (canTouchDom) updateCommentAvatarNodes(handleKey, url);
+  }
 }
 
 function resolveUserAvatarInstant(raw) {
@@ -506,7 +514,10 @@ function resolveCommentAvatar(comment) {
     if (handleKey) commentAvatarCache.set(handleKey, selfAvatar);
     return selfAvatar;
   }
-  const url = getOptimizedImageUrl(comment.avatar || comment.avatarUrl || "", "avatar");
+  const url = getOptimizedImageUrl(
+    comment.avatarUrl || comment.avatar || comment.avatarURL || comment.photoURL || "",
+    "avatar"
+  );
   if (!isPlaceholderUrl(url)) {
     if (handleKey && commentAvatarCache.get(handleKey) !== url) {
       commentAvatarCache.set(handleKey, url);
@@ -562,12 +573,107 @@ function updateCommentAvatarNodesByUid(uid, url) {
   });
 }
 
+function updateCommentAvatarNodesById(commentId, url) {
+  if (!commentId || !url || isPlaceholderUrl(url)) return;
+  const safe = escapeSelector(commentId);
+  document.querySelectorAll(`img[data-img-key="comment-avatar:${safe}"]`).forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.getAttribute("src") !== url) img.setAttribute("src", url);
+  });
+}
+
 function scheduleCommentAvatarDomUpdate(uid, handleKey, url) {
   if (!url || isPlaceholderUrl(url)) return;
   if (typeof window === "undefined") return;
   window.requestAnimationFrame(() => {
     if (uid) updateCommentAvatarNodesByUid(uid, url);
     if (handleKey) updateCommentAvatarNodes(handleKey, url);
+  });
+}
+
+function refreshSelfCommentAvatars({ attempt = 0, maxAttempts = 6 } = {}) {
+  const url = getSelfAvatarUrl() || userAvatarCache || "";
+  if (!url || isPlaceholderUrl(url)) {
+    if (attempt < maxAttempts && typeof window !== "undefined") {
+      window.setTimeout(() => refreshSelfCommentAvatars({ attempt: attempt + 1, maxAttempts }), 250);
+    }
+    return;
+  }
+  if (state.user?.uid) updateCommentAvatarNodesByUid(state.user.uid, url);
+  const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+  if (handleKey) updateCommentAvatarNodes(handleKey, url);
+}
+
+function collectPostComments(postId) {
+  if (!postId) return [];
+  const meta = ensurePostMeta(postId);
+  const all = [];
+  (meta.comments || []).forEach((comment) => {
+    if (!comment) return;
+    all.push(comment);
+    (comment.replies || []).forEach((reply) => {
+      if (reply) all.push(reply);
+    });
+  });
+  return all;
+}
+
+function hydrateCommentAvatars(containerEl, { postId = "" } = {}) {
+  if (!containerEl) return;
+  const commentMap = new Map();
+  if (postId) {
+    collectPostComments(postId).forEach((comment) => {
+      if (comment?.id) commentMap.set(String(comment.id), comment);
+    });
+  }
+  containerEl.querySelectorAll("div[data-comment-id][data-comment-parent]").forEach((row) => {
+    if (!(row instanceof HTMLElement)) return;
+    if (row.querySelector("img.comment-avatar")) return;
+    const commentId = row.dataset.commentId || "";
+    const fromMap = commentId ? commentMap.get(String(commentId)) : null;
+    const uid = fromMap?.uid || row.dataset.commentUid || "";
+    const handle = fromMap?.handle || row.dataset.commentHandle || "";
+    const raw = fromMap?.avatarUrl || fromMap?.avatar || "";
+    const resolved = getOptimizedImageUrl(raw, "avatar");
+    const safeSrc = (!resolved || isPlaceholderUrl(resolved)) ? PLACEHOLDER_IMAGE : resolved;
+    const img = document.createElement("img");
+    img.className = "comment-avatar w-9 h-9 rounded-2xl object-cover shadow";
+    img.src = safeSrc;
+    img.loading = "lazy";
+    img.decoding = "async";
+    img.referrerPolicy = "no-referrer";
+    img.alt = "";
+    img.setAttribute("data-img-key", `comment-avatar:${commentId || ""}`);
+    img.setAttribute("data-comment-id", commentId || "");
+    img.setAttribute("data-comment-uid", uid);
+    img.setAttribute("data-comment-handle", normalizeHandle(handle));
+    img.setAttribute("data-uid", uid);
+    img.setAttribute("data-handle", handle);
+    img.onerror = () => {
+      img.src = PLACEHOLDER_IMAGE;
+    };
+    row.prepend(img);
+  });
+  const imgs = containerEl.querySelectorAll("img.comment-avatar[data-uid], img.comment-avatar[data-handle]");
+  imgs.forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    const uid = img.getAttribute("data-uid") || "";
+    const handle = img.getAttribute("data-handle") || "";
+    const handleKey = normalizeHandle(handle);
+    let cached = "";
+    if (uid && commentAvatarCache.has(uid)) cached = commentAvatarCache.get(uid);
+    else if (handleKey && commentAvatarCache.has(handleKey)) cached = commentAvatarCache.get(handleKey);
+    if (cached && !isPlaceholderUrl(cached) && img.getAttribute("src") !== cached) {
+      img.setAttribute("src", cached);
+      return;
+    }
+    if (uid) {
+      scheduleCommentAvatarFetch({
+        id: img.getAttribute("data-comment-id") || "",
+        uid,
+        handle
+      });
+    }
   });
 }
 
@@ -594,20 +700,22 @@ function applyCommentAvatarCache(root = document) {
 function scheduleCommentAvatarFetch(comment) {
   if (!comment) return;
   const handleKey = normalizeHandle(comment.handle || comment.author || "");
+  const commentId = comment.id ? String(comment.id) : "";
   if (comment.uid) {
     const uid = String(comment.uid);
     if (commentAvatarCache.has(uid) || commentAvatarPending.has(uid)) return;
     commentAvatarPending.add(uid);
-    getDoc(doc(db, "users", uid)).then((snap) => {
+    fetchUserDoc(uid).then((snap) => {
       commentAvatarPending.delete(uid);
-      if (!snap.exists()) return;
+      if (!snap || !snap.exists()) return;
       const data = snap.data() || {};
-      const avatar = data.avatarUrl || data.avatar || "";
+      const avatar = data.avatarUrl || data.avatar || data.avatarURL || data.photoURL || "";
       const url = getOptimizedImageUrl(avatar, "avatar");
       if (isPlaceholderUrl(url)) return;
       commentAvatarCache.set(uid, url);
       if (handleKey) commentAvatarCache.set(handleKey, url);
       scheduleCommentAvatarDomUpdate(uid, handleKey, url);
+      if (commentId) updateCommentAvatarNodesById(commentId, url);
     }).catch(() => {
       commentAvatarPending.delete(uid);
     });
@@ -623,6 +731,7 @@ function scheduleCommentAvatarFetch(comment) {
     if (isPlaceholderUrl(url)) return;
     commentAvatarCache.set(handleKey, url);
     scheduleCommentAvatarDomUpdate("", handleKey, url);
+    if (commentId) updateCommentAvatarNodesById(commentId, url);
   }).catch(() => {
     commentAvatarPending.delete(handleKey);
   });
@@ -1402,6 +1511,91 @@ function mapLocate() {
   );
 }
 
+async function fetchUserDoc(uid) {
+  if (!uid) return null;
+  const ref = doc(db, "users", uid);
+  if (typeof getDocFromServer === "function") {
+    try {
+      return await getDocFromServer(ref);
+    } catch {
+      // Fall through to cached getDoc
+    }
+  }
+  try {
+    return await getDoc(ref);
+  } catch {
+    return null;
+  }
+}
+
+async function ensureSelfAvatarReady({ force = false } = {}) {
+  if (!state.user?.uid) return "";
+  const fallbackFromState = () => {
+    const existing = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
+    if (!isPlaceholderUrl(existing)) return existing;
+    if (userAvatarCache && !isPlaceholderUrl(userAvatarCache)) return userAvatarCache;
+    return "";
+  };
+
+  if (!force) {
+    const cached = fallbackFromState();
+    if (cached) return cached;
+  }
+
+  try {
+    const snap = await fetchUserDoc(state.user.uid);
+    if (!snap) return fallbackFromState();
+    const data = snap.exists() ? snap.data() : {};
+    const raw = data.avatarUrl || data.avatar || data.avatarURL || data.photoURL || state.user?.photoURL || "";
+    const resolved = getOptimizedImageUrl(raw, "avatar");
+    if (!isPlaceholderUrl(resolved)) {
+      state.userProfile.avatar = raw;
+      userAvatarCache = resolved;
+      scheduleAvatarCacheWrite(resolved);
+      if (state.user?.uid) {
+        commentAvatarCache.set(state.user.uid, resolved);
+        updateCommentAvatarNodesByUid(state.user.uid, resolved);
+      }
+      const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+      if (handleKey) {
+        commentAvatarCache.set(handleKey, resolved);
+        updateCommentAvatarNodes(handleKey, resolved);
+      }
+      return resolved;
+    }
+    const authUrl = state.user?.photoURL || "";
+    if (authUrl) {
+      const authResolved = getOptimizedImageUrl(authUrl, "avatar");
+      if (!isPlaceholderUrl(authResolved)) {
+        try {
+          await setDoc(doc(db, "users", state.user.uid), {
+            avatarUrl: authUrl,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        } catch {}
+        state.userProfile.avatar = authUrl;
+        userAvatarCache = authResolved;
+        scheduleAvatarCacheWrite(authResolved);
+        if (state.user?.uid) {
+          commentAvatarCache.set(state.user.uid, authResolved);
+          updateCommentAvatarNodesByUid(state.user.uid, authResolved);
+        }
+        const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+        if (handleKey) {
+          commentAvatarCache.set(handleKey, authResolved);
+          updateCommentAvatarNodes(handleKey, authResolved);
+        }
+        return authResolved;
+      }
+    }
+  } catch (err) {
+    console.error("ensureSelfAvatarReady failed", err);
+  }
+  const authFallback = state.user?.photoURL ? getOptimizedImageUrl(state.user.photoURL, "avatar") : "";
+  if (authFallback && !isPlaceholderUrl(authFallback)) return authFallback;
+  return fallbackFromState();
+}
+
 function currentUserBadge() {
   const avatarRaw = state.userProfile.avatar || state.user?.photoURL || "";
   const resolvedAvatar = resolveUserAvatarInstant(avatarRaw);
@@ -1900,12 +2094,15 @@ function closePostModal() {
 function ensureCommentShape(comment) {
   const likes = Array.isArray(comment.likes) ? comment.likes : [];
   const likesCount = Number.isFinite(Number(comment.likesCount)) ? Number(comment.likesCount) : likes.length;
+  const avatar = comment.avatar || comment.avatarUrl || comment.avatarURL || comment.photoURL || "";
+  const avatarUrl = comment.avatarUrl || comment.avatarURL || "";
   return {
     id: comment.id,
     uid: comment.uid || "",
     author: comment.author || "User",
     handle: comment.handle || "user",
-    avatar: comment.avatar || "",
+    avatar,
+    avatarUrl,
     text: comment.text || "",
     createdAt: comment.createdAt || new Date().toISOString(),
     likes,
@@ -1915,7 +2112,8 @@ function ensureCommentShape(comment) {
       uid: reply.uid || "",
       author: reply.author || "User",
       handle: reply.handle || "user",
-      avatar: reply.avatar || "",
+      avatar: reply.avatar || reply.avatarUrl || reply.avatarURL || reply.photoURL || "",
+      avatarUrl: reply.avatarUrl || reply.avatarURL || "",
       text: reply.text || "",
       createdAt: reply.createdAt || new Date().toISOString(),
       likes: Array.isArray(reply.likes) ? reply.likes : [],
@@ -1981,24 +2179,24 @@ async function addComment(postId, text, replyTo) {
   if (state.postModal.sending) return;
   state.postModal.sending = true;
   const meta = ensurePostMeta(postId);
+  const ensuredAvatar = await ensureSelfAvatarReady({ force: true });
   const user = currentUserBadge();
   const handleKey = normalizeHandle(user.handle || user.name || "");
-  const selfAvatar = getSelfAvatarUrl();
-  if (selfAvatar) {
-    user.avatar = selfAvatar;
-    primeSelfAvatarCache(selfAvatar);
-    if (user.uid) commentAvatarCache.set(user.uid, selfAvatar);
-    if (handleKey) commentAvatarCache.set(handleKey, selfAvatar);
+  const avatarCandidate = ensuredAvatar || user.avatar || "";
+  const finalAvatar = avatarCandidate && !isPlaceholderUrl(avatarCandidate) ? avatarCandidate : "";
+  if (finalAvatar) {
+    user.avatar = finalAvatar;
+    primeSelfAvatarCache(finalAvatar);
+    if (user.uid) commentAvatarCache.set(user.uid, finalAvatar);
+    if (handleKey) commentAvatarCache.set(handleKey, finalAvatar);
   }
   const commentRef = doc(collection(postRef, "comments"));
-  if (selfAvatar) {
-    primeSelfAvatarCache(selfAvatar);
-  }
   const payload = {
     uid: user.uid || "",
     author: user.name,
     handle: user.handle,
-    avatar: selfAvatar || user.avatar || "",
+    avatarUrl: finalAvatar,
+    avatar: finalAvatar,
     text: trimmed,
     createdAt: serverTimestamp(),
     parentId: replyTo || null,
@@ -2017,11 +2215,17 @@ async function addComment(postId, text, replyTo) {
 
   // --- INSTANT UI FIX: make sure the just-created comment avatar appears without refresh ---
   try {
-    const url = payload.avatar ? getOptimizedImageUrl(payload.avatar, "avatar") : "";
-    if (url && !isPlaceholderUrl(url)) {
-      if (payload.uid) commentAvatarCache.set(payload.uid, url);
-      if (handleKey) commentAvatarCache.set(handleKey, url);
-      scheduleCommentAvatarDomUpdate(payload.uid || "", handleKey, url);
+    if (finalAvatar) {
+      if (payload.uid) commentAvatarCache.set(payload.uid, finalAvatar);
+      if (handleKey) commentAvatarCache.set(handleKey, finalAvatar);
+      scheduleCommentAvatarDomUpdate(payload.uid || "", handleKey, finalAvatar);
+      updateCommentAvatarNodesById(commentRef.id, finalAvatar);
+    } else {
+      scheduleCommentAvatarFetch({
+        uid: payload.uid || "",
+        handle: payload.handle || "",
+        author: payload.author || ""
+      });
     }
   } catch {}
 
@@ -2057,10 +2261,13 @@ async function addComment(postId, text, replyTo) {
   state.postModal.replyTo = null;
   if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
     updatePostModalMeta();
-    if (selfAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, selfAvatar);
+    if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
+    const postComments = document.getElementById("postModalComments");
+    if (postComments) hydrateCommentAvatars(postComments, { postId: postId });
   } else {
     renderOverlays();
   }
+  refreshSelfCommentAvatars();
   state.postModal.sending = false;
   const ownerUid = await resolvePostOwnerUid(post);
   if (ownerUid && ownerUid !== state.user.uid) {
@@ -2589,6 +2796,7 @@ function updateShellDom() {
   if (drawerHandle) drawerHandle.textContent = `@${state.userProfile.handle || "user"}`;
   const switchLinks = document.getElementById("drawerSwitchLinks");
   if (switchLinks) switchLinks.innerHTML = renderRoleSwitchLinks();
+  refreshSelfCommentAvatars({ attempt: 0, maxAttempts: 2 });
   if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 
@@ -4371,12 +4579,11 @@ function renderCommentItem(postId, comment, parentId = "") {
     const selfAvatar = getSelfAvatarUrl();
     if (selfAvatar) avatarUrl = selfAvatar;
   }
-  if (isPlaceholderUrl(avatarUrl)) {
-    scheduleCommentAvatarFetch(comment);
-  }
+  if (isPlaceholderUrl(avatarUrl)) scheduleCommentAvatarFetch(comment);
+  const safeSrc = (!avatarUrl || isPlaceholderUrl(avatarUrl)) ? PLACEHOLDER_IMAGE : avatarUrl;
   return `
-    <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}">
-      <img src="${escapeHtml(avatarUrl)}" data-img-key="comment-avatar:${escapeHtml(comment.id)}" data-comment-handle="${escapeHtml(handleKey)}" data-comment-uid="${escapeHtml(comment.uid || "")}" class="w-9 h-9 rounded-2xl object-cover shadow" />
+    <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-comment-handle="${escapeHtml(handleKey)}">
+      <img src="${escapeHtml(safeSrc)}" data-img-key="comment-avatar:${escapeHtml(comment.id)}" data-comment-id="${escapeHtml(comment.id)}" data-comment-handle="${escapeHtml(handleKey)}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-uid="${escapeHtml(comment.uid || "")}" data-handle="${escapeHtml(comment.handle || "")}" class="comment-avatar w-9 h-9 rounded-2xl object-cover shadow" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.src='${PLACEHOLDER_IMAGE}'" alt="" />
       <div class="flex-1">
         <div class="flex items-center justify-between">
           <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author)}</div>
@@ -4549,6 +4756,7 @@ function updatePostModalMeta() {
     postComments.innerHTML = renderPostComments(comments);
     rehydrateImages(cache, postComments);
     applyCommentAvatarCache(postComments);
+    hydrateCommentAvatars(postComments, { postId: post.id });
   }
   if (window.lucide?.createIcons) window.lucide.createIcons();
   if (pendingCommentHighlight) {
@@ -5937,6 +6145,8 @@ async function uploadAvatar(file) {
     }, { merge: true });
     state.userProfile.avatar = cdnUrl;
     safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+    primeSelfAvatarCache(getOptimizedImageUrl(cdnUrl, "avatar"));
+    refreshSelfCommentAvatars();
     render();
   } catch (err) {
     console.error(err);

@@ -1,5 +1,5 @@
 // MENYRA service worker: network-first with safe caching and auto-activate
-const CACHE_NAME = 'menyra-cache-v1';
+const CACHE_NAME = 'menyra-cache-v3';
 const MAX_AGE = 24 * 60 * 60 * 1000; // 24h (not strictly enforced here)
 
 self.addEventListener('install', (event) => {
@@ -43,6 +43,8 @@ self.addEventListener('fetch', (event) => {
   const isNavigation = acceptHeader.includes('text/html') || req.mode === 'navigate';
 
   const isImage = req.destination === 'image' || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname) || url.href.includes('/image/fetch');
+  const isScriptOrStyle = req.destination === 'script' || req.destination === 'style' || /\.(mjs|js|css)$/i.test(url.pathname);
+  const isSameOrigin = url.origin === self.location.origin;
 
   // For navigations/HTML do a network-first with short timeout
   if (isNavigation) {
@@ -81,6 +83,29 @@ self.addEventListener('fetch', (event) => {
       }
       const network = await networkPromise;
       return network || cached || new Response("", { status: 504, statusText: "Image fetch failed" });
+    })());
+    return;
+  }
+
+  // Scripts/styles (same-origin only): bypass HTTP cache to avoid stale PWA bundles
+  if (isScriptOrStyle && isSameOrigin) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE_NAME);
+      const cached = await cache.match(req);
+      try {
+        const bustReq = new Request(req, { cache: 'reload' });
+        const networkResp = await fetch(bustReq);
+        if (networkResp) {
+          try {
+            if (networkResp.ok || networkResp.type === 'opaque') {
+              await cache.put(req, networkResp.clone());
+            }
+          } catch (err) {}
+          return networkResp;
+        }
+      } catch (err) {}
+      if (cached) return cached;
+      return new Response('', { status: 504, statusText: 'Script fetch failed' });
     })());
     return;
   }
