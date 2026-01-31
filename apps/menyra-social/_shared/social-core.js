@@ -96,7 +96,30 @@ export async function ensureUserProfile(user, overrides = {}) {
   if (!user) return null;
   const ref = doc(db, "users", user.uid);
   const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data();
+
+  // --- EXISTING PROFILE: SELF-HEAL MISSING FIELDS (AVATAR) ---
+  if (snap.exists()) {
+    const existing = snap.data() || {};
+    const patch = {};
+
+    // If missing avatar fields but Firebase Auth has photoURL, write it back
+    const hasAvatar = !!(existing.avatarUrl || existing.avatar);
+    if (!hasAvatar && user?.photoURL) {
+      patch.avatarUrl = user.photoURL;
+    }
+
+    if (!existing.displayName && user?.displayName) {
+      patch.displayName = user.displayName;
+    }
+
+    if (Object.keys(patch).length) {
+      patch.updatedAt = serverTimestamp();
+      await setDoc(ref, patch, { merge: true });
+      return { ...existing, ...patch };
+    }
+
+    return existing;
+  }
 
   const displayName = overrides.displayName || user.displayName || user.email?.split("@")[0] || "User";
   const payload = {

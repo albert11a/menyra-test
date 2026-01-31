@@ -310,6 +310,8 @@ function resumeRender() {
 
 const restaurantLogoCache = new Map();
 const userSearchAvatarCache = new Map();
+const commentAvatarCache = new Map();
+const commentAvatarPending = new Set();
 let userAvatarCache = "";
 let logoCacheWriteTimer = null;
 let avatarCacheWriteTimer = null;
@@ -376,13 +378,71 @@ function resolveRestaurantLogo(restaurantId, raw, size = "avatar") {
 }
 
 function resolveUserAvatar(raw) {
-  const url = getOptimizedImageUrl(raw, "avatar");
+  const candidate = raw || state.user?.photoURL || "";
+  const url = getOptimizedImageUrl(candidate, "avatar");
   if (!isPlaceholderUrl(url)) {
     userAvatarCache = url;
     scheduleAvatarCacheWrite(url);
     return url;
   }
-  return userAvatarCache || url;
+  if (userAvatarCache && !isPlaceholderUrl(userAvatarCache)) return userAvatarCache;
+  return getOptimizedImageUrl("", "avatar");
+}
+
+function getLiveAvatarFromDom() {
+  if (typeof document === "undefined") return "";
+  const headerAvatar = document.getElementById("headerAvatar");
+  if (headerAvatar instanceof HTMLImageElement) {
+    const src = headerAvatar.currentSrc || headerAvatar.getAttribute("src") || "";
+    if (src && !isPlaceholderUrl(src)) return src;
+  }
+  const drawerAvatar = document.getElementById("drawerAvatar");
+  if (drawerAvatar instanceof HTMLImageElement) {
+    const src = drawerAvatar.currentSrc || drawerAvatar.getAttribute("src") || "";
+    if (src && !isPlaceholderUrl(src)) return src;
+  }
+  return "";
+}
+
+function getSelfAvatarUrl() {
+  const domAvatar = getLiveAvatarFromDom();
+  if (domAvatar) return domAvatar;
+  const raw = state.userProfile.avatar || state.user?.photoURL || userAvatarCache || "";
+  const url = getOptimizedImageUrl(raw, "avatar");
+  return isPlaceholderUrl(url) ? "" : url;
+}
+
+function primeSelfAvatarCache(url) {
+  if (!url || isPlaceholderUrl(url)) return;
+  userAvatarCache = url;
+  scheduleAvatarCacheWrite(url);
+  if (state.user?.uid) commentAvatarCache.set(state.user.uid, url);
+  const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+  if (handleKey) commentAvatarCache.set(handleKey, url);
+}
+
+function resolveUserAvatarInstant(raw) {
+  const url = resolveUserAvatar(raw);
+  if (!isPlaceholderUrl(url)) return url;
+  const headerAvatar = document.getElementById("headerAvatar");
+  if (headerAvatar instanceof HTMLImageElement) {
+    const headerSrc = headerAvatar.currentSrc || headerAvatar.getAttribute("src") || "";
+    if (headerSrc && !isPlaceholderUrl(headerSrc)) {
+      userAvatarCache = headerSrc;
+      scheduleAvatarCacheWrite(headerSrc);
+      return headerSrc;
+    }
+  }
+  const drawerAvatar = document.getElementById("drawerAvatar");
+  if (drawerAvatar instanceof HTMLImageElement) {
+    const drawerSrc = drawerAvatar.currentSrc || drawerAvatar.getAttribute("src") || "";
+    if (drawerSrc && !isPlaceholderUrl(drawerSrc)) {
+      userAvatarCache = drawerSrc;
+      scheduleAvatarCacheWrite(drawerSrc);
+      return drawerSrc;
+    }
+  }
+  return url;
 }
 
 function resolveSearchUserAvatar(uid, raw) {
@@ -397,7 +457,175 @@ function resolveSearchUserAvatar(uid, raw) {
     const cached = userSearchAvatarCache.get(uid);
     if (cached) return cached;
   }
-  return url;
+  return getOptimizedImageUrl("", "avatar");
+}
+
+function resolveSearchUserAvatarDisplay(user) {
+  const uid = user?.uid || "";
+  const name = user?.name || user?.displayName || "";
+  const handle = user?.handle || "";
+  const raw = user?.avatarUrl || user?.avatar || "";
+  const url = getOptimizedImageUrl(raw, "avatar");
+  if (!isPlaceholderUrl(url)) {
+    if (uid && userSearchAvatarCache.get(uid) !== url) {
+      userSearchAvatarCache.set(uid, url);
+    }
+    return url;
+  }
+  if (uid) {
+    const cached = userSearchAvatarCache.get(uid);
+    if (cached) return cached;
+  }
+  return getOptimizedImageUrl("", "avatar");
+}
+
+function resolveNotificationAvatar(notif) {
+  const raw = notif?.img || notif?.avatar || "";
+  const url = getOptimizedImageUrl(raw, "avatar");
+  if (!isPlaceholderUrl(url)) return url;
+  return getOptimizedImageUrl("", "avatar");
+}
+
+function resolveLikeAvatar(user) {
+  const raw = user?.avatarUrl || user?.avatar || "";
+  const url = getOptimizedImageUrl(raw, "avatar");
+  if (!isPlaceholderUrl(url)) return url;
+  return getOptimizedImageUrl("", "avatar");
+}
+function resolveCommentAvatar(comment) {
+  if (!comment) return getOptimizedImageUrl("", "avatar");
+  const handleKey = normalizeHandle(comment.handle || comment.author || "");
+  const selfUid = state.user?.uid || "";
+  const selfHandle = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+  const isSelf = (!!selfUid && comment.uid && String(comment.uid) === String(selfUid))
+    || (!!selfHandle && handleKey && handleKey === selfHandle);
+  const selfAvatar = getSelfAvatarUrl();
+  if (isSelf && selfAvatar) {
+    primeSelfAvatarCache(selfAvatar);
+    if (selfUid) commentAvatarCache.set(selfUid, selfAvatar);
+    if (handleKey) commentAvatarCache.set(handleKey, selfAvatar);
+    return selfAvatar;
+  }
+  const url = getOptimizedImageUrl(comment.avatar || comment.avatarUrl || "", "avatar");
+  if (!isPlaceholderUrl(url)) {
+    if (handleKey && commentAvatarCache.get(handleKey) !== url) {
+      commentAvatarCache.set(handleKey, url);
+    }
+    if (comment.uid && commentAvatarCache.get(comment.uid) !== url) {
+      commentAvatarCache.set(comment.uid, url);
+    }
+    return url;
+  }
+  if (handleKey) {
+    const cached = commentAvatarCache.get(handleKey);
+    if (cached) return cached;
+  }
+  if (comment.uid) {
+    const cachedByUid = commentAvatarCache.get(comment.uid);
+    if (cachedByUid) return cachedByUid;
+    if (state.user?.uid && comment.uid === state.user.uid) {
+      const selfAvatar = resolveUserAvatarInstant(state.userProfile.avatar);
+      if (!isPlaceholderUrl(selfAvatar)) {
+        commentAvatarCache.set(comment.uid, selfAvatar);
+        if (handleKey) commentAvatarCache.set(handleKey, selfAvatar);
+        return selfAvatar;
+      }
+    }
+  } else if (handleKey) {
+    const selfKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "user");
+    if (handleKey === selfKey) {
+      const selfAvatar = resolveUserAvatar(state.userProfile.avatar);
+      if (!isPlaceholderUrl(selfAvatar)) {
+        commentAvatarCache.set(handleKey, selfAvatar);
+        return selfAvatar;
+      }
+    }
+  }
+  return getOptimizedImageUrl("", "avatar");
+}
+
+function updateCommentAvatarNodes(handleKey, url) {
+  if (!handleKey || !url || isPlaceholderUrl(url)) return;
+  const safe = escapeSelector(handleKey);
+  document.querySelectorAll(`[data-comment-handle="${safe}"]`).forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.getAttribute("src") !== url) img.setAttribute("src", url);
+  });
+}
+
+function updateCommentAvatarNodesByUid(uid, url) {
+  if (!uid || !url || isPlaceholderUrl(url)) return;
+  const safe = escapeSelector(uid);
+  document.querySelectorAll(`[data-comment-uid="${safe}"]`).forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.getAttribute("src") !== url) img.setAttribute("src", url);
+  });
+}
+
+function scheduleCommentAvatarDomUpdate(uid, handleKey, url) {
+  if (!url || isPlaceholderUrl(url)) return;
+  if (typeof window === "undefined") return;
+  window.requestAnimationFrame(() => {
+    if (uid) updateCommentAvatarNodesByUid(uid, url);
+    if (handleKey) updateCommentAvatarNodes(handleKey, url);
+  });
+}
+
+function applyCommentAvatarCache(root = document) {
+  if (!root) return;
+  const selfUid = state.user?.uid || "";
+  const selfHandle = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+  const cachedSelf = userAvatarCache && !isPlaceholderUrl(userAvatarCache) ? userAvatarCache : "";
+  root.querySelectorAll("img[data-comment-uid], img[data-comment-handle]").forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    const uid = img.dataset.commentUid || "";
+    const handleKey = img.dataset.commentHandle || "";
+    let url = "";
+    if (uid && commentAvatarCache.has(uid)) url = commentAvatarCache.get(uid);
+    if (!url && handleKey && commentAvatarCache.has(handleKey)) url = commentAvatarCache.get(handleKey);
+    if (!url && selfUid && uid === selfUid && cachedSelf) url = cachedSelf;
+    if (!url && selfHandle && handleKey === selfHandle && cachedSelf) url = cachedSelf;
+    if (url && !isPlaceholderUrl(url) && img.getAttribute("src") !== url) {
+      img.setAttribute("src", url);
+    }
+  });
+}
+
+function scheduleCommentAvatarFetch(comment) {
+  if (!comment) return;
+  const handleKey = normalizeHandle(comment.handle || comment.author || "");
+  if (comment.uid) {
+    const uid = String(comment.uid);
+    if (commentAvatarCache.has(uid) || commentAvatarPending.has(uid)) return;
+    commentAvatarPending.add(uid);
+    getDoc(doc(db, "users", uid)).then((snap) => {
+      commentAvatarPending.delete(uid);
+      if (!snap.exists()) return;
+      const data = snap.data() || {};
+      const avatar = data.avatarUrl || data.avatar || "";
+      const url = getOptimizedImageUrl(avatar, "avatar");
+      if (isPlaceholderUrl(url)) return;
+      commentAvatarCache.set(uid, url);
+      if (handleKey) commentAvatarCache.set(handleKey, url);
+      scheduleCommentAvatarDomUpdate(uid, handleKey, url);
+    }).catch(() => {
+      commentAvatarPending.delete(uid);
+    });
+    return;
+  }
+  if (!handleKey || commentAvatarCache.has(handleKey) || commentAvatarPending.has(handleKey)) return;
+  commentAvatarPending.add(handleKey);
+  resolveUserByHandle(handleKey).then((resolved) => {
+    commentAvatarPending.delete(handleKey);
+    const data = resolved?.data || {};
+    const avatar = data.avatarUrl || data.avatar || "";
+    const url = getOptimizedImageUrl(avatar, "avatar");
+    if (isPlaceholderUrl(url)) return;
+    commentAvatarCache.set(handleKey, url);
+    scheduleCommentAvatarDomUpdate("", handleKey, url);
+  }).catch(() => {
+    commentAvatarPending.delete(handleKey);
+  });
 }
 
 function logoFitClass(isBusiness) {
@@ -615,6 +843,14 @@ function loadPersisted() {
     state.followingHandles = [];
   }
   state.postMeta = {};
+  // --- PRIME SELF AVATAR CACHE EARLY (fix comment avatar after send) ---
+  try {
+    const raw = state.userProfile.avatar || state.user?.photoURL || userAvatarCache || "";
+    const url = getOptimizedImageUrl(raw, "avatar");
+    if (url && !isPlaceholderUrl(url)) {
+      primeSelfAvatarCache(url);
+    }
+  } catch {}
 }
 
 async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
@@ -808,7 +1044,7 @@ function normalizeProfile(data, user) {
     name: displayName,
     handle: data?.handle || normalizeHandle(displayName),
     bio: data?.bio || "",
-    avatar: data?.avatarUrl || "",
+    avatar: data?.avatarUrl || data?.avatar || user?.photoURL || "",
     location: data?.city || "Prishtina",
     followers: data?.followersCount ?? 0,
     following: data?.followingCount ?? 0,
@@ -1167,11 +1403,15 @@ function mapLocate() {
 }
 
 function currentUserBadge() {
+  const avatarRaw = state.userProfile.avatar || state.user?.photoURL || "";
+  const resolvedAvatar = resolveUserAvatarInstant(avatarRaw);
+  const finalAvatar = isPlaceholderUrl(resolvedAvatar) ? "" : resolvedAvatar;
+  if (finalAvatar) primeSelfAvatarCache(finalAvatar);
   return {
     uid: state.user?.uid || "",
     name: state.userProfile.name || "User",
     handle: state.userProfile.handle || "user",
-    avatar: resolveUserAvatar(state.userProfile.avatar)
+    avatar: finalAvatar
   };
 }
 
@@ -1294,12 +1534,12 @@ function updateSearchUserNodes(user) {
   const uid = escapeSelector(user.uid);
   const handle = user.handle || normalizeHandle(user.name || "user");
   const displayName = sanitizeDisplayName(user.name, handle || "User");
-  const avatarUrl = resolveSearchUserAvatar(user.uid, user.avatar);
+  const avatarUrl = resolveSearchUserAvatarDisplay(user);
   document.querySelectorAll(`[data-search-user="${uid}"]`).forEach((el) => {
     if (!(el instanceof HTMLElement)) return;
     el.dataset.searchHandle = handle;
     el.dataset.searchName = displayName;
-    el.dataset.searchAvatar = user.avatar || "";
+    el.dataset.searchAvatar = user.avatarUrl || user.avatar || "";
     el.dataset.searchLocation = user.location || "";
     const nameEl = el.querySelector("[data-search-user-name]");
     if (nameEl && nameEl.textContent !== displayName) nameEl.textContent = displayName;
@@ -1662,6 +1902,7 @@ function ensureCommentShape(comment) {
   const likesCount = Number.isFinite(Number(comment.likesCount)) ? Number(comment.likesCount) : likes.length;
   return {
     id: comment.id,
+    uid: comment.uid || "",
     author: comment.author || "User",
     handle: comment.handle || "user",
     avatar: comment.avatar || "",
@@ -1671,6 +1912,7 @@ function ensureCommentShape(comment) {
     likesCount,
     replies: (comment.replies || []).map((reply) => ({
       id: reply.id,
+      uid: reply.uid || "",
       author: reply.author || "User",
       handle: reply.handle || "user",
       avatar: reply.avatar || "",
@@ -1740,11 +1982,23 @@ async function addComment(postId, text, replyTo) {
   state.postModal.sending = true;
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
+  const handleKey = normalizeHandle(user.handle || user.name || "");
+  const selfAvatar = getSelfAvatarUrl();
+  if (selfAvatar) {
+    user.avatar = selfAvatar;
+    primeSelfAvatarCache(selfAvatar);
+    if (user.uid) commentAvatarCache.set(user.uid, selfAvatar);
+    if (handleKey) commentAvatarCache.set(handleKey, selfAvatar);
+  }
   const commentRef = doc(collection(postRef, "comments"));
+  if (selfAvatar) {
+    primeSelfAvatarCache(selfAvatar);
+  }
   const payload = {
+    uid: user.uid || "",
     author: user.name,
     handle: user.handle,
-    avatar: user.avatar,
+    avatar: selfAvatar || user.avatar || "",
     text: trimmed,
     createdAt: serverTimestamp(),
     parentId: replyTo || null,
@@ -1760,6 +2014,16 @@ async function addComment(postId, text, replyTo) {
     state.postModal.sending = false;
     return;
   }
+
+  // --- INSTANT UI FIX: make sure the just-created comment avatar appears without refresh ---
+  try {
+    const url = payload.avatar ? getOptimizedImageUrl(payload.avatar, "avatar") : "";
+    if (url && !isPlaceholderUrl(url)) {
+      if (payload.uid) commentAvatarCache.set(payload.uid, url);
+      if (handleKey) commentAvatarCache.set(handleKey, url);
+      scheduleCommentAvatarDomUpdate(payload.uid || "", handleKey, url);
+    }
+  } catch {}
 
   try {
     await updatePostCounts(post, { commentsDelta: 1 });
@@ -1793,6 +2057,7 @@ async function addComment(postId, text, replyTo) {
   state.postModal.replyTo = null;
   if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
     updatePostModalMeta();
+    if (selfAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, selfAvatar);
   } else {
     renderOverlays();
   }
@@ -1805,7 +2070,7 @@ async function addComment(postId, text, replyTo) {
         user: user.name,
         userHandle: user.handle,
         userUid: user.uid || "",
-        avatar: user.avatar,
+        avatar: payload.avatar,
         text: "hat deinen Beitrag kommentiert",
         postId: String(post.id || ""),
         commentId: String(commentRef.id || ""),
@@ -2485,7 +2750,7 @@ function startLiveListeners(user) {
     const next = {
       name: data.displayName || state.userProfile.name,
       handle: data.handle || state.userProfile.handle,
-      avatar: data.avatarUrl || state.userProfile.avatar,
+      avatar: data.avatarUrl || data.avatar || state.userProfile.avatar,
       followers: data.followersCount ?? state.userProfile.followers,
       following: data.followingCount ?? state.userProfile.following,
       role: data.role || state.userProfile.role,
@@ -2494,6 +2759,20 @@ function startLiveListeners(user) {
     };
     Object.assign(state.userProfile, next);
     safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+    const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
+    if (!isPlaceholderUrl(resolvedAvatar)) {
+      userAvatarCache = resolvedAvatar;
+      scheduleAvatarCacheWrite(resolvedAvatar);
+      if (state.user?.uid) {
+        commentAvatarCache.set(state.user.uid, resolvedAvatar);
+        updateCommentAvatarNodesByUid(state.user.uid, resolvedAvatar);
+      }
+      const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+      if (handleKey) {
+        commentAvatarCache.set(handleKey, resolvedAvatar);
+        updateCommentAvatarNodes(handleKey, resolvedAvatar);
+      }
+    }
     updateShellDom();
     if (state.activeTab === "profile" && !state.profileView) {
       render();
@@ -2559,7 +2838,7 @@ function attachProfileViewListener(profile) {
     } else {
       viewProfile.followers = data.followersCount ?? viewProfile.followers;
       viewProfile.following = data.followingCount ?? viewProfile.following;
-      viewProfile.avatar = data.avatarUrl || viewProfile.avatar;
+      viewProfile.avatar = data.avatarUrl || data.avatar || viewProfile.avatar;
       viewProfile.name = data.displayName || viewProfile.name;
       viewProfile.location = data.city || viewProfile.location;
     }
@@ -4082,10 +4361,22 @@ function renderProfileModal() {
 function renderCommentItem(postId, comment, parentId = "") {
   const likeCount = Array.isArray(comment.likes) ? comment.likes.length : (Number(comment.likesCount) || 0);
   const isReply = !!parentId;
-  const avatarUrl = getOptimizedImageUrl(comment.avatar, "avatar");
+  const handleKey = normalizeHandle(comment.handle || comment.author || "");
+  let avatarUrl = resolveCommentAvatar(comment);
+  const selfUid = state.user?.uid || "";
+  const selfHandle = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+  const isSelf = (!!selfUid && comment.uid && String(comment.uid) === String(selfUid))
+    || (!!selfHandle && handleKey && handleKey === selfHandle);
+  if (isSelf) {
+    const selfAvatar = getSelfAvatarUrl();
+    if (selfAvatar) avatarUrl = selfAvatar;
+  }
+  if (isPlaceholderUrl(avatarUrl)) {
+    scheduleCommentAvatarFetch(comment);
+  }
   return `
     <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}">
-      <img src="${escapeHtml(avatarUrl)}" data-img-key="comment-avatar:${escapeHtml(comment.id)}" class="w-9 h-9 rounded-2xl object-cover shadow" />
+      <img src="${escapeHtml(avatarUrl)}" data-img-key="comment-avatar:${escapeHtml(comment.id)}" data-comment-handle="${escapeHtml(handleKey)}" data-comment-uid="${escapeHtml(comment.uid || "")}" class="w-9 h-9 rounded-2xl object-cover shadow" />
       <div class="flex-1">
         <div class="flex items-center justify-between">
           <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author)}</div>
@@ -4213,7 +4504,7 @@ function renderLikesModal() {
 
           <div class="px-7 pb-7 space-y-3 overflow-y-auto no-scrollbar modal-scroll flex-1">
             ${likes.length ? likes.map((user) => {
-              const avatarUrl = getOptimizedImageUrl(user.avatar, "avatar");
+              const avatarUrl = resolveLikeAvatar(user);
               return `
               <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
                 <img src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-2xl object-cover" />
@@ -4257,6 +4548,7 @@ function updatePostModalMeta() {
     const cache = cacheCurrentImages(postComments);
     postComments.innerHTML = renderPostComments(comments);
     rehydrateImages(cache, postComments);
+    applyCommentAvatarCache(postComments);
   }
   if (window.lucide?.createIcons) window.lucide.createIcons();
   if (pendingCommentHighlight) {
@@ -4448,7 +4740,7 @@ function renderNotificationsList(items) {
   }
   return items.map((n) => `
     <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
-      <img src="${escapeHtml(getOptimizedImageUrl(n.img, "avatar"))}" data-img-key="notif:${escapeHtml(n.id)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
+      <img src="${escapeHtml(resolveNotificationAvatar(n))}" data-img-key="notif:${escapeHtml(n.id)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
       <div class="flex-1 min-w-0">
         <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
         <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
@@ -4464,9 +4756,10 @@ function renderNotificationsList(items) {
 function renderSearchUserItem(user) {
   const handle = user.handle || normalizeHandle(user.name || "user");
   const displayName = sanitizeDisplayName(user.name, handle || "User");
-  const avatarUrl = resolveSearchUserAvatar(user.uid, user.avatar);
+  const avatarUrl = resolveSearchUserAvatarDisplay(user);
+  const avatarRaw = user.avatarUrl || user.avatar || "";
   return `
-    <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(user.avatar)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
+    <button data-search-user="${escapeHtml(user.uid)}" data-search-handle="${escapeHtml(handle)}" data-search-name="${escapeHtml(displayName)}" data-search-avatar="${escapeHtml(avatarRaw)}" data-search-location="${escapeHtml(user.location)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
       <img src="${escapeHtml(avatarUrl)}" data-img-key="search-user:${escapeHtml(user.uid)}" class="w-12 h-12 rounded-2xl object-cover bg-slate-200" />
       <div class="flex-1 min-w-0">
         <p data-search-user-name class="text-sm font-black text-slate-900 truncate">${escapeHtml(displayName)}</p>
@@ -5801,13 +6094,33 @@ async function createUserPost({ uid, caption, url }) {
 
 async function loadUserProfile(user, { force = false } = {}) {
   if (!user) return;
-  if (FAST_MODE && state.userProfile?.uid === user.uid && state.userProfile?.name && !force) return;
+  if (FAST_MODE && state.userProfile?.uid === user.uid && state.userProfile?.name && !force) {
+    const cachedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
+    if (!isPlaceholderUrl(cachedAvatar)) return;
+  }
   await ensureUserProfile(user, { city: "Prishtina" });
   const snap = await getDoc(doc(db, "users", user.uid));
   const data = snap.exists() ? snap.data() : {};
-  state.userProfile = normalizeProfile(data, user);
+  const prevAvatar = state.userProfile?.avatar || "";
+  const normalized = normalizeProfile(data, user);
+  if (!normalized.avatar && prevAvatar) normalized.avatar = prevAvatar;
+  state.userProfile = normalized;
   state.userProfile.uid = user.uid;
   safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+  const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
+  if (!isPlaceholderUrl(resolvedAvatar)) {
+    userAvatarCache = resolvedAvatar;
+    scheduleAvatarCacheWrite(resolvedAvatar);
+    if (state.user?.uid) {
+      commentAvatarCache.set(state.user.uid, resolvedAvatar);
+      updateCommentAvatarNodesByUid(state.user.uid, resolvedAvatar);
+    }
+    const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+    if (handleKey) {
+      commentAvatarCache.set(handleKey, resolvedAvatar);
+      updateCommentAvatarNodes(handleKey, resolvedAvatar);
+    }
+  }
   if (lastRenderMode === "main") {
     updateShellDom();
     if (state.activeTab === "search" && refreshSearchView()) return;
@@ -5929,7 +6242,7 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
     handle: handle || "business",
     uid: profileDoc?.id || data?.uid || "",
     bio: data?.bio || restaurant?.description || restaurant?.bio || "Offizieller Account auf MENYRA Social.",
-    avatar: data?.avatarUrl || restaurant?.logoUrl || restaurant?.logo || "",
+    avatar: data?.avatarUrl || data?.avatar || restaurant?.logoUrl || restaurant?.logo || "",
     location: data?.city || restaurant?.city || "Kosovo",
     followers: data?.followersCount ?? data?.followers ?? 0,
     following: data?.followingCount ?? data?.following ?? 0,
@@ -5949,7 +6262,7 @@ function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
     handle: handle || "user",
     uid: userDoc?.id || data?.uid || fallback?.uid || "",
     bio: data?.bio || fallback?.bio || "",
-    avatar: data?.avatarUrl || fallback?.avatar || '',
+    avatar: data?.avatarUrl || data?.avatar || fallback?.avatar || '',
     location: data?.city || fallback?.location || "Prishtina",
     followers: data?.followersCount ?? data?.followers ?? fallback?.followers ?? 0,
     following: data?.followingCount ?? data?.following ?? fallback?.following ?? 0,
@@ -6390,7 +6703,7 @@ async function loadStories() {
 async function bootstrapUser(user) {
   if (!user) return;
   try {
-    await loadUserProfile(user);
+    await loadUserProfile(user, { force: true });
     await resolveRoleSwitchTargets(user);
   } finally {
   }
