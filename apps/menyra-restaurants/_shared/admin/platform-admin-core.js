@@ -5,7 +5,7 @@
 // - No realtime listeners (no onSnapshot)
 // =========================================================
 
-import { app, db, auth, storage } from "../../../../shared/firebase-config.js";
+import { app, db, auth } from "../../../../shared/firebase-config.js";
 import { BUNNY_EDGE_BASE } from "../../../../shared/bunny-edge.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
@@ -22,11 +22,6 @@ import {
   signInWithEmailAndPassword,
   signOut
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
-import {
-  ref as storageRef,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
 
 import {
 collection,
@@ -2317,7 +2312,7 @@ function closeStaffModal(){
   if (overlay) hide(overlay);
 }
 
-function updateProfileUi({ name, email, photoUrl }) {
+function updateProfileUi({ name, email, avatarUrl }) {
   const label = name || email || "Account";
   qsa(".m-profile-name").forEach((el) => { el.textContent = label; });
   const avatars = qsa(".m-profile-avatar");
@@ -2325,7 +2320,7 @@ function updateProfileUi({ name, email, photoUrl }) {
   if (!window.__MENYRA_DEFAULT_AVATAR) {
     window.__MENYRA_DEFAULT_AVATAR = avatars[0].getAttribute("src") || "";
   }
-  const src = photoUrl || window.__MENYRA_DEFAULT_AVATAR;
+  const src = avatarUrl || window.__MENYRA_DEFAULT_AVATAR;
   if (!src) return;
   avatars.forEach((el) => { el.src = src; });
 }
@@ -2389,8 +2384,8 @@ async function loadProfileForUser(role, user, restaurantId) {
   const email = user.email || data?.email || "";
   let name = data?.name || user.displayName || (email ? email.split("@")[0] : "");
   if (role === "owner" && restaurantName) name = `${name} - ${restaurantName}`;
-  const photoUrl = data?.photoUrl || user.photoURL || "";
-  updateProfileUi({ name, email, photoUrl });
+  const avatarUrl = data?.avatarUrl || data?.photoUrl || user.photoURL || "";
+  updateProfileUi({ name, email, avatarUrl });
 }
 
 async function collectRestaurantsByStaffField(field, value, limitCount = 10) {
@@ -2984,20 +2979,23 @@ async function upsertStaffIndex({ uid, restaurantId, name, email }) {
   }
 }
 
-function fileExtFromName(name) {
-  const base = String(name || "").trim();
-  if (!base || !base.includes(".")) return "jpg";
-  const ext = base.split(".").pop().toLowerCase().replace(/[^a-z0-9]/g, "");
-  return ext || "jpg";
-}
+async function uploadStaffPhotoFile({ file, restaurantId }) {
+  if (!file) return "";
+  const maxBytes = 15 * 1024 * 1024;
+  if (file.size > maxBytes) throw new Error("Max 15MB pro Bild.");
+  if (!String(file.type || "").startsWith("image/")) throw new Error("Nur Bilder erlaubt.");
 
-async function uploadStaffPhotoFile({ file, pathBase }) {
-  if (!file || !pathBase) return "";
-  const ext = fileExtFromName(file.name);
-  const path = `${pathBase}.${ext}`;
-  const ref = storageRef(storage, path);
-  await uploadBytes(ref, file);
-  return await getDownloadURL(ref);
+  const form = new FormData();
+  form.append("file", file, file.name || "image.jpg");
+  form.append("restaurantId", restaurantId || "staff");
+
+  const res = await fetch(`${BUNNY_EDGE_BASE}/image/upload`, {
+    method: "POST",
+    body: form
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.url) throw new Error(data?.error || "Upload fehlgeschlagen.");
+  return String(data.cdnUrl || data.url);
 }
 
 let __secondaryAuth = null;
@@ -3054,7 +3052,7 @@ async function fetchRestaurantStaff(restaurantId) {
   return snap.docs.map((d) => ({ id: d.id, ...(d.data() || {}) }));
 }
 
-async function createSystemStaffAccount({ name, email, password, role, photoUrl, createdByUid, createdByRole }) {
+async function createSystemStaffAccount({ name, email, password, role, avatarUrl, createdByUid, createdByRole }) {
   const user = await createAuthUser(email, password);
   const payload = {
     uid: user.uid,
@@ -3062,7 +3060,7 @@ async function createSystemStaffAccount({ name, email, password, role, photoUrl,
     name: name || "",
     email: email || "",
     role: role || "staff",
-    photoUrl: photoUrl || "",
+    avatarUrl: avatarUrl || "",
     status: "active",
     createdAt: serverTimestamp(),
     createdByUid: createdByUid || null,
@@ -3073,7 +3071,7 @@ async function createSystemStaffAccount({ name, email, password, role, photoUrl,
   return user.uid;
 }
 
-async function createRestaurantStaffAccount({ restaurantId, name, email, password, role, roles, photoUrl, createdByUid, createdByRole }) {
+async function createRestaurantStaffAccount({ restaurantId, name, email, password, role, roles, avatarUrl, createdByUid, createdByRole }) {
   const user = await createAuthUser(email, password);
   const normalizedRoles = normalizeRestaurantRoles(roles || role || "waiter");
   const primaryRole = pickPrimaryRestaurantRole(normalizedRoles);
@@ -3084,7 +3082,7 @@ async function createRestaurantStaffAccount({ restaurantId, name, email, passwor
     email: email || "",
     role: primaryRole,
     roles: normalizedRoles,
-    photoUrl: photoUrl || "",
+    avatarUrl: avatarUrl || "",
     status: "active",
     createdAt: serverTimestamp(),
     createdByUid: createdByUid || null,
@@ -3125,13 +3123,13 @@ async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, cit
   await setDoc(doc(db, "users", uid), payload, { merge: true });
 }
 
-async function updateSystemStaffAccount({ uid, currentRole, nextRole, name, email, photoUrl, updatedByUid, updatedByRole }) {
+async function updateSystemStaffAccount({ uid, currentRole, nextRole, name, email, avatarUrl, updatedByUid, updatedByRole }) {
   if (!uid) return;
   const payload = {
     name: name || "",
     email: email || "",
     role: nextRole || currentRole || "staff",
-    photoUrl: photoUrl || "",
+    avatarUrl: avatarUrl || "",
     updatedAt: serverTimestamp(),
     updatedByUid: updatedByUid || null,
     updatedByRole: updatedByRole || null
@@ -3146,7 +3144,7 @@ async function updateSystemStaffAccount({ uid, currentRole, nextRole, name, emai
   await deleteDoc(doc(db, fromCol, uid));
 }
 
-async function updateRestaurantStaffAccount({ restaurantId, uid, role, roles, name, email, photoUrl, updatedByUid, updatedByRole }) {
+async function updateRestaurantStaffAccount({ restaurantId, uid, role, roles, name, email, avatarUrl, updatedByUid, updatedByRole }) {
   if (!restaurantId || !uid) return;
   const normalizedRoles = normalizeRestaurantRoles(roles || role || "waiter");
   const primaryRole = pickPrimaryRestaurantRole(normalizedRoles);
@@ -3157,7 +3155,7 @@ async function updateRestaurantStaffAccount({ restaurantId, uid, role, roles, na
     email: email || "",
     role: primaryRole,
     roles: normalizedRoles,
-    photoUrl: photoUrl || "",
+    avatarUrl: avatarUrl || "",
     updatedAt: serverTimestamp(),
     updatedByUid: updatedByUid || null,
     updatedByRole: updatedByRole || null
@@ -3825,7 +3823,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     $("staffFormCurrentRole").value = data.role || data.targetRole || "";
     $("staffFormRequestId").value = data.requestId || data.id || "";
     $("staffFormRestaurantId").value = data.restaurantId || "";
-    $("staffFormPhotoUrl").value = data.photoUrl || "";
+    $("staffFormPhotoUrl").value = data.avatarUrl || data.photoUrl || "";
 
     if (staffName) staffName.value = data.name || data.displayName || "";
     if (staffEmail) {
@@ -4274,7 +4272,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     const email = ($("staffEmail")?.value || "").trim();
     const password = ($("staffPassword")?.value || "").trim();
     const photoFile = $("staffPhoto")?.files?.[0] || null;
-    const existingPhotoUrl = ($("staffFormPhotoUrl")?.value || "").trim();
+    const existingAvatarUrl = ($("staffFormPhotoUrl")?.value || "").trim();
     const systemRole = ($("staffSystemRole")?.value || "staff").trim();
     const restaurantRoles = getRestaurantRolesFromForm();
     const primaryRestaurantRole = pickPrimaryRestaurantRole(restaurantRoles);
@@ -4312,11 +4310,9 @@ $("leadForm")?.addEventListener("submit", async (e) => {
         };
         const requestId = await createStaffRequest(payload);
         if (photoFile) {
-          const url = await uploadStaffPhotoFile({
-            file: photoFile,
-            pathBase: `staff-requests/${requestId}/${Date.now()}`
-          });
-          await updateStaffRequest(requestId, { photoUrl: url });
+          const uploadRid = (kind === "restaurant" && restaurantId) ? restaurantId : "system";
+          const url = await uploadStaffPhotoFile({ file: photoFile, restaurantId: uploadRid });
+          await updateStaffRequest(requestId, { avatarUrl: url });
         }
         closeStaffModal();
         await refreshStaffRequests();
@@ -4334,7 +4330,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
             password,
             role: targetRole,
             roles: restaurantRoles,
-            photoUrl: existingPhotoUrl,
+            avatarUrl: existingAvatarUrl,
             createdByUid: user.uid,
             createdByRole: role
           });
@@ -4344,21 +4340,19 @@ $("leadForm")?.addEventListener("submit", async (e) => {
             email,
             password,
             role: targetRole,
-            photoUrl: existingPhotoUrl,
+            avatarUrl: existingAvatarUrl,
             createdByUid: user.uid,
             createdByRole: role
           });
         }
         if (photoFile) {
-          const pathBase = (kind === "restaurant")
-            ? `staff-photos/restaurants/${restaurantId}/${createdUid}-${Date.now()}`
-            : `staff-photos/system/${createdUid}-${Date.now()}`;
-          const url = await uploadStaffPhotoFile({ file: photoFile, pathBase });
+          const uploadRid = (kind === "restaurant" && restaurantId) ? restaurantId : "system";
+          const url = await uploadStaffPhotoFile({ file: photoFile, restaurantId: uploadRid });
           if (kind === "restaurant") {
-            await setDoc(doc(db, "restaurants", restaurantId, "staff", createdUid), { photoUrl: url }, { merge: true });
+            await setDoc(doc(db, "restaurants", restaurantId, "staff", createdUid), { avatarUrl: url }, { merge: true });
           } else {
             const col = targetRole === "ceo" ? "superadmins" : "staffAdmins";
-            await setDoc(doc(db, col, createdUid), { photoUrl: url }, { merge: true });
+            await setDoc(doc(db, col, createdUid), { avatarUrl: url }, { merge: true });
           }
         }
         await updateStaffRequest(requestId, {
@@ -4375,10 +4369,9 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
       if (mode === "edit") {
         if (kind === "restaurant") {
-          let photoUrl = existingPhotoUrl;
+          let avatarUrl = existingAvatarUrl;
           if (photoFile) {
-            const pathBase = `staff-photos/restaurants/${restaurantId}/${uid}-${Date.now()}`;
-            photoUrl = await uploadStaffPhotoFile({ file: photoFile, pathBase });
+            avatarUrl = await uploadStaffPhotoFile({ file: photoFile, restaurantId });
           }
           await updateRestaurantStaffAccount({
             restaurantId,
@@ -4387,7 +4380,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
             roles: restaurantRoles,
             name,
             email,
-            photoUrl,
+            avatarUrl,
             updatedByUid: user.uid,
             updatedByRole: role
           });
@@ -4395,10 +4388,9 @@ $("leadForm")?.addEventListener("submit", async (e) => {
           await refreshRestaurantStaff(restaurantId);
           return;
         }
-        let photoUrl = existingPhotoUrl;
+        let avatarUrl = existingAvatarUrl;
         if (photoFile) {
-          const pathBase = `staff-photos/system/${uid}-${Date.now()}`;
-          photoUrl = await uploadStaffPhotoFile({ file: photoFile, pathBase });
+          avatarUrl = await uploadStaffPhotoFile({ file: photoFile, restaurantId: "system" });
         }
         await updateSystemStaffAccount({
           uid,
@@ -4406,7 +4398,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
           nextRole: systemRole,
           name,
           email,
-          photoUrl,
+          avatarUrl,
           updatedByUid: user.uid,
           updatedByRole: role
         });
@@ -4424,14 +4416,13 @@ $("leadForm")?.addEventListener("submit", async (e) => {
             password,
             role: primaryRestaurantRole,
             roles: restaurantRoles,
-            photoUrl: existingPhotoUrl,
+            avatarUrl: existingAvatarUrl,
             createdByUid: user.uid,
             createdByRole: role
           });
           if (photoFile && createdUid) {
-            const pathBase = `staff-photos/restaurants/${restaurantId}/${createdUid}-${Date.now()}`;
-            const url = await uploadStaffPhotoFile({ file: photoFile, pathBase });
-            await setDoc(doc(db, "restaurants", restaurantId, "staff", createdUid), { photoUrl: url }, { merge: true });
+            const url = await uploadStaffPhotoFile({ file: photoFile, restaurantId });
+            await setDoc(doc(db, "restaurants", restaurantId, "staff", createdUid), { avatarUrl: url }, { merge: true });
           }
           closeStaffModal();
           await refreshRestaurantStaff(restaurantId);
@@ -4442,15 +4433,14 @@ $("leadForm")?.addEventListener("submit", async (e) => {
           email,
           password,
           role: systemRole,
-          photoUrl: existingPhotoUrl,
+          avatarUrl: existingAvatarUrl,
           createdByUid: user.uid,
           createdByRole: role
         });
         if (photoFile && createdUid) {
-          const pathBase = `staff-photos/system/${createdUid}-${Date.now()}`;
-          const url = await uploadStaffPhotoFile({ file: photoFile, pathBase });
+          const url = await uploadStaffPhotoFile({ file: photoFile, restaurantId: "system" });
           const col = systemRole === "ceo" ? "superadmins" : "staffAdmins";
-          await setDoc(doc(db, col, createdUid), { photoUrl: url }, { merge: true });
+          await setDoc(doc(db, col, createdUid), { avatarUrl: url }, { merge: true });
         }
         closeStaffModal();
         await refreshSystemStaff();
