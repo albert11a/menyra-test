@@ -25,6 +25,7 @@ import {
   setDoc,
   updateDoc,
   increment,
+  writeBatch,
   runTransaction,
   serverTimestamp,
   Timestamp
@@ -292,6 +293,7 @@ let feedUnsub = null;
 let storiesUnsub = null;
 let userPostsUnsub = null;
 let businessPostsUnsub = null;
+let modalPostDocUnsub = null;
 let modalLikesUnsub = null;
 let modalCommentsUnsub = null;
 let storyRefreshTimer = null;
@@ -2202,7 +2204,7 @@ function ensureCommentShape(comment) {
   };
 }
 
-async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0 } = {}) {
+async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0, skipRemote = false } = {}) {
   if (!post) return;
   const likeBase = Number(post.likes) || 0;
   const commentBase = Number(post.comments) || 0;
@@ -2218,16 +2220,16 @@ async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0 } = {}
   if (likesDelta) updates.likesCount = increment(likesDelta);
   if (commentsDelta) updates.commentsCount = increment(commentsDelta);
 
-  const postRef = getPostDocRef(post);
-  if (postRef && Object.keys(updates).length) {
-    try {
-      await updateDoc(postRef, updates);
-    } catch (err) {
-      console.error(err);
+  if (!skipRemote && Object.keys(updates).length) {
+    const postRef = getPostDocRef(post);
+    if (postRef) {
+      try {
+        await updateDoc(postRef, updates);
+      } catch (err) {
+        console.error(err);
+      }
     }
-  }
 
-  if (Object.keys(updates).length) {
     const feedRef = getFeedDocRef(post);
     if (feedRef) {
       try {
@@ -2282,7 +2284,19 @@ async function addComment(postId, text, replyTo) {
   };
 
   try {
-    await setDoc(commentRef, payload);
+    const batch = writeBatch(db);
+    batch.set(commentRef, payload);
+    batch.update(postRef, { commentsCount: increment(1) });
+    const feedRef = getFeedDocRef(post);
+    if (feedRef) {
+      try {
+        const feedSnap = await getDoc(feedRef);
+        if (feedSnap.exists()) {
+          batch.update(feedRef, { commentsCount: increment(1) });
+        }
+      } catch {}
+    }
+    await batch.commit();
   } catch (err) {
     console.error(err);
     lastCommentKey = "";
@@ -2308,7 +2322,7 @@ async function addComment(postId, text, replyTo) {
   } catch {}
 
   try {
-    await updatePostCounts(post, { commentsDelta: 1 });
+    await updatePostCounts(post, { commentsDelta: 1, skipRemote: true });
   } catch (err) {
     console.error(err);
   }
@@ -2377,35 +2391,50 @@ async function togglePostLike(postId) {
   if (!post || !postRef) return;
   const likeId = user.uid;
   const likeRef = doc(collection(postRef, "likes"), likeId);
-  const idx = meta.likes.findIndex((item) => item.uid === user.uid || item.handle === user.handle);
-  const isUnlike = idx >= 0;
-  const delta = isUnlike ? -1 : 1;
+  const feedRef = getFeedDocRef(post);
+  let delta = 0;
   try {
-    if (isUnlike) {
-      meta.likes.splice(idx, 1);
+    await runTransaction(db, async (tx) => {
+      const likeSnap = await tx.get(likeRef);
+      if (likeSnap.exists()) {
+        tx.delete(likeRef);
+        delta = -1;
+      } else {
+        tx.set(likeRef, {
+          uid: user.uid,
+          name: user.name,
+          handle: user.handle,
+          avatar: user.avatar,
+          createdAt: serverTimestamp()
+        });
+        delta = 1;
+      }
+      tx.update(postRef, { likesCount: increment(delta) });
+      if (feedRef) {
+        const feedSnap = await tx.get(feedRef);
+        if (feedSnap.exists()) {
+          tx.update(feedRef, { likesCount: increment(delta) });
+        }
+      }
+    });
+
+    if (!delta) return;
+    if (delta < 0) {
+      const idx = meta.likes.findIndex((item) => item.uid === user.uid || item.handle === user.handle);
+      if (idx >= 0) meta.likes.splice(idx, 1);
     } else {
       meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
     }
 
     state.postMeta[postId] = meta;
-    void updatePostCounts(post, { likesDelta: delta });
-  updatePostCountNodes(post);
-  if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
-    updatePostModalCountsOnly();
-  } else {
-    renderOverlays();
-  }
-
-    if (isUnlike) {
-      await deleteDoc(likeRef);
+    await updatePostCounts(post, { likesDelta: delta, skipRemote: true });
+    if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+      updatePostModalCountsOnly();
     } else {
-      await setDoc(likeRef, {
-        uid: user.uid,
-        name: user.name,
-        handle: user.handle,
-        avatar: user.avatar,
-        createdAt: serverTimestamp()
-      });
+      renderOverlays();
+    }
+
+    if (delta > 0) {
       const ownerUid = await resolvePostOwnerUid(post);
       if (ownerUid && ownerUid !== state.user.uid) {
         await pushUserNotification(ownerUid, {
@@ -2937,6 +2966,10 @@ function stopLiveListeners() {
     businessPostsUnsub();
     businessPostsUnsub = null;
   }
+  if (modalPostDocUnsub) {
+    modalPostDocUnsub();
+    modalPostDocUnsub = null;
+  }
   if (modalLikesUnsub) {
     modalLikesUnsub();
     modalLikesUnsub = null;
@@ -3442,6 +3475,10 @@ function startBusinessPostsListener(restaurantId) {
 }
 
 function stopPostMetaListeners() {
+  if (modalPostDocUnsub) {
+    modalPostDocUnsub();
+    modalPostDocUnsub = null;
+  }
   if (modalLikesUnsub) {
     modalLikesUnsub();
     modalLikesUnsub = null;
@@ -3457,18 +3494,24 @@ function attachPostMetaListeners(post) {
   const postRef = getPostDocRef(post);
   if (!postRef || !post?.id) return;
   const postId = String(post.id);
+  modalPostDocUnsub = onSnapshot(postRef, (docSnap) => {
+    if (!docSnap.exists()) return;
+    const data = docSnap.data() || {};
+    const nextLikes = Number(data.likesCount ?? data.likes ?? post.likes ?? 0) || 0;
+    const nextComments = Number(data.commentsCount ?? data.comments ?? post.comments ?? 0) || 0;
+    post.likes = nextLikes;
+    post.comments = nextComments;
+    if (state.postModal.post && String(state.postModal.post.id) === postId) {
+      state.postModal.post.likes = nextLikes;
+      state.postModal.post.comments = nextComments;
+    }
+    updatePostCountNodes(post);
+    updatePostModalCountsOnly();
+  });
   modalLikesUnsub = onSnapshot(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)), (snap) => {
     const meta = ensurePostMeta(postId);
     meta.likes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
     state.postMeta[postId] = meta;
-    const current = Number(post.likes) || 0;
-    const loaded = snap.size;
-    const likeTotal = Math.max(current, loaded);
-    if (state.postModal.post && String(state.postModal.post.id) === postId) {
-      state.postModal.post.likes = likeTotal;
-    }
-    post.likes = likeTotal;
-    updatePostCountNodes(post);
     updatePostModalCountsOnly();
   });
   modalCommentsUnsub = onSnapshot(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)), (snap) => {
@@ -3491,15 +3534,7 @@ function attachPostMetaListeners(post) {
       }
     });
     meta.comments = top;
-    const current = Number(post.comments) || 0;
-    const loaded = snap.size;
-    const totalComments = Math.max(current, loaded);
-    post.comments = totalComments;
-    if (state.postModal.post && String(state.postModal.post.id) === postId) {
-      state.postModal.post.comments = totalComments;
-    }
     state.postMeta[postId] = meta;
-    updatePostCountNodes(post);
     updatePostModalCountsOnly();
     updatePostModalCommentsOnly();
   });
