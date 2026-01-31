@@ -3461,7 +3461,9 @@ function attachPostMetaListeners(post) {
     const meta = ensurePostMeta(postId);
     meta.likes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
     state.postMeta[postId] = meta;
-    const likeTotal = meta.likes.length;
+    const current = Number(post.likes) || 0;
+    const loaded = snap.size;
+    const likeTotal = Math.max(current, loaded);
     if (state.postModal.post && String(state.postModal.post.id) === postId) {
       state.postModal.post.likes = likeTotal;
     }
@@ -3489,7 +3491,9 @@ function attachPostMetaListeners(post) {
       }
     });
     meta.comments = top;
-    const totalComments = snap.size;
+    const current = Number(post.comments) || 0;
+    const loaded = snap.size;
+    const totalComments = Math.max(current, loaded);
     post.comments = totalComments;
     if (state.postModal.post && String(state.postModal.post.id) === postId) {
       state.postModal.post.comments = totalComments;
@@ -4861,6 +4865,8 @@ function renderLikesModal() {
   if (!state.likesModal.open || !state.likesModal.postId) return "";
   const meta = ensurePostMeta(state.likesModal.postId);
   const likes = meta.likes || [];
+  const postForCount = findPostById(state.likesModal.postId);
+  const likeTotal = Number(postForCount?.likes) || likes.length;
   const animClass = "";
 
   return `
@@ -4871,7 +4877,7 @@ function renderLikesModal() {
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
-              <h3 class="text-xl font-black italic tracking-tighter">${likes.length} Likes</h3>
+              <h3 class="text-xl font-black italic tracking-tighter">${likeTotal} Likes</h3>
             </div>
             <button id="likesModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
           </div>
@@ -4908,7 +4914,7 @@ function updatePostModalCountsOnly() {
   if (!state.postModal.open || !state.postModal.post) return;
   const post = state.postModal.post;
   const meta = ensurePostMeta(post.id);
-  const likeCount = Array.isArray(meta.likes) ? meta.likes.length : (Number(post.likes) || 0);
+  const likeCount = Number(post.likes) || 0;
   const commentCount = Number(post.comments) || 0;
   const userBadge = currentUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
