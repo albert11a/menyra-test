@@ -390,6 +390,26 @@ function resolveUserAvatar(raw) {
   return getOptimizedImageUrl("", "avatar");
 }
 
+function resolveShellAvatarUrl() {
+  const raw = state.userProfile.avatar || state.user?.photoURL || userAvatarCache || "";
+  const resolved = getOptimizedImageUrl(raw, "avatar");
+  if (!isPlaceholderUrl(resolved)) return resolved;
+  const live = getLiveAvatarFromDom();
+  if (live) return live;
+  return PLACEHOLDER_IMAGE;
+}
+
+function captureShellAvatarFromDom() {
+  const live = getLiveAvatarFromDom();
+  if (!live || isPlaceholderUrl(live)) return;
+  if (state.userProfile.avatar !== live) {
+    state.userProfile.avatar = live;
+    try { safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile)); } catch {}
+  }
+  userAvatarCache = live;
+  scheduleAvatarCacheWrite(live);
+}
+
 function getLiveAvatarFromDom() {
   if (typeof document === "undefined") return "";
   const headerAvatar = document.getElementById("headerAvatar");
@@ -801,6 +821,9 @@ function setState(patch) {
   const prevTab = state.activeTab;
   const keys = Object.keys(patch || {});
   const drawerOnly = keys.length === 1 && keys[0] === "drawerOpen";
+  if (!drawerOnly) {
+    captureShellAvatarFromDom();
+  }
   Object.assign(state, patch);
   if (drawerOnly && lastRenderMode === "main") {
     updateDrawerDom();
@@ -889,6 +912,9 @@ function loadPersisted() {
   const savedProfile = safeStorage.getItem(STORAGE_KEYS.profile);
   if (savedProfile) {
     try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch {}
+  }
+  if (!state.userProfile.avatar && userAvatarCache && !isPlaceholderUrl(userAvatarCache)) {
+    state.userProfile.avatar = userAvatarCache;
   }
 
   const userPostsCache = readCache(CACHE_KEYS.userPosts);
@@ -2343,6 +2369,7 @@ async function togglePostLike(postId) {
         });
       }
     }
+    updateShellDom();
   } catch (err) {
     console.error(err);
   }
@@ -2387,6 +2414,7 @@ async function toggleCommentLike(postId, commentId, replyId) {
     } else {
       await updateDoc(commentRef, { likes: arrayUnion(likeId) });
     }
+    updateShellDom();
   } catch (err) {
     console.error(err);
   }
@@ -2451,7 +2479,7 @@ function renderAuthScreen() {
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const switchLinks = renderRoleSwitchLinks();
-  const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
+  const avatarUrl = resolveShellAvatarUrl();
   const avatarFit = logoFitClass(state.userProfile.role === "business");
   return `
     <div id="drawerRoot" class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
@@ -2770,11 +2798,15 @@ function bindFeedDelegation() {
 }
 
 function updateShellDom() {
-  const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
+  captureShellAvatarFromDom();
+  const avatarUrl = resolveShellAvatarUrl();
   const isBusiness = state.userProfile.role === "business";
   const headerAvatar = document.getElementById("headerAvatar");
-  if (headerAvatar && headerAvatar.getAttribute("src") !== avatarUrl) {
-    headerAvatar.setAttribute("src", avatarUrl);
+  if (headerAvatar) {
+    const current = headerAvatar.getAttribute("src") || "";
+    if (!isPlaceholderUrl(avatarUrl) || !current || isPlaceholderUrl(current)) {
+      if (current !== avatarUrl) headerAvatar.setAttribute("src", avatarUrl);
+    }
   }
   if (headerAvatar) {
     headerAvatar.classList.toggle("object-contain", isBusiness);
@@ -2782,8 +2814,11 @@ function updateShellDom() {
     headerAvatar.classList.toggle("object-cover", !isBusiness);
   }
   const drawerAvatar = document.getElementById("drawerAvatar");
-  if (drawerAvatar && drawerAvatar.getAttribute("src") !== avatarUrl) {
-    drawerAvatar.setAttribute("src", avatarUrl);
+  if (drawerAvatar) {
+    const current = drawerAvatar.getAttribute("src") || "";
+    if (!isPlaceholderUrl(avatarUrl) || !current || isPlaceholderUrl(current)) {
+      if (current !== avatarUrl) drawerAvatar.setAttribute("src", avatarUrl);
+    }
   }
   if (drawerAvatar) {
     drawerAvatar.classList.toggle("object-contain", isBusiness);
@@ -5237,7 +5272,7 @@ function renderUploadView() {
 function renderHeader() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const badge = unread > 9 ? "9+" : String(unread || "");
-  const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
+  const avatarUrl = resolveShellAvatarUrl();
   const avatarFit = logoFitClass(state.userProfile.role === "business");
   return `
     <header class="p-6 pb-2 flex justify-between items-center sticky top-0 z-40 backdrop-blur-xl bg-slate-50/80">
