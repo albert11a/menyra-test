@@ -340,6 +340,7 @@ const socialUserModal = {
   name: document.getElementById("socialUserName"),
   city: document.getElementById("socialUserCity"),
   role: document.getElementById("socialUserRole"),
+  restaurant: document.getElementById("socialUserRestaurant"),
   idDisplay: document.getElementById("socialUserId"),
   status: document.getElementById("socialUserModalStatus"),
   saveBtn: document.getElementById("socialUserSaveBtn"),
@@ -352,6 +353,9 @@ function showSocialUserModal() {
   socialUserModal.overlay.classList.remove("is-hidden");
   document.documentElement.classList.add("modal-open");
   document.body.classList.add("modal-open");
+  loadSocialRestaurants().then(() => {
+    renderSocialRestaurantOptions(String(socialUserModal.restaurant?.value || ""));
+  });
 }
 function hideSocialUserModal() {
   if (!socialUserModal.overlay) return;
@@ -361,6 +365,50 @@ function hideSocialUserModal() {
 }
 
 let _editingUserId = null;
+let socialRestaurantsCache = [];
+let socialRestaurantsLoading = false;
+
+async function fetchSocialRestaurants() {
+  const ref = collection(db, "restaurants");
+  let snap = null;
+  try {
+    snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(300)));
+  } catch (err) {
+    console.warn("social restaurants query fallback", err);
+    snap = await getDocs(ref);
+  }
+  return snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+}
+
+async function loadSocialRestaurants({ force = false } = {}) {
+  if (socialRestaurantsLoading) return;
+  if (!socialUserModal.restaurant) return;
+  if (socialRestaurantsCache.length && !force) return;
+  socialRestaurantsLoading = true;
+  try {
+    socialRestaurantsCache = await fetchSocialRestaurants();
+  } catch (err) {
+    console.error(err);
+  } finally {
+    socialRestaurantsLoading = false;
+  }
+}
+
+function renderSocialRestaurantOptions(selectedId = "") {
+  if (!socialUserModal.restaurant) return;
+  const sel = socialUserModal.restaurant;
+  const current = selectedId || sel.value || "";
+  sel.innerHTML = `<option value="">- bitte waehlen -</option>`;
+  socialRestaurantsCache.forEach((r) => {
+    const opt = document.createElement("option");
+    opt.value = r.id;
+    opt.textContent = r.name || r.restaurantName || r.id;
+    sel.appendChild(opt);
+  });
+  if (current && socialRestaurantsCache.some((r) => r.id === current)) {
+    sel.value = current;
+  }
+}
 
 function openSocialUserEditor(id) {
   _editingUserId = id;
@@ -371,6 +419,12 @@ function openSocialUserEditor(id) {
   if (socialUserModal.role) {
     const r = resolveSystemRole(u);
     socialUserModal.role.value = ALLOWED_SOCIAL_ROLES.includes(r) ? r : "user";
+  }
+  if (socialUserModal.restaurant) {
+    const rid = String(u.restaurantId || "").trim();
+    loadSocialRestaurants().then(() => {
+      renderSocialRestaurantOptions(rid);
+    });
   }
   if (socialUserModal.idDisplay) socialUserModal.idDisplay.textContent = id;
   if (socialUserModal.status) socialUserModal.status.textContent = "";
@@ -385,10 +439,16 @@ async function saveSocialUser() {
     const chosenRole = String(socialUserModal.role?.value || "").trim().toLowerCase();
     const safeRole = ALLOWED_SOCIAL_ROLES.includes(chosenRole) ? chosenRole : "user";
     const current = socialUsersCache.find((x) => x.id === _editingUserId) || {};
+    const restaurantId = String(socialUserModal.restaurant?.value || "").trim();
+    if (safeRole === "owner" && !restaurantId) {
+      if (socialUserModal.status) socialUserModal.status.textContent = "Owner braucht ein Restaurant.";
+      return;
+    }
     const nextRoles = mergeSystemRoles(current.roles, safeRole);
     const payload = {
       displayName: (socialUserModal.name?.value || "").trim(),
       city: (socialUserModal.city?.value || "").trim(),
+      restaurantId: restaurantId || "",
       roles: nextRoles,
       updatedAt: serverTimestamp()
     };
@@ -441,8 +501,14 @@ if (socialUsers.list) {
     const nextRole = String(sel.value || "").trim().toLowerCase();
     if (!ALLOWED_SOCIAL_ROLES.includes(nextRole)) return;
     try {
-      setSocialStatus("Speichere Rolle...");
       const current = socialUsersCache.find((u) => u.id === id) || {};
+      if (nextRole === "owner" && !current.restaurantId) {
+        setSocialStatus("Owner braucht Restaurant (bitte im Edit setzen).");
+        const fallbackRole = resolveSystemRole(current);
+        sel.value = ALLOWED_SOCIAL_ROLES.includes(fallbackRole) ? fallbackRole : "user";
+        return;
+      }
+      setSocialStatus("Speichere Rolle...");
       const nextRoles = mergeSystemRoles(current.roles, nextRole);
       const updatedUser = { ...current, roles: nextRoles, updatedAt: serverTimestamp() };
       await updateDoc(doc(db, "users", id), { roles: nextRoles, updatedAt: serverTimestamp() });

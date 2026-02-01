@@ -2317,7 +2317,7 @@ async function createCustomerFromLead({ lead, user, role, demo = true } = {}) {
       createdByRole: role
     });
   }
-  return createdId;
+  return { id: createdId, socialEmail: socialAccount?.email || "" };
 }
 
 function leadStatusLabel(value){
@@ -3829,17 +3829,21 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     const shouldConvert = normalizeLeadStatusKey(payload.status || "") === "converted";
     if (shouldConvert && !existingLead?.convertedRestaurantId) {
       setText("leadModalStatus", "Erstelle Demo...");
-      const createdId = await createCustomerFromLead({
+      const created = await createCustomerFromLead({
         lead: { ...(existingLead || {}), ...payload, id: savedLeadId },
         user,
         role,
         demo: true
       });
+      const createdId = created?.id || created;
       await setDoc(doc(db, "leads", savedLeadId), {
         status: "converted",
         convertedRestaurantId: createdId,
         updatedAt: serverTimestamp()
       }, { merge: true });
+      if (created?.socialEmail) {
+        setText("leadModalStatus", `Social Account: ${created.socialEmail} / ${LEAD_SOCIAL_DEFAULT_PASSWORD}`);
+      }
       try { localStorage.removeItem(REST_CACHE_KEY + "_" + role + "_" + user.uid); } catch {}
       setText("adminStatus", `Demo erstellt: ${createdId}`);
     }
@@ -5239,14 +5243,19 @@ async function refreshLeads(force = false) {
         // Convert lead -> new customer (restaurant doc)
         setText("adminStatus", "Erstelle Demo.");
         try {
-          const createdId = await createCustomerFromLead({ lead: row, user: currentUser, role, demo: true });
+          const created = await createCustomerFromLead({ lead: row, user: currentUser, role, demo: true });
+          const createdId = created?.id || created;
           await setDoc(doc(db, "leads", id), { status: "converted", convertedRestaurantId: createdId, updatedAt: serverTimestamp() }, { merge: true });
 
           // clear caches
           try { localStorage.removeItem(REST_CACHE_KEY + "_" + role + "_" + currentUser.uid); } catch {}
           cacheDel(`${LEADS_CACHE_KEY}_${role}_${currentUser.uid}`);
 
-          setText("adminStatus", `Demo erstellt: ${createdId}`);
+          if (created?.socialEmail) {
+            setText("adminStatus", `Demo erstellt: ${createdId} | Social: ${created.socialEmail} / ${LEAD_SOCIAL_DEFAULT_PASSWORD}`);
+          } else {
+            setText("adminStatus", `Demo erstellt: ${createdId}`);
+          }
           // refresh customers UI & leads
           const updated = await fetchRestaurants(role, currentUser.uid, restrictRestaurantId);
           restaurants.splice(0, restaurants.length, ...updated);
