@@ -1114,6 +1114,7 @@ async function initSocialPostsUI({ restaurantId, restaurants, user }) {
 
 async function createRestaurantDoc(role, user, payload) {
   const restaurantsRef = collection(db, "restaurants");
+  const safeSlug = String(payload.slug || slugify(payload.name || payload.restaurantName || "") || "").trim();
 
   const base = {
     name: payload.name,
@@ -1126,7 +1127,7 @@ async function createRestaurantDoc(role, user, payload) {
     yearPrice: payload.yearPrice,
     status: payload.status,
     logoUrl: payload.logoUrl,
-    slug: payload.slug,
+    slug: safeSlug,
     system: "system1",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -1145,6 +1146,7 @@ async function createRestaurantDoc(role, user, payload) {
 
 async function updateRestaurantDoc(role, user, restaurantId, payload) {
   if (!restaurantId) throw new Error("restaurantId fehlt");
+  const safeSlug = String(payload.slug || slugify(payload.name || payload.restaurantName || "") || "").trim();
 
   const base = {
     name: payload.name,
@@ -1157,7 +1159,7 @@ async function updateRestaurantDoc(role, user, restaurantId, payload) {
     yearPrice: payload.yearPrice,
     status: payload.status,
     logoUrl: payload.logoUrl,
-    slug: payload.slug,
+    slug: safeSlug,
     updatedAt: serverTimestamp(),
     updatedByUid: user?.uid || null,
     updatedByRole: role || null
@@ -2015,6 +2017,7 @@ function closeOfferEditor() {
 // =========================================================
 
 const LEADS_CACHE_KEY = "menyra_admin_leads_cache_v1";
+const LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992";
 const LEADS_CACHE_TTL_MS = 2 * 60 * 1000;
 
 function normalizeLead(row){
@@ -2161,6 +2164,51 @@ function buildDemoStaffName(businessName, role) {
   return `${base} ${demoRoleLabel(role)} (Demo)`;
 }
 
+function buildLeadSocialEmail(name, suffix = "") {
+  const localBase = slugify(name || "").replace(/-+/g, "") || "customer";
+  const safeSuffix = suffix ? String(suffix).replace(/[^0-9]/g, "") : "";
+  return `${localBase}${safeSuffix}@menyra.com`;
+}
+
+async function createLeadSocialAccount({ lead, restaurantId, name, city, logoUrl } = {}) {
+  if (!lead || !restaurantId) return null;
+  if (lead.socialUid || lead.socialEmail) return { uid: lead.socialUid || "", email: lead.socialEmail || "" };
+  const displayName = name || lead.businessName || lead.contactName || "Menyra Business";
+  const baseEmail = buildLeadSocialEmail(displayName);
+  const maxAttempts = 5;
+
+  for (let i = 0; i < maxAttempts; i += 1) {
+    const email = i === 0 ? baseEmail : buildLeadSocialEmail(displayName, String(i + 1));
+    try {
+      const user = await createAuthUser(email, LEAD_SOCIAL_DEFAULT_PASSWORD);
+      await ensureSocialBusinessProfile({
+        uid: user.uid,
+        email,
+        name: displayName,
+        restaurantId,
+        city,
+        logoUrl,
+        roles: ["owner"]
+      });
+      if (lead?.id) {
+        await setDoc(doc(db, "leads", lead.id), {
+          socialUid: user.uid,
+          socialEmail: email,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+      return { uid: user.uid, email };
+    } catch (err) {
+      const code = err?.code || "";
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        continue;
+      }
+      throw err;
+    }
+  }
+  return null;
+}
+
 async function applyCustomerModules(restaurantId, modules) {
   if (!restaurantId || !modules) return;
   await setDoc(doc(db, "restaurants", restaurantId), { modules }, { merge: true });
@@ -2215,11 +2263,51 @@ async function createCustomerFromLead({ lead, user, role, demo = true } = {}) {
     tableCount: (typeKey === "restaurant" || typeKey === "cafe" || typeKey === "hotel") ? 10 : 0,
     yearPrice: 490,
     logoUrl: lead.logoUrl || lead.logo || lead.imageUrl || "",
-    status: demo ? "demo" : "active"
+    status: demo ? "demo" : "active",
+    slug: slugify(lead.businessName || lead.contactName || "kunde")
   };
 
   const createdId = await createRestaurantDoc(role, user, payload);
   await applyCustomerModules(createdId, getCustomerModules(typeKey));
+  let socialAccount = null;
+  try {
+    socialAccount = await createLeadSocialAccount({
+      lead,
+      restaurantId: createdId,
+      name: payload.name,
+      city: payload.city,
+      logoUrl: payload.logoUrl
+    });
+  } catch (err) {
+    console.warn("lead social account create failed", err);
+  }
+  try {
+    const ownerName = payload.ownerName || payload.name || "";
+    const ownerEmail = socialAccount?.email || buildLeadSocialEmail(payload.name);
+    if (socialAccount?.uid) {
+      await upsertRestaurantOwnerStaff({
+        restaurantId: createdId,
+        uid: socialAccount.uid,
+        name: ownerName,
+        email: ownerEmail,
+        createdByUid: user.uid,
+        createdByRole: role
+      });
+    } else if (ownerEmail) {
+      await createRestaurantStaffAccount({
+        restaurantId: createdId,
+        name: ownerName,
+        email: ownerEmail,
+        password: LEAD_SOCIAL_DEFAULT_PASSWORD,
+        role: "owner",
+        roles: ["owner"],
+        createdByUid: user.uid,
+        createdByRole: role
+      });
+    }
+  } catch (err) {
+    console.warn("lead owner staff create failed", err);
+  }
   if (demo) {
     await autoCreateDemoStaff({
       restaurantId: createdId,
@@ -3133,6 +3221,36 @@ async function createRestaurantStaffAccount({ restaurantId, name, email, passwor
     }, { merge: true });
   }
   return user.uid;
+}
+
+async function upsertRestaurantOwnerStaff({ restaurantId, uid, name, email, avatarUrl = "", createdByUid, createdByRole }) {
+  if (!restaurantId || !uid) return;
+  const payload = {
+    uid,
+    userId: uid,
+    name: name || "",
+    email: email || "",
+    role: "owner",
+    roles: ["owner"],
+    avatarUrl: avatarUrl || "",
+    status: "active",
+    updatedAt: serverTimestamp(),
+    createdByUid: createdByUid || null,
+    createdByRole: createdByRole || null
+  };
+  await setDoc(doc(db, "restaurants", restaurantId, "staff", uid), payload, { merge: true });
+  await upsertStaffIndex({
+    uid,
+    restaurantId,
+    name: name || "",
+    email: email || ""
+  });
+  await setDoc(doc(db, "restaurants", restaurantId), {
+    ownerUid: uid,
+    ownerEmail: email || "",
+    ownerName: name || "",
+    updatedAt: serverTimestamp()
+  }, { merge: true });
 }
 
 async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, city, logoUrl, roles }) {

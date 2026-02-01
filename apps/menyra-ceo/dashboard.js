@@ -61,6 +61,34 @@ function mergeSystemRoles(existingRoles, nextRole) {
   return Array.from(new Set(kept));
 }
 
+async function ensureOwnerRestaurantAccess({ uid, user, nextRole }) {
+  if (!uid || nextRole !== "owner") return;
+  const rid = user?.restaurantId || "";
+  if (!rid) return;
+  const name = user?.displayName || user?.name || "";
+  const email = user?.email || "";
+  try {
+    await setDoc(doc(db, "restaurants", rid, "staff", uid), {
+      uid,
+      userId: uid,
+      name,
+      email,
+      role: "owner",
+      roles: ["owner"],
+      status: "active",
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    await setDoc(doc(db, "restaurants", rid), {
+      ownerUid: uid,
+      ownerEmail: email,
+      ownerName: name,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.warn("owner access sync failed", err);
+  }
+}
+
 async function syncSystemRoleDocs({ uid, nextRole, user }) {
   if (!uid) return;
   const basePayload = {
@@ -364,8 +392,10 @@ async function saveSocialUser() {
       roles: nextRoles,
       updatedAt: serverTimestamp()
     };
+    const updatedUser = { ...current, ...payload };
     await updateDoc(ref, payload);
-    await syncSystemRoleDocs({ uid: _editingUserId, nextRole: safeRole, user: { ...current, ...payload } });
+    await syncSystemRoleDocs({ uid: _editingUserId, nextRole: safeRole, user: updatedUser });
+    await ensureOwnerRestaurantAccess({ uid: _editingUserId, user: updatedUser, nextRole: safeRole });
     if (socialUserModal.status) socialUserModal.status.textContent = "Gespeichert.";
     socialUsersCache = socialUsersCache.map((u) => u.id === _editingUserId ? { ...u, ...payload } : u);
     applySocialFilters();
@@ -414,8 +444,10 @@ if (socialUsers.list) {
       setSocialStatus("Speichere Rolle...");
       const current = socialUsersCache.find((u) => u.id === id) || {};
       const nextRoles = mergeSystemRoles(current.roles, nextRole);
+      const updatedUser = { ...current, roles: nextRoles, updatedAt: serverTimestamp() };
       await updateDoc(doc(db, "users", id), { roles: nextRoles, updatedAt: serverTimestamp() });
-      await syncSystemRoleDocs({ uid: id, nextRole, user: current });
+      await syncSystemRoleDocs({ uid: id, nextRole, user: updatedUser });
+      await ensureOwnerRestaurantAccess({ uid: id, user: updatedUser, nextRole });
       socialUsersCache = socialUsersCache.map((u) => u.id === id ? { ...u, roles: nextRoles } : u);
       applySocialFilters();
       setSocialStatus("");
