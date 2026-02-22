@@ -216,6 +216,7 @@ const state = {
   profileView: null,
   profileBackTab: "feed",
   profileViewMode: "grid",
+  profileTopTab: "profile",
   profileContentTab: "posts",
   profileCheckins: [],
   profilePostMenuId: null,
@@ -4219,8 +4220,10 @@ function renderPublicProfileView() {
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
+  const topTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
   return `
     <div class="pb-24">
+      ${topTab === "profile" ? `
       <div class="px-5 pb-2 pt-10">
 
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
@@ -4282,6 +4285,28 @@ function renderPublicProfileView() {
           ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
         </div>
       `}
+      ` : `
+        ${renderProfileMenuView(profile)}
+      `}
+    </div>
+  `;
+}
+
+function renderProfileMenuView(profile) {
+  const restaurantId = profile?.restaurantId || "";
+  if (!restaurantId) {
+    return `
+      <div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">
+        Keine Restaurant-ID gefunden
+      </div>
+    `;
+  }
+  const menuUrl = buildUrl("apps/menyra-restaurants/guest/karte/index.html", { r: restaurantId });
+  return `
+    <div class="px-5 pb-24">
+      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-white shadow-sm">
+        <iframe title="Menukarte" src="${escapeHtml(menuUrl)}" class="w-full h-[75vh] border-0"></iframe>
+      </div>
     </div>
   `;
 }
@@ -4297,8 +4322,10 @@ function renderProfileView() {
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(profile.role === "business");
+  const topTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
   return `
     <div class="pb-24">
+      ${topTab === "profile" ? `
       <div class="px-5 pb-2 pt-10">
         <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
@@ -4367,6 +4394,9 @@ function renderProfileView() {
             </button>
           </div>
         ` : ""}
+      `}
+      ` : `
+        ${renderProfileMenuView(profile)}
       `}
     </div>
   `;
@@ -4438,6 +4468,7 @@ function showPublicProfile(profile, posts, { showBack = true, backTab } = {}) {
   state.profileView = { profile, posts: posts || profile.posts || [] };
   state.profileModal = { open: false, profile: null };
   state.profileContentTab = "posts";
+  state.profileTopTab = "profile";
   state.profileViewMode = "grid";
   state.profilePostMenuId = null;
   state.drawerOpen = false;
@@ -5678,19 +5709,19 @@ function shouldShowBusinessTopTabs() {
 function renderBusinessTopTabs() {
   if (!shouldShowBusinessTopTabs()) return "";
   const profile = state.profileView?.profile || state.userProfile;
-  const menuUrl = buildUrl("apps/menyra-restaurants/guest/karte/index.html", {
-    r: profile?.restaurantId || ""
-  });
   const base = "flex-1 py-3 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
+  const activeTop = state.profileTopTab || "profile";
+  const isProfileActive = activeTop === "profile";
+  const isMenuActive = activeTop === "menu";
   return `
     <div class="px-6 pb-4">
       <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center gap-1 backdrop-blur-sm">
-        <button type="button" class="${base} bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]">
+        <button type="button" data-profile-top-tab="profile" class="${base} ${isProfileActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
           Profil
         </button>
-        <a href="${escapeHtml(menuUrl)}" class="${base} text-slate-400 hover:text-slate-600">
+        <button type="button" data-profile-top-tab="menu" class="${base} ${isMenuActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
           Karte
-        </a>
+        </button>
         <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
           Reviews
         </button>
@@ -6254,6 +6285,15 @@ function bindAppEvents() {
       const tab = btn.dataset.profileTab;
       if (!tab) return;
       state.profileContentTab = tab;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-profile-top-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = btn.dataset.profileTopTab;
+      if (!tab) return;
+      state.profileTopTab = tab;
       render();
     });
   });
