@@ -5048,6 +5048,136 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       renderCustomersTable(filtered, role);
     }
 
+    function normalizeRestaurantNameKey(value) {
+      return foldText(value || "").replace(/[^a-z0-9]+/g, " ").trim();
+    }
+
+    async function getRestaurantSignals(row) {
+      const id = row?.id || "";
+      if (!id) return { id: "", name: "", hasMenu: false, menuCount: 0, hasBusiness: false };
+      let data = {};
+      try {
+        const snap = await getDoc(doc(db, "restaurants", id));
+        if (snap.exists()) data = snap.data() || {};
+      } catch (err) {
+        console.warn("Restaurant read failed:", id, err?.message || err);
+      }
+      const name = row?.name || row?.restaurantName || data.name || data.restaurantName || id;
+      let hasBusiness = !!(data.ownerUid || data.ownerEmail || data.ownerName || row?.ownerUid || row?.ownerEmail || row?.ownerName);
+      if (!hasBusiness) {
+        try {
+          const staffSnap = await getDocs(query(collection(db, "restaurants", id, "staff"), limit(1)));
+          hasBusiness = !staffSnap.empty;
+        } catch (err) {
+          console.warn("Staff check failed:", id, err?.message || err);
+        }
+      }
+
+      let hasMenu = false;
+      let menuCount = 0;
+      try {
+        const pubItems = await loadPublicMenuItems(id);
+        if (pubItems.length) {
+          hasMenu = true;
+          menuCount = pubItems.length;
+        }
+      } catch (err) {
+        console.warn("Public menu check failed:", id, err?.message || err);
+      }
+      if (!hasMenu) {
+        const legacyItems = coerceMenuItemsFromData(data);
+        if (legacyItems.length) {
+          hasMenu = true;
+          menuCount = legacyItems.length;
+        }
+      }
+      if (!hasMenu) {
+        try {
+          const menuSnap = await getDocs(query(collection(db, "restaurants", id, "menuItems"), limit(1)));
+          if (!menuSnap.empty) {
+            hasMenu = true;
+            menuCount = Math.max(menuCount, menuSnap.size);
+          }
+        } catch (err) {
+          console.warn("MenuItems check failed:", id, err?.message || err);
+        }
+      }
+
+      return { id, name, hasMenu, menuCount, hasBusiness };
+    }
+
+    async function cleanupDuplicateRestaurantsByName(rawName) {
+      const statusEl = $("cleanupDuplicatesStatus");
+      const targetKey = normalizeRestaurantNameKey(rawName || "");
+      if (!targetKey) {
+        if (statusEl) statusEl.textContent = "Name fehlt.";
+        return;
+      }
+
+      const matches = restaurants.filter((r) => normalizeRestaurantNameKey(r.name || r.restaurantName || "") === targetKey);
+      if (matches.length < 2) {
+        if (statusEl) statusEl.textContent = "Keine Duplikate gefunden.";
+        return;
+      }
+
+      if (statusEl) statusEl.textContent = "Pruefe Duplikate...";
+      const details = await Promise.all(matches.map((row) => getRestaurantSignals(row)));
+      const sorted = details.slice().sort((a, b) => {
+        if (a.hasMenu !== b.hasMenu) return (b.hasMenu ? 1 : 0) - (a.hasMenu ? 1 : 0);
+        if (a.hasBusiness !== b.hasBusiness) return (b.hasBusiness ? 1 : 0) - (a.hasBusiness ? 1 : 0);
+        if (a.menuCount !== b.menuCount) return (b.menuCount || 0) - (a.menuCount || 0);
+        return String(a.id || "").localeCompare(String(b.id || ""));
+      });
+      const keep = sorted[0];
+      const toDelete = sorted.filter((row) => row.id && row.id !== keep.id);
+
+      const detailLines = sorted.map((row) =>
+        `- ${row.name} (${row.id}) menu:${row.menuCount} business:${row.hasBusiness ? "ja" : "nein"}`
+      ).join("\n");
+      const ok = window.confirm(
+        `Gefunden ${sorted.length} Duplikate fuer "${rawName}".\n\n` +
+        `Behalten: ${keep.name} (${keep.id})\n\n` +
+        `Liste:\n${detailLines}\n\n` +
+        `Die anderen ${toDelete.length} werden geloescht. Fortfahren?`
+      );
+      if (!ok) {
+        if (statusEl) statusEl.textContent = "Abgebrochen.";
+        return;
+      }
+
+      for (const row of toDelete) {
+        try {
+          await deleteDoc(doc(db, "restaurants", row.id));
+          await deleteDoc(doc(db, "restaurants", row.id, "public", "meta")).catch(() => {});
+          await deleteDoc(doc(db, "restaurants", row.id, "public", "menu")).catch(() => {});
+          await deleteDoc(doc(db, "restaurants", row.id, "public", "offers")).catch(() => {});
+        } catch (err) {
+          console.error("Delete failed:", row.id, err);
+        }
+      }
+
+      const delIds = new Set(toDelete.map((row) => row.id));
+      const next = restaurants.filter((r) => !delIds.has(r.id));
+      restaurants.splice(0, restaurants.length, ...next);
+      refreshCustomers();
+      if (statusEl) statusEl.textContent = `Duplikate geloescht. Behalten: ${keep.name} (${keep.id}).`;
+    }
+
+    let cleanupBusy = false;
+    $("cleanupDuplicatesBtn")?.addEventListener("click", async () => {
+      if (role !== "ceo") return;
+      if (cleanupBusy) return;
+      const defaultName = ($("customerSearch")?.value || "").trim();
+      const rawName = window.prompt("Welchen Betriebsnamen bereinigen? (z.B. Shpija e vjeter)", defaultName || "");
+      if (!rawName) return;
+      cleanupBusy = true;
+      try {
+        await cleanupDuplicateRestaurantsByName(rawName);
+      } finally {
+        cleanupBusy = false;
+      }
+    });
+
     $("customerSearch")?.addEventListener("input", refreshCustomers);
     $("customersOnlyActive")?.addEventListener("change", refreshCustomers);
     $("newCustomerBtn")?.addEventListener("click", () => {
