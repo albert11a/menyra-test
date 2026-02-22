@@ -4221,10 +4221,11 @@ function renderPublicProfileView() {
   const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
   const topTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
+  const topPaddingClass = profile.restaurantId ? "pt-4" : "pt-10";
   return `
     <div class="pb-24">
       ${topTab === "profile" ? `
-      <div class="px-5 pb-2 pt-10">
+      <div class="px-5 pb-2 ${topPaddingClass}">
 
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
           <div class="relative z-10">
@@ -4323,10 +4324,11 @@ function renderProfileView() {
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(profile.role === "business");
   const topTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
+  const topPaddingClass = profile.restaurantId ? "pt-4" : "pt-10";
   return `
     <div class="pb-24">
       ${topTab === "profile" ? `
-      <div class="px-5 pb-2 pt-10">
+      <div class="px-5 pb-2 ${topPaddingClass}">
         <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
           <div class="relative z-10">
@@ -5713,8 +5715,9 @@ function renderBusinessTopTabs() {
   const activeTop = state.profileTopTab || "profile";
   const isProfileActive = activeTop === "profile";
   const isMenuActive = activeTop === "menu";
+  const spacingClass = isProfileActive ? "pb-2" : "pb-4";
   return `
-    <div class="px-6 pb-4">
+    <div class="px-6 ${spacingClass}">
       <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center gap-1 backdrop-blur-sm">
         <button type="button" data-profile-top-tab="profile" class="${base} ${isProfileActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
           Profil
