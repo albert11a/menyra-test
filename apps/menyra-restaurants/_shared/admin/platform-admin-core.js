@@ -50,6 +50,7 @@ collection,
 // -------------------------
 const $ = (id) => document.getElementById(id);
 const qsa = (sel) => Array.from(document.querySelectorAll(sel));
+let platformRole = "ceo";
 
 function esc(str) {
   return String(str ?? "").replace(/[&<>"']/g, (c) => ({
@@ -1353,6 +1354,9 @@ function renderCustomersTable(rows, role) {
 
       const row = document.createElement("tr");
       row.className = "table-row";
+      const deleteBtn = role === "ceo"
+        ? `<button class="btn btn-light btn-sm rounded-circle text-danger" type="button" data-act="delete" data-id="${esc(r.id)}" title="Loeschen"><i class="fas fa-trash"></i></button>`
+        : "";
       row.innerHTML = `
         <td>
           <div class="fw-800">${esc(r.name || "-")}</div>
@@ -1364,6 +1368,7 @@ function renderCustomersTable(rows, role) {
         <td class="text-end">
           <button class="btn btn-light btn-sm rounded-circle" type="button" data-act="qr" data-id="${esc(r.id)}"><i class="fas fa-qrcode"></i></button>
           <button class="btn btn-light btn-sm rounded-circle" type="button" data-act="edit" data-id="${esc(r.id)}"><i class="fas fa-pen"></i></button>
+          ${deleteBtn}
         </td>
       `;
       body.appendChild(row);
@@ -1372,6 +1377,9 @@ function renderCustomersTable(rows, role) {
 
     const row = document.createElement("div");
     row.className = "m-table-row";
+    const deleteBtn = role === "ceo"
+      ? `<button class="m-btn m-btn--small m-btn--ghost text-danger" type="button" data-act="delete" data-id="${esc(r.id)}">Loeschen</button>`
+      : "";
     row.innerHTML = `
       <div>
         <div style="display:flex; flex-direction:column; gap:2px;">
@@ -1386,6 +1394,7 @@ function renderCustomersTable(rows, role) {
       <div class="m-table-col-actions" style="display:flex; gap:8px; justify-content:flex-end;">
         <button class="m-btn m-btn--small m-btn--ghost" type="button" data-act="qr" data-id="${esc(r.id)}">QR & Links</button>
         <button class="m-btn m-btn--small" type="button" data-act="edit" data-id="${esc(r.id)}">Edit</button>
+        ${deleteBtn}
       </div>
     `;
     body.appendChild(row);
@@ -2749,6 +2758,9 @@ function renderLeadsTable(rows){
       const statusLabel = leadStatusLabel(r.status || "");
       const typeLabel = leadTypeLabel(r.customerType || "");
       const subline = [contact || "Kein Kontakt", city].filter(Boolean).join(" - ");
+      const deleteBtn = platformRole === "ceo"
+        ? `<button class="lead-action-btn text-danger" type="button" data-act="lead-delete" data-id="${esc(r.id)}" title="Loeschen"><i class="fas fa-trash"></i></button>`
+        : "";
       const row = document.createElement("div");
       row.className = "lead-item";
       row.innerHTML = `
@@ -2769,9 +2781,12 @@ function renderLeadsTable(rows){
           </span>
         </div>
         <div class="lead-type">${esc(typeLabel)}</div>
-        <button class="lead-action-btn" type="button" data-act="lead-edit" data-id="${esc(r.id)}">
-          <i class="fas fa-chevron-right"></i>
-        </button>
+        <div style="display:flex; gap:8px; justify-content:flex-end;">
+          <button class="lead-action-btn" type="button" data-act="lead-edit" data-id="${esc(r.id)}" title="Bearbeiten">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+          ${deleteBtn}
+        </div>
       `;
       body.appendChild(row);
     });
@@ -3678,6 +3693,7 @@ async function initOwnerStoriesUI({ restaurantId, user }){
 }
 
 export async function bootPlatformAdmin({ role = "ceo", roleLabel = "Platform", restrictRestaurantId = null } = {}) {
+  platformRole = role;
   mountRoleSwitchLink(role);
   const nav = initNav();
   document.documentElement.classList.add("m-boot");
@@ -5164,6 +5180,27 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       }
     });
 
+    async function deleteCustomer(row) {
+      if (!row || !row.id) return;
+      if (role !== "ceo") return;
+      const name = row.name || row.restaurantName || row.id;
+      const ok = window.confirm(`Kunde "${name}" wirklich loeschen?`);
+      if (!ok) return;
+      try {
+        await deleteDoc(doc(db, "restaurants", row.id));
+        await deleteDoc(doc(db, "restaurants", row.id, "public", "meta")).catch(() => {});
+        await deleteDoc(doc(db, "restaurants", row.id, "public", "menu")).catch(() => {});
+        await deleteDoc(doc(db, "restaurants", row.id, "public", "offers")).catch(() => {});
+        const next = restaurants.filter(r => r.id !== row.id);
+        restaurants.splice(0, restaurants.length, ...next);
+        refreshCustomers();
+        setText("adminStatus", `Kunde geloescht: ${row.id}`);
+      } catch (err) {
+        console.error(err);
+        setText("adminStatus", "Loeschen fehlgeschlagen.");
+      }
+    }
+
     // Customers table actions (delegation)
     $("customersTableBody")?.addEventListener("click", (e) => {
       const btn = e.target?.closest("button[data-act]");
@@ -5175,6 +5212,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
 
       if (act === "qr") openQrModal(item);
       if (act === "edit") openCustomerModal("edit", item);
+      if (act === "delete") void deleteCustomer(item);
     });
 
     refreshCustomers();

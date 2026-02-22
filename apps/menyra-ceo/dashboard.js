@@ -468,25 +468,23 @@ async function saveSocialUser() {
 
 async function deleteSocialUserById(id) {
   if (!id) return;
-  if (!confirm("User wirklich deaktivieren (Soft-Delete)?")) return;
+  if (!confirm("User wirklich endgueltig loeschen?")) return;
+  const current = socialUsersCache.find((u) => u.id === id) || {};
   try {
-    if (socialUserModal.status) socialUserModal.status.textContent = "Lösche...";
-    // Soft delete: keep data, but disable account
-    const ref = doc(db, "users", id);
-    const payload = {
-      disabled: true,
-      status: "deleted",
-      deletedAt: serverTimestamp()
-    };
-    await updateDoc(ref, payload);
-
-    socialUsersCache = socialUsersCache.map((u) => u.id === id ? { ...u, ...payload } : u);
+    if (socialUserModal.status) socialUserModal.status.textContent = "Loesche...";
+    await deleteDoc(doc(db, "users", id));
+    await deleteDoc(doc(db, "staffAdmins", id)).catch(() => {});
+    await deleteDoc(doc(db, "superadmins", id)).catch(() => {});
+    if (current.restaurantId) {
+      await deleteDoc(doc(db, "restaurants", current.restaurantId, "staff", id)).catch(() => {});
+    }
+    socialUsersCache = socialUsersCache.filter((u) => u.id !== id);
     applySocialFilters();
-    if (socialUserModal.status) socialUserModal.status.textContent = "Deaktiviert.";
+    if (socialUserModal.status) socialUserModal.status.textContent = "Geloescht.";
     hideSocialUserModal();
   } catch (err) {
     console.error(err);
-    if (socialUserModal.status) socialUserModal.status.textContent = "Fehler beim Deaktivieren.";
+    if (socialUserModal.status) socialUserModal.status.textContent = "Fehler beim Loeschen.";
   }
 }
 
