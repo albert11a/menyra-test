@@ -35,7 +35,8 @@ import {
   formatRelative,
   getGeo,
   toDateSafe,
-  buildUrl
+  buildUrl,
+  qs
 } from "./_shared/social-core.js";
 import { compressImage } from "./_shared/image-compressor.js";
 import { getOptimizedImageUrl, isPlaceholderUrl, PLACEHOLDER_IMAGE } from "./_shared/image-resolver.js";
@@ -158,6 +159,7 @@ const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen", "socia
 const businessProfileCache = new Map();
 const userProfileCache = new Map();
 const restaurantOwnerCache = new Map();
+const menuCache = new Map();
 const FAST_LIMITS = {
   feed: 20,
   feedFallback: 40,
@@ -224,6 +226,28 @@ const state = {
     open: false,
     profile: null
   },
+  menu: {
+    restaurantId: "",
+    items: [],
+    loading: false,
+    error: "",
+    filter: "all",
+    query: "",
+    source: "hybrid"
+  },
+  menuModal: {
+    open: false,
+    mode: "create",
+    item: null,
+    status: "",
+    loading: false,
+    imageFile: null,
+    imagePreview: ""
+  },
+  menuDetail: {
+    open: false,
+    item: null
+  },
   settings: { ...DEFAULT_SETTINGS },
   notifications: [...DEFAULT_NOTIFICATIONS],
   postMeta: {},
@@ -272,7 +296,9 @@ let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
 let lastCommentAt = 0;
-let overlayCache = { profile: "", post: "", likes: "" };
+let overlayCache = { profile: "", post: "", likes: "", menu: "", menuDetail: "" };
+let pendingProfileRestaurantId = "";
+let pendingProfileHandled = false;
 let dataLoaded = {
   feed: false,
   profile: false,
@@ -327,6 +353,9 @@ let lastShellAvatarUrl = "";
 let logoCacheWriteTimer = null;
 let avatarCacheWriteTimer = null;
 let lastAuthUid = "";
+try {
+  pendingProfileRestaurantId = qs("r") || qs("restaurant") || "";
+} catch {}
 
 function getActiveUid() {
   return state.user?.uid || state.userProfile?.uid || "";
@@ -786,29 +815,11 @@ function getRestaurantMetaById(restaurantId) {
 }
 
 function resolveHeaderBranding() {
-  if (!isLocalBusinessProfile()) {
-    return {
-      title: "MENYRA",
-      subtitle: "Social",
-      logoUrl: resolveShellAvatarUrl(),
-      isBusinessLogo: state.userProfile.role === "business"
-    };
-  }
-
-  const restaurantId = state.userProfile.restaurantId || "";
-  const restaurant = getRestaurantMetaById(restaurantId);
-  const fallbackName = state.userProfile.name || "Business";
-  const title = sanitizeDisplayName(restaurant?.name || restaurant?.restaurantName, fallbackName);
-  const rawLogo = restaurant?.logoUrl || restaurant?.logo || restaurant?.logoURL || state.userProfile.avatar || "";
-  let logoUrl = resolveRestaurantLogo(restaurantId, rawLogo, "avatar");
-  if (isPlaceholderUrl(logoUrl)) {
-    logoUrl = resolveShellAvatarUrl();
-  }
   return {
-    title,
-    subtitle: "",
-    logoUrl,
-    isBusinessLogo: true
+    title: "MENYRA",
+    subtitle: "Social",
+    logoUrl: resolveShellAvatarUrl(),
+    isBusinessLogo: state.userProfile.role === "business"
   };
 }
 
@@ -818,6 +829,54 @@ function normalizeSearchQuery(value) {
 
 function normalizeSearchKey(value) {
   return normalizeSearchQuery(value).toLowerCase();
+}
+
+function normalizeRestaurantType(value) {
+  const raw = String(value || "").toLowerCase().trim();
+  if (!raw) return "";
+  if (raw.includes("cafe") || raw.includes("café") || raw.includes("coffee")) return "cafe";
+  if (raw.includes("restaurant") || raw.includes("resto") || raw.includes("restaurant")) return "restaurant";
+  return raw;
+}
+
+function isRestaurantCafeProfile(profile = state.userProfile) {
+  if (!profile?.restaurantId) return false;
+  const rest = getRestaurantMetaById(profile.restaurantId);
+  const typeRaw = rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "";
+  const type = normalizeRestaurantType(typeRaw);
+  if (!type) return true;
+  return type === "restaurant" || type === "cafe";
+}
+
+function normalizeMenuType(value) {
+  const t = String(value || "").toLowerCase().trim();
+  if (t === "drink" || t === "drinks" || t === "beverage" || t === "getraenke" || t === "getränke") return "drink";
+  return "food";
+}
+
+function formatPrice(value, currency = "€") {
+  if (value === null || value === undefined || value === "") return "-";
+  const num = Number(value);
+  if (Number.isFinite(num)) return `${num.toFixed(2)} ${currency}`;
+  const str = String(value).trim();
+  return str ? `${str} ${currency}` : "-";
+}
+
+function normalizeMenuItemDoc(data, id) {
+  const d = data || {};
+  return {
+    id: d.id || id || "",
+    type: normalizeMenuType(d.type || d.menuType || d.kind || d.group || d.section),
+    category: d.category || "Sonstiges",
+    name: d.name || d.title || "Produkt",
+    description: d.description || d.desc || "",
+    longDescription: d.longDescription || "",
+    allergens: d.allergens || d.allergen || "",
+    price: d.price ?? "",
+    available: d.available !== false,
+    imageUrl: d.imageUrl || d.image || d.photoUrl || "",
+    imageUrls: Array.isArray(d.imageUrls) ? d.imageUrls : []
+  };
 }
 
 function scoreSearchMatch(text, query) {
@@ -2264,6 +2323,15 @@ function ensureTabData(tab) {
     void loadUserProfile(state.user, { force: true });
   }
 
+  if (tab === "menu") {
+    void loadUserProfile(state.user, { force: true }).then(() => {
+      const restaurantId = state.userProfile.restaurantId || "";
+      if (restaurantId) {
+        void loadMenuForRestaurant(restaurantId, { source: "collection" });
+      }
+    });
+  }
+
   if (tab === "notifications" && !dataLoaded.notifications) {
     dataLoaded.notifications = true;
     void loadNotificationsFromFirebase({ force: true });
@@ -2706,6 +2774,16 @@ function renderDrawer() {
   const switchLinks = renderRoleSwitchLinks();
   const avatarUrl = resolveShellAvatarUrl();
   const avatarFit = logoFitClass(state.userProfile.role === "business");
+  const showMenuTab = isRestaurantCafeProfile(state.userProfile);
+  const navItems = [
+    { id: "feed", label: "Feed", icon: "home" },
+    { id: "search", label: "Suche", icon: "search" },
+    { id: "map", label: "Karte", icon: "map" },
+    { id: "profile", label: "Profil", icon: "user" },
+    ...(showMenuTab ? [{ id: "menu", label: "Speisekarte", icon: "book-open" }] : []),
+    { id: "notifications", label: "Updates", icon: "bell", badge: unread },
+    { id: "settings", label: "Optionen", icon: "settings" }
+  ];
   return `
     <div id="drawerRoot" class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
@@ -2725,14 +2803,7 @@ function renderDrawer() {
           </div>
         </div>
         <nav class="space-y-2 flex-1">
-          ${[
-            { id: "feed", label: "Feed", icon: "home" },
-            { id: "search", label: "Suche", icon: "search" },
-            { id: "map", label: "Karte", icon: "map" },
-            { id: "profile", label: "Profil", icon: "user" },
-            { id: "notifications", label: "Updates", icon: "bell", badge: unread },
-            { id: "settings", label: "Optionen", icon: "settings" }
-          ].map((item) => `
+          ${navItems.map((item) => `
             <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${state.activeTab === item.id ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">${icon(item.icon, "w-4 h-4")} ${item.label}</div>
               ${item.badge ? `<span data-unread-badge="drawer" class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge}</span>` : ""}
@@ -3027,7 +3098,6 @@ function updateShellDom() {
   const avatarUrl = resolveShellAvatarUrl();
   const isBusiness = state.userProfile.role === "business";
   const branding = resolveHeaderBranding();
-  const isBusinessHeader = isLocalBusinessProfile();
   const headerAvatar = document.getElementById("headerAvatar");
   if (headerAvatar) {
     const current = headerAvatar.getAttribute("src") || "";
@@ -3045,12 +3115,8 @@ function updateShellDom() {
     headerTitle.textContent = branding.title;
   }
   if (headerTitle) {
-    headerTitle.classList.toggle("font-elegant", isBusinessHeader);
-    headerTitle.classList.toggle("font-semibold", isBusinessHeader);
-    headerTitle.classList.toggle("tracking-wide", isBusinessHeader);
-    headerTitle.classList.toggle("font-black", !isBusinessHeader);
-    headerTitle.classList.toggle("italic", !isBusinessHeader);
-    headerTitle.classList.toggle("tracking-tighter", !isBusinessHeader);
+    headerTitle.classList.remove("font-elegant", "font-semibold", "tracking-wide");
+    headerTitle.classList.add("font-black", "italic", "tracking-tighter");
   }
   const headerSubtitle = document.getElementById("headerSubtitle");
   if (headerSubtitle) {
@@ -4221,7 +4287,7 @@ function renderPublicProfileView() {
   const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
   const topTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
-  const topPaddingClass = profile.restaurantId ? "pt-4" : "pt-10";
+  const topPaddingClass = profile.restaurantId ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   return `
     <div class="pb-24">
       ${topTab === "profile" ? `
@@ -4293,6 +4359,202 @@ function renderPublicProfileView() {
   `;
 }
 
+function getFilteredMenuItems(items, { filter = "all", query = "" } = {}) {
+  const list = Array.isArray(items) ? items : [];
+  const q = normalizeSearchKey(query || "");
+  return list.filter((item) => {
+    const typeOk = filter === "all" || normalizeMenuType(item.type) === filter;
+    if (!typeOk) return false;
+    if (!q) return true;
+    const hay = `${item.name || ""} ${item.category || ""} ${item.description || ""}`.toLowerCase();
+    return hay.includes(q);
+  });
+}
+
+function renderMenuFilterRow() {
+  const filter = state.menu.filter || "all";
+  return `
+    <div class="flex gap-2 mb-5">
+      ${[
+        { id: "all", label: "Alle" },
+        { id: "food", label: "Speisen" },
+        { id: "drink", label: "Getraenke" }
+      ].map((item) => `
+        <button data-menu-filter="${item.id}" class="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition ${filter === item.id ? "bg-slate-900 text-white shadow-md" : "bg-white text-slate-400 border border-slate-100"}">
+          ${item.label}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderMenuItemCard(item, { mode = "profile" } = {}) {
+  const imgSrc = getOptimizedImageUrl(item.imageUrl || "", "thumb");
+  const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+  const priceLabel = formatPrice(item.price);
+  const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
+  const category = item.category || "";
+  const desc = item.description || "";
+  const availability = item.available === false
+    ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
+    : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`;
+  const wrapperAttrs = mode === "profile"
+    ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
+    : "";
+  return `
+    <div ${wrapperAttrs} class="w-full p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 ${mode === "profile" ? "cursor-pointer" : ""}">
+      <div class="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
+        <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-4">
+          <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name || "Produkt")}</p>
+          <span class="text-xs font-black text-slate-900">${escapeHtml(priceLabel)}</span>
+        </div>
+        <div class="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+          ${category ? `<span>${escapeHtml(category)}</span>` : ""}
+          <span>${escapeHtml(typeLabel)}</span>
+        </div>
+        ${desc ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${escapeHtml(desc)}</p>` : ""}
+        <div class="mt-2">${availability}</div>
+      </div>
+      ${mode === "admin" ? `
+        <div class="flex flex-col gap-2">
+          <button data-menu-edit="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-200">Edit</button>
+          <button data-menu-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Loeschen</button>
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+function renderMenuList(items, { mode = "profile" } = {}) {
+  if (!items.length) {
+    return `
+      <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
+        Keine Produkte
+      </div>
+    `;
+  }
+  return `
+    <div class="space-y-4">
+      ${items.map((item) => renderMenuItemCard(item, { mode })).join("")}
+    </div>
+  `;
+}
+
+function buildQrImageUrl(value, size = 220) {
+  const safe = encodeURIComponent(value || "");
+  return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${safe}`;
+}
+
+function renderMenuQrCard({ label, url, caption }) {
+  if (!url) return "";
+  const qrUrl = buildQrImageUrl(url, 240);
+  return `
+    <div class="p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm flex flex-col items-center gap-3">
+      <div class="w-full aspect-square rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
+        <img src="${escapeHtml(qrUrl)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+      </div>
+      <div class="text-center">
+        <p class="text-[11px] font-black uppercase tracking-widest text-slate-700">${escapeHtml(label)}</p>
+        ${caption ? `<p class="text-[10px] font-bold text-slate-400 mt-1">${escapeHtml(caption)}</p>` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function renderMenuAdminView() {
+  const profile = state.userProfile;
+  const restaurantId = profile.restaurantId || "";
+  const isEligible = isRestaurantCafeProfile(profile);
+  const restaurant = restaurantId ? getRestaurantMetaById(restaurantId) : null;
+  const restaurantName = restaurant?.name || restaurant?.restaurantName || profile.name || "Business";
+  const sameRestaurant = restaurantId && state.menu.restaurantId === restaurantId;
+  const isLoading = restaurantId && (state.menu.loading || !sameRestaurant);
+  const items = sameRestaurant
+    ? getFilteredMenuItems(state.menu.items, { filter: state.menu.filter, query: state.menu.query })
+    : [];
+  const countLabel = formatCount(items.length);
+  const profileUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId }) : "";
+  const menuUrl = restaurantId ? buildUrl("apps/menyra-restaurants/guest/karte/index.html", { r: restaurantId }) : "";
+
+  if (!isEligible) {
+    return `
+      <div class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
+        <div class="bg-white rounded-[2.5rem] p-8 border border-slate-100 text-center">
+          <div class="w-16 h-16 rounded-[1.8rem] bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-4">
+            ${icon("lock", "w-6 h-6")}
+          </div>
+          <h2 class="text-lg font-black italic text-slate-900 mb-2">Speisekarte</h2>
+          <p class="text-sm text-slate-500">Diese Funktion ist nur fuer Cafes und Restaurants.</p>
+        </div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
+      <div class="flex items-end justify-between mb-6">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Speisekarte</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Editor</h2>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(restaurantName)}</p>
+        </div>
+        <button type="button" data-menu-add class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-xl shadow-slate-200/60 active:scale-95">
+          ${icon("plus", "w-4 h-4")}
+        </button>
+      </div>
+
+      ${restaurantId ? `
+        <div class="mb-5 flex items-center justify-between p-4 rounded-[2rem] bg-white border border-slate-100">
+          <div>
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Produkte</p>
+            <p class="text-lg font-black text-slate-900">${escapeHtml(countLabel)}</p>
+          </div>
+          <button type="button" data-menu-add class="px-4 py-2 rounded-xl bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-200">Neu</button>
+        </div>
+      ` : `
+        <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
+          <p class="text-sm font-bold text-slate-500 mb-4">Bitte zuerst dein Business im Account auswaehlen.</p>
+          <button data-nav="settings" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Zu den Einstellungen</button>
+        </div>
+      `}
+
+      ${restaurantId ? `
+        <div class="mb-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3">
+          ${icon("search", "w-4 h-4 text-slate-400")}
+          <input id="menuSearchInput" type="text" value="${escapeHtml(state.menu.query || "")}" placeholder="Produkt suchen..." class="w-full bg-transparent text-sm font-bold outline-none" />
+        </div>
+
+        ${renderMenuFilterRow()}
+
+        ${isLoading
+          ? `<div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Menue wird geladen...</div>`
+          : renderMenuList(items, { mode: "admin" })
+        }
+        ${state.menu.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mt-4">${escapeHtml(state.menu.error)}</div>` : ""}
+      ` : ""}
+
+      ${restaurantId ? `
+        <div class="mt-10">
+          <div class="flex items-end justify-between mb-4">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">QR Codes</span>
+              <h3 class="text-xl font-black italic tracking-tighter">Teilen</h3>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Direkt zum Profil oder zur Karte</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            ${renderMenuQrCard({ label: "Profil", url: profileUrl, caption: "Social Profil" })}
+            ${renderMenuQrCard({ label: "Karte", url: menuUrl, caption: "Karte & Preise" })}
+          </div>
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
 function renderProfileMenuView(profile) {
   const restaurantId = profile?.restaurantId || "";
   if (!restaurantId) {
@@ -4302,11 +4564,32 @@ function renderProfileMenuView(profile) {
       </div>
     `;
   }
-  const menuUrl = buildUrl("apps/menyra-restaurants/guest/karte/index.html", { r: restaurantId });
+  if (!state.menu.loading && state.menu.restaurantId !== restaurantId) {
+    ensureMenuDataForProfile(profile);
+  }
+  const isSameRestaurant = state.menu.restaurantId === restaurantId;
+  const isLoading = state.menu.loading || !isSameRestaurant;
+  const items = isSameRestaurant
+    ? getFilteredMenuItems(state.menu.items, { filter: state.menu.filter, query: "" })
+    : [];
+  const error = isSameRestaurant ? state.menu.error : "";
+  const countLabel = formatCount(items.length);
   return `
     <div class="px-5 pb-24">
-      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-white shadow-sm">
-        <iframe title="Menukarte" src="${escapeHtml(menuUrl)}" class="w-full h-[75vh] border-0"></iframe>
+      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Karte</span>
+            <h3 class="text-xl font-black italic tracking-tighter">Speisekarte</h3>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(countLabel)} Produkte</p>
+          </div>
+        </div>
+        ${renderMenuFilterRow()}
+        ${isLoading
+          ? `<div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Menue wird geladen...</div>`
+          : renderMenuList(items, { mode: "profile" })
+        }
+        ${error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mt-4">${escapeHtml(error)}</div>` : ""}
       </div>
     </div>
   `;
@@ -4324,7 +4607,7 @@ function renderProfileView() {
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(profile.role === "business");
   const topTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
-  const topPaddingClass = profile.restaurantId ? "pt-4" : "pt-10";
+  const topPaddingClass = profile.restaurantId ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   return `
     <div class="pb-24">
       ${topTab === "profile" ? `
@@ -4410,6 +4693,10 @@ async function openProfileFromBusiness(input) {
     const restaurantId = typeof input === "string" ? "" : (input?.id || "");
     if (!safeName && !restaurantId) return;
 
+    if (restaurantId) {
+      void hydrateRestaurantsByIds([restaurantId], { max: 1 });
+    }
+
     const rest = restaurantId
       ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
       : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
@@ -4484,11 +4771,30 @@ function showPublicProfile(profile, posts, { showBack = true, backTab } = {}) {
   attachProfileViewListener(profile);
 }
 
+function maybeOpenProfileFromQuery() {
+  if (pendingProfileHandled) return;
+  if (!pendingProfileRestaurantId) return;
+  if (!state.user) return;
+  if (state.profileView?.profile?.restaurantId === pendingProfileRestaurantId) {
+    pendingProfileHandled = true;
+    pendingProfileRestaurantId = "";
+    return;
+  }
+  pendingProfileHandled = true;
+  const nextId = pendingProfileRestaurantId;
+  pendingProfileRestaurantId = "";
+  openProfileViewFromBusiness({ id: nextId }, { showBack: false });
+}
+
 async function openProfileViewFromBusiness(input, { showBack = true } = {}) {
   try {
     const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
     const restaurantId = typeof input === "string" ? "" : (input?.id || "");
     if (!safeName && !restaurantId) return;
+
+    if (restaurantId) {
+      void hydrateRestaurantsByIds([restaurantId], { max: 1 });
+    }
 
     const rest = restaurantId
       ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
@@ -5142,6 +5448,148 @@ function renderLikesModal() {
   `;
 }
 
+function renderMenuItemModal() {
+  if (!state.menuModal.open) return "";
+  const item = state.menuModal.item || {};
+  const isEdit = state.menuModal.mode === "edit";
+  const title = isEdit ? "Produkt bearbeiten" : "Produkt hinzufuegen";
+  const imageRaw = state.menuModal.imagePreview || item.imageUrl || "";
+  const imageUrl = imageRaw ? getOptimizedImageUrl(imageRaw, "large") : PLACEHOLDER_IMAGE;
+  const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
+  const typeValue = normalizeMenuType(item.type || "food");
+  const available = item.available !== false;
+  const status = state.menuModal.status || "";
+
+  return `
+    <div class="fixed inset-0 z-[75]">
+      <div id="menuModalOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
+          <div class="p-7 pb-4 flex items-center justify-between">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
+              <h3 class="text-xl font-black italic tracking-tighter">${title}</h3>
+            </div>
+            <button id="menuModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-6 space-y-4">
+            <input type="file" id="menuItemImageInput" class="hidden" accept="image/*" />
+            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+              <img src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" />
+            </div>
+            <button id="menuItemImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+              Foto hochladen
+            </button>
+
+            <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Name</label>
+                <input id="menuItemName" type="text" value="${escapeHtml(item.name || "")}" placeholder="Produktname" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis</label>
+                  <input id="menuItemPrice" type="text" value="${escapeHtml(item.price ?? "")}" placeholder="z.B. 4.50" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                </div>
+                <div>
+                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kategorie</label>
+                  <input id="menuItemCategory" type="text" value="${escapeHtml(item.category || "")}" placeholder="z.B. Pizza" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                </div>
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+                <select id="menuItemType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+                  <option value="food" ${typeValue === "food" ? "selected" : ""}>Speise</option>
+                  <option value="drink" ${typeValue === "drink" ? "selected" : ""}>Getraenk</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Beschreibung</label>
+                <textarea id="menuItemDesc" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(item.description || "")}</textarea>
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Allergene</label>
+                <input id="menuItemAllergens" type="text" value="${escapeHtml(item.allergens || "")}" placeholder="z.B. Milch, Gluten" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
+                <input id="menuItemImageUrl" type="text" value="${escapeHtml(item.imageUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div>
+                  <p class="text-xs font-black text-slate-800">Verfuegbar</p>
+                  <p class="text-[10px] font-bold text-slate-400">Sichtbar fuer Gaeste</p>
+                </div>
+                <input id="menuItemAvailable" type="checkbox" class="w-5 h-5 accent-indigo-600" ${available ? "checked" : ""} />
+              </label>
+            </div>
+          </div>
+
+          <div class="p-7 pt-4 border-t border-slate-100 bg-white">
+            <button id="menuModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.menuModal.loading ? "disabled" : ""}>
+              ${state.menuModal.loading ? "Speichern..." : "Speichern"}
+            </button>
+            <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMenuDetailModal() {
+  if (!state.menuDetail.open || !state.menuDetail.item) return "";
+  const item = state.menuDetail.item;
+  const imgSrc = getOptimizedImageUrl(item.imageUrl || "", "large");
+  const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+  const priceLabel = formatPrice(item.price);
+  const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
+  const category = item.category || "";
+  const desc = item.longDescription || item.description || "";
+  const allergens = item.allergens || "";
+  const availability = item.available === false ? "Nicht verfuegbar" : "Verfuegbar";
+  const availabilityClass = item.available === false ? "text-rose-500" : "text-emerald-600";
+
+  return `
+    <div class="fixed inset-0 z-[75]">
+      <div id="menuDetailOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden">
+          <div class="p-7 pb-4 flex items-center justify-between">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
+              <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(item.name || "Produkt")}</h3>
+            </div>
+            <button id="menuDetailClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-8">
+            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+              <img src="${escapeHtml(safeImg)}" class="w-full h-56 object-cover" />
+            </div>
+            <div class="mt-4 flex items-center justify-between">
+              <span class="text-lg font-black text-slate-900">${escapeHtml(priceLabel)}</span>
+              <span class="text-[10px] font-black uppercase tracking-widest ${availabilityClass}">${availability}</span>
+            </div>
+            <div class="mt-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              ${category ? `<span>${escapeHtml(category)}</span>` : ""}
+              <span>${escapeHtml(typeLabel)}</span>
+            </div>
+            ${desc ? `<p class="mt-4 text-sm text-slate-600 leading-relaxed">${escapeHtml(desc)}</p>` : ""}
+            ${allergens ? `
+              <div class="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Allergene</p>
+                <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
+              </div>
+            ` : ""}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 
 function updatePostModalMeta() {
   if (!state.postModal.open || !state.postModal.post) return;
@@ -5678,10 +6126,7 @@ function renderHeader() {
   const branding = resolveHeaderBranding();
   const avatarUrl = branding.logoUrl;
   const avatarFit = logoFitClass(branding.isBusinessLogo);
-  const isBusinessHeader = isLocalBusinessProfile();
-  const titleClass = isBusinessHeader
-    ? "text-2xl font-elegant font-semibold tracking-wide leading-none text-slate-900 max-w-[220px] mx-auto truncate"
-    : "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
+  const titleClass = "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
   const subtitleClass = `text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block${branding.subtitle ? "" : " hidden"}`;
   return `
     <header class="p-6 pb-2 flex justify-between items-center sticky top-0 z-40 backdrop-blur-xl bg-slate-50/80">
@@ -5705,7 +6150,7 @@ function renderHeader() {
 function shouldShowBusinessTopTabs() {
   if (state.activeTab !== "profile") return false;
   const profile = state.profileView?.profile || state.userProfile;
-  return !!profile?.restaurantId;
+  return isRestaurantCafeProfile(profile);
 }
 
 function renderBusinessTopTabs() {
@@ -5715,7 +6160,7 @@ function renderBusinessTopTabs() {
   const activeTop = state.profileTopTab || "profile";
   const isProfileActive = activeTop === "profile";
   const isMenuActive = activeTop === "menu";
-  const spacingClass = isProfileActive ? "pb-2" : "pb-4";
+  const spacingClass = isProfileActive ? "pb-1" : "pb-3";
   return `
     <div class="px-6 ${spacingClass}">
       <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center gap-1 backdrop-blur-sm">
@@ -5739,6 +6184,7 @@ function renderMain() {
   if (state.activeTab === "search") view = renderSearchView();
   if (state.activeTab === "map") view = renderMapView();
   if (state.activeTab === "profile") view = state.profileView ? renderPublicProfileView() : renderProfileView();
+  if (state.activeTab === "menu") view = renderMenuAdminView();
   if (state.activeTab === "settings") view = renderSettingsView();
   if (state.activeTab === "notifications") view = renderNotificationsView();
   if (state.activeTab === "upload") view = renderUploadView();
@@ -5775,6 +6221,16 @@ function ensureOverlayRoot() {
     likesRoot.id = "likesOverlayRoot";
     root.appendChild(likesRoot);
   }
+  if (!document.getElementById("menuOverlayRoot")) {
+    const menuRoot = document.createElement("div");
+    menuRoot.id = "menuOverlayRoot";
+    root.appendChild(menuRoot);
+  }
+  if (!document.getElementById("menuDetailOverlayRoot")) {
+    const menuDetailRoot = document.createElement("div");
+    menuDetailRoot.id = "menuDetailOverlayRoot";
+    root.appendChild(menuDetailRoot);
+  }
   return root;
 }
 
@@ -5788,13 +6244,23 @@ function renderOverlays(options = {}) {
   const updateLikes = Object.prototype.hasOwnProperty.call(options, "updateLikes")
     ? options.updateLikes
     : !state.likesModal.open;
+  const updateMenu = Object.prototype.hasOwnProperty.call(options, "updateMenu")
+    ? options.updateMenu
+    : !state.likesModal.open;
+  const updateMenuDetail = Object.prototype.hasOwnProperty.call(options, "updateMenuDetail")
+    ? options.updateMenuDetail
+    : !state.likesModal.open;
   const root = ensureOverlayRoot();
   const profileRoot = document.getElementById("profileOverlayRoot");
   const postRoot = document.getElementById("postOverlayRoot");
   const likesRoot = document.getElementById("likesOverlayRoot");
+  const menuRoot = document.getElementById("menuOverlayRoot");
+  const menuDetailRoot = document.getElementById("menuDetailOverlayRoot");
   let profileChanged = false;
   let postChanged = false;
   let likesChanged = false;
+  let menuChanged = false;
+  let menuDetailChanged = false;
 
   if (updateProfile) {
     const profileHtml = renderProfileModal();
@@ -5820,7 +6286,23 @@ function renderOverlays(options = {}) {
       overlayCache.likes = likesHtml;
     }
   }
-  const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open);
+  if (updateMenu) {
+    const menuHtml = renderMenuItemModal();
+    menuChanged = menuHtml !== overlayCache.menu;
+    if (menuRoot && menuChanged) {
+      menuRoot.innerHTML = menuHtml;
+      overlayCache.menu = menuHtml;
+    }
+  }
+  if (updateMenuDetail) {
+    const detailHtml = renderMenuDetailModal();
+    menuDetailChanged = detailHtml !== overlayCache.menuDetail;
+    if (menuDetailRoot && menuDetailChanged) {
+      menuDetailRoot.innerHTML = detailHtml;
+      overlayCache.menuDetail = detailHtml;
+    }
+  }
+  const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open);
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
   if (open && !bodyScrollLocked) {
@@ -5840,10 +6322,10 @@ function renderOverlays(options = {}) {
     window.scrollTo(0, bodyScrollTop);
     bodyScrollLocked = false;
   }
-  if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged)) {
+  if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged)) {
     window.lucide.createIcons();
   }
-  bindOverlayEvents({ profileChanged, postChanged, likesChanged });
+  bindOverlayEvents({ profileChanged, postChanged, likesChanged, menuChanged, menuDetailChanged });
 }
 
 function renderLoading() {
@@ -6115,7 +6597,7 @@ function bindAuthEvents() {
   }
 }
 
-function bindOverlayEvents({ profileChanged = true, postChanged = true, likesChanged = true } = {}) {
+function bindOverlayEvents({ profileChanged = true, postChanged = true, likesChanged = true, menuChanged = true, menuDetailChanged = true } = {}) {
   if (profileChanged) {
     const profileModalOverlay = document.getElementById("profileModalOverlay");
     const profileModalClose = document.getElementById("profileModalClose");
@@ -6234,6 +6716,46 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
     if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
     if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
   }
+
+  if (menuChanged) {
+    const menuModalOverlay = document.getElementById("menuModalOverlay");
+    const menuModalClose = document.getElementById("menuModalClose");
+    const menuModalSave = document.getElementById("menuModalSave");
+    const menuImageTrigger = document.getElementById("menuItemImageTrigger");
+    const menuImageInput = document.getElementById("menuItemImageInput");
+
+    if (menuModalOverlay) menuModalOverlay.addEventListener("click", closeMenuModal);
+    if (menuModalClose) menuModalClose.addEventListener("click", closeMenuModal);
+    if (menuModalSave) {
+      menuModalSave.addEventListener("click", () => {
+        if (state.menuModal.loading) return;
+        void saveMenuItemFromModal();
+      });
+    }
+    if (menuImageTrigger && menuImageInput) {
+      menuImageTrigger.addEventListener("click", () => menuImageInput.click());
+    }
+    if (menuImageInput) {
+      menuImageInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          state.menuModal.imageFile = file;
+          state.menuModal.imagePreview = reader.result || "";
+          renderOverlays({ updateMenu: true });
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  }
+
+  if (menuDetailChanged) {
+    const menuDetailOverlay = document.getElementById("menuDetailOverlay");
+    const menuDetailClose = document.getElementById("menuDetailClose");
+    if (menuDetailOverlay) menuDetailOverlay.addEventListener("click", closeMenuDetail);
+    if (menuDetailClose) menuDetailClose.addEventListener("click", closeMenuDetail);
+  }
 }
 
 function bindAppEvents() {
@@ -6297,6 +6819,9 @@ function bindAppEvents() {
       const tab = btn.dataset.profileTopTab;
       if (!tab) return;
       state.profileTopTab = tab;
+      if (tab === "menu") {
+        ensureMenuDataForProfile();
+      }
       render();
     });
   });
@@ -6307,6 +6832,54 @@ function bindAppEvents() {
       if (!mode) return;
       state.profileViewMode = mode;
       render();
+    });
+  });
+
+  const menuSearchInput = document.getElementById("menuSearchInput");
+  if (menuSearchInput) {
+    menuSearchInput.addEventListener("input", () => {
+      state.menu.query = menuSearchInput.value;
+      render();
+    });
+  }
+
+  document.querySelectorAll("[data-menu-filter]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const filter = btn.dataset.menuFilter || "all";
+      state.menu.filter = filter;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-menu-add]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openMenuModal("create");
+    });
+  });
+
+  document.querySelectorAll("[data-menu-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const itemId = btn.dataset.menuEdit || "";
+      const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
+      if (!item) return;
+      openMenuModal("edit", item);
+    });
+  });
+
+  document.querySelectorAll("[data-menu-delete]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const itemId = btn.dataset.menuDelete || "";
+      if (!itemId) return;
+      void deleteMenuItemById(itemId);
+    });
+  });
+
+  document.querySelectorAll("[data-menu-open]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const itemId = btn.dataset.menuOpen || "";
+      const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
+      if (!item) return;
+      openMenuDetail(item);
     });
   });
 
@@ -6647,6 +7220,14 @@ async function updateRestaurantSelection(restaurantId) {
   state.roleSwitchRestaurantId = restaurantId || state.roleSwitchRestaurantId || "";
   saveUserProfileToStorage();
   render();
+  if (state.activeTab === "menu") {
+    if (restaurantId) {
+      void loadMenuForRestaurant(restaurantId, { source: "collection", force: true });
+    } else {
+      state.menu = { ...state.menu, restaurantId: "", items: [], loading: false, error: "", source: "collection" };
+      render();
+    }
+  }
   try {
     await setDoc(doc(db, "users", state.user.uid), {
       restaurantId: restaurantId || "",
@@ -7266,6 +7847,257 @@ async function loadBusinessPosts({ force = false } = {}) {
   }
 }
 
+async function loadPublicMenuItems(restaurantId) {
+  if (!restaurantId) return [];
+  try {
+    const snap = await getDoc(doc(db, "restaurants", restaurantId, "public", "menu"));
+    if (!snap.exists()) return [];
+    const data = snap.data() || {};
+    if (!Array.isArray(data.items)) return [];
+    return data.items.map((item, idx) => normalizeMenuItemDoc(item, item?.id || `pub_${idx}`));
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+}
+
+async function loadMenuItemsFromCollection(restaurantId) {
+  if (!restaurantId) return [];
+  try {
+    const ref = collection(db, "restaurants", restaurantId, "menuItems");
+    const snap = await getDocs(ref);
+    return snap.docs.map((docSnap) => normalizeMenuItemDoc(docSnap.data(), docSnap.id));
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+}
+
+async function publishMenuToPublic(restaurantId, items) {
+  if (!restaurantId) return;
+  const ref = doc(db, "restaurants", restaurantId, "public", "menu");
+  const payload = {
+    items: (items || []).map((item) => ({
+      id: item.id || "",
+      type: item.type || null,
+      category: item.category || "Sonstiges",
+      name: item.name || "Produkt",
+      description: item.description || "",
+      longDescription: item.longDescription || "",
+      allergens: item.allergens || "",
+      price: item.price ?? "",
+      available: item.available !== false,
+      imageUrl: item.imageUrl || null,
+      imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : []
+    })),
+    publishedAt: serverTimestamp()
+  };
+  await setDoc(ref, payload, { merge: true });
+}
+
+async function loadMenuHybrid(restaurantId) {
+  const pub = await loadPublicMenuItems(restaurantId);
+  if (pub && pub.length) return pub;
+  const col = await loadMenuItemsFromCollection(restaurantId);
+  if (col && col.length) {
+    try {
+      await publishMenuToPublic(restaurantId, col);
+    } catch (err) {
+      console.error(err);
+    }
+    return col;
+  }
+  return [];
+}
+
+function menuCacheKey(restaurantId, source) {
+  return `${restaurantId || ""}::${source || "hybrid"}`;
+}
+
+async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
+  if (!restaurantId) {
+    state.menu = { ...state.menu, restaurantId: "", items: [], loading: false, error: "", source };
+    return;
+  }
+  const cacheKey = menuCacheKey(restaurantId, source);
+  const cached = menuCache.get(cacheKey);
+  if (cached && cached.items?.length && !force) {
+    state.menu = { ...state.menu, restaurantId, items: cached.items, loading: false, error: "", source };
+    return;
+  }
+  state.menu = { ...state.menu, restaurantId, loading: true, error: "", source };
+  render();
+  try {
+    const items = source === "collection"
+      ? await loadMenuItemsFromCollection(restaurantId)
+      : await loadMenuHybrid(restaurantId);
+    menuCache.set(cacheKey, { items, ts: Date.now() });
+    state.menu = { ...state.menu, restaurantId, items, loading: false, error: "", source };
+    render();
+  } catch (err) {
+    console.error(err);
+    state.menu = { ...state.menu, restaurantId, items: [], loading: false, error: "Menu laden fehlgeschlagen.", source };
+    render();
+  }
+}
+
+function syncMenuCaches(restaurantId, items) {
+  const list = Array.isArray(items) ? items : [];
+  menuCache.set(menuCacheKey(restaurantId, "collection"), { items: list, ts: Date.now() });
+  menuCache.set(menuCacheKey(restaurantId, "hybrid"), { items: list, ts: Date.now() });
+  if (state.menu.restaurantId === restaurantId) {
+    state.menu = { ...state.menu, items: list };
+  }
+}
+
+function getMenuRestaurantForProfile(profile) {
+  return profile?.restaurantId || "";
+}
+
+function ensureMenuDataForProfile(profile = state.profileView?.profile || state.userProfile) {
+  const restaurantId = getMenuRestaurantForProfile(profile);
+  if (!restaurantId) return;
+  void loadMenuForRestaurant(restaurantId, { source: "hybrid" });
+}
+
+function openMenuModal(mode = "create", item = null) {
+  state.menuModal = {
+    open: true,
+    mode,
+    item,
+    status: "",
+    loading: false,
+    imageFile: null,
+    imagePreview: ""
+  };
+  renderOverlays({ updateMenu: true });
+}
+
+function closeMenuModal() {
+  state.menuModal = {
+    open: false,
+    mode: "create",
+    item: null,
+    status: "",
+    loading: false,
+    imageFile: null,
+    imagePreview: ""
+  };
+  renderOverlays({ updateMenu: true });
+}
+
+function openMenuDetail(item) {
+  if (!item) return;
+  state.menuDetail = { open: true, item };
+  renderOverlays({ updateMenuDetail: true });
+}
+
+function closeMenuDetail() {
+  state.menuDetail = { open: false, item: null };
+  renderOverlays({ updateMenuDetail: true });
+}
+
+async function saveMenuItemFromModal() {
+  if (!state.user) return;
+  const restaurantId = state.userProfile.restaurantId || "";
+  if (!restaurantId) {
+    state.menuModal.status = "Kein Restaurant ausgewaehlt.";
+    renderOverlays({ updateMenu: true });
+    return;
+  }
+  const name = document.getElementById("menuItemName")?.value?.trim() || "";
+  const price = document.getElementById("menuItemPrice")?.value?.trim() || "";
+  const category = document.getElementById("menuItemCategory")?.value?.trim() || "";
+  const type = document.getElementById("menuItemType")?.value || "food";
+  const description = document.getElementById("menuItemDesc")?.value?.trim() || "";
+  const allergens = document.getElementById("menuItemAllergens")?.value?.trim() || "";
+  const available = document.getElementById("menuItemAvailable")?.checked !== false;
+  const imageUrlInput = document.getElementById("menuItemImageUrl")?.value?.trim() || "";
+
+  if (!name) {
+    state.menuModal.status = "Bitte Namen eingeben.";
+    renderOverlays({ updateMenu: true });
+    return;
+  }
+
+  state.menuModal.loading = true;
+  state.menuModal.status = "Speichern...";
+  renderOverlays({ updateMenu: true });
+
+  try {
+    let imageUrl = imageUrlInput || state.menuModal.item?.imageUrl || "";
+    if (state.menuModal.imageFile) {
+      const ownerId = restaurantId;
+      const { cdnUrl } = await uploadCompressedImage(
+        state.menuModal.imageFile,
+        ownerId,
+        { maxSize: 1080, quality: 0.8, mimeType: "image/jpeg" }
+      );
+      imageUrl = cdnUrl || imageUrl;
+    }
+
+    const mode = state.menuModal.mode;
+    const ref = mode === "edit" && state.menuModal.item?.id
+      ? doc(db, "restaurants", restaurantId, "menuItems", state.menuModal.item.id)
+      : doc(collection(db, "restaurants", restaurantId, "menuItems"));
+    const id = state.menuModal.item?.id || ref.id;
+
+    const payload = {
+      id,
+      type: normalizeMenuType(type),
+      category: category || "Sonstiges",
+      name,
+      description,
+      allergens,
+      price: price ?? "",
+      available,
+      imageUrl: imageUrl || "",
+      updatedAt: serverTimestamp()
+    };
+    if (mode !== "edit") payload.createdAt = serverTimestamp();
+
+    await setDoc(ref, payload, { merge: true });
+
+    const nextItems = Array.isArray(state.menu.items) ? state.menu.items.slice() : [];
+    const idx = nextItems.findIndex((it) => String(it.id) === String(id));
+    const normalized = normalizeMenuItemDoc(payload, id);
+    if (idx >= 0) {
+      nextItems[idx] = { ...nextItems[idx], ...normalized };
+    } else {
+      nextItems.unshift(normalized);
+    }
+    syncMenuCaches(restaurantId, nextItems);
+    await publishMenuToPublic(restaurantId, nextItems);
+
+    state.menuModal.status = "Gespeichert.";
+    state.menuModal.loading = false;
+    closeMenuModal();
+    render();
+  } catch (err) {
+    console.error(err);
+    state.menuModal.status = err?.message || "Speichern fehlgeschlagen.";
+    state.menuModal.loading = false;
+    renderOverlays({ updateMenu: true });
+  }
+}
+
+async function deleteMenuItemById(itemId) {
+  if (!state.user || !itemId) return;
+  const restaurantId = state.userProfile.restaurantId || "";
+  if (!restaurantId) return;
+  if (!confirm("Produkt wirklich loeschen?")) return;
+  try {
+    await deleteDoc(doc(db, "restaurants", restaurantId, "menuItems", itemId));
+    const nextItems = (state.menu.items || []).filter((it) => String(it.id) !== String(itemId));
+    syncMenuCaches(restaurantId, nextItems);
+    await publishMenuToPublic(restaurantId, nextItems);
+    render();
+  } catch (err) {
+    console.error(err);
+    alert("Loeschen fehlgeschlagen.");
+  }
+}
+
 function buildStoriesSignature(storyItems) {
   return storyItems
     .map(x => `${x.id}|${x.img || ""}`)
@@ -7372,6 +8204,9 @@ async function bootstrapUser(user) {
   if (!user) return;
   try {
     await loadUserProfile(user, { force: true });
+    if (state.userProfile.restaurantId) {
+      await hydrateRestaurantsByIds([state.userProfile.restaurantId], { max: 1 });
+    }
     await resolveRoleSwitchTargets(user);
   } finally {
   }
@@ -7406,6 +8241,7 @@ onAuthStateChanged(auth, (user) => {
     loadUserScopedPersisted(user);
     render();
     bootstrapUser(user);
+    queueMicrotask(() => maybeOpenProfileFromQuery());
   } else {
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";
