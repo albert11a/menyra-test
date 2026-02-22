@@ -5052,6 +5052,90 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       return foldText(value || "").replace(/[^a-z0-9]+/g, " ").trim();
     }
 
+    function resolveRestaurantIdFromHint(hint) {
+      const raw = String(hint || "").trim();
+      if (!raw) return "";
+      if (restaurants.some((r) => r.id === raw)) return raw;
+      const key = normalizeRestaurantNameKey(raw);
+      const match = restaurants.find((r) => normalizeRestaurantNameKey(r.name || r.restaurantName || "") === key);
+      return match?.id || "";
+    }
+
+    async function clearOwnerLinksForEmail(email, keepRestaurantId) {
+      const target = foldText(email || "");
+      if (!target) return 0;
+      const matches = (restaurants || []).filter((r) => foldText(r.ownerEmail || "") === target && r.id !== keepRestaurantId);
+      if (!matches.length) return 0;
+      await Promise.all(matches.map((r) =>
+        updateDoc(doc(db, "restaurants", r.id), {
+          ownerUid: "",
+          ownerEmail: "",
+          ownerName: "",
+          updatedAt: serverTimestamp()
+        }).catch(() => {})
+      ));
+      return matches.length;
+    }
+
+    async function resolveUidByEmail(email) {
+      const lower = String(email || "").toLowerCase().trim();
+      if (!lower) return "";
+      try {
+        const snap = await getDocs(query(collection(db, "staffIndex"), where("emailLower", "==", lower), limit(1)));
+        if (!snap.empty) return snap.docs[0].id;
+      } catch (err) {
+        console.warn("staffIndex lookup failed:", err?.message || err);
+      }
+      try {
+        const snap = await getDocs(query(collection(db, "users"), where("email", "==", email), limit(1)));
+        if (!snap.empty) return snap.docs[0].id;
+      } catch (err) {
+        console.warn("users lookup failed:", err?.message || err);
+      }
+      try {
+        const snap = await getDocs(query(collectionGroup(db, "staff"), where("email", "==", email), limit(1)));
+        if (!snap.empty) return snap.docs[0].id;
+      } catch (err) {
+        console.warn("staff group lookup failed:", err?.message || err);
+      }
+      return "";
+    }
+
+    async function removeStaffDocsForUser(uid, keepRestaurantId) {
+      if (!uid) return 0;
+      let removed = 0;
+      try {
+        const snap = await getDocs(query(collectionGroup(db, "staff"), where(documentId(), "==", uid)));
+        for (const docSnap of snap.docs) {
+          const rid = docSnap.ref?.parent?.parent?.id || "";
+          if (!rid || rid === keepRestaurantId) continue;
+          await deleteDoc(docSnap.ref);
+          removed += 1;
+        }
+      } catch (err) {
+        console.warn("staff doc cleanup failed:", err?.message || err);
+      }
+      return removed;
+    }
+
+    async function removeStaffDocsByEmail(email, keepRestaurantId) {
+      const trimmed = String(email || "").trim();
+      if (!trimmed) return 0;
+      let removed = 0;
+      try {
+        const snap = await getDocs(query(collectionGroup(db, "staff"), where("email", "==", trimmed)));
+        for (const docSnap of snap.docs) {
+          const rid = docSnap.ref?.parent?.parent?.id || "";
+          if (!rid || rid === keepRestaurantId) continue;
+          await deleteDoc(docSnap.ref);
+          removed += 1;
+        }
+      } catch (err) {
+        console.warn("staff email cleanup failed:", err?.message || err);
+      }
+      return removed;
+    }
+
     async function getRestaurantSignals(row) {
       const id = row?.id || "";
       if (!id) return { id: "", name: "", hasMenu: false, menuCount: 0, hasBusiness: false };
@@ -5333,6 +5417,58 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       }
     }
 
+    async function fixOwnerLoginByEmail(emailInput, restaurantHint) {
+      const statusEl = $("fixOwnerLoginStatus") || $("cleanupDuplicatesStatus");
+      const email = String(emailInput || "").trim();
+      if (!email) {
+        if (statusEl) statusEl.textContent = "Email fehlt.";
+        return;
+      }
+      const rid = resolveRestaurantIdFromHint(restaurantHint);
+      if (!rid) {
+        if (statusEl) statusEl.textContent = "Restaurant nicht gefunden.";
+        return;
+      }
+      if (statusEl) statusEl.textContent = "Verknuepfe Owner...";
+
+      const uid = await resolveUidByEmail(email);
+      if (!uid) {
+        if (statusEl) statusEl.textContent = "User UID nicht gefunden (users/staffIndex).";
+        return;
+      }
+
+      const clearedOwnerLinks = await clearOwnerLinksForEmail(email, rid);
+      const removedByUid = await removeStaffDocsForUser(uid, rid);
+      const removedByEmail = await removeStaffDocsByEmail(email, rid);
+
+      const rest = restaurants.find((r) => r.id === rid) || {};
+      const ownerName = rest.ownerName || rest.name || rest.restaurantName || email.split("@")[0];
+      await upsertRestaurantOwnerStaff({
+        restaurantId: rid,
+        uid,
+        name: ownerName,
+        email,
+        createdByUid: currentUser?.uid || null,
+        createdByRole: role
+      });
+      await ensureSocialBusinessProfile({
+        uid,
+        email,
+        name: ownerName,
+        restaurantId: rid,
+        city: rest.city || "",
+        logoUrl: rest.logoUrl || "",
+        roles: ["owner"]
+      });
+      try { setCachedRestaurantId(uid, rid); } catch {}
+
+      try { await refreshRestaurantsUi(true); } catch (_) {}
+      try { await refreshStaffUi(); } catch (_) {}
+      if (statusEl) {
+        statusEl.textContent = `Owner verknuepft: ${email} -> ${rid}. Entfernte Staff-Docs: ${removedByUid + removedByEmail}. Andere Owner-Links geloescht: ${clearedOwnerLinks}.`;
+      }
+    }
+
     let cleanupBusy = false;
     $("cleanupDuplicatesBtn")?.addEventListener("click", async () => {
       if (role !== "ceo") return;
@@ -5345,6 +5481,23 @@ $("leadForm")?.addEventListener("submit", async (e) => {
         await cleanupDuplicateRestaurantsByName(rawName);
       } finally {
         cleanupBusy = false;
+      }
+    });
+
+    let fixOwnerBusy = false;
+    $("fixOwnerLoginBtn")?.addEventListener("click", async () => {
+      if (role !== "ceo") return;
+      if (fixOwnerBusy) return;
+      const email = window.prompt("Owner Email eingeben", "shpijaevjeter1@menyra.com");
+      if (!email) return;
+      const defaultHint = ($("customerSearch")?.value || "").trim();
+      const restHint = window.prompt("Restaurant ID oder Name", defaultHint || "");
+      if (!restHint) return;
+      fixOwnerBusy = true;
+      try {
+        await fixOwnerLoginByEmail(email, restHint);
+      } finally {
+        fixOwnerBusy = false;
       }
     });
 
