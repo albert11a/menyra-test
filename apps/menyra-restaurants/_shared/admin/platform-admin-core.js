@@ -5106,6 +5106,151 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       return { id, name, hasMenu, menuCount, hasBusiness };
     }
 
+    async function deleteRestaurantSubcollectionDocs(restaurantId, subName) {
+      if (!restaurantId || !subName) return 0;
+      try {
+        const snap = await getDocs(collection(db, "restaurants", restaurantId, subName));
+        if (snap.empty) return 0;
+        await Promise.all(snap.docs.map((docSnap) => deleteDoc(docSnap.ref)));
+        return snap.size || 0;
+      } catch (err) {
+        console.warn("Subcollection delete failed:", restaurantId, subName, err?.message || err);
+        return 0;
+      }
+    }
+
+    async function deleteLeadsByNameKey(targetKey) {
+      if (!targetKey) return 0;
+      try {
+        const snap = await getDocs(collection(db, "leads"));
+        if (snap.empty) return 0;
+        const matches = snap.docs.filter((docSnap) => {
+          const data = docSnap.data() || {};
+          const nameKey = normalizeRestaurantNameKey(data.businessName || data.name || "");
+          return nameKey === targetKey;
+        });
+        if (!matches.length) return 0;
+        await Promise.all(matches.map((docSnap) => deleteDoc(docSnap.ref)));
+        const removedIds = new Set(matches.map((docSnap) => docSnap.id));
+        if (leadsAll?.length) {
+          const nextLeads = leadsAll.filter((row) => !removedIds.has(row.id));
+          leadsAll.splice(0, leadsAll.length, ...nextLeads);
+        }
+        return matches.length;
+      } catch (err) {
+        console.warn("Lead delete failed:", err?.message || err);
+        return 0;
+      }
+    }
+
+    async function deleteStaffRequestsByRestaurantIds(restaurantIds, targetKey) {
+      const ids = new Set((restaurantIds || []).filter(Boolean));
+      if (!ids.size && !targetKey) return 0;
+      try {
+        const snap = await getDocs(collection(db, "staffRequests"));
+        if (snap.empty) return 0;
+        const matches = snap.docs.filter((docSnap) => {
+          const data = docSnap.data() || {};
+          const rid = String(data.restaurantId || "");
+          if (rid && ids.has(rid)) return true;
+          if (targetKey) {
+            const nameKey = normalizeRestaurantNameKey(data.restaurantName || "");
+            return nameKey === targetKey;
+          }
+          return false;
+        });
+        if (!matches.length) return 0;
+        await Promise.all(matches.map((docSnap) => deleteDoc(docSnap.ref)));
+        return matches.length;
+      } catch (err) {
+        console.warn("Staff request delete failed:", err?.message || err);
+        return 0;
+      }
+    }
+
+    async function mergeOwnerInfoToKeep(keepId, candidateIds) {
+      if (!keepId) return {};
+      let keepData = {};
+      try {
+        const snap = await getDoc(doc(db, "restaurants", keepId));
+        if (snap.exists()) keepData = snap.data() || {};
+      } catch (err) {
+        console.warn("Keep owner read failed:", keepId, err?.message || err);
+      }
+      const patch = {};
+      if (!keepData.ownerUid || !keepData.ownerEmail || !keepData.ownerName) {
+        for (const id of candidateIds || []) {
+          try {
+            const snap = await getDoc(doc(db, "restaurants", id));
+            if (!snap.exists()) continue;
+            const data = snap.data() || {};
+            if (!patch.ownerUid && data.ownerUid) patch.ownerUid = data.ownerUid;
+            if (!patch.ownerEmail && data.ownerEmail) patch.ownerEmail = data.ownerEmail;
+            if (!patch.ownerName && data.ownerName) patch.ownerName = data.ownerName;
+            if (patch.ownerUid && patch.ownerEmail && patch.ownerName) break;
+          } catch (err) {
+            console.warn("Candidate owner read failed:", id, err?.message || err);
+          }
+        }
+      }
+      if (Object.keys(patch).length) {
+        try {
+          await setDoc(doc(db, "restaurants", keepId), { ...patch, updatedAt: serverTimestamp() }, { merge: true });
+        } catch (err) {
+          console.warn("Keep owner update failed:", keepId, err?.message || err);
+        }
+      }
+      return patch;
+    }
+
+    async function ensureOwnerStaffOnKeep(keepId, candidateIds) {
+      if (!keepId) return 0;
+      let keepStaff = [];
+      try {
+        const snap = await getDocs(collection(db, "restaurants", keepId, "staff"));
+        keepStaff = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+      } catch (err) {
+        console.warn("Keep staff read failed:", keepId, err?.message || err);
+      }
+      const keepUids = new Set(keepStaff.map((row) => String(row.id || row.uid || row.userId || "")));
+      const keepHasOwner = keepStaff.some((row) => isOwnerRole(row.roles || row.role));
+
+      let added = 0;
+      if (keepHasOwner) return added;
+
+      for (const id of candidateIds || []) {
+        let rows = [];
+        try {
+          const snap = await getDocs(collection(db, "restaurants", id, "staff"));
+          rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+        } catch (err) {
+          console.warn("Candidate staff read failed:", id, err?.message || err);
+        }
+        const ownerRows = rows.filter((row) => isOwnerRole(row.roles || row.role));
+        for (const row of ownerRows) {
+          const uid = String(row.id || row.uid || row.userId || "");
+          if (!uid || keepUids.has(uid)) continue;
+          const roles = normalizeRestaurantRoles(row.roles || row.role || "owner");
+          const primaryRole = pickPrimaryRestaurantRole(roles);
+          const payload = {
+            ...row,
+            uid,
+            role: primaryRole || row.role || "owner",
+            roles,
+            updatedAt: serverTimestamp()
+          };
+          try {
+            await setDoc(doc(db, "restaurants", keepId, "staff", uid), payload, { merge: true });
+            keepUids.add(uid);
+            added += 1;
+          } catch (err) {
+            console.warn("Keep staff insert failed:", keepId, uid, err?.message || err);
+          }
+        }
+      }
+      return added;
+    }
+
     async function cleanupDuplicateRestaurantsByName(rawName) {
       const statusEl = $("cleanupDuplicatesStatus");
       const targetKey = normalizeRestaurantNameKey(rawName || "");
@@ -5115,8 +5260,8 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       }
 
       const matches = restaurants.filter((r) => normalizeRestaurantNameKey(r.name || r.restaurantName || "") === targetKey);
-      if (matches.length < 2) {
-        if (statusEl) statusEl.textContent = "Keine Duplikate gefunden.";
+      if (matches.length < 1) {
+        if (statusEl) statusEl.textContent = "Kein Kunde gefunden.";
         return;
       }
 
@@ -5130,23 +5275,38 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       });
       const keep = sorted[0];
       const toDelete = sorted.filter((row) => row.id && row.id !== keep.id);
+      const deleteIds = toDelete.map((row) => row.id);
 
       const detailLines = sorted.map((row) =>
         `- ${row.name} (${row.id}) menu:${row.menuCount} business:${row.hasBusiness ? "ja" : "nein"}`
       ).join("\n");
       const ok = window.confirm(
-        `Gefunden ${sorted.length} Duplikate fuer "${rawName}".\n\n` +
-        `Behalten: ${keep.name} (${keep.id})\n\n` +
-        `Liste:\n${detailLines}\n\n` +
-        `Die anderen ${toDelete.length} werden geloescht. Fortfahren?`
+        (toDelete.length
+          ? `Gefunden ${sorted.length} Duplikate fuer "${rawName}".\n\n` +
+            `Behalten: ${keep.name} (${keep.id})\n\n` +
+            `Liste:\n${detailLines}\n\n` +
+            `Die anderen ${toDelete.length} werden geloescht.`
+          : `Kein Kunden-Duplikat gefunden fuer "${rawName}".\n\n` +
+            `Behalten: ${keep.name} (${keep.id})\n\n` +
+            `Leads/Staff-Requests mit diesem Namen werden geloescht.`) +
+        `\n\nFortfahren?`
       );
       if (!ok) {
         if (statusEl) statusEl.textContent = "Abgebrochen.";
         return;
       }
 
+      const ownerPatch = await mergeOwnerInfoToKeep(keep.id, deleteIds);
+      const ownerStaffAdded = await ensureOwnerStaffOnKeep(keep.id, deleteIds);
+      const leadDeletedCount = await deleteLeadsByNameKey(targetKey);
+      const staffReqDeletedCount = await deleteStaffRequestsByRestaurantIds(deleteIds, targetKey);
+
       for (const row of toDelete) {
         try {
+          await deleteRestaurantSubcollectionDocs(row.id, "staff");
+          await deleteRestaurantSubcollectionDocs(row.id, "menuItems");
+          await deleteRestaurantSubcollectionDocs(row.id, "offers");
+          await deleteRestaurantSubcollectionDocs(row.id, "socialPosts");
           await deleteDoc(doc(db, "restaurants", row.id));
           await deleteDoc(doc(db, "restaurants", row.id, "public", "meta")).catch(() => {});
           await deleteDoc(doc(db, "restaurants", row.id, "public", "menu")).catch(() => {});
@@ -5160,7 +5320,17 @@ $("leadForm")?.addEventListener("submit", async (e) => {
       const next = restaurants.filter((r) => !delIds.has(r.id));
       restaurants.splice(0, restaurants.length, ...next);
       refreshCustomers();
-      if (statusEl) statusEl.textContent = `Duplikate geloescht. Behalten: ${keep.name} (${keep.id}).`;
+      if (typeof refreshStaffUi === "function") {
+        await refreshStaffUi();
+      }
+      if (typeof refreshLeads === "function") {
+        await refreshLeads(true);
+      }
+      if (statusEl) {
+        const ownerInfo = Object.keys(ownerPatch).length ? "Owner-Daten migriert." : "Owner-Daten unveraendert.";
+        const staffInfo = ownerStaffAdded ? `Owner-Staff kopiert: ${ownerStaffAdded}.` : "Owner-Staff unveraendert.";
+        statusEl.textContent = `Duplikate geloescht. Behalten: ${keep.name} (${keep.id}). Leads geloescht: ${leadDeletedCount}, Staff-Requests geloescht: ${staffReqDeletedCount}. ${ownerInfo} ${staffInfo}`;
+      }
     }
 
     let cleanupBusy = false;
