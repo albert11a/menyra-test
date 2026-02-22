@@ -5670,24 +5670,26 @@ function renderHeader() {
 }
 
 function shouldShowBusinessTopTabs() {
-  return isLocalBusinessProfile() && !state.profileView;
+  if (state.activeTab !== "profile") return false;
+  const profile = state.profileView?.profile || state.userProfile;
+  return !!profile?.restaurantId;
 }
 
 function renderBusinessTopTabs() {
   if (!shouldShowBusinessTopTabs()) return "";
+  const profile = state.profileView?.profile || state.userProfile;
   const menuUrl = buildUrl("apps/menyra-restaurants/guest/karte/index.html", {
-    r: state.userProfile.restaurantId
+    r: profile?.restaurantId || ""
   });
   const base = "flex-1 py-3 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
-  const isFeedActive = state.activeTab === "feed";
   return `
     <div class="px-6 pb-4">
       <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center gap-1 backdrop-blur-sm">
-        <button type="button" data-nav="feed" class="${base} ${isFeedActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-          Social
+        <button type="button" class="${base} bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]">
+          Profil
         </button>
         <a href="${escapeHtml(menuUrl)}" class="${base} text-slate-400 hover:text-slate-600">
-          Karten
+          Karte
         </a>
         <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
           Reviews
