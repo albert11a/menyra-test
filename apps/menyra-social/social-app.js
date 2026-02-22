@@ -775,6 +775,42 @@ function sanitizeDisplayName(value, fallback) {
   return cleaned;
 }
 
+function isLocalBusinessProfile(profile = state.userProfile) {
+  return !!profile?.restaurantId && profile?.role === "business";
+}
+
+function getRestaurantMetaById(restaurantId) {
+  if (!restaurantId) return null;
+  return state.restaurants.find((rest) => String(rest.id) === String(restaurantId)) || null;
+}
+
+function resolveHeaderBranding() {
+  if (!isLocalBusinessProfile()) {
+    return {
+      title: "MENYRA",
+      subtitle: "Social",
+      logoUrl: resolveShellAvatarUrl(),
+      isBusinessLogo: state.userProfile.role === "business"
+    };
+  }
+
+  const restaurantId = state.userProfile.restaurantId || "";
+  const restaurant = getRestaurantMetaById(restaurantId);
+  const fallbackName = state.userProfile.name || "Business";
+  const title = sanitizeDisplayName(restaurant?.name || restaurant?.restaurantName, fallbackName);
+  const rawLogo = restaurant?.logoUrl || restaurant?.logo || restaurant?.logoURL || state.userProfile.avatar || "";
+  let logoUrl = resolveRestaurantLogo(restaurantId, rawLogo, "avatar");
+  if (isPlaceholderUrl(logoUrl)) {
+    logoUrl = resolveShellAvatarUrl();
+  }
+  return {
+    title,
+    subtitle: "",
+    logoUrl,
+    isBusinessLogo: true
+  };
+}
+
 function normalizeSearchQuery(value) {
   return String(value || "").trim();
 }
@@ -1181,6 +1217,10 @@ function applyRestaurantMetaUpdate(restaurantId, meta) {
     } else if (logoChanged) {
       updateStoryLogoNodes({ restaurantId, img: nextLogo });
     }
+  }
+
+  if (String(state.userProfile.restaurantId || "") === String(restaurantId)) {
+    updateShellDom();
   }
 }
 
@@ -2004,8 +2044,14 @@ function normalizeUserSearchResult(doc) {
     followers: data.followersCount ?? data.followers ?? 0,
     following: data.followingCount ?? data.following ?? 0,
     role: data.role || "user",
+    restaurantId: data.restaurantId || "",
     bio: data.bio || ""
   };
+}
+
+function isBusinessSearchUser(user) {
+  const role = String(user?.role || "").toLowerCase();
+  return role === "business" || !!user?.restaurantId;
 }
 
 async function searchUsersRemote(queryRaw, token) {
@@ -2018,7 +2064,7 @@ async function searchUsersRemote(queryRaw, token) {
   const cacheKey = `users:${queryKey}`;
   const cached = searchCache.get(cacheKey);
   if (cached) {
-    state.search.userResults = cached;
+    state.search.userResults = cached.filter((item) => !isBusinessSearchUser(item));
     return;
   }
   try {
@@ -2034,7 +2080,7 @@ async function searchUsersRemote(queryRaw, token) {
       ));
       snap.forEach((docSnap) => {
         const item = normalizeUserSearchResult(docSnap);
-        if (item.uid) users.set(item.uid, item);
+        if (item.uid && !isBusinessSearchUser(item)) users.set(item.uid, item);
       });
     }
     const nameVariants = new Set();
@@ -2053,12 +2099,13 @@ async function searchUsersRemote(queryRaw, token) {
       ));
       nameSnap.forEach((docSnap) => {
         const item = normalizeUserSearchResult(docSnap);
-        if (item.uid) users.set(item.uid, item);
+        if (item.uid && !isBusinessSearchUser(item)) users.set(item.uid, item);
       });
     }
     if (token !== searchToken) return;
     const key = normalizeSearchKey(queryRaw);
     const results = Array.from(users.values())
+      .filter((item) => !isBusinessSearchUser(item))
       .map((item) => ({
         ...item,
         _score: Math.max(
@@ -2223,6 +2270,8 @@ function ensureTabData(tab) {
 }
 
 function findPostById(postId) {
+  const modalPost = state.postModal?.post;
+  if (modalPost && String(modalPost.id) === String(postId)) return modalPost;
   const all = [...state.userPosts, ...state.businessPosts, ...state.feedPosts];
   const found = all.find((item) => String(item.id) === String(postId));
   if (found) return found;
@@ -2483,6 +2532,7 @@ async function togglePostLike(postId) {
   try {
     await runTransaction(db, async (tx) => {
       const likeSnap = await tx.get(likeRef);
+      const feedSnap = feedRef ? await tx.get(feedRef) : null;
       if (likeSnap.exists()) {
         tx.delete(likeRef);
         delta = -1;
@@ -2497,11 +2547,8 @@ async function togglePostLike(postId) {
         delta = 1;
       }
       tx.update(postRef, { likesCount: increment(delta) });
-      if (feedRef) {
-        const feedSnap = await tx.get(feedRef);
-        if (feedSnap.exists()) {
-          tx.update(feedRef, { likesCount: increment(delta) });
-        }
+      if (feedRef && feedSnap?.exists()) {
+        tx.update(feedRef, { likesCount: increment(delta) });
       }
     });
 
@@ -2966,10 +3013,10 @@ function bindFeedDelegation() {
     }
     const profileBtn = target.closest("[data-profile-business]");
     if (profileBtn) {
-      openProfileFromBusiness({
+      openProfileViewFromBusiness({
         id: profileBtn.dataset.profileId || "",
         name: profileBtn.dataset.profileBusiness || ""
-      });
+      }, { showBack: false });
     }
   });
   feedView.dataset.bound = "true";
@@ -2978,17 +3025,38 @@ function bindFeedDelegation() {
 function updateShellDom() {
   const avatarUrl = resolveShellAvatarUrl();
   const isBusiness = state.userProfile.role === "business";
+  const branding = resolveHeaderBranding();
+  const isBusinessHeader = isLocalBusinessProfile();
   const headerAvatar = document.getElementById("headerAvatar");
   if (headerAvatar) {
     const current = headerAvatar.getAttribute("src") || "";
-    if (!isPlaceholderUrl(avatarUrl) || !current || isPlaceholderUrl(current)) {
-      if (current !== avatarUrl) headerAvatar.setAttribute("src", avatarUrl);
+    if (!isPlaceholderUrl(branding.logoUrl) || !current || isPlaceholderUrl(current)) {
+      if (current !== branding.logoUrl) headerAvatar.setAttribute("src", branding.logoUrl);
     }
   }
   if (headerAvatar) {
-    headerAvatar.classList.toggle("object-contain", isBusiness);
-    headerAvatar.classList.toggle("bg-white", isBusiness);
-    headerAvatar.classList.toggle("object-cover", !isBusiness);
+    headerAvatar.classList.toggle("object-contain", branding.isBusinessLogo);
+    headerAvatar.classList.toggle("bg-white", branding.isBusinessLogo);
+    headerAvatar.classList.toggle("object-cover", !branding.isBusinessLogo);
+  }
+  const headerTitle = document.getElementById("headerTitle");
+  if (headerTitle && headerTitle.textContent !== branding.title) {
+    headerTitle.textContent = branding.title;
+  }
+  if (headerTitle) {
+    headerTitle.classList.toggle("font-elegant", isBusinessHeader);
+    headerTitle.classList.toggle("font-semibold", isBusinessHeader);
+    headerTitle.classList.toggle("tracking-wide", isBusinessHeader);
+    headerTitle.classList.toggle("font-black", !isBusinessHeader);
+    headerTitle.classList.toggle("italic", !isBusinessHeader);
+    headerTitle.classList.toggle("tracking-tighter", !isBusinessHeader);
+  }
+  const headerSubtitle = document.getElementById("headerSubtitle");
+  if (headerSubtitle) {
+    if (headerSubtitle.textContent !== branding.subtitle) {
+      headerSubtitle.textContent = branding.subtitle;
+    }
+    headerSubtitle.classList.toggle("hidden", !branding.subtitle);
   }
   const drawerAvatar = document.getElementById("drawerAvatar");
   if (drawerAvatar) {
@@ -4021,15 +4089,34 @@ function setProfileMenuOpen(postId) {
 function getPostDocRef(post) {
   if (!post || !post.id) return null;
   const id = String(post.id);
-  if (post.ownerType === "restaurant" && post.ownerId) {
-    return doc(db, "restaurants", post.ownerId, "socialPosts", id);
+  const ownerType = post.ownerType
+    || (post.restaurantId || post.rid ? "restaurant" : "")
+    || (post.uid || post.userId ? "user" : "");
+  const ownerId = post.ownerId
+    || post.restaurantId
+    || post.rid
+    || post.uid
+    || post.userId
+    || "";
+
+  if (!post.ownerType && ownerType) post.ownerType = ownerType;
+  if (!post.ownerId && ownerId) post.ownerId = ownerId;
+
+  if (ownerType === "restaurant" && ownerId) {
+    return doc(db, "restaurants", ownerId, "socialPosts", id);
   }
-  if (post.ownerType === "user" && post.ownerId) {
-    return doc(db, "users", post.ownerId, "posts", id);
+  if (ownerType === "user" && ownerId) {
+    return doc(db, "users", ownerId, "posts", id);
   }
-  if (post.restaurantId) {
-    return doc(db, "restaurants", post.restaurantId, "socialPosts", id);
+
+  const profileOwner = state.profileView?.profile;
+  if (profileOwner?.restaurantId) {
+    return doc(db, "restaurants", profileOwner.restaurantId, "socialPosts", id);
   }
+  if (profileOwner?.uid) {
+    return doc(db, "users", profileOwner.uid, "posts", id);
+  }
+
   if (state.user?.uid) {
     return doc(db, "users", state.user.uid, "posts", id);
   }
@@ -4124,7 +4211,6 @@ function renderPublicProfileView() {
   const isFollowing = state.followingHandles.includes(followKey);
   const typeLabel = profile.restaurantId ? "Business" : "User";
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
-  const backLabel = state.profileBackTab === "search" ? "Suche" : "Profil";
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
   const isMediaTab = state.profileContentTab === "media";
@@ -4136,13 +4222,6 @@ function renderPublicProfileView() {
   return `
     <div class="pb-24">
       <div class="px-5 pb-2 pt-10">
-      <div class="flex items-center gap-3 mb-6">
-        <button data-public-profile-back="true" class="w-11 h-11 rounded-2xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
-        <div>
-          <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">${backLabel}</p>
-          <h2 class="text-xl font-black italic tracking-tighter">${escapeHtml(sanitizeDisplayName(profile.name, profile.handle || "Profil"))}</h2>
-        </div>
-      </div>
 
         <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
           <div class="relative z-10">
@@ -4355,20 +4434,24 @@ async function openProfileFromBusiness(input) {
   }
 }
 
-function showPublicProfile(profile, posts) {
+function showPublicProfile(profile, posts, { showBack = true, backTab } = {}) {
   state.profileView = { profile, posts: posts || profile.posts || [] };
   state.profileModal = { open: false, profile: null };
   state.profileContentTab = "posts";
   state.profileViewMode = "grid";
   state.profilePostMenuId = null;
   state.drawerOpen = false;
-  state.profileBackTab = state.activeTab || "feed";
+  if (showBack) {
+    state.profileBackTab = backTab || state.activeTab || "feed";
+  } else {
+    state.profileBackTab = "";
+  }
   state.activeTab = "profile";
   render();
   attachProfileViewListener(profile);
 }
 
-async function openProfileViewFromBusiness(input) {
+async function openProfileViewFromBusiness(input, { showBack = true } = {}) {
   try {
     const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
     const restaurantId = typeof input === "string" ? "" : (input?.id || "");
@@ -4399,7 +4482,7 @@ async function openProfileViewFromBusiness(input) {
       posts: fallbackPosts
     });
 
-    showPublicProfile(placeholderProfile, placeholderProfile.posts);
+    showPublicProfile(placeholderProfile, placeholderProfile.posts, { showBack });
 
     const [profileSnap, posts] = await Promise.all([
       fetchBusinessProfileDoc({ restaurantId, restaurant: rest }),
@@ -4415,7 +4498,7 @@ async function openProfileViewFromBusiness(input) {
 
     if (state.activeTab !== "profile") return;
     if (restaurantId && state.profileView?.profile?.restaurantId !== restaurantId) return;
-    showPublicProfile(resolved, resolved.posts);
+    showPublicProfile(resolved, resolved.posts, { showBack });
   } catch (err) {
     console.error(err);
   }
@@ -5559,8 +5642,14 @@ function renderUploadView() {
 function renderHeader() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const badge = unread > 9 ? "9+" : String(unread || "");
-  const avatarUrl = resolveShellAvatarUrl();
-  const avatarFit = logoFitClass(state.userProfile.role === "business");
+  const branding = resolveHeaderBranding();
+  const avatarUrl = branding.logoUrl;
+  const avatarFit = logoFitClass(branding.isBusinessLogo);
+  const isBusinessHeader = isLocalBusinessProfile();
+  const titleClass = isBusinessHeader
+    ? "text-2xl font-elegant font-semibold tracking-wide leading-none text-slate-900 max-w-[220px] mx-auto truncate"
+    : "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
+  const subtitleClass = `text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block${branding.subtitle ? "" : " hidden"}`;
   return `
     <header class="p-6 pb-2 flex justify-between items-center sticky top-0 z-40 backdrop-blur-xl bg-slate-50/80">
       <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
@@ -5570,13 +5659,41 @@ function renderHeader() {
         ${unread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
       </button>
       <div class="text-center cursor-pointer" data-nav="feed">
-        <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MENYRA</h1>
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">Social</span>
+        <h1 id="headerTitle" class="${titleClass}">${escapeHtml(branding.title)}</h1>
+        <span id="headerSubtitle" class="${subtitleClass}">${escapeHtml(branding.subtitle)}</span>
       </div>
       <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
         <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
       </button>
     </header>
+  `;
+}
+
+function shouldShowBusinessTopTabs() {
+  return isLocalBusinessProfile() && !state.profileView;
+}
+
+function renderBusinessTopTabs() {
+  if (!shouldShowBusinessTopTabs()) return "";
+  const menuUrl = buildUrl("apps/menyra-restaurants/guest/karte/index.html", {
+    r: state.userProfile.restaurantId
+  });
+  const base = "flex-1 py-3 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
+  const isFeedActive = state.activeTab === "feed";
+  return `
+    <div class="px-6 pb-4">
+      <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center gap-1 backdrop-blur-sm">
+        <button type="button" data-nav="feed" class="${base} ${isFeedActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
+          Social
+        </button>
+        <a href="${escapeHtml(menuUrl)}" class="${base} text-slate-400 hover:text-slate-600">
+          Karten
+        </a>
+        <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
+          Reviews
+        </button>
+      </div>
+    </div>
   `;
 }
 
@@ -5594,6 +5711,7 @@ function renderMain() {
     <div class="min-h-screen bg-slate-50 text-slate-900 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden font-sans transition-colors duration-500">
       ${renderDrawer()}
       ${renderHeader()}
+      ${renderBusinessTopTabs()}
       <main class="flex-1 overflow-y-auto no-scrollbar pb-24">${view}</main>
     </div>
   `;
@@ -6250,10 +6368,10 @@ function bindAppEvents() {
   document.querySelectorAll("[data-profile-business]").forEach((btn) => {
     if (btn.closest("#feedView")) return;
     btn.addEventListener("click", () => {
-      openProfileFromBusiness({
+      openProfileViewFromBusiness({
         id: btn.dataset.profileId || "",
         name: btn.dataset.profileBusiness || ""
-      });
+      }, { showBack: false });
     });
   });
 
@@ -6399,7 +6517,7 @@ function bindSearchEvents() {
       openProfileViewFromBusiness({
         id: bizBtn.dataset.searchBusiness || "",
         name: bizBtn.dataset.searchName || ""
-      });
+      }, { showBack: false });
     }
   });
 
@@ -6633,6 +6751,7 @@ async function loadRestaurants({ force = false } = {}) {
     if (!state.restaurants.length) {
       state.restaurants = await enrichRestaurantsWithPublicMeta(cached.data);
       rebuildBusinessLocations();
+      if (lastRenderMode === "main") updateShellDom();
       syncFeedPostLogos();
       refreshFeedStories({ force: true });
       cleanupLeaflet();
@@ -6662,6 +6781,7 @@ async function loadRestaurants({ force = false } = {}) {
     if (prevIds === nextIds) return;
     state.restaurants = list;
     rebuildBusinessLocations();
+    if (lastRenderMode === "main") updateShellDom();
     syncFeedPostLogos();
     refreshFeedStories({ force: true });
     cleanupLeaflet();
@@ -7000,7 +7120,11 @@ async function loadUserPosts({ force = false } = {}) {
   const cached = readCache(userPostsKey(state.user.uid), CACHE_TTL_MS.posts);
   if (cached?.data?.length) {
     if (!state.userPosts.length) {
-      state.userPosts = cached.data;
+      state.userPosts = cached.data.map((post) => ({
+        ...post,
+        ownerType: post.ownerType || "user",
+        ownerId: post.ownerId || state.user.uid
+      }));
       render();
     }
     if (cached.fresh && !force) return;
@@ -7049,7 +7173,12 @@ async function loadBusinessPosts({ force = false } = {}) {
   const cached = readCache(businessPostsKey(restaurantId), CACHE_TTL_MS.posts);
   if (cached?.data?.length) {
     if (!state.businessPosts.length) {
-      state.businessPosts = cached.data;
+      state.businessPosts = cached.data.map((post) => ({
+        ...post,
+        ownerType: post.ownerType || "restaurant",
+        ownerId: post.ownerId || restaurantId,
+        restaurantId: post.restaurantId || restaurantId
+      }));
       render();
     }
     if (cached.fresh && !force) return;
