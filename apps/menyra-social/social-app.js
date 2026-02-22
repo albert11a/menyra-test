@@ -160,6 +160,7 @@ const businessProfileCache = new Map();
 const userProfileCache = new Map();
 const restaurantOwnerCache = new Map();
 const menuCache = new Map();
+const focusCache = new Map();
 const FAST_LIMITS = {
   feed: 20,
   feedFallback: 40,
@@ -241,12 +242,31 @@ const state = {
     item: null,
     status: "",
     loading: false,
-    imageFile: null,
-    imagePreview: ""
+    imageFiles: [],
+    imagePreviews: [],
+    existingImages: []
   },
   menuDetail: {
     open: false,
-    item: null
+    item: null,
+    index: 0
+  },
+  focus: {
+    restaurantId: "",
+    items: [],
+    loading: false,
+    enabled: true,
+    error: "",
+    index: 0
+  },
+  focusModal: {
+    open: false,
+    mode: "create",
+    item: null,
+    status: "",
+    loading: false,
+    imageFile: null,
+    imagePreview: ""
   },
   settings: { ...DEFAULT_SETTINGS },
   notifications: [...DEFAULT_NOTIFICATIONS],
@@ -296,7 +316,7 @@ let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
 let lastCommentAt = 0;
-let overlayCache = { profile: "", post: "", likes: "", menu: "", menuDetail: "" };
+let overlayCache = { profile: "", post: "", likes: "", menu: "", menuDetail: "", focus: "" };
 let pendingProfileRestaurantId = "";
 let pendingProfileHandled = false;
 let dataLoaded = {
@@ -330,6 +350,8 @@ let liveFeedDisabled = false;
 let liveStoriesDisabled = false;
 let feedStoriesSignature = "";
 let storiesRowSignature = "";
+let focusRotateTimer = null;
+let focusRotateKey = "";
 
 function suspendRender() {
   renderSuspended += 1;
@@ -2413,6 +2435,7 @@ function ensureTabData(tab) {
       const restaurantId = state.userProfile.restaurantId || "";
       if (restaurantId) {
         void loadMenuForRestaurant(restaurantId, { source: "collection" });
+        void loadFocusForRestaurant(restaurantId);
       }
     });
   }
@@ -4456,6 +4479,18 @@ function getFilteredMenuItems(items, { filter = "all", query = "" } = {}) {
   });
 }
 
+function getMenuItemImages(item) {
+  const list = Array.isArray(item?.imageUrls) ? item.imageUrls.slice() : [];
+  if (item?.imageUrl) list.unshift(item.imageUrl);
+  const unique = Array.from(new Set(list.filter(Boolean)));
+  return unique.length ? unique : [""];
+}
+
+function resolveMenuItemHero(item) {
+  const images = getMenuItemImages(item);
+  return images[0] || "";
+}
+
 function renderMenuFilterRow() {
   const filter = state.menu.filter || "all";
   return `
@@ -4474,7 +4509,7 @@ function renderMenuFilterRow() {
 }
 
 function renderMenuItemCard(item, { mode = "profile" } = {}) {
-  const imgSrc = getOptimizedImageUrl(item.imageUrl || "", "thumb");
+  const imgSrc = getOptimizedImageUrl(resolveMenuItemHero(item), "thumb");
   const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
   const priceLabel = formatPrice(item.price);
   const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
@@ -4528,6 +4563,252 @@ function renderMenuList(items, { mode = "profile" } = {}) {
   `;
 }
 
+function getActiveFocusItems(items = state.focus.items) {
+  const list = Array.isArray(items) ? items : [];
+  return list
+    .map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`))
+    .filter((item) => item && item.active !== false);
+}
+
+function getFocusStateForRestaurant(restaurantId, { includeInactive = false } = {}) {
+  const same = !!restaurantId && state.focus.restaurantId === restaurantId;
+  const rawItems = same ? (Array.isArray(state.focus.items) ? state.focus.items : []) : [];
+  const normalized = rawItems.map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`));
+  const items = includeInactive ? normalized : normalized.filter((item) => item && item.active !== false);
+  const enabled = same ? state.focus.enabled !== false : true;
+  const loading = !!restaurantId && (state.focus.loading || !same);
+  return { items, enabled, loading, same };
+}
+
+function getFocusIndex(items) {
+  const max = (items?.length || 0) - 1;
+  if (max < 0) return 0;
+  const raw = Number(state.focus.index || 0);
+  if (!Number.isFinite(raw) || raw < 0 || raw > max) return 0;
+  return raw;
+}
+
+function setFocusIndex(nextIndex) {
+  const items = getActiveFocusItems();
+  if (!items.length) return;
+  const max = items.length;
+  let idx = Number(nextIndex);
+  if (!Number.isFinite(idx)) idx = 0;
+  if (idx < 0) idx = max - 1;
+  if (idx >= max) idx = 0;
+  if (idx === state.focus.index) return;
+  state.focus.index = idx;
+  if (!updateFocusCarouselDom()) {
+    render();
+  }
+}
+
+function clearFocusRotation() {
+  if (!focusRotateTimer) return;
+  if (typeof window !== "undefined") {
+    window.clearInterval(focusRotateTimer);
+  }
+  focusRotateTimer = null;
+}
+
+function isFocusRotationActive() {
+  const profile = state.profileView?.profile || state.userProfile;
+  const restaurantId = profile?.restaurantId || "";
+  if (!restaurantId) return false;
+  if (state.activeTab !== "profile" || state.profileTopTab !== "menu") return false;
+  if (!isRestaurantCafeProfile(profile)) return false;
+  if (state.focus.enabled === false) return false;
+  if (state.focus.restaurantId !== restaurantId) return false;
+  const items = getActiveFocusItems();
+  return items.length > 1;
+}
+
+function updateFocusRotation() {
+  if (typeof window === "undefined") return;
+  const profile = state.profileView?.profile || state.userProfile;
+  const restaurantId = profile?.restaurantId || "";
+  const items = getActiveFocusItems();
+  const shouldRotate = isFocusRotationActive();
+  const nextKey = shouldRotate ? `${restaurantId}|${items.length}` : "";
+  if (!shouldRotate) {
+    clearFocusRotation();
+    focusRotateKey = nextKey;
+    return;
+  }
+  if (focusRotateKey !== nextKey) {
+    clearFocusRotation();
+    focusRotateKey = nextKey;
+  }
+  if (!focusRotateTimer) {
+    focusRotateTimer = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      if (!isFocusRotationActive()) {
+        clearFocusRotation();
+        return;
+      }
+      setFocusIndex(state.focus.index + 1);
+    }, 5000);
+  }
+}
+
+function updateFocusCarouselDom() {
+  if (typeof document === "undefined") return false;
+  const root = document.getElementById("focusCarousel");
+  if (!root) return false;
+  const profile = state.profileView?.profile || state.userProfile;
+  const restaurantId = profile?.restaurantId || "";
+  if (!restaurantId || !isRestaurantCafeProfile(profile)) return false;
+  const { items, enabled } = getFocusStateForRestaurant(restaurantId);
+  if (!enabled || !items.length) return false;
+  const idx = getFocusIndex(items);
+  const item = items[idx] || items[0];
+  const imgUrl = getOptimizedImageUrl(item.imageUrl || "", "large");
+  const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
+
+  const imgEl = root.querySelector("[data-focus-image]");
+  if (imgEl instanceof HTMLImageElement) {
+    if (imgEl.getAttribute("src") !== safeImg) imgEl.setAttribute("src", safeImg);
+  }
+  const titleEl = root.querySelector("[data-focus-title]");
+  if (titleEl) titleEl.textContent = item.title || "Sot ne Fokus";
+  const textEl = root.querySelector("[data-focus-text]");
+  if (textEl) {
+    if (item.text) {
+      textEl.textContent = item.text;
+      textEl.classList.remove("hidden");
+    } else {
+      textEl.textContent = "";
+      textEl.classList.add("hidden");
+    }
+  }
+  root.querySelectorAll("[data-focus-dot]").forEach((btn) => {
+    const dotIdx = Number(btn.dataset.focusDot || "0");
+    btn.classList.toggle("bg-slate-900", dotIdx === idx);
+    btn.classList.toggle("bg-slate-200", dotIdx !== idx);
+  });
+  return true;
+}
+
+function renderFocusAdminSection(restaurantId) {
+  if (!restaurantId) return "";
+  const { items, enabled, loading } = getFocusStateForRestaurant(restaurantId, { includeInactive: true });
+  const countLabel = formatCount(items.length);
+  return `
+    <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Sot ne Fokus</span>
+          <h3 class="text-xl font-black italic tracking-tighter">Highlights</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(countLabel)} Eintraege</p>
+        </div>
+        <button type="button" data-focus-add class="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow active:scale-95">
+          ${icon("plus", "w-4 h-4")}
+        </button>
+      </div>
+
+      <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100 mb-4">
+        <div>
+          <p class="text-xs font-black text-slate-800">Im Fokus anzeigen</p>
+          <p class="text-[10px] font-bold text-slate-400">Im Profil sichtbar</p>
+        </div>
+        <input id="focusEnabledToggle" type="checkbox" class="w-5 h-5 accent-amber-500" ${enabled ? "checked" : ""} />
+      </label>
+
+      ${loading ? `
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-400">Fokus wird geladen...</div>
+      ` : items.length ? `
+        <div class="space-y-3">
+          ${items.map((item) => {
+            const imgUrl = getOptimizedImageUrl(item.imageUrl || "", "thumb");
+            const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
+            const status = item.active !== false ? "Aktiv" : "Inaktiv";
+            const statusClass = item.active !== false ? "text-emerald-600" : "text-slate-400";
+            return `
+              <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
+                <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
+                  <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.title || "Sot ne Fokus")}</p>
+                  ${item.text ? `<p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(item.text)}</p>` : ""}
+                  <p class="text-[9px] font-black uppercase tracking-widest mt-2 ${statusClass}">${status}</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <button data-focus-edit="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 border border-slate-200">Edit</button>
+                  <button data-focus-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Loeschen</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : `
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Noch keine Fokus-Eintraege</div>
+      `}
+    </div>
+  `;
+}
+
+function renderFocusCarousel(profile) {
+  const restaurantId = profile?.restaurantId || "";
+  if (!restaurantId) return "";
+  if (!isRestaurantCafeProfile(profile)) return "";
+  if (!state.focus.loading && state.focus.restaurantId !== restaurantId) {
+    ensureFocusDataForProfile(profile);
+  }
+  const { items, enabled, loading } = getFocusStateForRestaurant(restaurantId);
+  if (!enabled) return "";
+  if (!items.length && !loading) return "";
+  if (loading && !items.length) {
+    return `
+      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+        <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">Fokus wird geladen...</div>
+      </div>
+    `;
+  }
+
+  const idx = getFocusIndex(items);
+  const item = items[idx] || items[0];
+  const imgUrl = getOptimizedImageUrl(item.imageUrl || "", "large");
+  const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
+  const text = item.text || "";
+  const rotationLabel = items.length > 1 ? "Wechselt alle 5 Sekunden" : "Heute im Fokus";
+  return `
+    <div id="focusCarousel" class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Sot ne Fokus</span>
+          <h3 class="text-xl font-black italic tracking-tighter">Im Fokus</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${rotationLabel}</p>
+        </div>
+        ${items.length > 1 ? `
+          <div class="flex items-center gap-2">
+            <button type="button" data-focus-nav="prev" class="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center">
+              ${icon("chevron-left", "w-4 h-4")}
+            </button>
+            <button type="button" data-focus-nav="next" class="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center">
+              ${icon("chevron-right", "w-4 h-4")}
+            </button>
+          </div>
+        ` : ""}
+      </div>
+      <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
+        <img data-focus-image src="${escapeHtml(safeImg)}" class="w-full h-56 object-cover" />
+      </div>
+      <div class="mt-4">
+        <p data-focus-title class="text-lg font-black text-slate-900">${escapeHtml(item.title || "Sot ne Fokus")}</p>
+        <p data-focus-text class="text-sm text-slate-500 mt-2 leading-relaxed ${text ? "" : "hidden"}">${escapeHtml(text)}</p>
+      </div>
+      ${items.length > 1 ? `
+        <div class="flex items-center justify-center gap-2 mt-4">
+          ${items.map((_, dotIdx) => `
+            <button type="button" data-focus-dot="${dotIdx}" class="w-2.5 h-2.5 rounded-full ${dotIdx === idx ? "bg-slate-900" : "bg-slate-200"}"></button>
+          `).join("")}
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
 function buildQrImageUrl(value, size = 220) {
   const safe = encodeURIComponent(value || "");
   return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${safe}`;
@@ -4563,6 +4844,10 @@ function renderMenuAdminView() {
   const countLabel = formatCount(items.length);
   const profileUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId }) : "";
   const menuUrl = restaurantId ? buildUrl("apps/menyra-restaurants/guest/karte/index.html", { r: restaurantId }) : "";
+
+  if (restaurantId && isEligible && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
+    ensureFocusDataForProfile(profile);
+  }
 
   if (!isEligible) {
     return `
@@ -4605,6 +4890,8 @@ function renderMenuAdminView() {
           <button data-nav="settings" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Zu den Einstellungen</button>
         </div>
       `}
+
+      ${restaurantId ? renderFocusAdminSection(restaurantId) : ""}
 
       ${restaurantId ? `
         <div class="mb-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3">
@@ -4652,6 +4939,9 @@ function renderProfileMenuView(profile) {
   if (!state.menu.loading && state.menu.restaurantId !== restaurantId) {
     ensureMenuDataForProfile(profile);
   }
+  if (!state.focus.loading && state.focus.restaurantId !== restaurantId) {
+    ensureFocusDataForProfile(profile);
+  }
   const isSameRestaurant = state.menu.restaurantId === restaurantId;
   const isLoading = state.menu.loading || !isSameRestaurant;
   const items = isSameRestaurant
@@ -4660,7 +4950,8 @@ function renderProfileMenuView(profile) {
   const error = isSameRestaurant ? state.menu.error : "";
   const countLabel = formatCount(items.length);
   return `
-    <div class="px-5 pb-24">
+    <div class="px-5 pb-24 space-y-5">
+      ${renderFocusCarousel(profile)}
       <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
         <div class="flex items-center justify-between mb-5">
           <div>
@@ -5538,9 +5829,15 @@ function renderMenuItemModal() {
   const item = state.menuModal.item || {};
   const isEdit = state.menuModal.mode === "edit";
   const title = isEdit ? "Produkt bearbeiten" : "Produkt hinzufuegen";
-  const imageRaw = state.menuModal.imagePreview || item.imageUrl || "";
-  const imageUrl = imageRaw ? getOptimizedImageUrl(imageRaw, "large") : PLACEHOLDER_IMAGE;
-  const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
+  const existingImages = Array.isArray(state.menuModal.existingImages) ? state.menuModal.existingImages : [];
+  const newPreviews = Array.isArray(state.menuModal.imagePreviews) ? state.menuModal.imagePreviews : [];
+  const gallery = [
+    ...existingImages.map((src, idx) => ({ src, kind: "existing", idx })),
+    ...newPreviews.map((src, idx) => ({ src, kind: "new", idx }))
+  ].filter((img) => img.src);
+  const heroRaw = gallery[0]?.src || item.imageUrl || "";
+  const heroUrl = heroRaw ? getOptimizedImageUrl(heroRaw, "large") : PLACEHOLDER_IMAGE;
+  const safeImage = isPlaceholderUrl(heroUrl) ? PLACEHOLDER_IMAGE : heroUrl;
   const typeValue = normalizeMenuType(item.type || "food");
   const available = item.available !== false;
   const status = state.menuModal.status || "";
@@ -5559,13 +5856,25 @@ function renderMenuItemModal() {
           </div>
 
           <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-6 space-y-4">
-            <input type="file" id="menuItemImageInput" class="hidden" accept="image/*" />
+            <input type="file" id="menuItemImageInput" class="hidden" accept="image/*" multiple />
             <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
               <img src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" />
             </div>
             <button id="menuItemImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-              Foto hochladen
+              Fotos hochladen
             </button>
+            ${gallery.length ? `
+              <div class="grid grid-cols-4 gap-2">
+                ${gallery.map((img) => `
+                  <div class="relative rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+                    <img src="${escapeHtml(getOptimizedImageUrl(img.src, "thumb"))}" class="w-full h-16 object-cover" />
+                    <button type="button" data-menu-image-remove="${img.idx}" data-menu-image-source="${img.kind}" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 text-slate-600 text-[10px] flex items-center justify-center shadow">
+                      ${icon("x", "w-3 h-3")}
+                    </button>
+                  </div>
+                `).join("")}
+              </div>
+            ` : ""}
 
             <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
               <div>
@@ -5626,7 +5935,10 @@ function renderMenuItemModal() {
 function renderMenuDetailModal() {
   if (!state.menuDetail.open || !state.menuDetail.item) return "";
   const item = state.menuDetail.item;
-  const imgSrc = getOptimizedImageUrl(item.imageUrl || "", "large");
+  const images = getMenuItemImages(item);
+  const maxIndex = images.length ? images.length - 1 : 0;
+  const safeIndex = Math.max(0, Math.min(state.menuDetail.index || 0, maxIndex));
+  const imgSrc = getOptimizedImageUrl(images[safeIndex] || "", "large");
   const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
   const priceLabel = formatPrice(item.price);
   const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
@@ -5650,9 +5962,24 @@ function renderMenuDetailModal() {
           </div>
 
           <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-8">
-            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+            <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50" data-menu-gallery style="touch-action: pan-y;">
               <img src="${escapeHtml(safeImg)}" class="w-full h-56 object-cover" />
+              ${images.length > 1 ? `
+                <button type="button" data-menu-gallery-nav="prev" class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+                  ${icon("chevron-left", "w-4 h-4")}
+                </button>
+                <button type="button" data-menu-gallery-nav="next" class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+                  ${icon("chevron-right", "w-4 h-4")}
+                </button>
+              ` : ""}
             </div>
+            ${images.length > 1 ? `
+              <div class="flex items-center justify-center gap-2 mt-3">
+                ${images.map((_, idx) => `
+                  <button type="button" data-menu-gallery-dot="${idx}" class="w-2.5 h-2.5 rounded-full ${idx === safeIndex ? "bg-slate-900" : "bg-slate-200"}"></button>
+                `).join("")}
+              </div>
+            ` : ""}
             <div class="mt-4 flex items-center justify-between">
               <span class="text-lg font-black text-slate-900">${escapeHtml(priceLabel)}</span>
               <span class="text-[10px] font-black uppercase tracking-widest ${availabilityClass}">${availability}</span>
@@ -5668,6 +5995,74 @@ function renderMenuDetailModal() {
                 <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
               </div>
             ` : ""}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderFocusModal() {
+  if (!state.focusModal.open) return "";
+  const item = state.focusModal.item || {};
+  const isEdit = state.focusModal.mode === "edit";
+  const title = isEdit ? "Fokus bearbeiten" : "Fokus hinzufuegen";
+  const preview = state.focusModal.imagePreview || item.imageUrl || "";
+  const imageUrl = getOptimizedImageUrl(preview, "large");
+  const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
+  const active = item.active !== false;
+  const status = state.focusModal.status || "";
+
+  return `
+    <div class="fixed inset-0 z-[75]">
+      <div id="focusModalOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden">
+          <div class="p-7 pb-4 flex items-center justify-between">
+            <div>
+              <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
+              <h3 class="text-xl font-black italic tracking-tighter">${title}</h3>
+            </div>
+            <button id="focusModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+          </div>
+
+          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-6 space-y-4">
+            <input type="file" id="focusImageInput" class="hidden" accept="image/*" />
+            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+              <img src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" />
+            </div>
+            <button id="focusImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+              Foto hochladen
+            </button>
+
+            <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Titel</label>
+                <input id="focusTitle" type="text" value="${escapeHtml(item.title || "")}" placeholder="Sot ne Fokus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Text</label>
+                <textarea id="focusText" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(item.text || "")}</textarea>
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
+                <input id="focusImageUrl" type="text" value="${escapeHtml(item.imageUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+              </div>
+              <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                <div>
+                  <p class="text-xs font-black text-slate-800">Aktiv</p>
+                  <p class="text-[10px] font-bold text-slate-400">Sichtbar fuer Gaeste</p>
+                </div>
+                <input id="focusActive" type="checkbox" class="w-5 h-5 accent-amber-500" ${active ? "checked" : ""} />
+              </label>
+            </div>
+          </div>
+
+          <div class="p-7 pt-4 border-t border-slate-100 bg-white">
+            <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
+              ${state.focusModal.loading ? "Speichern..." : "Speichern"}
+            </button>
+            <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
           </div>
         </div>
       </div>
@@ -6316,6 +6711,11 @@ function ensureOverlayRoot() {
     menuDetailRoot.id = "menuDetailOverlayRoot";
     root.appendChild(menuDetailRoot);
   }
+  if (!document.getElementById("focusOverlayRoot")) {
+    const focusRoot = document.createElement("div");
+    focusRoot.id = "focusOverlayRoot";
+    root.appendChild(focusRoot);
+  }
   return root;
 }
 
@@ -6335,17 +6735,22 @@ function renderOverlays(options = {}) {
   const updateMenuDetail = Object.prototype.hasOwnProperty.call(options, "updateMenuDetail")
     ? options.updateMenuDetail
     : !state.likesModal.open;
+  const updateFocus = Object.prototype.hasOwnProperty.call(options, "updateFocus")
+    ? options.updateFocus
+    : !state.likesModal.open;
   const root = ensureOverlayRoot();
   const profileRoot = document.getElementById("profileOverlayRoot");
   const postRoot = document.getElementById("postOverlayRoot");
   const likesRoot = document.getElementById("likesOverlayRoot");
   const menuRoot = document.getElementById("menuOverlayRoot");
   const menuDetailRoot = document.getElementById("menuDetailOverlayRoot");
+  const focusRoot = document.getElementById("focusOverlayRoot");
   let profileChanged = false;
   let postChanged = false;
   let likesChanged = false;
   let menuChanged = false;
   let menuDetailChanged = false;
+  let focusChanged = false;
 
   if (updateProfile) {
     const profileHtml = renderProfileModal();
@@ -6387,7 +6792,15 @@ function renderOverlays(options = {}) {
       overlayCache.menuDetail = detailHtml;
     }
   }
-  const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open);
+  if (updateFocus) {
+    const focusHtml = renderFocusModal();
+    focusChanged = focusHtml !== overlayCache.focus;
+    if (focusRoot && focusChanged) {
+      focusRoot.innerHTML = focusHtml;
+      overlayCache.focus = focusHtml;
+    }
+  }
+  const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
   if (open && !bodyScrollLocked) {
@@ -6407,10 +6820,10 @@ function renderOverlays(options = {}) {
     window.scrollTo(0, bodyScrollTop);
     bodyScrollLocked = false;
   }
-  if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged)) {
+  if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged)) {
     window.lucide.createIcons();
   }
-  bindOverlayEvents({ profileChanged, postChanged, likesChanged, menuChanged, menuDetailChanged });
+  bindOverlayEvents({ profileChanged, postChanged, likesChanged, menuChanged, menuDetailChanged, focusChanged });
 }
 
 function renderLoading() {
@@ -6605,6 +7018,7 @@ function render() {
   }
 
   renderOverlays();
+  updateFocusRotation();
 
   if (state.user && state.activeTab === "map") {
     window.setTimeout(() => {
@@ -6682,7 +7096,7 @@ function bindAuthEvents() {
   }
 }
 
-function bindOverlayEvents({ profileChanged = true, postChanged = true, likesChanged = true, menuChanged = true, menuDetailChanged = true } = {}) {
+function bindOverlayEvents({ profileChanged = true, postChanged = true, likesChanged = true, menuChanged = true, menuDetailChanged = true, focusChanged = true } = {}) {
   if (profileChanged) {
     const profileModalOverlay = document.getElementById("profileModalOverlay");
     const profileModalClose = document.getElementById("profileModalClose");
@@ -6822,17 +7236,46 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
     }
     if (menuImageInput) {
       menuImageInput.addEventListener("change", (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          state.menuModal.imageFile = file;
-          state.menuModal.imagePreview = reader.result || "";
-          renderOverlays({ updateMenu: true });
-        };
-        reader.readAsDataURL(file);
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        const nextFiles = [...(state.menuModal.imageFiles || []), ...files];
+        const previews = [];
+        let remaining = files.length;
+        files.forEach((file) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            previews.push(reader.result || "");
+            remaining -= 1;
+            if (remaining <= 0) {
+              state.menuModal.imageFiles = nextFiles;
+              state.menuModal.imagePreviews = [
+                ...(state.menuModal.imagePreviews || []),
+                ...previews
+              ];
+              renderOverlays({ updateMenu: true });
+            }
+          };
+          reader.readAsDataURL(file);
+        });
       });
     }
+
+    document.querySelectorAll("[data-menu-image-remove]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.dataset.menuImageRemove || "0");
+        const source = btn.dataset.menuImageSource || "existing";
+        if (source === "existing") {
+          const next = (state.menuModal.existingImages || []).filter((_, i) => i !== idx);
+          state.menuModal.existingImages = next;
+        } else {
+          const nextFiles = (state.menuModal.imageFiles || []).filter((_, i) => i !== idx);
+          const nextPreviews = (state.menuModal.imagePreviews || []).filter((_, i) => i !== idx);
+          state.menuModal.imageFiles = nextFiles;
+          state.menuModal.imagePreviews = nextPreviews;
+        }
+        renderOverlays({ updateMenu: true });
+      });
+    });
   }
 
   if (menuDetailChanged) {
@@ -6840,6 +7283,78 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
     const menuDetailClose = document.getElementById("menuDetailClose");
     if (menuDetailOverlay) menuDetailOverlay.addEventListener("click", closeMenuDetail);
     if (menuDetailClose) menuDetailClose.addEventListener("click", closeMenuDetail);
+
+    document.querySelectorAll("[data-menu-gallery-nav]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const dir = btn.dataset.menuGalleryNav || "next";
+        const delta = dir === "prev" ? -1 : 1;
+        setMenuDetailIndex(state.menuDetail.index + delta);
+      });
+    });
+
+    document.querySelectorAll("[data-menu-gallery-dot]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.dataset.menuGalleryDot || "0");
+        setMenuDetailIndex(idx);
+      });
+    });
+
+    const gallery = document.querySelector("[data-menu-gallery]");
+    if (gallery) {
+      let startX = 0;
+      let startY = 0;
+      let tracking = false;
+      gallery.addEventListener("pointerdown", (evt) => {
+        tracking = true;
+        startX = evt.clientX;
+        startY = evt.clientY;
+        try { gallery.setPointerCapture(evt.pointerId); } catch {}
+      });
+      gallery.addEventListener("pointerup", (evt) => {
+        if (!tracking) return;
+        tracking = false;
+        try { gallery.releasePointerCapture(evt.pointerId); } catch {}
+        const dx = evt.clientX - startX;
+        const dy = evt.clientY - startY;
+        if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy)) return;
+        if (dx < 0) setMenuDetailIndex(state.menuDetail.index + 1);
+        else setMenuDetailIndex(state.menuDetail.index - 1);
+      });
+      gallery.addEventListener("pointercancel", () => { tracking = false; });
+    }
+  }
+
+  if (focusChanged) {
+    const focusOverlay = document.getElementById("focusModalOverlay");
+    const focusClose = document.getElementById("focusModalClose");
+    const focusSave = document.getElementById("focusModalSave");
+    const focusImageTrigger = document.getElementById("focusImageTrigger");
+    const focusImageInput = document.getElementById("focusImageInput");
+
+    if (focusOverlay) focusOverlay.addEventListener("click", closeFocusModal);
+    if (focusClose) focusClose.addEventListener("click", closeFocusModal);
+    if (focusSave) {
+      focusSave.addEventListener("click", () => {
+        if (state.focusModal.loading) return;
+        void saveFocusItemFromModal();
+      });
+    }
+    if (focusImageTrigger && focusImageInput) {
+      focusImageTrigger.addEventListener("click", () => focusImageInput.click());
+    }
+    if (focusImageInput) {
+      focusImageInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          state.focusModal.imageFile = file;
+          state.focusModal.imagePreview = reader.result || "";
+          renderOverlays({ updateFocus: true });
+        };
+        reader.readAsDataURL(file);
+      });
+    }
   }
 }
 
@@ -6906,6 +7421,7 @@ function bindAppEvents() {
       state.profileTopTab = tab;
       if (tab === "menu") {
         ensureMenuDataForProfile();
+        ensureFocusDataForProfile();
       }
       render();
     });
@@ -6965,6 +7481,58 @@ function bindAppEvents() {
       const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
       if (!item) return;
       openMenuDetail(item);
+    });
+  });
+
+  const focusEnabledToggle = document.getElementById("focusEnabledToggle");
+  if (focusEnabledToggle) {
+    focusEnabledToggle.addEventListener("change", () => {
+      const restaurantId = state.userProfile.restaurantId || "";
+      if (!restaurantId) return;
+      const enabled = !!focusEnabledToggle.checked;
+      state.focus.enabled = enabled;
+      const cachedItems = state.focus.restaurantId === restaurantId ? (state.focus.items || []) : [];
+      focusCache.set(focusCacheKey(restaurantId), { items: cachedItems, enabled, ts: Date.now() });
+      void saveFocusEnabled(restaurantId, enabled);
+      render();
+    });
+  }
+
+  document.querySelectorAll("[data-focus-add]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openFocusModal("create");
+    });
+  });
+
+  document.querySelectorAll("[data-focus-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const itemId = btn.dataset.focusEdit || "";
+      const item = (state.focus.items || []).find((it) => String(it.id) === String(itemId));
+      if (!item) return;
+      openFocusModal("edit", item);
+    });
+  });
+
+  document.querySelectorAll("[data-focus-delete]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const itemId = btn.dataset.focusDelete || "";
+      if (!itemId) return;
+      void deleteFocusItemById(itemId);
+    });
+  });
+
+  document.querySelectorAll("[data-focus-nav]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const dir = btn.dataset.focusNav || "next";
+      const delta = dir === "prev" ? -1 : 1;
+      setFocusIndex(state.focus.index + delta);
+    });
+  });
+
+  document.querySelectorAll("[data-focus-dot]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.focusDot || "0");
+      setFocusIndex(idx);
     });
   });
 
@@ -8021,6 +8589,104 @@ function menuCacheKey(restaurantId, source) {
   return `${restaurantId || ""}::${source || "hybrid"}`;
 }
 
+function normalizeFocusItem(data, fallbackId) {
+  const d = data || {};
+  const id = d.id || d._id || fallbackId || (crypto.randomUUID?.() || String(Math.random()).slice(2));
+  return {
+    id,
+    title: d.title || d.name || "Sot ne Fokus",
+    text: d.text || d.desc || d.description || "",
+    imageUrl: d.imageUrl || d.image || d.photoUrl || "",
+    active: d.active !== false
+  };
+}
+
+async function loadFocusItems(restaurantId) {
+  if (!restaurantId) return [];
+  try {
+    const snap = await getDoc(doc(db, "restaurants", restaurantId, "public", "offers"));
+    if (!snap.exists()) return [];
+    const data = snap.data() || {};
+    const arr = Array.isArray(data.items) ? data.items : [];
+    return arr.map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`));
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+}
+
+async function loadFocusMeta(restaurantId) {
+  if (!restaurantId) return true;
+  try {
+    const snap = await getDoc(doc(db, "restaurants", restaurantId, "public", "meta"));
+    if (!snap.exists()) return true;
+    const data = snap.data() || {};
+    if (typeof data.offersEnabled === "boolean") return data.offersEnabled;
+  } catch (err) {
+    console.error(err);
+  }
+  return true;
+}
+
+async function saveFocusEnabled(restaurantId, enabled) {
+  if (!restaurantId) return;
+  try {
+    await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), {
+      offersEnabled: !!enabled,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function publishFocusItems(restaurantId, items) {
+  if (!restaurantId) return;
+  const payload = {
+    items: (items || []).map((item) => ({
+      id: item.id || "",
+      title: item.title || "",
+      text: item.text || "",
+      imageUrl: item.imageUrl || "",
+      active: item.active !== false
+    })),
+    updatedAt: serverTimestamp()
+  };
+  await setDoc(doc(db, "restaurants", restaurantId, "public", "offers"), payload, { merge: true });
+}
+
+function focusCacheKey(restaurantId) {
+  return `${restaurantId || ""}`;
+}
+
+async function loadFocusForRestaurant(restaurantId, { force = false } = {}) {
+  if (!restaurantId) {
+    state.focus = { ...state.focus, restaurantId: "", items: [], loading: false, error: "" };
+    return;
+  }
+  const cacheKey = focusCacheKey(restaurantId);
+  const cached = focusCache.get(cacheKey);
+  if (cached && cached.items?.length && !force) {
+    state.focus = { ...state.focus, restaurantId, items: cached.items, enabled: cached.enabled, loading: false, error: "", index: 0 };
+    return;
+  }
+  state.focus = { ...state.focus, restaurantId, loading: true, error: "" };
+  render();
+  try {
+    const [items, enabled] = await Promise.all([
+      loadFocusItems(restaurantId),
+      loadFocusMeta(restaurantId)
+    ]);
+    focusCache.set(cacheKey, { items, enabled, ts: Date.now() });
+    state.focus = { ...state.focus, restaurantId, items, enabled, loading: false, error: "", index: 0 };
+    render();
+  } catch (err) {
+    console.error(err);
+    state.focus = { ...state.focus, restaurantId, items: [], loading: false, error: "Fokus laden fehlgeschlagen." };
+    render();
+  }
+}
+
 async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
   if (!restaurantId) {
     state.menu = { ...state.menu, restaurantId: "", items: [], loading: false, error: "", source };
@@ -8067,8 +8733,14 @@ function ensureMenuDataForProfile(profile = state.profileView?.profile || state.
   void loadMenuForRestaurant(restaurantId, { source: "hybrid" });
 }
 
-function openMenuModal(mode = "create", item = null) {
-  state.menuModal = {
+function ensureFocusDataForProfile(profile = state.profileView?.profile || state.userProfile) {
+  const restaurantId = getMenuRestaurantForProfile(profile);
+  if (!restaurantId) return;
+  void loadFocusForRestaurant(restaurantId);
+}
+
+function openFocusModal(mode = "create", item = null) {
+  state.focusModal = {
     open: true,
     mode,
     item,
@@ -8076,6 +8748,118 @@ function openMenuModal(mode = "create", item = null) {
     loading: false,
     imageFile: null,
     imagePreview: ""
+  };
+  renderOverlays({ updateFocus: true });
+}
+
+function closeFocusModal() {
+  state.focusModal = {
+    open: false,
+    mode: "create",
+    item: null,
+    status: "",
+    loading: false,
+    imageFile: null,
+    imagePreview: ""
+  };
+  renderOverlays({ updateFocus: true });
+}
+
+async function saveFocusItemFromModal() {
+  if (!state.user) return;
+  const restaurantId = state.userProfile.restaurantId || "";
+  if (!restaurantId) {
+    state.focusModal.status = "Kein Restaurant ausgewaehlt.";
+    renderOverlays({ updateFocus: true });
+    return;
+  }
+  const title = document.getElementById("focusTitle")?.value?.trim() || "";
+  const text = document.getElementById("focusText")?.value?.trim() || "";
+  const imageUrlInput = document.getElementById("focusImageUrl")?.value?.trim() || "";
+  const active = document.getElementById("focusActive")?.checked !== false;
+  if (!title) {
+    state.focusModal.status = "Bitte Titel eingeben.";
+    renderOverlays({ updateFocus: true });
+    return;
+  }
+
+  state.focusModal.loading = true;
+  state.focusModal.status = "Speichern...";
+  renderOverlays({ updateFocus: true });
+
+  try {
+    let imageUrl = imageUrlInput || state.focusModal.item?.imageUrl || "";
+    if (state.focusModal.imageFile) {
+      const { cdnUrl } = await uploadCompressedImage(
+        state.focusModal.imageFile,
+        restaurantId,
+        { maxSize: 1080, quality: 0.8, mimeType: "image/jpeg" }
+      );
+      imageUrl = cdnUrl || imageUrl;
+    }
+
+    const id = state.focusModal.item?.id || (crypto.randomUUID?.() || String(Math.random()).slice(2));
+    const payload = {
+      id,
+      title,
+      text,
+      imageUrl,
+      active
+    };
+    const nextItems = Array.isArray(state.focus.items) ? state.focus.items.slice() : [];
+    const idx = nextItems.findIndex((it) => String(it.id) === String(id));
+    if (idx >= 0) {
+      nextItems[idx] = { ...nextItems[idx], ...payload };
+    } else {
+      nextItems.unshift(payload);
+    }
+    await publishFocusItems(restaurantId, nextItems);
+    focusCache.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, ts: Date.now() });
+    state.focus = { ...state.focus, restaurantId, items: nextItems, loading: false, error: "" };
+
+    state.focusModal.loading = false;
+    state.focusModal.status = "Gespeichert.";
+    closeFocusModal();
+    render();
+  } catch (err) {
+    console.error(err);
+    state.focusModal.status = err?.message || "Speichern fehlgeschlagen.";
+    state.focusModal.loading = false;
+    renderOverlays({ updateFocus: true });
+  }
+}
+
+async function deleteFocusItemById(itemId) {
+  if (!state.user || !itemId) return;
+  const restaurantId = state.userProfile.restaurantId || "";
+  if (!restaurantId) return;
+  if (!confirm("Fokus-Eintrag wirklich loeschen?")) return;
+  try {
+    const nextItems = (state.focus.items || []).filter((it) => String(it.id) !== String(itemId));
+    await publishFocusItems(restaurantId, nextItems);
+    focusCache.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, ts: Date.now() });
+    state.focus = { ...state.focus, restaurantId, items: nextItems };
+    render();
+  } catch (err) {
+    console.error(err);
+    alert("Loeschen fehlgeschlagen.");
+  }
+}
+
+function openMenuModal(mode = "create", item = null) {
+  const existingImages = [];
+  if (item?.imageUrl) existingImages.push(item.imageUrl);
+  if (Array.isArray(item?.imageUrls)) existingImages.push(...item.imageUrls);
+  const uniqImages = Array.from(new Set(existingImages.filter(Boolean)));
+  state.menuModal = {
+    open: true,
+    mode,
+    item,
+    status: "",
+    loading: false,
+    imageFiles: [],
+    imagePreviews: [],
+    existingImages: uniqImages
   };
   renderOverlays({ updateMenu: true });
 }
@@ -8087,20 +8871,35 @@ function closeMenuModal() {
     item: null,
     status: "",
     loading: false,
-    imageFile: null,
-    imagePreview: ""
+    imageFiles: [],
+    imagePreviews: [],
+    existingImages: []
   };
   renderOverlays({ updateMenu: true });
 }
 
 function openMenuDetail(item) {
   if (!item) return;
-  state.menuDetail = { open: true, item };
+  state.menuDetail = { open: true, item, index: 0 };
   renderOverlays({ updateMenuDetail: true });
 }
 
 function closeMenuDetail() {
-  state.menuDetail = { open: false, item: null };
+  state.menuDetail = { open: false, item: null, index: 0 };
+  renderOverlays({ updateMenuDetail: true });
+}
+
+function setMenuDetailIndex(nextIndex) {
+  if (!state.menuDetail.open || !state.menuDetail.item) return;
+  const images = getMenuItemImages(state.menuDetail.item);
+  if (!images.length) return;
+  const max = images.length;
+  let idx = Number(nextIndex);
+  if (!Number.isFinite(idx)) idx = 0;
+  if (idx < 0) idx = max - 1;
+  if (idx >= max) idx = 0;
+  if (idx === state.menuDetail.index) return;
+  state.menuDetail.index = idx;
   renderOverlays({ updateMenuDetail: true });
 }
 
@@ -8132,16 +8931,28 @@ async function saveMenuItemFromModal() {
   renderOverlays({ updateMenu: true });
 
   try {
-    let imageUrl = imageUrlInput || state.menuModal.item?.imageUrl || "";
-    if (state.menuModal.imageFile) {
-      const ownerId = restaurantId;
+    const ownerId = restaurantId;
+    const existingImages = Array.isArray(state.menuModal.existingImages)
+      ? state.menuModal.existingImages.slice()
+      : [];
+    const uploadedUrls = [];
+    const files = Array.isArray(state.menuModal.imageFiles) ? state.menuModal.imageFiles : [];
+    for (const file of files) {
       const { cdnUrl } = await uploadCompressedImage(
-        state.menuModal.imageFile,
+        file,
         ownerId,
         { maxSize: 1080, quality: 0.8, mimeType: "image/jpeg" }
       );
-      imageUrl = cdnUrl || imageUrl;
+      if (cdnUrl) uploadedUrls.push(String(cdnUrl));
     }
+
+    const merged = [
+      imageUrlInput,
+      ...(existingImages || []),
+      ...(uploadedUrls || [])
+    ].filter(Boolean);
+    const imageUrls = Array.from(new Set(merged));
+    let imageUrl = imageUrls[0] || "";
 
     const mode = state.menuModal.mode;
     const ref = mode === "edit" && state.menuModal.item?.id
@@ -8159,6 +8970,7 @@ async function saveMenuItemFromModal() {
       price: price ?? "",
       available,
       imageUrl: imageUrl || "",
+      imageUrls,
       updatedAt: serverTimestamp()
     };
     if (mode !== "edit") payload.createdAt = serverTimestamp();
