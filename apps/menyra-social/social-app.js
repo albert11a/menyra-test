@@ -6508,7 +6508,7 @@ function renderProfileModal() {
     overlayId: "profileModalOverlay",
     zIndex: 60,
     labelId: titleId,
-    panelClass: "max-h-[80vh] animate-in slide-in-from-bottom-6",
+    panelClass: "h-[80vh] animate-in slide-in-from-bottom-6",
     headerHtml,
     bodyHtml
   });
@@ -6662,7 +6662,7 @@ function renderPostModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+    <div class="px-6 pt-4 border-t border-slate-100 bg-white" style="padding-bottom: calc(1.5rem + var(--menyra-keyboard-inset, 0px));">
       <div class="flex gap-3">
         <input id="postCommentInput" type="text" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.postModal.commentText || "")}" />
         <button id="postCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
@@ -6679,8 +6679,7 @@ function renderPostModal() {
     overlayId: "postModalOverlay",
     zIndex: 70,
     labelId: titleId,
-    panelClass: "max-h-[90vh] animate-in slide-in-from-bottom-6",
-    panelStyle: "padding-bottom: var(--menyra-keyboard-inset, 0px);",
+    panelClass: "h-[85vh] animate-in slide-in-from-bottom-6",
     withKeyboardInset: true,
     headerHtml,
     bodyHtml,
@@ -6729,7 +6728,7 @@ function renderLikesModal() {
     overlayId: "likesModalOverlay",
     zIndex: 80,
     labelId: titleId,
-    panelClass: "max-h-[75vh] animate-in slide-in-from-bottom-6",
+    panelClass: "h-[70vh] animate-in slide-in-from-bottom-6",
     overlayClass: "bg-black/70",
     overlayOpacity: 0.7,
     headerHtml,
@@ -6834,7 +6833,7 @@ function renderMenuItemModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+    <div class="px-6 pt-4 border-t border-slate-100 bg-white" style="padding-bottom: calc(1.5rem + var(--menyra-keyboard-inset, 0px));">
       <button id="menuModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.menuModal.loading ? "disabled" : ""}>
         ${state.menuModal.loading ? "Speichern..." : "Speichern"}
       </button>
@@ -6846,8 +6845,7 @@ function renderMenuItemModal() {
     overlayId: "menuModalOverlay",
     zIndex: 75,
     labelId: titleId,
-    panelClass: "max-h-[92vh] animate-in slide-in-from-bottom-6",
-    panelStyle: "padding-bottom: var(--menyra-keyboard-inset, 0px);",
+    panelClass: "h-[90vh] animate-in slide-in-from-bottom-6",
     withKeyboardInset: true,
     headerHtml,
     bodyHtml,
@@ -6951,7 +6949,7 @@ function renderMenuDetailModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+    <div class="px-6 pt-4 border-t border-slate-100 bg-white" style="padding-bottom: calc(1.5rem + var(--menyra-keyboard-inset, 0px));">
       <div class="flex gap-3">
         <input id="menuDetailCommentInput" type="text" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none ${canInteract ? "" : "opacity-60"}" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.menuDetail.commentText || "")}" ${canInteract ? "" : "disabled"} />
         <button id="menuDetailCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
@@ -6969,8 +6967,7 @@ function renderMenuDetailModal() {
     overlayAttrs: 'data-menu-detail-close="true"',
     zIndex: 75,
     labelId: titleId,
-    panelClass: "max-h-[90vh] animate-in slide-in-from-bottom-6",
-    panelStyle: "padding-bottom: var(--menyra-keyboard-inset, 0px);",
+    panelClass: "h-[85vh] animate-in slide-in-from-bottom-6",
     withKeyboardInset: true,
     headerHtml,
     bodyHtml,
@@ -7035,7 +7032,7 @@ function renderFocusModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+    <div class="px-6 pt-4 border-t border-slate-100 bg-white" style="padding-bottom: calc(1.5rem + var(--menyra-keyboard-inset, 0px));">
       <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
         ${state.focusModal.loading ? "Speichern..." : "Speichern"}
       </button>
@@ -7047,8 +7044,7 @@ function renderFocusModal() {
     overlayId: "focusModalOverlay",
     zIndex: 75,
     labelId: titleId,
-    panelClass: "max-h-[92vh] animate-in slide-in-from-bottom-6",
-    panelStyle: "padding-bottom: var(--menyra-keyboard-inset, 0px);",
+    panelClass: "h-[85vh] animate-in slide-in-from-bottom-6",
     withKeyboardInset: true,
     headerHtml,
     bodyHtml,
