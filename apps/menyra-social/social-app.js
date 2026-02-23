@@ -338,6 +338,7 @@ let lastCommentKey = "";
 let lastCommentAt = 0;
 let lastMenuCommentKey = "";
 let lastMenuCommentAt = 0;
+let menuDetailCloseBound = false;
 let overlayCache = { profile: "", post: "", likes: "", menu: "", menuDetail: "", focus: "" };
 let pendingProfileRestaurantId = "";
 let pendingProfileHandled = false;
@@ -1381,6 +1382,7 @@ function loadUserScopedPersisted(user) {
 function resetUserScopedState() {
   stopRestaurantMetaListeners();
   stopMenuItemMetaListeners();
+  menuDetailCloseBound = false;
   commentAvatarCache.clear();
   commentAvatarPending.clear();
   userSearchAvatarCache.clear();
@@ -6755,7 +6757,7 @@ function renderMenuDetailModal() {
 
   return `
     <div class="fixed inset-0 z-[75]">
-      <div id="menuDetailOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden">
           <div class="p-7 pb-4 flex items-center justify-between">
@@ -6763,7 +6765,7 @@ function renderMenuDetailModal() {
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
               <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(item.name || "Produkt")}</h3>
             </div>
-            <button id="menuDetailClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+            <button id="menuDetailClose" data-menu-detail-close="true" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
           </div>
 
           <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-8">
@@ -7975,6 +7977,14 @@ function bindAuthEvents() {
 }
 
 function bindOverlayEvents({ profileChanged = true, postChanged = true, likesChanged = true, menuChanged = true, menuDetailChanged = true, focusChanged = true } = {}) {
+  if (!menuDetailCloseBound) {
+    menuDetailCloseBound = true;
+    document.addEventListener("click", (evt) => {
+      const target = evt.target?.closest?.("[data-menu-detail-close]");
+      if (!target) return;
+      if (state.menuDetail.open) closeMenuDetail();
+    });
+  }
   if (profileChanged) {
     const profileModalOverlay = document.getElementById("profileModalOverlay");
     const profileModalClose = document.getElementById("profileModalClose");
