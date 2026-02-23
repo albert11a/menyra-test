@@ -6526,8 +6526,8 @@ function renderPostModal() {
   return `
       <div class="fixed inset-0 z-[70]">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
-        <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto" style="bottom: var(--menyra-keyboard-inset, 0px);">
-          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden" style="max-height: calc(85vh - var(--menyra-keyboard-inset, 0px));">
+        <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
             <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
               <div class="flex items-center justify-between mb-4">
                 <div>
@@ -6646,8 +6646,8 @@ function renderMenuItemModal() {
   return `
     <div class="fixed inset-0 z-[75]">
       <div id="menuModalOverlay" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto" style="bottom: var(--menyra-keyboard-inset, 0px);">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="max-height: calc(90vh - var(--menyra-keyboard-inset, 0px));">
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
@@ -6769,8 +6769,8 @@ function renderMenuDetailModal() {
   return `
     <div class="fixed inset-0 z-[75]">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto" style="bottom: var(--menyra-keyboard-inset, 0px);">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden" style="max-height: calc(85vh - var(--menyra-keyboard-inset, 0px));">
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
@@ -6857,8 +6857,8 @@ function renderFocusModal() {
   return `
     <div class="fixed inset-0 z-[75]">
       <div id="focusModalOverlay" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto" style="bottom: var(--menyra-keyboard-inset, 0px);">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="max-height: calc(90vh - var(--menyra-keyboard-inset, 0px));">
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
