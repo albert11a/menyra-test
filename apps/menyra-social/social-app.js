@@ -6431,17 +6431,17 @@ function renderModalShell({
   overlayAttrs = ""
 } = {}) {
   const keyboardInset = withKeyboardInset
-    ? `<div class="pointer-events-none fixed inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>`
+    ? `<div class="pointer-events-none absolute inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>`
     : "";
   const labelAttr = labelId ? ` aria-labelledby="${labelId}"` : "";
   const styleAttr = panelStyle ? ` style="${panelStyle}"` : "";
   const overlayAttr = overlayAttrs ? ` ${overlayAttrs}` : "";
   const overlayStyle = ` style="background: linear-gradient(to top, #fff 0px, #fff var(--menyra-keyboard-inset, 0px), rgba(0,0,0,${overlayOpacity}) var(--menyra-keyboard-inset, 0px), rgba(0,0,0,${overlayOpacity}) 100%);"`;
   return `
-    <div class="fixed inset-0 z-[${zIndex}] modal-root">
-      <div id="${overlayId}"${overlayAttr} class="fixed inset-0 ${overlayClass}"${overlayStyle}></div>
+    <div class="fixed left-0 right-0 top-0 z-[${zIndex}] modal-root">
+      <div id="${overlayId}"${overlayAttr} class="absolute inset-0 ${overlayClass}"${overlayStyle}></div>
       ${keyboardInset}
-      <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <section role="dialog" aria-modal="true"${labelAttr} class="w-full bg-white rounded-t-[3rem] border border-slate-100 shadow-2xl overflow-hidden flex flex-col ${panelClass}"${styleAttr}>
           ${headerHtml}
           ${bodyHtml}
