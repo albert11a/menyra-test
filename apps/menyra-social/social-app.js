@@ -6426,9 +6426,9 @@ function renderModalShell({
   const styleAttr = panelStyle ? ` style="${panelStyle}"` : "";
   const overlayAttr = overlayAttrs ? ` ${overlayAttrs}` : "";
   return `
-    <div class="fixed left-0 right-0 top-0 z-[${zIndex}] modal-root">
-      <div id="${overlayId}"${overlayAttr} class="absolute inset-0 ${overlayClass}"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+    <div class="fixed inset-0 z-[${zIndex}] modal-root">
+      <div id="${overlayId}"${overlayAttr} class="fixed inset-0 ${overlayClass}"></div>
+      <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
         <section role="dialog" aria-modal="true"${labelAttr} class="w-full bg-white rounded-t-[3rem] border border-slate-100 shadow-2xl overflow-hidden flex flex-col ${panelClass}"${styleAttr}>
           ${headerHtml}
           ${bodyHtml}
