@@ -39,7 +39,11 @@
   <style>
     body { background: #f8fafc; color: #0f172a; }
     #app { min-height: 100vh; }
-    :root { --safe-area-bottom: env(safe-area-inset-bottom, 0px); }
+    :root {
+      --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+      --vv-height: 100vh;
+      --vv-offset: 0px;
+    }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
