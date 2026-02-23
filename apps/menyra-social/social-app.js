@@ -7593,11 +7593,10 @@ function updateKeyboardInset() {
   if (typeof document === "undefined") return;
   let nextInset = 0;
   if (typeof window !== "undefined" && window.visualViewport) {
-    const layoutHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
+    const layoutHeight = document.documentElement?.clientHeight || window.innerHeight || 0;
     const visualHeight = Number(window.visualViewport.height) || layoutHeight;
     const offsetTop = Number(window.visualViewport.offsetTop) || 0;
-    const safeBottom = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--safe-area-bottom")) || 0;
-    nextInset = Math.max(0, Math.round(layoutHeight - visualHeight - offsetTop - safeBottom));
+    nextInset = Math.max(0, Math.round(layoutHeight - visualHeight - offsetTop));
   }
   if (nextInset === keyboardInset) return;
   keyboardInset = nextInset;
