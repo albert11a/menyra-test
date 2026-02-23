@@ -49,7 +49,10 @@
     body.modal-open #app,
     body.modal-open #app > .min-h-screen { background: #ffffff !important; }
     .modal-overlay { position: fixed; inset: 0; padding-bottom: env(safe-area-inset-bottom); }
-    .modal-sheet { max-height: calc(100dvh - env(safe-area-inset-bottom)); }
+    .modal-sheet {
+      max-height: calc(100dvh - env(safe-area-inset-bottom));
+      border-bottom-width: 0 !important;
+    }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
