@@ -337,6 +337,7 @@ let keyboardInset = 0;
 let keyboardBaselineGap = 0;
 let modalScrollLockBound = false;
 let modalEscapeBound = false;
+let modalFocusBound = false;
 let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
@@ -2777,6 +2778,10 @@ function closeActiveModal() {
     return true;
   }
   return false;
+}
+
+function isAnyModalOpen() {
+  return !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
 }
 
 async function openPostModal(post) {
@@ -6425,17 +6430,17 @@ function renderModalShell({
   overlayAttrs = ""
 } = {}) {
   const keyboardInset = withKeyboardInset
-    ? `<div class="pointer-events-none absolute inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>`
+    ? `<div class="pointer-events-none fixed inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>`
     : "";
   const labelAttr = labelId ? ` aria-labelledby="${labelId}"` : "";
   const styleAttr = panelStyle ? ` style="${panelStyle}"` : "";
   const overlayAttr = overlayAttrs ? ` ${overlayAttrs}` : "";
   return `
     <div class="fixed inset-0 z-[${zIndex}] modal-root">
-      <div id="${overlayId}"${overlayAttr} class="absolute inset-0 ${overlayClass}"></div>
+      <div id="${overlayId}"${overlayAttr} class="fixed inset-0 ${overlayClass}"></div>
       ${keyboardInset}
-      <div class="relative flex h-full w-full items-end sm:items-center justify-center px-3 pb-[calc(var(--safe-area-bottom)+0.75rem)] pt-6">
-        <section role="dialog" aria-modal="true"${labelAttr} class="w-full max-w-md bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden flex flex-col ${panelClass}"${styleAttr}>
+      <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
+        <section role="dialog" aria-modal="true"${labelAttr} class="w-full bg-white rounded-t-[3rem] border border-slate-100 shadow-2xl overflow-hidden flex flex-col ${panelClass}"${styleAttr}>
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -7744,7 +7749,7 @@ function isTextInputFocused() {
 function ensureModalScrollLock() {
   if (modalScrollLockBound || typeof document === "undefined") return;
   const handler = (evt) => {
-    const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
+    const open = isAnyModalOpen();
     if (!open) return;
     const target = evt.target;
     if (target && target.closest && target.closest(".modal-scroll")) return;
@@ -7752,6 +7757,34 @@ function ensureModalScrollLock() {
   };
   document.addEventListener("touchmove", handler, { passive: false });
   modalScrollLockBound = true;
+}
+
+function syncModalBodyLock() {
+  if (typeof document === "undefined") return;
+  const open = isAnyModalOpen();
+  const inputFocused = isTextInputFocused();
+  const shouldLock = open && keyboardInset === 0 && !inputFocused;
+
+  if (shouldLock && !bodyScrollLocked) {
+    bodyScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${bodyScrollTop}px`;
+    document.body.style.left = "0";
+    document.body.style.right = "0";
+    document.body.style.width = "100%";
+    bodyScrollLocked = true;
+    return;
+  }
+
+  if (!shouldLock && bodyScrollLocked) {
+    document.body.style.position = "";
+    document.body.style.top = "";
+    document.body.style.left = "";
+    document.body.style.right = "";
+    document.body.style.width = "";
+    window.scrollTo(0, bodyScrollTop);
+    bodyScrollLocked = false;
+  }
 }
 
 function ensureModalEscapeHandler() {
@@ -7766,8 +7799,21 @@ function ensureModalEscapeHandler() {
   modalEscapeBound = true;
 }
 
+function ensureModalFocusHandlers() {
+  if (modalFocusBound || typeof document === "undefined") return;
+  const handler = () => {
+    if (!isAnyModalOpen()) return;
+    updateKeyboardInset();
+    syncModalBodyLock();
+  };
+  document.addEventListener("focusin", handler);
+  document.addEventListener("focusout", handler);
+  modalFocusBound = true;
+}
+
 function updateKeyboardInset() {
   if (typeof document === "undefined") return;
+  if (!isAnyModalOpen()) return;
   let nextInset = 0;
   if (typeof window !== "undefined" && window.visualViewport) {
     const layoutHeight = document.documentElement?.clientHeight || window.innerHeight || 0;
@@ -7783,6 +7829,7 @@ function updateKeyboardInset() {
   if (nextInset === keyboardInset) return;
   keyboardInset = nextInset;
   document.documentElement.style.setProperty("--menyra-keyboard-inset", `${keyboardInset}px`);
+  syncModalBodyLock();
 }
 
 function ensureKeyboardInsetHandlers() {
@@ -7879,35 +7926,20 @@ function renderOverlays(options = {}) {
       overlayCache.focus = focusHtml;
     }
   }
-  const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
+  const open = isAnyModalOpen();
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
   if (open) {
     ensureKeyboardInsetHandlers();
     ensureModalScrollLock();
     ensureModalEscapeHandler();
+    ensureModalFocusHandlers();
     updateKeyboardInset();
   } else if (keyboardInset) {
     keyboardInset = 0;
     document.documentElement.style.setProperty("--menyra-keyboard-inset", "0px");
   }
-  if (open && !bodyScrollLocked) {
-    bodyScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${bodyScrollTop}px`;
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-    document.body.style.width = "100%";
-    bodyScrollLocked = true;
-  } else if (!open && bodyScrollLocked) {
-    document.body.style.position = "";
-    document.body.style.top = "";
-    document.body.style.left = "";
-    document.body.style.right = "";
-    document.body.style.width = "";
-    window.scrollTo(0, bodyScrollTop);
-    bodyScrollLocked = false;
-  }
+  syncModalBodyLock();
   if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged)) {
     window.lucide.createIcons();
   }
