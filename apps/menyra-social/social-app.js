@@ -262,7 +262,11 @@ const state = {
   menuDetail: {
     open: false,
     item: null,
-    index: 0
+    index: 0,
+    restaurantId: "",
+    commentText: "",
+    loading: false,
+    sending: false
   },
   focus: {
     restaurantId: "",
@@ -283,6 +287,7 @@ const state = {
   },
   settings: { ...DEFAULT_SETTINGS },
   menuLayout: { ...DEFAULT_MENU_LAYOUT },
+  menuItemMeta: {},
   notifications: [...DEFAULT_NOTIFICATIONS],
   postMeta: {},
   postModal: {
@@ -330,6 +335,8 @@ let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
 let lastCommentAt = 0;
+let lastMenuCommentKey = "";
+let lastMenuCommentAt = 0;
 let overlayCache = { profile: "", post: "", likes: "", menu: "", menuDetail: "", focus: "" };
 let pendingProfileRestaurantId = "";
 let pendingProfileHandled = false;
@@ -358,6 +365,9 @@ let businessPostsUnsub = null;
 let modalPostDocUnsub = null;
 let modalLikesUnsub = null;
 let modalCommentsUnsub = null;
+let menuDetailDocUnsub = null;
+let menuDetailLikesUnsub = null;
+let menuDetailCommentsUnsub = null;
 let restaurantMetaUnsubs = new Map();
 let storyRefreshTimer = null;
 let liveFeedDisabled = false;
@@ -1369,6 +1379,7 @@ function loadUserScopedPersisted(user) {
 
 function resetUserScopedState() {
   stopRestaurantMetaListeners();
+  stopMenuItemMetaListeners();
   commentAvatarCache.clear();
   commentAvatarPending.clear();
   userSearchAvatarCache.clear();
@@ -1381,6 +1392,8 @@ function resetUserScopedState() {
   state.profileModal = { open: false, profile: null };
   state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
   state.likesModal = { open: false, postId: "", animate: false };
+  state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
+  state.menuItemMeta = {};
   state.selectedBusiness = null;
   state.followingHandles = [];
   state.notifications = [];
@@ -2160,6 +2173,67 @@ function ensurePostMeta(postId) {
   return state.postMeta[postId];
 }
 
+function getMenuItemSocialId(item) {
+  const raw = item?.id || item?.menuItemId || item?.menuId || "";
+  const name = String(item?.name || "").trim();
+  const category = String(item?.category || "").trim();
+  const price = String(item?.price ?? "").trim();
+  const base = raw || [name, category, price].filter(Boolean).join("|");
+  if (!base) return "";
+  return encodeURIComponent(String(base));
+}
+
+function menuItemMetaKey(restaurantId, itemId) {
+  if (!restaurantId || !itemId) return "";
+  return `${restaurantId}::${itemId}`;
+}
+
+function getMenuItemSocialDocRef(item, restaurantIdOverride = "") {
+  const restaurantId = restaurantIdOverride
+    || state.menu.restaurantId
+    || state.profileView?.profile?.restaurantId
+    || state.userProfile.restaurantId
+    || "";
+  const itemId = getMenuItemSocialId(item);
+  if (!restaurantId || !itemId) return null;
+  return doc(db, "restaurants", restaurantId, "menuSocial", itemId);
+}
+
+function ensureMenuItemMeta(key) {
+  if (!key) return { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+  if (!state.menuItemMeta[key]) {
+    state.menuItemMeta[key] = { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+  } else if (!state.menuItemMeta[key].counts) {
+    state.menuItemMeta[key].counts = { likes: 0, comments: 0 };
+  }
+  return state.menuItemMeta[key];
+}
+
+function resolveMenuItemCounts(meta) {
+  const rawLikes = Number.isFinite(Number(meta?.counts?.likes)) ? Number(meta.counts.likes) : null;
+  const rawComments = Number.isFinite(Number(meta?.counts?.comments)) ? Number(meta.counts.comments) : null;
+  const likeFromList = meta?.likes?.length ?? 0;
+  const commentFromList = meta?.comments?.length ?? 0;
+  const likes = Math.max(rawLikes ?? 0, likeFromList);
+  const comments = Math.max(rawComments ?? 0, commentFromList);
+  return { likes, comments };
+}
+
+function getMenuDetailContext() {
+  if (!state.menuDetail?.open || !state.menuDetail?.item) return null;
+  const item = state.menuDetail.item;
+  const restaurantId = state.menuDetail.restaurantId
+    || state.menu.restaurantId
+    || state.profileView?.profile?.restaurantId
+    || state.userProfile.restaurantId
+    || "";
+  const itemId = getMenuItemSocialId(item);
+  if (!restaurantId || !itemId) return null;
+  const key = menuItemMetaKey(restaurantId, itemId);
+  const ref = doc(db, "restaurants", restaurantId, "menuSocial", itemId);
+  return { item, restaurantId, itemId, key, ref };
+}
+
 function resolvePostCounts(post) {
   const likeCount = typeof post.likes === "number" ? post.likes : Number(post.likes) || 0;
   const commentCount = typeof post.comments === "number" ? post.comments : Number(post.comments) || 0;
@@ -2921,6 +2995,128 @@ async function togglePostLike(postId) {
   } catch (err) {
     console.error(err);
   }
+}
+
+async function toggleMenuItemLike() {
+  if (!state.user) return;
+  const ctx = getMenuDetailContext();
+  if (!ctx) return;
+  const { ref, key } = ctx;
+  const user = currentUserBadge();
+  if (!user.uid) return;
+  const likeId = user.uid;
+  const likeRef = doc(collection(ref, "likes"), likeId);
+  let delta = 0;
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const likeSnap = await tx.get(likeRef);
+      if (likeSnap.exists()) {
+        tx.delete(likeRef);
+        delta = -1;
+      } else {
+        tx.set(likeRef, {
+          uid: user.uid,
+          name: user.name,
+          handle: user.handle,
+          avatar: user.avatar,
+          createdAt: serverTimestamp()
+        });
+        delta = 1;
+      }
+      tx.set(ref, { likesCount: increment(delta) }, { merge: true });
+    });
+
+    if (!delta) return;
+    const meta = ensureMenuItemMeta(key);
+    if (delta < 0) {
+      const idx = meta.likes.findIndex((item) => item.uid === user.uid || item.handle === user.handle);
+      if (idx >= 0) meta.likes.splice(idx, 1);
+    } else {
+      meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
+    }
+    meta.counts = meta.counts || { likes: 0, comments: 0 };
+    meta.counts.likes = Math.max(0, (Number(meta.counts.likes) || 0) + delta);
+    state.menuItemMeta[key] = meta;
+    updateMenuDetailCountsOnly();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function addMenuItemComment(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed || !state.user) return;
+  const ctx = getMenuDetailContext();
+  if (!ctx) return;
+  const { ref, key } = ctx;
+  const dedupeKey = `${key}|${state.user.uid || ""}|${trimmed}`;
+  const now = Date.now();
+  if (dedupeKey === lastMenuCommentKey && now - lastMenuCommentAt < 1500) return;
+  lastMenuCommentKey = dedupeKey;
+  lastMenuCommentAt = now;
+  if (state.menuDetail.sending) return;
+  state.menuDetail.sending = true;
+  updateMenuDetailCommentsOnly();
+
+  const ensuredAvatar = await ensureSelfAvatarReady({ force: true });
+  const user = currentUserBadge();
+  const handleKey = normalizeHandle(user.handle || user.name || "");
+  const avatarCandidate = ensuredAvatar || user.avatar || "";
+  const finalAvatar = avatarCandidate && !isPlaceholderUrl(avatarCandidate) ? avatarCandidate : "";
+  if (finalAvatar) {
+    user.avatar = finalAvatar;
+    primeSelfAvatarCache(finalAvatar);
+    if (user.uid) commentAvatarCache.set(user.uid, finalAvatar);
+    if (handleKey) commentAvatarCache.set(handleKey, finalAvatar);
+  }
+
+  const commentRef = doc(collection(ref, "comments"));
+  const payload = {
+    uid: user.uid || "",
+    author: user.name,
+    handle: user.handle,
+    avatarUrl: finalAvatar,
+    avatar: finalAvatar,
+    text: trimmed,
+    createdAt: serverTimestamp(),
+    parentId: null,
+    likesCount: 0
+  };
+
+  try {
+    const batch = writeBatch(db);
+    batch.set(commentRef, payload);
+    batch.set(ref, { commentsCount: increment(1) }, { merge: true });
+    await batch.commit();
+  } catch (err) {
+    console.error(err);
+    lastMenuCommentKey = "";
+    lastMenuCommentAt = 0;
+    state.menuDetail.sending = false;
+    updateMenuDetailCommentsOnly();
+    return;
+  }
+
+  const meta = ensureMenuItemMeta(key);
+  const newComment = ensureCommentShape({
+    id: commentRef.id,
+    ...payload,
+    createdAt: new Date().toISOString()
+  });
+  meta.comments = [newComment, ...(meta.comments || [])];
+  meta.counts = meta.counts || { likes: 0, comments: 0 };
+  meta.counts.comments = Math.max(0, (Number(meta.counts.comments) || 0) + 1);
+  state.menuItemMeta[key] = meta;
+
+  state.menuDetail.commentText = "";
+  const input = document.getElementById("menuDetailCommentInput");
+  if (input) input.value = "";
+
+  state.menuDetail.sending = false;
+  updateMenuDetailMeta();
+  if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
+  refreshSelfCommentAvatars();
 }
 
 async function toggleCommentLike(postId, commentId, replyId) {
@@ -4035,6 +4231,100 @@ function attachPostMetaListeners(post) {
     updatePostModalCountsOnly();
     updatePostModalCommentsOnly();
   });
+}
+
+function stopMenuItemMetaListeners() {
+  if (menuDetailDocUnsub) {
+    menuDetailDocUnsub();
+    menuDetailDocUnsub = null;
+  }
+  if (menuDetailLikesUnsub) {
+    menuDetailLikesUnsub();
+    menuDetailLikesUnsub = null;
+  }
+  if (menuDetailCommentsUnsub) {
+    menuDetailCommentsUnsub();
+    menuDetailCommentsUnsub = null;
+  }
+}
+
+function attachMenuItemMetaListeners(item, restaurantId) {
+  stopMenuItemMetaListeners();
+  const ctx = getMenuDetailContext() || (() => {
+    const ref = getMenuItemSocialDocRef(item, restaurantId);
+    const itemId = getMenuItemSocialId(item);
+    const rid = restaurantId || state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "";
+    if (!ref || !rid || !itemId) return null;
+    return { ref, key: menuItemMetaKey(rid, itemId) };
+  })();
+  if (!ctx) return;
+  const { ref, key } = ctx;
+
+  menuDetailDocUnsub = onSnapshot(ref, (docSnap) => {
+    if (!docSnap.exists()) return;
+    const data = docSnap.data() || {};
+    const meta = ensureMenuItemMeta(key);
+    meta.counts = {
+      likes: Number(data.likesCount ?? data.likes ?? meta.likes?.length ?? 0) || 0,
+      comments: Number(data.commentsCount ?? data.comments ?? meta.comments?.length ?? 0) || 0
+    };
+    state.menuItemMeta[key] = meta;
+    updateMenuDetailCountsOnly();
+  });
+
+  menuDetailLikesUnsub = onSnapshot(query(collection(ref, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)), (snap) => {
+    const meta = ensureMenuItemMeta(key);
+    meta.likes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    state.menuItemMeta[key] = meta;
+    updateMenuDetailCountsOnly();
+  });
+
+  menuDetailCommentsUnsub = onSnapshot(query(collection(ref, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)), (snap) => {
+    const meta = ensureMenuItemMeta(key);
+    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    const top = rows
+      .filter((row) => !row.parentId)
+      .map((row) => ensureCommentShape(row));
+    meta.comments = top;
+    state.menuItemMeta[key] = meta;
+    updateMenuDetailCountsOnly();
+    updateMenuDetailCommentsOnly();
+  });
+}
+
+async function loadMenuItemMetaFromFirebase(item, restaurantId) {
+  const ref = getMenuItemSocialDocRef(item, restaurantId);
+  const rid = restaurantId || state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "";
+  const itemId = getMenuItemSocialId(item);
+  if (!ref || !rid || !itemId) return;
+  const key = menuItemMetaKey(rid, itemId);
+  const meta = ensureMenuItemMeta(key);
+  try {
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      meta.counts = {
+        likes: Number(data.likesCount ?? data.likes ?? meta.likes?.length ?? 0) || 0,
+        comments: Number(data.commentsCount ?? data.comments ?? meta.comments?.length ?? 0) || 0
+      };
+    }
+  } catch (err) {
+    console.error(err);
+  }
+  try {
+    const likesSnap = await getDocs(query(collection(ref, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)));
+    meta.likes = likesSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+  } catch (err) {
+    console.error(err);
+  }
+  try {
+    const commentsSnap = await getDocs(query(collection(ref, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)));
+    const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    meta.comments = rows.filter((row) => !row.parentId).map((row) => ensureCommentShape(row));
+  } catch (err) {
+    console.error(err);
+  }
+  state.menuItemMeta[key] = meta;
 }
 
 function renderMapSheet(selected) {
@@ -6095,6 +6385,38 @@ function renderPostComments(comments) {
   `).join("")}`;
 }
 
+function renderMenuCommentItem(comment) {
+  const avatarUrl = resolveCommentAvatar(comment);
+  if (isPlaceholderUrl(avatarUrl)) scheduleCommentAvatarFetch(comment);
+  const safeSrc = (!avatarUrl || isPlaceholderUrl(avatarUrl)) ? PLACEHOLDER_IMAGE : avatarUrl;
+  const handleKey = normalizeHandle(comment.handle || comment.author || "");
+  return `
+    <div class="flex gap-3" data-comment-id="${escapeHtml(comment.id || "")}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-comment-handle="${escapeHtml(handleKey)}">
+      <img src="${escapeHtml(safeSrc)}" data-img-key="comment-avatar:${escapeHtml(comment.id || "")}" data-comment-id="${escapeHtml(comment.id || "")}" data-comment-handle="${escapeHtml(handleKey)}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-uid="${escapeHtml(comment.uid || "")}" data-handle="${escapeHtml(comment.handle || "")}" class="comment-avatar w-9 h-9 rounded-2xl object-cover shadow" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.src='${PLACEHOLDER_IMAGE}'" alt="" />
+      <div class="flex-1">
+        <div class="flex items-center justify-between">
+          <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author || "User")}</div>
+          <div class="text-[10px] font-bold text-slate-400">${escapeHtml(formatDateTimeLabel(comment.createdAt))}</div>
+        </div>
+        <div class="text-sm text-slate-600 leading-relaxed mt-1">${escapeHtml(comment.text || "")}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMenuDetailComments(comments) {
+  if (state.menuDetail.loading) {
+    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
+  }
+  const sendingRow = state.menuDetail.sending
+    ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Senden...</div>`
+    : "";
+  if (!comments.length) {
+    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
+  }
+  return `${sendingRow}${comments.map((comment) => renderMenuCommentItem(comment)).join("")}`;
+}
+
 function renderPostModal() {
   if (!state.postModal.open || !state.postModal.post) return "";
   const post = state.postModal.post;
@@ -6337,6 +6659,20 @@ function renderMenuDetailModal() {
   const allergens = item.allergens || "";
   const availability = item.available === false ? "Nicht verfuegbar" : "Verfuegbar";
   const availabilityClass = item.available === false ? "text-rose-500" : "text-emerald-600";
+  const restaurantId = state.menuDetail.restaurantId
+    || state.menu.restaurantId
+    || state.profileView?.profile?.restaurantId
+    || state.userProfile.restaurantId
+    || "";
+  const itemId = getMenuItemSocialId(item);
+  const metaKey = menuItemMetaKey(restaurantId, itemId);
+  const meta = metaKey ? ensureMenuItemMeta(metaKey) : { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+  const counts = resolveMenuItemCounts(meta);
+  const userBadge = currentUserBadge();
+  const isLiked = meta.likes?.some((row) => row.uid === userBadge.uid || row.handle === userBadge.handle);
+  const comments = (meta.comments || []).map(ensureCommentShape);
+  const canSocial = !!restaurantId && !!itemId;
+  const canInteract = canSocial && !!state.user;
 
   return `
     <div class="fixed inset-0 z-[75]">
@@ -6385,6 +6721,29 @@ function renderMenuDetailModal() {
                 <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
               </div>
             ` : ""}
+
+            <div class="mt-4 flex items-center justify-between">
+              <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
+                ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+              </button>
+              <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <span id="menuDetailLikesCount">${escapeHtml(formatCount(counts.likes))} Likes</span>
+                <span id="menuDetailCommentsCount">${escapeHtml(formatCount(counts.comments))} Kommentare</span>
+              </div>
+            </div>
+
+            <div id="menuDetailComments" class="mt-5 space-y-4">
+              ${renderMenuDetailComments(comments)}
+            </div>
+          </div>
+
+          <div class="p-7 pt-4 border-t border-slate-100 bg-white">
+            <div class="flex gap-3">
+              <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none ${canInteract ? "" : "opacity-60"}" rows="2" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
+              <button id="menuDetailCommentSend" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
+                ${icon("send", "w-4 h-4")}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -6506,6 +6865,48 @@ function updatePostModalCommentsOnly() {
       pendingCommentHighlight = "";
     }
   }
+}
+
+function updateMenuDetailMeta() {
+  if (!state.menuDetail.open || !state.menuDetail.item) return;
+  updateMenuDetailCountsOnly();
+  updateMenuDetailCommentsOnly();
+}
+
+function updateMenuDetailCountsOnly() {
+  if (!state.menuDetail.open || !state.menuDetail.item) return;
+  const ctx = getMenuDetailContext();
+  if (!ctx) return;
+  const meta = ensureMenuItemMeta(ctx.key);
+  const counts = resolveMenuItemCounts(meta);
+  const userBadge = currentUserBadge();
+  const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
+
+  const likeBtn = document.getElementById("menuDetailLikeBtn");
+  if (likeBtn) {
+    likeBtn.classList.toggle("text-rose-500", !!isLiked);
+    likeBtn.classList.toggle("text-slate-700", !isLiked);
+    likeBtn.innerHTML = `${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}`;
+  }
+  const likesCount = document.getElementById("menuDetailLikesCount");
+  if (likesCount) likesCount.textContent = `${formatCount(counts.likes)} Likes`;
+  const commentsCount = document.getElementById("menuDetailCommentsCount");
+  if (commentsCount) commentsCount.textContent = `${formatCount(counts.comments)} Kommentare`;
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+}
+
+function updateMenuDetailCommentsOnly() {
+  if (!state.menuDetail.open || !state.menuDetail.item) return;
+  const ctx = getMenuDetailContext();
+  if (!ctx) return;
+  const meta = ensureMenuItemMeta(ctx.key);
+  const comments = (meta.comments || []).map(ensureCommentShape);
+  const commentsRoot = document.getElementById("menuDetailComments");
+  if (commentsRoot) {
+    commentsRoot.innerHTML = renderMenuDetailComments(comments);
+    applyCommentAvatarCache(commentsRoot);
+  }
+  if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 
 function updateCommentLikeButton(postId, commentId, replyId, likeCount) {
@@ -7682,6 +8083,34 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
     if (menuDetailOverlay) menuDetailOverlay.addEventListener("click", closeMenuDetail);
     if (menuDetailClose) menuDetailClose.addEventListener("click", closeMenuDetail);
 
+    const menuDetailLikeBtn = document.getElementById("menuDetailLikeBtn");
+    if (menuDetailLikeBtn) {
+      menuDetailLikeBtn.addEventListener("click", () => {
+        void toggleMenuItemLike();
+      });
+    }
+
+    const menuDetailCommentInput = document.getElementById("menuDetailCommentInput");
+    if (menuDetailCommentInput) {
+      menuDetailCommentInput.addEventListener("input", () => {
+        state.menuDetail.commentText = menuDetailCommentInput.value;
+      });
+    }
+
+    const menuDetailCommentSend = document.getElementById("menuDetailCommentSend");
+    if (menuDetailCommentSend) {
+      menuDetailCommentSend.addEventListener("click", () => {
+        const inputEl = document.getElementById("menuDetailCommentInput");
+        const text = inputEl ? inputEl.value : state.menuDetail.commentText;
+        if (!String(text || "").trim() || state.menuDetail.sending) return;
+        state.menuDetail.commentText = text;
+        void addMenuItemComment(text);
+      });
+    }
+
+    const menuDetailComments = document.getElementById("menuDetailComments");
+    if (menuDetailComments) applyCommentAvatarCache(menuDetailComments);
+
     document.querySelectorAll("[data-menu-gallery-nav]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const dir = btn.dataset.menuGalleryNav || "next";
@@ -7892,7 +8321,7 @@ function bindAppEvents() {
       const itemId = btn.dataset.menuOpen || "";
       const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
       if (!item) return;
-      openMenuDetail(item);
+      void openMenuDetail(item, state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "");
     });
   });
 
@@ -9379,14 +9808,38 @@ function closeMenuModal() {
   renderOverlays({ updateMenu: true });
 }
 
-function openMenuDetail(item) {
+async function openMenuDetail(item, restaurantIdOverride = "") {
   if (!item) return;
-  state.menuDetail = { open: true, item, index: 0 };
+  stopMenuItemMetaListeners();
+  const restaurantId = restaurantIdOverride
+    || state.menu.restaurantId
+    || state.profileView?.profile?.restaurantId
+    || state.userProfile.restaurantId
+    || "";
+  state.menuDetail = {
+    open: true,
+    item,
+    index: 0,
+    restaurantId,
+    commentText: "",
+    loading: true,
+    sending: false
+  };
   renderOverlays({ updateMenuDetail: true });
+  if (!restaurantId) {
+    state.menuDetail.loading = false;
+    updateMenuDetailMeta();
+    return;
+  }
+  await loadMenuItemMetaFromFirebase(item, restaurantId);
+  attachMenuItemMetaListeners(item, restaurantId);
+  state.menuDetail.loading = false;
+  updateMenuDetailMeta();
 }
 
 function closeMenuDetail() {
-  state.menuDetail = { open: false, item: null, index: 0 };
+  stopMenuItemMetaListeners();
+  state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
   renderOverlays({ updateMenuDetail: true });
 }
 
