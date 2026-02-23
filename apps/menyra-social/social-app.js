@@ -333,6 +333,7 @@ let renderQueued = false;
 let keyboardInsetBound = false;
 let keyboardInset = 0;
 let keyboardBaselineGap = 0;
+let modalScrollLockBound = false;
 let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
@@ -6526,6 +6527,7 @@ function renderPostModal() {
   return `
       <div class="fixed inset-0 z-[70]">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
+        <div class="absolute inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>
         <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
           <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
             <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
@@ -6569,12 +6571,15 @@ function renderPostModal() {
             </div>
 
             <div class="p-7 pt-4 border-t border-slate-100 bg-white">
-              <div class="flex gap-3">
-                <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.postModal.commentText || "")}</textarea>
-                <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
-                  ${icon("send", "w-4 h-4")}
-                </button>
-              </div>
+            <div class="flex gap-3">
+              <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2" enterkeyhint="done" inputmode="text">${escapeHtml(state.postModal.commentText || "")}</textarea>
+              <button id="postCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
+                ${icon("check", "w-4 h-4")}
+              </button>
+              <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
+                ${icon("send", "w-4 h-4")}
+              </button>
+            </div>
             </div>
           </div>
         </div>
@@ -6646,6 +6651,7 @@ function renderMenuItemModal() {
   return `
     <div class="fixed inset-0 z-[75]">
       <div id="menuModalOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
           <div class="p-7 pb-4 flex items-center justify-between">
@@ -6769,6 +6775,7 @@ function renderMenuDetailModal() {
   return `
     <div class="fixed inset-0 z-[75]">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
           <div class="p-7 pb-4 flex items-center justify-between">
@@ -6831,7 +6838,10 @@ function renderMenuDetailModal() {
 
           <div class="p-7 pt-4 border-t border-slate-100 bg-white">
             <div class="flex gap-3">
-              <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none ${canInteract ? "" : "opacity-60"}" rows="2" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
+              <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none ${canInteract ? "" : "opacity-60"}" rows="2" enterkeyhint="done" inputmode="text" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
+              <button id="menuDetailCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
+                ${icon("check", "w-4 h-4")}
+              </button>
               <button id="menuDetailCommentSend" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
                 ${icon("send", "w-4 h-4")}
               </button>
@@ -6857,6 +6867,7 @@ function renderFocusModal() {
   return `
     <div class="fixed inset-0 z-[75]">
       <div id="focusModalOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
           <div class="p-7 pb-4 flex items-center justify-between">
@@ -7604,6 +7615,19 @@ function isTextInputFocused() {
   return active.isContentEditable;
 }
 
+function ensureModalScrollLock() {
+  if (modalScrollLockBound || typeof document === "undefined") return;
+  const handler = (evt) => {
+    const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
+    if (!open) return;
+    const target = evt.target;
+    if (target && target.closest && target.closest(".modal-scroll")) return;
+    evt.preventDefault();
+  };
+  document.addEventListener("touchmove", handler, { passive: false });
+  modalScrollLockBound = true;
+}
+
 function updateKeyboardInset() {
   if (typeof document === "undefined") return;
   let nextInset = 0;
@@ -7722,6 +7746,7 @@ function renderOverlays(options = {}) {
   document.body.classList.toggle("modal-open", open);
   if (open) {
     ensureKeyboardInsetHandlers();
+    ensureModalScrollLock();
     updateKeyboardInset();
   } else if (keyboardInset) {
     keyboardInset = 0;
@@ -8119,6 +8144,14 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
         addComment(postId, text, state.postModal.replyTo);
       });
     }
+    const postCommentDone = document.getElementById("postCommentDone");
+    if (postCommentDone) {
+      postCommentDone.addEventListener("click", () => {
+        blurActiveElement();
+        const inputEl = document.getElementById("postCommentInput");
+        if (inputEl && typeof inputEl.blur === "function") inputEl.blur();
+      });
+    }
 
     document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -8261,6 +8294,14 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
         if (inputEl && typeof inputEl.blur === "function") inputEl.blur();
         state.menuDetail.commentText = text;
         void addMenuItemComment(text);
+      });
+    }
+    const menuDetailCommentDone = document.getElementById("menuDetailCommentDone");
+    if (menuDetailCommentDone) {
+      menuDetailCommentDone.addEventListener("click", () => {
+        blurActiveElement();
+        const inputEl = document.getElementById("menuDetailCommentInput");
+        if (inputEl && typeof inputEl.blur === "function") inputEl.blur();
       });
     }
 
