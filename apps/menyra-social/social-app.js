@@ -341,6 +341,7 @@ let lastMenuCommentAt = 0;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", post: "", likes: "", menu: "", menuDetail: "", focus: "" };
 let pendingProfileRestaurantId = "";
+let pendingProfileTopTab = "";
 let pendingProfileHandled = false;
 let dataLoaded = {
   feed: false,
@@ -403,6 +404,7 @@ let avatarCacheWriteTimer = null;
 let lastAuthUid = "";
 try {
   pendingProfileRestaurantId = qs("r") || qs("restaurant") || "";
+  pendingProfileTopTab = qs("tab") || qs("top") || "";
 } catch {}
 
 function getActiveUid() {
@@ -5622,7 +5624,7 @@ function renderMenuAdminView() {
     : [];
   const countLabel = formatCount(items.length);
   const profileUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId }) : "";
-  const menuUrl = restaurantId ? buildUrl("apps/menyra-restaurants/guest/karte/index.html", { r: restaurantId }) : "";
+  const menuUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "menu" }) : "";
 
   if (restaurantId && isEligible && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
     ensureFocusDataForProfile(profile);
@@ -5930,11 +5932,13 @@ async function openProfileFromBusiness(input) {
   }
 }
 
-function showPublicProfile(profile, posts, { showBack = true, backTab } = {}) {
+function showPublicProfile(profile, posts, { showBack = true, backTab, topTab } = {}) {
   state.profileView = { profile, posts: posts || profile.posts || [] };
   state.profileModal = { open: false, profile: null };
   state.profileContentTab = "posts";
-  state.profileTopTab = "profile";
+  state.profileTopTab = profile?.restaurantId
+    ? (topTab || "profile")
+    : "profile";
   state.profileViewMode = "grid";
   state.profilePostMenuId = null;
   state.drawerOpen = false;
@@ -5955,15 +5959,24 @@ function maybeOpenProfileFromQuery() {
   if (state.profileView?.profile?.restaurantId === pendingProfileRestaurantId) {
     pendingProfileHandled = true;
     pendingProfileRestaurantId = "";
+    pendingProfileTopTab = "";
     return;
   }
   pendingProfileHandled = true;
   const nextId = pendingProfileRestaurantId;
+  const nextTabRaw = pendingProfileTopTab;
   pendingProfileRestaurantId = "";
-  openProfileViewFromBusiness({ id: nextId }, { showBack: false });
+  pendingProfileTopTab = "";
+  const nextTab = (() => {
+    const key = String(nextTabRaw || "").trim().toLowerCase();
+    if (!key) return "";
+    if (key === "menu" || key === "karte" || key === "speisekarte") return "menu";
+    return "";
+  })();
+  openProfileViewFromBusiness({ id: nextId }, { showBack: false, topTab: nextTab });
 }
 
-async function openProfileViewFromBusiness(input, { showBack = true } = {}) {
+async function openProfileViewFromBusiness(input, { showBack = true, topTab } = {}) {
   try {
     const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
     const restaurantId = typeof input === "string" ? "" : (input?.id || "");
@@ -5998,7 +6011,7 @@ async function openProfileViewFromBusiness(input, { showBack = true } = {}) {
       posts: fallbackPosts
     });
 
-    showPublicProfile(placeholderProfile, placeholderProfile.posts, { showBack });
+    showPublicProfile(placeholderProfile, placeholderProfile.posts, { showBack, topTab });
 
     const [profileSnap, posts] = await Promise.all([
       fetchBusinessProfileDoc({ restaurantId, restaurant: rest }),
@@ -6014,7 +6027,7 @@ async function openProfileViewFromBusiness(input, { showBack = true } = {}) {
 
     if (state.activeTab !== "profile") return;
     if (restaurantId && state.profileView?.profile?.restaurantId !== restaurantId) return;
-    showPublicProfile(resolved, resolved.posts, { showBack });
+    showPublicProfile(resolved, resolved.posts, { showBack, topTab });
   } catch (err) {
     console.error(err);
   }
