@@ -6879,86 +6879,95 @@ function renderMenuDetailModal() {
   const comments = (meta.comments || []).map(ensureCommentShape);
   const canSocial = !!restaurantId && !!itemId;
   const canInteract = canSocial && !!state.user;
-
-  return `
-    <div class="fixed inset-0 z-[75] modal-root">
-      <div id="menuDetailOverlay" data-menu-detail-close="true" class="fixed inset-0 bg-black/60"></div>
-      <div class="fixed inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>
-      <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
-          <div class="p-7 pb-4 flex items-center justify-between">
-            <div>
-              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
-              <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(item.name || "Produkt")}</h3>
-            </div>
-            <button id="menuDetailClose" data-menu-detail-close="true" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
-          </div>
-
-          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-8">
-            <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50" data-menu-gallery style="touch-action: pan-y;">
-              <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-56 object-cover" />
-              ${images.length > 1 ? `
-                <button type="button" data-menu-gallery-nav="prev" class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
-                  ${icon("chevron-left", "w-4 h-4")}
-                </button>
-                <button type="button" data-menu-gallery-nav="next" class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
-                  ${icon("chevron-right", "w-4 h-4")}
-                </button>
-              ` : ""}
-            </div>
-            ${images.length > 1 ? `
-              <div class="flex items-center justify-center gap-2 mt-3">
-                ${images.map((_, idx) => `
-                  <button type="button" data-menu-gallery-dot="${idx}" class="w-2.5 h-2.5 rounded-full ${idx === safeIndex ? "bg-slate-900" : "bg-slate-200"}"></button>
-                `).join("")}
-              </div>
-            ` : ""}
-            <div class="mt-4 flex items-center justify-between">
-              <span class="text-lg font-black text-slate-900">${escapeHtml(priceLabel)}</span>
-              <span class="text-[10px] font-black uppercase tracking-widest ${availabilityClass}">${availability}</span>
-            </div>
-            <div class="mt-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-              ${category ? `<span>${escapeHtml(category)}</span>` : ""}
-              <span>${escapeHtml(typeLabel)}</span>
-            </div>
-            ${desc ? `<p class="mt-4 text-sm text-slate-600 leading-relaxed">${escapeHtml(desc)}</p>` : ""}
-            ${allergens ? `
-              <div class="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Allergene</p>
-                <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
-              </div>
-            ` : ""}
-
-            <div class="mt-4 flex items-center justify-between">
-              <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
-                ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
-              </button>
-              <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                <span id="menuDetailLikesCount">${escapeHtml(formatCount(counts.likes))} Likes</span>
-                <span id="menuDetailCommentsCount">${escapeHtml(formatCount(counts.comments))} Kommentare</span>
-              </div>
-            </div>
-
-            <div id="menuDetailComments" class="mt-5 space-y-4">
-              ${renderMenuDetailComments(comments)}
-            </div>
-          </div>
-
-          <div class="p-7 pt-4 border-t border-slate-100 bg-white">
-            <div class="flex gap-3">
-              <input id="menuDetailCommentInput" type="text" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none ${canInteract ? "" : "opacity-60"}" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.menuDetail.commentText || "")}" ${canInteract ? "" : "disabled"} />
-              <button id="menuDetailCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
-                ${icon("check", "w-4 h-4")}
-              </button>
-              <button id="menuDetailCommentSend" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
-                ${icon("send", "w-4 h-4")}
-              </button>
-            </div>
-          </div>
+  const titleId = "menuDetailTitle";
+  const headerHtml = `
+    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+      <div>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
+        <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${escapeHtml(item.name || "Produkt")}</h3>
+      </div>
+      <button id="menuDetailClose" data-menu-detail-close="true" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+        ${icon("x", "w-4 h-4")}
+      </button>
+    </div>
+  `;
+  const bodyHtml = `
+    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
+      <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50" data-menu-gallery style="touch-action: pan-y;">
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-56 object-cover" />
+        ${images.length > 1 ? `
+          <button type="button" data-menu-gallery-nav="prev" class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            ${icon("chevron-left", "w-4 h-4")}
+          </button>
+          <button type="button" data-menu-gallery-nav="next" class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            ${icon("chevron-right", "w-4 h-4")}
+          </button>
+        ` : ""}
+      </div>
+      ${images.length > 1 ? `
+        <div class="flex items-center justify-center gap-2">
+          ${images.map((_, idx) => `
+            <button type="button" data-menu-gallery-dot="${idx}" class="w-2.5 h-2.5 rounded-full ${idx === safeIndex ? "bg-slate-900" : "bg-slate-200"}"></button>
+          `).join("")}
         </div>
+      ` : ""}
+      <div class="flex items-center justify-between">
+        <span class="text-lg font-black text-slate-900">${escapeHtml(priceLabel)}</span>
+        <span class="text-[10px] font-black uppercase tracking-widest ${availabilityClass}">${availability}</span>
+      </div>
+      <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+        ${category ? `<span>${escapeHtml(category)}</span>` : ""}
+        <span>${escapeHtml(typeLabel)}</span>
+      </div>
+      ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${escapeHtml(desc)}</p>` : ""}
+      ${allergens ? `
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Allergene</p>
+          <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
+        </div>
+      ` : ""}
+
+      <div class="flex items-center justify-between">
+        <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
+          ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+        </button>
+        <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <span id="menuDetailLikesCount">${escapeHtml(formatCount(counts.likes))} Likes</span>
+          <span id="menuDetailCommentsCount">${escapeHtml(formatCount(counts.comments))} Kommentare</span>
+        </div>
+      </div>
+
+      <div id="menuDetailComments" class="space-y-4">
+        ${renderMenuDetailComments(comments)}
       </div>
     </div>
   `;
+  const footerHtml = `
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+      <div class="flex gap-3">
+        <input id="menuDetailCommentInput" type="text" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none ${canInteract ? "" : "opacity-60"}" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.menuDetail.commentText || "")}" ${canInteract ? "" : "disabled"} />
+        <button id="menuDetailCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
+          ${icon("check", "w-4 h-4")}
+        </button>
+        <button id="menuDetailCommentSend" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
+          ${icon("send", "w-4 h-4")}
+        </button>
+      </div>
+    </div>
+  `;
+
+  return renderModalShell({
+    overlayId: "menuDetailOverlay",
+    overlayAttrs: 'data-menu-detail-close="true"',
+    zIndex: 75,
+    labelId: titleId,
+    panelClass: "max-h-[90vh] animate-in slide-in-from-bottom-6",
+    panelStyle: "padding-bottom: var(--menyra-keyboard-inset, 0px);",
+    withKeyboardInset: true,
+    headerHtml,
+    bodyHtml,
+    footerHtml
+  });
 }
 
 function renderFocusModal() {
@@ -6972,62 +6981,71 @@ function renderFocusModal() {
   const active = item.active !== false;
   const status = state.focusModal.status || "";
 
-  return `
-    <div class="fixed inset-0 z-[75] modal-root">
-      <div id="focusModalOverlay" class="fixed inset-0 bg-black/60"></div>
-      <div class="fixed inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>
-      <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
-          <div class="p-7 pb-4 flex items-center justify-between">
-            <div>
-              <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
-              <h3 class="text-xl font-black italic tracking-tighter">${title}</h3>
-            </div>
-            <button id="focusModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
-          </div>
+  const titleId = "focusModalTitle";
+  const headerHtml = `
+    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+      <div>
+        <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
+        <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${title}</h3>
+      </div>
+      <button id="focusModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+        ${icon("x", "w-4 h-4")}
+      </button>
+    </div>
+  `;
+  const bodyHtml = `
+    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
+      <input type="file" id="focusImageInput" class="hidden" accept="image/*" />
+      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+        <img src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" />
+      </div>
+      <button id="focusImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+        Foto hochladen
+      </button>
 
-          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-6 space-y-4">
-            <input type="file" id="focusImageInput" class="hidden" accept="image/*" />
-            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
-              <img src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" />
-            </div>
-            <button id="focusImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-              Foto hochladen
-            </button>
-
-            <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Titel</label>
-                <input id="focusTitle" type="text" value="${escapeHtml(item.title || "")}" placeholder="Sot ne Fokus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Text</label>
-                <textarea id="focusText" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(item.text || "")}</textarea>
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
-                <input id="focusImageUrl" type="text" value="${escapeHtml(item.imageUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
-              </div>
-              <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                <div>
-                  <p class="text-xs font-black text-slate-800">Aktiv</p>
-                  <p class="text-[10px] font-bold text-slate-400">Sichtbar fuer Gaeste</p>
-                </div>
-                <input id="focusActive" type="checkbox" class="w-5 h-5 accent-amber-500" ${active ? "checked" : ""} />
-              </label>
-            </div>
-          </div>
-
-          <div class="p-7 pt-4 border-t border-slate-100 bg-white">
-            <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
-              ${state.focusModal.loading ? "Speichern..." : "Speichern"}
-            </button>
-            <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
-          </div>
+      <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Titel</label>
+          <input id="focusTitle" type="text" value="${escapeHtml(item.title || "")}" placeholder="Sot ne Fokus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
         </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Text</label>
+          <textarea id="focusText" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100 resize-none">${escapeHtml(item.text || "")}</textarea>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
+          <input id="focusImageUrl" type="text" value="${escapeHtml(item.imageUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-amber-100" />
+        </div>
+        <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+          <div>
+            <p class="text-xs font-black text-slate-800">Aktiv</p>
+            <p class="text-[10px] font-bold text-slate-400">Sichtbar fuer Gaeste</p>
+          </div>
+          <input id="focusActive" type="checkbox" class="w-5 h-5 accent-amber-500" ${active ? "checked" : ""} />
+        </label>
       </div>
     </div>
   `;
+  const footerHtml = `
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+      <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
+        ${state.focusModal.loading ? "Speichern..." : "Speichern"}
+      </button>
+      <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
+    </div>
+  `;
+
+  return renderModalShell({
+    overlayId: "focusModalOverlay",
+    zIndex: 75,
+    labelId: titleId,
+    panelClass: "max-h-[92vh] animate-in slide-in-from-bottom-6",
+    panelStyle: "padding-bottom: var(--menyra-keyboard-inset, 0px);",
+    withKeyboardInset: true,
+    headerHtml,
+    bodyHtml,
+    footerHtml
+  });
 }
 
 
@@ -8205,11 +8223,6 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
     const profileModalClose = document.getElementById("profileModalClose");
     const profileFollowBtn = document.getElementById("profileFollowBtn");
     const profileOpenBtn = document.getElementById("profileOpenBtn");
-    const closeProfileModal = () => {
-      state.profileModal = { open: false, profile: null };
-      renderOverlays();
-    };
-
     if (profileModalOverlay) profileModalOverlay.addEventListener("click", closeProfileModal);
     if (profileModalClose) profileModalClose.addEventListener("click", closeProfileModal);
     if (profileFollowBtn) {
@@ -8328,12 +8341,8 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
   if (likesChanged) {
     const likesModalOverlay = document.getElementById("likesModalOverlay");
     const likesModalClose = document.getElementById("likesModalClose");
-    const closeLikes = () => {
-      state.likesModal = { open: false, postId: "", animate: false };
-      renderOverlays({ updateLikes: true });
-    };
-    if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikes);
-    if (likesModalClose) likesModalClose.addEventListener("click", closeLikes);
+    if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikesModal);
+    if (likesModalClose) likesModalClose.addEventListener("click", closeLikesModal);
   }
 
   if (menuChanged) {
