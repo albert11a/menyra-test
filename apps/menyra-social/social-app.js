@@ -4797,6 +4797,69 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
   `;
 }
 
+function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } = {}) {
+  const rawImg = resolveMenuItemHero(item);
+  const imgSrc = getOptimizedImageUrl(rawImg, variant === "drink" ? "thumb" : "large");
+  const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+  const firebaseFallback = getFirebaseStorageUrl(rawImg);
+  const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+  const priceLabel = formatPrice(item.price);
+  const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
+  const category = item.category || "";
+  const desc = item.description || "";
+  const availability = item.available === false
+    ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
+    : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`;
+  const wrapperAttrs = mode === "profile"
+    ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
+    : "";
+  const isDrink = variant === "drink";
+  return `
+    <div ${wrapperAttrs} class="w-full ${isDrink ? "p-3 rounded-[1.6rem]" : "p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all ${mode === "profile" ? "cursor-pointer" : ""}">
+      <div class="w-full ${isDrink ? "h-28 rounded-[1.4rem]" : "h-44 rounded-[1.8rem]"} overflow-hidden bg-slate-100">
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+      </div>
+      ${isDrink ? `
+        <div class="mt-3">
+          <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(item.name || "Produkt")}</p>
+          <p class="text-xs font-black text-slate-700 mt-1">${escapeHtml(priceLabel)}</p>
+        </div>
+      ` : `
+        <div class="mt-4">
+          <div class="flex items-start justify-between gap-4">
+            <p class="text-sm font-black text-slate-900">${escapeHtml(item.name || "Produkt")}</p>
+            <span class="text-xs font-black text-slate-900">${escapeHtml(priceLabel)}</span>
+          </div>
+          <div class="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+            ${category ? `<span>${escapeHtml(category)}</span>` : ""}
+            <span>${escapeHtml(typeLabel)}</span>
+          </div>
+          ${desc ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${escapeHtml(desc)}</p>` : ""}
+          <div class="mt-2">${availability}</div>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+function renderMenuDrinkGrid(items, { mode = "profile" } = {}) {
+  if (!items.length) return "";
+  return `
+    <div class="grid grid-cols-2 gap-4">
+      ${items.map((item) => renderMenuItemCardStacked(item, { mode, variant: "drink" })).join("")}
+    </div>
+  `;
+}
+
+function renderMenuFoodList(items, { mode = "profile" } = {}) {
+  if (!items.length) return "";
+  return `
+    <div class="space-y-4">
+      ${items.map((item) => renderMenuItemCardStacked(item, { mode, variant: "food" })).join("")}
+    </div>
+  `;
+}
+
 function renderMenuList(items, { mode = "profile" } = {}) {
   if (!items.length) {
     return `
@@ -5020,15 +5083,10 @@ function renderFocusCarousel(profile) {
   const imgUrl = getOptimizedImageUrl(item.imageUrl || "", "large");
   const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
   const text = item.text || "";
-  const rotationLabel = items.length > 1 ? "Wechselt alle 5 Sekunden" : "Heute im Fokus";
   return `
     <div id="focusCarousel" class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
       <div class="flex items-center justify-between mb-4">
-        <div>
-          <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Sot ne Fokus</span>
-          <h3 class="text-xl font-black italic tracking-tighter">Im Fokus</h3>
-          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${rotationLabel}</p>
-        </div>
+        <span class="inline-flex items-center px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-widest">Sot ne Fokus</span>
         ${items.length > 1 ? `
           <div class="flex items-center gap-2">
             <button type="button" data-focus-nav="prev" class="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center">
@@ -5194,28 +5252,46 @@ function renderProfileMenuView(profile) {
   const isSameRestaurant = state.menu.restaurantId === restaurantId;
   const isLoading = state.menu.loading || !isSameRestaurant;
   const items = isSameRestaurant
-    ? getFilteredMenuItems(state.menu.items, { filter: state.menu.filter, query: "" })
+    ? getFilteredMenuItems(state.menu.items, { filter: "all", query: "" })
     : [];
   const error = isSameRestaurant ? state.menu.error : "";
-  const countLabel = formatCount(items.length);
+  const drinkItems = items.filter((item) => normalizeMenuType(item.type) === "drink");
+  const foodItems = items.filter((item) => normalizeMenuType(item.type) !== "drink");
+  const hasItems = drinkItems.length || foodItems.length;
   return `
     <div class="px-5 pb-24 space-y-5">
       ${renderFocusCarousel(profile)}
-      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-        <div class="flex items-center justify-between mb-5">
-          <div>
-            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Karte</span>
-            <h3 class="text-xl font-black italic tracking-tighter">Speisekarte</h3>
-            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(countLabel)} Produkte</p>
-          </div>
+      ${isLoading ? `
+        <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Menue wird geladen...</div>
         </div>
-        ${renderMenuFilterRow()}
-        ${isLoading
-          ? `<div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Menue wird geladen...</div>`
-          : renderMenuList(items, { mode: "profile" })
-        }
-        ${error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mt-4">${escapeHtml(error)}</div>` : ""}
-      </div>
+      ` : `
+        ${!hasItems ? `
+          <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+            <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
+              Keine Produkte
+            </div>
+          </div>
+        ` : `
+          ${drinkItems.length ? `
+            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-black italic tracking-tighter">Getraenke</h3>
+              </div>
+              ${renderMenuDrinkGrid(drinkItems, { mode: "profile" })}
+            </div>
+          ` : ""}
+          ${foodItems.length ? `
+            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-black italic tracking-tighter">Speisen</h3>
+              </div>
+              ${renderMenuFoodList(foodItems, { mode: "profile" })}
+            </div>
+          ` : ""}
+        `}
+        ${error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
+      `}
     </div>
   `;
 }
