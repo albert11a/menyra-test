@@ -6407,10 +6407,10 @@ function renderProfileModal() {
   const typeLabel = p.restaurantId ? "Business" : "User";
   const avatarUrl = getOptimizedImageUrl(p.avatar, "avatar");
   return `
-    <div class="fixed inset-0 z-[60]">
+    <div class="fixed inset-0 z-[60] modal-overlay">
       <div id="profileModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 h-[85vh] flex flex-col overflow-hidden">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 h-[85vh] flex flex-col overflow-hidden modal-sheet">
           <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
             <div class="flex justify-end mb-4">
               <button id="profileModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
@@ -6555,10 +6555,10 @@ function renderPostModal() {
   const animClass = "";
 
   return `
-      <div class="fixed inset-0 z-[70]">
+      <div class="fixed inset-0 z-[70] modal-overlay">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
         <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
             <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
               <div class="flex items-center justify-between mb-4">
                 <div>
@@ -6623,10 +6623,10 @@ function renderLikesModal() {
   const animClass = "";
 
   return `
-      <div class="fixed inset-0 z-[80]">
+      <div class="fixed inset-0 z-[80] modal-overlay">
         <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
@@ -6763,10 +6763,10 @@ function renderMenuItemModal() {
   const animClass = "";
 
   return `
-    <div class="fixed inset-0 z-[75]">
+    <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="menuModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -6884,10 +6884,10 @@ function renderMenuDetailModal() {
   const animClass = "";
 
   return `
-    <div class="fixed inset-0 z-[75]">
+    <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -6964,10 +6964,10 @@ function renderFocusModal() {
   const animClass = "";
 
   return `
-    <div class="fixed inset-0 z-[75]">
+    <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="focusModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
