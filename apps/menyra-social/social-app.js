@@ -121,7 +121,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const DEFAULT_MENU_LAYOUT = {
-  cardColor: "mint"
+  cardColor: "white"
 };
 
 const DEFAULT_NOTIFICATIONS = [
@@ -155,6 +155,7 @@ const DEFAULT_NOTIFICATIONS = [
 ];
 
 const MENU_LAYOUT_COLORS = [
+  { id: "white", label: "White", swatch: "bg-white border border-slate-200", cardClass: "bg-white border-slate-100" },
   { id: "mint", label: "Mint", swatch: "bg-emerald-400", cardClass: "bg-emerald-50 border-emerald-100" },
   { id: "sky", label: "Sky", swatch: "bg-sky-400", cardClass: "bg-sky-50 border-sky-100" },
   { id: "lemon", label: "Lemon", swatch: "bg-yellow-300", cardClass: "bg-yellow-50 border-yellow-100" },
@@ -5191,9 +5192,10 @@ function renderMenuLayoutSection() {
       <div class="flex flex-wrap gap-3">
         ${MENU_LAYOUT_COLORS.map((theme) => {
           const isActive = theme.id === activeId;
+          const checkClass = theme.id === "white" ? "text-slate-700" : "text-white";
           return `
             <button type="button" data-menu-layout-color="${theme.id}" class="w-12 h-12 rounded-2xl ${theme.swatch} ${isActive ? "ring-2 ring-slate-900 ring-offset-2 ring-offset-white" : "border border-white/60"} shadow flex items-center justify-center">
-              ${isActive ? icon("check", "w-4 h-4 text-white") : ""}
+              ${isActive ? icon("check", `w-4 h-4 ${checkClass}`) : ""}
             </button>
           `;
         }).join("")}
