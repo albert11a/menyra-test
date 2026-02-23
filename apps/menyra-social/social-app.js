@@ -330,9 +330,6 @@ const state = {
 
 let renderSuspended = 0;
 let renderQueued = false;
-let bodyScrollLocked = false;
-let bodyScrollTop = 0;
-let modalScrollLockBound = false;
 let modalEscapeBound = false;
 let profileMenuBound = false;
 let pendingCommentHighlight = "";
@@ -7720,44 +7717,6 @@ function ensureOverlayRoot() {
   return root;
 }
 
-function ensureModalScrollLock() {
-  if (modalScrollLockBound || typeof document === "undefined") return;
-  const handler = (evt) => {
-    const open = isAnyModalOpen();
-    if (!open) return;
-    const target = evt.target;
-    if (target && target.closest && target.closest(".modal-scroll")) return;
-    evt.preventDefault();
-  };
-  document.addEventListener("touchmove", handler, { passive: false });
-  modalScrollLockBound = true;
-}
-
-function syncModalBodyLock() {
-  if (typeof document === "undefined") return;
-  const open = isAnyModalOpen();
-  if (open && !bodyScrollLocked) {
-    bodyScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${bodyScrollTop}px`;
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-    document.body.style.width = "100%";
-    bodyScrollLocked = true;
-    return;
-  }
-
-  if (!open && bodyScrollLocked) {
-    document.body.style.position = "";
-    document.body.style.top = "";
-    document.body.style.left = "";
-    document.body.style.right = "";
-    document.body.style.width = "";
-    window.scrollTo(0, bodyScrollTop);
-    bodyScrollLocked = false;
-  }
-}
-
 function ensureModalEscapeHandler() {
   if (modalEscapeBound || typeof document === "undefined") return;
   const handler = (evt) => {
@@ -7855,10 +7814,8 @@ function renderOverlays(options = {}) {
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
   if (open) {
-    ensureModalScrollLock();
     ensureModalEscapeHandler();
   }
-  syncModalBodyLock();
   if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged)) {
     window.lucide.createIcons();
   }
