@@ -6410,40 +6410,42 @@ function renderProfileModal() {
     <div class="fixed inset-0 z-[60]">
       <div id="profileModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7">
-          <div class="flex justify-end mb-4">
-            <button id="profileModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 h-[85vh] flex flex-col overflow-hidden">
+          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
+            <div class="flex justify-end mb-4">
+              <button id="profileModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+            </div>
+
+            <div class="flex items-center gap-4">
+              <img src="${escapeHtml(avatarUrl)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
+              <div class="flex-1 min-w-0">
+                <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
+              </div>
+              <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+                ${isFollowing ? "Following" : "Follow"}
+              </button>
+            </div>
+
+            <p class="mt-5 text-sm font-medium text-slate-600 leading-relaxed">${escapeHtml(p.bio)}</p>
+
+            <div class="flex gap-3 mt-6">
+              <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.posts?.length || 0))}</div>
+                <div class="text-[9px] font-bold text-slate-400 uppercase">Posts</div>
+              </div>
+              <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.followers))}</div>
+                <div class="text-[9px] font-bold text-slate-400 uppercase">Follower</div>
+              </div>
+              <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+                <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.following))}</div>
+                <div class="text-[9px] font-bold text-slate-400 uppercase">Following</div>
+              </div>
+            </div>
+
+            <div class="h-2"></div>
           </div>
-
-          <div class="flex items-center gap-4">
-            <img src="${escapeHtml(avatarUrl)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
-            </div>
-            <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
-              ${isFollowing ? "Following" : "Follow"}
-            </button>
-          </div>
-
-          <p class="mt-5 text-sm font-medium text-slate-600 leading-relaxed">${escapeHtml(p.bio)}</p>
-
-          <div class="flex gap-3 mt-6">
-            <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-              <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.posts?.length || 0))}</div>
-              <div class="text-[9px] font-bold text-slate-400 uppercase">Posts</div>
-            </div>
-            <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-              <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.followers))}</div>
-              <div class="text-[9px] font-bold text-slate-400 uppercase">Follower</div>
-            </div>
-            <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-              <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.following))}</div>
-              <div class="text-[9px] font-bold text-slate-400 uppercase">Following</div>
-            </div>
-          </div>
-
-          <div class="h-2"></div>
         </div>
       </div>
     </div>
@@ -6556,7 +6558,7 @@ function renderPostModal() {
       <div class="fixed inset-0 z-[70]">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
         <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
             <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
               <div class="flex items-center justify-between mb-4">
                 <div>
@@ -6624,7 +6626,7 @@ function renderLikesModal() {
       <div class="fixed inset-0 z-[80]">
         <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[80vh] overflow-hidden">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
@@ -6764,7 +6766,7 @@ function renderMenuItemModal() {
     <div class="fixed inset-0 z-[75]">
       <div id="menuModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[90vh] overflow-hidden">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -6885,7 +6887,7 @@ function renderMenuDetailModal() {
     <div class="fixed inset-0 z-[75]">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -6965,7 +6967,7 @@ function renderFocusModal() {
     <div class="fixed inset-0 z-[75]">
       <div id="focusModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
