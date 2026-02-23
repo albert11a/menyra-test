@@ -64,7 +64,8 @@ const STORAGE_KEYS = {
   postMeta: "menyra_social_post_meta_v1",
   feed: "menyra_social_feed_v1",
   logoCache: "menyra_social_logo_cache_v1",
-  avatarCache: "menyra_social_avatar_cache_v1"
+  avatarCache: "menyra_social_avatar_cache_v1",
+  menuLayout: "menyra_social_menu_layout_v1"
 };
 
 const profileKey = (uid) => (uid ? `${STORAGE_KEYS.profile}::${uid}` : "");
@@ -119,6 +120,10 @@ const DEFAULT_SETTINGS = {
   language: "Deutsch"
 };
 
+const DEFAULT_MENU_LAYOUT = {
+  cardColor: "mint"
+};
+
 const DEFAULT_NOTIFICATIONS = [
   {
     id: "n1",
@@ -147,6 +152,14 @@ const DEFAULT_NOTIFICATIONS = [
     img: "",
     read: true
   }
+];
+
+const MENU_LAYOUT_COLORS = [
+  { id: "mint", label: "Mint", swatch: "bg-emerald-400", cardClass: "bg-emerald-50 border-emerald-100" },
+  { id: "sky", label: "Sky", swatch: "bg-sky-400", cardClass: "bg-sky-50 border-sky-100" },
+  { id: "lemon", label: "Lemon", swatch: "bg-yellow-300", cardClass: "bg-yellow-50 border-yellow-100" },
+  { id: "peach", label: "Peach", swatch: "bg-orange-300", cardClass: "bg-orange-50 border-orange-100" },
+  { id: "rose", label: "Rose", swatch: "bg-rose-300", cardClass: "bg-rose-50 border-rose-100" }
 ];
 
 const ROLE_SWITCH_ORDER = ["ceo", "owner", "staff"];
@@ -269,6 +282,7 @@ const state = {
     imagePreview: ""
   },
   settings: { ...DEFAULT_SETTINGS },
+  menuLayout: { ...DEFAULT_MENU_LAYOUT },
   notifications: [...DEFAULT_NOTIFICATIONS],
   postMeta: {},
   postModal: {
@@ -389,6 +403,22 @@ function saveUserProfileToStorage(profile = state.userProfile) {
   try {
     safeStorage.setItem(profileKey(uid), JSON.stringify(profile));
   } catch {}
+}
+
+function saveMenuLayoutToStorage(layout = state.menuLayout) {
+  try {
+    safeStorage.setItem(STORAGE_KEYS.menuLayout, JSON.stringify(layout || {}));
+  } catch {}
+}
+
+function getMenuLayoutTheme(colorId = state.menuLayout?.cardColor) {
+  const id = String(colorId || "").trim();
+  return MENU_LAYOUT_COLORS.find((theme) => theme.id === id) || MENU_LAYOUT_COLORS[0];
+}
+
+function getFocusCardClass() {
+  const theme = getMenuLayoutTheme();
+  return theme?.cardClass || "bg-white border-slate-100";
 }
 
 function loadLogoCache() {
@@ -1201,6 +1231,10 @@ function loadPersisted() {
   const savedSettings = safeStorage.getItem(STORAGE_KEYS.settings);
   if (savedSettings) {
     try { state.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) }; } catch {}
+  }
+  const savedMenuLayout = safeStorage.getItem(STORAGE_KEYS.menuLayout);
+  if (savedMenuLayout) {
+    try { state.menuLayout = { ...DEFAULT_MENU_LAYOUT, ...JSON.parse(savedMenuLayout) }; } catch {}
   }
 
   // user-scoped profile/avatar loaded after login
@@ -4754,6 +4788,31 @@ function renderMenuFilterRow() {
   `;
 }
 
+function renderMenuLayoutSection() {
+  const activeId = getMenuLayoutTheme().id;
+  return `
+    <div class="mb-5 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Layouts</span>
+          <h3 class="text-xl font-black italic tracking-tighter">Farben</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Sot ne Fokus</p>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3">
+        ${MENU_LAYOUT_COLORS.map((theme) => {
+          const isActive = theme.id === activeId;
+          return `
+            <button type="button" data-menu-layout-color="${theme.id}" class="w-12 h-12 rounded-2xl ${theme.swatch} ${isActive ? "ring-2 ring-slate-900 ring-offset-2 ring-offset-white" : "border border-white/60"} shadow flex items-center justify-center">
+              ${isActive ? icon("check", "w-4 h-4 text-white") : ""}
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
 function renderMenuItemCard(item, { mode = "profile" } = {}) {
   const rawImg = resolveMenuItemHero(item);
   const imgSrc = getOptimizedImageUrl(rawImg, "thumb");
@@ -5071,8 +5130,9 @@ function renderFocusCarousel(profile) {
   if (!enabled) return "";
   if (!items.length && !loading) return "";
   if (loading && !items.length) {
+    const focusCardClass = getFocusCardClass();
     return `
-      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm">
         <div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">Fokus wird geladen...</div>
       </div>
     `;
@@ -5083,10 +5143,11 @@ function renderFocusCarousel(profile) {
   const imgUrl = getOptimizedImageUrl(item.imageUrl || "", "large");
   const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
   const text = item.text || "";
+  const focusCardClass = getFocusCardClass();
   return `
-    <div id="focusCarousel" class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+    <div id="focusCarousel" class="${focusCardClass} rounded-[2.5rem] p-6 border shadow-sm">
       <div class="flex items-center justify-between mb-4">
-        <span class="inline-flex items-center px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-[9px] font-black uppercase tracking-widest">Sot ne Fokus</span>
+        <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Sot ne Fokus</span>
         ${items.length > 1 ? `
           <div class="flex items-center gap-2">
             <button type="button" data-focus-nav="prev" class="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center">
@@ -5199,6 +5260,7 @@ function renderMenuAdminView() {
       `}
 
       ${restaurantId ? renderFocusAdminSection(restaurantId) : ""}
+      ${restaurantId ? renderMenuLayoutSection() : ""}
 
       ${restaurantId ? `
         <div class="mb-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3">
@@ -7788,6 +7850,16 @@ function bindAppEvents() {
     btn.addEventListener("click", () => {
       const filter = btn.dataset.menuFilter || "all";
       state.menu.filter = filter;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-menu-layout-color]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const color = btn.dataset.menuLayoutColor || "";
+      if (!color) return;
+      state.menuLayout = { ...state.menuLayout, cardColor: color };
+      saveMenuLayoutToStorage();
       render();
     });
   });
