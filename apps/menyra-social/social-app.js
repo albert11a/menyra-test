@@ -332,12 +332,8 @@ let renderSuspended = 0;
 let renderQueued = false;
 let bodyScrollLocked = false;
 let bodyScrollTop = 0;
-let keyboardInsetBound = false;
-let keyboardInset = 0;
-let keyboardBaselineGap = 0;
 let modalScrollLockBound = false;
 let modalEscapeBound = false;
-let modalFocusBound = false;
 let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
@@ -6427,20 +6423,14 @@ function renderModalShell({
   footerHtml = "",
   withKeyboardInset = false,
   overlayClass = "bg-black/60",
-  overlayOpacity = 0.6,
   overlayAttrs = ""
 } = {}) {
-  const keyboardInset = withKeyboardInset
-    ? `<div class="pointer-events-none absolute inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>`
-    : "";
   const labelAttr = labelId ? ` aria-labelledby="${labelId}"` : "";
   const styleAttr = panelStyle ? ` style="${panelStyle}"` : "";
   const overlayAttr = overlayAttrs ? ` ${overlayAttrs}` : "";
-  const overlayStyle = ` style="background: linear-gradient(to top, #fff 0px, #fff var(--menyra-keyboard-inset, 0px), rgba(0,0,0,${overlayOpacity}) var(--menyra-keyboard-inset, 0px), rgba(0,0,0,${overlayOpacity}) 100%);"`;
   return `
     <div class="fixed left-0 right-0 top-0 z-[${zIndex}] modal-root">
-      <div id="${overlayId}"${overlayAttr} class="absolute inset-0 ${overlayClass}"${overlayStyle}></div>
-      ${keyboardInset}
+      <div id="${overlayId}"${overlayAttr} class="absolute inset-0 ${overlayClass}"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <section role="dialog" aria-modal="true"${labelAttr} class="w-full bg-white rounded-t-[3rem] border border-slate-100 shadow-2xl overflow-hidden flex flex-col ${panelClass}"${styleAttr}>
           ${headerHtml}
@@ -6662,7 +6652,7 @@ function renderPostModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pt-4 border-t border-slate-100 bg-white" style="padding-bottom: calc(1.5rem + var(--menyra-keyboard-inset, 0px));">
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
       <div class="flex gap-3">
         <input id="postCommentInput" type="text" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.postModal.commentText || "")}" />
         <button id="postCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
@@ -6730,7 +6720,6 @@ function renderLikesModal() {
     labelId: titleId,
     panelClass: "h-[70vh] animate-in slide-in-from-bottom-6",
     overlayClass: "bg-black/70",
-    overlayOpacity: 0.7,
     headerHtml,
     bodyHtml
   });
@@ -6833,7 +6822,7 @@ function renderMenuItemModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pt-4 border-t border-slate-100 bg-white" style="padding-bottom: calc(1.5rem + var(--menyra-keyboard-inset, 0px));">
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
       <button id="menuModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.menuModal.loading ? "disabled" : ""}>
         ${state.menuModal.loading ? "Speichern..." : "Speichern"}
       </button>
@@ -6949,7 +6938,7 @@ function renderMenuDetailModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pt-4 border-t border-slate-100 bg-white" style="padding-bottom: calc(1.5rem + var(--menyra-keyboard-inset, 0px));">
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
       <div class="flex gap-3">
         <input id="menuDetailCommentInput" type="text" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none ${canInteract ? "" : "opacity-60"}" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.menuDetail.commentText || "")}" ${canInteract ? "" : "disabled"} />
         <button id="menuDetailCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
@@ -7032,7 +7021,7 @@ function renderFocusModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pt-4 border-t border-slate-100 bg-white" style="padding-bottom: calc(1.5rem + var(--menyra-keyboard-inset, 0px));">
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
       <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
         ${state.focusModal.loading ? "Speichern..." : "Speichern"}
       </button>
@@ -7731,20 +7720,6 @@ function ensureOverlayRoot() {
   return root;
 }
 
-function isTextInputFocused() {
-  if (typeof document === "undefined") return false;
-  const active = document.activeElement;
-  if (!active) return false;
-  const tag = active.tagName ? active.tagName.toLowerCase() : "";
-  if (tag === "textarea") return true;
-  if (tag === "input") {
-    const type = (active.getAttribute("type") || "text").toLowerCase();
-    const nonText = new Set(["checkbox", "radio", "submit", "button", "range", "file", "color"]);
-    return !nonText.has(type);
-  }
-  return active.isContentEditable;
-}
-
 function ensureModalScrollLock() {
   if (modalScrollLockBound || typeof document === "undefined") return;
   const handler = (evt) => {
@@ -7761,10 +7736,7 @@ function ensureModalScrollLock() {
 function syncModalBodyLock() {
   if (typeof document === "undefined") return;
   const open = isAnyModalOpen();
-  const inputFocused = isTextInputFocused();
-  const shouldLock = open && keyboardInset === 0 && !inputFocused;
-
-  if (shouldLock && !bodyScrollLocked) {
+  if (open && !bodyScrollLocked) {
     bodyScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
     document.body.style.position = "fixed";
     document.body.style.top = `-${bodyScrollTop}px`;
@@ -7775,7 +7747,7 @@ function syncModalBodyLock() {
     return;
   }
 
-  if (!shouldLock && bodyScrollLocked) {
+  if (!open && bodyScrollLocked) {
     document.body.style.position = "";
     document.body.style.top = "";
     document.body.style.left = "";
@@ -7796,52 +7768,6 @@ function ensureModalEscapeHandler() {
   };
   document.addEventListener("keydown", handler);
   modalEscapeBound = true;
-}
-
-function ensureModalFocusHandlers() {
-  if (modalFocusBound || typeof document === "undefined") return;
-  const handler = () => {
-    if (!isAnyModalOpen()) return;
-    updateKeyboardInset();
-    syncModalBodyLock();
-  };
-  document.addEventListener("focusin", handler);
-  document.addEventListener("focusout", handler);
-  modalFocusBound = true;
-}
-
-function updateKeyboardInset() {
-  if (typeof document === "undefined") return;
-  if (!isAnyModalOpen()) return;
-  let nextInset = 0;
-  if (typeof window !== "undefined" && window.visualViewport) {
-    const layoutHeight = document.documentElement?.clientHeight || window.innerHeight || 0;
-    const visualHeight = Number(window.visualViewport.height) || layoutHeight;
-    const offsetTop = Number(window.visualViewport.offsetTop) || 0;
-    const gap = Math.max(0, Math.round(layoutHeight - visualHeight - offsetTop));
-    const inputFocused = isTextInputFocused();
-    if (!inputFocused || gap < 80) {
-      keyboardBaselineGap = gap;
-    }
-    nextInset = Math.max(0, gap - keyboardBaselineGap);
-  }
-  if (nextInset === keyboardInset) return;
-  keyboardInset = nextInset;
-  document.documentElement.style.setProperty("--menyra-keyboard-inset", `${keyboardInset}px`);
-  syncModalBodyLock();
-}
-
-function ensureKeyboardInsetHandlers() {
-  if (keyboardInsetBound) return;
-  if (typeof window === "undefined" || !window.visualViewport) return;
-  const handler = () => {
-    const open = !!(state.menuDetail.open || state.postModal.open || state.menuModal.open || state.focusModal.open);
-    if (!open) return;
-    updateKeyboardInset();
-  };
-  window.visualViewport.addEventListener("resize", handler, { passive: true });
-  window.visualViewport.addEventListener("scroll", handler, { passive: true });
-  keyboardInsetBound = true;
 }
 
 function renderOverlays(options = {}) {
@@ -7929,14 +7855,8 @@ function renderOverlays(options = {}) {
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
   if (open) {
-    ensureKeyboardInsetHandlers();
     ensureModalScrollLock();
     ensureModalEscapeHandler();
-    ensureModalFocusHandlers();
-    updateKeyboardInset();
-  } else if (keyboardInset) {
-    keyboardInset = 0;
-    document.documentElement.style.setProperty("--menyra-keyboard-inset", "0px");
   }
   syncModalBodyLock();
   if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged)) {
@@ -8364,8 +8284,6 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
           if (typeof postCommentInput.blur === "function") postCommentInput.blur();
         }
       });
-      postCommentInput.addEventListener("focus", updateKeyboardInset);
-      postCommentInput.addEventListener("blur", updateKeyboardInset);
     }
   }
 
@@ -8463,8 +8381,6 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
           if (typeof menuDetailCommentInput.blur === "function") menuDetailCommentInput.blur();
         }
       });
-      menuDetailCommentInput.addEventListener("focus", updateKeyboardInset);
-      menuDetailCommentInput.addEventListener("blur", updateKeyboardInset);
     }
 
     const menuDetailCommentSend = document.getElementById("menuDetailCommentSend");
