@@ -480,6 +480,11 @@ function scheduleAvatarCacheWrite(url, uid = getActiveUid()) {
   }, 300);
 }
 
+function blurActiveElement() {
+  const active = typeof document !== "undefined" ? document.activeElement : null;
+  if (active && typeof active.blur === "function") active.blur();
+}
+
 function resolveRestaurantLogo(restaurantId, raw, size = "avatar") {
   const url = getOptimizedImageUrl(raw, size);
   if (restaurantId) {
@@ -3138,6 +3143,7 @@ async function addMenuItemComment(text) {
     lastMenuCommentKey = "";
     lastMenuCommentAt = 0;
     state.menuDetail.sending = false;
+    blurActiveElement();
     updateMenuDetailCommentsOnly();
     return;
   }
@@ -3158,6 +3164,7 @@ async function addMenuItemComment(text) {
   if (input) input.value = "";
 
   state.menuDetail.sending = false;
+  blurActiveElement();
   updateMenuDetailMeta();
   updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
   if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
@@ -8189,6 +8196,15 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
       menuDetailCommentInput.addEventListener("input", () => {
         state.menuDetail.commentText = menuDetailCommentInput.value;
       });
+      menuDetailCommentInput.addEventListener("keydown", (evt) => {
+        if ((evt.metaKey || evt.ctrlKey) && evt.key === "Enter") {
+          evt.preventDefault();
+          const text = menuDetailCommentInput.value;
+          if (!String(text || "").trim() || state.menuDetail.sending) return;
+          state.menuDetail.commentText = text;
+          void addMenuItemComment(text);
+        }
+      });
     }
 
     const menuDetailCommentSend = document.getElementById("menuDetailCommentSend");
@@ -9933,6 +9949,7 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
 
 function closeMenuDetail() {
   stopMenuItemMetaListeners();
+  blurActiveElement();
   state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
   renderOverlays({ updateMenuDetail: true });
 }
