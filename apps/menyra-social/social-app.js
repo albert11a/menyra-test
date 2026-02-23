@@ -336,6 +336,7 @@ let keyboardInsetBound = false;
 let keyboardInset = 0;
 let keyboardBaselineGap = 0;
 let modalScrollLockBound = false;
+let modalEscapeBound = false;
 let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
@@ -2738,6 +2739,44 @@ function findPostById(postId) {
   if (viewFound) return viewFound;
   const modalPosts = state.profileModal.profile?.posts || [];
   return modalPosts.find((item) => String(item.id) === String(postId)) || null;
+}
+
+function closeProfileModal() {
+  state.profileModal = { open: false, profile: null };
+  renderOverlays();
+}
+
+function closeLikesModal() {
+  state.likesModal = { open: false, postId: "", animate: false };
+  renderOverlays({ updateLikes: true });
+}
+
+function closeActiveModal() {
+  if (state.likesModal.open) {
+    closeLikesModal();
+    return true;
+  }
+  if (state.menuDetail.open) {
+    closeMenuDetail();
+    return true;
+  }
+  if (state.menuModal.open) {
+    closeMenuModal();
+    return true;
+  }
+  if (state.focusModal.open) {
+    closeFocusModal();
+    return true;
+  }
+  if (state.postModal.open) {
+    closePostModal();
+    return true;
+  }
+  if (state.profileModal.open) {
+    closeProfileModal();
+    return true;
+  }
+  return false;
 }
 
 async function openPostModal(post) {
@@ -6372,6 +6411,40 @@ async function toggleFollow(handle, target = {}) {
   }
 }
 
+function renderModalShell({
+  overlayId,
+  zIndex = 60,
+  labelId = "",
+  panelClass = "",
+  panelStyle = "",
+  headerHtml = "",
+  bodyHtml = "",
+  footerHtml = "",
+  withKeyboardInset = false,
+  overlayClass = "bg-slate-900/60 backdrop-blur-sm",
+  overlayAttrs = ""
+} = {}) {
+  const keyboardInset = withKeyboardInset
+    ? `<div class="pointer-events-none absolute inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>`
+    : "";
+  const labelAttr = labelId ? ` aria-labelledby="${labelId}"` : "";
+  const styleAttr = panelStyle ? ` style="${panelStyle}"` : "";
+  const overlayAttr = overlayAttrs ? ` ${overlayAttrs}` : "";
+  return `
+    <div class="fixed inset-0 z-[${zIndex}] modal-root">
+      <div id="${overlayId}"${overlayAttr} class="absolute inset-0 ${overlayClass}"></div>
+      ${keyboardInset}
+      <div class="relative flex h-full w-full items-end sm:items-center justify-center px-3 pb-[calc(var(--safe-area-bottom)+0.75rem)] pt-6">
+        <section role="dialog" aria-modal="true"${labelAttr} class="w-full max-w-md bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden flex flex-col ${panelClass}"${styleAttr}>
+          ${headerHtml}
+          ${bodyHtml}
+          ${footerHtml}
+        </section>
+      </div>
+    </div>
+  `;
+}
+
 function renderProfileModal() {
   if (!state.profileModal.open || !state.profileModal.profile) return "";
   const p = state.profileModal.profile;
@@ -6379,49 +6452,59 @@ function renderProfileModal() {
   const isFollowing = state.followingHandles.includes(followKey);
   const typeLabel = p.restaurantId ? "Business" : "User";
   const avatarUrl = getOptimizedImageUrl(p.avatar, "avatar");
-
-  return `
-    <div class="fixed inset-0 z-[60] modal-root">
-      <div id="profileModalOverlay" class="fixed inset-0 bg-black/60"></div>
-      <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 p-7">
-          <div class="flex justify-end mb-4">
-            <button id="profileModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
-          </div>
-
-          <div class="flex items-center gap-4">
-            <img src="${escapeHtml(avatarUrl)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
-              <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
-            </div>
-            <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
-              ${isFollowing ? "Following" : "Follow"}
-            </button>
-          </div>
-
-          <p class="mt-5 text-sm font-medium text-slate-600 leading-relaxed">${escapeHtml(p.bio)}</p>
-
-          <div class="flex gap-3 mt-6">
-            <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-              <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.posts?.length || 0))}</div>
-              <div class="text-[9px] font-bold text-slate-400 uppercase">Posts</div>
-            </div>
-            <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-              <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.followers))}</div>
-              <div class="text-[9px] font-bold text-slate-400 uppercase">Follower</div>
-            </div>
-            <div class="flex-1 p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-              <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.following))}</div>
-              <div class="text-[9px] font-bold text-slate-400 uppercase">Following</div>
-            </div>
-          </div>
-
-          <div class="h-2"></div>
+  const titleId = "profileModalTitle";
+  const headerHtml = `
+    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+      <div>
+        <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Profil</p>
+        <h3 id="${titleId}" class="text-lg font-black tracking-tight">${escapeHtml(p.name || p.handle || "Profil")}</h3>
+      </div>
+      <button id="profileModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+        ${icon("x", "w-4 h-4")}
+      </button>
+    </div>
+  `;
+  const bioHtml = p.bio
+    ? `<div class="rounded-2xl bg-slate-50 border border-slate-100 p-4 text-sm text-slate-600 leading-relaxed">${escapeHtml(p.bio)}</div>`
+    : "";
+  const bodyHtml = `
+    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-5">
+      <div class="flex items-center gap-4">
+        <img src="${escapeHtml(avatarUrl)}" class="w-16 h-16 rounded-2xl object-cover shadow" />
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
+        </div>
+        <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+          ${isFollowing ? "Following" : "Follow"}
+        </button>
+      </div>
+      ${bioHtml}
+      <div class="grid grid-cols-3 gap-3">
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+          <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.posts?.length || 0))}</div>
+          <div class="text-[9px] font-bold text-slate-400 uppercase">Posts</div>
+        </div>
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+          <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.followers))}</div>
+          <div class="text-[9px] font-bold text-slate-400 uppercase">Follower</div>
+        </div>
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-center">
+          <div class="text-lg font-black text-slate-900">${escapeHtml(formatCount(p.following))}</div>
+          <div class="text-[9px] font-bold text-slate-400 uppercase">Following</div>
         </div>
       </div>
     </div>
   `;
+
+  return renderModalShell({
+    overlayId: "profileModalOverlay",
+    zIndex: 60,
+    labelId: titleId,
+    panelClass: "max-h-[80vh] animate-in slide-in-from-bottom-6",
+    headerHtml,
+    bodyHtml
+  });
 }
 
 function renderCommentItem(postId, comment, parentId = "") {
@@ -7630,6 +7713,18 @@ function ensureModalScrollLock() {
   modalScrollLockBound = true;
 }
 
+function ensureModalEscapeHandler() {
+  if (modalEscapeBound || typeof document === "undefined") return;
+  const handler = (evt) => {
+    if (evt.key !== "Escape") return;
+    if (closeActiveModal()) {
+      evt.preventDefault();
+    }
+  };
+  document.addEventListener("keydown", handler);
+  modalEscapeBound = true;
+}
+
 function updateKeyboardInset() {
   if (typeof document === "undefined") return;
   let nextInset = 0;
@@ -7749,6 +7844,7 @@ function renderOverlays(options = {}) {
   if (open) {
     ensureKeyboardInsetHandlers();
     ensureModalScrollLock();
+    ensureModalEscapeHandler();
     updateKeyboardInset();
   } else if (keyboardInset) {
     keyboardInset = 0;
