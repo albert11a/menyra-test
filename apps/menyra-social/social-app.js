@@ -39,7 +39,7 @@ import {
   qs
 } from "./_shared/social-core.js";
 import { compressImage } from "./_shared/image-compressor.js";
-import { getOptimizedImageUrl, isPlaceholderUrl, PLACEHOLDER_IMAGE } from "./_shared/image-resolver.js";
+import { getOptimizedImageUrl, getFirebaseStorageUrl, isPlaceholderUrl, PLACEHOLDER_IMAGE } from "./_shared/image-resolver.js";
 
 const appEl = document.getElementById("app");
 
@@ -886,6 +886,114 @@ function formatPrice(value, currency = "€") {
 
 function normalizeMenuItemDoc(data, id) {
   const d = data || {};
+  const looksLikeImageString = (value) => {
+    const str = String(value || "").trim();
+    if (!str) return false;
+    const lower = str.toLowerCase();
+    if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("data:") || lower.startsWith("blob:") || lower.startsWith("gs://")) return true;
+    if (lower.startsWith("media/") || lower.startsWith("social/") || lower.startsWith("menu/")) return true;
+    return /\.(avif|webp|png|jpe?g|gif|svg|bmp|tiff?)(\?.*)?$/i.test(str);
+  };
+  const normalizeImg = (value, depth = 0, seen = new WeakSet()) => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      const cleaned = value.trim();
+      if (!cleaned) return "";
+      const lower = cleaned.toLowerCase();
+      if (lower === "null" || lower === "undefined" || lower === "data") return "";
+      if ((cleaned.startsWith("{") && cleaned.endsWith("}")) || (cleaned.startsWith("[") && cleaned.endsWith("]"))) {
+        try {
+          const parsed = JSON.parse(cleaned);
+          return normalizeImg(parsed, depth + 1, seen);
+        } catch {}
+      }
+      return cleaned;
+    }
+    if (typeof value === "object") {
+      if (seen.has(value)) return "";
+      seen.add(value);
+      const candidate = value.url
+        || value.src
+        || value.imageUrl
+        || value.imageURL
+        || value.image_url
+        || value.imagePath
+        || value.image_path
+        || value.imageSrc
+        || value.image_src
+        || value.path
+        || value.cdnUrl
+        || value.cdnURL
+        || value.downloadURL
+        || value.downloadUrl
+        || value.photoUrl
+        || value.photoURL
+        || value.photo_url
+        || value.picture
+        || value.pictureUrl
+        || value.pictureURL
+        || value.photo
+        || value.img
+        || value.imgUrl
+        || value.imgURL
+        || value.img_src
+        || value.imgSrc
+        || value.thumbnail
+        || value.thumbnailUrl
+        || value.thumbnailURL
+        || value.thumb
+        || value.original
+        || value.file
+        || value.fileUrl
+        || value.fileURL
+        || value.publicUrl
+        || value.publicURL
+        || value.secure_url
+        || value.secureUrl;
+      const resolved = normalizeImg(candidate, depth + 1, seen);
+      if (resolved) return resolved;
+      if (depth < 2) {
+        for (const val of Object.values(value)) {
+          if (typeof val === "string" && looksLikeImageString(val)) {
+            const found = normalizeImg(val, depth + 1, seen);
+            if (found) return found;
+          } else if (val && typeof val === "object") {
+            const found = normalizeImg(val, depth + 1, seen);
+            if (found) return found;
+          }
+        }
+      }
+      return "";
+    }
+    return "";
+  };
+  const rawImages = [];
+  [d.imageUrls, d.images, d.image, d.gallery, d.photos, d.media, d.mediaUrls, d.photoUrls, d.pictureUrls].forEach((list) => {
+    if (Array.isArray(list)) {
+      rawImages.push(...list);
+    } else if (typeof list === "string" && list.trim()) {
+      rawImages.push(list);
+    }
+  });
+  const primaryImage = normalizeImg(
+    d.imageUrl
+      || d.imageURL
+      || d.image_url
+      || d.image
+      || d.photoUrl
+      || d.photoURL
+      || d.photo_url
+      || d.img
+      || d.imgUrl
+      || d.imgURL
+      || d.thumbnail
+      || d.thumb
+      || d.cover
+      || d.coverUrl
+      || d.coverURL
+      || ""
+  );
+  const mergedImages = Array.from(new Set([primaryImage, ...rawImages.map(normalizeImg)].filter(Boolean)));
   return {
     id: d.id || id || "",
     type: normalizeMenuType(d.type || d.menuType || d.kind || d.group || d.section),
@@ -896,8 +1004,8 @@ function normalizeMenuItemDoc(data, id) {
     allergens: d.allergens || d.allergen || "",
     price: d.price ?? "",
     available: d.available !== false,
-    imageUrl: d.imageUrl || d.image || d.photoUrl || "",
-    imageUrls: Array.isArray(d.imageUrls) ? d.imageUrls : []
+    imageUrl: mergedImages[0] || "",
+    imageUrls: mergedImages
   };
 }
 
@@ -1523,6 +1631,19 @@ function normalizeHandle(name) {
     .toLowerCase()
     .replace(/\s+/g, "_")
     .replace(/[^a-z0-9_]/g, "");
+}
+
+function isGenericHandle(handle) {
+  const key = normalizeHandle(handle || "");
+  if (!key || key.length < 3) return true;
+  return ["admin", "owner", "user", "business", "staff", "ceo", "demo"].includes(key);
+}
+
+function resolvePreferredHandle(profile, fallbackName = "") {
+  const raw = String(profile?.handle || "").trim();
+  const name = fallbackName || profile?.name || "";
+  const candidate = raw || normalizeHandle(name || "user");
+  return isGenericHandle(candidate) ? normalizeHandle(name || "user") : candidate;
 }
 
 function normalizeProfile(data, user) {
@@ -2434,7 +2555,7 @@ function ensureTabData(tab) {
     void loadUserProfile(state.user, { force: true }).then(() => {
       const restaurantId = state.userProfile.restaurantId || "";
       if (restaurantId) {
-        void loadMenuForRestaurant(restaurantId, { source: "collection" });
+        void loadMenuForRestaurant(restaurantId, { source: "hybrid" });
         void loadFocusForRestaurant(restaurantId);
       }
     });
@@ -2882,13 +3003,16 @@ function renderDrawer() {
   const switchLinks = renderRoleSwitchLinks();
   const avatarUrl = resolveShellAvatarUrl();
   const avatarFit = logoFitClass(state.userProfile.role === "business");
-  const showMenuTab = isRestaurantCafeProfile(state.userProfile);
+  const showMenuTab = state.userProfile.role === "business"
+    || !!state.userProfile.restaurantId
+    || !!state.roleSwitchRestaurantId
+    || isRestaurantCafeProfile(state.userProfile);
   const navItems = [
     { id: "feed", label: "Feed", icon: "home" },
     { id: "search", label: "Suche", icon: "search" },
     { id: "map", label: "Karte", icon: "map" },
     { id: "profile", label: "Profil", icon: "user" },
-    ...(showMenuTab ? [{ id: "menu", label: "Speisekarte", icon: "book-open" }] : []),
+    { id: "menu", label: "Speisekarte", icon: "book-open", hidden: !showMenuTab },
     { id: "notifications", label: "Updates", icon: "bell", badge: unread },
     { id: "settings", label: "Optionen", icon: "settings" }
   ];
@@ -2912,7 +3036,7 @@ function renderDrawer() {
         </div>
         <nav class="space-y-2 flex-1">
           ${navItems.map((item) => `
-            <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${state.activeTab === item.id ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
+            <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${state.activeTab === item.id ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">${icon(item.icon, "w-4 h-4")} ${item.label}</div>
               ${item.badge ? `<span data-unread-badge="drawer" class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge}</span>` : ""}
             </button>
@@ -3206,6 +3330,10 @@ function updateShellDom() {
   const avatarUrl = resolveShellAvatarUrl();
   const isBusiness = state.userProfile.role === "business";
   const branding = resolveHeaderBranding();
+  const showMenuTab = state.userProfile.role === "business"
+    || !!state.userProfile.restaurantId
+    || !!state.roleSwitchRestaurantId
+    || isRestaurantCafeProfile(state.userProfile);
   const headerAvatar = document.getElementById("headerAvatar");
   if (headerAvatar) {
     const current = headerAvatar.getAttribute("src") || "";
@@ -3251,6 +3379,10 @@ function updateShellDom() {
   if (drawerHandle) drawerHandle.textContent = `@${state.userProfile.handle || "user"}`;
   const switchLinks = document.getElementById("drawerSwitchLinks");
   if (switchLinks) switchLinks.innerHTML = renderRoleSwitchLinks();
+  const menuNavBtn = document.querySelector('[data-nav="menu"]');
+  if (menuNavBtn) {
+    menuNavBtn.classList.toggle("hidden", !showMenuTab);
+  }
   refreshSelfCommentAvatars({ attempt: 0, maxAttempts: 2 });
   if (window.lucide?.createIcons) window.lucide.createIcons();
 }
@@ -4480,10 +4612,124 @@ function getFilteredMenuItems(items, { filter = "all", query = "" } = {}) {
 }
 
 function getMenuItemImages(item) {
-  const list = Array.isArray(item?.imageUrls) ? item.imageUrls.slice() : [];
-  if (item?.imageUrl) list.unshift(item.imageUrl);
+  const looksLikeImageString = (value) => {
+    const str = String(value || "").trim();
+    if (!str) return false;
+    const lower = str.toLowerCase();
+    if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("data:") || lower.startsWith("blob:") || lower.startsWith("gs://")) return true;
+    if (lower.startsWith("media/") || lower.startsWith("social/") || lower.startsWith("menu/")) return true;
+    return /\.(avif|webp|png|jpe?g|gif|svg|bmp|tiff?)(\?.*)?$/i.test(str);
+  };
+  const normalizeImg = (value, depth = 0, seen = new WeakSet()) => {
+    if (!value) return "";
+    if (typeof value === "string") {
+      const cleaned = value.trim();
+      if (!cleaned) return "";
+      const lower = cleaned.toLowerCase();
+      if (lower === "null" || lower === "undefined" || lower === "data") return "";
+      if ((cleaned.startsWith("{") && cleaned.endsWith("}")) || (cleaned.startsWith("[") && cleaned.endsWith("]"))) {
+        try {
+          const parsed = JSON.parse(cleaned);
+          return normalizeImg(parsed, depth + 1, seen);
+        } catch {}
+      }
+      return cleaned;
+    }
+    if (typeof value === "object") {
+      if (seen.has(value)) return "";
+      seen.add(value);
+      const candidate = value.url
+        || value.src
+        || value.imageUrl
+        || value.imageURL
+        || value.image_url
+        || value.imagePath
+        || value.image_path
+        || value.imageSrc
+        || value.image_src
+        || value.path
+        || value.cdnUrl
+        || value.cdnURL
+        || value.downloadURL
+        || value.downloadUrl
+        || value.photoUrl
+        || value.photoURL
+        || value.photo_url
+        || value.picture
+        || value.pictureUrl
+        || value.pictureURL
+        || value.photo
+        || value.img
+        || value.imgUrl
+        || value.imgURL
+        || value.img_src
+        || value.imgSrc
+        || value.thumbnail
+        || value.thumbnailUrl
+        || value.thumbnailURL
+        || value.thumb
+        || value.original
+        || value.file
+        || value.fileUrl
+        || value.fileURL
+        || value.publicUrl
+        || value.publicURL
+        || value.secure_url
+        || value.secureUrl;
+      const resolved = normalizeImg(candidate, depth + 1, seen);
+      if (resolved) return resolved;
+      if (depth < 2) {
+        for (const val of Object.values(value)) {
+          if (typeof val === "string" && looksLikeImageString(val)) {
+            const found = normalizeImg(val, depth + 1, seen);
+            if (found) return found;
+          } else if (val && typeof val === "object") {
+            const found = normalizeImg(val, depth + 1, seen);
+            if (found) return found;
+          }
+        }
+      }
+      return "";
+    }
+    return "";
+  };
+  const rawList = [];
+  [item?.imageUrls, item?.images, item?.image, item?.gallery, item?.photos, item?.media, item?.mediaUrls, item?.photoUrls, item?.pictureUrls].forEach((list) => {
+    if (Array.isArray(list)) {
+      rawList.push(...list);
+    } else if (typeof list === "string" && list.trim()) {
+      rawList.push(list);
+    }
+  });
+  const list = rawList.map(normalizeImg);
+  const primary = normalizeImg(
+    item?.imageUrl
+      || item?.imageURL
+      || item?.image_url
+      || item?.image
+      || item?.photoUrl
+      || item?.photoURL
+      || item?.photo_url
+      || item?.img
+      || item?.imgUrl
+      || item?.imgURL
+      || item?.thumbnail
+      || item?.thumb
+      || item?.cover
+      || item?.coverUrl
+      || item?.coverURL
+      || ""
+  );
+  if (primary) list.unshift(primary);
   const unique = Array.from(new Set(list.filter(Boolean)));
-  return unique.length ? unique : [""];
+  return unique.length ? unique : [];
+}
+
+function isDirectImageUrl(value) {
+  const str = String(value || "").trim();
+  if (!str) return false;
+  const lower = str.toLowerCase();
+  return lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("data:") || lower.startsWith("blob:") || lower.startsWith("gs://");
 }
 
 function resolveMenuItemHero(item) {
@@ -4509,8 +4755,11 @@ function renderMenuFilterRow() {
 }
 
 function renderMenuItemCard(item, { mode = "profile" } = {}) {
-  const imgSrc = getOptimizedImageUrl(resolveMenuItemHero(item), "thumb");
+  const rawImg = resolveMenuItemHero(item);
+  const imgSrc = getOptimizedImageUrl(rawImg, "thumb");
   const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+  const firebaseFallback = getFirebaseStorageUrl(rawImg);
+  const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPrice(item.price);
   const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
   const category = item.category || "";
@@ -4524,7 +4773,7 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
   return `
     <div ${wrapperAttrs} class="w-full p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
-        <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between gap-4">
@@ -5938,8 +6187,11 @@ function renderMenuDetailModal() {
   const images = getMenuItemImages(item);
   const maxIndex = images.length ? images.length - 1 : 0;
   const safeIndex = Math.max(0, Math.min(state.menuDetail.index || 0, maxIndex));
-  const imgSrc = getOptimizedImageUrl(images[safeIndex] || "", "large");
+  const rawImg = images[safeIndex] || "";
+  const imgSrc = getOptimizedImageUrl(rawImg, "large");
   const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+  const firebaseFallback = getFirebaseStorageUrl(rawImg);
+  const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPrice(item.price);
   const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
   const category = item.category || "";
@@ -5963,7 +6215,7 @@ function renderMenuDetailModal() {
 
           <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-8">
             <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50" data-menu-gallery style="touch-action: pan-y;">
-              <img src="${escapeHtml(safeImg)}" class="w-full h-56 object-cover" />
+              <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-56 object-cover" />
               ${images.length > 1 ? `
                 <button type="button" data-menu-gallery-nav="prev" class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
                   ${icon("chevron-left", "w-4 h-4")}
@@ -6166,10 +6418,7 @@ function renderSettingsView() {
   }
 
   if (state.settingsView === "account") {
-    const restaurantOptions = state.restaurants.map((r) => {
-      const label = escapeHtml(r.name || r.restaurantName || "Business");
-      return `<option value="${r.id}" ${r.id === profile.restaurantId ? "selected" : ""}>${label}</option>`;
-    }).join("");
+    const preferredHandle = resolvePreferredHandle(profile, profile.name);
 
     return `
       <div class="p-6 animate-in slide-in-from-right-10 duration-500">
@@ -6191,7 +6440,7 @@ function renderSettingsView() {
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Handle</label>
-            <input id="settingsHandle" type="text" value="${escapeHtml(profile.handle)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="settingsHandle" type="text" value="${escapeHtml(preferredHandle)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bio</label>
@@ -6201,15 +6450,6 @@ function renderSettingsView() {
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
             <input id="settingsCity" type="text" value="${escapeHtml(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
-          ${profile.role === "business" ? `
-            <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business</label>
-              <select id="settingsRestaurant" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-                <option value="">Bitte waehlen</option>
-                ${restaurantOptions}
-              </select>
-            </div>
-          ` : ""}
         </div>
         <div class="mt-4 text-center text-[10px] font-bold text-slate-400" id="settingsStatus"></div>
       </div>
@@ -6826,6 +7066,26 @@ function renderOverlays(options = {}) {
   bindOverlayEvents({ profileChanged, postChanged, likesChanged, menuChanged, menuDetailChanged, focusChanged });
 }
 
+function bindImageFallbacks(root = document) {
+  if (!root) return;
+  root.querySelectorAll("img[data-fallback-src]").forEach((img) => {
+    if (!(img instanceof HTMLImageElement)) return;
+    if (img.dataset.fallbackBound === "true") return;
+    img.dataset.fallbackBound = "true";
+    img.addEventListener("error", () => {
+      const fallback = img.dataset.fallbackSrc || "";
+      const current = img.getAttribute("src") || "";
+      if (fallback && current !== fallback) {
+        img.setAttribute("src", fallback);
+        return;
+      }
+      if (current !== PLACEHOLDER_IMAGE) {
+        img.setAttribute("src", PLACEHOLDER_IMAGE);
+      }
+    });
+  });
+}
+
 function renderLoading() {
   return `
     <div class="min-h-screen flex items-center justify-center text-slate-400 text-sm font-bold">
@@ -7356,6 +7616,10 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
       });
     }
   }
+
+  if (menuChanged || menuDetailChanged || focusChanged) {
+    bindImageFallbacks();
+  }
 }
 
 function bindAppEvents() {
@@ -7718,13 +7982,9 @@ function bindAppEvents() {
     });
   }
 
-  const settingsRestaurant = document.getElementById("settingsRestaurant");
-  if (settingsRestaurant) {
-    settingsRestaurant.addEventListener("change", async () => {
-      await updateRestaurantSelection(settingsRestaurant.value);
-    });
-  }
+  // Business selection removed from account settings by design.
 
+  bindImageFallbacks();
   bindSearchEvents();
 }
 
@@ -7836,10 +8096,14 @@ async function uploadAvatar(file) {
 async function saveAccountSettings() {
   if (!state.user) return;
   const name = document.getElementById("settingsName")?.value?.trim() || state.userProfile.name || "User";
-  const handle = document.getElementById("settingsHandle")?.value?.trim() || state.userProfile.handle || normalizeHandle(name);
+  const handleInput = document.getElementById("settingsHandle")?.value?.trim() || state.userProfile.handle || "";
+  let handle = normalizeHandle(handleInput || name);
+  if (isGenericHandle(handle)) {
+    handle = normalizeHandle(name);
+  }
   const bio = document.getElementById("settingsBio")?.value?.trim() || "";
   const city = document.getElementById("settingsCity")?.value?.trim() || "Prishtina";
-  const restaurantId = document.getElementById("settingsRestaurant")?.value || state.userProfile.restaurantId || "";
+  const restaurantId = state.userProfile.restaurantId || "";
 
   const payload = {
     displayName: name,
@@ -7875,9 +8139,9 @@ async function updateRestaurantSelection(restaurantId) {
   render();
   if (state.activeTab === "menu") {
     if (restaurantId) {
-      void loadMenuForRestaurant(restaurantId, { source: "collection", force: true });
+      void loadMenuForRestaurant(restaurantId, { source: "hybrid", force: true });
     } else {
-      state.menu = { ...state.menu, restaurantId: "", items: [], loading: false, error: "", source: "collection" };
+      state.menu = { ...state.menu, restaurantId: "", items: [], loading: false, error: "", source: "hybrid" };
       render();
     }
   }
@@ -8539,6 +8803,72 @@ async function loadMenuItemsFromCollection(restaurantId) {
   }
 }
 
+function hasMenuItemImages(item) {
+  return getMenuItemImages(item).length > 0;
+}
+
+function fillMenuImagesFromFallback(baseItems, fallbackItems) {
+  const list = Array.isArray(baseItems) ? baseItems : [];
+  const fallback = Array.isArray(fallbackItems) ? fallbackItems : [];
+  if (!list.length || !fallback.length) return list;
+  const fallbackById = new Map(fallback.map((it) => [String(it.id || ""), it]));
+  const fallbackByNameCatPrice = new Map();
+  const fallbackByNameCat = new Map();
+  const fallbackByName = new Map();
+  fallback.forEach((fb) => {
+    if (!fb) return;
+    const nameKey = foldMenuText(fb.name || "").trim();
+    const catKey = foldMenuText(fb.category || "").trim();
+    const priceKey = String(fb.price ?? "").trim();
+    if (nameKey) {
+      const byName = fallbackByName.get(nameKey) || [];
+      byName.push(fb);
+      fallbackByName.set(nameKey, byName);
+    }
+    if (nameKey || catKey) {
+      const key = `${nameKey}|${catKey}`;
+      if (!fallbackByNameCat.has(key)) fallbackByNameCat.set(key, fb);
+    }
+    if (nameKey || catKey || priceKey) {
+      const key = `${nameKey}|${catKey}|${priceKey}`;
+      if (!fallbackByNameCatPrice.has(key)) fallbackByNameCatPrice.set(key, fb);
+    }
+  });
+  return list.map((it) => {
+    if (!it || hasMenuItemImages(it)) return it;
+    const byId = it.id ? fallbackById.get(String(it.id)) : null;
+    if (byId && hasMenuItemImages(byId)) {
+      return {
+        ...it,
+        imageUrl: byId.imageUrl || "",
+        imageUrls: Array.isArray(byId.imageUrls) ? byId.imageUrls : []
+      };
+    }
+    const nameKey = foldMenuText(it.name || "").trim();
+    const catKey = foldMenuText(it.category || "").trim();
+    const priceKey = String(it.price ?? "").trim();
+    let match = null;
+    if (nameKey || catKey || priceKey) {
+      match = fallbackByNameCatPrice.get(`${nameKey}|${catKey}|${priceKey}`) || null;
+    }
+    if (!match && (nameKey || catKey)) {
+      match = fallbackByNameCat.get(`${nameKey}|${catKey}`) || null;
+    }
+    if (!match && nameKey) {
+      const listByName = fallbackByName.get(nameKey) || [];
+      if (listByName.length === 1) match = listByName[0];
+    }
+    if (match && hasMenuItemImages(match)) {
+      return {
+        ...it,
+        imageUrl: match.imageUrl || "",
+        imageUrls: Array.isArray(match.imageUrls) ? match.imageUrls : []
+      };
+    }
+    return it;
+  });
+}
+
 async function publishMenuToPublic(restaurantId, items) {
   if (!restaurantId) return;
   const ref = doc(db, "restaurants", restaurantId, "public", "menu");
@@ -8563,7 +8893,18 @@ async function publishMenuToPublic(restaurantId, items) {
 
 async function loadMenuHybrid(restaurantId) {
   const pub = await loadPublicMenuItems(restaurantId);
-  if (pub && pub.length) return pub;
+  if (pub && pub.length) {
+    const needsImages = pub.some((it) => !hasMenuItemImages(it));
+    if (!needsImages) return pub;
+    const [col, legacy] = await Promise.all([
+      loadMenuItemsFromCollection(restaurantId),
+      loadLegacyMenuItems(restaurantId)
+    ]);
+    const fallbackItems = col.length ? col : legacy;
+    if (!fallbackItems.length) return pub;
+    const merged = fillMenuImagesFromFallback(pub, fallbackItems);
+    return merged;
+  }
   const col = await loadMenuItemsFromCollection(restaurantId);
   if (col && col.length) {
     try {
@@ -8695,15 +9036,29 @@ async function loadMenuForRestaurant(restaurantId, { force = false, source = "hy
   const cacheKey = menuCacheKey(restaurantId, source);
   const cached = menuCache.get(cacheKey);
   if (cached && cached.items?.length && !force) {
-    state.menu = { ...state.menu, restaurantId, items: cached.items, loading: false, error: "", source };
-    return;
+    const cachedNeedsImages = cached.items.some((it) => !hasMenuItemImages(it));
+    if (!cachedNeedsImages) {
+      state.menu = { ...state.menu, restaurantId, items: cached.items, loading: false, error: "", source };
+      return;
+    }
   }
   state.menu = { ...state.menu, restaurantId, loading: true, error: "", source };
   render();
   try {
-    const items = source === "collection"
-      ? await loadMenuItemsFromCollection(restaurantId)
-      : await loadMenuHybrid(restaurantId);
+    let items = [];
+    if (source === "collection") {
+      items = await loadMenuItemsFromCollection(restaurantId);
+      const needsImages = items.some((it) => !hasMenuItemImages(it));
+      if (needsImages) {
+        const publicItems = await loadPublicMenuItems(restaurantId);
+        const fallbackItems = publicItems.length ? publicItems : await loadLegacyMenuItems(restaurantId);
+        if (fallbackItems.length) {
+          items = fillMenuImagesFromFallback(items, fallbackItems);
+        }
+      }
+    } else {
+      items = await loadMenuHybrid(restaurantId);
+    }
     menuCache.set(cacheKey, { items, ts: Date.now() });
     state.menu = { ...state.menu, restaurantId, items, loading: false, error: "", source };
     render();
@@ -8847,10 +9202,8 @@ async function deleteFocusItemById(itemId) {
 }
 
 function openMenuModal(mode = "create", item = null) {
-  const existingImages = [];
-  if (item?.imageUrl) existingImages.push(item.imageUrl);
-  if (Array.isArray(item?.imageUrls)) existingImages.push(...item.imageUrls);
-  const uniqImages = Array.from(new Set(existingImages.filter(Boolean)));
+  const existingImages = getMenuItemImages(item).filter(Boolean);
+  const uniqImages = Array.from(new Set(existingImages));
   state.menuModal = {
     open: true,
     mode,
