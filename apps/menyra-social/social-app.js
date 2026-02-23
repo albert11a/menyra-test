@@ -1707,6 +1707,7 @@ function normalizeProfile(data, user) {
     bio: data?.bio || "",
     avatar: data?.avatarUrl || data?.avatar || user?.photoURL || "",
     location: data?.city || "Prishtina",
+    address: data?.address || "",
     followers: data?.followersCount ?? 0,
     following: data?.followingCount ?? 0,
     karma: String(data?.score ?? "0"),
@@ -1903,8 +1904,8 @@ function normalizeBusinessLocation(rest, idx) {
   const baseLat = 42.6629;
   const baseLng = 21.1655;
   const hash = hashValue(rest.id || rest.name || idx);
-  const lat = geo?.lat ?? (baseLat + (((hash % 200) - 100) * 0.0025));
-  const lng = geo?.lng ?? (baseLng + ((((hash >> 3) % 200) - 100) * 0.003));
+  const lat = rest.lat || geo?.lat || (baseLat + (((hash % 200) - 100) * 0.0025));
+  const lng = rest.lng || geo?.lng || (baseLng + ((((hash >> 3) % 200) - 100) * 0.003));
 
   return {
     id: rest.id,
@@ -1912,10 +1913,11 @@ function normalizeBusinessLocation(rest, idx) {
     type: rest.type || "food",
     lat,
     lng,
+    address: rest.address || rest.city || "Prishtina",
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
-    rating: rest.rating || rest.score || 4.6,
+    rating: rest.rating || rest.score || 4.8,
     img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "",
-    desc: rest.description || rest.bio || "Menyra Business",
+    desc: rest.description || rest.bio || "Offizielles Lokal auf MENYRA.",
     raw: rest
   };
 }
@@ -1965,14 +1967,25 @@ function bindMapSheetEvents() {
     });
   }
 
-  const mapOpenMapsBtn = document.getElementById("mapOpenMapsBtn");
-  if (mapOpenMapsBtn) {
-    mapOpenMapsBtn.addEventListener("click", () => {
+  const mapOpenRouteBtn = document.getElementById("mapOpenRouteBtn");
+  if (mapOpenRouteBtn) {
+    mapOpenRouteBtn.addEventListener("click", () => {
       if (!state.selectedBusiness) return;
       const { lat, lng } = state.selectedBusiness;
       if (typeof lat !== "number" || typeof lng !== "number") return;
-      const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
       window.open(url, "_blank");
+    });
+  }
+
+  const mapVisitProfileBtn = document.getElementById("mapVisitProfileBtn");
+  if (mapVisitProfileBtn) {
+    mapVisitProfileBtn.addEventListener("click", () => {
+      if (!state.selectedBusiness) return;
+      openProfileViewFromBusiness({
+        id: state.selectedBusiness.id,
+        name: state.selectedBusiness.name
+      });
     });
   }
 }
@@ -1988,6 +2001,7 @@ function initLeafletIfNeeded() {
 
   if (leafletMap) {
     try { leafletMap.invalidateSize(); } catch {}
+    bindMapSearchInput();
     return;
   }
 
@@ -1995,13 +2009,28 @@ function initLeafletIfNeeded() {
     zoomControl: false,
     attributionControl: false,
     preferCanvas: true
-  }).setView([42.6026, 20.9029], 8);
+  }).setView([42.6629, 21.1655], 13);
 
   window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19
   }).addTo(leafletMap);
 
-  leafletBizMarkers = state.businessLocations.map((b) => {
+  renderLeafletMarkers(state.businessLocations);
+
+  updateMapSheet();
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+
+  mapLocate();
+
+  bindMapSearchInput();
+}
+
+function renderLeafletMarkers(locations) {
+  leafletBizMarkers.forEach((marker) => {
+    try { leafletMap.removeLayer(marker); } catch {}
+  });
+
+  leafletBizMarkers = locations.map((b) => {
     const marker = window.L.marker([b.lat, b.lng], { icon: makeBizDivIcon(b) }).addTo(leafletMap);
     marker.__biz = b;
     marker.on("click", () => {
@@ -2014,9 +2043,28 @@ function initLeafletIfNeeded() {
     });
     return marker;
   });
+}
 
-  updateMapSheet();
-  if (window.lucide?.createIcons) window.lucide.createIcons();
+function bindMapSearchInput() {
+  const searchInput = document.getElementById("mapSearchInput");
+  if (!searchInput || searchInput.dataset.bound === "true") return;
+
+  searchInput.addEventListener("input", (e) => {
+    const query = e.target.value.toLowerCase();
+
+    const filtered = state.businessLocations.filter((b) =>
+      b.name.toLowerCase().includes(query)
+      || b.address.toLowerCase().includes(query)
+    );
+
+    renderLeafletMarkers(filtered);
+
+    if (filtered.length > 0 && query.length > 2) {
+      try { leafletMap.panTo([filtered[0].lat, filtered[0].lng], { animate: true, duration: 0.5 }); } catch {}
+    }
+  });
+
+  searchInput.dataset.bound = "true";
 }
 
 function setUserMarker(lat, lng, label = "Deine Position") {
@@ -4432,25 +4480,41 @@ async function loadMenuItemMetaFromFirebase(item, restaurantId) {
 function renderMapSheet(selected) {
   const imageUrl = getOptimizedImageUrl(selected.img, "thumb");
   return `
-    <div class="absolute bottom-6 left-6 right-6 animate-in slide-in-from-bottom-6 duration-300 z-50">
-      <div class="bg-white rounded-[2.5rem] p-5 shadow-2xl border border-slate-100 relative">
+    <div class="animate-in slide-in-from-bottom-6 duration-300">
+      <div class="bg-white rounded-[2.5rem] p-5 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] border border-slate-100 relative">
         <button id="mapCloseBtn" class="absolute top-4 right-4 w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors">
           ${icon("x", "w-4 h-4")}
         </button>
-        <div class="flex gap-4">
-          <img src="${escapeHtml(imageUrl)}" class="w-24 h-24 rounded-3xl object-cover shadow-lg" />
-          <div class="flex-1">
-            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Business</span>
-            <h3 class="text-lg font-black tracking-tight text-slate-900 mt-1">${escapeHtml(selected.name || "Business")}</h3>
+        
+        <div class="flex gap-4 pr-10">
+          <div class="w-20 h-20 rounded-[1.8rem] bg-slate-100 p-0.5 border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden">
+            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover rounded-[1.6rem]" alt="Restaurant" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
+          </div>
+          
+          <div class="flex-1 mt-1">
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Restaurant</span>
+            <h3 class="text-xl font-black tracking-tight text-slate-900 leading-tight mt-0.5 line-clamp-1">${escapeHtml(selected.name || "Business")}</h3>
             <div class="flex items-center gap-1.5 mt-2 text-[10px] font-black uppercase text-indigo-600">
-              ${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)} / <span class="text-emerald-500">Geoeffnet</span>
+              ${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)} / <span class="text-emerald-500 flex items-center gap-1"><div class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div> Geöffnet</span>
             </div>
-            <div class="flex items-center gap-2 mt-3 text-slate-400 text-[10px] font-bold">${icon("clock", "w-4 h-4")} ${escapeHtml(selected.hours)}</div>
+            <div class="flex items-center gap-1 mt-1.5 text-slate-400 text-[10px] font-bold line-clamp-1">
+              ${icon("map-pin", "w-3 h-3")} ${escapeHtml(selected.address)}
+            </div>
           </div>
         </div>
-        <p class="text-xs text-slate-500 mt-3 font-medium px-1 line-clamp-2 leading-relaxed">${escapeHtml(selected.desc)}</p>
-        <div class="mt-4">
-          <button id="mapOpenMapsBtn" class="w-full bg-slate-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-slate-200">In Maps oeffnen</button>
+
+        <p class="text-[13px] text-slate-500 mt-4 font-medium px-1 line-clamp-2 leading-relaxed">
+          ${escapeHtml(selected.desc)}
+        </p>
+
+        <div class="mt-5 grid grid-cols-2 gap-3">
+          <button id="mapVisitProfileBtn" class="w-full bg-slate-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2">
+            ${icon("user", "w-4 h-4")} Profil
+          </button>
+          
+          <button id="mapOpenRouteBtn" class="w-full bg-indigo-50 text-indigo-600 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-indigo-100 border border-indigo-100">
+            ${icon("map", "w-4 h-4")} Route
+          </button>
         </div>
       </div>
     </div>
@@ -4460,17 +4524,33 @@ function renderMapSheet(selected) {
 function renderMapView() {
   const hasLeaflet = !!window.L;
   return `
-    <div class="p-6 h-full flex flex-col animate-in fade-in duration-700">
-      <div class="mb-6 px-2">
+    <div class="p-6 h-full flex flex-col relative pb-24 animate-in fade-in duration-700">
+      <div class="mb-4 px-2">
         <h2 class="text-2xl font-black italic uppercase tracking-tighter">Business Karte</h2>
-        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Kosovo Explorer</p>
+        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale in deiner Nähe</p>
       </div>
-      <div class="relative flex-1 bg-slate-900 rounded-[3.5rem] overflow-hidden shadow-2xl border-[8px] border-white min-h-[500px]">
-        ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-white text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
-        <div class="absolute top-6 right-6 z-50 flex flex-col gap-3">
-          <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-white/95 backdrop-blur-xl border border-white/40 shadow-xl flex items-center justify-center text-slate-900 active:scale-95 transition-transform">${icon("navigation", "w-4 h-4")}</button>
+
+      <div class="relative flex-1 bg-slate-900 rounded-[3.5rem] overflow-hidden shadow-2xl border-[6px] border-white min-h-[500px]">
+        
+        ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0 z-10"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-white text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
+        
+        <div class="absolute top-4 left-4 right-4 z-[400]">
+          <div class="relative">
+            ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}
+            <input id="mapSearchInput" type="text" placeholder="Stadt oder Lokal suchen..." class="w-full h-12 rounded-[1.5rem] border-none bg-white/95 backdrop-blur-md pl-11 pr-4 text-xs font-bold text-slate-800 shadow-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400" />
+            <button class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+              ${icon("sliders-horizontal", "w-3.5 h-3.5")}
+            </button>
+          </div>
         </div>
-        <div id="mapSheetSlot"></div>
+
+        <div class="absolute top-20 right-4 z-[400] flex flex-col gap-3 mt-2">
+          <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-white/95 backdrop-blur-xl border border-white/40 shadow-xl flex items-center justify-center text-indigo-600 active:scale-95 transition-transform hover:bg-white">
+            ${icon("navigation", "w-5 h-5")}
+          </button>
+        </div>
+
+        <div id="mapSheetSlot" class="absolute bottom-4 left-4 right-4 z-[400]"></div>
       </div>
     </div>
   `;
@@ -7131,6 +7211,12 @@ function renderSettingsView() {
 
   if (state.settingsView === "account") {
     const preferredHandle = resolvePreferredHandle(profile, profile.name);
+    const restaurantOptions = (state.restaurants || []).map((rest) => {
+      const id = rest.id || rest.restaurantId || "";
+      const name = rest.name || rest.restaurantName || "Business";
+      const selected = String(id) === String(profile.restaurantId || "") ? "selected" : "";
+      return `<option value="${escapeHtml(String(id))}" ${selected}>${escapeHtml(name)}</option>`;
+    }).join("");
 
     return `
       <div class="p-6 animate-in slide-in-from-right-10 duration-500">
@@ -7162,6 +7248,19 @@ function renderSettingsView() {
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
             <input id="settingsCity" type="text" value="${escapeHtml(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
+          ${profile.role === "business" ? `
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Genaue Adresse (Straße, Hausnr., Stadt)</label>
+              <input id="settingsAddress" type="text" value="${escapeHtml(profile.address || "")}" placeholder="z.B. Rruga Fazli Grajqevci, Prishtina" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business</label>
+              <select id="settingsRestaurant" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+                <option value="">Bitte waehlen</option>
+                ${restaurantOptions}
+              </select>
+            </div>
+          ` : ""}
         </div>
         <div class="mt-4 text-center text-[10px] font-bold text-slate-400" id="settingsStatus"></div>
       </div>
@@ -8856,14 +8955,30 @@ async function uploadAvatar(file) {
 async function saveAccountSettings() {
   if (!state.user) return;
   const name = document.getElementById("settingsName")?.value?.trim() || state.userProfile.name || "User";
-  const handleInput = document.getElementById("settingsHandle")?.value?.trim() || state.userProfile.handle || "";
-  let handle = normalizeHandle(handleInput || name);
-  if (isGenericHandle(handle)) {
-    handle = normalizeHandle(name);
-  }
+  const handle = document.getElementById("settingsHandle")?.value?.trim() || state.userProfile.handle || normalizeHandle(name);
   const bio = document.getElementById("settingsBio")?.value?.trim() || "";
   const city = document.getElementById("settingsCity")?.value?.trim() || "Prishtina";
-  const restaurantId = state.userProfile.restaurantId || "";
+  const address = document.getElementById("settingsAddress")?.value?.trim() || "";
+  const restaurantId = document.getElementById("settingsRestaurant")?.value || state.userProfile.restaurantId || "";
+
+  const statusEl = document.getElementById("settingsStatus");
+  if (statusEl) statusEl.textContent = "Speichere...";
+
+  let lat = null;
+  let lng = null;
+
+  if (address && state.userProfile.role === "business") {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        lat = parseFloat(data[0].lat);
+        lng = parseFloat(data[0].lon);
+      }
+    } catch (e) {
+      console.warn("Geocoding fehlgeschlagen", e);
+    }
+  }
 
   const payload = {
     displayName: name,
@@ -8874,8 +8989,23 @@ async function saveAccountSettings() {
     updatedAt: serverTimestamp()
   };
 
+  if (state.userProfile.role === "business") {
+    payload.address = address;
+    if (lat !== null && lng !== null) {
+      payload.lat = lat;
+      payload.lng = lng;
+    }
+  }
+
   try {
     await setDoc(doc(db, "users", state.user.uid), payload, { merge: true });
+
+    if (restaurantId && lat !== null && lng !== null) {
+      await setDoc(doc(db, "restaurants", restaurantId), {
+        lat, lng, address
+      }, { merge: true });
+    }
+
     await updateProfile(state.user, { displayName: name });
     state.userProfile = {
       ...state.userProfile,
@@ -8883,11 +9013,16 @@ async function saveAccountSettings() {
       handle,
       bio,
       location: city,
+      address,
       restaurantId
     };
-    saveUserProfileToStorage();
+    safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+
+    if (statusEl) statusEl.textContent = "Erfolgreich gespeichert!";
+    setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 2000);
   } catch (err) {
     console.error(err);
+    if (statusEl) statusEl.textContent = "Fehler beim Speichern.";
   }
 }
 
