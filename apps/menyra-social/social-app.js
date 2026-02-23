@@ -6607,70 +6607,78 @@ function renderPostModal() {
   const userBadge = currentUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
   const replyTarget = comments.find((item) => item.id === state.postModal.replyTo);
-  const animClass = "";
+  const titleId = "postModalTitle";
+  const headerHtml = `
+    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+      <div>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
+        <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${escapeHtml(formatDateLabel(post.createdAt || new Date()))}</h3>
+        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
+      </div>
+      <button id="postModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+        ${icon("x", "w-4 h-4")}
+      </button>
+    </div>
+  `;
+  const replyHtml = replyTarget ? `
+    <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+      <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${escapeHtml(replyTarget.handle)}</div>
+      <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
+    </div>
+  ` : "";
+  const captionHtml = caption
+    ? `<div class="text-sm text-slate-600 leading-relaxed">${escapeHtml(caption)}</div>`
+    : "";
+  const bodyHtml = `
+    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
+      <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
+        <img src="${escapeHtml(imageUrl)}" data-img-key="post-modal:${escapeHtml(post.id)}" class="w-full h-[22rem] object-cover" />
+      </div>
 
-  return `
-      <div class="fixed inset-0 z-[70] modal-root">
-        <div id="postModalOverlay" class="fixed inset-0 bg-black/60"></div>
-        <div class="fixed inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>
-        <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
-          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
-            <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
-              <div class="flex items-center justify-between mb-4">
-                <div>
-                  <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
-                  <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(formatDateLabel(post.createdAt || new Date()))}</h3>
-                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
-                </div>
-                <button id="postModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
-              </div>
+      ${captionHtml}
 
-              <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                <img src="${escapeHtml(imageUrl)}" data-img-key="post-modal:${escapeHtml(post.id)}" class="w-full h-[22rem] object-cover" />
-              </div>
-
-              ${caption ? `
-                <div class="mt-4 text-sm text-slate-600 leading-relaxed">${escapeHtml(caption)}</div>
-              ` : ""}
-
-              <div class="mt-4 flex items-center justify-between">
-                <button id="postLikeBtn" data-post-id="${escapeHtml(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
-                  ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
-                </button>
-                <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                  <button id="postLikesBtn" data-post-id="${escapeHtml(post.id)}" class="hover:text-slate-700">${escapeHtml(counts.likeLabel)} Likes</button>
-                  <span id="postCommentsCount">${escapeHtml(counts.commentLabel)} Kommentare</span>
-                </div>
-              </div>
-
-              <div id="postModalComments" class="mt-5 space-y-4">
-                ${renderPostComments(comments)}
-              </div>
-
-              ${replyTarget ? `
-                <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                  <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${escapeHtml(replyTarget.handle)}</div>
-                  <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
-                </div>
-              ` : ""}
-            </div>
-
-            <div class="p-7 pt-4 border-t border-slate-100 bg-white">
-            <div class="flex gap-3">
-              <input id="postCommentInput" type="text" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.postModal.commentText || "")}" />
-              <button id="postCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
-                ${icon("check", "w-4 h-4")}
-              </button>
-              <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
-                ${icon("send", "w-4 h-4")}
-              </button>
-            </div>
-            </div>
-          </div>
+      <div class="flex items-center justify-between">
+        <button id="postLikeBtn" data-post-id="${escapeHtml(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
+          ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+        </button>
+        <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          <button id="postLikesBtn" data-post-id="${escapeHtml(post.id)}" class="hover:text-slate-700">${escapeHtml(counts.likeLabel)} Likes</button>
+          <span id="postCommentsCount">${escapeHtml(counts.commentLabel)} Kommentare</span>
         </div>
+      </div>
+
+      <div id="postModalComments" class="space-y-4">
+        ${renderPostComments(comments)}
+      </div>
+
+      ${replyHtml}
+    </div>
+  `;
+  const footerHtml = `
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+      <div class="flex gap-3">
+        <input id="postCommentInput" type="text" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.postModal.commentText || "")}" />
+        <button id="postCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
+          ${icon("check", "w-4 h-4")}
+        </button>
+        <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
+          ${icon("send", "w-4 h-4")}
+        </button>
       </div>
     </div>
   `;
+
+  return renderModalShell({
+    overlayId: "postModalOverlay",
+    zIndex: 70,
+    labelId: titleId,
+    panelClass: "max-h-[90vh] animate-in slide-in-from-bottom-6",
+    panelStyle: "padding-bottom: var(--menyra-keyboard-inset, 0px);",
+    withKeyboardInset: true,
+    headerHtml,
+    bodyHtml,
+    footerHtml
+  });
 }
 
 function renderLikesModal() {
@@ -6679,40 +6687,46 @@ function renderLikesModal() {
   const likes = meta.likes || [];
   const postForCount = findPostById(state.likesModal.postId);
   const likeTotal = Number(postForCount?.likes) || likes.length;
-  const animClass = "";
-
-  return `
-      <div class="fixed inset-0 z-[80] modal-root">
-        <div id="likesModalOverlay" class="fixed inset-0 bg-black/70"></div>
-      <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[80vh] overflow-hidden">
-          <div class="p-7 pb-4 flex items-center justify-between">
-            <div>
-              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
-              <h3 class="text-xl font-black italic tracking-tighter">${likeTotal} Likes</h3>
-            </div>
-            <button id="likesModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
-          </div>
-
-          <div class="px-7 pb-7 space-y-3 overflow-y-auto no-scrollbar modal-scroll flex-1">
-            ${likes.length ? likes.map((user) => {
-              const avatarUrl = resolveLikeAvatar(user);
-              return `
-              <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-                <img src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-2xl object-cover" />
-                <div>
-                  <div class="text-xs font-black">${escapeHtml(user.name)}</div>
-                  <div class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(user.handle)}</div>
-                </div>
-              </div>
-            `}).join("") : `
-              <div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Likes</div>
-            `}
-          </div>
-        </div>
+  const titleId = "likesModalTitle";
+  const headerHtml = `
+    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+      <div>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
+        <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${likeTotal} Likes</h3>
       </div>
+      <button id="likesModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+        ${icon("x", "w-4 h-4")}
+      </button>
     </div>
   `;
+  const bodyHtml = `
+    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 pb-6 pt-3 space-y-3">
+      ${likes.length ? likes.map((user) => {
+        const avatarUrl = resolveLikeAvatar(user);
+        return `
+          <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+            <img src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-2xl object-cover" />
+            <div>
+              <div class="text-xs font-black">${escapeHtml(user.name)}</div>
+              <div class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(user.handle)}</div>
+            </div>
+          </div>
+        `;
+      }).join("") : `
+        <div class="text-center text-[10px] font-bold uppercase text-slate-400 py-6">Noch keine Likes</div>
+      `}
+    </div>
+  `;
+
+  return renderModalShell({
+    overlayId: "likesModalOverlay",
+    zIndex: 80,
+    labelId: titleId,
+    panelClass: "max-h-[75vh] animate-in slide-in-from-bottom-6",
+    overlayClass: "bg-slate-900/70 backdrop-blur-sm",
+    headerHtml,
+    bodyHtml
+  });
 }
 
 function renderMenuItemModal() {
@@ -6733,95 +6747,104 @@ function renderMenuItemModal() {
   const available = item.available !== false;
   const status = state.menuModal.status || "";
 
-  return `
-    <div class="fixed inset-0 z-[75] modal-root">
-      <div id="menuModalOverlay" class="fixed inset-0 bg-black/60"></div>
-      <div class="fixed inset-x-0 bottom-0 bg-white" style="height: var(--menyra-keyboard-inset, 0px);"></div>
-      <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="padding-bottom: var(--menyra-keyboard-inset, 0px);">
-          <div class="p-7 pb-4 flex items-center justify-between">
-            <div>
-              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
-              <h3 class="text-xl font-black italic tracking-tighter">${title}</h3>
+  const titleId = "menuModalTitle";
+  const headerHtml = `
+    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+      <div>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
+        <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${title}</h3>
+      </div>
+      <button id="menuModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+        ${icon("x", "w-4 h-4")}
+      </button>
+    </div>
+  `;
+  const bodyHtml = `
+    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
+      <input type="file" id="menuItemImageInput" class="hidden" accept="image/*" multiple />
+      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+        <img src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" />
+      </div>
+      <button id="menuItemImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+        Fotos hochladen
+      </button>
+      ${gallery.length ? `
+        <div class="grid grid-cols-4 gap-2">
+          ${gallery.map((img) => `
+            <div class="relative rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+              <img src="${escapeHtml(getOptimizedImageUrl(img.src, "thumb"))}" class="w-full h-16 object-cover" />
+              <button type="button" data-menu-image-remove="${img.idx}" data-menu-image-source="${img.kind}" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 text-slate-600 text-[10px] flex items-center justify-center shadow">
+                ${icon("x", "w-3 h-3")}
+              </button>
             </div>
-            <button id="menuModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+          `).join("")}
+        </div>
+      ` : ""}
+
+      <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Name</label>
+          <input id="menuItemName" type="text" value="${escapeHtml(item.name || "")}" placeholder="Produktname" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis</label>
+            <input id="menuItemPrice" type="text" value="${escapeHtml(item.price ?? "")}" placeholder="z.B. 4.50" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
-
-          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 pb-6 space-y-4">
-            <input type="file" id="menuItemImageInput" class="hidden" accept="image/*" multiple />
-            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
-              <img src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" />
-            </div>
-            <button id="menuItemImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-              Fotos hochladen
-            </button>
-            ${gallery.length ? `
-              <div class="grid grid-cols-4 gap-2">
-                ${gallery.map((img) => `
-                  <div class="relative rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
-                    <img src="${escapeHtml(getOptimizedImageUrl(img.src, "thumb"))}" class="w-full h-16 object-cover" />
-                    <button type="button" data-menu-image-remove="${img.idx}" data-menu-image-source="${img.kind}" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 text-slate-600 text-[10px] flex items-center justify-center shadow">
-                      ${icon("x", "w-3 h-3")}
-                    </button>
-                  </div>
-                `).join("")}
-              </div>
-            ` : ""}
-
-            <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Name</label>
-                <input id="menuItemName" type="text" value="${escapeHtml(item.name || "")}" placeholder="Produktname" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis</label>
-                  <input id="menuItemPrice" type="text" value="${escapeHtml(item.price ?? "")}" placeholder="z.B. 4.50" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-                </div>
-                <div>
-                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kategorie</label>
-                  <input id="menuItemCategory" type="text" value="${escapeHtml(item.category || "")}" placeholder="z.B. Pizza" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-                </div>
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
-                <select id="menuItemType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-                  <option value="food" ${typeValue === "food" ? "selected" : ""}>Speise</option>
-                  <option value="drink" ${typeValue === "drink" ? "selected" : ""}>Getraenk</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Beschreibung</label>
-                <textarea id="menuItemDesc" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(item.description || "")}</textarea>
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Allergene</label>
-                <input id="menuItemAllergens" type="text" value="${escapeHtml(item.allergens || "")}" placeholder="z.B. Milch, Gluten" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
-                <input id="menuItemImageUrl" type="text" value="${escapeHtml(item.imageUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                <div>
-                  <p class="text-xs font-black text-slate-800">Verfuegbar</p>
-                  <p class="text-[10px] font-bold text-slate-400">Sichtbar fuer Gaeste</p>
-                </div>
-                <input id="menuItemAvailable" type="checkbox" class="w-5 h-5 accent-indigo-600" ${available ? "checked" : ""} />
-              </label>
-            </div>
-          </div>
-
-          <div class="p-7 pt-4 border-t border-slate-100 bg-white">
-            <button id="menuModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.menuModal.loading ? "disabled" : ""}>
-              ${state.menuModal.loading ? "Speichern..." : "Speichern"}
-            </button>
-            <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kategorie</label>
+            <input id="menuItemCategory" type="text" value="${escapeHtml(item.category || "")}" placeholder="z.B. Pizza" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
         </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+          <select id="menuItemType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+            <option value="food" ${typeValue === "food" ? "selected" : ""}>Speise</option>
+            <option value="drink" ${typeValue === "drink" ? "selected" : ""}>Getraenk</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Beschreibung</label>
+          <textarea id="menuItemDesc" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(item.description || "")}</textarea>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Allergene</label>
+          <input id="menuItemAllergens" type="text" value="${escapeHtml(item.allergens || "")}" placeholder="z.B. Milch, Gluten" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
+          <input id="menuItemImageUrl" type="text" value="${escapeHtml(item.imageUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
+          <div>
+            <p class="text-xs font-black text-slate-800">Verfuegbar</p>
+            <p class="text-[10px] font-bold text-slate-400">Sichtbar fuer Gaeste</p>
+          </div>
+          <input id="menuItemAvailable" type="checkbox" class="w-5 h-5 accent-indigo-600" ${available ? "checked" : ""} />
+        </label>
       </div>
     </div>
   `;
+  const footerHtml = `
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+      <button id="menuModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.menuModal.loading ? "disabled" : ""}>
+        ${state.menuModal.loading ? "Speichern..." : "Speichern"}
+      </button>
+      <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
+    </div>
+  `;
+
+  return renderModalShell({
+    overlayId: "menuModalOverlay",
+    zIndex: 75,
+    labelId: titleId,
+    panelClass: "max-h-[92vh] animate-in slide-in-from-bottom-6",
+    panelStyle: "padding-bottom: var(--menyra-keyboard-inset, 0px);",
+    withKeyboardInset: true,
+    headerHtml,
+    bodyHtml,
+    footerHtml
+  });
 }
 
 function renderMenuDetailModal() {
