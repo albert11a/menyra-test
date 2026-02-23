@@ -174,6 +174,7 @@ const userProfileCache = new Map();
 const restaurantOwnerCache = new Map();
 const menuCache = new Map();
 const focusCache = new Map();
+const menuItemCountsRequested = new Set();
 const FAST_LIMITS = {
   feed: 20,
   feedFallback: 40,
@@ -1394,6 +1395,7 @@ function resetUserScopedState() {
   state.likesModal = { open: false, postId: "", animate: false };
   state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
   state.menuItemMeta = {};
+  menuItemCountsRequested.clear();
   state.selectedBusiness = null;
   state.followingHandles = [];
   state.notifications = [];
@@ -2219,6 +2221,45 @@ function resolveMenuItemCounts(meta) {
   return { likes, comments };
 }
 
+function primeMenuItemCounts(items, restaurantId) {
+  if (!restaurantId) return;
+  const list = Array.isArray(items) ? items : [];
+  const itemIds = [];
+  list.forEach((item) => {
+    const itemId = getMenuItemSocialId(item);
+    if (!itemId) return;
+    const key = menuItemMetaKey(restaurantId, itemId);
+    if (!key || menuItemCountsRequested.has(key)) return;
+    menuItemCountsRequested.add(key);
+    itemIds.push(itemId);
+  });
+  if (!itemIds.length) return;
+
+  Promise.all(itemIds.map((itemId) => (
+    getDoc(doc(db, "restaurants", restaurantId, "menuSocial", itemId))
+      .then((snap) => ({ itemId, snap }))
+      .catch(() => null)
+  ))).then((results) => {
+    let changed = false;
+    results.forEach((res) => {
+      if (!res?.snap || !res.snap.exists()) return;
+      const data = res.snap.data() || {};
+      const key = menuItemMetaKey(restaurantId, res.itemId);
+      const meta = ensureMenuItemMeta(key);
+      meta.counts = {
+        likes: Number(data.likesCount ?? data.likes ?? meta.likes?.length ?? 0) || 0,
+        comments: Number(data.commentsCount ?? data.comments ?? meta.comments?.length ?? 0) || 0
+      };
+      state.menuItemMeta[key] = meta;
+      updateMenuCardCountNodes(res.itemId, resolveMenuItemCounts(meta));
+      changed = true;
+    });
+    if (changed && state.profileTopTab === "menu") {
+      render();
+    }
+  });
+}
+
 function getMenuDetailContext() {
   if (!state.menuDetail?.open || !state.menuDetail?.item) return null;
   const item = state.menuDetail.item;
@@ -3039,6 +3080,7 @@ async function toggleMenuItemLike() {
     meta.counts.likes = Math.max(0, (Number(meta.counts.likes) || 0) + delta);
     state.menuItemMeta[key] = meta;
     updateMenuDetailCountsOnly();
+    updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
   } catch (err) {
     console.error(err);
   }
@@ -3115,6 +3157,7 @@ async function addMenuItemComment(text) {
 
   state.menuDetail.sending = false;
   updateMenuDetailMeta();
+  updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
   if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
   refreshSelfCommentAvatars();
 }
@@ -4122,6 +4165,19 @@ function startUserPostsListener(uid) {
         render();
       }
     }
+  });
+}
+
+function updateMenuCardCountNodes(itemId, counts = { likes: 0, comments: 0 }) {
+  if (!itemId) return;
+  const safeId = escapeSelector(itemId);
+  const likesLabel = formatCount(counts.likes ?? 0);
+  const commentsLabel = formatCount(counts.comments ?? 0);
+  document.querySelectorAll(`[data-menu-like-count="${safeId}"]`).forEach((el) => {
+    el.textContent = likesLabel;
+  });
+  document.querySelectorAll(`[data-menu-comment-count="${safeId}"]`).forEach((el) => {
+    el.textContent = commentsLabel;
   });
 }
 
@@ -5162,6 +5218,24 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
+  const restaurantId = state.menu.restaurantId
+    || state.profileView?.profile?.restaurantId
+    || state.userProfile.restaurantId
+    || "";
+  const itemId = getMenuItemSocialId(item);
+  const metaKey = menuItemMetaKey(restaurantId, itemId);
+  const meta = metaKey ? ensureMenuItemMeta(metaKey) : { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+  const counts = resolveMenuItemCounts(meta);
+  const countsRow = `
+    <div class="mt-2 flex items-center gap-3 text-[10px] font-bold text-slate-400">
+      <span class="inline-flex items-center gap-1">
+        ${icon("heart", "w-3 h-3 text-rose-400")} <span data-menu-like-count="${escapeHtml(itemId)}">${escapeHtml(formatCount(counts.likes))}</span>
+      </span>
+      <span class="inline-flex items-center gap-1">
+        ${icon("message-circle", "w-3 h-3 text-indigo-400")} <span data-menu-comment-count="${escapeHtml(itemId)}">${escapeHtml(formatCount(counts.comments))}</span>
+      </span>
+    </div>
+  `;
   const isDrink = variant === "drink";
   return `
     <div ${wrapperAttrs} class="w-full ${isDrink ? "p-3 rounded-[1.6rem]" : "p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all ${mode === "profile" ? "cursor-pointer" : ""}">
@@ -5172,6 +5246,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
         <div class="mt-3">
           <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(item.name || "Produkt")}</p>
           <p class="text-xs font-black text-slate-700 mt-1">${escapeHtml(priceLabel)}</p>
+          ${countsRow}
         </div>
       ` : `
         <div class="mt-4">
@@ -5185,6 +5260,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
           </div>
           ${desc ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${escapeHtml(desc)}</p>` : ""}
           <div class="mt-2">${availability}</div>
+          ${countsRow}
         </div>
       `}
     </div>
@@ -5610,6 +5686,9 @@ function renderProfileMenuView(profile) {
   const drinkItems = items.filter((item) => normalizeMenuType(item.type) === "drink");
   const foodItems = items.filter((item) => normalizeMenuType(item.type) !== "drink");
   const hasItems = drinkItems.length || foodItems.length;
+  if (hasItems && restaurantId) {
+    primeMenuItemCounts(items, restaurantId);
+  }
   return `
     <div class="px-5 pb-24 space-y-5">
       ${renderFocusCarousel(profile)}
