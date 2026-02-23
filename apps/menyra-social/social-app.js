@@ -6426,7 +6426,7 @@ function renderModalShell({
   bodyHtml = "",
   footerHtml = "",
   withKeyboardInset = false,
-  overlayClass = "bg-slate-900/60 backdrop-blur-sm",
+  overlayClass = "bg-black/60",
   overlayAttrs = ""
 } = {}) {
   const keyboardInset = withKeyboardInset
@@ -6728,7 +6728,7 @@ function renderLikesModal() {
     zIndex: 80,
     labelId: titleId,
     panelClass: "max-h-[75vh] animate-in slide-in-from-bottom-6",
-    overlayClass: "bg-slate-900/70 backdrop-blur-sm",
+    overlayClass: "bg-black/70",
     headerHtml,
     bodyHtml
   });
