@@ -6560,76 +6560,66 @@ function renderPostModal() {
   const userBadge = currentUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
   const replyTarget = comments.find((item) => item.id === state.postModal.replyTo);
-  const titleId = "postModalTitle";
-  const headerHtml = `
-    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
-      <div>
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
-        <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${escapeHtml(formatDateLabel(post.createdAt || new Date()))}</h3>
-        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
-      </div>
-      <button id="postModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
-        ${icon("x", "w-4 h-4")}
-      </button>
-    </div>
-  `;
-  const replyHtml = replyTarget ? `
-    <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
-      <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${escapeHtml(replyTarget.handle)}</div>
-      <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
-    </div>
-  ` : "";
-  const captionHtml = caption
-    ? `<div class="text-sm text-slate-600 leading-relaxed">${escapeHtml(caption)}</div>`
-    : "";
-  const bodyHtml = `
-    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
-      <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-        <img src="${escapeHtml(imageUrl)}" data-img-key="post-modal:${escapeHtml(post.id)}" class="w-full h-[22rem] object-cover" />
-      </div>
+  const animClass = "";
 
-      ${captionHtml}
+  return `
+      <div class="fixed inset-0 z-[70]">
+        <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
+        <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden">
+            <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
+                  <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(formatDateLabel(post.createdAt || new Date()))}</h3>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
+                </div>
+                <button id="postModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+              </div>
 
-      <div class="flex items-center justify-between">
-        <button id="postLikeBtn" data-post-id="${escapeHtml(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
-          ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
-        </button>
-        <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-          <button id="postLikesBtn" data-post-id="${escapeHtml(post.id)}" class="hover:text-slate-700">${escapeHtml(counts.likeLabel)} Likes</button>
-          <span id="postCommentsCount">${escapeHtml(counts.commentLabel)} Kommentare</span>
+              <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
+                <img src="${escapeHtml(imageUrl)}" data-img-key="post-modal:${escapeHtml(post.id)}" class="w-full h-[22rem] object-cover" />
+              </div>
+
+              ${caption ? `
+                <div class="mt-4 text-sm text-slate-600 leading-relaxed">${escapeHtml(caption)}</div>
+              ` : ""}
+
+              <div class="mt-4 flex items-center justify-between">
+                <button id="postLikeBtn" data-post-id="${escapeHtml(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
+                  ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+                </button>
+                <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  <button id="postLikesBtn" data-post-id="${escapeHtml(post.id)}" class="hover:text-slate-700">${escapeHtml(counts.likeLabel)} Likes</button>
+                  <span id="postCommentsCount">${escapeHtml(counts.commentLabel)} Kommentare</span>
+                </div>
+              </div>
+
+              <div id="postModalComments" class="mt-5 space-y-4">
+                ${renderPostComments(comments)}
+              </div>
+
+              ${replyTarget ? `
+                <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                  <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${escapeHtml(replyTarget.handle)}</div>
+                  <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
+                </div>
+              ` : ""}
+            </div>
+
+            <div class="p-7 pt-4 border-t border-slate-100 bg-white">
+              <div class="flex gap-3">
+                <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.postModal.commentText || "")}</textarea>
+                <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
+                  ${icon("send", "w-4 h-4")}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-
-      <div id="postModalComments" class="space-y-4">
-        ${renderPostComments(comments)}
-      </div>
-
-      ${replyHtml}
     </div>
   `;
-  const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
-      <div class="flex gap-3">
-        <input id="postCommentInput" type="text" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.postModal.commentText || "")}" />
-        <button id="postCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
-          ${icon("check", "w-4 h-4")}
-        </button>
-        <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
-          ${icon("send", "w-4 h-4")}
-        </button>
-      </div>
-    </div>
-  `;
-
-  return renderModalShell({
-    overlayId: "postModalOverlay",
-    zIndex: 70,
-    labelId: titleId,
-    panelClass: "h-[85vh] animate-in slide-in-from-bottom-6",
-    headerHtml,
-    bodyHtml,
-    footerHtml
-  });
 }
 
 function renderLikesModal() {
