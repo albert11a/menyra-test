@@ -331,7 +331,6 @@ const state = {
 let renderSuspended = 0;
 let renderQueued = false;
 let modalEscapeBound = false;
-let viewportVarsBound = false;
 let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
@@ -6419,7 +6418,6 @@ function renderModalShell({
   headerHtml = "",
   bodyHtml = "",
   footerHtml = "",
-  withKeyboardInset = false,
   overlayClass = "bg-black/60",
   overlayAttrs = ""
 } = {}) {
@@ -6427,7 +6425,7 @@ function renderModalShell({
   const styleAttr = panelStyle ? ` style="${panelStyle}"` : "";
   const overlayAttr = overlayAttrs ? ` ${overlayAttrs}` : "";
   return `
-    <div class="fixed left-0 right-0 z-[${zIndex}] modal-root" style="top: var(--vv-offset, 0px); height: var(--vv-height, 100vh);">
+    <div class="fixed inset-0 z-[${zIndex}] modal-root">
       <div id="${overlayId}"${overlayAttr} class="absolute inset-0 ${overlayClass}"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <section role="dialog" aria-modal="true"${labelAttr} class="w-full bg-white rounded-t-[3rem] border border-slate-100 shadow-2xl overflow-hidden flex flex-col ${panelClass}"${styleAttr}>
@@ -6668,7 +6666,6 @@ function renderPostModal() {
     zIndex: 70,
     labelId: titleId,
     panelClass: "h-[85vh] animate-in slide-in-from-bottom-6",
-    withKeyboardInset: true,
     headerHtml,
     bodyHtml,
     footerHtml
@@ -6833,7 +6830,6 @@ function renderMenuItemModal() {
     zIndex: 75,
     labelId: titleId,
     panelClass: "h-[90vh] animate-in slide-in-from-bottom-6",
-    withKeyboardInset: true,
     headerHtml,
     bodyHtml,
     footerHtml
@@ -6955,7 +6951,6 @@ function renderMenuDetailModal() {
     zIndex: 75,
     labelId: titleId,
     panelClass: "h-[85vh] animate-in slide-in-from-bottom-6",
-    withKeyboardInset: true,
     headerHtml,
     bodyHtml,
     footerHtml
@@ -7032,7 +7027,6 @@ function renderFocusModal() {
     zIndex: 75,
     labelId: titleId,
     panelClass: "h-[85vh] animate-in slide-in-from-bottom-6",
-    withKeyboardInset: true,
     headerHtml,
     bodyHtml,
     footerHtml
@@ -7730,30 +7724,6 @@ function ensureModalEscapeHandler() {
   modalEscapeBound = true;
 }
 
-function updateViewportVars() {
-  if (typeof document === "undefined") return;
-  const heightFallback = window.innerHeight || document.documentElement?.clientHeight || 0;
-  const vv = typeof window !== "undefined" ? window.visualViewport : null;
-  const nextHeight = Math.max(0, Math.round(Number(vv?.height) || heightFallback));
-  const nextOffset = Math.max(0, Math.round(Number(vv?.offsetTop) || 0));
-  document.documentElement.style.setProperty("--vv-height", `${nextHeight}px`);
-  document.documentElement.style.setProperty("--vv-offset", `${nextOffset}px`);
-}
-
-function ensureViewportVarHandlers() {
-  if (viewportVarsBound || typeof window === "undefined") return;
-  const handler = () => {
-    if (!isAnyModalOpen()) return;
-    updateViewportVars();
-  };
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener("resize", handler, { passive: true });
-    window.visualViewport.addEventListener("scroll", handler, { passive: true });
-  }
-  window.addEventListener("resize", handler, { passive: true });
-  viewportVarsBound = true;
-}
-
 function renderOverlays(options = {}) {
   const updateProfile = Object.prototype.hasOwnProperty.call(options, "updateProfile")
     ? options.updateProfile
@@ -7840,8 +7810,6 @@ function renderOverlays(options = {}) {
   document.body.classList.toggle("modal-open", open);
   if (open) {
     ensureModalEscapeHandler();
-    ensureViewportVarHandlers();
-    updateViewportVars();
   }
   if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged)) {
     window.lucide.createIcons();
