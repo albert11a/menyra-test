@@ -6427,6 +6427,7 @@ function renderModalShell({
   footerHtml = "",
   withKeyboardInset = false,
   overlayClass = "bg-black/60",
+  overlayOpacity = 0.6,
   overlayAttrs = ""
 } = {}) {
   const keyboardInset = withKeyboardInset
@@ -6435,9 +6436,10 @@ function renderModalShell({
   const labelAttr = labelId ? ` aria-labelledby="${labelId}"` : "";
   const styleAttr = panelStyle ? ` style="${panelStyle}"` : "";
   const overlayAttr = overlayAttrs ? ` ${overlayAttrs}` : "";
+  const overlayStyle = ` style="background: linear-gradient(to top, #fff 0px, #fff var(--menyra-keyboard-inset, 0px), rgba(0,0,0,${overlayOpacity}) var(--menyra-keyboard-inset, 0px), rgba(0,0,0,${overlayOpacity}) 100%);"`;
   return `
     <div class="fixed inset-0 z-[${zIndex}] modal-root">
-      <div id="${overlayId}"${overlayAttr} class="fixed inset-0 ${overlayClass}"></div>
+      <div id="${overlayId}"${overlayAttr} class="fixed inset-0 ${overlayClass}"${overlayStyle}></div>
       ${keyboardInset}
       <div class="fixed inset-x-0 bottom-0 max-w-md mx-auto">
         <section role="dialog" aria-modal="true"${labelAttr} class="w-full bg-white rounded-t-[3rem] border border-slate-100 shadow-2xl overflow-hidden flex flex-col ${panelClass}"${styleAttr}>
@@ -6729,6 +6731,7 @@ function renderLikesModal() {
     labelId: titleId,
     panelClass: "max-h-[75vh] animate-in slide-in-from-bottom-6",
     overlayClass: "bg-black/70",
+    overlayOpacity: 0.7,
     headerHtml,
     bodyHtml
   });
