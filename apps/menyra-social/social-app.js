@@ -3098,6 +3098,9 @@ async function addMenuItemComment(text) {
   if (!trimmed || !state.user) return;
   const ctx = getMenuDetailContext();
   if (!ctx) return;
+  blurActiveElement();
+  const inputEl = document.getElementById("menuDetailCommentInput");
+  if (inputEl && typeof inputEl.blur === "function") inputEl.blur();
   const { ref, key } = ctx;
   const dedupeKey = `${key}|${state.user.uid || ""}|${trimmed}`;
   const now = Date.now();
@@ -7670,6 +7673,13 @@ function renderOverlays(options = {}) {
   const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
+  if (state.menuDetail.open) {
+    document.body.style.touchAction = "manipulation";
+    document.documentElement.style.touchAction = "manipulation";
+  } else {
+    document.body.style.touchAction = "";
+    document.documentElement.style.touchAction = "";
+  }
   if (open && !bodyScrollLocked) {
     bodyScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
     document.body.style.position = "fixed";
@@ -8213,6 +8223,8 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
         const inputEl = document.getElementById("menuDetailCommentInput");
         const text = inputEl ? inputEl.value : state.menuDetail.commentText;
         if (!String(text || "").trim() || state.menuDetail.sending) return;
+        blurActiveElement();
+        if (inputEl && typeof inputEl.blur === "function") inputEl.blur();
         state.menuDetail.commentText = text;
         void addMenuItemComment(text);
       });
