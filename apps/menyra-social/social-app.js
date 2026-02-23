@@ -332,6 +332,7 @@ let renderSuspended = 0;
 let renderQueued = false;
 let keyboardInsetBound = false;
 let keyboardInset = 0;
+let keyboardBaselineGap = 0;
 let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
@@ -7589,6 +7590,20 @@ function ensureOverlayRoot() {
   return root;
 }
 
+function isTextInputFocused() {
+  if (typeof document === "undefined") return false;
+  const active = document.activeElement;
+  if (!active) return false;
+  const tag = active.tagName ? active.tagName.toLowerCase() : "";
+  if (tag === "textarea") return true;
+  if (tag === "input") {
+    const type = (active.getAttribute("type") || "text").toLowerCase();
+    const nonText = new Set(["checkbox", "radio", "submit", "button", "range", "file", "color"]);
+    return !nonText.has(type);
+  }
+  return active.isContentEditable;
+}
+
 function updateKeyboardInset() {
   if (typeof document === "undefined") return;
   let nextInset = 0;
@@ -7596,7 +7611,12 @@ function updateKeyboardInset() {
     const layoutHeight = document.documentElement?.clientHeight || window.innerHeight || 0;
     const visualHeight = Number(window.visualViewport.height) || layoutHeight;
     const offsetTop = Number(window.visualViewport.offsetTop) || 0;
-    nextInset = Math.max(0, Math.round(layoutHeight - visualHeight - offsetTop));
+    const gap = Math.max(0, Math.round(layoutHeight - visualHeight - offsetTop));
+    const inputFocused = isTextInputFocused();
+    if (!inputFocused || gap < 80) {
+      keyboardBaselineGap = gap;
+    }
+    nextInset = Math.max(0, gap - keyboardBaselineGap);
   }
   if (nextInset === keyboardInset) return;
   keyboardInset = nextInset;
