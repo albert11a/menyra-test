@@ -330,8 +330,6 @@ const state = {
 
 let renderSuspended = 0;
 let renderQueued = false;
-let bodyScrollLocked = false;
-let bodyScrollTop = 0;
 let keyboardInsetBound = false;
 let keyboardInset = 0;
 let profileMenuBound = false;
@@ -7697,7 +7695,6 @@ function renderOverlays(options = {}) {
     }
   }
   const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
-  const lockBody = open;
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
   if (open) {
@@ -7706,23 +7703,6 @@ function renderOverlays(options = {}) {
   } else if (keyboardInset) {
     keyboardInset = 0;
     document.documentElement.style.setProperty("--menyra-keyboard-inset", "0px");
-  }
-  if (lockBody && !bodyScrollLocked) {
-    bodyScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    document.body.style.position = "fixed";
-    document.body.style.top = `-${bodyScrollTop}px`;
-    document.body.style.left = "0";
-    document.body.style.right = "0";
-    document.body.style.width = "100%";
-    bodyScrollLocked = true;
-  } else if (!lockBody && bodyScrollLocked) {
-    document.body.style.position = "";
-    document.body.style.top = "";
-    document.body.style.left = "";
-    document.body.style.right = "";
-    document.body.style.width = "";
-    window.scrollTo(0, bodyScrollTop);
-    bodyScrollLocked = false;
   }
   if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged)) {
     window.lucide.createIcons();
