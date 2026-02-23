@@ -479,11 +479,6 @@ function scheduleAvatarCacheWrite(url, uid = getActiveUid()) {
   }, 300);
 }
 
-function blurActiveElement() {
-  const active = typeof document !== "undefined" ? document.activeElement : null;
-  if (active && typeof active.blur === "function") active.blur();
-}
-
 function resolveRestaurantLogo(restaurantId, raw, size = "avatar") {
   const url = getOptimizedImageUrl(raw, size);
   if (restaurantId) {
@@ -3139,9 +3134,6 @@ async function addMenuItemComment(text) {
   if (!trimmed || !state.user) return;
   const ctx = getMenuDetailContext();
   if (!ctx) return;
-  blurActiveElement();
-  const inputEl = document.getElementById("menuDetailCommentInput");
-  if (inputEl && typeof inputEl.blur === "function") inputEl.blur();
   const { ref, key } = ctx;
   const dedupeKey = `${key}|${state.user.uid || ""}|${trimmed}`;
   const now = Date.now();
@@ -3187,7 +3179,6 @@ async function addMenuItemComment(text) {
     lastMenuCommentKey = "";
     lastMenuCommentAt = 0;
     state.menuDetail.sending = false;
-    blurActiveElement();
     updateMenuDetailCommentsOnly();
     return;
   }
@@ -3208,7 +3199,6 @@ async function addMenuItemComment(text) {
   if (input) input.value = "";
 
   state.menuDetail.sending = false;
-  blurActiveElement();
   updateMenuDetailMeta();
   updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
   if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
@@ -10007,7 +9997,6 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
 
 function closeMenuDetail() {
   stopMenuItemMetaListeners();
-  blurActiveElement();
   state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
   renderOverlays({ updateMenuDetail: true });
 }
