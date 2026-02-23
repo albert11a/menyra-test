@@ -6628,46 +6628,40 @@ function renderLikesModal() {
   const likes = meta.likes || [];
   const postForCount = findPostById(state.likesModal.postId);
   const likeTotal = Number(postForCount?.likes) || likes.length;
-  const titleId = "likesModalTitle";
-  const headerHtml = `
-    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
-      <div>
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
-        <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${likeTotal} Likes</h3>
-      </div>
-      <button id="likesModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
-        ${icon("x", "w-4 h-4")}
-      </button>
-    </div>
-  `;
-  const bodyHtml = `
-    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 pb-6 pt-3 space-y-3">
-      ${likes.length ? likes.map((user) => {
-        const avatarUrl = resolveLikeAvatar(user);
-        return `
-          <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-            <img src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-2xl object-cover" />
-            <div>
-              <div class="text-xs font-black">${escapeHtml(user.name)}</div>
-              <div class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(user.handle)}</div>
-            </div>
-          </div>
-        `;
-      }).join("") : `
-        <div class="text-center text-[10px] font-bold uppercase text-slate-400 py-6">Noch keine Likes</div>
-      `}
-    </div>
-  `;
+  const animClass = "";
 
-  return renderModalShell({
-    overlayId: "likesModalOverlay",
-    zIndex: 80,
-    labelId: titleId,
-    panelClass: "h-[70vh] animate-in slide-in-from-bottom-6",
-    overlayClass: "bg-black/70",
-    headerHtml,
-    bodyHtml
-  });
+  return `
+      <div class="fixed inset-0 z-[80]">
+        <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[80vh] overflow-hidden">
+          <div class="p-7 pb-4 flex items-center justify-between">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
+              <h3 class="text-xl font-black italic tracking-tighter">${likeTotal} Likes</h3>
+            </div>
+            <button id="likesModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
+          </div>
+
+          <div class="px-7 pb-7 space-y-3 overflow-y-auto no-scrollbar modal-scroll flex-1">
+            ${likes.length ? likes.map((user) => {
+              const avatarUrl = resolveLikeAvatar(user);
+              return `
+              <div class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <img src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-2xl object-cover" />
+                <div>
+                  <div class="text-xs font-black">${escapeHtml(user.name)}</div>
+                  <div class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(user.handle)}</div>
+                </div>
+              </div>
+            `}).join("") : `
+              <div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Likes</div>
+            `}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderMenuItemModal() {
@@ -6774,16 +6768,20 @@ function renderMenuItemModal() {
       <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
     </div>
   `;
+  const animClass = "";
 
-  return renderModalShell({
-    overlayId: "menuModalOverlay",
-    zIndex: 75,
-    labelId: titleId,
-    panelClass: "h-[90vh] animate-in slide-in-from-bottom-6",
-    headerHtml,
-    bodyHtml,
-    footerHtml
-  });
+  return `
+    <div class="fixed inset-0 z-[75]">
+      <div id="menuModalOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[90vh] overflow-hidden">
+          ${headerHtml}
+          ${bodyHtml}
+          ${footerHtml}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderMenuDetailModal() {
@@ -6884,27 +6882,27 @@ function renderMenuDetailModal() {
   const footerHtml = `
     <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
       <div class="flex gap-3">
-        <input id="menuDetailCommentInput" type="text" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none ${canInteract ? "" : "opacity-60"}" enterkeyhint="done" inputmode="text" value="${escapeHtml(state.menuDetail.commentText || "")}" ${canInteract ? "" : "disabled"} />
-        <button id="menuDetailCommentDone" type="button" class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
-          ${icon("check", "w-4 h-4")}
-        </button>
+        <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none ${canInteract ? "" : "opacity-60"}" rows="2" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
         <button id="menuDetailCommentSend" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
           ${icon("send", "w-4 h-4")}
         </button>
       </div>
     </div>
   `;
+  const animClass = "";
 
-  return renderModalShell({
-    overlayId: "menuDetailOverlay",
-    overlayAttrs: 'data-menu-detail-close="true"',
-    zIndex: 75,
-    labelId: titleId,
-    panelClass: "h-[85vh] animate-in slide-in-from-bottom-6",
-    headerHtml,
-    bodyHtml,
-    footerHtml
-  });
+  return `
+    <div class="fixed inset-0 z-[75]">
+      <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden">
+          ${headerHtml}
+          ${bodyHtml}
+          ${footerHtml}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function renderFocusModal() {
@@ -6971,16 +6969,20 @@ function renderFocusModal() {
       <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
     </div>
   `;
+  const animClass = "";
 
-  return renderModalShell({
-    overlayId: "focusModalOverlay",
-    zIndex: 75,
-    labelId: titleId,
-    panelClass: "h-[85vh] animate-in slide-in-from-bottom-6",
-    headerHtml,
-    bodyHtml,
-    footerHtml
-  });
+  return `
+    <div class="fixed inset-0 z-[75]">
+      <div id="focusModalOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden">
+          ${headerHtml}
+          ${bodyHtml}
+          ${footerHtml}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 
@@ -8148,14 +8150,6 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
         addComment(postId, text, state.postModal.replyTo);
       });
     }
-    const postCommentDone = document.getElementById("postCommentDone");
-    if (postCommentDone) {
-      postCommentDone.addEventListener("click", () => {
-        blurActiveElement();
-        const inputEl = document.getElementById("postCommentInput");
-        if (inputEl && typeof inputEl.blur === "function") inputEl.blur();
-      });
-    }
 
     document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -8178,13 +8172,6 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
     if (postCommentInput) {
       postCommentInput.addEventListener("input", () => {
         state.postModal.commentText = postCommentInput.value;
-      });
-      postCommentInput.addEventListener("keydown", (evt) => {
-        if (evt.key === "Enter") {
-          evt.preventDefault();
-          blurActiveElement();
-          if (typeof postCommentInput.blur === "function") postCommentInput.blur();
-        }
       });
     }
   }
@@ -8276,13 +8263,6 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
       menuDetailCommentInput.addEventListener("input", () => {
         state.menuDetail.commentText = menuDetailCommentInput.value;
       });
-      menuDetailCommentInput.addEventListener("keydown", (evt) => {
-        if (evt.key === "Enter") {
-          evt.preventDefault();
-          blurActiveElement();
-          if (typeof menuDetailCommentInput.blur === "function") menuDetailCommentInput.blur();
-        }
-      });
     }
 
     const menuDetailCommentSend = document.getElementById("menuDetailCommentSend");
@@ -8291,18 +8271,8 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
         const inputEl = document.getElementById("menuDetailCommentInput");
         const text = inputEl ? inputEl.value : state.menuDetail.commentText;
         if (!String(text || "").trim() || state.menuDetail.sending) return;
-        blurActiveElement();
-        if (inputEl && typeof inputEl.blur === "function") inputEl.blur();
         state.menuDetail.commentText = text;
         void addMenuItemComment(text);
-      });
-    }
-    const menuDetailCommentDone = document.getElementById("menuDetailCommentDone");
-    if (menuDetailCommentDone) {
-      menuDetailCommentDone.addEventListener("click", () => {
-        blurActiveElement();
-        const inputEl = document.getElementById("menuDetailCommentInput");
-        if (inputEl && typeof inputEl.blur === "function") inputEl.blur();
       });
     }
 
