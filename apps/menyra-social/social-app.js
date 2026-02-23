@@ -7623,6 +7623,12 @@ function ensureOverlayRoot() {
     root.id = "overlayRoot";
     document.body.appendChild(root);
   }
+  if (!document.getElementById("modalUnderlay")) {
+    const underlay = document.createElement("div");
+    underlay.id = "modalUnderlay";
+    underlay.className = "fixed inset-0 bg-white z-[50] hidden pointer-events-none";
+    root.appendChild(underlay);
+  }
   if (!document.getElementById("profileOverlayRoot")) {
     const profileRoot = document.createElement("div");
     profileRoot.id = "profileOverlayRoot";
@@ -7694,6 +7700,7 @@ function renderOverlays(options = {}) {
   const menuRoot = document.getElementById("menuOverlayRoot");
   const menuDetailRoot = document.getElementById("menuDetailOverlayRoot");
   const focusRoot = document.getElementById("focusOverlayRoot");
+  const underlay = document.getElementById("modalUnderlay");
   let profileChanged = false;
   let postChanged = false;
   let likesChanged = false;
@@ -7752,6 +7759,7 @@ function renderOverlays(options = {}) {
   const open = isAnyModalOpen();
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
+  if (underlay) underlay.classList.toggle("hidden", !open);
   if (open) {
     ensureModalEscapeHandler();
   }
