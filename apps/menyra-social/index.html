@@ -82,6 +82,13 @@
     body.fast-mode .group-hover\:scale-105 { transform: none !important; }
     img { display: block; background: transparent; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
     .modal-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    @supports (-webkit-touch-callout: none) {
+      input,
+      textarea,
+      select {
+        font-size: 16px;
+      }
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
