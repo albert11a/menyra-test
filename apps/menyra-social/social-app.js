@@ -7979,11 +7979,16 @@ function bindAuthEvents() {
 function bindOverlayEvents({ profileChanged = true, postChanged = true, likesChanged = true, menuChanged = true, menuDetailChanged = true, focusChanged = true } = {}) {
   if (!menuDetailCloseBound) {
     menuDetailCloseBound = true;
-    document.addEventListener("click", (evt) => {
+    const closeHandler = (evt) => {
       const target = evt.target?.closest?.("[data-menu-detail-close]");
       if (!target) return;
-      if (state.menuDetail.open) closeMenuDetail();
-    });
+      if (!state.menuDetail.open) return;
+      evt.preventDefault();
+      closeMenuDetail();
+    };
+    document.addEventListener("click", closeHandler, true);
+    document.addEventListener("pointerdown", closeHandler, true);
+    document.addEventListener("touchstart", closeHandler, { capture: true, passive: false });
   }
   if (profileChanged) {
     const profileModalOverlay = document.getElementById("profileModalOverlay");
