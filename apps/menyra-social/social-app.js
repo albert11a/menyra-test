@@ -332,7 +332,8 @@ let renderSuspended = 0;
 let renderQueued = false;
 let bodyScrollLocked = false;
 let bodyScrollTop = 0;
-let overlayViewportBound = false;
+let keyboardInsetBound = false;
+let keyboardInset = 0;
 let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
@@ -6527,7 +6528,7 @@ function renderPostModal() {
       <div class="fixed inset-0 z-[70]">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
         <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto" style="bottom: var(--menyra-keyboard-inset, 0px);">
-          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden" style="max-height: var(--menyra-modal-max-h-85, 85vh);">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col max-h-[85vh] overflow-hidden" style="max-height: calc(85vh - var(--menyra-keyboard-inset, 0px));">
             <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
               <div class="flex items-center justify-between mb-4">
                 <div>
@@ -6647,7 +6648,7 @@ function renderMenuItemModal() {
     <div class="fixed inset-0 z-[75]">
       <div id="menuModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto" style="bottom: var(--menyra-keyboard-inset, 0px);">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="max-height: var(--menyra-modal-max-h-90, 90vh);">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="max-height: calc(90vh - var(--menyra-keyboard-inset, 0px));">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
@@ -6770,7 +6771,7 @@ function renderMenuDetailModal() {
     <div class="fixed inset-0 z-[75]">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto" style="bottom: var(--menyra-keyboard-inset, 0px);">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden" style="max-height: var(--menyra-modal-max-h-85, 85vh);">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden" style="max-height: calc(85vh - var(--menyra-keyboard-inset, 0px));">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
@@ -6858,7 +6859,7 @@ function renderFocusModal() {
     <div class="fixed inset-0 z-[75]">
       <div id="focusModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto" style="bottom: var(--menyra-keyboard-inset, 0px);">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="max-height: var(--menyra-modal-max-h-90, 90vh);">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[90vh] overflow-hidden" style="max-height: calc(90vh - var(--menyra-keyboard-inset, 0px));">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
@@ -7590,51 +7591,28 @@ function ensureOverlayRoot() {
   return root;
 }
 
-function updateViewportMetrics() {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
-  const layoutHeight = window.innerHeight || document.documentElement?.clientHeight || 0;
-  const viewport = window.visualViewport;
-  const visualHeight = Number(viewport?.height) || layoutHeight;
-  const offsetTop = Number(viewport?.offsetTop) || 0;
-  const keyboardInset = Math.max(0, layoutHeight - visualHeight - offsetTop);
-  const safeVisual = Math.max(240, visualHeight - 24);
-  const maxH85 = Math.min(layoutHeight * 0.85, safeVisual);
-  const maxH90 = Math.min(layoutHeight * 0.9, safeVisual);
-  const maxH80 = Math.min(layoutHeight * 0.8, safeVisual);
-  const root = document.documentElement;
-  if (!root) return;
-  root.style.setProperty("--menyra-keyboard-inset", `${keyboardInset}px`);
-  root.style.setProperty("--menyra-vv-height", `${visualHeight}px`);
-  root.style.setProperty("--menyra-modal-max-h-85", `${maxH85}px`);
-  root.style.setProperty("--menyra-modal-max-h-90", `${maxH90}px`);
-  root.style.setProperty("--menyra-modal-max-h-80", `${maxH80}px`);
-}
-
-function scheduleViewportMetricsUpdate() {
-  if (typeof window === "undefined") return;
-  window.setTimeout(updateViewportMetrics, 50);
-}
-
-function ensureOverlayViewportHandlers() {
-  if (overlayViewportBound) return;
-  const handler = () => {
-    const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
-    if (!open) return;
-    scheduleViewportMetricsUpdate();
-  };
+function updateKeyboardInset() {
+  if (typeof document === "undefined") return;
+  let nextInset = 0;
   if (typeof window !== "undefined" && window.visualViewport) {
-    window.visualViewport.addEventListener("resize", handler, { passive: true });
-    window.visualViewport.addEventListener("scroll", handler, { passive: true });
+    nextInset = Math.max(0, Math.round((window.innerHeight || 0) - window.visualViewport.height));
   }
-  if (typeof window !== "undefined") {
-    window.addEventListener("resize", handler, { passive: true });
-    window.addEventListener("orientationchange", handler, { passive: true });
-  }
-  if (typeof document !== "undefined") {
-    document.addEventListener("focusin", handler, true);
-    document.addEventListener("focusout", handler, true);
-  }
-  overlayViewportBound = true;
+  if (nextInset === keyboardInset) return;
+  keyboardInset = nextInset;
+  document.documentElement.style.setProperty("--menyra-keyboard-inset", `${keyboardInset}px`);
+}
+
+function ensureKeyboardInsetHandlers() {
+  if (keyboardInsetBound) return;
+  if (typeof window === "undefined" || !window.visualViewport) return;
+  const handler = () => {
+    const open = !!(state.menuDetail.open || state.postModal.open || state.menuModal.open || state.focusModal.open);
+    if (!open) return;
+    updateKeyboardInset();
+  };
+  window.visualViewport.addEventListener("resize", handler, { passive: true });
+  window.visualViewport.addEventListener("scroll", handler, { passive: true });
+  keyboardInsetBound = true;
 }
 
 function renderOverlays(options = {}) {
@@ -7723,28 +7701,11 @@ function renderOverlays(options = {}) {
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
   if (open) {
-    document.body.style.touchAction = "manipulation";
-    document.documentElement.style.touchAction = "manipulation";
-  } else {
-    document.body.style.touchAction = "";
-    document.documentElement.style.touchAction = "";
-  }
-  if (root) {
-    if (open) {
-      root.style.position = "fixed";
-      root.style.inset = "0";
-      root.style.zIndex = "60";
-      root.style.pointerEvents = "auto";
-    } else {
-      root.style.position = "";
-      root.style.inset = "";
-      root.style.zIndex = "";
-      root.style.pointerEvents = "none";
-    }
-  }
-  if (open) {
-    ensureOverlayViewportHandlers();
-    updateViewportMetrics();
+    ensureKeyboardInsetHandlers();
+    updateKeyboardInset();
+  } else if (keyboardInset) {
+    keyboardInset = 0;
+    document.documentElement.style.setProperty("--menyra-keyboard-inset", "0px");
   }
   if (lockBody && !bodyScrollLocked) {
     bodyScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
@@ -8178,8 +8139,8 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
       postCommentInput.addEventListener("input", () => {
         state.postModal.commentText = postCommentInput.value;
       });
-      postCommentInput.addEventListener("focus", scheduleViewportMetricsUpdate);
-      postCommentInput.addEventListener("blur", scheduleViewportMetricsUpdate);
+      postCommentInput.addEventListener("focus", updateKeyboardInset);
+      postCommentInput.addEventListener("blur", updateKeyboardInset);
     }
   }
 
@@ -8274,8 +8235,8 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
       menuDetailCommentInput.addEventListener("input", () => {
         state.menuDetail.commentText = menuDetailCommentInput.value;
       });
-      menuDetailCommentInput.addEventListener("focus", scheduleViewportMetricsUpdate);
-      menuDetailCommentInput.addEventListener("blur", scheduleViewportMetricsUpdate);
+      menuDetailCommentInput.addEventListener("focus", updateKeyboardInset);
+      menuDetailCommentInput.addEventListener("blur", updateKeyboardInset);
       menuDetailCommentInput.addEventListener("keydown", (evt) => {
         if ((evt.metaKey || evt.ctrlKey) && evt.key === "Enter") {
           evt.preventDefault();
