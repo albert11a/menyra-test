@@ -209,6 +209,10 @@ const FEED_DELTA_MIN_MS = 3 * 60 * 1000;
 const FEED_PRELOAD_LIMIT = 3;
 const FEED_PRELOAD_ATTR = "data-menyrasocial-feed-preload";
 const FEED_META_LISTEN_LIMIT = 20;
+const IS_IOS_DEVICE = typeof navigator !== "undefined" && (
+  /iPad|iPhone|iPod/.test(navigator.userAgent || "")
+  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+);
 
 const state = {
   sessionReady: false,
@@ -7671,16 +7675,19 @@ function renderOverlays(options = {}) {
     }
   }
   const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
+  const iosKeyboardModal = IS_IOS_DEVICE && (state.menuDetail.open || state.postModal.open || state.menuModal.open || state.focusModal.open);
+  const lockBody = open && !iosKeyboardModal;
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
-  if (state.menuDetail.open) {
+  const allowTouch = state.menuDetail.open || iosKeyboardModal;
+  if (allowTouch) {
     document.body.style.touchAction = "manipulation";
     document.documentElement.style.touchAction = "manipulation";
   } else {
     document.body.style.touchAction = "";
     document.documentElement.style.touchAction = "";
   }
-  if (open && !bodyScrollLocked) {
+  if (lockBody && !bodyScrollLocked) {
     bodyScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
     document.body.style.position = "fixed";
     document.body.style.top = `-${bodyScrollTop}px`;
@@ -7688,7 +7695,7 @@ function renderOverlays(options = {}) {
     document.body.style.right = "0";
     document.body.style.width = "100%";
     bodyScrollLocked = true;
-  } else if (!open && bodyScrollLocked) {
+  } else if (!lockBody && bodyScrollLocked) {
     document.body.style.position = "";
     document.body.style.top = "";
     document.body.style.left = "";
