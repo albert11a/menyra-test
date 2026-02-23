@@ -336,6 +336,8 @@ let renderSuspended = 0;
 let renderQueued = false;
 let bodyScrollLocked = false;
 let bodyScrollTop = 0;
+let overlayViewportBound = false;
+let lastOverlayViewportTransform = "";
 let profileMenuBound = false;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
@@ -7593,6 +7595,44 @@ function ensureOverlayRoot() {
   return root;
 }
 
+function getOverlayViewportTransform() {
+  if (!IS_IOS_DEVICE) return "";
+  if (typeof window === "undefined" || !window.visualViewport) return "";
+  const viewport = window.visualViewport;
+  const offsetLeft = Number(viewport.offsetLeft) || 0;
+  const offsetTop = Number(viewport.offsetTop) || 0;
+  const scale = Number(viewport.scale) || 1;
+  return `translate(${offsetLeft}px, ${offsetTop}px) scale(${1 / scale})`;
+}
+
+function applyOverlayViewportTransform() {
+  const root = document.getElementById("overlayRoot");
+  if (!root) return;
+  const transform = getOverlayViewportTransform();
+  if (transform && transform !== lastOverlayViewportTransform) {
+    root.style.transform = transform;
+    root.style.transformOrigin = "0 0";
+    lastOverlayViewportTransform = transform;
+  } else if (!transform && lastOverlayViewportTransform) {
+    root.style.transform = "";
+    root.style.transformOrigin = "";
+    lastOverlayViewportTransform = "";
+  }
+}
+
+function ensureOverlayViewportHandlers() {
+  if (overlayViewportBound) return;
+  if (typeof window === "undefined" || !window.visualViewport) return;
+  const handler = () => {
+    const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
+    if (!open) return;
+    applyOverlayViewportTransform();
+  };
+  window.visualViewport.addEventListener("resize", handler, { passive: true });
+  window.visualViewport.addEventListener("scroll", handler, { passive: true });
+  overlayViewportBound = true;
+}
+
 function renderOverlays(options = {}) {
   const updateProfile = Object.prototype.hasOwnProperty.call(options, "updateProfile")
     ? options.updateProfile
@@ -7675,17 +7715,35 @@ function renderOverlays(options = {}) {
     }
   }
   const open = !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
-  const iosKeyboardModal = IS_IOS_DEVICE && (state.menuDetail.open || state.postModal.open || state.menuModal.open || state.focusModal.open);
-  const lockBody = open && !iosKeyboardModal;
+  const lockBody = open;
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
-  const allowTouch = state.menuDetail.open || iosKeyboardModal;
-  if (allowTouch) {
+  if (open) {
     document.body.style.touchAction = "manipulation";
     document.documentElement.style.touchAction = "manipulation";
   } else {
     document.body.style.touchAction = "";
     document.documentElement.style.touchAction = "";
+  }
+  if (root) {
+    if (open) {
+      root.style.position = "fixed";
+      root.style.inset = "0";
+      root.style.zIndex = "60";
+      root.style.pointerEvents = "auto";
+    } else {
+      root.style.position = "";
+      root.style.inset = "";
+      root.style.zIndex = "";
+      root.style.pointerEvents = "none";
+      root.style.transform = "";
+      root.style.transformOrigin = "";
+      lastOverlayViewportTransform = "";
+    }
+  }
+  if (IS_IOS_DEVICE) {
+    ensureOverlayViewportHandlers();
+    if (open) applyOverlayViewportTransform();
   }
   if (lockBody && !bodyScrollLocked) {
     bodyScrollTop = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
