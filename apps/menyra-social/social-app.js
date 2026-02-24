@@ -2077,7 +2077,6 @@ function setUserMarker(lat, lng, label = "Deine Position") {
   const html = `
     <div class="relative w-12 h-12 z-[1000] user-radar">
       <img src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-full object-cover border-[3px] border-white shadow-lg relative z-10 bg-slate-200" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
-      <div class="absolute -bottom-1 -right-1 bg-indigo-600 rounded-full w-4 h-4 border-2 border-white flex items-center justify-center shadow"></div>
     </div>
   `;
   const markerIcon = window.L.divIcon({ className: "custom-div-icon", html, iconSize: [48, 48], iconAnchor: [24, 24] });
