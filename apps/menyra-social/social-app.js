@@ -6927,105 +6927,123 @@ function renderLeadModal() {
   const leadStatus = normalizeLeadStatusKey(lead.status || "new") || "new";
   const coords = state.leadModal.coords;
   const hasCoords = coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng);
+  const canConvert = isEdit && !!lead.id && normalizeLeadStatusKey(lead.status || "") !== "converted";
+
+  const headerHtml = `
+    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+      <div>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
+        <h3 class="text-xl font-black italic tracking-tighter">${isEdit ? "Lead bearbeiten" : "Neuer Lead"}</h3>
+      </div>
+      <button id="leadModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+        ${icon("x", "w-4 h-4")}
+      </button>
+    </div>
+  `;
+
+  const bodyHtml = `
+    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
+      <input type="file" id="leadLogoInput" class="hidden" accept="image/*" />
+      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+        <img id="leadLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
+      </div>
+      <button id="leadLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+        Logo hochladen
+      </button>
+
+      <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
+          <input id="leadBusinessName" type="text" value="${escapeHtml(lead.businessName || lead.name || "")}" placeholder="Business Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+          <select id="leadCustomerType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+            <option value="restaurant" ${customerType === "restaurant" ? "selected" : ""}>Restaurant</option>
+            <option value="cafe" ${customerType === "cafe" ? "selected" : ""}>Cafe</option>
+            <option value="ecommerce" ${customerType === "ecommerce" ? "selected" : ""}>Online Shop</option>
+            <option value="service" ${customerType === "service" ? "selected" : ""}>Service</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kontakt</label>
+            <input id="leadContactName" type="text" value="${escapeHtml(lead.contactName || lead.contact || "")}" placeholder="Kontaktname" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Telefon</label>
+            <input id="leadPhone" type="text" value="${escapeHtml(lead.phone || "")}" placeholder="+383" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email (Login)</label>
+          <input id="leadEmail" type="email" value="${escapeHtml(leadEmail)}" placeholder="owner@menyra.com" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort (optional)</label>
+          <input id="leadPassword" type="password" value="" placeholder="leer = Standardpasswort" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
+          <input id="leadCity" type="text" value="${escapeHtml(lead.city || "")}" placeholder="Prishtina" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
+          <input id="leadAddress" type="text" value="${escapeHtml(lead.address || "")}" placeholder="Strasse, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
+          <label class="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 mb-2 ml-1">
+            ${icon("map-pin", "w-3 h-3")} Exakter Standort (Karte)
+          </label>
+          <div id="leadCoordsDisplay" class="text-[9px] font-bold text-emerald-600 mt-1 flex items-center gap-1 ${hasCoords ? "" : "hidden"}">
+            ${icon("check-circle-2", "w-3 h-3")} Standort auf Karte fixiert!
+          </div>
+          <button id="leadLocationPickerBtn" type="button" class="w-full mt-3 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
+            ${icon("map-pin", "w-3.5 h-3.5")} Auf Karte festlegen
+          </button>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
+          <input id="leadLogoUrl" type="text" value="${escapeHtml(lead.logoUrl || lead.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
+          <select id="leadStatus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+            ${Object.keys(LEAD_STATUS_LABELS).filter((key) => key !== "converted").map((key) => `
+              <option value="${key}" ${leadStatus === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
+            `).join("")}
+          </select>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Notiz</label>
+          <textarea id="leadNote" rows="3" placeholder="Kurz notieren..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(lead.note || "")}</textarea>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const footerHtml = `
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+      ${canConvert ? `
+        <button id="leadConvertBtn" class="w-full py-4 rounded-[1.8rem] bg-emerald-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 active:scale-95 transition-all mb-3">
+          Zu Kunde
+        </button>
+      ` : ""}
+      <button id="leadModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.leadModal.loading ? "disabled" : ""}>
+        ${state.leadModal.loading ? "Speichern..." : "Speichern"}
+      </button>
+      <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
+    </div>
+  `;
 
   return `
-    <div class="fixed inset-0 z-[90] modal-overlay">
+    <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="leadModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden modal-sheet">
-          <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
-            <div>
-              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
-              <h3 class="text-xl font-black italic tracking-tighter">${isEdit ? "Lead bearbeiten" : "Neuer Lead"}</h3>
-            </div>
-            <button id="leadModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
-              ${icon("x", "w-4 h-4")}
-            </button>
-          </div>
-          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
-            <input type="file" id="leadLogoInput" class="hidden" accept="image/*" />
-            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
-              <img id="leadLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
-            </div>
-            <button id="leadLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-              Logo hochladen
-            </button>
-
-            <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
-                <input id="leadBusinessName" type="text" value="${escapeHtml(lead.businessName || lead.name || "")}" placeholder="Business Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
-                <select id="leadCustomerType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-                  <option value="restaurant" ${customerType === "restaurant" ? "selected" : ""}>Restaurant</option>
-                  <option value="cafe" ${customerType === "cafe" ? "selected" : ""}>Cafe</option>
-                  <option value="ecommerce" ${customerType === "ecommerce" ? "selected" : ""}>Online Shop</option>
-                  <option value="service" ${customerType === "service" ? "selected" : ""}>Service</option>
-                </select>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kontakt</label>
-                  <input id="leadContactName" type="text" value="${escapeHtml(lead.contactName || lead.contact || "")}" placeholder="Kontaktname" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-                </div>
-                <div>
-                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Telefon</label>
-                  <input id="leadPhone" type="text" value="${escapeHtml(lead.phone || "")}" placeholder="+383" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-                </div>
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email (Login)</label>
-                <input id="leadEmail" type="email" value="${escapeHtml(leadEmail)}" placeholder="owner@menyra.com" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort (optional)</label>
-                <input id="leadPassword" type="password" value="" placeholder="leer = Standardpasswort" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
-                <input id="leadCity" type="text" value="${escapeHtml(lead.city || "")}" placeholder="Prishtina" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
-                <input id="leadAddress" type="text" value="${escapeHtml(lead.address || "")}" placeholder="Strasse, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
-                <label class="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 mb-2 ml-1">
-                  ${icon("map-pin", "w-3 h-3")} Exakter Standort (Karte)
-                </label>
-                <div id="leadCoordsDisplay" class="text-[9px] font-bold text-emerald-600 mt-1 flex items-center gap-1 ${hasCoords ? "" : "hidden"}">
-                  ${icon("check-circle-2", "w-3 h-3")} Standort auf Karte fixiert!
-                </div>
-                <button id="leadLocationPickerBtn" type="button" class="w-full mt-3 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
-                  ${icon("map-pin", "w-3.5 h-3.5")} Auf Karte festlegen
-                </button>
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
-                <input id="leadLogoUrl" type="text" value="${escapeHtml(lead.logoUrl || lead.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
-                <select id="leadStatus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-                  ${Object.keys(LEAD_STATUS_LABELS).filter((key) => key !== "converted").map((key) => `
-                    <option value="${key}" ${leadStatus === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
-                  `).join("")}
-                </select>
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Notiz</label>
-                <textarea id="leadNote" rows="3" placeholder="Kurz notieren..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(lead.note || "")}</textarea>
-              </div>
-            </div>
-          </div>
-          <div class="px-6 pb-6">
-            <button id="leadModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.leadModal.loading ? "disabled" : ""}>
-              ${state.leadModal.loading ? "Speichern..." : "Speichern"}
-            </button>
-            ${status ? `<div id="leadModalStatus" class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>` : ""}
-          </div>
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col h-[85vh] overflow-hidden modal-sheet">
+          ${headerHtml}
+          ${bodyHtml}
+          ${footerHtml}
         </div>
       </div>
     </div>
@@ -7042,87 +7060,99 @@ function renderCustomerModal() {
   const rawStatus = String(customer.status || "active").toLowerCase();
   const customerStatus = rawStatus === "demo" ? "testphase" : rawStatus;
 
+  const headerHtml = `
+    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+      <div>
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Kunde</span>
+        <h3 class="text-xl font-black italic tracking-tighter">Kundenprofil</h3>
+      </div>
+      <button id="customerModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+        ${icon("x", "w-4 h-4")}
+      </button>
+    </div>
+  `;
+
+  const bodyHtml = `
+    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
+      <input type="file" id="customerLogoInput" class="hidden" accept="image/*" />
+      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+        <img id="customerLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
+      </div>
+      <button id="customerLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+        Logo hochladen
+      </button>
+
+      <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
+          <input id="customerName" type="text" value="${escapeHtml(customer.name || customer.restaurantName || "")}" placeholder="Business Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+          <select id="customerType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+            <option value="restaurant" ${typeKey === "restaurant" ? "selected" : ""}>Restaurant</option>
+            <option value="cafe" ${typeKey === "cafe" ? "selected" : ""}>Cafe</option>
+            <option value="ecommerce" ${typeKey === "ecommerce" ? "selected" : ""}>Online Shop</option>
+            <option value="service" ${typeKey === "service" ? "selected" : ""}>Service</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Owner</label>
+            <input id="customerOwnerName" type="text" value="${escapeHtml(customer.ownerName || "")}" placeholder="Owner Name" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>
+            <input id="customerOwnerEmail" type="email" value="${escapeHtml(customer.ownerEmail || "")}" placeholder="owner@menyra.com" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Telefon</label>
+            <input id="customerPhone" type="text" value="${escapeHtml(customer.phone || "")}" placeholder="+383" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
+            <input id="customerCity" type="text" value="${escapeHtml(customer.city || "")}" placeholder="Prishtina" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
+          <input id="customerAddress" type="text" value="${escapeHtml(customer.address || "")}" placeholder="Strasse, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
+          <input id="customerLogoUrl" type="text" value="${escapeHtml(customer.logoUrl || customer.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
+          <select id="customerStatus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+            <option value="active" ${customerStatus === "active" ? "selected" : ""}>Aktiv</option>
+            <option value="testphase" ${customerStatus === "testphase" ? "selected" : ""}>Testphase</option>
+            <option value="lead" ${customerStatus === "lead" ? "selected" : ""}>Lead</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const footerHtml = `
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+      <button id="customerModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.customerModal.loading ? "disabled" : ""}>
+        ${state.customerModal.loading ? "Speichern..." : "Speichern"}
+      </button>
+      <div class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>
+    </div>
+  `;
+
   return `
-    <div class="fixed inset-0 z-[90] modal-overlay">
+    <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="customerModalOverlay" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden modal-sheet">
-          <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
-            <div>
-              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Kunde</span>
-              <h3 class="text-xl font-black italic tracking-tighter">Kundenprofil</h3>
-            </div>
-            <button id="customerModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
-              ${icon("x", "w-4 h-4")}
-            </button>
-          </div>
-          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
-            <input type="file" id="customerLogoInput" class="hidden" accept="image/*" />
-            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
-              <img id="customerLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
-            </div>
-            <button id="customerLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-              Logo hochladen
-            </button>
-
-            <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
-                <input id="customerName" type="text" value="${escapeHtml(customer.name || customer.restaurantName || "")}" placeholder="Business Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
-                <select id="customerType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-                  <option value="restaurant" ${typeKey === "restaurant" ? "selected" : ""}>Restaurant</option>
-                  <option value="cafe" ${typeKey === "cafe" ? "selected" : ""}>Cafe</option>
-                  <option value="ecommerce" ${typeKey === "ecommerce" ? "selected" : ""}>Online Shop</option>
-                  <option value="service" ${typeKey === "service" ? "selected" : ""}>Service</option>
-                </select>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Owner</label>
-                  <input id="customerOwnerName" type="text" value="${escapeHtml(customer.ownerName || "")}" placeholder="Owner Name" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-                </div>
-                <div>
-                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>
-                  <input id="customerOwnerEmail" type="email" value="${escapeHtml(customer.ownerEmail || "")}" placeholder="owner@menyra.com" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div>
-                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Telefon</label>
-                  <input id="customerPhone" type="text" value="${escapeHtml(customer.phone || "")}" placeholder="+383" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-                </div>
-                <div>
-                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
-                  <input id="customerCity" type="text" value="${escapeHtml(customer.city || "")}" placeholder="Prishtina" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-                </div>
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
-                <input id="customerAddress" type="text" value="${escapeHtml(customer.address || "")}" placeholder="Strasse, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
-                <input id="customerLogoUrl" type="text" value="${escapeHtml(customer.logoUrl || customer.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              </div>
-              <div>
-                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
-                <select id="customerStatus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-                  <option value="active" ${customerStatus === "active" ? "selected" : ""}>Aktiv</option>
-                  <option value="testphase" ${customerStatus === "testphase" ? "selected" : ""}>Testphase</option>
-                  <option value="lead" ${customerStatus === "lead" ? "selected" : ""}>Lead</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          <div class="px-6 pb-6">
-            <button id="customerModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.customerModal.loading ? "disabled" : ""}>
-              ${state.customerModal.loading ? "Speichern..." : "Speichern"}
-            </button>
-            ${status ? `<div id="customerModalStatus" class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>` : ""}
-          </div>
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col h-[85vh] overflow-hidden modal-sheet">
+          ${headerHtml}
+          ${bodyHtml}
+          ${footerHtml}
         </div>
       </div>
     </div>
@@ -7826,7 +7856,7 @@ function renderLeadsView() {
       const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
       const typeLabel = leadTypeLabel(lead.customerType || rest?.type || "");
       const city = lead.city || rest?.city || "";
-      const contactLine = [lead.contactName, lead.phone, lead.email || lead.socialEmail].filter(Boolean).join(" / ");
+      const emailLine = lead.email || lead.socialEmail || "";
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
           <div class="flex items-center gap-3">
@@ -7839,10 +7869,9 @@ function renderLeadsView() {
             </div>
             <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${tone.bg} ${tone.text}">${escapeHtml(statusLabel)}</span>
           </div>
-          ${contactLine ? `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-3">${escapeHtml(contactLine)}</div>` : ""}
+          ${emailLine ? `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-3">${escapeHtml(emailLine)}</div>` : ""}
           <div class="flex gap-2 mt-4">
             <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
-            <button data-lead-convert="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-indigo-600 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-500/20">Zu Kunde</button>
           </div>
         </div>
       `;
@@ -7861,8 +7890,8 @@ function renderLeadsView() {
       </div>
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
         ${icon("search", "w-4 h-4 text-slate-400")}
-        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 bg-transparent text-sm font-bold outline-none" />
-        <select id="leadsStatusFilter" class="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-400">
+        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 bg-transparent text-[11px] font-bold outline-none" />
+        <select id="leadsStatusFilter" class="bg-transparent text-[11px] font-bold uppercase tracking-widest text-slate-400">
           <option value="">Alle</option>
           ${Object.keys(LEAD_STATUS_LABELS).filter((key) => key !== "converted").map((key) => `
             <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
@@ -8289,7 +8318,7 @@ function ensureOverlayRoot() {
   if (!document.getElementById("modalUnderlay")) {
     const underlay = document.createElement("div");
     underlay.id = "modalUnderlay";
-    underlay.className = "fixed inset-0 bg-white z-[50] hidden pointer-events-none";
+    underlay.className = "fixed inset-0 bg-slate-50 z-[50] hidden pointer-events-none";
     root.appendChild(underlay);
   }
   if (!document.getElementById("profileOverlayRoot")) {
@@ -9064,6 +9093,7 @@ function bindOverlayEvents({
     const leadOverlay = document.getElementById("leadModalOverlay");
     const leadClose = document.getElementById("leadModalClose");
     const leadSave = document.getElementById("leadModalSave");
+    const leadConvert = document.getElementById("leadConvertBtn");
     const leadLogoTrigger = document.getElementById("leadLogoTrigger");
     const leadLogoInput = document.getElementById("leadLogoInput");
     const leadLogoUrl = document.getElementById("leadLogoUrl");
@@ -9080,6 +9110,15 @@ function bindOverlayEvents({
       leadSave.addEventListener("click", () => {
         if (state.leadModal.loading) return;
         void saveLeadFromModal();
+      });
+    }
+    if (leadConvert) {
+      leadConvert.addEventListener("click", async () => {
+        if (state.leadModal.loading) return;
+        const id = state.leadModal.lead?.id || "";
+        if (!id) return;
+        const converted = await convertLeadToCustomer(id);
+        if (converted) closeLeadModal();
       });
     }
     if (leadLogoTrigger && leadLogoInput) {
@@ -9601,14 +9640,6 @@ function bindAppEvents() {
       if (!id) return;
       const lead = state.leads.items.find((item) => String(item.id) === String(id));
       if (lead) openLeadModal("edit", lead);
-    });
-  });
-
-  document.querySelectorAll("[data-lead-convert]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.leadConvert;
-      if (!id) return;
-      void convertLeadToCustomer(id);
     });
   });
 
@@ -11605,10 +11636,10 @@ async function saveCustomerFromModal() {
 }
 
 async function convertLeadToCustomer(leadId) {
-  if (!state.user || !leadId) return;
+  if (!state.user || !leadId) return false;
   const lead = state.leads.items.find((item) => String(item.id) === String(leadId));
-  if (!lead) return;
-  if (!confirm("Lead als Kunde aktivieren?")) return;
+  if (!lead) return false;
+  if (!confirm("Lead als Kunde aktivieren?")) return false;
 
   try {
     let restaurantId = lead.restaurantId || "";
@@ -11697,9 +11728,11 @@ async function convertLeadToCustomer(leadId) {
     if (loginError) {
       alert(`Kunde aktiviert. Login fehlgeschlagen: ${loginError}`);
     }
+    return true;
   } catch (err) {
     console.error(err);
     alert(err?.message || "Umwandlung fehlgeschlagen.");
+    return false;
   }
 }
 
