@@ -333,6 +333,7 @@ let renderSuspended = 0;
 let renderQueued = false;
 let modalEscapeBound = false;
 let profileMenuBound = false;
+let verifiedMapLocation = null;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
 let lastCommentAt = 0;
@@ -1934,16 +1935,19 @@ function cleanupLeaflet() {
 function makeBizDivIcon(b) {
   const isSelected = state.selectedBusiness?.id === b.id;
   const html = `
-    <div class="w-12 h-12 rounded-2xl shadow-2xl flex items-center justify-center border-2 border-white transition-colors ${isSelected ? "bg-indigo-600 text-white scale-110" : "bg-white text-indigo-600"}">
-      <div class="pointer-events-none">${icon(businessIcon(b.type), "w-4 h-4")}</div>
+    <div class="relative flex flex-col items-center justify-center transition-all duration-300 ${isSelected ? "scale-110 z-[500]" : "hover:scale-105 z-[400]"}">
+      <div class="w-10 h-10 rounded-[1rem] shadow-lg flex items-center justify-center border-2 border-white ${isSelected ? "bg-indigo-600 text-white" : "bg-slate-900 text-white"}">
+        ${icon(businessIcon(b.type), "w-4 h-4")}
+      </div>
+      <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] ${isSelected ? "border-t-indigo-600" : "border-t-slate-900"} -mt-1"></div>
     </div>
   `;
 
   return window.L.divIcon({
-    className: "",
+    className: "custom-div-icon",
     html,
-    iconSize: [48, 48],
-    iconAnchor: [24, 48]
+    iconSize: [40, 50],
+    iconAnchor: [20, 50]
   });
 }
 
@@ -1960,9 +1964,7 @@ function bindMapSheetEvents() {
   if (mapCloseBtn) {
     mapCloseBtn.addEventListener("click", () => {
       state.selectedBusiness = null;
-      leafletBizMarkers.forEach((item) => {
-        try { item.setIcon(makeBizDivIcon(item.__biz)); } catch {}
-      });
+      renderLeafletMarkers(state.businessLocations);
       updateMapSheet();
     });
   }
@@ -1979,15 +1981,17 @@ function bindMapSheetEvents() {
   }
 
   const mapVisitProfileBtn = document.getElementById("mapVisitProfileBtn");
-  if (mapVisitProfileBtn) {
-    mapVisitProfileBtn.addEventListener("click", () => {
+  const mapVisitProfileImgBtn = document.getElementById("mapVisitProfileImgBtn");
+  [mapVisitProfileBtn, mapVisitProfileImgBtn].forEach((btn) => {
+    if (!btn) return;
+    btn.addEventListener("click", () => {
       if (!state.selectedBusiness) return;
       openProfileViewFromBusiness({
         id: state.selectedBusiness.id,
         name: state.selectedBusiness.name
       });
     });
-  }
+  });
 }
 
 function initLeafletIfNeeded() {
@@ -2009,9 +2013,9 @@ function initLeafletIfNeeded() {
     zoomControl: false,
     attributionControl: false,
     preferCanvas: true
-  }).setView([42.6629, 21.1655], 13);
+  }).setView([42.6629, 21.1655], 15);
 
-  window.L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     maxZoom: 19
   }).addTo(leafletMap);
 
@@ -2035,11 +2039,9 @@ function renderLeafletMarkers(locations) {
     marker.__biz = b;
     marker.on("click", () => {
       state.selectedBusiness = b;
-      leafletBizMarkers.forEach((item) => {
-        try { item.setIcon(makeBizDivIcon(item.__biz)); } catch {}
-      });
+      renderLeafletMarkers(locations);
       updateMapSheet();
-      try { leafletMap.panTo([b.lat, b.lng], { animate: true, duration: 0.35 }); } catch {}
+      try { leafletMap.panTo([b.lat - 0.003, b.lng], { animate: true, duration: 0.5 }); } catch {}
     });
     return marker;
   });
@@ -2051,14 +2053,13 @@ function bindMapSearchInput() {
 
   searchInput.addEventListener("input", (e) => {
     const query = e.target.value.toLowerCase();
-
     const filtered = state.businessLocations.filter((b) =>
       b.name.toLowerCase().includes(query)
-      || b.address.toLowerCase().includes(query)
+      || (b.address || b.city || "").toLowerCase().includes(query)
     );
-
     renderLeafletMarkers(filtered);
-
+    state.selectedBusiness = null;
+    updateMapSheet();
     if (filtered.length > 0 && query.length > 2) {
       try { leafletMap.panTo([filtered[0].lat, filtered[0].lng], { animate: true, duration: 0.5 }); } catch {}
     }
@@ -2069,27 +2070,27 @@ function bindMapSearchInput() {
 
 function setUserMarker(lat, lng, label = "Deine Position") {
   if (!leafletMap || !window.L) return;
+  const avatarLabel = encodeURIComponent(state.userProfile.name || "U");
+  const avatarUrl = getSelfAvatarUrl() || `https://ui-avatars.com/api/?name=${avatarLabel}`;
   const html = `
-    <div class="w-12 h-12 rounded-2xl shadow-2xl flex items-center justify-center border-2 border-white bg-slate-900 text-white">
-      <div class="pointer-events-none">${icon("user", "w-4 h-4")}</div>
+    <div class="relative w-12 h-12 z-50 user-radar">
+      <img src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-full object-cover border-[3px] border-white shadow-lg relative z-10 bg-slate-200" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
+      <div class="absolute -bottom-1 -right-1 bg-indigo-600 rounded-full w-4 h-4 border-2 border-white flex items-center justify-center shadow"></div>
     </div>
   `;
   const markerIcon = window.L.divIcon({
-    className: "",
+    className: "custom-div-icon",
     html,
     iconSize: [48, 48],
-    iconAnchor: [24, 48]
+    iconAnchor: [24, 24]
   });
 
   if (!leafletUserMarker) {
-    leafletUserMarker = window.L.marker([lat, lng], { icon: markerIcon }).addTo(leafletMap);
+    leafletUserMarker = window.L.marker([lat, lng], { icon: markerIcon, zIndexOffset: 1000 }).addTo(leafletMap);
   } else {
     leafletUserMarker.setLatLng([lat, lng]);
     leafletUserMarker.setIcon(markerIcon);
   }
-
-  try { leafletUserMarker.bindPopup(`<b>${escapeHtml(label)}</b>`).openPopup(); } catch {}
-  if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 
 function mapLocate() {
@@ -4481,39 +4482,39 @@ function renderMapSheet(selected) {
   const imageUrl = getOptimizedImageUrl(selected.img, "thumb");
   return `
     <div class="animate-in slide-in-from-bottom-6 duration-300">
-      <div class="bg-white rounded-[2.5rem] p-5 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.3)] border border-slate-100 relative">
-        <button id="mapCloseBtn" class="absolute top-4 right-4 w-10 h-10 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 hover:bg-slate-100 transition-colors">
+      <div class="bg-white/95 backdrop-blur-xl rounded-[2rem] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.25)] border border-slate-100/50 relative">
+        <div class="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-slate-200 rounded-full"></div>
+        
+        <button id="mapCloseBtn" class="absolute top-4 right-4 w-8 h-8 bg-slate-100/80 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
           ${icon("x", "w-4 h-4")}
         </button>
         
-        <div class="flex gap-4 pr-10">
-          <div class="w-20 h-20 rounded-[1.8rem] bg-slate-100 p-0.5 border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden">
-            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover rounded-[1.6rem]" alt="Restaurant" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
+        <div class="flex gap-4 pr-6 mt-2">
+          <div id="mapVisitProfileImgBtn" class="w-20 h-20 rounded-[1.5rem] bg-slate-50 p-1 border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden relative group cursor-pointer">
+            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover rounded-[1.3rem] group-hover:scale-105 transition-transform duration-500" alt="Logo" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
+            <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
           </div>
           
-          <div class="flex-1 mt-1">
-            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Restaurant</span>
-            <h3 class="text-xl font-black tracking-tight text-slate-900 leading-tight mt-0.5 line-clamp-1">${escapeHtml(selected.name || "Business")}</h3>
-            <div class="flex items-center gap-1.5 mt-2 text-[10px] font-black uppercase text-indigo-600">
-              ${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)} / <span class="text-emerald-500 flex items-center gap-1"><div class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div> Geöffnet</span>
+          <div class="flex-1 pt-1">
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md inline-block mb-1">Restaurant</span>
+            <h3 class="text-lg font-black tracking-tight text-slate-900 leading-tight line-clamp-1">${escapeHtml(selected.name || "Business")}</h3>
+            <div class="flex items-center gap-2 mt-1 text-[11px] font-black text-slate-700">
+              <span class="flex items-center gap-1 text-indigo-600">${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)}</span>
+              <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+              <span class="text-emerald-500 flex items-center gap-1.5"><div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div> Geöffnet</span>
             </div>
-            <div class="flex items-center gap-1 mt-1.5 text-slate-400 text-[10px] font-bold line-clamp-1">
+            <div class="flex items-center gap-1.5 mt-2 text-slate-500 text-[10px] font-bold line-clamp-1">
               ${icon("map-pin", "w-3 h-3")} ${escapeHtml(selected.address)}
             </div>
           </div>
         </div>
 
-        <p class="text-[13px] text-slate-500 mt-4 font-medium px-1 line-clamp-2 leading-relaxed">
-          ${escapeHtml(selected.desc)}
-        </p>
-
-        <div class="mt-5 grid grid-cols-2 gap-3">
-          <button id="mapVisitProfileBtn" class="w-full bg-slate-900 text-white py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-2">
+        <div class="mt-6 flex gap-3">
+          <button id="mapVisitProfileBtn" class="flex-1 bg-slate-900 text-white py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-wider active:scale-95 transition-all shadow-[0_10px_20px_rgba(15,23,42,0.2)] flex items-center justify-center gap-2 hover:bg-slate-800">
             ${icon("user", "w-4 h-4")} Profil
           </button>
-          
-          <button id="mapOpenRouteBtn" class="w-full bg-indigo-50 text-indigo-600 py-3.5 rounded-2xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 hover:bg-indigo-100 border border-indigo-100">
-            ${icon("map", "w-4 h-4")} Route
+          <button id="mapOpenRouteBtn" class="w-14 h-[46px] bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center active:scale-95 transition-all hover:bg-indigo-100 border border-indigo-100/50">
+            ${icon("navigation", "w-5 h-5")}
           </button>
         </div>
       </div>
@@ -4524,33 +4525,38 @@ function renderMapSheet(selected) {
 function renderMapView() {
   const hasLeaflet = !!window.L;
   return `
-    <div class="p-6 h-full flex flex-col relative pb-24 animate-in fade-in duration-700">
-      <div class="mb-4 px-2">
-        <h2 class="text-2xl font-black italic uppercase tracking-tighter">Business Karte</h2>
-        <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale in deiner Nähe</p>
+    <div class="p-5 pb-8 h-full flex flex-col relative animate-in fade-in duration-700">
+      <div class="mb-4 px-2 flex justify-between items-end">
+        <div>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
+          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale</p>
+        </div>
       </div>
 
-      <div class="relative flex-1 bg-slate-900 rounded-[3.5rem] overflow-hidden shadow-2xl border-[6px] border-white min-h-[500px]">
+      <div class="relative flex-1 bg-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200/50 min-h-[500px]">
         
-        ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0 z-10"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-white text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
+        ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0 z-10"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-slate-500 text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
         
-        <div class="absolute top-4 left-4 right-4 z-[400]">
-          <div class="relative">
-            ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}
-            <input id="mapSearchInput" type="text" placeholder="Stadt oder Lokal suchen..." class="w-full h-12 rounded-[1.5rem] border-none bg-white/95 backdrop-blur-md pl-11 pr-4 text-xs font-bold text-slate-800 shadow-lg outline-none focus:ring-2 focus:ring-indigo-500 transition-all placeholder:text-slate-400" />
-            <button class="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-              ${icon("sliders-horizontal", "w-3.5 h-3.5")}
+        <div class="absolute top-5 left-4 right-4 z-[400]">
+          <div class="relative group">
+            ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors")}
+            <input id="mapSearchInput" type="text" placeholder="Wo suchst du? (Stadt, Lokal)..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/80 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-500 placeholder:font-medium" />
+            <button class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-600 shadow-sm border border-slate-100 hover:text-indigo-600 transition-colors">
+              ${icon("sliders-horizontal", "w-4 h-4")}
             </button>
           </div>
         </div>
 
-        <div class="absolute top-20 right-4 z-[400] flex flex-col gap-3 mt-2">
-          <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-white/95 backdrop-blur-xl border border-white/40 shadow-xl flex items-center justify-center text-indigo-600 active:scale-95 transition-transform hover:bg-white">
-            ${icon("navigation", "w-5 h-5")}
+        <div class="absolute bottom-6 right-4 z-[400] flex flex-col gap-3">
+          <button data-nav="settings" class="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-xl border border-slate-200 shadow-lg flex items-center justify-center text-slate-700 active:scale-95 transition-all hover:bg-white hover:text-indigo-600">
+            ${icon("settings", "w-5 h-5")}
+          </button>
+          <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-indigo-600 border border-indigo-500 shadow-[0_8px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-white active:scale-95 transition-all hover:bg-indigo-500">
+            ${icon("navigation", "w-5 h-5 fill-white")}
           </button>
         </div>
 
-        <div id="mapSheetSlot" class="absolute bottom-4 left-4 right-4 z-[400]"></div>
+        <div id="mapSheetSlot" class="absolute bottom-4 left-4 right-4 z-[500]"></div>
       </div>
     </div>
   `;
@@ -7210,12 +7216,11 @@ function renderSettingsView() {
   }
 
   if (state.settingsView === "account") {
-    const preferredHandle = resolvePreferredHandle(profile, profile.name);
-    const restaurantOptions = (state.restaurants || []).map((rest) => {
-      const id = rest.id || rest.restaurantId || "";
-      const name = rest.name || rest.restaurantName || "Business";
-      const selected = String(id) === String(profile.restaurantId || "") ? "selected" : "";
-      return `<option value="${escapeHtml(String(id))}" ${selected}>${escapeHtml(name)}</option>`;
+    const restaurantOptions = (state.restaurants || []).map((r) => {
+      const label = escapeHtml(r.name || r.restaurantName || "Business");
+      const restId = String(r.id || r.restaurantId || "");
+      const selected = restId === String(profile.restaurantId || "") ? "selected" : "";
+      return `<option value="${escapeHtml(restId)}" ${selected}>${label}</option>`;
     }).join("");
 
     return `
@@ -7231,38 +7236,63 @@ function renderSettingsView() {
             <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">${icon("camera", "w-4 h-4")}</div>
           </div>
         </div>
-        <div class="p-6 rounded-[2.5rem] border border-slate-100 space-y-4 bg-white">
+        <div class="p-6 rounded-[2rem] border border-slate-200/60 space-y-4 bg-white shadow-xl shadow-slate-200/20 relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Name</label>
             <input id="settingsName" type="text" value="${escapeHtml(profile.name)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Handle</label>
-            <input id="settingsHandle" type="text" value="${escapeHtml(preferredHandle)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="settingsHandle" type="text" value="${escapeHtml(profile.handle)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bio</label>
             <textarea id="settingsBio" rows="3" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(profile.bio)}</textarea>
           </div>
-          <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
-            <input id="settingsCity" type="text" value="${escapeHtml(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-          </div>
+          
           ${profile.role === "business" ? `
             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Genaue Adresse (Straße, Hausnr., Stadt)</label>
-              <input id="settingsAddress" type="text" value="${escapeHtml(profile.address || "")}" placeholder="z.B. Rruga Fazli Grajqevci, Prishtina" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
+              <input id="settingsCity" type="text" value="${escapeHtml(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
-            <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business</label>
+            
+            <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50 mt-4">
+              <div class="flex items-center justify-between mb-2">
+                <label class="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1">
+                  ${icon("map-pin", "w-3 h-3")} Exakter Standort (Karte)
+                </label>
+                <span id="validationBadge" class="hidden bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest">Geprüft</span>
+              </div>
+              <input id="settingsAddress" type="text" value="${escapeHtml(profile.address || "")}" placeholder="z.B. Rruga Garibaldi, Prishtina" class="w-full px-4 py-3 bg-white rounded-xl text-sm font-bold border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-300 shadow-inner" />
+              <div id="validationResult" class="text-[10px] font-bold text-slate-500 mt-2 px-1 hidden">
+                Gefunden: <span id="parsedAddress" class="text-slate-800"></span>
+              </div>
+              <button id="verifyAddressBtn" class="w-full mt-3 bg-indigo-100 text-indigo-700 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all hover:bg-indigo-200 flex items-center justify-center gap-1.5">
+                ${icon("search", "w-3.5 h-3.5")} Adresse prüfen
+              </button>
+            </div>
+            
+            <div class="mt-2">
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Link</label>
               <select id="settingsRestaurant" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
                 <option value="">Bitte waehlen</option>
                 ${restaurantOptions}
               </select>
             </div>
-          ` : ""}
+          ` : `
+             <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
+              <input id="settingsCity" type="text" value="${escapeHtml(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+          `}
+          
+          <button id="saveAccountBtn" class="w-full mt-6 ${profile.role === "business" ? "bg-slate-300 cursor-not-allowed" : "bg-slate-900"} text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2" ${profile.role === "business" ? "disabled" : ""}>
+            ${icon("save", "w-4 h-4")} Profil Speichern
+          </button>
+          ${profile.role === "business" ? `<p class="text-[9px] font-bold text-center text-slate-400 mt-1">Bitte prüfe zuerst deine Adresse.</p>` : ""}
         </div>
-        <div class="mt-4 text-center text-[10px] font-bold text-slate-400" id="settingsStatus"></div>
       </div>
     `;
   }
@@ -8716,13 +8746,46 @@ function bindAppEvents() {
   });
 
   document.querySelectorAll("[data-settings-back]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      if (state.settingsView === "account") {
-        await saveAccountSettings();
-      }
+    btn.addEventListener("click", () => {
       setState({ settingsView: "main" });
     });
   });
+
+  const saveAccountBtn = document.getElementById("saveAccountBtn");
+  if (saveAccountBtn) {
+    saveAccountBtn.addEventListener("click", async () => {
+      if (saveAccountBtn.disabled) return;
+      saveAccountBtn.innerHTML = `${icon("loader-2", "w-4 h-4 animate-spin")} Speichere...`;
+      await saveAccountSettings();
+      setState({ settingsView: "main" });
+    });
+  }
+
+  const verifyAddressBtn = document.getElementById("verifyAddressBtn");
+  if (verifyAddressBtn) {
+    verifyAddressBtn.addEventListener("click", verifyBusinessAddress);
+  }
+
+  const settingsAddress = document.getElementById("settingsAddress");
+  if (settingsAddress) {
+    settingsAddress.addEventListener("input", () => {
+      verifiedMapLocation = null;
+      if (saveAccountBtn) {
+        saveAccountBtn.disabled = true;
+        saveAccountBtn.classList.replace("bg-slate-900", "bg-slate-300");
+        saveAccountBtn.classList.add("cursor-not-allowed");
+      }
+      if (verifyAddressBtn) {
+        verifyAddressBtn.innerHTML = `${icon("search", "w-3.5 h-3.5")} Adresse prüfen`;
+        verifyAddressBtn.className = "w-full mt-3 bg-indigo-100 text-indigo-700 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all hover:bg-indigo-200 flex items-center justify-center gap-1.5";
+      }
+      const badge = document.getElementById("validationBadge");
+      if (badge) badge.classList.add("hidden");
+      const resContainer = document.getElementById("validationResult");
+      if (resContainer) resContainer.classList.add("hidden");
+      if (window.lucide?.createIcons) window.lucide.createIcons();
+    });
+  }
 
   document.querySelectorAll("[data-toggle]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -8961,25 +9024,6 @@ async function saveAccountSettings() {
   const address = document.getElementById("settingsAddress")?.value?.trim() || "";
   const restaurantId = document.getElementById("settingsRestaurant")?.value || state.userProfile.restaurantId || "";
 
-  const statusEl = document.getElementById("settingsStatus");
-  if (statusEl) statusEl.textContent = "Speichere...";
-
-  let lat = null;
-  let lng = null;
-
-  if (address && state.userProfile.role === "business") {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`);
-      const data = await res.json();
-      if (data && data.length > 0) {
-        lat = parseFloat(data[0].lat);
-        lng = parseFloat(data[0].lon);
-      }
-    } catch (e) {
-      console.warn("Geocoding fehlgeschlagen", e);
-    }
-  }
-
   const payload = {
     displayName: name,
     handle,
@@ -8991,18 +9035,18 @@ async function saveAccountSettings() {
 
   if (state.userProfile.role === "business") {
     payload.address = address;
-    if (lat !== null && lng !== null) {
-      payload.lat = lat;
-      payload.lng = lng;
+    if (verifiedMapLocation) {
+      payload.lat = verifiedMapLocation.lat;
+      payload.lng = verifiedMapLocation.lng;
     }
   }
 
   try {
     await setDoc(doc(db, "users", state.user.uid), payload, { merge: true });
 
-    if (restaurantId && lat !== null && lng !== null) {
+    if (restaurantId && verifiedMapLocation) {
       await setDoc(doc(db, "restaurants", restaurantId), {
-        lat, lng, address
+        lat: verifiedMapLocation.lat, lng: verifiedMapLocation.lng, address
       }, { merge: true });
     }
 
@@ -9017,12 +9061,8 @@ async function saveAccountSettings() {
       restaurantId
     };
     safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
-
-    if (statusEl) statusEl.textContent = "Erfolgreich gespeichert!";
-    setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 2000);
   } catch (err) {
     console.error(err);
-    if (statusEl) statusEl.textContent = "Fehler beim Speichern.";
   }
 }
 
@@ -10411,6 +10451,66 @@ async function bootstrapUser(user) {
   }
   startLiveListeners(user);
   ensureTabData(state.activeTab);
+}
+
+async function verifyBusinessAddress() {
+  const addrInput = document.getElementById("settingsAddress");
+  const verifyBtn = document.getElementById("verifyAddressBtn");
+  const saveBtn = document.getElementById("saveAccountBtn");
+  const resContainer = document.getElementById("validationResult");
+  const parsedText = document.getElementById("parsedAddress");
+  const badge = document.getElementById("validationBadge");
+
+  if (!addrInput || !verifyBtn || !saveBtn || !resContainer || !parsedText || !badge) return;
+
+  const query = addrInput.value.trim();
+  if (!query) return;
+
+  verifyBtn.innerHTML = `${icon("loader-2", "w-3.5 h-3.5 animate-spin")} Prüfe...`;
+  verifyBtn.classList.add("opacity-70");
+  saveBtn.disabled = true;
+  saveBtn.classList.replace("bg-slate-900", "bg-slate-300");
+  saveBtn.classList.add("cursor-not-allowed");
+  badge.classList.add("hidden");
+  if (window.lucide?.createIcons) window.lucide.createIcons();
+
+  try {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=1`);
+    const data = await response.json();
+
+    if (data && data.length > 0) {
+      const result = data[0];
+      verifiedMapLocation = { lat: parseFloat(result.lat), lng: parseFloat(result.lon) };
+
+      verifyBtn.innerHTML = `${icon("check", "w-3.5 h-3.5")} Verifiziert`;
+      verifyBtn.classList.replace("bg-indigo-100", "bg-emerald-100");
+      verifyBtn.classList.replace("text-indigo-700", "text-emerald-700");
+
+      resContainer.classList.remove("hidden");
+      resContainer.classList.replace("text-rose-500", "text-slate-500");
+      parsedText.textContent = result.display_name.split(",").slice(0, 3).join(",");
+
+      badge.classList.remove("hidden");
+
+      saveBtn.disabled = false;
+      saveBtn.classList.remove("cursor-not-allowed");
+      saveBtn.classList.replace("bg-slate-300", "bg-slate-900");
+    } else {
+      throw new Error("Nicht gefunden");
+    }
+  } catch (err) {
+    verifyBtn.innerHTML = `${icon("alert-circle", "w-3.5 h-3.5")} Erneut prüfen`;
+    verifyBtn.classList.replace("bg-indigo-100", "bg-rose-100");
+    verifyBtn.classList.replace("text-indigo-700", "text-rose-700");
+
+    resContainer.classList.remove("hidden");
+    resContainer.classList.replace("text-slate-500", "text-rose-500");
+    parsedText.textContent = "Adresse nicht gefunden. Bitte genauer eingeben (inkl. Stadt).";
+    verifiedMapLocation = null;
+  }
+
+  verifyBtn.classList.remove("opacity-70");
+  if (window.lucide?.createIcons) window.lucide.createIcons();
 }
 
 loadPersisted();
