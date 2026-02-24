@@ -1010,7 +1010,7 @@ function isCustomerRestaurant(rest = {}) {
 function normalizeRestaurantType(value) {
   const raw = String(value || "").toLowerCase().trim();
   if (!raw) return "";
-  if (raw.includes("cafe") || raw.includes("café") || raw.includes("coffee")) return "cafe";
+  if (raw.includes("cafe") || raw.includes("coffee")) return "cafe";
   if (raw.includes("restaurant") || raw.includes("resto") || raw.includes("restaurant")) return "restaurant";
   return raw;
 }
@@ -7800,7 +7800,7 @@ function renderLeadsView() {
       const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
       const typeLabel = leadTypeLabel(lead.customerType || rest?.type || "");
       const city = lead.city || rest?.city || "";
-      const contactLine = [lead.contactName, lead.phone, lead.email || lead.socialEmail].filter(Boolean).join(" · ");
+      const contactLine = [lead.contactName, lead.phone, lead.email || lead.socialEmail].filter(Boolean).join(" / ");
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
           <div class="flex items-center gap-3">
@@ -7809,7 +7809,7 @@ function renderLeadsView() {
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(businessName)}</p>
-              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml([typeLabel, city].filter(Boolean).join(" · "))}</p>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml([typeLabel, city].filter(Boolean).join(" / "))}</p>
             </div>
             <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${tone.bg} ${tone.text}">${escapeHtml(statusLabel)}</span>
           </div>
@@ -7870,7 +7870,7 @@ function renderCustomersView() {
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
-              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml([typeLabel, city].filter(Boolean).join(" · "))}</p>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml([typeLabel, city].filter(Boolean).join(" / "))}</p>
             </div>
             <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500">${escapeHtml(statusLabel)}</span>
           </div>
@@ -11195,17 +11195,22 @@ async function saveLeadFromModal() {
   renderOverlays({ updateLead: true });
 
   try {
+    let restaurantId = lead.restaurantId || "";
+    let restRef = null;
+    if (!restaurantId) {
+      restRef = doc(collection(db, "restaurants"));
+      restaurantId = restRef.id;
+    }
+
     let logoUrl = logoUrlInput || state.leadModal.logoPreview || lead.logoUrl || "";
     if (state.leadModal.logoFile) {
       const { cdnUrl } = await uploadCompressedImage(
         state.leadModal.logoFile,
-        lead.restaurantId || state.user.uid,
+        restaurantId || state.user.uid,
         { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
       );
       logoUrl = cdnUrl || logoUrl;
     }
-
-    let restaurantId = lead.restaurantId || "";
     const existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
     const restaurantStatus = resolveRestaurantStatusFromLead(statusValue, existingRest?.status || "");
     const restPayload = {
@@ -11223,9 +11228,7 @@ async function saveLeadFromModal() {
       updatedAt: serverTimestamp()
     };
 
-    if (!restaurantId) {
-      const restRef = doc(collection(db, "restaurants"));
-      restaurantId = restRef.id;
+    if (restRef) {
       await setDoc(restRef, {
         ...restPayload,
         createdAt: serverTimestamp(),
@@ -11240,27 +11243,32 @@ async function saveLeadFromModal() {
     let socialUid = lead.socialUid || "";
     let socialEmail = lead.socialEmail || "";
     const loginEmail = emailInput || socialEmail || "";
+    let loginError = "";
     if (!socialUid && loginEmail) {
-      const password = passwordInput || LEAD_SOCIAL_DEFAULT_PASSWORD;
-      const user = await createAuthUser(loginEmail, password);
-      if (user?.uid) {
-        socialUid = user.uid;
-        socialEmail = loginEmail;
-        await ensureSocialBusinessProfile({
-          uid: user.uid,
-          email: loginEmail,
-          name: businessName,
-          restaurantId,
-          city,
-          logoUrl,
-          roles: ["owner"]
-        });
-        await setDoc(doc(db, "restaurants", restaurantId), {
-          ownerUid: user.uid,
-          ownerEmail: loginEmail,
-          ownerName: contactName || businessName,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
+      try {
+        const password = passwordInput || LEAD_SOCIAL_DEFAULT_PASSWORD;
+        const user = await createAuthUser(loginEmail, password);
+        if (user?.uid) {
+          socialUid = user.uid;
+          socialEmail = loginEmail;
+          await ensureSocialBusinessProfile({
+            uid: user.uid,
+            email: loginEmail,
+            name: businessName,
+            restaurantId,
+            city,
+            logoUrl,
+            roles: ["owner"]
+          });
+          await setDoc(doc(db, "restaurants", restaurantId), {
+            ownerUid: user.uid,
+            ownerEmail: loginEmail,
+            ownerName: contactName || businessName,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
+      } catch (err) {
+        loginError = err?.message || "Login fehlgeschlagen.";
       }
     }
 
@@ -11304,6 +11312,9 @@ async function saveLeadFromModal() {
     state.leadModal.loading = false;
     closeLeadModal();
     render();
+    if (loginError) {
+      alert(`Lead gespeichert. Login fehlgeschlagen: ${loginError}`);
+    }
   } catch (err) {
     console.error(err);
     state.leadModal.status = err?.message || "Speichern fehlgeschlagen.";
@@ -11421,25 +11432,30 @@ async function convertLeadToCustomer(leadId) {
 
     let socialUid = lead.socialUid || "";
     let socialEmail = lead.socialEmail || lead.email || "";
+    let loginError = "";
     if (!socialUid && socialEmail) {
-      const user = await createAuthUser(socialEmail, LEAD_SOCIAL_DEFAULT_PASSWORD);
-      if (user?.uid) {
-        socialUid = user.uid;
-        await ensureSocialBusinessProfile({
-          uid: user.uid,
-          email: socialEmail,
-          name: businessName,
-          restaurantId,
-          city: lead.city || "",
-          logoUrl: lead.logoUrl || "",
-          roles: ["owner"]
-        });
-        await setDoc(doc(db, "restaurants", restaurantId), {
-          ownerUid: user.uid,
-          ownerEmail: socialEmail,
-          ownerName: lead.contactName || businessName,
-          updatedAt: serverTimestamp()
-        }, { merge: true });
+      try {
+        const user = await createAuthUser(socialEmail, LEAD_SOCIAL_DEFAULT_PASSWORD);
+        if (user?.uid) {
+          socialUid = user.uid;
+          await ensureSocialBusinessProfile({
+            uid: user.uid,
+            email: socialEmail,
+            name: businessName,
+            restaurantId,
+            city: lead.city || "",
+            logoUrl: lead.logoUrl || "",
+            roles: ["owner"]
+          });
+          await setDoc(doc(db, "restaurants", restaurantId), {
+            ownerUid: user.uid,
+            ownerEmail: socialEmail,
+            ownerName: lead.contactName || businessName,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }
+      } catch (err) {
+        loginError = err?.message || "Login fehlgeschlagen.";
       }
     }
 
@@ -11457,6 +11473,9 @@ async function convertLeadToCustomer(leadId) {
     rebuildBusinessLocations();
     refreshCustomersFromRestaurants();
     render();
+    if (loginError) {
+      alert(`Kunde aktiviert. Login fehlgeschlagen: ${loginError}`);
+    }
   } catch (err) {
     console.error(err);
     alert(err?.message || "Umwandlung fehlgeschlagen.");
