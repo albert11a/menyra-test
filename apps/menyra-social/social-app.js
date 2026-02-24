@@ -1,11 +1,13 @@
-import { auth, db } from "@shared/firebase-config.js";
+import { auth, db, app } from "@shared/firebase-config.js";
 import { BUNNY_EDGE_BASE } from "@shared/bunny-edge.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
   onAuthStateChanged,
-  signOut
+  signOut,
+  getAuth
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import {
   collection,
@@ -102,9 +104,11 @@ const DEFAULT_PROFILE = {
   bio: "",
   avatar: "",
   location: "",
+  address: "",
   followers: 0,
   following: 0,
   karma: "0",
+  roles: [],
   role: "user",
   isPremium: false,
   restaurantId: "",
@@ -122,6 +126,22 @@ const DEFAULT_SETTINGS = {
 
 const DEFAULT_MENU_LAYOUT = {
   cardColor: "white"
+};
+
+const LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992";
+const LEAD_STATUS_LABELS = {
+  new: "Neu",
+  contacted: "Kontaktiert",
+  interested: "Interessiert",
+  no_interest: "Kein Interesse",
+  converted: "Kunde",
+  archived: "Archiv"
+};
+const LEAD_TYPE_LABELS = {
+  restaurant: "Restaurant",
+  cafe: "Cafe",
+  ecommerce: "Online Shop",
+  service: "Service"
 };
 
 const DEFAULT_NOTIFICATIONS = [
@@ -287,6 +307,37 @@ const state = {
     imageFile: null,
     imagePreview: ""
   },
+  leads: {
+    items: [],
+    loading: false,
+    error: "",
+    query: "",
+    status: ""
+  },
+  customers: {
+    items: [],
+    loading: false,
+    error: "",
+    query: ""
+  },
+  leadModal: {
+    open: false,
+    mode: "create",
+    lead: null,
+    status: "",
+    loading: false,
+    logoFile: null,
+    logoPreview: ""
+  },
+  customerModal: {
+    open: false,
+    mode: "edit",
+    customer: null,
+    status: "",
+    loading: false,
+    logoFile: null,
+    logoPreview: ""
+  },
   settings: { ...DEFAULT_SETTINGS },
   menuLayout: { ...DEFAULT_MENU_LAYOUT },
   menuItemMeta: {},
@@ -339,7 +390,7 @@ let lastCommentAt = 0;
 let lastMenuCommentKey = "";
 let lastMenuCommentAt = 0;
 let menuDetailCloseBound = false;
-let overlayCache = { profile: "", post: "", likes: "", menu: "", menuDetail: "", focus: "" };
+let overlayCache = { profile: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
 let pendingProfileRestaurantId = "";
 let pendingProfileTopTab = "";
 let pendingProfileHandled = false;
@@ -349,7 +400,9 @@ let dataLoaded = {
   restaurants: false,
   stories: false,
   following: false,
-  notifications: false
+  notifications: false,
+  leads: false,
+  customers: false
 };
 let lastAppHtml = "";
 let lastRenderMode = "";
@@ -898,6 +951,62 @@ function normalizeSearchKey(value) {
   return normalizeSearchQuery(value).toLowerCase();
 }
 
+function isCeoUser() {
+  if (state.roleSwitchRoles?.includes("ceo")) return true;
+  const roles = normalizeRoleList(state.userProfile?.roles || state.userProfile?.role || "");
+  return roles.includes("ceo");
+}
+
+function normalizeLeadStatusKey(value) {
+  const key = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (key === "kein_interesse" || key === "keine_interesse") return "no_interest";
+  return key;
+}
+
+function normalizeLeadTypeKey(value) {
+  const key = String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s-]+/g, "_");
+  if (key === "e_commerce") return "ecommerce";
+  if (key === "online_shop" || key === "onlineshop") return "ecommerce";
+  return key;
+}
+
+function leadStatusLabel(value) {
+  const key = normalizeLeadStatusKey(value);
+  return LEAD_STATUS_LABELS[key] || value || "-";
+}
+
+function leadTypeLabel(value) {
+  const key = normalizeLeadTypeKey(value);
+  return LEAD_TYPE_LABELS[key] || value || "-";
+}
+
+function resolveCustomerType(value) {
+  const key = normalizeLeadTypeKey(value);
+  return key || "cafe";
+}
+
+function slugify(input) {
+  return String(input || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+    .slice(0, 60) || "kunde";
+}
+
+function isCustomerRestaurant(rest = {}) {
+  const status = String(rest.status || "").toLowerCase();
+  if (!status) return true;
+  if (status === "lead") return false;
+  if (status === "prospect") return false;
+  return true;
+}
+
 function normalizeRestaurantType(value) {
   const raw = String(value || "").toLowerCase().trim();
   if (!raw) return "";
@@ -1401,6 +1510,10 @@ function resetUserScopedState() {
   state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
   state.menuItemMeta = {};
   menuItemCountsRequested.clear();
+  state.leads = { items: [], loading: false, error: "", query: "", status: "" };
+  state.customers = { items: [], loading: false, error: "", query: "" };
+  state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "" };
+  state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
   state.selectedBusiness = null;
   state.followingHandles = [];
   state.notifications = [];
@@ -1412,6 +1525,8 @@ function resetUserScopedState() {
   dataLoaded.profile = false;
   dataLoaded.following = false;
   dataLoaded.notifications = false;
+  dataLoaded.leads = false;
+  dataLoaded.customers = false;
 }
 
 async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
@@ -1702,6 +1817,7 @@ function resolvePreferredHandle(profile, fallbackName = "") {
 
 function normalizeProfile(data, user) {
   const displayName = data?.displayName || user?.displayName || user?.email?.split("@")[0] || "User";
+  const roles = normalizeRoleList(data?.roles || data?.role || "");
   return {
     name: displayName,
     handle: data?.handle || normalizeHandle(displayName),
@@ -1712,6 +1828,7 @@ function normalizeProfile(data, user) {
     followers: data?.followersCount ?? 0,
     following: data?.followingCount ?? 0,
     karma: String(data?.score ?? "0"),
+    roles,
     role: data?.role || "user",
     isPremium: data?.isPremium || false,
     restaurantId: data?.restaurantId || "",
@@ -2769,6 +2886,20 @@ function ensureTabData(tab) {
     dataLoaded.notifications = true;
     void loadNotificationsFromFirebase({ force: true });
   }
+
+  if (tab === "leads" && !dataLoaded.leads) {
+    dataLoaded.leads = true;
+    if (isCeoUser()) {
+      void loadLeads();
+    }
+  }
+
+  if (tab === "customers" && !dataLoaded.customers) {
+    dataLoaded.customers = true;
+    if (isCeoUser()) {
+      void loadCustomers();
+    }
+  }
 }
 
 function findPostById(postId) {
@@ -2811,6 +2942,14 @@ function closeActiveModal() {
     closeFocusModal();
     return true;
   }
+  if (state.customerModal.open) {
+    closeCustomerModal();
+    return true;
+  }
+  if (state.leadModal.open) {
+    closeLeadModal();
+    return true;
+  }
   if (state.postModal.open) {
     closePostModal();
     return true;
@@ -2823,7 +2962,16 @@ function closeActiveModal() {
 }
 
 function isAnyModalOpen() {
-  return !!(state.profileModal.open || state.postModal.open || state.likesModal.open || state.menuModal.open || state.menuDetail.open || state.focusModal.open);
+  return !!(
+    state.profileModal.open
+    || state.postModal.open
+    || state.likesModal.open
+    || state.menuModal.open
+    || state.menuDetail.open
+    || state.focusModal.open
+    || state.leadModal.open
+    || state.customerModal.open
+  );
 }
 
 async function openPostModal(post) {
@@ -3371,8 +3519,19 @@ function renderAuthScreen() {
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const switchLinks = renderRoleSwitchLinks();
+  const isCeo = isCeoUser();
   const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
   const avatarFit = logoFitClass(state.userProfile.role === "business");
+  const navItems = [
+    { id: "feed", label: "Feed", icon: "home" },
+    { id: "search", label: "Suche", icon: "search" },
+    { id: "map", label: "Karte", icon: "map" },
+    { id: "profile", label: "Profil", icon: "user" },
+    { id: "notifications", label: "Updates", icon: "bell", badge: unread },
+    { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
+    { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
+    { id: "settings", label: "Optionen", icon: "settings" }
+  ];
   return `
     <div id="drawerRoot" class="fixed inset-0 z-[2000] transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
@@ -3392,15 +3551,8 @@ function renderDrawer() {
           </div>
         </div>
         <nav class="space-y-2 flex-1">
-          ${[
-            { id: "feed", label: "Feed", icon: "home" },
-            { id: "search", label: "Suche", icon: "search" },
-            { id: "map", label: "Karte", icon: "map" },
-            { id: "profile", label: "Profil", icon: "user" },
-            { id: "notifications", label: "Updates", icon: "bell", badge: unread },
-            { id: "settings", label: "Optionen", icon: "settings" }
-          ].map((item) => `
-            <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${state.activeTab === item.id ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
+          ${navItems.map((item) => `
+            <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${state.activeTab === item.id ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">${icon(item.icon, "w-4 h-4")} ${item.label}</div>
               ${item.badge ? `<span data-unread-badge="drawer" class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge}</span>` : ""}
             </button>
@@ -3674,7 +3826,9 @@ function bindFeedDelegation() {
           profileView: null,
           profileModal: { open: false, profile: null },
           postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
-          likesModal: { open: false, postId: "", animate: false }
+          likesModal: { open: false, postId: "", animate: false },
+          leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "" },
+          customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
         });
       }
       return;
@@ -3698,6 +3852,7 @@ function updateShellDom() {
     || !!state.userProfile.restaurantId
     || !!state.roleSwitchRestaurantId
     || isRestaurantCafeProfile(state.userProfile);
+  const showCeoTabs = isCeoUser();
   const headerAvatar = document.getElementById("headerAvatar");
   if (headerAvatar) {
     const current = headerAvatar.getAttribute("src") || "";
@@ -3747,6 +3902,9 @@ function updateShellDom() {
   if (menuNavBtn) {
     menuNavBtn.classList.toggle("hidden", !showMenuTab);
   }
+  document.querySelectorAll('[data-nav="leads"], [data-nav="customers"]').forEach((btn) => {
+    btn.classList.toggle("hidden", !showCeoTabs);
+  });
   refreshSelfCommentAvatars({ attempt: 0, maxAttempts: 2 });
   if (window.lucide?.createIcons) window.lucide.createIcons();
 }
@@ -6745,6 +6903,206 @@ function renderLikesModal() {
   `;
 }
 
+function renderLeadModal() {
+  if (!state.leadModal.open) return "";
+  const lead = state.leadModal.lead || {};
+  const isEdit = state.leadModal.mode === "edit";
+  const logoRaw = state.leadModal.logoPreview || lead.logoUrl || lead.logo || lead.imageUrl || "";
+  const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const status = state.leadModal.status || "";
+  const customerType = resolveCustomerType(lead.customerType || "cafe");
+  const leadEmail = lead.socialEmail || lead.email || "";
+  const leadStatus = normalizeLeadStatusKey(lead.status || "new") || "new";
+
+  return `
+    <div class="fixed inset-0 z-[90] modal-overlay">
+      <div id="leadModalOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden modal-sheet">
+          <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${isEdit ? "Bearbeiten" : "Neu"}</span>
+              <h3 class="text-xl font-black italic tracking-tighter">${isEdit ? "Lead bearbeiten" : "Neuer Lead"}</h3>
+            </div>
+            <button id="leadModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+              ${icon("x", "w-4 h-4")}
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
+            <input type="file" id="leadLogoInput" class="hidden" accept="image/*" />
+            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+              <img id="leadLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
+            </div>
+            <button id="leadLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+              Logo hochladen
+            </button>
+
+            <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
+                <input id="leadBusinessName" type="text" value="${escapeHtml(lead.businessName || lead.name || "")}" placeholder="Business Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+                <select id="leadCustomerType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+                  <option value="restaurant" ${customerType === "restaurant" ? "selected" : ""}>Restaurant</option>
+                  <option value="cafe" ${customerType === "cafe" ? "selected" : ""}>Cafe</option>
+                  <option value="ecommerce" ${customerType === "ecommerce" ? "selected" : ""}>Online Shop</option>
+                  <option value="service" ${customerType === "service" ? "selected" : ""}>Service</option>
+                </select>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kontakt</label>
+                  <input id="leadContactName" type="text" value="${escapeHtml(lead.contactName || lead.contact || "")}" placeholder="Kontaktname" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                </div>
+                <div>
+                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Telefon</label>
+                  <input id="leadPhone" type="text" value="${escapeHtml(lead.phone || "")}" placeholder="+383" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                </div>
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email (Login)</label>
+                <input id="leadEmail" type="email" value="${escapeHtml(leadEmail)}" placeholder="owner@menyra.com" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort (optional)</label>
+                <input id="leadPassword" type="password" value="" placeholder="leer = Standardpasswort" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
+                <input id="leadCity" type="text" value="${escapeHtml(lead.city || "")}" placeholder="Prishtina" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
+                <input id="leadAddress" type="text" value="${escapeHtml(lead.address || "")}" placeholder="Strasse, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
+                <input id="leadLogoUrl" type="text" value="${escapeHtml(lead.logoUrl || lead.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
+                <select id="leadStatus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+                  ${Object.keys(LEAD_STATUS_LABELS).filter((key) => key !== "converted").map((key) => `
+                    <option value="${key}" ${leadStatus === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
+                  `).join("")}
+                </select>
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Notiz</label>
+                <textarea id="leadNote" rows="3" placeholder="Kurz notieren..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(lead.note || "")}</textarea>
+              </div>
+            </div>
+          </div>
+          <div class="px-6 pb-6">
+            <button id="leadModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.leadModal.loading ? "disabled" : ""}>
+              ${state.leadModal.loading ? "Speichern..." : "Speichern"}
+            </button>
+            ${status ? `<div id="leadModalStatus" class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>` : ""}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderCustomerModal() {
+  if (!state.customerModal.open || !state.customerModal.customer) return "";
+  const customer = state.customerModal.customer || {};
+  const logoRaw = state.customerModal.logoPreview || customer.logoUrl || customer.logo || "";
+  const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const status = state.customerModal.status || "";
+  const typeKey = resolveCustomerType(customer.type || customer.customerType || "cafe");
+  const customerStatus = String(customer.status || "active").toLowerCase();
+
+  return `
+    <div class="fixed inset-0 z-[90] modal-overlay">
+      <div id="customerModalOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col max-h-[85vh] overflow-hidden modal-sheet">
+          <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+            <div>
+              <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Kunde</span>
+              <h3 class="text-xl font-black italic tracking-tighter">Kundenprofil</h3>
+            </div>
+            <button id="customerModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+              ${icon("x", "w-4 h-4")}
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
+            <input type="file" id="customerLogoInput" class="hidden" accept="image/*" />
+            <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+              <img id="customerLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
+            </div>
+            <button id="customerLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
+              Logo hochladen
+            </button>
+
+            <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
+                <input id="customerName" type="text" value="${escapeHtml(customer.name || customer.restaurantName || "")}" placeholder="Business Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+                <select id="customerType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+                  <option value="restaurant" ${typeKey === "restaurant" ? "selected" : ""}>Restaurant</option>
+                  <option value="cafe" ${typeKey === "cafe" ? "selected" : ""}>Cafe</option>
+                  <option value="ecommerce" ${typeKey === "ecommerce" ? "selected" : ""}>Online Shop</option>
+                  <option value="service" ${typeKey === "service" ? "selected" : ""}>Service</option>
+                </select>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Owner</label>
+                  <input id="customerOwnerName" type="text" value="${escapeHtml(customer.ownerName || "")}" placeholder="Owner Name" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                </div>
+                <div>
+                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>
+                  <input id="customerOwnerEmail" type="email" value="${escapeHtml(customer.ownerEmail || "")}" placeholder="owner@menyra.com" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Telefon</label>
+                  <input id="customerPhone" type="text" value="${escapeHtml(customer.phone || "")}" placeholder="+383" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                </div>
+                <div>
+                  <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
+                  <input id="customerCity" type="text" value="${escapeHtml(customer.city || "")}" placeholder="Prishtina" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                </div>
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
+                <input id="customerAddress" type="text" value="${escapeHtml(customer.address || "")}" placeholder="Strasse, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
+                <input id="customerLogoUrl" type="text" value="${escapeHtml(customer.logoUrl || customer.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              </div>
+              <div>
+                <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
+                <select id="customerStatus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+                  <option value="active" ${customerStatus === "active" ? "selected" : ""}>Aktiv</option>
+                  <option value="demo" ${customerStatus === "demo" ? "selected" : ""}>Demo</option>
+                  <option value="lead" ${customerStatus === "lead" ? "selected" : ""}>Lead</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="px-6 pb-6">
+            <button id="customerModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.customerModal.loading ? "disabled" : ""}>
+              ${state.customerModal.loading ? "Speichern..." : "Speichern"}
+            </button>
+            ${status ? `<div id="customerModalStatus" class="text-center text-[10px] font-bold text-slate-400 mt-3">${escapeHtml(status)}</div>` : ""}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderMenuItemModal() {
   if (!state.menuModal.open) return "";
   const item = state.menuModal.item || {};
@@ -7408,6 +7766,139 @@ function renderNotificationsList(items) {
   `).join("");
 }
 
+function renderCeoGuard(title = "CRM") {
+  return `
+    <div class="p-6 text-center">
+      <div class="w-20 h-20 rounded-[2.5rem] bg-slate-100 mx-auto flex items-center justify-center text-slate-300 mb-6">
+        ${icon("lock", "w-8 h-8")}
+      </div>
+      <h2 class="text-lg font-black tracking-tight text-slate-900">${escapeHtml(title)}</h2>
+      <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Nur CEO Zugriff</p>
+    </div>
+  `;
+}
+
+function renderLeadsView() {
+  if (!isCeoUser()) return renderCeoGuard("Leads");
+  const queryKey = normalizeSearchKey(state.leads.query || "");
+  const statusFilter = normalizeLeadStatusKey(state.leads.status || "");
+  let items = Array.isArray(state.leads.items) ? state.leads.items.slice() : [];
+  items = items.filter((lead) => normalizeLeadStatusKey(lead.status) !== "converted");
+  if (statusFilter) {
+    items = items.filter((lead) => normalizeLeadStatusKey(lead.status) === statusFilter);
+  }
+  items = items.filter((lead) => leadMatchesQuery(lead, queryKey));
+
+  const listHtml = state.leads.loading
+    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Leads laden...</div>`
+    : (items.length ? items.map((lead) => {
+      const tone = leadStatusTone(lead.status);
+      const statusLabel = leadStatusLabel(lead.status);
+      const rest = lead.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
+      const logoRaw = lead.logoUrl || lead.logo || rest?.logoUrl || rest?.logo || "";
+      const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+      const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
+      const typeLabel = leadTypeLabel(lead.customerType || rest?.type || "");
+      const city = lead.city || rest?.city || "";
+      const contactLine = [lead.contactName, lead.phone, lead.email || lead.socialEmail].filter(Boolean).join(" · ");
+      return `
+        <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden flex items-center justify-center">
+              <img src="${escapeHtml(logoUrl)}" class="w-full h-full object-contain bg-white" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(businessName)}</p>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml([typeLabel, city].filter(Boolean).join(" · "))}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${tone.bg} ${tone.text}">${escapeHtml(statusLabel)}</span>
+          </div>
+          ${contactLine ? `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-3">${escapeHtml(contactLine)}</div>` : ""}
+          <div class="flex gap-2 mt-4">
+            <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
+            <button data-lead-convert="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-indigo-600 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-500/20">Zu Kunde</button>
+          </div>
+        </div>
+      `;
+    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Keine Leads</div>`);
+
+  return `
+    <div id="leadsView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CRM</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Leads</h2>
+        </div>
+        <button id="newLeadBtn" class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-xl shadow-slate-200/60 active:scale-95">
+          ${icon("plus", "w-4 h-4")}
+        </button>
+      </div>
+      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
+        ${icon("search", "w-4 h-4 text-slate-400")}
+        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 bg-transparent text-sm font-bold outline-none" />
+        <select id="leadsStatusFilter" class="bg-transparent text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <option value="">Alle</option>
+          ${Object.keys(LEAD_STATUS_LABELS).filter((key) => key !== "converted").map((key) => `
+            <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
+          `).join("")}
+        </select>
+      </div>
+      ${state.leads.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.leads.error)}</div>` : ""}
+      <div class="space-y-4">${listHtml}</div>
+    </div>
+  `;
+}
+
+function renderCustomersView() {
+  if (!isCeoUser()) return renderCeoGuard("Kunden");
+  const queryKey = normalizeSearchKey(state.customers.query || "");
+  const items = (state.customers.items || []).filter((rest) => customerMatchesQuery(rest, queryKey));
+  const listHtml = state.customers.loading
+    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Kunden laden...</div>`
+    : (items.length ? items.map((rest) => {
+      const logoRaw = rest.logoUrl || rest.logo || "";
+      const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+      const name = rest.name || rest.restaurantName || "Business";
+      const typeLabel = leadTypeLabel(rest.type || rest.customerType || "");
+      const city = rest.city || "";
+      const statusLabel = String(rest.status || "active").toUpperCase();
+      return `
+        <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden flex items-center justify-center">
+              <img src="${escapeHtml(logoUrl)}" class="w-full h-full object-contain bg-white" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml([typeLabel, city].filter(Boolean).join(" · "))}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500">${escapeHtml(statusLabel)}</span>
+          </div>
+          <div class="flex gap-2 mt-4">
+            <button data-customer-edit="${escapeHtml(rest.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
+          </div>
+        </div>
+      `;
+    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Keine Kunden</div>`);
+
+  return `
+    <div id="customersView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CRM</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kunden</h2>
+        </div>
+      </div>
+      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
+        ${icon("search", "w-4 h-4 text-slate-400")}
+        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 bg-transparent text-sm font-bold outline-none" />
+      </div>
+      ${state.customers.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.customers.error)}</div>` : ""}
+      <div class="space-y-4">${listHtml}</div>
+    </div>
+  `;
+}
+
 function renderSearchUserItem(user) {
   const handle = user.handle || normalizeHandle(user.name || "user");
   const displayName = sanitizeDisplayName(user.name, handle || "User");
@@ -7746,6 +8237,8 @@ function renderMain() {
   if (state.activeTab === "map") view = renderMapView();
   if (state.activeTab === "profile") view = state.profileView ? renderPublicProfileView() : renderProfileView();
   if (state.activeTab === "menu") view = renderMenuAdminView();
+  if (state.activeTab === "leads") view = renderLeadsView();
+  if (state.activeTab === "customers") view = renderCustomersView();
   if (state.activeTab === "settings") view = renderSettingsView();
   if (state.activeTab === "notifications") view = renderNotificationsView();
   if (state.activeTab === "upload") view = renderUploadView();
@@ -7803,6 +8296,16 @@ function ensureOverlayRoot() {
     focusRoot.id = "focusOverlayRoot";
     root.appendChild(focusRoot);
   }
+  if (!document.getElementById("leadOverlayRoot")) {
+    const leadRoot = document.createElement("div");
+    leadRoot.id = "leadOverlayRoot";
+    root.appendChild(leadRoot);
+  }
+  if (!document.getElementById("customerOverlayRoot")) {
+    const customerRoot = document.createElement("div");
+    customerRoot.id = "customerOverlayRoot";
+    root.appendChild(customerRoot);
+  }
   return root;
 }
 
@@ -7837,6 +8340,12 @@ function renderOverlays(options = {}) {
   const updateFocus = Object.prototype.hasOwnProperty.call(options, "updateFocus")
     ? options.updateFocus
     : !state.likesModal.open;
+  const updateLead = Object.prototype.hasOwnProperty.call(options, "updateLead")
+    ? options.updateLead
+    : !state.likesModal.open;
+  const updateCustomer = Object.prototype.hasOwnProperty.call(options, "updateCustomer")
+    ? options.updateCustomer
+    : !state.likesModal.open;
   const root = ensureOverlayRoot();
   const profileRoot = document.getElementById("profileOverlayRoot");
   const postRoot = document.getElementById("postOverlayRoot");
@@ -7844,6 +8353,8 @@ function renderOverlays(options = {}) {
   const menuRoot = document.getElementById("menuOverlayRoot");
   const menuDetailRoot = document.getElementById("menuDetailOverlayRoot");
   const focusRoot = document.getElementById("focusOverlayRoot");
+  const leadRoot = document.getElementById("leadOverlayRoot");
+  const customerRoot = document.getElementById("customerOverlayRoot");
   const underlay = document.getElementById("modalUnderlay");
   let profileChanged = false;
   let postChanged = false;
@@ -7851,6 +8362,8 @@ function renderOverlays(options = {}) {
   let menuChanged = false;
   let menuDetailChanged = false;
   let focusChanged = false;
+  let leadChanged = false;
+  let customerChanged = false;
 
   if (updateProfile) {
     const profileHtml = renderProfileModal();
@@ -7900,6 +8413,22 @@ function renderOverlays(options = {}) {
       overlayCache.focus = focusHtml;
     }
   }
+  if (updateLead) {
+    const leadHtml = renderLeadModal();
+    leadChanged = leadHtml !== overlayCache.lead;
+    if (leadRoot && leadChanged) {
+      leadRoot.innerHTML = leadHtml;
+      overlayCache.lead = leadHtml;
+    }
+  }
+  if (updateCustomer) {
+    const customerHtml = renderCustomerModal();
+    customerChanged = customerHtml !== overlayCache.customer;
+    if (customerRoot && customerChanged) {
+      customerRoot.innerHTML = customerHtml;
+      overlayCache.customer = customerHtml;
+    }
+  }
   const open = isAnyModalOpen();
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
@@ -7907,10 +8436,10 @@ function renderOverlays(options = {}) {
   if (open) {
     ensureModalEscapeHandler();
   }
-  if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged)) {
+  if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged)) {
     window.lucide.createIcons();
   }
-  bindOverlayEvents({ profileChanged, postChanged, likesChanged, menuChanged, menuDetailChanged, focusChanged });
+  bindOverlayEvents({ profileChanged, postChanged, likesChanged, menuChanged, menuDetailChanged, focusChanged, leadChanged, customerChanged });
 }
 
 function bindImageFallbacks(root = document) {
@@ -8203,7 +8732,16 @@ function bindAuthEvents() {
   }
 }
 
-function bindOverlayEvents({ profileChanged = true, postChanged = true, likesChanged = true, menuChanged = true, menuDetailChanged = true, focusChanged = true } = {}) {
+function bindOverlayEvents({
+  profileChanged = true,
+  postChanged = true,
+  likesChanged = true,
+  menuChanged = true,
+  menuDetailChanged = true,
+  focusChanged = true,
+  leadChanged = true,
+  customerChanged = true
+} = {}) {
   if (!menuDetailCloseBound) {
     menuDetailCloseBound = true;
     const closeHandler = (evt) => {
@@ -8496,7 +9034,101 @@ function bindOverlayEvents({ profileChanged = true, postChanged = true, likesCha
     }
   }
 
-  if (menuChanged || menuDetailChanged || focusChanged) {
+  if (leadChanged) {
+    const leadOverlay = document.getElementById("leadModalOverlay");
+    const leadClose = document.getElementById("leadModalClose");
+    const leadSave = document.getElementById("leadModalSave");
+    const leadLogoTrigger = document.getElementById("leadLogoTrigger");
+    const leadLogoInput = document.getElementById("leadLogoInput");
+    const leadLogoUrl = document.getElementById("leadLogoUrl");
+
+    if (leadOverlay) {
+      leadOverlay.addEventListener("click", (evt) => {
+        if (evt.target?.id === "leadModalOverlay") closeLeadModal();
+      });
+    }
+    if (leadClose) leadClose.addEventListener("click", closeLeadModal);
+    if (leadSave) {
+      leadSave.addEventListener("click", () => {
+        if (state.leadModal.loading) return;
+        void saveLeadFromModal();
+      });
+    }
+    if (leadLogoTrigger && leadLogoInput) {
+      leadLogoTrigger.addEventListener("click", () => leadLogoInput.click());
+    }
+    if (leadLogoInput) {
+      leadLogoInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        state.leadModal.logoFile = file;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const preview = String(reader.result || "");
+          state.leadModal.logoPreview = preview;
+          const img = document.getElementById("leadLogoPreview");
+          if (img && preview) img.setAttribute("src", preview);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    if (leadLogoUrl) {
+      leadLogoUrl.addEventListener("input", () => {
+        const val = leadLogoUrl.value.trim();
+        const img = document.getElementById("leadLogoPreview");
+        if (img) img.setAttribute("src", val || PLACEHOLDER_IMAGE);
+      });
+    }
+  }
+
+  if (customerChanged) {
+    const customerOverlay = document.getElementById("customerModalOverlay");
+    const customerClose = document.getElementById("customerModalClose");
+    const customerSave = document.getElementById("customerModalSave");
+    const customerLogoTrigger = document.getElementById("customerLogoTrigger");
+    const customerLogoInput = document.getElementById("customerLogoInput");
+    const customerLogoUrl = document.getElementById("customerLogoUrl");
+
+    if (customerOverlay) {
+      customerOverlay.addEventListener("click", (evt) => {
+        if (evt.target?.id === "customerModalOverlay") closeCustomerModal();
+      });
+    }
+    if (customerClose) customerClose.addEventListener("click", closeCustomerModal);
+    if (customerSave) {
+      customerSave.addEventListener("click", () => {
+        if (state.customerModal.loading) return;
+        void saveCustomerFromModal();
+      });
+    }
+    if (customerLogoTrigger && customerLogoInput) {
+      customerLogoTrigger.addEventListener("click", () => customerLogoInput.click());
+    }
+    if (customerLogoInput) {
+      customerLogoInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        state.customerModal.logoFile = file;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const preview = String(reader.result || "");
+          state.customerModal.logoPreview = preview;
+          const img = document.getElementById("customerLogoPreview");
+          if (img && preview) img.setAttribute("src", preview);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    if (customerLogoUrl) {
+      customerLogoUrl.addEventListener("input", () => {
+        const val = customerLogoUrl.value.trim();
+        const img = document.getElementById("customerLogoPreview");
+        if (img) img.setAttribute("src", val || PLACEHOLDER_IMAGE);
+      });
+    }
+  }
+
+  if (menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged) {
     bindImageFallbacks();
   }
 }
@@ -8543,7 +9175,9 @@ function bindAppEvents() {
         profileView: null,
         profileModal: { open: false, profile: null },
         postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
-        likesModal: { open: false, postId: "", animate: false }
+        likesModal: { open: false, postId: "", animate: false },
+        leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "" },
+        customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
       });
     });
   });
@@ -8897,6 +9531,61 @@ function bindAppEvents() {
       state.upload.caption = uploadCaption.value;
     });
   }
+
+  const newLeadBtn = document.getElementById("newLeadBtn");
+  if (newLeadBtn) {
+    newLeadBtn.addEventListener("click", () => openLeadModal("create"));
+  }
+
+  const leadsSearchInput = document.getElementById("leadsSearchInput");
+  if (leadsSearchInput) {
+    leadsSearchInput.addEventListener("input", () => {
+      state.leads.query = leadsSearchInput.value || "";
+      render();
+    });
+  }
+
+  const leadsStatusFilter = document.getElementById("leadsStatusFilter");
+  if (leadsStatusFilter) {
+    leadsStatusFilter.addEventListener("change", () => {
+      state.leads.status = leadsStatusFilter.value || "";
+      render();
+    });
+  }
+
+  document.querySelectorAll("[data-lead-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.leadEdit;
+      if (!id) return;
+      const lead = state.leads.items.find((item) => String(item.id) === String(id));
+      if (lead) openLeadModal("edit", lead);
+    });
+  });
+
+  document.querySelectorAll("[data-lead-convert]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.leadConvert;
+      if (!id) return;
+      void convertLeadToCustomer(id);
+    });
+  });
+
+  const customersSearchInput = document.getElementById("customersSearchInput");
+  if (customersSearchInput) {
+    customersSearchInput.addEventListener("input", () => {
+      state.customers.query = customersSearchInput.value || "";
+      render();
+    });
+  }
+
+  document.querySelectorAll("[data-customer-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.customerEdit;
+      if (!id) return;
+      const customer = (state.customers.items || []).find((item) => String(item.id) === String(id));
+      if (customer) openCustomerModal(customer);
+    });
+  });
 
   // Business selection removed from account settings by design.
 
@@ -10242,6 +10931,535 @@ async function deleteFocusItemById(itemId) {
   } catch (err) {
     console.error(err);
     alert("Loeschen fehlgeschlagen.");
+  }
+}
+
+// --- CRM: Leads & Customers (CEO) ---
+let __secondaryAuth = null;
+function getSecondaryAuth() {
+  if (__secondaryAuth) return __secondaryAuth;
+  const existing = getApps().find((item) => item.name === "menyra-secondary");
+  const secondaryApp = existing || initializeApp(app.options, "menyra-secondary");
+  __secondaryAuth = getAuth(secondaryApp);
+  return __secondaryAuth;
+}
+
+async function createAuthUser(email, password) {
+  if (!email || !password) throw new Error("Email/Passwort fehlt.");
+  const auth2 = getSecondaryAuth();
+  let cred = null;
+  try {
+    cred = await createUserWithEmailAndPassword(auth2, email, password);
+  } catch (err) {
+    if (err?.code === "auth/email-already-in-use") {
+      cred = await signInWithEmailAndPassword(auth2, email, password);
+    } else {
+      throw err;
+    }
+  }
+  try { await signOut(auth2); } catch {}
+  return cred?.user || null;
+}
+
+async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, city, logoUrl, roles }) {
+  if (!uid) return;
+  const payload = {
+    displayName: name || email || "",
+    email: email || "",
+    bio: "",
+    city: city || "Prishtina",
+    role: "business",
+    roles: normalizeRoleList(roles || "owner"),
+    restaurantId: restaurantId || "",
+    avatarUrl: logoUrl || "",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  };
+  await setDoc(doc(db, "users", uid), payload, { merge: true });
+}
+
+async function ensureRestaurantPublicMeta(restaurantId, base) {
+  if (!restaurantId) return;
+  const payload = {
+    name: base?.name || base?.restaurantName || "",
+    restaurantName: base?.restaurantName || base?.name || "",
+    type: base?.type || "cafe",
+    city: base?.city || "",
+    logoUrl: base?.logoUrl || base?.logo || "",
+    logo: base?.logo || "",
+    updatedAt: serverTimestamp()
+  };
+  await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), payload, { merge: true });
+}
+
+function normalizeLeadDoc(docSnap) {
+  const data = typeof docSnap?.data === "function" ? docSnap.data() : (docSnap?.data || docSnap || {});
+  return {
+    id: docSnap?.id || data.id || "",
+    businessName: data.businessName || data.name || "",
+    customerType: data.customerType || data.type || "cafe",
+    contactName: data.contactName || data.contact || "",
+    phone: data.phone || "",
+    email: data.email || "",
+    city: data.city || "",
+    address: data.address || "",
+    logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
+    note: data.note || "",
+    status: data.status || "new",
+    restaurantId: data.restaurantId || data.restaurant || "",
+    socialUid: data.socialUid || "",
+    socialEmail: data.socialEmail || "",
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt
+  };
+}
+
+function leadStatusTone(status) {
+  const key = normalizeLeadStatusKey(status);
+  if (key === "new") return { bg: "bg-indigo-50", text: "text-indigo-600" };
+  if (key === "contacted") return { bg: "bg-amber-50", text: "text-amber-600" };
+  if (key === "interested") return { bg: "bg-emerald-50", text: "text-emerald-600" };
+  if (key === "no_interest") return { bg: "bg-slate-100", text: "text-slate-500" };
+  if (key === "converted") return { bg: "bg-emerald-100", text: "text-emerald-700" };
+  if (key === "archived") return { bg: "bg-slate-100", text: "text-slate-400" };
+  return { bg: "bg-slate-100", text: "text-slate-500" };
+}
+
+function resolveRestaurantStatusFromLead(leadStatus, currentStatus = "") {
+  const leadKey = normalizeLeadStatusKey(leadStatus);
+  if (leadKey === "converted") return "active";
+  if (currentStatus && currentStatus !== "lead") return currentStatus;
+  return "lead";
+}
+
+function leadMatchesQuery(lead, queryKey) {
+  if (!queryKey) return true;
+  const hay = normalizeSearchKey([
+    lead.businessName,
+    lead.contactName,
+    lead.phone,
+    lead.email,
+    lead.city,
+    lead.customerType
+  ].filter(Boolean).join(" "));
+  return hay.includes(queryKey);
+}
+
+function customerMatchesQuery(rest, queryKey) {
+  if (!queryKey) return true;
+  const hay = normalizeSearchKey([
+    rest.name,
+    rest.restaurantName,
+    rest.city,
+    rest.ownerName,
+    rest.ownerEmail,
+    rest.phone
+  ].filter(Boolean).join(" "));
+  return hay.includes(queryKey);
+}
+
+function refreshCustomersFromRestaurants() {
+  const list = Array.isArray(state.restaurants) ? state.restaurants.filter(isCustomerRestaurant) : [];
+  list.sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+  state.customers.items = list;
+}
+
+async function loadLeads() {
+  if (!isCeoUser()) return;
+  state.leads.loading = true;
+  state.leads.error = "";
+  render();
+  try {
+    const snap = await getDocs(query(collection(db, "leads"), limit(200)));
+    const list = snap.docs.map((docSnap) => normalizeLeadDoc(docSnap));
+    list.sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+    state.leads.items = list;
+    state.leads.error = "";
+  } catch (err) {
+    console.error(err);
+    state.leads.error = "Leads laden fehlgeschlagen.";
+  } finally {
+    state.leads.loading = false;
+    render();
+  }
+}
+
+async function loadCustomers() {
+  if (!isCeoUser()) return;
+  state.customers.loading = true;
+  state.customers.error = "";
+  render();
+  try {
+    const snap = await getDocs(query(collection(db, "restaurants"), limit(200)));
+    const list = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+    list.sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+    state.restaurants = mergeRestaurants(state.restaurants, list);
+    rebuildBusinessLocations();
+    refreshCustomersFromRestaurants();
+    state.customers.error = "";
+  } catch (err) {
+    console.error(err);
+    state.customers.error = "Kunden laden fehlgeschlagen.";
+  } finally {
+    state.customers.loading = false;
+    render();
+  }
+}
+
+function openLeadModal(mode = "create", lead = null) {
+  if (!isCeoUser()) return;
+  const rest = lead?.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
+  const merged = {
+    ...(lead || {}),
+    businessName: lead?.businessName || rest?.name || rest?.restaurantName || "",
+    city: lead?.city || rest?.city || "",
+    address: lead?.address || rest?.address || "",
+    phone: lead?.phone || rest?.phone || "",
+    logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || ""
+  };
+  state.leadModal = {
+    open: true,
+    mode,
+    lead: merged,
+    status: "",
+    loading: false,
+    logoFile: null,
+    logoPreview: merged.logoUrl || ""
+  };
+  renderOverlays({ updateLead: true });
+}
+
+function closeLeadModal() {
+  state.leadModal = {
+    open: false,
+    mode: "create",
+    lead: null,
+    status: "",
+    loading: false,
+    logoFile: null,
+    logoPreview: ""
+  };
+  renderOverlays({ updateLead: true });
+}
+
+function openCustomerModal(customer) {
+  if (!isCeoUser() || !customer) return;
+  state.customerModal = {
+    open: true,
+    mode: "edit",
+    customer,
+    status: "",
+    loading: false,
+    logoFile: null,
+    logoPreview: customer.logoUrl || customer.logo || ""
+  };
+  renderOverlays({ updateCustomer: true });
+}
+
+function closeCustomerModal() {
+  state.customerModal = {
+    open: false,
+    mode: "edit",
+    customer: null,
+    status: "",
+    loading: false,
+    logoFile: null,
+    logoPreview: ""
+  };
+  renderOverlays({ updateCustomer: true });
+}
+
+async function saveLeadFromModal() {
+  if (!state.user) return;
+  const lead = state.leadModal.lead || {};
+  const businessName = document.getElementById("leadBusinessName")?.value?.trim() || "";
+  const customerType = resolveCustomerType(document.getElementById("leadCustomerType")?.value || lead.customerType || "cafe");
+  const contactName = document.getElementById("leadContactName")?.value?.trim() || "";
+  const phone = document.getElementById("leadPhone")?.value?.trim() || "";
+  const emailInput = document.getElementById("leadEmail")?.value?.trim() || "";
+  const passwordInput = document.getElementById("leadPassword")?.value || "";
+  const city = document.getElementById("leadCity")?.value?.trim() || "";
+  const address = document.getElementById("leadAddress")?.value?.trim() || "";
+  const logoUrlInput = document.getElementById("leadLogoUrl")?.value?.trim() || "";
+  const note = document.getElementById("leadNote")?.value?.trim() || "";
+  const statusValue = document.getElementById("leadStatus")?.value || lead.status || "new";
+
+  if (!businessName) {
+    state.leadModal.status = "Bitte Business Name eingeben.";
+    renderOverlays({ updateLead: true });
+    return;
+  }
+
+  state.leadModal.loading = true;
+  state.leadModal.status = "Speichern...";
+  renderOverlays({ updateLead: true });
+
+  try {
+    let logoUrl = logoUrlInput || state.leadModal.logoPreview || lead.logoUrl || "";
+    if (state.leadModal.logoFile) {
+      const { cdnUrl } = await uploadCompressedImage(
+        state.leadModal.logoFile,
+        lead.restaurantId || state.user.uid,
+        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
+      );
+      logoUrl = cdnUrl || logoUrl;
+    }
+
+    let restaurantId = lead.restaurantId || "";
+    const existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
+    const restaurantStatus = resolveRestaurantStatusFromLead(statusValue, existingRest?.status || "");
+    const restPayload = {
+      name: businessName,
+      restaurantName: businessName,
+      type: customerType,
+      city,
+      address,
+      phone,
+      ownerName: contactName || "",
+      ownerEmail: emailInput || "",
+      logoUrl,
+      status: restaurantStatus,
+      leadId: lead.id || "",
+      updatedAt: serverTimestamp()
+    };
+
+    if (!restaurantId) {
+      const restRef = doc(collection(db, "restaurants"));
+      restaurantId = restRef.id;
+      await setDoc(restRef, {
+        ...restPayload,
+        createdAt: serverTimestamp(),
+        createdByUid: state.user.uid,
+        createdByRole: "ceo"
+      });
+    } else {
+      await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
+    }
+    await ensureRestaurantPublicMeta(restaurantId, restPayload);
+
+    let socialUid = lead.socialUid || "";
+    let socialEmail = lead.socialEmail || "";
+    const loginEmail = emailInput || socialEmail || "";
+    if (!socialUid && loginEmail) {
+      const password = passwordInput || LEAD_SOCIAL_DEFAULT_PASSWORD;
+      const user = await createAuthUser(loginEmail, password);
+      if (user?.uid) {
+        socialUid = user.uid;
+        socialEmail = loginEmail;
+        await ensureSocialBusinessProfile({
+          uid: user.uid,
+          email: loginEmail,
+          name: businessName,
+          restaurantId,
+          city,
+          logoUrl,
+          roles: ["owner"]
+        });
+        await setDoc(doc(db, "restaurants", restaurantId), {
+          ownerUid: user.uid,
+          ownerEmail: loginEmail,
+          ownerName: contactName || businessName,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+    }
+
+    const leadRef = lead.id ? doc(db, "leads", lead.id) : doc(collection(db, "leads"));
+    const leadId = lead.id || leadRef.id;
+    const leadPayload = {
+      businessName,
+      customerType,
+      contactName,
+      phone,
+      email: loginEmail,
+      city,
+      address,
+      logoUrl,
+      note,
+      status: normalizeLeadStatusKey(statusValue) || "new",
+      restaurantId,
+      socialUid,
+      socialEmail,
+      updatedAt: serverTimestamp(),
+      createdByUid: lead.createdByUid || state.user.uid,
+      createdByRole: "ceo"
+    };
+    if (!lead.id) {
+      leadPayload.createdAt = serverTimestamp();
+    }
+    await setDoc(leadRef, leadPayload, { merge: true });
+
+    const normalized = normalizeLeadDoc({ id: leadId, ...leadPayload });
+    const idx = state.leads.items.findIndex((item) => String(item.id) === String(leadId));
+    if (idx >= 0) {
+      state.leads.items[idx] = { ...state.leads.items[idx], ...normalized };
+    } else {
+      state.leads.items.unshift(normalized);
+    }
+
+    state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...(existingRest || {}), ...restPayload }]);
+    rebuildBusinessLocations();
+    refreshCustomersFromRestaurants();
+
+    state.leadModal.loading = false;
+    closeLeadModal();
+    render();
+  } catch (err) {
+    console.error(err);
+    state.leadModal.status = err?.message || "Speichern fehlgeschlagen.";
+    state.leadModal.loading = false;
+    renderOverlays({ updateLead: true });
+  }
+}
+
+async function saveCustomerFromModal() {
+  if (!state.user) return;
+  const customer = state.customerModal.customer;
+  if (!customer?.id) return;
+
+  const name = document.getElementById("customerName")?.value?.trim() || "";
+  const type = resolveCustomerType(document.getElementById("customerType")?.value || customer.type || "cafe");
+  const ownerName = document.getElementById("customerOwnerName")?.value?.trim() || "";
+  const ownerEmail = document.getElementById("customerOwnerEmail")?.value?.trim() || "";
+  const phone = document.getElementById("customerPhone")?.value?.trim() || "";
+  const city = document.getElementById("customerCity")?.value?.trim() || "";
+  const address = document.getElementById("customerAddress")?.value?.trim() || "";
+  const logoUrlInput = document.getElementById("customerLogoUrl")?.value?.trim() || "";
+  const statusValue = document.getElementById("customerStatus")?.value || customer.status || "active";
+
+  if (!name) {
+    state.customerModal.status = "Bitte Business Name eingeben.";
+    renderOverlays({ updateCustomer: true });
+    return;
+  }
+
+  state.customerModal.loading = true;
+  state.customerModal.status = "Speichern...";
+  renderOverlays({ updateCustomer: true });
+
+  try {
+    let logoUrl = logoUrlInput || state.customerModal.logoPreview || customer.logoUrl || "";
+    if (state.customerModal.logoFile) {
+      const { cdnUrl } = await uploadCompressedImage(
+        state.customerModal.logoFile,
+        customer.id,
+        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
+      );
+      logoUrl = cdnUrl || logoUrl;
+    }
+
+    const payload = {
+      name,
+      restaurantName: name,
+      type,
+      ownerName,
+      ownerEmail,
+      phone,
+      city,
+      address,
+      logoUrl,
+      status: statusValue,
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(doc(db, "restaurants", customer.id), payload, { merge: true });
+    await ensureRestaurantPublicMeta(customer.id, payload);
+
+    state.restaurants = mergeRestaurants(state.restaurants, [{ id: customer.id, ...customer, ...payload }]);
+    rebuildBusinessLocations();
+    refreshCustomersFromRestaurants();
+
+    state.customerModal.loading = false;
+    closeCustomerModal();
+    render();
+  } catch (err) {
+    console.error(err);
+    state.customerModal.status = err?.message || "Speichern fehlgeschlagen.";
+    state.customerModal.loading = false;
+    renderOverlays({ updateCustomer: true });
+  }
+}
+
+async function convertLeadToCustomer(leadId) {
+  if (!state.user || !leadId) return;
+  const lead = state.leads.items.find((item) => String(item.id) === String(leadId));
+  if (!lead) return;
+  if (!confirm("Lead als Kunde aktivieren?")) return;
+
+  try {
+    let restaurantId = lead.restaurantId || "";
+    let existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
+    const businessName = lead.businessName || "Neuer Kunde";
+    const type = resolveCustomerType(lead.customerType || "cafe");
+    const restPayload = {
+      name: businessName,
+      restaurantName: businessName,
+      type,
+      city: lead.city || "",
+      address: lead.address || "",
+      phone: lead.phone || "",
+      ownerName: lead.contactName || "",
+      ownerEmail: lead.email || lead.socialEmail || "",
+      logoUrl: lead.logoUrl || "",
+      status: "active",
+      leadId: lead.id || "",
+      updatedAt: serverTimestamp()
+    };
+
+    if (!restaurantId) {
+      const restRef = doc(collection(db, "restaurants"));
+      restaurantId = restRef.id;
+      await setDoc(restRef, {
+        ...restPayload,
+        createdAt: serverTimestamp(),
+        createdByUid: state.user.uid,
+        createdByRole: "ceo"
+      });
+    } else {
+      await setDoc(doc(db, "restaurants", restaurantId), { status: "active", updatedAt: serverTimestamp() }, { merge: true });
+    }
+    await ensureRestaurantPublicMeta(restaurantId, restPayload);
+
+    let socialUid = lead.socialUid || "";
+    let socialEmail = lead.socialEmail || lead.email || "";
+    if (!socialUid && socialEmail) {
+      const user = await createAuthUser(socialEmail, LEAD_SOCIAL_DEFAULT_PASSWORD);
+      if (user?.uid) {
+        socialUid = user.uid;
+        await ensureSocialBusinessProfile({
+          uid: user.uid,
+          email: socialEmail,
+          name: businessName,
+          restaurantId,
+          city: lead.city || "",
+          logoUrl: lead.logoUrl || "",
+          roles: ["owner"]
+        });
+        await setDoc(doc(db, "restaurants", restaurantId), {
+          ownerUid: user.uid,
+          ownerEmail: socialEmail,
+          ownerName: lead.contactName || businessName,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+    }
+
+    await setDoc(doc(db, "leads", lead.id), {
+      status: "converted",
+      restaurantId,
+      socialUid,
+      socialEmail,
+      convertedAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    state.leads.items = state.leads.items.filter((item) => String(item.id) !== String(lead.id));
+    state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...(existingRest || {}), ...restPayload, status: "active" }]);
+    rebuildBusinessLocations();
+    refreshCustomersFromRestaurants();
+    render();
+  } catch (err) {
+    console.error(err);
+    alert(err?.message || "Umwandlung fehlgeschlagen.");
   }
 }
 
