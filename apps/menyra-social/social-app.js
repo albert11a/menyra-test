@@ -333,7 +333,6 @@ let renderSuspended = 0;
 let renderQueued = false;
 let modalEscapeBound = false;
 let profileMenuBound = false;
-let verifiedMapLocation = null;
 let pendingCommentHighlight = "";
 let lastCommentKey = "";
 let lastCommentAt = 0;
@@ -1895,6 +1894,8 @@ function businessIcon(type) {
 let leafletMap = null;
 let leafletBizMarkers = [];
 let leafletUserMarker = null;
+let locationPickerMap = null;
+let verifiedMapLocation = null;
 
 function hashValue(input) {
   return Array.from(String(input || "")).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
@@ -2070,10 +2071,9 @@ function bindMapSearchInput() {
 
 function setUserMarker(lat, lng, label = "Deine Position") {
   if (!leafletMap || !window.L) return;
-  const avatarLabel = encodeURIComponent(state.userProfile.name || "U");
-  const avatarUrl = getSelfAvatarUrl() || `https://ui-avatars.com/api/?name=${avatarLabel}`;
+  const avatarUrl = getSelfAvatarUrl() || "https://ui-avatars.com/api/?name=" + (state.userProfile.name || "U");
   const html = `
-    <div class="relative w-12 h-12 z-50 user-radar">
+    <div class="relative w-12 h-12 z-20 user-radar">
       <img src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-full object-cover border-[3px] border-white shadow-lg relative z-10 bg-slate-200" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
       <div class="absolute -bottom-1 -right-1 bg-indigo-600 rounded-full w-4 h-4 border-2 border-white flex items-center justify-center shadow"></div>
     </div>
@@ -3385,7 +3385,7 @@ function renderDrawer() {
     { id: "settings", label: "Optionen", icon: "settings" }
   ];
   return `
-    <div id="drawerRoot" class="fixed inset-0 z-50 transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
+    <div id="drawerRoot" class="fixed inset-0 z-[2000] transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
       <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}">
         <div class="flex justify-between items-center mb-10">
@@ -4490,11 +4490,13 @@ function renderMapSheet(selected) {
         </button>
         
         <div class="flex gap-4 pr-6 mt-2">
+          <!-- Logo mit Click zum Profil -->
           <div id="mapVisitProfileImgBtn" class="w-20 h-20 rounded-[1.5rem] bg-slate-50 p-1 border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden relative group cursor-pointer">
             <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover rounded-[1.3rem] group-hover:scale-105 transition-transform duration-500" alt="Logo" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
             <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
           </div>
           
+          <!-- Info -->
           <div class="flex-1 pt-1">
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md inline-block mb-1">Restaurant</span>
             <h3 class="text-lg font-black tracking-tight text-slate-900 leading-tight line-clamp-1">${escapeHtml(selected.name || "Business")}</h3>
@@ -4533,30 +4535,27 @@ function renderMapView() {
         </div>
       </div>
 
+      <!-- z-index Fix und bg-slate-200 gegen schwarze Ränder -->
       <div class="relative flex-1 bg-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200/50 min-h-[500px]">
         
-        ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0 z-10"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-slate-500 text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
+        ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-slate-500 text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
         
-        <div class="absolute top-5 left-4 right-4 z-[400]">
-          <div class="relative group">
-            ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors")}
-            <input id="mapSearchInput" type="text" placeholder="Wo suchst du? (Stadt, Lokal)..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/80 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.12)] outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all placeholder:text-slate-500 placeholder:font-medium" />
-            <button class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-600 shadow-sm border border-slate-100 hover:text-indigo-600 transition-colors">
-              ${icon("sliders-horizontal", "w-4 h-4")}
-            </button>
+        <!-- Schwebende Suchleiste -->
+        <div class="absolute top-5 left-4 right-4 z-30">
+          <div class="relative group shadow-lg rounded-2xl">
+            ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}
+            <input id="mapSearchInput" type="text" placeholder="Stadt, Lokal..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all" />
           </div>
         </div>
 
-        <div class="absolute bottom-6 right-4 z-[400] flex flex-col gap-3">
-          <button data-nav="settings" class="w-12 h-12 rounded-2xl bg-white/90 backdrop-blur-xl border border-slate-200 shadow-lg flex items-center justify-center text-slate-700 active:scale-95 transition-all hover:bg-white hover:text-indigo-600">
-            ${icon("settings", "w-5 h-5")}
-          </button>
-          <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-indigo-600 border border-indigo-500 shadow-[0_8px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-white active:scale-95 transition-all hover:bg-indigo-500">
+        <!-- Auto-Locate Button (Settings Button entfernt) -->
+        <div class="absolute bottom-6 right-4 z-30 flex flex-col gap-3">
+          <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-indigo-600 shadow-[0_8px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-white active:scale-95 transition-all">
             ${icon("navigation", "w-5 h-5 fill-white")}
           </button>
         </div>
 
-        <div id="mapSheetSlot" class="absolute bottom-4 left-4 right-4 z-[500]"></div>
+        <div id="mapSheetSlot" class="absolute bottom-4 left-4 right-4 z-40"></div>
       </div>
     </div>
   `;
@@ -7216,11 +7215,9 @@ function renderSettingsView() {
   }
 
   if (state.settingsView === "account") {
-    const restaurantOptions = (state.restaurants || []).map((r) => {
+    const restaurantOptions = state.restaurants.map((r) => {
       const label = escapeHtml(r.name || r.restaurantName || "Business");
-      const restId = String(r.id || r.restaurantId || "");
-      const selected = restId === String(profile.restaurantId || "") ? "selected" : "";
-      return `<option value="${escapeHtml(restId)}" ${selected}>${label}</option>`;
+      return `<option value="${r.id}" ${r.id === profile.restaurantId ? "selected" : ""}>${label}</option>`;
     }).join("");
 
     return `
@@ -7236,6 +7233,7 @@ function renderSettingsView() {
             <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">${icon("camera", "w-4 h-4")}</div>
           </div>
         </div>
+        
         <div class="p-6 rounded-[2rem] border border-slate-200/60 space-y-4 bg-white shadow-xl shadow-slate-200/20 relative overflow-hidden">
           <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
 
@@ -7259,18 +7257,17 @@ function renderSettingsView() {
             </div>
             
             <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50 mt-4">
-              <div class="flex items-center justify-between mb-2">
-                <label class="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1">
-                  ${icon("map-pin", "w-3 h-3")} Exakter Standort (Karte)
-                </label>
-                <span id="validationBadge" class="hidden bg-emerald-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest">Geprüft</span>
+              <label class="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 mb-2 ml-1">
+                ${icon("map-pin", "w-3 h-3")} Exakte Adresse (Karte)
+              </label>
+              <input id="settingsAddress" type="text" value="${escapeHtml(profile.address || "")}" placeholder="z.B. Rruga Garibaldi, Prishtina" class="w-full px-4 py-3 bg-white rounded-xl text-sm font-bold border border-slate-200 outline-none" />
+              
+              <div id="coordsDisplay" class="text-[9px] font-bold text-emerald-600 mt-2 hidden flex items-center gap-1">
+                ${icon("check-circle-2", "w-3 h-3")} Standort exakt markiert!
               </div>
-              <input id="settingsAddress" type="text" value="${escapeHtml(profile.address || "")}" placeholder="z.B. Rruga Garibaldi, Prishtina" class="w-full px-4 py-3 bg-white rounded-xl text-sm font-bold border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-300 shadow-inner" />
-              <div id="validationResult" class="text-[10px] font-bold text-slate-500 mt-2 px-1 hidden">
-                Gefunden: <span id="parsedAddress" class="text-slate-800"></span>
-              </div>
-              <button id="verifyAddressBtn" class="w-full mt-3 bg-indigo-100 text-indigo-700 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all hover:bg-indigo-200 flex items-center justify-center gap-1.5">
-                ${icon("search", "w-3.5 h-3.5")} Adresse prüfen
+
+              <button id="openLocationPickerBtn" class="w-full mt-3 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform hover:bg-indigo-700">
+                ${icon("map-pin", "w-3.5 h-3.5")} Auf Karte festlegen
               </button>
             </div>
             
@@ -7288,10 +7285,40 @@ function renderSettingsView() {
             </div>
           `}
           
-          <button id="saveAccountBtn" class="w-full mt-6 ${profile.role === "business" ? "bg-slate-300 cursor-not-allowed" : "bg-slate-900"} text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2" ${profile.role === "business" ? "disabled" : ""}>
+          <button id="saveAccountBtn" class="w-full mt-6 bg-slate-900 text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg">
             ${icon("save", "w-4 h-4")} Profil Speichern
           </button>
-          ${profile.role === "business" ? `<p class="text-[9px] font-bold text-center text-slate-400 mt-1">Bitte prüfe zuerst deine Adresse.</p>` : ""}
+        </div>
+        <div class="mt-4 text-center text-[10px] font-bold text-slate-400" id="settingsStatus"></div>
+      </div>
+
+      <!-- LOCATION PICKER MODAL -->
+      <div id="locationPickerModal" class="fixed inset-0 z-[3000] hidden flex flex-col p-4 pt-10">
+        <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-md transition-opacity duration-300 opacity-0" id="pickerOverlay"></div>
+        <div class="bg-white rounded-[2.5rem] flex-1 flex flex-col overflow-hidden relative shadow-2xl transition-transform duration-300 translate-y-full" id="pickerPanel">
+          <div class="p-5 flex justify-between items-center bg-white z-20 shadow-sm">
+            <div>
+              <h3 class="font-black text-lg leading-none">Standort anpassen</h3>
+              <p class="text-[10px] font-bold text-slate-400 mt-1">Verschiebe die Karte unter den Pin</p>
+            </div>
+            <button id="closeLocationPickerBtn" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">${icon("x", "w-5 h-5")}</button>
+          </div>
+          <div class="flex-1 relative bg-slate-200">
+            <div id="pickerMap" class="absolute inset-0 z-10"></div>
+            <!-- Center Pin -->
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-30 pointer-events-none drop-shadow-2xl">
+              <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center border-4 border-white shadow-xl animate-bounce">
+                ${icon("map-pin", "w-5 h-5 text-white fill-indigo-600")}
+              </div>
+              <div class="w-1 h-4 bg-slate-800 mx-auto -mt-1 rounded-full shadow-lg"></div>
+              <div class="w-4 h-1 bg-black/30 rounded-full mx-auto mt-1 blur-[2px]"></div>
+            </div>
+          </div>
+          <div class="p-5 bg-white z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.1)]">
+            <button id="confirmLocationBtn" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
+              ${icon("check", "w-4 h-4")} Hier bestätigen
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -8747,6 +8774,7 @@ function bindAppEvents() {
 
   document.querySelectorAll("[data-settings-back]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      // Kein Automatisches Speichern mehr beim Zurueckgehen!
       setState({ settingsView: "main" });
     });
   });
@@ -8761,29 +8789,23 @@ function bindAppEvents() {
     });
   }
 
-  const verifyAddressBtn = document.getElementById("verifyAddressBtn");
-  if (verifyAddressBtn) {
-    verifyAddressBtn.addEventListener("click", verifyBusinessAddress);
-  }
+  const openLocationPickerBtn = document.getElementById("openLocationPickerBtn");
+  if (openLocationPickerBtn) openLocationPickerBtn.addEventListener("click", openLocationPicker);
+  
+  const closeLocationPickerBtn = document.getElementById("closeLocationPickerBtn");
+  const pickerOverlay = document.getElementById("pickerOverlay");
+  if (closeLocationPickerBtn) closeLocationPickerBtn.addEventListener("click", closeLocationPicker);
+  if (pickerOverlay) pickerOverlay.addEventListener("click", closeLocationPicker);
+  
+  const confirmLocationBtn = document.getElementById("confirmLocationBtn");
+  if (confirmLocationBtn) confirmLocationBtn.addEventListener("click", confirmLocation);
 
   const settingsAddress = document.getElementById("settingsAddress");
   if (settingsAddress) {
     settingsAddress.addEventListener("input", () => {
       verifiedMapLocation = null;
-      if (saveAccountBtn) {
-        saveAccountBtn.disabled = true;
-        saveAccountBtn.classList.replace("bg-slate-900", "bg-slate-300");
-        saveAccountBtn.classList.add("cursor-not-allowed");
-      }
-      if (verifyAddressBtn) {
-        verifyAddressBtn.innerHTML = `${icon("search", "w-3.5 h-3.5")} Adresse prüfen`;
-        verifyAddressBtn.className = "w-full mt-3 bg-indigo-100 text-indigo-700 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all hover:bg-indigo-200 flex items-center justify-center gap-1.5";
-      }
-      const badge = document.getElementById("validationBadge");
+      const badge = document.getElementById("coordsDisplay");
       if (badge) badge.classList.add("hidden");
-      const resContainer = document.getElementById("validationResult");
-      if (resContainer) resContainer.classList.add("hidden");
-      if (window.lucide?.createIcons) window.lucide.createIcons();
     });
   }
 
@@ -9023,6 +9045,9 @@ async function saveAccountSettings() {
   const city = document.getElementById("settingsCity")?.value?.trim() || "Prishtina";
   const address = document.getElementById("settingsAddress")?.value?.trim() || "";
   const restaurantId = document.getElementById("settingsRestaurant")?.value || state.userProfile.restaurantId || "";
+  
+  const statusEl = document.getElementById("settingsStatus");
+  if (statusEl) statusEl.textContent = "Speichere Profil...";
 
   const payload = {
     displayName: name,
@@ -9060,9 +9085,17 @@ async function saveAccountSettings() {
       address,
       restaurantId
     };
+    if (verifiedMapLocation) {
+      state.userProfile.lat = verifiedMapLocation.lat;
+      state.userProfile.lng = verifiedMapLocation.lng;
+    }
     safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+    
+    if (statusEl) statusEl.textContent = "Erfolgreich gespeichert!";
+    setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 2000);
   } catch (err) {
     console.error(err);
+    if (statusEl) statusEl.textContent = "Fehler beim Speichern.";
   }
 }
 
@@ -10453,64 +10486,48 @@ async function bootstrapUser(user) {
   ensureTabData(state.activeTab);
 }
 
-async function verifyBusinessAddress() {
-  const addrInput = document.getElementById("settingsAddress");
-  const verifyBtn = document.getElementById("verifyAddressBtn");
-  const saveBtn = document.getElementById("saveAccountBtn");
-  const resContainer = document.getElementById("validationResult");
-  const parsedText = document.getElementById("parsedAddress");
-  const badge = document.getElementById("validationBadge");
+async function openLocationPicker() {
+  const address = document.getElementById("settingsAddress")?.value?.trim() || "";
+  const modal = document.getElementById("locationPickerModal");
+  const overlay = document.getElementById("pickerOverlay");
+  const panel = document.getElementById("pickerPanel");
 
-  if (!addrInput || !verifyBtn || !saveBtn || !resContainer || !parsedText || !badge) return;
+  if (!modal || !overlay || !panel) return;
 
-  const query = addrInput.value.trim();
-  if (!query) return;
+  modal.classList.remove("hidden");
+  setTimeout(() => {
+    overlay.classList.remove("opacity-0");
+    panel.classList.remove("translate-y-full");
+  }, 10);
 
-  verifyBtn.innerHTML = `${icon("loader-2", "w-3.5 h-3.5 animate-spin")} Prüfe...`;
-  verifyBtn.classList.add("opacity-70");
-  saveBtn.disabled = true;
-  saveBtn.classList.replace("bg-slate-900", "bg-slate-300");
-  saveBtn.classList.add("cursor-not-allowed");
-  badge.classList.add("hidden");
-  if (window.lucide?.createIcons) window.lucide.createIcons();
-
-  try {
-    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&limit=1`);
-    const data = await response.json();
-
-    if (data && data.length > 0) {
-      const result = data[0];
-      verifiedMapLocation = { lat: parseFloat(result.lat), lng: parseFloat(result.lon) };
-
-      verifyBtn.innerHTML = `${icon("check", "w-3.5 h-3.5")} Verifiziert`;
-      verifyBtn.classList.replace("bg-indigo-100", "bg-emerald-100");
-      verifyBtn.classList.replace("text-indigo-700", "text-emerald-700");
-
-      resContainer.classList.remove("hidden");
-      resContainer.classList.replace("text-rose-500", "text-slate-500");
-      parsedText.textContent = result.display_name.split(",").slice(0, 3).join(",");
-
-      badge.classList.remove("hidden");
-
-      saveBtn.disabled = false;
-      saveBtn.classList.remove("cursor-not-allowed");
-      saveBtn.classList.replace("bg-slate-300", "bg-slate-900");
-    } else {
-      throw new Error("Nicht gefunden");
-    }
-  } catch (err) {
-    verifyBtn.innerHTML = `${icon("alert-circle", "w-3.5 h-3.5")} Erneut prüfen`;
-    verifyBtn.classList.replace("bg-indigo-100", "bg-rose-100");
-    verifyBtn.classList.replace("text-indigo-700", "text-rose-700");
-
-    resContainer.classList.remove("hidden");
-    resContainer.classList.replace("text-slate-500", "text-rose-500");
-    parsedText.textContent = "Adresse nicht gefunden. Bitte genauer eingeben (inkl. Stadt).";
-    verifiedMapLocation = null;
+  if (!locationPickerMap && window.L) {
+    locationPickerMap = window.L.map("pickerMap", { zoomControl: false, attributionControl: false }).setView([42.6629, 21.1655], 16);
+    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(locationPickerMap);
   }
+  if (locationPickerMap) setTimeout(() => locationPickerMap.invalidateSize(), 300);
 
-  verifyBtn.classList.remove("opacity-70");
-  if (window.lucide?.createIcons) window.lucide.createIcons();
+  if (address && locationPickerMap) {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+      const data = await res.json();
+      if (data.length > 0) locationPickerMap.setView([data[0].lat, data[0].lon], 17, { animate: false });
+    } catch (e) {}
+  }
+}
+
+function closeLocationPicker() {
+  const modal = document.getElementById("locationPickerModal");
+  document.getElementById("pickerOverlay")?.classList.add("opacity-0");
+  document.getElementById("pickerPanel")?.classList.add("translate-y-full");
+  setTimeout(() => modal?.classList.add("hidden"), 300);
+}
+
+function confirmLocation() {
+  if (!locationPickerMap) return;
+  const center = locationPickerMap.getCenter();
+  verifiedMapLocation = { lat: center.lat, lng: center.lng };
+  document.getElementById("coordsDisplay")?.classList.remove("hidden");
+  closeLocationPicker();
 }
 
 loadPersisted();

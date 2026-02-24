@@ -363,7 +363,7 @@ textarea {
 .leaflet-control-attribution { display: none !important; }
 .custom-div-icon { background: transparent; border: none; }
 
-/* Pulsierender Radar-Effekt fuer User-Standort */
+/* Pulsierender Radar-Effekt für User-Standort */
 .user-radar::before {
   content: '';
   position: absolute;
