@@ -4490,33 +4490,23 @@ function renderMapSheet(selected) {
         </button>
         
         <div class="flex gap-4 pr-6 mt-2">
-          <!-- Logo mit Click zum Profil -->
-          <div id="mapVisitProfileImgBtn" class="w-20 h-20 rounded-[1.5rem] bg-slate-50 p-1 border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden relative group cursor-pointer">
-            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover rounded-[1.3rem] group-hover:scale-105 transition-transform duration-500" alt="Logo" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
-            <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
+          <div id="mapVisitProfileImgBtn" class="w-16 h-16 rounded-[1.2rem] bg-slate-100 shadow-sm flex-shrink-0 overflow-hidden relative cursor-pointer group">
+            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
           </div>
-          
-          <!-- Info -->
           <div class="flex-1 pt-1">
-            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md inline-block mb-1">Restaurant</span>
             <h3 class="text-lg font-black tracking-tight text-slate-900 leading-tight line-clamp-1">${escapeHtml(selected.name || "Business")}</h3>
-            <div class="flex items-center gap-2 mt-1 text-[11px] font-black text-slate-700">
-              <span class="flex items-center gap-1 text-indigo-600">${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)}</span>
-              <span class="w-1 h-1 rounded-full bg-slate-300"></span>
-              <span class="text-emerald-500 flex items-center gap-1.5"><div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div> Geöffnet</span>
-            </div>
-            <div class="flex items-center gap-1.5 mt-2 text-slate-500 text-[10px] font-bold line-clamp-1">
+            <div class="flex items-center gap-1.5 mt-1 text-slate-500 text-[10px] font-bold line-clamp-1">
               ${icon("map-pin", "w-3 h-3")} ${escapeHtml(selected.address)}
             </div>
           </div>
         </div>
 
-        <div class="mt-6 flex gap-3">
-          <button id="mapVisitProfileBtn" class="flex-1 bg-slate-900 text-white py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-wider active:scale-95 transition-all shadow-[0_10px_20px_rgba(15,23,42,0.2)] flex items-center justify-center gap-2 hover:bg-slate-800">
+        <div class="mt-5 flex gap-3">
+          <button id="mapVisitProfileBtn" class="flex-1 bg-slate-900 text-white py-3 rounded-xl text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-slate-800">
             ${icon("user", "w-4 h-4")} Profil
           </button>
-          <button id="mapOpenRouteBtn" class="w-14 h-[46px] bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center active:scale-95 transition-all hover:bg-indigo-100 border border-indigo-100/50">
-            ${icon("navigation", "w-5 h-5")}
+          <button id="mapOpenRouteBtn" class="w-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100">
+            ${icon("navigation", "w-4 h-4")}
           </button>
         </div>
       </div>
@@ -4531,7 +4521,7 @@ function renderMapView() {
       <div class="mb-4 px-2 flex justify-between items-end">
         <div>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
-          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale</p>
+          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale in deiner Nähe</p>
         </div>
       </div>
 
@@ -4544,7 +4534,7 @@ function renderMapView() {
         <div class="absolute top-5 left-4 right-4 z-30">
           <div class="relative group shadow-lg rounded-2xl">
             ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}
-            <input id="mapSearchInput" type="text" placeholder="Stadt, Lokal..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all" />
+            <input id="mapSearchInput" type="text" placeholder="Stadt, Lokal suchen..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all" />
           </div>
         </div>
 
