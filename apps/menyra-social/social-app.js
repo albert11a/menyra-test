@@ -1894,8 +1894,8 @@ function businessIcon(type) {
 let leafletMap = null;
 let leafletBizMarkers = [];
 let leafletUserMarker = null;
-let locationPickerMap = null;
-let verifiedMapLocation = null;
+let locationPickerMap = null; // NEU: Fuer das Settings-Modal
+let verifiedMapLocation = null; // NEU: Fuer die Koordinaten-Speicherung
 
 function hashValue(input) {
   return Array.from(String(input || "")).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
@@ -1906,8 +1906,14 @@ function normalizeBusinessLocation(rest, idx) {
   const baseLat = 42.6629;
   const baseLng = 21.1655;
   const hash = hashValue(rest.id || rest.name || idx);
-  const lat = rest.lat || geo?.lat || (baseLat + (((hash % 200) - 100) * 0.0025));
-  const lng = rest.lng || geo?.lng || (baseLng + ((((hash >> 3) % 200) - 100) * 0.003));
+
+  let lat = parseFloat(rest.lat || geo?.lat);
+  let lng = parseFloat(rest.lng || geo?.lng);
+
+  if (isNaN(lat) || isNaN(lng)) {
+    lat = baseLat + (((hash % 200) - 100) * 0.0025);
+    lng = baseLng + ((((hash >> 3) % 200) - 100) * 0.003);
+  }
 
   return {
     id: rest.id,
@@ -1918,7 +1924,7 @@ function normalizeBusinessLocation(rest, idx) {
     address: rest.address || rest.city || "Prishtina",
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.8,
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "",
+    img: rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || "",
     desc: rest.description || rest.bio || "Offizielles Lokal auf MENYRA.",
     raw: rest
   };
@@ -1935,21 +1941,16 @@ function cleanupLeaflet() {
 
 function makeBizDivIcon(b) {
   const isSelected = state.selectedBusiness?.id === b.id;
+  const safeImg = b.img && !isPlaceholderUrl(b.img) ? escapeHtml(b.img) : PLACEHOLDER_IMAGE;
   const html = `
-    <div class="relative flex flex-col items-center justify-center transition-all duration-300 ${isSelected ? "scale-110 z-[500]" : "hover:scale-105 z-[400]"}">
-      <div class="w-10 h-10 rounded-[1rem] shadow-lg flex items-center justify-center border-2 border-white ${isSelected ? "bg-indigo-600 text-white" : "bg-slate-900 text-white"}">
-        ${icon(businessIcon(b.type), "w-4 h-4")}
+    <div class="relative flex flex-col items-center justify-center transition-all duration-300 ${isSelected ? 'scale-110 z-[500]' : 'hover:scale-105 z-[400]'}">
+      <div class="w-12 h-12 rounded-[1rem] shadow-lg flex items-center justify-center border-[3px] ${isSelected ? 'border-indigo-600' : 'border-white'} bg-white overflow-hidden p-0.5">
+        <img src="${safeImg}" class="w-full h-full object-cover rounded-xl" onerror="this.src='${PLACEHOLDER_IMAGE}'"/>
       </div>
-      <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] ${isSelected ? "border-t-indigo-600" : "border-t-slate-900"} -mt-1"></div>
+      <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] ${isSelected ? 'border-t-indigo-600' : 'border-t-white drop-shadow-md'} -mt-1"></div>
     </div>
   `;
-
-  return window.L.divIcon({
-    className: "custom-div-icon",
-    html,
-    iconSize: [40, 50],
-    iconAnchor: [20, 50]
-  });
+  return window.L.divIcon({ className: "custom-div-icon", html, iconSize: [48, 58], iconAnchor: [24, 58] });
 }
 
 function updateMapSheet() {
@@ -1983,15 +1984,16 @@ function bindMapSheetEvents() {
 
   const mapVisitProfileBtn = document.getElementById("mapVisitProfileBtn");
   const mapVisitProfileImgBtn = document.getElementById("mapVisitProfileImgBtn");
-  [mapVisitProfileBtn, mapVisitProfileImgBtn].forEach((btn) => {
-    if (!btn) return;
-    btn.addEventListener("click", () => {
-      if (!state.selectedBusiness) return;
-      openProfileViewFromBusiness({
-        id: state.selectedBusiness.id,
-        name: state.selectedBusiness.name
+  [mapVisitProfileBtn, mapVisitProfileImgBtn].forEach(btn => {
+    if (btn) {
+      btn.addEventListener("click", () => {
+        if (!state.selectedBusiness) return;
+        openProfileViewFromBusiness({
+          id: state.selectedBusiness.id,
+          name: state.selectedBusiness.name
+        });
       });
-    });
+    }
   });
 }
 
@@ -2010,31 +2012,20 @@ function initLeafletIfNeeded() {
     return;
   }
 
-  leafletMap = window.L.map(el, {
-    zoomControl: false,
-    attributionControl: false,
-    preferCanvas: true
-  }).setView([42.6629, 21.1655], 15);
-
-  window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    maxZoom: 19
-  }).addTo(leafletMap);
+  // Zoom Level 15 = ca 2km Radius
+  leafletMap = window.L.map(el, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView([42.6629, 21.1655], 15);
+  window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(leafletMap);
 
   renderLeafletMarkers(state.businessLocations);
-
   updateMapSheet();
   if (window.lucide?.createIcons) window.lucide.createIcons();
 
   mapLocate();
-
   bindMapSearchInput();
 }
 
 function renderLeafletMarkers(locations) {
-  leafletBizMarkers.forEach((marker) => {
-    try { leafletMap.removeLayer(marker); } catch {}
-  });
-
+  leafletBizMarkers.forEach(marker => { try { leafletMap.removeLayer(marker); } catch {} });
   leafletBizMarkers = locations.map((b) => {
     const marker = window.L.marker([b.lat, b.lng], { icon: makeBizDivIcon(b) }).addTo(leafletMap);
     marker.__biz = b;
@@ -2051,12 +2042,10 @@ function renderLeafletMarkers(locations) {
 function bindMapSearchInput() {
   const searchInput = document.getElementById("mapSearchInput");
   if (!searchInput || searchInput.dataset.bound === "true") return;
-
   searchInput.addEventListener("input", (e) => {
     const query = e.target.value.toLowerCase();
-    const filtered = state.businessLocations.filter((b) =>
-      b.name.toLowerCase().includes(query)
-      || (b.address || b.city || "").toLowerCase().includes(query)
+    const filtered = state.businessLocations.filter(b => 
+      b.name.toLowerCase().includes(query) || (b.address || b.city || "").toLowerCase().includes(query)
     );
     renderLeafletMarkers(filtered);
     state.selectedBusiness = null;
@@ -2065,28 +2054,28 @@ function bindMapSearchInput() {
       try { leafletMap.panTo([filtered[0].lat, filtered[0].lng], { animate: true, duration: 0.5 }); } catch {}
     }
   });
-
   searchInput.dataset.bound = "true";
 }
 
 function setUserMarker(lat, lng, label = "Deine Position") {
   if (!leafletMap || !window.L) return;
-  const avatarUrl = getSelfAvatarUrl() || "https://ui-avatars.com/api/?name=" + (state.userProfile.name || "U");
+  
+  let avatarUrl = getSelfAvatarUrl();
+  if (!avatarUrl || isPlaceholderUrl(avatarUrl)) {
+    const nameStr = state.userProfile.name || "User";
+    avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameStr)}&background=4f46e5&color=fff`;
+  }
+
   const html = `
-    <div class="relative w-12 h-12 z-20 user-radar">
+    <div class="relative w-12 h-12 z-[1000] user-radar">
       <img src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-full object-cover border-[3px] border-white shadow-lg relative z-10 bg-slate-200" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
       <div class="absolute -bottom-1 -right-1 bg-indigo-600 rounded-full w-4 h-4 border-2 border-white flex items-center justify-center shadow"></div>
     </div>
   `;
-  const markerIcon = window.L.divIcon({
-    className: "custom-div-icon",
-    html,
-    iconSize: [48, 48],
-    iconAnchor: [24, 24]
-  });
+  const markerIcon = window.L.divIcon({ className: "custom-div-icon", html, iconSize: [48, 48], iconAnchor: [24, 24] });
 
   if (!leafletUserMarker) {
-    leafletUserMarker = window.L.marker([lat, lng], { icon: markerIcon, zIndexOffset: 1000 }).addTo(leafletMap);
+    leafletUserMarker = window.L.marker([lat, lng], { icon: markerIcon, zIndexOffset: 2000 }).addTo(leafletMap);
   } else {
     leafletUserMarker.setLatLng([lat, lng]);
     leafletUserMarker.setIcon(markerIcon);
@@ -3369,21 +3358,8 @@ function renderAuthScreen() {
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const switchLinks = renderRoleSwitchLinks();
-  const avatarUrl = resolveShellAvatarUrl();
+  const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
   const avatarFit = logoFitClass(state.userProfile.role === "business");
-  const showMenuTab = state.userProfile.role === "business"
-    || !!state.userProfile.restaurantId
-    || !!state.roleSwitchRestaurantId
-    || isRestaurantCafeProfile(state.userProfile);
-  const navItems = [
-    { id: "feed", label: "Feed", icon: "home" },
-    { id: "search", label: "Suche", icon: "search" },
-    { id: "map", label: "Karte", icon: "map" },
-    { id: "profile", label: "Profil", icon: "user" },
-    { id: "menu", label: "Speisekarte", icon: "book-open", hidden: !showMenuTab },
-    { id: "notifications", label: "Updates", icon: "bell", badge: unread },
-    { id: "settings", label: "Optionen", icon: "settings" }
-  ];
   return `
     <div id="drawerRoot" class="fixed inset-0 z-[2000] transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
@@ -3403,8 +3379,15 @@ function renderDrawer() {
           </div>
         </div>
         <nav class="space-y-2 flex-1">
-          ${navItems.map((item) => `
-            <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${state.activeTab === item.id ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
+          ${[
+            { id: "feed", label: "Feed", icon: "home" },
+            { id: "search", label: "Suche", icon: "search" },
+            { id: "map", label: "Karte", icon: "map" },
+            { id: "profile", label: "Profil", icon: "user" },
+            { id: "notifications", label: "Updates", icon: "bell", badge: unread },
+            { id: "settings", label: "Optionen", icon: "settings" }
+          ].map((item) => `
+            <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${state.activeTab === item.id ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">${icon(item.icon, "w-4 h-4")} ${item.label}</div>
               ${item.badge ? `<span data-unread-badge="drawer" class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge}</span>` : ""}
             </button>
@@ -4484,29 +4467,34 @@ function renderMapSheet(selected) {
     <div class="animate-in slide-in-from-bottom-6 duration-300">
       <div class="bg-white/95 backdrop-blur-xl rounded-[2rem] p-5 shadow-[0_30px_60px_rgba(0,0,0,0.25)] border border-slate-100/50 relative">
         <div class="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1 bg-slate-200 rounded-full"></div>
-        
+
         <button id="mapCloseBtn" class="absolute top-4 right-4 w-8 h-8 bg-slate-100/80 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 transition-colors">
           ${icon("x", "w-4 h-4")}
         </button>
-        
+
         <div class="flex gap-4 pr-6 mt-2">
-          <div id="mapVisitProfileImgBtn" class="w-16 h-16 rounded-[1.2rem] bg-slate-100 shadow-sm flex-shrink-0 overflow-hidden relative cursor-pointer group">
-            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover group-hover:scale-105 transition-transform" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
+          <div id="mapVisitProfileImgBtn" class="w-20 h-20 rounded-[1.5rem] bg-slate-50 p-1 border border-slate-100 shadow-sm flex-shrink-0 overflow-hidden relative group cursor-pointer">
+            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover rounded-[1.3rem] group-hover:scale-105 transition-transform" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
           </div>
           <div class="flex-1 pt-1">
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-md inline-block mb-1">Restaurant</span>
             <h3 class="text-lg font-black tracking-tight text-slate-900 leading-tight line-clamp-1">${escapeHtml(selected.name || "Business")}</h3>
-            <div class="flex items-center gap-1.5 mt-1 text-slate-500 text-[10px] font-bold line-clamp-1">
+            <div class="flex items-center gap-2 mt-1 text-[11px] font-black text-slate-700">
+              <span class="flex items-center gap-1 text-indigo-600">${icon("star", "w-3 h-3 fill-indigo-600 text-indigo-600")} ${escapeHtml(selected.rating)}</span>
+              <span class="text-emerald-500 flex items-center gap-1.5 ml-2"><div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.6)]"></div> Geoeffnet</span>
+            </div>
+            <div class="flex items-center gap-1.5 mt-2 text-slate-500 text-[10px] font-bold line-clamp-1">
               ${icon("map-pin", "w-3 h-3")} ${escapeHtml(selected.address)}
             </div>
           </div>
         </div>
 
         <div class="mt-5 flex gap-3">
-          <button id="mapVisitProfileBtn" class="flex-1 bg-slate-900 text-white py-3 rounded-xl text-[11px] font-black uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-slate-800">
+          <button id="mapVisitProfileBtn" class="flex-1 bg-slate-900 text-white py-3.5 rounded-2xl text-[11px] font-black uppercase tracking-wider active:scale-95 transition-all shadow-md flex items-center justify-center gap-2 hover:bg-slate-800">
             ${icon("user", "w-4 h-4")} Profil
           </button>
-          <button id="mapOpenRouteBtn" class="w-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center border border-indigo-100">
-            ${icon("navigation", "w-4 h-4")}
+          <button id="mapOpenRouteBtn" class="w-14 h-[46px] bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center active:scale-95 transition-all hover:bg-indigo-100 border border-indigo-100/50">
+            ${icon("navigation", "w-5 h-5")}
           </button>
         </div>
       </div>
@@ -4521,16 +4509,14 @@ function renderMapView() {
       <div class="mb-4 px-2 flex justify-between items-end">
         <div>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter text-slate-900">Karte</h2>
-          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale in deiner Nähe</p>
+          <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale</p>
         </div>
       </div>
 
-      <!-- z-index Fix und bg-slate-200 gegen schwarze Ränder -->
       <div class="relative flex-1 bg-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200/50 min-h-[500px]">
         
         ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-slate-500 text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
         
-        <!-- Schwebende Suchleiste -->
         <div class="absolute top-5 left-4 right-4 z-30">
           <div class="relative group shadow-lg rounded-2xl">
             ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}
@@ -4538,7 +4524,6 @@ function renderMapView() {
           </div>
         </div>
 
-        <!-- Auto-Locate Button (Settings Button entfernt) -->
         <div class="absolute bottom-6 right-4 z-30 flex flex-col gap-3">
           <button id="mapLocateBtn" class="w-12 h-12 rounded-2xl bg-indigo-600 shadow-[0_8px_20px_rgba(79,70,229,0.4)] flex items-center justify-center text-white active:scale-95 transition-all">
             ${icon("navigation", "w-5 h-5 fill-white")}
@@ -7205,21 +7190,18 @@ function renderSettingsView() {
   }
 
   if (state.settingsView === "account") {
-    const restaurantOptions = state.restaurants.map((r) => {
-      const label = escapeHtml(r.name || r.restaurantName || "Business");
-      return `<option value="${r.id}" ${r.id === profile.restaurantId ? "selected" : ""}>${label}</option>`;
-    }).join("");
-
+    const avatarFit = logoFitClass(profile.role === "business");
     return `
       <div class="p-6 animate-in slide-in-from-right-10 duration-500">
         <header class="flex items-center gap-4 mb-8">
           <button data-settings-back="true" class="p-3 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200">${icon("arrow-left", "w-4 h-4")}</button>
           <h2 class="text-xl font-black italic uppercase tracking-tighter">Account</h2>
         </header>
+        
         <div class="flex flex-col items-center mb-8">
           <input type="file" id="settingsAvatarInput" class="hidden" accept="image/*" />
           <div id="settingsAvatarTrigger" class="relative group cursor-pointer">
-            <img src="${escapeHtml(resolveUserAvatar(profile.avatar))}" class="w-28 h-28 rounded-[3rem] ${avatarFit} border-4 border-white shadow-xl" />
+            <img src="${escapeHtml(resolveUserAvatar(profile.avatar))}" class="w-28 h-28 rounded-[3rem] ${avatarFit} border-4 border-white shadow-xl" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
             <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">${icon("camera", "w-4 h-4")}</div>
           </div>
         </div>
@@ -7239,41 +7221,27 @@ function renderSettingsView() {
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bio</label>
             <textarea id="settingsBio" rows="3" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(profile.bio)}</textarea>
           </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
+            <input id="settingsCity" type="text" value="${escapeHtml(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
           
           ${profile.role === "business" ? `
-            <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
-              <input id="settingsCity" type="text" value="${escapeHtml(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-            </div>
-            
             <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50 mt-4">
               <label class="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 mb-2 ml-1">
-                ${icon("map-pin", "w-3 h-3")} Exakte Adresse (Karte)
+                ${icon("map-pin", "w-3 h-3")} Exakter Standort (Karte)
               </label>
               <input id="settingsAddress" type="text" value="${escapeHtml(profile.address || "")}" placeholder="z.B. Rruga Garibaldi, Prishtina" class="w-full px-4 py-3 bg-white rounded-xl text-sm font-bold border border-slate-200 outline-none" />
               
               <div id="coordsDisplay" class="text-[9px] font-bold text-emerald-600 mt-2 hidden flex items-center gap-1">
-                ${icon("check-circle-2", "w-3 h-3")} Standort exakt markiert!
+                ${icon("check-circle-2", "w-3 h-3")} Standort auf Karte fixiert!
               </div>
 
-              <button id="openLocationPickerBtn" class="w-full mt-3 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform hover:bg-indigo-700">
+              <button id="openLocationPickerBtn" type="button" class="w-full mt-3 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
                 ${icon("map-pin", "w-3.5 h-3.5")} Auf Karte festlegen
               </button>
             </div>
-            
-            <div class="mt-2">
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Link</label>
-              <select id="settingsRestaurant" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-                <option value="">Bitte waehlen</option>
-                ${restaurantOptions}
-              </select>
-            </div>
-          ` : `
-             <div>
-              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>
-              <input id="settingsCity" type="text" value="${escapeHtml(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-            </div>
-          `}
+          ` : ""}
           
           <button id="saveAccountBtn" class="w-full mt-6 bg-slate-900 text-white py-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 active:scale-95 shadow-lg">
             ${icon("save", "w-4 h-4")} Profil Speichern
@@ -7282,7 +7250,7 @@ function renderSettingsView() {
         <div class="mt-4 text-center text-[10px] font-bold text-slate-400" id="settingsStatus"></div>
       </div>
 
-      <!-- LOCATION PICKER MODAL -->
+      <!-- LOCATION PICKER MODAL (FEINJUSTIERUNG) -->
       <div id="locationPickerModal" class="fixed inset-0 z-[3000] hidden flex flex-col p-4 pt-10">
         <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-md transition-opacity duration-300 opacity-0" id="pickerOverlay"></div>
         <div class="bg-white rounded-[2.5rem] flex-1 flex flex-col overflow-hidden relative shadow-2xl transition-transform duration-300 translate-y-full" id="pickerPanel">
@@ -7291,21 +7259,22 @@ function renderSettingsView() {
               <h3 class="font-black text-lg leading-none">Standort anpassen</h3>
               <p class="text-[10px] font-bold text-slate-400 mt-1">Verschiebe die Karte unter den Pin</p>
             </div>
-            <button id="closeLocationPickerBtn" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">${icon("x", "w-5 h-5")}</button>
+            <button id="closeLocationPickerBtn" type="button" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">${icon("x", "w-5 h-5")}</button>
           </div>
+          
           <div class="flex-1 relative bg-slate-200">
             <div id="pickerMap" class="absolute inset-0 z-10"></div>
-            <!-- Center Pin -->
+            <!-- Statischer Pin in der Mitte der Karte -->
             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-30 pointer-events-none drop-shadow-2xl">
               <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center border-4 border-white shadow-xl animate-bounce">
                 ${icon("map-pin", "w-5 h-5 text-white fill-indigo-600")}
               </div>
               <div class="w-1 h-4 bg-slate-800 mx-auto -mt-1 rounded-full shadow-lg"></div>
-              <div class="w-4 h-1 bg-black/30 rounded-full mx-auto mt-1 blur-[2px]"></div>
             </div>
           </div>
+          
           <div class="p-5 bg-white z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.1)]">
-            <button id="confirmLocationBtn" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
+            <button id="confirmLocationBtn" type="button" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
               ${icon("check", "w-4 h-4")} Hier bestätigen
             </button>
           </div>
@@ -8764,7 +8733,6 @@ function bindAppEvents() {
 
   document.querySelectorAll("[data-settings-back]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      // Kein Automatisches Speichern mehr beim Zurueckgehen!
       setState({ settingsView: "main" });
     });
   });
@@ -9027,6 +8995,57 @@ async function uploadAvatar(file) {
   }
 }
 
+async function openLocationPicker() {
+  const address = document.getElementById('settingsAddress')?.value.trim();
+  const modal = document.getElementById('locationPickerModal');
+  const overlay = document.getElementById('pickerOverlay');
+  const panel = document.getElementById('pickerPanel');
+  
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    overlay.classList.remove('opacity-0');
+    panel.classList.remove('translate-y-full');
+  }, 10);
+
+  // Clean up if map container was lost
+  if (locationPickerMap && !document.getElementById('pickerMap').hasChildNodes()) {
+     locationPickerMap.remove();
+     locationPickerMap = null;
+  }
+
+  if(!locationPickerMap && window.L) {
+    locationPickerMap = window.L.map('pickerMap', { zoomControl: false, attributionControl: false }).setView([42.6629, 21.1655], 16);
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(locationPickerMap);
+  }
+  
+  if (locationPickerMap) {
+    setTimeout(() => locationPickerMap.invalidateSize(), 300);
+    // Auto-Center basierend auf Eingabe
+    if(address) {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+        const data = await res.json();
+        if(data.length > 0) locationPickerMap.setView([data[0].lat, data[0].lon], 17, {animate: false});
+      } catch(e) {}
+    }
+  }
+}
+
+function closeLocationPicker() {
+  const modal = document.getElementById('locationPickerModal');
+  document.getElementById('pickerOverlay')?.classList.add('opacity-0');
+  document.getElementById('pickerPanel')?.classList.add('translate-y-full');
+  setTimeout(() => modal?.classList.add('hidden'), 300);
+}
+
+function confirmLocation() {
+  if (!locationPickerMap) return;
+  const center = locationPickerMap.getCenter();
+  verifiedMapLocation = { lat: center.lat, lng: center.lng };
+  document.getElementById('coordsDisplay')?.classList.remove('hidden');
+  closeLocationPicker();
+}
+
 async function saveAccountSettings() {
   if (!state.user) return;
   const name = document.getElementById("settingsName")?.value?.trim() || state.userProfile.name || "User";
@@ -9034,7 +9053,7 @@ async function saveAccountSettings() {
   const bio = document.getElementById("settingsBio")?.value?.trim() || "";
   const city = document.getElementById("settingsCity")?.value?.trim() || "Prishtina";
   const address = document.getElementById("settingsAddress")?.value?.trim() || "";
-  const restaurantId = document.getElementById("settingsRestaurant")?.value || state.userProfile.restaurantId || "";
+  const restaurantId = state.userProfile.restaurantId || ""; // Fix: Verlinkung wurde entfernt, bleibt also der bestehende State
   
   const statusEl = document.getElementById("settingsStatus");
   if (statusEl) statusEl.textContent = "Speichere Profil...";
@@ -9058,11 +9077,21 @@ async function saveAccountSettings() {
 
   try {
     await setDoc(doc(db, "users", state.user.uid), payload, { merge: true });
-
+    
+    // In Restaurant speichern UND CACHE sofort updaten!
     if (restaurantId && verifiedMapLocation) {
-      await setDoc(doc(db, "restaurants", restaurantId), {
-        lat: verifiedMapLocation.lat, lng: verifiedMapLocation.lng, address
+      await setDoc(doc(db, "restaurants", restaurantId), { 
+        lat: verifiedMapLocation.lat, lng: verifiedMapLocation.lng, address 
       }, { merge: true });
+
+      const restIdx = state.restaurants.findIndex(r => r.id === restaurantId);
+      if (restIdx >= 0) {
+        state.restaurants[restIdx].lat = verifiedMapLocation.lat;
+        state.restaurants[restIdx].lng = verifiedMapLocation.lng;
+        state.restaurants[restIdx].address = address;
+        writeCache(CACHE_KEYS.restaurants, state.restaurants);
+        rebuildBusinessLocations();
+      }
     }
 
     await updateProfile(state.user, { displayName: name });
@@ -9079,6 +9108,7 @@ async function saveAccountSettings() {
       state.userProfile.lat = verifiedMapLocation.lat;
       state.userProfile.lng = verifiedMapLocation.lng;
     }
+
     safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
     
     if (statusEl) statusEl.textContent = "Erfolgreich gespeichert!";
@@ -10474,50 +10504,6 @@ async function bootstrapUser(user) {
   }
   startLiveListeners(user);
   ensureTabData(state.activeTab);
-}
-
-async function openLocationPicker() {
-  const address = document.getElementById("settingsAddress")?.value?.trim() || "";
-  const modal = document.getElementById("locationPickerModal");
-  const overlay = document.getElementById("pickerOverlay");
-  const panel = document.getElementById("pickerPanel");
-
-  if (!modal || !overlay || !panel) return;
-
-  modal.classList.remove("hidden");
-  setTimeout(() => {
-    overlay.classList.remove("opacity-0");
-    panel.classList.remove("translate-y-full");
-  }, 10);
-
-  if (!locationPickerMap && window.L) {
-    locationPickerMap = window.L.map("pickerMap", { zoomControl: false, attributionControl: false }).setView([42.6629, 21.1655], 16);
-    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(locationPickerMap);
-  }
-  if (locationPickerMap) setTimeout(() => locationPickerMap.invalidateSize(), 300);
-
-  if (address && locationPickerMap) {
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
-      const data = await res.json();
-      if (data.length > 0) locationPickerMap.setView([data[0].lat, data[0].lon], 17, { animate: false });
-    } catch (e) {}
-  }
-}
-
-function closeLocationPicker() {
-  const modal = document.getElementById("locationPickerModal");
-  document.getElementById("pickerOverlay")?.classList.add("opacity-0");
-  document.getElementById("pickerPanel")?.classList.add("translate-y-full");
-  setTimeout(() => modal?.classList.add("hidden"), 300);
-}
-
-function confirmLocation() {
-  if (!locationPickerMap) return;
-  const center = locationPickerMap.getCenter();
-  verifiedMapLocation = { lat: center.lat, lng: center.lng };
-  document.getElementById("coordsDisplay")?.classList.remove("hidden");
-  closeLocationPicker();
 }
 
 loadPersisted();
