@@ -133,6 +133,7 @@ const LEAD_STATUS_LABELS = {
   new: "Neu",
   contacted: "Kontaktiert",
   interested: "Interessiert",
+  testphase: "Testphase",
   no_interest: "Kein Interesse",
   converted: "Kunde",
   archived: "Archiv"
@@ -327,7 +328,8 @@ const state = {
     status: "",
     loading: false,
     logoFile: null,
-    logoPreview: ""
+    logoPreview: "",
+    coords: null
   },
   customerModal: {
     open: false,
@@ -960,6 +962,8 @@ function isCeoUser() {
 function normalizeLeadStatusKey(value) {
   const key = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
   if (key === "kein_interesse" || key === "keine_interesse") return "no_interest";
+  if (key === "demo") return "testphase";
+  if (key === "test_phase") return "testphase";
   return key;
 }
 
@@ -990,6 +994,12 @@ function resolveCustomerType(value) {
   return key || "cafe";
 }
 
+function customerStatusLabel(value) {
+  const key = String(value || "active").toLowerCase();
+  if (key === "demo" || key === "testphase") return "TESTPHASE";
+  return key.toUpperCase();
+}
+
 function slugify(input) {
   return String(input || "")
     .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
@@ -1003,6 +1013,7 @@ function isCustomerRestaurant(rest = {}) {
   const status = String(rest.status || "").toLowerCase();
   if (!status) return true;
   if (status === "lead") return false;
+  if (status === "testphase" || status === "demo") return false;
   if (status === "prospect") return false;
   return true;
 }
@@ -1512,7 +1523,7 @@ function resetUserScopedState() {
   menuItemCountsRequested.clear();
   state.leads = { items: [], loading: false, error: "", query: "", status: "" };
   state.customers = { items: [], loading: false, error: "", query: "" };
-  state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "" };
+  state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "", coords: null };
   state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
   state.selectedBusiness = null;
   state.followingHandles = [];
@@ -2014,6 +2025,7 @@ let leafletBizMarkers = [];
 let leafletUserMarker = null;
 let locationPickerMap = null; // NEU: Fuer das Settings-Modal
 let verifiedMapLocation = null; // NEU: Fuer die Koordinaten-Speicherung
+let locationPickerTarget = { addressInputId: "settingsAddress", coordsDisplayId: "coordsDisplay", context: "settings" };
 
 function hashValue(input) {
   return Array.from(String(input || "")).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
@@ -3827,7 +3839,7 @@ function bindFeedDelegation() {
           profileModal: { open: false, profile: null },
           postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
           likesModal: { open: false, postId: "", animate: false },
-          leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "" },
+          leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "", coords: null },
           customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
         });
       }
@@ -6913,6 +6925,8 @@ function renderLeadModal() {
   const customerType = resolveCustomerType(lead.customerType || "cafe");
   const leadEmail = lead.socialEmail || lead.email || "";
   const leadStatus = normalizeLeadStatusKey(lead.status || "new") || "new";
+  const coords = state.leadModal.coords;
+  const hasCoords = coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng);
 
   return `
     <div class="fixed inset-0 z-[90] modal-overlay">
@@ -6977,6 +6991,17 @@ function renderLeadModal() {
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
                 <input id="leadAddress" type="text" value="${escapeHtml(lead.address || "")}" placeholder="Strasse, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
               </div>
+              <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50">
+                <label class="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 mb-2 ml-1">
+                  ${icon("map-pin", "w-3 h-3")} Exakter Standort (Karte)
+                </label>
+                <div id="leadCoordsDisplay" class="text-[9px] font-bold text-emerald-600 mt-1 flex items-center gap-1 ${hasCoords ? "" : "hidden"}">
+                  ${icon("check-circle-2", "w-3 h-3")} Standort auf Karte fixiert!
+                </div>
+                <button id="leadLocationPickerBtn" type="button" class="w-full mt-3 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">
+                  ${icon("map-pin", "w-3.5 h-3.5")} Auf Karte festlegen
+                </button>
+              </div>
               <div>
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
                 <input id="leadLogoUrl" type="text" value="${escapeHtml(lead.logoUrl || lead.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
@@ -7014,7 +7039,8 @@ function renderCustomerModal() {
   const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
   const status = state.customerModal.status || "";
   const typeKey = resolveCustomerType(customer.type || customer.customerType || "cafe");
-  const customerStatus = String(customer.status || "active").toLowerCase();
+  const rawStatus = String(customer.status || "active").toLowerCase();
+  const customerStatus = rawStatus === "demo" ? "testphase" : rawStatus;
 
   return `
     <div class="fixed inset-0 z-[90] modal-overlay">
@@ -7085,7 +7111,7 @@ function renderCustomerModal() {
                 <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
                 <select id="customerStatus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
                   <option value="active" ${customerStatus === "active" ? "selected" : ""}>Aktiv</option>
-                  <option value="demo" ${customerStatus === "demo" ? "selected" : ""}>Demo</option>
+                  <option value="testphase" ${customerStatus === "testphase" ? "selected" : ""}>Testphase</option>
                   <option value="lead" ${customerStatus === "lead" ? "selected" : ""}>Lead</option>
                 </select>
               </div>
@@ -7861,7 +7887,7 @@ function renderCustomersView() {
       const name = rest.name || rest.restaurantName || "Business";
       const typeLabel = leadTypeLabel(rest.type || rest.customerType || "");
       const city = rest.city || "";
-      const statusLabel = String(rest.status || "active").toUpperCase();
+      const statusLabel = customerStatusLabel(rest.status);
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
           <div class="flex items-center gap-3">
@@ -9041,6 +9067,8 @@ function bindOverlayEvents({
     const leadLogoTrigger = document.getElementById("leadLogoTrigger");
     const leadLogoInput = document.getElementById("leadLogoInput");
     const leadLogoUrl = document.getElementById("leadLogoUrl");
+    const leadLocationPickerBtn = document.getElementById("leadLocationPickerBtn");
+    const leadAddressInput = document.getElementById("leadAddress");
 
     if (leadOverlay) {
       leadOverlay.addEventListener("click", (evt) => {
@@ -9077,6 +9105,22 @@ function bindOverlayEvents({
         const val = leadLogoUrl.value.trim();
         const img = document.getElementById("leadLogoPreview");
         if (img) img.setAttribute("src", val || PLACEHOLDER_IMAGE);
+      });
+    }
+    if (leadLocationPickerBtn) {
+      leadLocationPickerBtn.addEventListener("click", () => {
+        void openLocationPicker({
+          addressInputId: "leadAddress",
+          coordsDisplayId: "leadCoordsDisplay",
+          context: "lead"
+        });
+      });
+    }
+    if (leadAddressInput) {
+      leadAddressInput.addEventListener("input", () => {
+        state.leadModal.coords = null;
+        const badge = document.getElementById("leadCoordsDisplay");
+        if (badge) badge.classList.add("hidden");
       });
     }
   }
@@ -9176,7 +9220,7 @@ function bindAppEvents() {
         profileModal: { open: false, profile: null },
         postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
         likesModal: { open: false, postId: "", animate: false },
-        leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "" },
+        leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "", coords: null },
         customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
       });
     });
@@ -9396,15 +9440,13 @@ function bindAppEvents() {
   }
 
   const openLocationPickerBtn = document.getElementById("openLocationPickerBtn");
-  if (openLocationPickerBtn) openLocationPickerBtn.addEventListener("click", openLocationPicker);
-  
-  const closeLocationPickerBtn = document.getElementById("closeLocationPickerBtn");
-  const pickerOverlay = document.getElementById("pickerOverlay");
-  if (closeLocationPickerBtn) closeLocationPickerBtn.addEventListener("click", closeLocationPicker);
-  if (pickerOverlay) pickerOverlay.addEventListener("click", closeLocationPicker);
-  
-  const confirmLocationBtn = document.getElementById("confirmLocationBtn");
-  if (confirmLocationBtn) confirmLocationBtn.addEventListener("click", confirmLocation);
+  if (openLocationPickerBtn) {
+    openLocationPickerBtn.addEventListener("click", () => openLocationPicker({
+      addressInputId: "settingsAddress",
+      coordsDisplayId: "coordsDisplay",
+      context: "settings"
+    }));
+  }
 
   const settingsAddress = document.getElementById("settingsAddress");
   if (settingsAddress) {
@@ -9698,38 +9740,85 @@ async function uploadAvatar(file) {
   }
 }
 
-async function openLocationPicker() {
-  const address = document.getElementById('settingsAddress')?.value.trim();
-  const modal = document.getElementById('locationPickerModal');
-  const overlay = document.getElementById('pickerOverlay');
-  const panel = document.getElementById('pickerPanel');
-  
-  modal.classList.remove('hidden');
+function ensureLocationPickerModal() {
+  if (document.getElementById("locationPickerModal")) return;
+  const modal = document.createElement("div");
+  modal.id = "locationPickerModal";
+  modal.className = "fixed inset-0 z-[3000] hidden flex flex-col p-4 pt-10";
+  modal.innerHTML = `
+    <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-md transition-opacity duration-300 opacity-0" id="pickerOverlay"></div>
+    <div class="bg-white rounded-[2.5rem] flex-1 flex flex-col overflow-hidden relative shadow-2xl transition-transform duration-300 translate-y-full" id="pickerPanel">
+      <div class="p-5 flex justify-between items-center bg-white z-20 shadow-sm">
+        <div>
+          <h3 class="font-black text-lg leading-none">Standort anpassen</h3>
+          <p class="text-[10px] font-bold text-slate-400 mt-1">Verschiebe die Karte unter den Pin</p>
+        </div>
+        <button id="closeLocationPickerBtn" type="button" class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600">${icon("x", "w-5 h-5")}</button>
+      </div>
+      <div class="flex-1 relative bg-slate-200">
+        <div id="pickerMap" class="absolute inset-0 z-10"></div>
+        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full z-30 pointer-events-none drop-shadow-2xl">
+          <div class="w-12 h-12 bg-indigo-600 rounded-full flex items-center justify-center border-4 border-white shadow-xl animate-bounce">
+            ${icon("map-pin", "w-5 h-5 text-white fill-indigo-600")}
+          </div>
+          <div class="w-1 h-4 bg-slate-800 mx-auto -mt-1 rounded-full shadow-lg"></div>
+        </div>
+      </div>
+      <div class="p-5 bg-white z-20 shadow-[0_-10px_30px_rgba(0,0,0,0.1)]">
+        <button id="confirmLocationBtn" type="button" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
+          ${icon("check", "w-4 h-4")} Hier bestaetigen
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+}
+
+function bindLocationPickerEvents() {
+  const modal = document.getElementById("locationPickerModal");
+  if (!modal || modal.dataset.bound === "true") return;
+  const overlay = document.getElementById("pickerOverlay");
+  const closeBtn = document.getElementById("closeLocationPickerBtn");
+  const confirmBtn = document.getElementById("confirmLocationBtn");
+  if (overlay) overlay.addEventListener("click", closeLocationPicker);
+  if (closeBtn) closeBtn.addEventListener("click", closeLocationPicker);
+  if (confirmBtn) confirmBtn.addEventListener("click", confirmLocation);
+  modal.dataset.bound = "true";
+}
+
+async function openLocationPicker({ addressInputId = "settingsAddress", coordsDisplayId = "coordsDisplay", context = "settings" } = {}) {
+  ensureLocationPickerModal();
+  bindLocationPickerEvents();
+  locationPickerTarget = { addressInputId, coordsDisplayId, context };
+  const address = document.getElementById(addressInputId)?.value?.trim() || "";
+  const modal = document.getElementById("locationPickerModal");
+  const overlay = document.getElementById("pickerOverlay");
+  const panel = document.getElementById("pickerPanel");
+
+  if (modal) modal.classList.remove("hidden");
   setTimeout(() => {
-    overlay.classList.remove('opacity-0');
-    panel.classList.remove('translate-y-full');
+    overlay?.classList.remove("opacity-0");
+    panel?.classList.remove("translate-y-full");
   }, 10);
 
-  // Clean up if map container was lost
-  if (locationPickerMap && !document.getElementById('pickerMap').hasChildNodes()) {
-     locationPickerMap.remove();
-     locationPickerMap = null;
+  if (locationPickerMap && !document.getElementById("pickerMap")?.hasChildNodes()) {
+    locationPickerMap.remove();
+    locationPickerMap = null;
   }
 
-  if(!locationPickerMap && window.L) {
-    locationPickerMap = window.L.map('pickerMap', { zoomControl: false, attributionControl: false }).setView([42.6629, 21.1655], 16);
-    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(locationPickerMap);
+  if (!locationPickerMap && window.L) {
+    locationPickerMap = window.L.map("pickerMap", { zoomControl: false, attributionControl: false }).setView([42.6629, 21.1655], 16);
+    window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(locationPickerMap);
   }
-  
+
   if (locationPickerMap) {
     setTimeout(() => locationPickerMap.invalidateSize(), 300);
-    // Auto-Center basierend auf Eingabe
-    if(address) {
+    if (address) {
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
         const data = await res.json();
-        if(data.length > 0) locationPickerMap.setView([data[0].lat, data[0].lon], 17, {animate: false});
-      } catch(e) {}
+        if (data.length > 0) locationPickerMap.setView([data[0].lat, data[0].lon], 17, { animate: false });
+      } catch {}
     }
   }
 }
@@ -9744,8 +9833,14 @@ function closeLocationPicker() {
 function confirmLocation() {
   if (!locationPickerMap) return;
   const center = locationPickerMap.getCenter();
-  verifiedMapLocation = { lat: center.lat, lng: center.lng };
-  document.getElementById('coordsDisplay')?.classList.remove('hidden');
+  const coords = { lat: center.lat, lng: center.lng };
+  if (locationPickerTarget.context === "lead") {
+    state.leadModal.coords = coords;
+  } else {
+    verifiedMapLocation = coords;
+  }
+  const badge = document.getElementById(locationPickerTarget.coordsDisplayId || "coordsDisplay");
+  badge?.classList.remove("hidden");
   closeLocationPicker();
 }
 
@@ -10961,13 +11056,15 @@ async function createAuthUser(email, password) {
   return cred?.user || null;
 }
 
-async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, city, logoUrl, roles }) {
+async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, city, address, phone, logoUrl, roles }) {
   if (!uid) return;
   const payload = {
     displayName: name || email || "",
     email: email || "",
     bio: "",
     city: city || "Prishtina",
+    address: address || "",
+    phone: phone || "",
     role: "business",
     roles: normalizeRoleList(roles || "owner"),
     restaurantId: restaurantId || "",
@@ -11003,6 +11100,8 @@ function normalizeLeadDoc(docSnap) {
     email: data.email || "",
     city: data.city || "",
     address: data.address || "",
+    lat: data.lat ?? null,
+    lng: data.lng ?? null,
     logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
     note: data.note || "",
     status: data.status || "new",
@@ -11014,11 +11113,37 @@ function normalizeLeadDoc(docSnap) {
   };
 }
 
+function normalizeLeadFromRestaurant(rest) {
+  if (!rest?.id) return null;
+  const status = normalizeLeadStatusKey(rest.status || "lead") || "lead";
+  return {
+    id: rest.leadId || rest.id,
+    businessName: rest.name || rest.restaurantName || "",
+    customerType: rest.type || rest.customerType || "cafe",
+    contactName: rest.ownerName || "",
+    phone: rest.phone || "",
+    email: rest.ownerEmail || "",
+    city: rest.city || "",
+    address: rest.address || "",
+    logoUrl: rest.logoUrl || rest.logo || "",
+    note: "",
+    status,
+    restaurantId: rest.id,
+    socialUid: rest.ownerUid || "",
+    socialEmail: rest.ownerEmail || "",
+    createdAt: rest.createdAt,
+    updatedAt: rest.updatedAt,
+    lat: rest.lat ?? null,
+    lng: rest.lng ?? null
+  };
+}
+
 function leadStatusTone(status) {
   const key = normalizeLeadStatusKey(status);
   if (key === "new") return { bg: "bg-indigo-50", text: "text-indigo-600" };
   if (key === "contacted") return { bg: "bg-amber-50", text: "text-amber-600" };
   if (key === "interested") return { bg: "bg-emerald-50", text: "text-emerald-600" };
+  if (key === "testphase") return { bg: "bg-sky-50", text: "text-sky-600" };
   if (key === "no_interest") return { bg: "bg-slate-100", text: "text-slate-500" };
   if (key === "converted") return { bg: "bg-emerald-100", text: "text-emerald-700" };
   if (key === "archived") return { bg: "bg-slate-100", text: "text-slate-400" };
@@ -11028,6 +11153,7 @@ function leadStatusTone(status) {
 function resolveRestaurantStatusFromLead(leadStatus, currentStatus = "") {
   const leadKey = normalizeLeadStatusKey(leadStatus);
   if (leadKey === "converted") return "active";
+  if (leadKey === "testphase") return "testphase";
   if (currentStatus && currentStatus !== "lead") return currentStatus;
   return "lead";
 }
@@ -11109,13 +11235,18 @@ async function loadCustomers() {
 function openLeadModal(mode = "create", lead = null) {
   if (!isCeoUser()) return;
   const rest = lead?.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
+  const lat = Number(lead?.lat ?? rest?.lat);
+  const lng = Number(lead?.lng ?? rest?.lng);
+  const coords = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
   const merged = {
     ...(lead || {}),
     businessName: lead?.businessName || rest?.name || rest?.restaurantName || "",
     city: lead?.city || rest?.city || "",
     address: lead?.address || rest?.address || "",
     phone: lead?.phone || rest?.phone || "",
-    logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || ""
+    logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || "",
+    lat: Number.isFinite(lat) ? lat : undefined,
+    lng: Number.isFinite(lng) ? lng : undefined
   };
   state.leadModal = {
     open: true,
@@ -11124,7 +11255,8 @@ function openLeadModal(mode = "create", lead = null) {
     status: "",
     loading: false,
     logoFile: null,
-    logoPreview: merged.logoUrl || ""
+    logoPreview: merged.logoUrl || "",
+    coords
   };
   renderOverlays({ updateLead: true });
 }
@@ -11137,7 +11269,8 @@ function closeLeadModal() {
     status: "",
     loading: false,
     logoFile: null,
-    logoPreview: ""
+    logoPreview: "",
+    coords: null
   };
   renderOverlays({ updateLead: true });
 }
@@ -11183,6 +11316,7 @@ async function saveLeadFromModal() {
   const logoUrlInput = document.getElementById("leadLogoUrl")?.value?.trim() || "";
   const note = document.getElementById("leadNote")?.value?.trim() || "";
   const statusValue = document.getElementById("leadStatus")?.value || lead.status || "new";
+  const coords = state.leadModal.coords;
 
   if (!businessName) {
     state.leadModal.status = "Bitte Business Name eingeben.";
@@ -11223,10 +11357,15 @@ async function saveLeadFromModal() {
       ownerName: contactName || "",
       ownerEmail: emailInput || "",
       logoUrl,
+      logo: logoUrl,
       status: restaurantStatus,
       leadId: lead.id || "",
       updatedAt: serverTimestamp()
     };
+    if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+      restPayload.lat = coords.lat;
+      restPayload.lng = coords.lng;
+    }
 
     if (restRef) {
       await setDoc(restRef, {
@@ -11257,6 +11396,8 @@ async function saveLeadFromModal() {
             name: businessName,
             restaurantId,
             city,
+            address,
+            phone,
             logoUrl,
             roles: ["owner"]
           });
@@ -11292,6 +11433,10 @@ async function saveLeadFromModal() {
       createdByUid: lead.createdByUid || state.user.uid,
       createdByRole: "ceo"
     };
+    if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
+      leadPayload.lat = coords.lat;
+      leadPayload.lng = coords.lng;
+    }
     if (!lead.id) {
       leadPayload.createdAt = serverTimestamp();
     }
@@ -11369,11 +11514,42 @@ async function saveCustomerFromModal() {
       city,
       address,
       logoUrl,
+      logo: logoUrl,
       status: statusValue,
       updatedAt: serverTimestamp()
     };
     await setDoc(doc(db, "restaurants", customer.id), payload, { merge: true });
     await ensureRestaurantPublicMeta(customer.id, payload);
+
+    if (statusValue === "testphase" || statusValue === "lead") {
+      const leadId = customer.leadId || payload.leadId || "";
+      const leadRef = leadId ? doc(db, "leads", leadId) : doc(collection(db, "leads"));
+      const leadPayload = {
+        businessName: name,
+        customerType: type,
+        contactName: ownerName,
+        phone,
+        email: ownerEmail,
+        city,
+        address,
+        logoUrl,
+        status: statusValue === "testphase" ? "testphase" : "new",
+        restaurantId: customer.id,
+        updatedAt: serverTimestamp(),
+        createdByUid: state.user.uid,
+        createdByRole: "ceo"
+      };
+      if (!leadId) leadPayload.createdAt = serverTimestamp();
+      await setDoc(leadRef, leadPayload, { merge: true });
+      if (!leadId) {
+        await setDoc(doc(db, "restaurants", customer.id), { leadId: leadRef.id }, { merge: true });
+        payload.leadId = leadRef.id;
+      }
+      const normalizedLead = normalizeLeadDoc({ id: leadRef.id, ...leadPayload });
+      const idx = state.leads.items.findIndex((item) => String(item.id) === String(leadRef.id));
+      if (idx >= 0) state.leads.items[idx] = { ...state.leads.items[idx], ...normalizedLead };
+      else state.leads.items.unshift(normalizedLead);
+    }
 
     state.restaurants = mergeRestaurants(state.restaurants, [{ id: customer.id, ...customer, ...payload }]);
     rebuildBusinessLocations();
@@ -11411,10 +11587,15 @@ async function convertLeadToCustomer(leadId) {
       ownerName: lead.contactName || "",
       ownerEmail: lead.email || lead.socialEmail || "",
       logoUrl: lead.logoUrl || "",
+      logo: lead.logoUrl || "",
       status: "active",
       leadId: lead.id || "",
       updatedAt: serverTimestamp()
     };
+    if (Number.isFinite(Number(lead.lat)) && Number.isFinite(Number(lead.lng))) {
+      restPayload.lat = Number(lead.lat);
+      restPayload.lng = Number(lead.lng);
+    }
 
     if (!restaurantId) {
       const restRef = doc(collection(db, "restaurants"));
@@ -11444,6 +11625,8 @@ async function convertLeadToCustomer(leadId) {
             name: businessName,
             restaurantId,
             city: lead.city || "",
+            address: lead.address || "",
+            phone: lead.phone || "",
             logoUrl: lead.logoUrl || "",
             roles: ["owner"]
           });
