@@ -363,6 +363,7 @@ let userDocUnsub = null;
 let profileViewUnsub = null;
 let feedUnsub = null;
 let storiesUnsub = null;
+let restaurantsUnsub = null;
 let userPostsUnsub = null;
 let businessPostsUnsub = null;
 let modalPostDocUnsub = null;
@@ -2025,6 +2026,7 @@ function initLeafletIfNeeded() {
 }
 
 function renderLeafletMarkers(locations) {
+  if (!leafletMap || !window.L) return;
   leafletBizMarkers.forEach(marker => { try { leafletMap.removeLayer(marker); } catch {} });
   leafletBizMarkers = locations.map((b) => {
     const marker = window.L.marker([b.lat, b.lng], { icon: makeBizDivIcon(b) }).addTo(leafletMap);
@@ -2039,14 +2041,20 @@ function renderLeafletMarkers(locations) {
   });
 }
 
+function filterMapLocationsByQuery(query) {
+  const key = String(query || "").toLowerCase().trim();
+  if (!key) return state.businessLocations;
+  return state.businessLocations.filter(b =>
+    b.name.toLowerCase().includes(key) || (b.address || b.city || "").toLowerCase().includes(key)
+  );
+}
+
 function bindMapSearchInput() {
   const searchInput = document.getElementById("mapSearchInput");
   if (!searchInput || searchInput.dataset.bound === "true") return;
   searchInput.addEventListener("input", (e) => {
     const query = e.target.value.toLowerCase();
-    const filtered = state.businessLocations.filter(b => 
-      b.name.toLowerCase().includes(query) || (b.address || b.city || "").toLowerCase().includes(query)
-    );
+    const filtered = filterMapLocationsByQuery(query);
     renderLeafletMarkers(filtered);
     state.selectedBusiness = null;
     updateMapSheet();
@@ -2700,6 +2708,12 @@ function handleSearchInput(value) {
 
 function ensureTabData(tab) {
   if (!state.user) return;
+
+  if (tab === "map") {
+    startRestaurantsListener();
+  } else {
+    stopRestaurantsListener();
+  }
 
   if (tab === "feed" && !dataLoaded.feed) {
     dataLoaded.feed = true;
@@ -3772,6 +3786,7 @@ function stopLiveListeners() {
     storiesUnsub();
     storiesUnsub = null;
   }
+  stopRestaurantsListener();
   if (userPostsUnsub) {
     userPostsUnsub();
     userPostsUnsub = null;
@@ -9274,6 +9289,48 @@ async function loadUserProfile(user, { force = false } = {}) {
     if (state.activeTab === "feed") return;
   }
   render();
+}
+
+function stopRestaurantsListener() {
+  if (restaurantsUnsub) {
+    restaurantsUnsub();
+    restaurantsUnsub = null;
+  }
+}
+
+function startRestaurantsListener() {
+  if (restaurantsUnsub) return;
+  const restRef = collection(db, "restaurants");
+  const restQuery = query(restRef, limit(FAST_LIMITS.restaurants));
+  restaurantsUnsub = onSnapshot(restQuery, (snap) => {
+    const rawList = [];
+    snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
+
+    const prevMap = new Map(state.restaurants.map((rest) => [rest.id, rest]));
+    const next = rawList.map((row) => ({ ...prevMap.get(row.id), ...row, id: row.id }));
+    state.restaurants = next;
+    writeCache(CACHE_KEYS.restaurants, next);
+    rebuildBusinessLocations();
+
+    if (state.selectedBusiness?.id) {
+      const selectedId = String(state.selectedBusiness.id || "");
+      const updated = state.businessLocations.find((b) => String(b.id) === selectedId);
+      state.selectedBusiness = updated || null;
+    }
+
+    if (state.activeTab === "map" && lastRenderMode === "main") {
+      const queryValue = document.getElementById("mapSearchInput")?.value || "";
+      const filtered = filterMapLocationsByQuery(queryValue);
+      if (leafletMap) {
+        renderLeafletMarkers(filtered);
+        updateMapSheet();
+      } else {
+        render();
+      }
+    }
+  }, (err) => {
+    console.error(err);
+  });
 }
 
 async function loadRestaurants({ force = false } = {}) {

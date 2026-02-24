@@ -361,27 +361,15 @@ textarea {
 
 /* Leaflet Overrides & Custom Map UI */
 .leaflet-control-attribution { display: none !important; }
-.custom-div-icon { background: transparent; border: none; }
-
-/* Pulsierender Radar-Effekt für User-Standort */
-.user-radar::before {
-  content: '';
-  position: absolute;
-  inset: -10px;
-  border-radius: 50%;
-  background: rgba(99, 102, 241, 0.4);
-  animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-  z-index: -1;
-}
-@keyframes radar-ping {
-  75%, 100% { transform: scale(1.8); opacity: 0; }
-}
-
-/* Leaflet Overrides & Custom Map UI */
-.leaflet-control-attribution { display: none !important; }
-.custom-div-icon { background: transparent; border: none; }
+.custom-div-icon { background: transparent; border: none; overflow: visible; }
+.leaflet-marker-icon { overflow: visible; }
 
 /* Pulsierender Radar-Effekt fuer User-Standort */
+.user-radar {
+  position: relative;
+  overflow: visible;
+  z-index: 0;
+}
 .user-radar::before {
   content: '';
   position: absolute;
@@ -389,7 +377,11 @@ textarea {
   border-radius: 50%;
   background: rgba(99, 102, 241, 0.4);
   animation: radar-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-  z-index: -1;
+  z-index: 0;
+}
+.user-radar img {
+  position: relative;
+  z-index: 1;
 }
 @keyframes radar-ping {
   75%, 100% { transform: scale(1.8); opacity: 0; }
