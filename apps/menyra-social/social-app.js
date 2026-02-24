@@ -11138,6 +11138,15 @@ function normalizeLeadFromRestaurant(rest) {
   };
 }
 
+function isRestaurantLeadCandidate(rest = {}) {
+  const statusKey = normalizeLeadStatusKey(rest.status || "");
+  if (statusKey === "lead" || statusKey === "testphase" || statusKey === "demo" || statusKey === "prospect") return true;
+  if (rest.leadId) return true;
+  const noOwner = !rest.ownerUid && !rest.ownerEmail;
+  if (!statusKey && noOwner) return true;
+  return false;
+}
+
 function leadStatusTone(status) {
   const key = normalizeLeadStatusKey(status);
   if (key === "new") return { bg: "bg-indigo-50", text: "text-indigo-600" };
@@ -11201,7 +11210,10 @@ async function loadLeads() {
     const byRestaurant = new Map();
     const byId = new Map();
     list.forEach((lead) => {
-      if (lead?.restaurantId) byRestaurant.set(String(lead.restaurantId), lead);
+      const statusKey = normalizeLeadStatusKey(lead?.status || "");
+      if (lead?.restaurantId && statusKey !== "converted") {
+        byRestaurant.set(String(lead.restaurantId), lead);
+      }
       if (lead?.id) byId.set(String(lead.id), lead);
     });
 
@@ -11216,10 +11228,7 @@ async function loadLeads() {
     }
 
     const leadFromRestaurants = restList
-      .filter((rest) => {
-        const status = String(rest.status || "").toLowerCase();
-        return status === "lead" || status === "testphase" || status === "demo" || status === "prospect";
-      })
+      .filter((rest) => isRestaurantLeadCandidate(rest))
       .map((rest) => normalizeLeadFromRestaurant(rest))
       .filter((lead) => lead && (!lead.restaurantId || !byRestaurant.has(String(lead.restaurantId))) && (!lead.id || !byId.has(String(lead.id))));
 
