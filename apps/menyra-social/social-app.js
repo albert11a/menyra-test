@@ -11198,8 +11198,34 @@ async function loadLeads() {
   try {
     const snap = await getDocs(query(collection(db, "leads"), limit(200)));
     const list = snap.docs.map((docSnap) => normalizeLeadDoc(docSnap));
-    list.sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-    state.leads.items = list;
+    const byRestaurant = new Map();
+    const byId = new Map();
+    list.forEach((lead) => {
+      if (lead?.restaurantId) byRestaurant.set(String(lead.restaurantId), lead);
+      if (lead?.id) byId.set(String(lead.id), lead);
+    });
+
+    let restList = Array.isArray(state.restaurants) && state.restaurants.length ? state.restaurants : [];
+    if (!restList.length) {
+      try {
+        const restSnap = await getDocs(query(collection(db, "restaurants"), limit(200)));
+        const rows = restSnap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+        restList = rows;
+        state.restaurants = mergeRestaurants(state.restaurants, rows);
+      } catch {}
+    }
+
+    const leadFromRestaurants = restList
+      .filter((rest) => {
+        const status = String(rest.status || "").toLowerCase();
+        return status === "lead" || status === "testphase" || status === "demo" || status === "prospect";
+      })
+      .map((rest) => normalizeLeadFromRestaurant(rest))
+      .filter((lead) => lead && (!lead.restaurantId || !byRestaurant.has(String(lead.restaurantId))) && (!lead.id || !byId.has(String(lead.id))));
+
+    const merged = [...list, ...leadFromRestaurants];
+    merged.sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
+    state.leads.items = merged;
     state.leads.error = "";
   } catch (err) {
     console.error(err);
@@ -11441,6 +11467,9 @@ async function saveLeadFromModal() {
       leadPayload.createdAt = serverTimestamp();
     }
     await setDoc(leadRef, leadPayload, { merge: true });
+    if (restaurantId && leadId) {
+      await setDoc(doc(db, "restaurants", restaurantId), { leadId }, { merge: true });
+    }
 
     const normalized = normalizeLeadDoc({ id: leadId, ...leadPayload });
     const idx = state.leads.items.findIndex((item) => String(item.id) === String(leadId));
