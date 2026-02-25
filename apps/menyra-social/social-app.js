@@ -129,20 +129,20 @@ const DEFAULT_MENU_LAYOUT = {
 };
 
 const LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992";
+const LEAD_STATUS_ORDER = ["registered", "contacted", "testphase", "kunde", "no_interest"];
 const LEAD_STATUS_LABELS = {
-  new: "Neu",
+  registered: "Registriert",
   contacted: "Kontaktiert",
-  interested: "Interessiert",
   testphase: "Testphase",
-  no_interest: "Kein Interesse",
-  converted: "Kunde",
-  archived: "Archiv"
+  kunde: "Kunde",
+  no_interest: "Keine Interesse"
 };
+const LEAD_TYPE_ORDER = ["restaurant", "cafe", "ecommerce", "shop"];
 const LEAD_TYPE_LABELS = {
   restaurant: "Restaurant",
   cafe: "Cafe",
   ecommerce: "Online Shop",
-  service: "Service"
+  shop: "Shop"
 };
 
 const DEFAULT_NOTIFICATIONS = [
@@ -960,10 +960,15 @@ function isCeoUser() {
 }
 
 function normalizeLeadStatusKey(value) {
-  const key = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-  if (key === "kein_interesse" || key === "keine_interesse") return "no_interest";
-  if (key === "demo") return "testphase";
-  if (key === "test_phase") return "testphase";
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  const key = raw.replace(/[\s-]+/g, "_");
+  if (["kein_interesse", "keine_interesse", "no_interest", "nointerest", "nointeresse"].includes(key)) return "no_interest";
+  if (["demo", "testphase", "test_phase", "trial", "test"].includes(key)) return "testphase";
+  if (["kunde", "customer", "converted", "active"].includes(key)) return "kunde";
+  if (["contacted", "kontakt", "kontaktiert", "follow_up", "waiting", "interested"].includes(key)) return "contacted";
+  if (["registered", "registriert", "new", "lead", "prospect", "open"].includes(key)) return "registered";
+  if (["archived", "archive", "archiv"].includes(key)) return "no_interest";
   return key;
 }
 
@@ -975,8 +980,10 @@ function normalizeLeadTypeKey(value) {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[\s-]+/g, "_");
   if (key === "e_commerce") return "ecommerce";
-  if (key === "online_shop" || key === "onlineshop") return "ecommerce";
-  return key;
+  if (key === "online_shop" || key === "onlineshop" || key === "online-shop") return "ecommerce";
+  if (key === "store" || key === "laden") return "shop";
+  if (key === "service") return "shop";
+  return key || "";
 }
 
 function leadStatusLabel(value) {
@@ -995,9 +1002,14 @@ function resolveCustomerType(value) {
 }
 
 function customerStatusLabel(value) {
-  const key = String(value || "active").toLowerCase();
-  if (key === "demo" || key === "testphase") return "TESTPHASE";
-  return key.toUpperCase();
+  if (!value) return "Kunde";
+  const key = normalizeLeadStatusKey(value || "kunde") || "kunde";
+  if (key === "testphase") return "Testphase";
+  if (key === "no_interest") return "Keine Interesse";
+  if (key === "registered") return "Registriert";
+  if (key === "contacted") return "Kontaktiert";
+  if (key === "kunde") return "Kunde";
+  return String(value || "").toUpperCase();
 }
 
 function slugify(input) {
@@ -1010,11 +1022,14 @@ function slugify(input) {
 }
 
 function isCustomerRestaurant(rest = {}) {
-  const status = String(rest.status || "").toLowerCase();
-  if (!status) return true;
-  if (status === "lead") return false;
-  if (status === "testphase" || status === "demo") return false;
-  if (status === "prospect") return false;
+  const statusKey = normalizeLeadStatusKey(rest.status || "");
+  if (statusKey === "kunde") return true;
+  if (["registered", "contacted", "testphase", "no_interest"].includes(statusKey)) return false;
+  if (!statusKey) {
+    const hasLeadId = !!rest.leadId;
+    const hasOwner = !!rest.ownerUid || !!rest.ownerEmail;
+    if (hasLeadId || !hasOwner) return false;
+  }
   return true;
 }
 
@@ -1023,6 +1038,7 @@ function normalizeRestaurantType(value) {
   if (!raw) return "";
   if (raw.includes("cafe") || raw.includes("coffee")) return "cafe";
   if (raw.includes("restaurant") || raw.includes("resto") || raw.includes("restaurant")) return "restaurant";
+  if (raw.includes("shop") || raw.includes("store") || raw.includes("ecom") || raw.includes("online")) return "shop";
   return raw;
 }
 
@@ -2015,6 +2031,7 @@ function mapRestaurantToCard(rest, idx) {
 function businessIcon(type) {
   const value = String(type || "").toLowerCase();
   if (["food", "restaurant", "cafe"].includes(value)) return "utensils";
+  if (["shop", "store", "ecommerce", "online_shop", "onlineshop"].includes(value)) return "shopping-bag";
   if (["live", "nightlife", "club", "bar"].includes(value)) return "radio";
   if (["drink", "cocktail"].includes(value)) return "zap";
   return "zap";
@@ -3501,13 +3518,8 @@ function renderAuthScreen() {
           </div>
 
           ${isRegister ? `
-            <div class="grid grid-cols-2 gap-3 pt-2">
-              <button type="button" data-auth-role="user" class="p-4 rounded-3xl border-2 flex flex-col items-center justify-center gap-1 transition-all ${state.auth.role === "user" ? "border-indigo-600 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-400"}">
-                ${icon("user", "w-5 h-5")} <span class="text-[10px] font-black uppercase">User</span>
-              </button>
-              <button type="button" data-auth-role="business" class="p-4 rounded-3xl border-2 flex flex-col items-center justify-center gap-1 transition-all ${state.auth.role === "business" ? "border-indigo-600 bg-indigo-50 text-indigo-700" : "border-slate-200 bg-white text-slate-400"}">
-                ${icon("briefcase", "w-5 h-5")} <span class="text-[10px] font-black uppercase">Business</span>
-              </button>
+            <div class="pt-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              Registrierung nur fuer User
             </div>
           ` : ""}
 
@@ -6924,10 +6936,11 @@ function renderLeadModal() {
   const status = state.leadModal.status || "";
   const customerType = resolveCustomerType(lead.customerType || "cafe");
   const leadEmail = lead.socialEmail || lead.email || "";
-  const leadStatus = normalizeLeadStatusKey(lead.status || "new") || "new";
+  const leadStatus = normalizeLeadStatusKey(lead.status || "registered") || "registered";
+  const leadInstagram = lead.instagram || lead.insta || "";
   const coords = state.leadModal.coords;
   const hasCoords = coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng);
-  const canConvert = isEdit && !!lead.id && normalizeLeadStatusKey(lead.status || "") !== "converted";
+  const canConvert = isEdit && !!lead.id && normalizeLeadStatusKey(lead.status || "") !== "kunde";
 
   const headerHtml = `
     <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
@@ -6959,10 +6972,9 @@ function renderLeadModal() {
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
           <select id="leadCustomerType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            <option value="restaurant" ${customerType === "restaurant" ? "selected" : ""}>Restaurant</option>
-            <option value="cafe" ${customerType === "cafe" ? "selected" : ""}>Cafe</option>
-            <option value="ecommerce" ${customerType === "ecommerce" ? "selected" : ""}>Online Shop</option>
-            <option value="service" ${customerType === "service" ? "selected" : ""}>Service</option>
+            ${LEAD_TYPE_ORDER.map((key) => `
+              <option value="${key}" ${customerType === key ? "selected" : ""}>${LEAD_TYPE_LABELS[key]}</option>
+            `).join("")}
           </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -6974,6 +6986,10 @@ function renderLeadModal() {
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Telefon</label>
             <input id="leadPhone" type="text" value="${escapeHtml(lead.phone || "")}" placeholder="+383" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Instagram</label>
+          <input id="leadInstagram" type="text" value="${escapeHtml(leadInstagram)}" placeholder="@menyra" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email (Login)</label>
@@ -7009,7 +7025,7 @@ function renderLeadModal() {
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
           <select id="leadStatus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            ${Object.keys(LEAD_STATUS_LABELS).filter((key) => key !== "converted").map((key) => `
+            ${LEAD_STATUS_ORDER.map((key) => `
               <option value="${key}" ${leadStatus === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
             `).join("")}
           </select>
@@ -7057,8 +7073,8 @@ function renderCustomerModal() {
   const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
   const status = state.customerModal.status || "";
   const typeKey = resolveCustomerType(customer.type || customer.customerType || "cafe");
-  const rawStatus = String(customer.status || "active").toLowerCase();
-  const customerStatus = rawStatus === "demo" ? "testphase" : rawStatus;
+  const customerStatus = normalizeLeadStatusKey(customer.status || "kunde") || "kunde";
+  const customerInstagram = customer.instagram || customer.insta || "";
 
   const headerHtml = `
     <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
@@ -7090,10 +7106,9 @@ function renderCustomerModal() {
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
           <select id="customerType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            <option value="restaurant" ${typeKey === "restaurant" ? "selected" : ""}>Restaurant</option>
-            <option value="cafe" ${typeKey === "cafe" ? "selected" : ""}>Cafe</option>
-            <option value="ecommerce" ${typeKey === "ecommerce" ? "selected" : ""}>Online Shop</option>
-            <option value="service" ${typeKey === "service" ? "selected" : ""}>Service</option>
+            ${LEAD_TYPE_ORDER.map((key) => `
+              <option value="${key}" ${typeKey === key ? "selected" : ""}>${LEAD_TYPE_LABELS[key]}</option>
+            `).join("")}
           </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -7121,15 +7136,19 @@ function renderCustomerModal() {
           <input id="customerAddress" type="text" value="${escapeHtml(customer.address || "")}" placeholder="Strasse, Nr" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Instagram</label>
+          <input id="customerInstagram" type="text" value="${escapeHtml(customerInstagram)}" placeholder="@menyra" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
           <input id="customerLogoUrl" type="text" value="${escapeHtml(customer.logoUrl || customer.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
           <select id="customerStatus" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            <option value="active" ${customerStatus === "active" ? "selected" : ""}>Aktiv</option>
-            <option value="testphase" ${customerStatus === "testphase" ? "selected" : ""}>Testphase</option>
-            <option value="lead" ${customerStatus === "lead" ? "selected" : ""}>Lead</option>
+            ${LEAD_STATUS_ORDER.map((key) => `
+              <option value="${key}" ${customerStatus === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
+            `).join("")}
           </select>
         </div>
       </div>
@@ -7839,7 +7858,7 @@ function renderLeadsView() {
   const queryKey = normalizeSearchKey(state.leads.query || "");
   const statusFilter = normalizeLeadStatusKey(state.leads.status || "");
   let items = Array.isArray(state.leads.items) ? state.leads.items.slice() : [];
-  items = items.filter((lead) => normalizeLeadStatusKey(lead.status) !== "converted");
+  items = items.filter((lead) => normalizeLeadStatusKey(lead.status) !== "kunde");
   if (statusFilter) {
     items = items.filter((lead) => normalizeLeadStatusKey(lead.status) === statusFilter);
   }
@@ -7854,8 +7873,6 @@ function renderLeadsView() {
       const logoRaw = lead.logoUrl || lead.logo || rest?.logoUrl || rest?.logo || "";
       const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
       const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
-      const typeLabel = leadTypeLabel(lead.customerType || rest?.type || "");
-      const city = lead.city || rest?.city || "";
       const emailLine = lead.email || lead.socialEmail || "";
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
@@ -7865,11 +7882,10 @@ function renderLeadsView() {
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(businessName)}</p>
-              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml([typeLabel, city].filter(Boolean).join(" / "))}</p>
+              ${emailLine ? `<p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(emailLine)}</p>` : ""}
             </div>
             <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${tone.bg} ${tone.text}">${escapeHtml(statusLabel)}</span>
           </div>
-          ${emailLine ? `<div class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-3">${escapeHtml(emailLine)}</div>` : ""}
           <div class="flex gap-2 mt-4">
             <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
           </div>
@@ -7893,7 +7909,7 @@ function renderLeadsView() {
         <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 bg-transparent text-[11px] font-bold outline-none" />
         <select id="leadsStatusFilter" class="bg-transparent text-[11px] font-bold uppercase tracking-widest text-slate-400">
           <option value="">Alle</option>
-          ${Object.keys(LEAD_STATUS_LABELS).filter((key) => key !== "converted").map((key) => `
+          ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde").map((key) => `
             <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
           `).join("")}
         </select>
@@ -8724,22 +8740,14 @@ function render() {
 function bindAuthEvents() {
   const authForm = document.getElementById("authForm");
   const toggleBtn = document.getElementById("authToggle");
-  const roleButtons = Array.from(document.querySelectorAll("[data-auth-role]"));
-
   if (toggleBtn) {
     toggleBtn.addEventListener("click", () => {
       state.auth.mode = state.auth.mode === "login" ? "register" : "login";
       state.auth.error = "";
+      state.auth.role = "user";
       render();
     });
   }
-
-  roleButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.auth.role = btn.dataset.authRole || "user";
-      render();
-    });
-  });
 
   if (authForm) {
     authForm.addEventListener("submit", async (e) => {
@@ -8768,7 +8776,7 @@ function bindAuthEvents() {
             handle: normalizeHandle(name),
             city: "Prishtina",
             email,
-            role: state.auth.role,
+            role: "user",
             bio: "",
             score: 0,
             followersCount: 0,
@@ -11087,7 +11095,7 @@ async function createAuthUser(email, password) {
   return cred?.user || null;
 }
 
-async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, city, address, phone, logoUrl, roles }) {
+async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, city, address, phone, logoUrl, instagram, roles }) {
   if (!uid) return;
   const payload = {
     displayName: name || email || "",
@@ -11096,6 +11104,8 @@ async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, cit
     city: city || "Prishtina",
     address: address || "",
     phone: phone || "",
+    instagram: instagram || "",
+    insta: instagram || "",
     role: "business",
     roles: normalizeRoleList(roles || "owner"),
     restaurantId: restaurantId || "",
@@ -11122,6 +11132,7 @@ async function ensureRestaurantPublicMeta(restaurantId, base) {
 
 function normalizeLeadDoc(docSnap) {
   const data = typeof docSnap?.data === "function" ? docSnap.data() : (docSnap?.data || docSnap || {});
+  const status = normalizeLeadStatusKey(data.status || "registered") || "registered";
   return {
     id: docSnap?.id || data.id || "",
     businessName: data.businessName || data.name || "",
@@ -11129,13 +11140,14 @@ function normalizeLeadDoc(docSnap) {
     contactName: data.contactName || data.contact || "",
     phone: data.phone || "",
     email: data.email || "",
+    instagram: data.instagram || data.insta || "",
     city: data.city || "",
     address: data.address || "",
     lat: data.lat ?? null,
     lng: data.lng ?? null,
     logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
     note: data.note || "",
-    status: data.status || "new",
+    status,
     restaurantId: data.restaurantId || data.restaurant || "",
     socialUid: data.socialUid || "",
     socialEmail: data.socialEmail || "",
@@ -11146,7 +11158,7 @@ function normalizeLeadDoc(docSnap) {
 
 function normalizeLeadFromRestaurant(rest) {
   if (!rest?.id) return null;
-  const status = normalizeLeadStatusKey(rest.status || "lead") || "lead";
+  const status = normalizeLeadStatusKey(rest.status || "registered") || "registered";
   return {
     id: rest.leadId || rest.id,
     businessName: rest.name || rest.restaurantName || "",
@@ -11154,6 +11166,7 @@ function normalizeLeadFromRestaurant(rest) {
     contactName: rest.ownerName || "",
     phone: rest.phone || "",
     email: rest.ownerEmail || "",
+    instagram: rest.instagram || rest.insta || "",
     city: rest.city || "",
     address: rest.address || "",
     logoUrl: rest.logoUrl || rest.logo || "",
@@ -11171,7 +11184,8 @@ function normalizeLeadFromRestaurant(rest) {
 
 function isRestaurantLeadCandidate(rest = {}) {
   const statusKey = normalizeLeadStatusKey(rest.status || "");
-  if (statusKey === "lead" || statusKey === "testphase" || statusKey === "demo" || statusKey === "prospect") return true;
+  if (statusKey === "kunde") return false;
+  if (["registered", "contacted", "testphase", "no_interest"].includes(statusKey)) return true;
   if (rest.leadId) return true;
   const noOwner = !rest.ownerUid && !rest.ownerEmail;
   if (!statusKey && noOwner) return true;
@@ -11180,21 +11194,20 @@ function isRestaurantLeadCandidate(rest = {}) {
 
 function leadStatusTone(status) {
   const key = normalizeLeadStatusKey(status);
-  if (key === "new") return { bg: "bg-indigo-50", text: "text-indigo-600" };
+  if (key === "registered") return { bg: "bg-indigo-50", text: "text-indigo-600" };
   if (key === "contacted") return { bg: "bg-amber-50", text: "text-amber-600" };
-  if (key === "interested") return { bg: "bg-emerald-50", text: "text-emerald-600" };
   if (key === "testphase") return { bg: "bg-sky-50", text: "text-sky-600" };
+  if (key === "kunde") return { bg: "bg-emerald-100", text: "text-emerald-700" };
   if (key === "no_interest") return { bg: "bg-slate-100", text: "text-slate-500" };
-  if (key === "converted") return { bg: "bg-emerald-100", text: "text-emerald-700" };
-  if (key === "archived") return { bg: "bg-slate-100", text: "text-slate-400" };
   return { bg: "bg-slate-100", text: "text-slate-500" };
 }
 
 function resolveRestaurantStatusFromLead(leadStatus, currentStatus = "") {
   const leadKey = normalizeLeadStatusKey(leadStatus);
-  if (leadKey === "converted") return "active";
+  if (leadKey === "kunde") return "active";
   if (leadKey === "testphase") return "testphase";
-  if (currentStatus && currentStatus !== "lead") return currentStatus;
+  if (["registered", "contacted", "no_interest"].includes(leadKey)) return "lead";
+  if (currentStatus) return currentStatus;
   return "lead";
 }
 
@@ -11205,6 +11218,7 @@ function leadMatchesQuery(lead, queryKey) {
     lead.contactName,
     lead.phone,
     lead.email,
+    lead.instagram,
     lead.city,
     lead.customerType
   ].filter(Boolean).join(" "));
@@ -11219,7 +11233,9 @@ function customerMatchesQuery(rest, queryKey) {
     rest.city,
     rest.ownerName,
     rest.ownerEmail,
-    rest.phone
+    rest.phone,
+    rest.instagram,
+    rest.insta
   ].filter(Boolean).join(" "));
   return hay.includes(queryKey);
 }
@@ -11242,7 +11258,7 @@ async function loadLeads() {
     const byId = new Map();
     list.forEach((lead) => {
       const statusKey = normalizeLeadStatusKey(lead?.status || "");
-      if (lead?.restaurantId && statusKey !== "converted") {
+      if (lead?.restaurantId && statusKey !== "kunde") {
         byRestaurant.set(String(lead.restaurantId), lead);
       }
       if (lead?.id) byId.set(String(lead.id), lead);
@@ -11310,6 +11326,7 @@ function openLeadModal(mode = "create", lead = null) {
     city: lead?.city || rest?.city || "",
     address: lead?.address || rest?.address || "",
     phone: lead?.phone || rest?.phone || "",
+    instagram: lead?.instagram || lead?.insta || rest?.instagram || rest?.insta || "",
     logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || "",
     lat: Number.isFinite(lat) ? lat : undefined,
     lng: Number.isFinite(lng) ? lng : undefined
@@ -11375,13 +11392,14 @@ async function saveLeadFromModal() {
   const customerType = resolveCustomerType(document.getElementById("leadCustomerType")?.value || lead.customerType || "cafe");
   const contactName = document.getElementById("leadContactName")?.value?.trim() || "";
   const phone = document.getElementById("leadPhone")?.value?.trim() || "";
+  const instagram = document.getElementById("leadInstagram")?.value?.trim() || "";
   const emailInput = document.getElementById("leadEmail")?.value?.trim() || "";
   const passwordInput = document.getElementById("leadPassword")?.value || "";
   const city = document.getElementById("leadCity")?.value?.trim() || "";
   const address = document.getElementById("leadAddress")?.value?.trim() || "";
   const logoUrlInput = document.getElementById("leadLogoUrl")?.value?.trim() || "";
   const note = document.getElementById("leadNote")?.value?.trim() || "";
-  const statusValue = document.getElementById("leadStatus")?.value || lead.status || "new";
+  const statusValue = document.getElementById("leadStatus")?.value || lead.status || "registered";
   const coords = state.leadModal.coords;
 
   if (!businessName) {
@@ -11420,6 +11438,8 @@ async function saveLeadFromModal() {
       city,
       address,
       phone,
+      instagram,
+      insta: instagram,
       ownerName: contactName || "",
       ownerEmail: emailInput || "",
       logoUrl,
@@ -11465,6 +11485,7 @@ async function saveLeadFromModal() {
             address,
             phone,
             logoUrl,
+            instagram,
             roles: ["owner"]
           });
           await setDoc(doc(db, "restaurants", restaurantId), {
@@ -11481,17 +11502,20 @@ async function saveLeadFromModal() {
 
     const leadRef = lead.id ? doc(db, "leads", lead.id) : doc(collection(db, "leads"));
     const leadId = lead.id || leadRef.id;
+    const leadStatusKey = normalizeLeadStatusKey(statusValue) || "registered";
     const leadPayload = {
       businessName,
       customerType,
       contactName,
       phone,
+      instagram,
+      insta: instagram,
       email: loginEmail,
       city,
       address,
       logoUrl,
       note,
-      status: normalizeLeadStatusKey(statusValue) || "new",
+      status: leadStatusKey,
       restaurantId,
       socialUid,
       socialEmail,
@@ -11513,7 +11537,12 @@ async function saveLeadFromModal() {
 
     const normalized = normalizeLeadDoc({ id: leadId, ...leadPayload });
     const idx = state.leads.items.findIndex((item) => String(item.id) === String(leadId));
-    if (idx >= 0) {
+    if (leadStatusKey === "kunde") {
+      state.leads.items = state.leads.items.filter((item) => (
+        String(item.id || "") !== String(leadId)
+        && String(item.restaurantId || "") !== String(restaurantId)
+      ));
+    } else if (idx >= 0) {
       state.leads.items[idx] = { ...state.leads.items[idx], ...normalized };
     } else {
       state.leads.items.unshift(normalized);
@@ -11547,10 +11576,11 @@ async function saveCustomerFromModal() {
   const ownerName = document.getElementById("customerOwnerName")?.value?.trim() || "";
   const ownerEmail = document.getElementById("customerOwnerEmail")?.value?.trim() || "";
   const phone = document.getElementById("customerPhone")?.value?.trim() || "";
+  const instagram = document.getElementById("customerInstagram")?.value?.trim() || "";
   const city = document.getElementById("customerCity")?.value?.trim() || "";
   const address = document.getElementById("customerAddress")?.value?.trim() || "";
   const logoUrlInput = document.getElementById("customerLogoUrl")?.value?.trim() || "";
-  const statusValue = document.getElementById("customerStatus")?.value || customer.status || "active";
+  const statusValue = document.getElementById("customerStatus")?.value || customer.status || "kunde";
 
   if (!name) {
     state.customerModal.status = "Bitte Business Name eingeben.";
@@ -11573,6 +11603,8 @@ async function saveCustomerFromModal() {
       logoUrl = cdnUrl || logoUrl;
     }
 
+    const statusKey = normalizeLeadStatusKey(statusValue) || "kunde";
+    const restaurantStatus = resolveRestaurantStatusFromLead(statusKey, customer.status || "");
     const payload = {
       name,
       restaurantName: name,
@@ -11580,17 +11612,19 @@ async function saveCustomerFromModal() {
       ownerName,
       ownerEmail,
       phone,
+      instagram,
+      insta: instagram,
       city,
       address,
       logoUrl,
       logo: logoUrl,
-      status: statusValue,
+      status: restaurantStatus,
       updatedAt: serverTimestamp()
     };
     await setDoc(doc(db, "restaurants", customer.id), payload, { merge: true });
     await ensureRestaurantPublicMeta(customer.id, payload);
 
-    if (statusValue === "testphase" || statusValue === "lead") {
+    if (statusKey !== "kunde") {
       const leadId = customer.leadId || payload.leadId || "";
       const leadRef = leadId ? doc(db, "leads", leadId) : doc(collection(db, "leads"));
       const leadPayload = {
@@ -11598,11 +11632,13 @@ async function saveCustomerFromModal() {
         customerType: type,
         contactName: ownerName,
         phone,
+        instagram,
+        insta: instagram,
         email: ownerEmail,
         city,
         address,
         logoUrl,
-        status: statusValue === "testphase" ? "testphase" : "new",
+        status: statusKey,
         restaurantId: customer.id,
         updatedAt: serverTimestamp(),
         createdByUid: state.user.uid,
@@ -11618,6 +11654,19 @@ async function saveCustomerFromModal() {
       const idx = state.leads.items.findIndex((item) => String(item.id) === String(leadRef.id));
       if (idx >= 0) state.leads.items[idx] = { ...state.leads.items[idx], ...normalizedLead };
       else state.leads.items.unshift(normalizedLead);
+    } else {
+      const matchedLead = state.leads.items.find((item) => String(item.restaurantId || "") === String(customer.id));
+      const leadId = customer.leadId || matchedLead?.id || "";
+      if (leadId) {
+        await setDoc(doc(db, "leads", leadId), {
+          status: "kunde",
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      }
+      state.leads.items = state.leads.items.filter((item) => (
+        String(item.restaurantId || "") !== String(customer.id)
+        && String(item.id || "") !== String(leadId)
+      ));
     }
 
     state.restaurants = mergeRestaurants(state.restaurants, [{ id: customer.id, ...customer, ...payload }]);
@@ -11653,6 +11702,8 @@ async function convertLeadToCustomer(leadId) {
       city: lead.city || "",
       address: lead.address || "",
       phone: lead.phone || "",
+      instagram: lead.instagram || lead.insta || "",
+      insta: lead.instagram || lead.insta || "",
       ownerName: lead.contactName || "",
       ownerEmail: lead.email || lead.socialEmail || "",
       logoUrl: lead.logoUrl || "",
@@ -11697,6 +11748,7 @@ async function convertLeadToCustomer(leadId) {
             address: lead.address || "",
             phone: lead.phone || "",
             logoUrl: lead.logoUrl || "",
+            instagram: lead.instagram || lead.insta || "",
             roles: ["owner"]
           });
           await setDoc(doc(db, "restaurants", restaurantId), {
@@ -11712,7 +11764,7 @@ async function convertLeadToCustomer(leadId) {
     }
 
     await setDoc(doc(db, "leads", lead.id), {
-      status: "converted",
+      status: "kunde",
       restaurantId,
       socialUid,
       socialEmail,
