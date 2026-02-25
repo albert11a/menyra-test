@@ -8334,19 +8334,19 @@ function renderLeadsView() {
           ${icon("plus", "w-4 h-4")}
         </button>
       </div>
-      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 space-y-3">
-        <div class="flex items-center gap-3">
-          ${icon("search", "w-4 h-4 text-slate-400")}
-          <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
-        </div>
-        <div class="pl-7">
-          <select id="leadsStatusFilter" class="w-full h-11 rounded-xl bg-slate-50 border border-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
-            <option value="">Alle Status</option>
-            ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde").map((key) => `
-              <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
-            `).join("")}
-          </select>
-        </div>
+      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-3 flex items-center gap-3">
+        ${icon("search", "w-4 h-4 text-slate-400")}
+        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
+      </div>
+      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
+        ${icon("list-filter", "w-4 h-4 text-slate-400")}
+        <select id="leadsStatusFilter" class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 outline-none appearance-none">
+          <option value="">Alle Status</option>
+          ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde").map((key) => `
+            <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
+          `).join("")}
+        </select>
+        ${icon("chevron-down", "w-4 h-4 text-slate-400")}
       </div>
       ${state.leads.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.leads.error)}</div>` : ""}
       <div class="space-y-4">${listHtml}</div>
