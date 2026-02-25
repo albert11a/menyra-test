@@ -941,7 +941,7 @@ function resolveHeaderBranding() {
     title: "MENYRA",
     subtitle: "Social",
     logoUrl: resolveShellAvatarUrl(),
-    isBusinessLogo: state.userProfile.role === "business"
+    isBusinessLogo: isLocalBusinessProfile(state.userProfile)
   };
 }
 
@@ -1863,6 +1863,288 @@ function normalizeProfile(data, user) {
   };
 }
 
+function normalizeBusinessProfile(rest = {}, user) {
+  const displayName = rest?.name || rest?.restaurantName || user?.displayName || user?.email?.split("@")[0] || "Business";
+  const handle = resolvePreferredHandle({ handle: rest?.handle || "", name: displayName }, displayName);
+  return {
+    name: displayName,
+    handle: handle || normalizeHandle(displayName),
+    bio: rest?.bio || rest?.description || "",
+    avatar: rest?.logoUrl || rest?.logo || "",
+    location: rest?.city || "Prishtina",
+    address: rest?.address || "",
+    followers: rest?.followersCount ?? rest?.followers ?? 0,
+    following: rest?.followingCount ?? rest?.following ?? 0,
+    karma: "0",
+    roles: normalizeRoleList(rest?.roles || "owner"),
+    role: "business",
+    isPremium: rest?.isPremium || false,
+    restaurantId: rest?.id || rest?.restaurantId || "",
+    phone: rest?.phone || "",
+    instagram: rest?.instagram || rest?.insta || "",
+    posts: []
+  };
+}
+
+function normalizeEmailValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getRestaurantEmailCandidates(rest = {}) {
+  return [
+    rest.ownerEmail,
+    rest.email,
+    rest.contactEmail,
+    rest.socialEmail,
+    rest.loginEmail,
+    rest.accountEmail,
+    rest?.owner?.email,
+    rest?.contact?.email,
+    rest?.account?.email
+  ].map((item) => String(item || "").trim()).filter(Boolean);
+}
+
+function getRestaurantUidCandidates(rest = {}) {
+  return [
+    rest.ownerUid,
+    rest.socialUid,
+    rest.uid,
+    rest.userUid,
+    rest.accountUid,
+    rest.ownerId
+  ].map((item) => String(item || "").trim()).filter(Boolean);
+}
+
+function matchesRestaurantIdentity(rest, { uid = "", email = "" } = {}) {
+  if (!rest) return false;
+  const uidKey = String(uid || "").trim();
+  if (uidKey) {
+    const byUid = getRestaurantUidCandidates(rest).some((candidate) => candidate === uidKey);
+    if (byUid) return true;
+  }
+  const emailKey = normalizeEmailValue(email);
+  if (emailKey) {
+    const byEmail = getRestaurantEmailCandidates(rest).some((candidate) => normalizeEmailValue(candidate) === emailKey);
+    if (byEmail) return true;
+  }
+  return false;
+}
+
+async function scanRestaurantsForMatch(matchFn, { max = 400 } = {}) {
+  try {
+    const snap = await getDocs(query(collection(db, "restaurants"), limit(max)));
+    if (snap.empty) return null;
+    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+    if (rows.length) {
+      state.restaurants = mergeRestaurants(state.restaurants, rows);
+    }
+    return rows.find((row) => matchFn(row)) || null;
+  } catch {}
+  return null;
+}
+
+async function queryRestaurantByField(field, value) {
+  const needle = String(value || "").trim();
+  if (!needle) return null;
+  try {
+    const snap = await getDocs(query(collection(db, "restaurants"), where(field, "==", needle), limit(1)));
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      return { id: docSnap.id, ...(docSnap.data() || {}) };
+    }
+  } catch {}
+  return null;
+}
+
+async function findRestaurantByEmail(email) {
+  const needle = String(email || "").trim();
+  if (!needle) return null;
+  const lower = needle.toLowerCase();
+  const variants = lower && lower !== needle ? [needle, lower] : [needle];
+  const fields = ["ownerEmail", "email", "contactEmail", "socialEmail", "loginEmail", "accountEmail"];
+  for (const variant of variants) {
+    for (const field of fields) {
+      const rest = await queryRestaurantByField(field, variant);
+      if (rest) return rest;
+    }
+  }
+  const cached = (state.restaurants || []).find((rest) => matchesRestaurantIdentity(rest, { email: needle })) || null;
+  if (cached) return cached;
+  return scanRestaurantsForMatch((rest) => matchesRestaurantIdentity(rest, { email: needle }));
+}
+
+async function findRestaurantByUid(uid) {
+  const needle = String(uid || "").trim();
+  if (!needle) return null;
+  const fields = ["ownerUid", "socialUid", "uid", "userUid", "accountUid"];
+  for (const field of fields) {
+    const rest = await queryRestaurantByField(field, needle);
+    if (rest) return rest;
+  }
+  const cached = (state.restaurants || []).find((rest) => matchesRestaurantIdentity(rest, { uid: needle })) || null;
+  if (cached) return cached;
+  return scanRestaurantsForMatch((rest) => matchesRestaurantIdentity(rest, { uid: needle }));
+}
+
+async function queryLeadByField(field, value) {
+  const needle = String(value || "").trim();
+  if (!needle) return null;
+  try {
+    const snap = await getDocs(query(collection(db, "leads"), where(field, "==", needle), limit(1)));
+    if (!snap.empty) {
+      const docSnap = snap.docs[0];
+      return { id: docSnap.id, ...(docSnap.data() || {}) };
+    }
+  } catch {}
+  return null;
+}
+
+async function scanLeadsForMatch(matchFn, { max = 400 } = {}) {
+  try {
+    const snap = await getDocs(query(collection(db, "leads"), limit(max)));
+    if (snap.empty) return null;
+    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+    return rows.find((row) => matchFn(row)) || null;
+  } catch {}
+  return null;
+}
+
+async function resolveLeadByEmail(email) {
+  const needle = String(email || "").trim();
+  if (!needle) return null;
+  const lower = needle.toLowerCase();
+  const variants = lower && lower !== needle ? [needle, lower] : [needle];
+  for (const variant of variants) {
+    const fields = ["email", "socialEmail", "ownerEmail", "loginEmail"];
+    for (const field of fields) {
+      const lead = await queryLeadByField(field, variant);
+      if (lead) return lead;
+    }
+  }
+  return scanLeadsForMatch((lead) => {
+    const values = [lead.email, lead.socialEmail, lead.ownerEmail, lead.loginEmail];
+    return values.some((item) => normalizeEmailValue(item) === normalizeEmailValue(needle));
+  });
+}
+
+async function resolveLeadByUid(uid) {
+  const needle = String(uid || "").trim();
+  if (!needle) return null;
+  const fields = ["socialUid", "ownerUid", "uid", "userUid"];
+  for (const field of fields) {
+    const lead = await queryLeadByField(field, needle);
+    if (lead) return lead;
+  }
+  return scanLeadsForMatch((lead) => {
+    const values = [lead.socialUid, lead.ownerUid, lead.uid, lead.userUid];
+    return values.some((item) => String(item || "").trim() === needle);
+  });
+}
+
+function findRestaurantByLeadId(leadId) {
+  const key = String(leadId || "").trim();
+  if (!key) return null;
+  return (state.restaurants || []).find((rest) => String(rest?.leadId || "").trim() === key) || null;
+}
+
+async function ensureRestaurantForLead(lead, user) {
+  if (!lead) return null;
+  let restaurantId = lead.restaurantId || lead.restaurant || "";
+  const email = lead.email || lead.socialEmail || user?.email || "";
+  const ownerName = lead.contactName || lead.ownerName || lead.businessName || lead.name || "";
+  if (restaurantId) {
+    try {
+      const restSnap = await getDoc(doc(db, "restaurants", restaurantId));
+      if (restSnap.exists()) {
+        const restData = restSnap.data() || {};
+        const patch = {};
+        if (user?.uid && !restData.ownerUid) patch.ownerUid = user.uid;
+        if (email && !restData.ownerEmail) patch.ownerEmail = email;
+        if (ownerName && !restData.ownerName) patch.ownerName = ownerName;
+        if (Object.keys(patch).length) {
+          patch.updatedAt = serverTimestamp();
+          await setDoc(doc(db, "restaurants", restaurantId), patch, { merge: true });
+        }
+        return { id: restSnap.id, ...restData, ...patch };
+      }
+    } catch {}
+  }
+
+  const restRef = doc(collection(db, "restaurants"));
+  restaurantId = restRef.id;
+  const status = resolveRestaurantStatusFromLead(lead.status || "registered", "");
+  const restPayload = {
+    name: lead.businessName || lead.name || ownerName || "Business",
+    restaurantName: lead.businessName || lead.name || ownerName || "Business",
+    type: resolveCustomerType(lead.customerType || lead.type || "cafe"),
+    city: lead.city || "",
+    address: lead.address || "",
+    phone: lead.phone || "",
+    instagram: lead.instagram || lead.insta || "",
+    insta: lead.instagram || lead.insta || "",
+    ownerEmail: email || "",
+    ownerName: ownerName || "",
+    ownerUid: user?.uid || "",
+    logoUrl: lead.logoUrl || lead.logo || lead.imageUrl || "",
+    logo: lead.logoUrl || lead.logo || lead.imageUrl || "",
+    status,
+    leadId: lead.id || "",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdByRole: "migration"
+  };
+  if (Number.isFinite(Number(lead.lat)) && Number.isFinite(Number(lead.lng))) {
+    restPayload.lat = Number(lead.lat);
+    restPayload.lng = Number(lead.lng);
+  }
+  await setDoc(restRef, restPayload, { merge: true });
+  await ensureRestaurantPublicMeta(restaurantId, restPayload);
+  if (lead.id) {
+    await setDoc(doc(db, "leads", lead.id), {
+      restaurantId,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  }
+  return { id: restaurantId, ...restPayload };
+}
+
+function matchesRestaurantOwner(rest, user) {
+  if (!rest || !user) return false;
+  return matchesRestaurantIdentity(rest, {
+    uid: String(user.uid || ""),
+    email: String(user.email || "")
+  });
+}
+
+async function resolveRestaurantForAuthUser(user, { preferCached = true } = {}) {
+  if (!user) return null;
+  const uid = String(user.uid || "");
+  const email = String(user.email || "").toLowerCase();
+  const hintId = String(state.userProfile?.restaurantId || "").trim();
+
+  if (preferCached && hintId) {
+    const hinted = state.restaurants.find((rest) => String(rest.id) === hintId) || null;
+    if (hinted && matchesRestaurantOwner(hinted, user)) return hinted;
+  }
+
+  if (preferCached && Array.isArray(state.restaurants) && state.restaurants.length) {
+    const cached = state.restaurants.find((rest) => matchesRestaurantOwner(rest, user));
+    if (cached) return cached;
+  }
+
+  if (uid) {
+    const byUid = await findRestaurantByUid(uid);
+    if (byUid) return byUid;
+  }
+
+  if (email) {
+    const byEmail = await findRestaurantByEmail(email);
+    if (byEmail) return byEmail;
+  }
+
+  return null;
+}
+
 function normalizeRoleList(value) {
   if (!value) return [];
   if (Array.isArray(value)) {
@@ -2257,18 +2539,37 @@ function mapLocate() {
 async function fetchUserDoc(uid) {
   if (!uid) return null;
   const ref = doc(db, "users", uid);
+  let snap = null;
   if (typeof getDocFromServer === "function") {
     try {
-      return await getDocFromServer(ref);
+      snap = await getDocFromServer(ref);
     } catch {
       // Fall through to cached getDoc
     }
   }
   try {
-    return await getDoc(ref);
+    snap = snap || await getDoc(ref);
   } catch {
-    return null;
+    snap = null;
   }
+  if (snap && typeof snap.exists === "function" && snap.exists()) return snap;
+  try {
+    const restSnap = await getDocs(query(collection(db, "restaurants"), where("ownerUid", "==", uid), limit(1)));
+    if (!restSnap.empty) {
+      const docSnap = restSnap.docs[0];
+      const data = docSnap.data() || {};
+      const payload = { ...data };
+      if (!payload.avatarUrl && (payload.logoUrl || payload.logo)) {
+        payload.avatarUrl = payload.logoUrl || payload.logo || "";
+      }
+      return {
+        id: docSnap.id,
+        exists: () => true,
+        data: () => payload
+      };
+    }
+  } catch {}
+  return snap;
 }
 
 async function ensureSelfAvatarReady({ force = false } = {}) {
@@ -2286,6 +2587,30 @@ async function ensureSelfAvatarReady({ force = false } = {}) {
   }
 
   try {
+    if (isLocalBusinessProfile(state.userProfile) && state.userProfile.restaurantId) {
+      const restSnap = await getDoc(doc(db, "restaurants", state.userProfile.restaurantId));
+      if (restSnap.exists()) {
+        const restData = restSnap.data() || {};
+        const raw = restData.logoUrl || restData.logo || "";
+        const resolved = getOptimizedImageUrl(raw, "avatar");
+        if (!isPlaceholderUrl(resolved)) {
+          state.userProfile.avatar = raw;
+          userAvatarCache = resolved;
+          scheduleAvatarCacheWrite(resolved);
+          if (state.user?.uid) {
+            commentAvatarCache.set(state.user.uid, resolved);
+            updateCommentAvatarNodesByUid(state.user.uid, resolved);
+          }
+          const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+          if (handleKey) {
+            commentAvatarCache.set(handleKey, resolved);
+            updateCommentAvatarNodes(handleKey, resolved);
+          }
+          return resolved;
+        }
+      }
+      return fallbackFromState();
+    }
     const snap = await fetchUserDoc(state.user.uid);
     if (!snap) return fallbackFromState();
     const data = snap.exists() ? snap.data() : {};
@@ -2892,17 +3217,20 @@ function ensureTabData(tab) {
 
   if (tab === "profile" && !dataLoaded.profile) {
     dataLoaded.profile = true;
-    void loadUserPosts();
-    if (state.userProfile.role === "business") {
+    const hasBusinessProfile = isLocalBusinessProfile(state.userProfile);
+    if (!hasBusinessProfile) {
+      void loadUserPosts();
+    }
+    if (hasBusinessProfile) {
       void loadBusinessPosts();
     }
   }
   if (tab === "profile") {
-    void loadUserProfile(state.user, { force: true });
+    void loadAuthProfile(state.user, { force: true });
   }
 
   if (tab === "menu") {
-    void loadUserProfile(state.user, { force: true }).then(() => {
+    void loadAuthProfile(state.user, { force: true }).then(() => {
       const restaurantId = state.userProfile.restaurantId || "";
       if (restaurantId) {
         void loadMenuForRestaurant(restaurantId, { source: "hybrid" });
@@ -3544,13 +3872,18 @@ function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const switchLinks = renderRoleSwitchLinks();
   const isCeo = isCeoUser();
+  const showMenuTab = isLocalBusinessProfile(state.userProfile)
+    || !!state.userProfile.restaurantId
+    || !!state.roleSwitchRestaurantId
+    || isRestaurantCafeProfile(state.userProfile);
   const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
-  const avatarFit = logoFitClass(state.userProfile.role === "business");
+  const avatarFit = logoFitClass(isLocalBusinessProfile(state.userProfile));
   const navItems = [
     { id: "feed", label: "Feed", icon: "home" },
     { id: "search", label: "Suche", icon: "search" },
     { id: "map", label: "Karte", icon: "map" },
     { id: "profile", label: "Profil", icon: "user" },
+    { id: "menu", label: "Speisekarte", icon: "utensils", hidden: !showMenuTab },
     { id: "notifications", label: "Updates", icon: "bell", badge: unread },
     { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
     { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
@@ -3617,7 +3950,7 @@ function renderFeedView() {
       <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pb-8 no-scrollbar">
         ${renderStoriesRow(stories)}
       </div>
-      ${state.userProfile.role === "business" ? `
+      ${isLocalBusinessProfile(state.userProfile) ? `
         <div class="px-8 mb-6">
           <button data-nav="upload" class="w-full p-4 rounded-[2rem] bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
             ${icon("plus-square", "w-4 h-4")} Neuer Feed Post
@@ -3870,9 +4203,9 @@ function bindFeedDelegation() {
 
 function updateShellDom() {
   const avatarUrl = resolveShellAvatarUrl();
-  const isBusiness = state.userProfile.role === "business";
+  const isBusiness = isLocalBusinessProfile(state.userProfile);
   const branding = resolveHeaderBranding();
-  const showMenuTab = state.userProfile.role === "business"
+  const showMenuTab = isLocalBusinessProfile(state.userProfile)
     || !!state.userProfile.restaurantId
     || !!state.roleSwitchRestaurantId
     || isRestaurantCafeProfile(state.userProfile);
@@ -4089,46 +4422,80 @@ function startLiveListeners(user) {
   liveFeedDisabled = false;
   liveStoriesDisabled = false;
 
-  const userRef = doc(db, "users", user.uid);
-  userDocUnsub = onSnapshot(userRef, (snap) => {
-    if (!snap.exists()) return;
-    const data = snap.data() || {};
-    const rawAvatar = data.avatarUrl || data.avatar || "";
-    const resolvedAvatarCandidate = getOptimizedImageUrl(rawAvatar, "avatar");
-    const safeAvatar = (!rawAvatar || isPlaceholderUrl(resolvedAvatarCandidate)) ? state.userProfile.avatar : rawAvatar;
-    const next = {
-      name: data.displayName || state.userProfile.name,
-      handle: data.handle || state.userProfile.handle,
-      avatar: safeAvatar,
-      followers: data.followersCount ?? state.userProfile.followers,
-      following: data.followingCount ?? state.userProfile.following,
-      role: data.role || state.userProfile.role,
-      location: data.city || state.userProfile.location,
-      bio: data.bio || state.userProfile.bio
-    };
-    Object.assign(state.userProfile, next);
-    saveUserProfileToStorage();
-    const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
-    if (!isPlaceholderUrl(resolvedAvatar)) {
-      userAvatarCache = resolvedAvatar;
-      scheduleAvatarCacheWrite(resolvedAvatar);
-      if (state.user?.uid) {
-        commentAvatarCache.set(state.user.uid, resolvedAvatar);
-        updateCommentAvatarNodesByUid(state.user.uid, resolvedAvatar);
+  const hasBusinessProfile = isLocalBusinessProfile(state.userProfile);
+  if (hasBusinessProfile && state.userProfile.restaurantId) {
+    const restRef = doc(db, "restaurants", state.userProfile.restaurantId);
+    userDocUnsub = onSnapshot(restRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data() || {};
+      const prevAvatar = state.userProfile?.avatar || "";
+      const normalized = normalizeBusinessProfile({ id: snap.id, ...data }, user);
+      normalized.uid = user.uid;
+      const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
+      if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
+      if (!Number.isFinite(Number(data.followingCount ?? data.following))) {
+        normalized.following = state.userProfile?.following ?? normalized.following;
       }
-      const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-      if (handleKey) {
-        commentAvatarCache.set(handleKey, resolvedAvatar);
-        updateCommentAvatarNodes(handleKey, resolvedAvatar);
+      if (!Number.isFinite(Number(data.followersCount ?? data.followers))) {
+        normalized.followers = state.userProfile?.followers ?? normalized.followers;
       }
-    }
-    updateShellDom();
-    if (state.activeTab === "profile" && !state.profileView) {
-      render();
-    } else if (state.activeTab === "search") {
-      refreshSearchView();
-    }
-  });
+      state.userProfile = normalized;
+      saveUserProfileToStorage();
+      const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
+      if (!isPlaceholderUrl(resolvedAvatar)) {
+        primeSelfAvatarCache(resolvedAvatar);
+      }
+      state.restaurants = mergeRestaurants(state.restaurants, [{ id: snap.id, ...data }]);
+      rebuildBusinessLocations();
+      updateShellDom();
+      if (state.activeTab === "profile" && !state.profileView) {
+        render();
+      } else if (state.activeTab === "search") {
+        refreshSearchView();
+      }
+    });
+  } else {
+    const userRef = doc(db, "users", user.uid);
+    userDocUnsub = onSnapshot(userRef, (snap) => {
+      if (!snap.exists()) return;
+      const data = snap.data() || {};
+      const rawAvatar = data.avatarUrl || data.avatar || "";
+      const resolvedAvatarCandidate = getOptimizedImageUrl(rawAvatar, "avatar");
+      const safeAvatar = (!rawAvatar || isPlaceholderUrl(resolvedAvatarCandidate)) ? state.userProfile.avatar : rawAvatar;
+      const next = {
+        name: data.displayName || state.userProfile.name,
+        handle: data.handle || state.userProfile.handle,
+        avatar: safeAvatar,
+        followers: data.followersCount ?? state.userProfile.followers,
+        following: data.followingCount ?? state.userProfile.following,
+        role: data.role || state.userProfile.role,
+        location: data.city || state.userProfile.location,
+        bio: data.bio || state.userProfile.bio
+      };
+      Object.assign(state.userProfile, next);
+      saveUserProfileToStorage();
+      const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
+      if (!isPlaceholderUrl(resolvedAvatar)) {
+        userAvatarCache = resolvedAvatar;
+        scheduleAvatarCacheWrite(resolvedAvatar);
+        if (state.user?.uid) {
+          commentAvatarCache.set(state.user.uid, resolvedAvatar);
+          updateCommentAvatarNodesByUid(state.user.uid, resolvedAvatar);
+        }
+        const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
+        if (handleKey) {
+          commentAvatarCache.set(handleKey, resolvedAvatar);
+          updateCommentAvatarNodes(handleKey, resolvedAvatar);
+        }
+      }
+      updateShellDom();
+      if (state.activeTab === "profile" && !state.profileView) {
+        render();
+      } else if (state.activeTab === "search") {
+        refreshSearchView();
+      }
+    });
+  }
 
   const notifRef = collection(db, "users", user.uid, "notifications");
   notificationsUnsub = onSnapshot(query(notifRef, orderBy("createdAt", "desc"), limit(60)), (snap) => {
@@ -4157,8 +4524,10 @@ function startLiveListeners(user) {
 
   startFeedListener();
   startStoriesListener();
-  startUserPostsListener(user.uid);
-  if (state.userProfile.role === "business" && state.userProfile.restaurantId) {
+  if (!hasBusinessProfile) {
+    startUserPostsListener(user.uid);
+  }
+  if (hasBusinessProfile && state.userProfile.restaurantId) {
     startBusinessPostsListener(state.userProfile.restaurantId);
   }
 }
@@ -4985,7 +5354,7 @@ function renderProfileViewControls() {
 }
 
 function getProfilePostList() {
-  return state.userProfile.role === "business" ? state.businessPosts : state.userPosts;
+  return isLocalBusinessProfile(state.userProfile) ? state.businessPosts : state.userPosts;
 }
 
 function findProfilePost(postId) {
@@ -4996,7 +5365,7 @@ function findProfilePost(postId) {
 
 async function updateProfilePostType(postId, nextType) {
   if (!postId || !state.user) return;
-  const isBusiness = state.userProfile.role === "business";
+  const isBusiness = isLocalBusinessProfile(state.userProfile);
   if (isBusiness) {
     const restaurantId = state.userProfile.restaurantId;
     if (!restaurantId) return;
@@ -5035,7 +5404,8 @@ async function deleteProfilePost(postId) {
   list.splice(idx, 1);
   state.profilePostMenuId = null;
   render();
-  if (state.userProfile.role === "business") {
+  const isBusiness = isLocalBusinessProfile(state.userProfile);
+  if (isBusiness) {
     if (state.userProfile.restaurantId) {
       writeCache(businessPostsKey(state.userProfile.restaurantId), state.businessPosts);
     }
@@ -5045,7 +5415,7 @@ async function deleteProfilePost(postId) {
     }
   }
   try {
-    if (state.userProfile.role === "business") {
+    if (isBusiness) {
       const restaurantId = state.userProfile.restaurantId;
       if (restaurantId) {
         await deleteDoc(doc(db, "restaurants", restaurantId, "socialPosts", postId));
@@ -6032,7 +6402,8 @@ function renderProfileMenuView(profile) {
 
 function renderProfileView() {
   const profile = state.userProfile;
-  const posts = profile.role === "business" ? state.businessPosts : state.userPosts;
+  const isBusiness = isLocalBusinessProfile(profile);
+  const posts = isBusiness ? state.businessPosts : state.userPosts;
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
@@ -6040,7 +6411,7 @@ function renderProfileView() {
   const isCheckinTab = state.profileContentTab === "checkins";
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
-  const avatarFit = logoFitClass(profile.role === "business");
+  const avatarFit = logoFitClass(isBusiness);
   const topTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
   const topPaddingClass = profile.restaurantId ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   return `
@@ -6128,6 +6499,11 @@ async function openProfileFromBusiness(input) {
     const restaurantId = typeof input === "string" ? "" : (input?.id || "");
     if (!safeName && !restaurantId) return;
 
+    if (isOwnBusinessTarget({ restaurantId, name: safeName })) {
+      openOwnBusinessProfile({ showBack: false, topTab: "profile" });
+      return;
+    }
+
     if (restaurantId) {
       void hydrateRestaurantsByIds([restaurantId], { max: 1 });
     }
@@ -6208,6 +6584,42 @@ function showPublicProfile(profile, posts, { showBack = true, backTab, topTab } 
   attachProfileViewListener(profile);
 }
 
+function isOwnBusinessTarget({ restaurantId = "", name = "" } = {}) {
+  if (!isLocalBusinessProfile(state.userProfile)) return false;
+  const ownRestaurantId = String(state.userProfile.restaurantId || "").trim();
+  const targetRestaurantId = String(restaurantId || "").trim();
+  if (ownRestaurantId && targetRestaurantId && ownRestaurantId === targetRestaurantId) return true;
+
+  const ownRest = ownRestaurantId ? getRestaurantMetaById(ownRestaurantId) : null;
+  const ownNames = [
+    state.userProfile.name,
+    ownRest?.name,
+    ownRest?.restaurantName
+  ].map((item) => normalizeSearchKey(item)).filter(Boolean);
+  const targetName = normalizeSearchKey(name);
+  if (!targetName) return false;
+  return ownNames.includes(targetName);
+}
+
+function openOwnBusinessProfile({ showBack = true, topTab } = {}) {
+  const prevTab = state.activeTab || "feed";
+  const nextTopTab = topTab === "menu" ? "menu" : "profile";
+  state.profileView = null;
+  state.profileModal = { open: false, profile: null };
+  state.profileContentTab = "posts";
+  state.profileTopTab = nextTopTab;
+  state.profileViewMode = "grid";
+  state.profilePostMenuId = null;
+  state.drawerOpen = false;
+  state.activeTab = "profile";
+  state.profileBackTab = showBack ? prevTab : "";
+  render();
+  if (nextTopTab === "menu") {
+    ensureMenuDataForProfile();
+    ensureFocusDataForProfile();
+  }
+}
+
 function maybeOpenProfileFromQuery() {
   if (pendingProfileHandled) return;
   if (!pendingProfileRestaurantId) return;
@@ -6237,6 +6649,11 @@ async function openProfileViewFromBusiness(input, { showBack = true, topTab } = 
     const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
     const restaurantId = typeof input === "string" ? "" : (input?.id || "");
     if (!safeName && !restaurantId) return;
+
+    if (isOwnBusinessTarget({ restaurantId, name: safeName })) {
+      openOwnBusinessProfile({ showBack, topTab });
+      return;
+    }
 
     if (restaurantId) {
       void hydrateRestaurantsByIds([restaurantId], { max: 1 });
@@ -6586,6 +7003,13 @@ async function toggleFollow(handle, target = {}) {
     }
   }
 
+  const ownRestaurantId = String(state.userProfile.restaurantId || "");
+  const ownUid = String(state.user.uid || "");
+  const ownHandle = String(state.userProfile.handle || "").replace(/^@/, "").toLowerCase();
+  if (targetType === "restaurant" && ownRestaurantId && String(targetId) === ownRestaurantId) return;
+  if (targetType === "user" && ownUid && String(targetId) === ownUid) return;
+  if (!targetId && ownHandle && safeHandle.toLowerCase() === ownHandle) return;
+
   const docId = `${targetType || "handle"}_${targetId || safeHandle}`;
   const followRef = doc(db, "users", state.user.uid, "following", docId);
   const idx = state.followingHandles.indexOf(safeHandle);
@@ -6595,6 +7019,7 @@ async function toggleFollow(handle, target = {}) {
     const n = Number(value);
     return Number.isFinite(n) ? n : 0;
   };
+  const isBusiness = isLocalBusinessProfile(state.userProfile);
 
   try {
     if (isUnfollow) {
@@ -6614,7 +7039,11 @@ async function toggleFollow(handle, target = {}) {
 
     state.userProfile.following = Math.max(0, toNum(state.userProfile.following) + delta);
     try {
-      await updateDoc(doc(db, "users", state.user.uid), { followingCount: increment(delta) });
+      if (isBusiness && state.userProfile.restaurantId) {
+        await updateDoc(doc(db, "restaurants", state.userProfile.restaurantId), { followingCount: increment(delta) });
+      } else {
+        await updateDoc(doc(db, "users", state.user.uid), { followingCount: increment(delta) });
+      }
     } catch (err) {
       console.error(err);
     }
@@ -7606,7 +8035,7 @@ function updateCommentLikeButton(postId, commentId, replyId, likeCount) {
 function renderSettingsView() {
   const settings = state.settings;
   const profile = state.userProfile;
-  const avatarFit = logoFitClass(profile.role === "business");
+  const avatarFit = logoFitClass(isLocalBusinessProfile(profile));
 
   if (state.settingsView === "main") {
     return `
@@ -7637,7 +8066,7 @@ function renderSettingsView() {
   }
 
   if (state.settingsView === "account") {
-    const avatarFit = logoFitClass(profile.role === "business");
+    const avatarFit = logoFitClass(isLocalBusinessProfile(profile));
     return `
       <div class="p-6 animate-in slide-in-from-right-10 duration-500">
         <header class="flex items-center gap-4 mb-8">
@@ -7673,7 +8102,7 @@ function renderSettingsView() {
             <input id="settingsCity" type="text" value="${escapeHtml(profile.location)}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           
-          ${profile.role === "business" ? `
+          ${isLocalBusinessProfile(profile) ? `
             <div class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100/50 mt-4">
               <label class="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-1 mb-2 ml-1">
                 ${icon("map-pin", "w-3 h-3")} Exakter Standort (Karte)
@@ -8236,7 +8665,7 @@ function renderUploadView() {
         <div id="uploadFileTrigger" class="flex-1 flex flex-col items-center justify-center rounded-[3rem] border-4 border-dashed p-8 text-center cursor-pointer transition-all border-slate-200 bg-white">
           <div class="w-20 h-20 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 mb-6">${icon("upload", "w-8 h-8")}</div>
           <h3 class="text-lg font-black mb-2 italic text-slate-900">Foto waehlen</h3>
-          <p class="text-sm font-medium text-slate-500">Posten als ${profile.role === "business" ? "Business (Feed)" : "User (Profil)"}</p>
+          <p class="text-sm font-medium text-slate-500">Posten als ${isLocalBusinessProfile(profile) ? "Business (Feed)" : "User (Profil)"}</p>
         </div>
       `}
     </div>
@@ -8764,7 +9193,9 @@ function bindAuthEvents() {
         if (state.auth.mode === "login") {
           const admin = resolveAdminLogin(email, password);
           const cred = admin ? await signInOrCreateAdmin(admin) : await signInWithEmailAndPassword(auth, email, password);
-          await ensureUserProfile(cred.user, admin?.profile || {});
+          if (admin) {
+            await ensureUserProfile(cred.user, admin?.profile || {});
+          }
         } else {
           if (!name || !email || !password) {
             throw new Error("Bitte alles ausfuellen.");
@@ -9764,11 +10195,37 @@ async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType
 async function uploadAvatar(file) {
   if (!state.user) return;
   try {
-    const { cdnUrl } = await uploadCompressedImage(file, state.user.uid, { maxSize: 512, quality: 0.80, mimeType: 'image/jpeg'});
-    await setDoc(doc(db, "users", state.user.uid), {
-      avatarUrl: cdnUrl,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    const isBusiness = isLocalBusinessProfile(state.userProfile);
+    const ownerId = isBusiness ? state.userProfile.restaurantId : state.user.uid;
+    const { cdnUrl } = await uploadCompressedImage(file, ownerId, { maxSize: 512, quality: 0.80, mimeType: 'image/jpeg'});
+    if (isBusiness && state.userProfile.restaurantId) {
+      await setDoc(doc(db, "restaurants", state.userProfile.restaurantId), {
+        logoUrl: cdnUrl,
+        logo: cdnUrl,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+      const rest = state.restaurants.find((r) => String(r.id) === String(state.userProfile.restaurantId)) || {};
+      await ensureRestaurantPublicMeta(state.userProfile.restaurantId, {
+        name: rest.name || rest.restaurantName || state.userProfile.name,
+        restaurantName: rest.restaurantName || rest.name || state.userProfile.name,
+        type: rest.type || rest.customerType || "cafe",
+        city: rest.city || state.userProfile.location || "",
+        logoUrl: cdnUrl,
+        logo: cdnUrl
+      });
+      state.restaurants = mergeRestaurants(state.restaurants, [{
+        id: state.userProfile.restaurantId,
+        ...rest,
+        logoUrl: cdnUrl,
+        logo: cdnUrl
+      }]);
+      rebuildBusinessLocations();
+    } else {
+      await setDoc(doc(db, "users", state.user.uid), {
+        avatarUrl: cdnUrl,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    }
     state.userProfile.avatar = cdnUrl;
     saveUserProfileToStorage();
     primeSelfAvatarCache(getOptimizedImageUrl(cdnUrl, "avatar"));
@@ -9895,40 +10352,45 @@ async function saveAccountSettings() {
   const statusEl = document.getElementById("settingsStatus");
   if (statusEl) statusEl.textContent = "Speichere Profil...";
 
-  const payload = {
-    displayName: name,
-    handle,
-    bio,
-    city,
-    restaurantId,
-    updatedAt: serverTimestamp()
-  };
-
-  if (state.userProfile.role === "business") {
-    payload.address = address;
-    if (verifiedMapLocation) {
-      payload.lat = verifiedMapLocation.lat;
-      payload.lng = verifiedMapLocation.lng;
-    }
-  }
-
   try {
-    await setDoc(doc(db, "users", state.user.uid), payload, { merge: true });
-    
-    // In Restaurant speichern UND CACHE sofort updaten!
-    if (restaurantId && verifiedMapLocation) {
-      await setDoc(doc(db, "restaurants", restaurantId), { 
-        lat: verifiedMapLocation.lat, lng: verifiedMapLocation.lng, address 
-      }, { merge: true });
-
-      const restIdx = state.restaurants.findIndex(r => r.id === restaurantId);
-      if (restIdx >= 0) {
-        state.restaurants[restIdx].lat = verifiedMapLocation.lat;
-        state.restaurants[restIdx].lng = verifiedMapLocation.lng;
-        state.restaurants[restIdx].address = address;
-        writeCache(CACHE_KEYS.restaurants, state.restaurants);
-        rebuildBusinessLocations();
+    const isBusiness = isLocalBusinessProfile(state.userProfile);
+    if (isBusiness && restaurantId) {
+      const restPayload = {
+        name,
+        restaurantName: name,
+        handle,
+        bio,
+        description: bio,
+        city,
+        address,
+        updatedAt: serverTimestamp()
+      };
+      if (verifiedMapLocation) {
+        restPayload.lat = verifiedMapLocation.lat;
+        restPayload.lng = verifiedMapLocation.lng;
       }
+      await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
+      const rest = state.restaurants.find((r) => String(r.id) === String(restaurantId)) || {};
+      await ensureRestaurantPublicMeta(restaurantId, {
+        name,
+        restaurantName: name,
+        type: rest.type || rest.customerType || "cafe",
+        city,
+        logoUrl: rest.logoUrl || rest.logo || "",
+        logo: rest.logo || rest.logoUrl || ""
+      });
+      state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...rest, ...restPayload }]);
+      rebuildBusinessLocations();
+    } else {
+      const payload = {
+        displayName: name,
+        handle,
+        bio,
+        city,
+        restaurantId,
+        updatedAt: serverTimestamp()
+      };
+      await setDoc(doc(db, "users", state.user.uid), payload, { merge: true });
     }
 
     await updateProfile(state.user, { displayName: name });
@@ -9946,7 +10408,7 @@ async function saveAccountSettings() {
       state.userProfile.lng = verifiedMapLocation.lng;
     }
 
-    safeStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(state.userProfile));
+    saveUserProfileToStorage();
     
     if (statusEl) statusEl.textContent = "Erfolgreich gespeichert!";
     setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 2000);
@@ -9970,6 +10432,10 @@ async function updateRestaurantSelection(restaurantId) {
       render();
     }
   }
+  if (isLocalBusinessProfile(state.userProfile)) {
+    await loadBusinessPosts();
+    return;
+  }
   try {
     await setDoc(doc(db, "users", state.user.uid), {
       restaurantId: restaurantId || "",
@@ -9985,7 +10451,7 @@ async function handleUploadPost() {
   if (!state.user || !state.upload.file) return;
 
   const caption = document.getElementById("uploadCaption")?.value?.trim() || "";
-  const isBusiness = state.userProfile.role === "business";
+  const isBusiness = isLocalBusinessProfile(state.userProfile);
   const restaurantId = state.userProfile.restaurantId || document.getElementById("uploadRestaurantSelect")?.value || "";
 
   if (isBusiness && !restaurantId) {
@@ -10111,6 +10577,118 @@ async function loadUserProfile(user, { force = false } = {}) {
     if (state.activeTab === "feed") return;
   }
   render();
+}
+
+async function loadBusinessProfile(user, { restaurant = null, force = false } = {}) {
+  if (!user) return;
+  const rest = restaurant || await resolveRestaurantForAuthUser(user, { preferCached: !force });
+  if (!rest) {
+    await loadUserProfile(user, { force });
+    return;
+  }
+  const prevAvatar = state.userProfile?.avatar || "";
+  const normalized = normalizeBusinessProfile(rest, user);
+  normalized.uid = user.uid;
+  const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
+  if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
+  if (!Number.isFinite(Number(rest.followingCount ?? rest.following))) {
+    normalized.following = state.userProfile?.following ?? normalized.following;
+  }
+  if (!Number.isFinite(Number(rest.followersCount ?? rest.followers))) {
+    normalized.followers = state.userProfile?.followers ?? normalized.followers;
+  }
+  state.userProfile = normalized;
+  state.userProfile.uid = user.uid;
+  saveUserProfileToStorage();
+  const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
+  if (!isPlaceholderUrl(resolvedAvatar)) {
+    primeSelfAvatarCache(resolvedAvatar);
+  }
+  if (rest?.id) {
+    state.restaurants = mergeRestaurants(state.restaurants, [{ id: rest.id, ...rest }]);
+    rebuildBusinessLocations();
+  }
+  if (lastRenderMode === "main") {
+    updateShellDom();
+    if (state.activeTab === "search" && refreshSearchView()) return;
+    if (state.activeTab === "feed") return;
+  }
+  render();
+}
+
+async function loadAuthProfile(user, { force = false } = {}) {
+  if (!user) return;
+  let rest = await resolveRestaurantForAuthUser(user, { preferCached: !force });
+  if (!rest && user?.uid) {
+    const leadByUid = await resolveLeadByUid(user.uid);
+    if (leadByUid) {
+      rest = findRestaurantByLeadId(leadByUid.id) || await ensureRestaurantForLead(leadByUid, user);
+    }
+  }
+  if (!rest && user?.email) {
+    const lead = await resolveLeadByEmail(user.email);
+    if (lead) {
+      rest = findRestaurantByLeadId(lead.id) || await ensureRestaurantForLead(lead, user);
+    }
+  }
+  if (!rest) {
+    try {
+      const legacySnap = await getDoc(doc(db, "users", user.uid));
+      if (legacySnap.exists()) {
+        const legacy = legacySnap.data() || {};
+        const roleKey = String(legacy.role || "").toLowerCase();
+        const restId = legacy.restaurantId || "";
+        if ((roleKey === "business" || restId) && restId) {
+          const restSnap = await getDoc(doc(db, "restaurants", restId));
+          if (restSnap.exists()) {
+            const restData = restSnap.data() || {};
+            const patch = {};
+            const legacyEmail = legacy.email || user.email || "";
+            if (!restData.ownerUid) patch.ownerUid = user.uid;
+            if (legacyEmail && !restData.ownerEmail) patch.ownerEmail = legacyEmail;
+            const legacyName = legacy.displayName || legacy.name || "";
+            if (legacyName && !(restData.name || restData.restaurantName)) {
+              patch.name = legacyName;
+              patch.restaurantName = legacyName;
+            }
+            const legacyAvatar = legacy.avatarUrl || legacy.avatar || "";
+            if (legacyAvatar && !(restData.logoUrl || restData.logo)) {
+              patch.logoUrl = legacyAvatar;
+              patch.logo = legacyAvatar;
+            }
+            if (legacy.city && !restData.city) patch.city = legacy.city;
+            if (legacy.address && !restData.address) patch.address = legacy.address;
+            if (legacy.phone && !restData.phone) patch.phone = legacy.phone;
+            if (legacy.instagram && !restData.instagram) {
+              patch.instagram = legacy.instagram;
+              patch.insta = legacy.instagram;
+            }
+            if (Object.keys(patch).length) {
+              patch.updatedAt = serverTimestamp();
+              await setDoc(doc(db, "restaurants", restId), patch, { merge: true });
+            }
+            rest = { id: restSnap.id, ...restData, ...patch };
+          }
+        }
+      }
+    } catch {}
+  }
+  if (rest && user?.uid) {
+    const patch = {};
+    const email = user.email || "";
+    if (!rest.ownerUid) patch.ownerUid = user.uid;
+    if (email && !rest.ownerEmail) patch.ownerEmail = email;
+    if (Object.keys(patch).length && rest.id) {
+      patch.updatedAt = serverTimestamp();
+      await setDoc(doc(db, "restaurants", rest.id), patch, { merge: true });
+      rest = { ...rest, ...patch };
+    }
+  }
+  if (rest) {
+    await loadBusinessProfile(user, { restaurant: rest, force });
+    return;
+  }
+  await loadUserProfile(user, { force });
 }
 
 function stopRestaurantsListener() {
@@ -10262,19 +10840,23 @@ function buildStoriesRowSignature(items) {
 
 function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
   const data = profileDoc?.data || profileDoc || {};
-  const displayName = data?.displayName || fallbackName || restaurant?.name || restaurant?.restaurantName || "Business";
-  const handle = data?.handle || normalizeHandle(displayName);
+  const rest = restaurant || {};
+  const displayName = data?.displayName || data?.name || rest?.name || rest?.restaurantName || fallbackName || "Business";
+  const handle = resolvePreferredHandle({ handle: data?.handle || rest?.handle || "", name: displayName }, displayName);
+  const followers = data?.followersCount ?? data?.followers ?? rest?.followersCount ?? rest?.followers ?? 0;
+  const following = data?.followingCount ?? data?.following ?? rest?.followingCount ?? rest?.following ?? 0;
+  const restaurantId = data?.restaurantId || rest?.id || "";
   return {
     name: displayName,
-    handle: handle || "business",
-    uid: profileDoc?.id || data?.uid || "",
-    bio: data?.bio || restaurant?.description || restaurant?.bio || "Offizieller Account auf MENYRA Social.",
-    avatar: data?.avatarUrl || data?.avatar || restaurant?.logoUrl || restaurant?.logo || "",
-    location: data?.city || restaurant?.city || "Kosovo",
-    followers: data?.followersCount ?? data?.followers ?? 0,
-    following: data?.followingCount ?? data?.following ?? 0,
+    handle: handle || normalizeHandle(displayName),
+    uid: data?.uid || rest?.ownerUid || profileDoc?.id || "",
+    bio: data?.bio || rest?.description || rest?.bio || "Offizieller Account auf MENYRA Social.",
+    avatar: data?.avatarUrl || data?.avatar || rest?.logoUrl || rest?.logo || "",
+    location: data?.city || rest?.city || "Kosovo",
+    followers,
+    following,
     role: "business",
-    restaurantId: data?.restaurantId || restaurant?.id || "",
+    restaurantId,
     posts: posts || []
   };
 }
@@ -10299,33 +10881,14 @@ function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
 }
 
 async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
-  const rest = restaurant || (restaurantId ? state.restaurants.find((r) => r.id === restaurantId) : null) || {};
-  const ownerUid = rest.ownerUid || "";
-  const ownerEmail = rest.ownerEmail || "";
-  if (ownerUid) {
-    try {
-      const snap = await getDoc(doc(db, "users", ownerUid));
-      if (snap.exists()) return { id: snap.id, data: snap.data() || {} };
-    } catch {}
-  }
-  if (restaurantId) {
-    try {
-      const snap = await getDocs(query(collection(db, "users"), where("restaurantId", "==", restaurantId), limit(1)));
-      if (!snap.empty) {
-        const docSnap = snap.docs[0];
-        return { id: docSnap.id, data: docSnap.data() || {} };
-      }
-    } catch {}
-  }
-  if (ownerEmail) {
-    try {
-      const snap = await getDocs(query(collection(db, "users"), where("email", "==", ownerEmail), limit(1)));
-      if (!snap.empty) {
-        const docSnap = snap.docs[0];
-        return { id: docSnap.id, data: docSnap.data() || {} };
-      }
-    } catch {}
-  }
+  const rest = restaurant || (restaurantId ? state.restaurants.find((r) => r.id === restaurantId) : null) || null;
+  if (rest?.id) return { id: rest.id, data: rest };
+  const restId = restaurantId || rest?.id || "";
+  if (!restId) return null;
+  try {
+    const snap = await getDoc(doc(db, "restaurants", restId));
+    if (snap.exists()) return { id: snap.id, data: snap.data() || {} };
+  } catch {}
   return null;
 }
 
@@ -11096,24 +11659,16 @@ async function createAuthUser(email, password) {
 }
 
 async function ensureSocialBusinessProfile({ uid, email, name, restaurantId, city, address, phone, logoUrl, instagram, roles }) {
-  if (!uid) return;
-  const payload = {
-    displayName: name || email || "",
-    email: email || "",
-    bio: "",
-    city: city || "Prishtina",
-    address: address || "",
-    phone: phone || "",
-    instagram: instagram || "",
-    insta: instagram || "",
-    role: "business",
-    roles: normalizeRoleList(roles || "owner"),
-    restaurantId: restaurantId || "",
-    avatarUrl: logoUrl || "",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp()
-  };
-  await setDoc(doc(db, "users", uid), payload, { merge: true });
+  void uid;
+  void email;
+  void name;
+  void restaurantId;
+  void city;
+  void address;
+  void phone;
+  void logoUrl;
+  void instagram;
+  void roles;
 }
 
 async function ensureRestaurantPublicMeta(restaurantId, base) {
@@ -11476,27 +12031,19 @@ async function saveLeadFromModal() {
         if (user?.uid) {
           socialUid = user.uid;
           socialEmail = loginEmail;
-          await ensureSocialBusinessProfile({
-            uid: user.uid,
-            email: loginEmail,
-            name: businessName,
-            restaurantId,
-            city,
-            address,
-            phone,
-            logoUrl,
-            instagram,
-            roles: ["owner"]
-          });
-          await setDoc(doc(db, "restaurants", restaurantId), {
-            ownerUid: user.uid,
-            ownerEmail: loginEmail,
-            ownerName: contactName || businessName,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
         }
       } catch (err) {
         loginError = err?.message || "Login fehlgeschlagen.";
+      }
+    }
+    if (restaurantId) {
+      const ownerPatch = {};
+      if (socialUid) ownerPatch.ownerUid = socialUid;
+      if (loginEmail || socialEmail) ownerPatch.ownerEmail = loginEmail || socialEmail;
+      if (contactName || businessName) ownerPatch.ownerName = contactName || businessName;
+      if (Object.keys(ownerPatch).length) {
+        ownerPatch.updatedAt = serverTimestamp();
+        await setDoc(doc(db, "restaurants", restaurantId), ownerPatch, { merge: true });
       }
     }
 
@@ -11739,27 +12286,19 @@ async function convertLeadToCustomer(leadId) {
         const user = await createAuthUser(socialEmail, LEAD_SOCIAL_DEFAULT_PASSWORD);
         if (user?.uid) {
           socialUid = user.uid;
-          await ensureSocialBusinessProfile({
-            uid: user.uid,
-            email: socialEmail,
-            name: businessName,
-            restaurantId,
-            city: lead.city || "",
-            address: lead.address || "",
-            phone: lead.phone || "",
-            logoUrl: lead.logoUrl || "",
-            instagram: lead.instagram || lead.insta || "",
-            roles: ["owner"]
-          });
-          await setDoc(doc(db, "restaurants", restaurantId), {
-            ownerUid: user.uid,
-            ownerEmail: socialEmail,
-            ownerName: lead.contactName || businessName,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
         }
       } catch (err) {
         loginError = err?.message || "Login fehlgeschlagen.";
+      }
+    }
+    if (restaurantId) {
+      const ownerPatch = {};
+      if (socialUid) ownerPatch.ownerUid = socialUid;
+      if (socialEmail) ownerPatch.ownerEmail = socialEmail;
+      if (lead.contactName || businessName) ownerPatch.ownerName = lead.contactName || businessName;
+      if (Object.keys(ownerPatch).length) {
+        ownerPatch.updatedAt = serverTimestamp();
+        await setDoc(doc(db, "restaurants", restaurantId), ownerPatch, { merge: true });
       }
     }
 
@@ -12086,7 +12625,7 @@ async function loadStories() {
 async function bootstrapUser(user) {
   if (!user) return;
   try {
-    await loadUserProfile(user, { force: true });
+    await loadAuthProfile(user, { force: true });
     if (state.userProfile.restaurantId) {
       await hydrateRestaurantsByIds([state.userProfile.restaurantId], { max: 1 });
     }
