@@ -137,12 +137,16 @@ const LEAD_STATUS_LABELS = {
   kunde: "Kunde",
   no_interest: "Keine Interesse"
 };
-const LEAD_TYPE_ORDER = ["restaurant", "cafe", "ecommerce", "shop"];
+const LEAD_TYPE_ORDER = ["restaurant", "cafe", "fastfood", "ecommerce", "tankstelle", "lebensmittel", "apotheken", "services"];
 const LEAD_TYPE_LABELS = {
   restaurant: "Restaurant",
   cafe: "Cafe",
-  ecommerce: "Online Shop",
-  shop: "Shop"
+  fastfood: "Fastfood",
+  ecommerce: "E-Commerce",
+  tankstelle: "Tankstelle",
+  lebensmittel: "Lebensmittel",
+  apotheken: "Apotheke",
+  services: "Services"
 };
 
 const DEFAULT_NOTIFICATIONS = [
@@ -980,10 +984,14 @@ function normalizeLeadTypeKey(value) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[\s-]+/g, "_");
+  if (!key) return "";
   if (key === "e_commerce") return "ecommerce";
-  if (key === "online_shop" || key === "onlineshop" || key === "online-shop") return "ecommerce";
-  if (key === "store" || key === "laden") return "shop";
-  if (key === "service") return "shop";
+  if (["online_shop", "onlineshop", "online-shop", "shop", "store", "laden"].includes(key)) return "ecommerce";
+  if (["fast_food", "imbiss", "snack"].includes(key)) return "fastfood";
+  if (["tank", "gas_station", "gasstation", "fuel", "petrol"].includes(key)) return "tankstelle";
+  if (["grocery", "supermarket", "supermarkt", "market"].includes(key)) return "lebensmittel";
+  if (["apotheke", "pharmacy"].includes(key)) return "apotheken";
+  if (["service", "dienstleistung", "dienstleistungen"].includes(key)) return "services";
   return key || "";
 }
 
@@ -999,7 +1007,8 @@ function leadTypeLabel(value) {
 
 function resolveCustomerType(value) {
   const key = normalizeLeadTypeKey(value);
-  return key || "cafe";
+  if (LEAD_TYPE_ORDER.includes(key)) return key;
+  return "cafe";
 }
 
 function customerStatusLabel(value) {
@@ -1035,21 +1044,44 @@ function isCustomerRestaurant(rest = {}) {
 }
 
 function normalizeRestaurantType(value) {
+  const normalized = normalizeLeadTypeKey(value);
+  if (normalized) return normalized;
   const raw = String(value || "").toLowerCase().trim();
   if (!raw) return "";
   if (raw.includes("cafe") || raw.includes("coffee")) return "cafe";
-  if (raw.includes("restaurant") || raw.includes("resto") || raw.includes("restaurant")) return "restaurant";
-  if (raw.includes("shop") || raw.includes("store") || raw.includes("ecom") || raw.includes("online")) return "shop";
+  if (raw.includes("restaurant") || raw.includes("resto")) return "restaurant";
+  if (raw.includes("fast")) return "fastfood";
+  if (raw.includes("ecom") || raw.includes("online") || raw.includes("shop") || raw.includes("store")) return "ecommerce";
+  if (raw.includes("tank") || raw.includes("gas") || raw.includes("fuel")) return "tankstelle";
+  if (raw.includes("lebens") || raw.includes("grocery") || raw.includes("supermarkt")) return "lebensmittel";
+  if (raw.includes("apothek") || raw.includes("pharmacy")) return "apotheken";
+  if (raw.includes("service") || raw.includes("dienst")) return "services";
   return raw;
+}
+
+function getBusinessProfileType(profile = state.userProfile) {
+  if (!profile?.restaurantId) return "";
+  const rest = getRestaurantMetaById(profile.restaurantId);
+  const typeRaw = rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "";
+  return normalizeRestaurantType(typeRaw);
+}
+
+function getBusinessCatalogMode(profile = state.userProfile) {
+  const type = getBusinessProfileType(profile);
+  if (!type) return "menu";
+  if (type === "restaurant" || type === "cafe" || type === "fastfood") return "menu";
+  return "shop";
+}
+
+function getBusinessCatalogLabel(profile = state.userProfile) {
+  return getBusinessCatalogMode(profile) === "shop" ? "Shop" : "Menue";
 }
 
 function isRestaurantCafeProfile(profile = state.userProfile) {
   if (!profile?.restaurantId) return false;
-  const rest = getRestaurantMetaById(profile.restaurantId);
-  const typeRaw = rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "";
-  const type = normalizeRestaurantType(typeRaw);
+  const type = getBusinessProfileType(profile);
   if (!type) return true;
-  return type === "restaurant" || type === "cafe";
+  return LEAD_TYPE_ORDER.includes(type);
 }
 
 function normalizeMenuType(value) {
@@ -2312,9 +2344,12 @@ function mapRestaurantToCard(rest, idx) {
 }
 
 function businessIcon(type) {
-  const value = String(type || "").toLowerCase();
-  if (["food", "restaurant", "cafe"].includes(value)) return "utensils";
-  if (["shop", "store", "ecommerce", "online_shop", "onlineshop"].includes(value)) return "shopping-bag";
+  const value = normalizeLeadTypeKey(type) || String(type || "").toLowerCase();
+  if (["food", "restaurant", "cafe", "fastfood"].includes(value)) return "utensils";
+  if (["ecommerce", "lebensmittel"].includes(value)) return "shopping-bag";
+  if (["apotheken"].includes(value)) return "cross";
+  if (["tankstelle"].includes(value)) return "fuel";
+  if (["services"].includes(value)) return "wrench";
   if (["live", "nightlife", "club", "bar"].includes(value)) return "radio";
   if (["drink", "cocktail"].includes(value)) return "zap";
   return "zap";
@@ -3873,6 +3908,8 @@ function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const switchLinks = renderRoleSwitchLinks();
   const isCeo = isCeoUser();
+  const catalogLabel = getBusinessCatalogLabel(state.userProfile);
+  const catalogIcon = catalogLabel === "Shop" ? "shopping-bag" : "utensils";
   const showMenuTab = isLocalBusinessProfile(state.userProfile)
     || !!state.userProfile.restaurantId
     || !!state.roleSwitchRestaurantId
@@ -3884,7 +3921,7 @@ function renderDrawer() {
     { id: "search", label: "Suche", icon: "search" },
     { id: "map", label: "Karte", icon: "map" },
     { id: "profile", label: "Profil", icon: "user" },
-    { id: "menu", label: "Speisekarte", icon: "utensils", hidden: !showMenuTab },
+    { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
     { id: "notifications", label: "Updates", icon: "bell", badge: unread },
     { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
     { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
@@ -3911,7 +3948,12 @@ function renderDrawer() {
         <nav class="space-y-2 flex-1">
           ${navItems.map((item) => `
             <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${state.activeTab === item.id ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
-              <div class="flex items-center gap-4">${icon(item.icon, "w-4 h-4")} ${item.label}</div>
+              <div class="flex items-center gap-4">
+                ${item.id === "menu"
+                  ? `<i data-menu-nav-icon data-lucide="${item.icon}" class="w-4 h-4"></i><span data-menu-nav-label>${item.label}</span>`
+                  : `${icon(item.icon, "w-4 h-4")} ${item.label}`
+                }
+              </div>
               ${item.badge ? `<span data-unread-badge="drawer" class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge}</span>` : ""}
             </button>
           `).join("")}
@@ -4206,6 +4248,8 @@ function updateShellDom() {
   const avatarUrl = resolveShellAvatarUrl();
   const isBusiness = isLocalBusinessProfile(state.userProfile);
   const branding = resolveHeaderBranding();
+  const catalogLabel = getBusinessCatalogLabel(state.userProfile);
+  const catalogIcon = catalogLabel === "Shop" ? "shopping-bag" : "utensils";
   const showMenuTab = isLocalBusinessProfile(state.userProfile)
     || !!state.userProfile.restaurantId
     || !!state.roleSwitchRestaurantId
@@ -4259,6 +4303,17 @@ function updateShellDom() {
   const menuNavBtn = document.querySelector('[data-nav="menu"]');
   if (menuNavBtn) {
     menuNavBtn.classList.toggle("hidden", !showMenuTab);
+    const menuLabel = menuNavBtn.querySelector("[data-menu-nav-label]");
+    if (menuLabel && menuLabel.textContent !== catalogLabel) {
+      menuLabel.textContent = catalogLabel;
+    }
+    const menuIcon = menuNavBtn.querySelector("[data-menu-nav-icon]");
+    if (menuIcon) {
+      const currentIcon = menuIcon.getAttribute("data-lucide") || "";
+      if (currentIcon !== catalogIcon) {
+        menuIcon.setAttribute("data-lucide", catalogIcon);
+      }
+    }
   }
   document.querySelectorAll('[data-nav="leads"], [data-nav="customers"]').forEach((btn) => {
     btn.classList.toggle("hidden", !showCeoTabs);
@@ -6242,6 +6297,7 @@ function renderMenuAdminView() {
   const profile = state.userProfile;
   const restaurantId = profile.restaurantId || "";
   const isEligible = isRestaurantCafeProfile(profile);
+  const catalogLabel = getBusinessCatalogLabel(profile);
   const restaurant = restaurantId ? getRestaurantMetaById(restaurantId) : null;
   const restaurantName = restaurant?.name || restaurant?.restaurantName || profile.name || "Business";
   const sameRestaurant = restaurantId && state.menu.restaurantId === restaurantId;
@@ -6264,8 +6320,8 @@ function renderMenuAdminView() {
           <div class="w-16 h-16 rounded-[1.8rem] bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-4">
             ${icon("lock", "w-6 h-6")}
           </div>
-          <h2 class="text-lg font-black italic text-slate-900 mb-2">Speisekarte</h2>
-          <p class="text-sm text-slate-500">Diese Funktion ist nur fuer Cafes und Restaurants.</p>
+          <h2 class="text-lg font-black italic text-slate-900 mb-2">${catalogLabel}</h2>
+          <p class="text-sm text-slate-500">Diese Funktion ist nur fuer Business-Profile.</p>
         </div>
       </div>
     `;
@@ -6275,7 +6331,7 @@ function renderMenuAdminView() {
     <div class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
       <div class="flex items-end justify-between mb-6">
         <div>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Speisekarte</span>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${catalogLabel}</span>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter">Editor</h2>
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(restaurantName)}</p>
         </div>
@@ -6311,7 +6367,7 @@ function renderMenuAdminView() {
         ${renderMenuFilterRow()}
 
         ${isLoading
-          ? `<div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Menue wird geladen...</div>`
+          ? `<div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${catalogLabel} wird geladen...</div>`
           : renderMenuList(items, { mode: "admin" })
         }
         ${state.menu.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mt-4">${escapeHtml(state.menu.error)}</div>` : ""}
@@ -6323,12 +6379,12 @@ function renderMenuAdminView() {
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">QR Codes</span>
               <h3 class="text-xl font-black italic tracking-tighter">Teilen</h3>
-              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Direkt zum Profil oder zur Karte</p>
+              <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Direkt zum Profil oder zu ${catalogLabel}</p>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
             ${renderMenuQrCard({ label: "Profil", url: profileUrl, caption: "Social Profil" })}
-            ${renderMenuQrCard({ label: "Karte", url: menuUrl, caption: "Karte & Preise" })}
+            ${renderMenuQrCard({ label: catalogLabel, url: menuUrl, caption: `${catalogLabel} & Preise` })}
           </div>
         </div>
       ` : ""}
@@ -6639,7 +6695,7 @@ function maybeOpenProfileFromQuery() {
   const nextTab = (() => {
     const key = String(nextTabRaw || "").trim().toLowerCase();
     if (!key) return "";
-    if (key === "menu" || key === "karte" || key === "speisekarte") return "menu";
+    if (key === "menu" || key === "karte" || key === "speisekarte" || key === "shop") return "menu";
     return "";
   })();
   openProfileViewFromBusiness({ id: nextId }, { showBack: false, topTab: nextTab });
@@ -8713,6 +8769,7 @@ function shouldShowBusinessTopTabs() {
 function renderBusinessTopTabs() {
   if (!shouldShowBusinessTopTabs()) return "";
   const profile = state.profileView?.profile || state.userProfile;
+  const catalogLabel = getBusinessCatalogLabel(profile);
   const base = "flex-1 py-3 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
   const activeTop = state.profileTopTab || "profile";
   const isProfileActive = activeTop === "profile";
@@ -8725,7 +8782,7 @@ function renderBusinessTopTabs() {
           Profil
         </button>
         <button type="button" data-profile-top-tab="menu" class="${base} ${isMenuActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-          Karte
+          ${catalogLabel}
         </button>
         <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
           Reviews
@@ -11712,7 +11769,7 @@ function normalizeLeadDoc(docSnap) {
   return {
     id: docSnap?.id || data.id || "",
     businessName: data.businessName || data.name || "",
-    customerType: data.customerType || data.type || "cafe",
+    customerType: resolveCustomerType(data.customerType || data.type || "cafe"),
     contactName: data.contactName || data.contact || "",
     phone: data.phone || "",
     email: data.email || "",
@@ -11738,7 +11795,7 @@ function normalizeLeadFromRestaurant(rest) {
   return {
     id: rest.leadId || rest.id,
     businessName: rest.name || rest.restaurantName || "",
-    customerType: rest.type || rest.customerType || "cafe",
+    customerType: resolveCustomerType(rest.type || rest.customerType || "cafe"),
     contactName: rest.ownerName || "",
     phone: rest.phone || "",
     email: rest.ownerEmail || "",
