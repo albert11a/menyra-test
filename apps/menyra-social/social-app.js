@@ -8336,8 +8336,8 @@ function renderLeadsView() {
       </div>
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
         ${icon("search", "w-4 h-4 text-slate-400")}
-        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 bg-transparent text-[11px] font-bold outline-none" />
-        <select id="leadsStatusFilter" class="bg-transparent text-[11px] font-bold uppercase tracking-widest text-slate-400">
+        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 bg-transparent text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 outline-none" />
+        <select id="leadsStatusFilter" class="h-9 rounded-xl bg-slate-50 border border-slate-100 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 outline-none">
           <option value="">Alle</option>
           ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde").map((key) => `
             <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
@@ -8392,7 +8392,7 @@ function renderCustomersView() {
       </div>
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
         ${icon("search", "w-4 h-4 text-slate-400")}
-        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 bg-transparent text-[11px] font-bold outline-none" />
+        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 bg-transparent text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 outline-none" />
       </div>
       ${state.customers.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.customers.error)}</div>` : ""}
       <div class="space-y-4">${listHtml}</div>
@@ -11917,6 +11917,9 @@ function openLeadModal(mode = "create", lead = null) {
 }
 
 function closeLeadModal() {
+  if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
   state.leadModal = {
     open: false,
     mode: "create",
@@ -11927,8 +11930,8 @@ function closeLeadModal() {
     logoPreview: "",
     coords: null
   };
+  syncModalOpenUiState();
   renderOverlays({ updateLead: true });
-  queueMicrotask(syncModalOpenUiState);
 }
 
 function openCustomerModal(customer) {
@@ -11946,6 +11949,9 @@ function openCustomerModal(customer) {
 }
 
 function closeCustomerModal() {
+  if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
   state.customerModal = {
     open: false,
     mode: "edit",
@@ -11955,8 +11961,8 @@ function closeCustomerModal() {
     logoFile: null,
     logoPreview: ""
   };
+  syncModalOpenUiState();
   renderOverlays({ updateCustomer: true });
-  queueMicrotask(syncModalOpenUiState);
 }
 
 async function saveLeadFromModal() {
