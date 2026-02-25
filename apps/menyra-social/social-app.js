@@ -8822,6 +8822,15 @@ function ensureModalEscapeHandler() {
   modalEscapeBound = true;
 }
 
+function syncModalOpenUiState() {
+  const anyModalOpen = isAnyModalOpen();
+  const underlay = document.getElementById("modalUnderlay");
+  if (underlay) underlay.classList.toggle("hidden", !anyModalOpen);
+  document.documentElement.classList.toggle("modal-open", anyModalOpen);
+  document.body.classList.toggle("modal-open", anyModalOpen);
+  if (anyModalOpen) ensureModalEscapeHandler();
+}
+
 function renderOverlays(options = {}) {
   const updateProfile = Object.prototype.hasOwnProperty.call(options, "updateProfile")
     ? options.updateProfile
@@ -8856,7 +8865,6 @@ function renderOverlays(options = {}) {
   const focusRoot = document.getElementById("focusOverlayRoot");
   const leadRoot = document.getElementById("leadOverlayRoot");
   const customerRoot = document.getElementById("customerOverlayRoot");
-  const underlay = document.getElementById("modalUnderlay");
   let profileChanged = false;
   let postChanged = false;
   let likesChanged = false;
@@ -8930,11 +8938,7 @@ function renderOverlays(options = {}) {
       overlayCache.customer = customerHtml;
     }
   }
-  const anyModalOpen = isAnyModalOpen();
-  if (underlay) underlay.classList.toggle("hidden", !anyModalOpen);
-  document.documentElement.classList.toggle("modal-open", anyModalOpen);
-  document.body.classList.toggle("modal-open", anyModalOpen);
-  if (anyModalOpen) ensureModalEscapeHandler();
+  syncModalOpenUiState();
   if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged)) {
     window.lucide.createIcons();
   }
@@ -11924,6 +11928,7 @@ function closeLeadModal() {
     coords: null
   };
   renderOverlays({ updateLead: true });
+  queueMicrotask(syncModalOpenUiState);
 }
 
 function openCustomerModal(customer) {
@@ -11951,6 +11956,7 @@ function closeCustomerModal() {
     logoPreview: ""
   };
   renderOverlays({ updateCustomer: true });
+  queueMicrotask(syncModalOpenUiState);
 }
 
 async function saveLeadFromModal() {
