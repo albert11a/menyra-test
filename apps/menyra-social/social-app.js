@@ -408,6 +408,7 @@ let dataLoaded = {
 };
 let lastAppHtml = "";
 let lastRenderMode = "";
+let lastRenderedMainTab = "";
 let authReadyTimer = null;
 let feedDeltaTimer = null;
 let searchTimer = null;
@@ -8391,7 +8392,7 @@ function renderCustomersView() {
       </div>
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
         ${icon("search", "w-4 h-4 text-slate-400")}
-        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 bg-transparent text-sm font-bold outline-none" />
+        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 bg-transparent text-[11px] font-bold outline-none" />
       </div>
       ${state.customers.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.customers.error)}</div>` : ""}
       <div class="space-y-4">${listHtml}</div>
@@ -9124,10 +9125,13 @@ function render() {
   }
   const changed = nextHtml !== lastAppHtml || mode !== lastRenderMode;
   if (changed) {
-    const reuseFeed = mode === "main" && lastRenderMode === "main" && state.activeTab === "feed"
+    const preserveMainScroll = mode === "main"
+      && lastRenderMode === "main"
+      && state.activeTab === lastRenderedMainTab;
+    const reuseFeed = preserveMainScroll && state.activeTab === "feed"
       ? document.getElementById("feedView")
       : null;
-    const prevScrollTop = reuseFeed ? document.querySelector("main")?.scrollTop ?? 0 : 0;
+    const prevScrollTop = preserveMainScroll ? document.querySelector("main")?.scrollTop ?? 0 : 0;
     appEl.innerHTML = nextHtml;
     lastAppHtml = nextHtml;
     lastRenderMode = mode;
@@ -9145,12 +9149,17 @@ function render() {
       const nextMain = document.querySelector("main");
       if (nextMain) nextMain.scrollTop = prevScrollTop;
       updateFeedDom();
+    } else if (preserveMainScroll) {
+      const nextMain = document.querySelector("main");
+      if (nextMain) nextMain.scrollTop = prevScrollTop;
     }
     if (window.lucide?.createIcons) window.lucide.createIcons();
     if (state.activeTab === "search" && state.search.keepFocus) {
       state.search.keepFocus = false;
       focusSearchInput();
     }
+    if (mode === "main") lastRenderedMainTab = state.activeTab;
+    else lastRenderedMainTab = "";
   }
 
   renderOverlays();
@@ -9226,6 +9235,18 @@ function bindAuthEvents() {
   }
 }
 
+function bindModalDismiss(target, handler, { selfOnly = false } = {}) {
+  if (!target || typeof handler !== "function") return;
+  const onDismiss = (evt) => {
+    if (selfOnly && evt.target !== target) return;
+    if (evt.type === "touchstart") evt.preventDefault();
+    handler();
+  };
+  target.addEventListener("click", onDismiss);
+  target.addEventListener("pointerdown", onDismiss);
+  target.addEventListener("touchstart", onDismiss, { passive: false });
+}
+
 function bindOverlayEvents({
   profileChanged = true,
   postChanged = true,
@@ -9254,8 +9275,8 @@ function bindOverlayEvents({
     const profileModalClose = document.getElementById("profileModalClose");
     const profileFollowBtn = document.getElementById("profileFollowBtn");
     const profileOpenBtn = document.getElementById("profileOpenBtn");
-    if (profileModalOverlay) profileModalOverlay.addEventListener("click", closeProfileModal);
-    if (profileModalClose) profileModalClose.addEventListener("click", closeProfileModal);
+    bindModalDismiss(profileModalOverlay, closeProfileModal, { selfOnly: true });
+    bindModalDismiss(profileModalClose, closeProfileModal);
     if (profileFollowBtn) {
       profileFollowBtn.addEventListener("click", () => {
         const handle = profileFollowBtn.dataset.handle;
@@ -9285,8 +9306,8 @@ function bindOverlayEvents({
   if (postChanged) {
     const postModalOverlay = document.getElementById("postModalOverlay");
     const postModalClose = document.getElementById("postModalClose");
-    if (postModalOverlay) postModalOverlay.addEventListener("click", closePostModal);
-    if (postModalClose) postModalClose.addEventListener("click", closePostModal);
+    bindModalDismiss(postModalOverlay, closePostModal, { selfOnly: true });
+    bindModalDismiss(postModalClose, closePostModal);
 
     const postLikeBtn = document.getElementById("postLikeBtn");
     if (postLikeBtn) {
@@ -9355,8 +9376,8 @@ function bindOverlayEvents({
   if (likesChanged) {
     const likesModalOverlay = document.getElementById("likesModalOverlay");
     const likesModalClose = document.getElementById("likesModalClose");
-    if (likesModalOverlay) likesModalOverlay.addEventListener("click", closeLikesModal);
-    if (likesModalClose) likesModalClose.addEventListener("click", closeLikesModal);
+    bindModalDismiss(likesModalOverlay, closeLikesModal, { selfOnly: true });
+    bindModalDismiss(likesModalClose, closeLikesModal);
   }
 
   if (menuChanged) {
@@ -9366,8 +9387,8 @@ function bindOverlayEvents({
     const menuImageTrigger = document.getElementById("menuItemImageTrigger");
     const menuImageInput = document.getElementById("menuItemImageInput");
 
-    if (menuModalOverlay) menuModalOverlay.addEventListener("click", closeMenuModal);
-    if (menuModalClose) menuModalClose.addEventListener("click", closeMenuModal);
+    bindModalDismiss(menuModalOverlay, closeMenuModal, { selfOnly: true });
+    bindModalDismiss(menuModalClose, closeMenuModal);
     if (menuModalSave) {
       menuModalSave.addEventListener("click", () => {
         if (state.menuModal.loading) return;
@@ -9424,8 +9445,8 @@ function bindOverlayEvents({
   if (menuDetailChanged) {
     const menuDetailOverlay = document.getElementById("menuDetailOverlay");
     const menuDetailClose = document.getElementById("menuDetailClose");
-    if (menuDetailOverlay) menuDetailOverlay.addEventListener("click", closeMenuDetail);
-    if (menuDetailClose) menuDetailClose.addEventListener("click", closeMenuDetail);
+    bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
+    bindModalDismiss(menuDetailClose, closeMenuDetail);
 
     const menuDetailLikeBtn = document.getElementById("menuDetailLikeBtn");
     if (menuDetailLikeBtn) {
@@ -9502,8 +9523,8 @@ function bindOverlayEvents({
     const focusImageTrigger = document.getElementById("focusImageTrigger");
     const focusImageInput = document.getElementById("focusImageInput");
 
-    if (focusOverlay) focusOverlay.addEventListener("click", closeFocusModal);
-    if (focusClose) focusClose.addEventListener("click", closeFocusModal);
+    bindModalDismiss(focusOverlay, closeFocusModal, { selfOnly: true });
+    bindModalDismiss(focusClose, closeFocusModal);
     if (focusSave) {
       focusSave.addEventListener("click", () => {
         if (state.focusModal.loading) return;
@@ -9539,12 +9560,8 @@ function bindOverlayEvents({
     const leadLocationPickerBtn = document.getElementById("leadLocationPickerBtn");
     const leadAddressInput = document.getElementById("leadAddress");
 
-    if (leadOverlay) {
-      leadOverlay.addEventListener("click", (evt) => {
-        if (evt.target?.id === "leadModalOverlay") closeLeadModal();
-      });
-    }
-    if (leadClose) leadClose.addEventListener("click", closeLeadModal);
+    bindModalDismiss(leadOverlay, closeLeadModal, { selfOnly: true });
+    bindModalDismiss(leadClose, closeLeadModal);
     if (leadSave) {
       leadSave.addEventListener("click", () => {
         if (state.leadModal.loading) return;
@@ -9611,12 +9628,8 @@ function bindOverlayEvents({
     const customerLogoInput = document.getElementById("customerLogoInput");
     const customerLogoUrl = document.getElementById("customerLogoUrl");
 
-    if (customerOverlay) {
-      customerOverlay.addEventListener("click", (evt) => {
-        if (evt.target?.id === "customerModalOverlay") closeCustomerModal();
-      });
-    }
-    if (customerClose) customerClose.addEventListener("click", closeCustomerModal);
+    bindModalDismiss(customerOverlay, closeCustomerModal, { selfOnly: true });
+    bindModalDismiss(customerClose, closeCustomerModal);
     if (customerSave) {
       customerSave.addEventListener("click", () => {
         if (state.customerModal.loading) return;
