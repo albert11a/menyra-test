@@ -8764,7 +8764,7 @@ function ensureOverlayRoot() {
   if (!document.getElementById("modalUnderlay")) {
     const underlay = document.createElement("div");
     underlay.id = "modalUnderlay";
-    underlay.className = "fixed inset-0 bg-slate-50 z-[50] hidden pointer-events-none";
+    underlay.className = "fixed inset-0 bg-white z-[50] hidden pointer-events-none";
     root.appendChild(underlay);
   }
   if (!document.getElementById("profileOverlayRoot")) {
