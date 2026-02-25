@@ -3329,7 +3329,14 @@ function isAnyModalOpen() {
     || state.focusModal.open
     || state.leadModal.open
     || state.customerModal.open
+    || isLocationPickerOpen()
   );
+}
+
+function isLocationPickerOpen() {
+  const modal = document.getElementById("locationPickerModal");
+  if (!modal) return false;
+  return !modal.classList.contains("hidden");
 }
 
 async function openPostModal(post) {
@@ -8822,6 +8829,16 @@ function ensureModalEscapeHandler() {
   modalEscapeBound = true;
 }
 
+function syncModalOpenState(underlay = null) {
+  const open = isAnyModalOpen();
+  document.documentElement.classList.toggle("modal-open", open);
+  document.body.classList.toggle("modal-open", open);
+  const overlay = underlay || document.getElementById("modalUnderlay");
+  if (overlay) overlay.classList.toggle("hidden", !open);
+  if (open) ensureModalEscapeHandler();
+  return open;
+}
+
 function renderOverlays(options = {}) {
   const updateProfile = Object.prototype.hasOwnProperty.call(options, "updateProfile")
     ? options.updateProfile
@@ -8930,13 +8947,7 @@ function renderOverlays(options = {}) {
       overlayCache.customer = customerHtml;
     }
   }
-  const open = isAnyModalOpen();
-  document.documentElement.classList.toggle("modal-open", open);
-  document.body.classList.toggle("modal-open", open);
-  if (underlay) underlay.classList.toggle("hidden", !open);
-  if (open) {
-    ensureModalEscapeHandler();
-  }
+  syncModalOpenState(underlay);
   if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged)) {
     window.lucide.createIcons();
   }
@@ -10305,6 +10316,7 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
   const panel = document.getElementById("pickerPanel");
 
   if (modal) modal.classList.remove("hidden");
+  syncModalOpenState();
   setTimeout(() => {
     overlay?.classList.remove("opacity-0");
     panel?.classList.remove("translate-y-full");
@@ -10336,7 +10348,10 @@ function closeLocationPicker() {
   const modal = document.getElementById('locationPickerModal');
   document.getElementById('pickerOverlay')?.classList.add('opacity-0');
   document.getElementById('pickerPanel')?.classList.add('translate-y-full');
-  setTimeout(() => modal?.classList.add('hidden'), 300);
+  setTimeout(() => {
+    modal?.classList.add('hidden');
+    syncModalOpenState();
+  }, 300);
 }
 
 function confirmLocation() {
