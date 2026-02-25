@@ -51,9 +51,9 @@
     body.modal-open { background: #ffffff; }
     body.modal-open #app,
     body.modal-open #app > .min-h-screen { background: #ffffff !important; }
-    body.modal-open #app { pointer-events: none; }
+    body.modal-open #app { pointer-events: none; visibility: hidden; }
     body.modal-open #overlayRoot,
-    body.modal-open #overlayRoot > * { pointer-events: auto; }
+    body.modal-open #overlayRoot > * { pointer-events: auto; visibility: visible; }
     .modal-overlay { position: fixed; inset: 0; padding-bottom: env(safe-area-inset-bottom); }
     .modal-sheet {
       max-height: calc(100dvh - env(safe-area-inset-bottom));
