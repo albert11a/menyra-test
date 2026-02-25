@@ -436,8 +436,6 @@ let feedStoriesSignature = "";
 let storiesRowSignature = "";
 let focusRotateTimer = null;
 let focusRotateKey = "";
-let modalBodyLocked = false;
-let modalBodyScrollY = 0;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -8824,25 +8822,6 @@ function ensureModalEscapeHandler() {
   modalEscapeBound = true;
 }
 
-function syncModalBodyLock(open) {
-  if (typeof window === "undefined" || typeof document === "undefined") return;
-  const body = document.body;
-  if (!body) return;
-  if (open) {
-    if (modalBodyLocked) return;
-    modalBodyScrollY = window.scrollY || window.pageYOffset || 0;
-    body.style.top = `-${modalBodyScrollY}px`;
-    modalBodyLocked = true;
-    return;
-  }
-  if (!modalBodyLocked) return;
-  const restoreY = modalBodyScrollY;
-  body.style.top = "";
-  modalBodyLocked = false;
-  modalBodyScrollY = 0;
-  window.scrollTo({ top: restoreY, left: 0, behavior: "auto" });
-}
-
 function renderOverlays(options = {}) {
   const updateProfile = Object.prototype.hasOwnProperty.call(options, "updateProfile")
     ? options.updateProfile
@@ -8954,7 +8933,6 @@ function renderOverlays(options = {}) {
   const open = isAnyModalOpen();
   document.documentElement.classList.toggle("modal-open", open);
   document.body.classList.toggle("modal-open", open);
-  syncModalBodyLock(open);
   if (underlay) underlay.classList.toggle("hidden", !open);
   if (open) {
     ensureModalEscapeHandler();
