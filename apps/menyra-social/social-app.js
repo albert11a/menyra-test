@@ -3329,14 +3329,7 @@ function isAnyModalOpen() {
     || state.focusModal.open
     || state.leadModal.open
     || state.customerModal.open
-    || isLocationPickerOpen()
   );
-}
-
-function isLocationPickerOpen() {
-  const modal = document.getElementById("locationPickerModal");
-  if (!modal) return false;
-  return !modal.classList.contains("hidden");
 }
 
 async function openPostModal(post) {
@@ -8771,7 +8764,7 @@ function ensureOverlayRoot() {
   if (!document.getElementById("modalUnderlay")) {
     const underlay = document.createElement("div");
     underlay.id = "modalUnderlay";
-    underlay.className = "fixed inset-0 bg-white z-[50] hidden pointer-events-none";
+    underlay.className = "fixed inset-0 bg-slate-50 z-[50] hidden pointer-events-none";
     root.appendChild(underlay);
   }
   if (!document.getElementById("profileOverlayRoot")) {
@@ -8827,16 +8820,6 @@ function ensureModalEscapeHandler() {
   };
   document.addEventListener("keydown", handler);
   modalEscapeBound = true;
-}
-
-function syncModalOpenState(underlay = null) {
-  const open = isAnyModalOpen();
-  document.documentElement.classList.toggle("modal-open", open);
-  document.body.classList.toggle("modal-open", open);
-  const overlay = underlay || document.getElementById("modalUnderlay");
-  if (overlay) overlay.classList.toggle("hidden", !open);
-  if (open) ensureModalEscapeHandler();
-  return open;
 }
 
 function renderOverlays(options = {}) {
@@ -8947,7 +8930,11 @@ function renderOverlays(options = {}) {
       overlayCache.customer = customerHtml;
     }
   }
-  syncModalOpenState(underlay);
+  const anyModalOpen = isAnyModalOpen();
+  if (underlay) underlay.classList.toggle("hidden", !anyModalOpen);
+  document.documentElement.classList.toggle("modal-open", anyModalOpen);
+  document.body.classList.toggle("modal-open", anyModalOpen);
+  if (anyModalOpen) ensureModalEscapeHandler();
   if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged)) {
     window.lucide.createIcons();
   }
@@ -10316,7 +10303,6 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
   const panel = document.getElementById("pickerPanel");
 
   if (modal) modal.classList.remove("hidden");
-  syncModalOpenState();
   setTimeout(() => {
     overlay?.classList.remove("opacity-0");
     panel?.classList.remove("translate-y-full");
@@ -10350,7 +10336,6 @@ function closeLocationPicker() {
   document.getElementById('pickerPanel')?.classList.add('translate-y-full');
   setTimeout(() => {
     modal?.classList.add('hidden');
-    syncModalOpenState();
   }, 300);
 }
 
