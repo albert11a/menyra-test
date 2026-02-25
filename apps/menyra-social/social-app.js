@@ -8334,15 +8334,19 @@ function renderLeadsView() {
           ${icon("plus", "w-4 h-4")}
         </button>
       </div>
-      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
-        ${icon("search", "w-4 h-4 text-slate-400")}
-        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 bg-transparent text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 outline-none" />
-        <select id="leadsStatusFilter" class="h-9 rounded-xl bg-slate-50 border border-slate-100 px-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500 outline-none">
-          <option value="">Alle</option>
-          ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde").map((key) => `
-            <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
-          `).join("")}
-        </select>
+      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 space-y-3">
+        <div class="flex items-center gap-3">
+          ${icon("search", "w-4 h-4 text-slate-400")}
+          <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
+        </div>
+        <div class="pl-7">
+          <select id="leadsStatusFilter" class="w-full h-11 rounded-xl bg-slate-50 border border-slate-100 px-3 text-sm font-semibold text-slate-600 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100">
+            <option value="">Alle Status</option>
+            ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde").map((key) => `
+              <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
+            `).join("")}
+          </select>
+        </div>
       </div>
       ${state.leads.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.leads.error)}</div>` : ""}
       <div class="space-y-4">${listHtml}</div>
@@ -8392,7 +8396,7 @@ function renderCustomersView() {
       </div>
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
         ${icon("search", "w-4 h-4 text-slate-400")}
-        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 bg-transparent text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500 outline-none" />
+        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
       </div>
       ${state.customers.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.customers.error)}</div>` : ""}
       <div class="space-y-4">${listHtml}</div>
@@ -8745,7 +8749,7 @@ function renderMain() {
   if (state.activeTab === "upload") view = renderUploadView();
 
   return `
-    <div class="min-h-screen bg-slate-50 text-slate-900 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden font-sans transition-colors duration-500">
+    <div class="min-h-screen bg-slate-50 text-slate-900 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden font-sans">
       ${renderDrawer()}
       ${renderHeader()}
       ${renderBusinessTopTabs()}
