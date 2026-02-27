@@ -149,6 +149,7 @@ const LEAD_TYPE_LABELS = {
   services: "Services"
 };
 const ALBERT_CEO_HANDLE = "albert_hoti";
+const PRISHTINA_COORDS = Object.freeze({ lat: 42.6629, lng: 21.1655 });
 
 const DEFAULT_NOTIFICATIONS = [
   {
@@ -1037,6 +1038,97 @@ function hasLeadLocationCoords(location) {
   return Number.isFinite(Number(location?.lat)) && Number.isFinite(Number(location?.lng));
 }
 
+function toFiniteCoordNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "string") {
+    const cleaned = value.trim().replace(",", ".");
+    if (!cleaned) return null;
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeCoordPair(latValue, lngValue) {
+  const lat = toFiniteCoordNumber(latValue);
+  const lng = toFiniteCoordNumber(lngValue);
+  if (lat === null || lng === null) return null;
+  if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) return null;
+  if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng };
+  if (Math.abs(lat) <= 180 && Math.abs(lng) <= 90) return { lat: lng, lng: lat };
+  return null;
+}
+
+function preferStableCoords(candidate, reference) {
+  const direct = candidate ? normalizeCoordPair(candidate.lat, candidate.lng) : null;
+  const ref = reference ? normalizeCoordPair(reference.lat, reference.lng) : null;
+  if (!direct) return ref;
+  if (!ref) return direct;
+  const isExtremeOutlier = Math.abs(direct.lat - ref.lat) > 1.5 || Math.abs(direct.lng - ref.lng) > 1.5;
+  return isExtremeOutlier ? ref : direct;
+}
+
+function resolveCoordsFromShape(shape) {
+  if (!shape || typeof shape !== "object") return null;
+  return normalizeCoordPair(shape.lat, shape.lng)
+    || normalizeCoordPair(shape.latitude, shape.longitude)
+    || normalizeCoordPair(shape.lat, shape.lon)
+    || normalizeCoordPair(shape.latitude, shape.lon)
+    || normalizeCoordPair(shape._lat, shape._long)
+    || normalizeCoordPair(shape._latitude, shape._longitude);
+}
+
+function resolveCoordsFromEntity(entity) {
+  if (!entity || typeof entity !== "object") return null;
+  return normalizeCoordPair(entity.gpsLat, entity.gpsLng)
+    || normalizeCoordPair(entity.lat, entity.lng)
+    || normalizeCoordPair(entity.latitude, entity.longitude)
+    || normalizeCoordPair(entity.lat, entity.lon)
+    || normalizeCoordPair(entity.latitude, entity.lon)
+    || resolveCoordsFromShape(entity.geo)
+    || resolveCoordsFromShape(entity.coords)
+    || resolveCoordsFromShape(entity.gps)
+    || resolveCoordsFromShape(entity.location)
+    || resolveCoordsFromShape(entity.position);
+}
+
+function parseCoordsFromAddressInput(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const cleaned = text.replace(/[|;]/g, ",").replace(/\s+/g, " ").trim();
+  const labeledPattern = /(lat(?:itude)?|lng|lon|long|longitude)\s*[:=]\s*(-?\d+(?:[.,]\d+)?)/gi;
+  const labeledCoords = {};
+  let labeledMatch = null;
+  while ((labeledMatch = labeledPattern.exec(cleaned)) !== null) {
+    const key = String(labeledMatch[1] || "").toLowerCase();
+    const num = toFiniteCoordNumber(labeledMatch[2]);
+    if (num === null) continue;
+    if (key.startsWith("lat")) labeledCoords.lat = num;
+    else labeledCoords.lng = num;
+  }
+  if (Number.isFinite(labeledCoords.lat) && Number.isFinite(labeledCoords.lng)) {
+    return normalizeCoordPair(labeledCoords.lat, labeledCoords.lng);
+  }
+
+  const pairMatch = cleaned.match(/^(-?\d+(?:[.,]\d+)?)\s*[, ]\s*(-?\d+(?:[.,]\d+)?)$/);
+  if (!pairMatch) return null;
+  const first = toFiniteCoordNumber(pairMatch[1]);
+  const second = toFiniteCoordNumber(pairMatch[2]);
+  if (first === null || second === null) return null;
+
+  const kosovoLat = (v) => v >= 41 && v <= 44.5;
+  const kosovoLng = (v) => v >= 19 && v <= 22.5;
+  if (kosovoLng(first) && kosovoLat(second)) {
+    return { lat: second, lng: first };
+  }
+  if (kosovoLat(first) && kosovoLng(second)) {
+    return { lat: first, lng: second };
+  }
+
+  return normalizeCoordPair(first, second);
+}
+
 function createLeadLocation({ address = "", lat = null, lng = null } = {}) {
   const nextAddress = String(address || "").trim();
   const nextLat = Number(lat);
@@ -1052,10 +1144,11 @@ function normalizeLeadLocations(locations, fallbackAddress = "", fallbackCoords 
   const source = Array.isArray(locations) ? locations : [];
   const list = source.map((entry) => {
     const row = entry || {};
+    const directCoords = resolveCoordsFromEntity(row);
     return createLeadLocation({
       address: row.address || row.label || "",
-      lat: row.lat ?? row.latitude ?? row.coords?.lat,
-      lng: row.lng ?? row.lon ?? row.longitude ?? row.coords?.lng
+      lat: directCoords?.lat ?? row.gpsLat ?? row.lat ?? row.latitude ?? row.coords?.lat ?? row.coords?.latitude,
+      lng: directCoords?.lng ?? row.gpsLng ?? row.lng ?? row.lon ?? row.longitude ?? row.coords?.lng ?? row.coords?.longitude
     });
   }).filter((row) => row.address || hasLeadLocationCoords(row));
 
@@ -2462,6 +2555,7 @@ let leafletMap = null;
 let leafletBizMarkers = [];
 let leafletUserMarker = null;
 let locationPickerMap = null; // NEU: Fuer das Settings-Modal
+let locationPickerBizMarkers = [];
 let verifiedMapLocation = null; // NEU: Fuer die Koordinaten-Speicherung
 let locationPickerTarget = { addressInputId: "settingsAddress", coordsDisplayId: "coordsDisplay", context: "settings" };
 
@@ -2524,6 +2618,200 @@ function cleanupLeaflet() {
   leafletMap = null;
   leafletBizMarkers = [];
   leafletUserMarker = null;
+}
+
+function makeLocationPickerBizIcon(location) {
+  const safeImg = location.img && !isPlaceholderUrl(location.img) ? escapeHtml(location.img) : PLACEHOLDER_IMAGE;
+  const html = `
+    <div class="relative flex flex-col items-center justify-center z-[400]">
+      <div class="w-11 h-11 rounded-[0.9rem] shadow-lg flex items-center justify-center border-[3px] border-white bg-white overflow-hidden p-0.5">
+        <img src="${safeImg}" class="w-full h-full object-cover rounded-[0.7rem]" onerror="this.src='${PLACEHOLDER_IMAGE}'"/>
+      </div>
+      <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-white drop-shadow-md -mt-1"></div>
+    </div>
+  `;
+  return window.L.divIcon({ className: "custom-div-icon", html, iconSize: [44, 54], iconAnchor: [22, 54] });
+}
+
+function clearLocationPickerBizMarkers() {
+  if (!locationPickerMap) {
+    locationPickerBizMarkers = [];
+    return;
+  }
+  locationPickerBizMarkers.forEach((marker) => {
+    try { locationPickerMap.removeLayer(marker); } catch {}
+  });
+  locationPickerBizMarkers = [];
+}
+
+function buildLeadLocationPickerLocations() {
+  const out = [];
+  const seen = new Set();
+  const pushLocation = (entry) => {
+    const coords = normalizeCoordPair(entry?.lat, entry?.lng);
+    if (!coords) return;
+    const lat = coords.lat;
+    const lng = coords.lng;
+    const key = `${entry.markerKey || entry.id || "loc"}:${lat.toFixed(6)}:${lng.toFixed(6)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push({ ...entry, lat, lng });
+  };
+  const businessLocationsByRestaurant = new Map();
+  (Array.isArray(state.businessLocations) ? state.businessLocations : []).forEach((biz) => {
+    const id = String(biz?.id || "");
+    if (!id) return;
+    if (!businessLocationsByRestaurant.has(id)) businessLocationsByRestaurant.set(id, []);
+    businessLocationsByRestaurant.get(id).push(biz);
+  });
+
+  const customers = Array.isArray(state.customers.items) && state.customers.items.length
+    ? state.customers.items
+    : (Array.isArray(state.restaurants) ? state.restaurants.filter(isCustomerRestaurant) : []);
+
+  customers.forEach((rest, restIndex) => {
+    const restId = String(rest?.id || "");
+    const mapLocations = restId ? (businessLocationsByRestaurant.get(restId) || []) : [];
+    const mapCoordRows = mapLocations
+      .map((biz, idx) => {
+        const coords = normalizeCoordPair(biz?.lat, biz?.lng);
+        if (!coords) return null;
+        return { ...coords, biz, idx };
+      })
+      .filter(Boolean);
+    if (mapCoordRows.length && !(Array.isArray(rest?.locations) && rest.locations.length)) {
+      mapLocations.forEach((biz, bizIndex) => {
+        pushLocation({
+          id: rest.id || `customer_${restIndex}`,
+          markerKey: `customer:${rest.id || restIndex}:${biz.locationIndex ?? bizIndex}`,
+          name: rest.name || rest.restaurantName || biz.name || "Business",
+          img: rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || biz.img || "",
+          address: biz.address || rest.address || rest.city || "Prishtina",
+          lat: biz.lat,
+          lng: biz.lng
+        });
+      });
+      return;
+    }
+
+    const restCoords = resolveCoordsFromEntity(rest);
+    const locations = normalizeLeadLocations(rest?.locations || [], rest?.address || rest?.city || "", restCoords || null);
+    let placed = false;
+    locations.forEach((loc, locIndex) => {
+      const directCoords = resolveCoordsFromEntity(loc) || restCoords || null;
+      const refCoords = mapCoordRows[locIndex] || mapCoordRows[0] || null;
+      const coords = preferStableCoords(directCoords, refCoords);
+      if (!coords) return;
+      placed = true;
+      pushLocation({
+        id: rest.id || `customer_${restIndex}`,
+        markerKey: `customer:${rest.id || restIndex}:${locIndex}`,
+        name: rest.name || rest.restaurantName || "Business",
+        img: rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || "",
+        address: loc.address || rest.address || rest.city || "Prishtina",
+        lat: coords.lat,
+        lng: coords.lng
+      });
+    });
+
+    if (!placed && mapCoordRows.length) {
+      mapCoordRows.forEach(({ biz, idx, lat, lng }) => {
+        pushLocation({
+          id: rest.id || `customer_${restIndex}`,
+          markerKey: `customer:${rest.id || restIndex}:${biz.locationIndex ?? idx}`,
+          name: rest.name || rest.restaurantName || biz.name || "Business",
+          img: rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || biz.img || "",
+          address: biz.address || rest.address || rest.city || "Prishtina",
+          lat,
+          lng
+        });
+      });
+    }
+  });
+
+  const leads = Array.isArray(state.leads.items) ? state.leads.items : [];
+  leads
+    .filter((lead) => normalizeLeadStatusKey(lead?.status || "") !== "kunde")
+    .forEach((lead, leadIndex) => {
+      const leadRestaurantId = String(lead?.restaurantId || "");
+      const restMapLocations = leadRestaurantId ? (businessLocationsByRestaurant.get(leadRestaurantId) || []) : [];
+      const restMapCoordRows = restMapLocations
+        .map((biz, idx) => {
+          const coords = normalizeCoordPair(biz?.lat, biz?.lng);
+          if (!coords) return null;
+          return { ...coords, biz, idx };
+        })
+        .filter(Boolean);
+      if (restMapCoordRows.length && !(Array.isArray(lead?.locations) && lead.locations.length)) {
+        restMapCoordRows.forEach(({ biz, idx, lat, lng }) => {
+          pushLocation({
+            id: lead.id || lead.restaurantId || `lead_${leadIndex}`,
+            markerKey: `lead:${lead.id || lead.restaurantId || leadIndex}:rest:${biz.locationIndex ?? idx}`,
+            name: lead.businessName || lead.contactName || biz.name || "Lead",
+            img: lead.logoUrl || lead.logo || lead.imageUrl || biz.img || "",
+            address: lead.address || biz.address || lead.city || "Prishtina",
+            lat,
+            lng
+          });
+        });
+        return;
+      }
+
+      const leadCoords = resolveCoordsFromEntity(lead);
+      const locations = normalizeLeadLocations(lead?.locations || [], lead?.address || "", {
+        lat: leadCoords?.lat ?? null,
+        lng: leadCoords?.lng ?? null
+      });
+      let placed = false;
+      locations.forEach((loc, locIndex) => {
+        const directCoords = resolveCoordsFromEntity(loc) || leadCoords || null;
+        const refCoords = restMapCoordRows[locIndex] || restMapCoordRows[0] || null;
+        const coords = preferStableCoords(directCoords, refCoords);
+        if (!coords) return;
+        placed = true;
+        pushLocation({
+          id: lead.id || lead.restaurantId || `lead_${leadIndex}`,
+          markerKey: `lead:${lead.id || lead.restaurantId || leadIndex}:${locIndex}`,
+          name: lead.businessName || lead.contactName || "Lead",
+          img: lead.logoUrl || lead.logo || lead.imageUrl || "",
+          address: loc.address || lead.address || lead.city || "Prishtina",
+          lat: coords.lat,
+          lng: coords.lng
+        });
+      });
+
+      if (!placed && restMapCoordRows.length) {
+        restMapCoordRows.forEach(({ biz, idx, lat, lng }) => {
+          pushLocation({
+            id: lead.id || lead.restaurantId || `lead_${leadIndex}`,
+            markerKey: `lead:${lead.id || lead.restaurantId || leadIndex}:rest:${biz.locationIndex ?? idx}`,
+            name: lead.businessName || lead.contactName || biz.name || "Lead",
+            img: lead.logoUrl || lead.logo || lead.imageUrl || biz.img || "",
+            address: lead.address || biz.address || lead.city || "Prishtina",
+            lat,
+            lng
+          });
+        });
+      }
+    });
+
+  return out;
+}
+
+function renderLocationPickerContextMarkers() {
+  if (!locationPickerMap || !window.L) return;
+  const context = String(locationPickerTarget.context || "");
+  clearLocationPickerBizMarkers();
+  if (!(context === "lead" || context.startsWith("lead_location:"))) return;
+
+  const locations = buildLeadLocationPickerLocations();
+  locationPickerBizMarkers = locations.map((location) => (
+    window.L.marker([location.lat, location.lng], {
+      icon: makeLocationPickerBizIcon(location),
+      keyboard: false,
+      interactive: false
+    }).addTo(locationPickerMap)
+  ));
 }
 
 function makeBizDivIcon(b) {
@@ -9851,11 +10139,17 @@ function bindOverlayEvents({
         if (!Number.isInteger(index) || index < 0) return;
         const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
         while (list.length <= index) list.push(createLeadLocation());
-        list[index] = createLeadLocation({ address: input.value, lat: null, lng: null });
+        const currentRow = list[index] || createLeadLocation();
+        const parsedCoords = parseCoordsFromAddressInput(input.value);
+        list[index] = createLeadLocation({
+          address: input.value,
+          lat: parsedCoords ? parsedCoords.lat : (hasLeadLocationCoords(currentRow) ? currentRow.lat : null),
+          lng: parsedCoords ? parsedCoords.lng : (hasLeadLocationCoords(currentRow) ? currentRow.lng : null)
+        });
         state.leadModal.locations = list;
         state.leadModal.lead = { ...(state.leadModal.lead || {}), address: list[0]?.address || "" };
         const badge = document.getElementById(`leadLocationCoords_${index}`);
-        if (badge) badge.classList.add("hidden");
+        if (badge) badge.classList.toggle("hidden", !hasLeadLocationCoords(list[index]));
         const primary = getPrimaryLeadLocation(list);
         state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : null;
       });
@@ -10543,21 +10837,47 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
   locationPickerTarget = { addressInputId, coordsDisplayId, context };
   const address = document.getElementById(addressInputId)?.value?.trim() || "";
   const pickerContext = String(context || "");
-  let targetCoords = null;
-  if (pickerContext === "lead") {
-    const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
-    const primary = getPrimaryLeadLocation(list);
-    if (hasLeadLocationCoords(primary)) {
-      targetCoords = { lat: Number(primary.lat), lng: Number(primary.lng) };
-    } else if (state.leadModal.coords && Number.isFinite(Number(state.leadModal.coords.lat)) && Number.isFinite(Number(state.leadModal.coords.lng))) {
-      targetCoords = { lat: Number(state.leadModal.coords.lat), lng: Number(state.leadModal.coords.lng) };
+  const isLeadPickerContext = pickerContext === "lead" || pickerContext.startsWith("lead_location:");
+  if (isLeadPickerContext && isCeoUser()) {
+    const tasks = [];
+    if (!state.leads.loading && (!Array.isArray(state.leads.items) || !state.leads.items.length)) {
+      tasks.push(loadLeads().catch(() => {}));
     }
-  } else if (pickerContext.startsWith("lead_location:")) {
-    const index = Number(pickerContext.split(":")[1]);
-    const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
-    const row = Number.isInteger(index) && index >= 0 ? list[index] : null;
-    if (hasLeadLocationCoords(row)) {
-      targetCoords = { lat: Number(row.lat), lng: Number(row.lng) };
+    if (!state.customers.loading && (!Array.isArray(state.customers.items) || !state.customers.items.length)) {
+      tasks.push(loadCustomers().catch(() => {}));
+    }
+    if (tasks.length) await Promise.all(tasks);
+    if (Array.isArray(state.restaurants) && state.restaurants.length) {
+      rebuildBusinessLocations();
+      refreshCustomersFromRestaurants();
+    }
+  }
+  let targetCoords = null;
+  const resolveLeadRestaurantFallback = () => {
+    const restId = String(state.leadModal?.lead?.restaurantId || "");
+    if (!restId) return null;
+    const biz = (Array.isArray(state.businessLocations) ? state.businessLocations : [])
+      .find((item) => String(item?.id || "") === restId);
+    if (!biz) return null;
+    return normalizeCoordPair(biz.lat, biz.lng);
+  };
+  if (isLeadPickerContext) {
+    const restFallback = resolveLeadRestaurantFallback();
+    if (pickerContext === "lead") {
+      const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
+      const primary = getPrimaryLeadLocation(list);
+      const direct = resolveCoordsFromEntity(primary) || resolveCoordsFromEntity(state.leadModal.coords || {}) || null;
+      targetCoords = preferStableCoords(direct, restFallback);
+    } else if (pickerContext.startsWith("lead_location:")) {
+      const index = Number(pickerContext.split(":")[1]);
+      const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
+      const row = Number.isInteger(index) && index >= 0 ? list[index] : null;
+      targetCoords = resolveCoordsFromEntity(row) || null;
+      if (!targetCoords) {
+        const primary = getPrimaryLeadLocation(list);
+        targetCoords = resolveCoordsFromEntity(primary) || resolveCoordsFromEntity(state.leadModal.coords || {}) || null;
+      }
+      targetCoords = preferStableCoords(targetCoords, restFallback);
     }
   } else if (pickerContext === "settings") {
     if (verifiedMapLocation && Number.isFinite(Number(verifiedMapLocation.lat)) && Number.isFinite(Number(verifiedMapLocation.lng))) {
@@ -10587,14 +10907,17 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
   }
 
   if (!locationPickerMap && window.L) {
-    locationPickerMap = window.L.map("pickerMap", { zoomControl: false, attributionControl: false }).setView([42.6629, 21.1655], 16);
+    locationPickerMap = window.L.map("pickerMap", { zoomControl: false, attributionControl: false }).setView([PRISHTINA_COORDS.lat, PRISHTINA_COORDS.lng], 16);
     window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(locationPickerMap);
   }
+  renderLocationPickerContextMarkers();
 
   if (locationPickerMap) {
     setTimeout(() => locationPickerMap.invalidateSize(), 300);
     if (targetCoords && Number.isFinite(Number(targetCoords.lat)) && Number.isFinite(Number(targetCoords.lng))) {
       locationPickerMap.setView([targetCoords.lat, targetCoords.lng], 17, { animate: false });
+    } else if (isLeadPickerContext) {
+      locationPickerMap.setView([PRISHTINA_COORDS.lat, PRISHTINA_COORDS.lng], 16, { animate: false });
     } else if (address) {
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
@@ -12023,9 +12346,12 @@ async function ensureRestaurantPublicMeta(restaurantId, base) {
 function normalizeLeadDoc(docSnap) {
   const data = typeof docSnap?.data === "function" ? docSnap.data() : (docSnap?.data || docSnap || {});
   const status = normalizeLeadStatusKey(data.status || "registered") || "registered";
+  const fallbackCoords = resolveCoordsFromEntity(data);
+  const fallbackLat = fallbackCoords?.lat ?? null;
+  const fallbackLng = fallbackCoords?.lng ?? null;
   const locations = normalizeLeadLocations(data.locations || [], data.address || "", {
-    lat: data.lat ?? null,
-    lng: data.lng ?? null
+    lat: fallbackLat,
+    lng: fallbackLng
   });
   const primary = getPrimaryLeadLocation(locations);
   return {
@@ -12038,8 +12364,10 @@ function normalizeLeadDoc(docSnap) {
     instagram: data.instagram || data.insta || "",
     city: data.city || "",
     address: locations[0]?.address || data.address || "",
-    lat: hasLeadLocationCoords(primary) ? primary.lat : (data.lat ?? null),
-    lng: hasLeadLocationCoords(primary) ? primary.lng : (data.lng ?? null),
+    lat: hasLeadLocationCoords(primary) ? primary.lat : (fallbackLat ?? null),
+    lng: hasLeadLocationCoords(primary) ? primary.lng : (fallbackLng ?? null),
+    gpsLat: Number.isFinite(Number(fallbackLat)) ? Number(fallbackLat) : null,
+    gpsLng: Number.isFinite(Number(fallbackLng)) ? Number(fallbackLng) : null,
     locations,
     logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
     note: data.note || "",
@@ -12055,9 +12383,12 @@ function normalizeLeadDoc(docSnap) {
 function normalizeLeadFromRestaurant(rest) {
   if (!rest?.id) return null;
   const status = normalizeLeadStatusKey(rest.status || "registered") || "registered";
+  const fallbackCoords = resolveCoordsFromEntity(rest);
+  const fallbackLat = fallbackCoords?.lat ?? null;
+  const fallbackLng = fallbackCoords?.lng ?? null;
   const locations = normalizeLeadLocations(rest.locations || [], rest.address || "", {
-    lat: rest.lat ?? null,
-    lng: rest.lng ?? null
+    lat: fallbackLat,
+    lng: fallbackLng
   });
   const primary = getPrimaryLeadLocation(locations);
   return {
@@ -12078,8 +12409,10 @@ function normalizeLeadFromRestaurant(rest) {
     socialEmail: rest.ownerEmail || "",
     createdAt: rest.createdAt,
     updatedAt: rest.updatedAt,
-    lat: hasLeadLocationCoords(primary) ? primary.lat : (rest.lat ?? null),
-    lng: hasLeadLocationCoords(primary) ? primary.lng : (rest.lng ?? null),
+    lat: hasLeadLocationCoords(primary) ? primary.lat : (fallbackLat ?? null),
+    lng: hasLeadLocationCoords(primary) ? primary.lng : (fallbackLng ?? null),
+    gpsLat: Number.isFinite(Number(fallbackLat)) ? Number(fallbackLat) : null,
+    gpsLng: Number.isFinite(Number(fallbackLng)) ? Number(fallbackLng) : null,
     locations
   };
 }
@@ -12229,10 +12562,12 @@ function readLeadModalLocationsFromForm() {
   const rows = inputs.map((input, index) => {
     const saved = current[index] || createLeadLocation();
     const address = String(input.value || "").trim();
+    const parsedCoords = parseCoordsFromAddressInput(address);
+    const keepSavedCoords = hasLeadLocationCoords(saved);
     return createLeadLocation({
       address,
-      lat: saved.lat,
-      lng: saved.lng
+      lat: parsedCoords ? parsedCoords.lat : (keepSavedCoords ? saved.lat : null),
+      lng: parsedCoords ? parsedCoords.lng : (keepSavedCoords ? saved.lng : null)
     });
   });
   return normalizeLeadLocations(rows, state.leadModal.lead?.address || "", state.leadModal.coords || null);
@@ -12294,9 +12629,11 @@ function removeLeadModalLocationRow(index) {
 function openLeadModal(mode = "create", lead = null) {
   if (!isCeoUser()) return;
   const rest = lead?.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
-  const lat = Number(lead?.lat ?? rest?.lat);
-  const lng = Number(lead?.lng ?? rest?.lng);
-  const coords = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+  const leadCoords = resolveCoordsFromEntity(lead || {});
+  const restCoords = resolveCoordsFromEntity(rest || {});
+  const coords = preferStableCoords(leadCoords, restCoords);
+  const lat = coords?.lat;
+  const lng = coords?.lng;
   const locations = normalizeLeadLocations(
     lead?.locations || rest?.locations || [],
     lead?.address || rest?.address || "",
@@ -12465,6 +12802,8 @@ async function saveLeadFromModal() {
     if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
       restPayload.lat = coords.lat;
       restPayload.lng = coords.lng;
+      restPayload.gpsLat = coords.lat;
+      restPayload.gpsLng = coords.lng;
     }
 
     if (restRef) {
@@ -12533,6 +12872,8 @@ async function saveLeadFromModal() {
     if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
       leadPayload.lat = coords.lat;
       leadPayload.lng = coords.lng;
+      leadPayload.gpsLat = coords.lat;
+      leadPayload.gpsLng = coords.lng;
     }
     if (!lead.id) {
       leadPayload.createdAt = serverTimestamp();
