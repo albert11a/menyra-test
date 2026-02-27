@@ -150,6 +150,12 @@ const LEAD_TYPE_LABELS = {
 };
 const ALBERT_CEO_HANDLE = "albert_hoti";
 const PRISHTINA_COORDS = Object.freeze({ lat: 42.6629, lng: 21.1655 });
+const OLC_ALPHABET = "23456789CFGHJMPQRVWX";
+const OLC_SEPARATOR = "+";
+const OLC_SEPARATOR_POSITION = 8;
+const OLC_PAIR_RESOLUTIONS = [20, 1, 0.05, 0.0025, 0.000125];
+const OLC_GRID_ROWS = 5;
+const OLC_GRID_COLUMNS = 4;
 
 const DEFAULT_NOTIFICATIONS = [
   {
@@ -1093,9 +1099,183 @@ function resolveCoordsFromEntity(entity) {
     || resolveCoordsFromShape(entity.position);
 }
 
+function olcNormalizeLongitude(value) {
+  let lng = Number(value);
+  if (!Number.isFinite(lng)) return null;
+  while (lng < -180) lng += 360;
+  while (lng >= 180) lng -= 360;
+  return lng;
+}
+
+function olcClipLatitude(value) {
+  const lat = Number(value);
+  if (!Number.isFinite(lat)) return null;
+  return Math.min(90, Math.max(-90, lat));
+}
+
+function sanitizePlusCode(raw) {
+  const text = String(raw || "").toUpperCase();
+  return text
+    .replace(/\s+/g, "")
+    .replace(/[^23456789CFGHJMPQRVWX+0]/g, "");
+}
+
+function extractPlusCodeFromText(text) {
+  const input = String(text || "");
+  if (!input.includes("+")) return null;
+  const match = input.toUpperCase().match(/([23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]{2,})/);
+  if (!match?.[1]) return null;
+  const code = sanitizePlusCode(match[1]);
+  if (!code.includes(OLC_SEPARATOR)) return null;
+  const remainder = input.replace(match[1], " ").replace(/\s+/g, " ").trim();
+  return { code, remainder };
+}
+
+function olcDecodeValue(ch) {
+  const idx = OLC_ALPHABET.indexOf(String(ch || "").toUpperCase());
+  return idx >= 0 ? idx : -1;
+}
+
+function isLikelyFullPlusCode(code) {
+  const clean = sanitizePlusCode(code);
+  const sep = clean.indexOf(OLC_SEPARATOR);
+  if (sep !== OLC_SEPARATOR_POSITION) return false;
+  if (clean.indexOf(OLC_SEPARATOR, sep + 1) !== -1) return false;
+  const withoutSep = clean.replace(OLC_SEPARATOR, "").replace(/0/g, "");
+  if (withoutSep.length < 2) return false;
+  return /^[23456789CFGHJMPQRVWX]+$/.test(withoutSep);
+}
+
+function isLikelyShortPlusCode(code) {
+  const clean = sanitizePlusCode(code);
+  const sep = clean.indexOf(OLC_SEPARATOR);
+  if (sep <= 0 || sep >= OLC_SEPARATOR_POSITION) return false;
+  if (clean.indexOf(OLC_SEPARATOR, sep + 1) !== -1) return false;
+  const withoutSep = clean.replace(OLC_SEPARATOR, "").replace(/0/g, "");
+  if (withoutSep.length < 2) return false;
+  return /^[23456789CFGHJMPQRVWX]+$/.test(withoutSep);
+}
+
+function olcDecodeFullPlusCode(code) {
+  if (!isLikelyFullPlusCode(code)) return null;
+  const clean = sanitizePlusCode(code);
+  const digits = clean.replace(OLC_SEPARATOR, "").replace(/0/g, "");
+  if (!digits.length) return null;
+
+  const pairLength = Math.min(10, digits.length - (digits.length % 2));
+  if (pairLength < 2) return null;
+
+  let lat = -90;
+  let lng = -180;
+  let latPlace = 20;
+  let lngPlace = 20;
+
+  for (let i = 0; i < pairLength; i += 2) {
+    const latVal = olcDecodeValue(digits[i]);
+    const lngVal = olcDecodeValue(digits[i + 1]);
+    if (latVal < 0 || lngVal < 0) return null;
+    const place = OLC_PAIR_RESOLUTIONS[i / 2];
+    lat += latVal * place;
+    lng += lngVal * place;
+    latPlace = place;
+    lngPlace = place;
+  }
+
+  if (digits.length > pairLength) {
+    latPlace = OLC_PAIR_RESOLUTIONS[OLC_PAIR_RESOLUTIONS.length - 1];
+    lngPlace = OLC_PAIR_RESOLUTIONS[OLC_PAIR_RESOLUTIONS.length - 1];
+    for (let i = pairLength; i < digits.length; i += 1) {
+      const val = olcDecodeValue(digits[i]);
+      if (val < 0) return null;
+      const row = Math.floor(val / OLC_GRID_COLUMNS);
+      const col = val % OLC_GRID_COLUMNS;
+      latPlace /= OLC_GRID_ROWS;
+      lngPlace /= OLC_GRID_COLUMNS;
+      lat += row * latPlace;
+      lng += col * lngPlace;
+    }
+  }
+
+  return normalizeCoordPair(lat + (latPlace / 2), lng + (lngPlace / 2));
+}
+
+function olcEncodePairPrefix(latValue, lngValue, prefixLength) {
+  const latClipped = olcClipLatitude(latValue);
+  const lngNorm = olcNormalizeLongitude(lngValue);
+  const length = Math.max(0, Number(prefixLength) || 0);
+  if (latClipped === null || lngNorm === null || !length) return "";
+
+  let lat = latClipped;
+  let lng = lngNorm;
+  if (lat === 90) lat = 90 - 1e-12;
+  lat += 90;
+  lng += 180;
+
+  let out = "";
+  for (let i = 0; i < OLC_PAIR_RESOLUTIONS.length && out.length < Math.max(length, OLC_SEPARATOR_POSITION); i += 1) {
+    const place = OLC_PAIR_RESOLUTIONS[i];
+    const latDigit = Math.floor(lat / place);
+    const lngDigit = Math.floor(lng / place);
+    lat -= latDigit * place;
+    lng -= lngDigit * place;
+    out += OLC_ALPHABET[Math.max(0, Math.min(OLC_ALPHABET.length - 1, latDigit))];
+    out += OLC_ALPHABET[Math.max(0, Math.min(OLC_ALPHABET.length - 1, lngDigit))];
+  }
+
+  return out.slice(0, length);
+}
+
+function olcRecoverShortCode(shortCode, refLat, refLng) {
+  if (!isLikelyShortPlusCode(shortCode)) return null;
+  const clean = sanitizePlusCode(shortCode);
+  const sep = clean.indexOf(OLC_SEPARATOR);
+  if (sep <= 0 || sep >= OLC_SEPARATOR_POSITION) return null;
+
+  const prefixLength = OLC_SEPARATOR_POSITION - sep;
+  const refLatClipped = olcClipLatitude(refLat);
+  const refLngNorm = olcNormalizeLongitude(refLng);
+  if (refLatClipped === null || refLngNorm === null) return null;
+
+  const prefix = olcEncodePairPrefix(refLatClipped, refLngNorm, prefixLength);
+  if (!prefix || prefix.length !== prefixLength) return null;
+  const fullCode = `${prefix}${clean}`;
+  const decoded = olcDecodeFullPlusCode(fullCode);
+  if (!decoded) return null;
+
+  const resolution = Math.pow(20, 2 - (prefixLength / 2));
+  const edge = resolution / 2;
+  let lat = decoded.lat;
+  let lng = decoded.lng;
+
+  if (refLatClipped + edge < lat) lat -= resolution;
+  else if (refLatClipped - edge > lat) lat += resolution;
+  if (refLngNorm + edge < lng) lng -= resolution;
+  else if (refLngNorm - edge > lng) lng += resolution;
+
+  return normalizeCoordPair(lat, lng);
+}
+
+function parsePlusCodeFromAddressInput(value) {
+  const extracted = extractPlusCodeFromText(value);
+  if (!extracted?.code) return null;
+
+  if (isLikelyFullPlusCode(extracted.code)) {
+    return olcDecodeFullPlusCode(extracted.code);
+  }
+
+  if (isLikelyShortPlusCode(extracted.code)) {
+    const ref = PRISHTINA_COORDS;
+    return olcRecoverShortCode(extracted.code, ref.lat, ref.lng);
+  }
+
+  return null;
+}
+
 function parseCoordsFromAddressInput(value) {
   const text = String(value || "").trim();
   if (!text) return null;
+  const plusCodeCoords = parsePlusCodeFromAddressInput(text);
+  if (plusCodeCoords) return plusCodeCoords;
   const cleaned = text.replace(/[|;]/g, ",").replace(/\s+/g, " ").trim();
   const labeledPattern = /(lat(?:itude)?|lng|lon|long|longitude)\s*[:=]\s*(-?\d+(?:[.,]\d+)?)/gi;
   const labeledCoords = {};
