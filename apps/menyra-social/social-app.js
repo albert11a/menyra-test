@@ -335,6 +335,7 @@ const state = {
     item: null,
     status: "",
     loading: false,
+    imageUrlDraft: "",
     imageFiles: [],
     imagePreviews: [],
     existingImages: []
@@ -1844,6 +1845,13 @@ function focusSearchInput() {
   try {
     input.setSelectionRange(len, len);
   } catch {}
+}
+
+function autosizeTextarea(el, { minHeight = 56, maxHeight = 160 } = {}) {
+  if (!(el instanceof HTMLTextAreaElement)) return;
+  el.style.height = "auto";
+  const next = Math.max(minHeight, Math.min(maxHeight, el.scrollHeight || minHeight));
+  el.style.height = `${next}px`;
 }
 
 function setState(patch) {
@@ -5436,7 +5444,10 @@ async function addMenuItemComment(text) {
 
   state.menuDetail.commentText = "";
   const input = document.getElementById("menuDetailCommentInput");
-  if (input) input.value = "";
+  if (input) {
+    input.value = "";
+    autosizeTextarea(input, { minHeight: 56, maxHeight: 160 });
+  }
 
   state.menuDetail.sending = false;
   updateMenuDetailMeta();
@@ -9776,6 +9787,7 @@ function renderMenuItemModal() {
   const sizesValue = Array.isArray(item.sizes) ? item.sizes.join(", ") : "";
   const colorsValue = Array.isArray(item.colors) ? item.colors.join(", ") : "";
   const stockValue = Number.isFinite(Number(item.stock)) ? String(Math.max(0, Number(item.stock))) : "";
+  const imageUrlDraft = String(state.menuModal.imageUrlDraft || "").trim();
 
   const titleId = "menuModalTitle";
   const headerHtml = `
@@ -9873,7 +9885,7 @@ function renderMenuItemModal() {
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
-          <input id="menuItemImageUrl" type="text" value="${escapeHtml(item.imageUrl || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="menuItemImageUrl" type="text" value="${escapeHtml(imageUrlDraft)}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <label class="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
           <div>
@@ -9956,7 +9968,7 @@ function renderMenuDetailModal() {
   const canInteract = canSocial && !!state.user;
   const titleId = "menuDetailTitle";
   const headerHtml = `
-    <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-slate-100">
+    <div class="flex items-start justify-between px-7 pt-7 pb-5 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
       <div>
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
         <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${escapeHtml(item.name || "Produkt")}</h3>
@@ -9967,14 +9979,14 @@ function renderMenuDetailModal() {
     </div>
   `;
   const bodyHtml = `
-    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
-      <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50" data-menu-gallery style="touch-action: pan-y;">
+    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
+      <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
         <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full ${isShop ? "h-[24rem]" : "h-56"} object-cover" />
         ${images.length > 1 ? `
-          <button type="button" data-menu-gallery-nav="prev" class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+          <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
             ${icon("chevron-left", "w-4 h-4")}
           </button>
-          <button type="button" data-menu-gallery-nav="next" class="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+          <button type="button" data-menu-gallery-nav="next" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
             ${icon("chevron-right", "w-4 h-4")}
           </button>
         ` : ""}
@@ -9995,13 +10007,13 @@ function renderMenuDetailModal() {
         <span>${escapeHtml(typeLabel)}</span>
       </div>
       ${brand || sku ? `
-        <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-2">
-          ${brand ? `<div class="p-3 rounded-2xl bg-slate-50 border border-slate-100"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(brand)}</p></div>` : ""}
-          ${sku ? `<div class="p-3 rounded-2xl bg-slate-50 border border-slate-100"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(sku)}</p></div>` : ""}
+        <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
+          ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(brand)}</p></div>` : ""}
+          ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(sku)}</p></div>` : ""}
         </div>
       ` : ""}
       ${isShop && sizes.length ? `
-        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+        <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Groessen</p>
           <select data-menu-detail-variant="size" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
             ${sizes.map((size) => `<option value="${escapeHtml(size)}" ${selectedSize === String(size) ? "selected" : ""}>${escapeHtml(size)}</option>`).join("")}
@@ -10009,7 +10021,7 @@ function renderMenuDetailModal() {
         </div>
       ` : ""}
       ${isShop && colors.length ? `
-        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+        <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Farben</p>
           <select data-menu-detail-variant="color" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
             ${colors.map((color) => `<option value="${escapeHtml(color)}" ${selectedColor === String(color) ? "selected" : ""}>${escapeHtml(color)}</option>`).join("")}
@@ -10018,7 +10030,7 @@ function renderMenuDetailModal() {
       ` : ""}
       ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${escapeHtml(desc)}</p>` : ""}
       ${allergens ? `
-        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+        <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${isShop ? "Hinweise" : "Allergene"}</p>
           <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
         </div>
@@ -10045,10 +10057,10 @@ function renderMenuDetailModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+    <div class="px-7 pb-7 pt-5 border-t border-slate-100 bg-white/98 backdrop-blur-sm">
       <div class="flex gap-3">
-        <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none ${canInteract ? "" : "opacity-60"}" rows="2" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
-        <button id="menuDetailCommentSend" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
+        <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 px-5 py-4 rounded-[1.8rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
+        <button id="menuDetailCommentSend" class="w-14 h-14 rounded-[1.8rem] bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
           ${icon("send", "w-4 h-4")}
         </button>
       </div>
@@ -10060,7 +10072,7 @@ function renderMenuDetailModal() {
     <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
+        <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border border-slate-100 ${animClass} flex flex-col h-[88vh] overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -11960,6 +11972,7 @@ function bindOverlayEvents({
     const menuModalSave = document.getElementById("menuModalSave");
     const menuImageTrigger = document.getElementById("menuItemImageTrigger");
     const menuImageInput = document.getElementById("menuItemImageInput");
+    const menuImageUrl = document.getElementById("menuItemImageUrl");
 
     bindModalDismiss(menuModalOverlay, closeMenuModal, { selfOnly: true });
     bindModalDismiss(menuModalClose, closeMenuModal);
@@ -11995,6 +12008,11 @@ function bindOverlayEvents({
           };
           reader.readAsDataURL(file);
         });
+      });
+    }
+    if (menuImageUrl) {
+      menuImageUrl.addEventListener("input", () => {
+        state.menuModal.imageUrlDraft = menuImageUrl.value || "";
       });
     }
 
@@ -12050,8 +12068,26 @@ function bindOverlayEvents({
 
     const menuDetailCommentInput = document.getElementById("menuDetailCommentInput");
     if (menuDetailCommentInput) {
+      autosizeTextarea(menuDetailCommentInput, { minHeight: 56, maxHeight: 160 });
       menuDetailCommentInput.addEventListener("input", () => {
         state.menuDetail.commentText = menuDetailCommentInput.value;
+        autosizeTextarea(menuDetailCommentInput, { minHeight: 56, maxHeight: 160 });
+      });
+      menuDetailCommentInput.addEventListener("focus", () => {
+        window.setTimeout(() => {
+          try {
+            menuDetailCommentInput.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          } catch {}
+        }, 180);
+      });
+      menuDetailCommentInput.addEventListener("keydown", (evt) => {
+        if (evt.key === "Enter" && !evt.shiftKey) {
+          evt.preventDefault();
+          const text = menuDetailCommentInput.value || state.menuDetail.commentText;
+          if (!String(text || "").trim() || state.menuDetail.sending) return;
+          state.menuDetail.commentText = text;
+          void addMenuItemComment(text);
+        }
       });
     }
 
@@ -15683,6 +15719,7 @@ function openMenuModal(mode = "create", item = null) {
     item,
     status: "",
     loading: false,
+    imageUrlDraft: "",
     imageFiles: [],
     imagePreviews: [],
     existingImages: uniqImages
@@ -15697,6 +15734,7 @@ function closeMenuModal() {
     item: null,
     status: "",
     loading: false,
+    imageUrlDraft: "",
     imageFiles: [],
     imagePreviews: [],
     existingImages: []
@@ -15784,7 +15822,9 @@ async function saveMenuItemFromModal() {
   const sizes = normalizeOptionList(document.getElementById("menuItemSizes")?.value || "");
   const colors = normalizeOptionList(document.getElementById("menuItemColors")?.value || "");
   const available = document.getElementById("menuItemAvailable")?.checked !== false;
-  const imageUrlInput = document.getElementById("menuItemImageUrl")?.value?.trim() || "";
+  const imageUrlInput = String(state.menuModal.imageUrlDraft || "").trim()
+    || document.getElementById("menuItemImageUrl")?.value?.trim()
+    || "";
   const stock = stockRaw === ""
     ? null
     : Math.max(0, Math.round(Number(stockRaw) || 0));
