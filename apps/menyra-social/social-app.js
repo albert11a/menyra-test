@@ -63,6 +63,7 @@ const STORAGE_KEYS = {
   settings: "menyra_social_settings_v3",
   notifications: "menyra_social_notifications_v1",
   following: "menyra_social_following_v1",
+  shopCart: "menyra_social_shop_cart_v1",
   chatIndex: "menyra_social_chat_index_v1",
   chatThreads: "menyra_social_chat_threads_v1",
   postMeta: "menyra_social_post_meta_v1",
@@ -76,6 +77,7 @@ const profileKey = (uid) => (uid ? `${STORAGE_KEYS.profile}::${uid}` : "");
 const avatarKey = (uid) => (uid ? `${STORAGE_KEYS.avatarCache}::${uid}` : "");
 const notificationsKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::${uid}` : "");
 const followingKey = (uid) => (uid ? `${STORAGE_KEYS.following}::${uid}` : "");
+const shopCartKey = (uid) => (uid ? `${STORAGE_KEYS.shopCart}::${uid}` : "");
 
 const ADMIN_LOGINS = {
   admin: {
@@ -130,6 +132,32 @@ const DEFAULT_SETTINGS = {
 const DEFAULT_MENU_LAYOUT = {
   cardColor: "white"
 };
+
+function createEmptyShopCart() {
+  return {
+    restaurantId: "",
+    businessName: "",
+    businessAvatar: "",
+    items: [],
+    checkoutOpen: false,
+    form: {
+      name: "",
+      phone: "",
+      city: "",
+      address: ""
+    },
+    status: "",
+    loading: false
+  };
+}
+
+function createEmptyOrdersState() {
+  return {
+    items: [],
+    loading: false,
+    error: ""
+  };
+}
 
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 1.5 * 1024 * 1024;
@@ -272,6 +300,8 @@ const state = {
   followingHandles: [],
   pendingFollowRequests: [],
   chatThreads: [],
+  shopCart: createEmptyShopCart(),
+  orders: createEmptyOrdersState(),
   profileView: null,
   profileBackTab: "feed",
   profileViewMode: "grid",
@@ -450,6 +480,7 @@ let feedUnsub = null;
 let storiesUnsub = null;
 let chatThreadsUnsub = null;
 let chatMessagesUnsub = null;
+let ordersUnsub = null;
 let restaurantsUnsub = null;
 let userPostsUnsub = null;
 let businessPostsUnsub = null;
@@ -1440,11 +1471,69 @@ function getBusinessCatalogLabel(profile = state.userProfile) {
   return getBusinessCatalogMode(profile) === "shop" ? "Shop" : "Menue";
 }
 
+function isShopCatalogProfile(profile = state.userProfile) {
+  return getBusinessCatalogMode(profile) === "shop";
+}
+
 function isRestaurantCafeProfile(profile = state.userProfile) {
   if (!profile?.restaurantId) return false;
   const type = getBusinessProfileType(profile);
   if (!type) return true;
   return LEAD_TYPE_ORDER.includes(type);
+}
+
+function normalizeShopCartState(raw) {
+  const base = createEmptyShopCart();
+  const source = raw && typeof raw === "object" ? raw : {};
+  const items = (Array.isArray(source.items) ? source.items : []).map((item) => ({
+    id: String(item?.id || "").trim(),
+    itemId: String(item?.itemId || item?.id || "").trim(),
+    name: String(item?.name || "Produkt").trim() || "Produkt",
+    price: String(item?.price ?? "").trim(),
+    quantity: Math.max(1, Number(item?.quantity || 1) || 1),
+    imageUrl: String(item?.imageUrl || "").trim(),
+    category: String(item?.category || "").trim()
+  })).filter((item) => item.id && item.itemId);
+  return {
+    ...base,
+    restaurantId: String(source.restaurantId || "").trim(),
+    businessName: String(source.businessName || "").trim(),
+    businessAvatar: String(source.businessAvatar || "").trim(),
+    items,
+    checkoutOpen: !!source.checkoutOpen,
+    form: {
+      name: String(source.form?.name || "").trim(),
+      phone: String(source.form?.phone || "").trim(),
+      city: String(source.form?.city || "").trim(),
+      address: String(source.form?.address || "").trim()
+    },
+    status: String(source.status || "").trim(),
+    loading: !!source.loading
+  };
+}
+
+function saveShopCartToStorage(uid = state.user?.uid || "") {
+  const key = shopCartKey(uid);
+  if (!key) return;
+  try {
+    const payload = normalizeShopCartState(state.shopCart);
+    payload.status = "";
+    payload.loading = false;
+    safeStorage.setItem(key, JSON.stringify(payload));
+  } catch {}
+}
+
+function getCartCountForRestaurant(restaurantId = "") {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  if (!safeRestaurantId || String(state.shopCart?.restaurantId || "").trim() !== safeRestaurantId) return 0;
+  return (state.shopCart.items || []).reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0);
+}
+
+function canAddToShopCart(profile = state.profileView?.profile || state.userProfile) {
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  if (!state.user || !restaurantId || !isShopCatalogProfile(profile)) return false;
+  if (state.userProfile?.restaurantId && String(state.userProfile.restaurantId).trim() === restaurantId) return false;
+  return true;
 }
 
 function normalizeMenuType(value) {
@@ -1459,6 +1548,14 @@ function formatPrice(value, currency = "€") {
   if (Number.isFinite(num)) return `${num.toFixed(2)} ${currency}`;
   const str = String(value).trim();
   return str ? `${str} ${currency}` : "-";
+}
+
+function parsePriceValue(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return 0;
+  const normalized = raw.replace(/[^0-9,.-]/g, "").replace(",", ".");
+  const num = Number(normalized);
+  return Number.isFinite(num) ? num : 0;
 }
 
 function normalizeMenuItemDoc(data, id) {
@@ -2750,6 +2847,18 @@ function loadUserScopedPersisted(user) {
     }
   }
 
+  const scopedCart = safeStorage.getItem(shopCartKey(uid));
+  if (scopedCart) {
+    try {
+      state.shopCart = normalizeShopCartState(JSON.parse(scopedCart));
+    } catch {
+      state.shopCart = createEmptyShopCart();
+    }
+  } else {
+    state.shopCart = createEmptyShopCart();
+  }
+  state.orders = createEmptyOrdersState();
+
   state.chatThreads = sortChatThreads(loadChatThreadIndex(uid).map((thread) => {
     const messages = loadChatThreadMessages(thread);
     const lastMessage = messages[messages.length - 1] || null;
@@ -2793,6 +2902,8 @@ function resetUserScopedState() {
   state.followingHandles = [];
   state.pendingFollowRequests = [];
   state.chatThreads = [];
+  state.shopCart = createEmptyShopCart();
+  state.orders = createEmptyOrdersState();
   state.notifications = [];
   state.roleSwitchRoles = [];
   state.roleSwitchRestaurantId = "";
@@ -5402,6 +5513,7 @@ function renderDrawer() {
     { id: "map", label: "Karte", icon: "map" },
     { id: "profile", label: "Profil", icon: "user" },
     { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
+    { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
     { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
     { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
     { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
@@ -5818,6 +5930,7 @@ function updateDrawerDom() {
 function stopLiveListeners() {
   stopChatThreadsListener();
   stopActiveChatMessagesListener();
+  stopOrdersListener();
   if (notificationsUnsub) {
     notificationsUnsub();
     notificationsUnsub = null;
@@ -6021,6 +6134,7 @@ function startLiveListeners(user) {
       }
       state.restaurants = mergeRestaurants(state.restaurants, [{ id: snap.id, ...data }]);
       rebuildBusinessLocations();
+      startOrdersListener(user);
       updateShellDom();
       if (state.activeTab === "profile" && !state.profileView) {
         render();
@@ -6064,6 +6178,7 @@ function startLiveListeners(user) {
           updateCommentAvatarNodes(handleKey, resolvedAvatar);
         }
       }
+      startOrdersListener(user);
       updateShellDom();
       if (state.activeTab === "profile" && !state.profileView) {
         render();
@@ -6112,6 +6227,7 @@ function startLiveListeners(user) {
   });
 
   startChatThreadsListener(user);
+  startOrdersListener(user);
   startFeedListener();
   startStoriesListener();
   if (!hasBusinessProfile) {
@@ -7256,7 +7372,7 @@ function renderPublicProfileView() {
         </div>
       `}
       ` : `
-        ${renderProfileMenuView(profile)}
+        ${topTab === "cart" ? renderProfileShopCartView(profile) : renderProfileMenuView(profile)}
       `}
     </div>
   `;
@@ -7450,7 +7566,11 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
   const firebaseFallback = getFirebaseStorageUrl(rawImg);
   const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPrice(item.price);
-  const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
+  const catalogProfile = state.activeTab === "menu" ? state.userProfile : (state.profileView?.profile || state.userProfile);
+  const isShopMode = isShopCatalogProfile(catalogProfile);
+  const typeLabel = isShopMode
+    ? (normalizeMenuType(item.type) === "drink" ? "Variante" : "Produkt")
+    : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.description || "";
   const availability = item.available === false
@@ -7493,7 +7613,11 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
   const firebaseFallback = getFirebaseStorageUrl(rawImg);
   const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPrice(item.price);
-  const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
+  const catalogProfile = state.activeTab === "menu" ? state.userProfile : (state.profileView?.profile || state.userProfile);
+  const isShopMode = isShopCatalogProfile(catalogProfile);
+  const typeLabel = isShopMode
+    ? (normalizeMenuType(item.type) === "drink" ? "Variante" : "Produkt")
+    : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.description || "";
   const availability = item.available === false
@@ -7967,10 +8091,12 @@ function renderProfileMenuView(profile) {
   const items = isSameRestaurant
     ? getFilteredMenuItems(state.menu.items, { filter: "all", query: "" })
     : [];
+  const isShop = isShopCatalogProfile(profile);
+  const catalogLabel = getBusinessCatalogLabel(profile);
   const error = isSameRestaurant ? state.menu.error : "";
   const drinkItems = items.filter((item) => normalizeMenuType(item.type) === "drink");
   const foodItems = items.filter((item) => normalizeMenuType(item.type) !== "drink");
-  const hasItems = drinkItems.length || foodItems.length;
+  const hasItems = items.length > 0;
   if (hasItems && restaurantId) {
     primeMenuItemCounts(items, restaurantId);
   }
@@ -7979,7 +8105,7 @@ function renderProfileMenuView(profile) {
       ${renderFocusCarousel(profile)}
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Menue wird geladen...</div>
+          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
         </div>
       ` : `
         ${!hasItems ? `
@@ -7989,22 +8115,26 @@ function renderProfileMenuView(profile) {
             </div>
           </div>
         ` : `
-          ${drinkItems.length ? `
-            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-black italic tracking-tighter">Getraenke</h3>
+          ${isShop ? `
+            ${renderShopProductList(items, { profile })}
+          ` : `
+            ${drinkItems.length ? `
+              <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-black italic tracking-tighter">Getraenke</h3>
+                </div>
+                ${renderMenuDrinkGrid(drinkItems, { mode: "profile" })}
               </div>
-              ${renderMenuDrinkGrid(drinkItems, { mode: "profile" })}
-            </div>
-          ` : ""}
-          ${foodItems.length ? `
-            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-              <div class="flex items-center justify-between mb-4">
-                <h3 class="text-lg font-black italic tracking-tighter">Speisen</h3>
+            ` : ""}
+            ${foodItems.length ? `
+              <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="text-lg font-black italic tracking-tighter">Speisen</h3>
+                </div>
+                ${renderMenuFoodList(foodItems, { mode: "profile" })}
               </div>
-              ${renderMenuFoodList(foodItems, { mode: "profile" })}
-            </div>
-          ` : ""}
+            ` : ""}
+          `}
         `}
         ${error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
       `}
@@ -8099,7 +8229,7 @@ function renderProfileView() {
         ` : ""}
       `}
       ` : `
-        ${renderProfileMenuView(profile)}
+        ${topTab === "cart" ? renderProfileShopCartView(profile) : renderProfileMenuView(profile)}
       `}
     </div>
   `;
@@ -8887,6 +9017,138 @@ function renderChatModal() {
   `;
 }
 
+function renderShopProductList(items, { profile = state.profileView?.profile || state.userProfile } = {}) {
+  if (!items.length) {
+    return `
+      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+        <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
+          Keine Produkte
+        </div>
+      </div>
+    `;
+  }
+  const canAdd = canAddToShopCart(profile);
+  return `
+    <div class="space-y-4">
+      ${items.map((item) => {
+        const rawImg = resolveMenuItemHero(item);
+        const imgSrc = getOptimizedImageUrl(rawImg, "large");
+        const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+        const firebaseFallback = getFirebaseStorageUrl(rawImg);
+        const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+        const priceLabel = formatPrice(item.price);
+        const category = item.category || "Produkt";
+        return `
+          <div data-menu-open="${escapeHtml(item.id)}" role="button" class="w-full p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer">
+            <div class="flex gap-4">
+              <div class="w-24 h-24 rounded-[1.5rem] overflow-hidden bg-slate-100 shrink-0">
+                <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+              </div>
+              <div class="flex-1 min-w-0 flex flex-col">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name || "Produkt")}</p>
+                    <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">${escapeHtml(category)}</p>
+                  </div>
+                  <span class="text-xs font-black text-slate-900 shrink-0">${escapeHtml(priceLabel)}</span>
+                </div>
+                ${item.description ? `<p class="text-xs text-slate-500 mt-2 line-clamp-3">${escapeHtml(item.description)}</p>` : ""}
+                <div class="mt-auto pt-3 flex items-center justify-between">
+                  <span class="text-[9px] font-black uppercase tracking-widest ${item.available === false ? "text-slate-300" : "text-emerald-600"}">${item.available === false ? "Nicht verfuegbar" : "Verfuegbar"}</span>
+                  ${canAdd && item.available !== false ? `
+                    <button data-cart-add="${escapeHtml(item.id)}" class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-sm active:scale-95">
+                      ${icon("plus", "w-4 h-4")}
+                    </button>
+                  ` : ""}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderProfileShopCartView(profile = state.profileView?.profile || state.userProfile) {
+  const context = getShopCartProfileContext(profile);
+  const cartMatches = context.restaurantId && String(state.shopCart.restaurantId || "") === context.restaurantId;
+  const items = cartMatches ? (state.shopCart.items || []) : [];
+  const total = cartMatches ? getShopCartTotal() : 0;
+  const hasOtherCart = !!state.shopCart.restaurantId && !cartMatches && (state.shopCart.items || []).length;
+  return `
+    <div class="px-5 pb-24 space-y-5">
+      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Warenkorb</span>
+            <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(context.businessName || "Shop")}</h3>
+          </div>
+          <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
+            ${icon("shopping-cart", "w-5 h-5")}
+          </div>
+        </div>
+        ${hasOtherCart ? `
+          <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Dein aktueller Warenkorb gehoert zu einem anderen Shop.</p>
+        ` : items.length ? `
+          <div class="space-y-3">
+            ${items.map((item) => `
+              <div class="flex items-center gap-3 p-3 rounded-[1.6rem] bg-slate-50 border border-slate-100">
+                <div class="w-14 h-14 rounded-2xl overflow-hidden bg-white shrink-0">
+                  <img src="${escapeHtml(getOptimizedImageUrl(item.imageUrl || "", "thumb"))}" class="w-full h-full object-cover" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name)}</p>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${escapeHtml(formatPrice(item.price))}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button data-cart-qty="${escapeHtml(item.itemId)}" data-cart-delta="-1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("minus", "w-3 h-3")}</button>
+                  <span class="w-6 text-center text-sm font-black text-slate-900">${escapeHtml(item.quantity)}</span>
+                  <button data-cart-qty="${escapeHtml(item.itemId)}" data-cart-delta="1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("plus", "w-3 h-3")}</button>
+                </div>
+              </div>
+            `).join("")}
+            <div class="pt-3 flex items-center justify-between">
+              <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Gesamt</span>
+              <span class="text-lg font-black text-slate-900">${escapeHtml(formatPrice(total))}</span>
+            </div>
+            <button data-cart-checkout="open" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200/60 active:scale-95">
+              Checkout starten
+            </button>
+            ${state.shopCart.status && !state.shopCart.checkoutOpen ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(state.shopCart.status)}</p>` : ""}
+          </div>
+        ` : `
+          <div class="text-center py-14">
+            <div class="w-14 h-14 rounded-[1.4rem] bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
+              ${icon("shopping-bag", "w-6 h-6")}
+            </div>
+            <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Warenkorb leer</p>
+            <p class="text-sm font-medium text-slate-500 mt-3">Tippe auf das Plus bei einem Produkt.</p>
+          </div>
+        `}
+      </div>
+      ${cartMatches && items.length && state.shopCart.checkoutOpen ? `
+        <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
+          <div>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Checkout</span>
+            <h3 class="text-xl font-black italic tracking-tighter">Lieferdaten</h3>
+          </div>
+          <div class="grid grid-cols-1 gap-3">
+            <input data-cart-field="name" type="text" value="${escapeHtml(state.shopCart.form.name || "")}" placeholder="Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input data-cart-field="phone" type="text" value="${escapeHtml(state.shopCart.form.phone || "")}" placeholder="Tel Nummer" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input data-cart-field="city" type="text" value="${escapeHtml(state.shopCart.form.city || "")}" placeholder="Qyteti" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <textarea data-cart-field="address" rows="3" placeholder="Adresa" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(state.shopCart.form.address || "")}</textarea>
+          </div>
+          <button data-cart-checkout="submit" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-95" ${state.shopCart.loading ? "disabled" : ""}>
+            ${state.shopCart.loading ? "Senden..." : "Bestellung absenden"}
+          </button>
+          ${state.shopCart.status ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest ${state.shopCart.loading ? "text-slate-400" : "text-slate-500"}">${escapeHtml(state.shopCart.status)}</p>` : ""}
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
 function renderProfileModal() {
   if (!state.profileModal.open || !state.profileModal.profile) return "";
   const p = state.profileModal.profile;
@@ -9427,6 +9689,7 @@ function renderMenuItemModal() {
   if (!state.menuModal.open) return "";
   const item = state.menuModal.item || {};
   const isEdit = state.menuModal.mode === "edit";
+  const isShop = isShopCatalogProfile(state.userProfile);
   const title = isEdit ? "Produkt bearbeiten" : "Produkt hinzufuegen";
   const existingImages = Array.isArray(state.menuModal.existingImages) ? state.menuModal.existingImages : [];
   const newPreviews = Array.isArray(state.menuModal.imagePreviews) ? state.menuModal.imagePreviews : [];
@@ -9493,8 +9756,8 @@ function renderMenuItemModal() {
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
           <select id="menuItemType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            <option value="food" ${typeValue === "food" ? "selected" : ""}>Speise</option>
-            <option value="drink" ${typeValue === "drink" ? "selected" : ""}>Getraenk</option>
+            <option value="food" ${typeValue === "food" ? "selected" : ""}>${isShop ? "Produkt" : "Speise"}</option>
+            <option value="drink" ${typeValue === "drink" ? "selected" : ""}>${isShop ? "Variante" : "Getraenk"}</option>
           </select>
         </div>
         <div>
@@ -9502,8 +9765,8 @@ function renderMenuItemModal() {
           <textarea id="menuItemDesc" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(item.description || "")}</textarea>
         </div>
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Allergene</label>
-          <input id="menuItemAllergens" type="text" value="${escapeHtml(item.allergens || "")}" placeholder="z.B. Milch, Gluten" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">${isShop ? "Zusatzinfo" : "Allergene"}</label>
+          <input id="menuItemAllergens" type="text" value="${escapeHtml(item.allergens || "")}" placeholder="${isShop ? "z.B. Farbe, Groesse" : "z.B. Milch, Gluten"}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
@@ -9555,7 +9818,10 @@ function renderMenuDetailModal() {
   const firebaseFallback = getFirebaseStorageUrl(rawImg);
   const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPrice(item.price);
-  const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
+  const catalogProfile = state.profileView?.profile || state.userProfile;
+  const typeLabel = isShopCatalogProfile(catalogProfile)
+    ? (normalizeMenuType(item.type) === "drink" ? "Variante" : "Produkt")
+    : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.longDescription || item.description || "";
   const allergens = item.allergens || "";
@@ -10221,6 +10487,69 @@ function renderCustomersView() {
   `;
 }
 
+function renderOrdersView() {
+  const isBusiness = isLocalBusinessProfile(state.userProfile) && !!state.userProfile.restaurantId;
+  const orders = Array.isArray(state.orders.items) ? state.orders.items : [];
+  return `
+    <div id="ordersView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Orders</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Bestellungen</h2>
+        </div>
+      </div>
+      ${state.orders.loading ? `
+        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-slate-400">Bestellungen werden geladen...</div>
+      ` : state.orders.error ? `
+        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-rose-500">${escapeHtml(state.orders.error)}</div>
+      ` : orders.length ? `
+        <div class="space-y-4">
+          ${orders.map((order) => {
+            const avatarRaw = isBusiness ? order.buyerAvatar : order.businessAvatar;
+            const avatarUrl = getOptimizedImageUrl(avatarRaw, "avatar");
+            const fallbackName = isBusiness ? (order.contact.name || order.buyerName || "Kunde") : (order.businessName || "Shop");
+            const metaLine = isBusiness
+              ? [order.contact.phone, order.contact.city].filter(Boolean).join(" / ")
+              : `${order.itemCount} Artikel`;
+            return `
+              <div class="bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm">
+                <div class="flex items-center gap-3 mb-4">
+                  <div class="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
+                    <img src="${escapeHtml(avatarUrl)}" class="w-full h-full ${isBusiness ? "object-cover" : "object-contain bg-white"}" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(fallbackName)}</p>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">${escapeHtml(metaLine)}</p>
+                  </div>
+                  <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700">${escapeHtml(order.status || "Neu")}</span>
+                </div>
+                <div class="space-y-2">
+                  ${order.items.slice(0, 3).map((item) => `
+                    <div class="flex items-center justify-between text-sm">
+                      <span class="font-semibold text-slate-700 truncate pr-3">${escapeHtml(item.quantity)}x ${escapeHtml(item.name)}</span>
+                      <span class="font-black text-slate-900">${escapeHtml(formatPrice(parsePriceValue(item.price) * item.quantity))}</span>
+                    </div>
+                  `).join("")}
+                  ${order.items.length > 3 ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-300">+${escapeHtml(order.items.length - 3)} weitere</p>` : ""}
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+                  <div class="min-w-0">
+                    ${isBusiness ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">${escapeHtml([order.contact.city, order.contact.address].filter(Boolean).join(" / "))}</p>` : `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">@${escapeHtml(order.buyerHandle || "user")}</p>`}
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-300 mt-1">${escapeHtml(formatRelative(toDateSafe(order.createdAt) || new Date()))}</p>
+                  </div>
+                  <span class="text-base font-black text-slate-900 shrink-0">${escapeHtml(formatPrice(order.total))}</span>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : `
+        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-slate-300">Noch keine Bestellungen</div>
+      `}
+    </div>
+  `;
+}
+
 function renderSearchUserItem(user) {
   const handle = user.handle || normalizeHandle(user.name || "user");
   const displayName = sanitizeDisplayName(user.name, handle || "User");
@@ -10724,10 +11053,13 @@ function renderBusinessTopTabs() {
   if (!shouldShowBusinessTopTabs()) return "";
   const profile = state.profileView?.profile || state.userProfile;
   const catalogLabel = getBusinessCatalogLabel(profile);
+  const isShop = isShopCatalogProfile(profile);
   const base = "flex-1 py-3 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
   const activeTop = state.profileTopTab || "profile";
   const isProfileActive = activeTop === "profile";
   const isMenuActive = activeTop === "menu";
+  const isCartActive = activeTop === "cart";
+  const cartCount = isShop ? getCartCountForRestaurant(profile?.restaurantId || "") : 0;
   const spacingClass = isProfileActive ? "pb-1" : "pb-3";
   return `
     <div class="px-6 ${spacingClass}">
@@ -10738,9 +11070,17 @@ function renderBusinessTopTabs() {
         <button type="button" data-profile-top-tab="menu" class="${base} ${isMenuActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
           ${catalogLabel}
         </button>
-        <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
-          Reviews
-        </button>
+        ${isShop ? `
+          <button type="button" data-profile-top-tab="cart" class="${base} relative ${isCartActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
+            ${icon("shopping-cart", "w-4 h-4")}
+            <span>Warenkorb</span>
+            ${cartCount ? `<span class="absolute top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${cartCount > 9 ? "9+" : cartCount}</span>` : ""}
+          </button>
+        ` : `
+          <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
+            Reviews
+          </button>
+        `}
       </div>
     </div>
   `;
@@ -10754,6 +11094,7 @@ function renderMain() {
   if (state.activeTab === "map") view = renderMapView();
   if (state.activeTab === "profile") view = state.profileView ? renderPublicProfileView() : renderProfileView();
   if (state.activeTab === "menu") view = renderMenuAdminView();
+  if (state.activeTab === "orders") view = renderOrdersView();
   if (state.activeTab === "leads") view = renderLeadsView();
   if (state.activeTab === "customers") view = renderCustomersView();
   if (state.activeTab === "settings") view = renderSettingsView();
@@ -11925,6 +12266,45 @@ function bindAppEvents() {
       const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
       if (!item) return;
       void openMenuDetail(item, state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "");
+    });
+  });
+
+  document.querySelectorAll("[data-cart-add]").forEach((btn) => {
+    btn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const itemId = btn.dataset.cartAdd || "";
+      const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
+      if (!item) return;
+      addMenuItemToShopCart(item);
+    });
+  });
+
+  document.querySelectorAll("[data-cart-qty]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const itemId = btn.dataset.cartQty || "";
+      const delta = Number(btn.dataset.cartDelta || "0");
+      if (!itemId || !delta) return;
+      updateShopCartQuantity(itemId, delta);
+    });
+  });
+
+  document.querySelectorAll("[data-cart-checkout]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = btn.dataset.cartCheckout || "";
+      if (action === "open") {
+        openShopCheckout();
+        return;
+      }
+      if (action === "submit") {
+        void submitShopCheckout();
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-cart-field]").forEach((input) => {
+    input.addEventListener("input", () => {
+      updateShopCheckoutField(input.dataset.cartField || "", input.value || "");
     });
   });
 
@@ -13889,6 +14269,259 @@ function ensureFocusDataForProfile(profile = state.profileView?.profile || state
   const restaurantId = getMenuRestaurantForProfile(profile);
   if (!restaurantId) return;
   void loadFocusForRestaurant(restaurantId);
+}
+
+function normalizeOrderItem(item) {
+  return {
+    id: String(item?.id || item?.itemId || "").trim(),
+    itemId: String(item?.itemId || item?.id || "").trim(),
+    name: String(item?.name || "Produkt").trim() || "Produkt",
+    price: String(item?.price ?? "").trim(),
+    quantity: Math.max(1, Number(item?.quantity || 1) || 1),
+    imageUrl: String(item?.imageUrl || "").trim(),
+    category: String(item?.category || "").trim()
+  };
+}
+
+function normalizeOrderDoc(data, id) {
+  const source = data && typeof data === "object" ? data : {};
+  const items = (Array.isArray(source.items) ? source.items : []).map(normalizeOrderItem).filter((item) => item.id && item.itemId);
+  const total = Number(source.total);
+  return {
+    id: String(id || source.id || "").trim(),
+    restaurantId: String(source.restaurantId || "").trim(),
+    businessName: String(source.businessName || "").trim(),
+    businessAvatar: String(source.businessAvatar || "").trim(),
+    buyerUid: String(source.buyerUid || "").trim(),
+    buyerName: String(source.buyerName || "").trim(),
+    buyerHandle: String(source.buyerHandle || "").trim(),
+    buyerAvatar: String(source.buyerAvatar || "").trim(),
+    contact: {
+      name: String(source.contact?.name || "").trim(),
+      phone: String(source.contact?.phone || "").trim(),
+      city: String(source.contact?.city || "").trim(),
+      address: String(source.contact?.address || "").trim()
+    },
+    items,
+    itemCount: Math.max(1, Number(source.itemCount || items.reduce((sum, item) => sum + item.quantity, 0) || 1) || 1),
+    total: Number.isFinite(total) ? total : items.reduce((sum, item) => sum + (parsePriceValue(item.price) * item.quantity), 0),
+    status: String(source.status || "Neu").trim() || "Neu",
+    createdAt: source.createdAt || source.createdAtClient || new Date().toISOString(),
+    updatedAt: source.updatedAt || source.updatedAtClient || source.createdAt || source.createdAtClient || new Date().toISOString()
+  };
+}
+
+function stopOrdersListener() {
+  if (ordersUnsub) {
+    ordersUnsub();
+    ordersUnsub = null;
+  }
+}
+
+function startOrdersListener(user = state.user) {
+  stopOrdersListener();
+  const uid = String(user?.uid || "").trim();
+  if (!uid) return;
+  const isBusiness = isLocalBusinessProfile(state.userProfile) && !!state.userProfile.restaurantId;
+  const pathRef = isBusiness
+    ? collection(db, "restaurants", state.userProfile.restaurantId, "orders")
+    : collection(db, "users", uid, "orders");
+  state.orders = { ...state.orders, loading: true, error: "" };
+  if (state.activeTab === "orders") render();
+  ordersUnsub = onSnapshot(query(pathRef, orderBy("createdAt", "desc"), limit(60)), (snap) => {
+    const items = snap.docs.map((docSnap) => normalizeOrderDoc(docSnap.data() || {}, docSnap.id));
+    state.orders = { ...state.orders, items, loading: false, error: "" };
+    if (state.activeTab === "orders" && lastRenderMode === "main") {
+      render();
+    }
+  }, (err) => {
+    console.error(err);
+    state.orders = { ...state.orders, loading: false, error: "Bestellungen konnten nicht geladen werden." };
+    if (state.activeTab === "orders" && lastRenderMode === "main") {
+      render();
+    }
+  });
+}
+
+function clearShopCart({ keepForm = false } = {}) {
+  const form = keepForm
+    ? { ...(state.shopCart?.form || createEmptyShopCart().form) }
+    : { ...createEmptyShopCart().form };
+  state.shopCart = {
+    ...createEmptyShopCart(),
+    form
+  };
+  saveShopCartToStorage();
+}
+
+function getCurrentShopProfile() {
+  return state.profileView?.profile || state.userProfile;
+}
+
+function getShopCartProfileContext(profile = getCurrentShopProfile()) {
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  const rest = restaurantId ? getRestaurantMetaById(restaurantId) : null;
+  return {
+    restaurantId,
+    businessName: String(profile?.name || rest?.name || rest?.restaurantName || "Shop").trim() || "Shop",
+    businessAvatar: String(profile?.avatar || rest?.logoUrl || rest?.logo || "").trim()
+  };
+}
+
+function addMenuItemToShopCart(item, profile = getCurrentShopProfile()) {
+  if (!item || !canAddToShopCart(profile)) return;
+  const context = getShopCartProfileContext(profile);
+  if (!context.restaurantId) return;
+  const currentRestaurantId = String(state.shopCart?.restaurantId || "").trim();
+  if (currentRestaurantId && currentRestaurantId !== context.restaurantId) {
+    const shouldReplace = confirm("Dein Warenkorb enthaelt Produkte von einem anderen Shop. Ersetzen?");
+    if (!shouldReplace) return;
+    clearShopCart({ keepForm: true });
+  }
+  const nextCart = normalizeShopCartState(state.shopCart);
+  const existingIndex = nextCart.items.findIndex((entry) => String(entry.itemId) === String(item.id));
+  const entry = {
+    id: String(item.id || "").trim(),
+    itemId: String(item.id || "").trim(),
+    name: String(item.name || "Produkt").trim() || "Produkt",
+    price: String(item.price ?? "").trim(),
+    quantity: 1,
+    imageUrl: String(resolveMenuItemHero(item) || "").trim(),
+    category: String(item.category || "").trim()
+  };
+  if (existingIndex >= 0) {
+    nextCart.items[existingIndex] = {
+      ...nextCart.items[existingIndex],
+      quantity: Math.max(1, Number(nextCart.items[existingIndex].quantity || 1) + 1)
+    };
+  } else {
+    nextCart.items.unshift(entry);
+  }
+  nextCart.restaurantId = context.restaurantId;
+  nextCart.businessName = context.businessName;
+  nextCart.businessAvatar = context.businessAvatar;
+  nextCart.status = `${entry.name} wurde zum Warenkorb hinzugefuegt.`;
+  state.shopCart = nextCart;
+  saveShopCartToStorage();
+  render();
+}
+
+function updateShopCartQuantity(itemId, delta) {
+  const safeId = String(itemId || "").trim();
+  if (!safeId) return;
+  const nextCart = normalizeShopCartState(state.shopCart);
+  nextCart.items = nextCart.items
+    .map((entry) => (
+      String(entry.itemId) === safeId
+        ? { ...entry, quantity: Math.max(0, Number(entry.quantity || 1) + Number(delta || 0)) }
+        : entry
+    ))
+    .filter((entry) => entry.quantity > 0);
+  nextCart.status = "";
+  if (!nextCart.items.length) {
+    clearShopCart({ keepForm: true });
+  } else {
+    state.shopCart = nextCart;
+    saveShopCartToStorage();
+  }
+  render();
+}
+
+function openShopCheckout() {
+  const nextCart = normalizeShopCartState(state.shopCart);
+  if (!nextCart.items.length) return;
+  nextCart.checkoutOpen = true;
+  nextCart.status = "";
+  if (!nextCart.form.name) nextCart.form.name = String(state.userProfile?.name || state.user?.displayName || "").trim();
+  if (!nextCart.form.city) nextCart.form.city = String(state.userProfile?.location || "").trim();
+  if (!nextCart.form.address) nextCart.form.address = String(state.userProfile?.address || "").trim();
+  state.shopCart = nextCart;
+  saveShopCartToStorage();
+  render();
+}
+
+function updateShopCheckoutField(field, value) {
+  if (!field) return;
+  const nextCart = normalizeShopCartState(state.shopCart);
+  if (!(field in nextCart.form)) return;
+  nextCart.form[field] = String(value || "");
+  nextCart.status = "";
+  state.shopCart = nextCart;
+  saveShopCartToStorage();
+}
+
+function getShopCartTotal() {
+  return (state.shopCart.items || []).reduce((sum, item) => {
+    return sum + (parsePriceValue(item.price) * Math.max(1, Number(item.quantity || 1) || 1));
+  }, 0);
+}
+
+async function submitShopCheckout() {
+  if (!state.user) return;
+  const cart = normalizeShopCartState(state.shopCart);
+  if (!cart.restaurantId || !cart.items.length) return;
+  const contact = {
+    name: String(cart.form.name || "").trim(),
+    phone: String(cart.form.phone || "").trim(),
+    city: String(cart.form.city || "").trim(),
+    address: String(cart.form.address || "").trim()
+  };
+  if (!contact.name || !contact.phone || !contact.city || !contact.address) {
+    state.shopCart = { ...cart, status: "Bitte Name, Tel, Qyteti und Adresse eingeben." };
+    saveShopCartToStorage();
+    render();
+    return;
+  }
+  const restaurant = getRestaurantMetaById(cart.restaurantId) || {};
+  const businessAvatar = cart.businessAvatar || restaurant.logoUrl || restaurant.logo || "";
+  const orderRef = doc(collection(db, "restaurants", cart.restaurantId, "orders"));
+  const orderId = orderRef.id;
+  const nowIso = new Date().toISOString();
+  const buyerHandle = String(state.userProfile.handle || normalizeHandle(state.userProfile.name || state.user?.displayName || "user")).replace(/^@/, "").trim();
+  const payload = {
+    id: orderId,
+    restaurantId: cart.restaurantId,
+    businessName: cart.businessName || restaurant.name || restaurant.restaurantName || "Shop",
+    businessAvatar,
+    buyerUid: state.user.uid,
+    buyerName: state.userProfile.name || state.user?.displayName || "User",
+    buyerHandle,
+    buyerAvatar: state.userProfile.avatar || "",
+    contact,
+    items: cart.items.map((item) => ({
+      id: item.id,
+      itemId: item.itemId,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      imageUrl: item.imageUrl,
+      category: item.category
+    })),
+    itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
+    total: getShopCartTotal(),
+    status: "Neu",
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+    createdAtClient: nowIso,
+    updatedAtClient: nowIso
+  };
+  state.shopCart = { ...cart, loading: true, status: "Bestellung wird gesendet..." };
+  render();
+  try {
+    await Promise.all([
+      setDoc(orderRef, payload, { merge: true }),
+      setDoc(doc(db, "users", state.user.uid, "orders", orderId), payload, { merge: true })
+    ]);
+    clearShopCart({ keepForm: true });
+    state.activeTab = "orders";
+    state.drawerOpen = false;
+    render();
+  } catch (err) {
+    console.error(err);
+    state.shopCart = { ...cart, loading: false, checkoutOpen: true, status: "Bestellung konnte nicht gesendet werden." };
+    saveShopCartToStorage();
+    render();
+  }
 }
 
 function openFocusModal(mode = "create", item = null) {
