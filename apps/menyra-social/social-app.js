@@ -5104,11 +5104,15 @@ function bindNotificationsDelegation() {
     if (deleteBtn) {
       const id = deleteBtn.dataset.notifDelete;
       if (!id) return;
+      const notif = state.notifications.find((n) => n.id === id) || null;
       state.notifications = state.notifications.filter((n) => n.id !== id);
       saveNotifications(state.notifications);
       updateNotificationsDom();
       if (state.user?.uid) {
         void deleteDoc(doc(db, "users", state.user.uid, "notifications", id));
+        if (notif?.type === "follow_request" && notif.userUid) {
+          void deleteDoc(doc(db, "users", state.user.uid, "followRequests", notif.userUid));
+        }
       }
       return;
     }
