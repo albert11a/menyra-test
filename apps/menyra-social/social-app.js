@@ -63,6 +63,7 @@ const STORAGE_KEYS = {
   settings: "menyra_social_settings_v3",
   notifications: "menyra_social_notifications_v1",
   following: "menyra_social_following_v1",
+  chatIndex: "menyra_social_chat_index_v1",
   chatThreads: "menyra_social_chat_threads_v1",
   postMeta: "menyra_social_post_meta_v1",
   feed: "menyra_social_feed_v1",
@@ -267,6 +268,7 @@ const state = {
   roleSwitchRestaurantId: "",
   followingHandles: [],
   pendingFollowRequests: [],
+  chatThreads: [],
   profileView: null,
   profileBackTab: "feed",
   profileViewMode: "grid",
@@ -1757,6 +1759,58 @@ function applyFollowingHandles(handles, { shouldRender = true } = {}) {
   render();
 }
 
+function chatIndexStorageKey(uid = state.user?.uid || "") {
+  const safeUid = String(uid || "").trim();
+  return safeUid ? `${STORAGE_KEYS.chatIndex}::${safeUid}` : "";
+}
+
+function saveChatThreadIndex(threads) {
+  const key = chatIndexStorageKey();
+  if (!key) return;
+  try {
+    safeStorage.setItem(key, JSON.stringify((Array.isArray(threads) ? threads : []).slice(0, 100)));
+  } catch {}
+}
+
+function loadChatThreadIndex(uid = state.user?.uid || "") {
+  const key = chatIndexStorageKey(uid);
+  if (!key) return [];
+  try {
+    const raw = safeStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function sortChatThreads(threads) {
+  return (Array.isArray(threads) ? threads.slice() : [])
+    .sort((a, b) => (Number(b?.updatedAt || 0) - Number(a?.updatedAt || 0)));
+}
+
+function upsertChatThread(profile, patch = {}) {
+  if (!profile) return;
+  const threadId = String(profile.uid || profile.restaurantId || profile.handle || "").replace(/^@/, "").trim();
+  if (!threadId) return;
+  const nextThread = {
+    id: threadId,
+    uid: profile.uid || "",
+    restaurantId: profile.restaurantId || "",
+    handle: String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, ""),
+    name: profile.name || "User",
+    avatar: profile.avatar || "",
+    lastMessage: "",
+    updatedAt: Date.now(),
+    ...patch
+  };
+  const existing = Array.isArray(state.chatThreads) ? state.chatThreads : [];
+  const rest = existing.filter((item) => String(item?.id || "") !== threadId);
+  state.chatThreads = sortChatThreads([nextThread, ...rest]);
+  saveChatThreadIndex(state.chatThreads);
+}
+
 function getChatThreadId(profile = state.chatModal.profile) {
   return String(profile?.uid || profile?.restaurantId || profile?.handle || "").replace(/^@/, "").trim();
 }
@@ -1794,26 +1848,33 @@ function openChatWithProfile(profile) {
   const nextProfile = {
     uid: profile.uid || "",
     restaurantId: profile.restaurantId || "",
-    handle: profile.handle || normalizeHandle(profile.name || "user"),
+    handle: String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, ""),
     name: profile.name || "User",
     avatar: profile.avatar || ""
   };
+  upsertChatThread(nextProfile);
+  state.drawerOpen = false;
+  state.profileModal = { open: false, profile: null };
+  state.activeTab = "chat";
   state.chatModal = {
     open: true,
     profile: nextProfile,
     messages: loadChatThreadMessages(nextProfile),
-    draft: ""
+    draft: state.chatModal.open && getChatThreadId(state.chatModal.profile) === getChatThreadId(nextProfile)
+      ? (state.chatModal.draft || "")
+      : ""
   };
-  renderOverlays({ updateChat: true });
+  render();
 }
 
 function closeChatModal() {
   if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
   }
-  state.chatModal = { open: false, profile: null, messages: [], draft: "" };
-  syncModalOpenUiState();
-  renderOverlays({ updateChat: true });
+  state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "" };
+  if (state.activeTab === "chat") {
+    render();
+  }
 }
 
 function sendChatMessage() {
@@ -1833,7 +1894,11 @@ function sendChatMessage() {
   state.chatModal.messages = nextMessages;
   state.chatModal.draft = "";
   saveChatThreadMessages(state.chatModal.profile, nextMessages);
-  renderOverlays({ updateChat: true });
+  upsertChatThread(state.chatModal.profile, {
+    lastMessage: text,
+    updatedAt: Date.now()
+  });
+  render();
 }
 
 function savePostMeta(meta) {
@@ -2021,6 +2086,8 @@ function loadUserScopedPersisted(user) {
       state.followingHandles = [];
     }
   }
+
+  state.chatThreads = sortChatThreads(loadChatThreadIndex(uid));
 }
 
 function resetUserScopedState() {
@@ -2050,6 +2117,7 @@ function resetUserScopedState() {
   state.selectedBusiness = null;
   state.followingHandles = [];
   state.pendingFollowRequests = [];
+  state.chatThreads = [];
   state.notifications = [];
   state.roleSwitchRoles = [];
   state.roleSwitchRestaurantId = "";
@@ -4054,10 +4122,6 @@ function closeLikesModal() {
 }
 
 function closeActiveModal() {
-  if (state.chatModal.open) {
-    closeChatModal();
-    return true;
-  }
   if (state.likesModal.open) {
     closeLikesModal();
     return true;
@@ -4095,8 +4159,7 @@ function closeActiveModal() {
 
 function isAnyModalOpen() {
   return !!(
-    state.chatModal.open
-    || state.profileModal.open
+    state.profileModal.open
     || state.postModal.open
     || state.likesModal.open
     || state.menuModal.open
@@ -4658,6 +4721,7 @@ function renderDrawer() {
   const avatarFit = logoFitClass(isLocalBusinessProfile(state.userProfile));
   const navItems = [
     { id: "feed", label: "Feed", icon: "home" },
+    { id: "chat", label: "Chats", icon: "messages-square" },
     { id: "search", label: "Suche", icon: "search" },
     { id: "map", label: "Karte", icon: "map" },
     { id: "profile", label: "Profil", icon: "user" },
@@ -9731,6 +9795,87 @@ function renderUploadView() {
   `;
 }
 
+function renderChatView() {
+  const threads = sortChatThreads(state.chatThreads);
+  if (!state.chatModal.open || !state.chatModal.profile) {
+    return `
+      <div id="chatListView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+        ${threads.length ? `
+          <div class="space-y-3">
+            ${threads.map((thread) => {
+              const avatarUrl = getOptimizedImageUrl(thread.avatar, "avatar");
+              return `
+                <button
+                  data-chat-open-thread="true"
+                  data-chat-uid="${escapeHtml(thread.uid || "")}"
+                  data-chat-handle="${escapeHtml(thread.handle || "")}"
+                  data-chat-name="${escapeHtml(thread.name || "User")}"
+                  data-chat-avatar="${escapeHtml(thread.avatar || "")}"
+                  class="w-full p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm text-left flex items-center gap-4 active:scale-[0.99] transition-all"
+                >
+                  <img src="${escapeHtml(avatarUrl)}" class="w-14 h-14 rounded-2xl object-cover shadow-sm" />
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-3">
+                      <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(thread.name || "User")}</p>
+                      <span class="text-[9px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(formatRelative(new Date(Number(thread.updatedAt || Date.now()))))}</span>
+                    </div>
+                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate mt-1">@${escapeHtml(String(thread.handle || "user").replace(/^@/, ""))}</p>
+                    <p class="text-sm text-slate-500 truncate mt-2">${escapeHtml(thread.lastMessage || "Chat oeffnen")}</p>
+                  </div>
+                </button>
+              `;
+            }).join("")}
+          </div>
+        ` : `
+          <div class="min-h-[60vh] flex items-center justify-center text-center">
+            <div>
+              <div class="w-16 h-16 rounded-[1.8rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-5 shadow-sm">
+                ${icon("messages-square", "w-7 h-7")}
+              </div>
+              <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Noch keine Chats</p>
+              <p class="text-sm font-medium text-slate-500 mt-3">Oeffne ein Profil und tippe auf das Chat-Icon.</p>
+            </div>
+          </div>
+        `}
+      </div>
+    `;
+  }
+
+  const partner = state.chatModal.profile;
+  const messages = Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [];
+  return `
+    <div id="chatThreadView" class="px-4 pb-6 animate-in slide-in-from-right-10 duration-500">
+      <div class="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden flex flex-col min-h-[72vh] shadow-sm">
+        <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto no-scrollbar p-4 space-y-3 bg-slate-50/70">
+          ${messages.length ? messages.map((message) => `
+            <div class="flex ${message.from === "self" ? "justify-end" : "justify-start"}">
+              <div class="max-w-[82%] rounded-[1.6rem] px-4 py-3 ${message.from === "self" ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-100"}">
+                <div class="text-sm font-medium leading-relaxed whitespace-pre-wrap">${escapeHtml(message.text || "")}</div>
+                <div class="text-[9px] font-bold uppercase tracking-widest mt-2 ${message.from === "self" ? "text-slate-300" : "text-slate-400"}">${escapeHtml(formatRelative(toDateSafe(message.createdAt) || new Date()))}</div>
+              </div>
+            </div>
+          `).join("") : `
+            <div class="h-full min-h-[48vh] flex items-center justify-center text-center">
+              <div>
+                <div class="w-14 h-14 rounded-[1.4rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
+                  ${icon("message-circle", "w-6 h-6")}
+                </div>
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Schreib ${escapeHtml(partner.name || "User")} zuerst</p>
+              </div>
+            </div>
+          `}
+        </div>
+        <div class="p-4 border-t border-slate-100 bg-white">
+          <div class="flex items-end gap-3">
+            <textarea id="chatMessageInput" rows="1" placeholder="Nachricht..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none">${escapeHtml(state.chatModal.draft || "")}</textarea>
+            <button id="chatSendBtn" class="px-5 h-[52px] rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest active:scale-95">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderHeader() {
   const unread = state.notifications.filter((n) => !n.read).length;
   const badge = unread > 9 ? "9+" : String(unread || "");
@@ -9739,6 +9884,48 @@ function renderHeader() {
   const avatarFit = logoFitClass(branding.isBusinessLogo);
   const titleClass = "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
   const subtitleClass = `text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block${branding.subtitle ? "" : " hidden"}`;
+  if (state.activeTab === "chat" && state.chatModal.open && state.chatModal.profile) {
+    const partner = state.chatModal.profile;
+    const partnerAvatar = getOptimizedImageUrl(partner.avatar, "avatar");
+    return `
+      <header class="p-6 pb-3 flex items-center justify-between gap-3 relative z-40 bg-slate-50">
+        <button data-chat-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
+          ${icon("arrow-left", "w-5 h-5")}
+        </button>
+        <div class="flex-1 min-w-0 text-center">
+          <h1 class="text-lg font-black tracking-tight text-slate-900 truncate">${escapeHtml(partner.name || "User")}</h1>
+          <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.35em] block truncate">@${escapeHtml(String(partner.handle || "user").replace(/^@/, ""))}</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="w-12 h-12 rounded-2xl overflow-hidden p-1 bg-white border border-slate-100 shadow-sm">
+            <img src="${escapeHtml(partnerAvatar)}" class="w-full h-full rounded-[1rem] object-cover" />
+          </div>
+          <button data-chat-gift="true" class="w-12 h-12 rounded-2xl bg-white border border-slate-100 text-slate-500 flex items-center justify-center shadow-sm active:scale-95">
+            ${icon("gift", "w-4 h-4")}
+          </button>
+        </div>
+      </header>
+    `;
+  }
+  if (state.activeTab === "chat") {
+    return `
+      <header class="p-6 pb-3 flex justify-between items-center relative z-40 bg-slate-50">
+        <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
+          <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
+          <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
+          <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
+          ${unread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
+        </button>
+        <div class="text-center">
+          <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">CHATS</h1>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">DIRECT</span>
+        </div>
+        <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
+          <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
+        </button>
+      </header>
+    `;
+  }
   return `
     <header class="p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
       <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
@@ -9793,6 +9980,7 @@ function renderBusinessTopTabs() {
 function renderMain() {
   let view = "";
   if (state.activeTab === "feed") view = renderFeedView();
+  if (state.activeTab === "chat") view = renderChatView();
   if (state.activeTab === "search") view = renderSearchView();
   if (state.activeTab === "map") view = renderMapView();
   if (state.activeTab === "profile") view = state.profileView ? renderPublicProfileView() : renderProfileView();
@@ -9903,7 +10091,7 @@ function renderOverlays(options = {}) {
     : !state.likesModal.open;
   const updateChat = Object.prototype.hasOwnProperty.call(options, "updateChat")
     ? options.updateChat
-    : !state.likesModal.open;
+    : false;
   const updatePost = Object.prototype.hasOwnProperty.call(options, "updatePost")
     ? options.updatePost
     : !state.likesModal.open;
@@ -10846,6 +11034,7 @@ function bindAppEvents() {
           safeStorage.removeItem(avatarKey(state.user.uid));
           safeStorage.removeItem(notificationsKey(state.user.uid));
           safeStorage.removeItem(followingKey(state.user.uid));
+          safeStorage.removeItem(chatIndexStorageKey(state.user.uid));
         }
         safeStorage.removeItem(STORAGE_KEYS.postMeta);
         resetUserScopedState();
@@ -11204,6 +11393,54 @@ function bindAppEvents() {
       });
     });
   });
+
+  document.querySelectorAll("[data-chat-open-thread]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openChatWithProfile({
+        uid: btn.dataset.chatUid || "",
+        handle: btn.dataset.chatHandle || "",
+        name: btn.dataset.chatName || "User",
+        avatar: btn.dataset.chatAvatar || ""
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-chat-back]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeChatModal();
+    });
+  });
+
+  document.querySelectorAll("[data-chat-gift]").forEach((btn) => {
+    btn.addEventListener("click", () => {});
+  });
+
+  const chatSendBtn = document.getElementById("chatSendBtn");
+  if (chatSendBtn) {
+    chatSendBtn.addEventListener("click", () => {
+      sendChatMessage();
+    });
+  }
+
+  const chatMessageInput = document.getElementById("chatMessageInput");
+  if (chatMessageInput) {
+    chatMessageInput.addEventListener("input", () => {
+      state.chatModal.draft = chatMessageInput.value;
+    });
+    chatMessageInput.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter" && !evt.shiftKey) {
+        evt.preventDefault();
+        sendChatMessage();
+      }
+    });
+  }
+
+  const chatMessages = document.getElementById("chatMessages");
+  if (chatMessages) {
+    queueMicrotask(() => {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+  }
 
   const uploadFileInput = document.getElementById("uploadFileInput");
   const uploadTrigger = document.getElementById("uploadFileTrigger");
