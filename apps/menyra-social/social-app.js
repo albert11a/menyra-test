@@ -107,6 +107,7 @@ const DEFAULT_PROFILE = {
   address: "",
   followers: 0,
   following: 0,
+  privateAccount: false,
   karma: "0",
   roles: [],
   role: "user",
@@ -264,6 +265,7 @@ const state = {
   roleSwitchRoles: [],
   roleSwitchRestaurantId: "",
   followingHandles: [],
+  pendingFollowRequests: [],
   profileView: null,
   profileBackTab: "feed",
   profileViewMode: "grid",
@@ -428,6 +430,7 @@ let searchTimer = null;
 let searchToken = 0;
 const searchCache = new Map();
 let notificationsUnsub = null;
+let followingUnsub = null;
 let userDocUnsub = null;
 let profileViewUnsub = null;
 let feedUnsub = null;
@@ -1709,6 +1712,38 @@ function saveFollowing(handles) {
   } catch {}
 }
 
+function syncPrivateSettingFromProfile(value) {
+  const nextValue = !!value;
+  if (state.settings.privateAccount === nextValue) return;
+  state.settings = { ...state.settings, privateAccount: nextValue };
+  saveSettings(state.settings);
+}
+
+function getFollowDocId(targetType, targetId, handle) {
+  return `${targetType || "handle"}_${targetId || handle}`;
+}
+
+function applyFollowingHandles(handles, { shouldRender = true } = {}) {
+  const nextHandles = Array.from(new Set(
+    (Array.isArray(handles) ? handles : [])
+      .map((item) => String(item || "").replace(/^@/, "").trim())
+      .filter(Boolean)
+  ));
+  const prevKey = state.followingHandles.join("|");
+  const nextKey = nextHandles.join("|");
+  state.followingHandles = nextHandles;
+  state.pendingFollowRequests = state.pendingFollowRequests.filter((handle) => !nextHandles.includes(handle));
+  if (state.profileView?.profile) {
+    const viewHandle = String(state.profileView.profile.handle || "").replace(/^@/, "");
+    if (viewHandle && nextHandles.includes(viewHandle)) {
+      state.profileView.profile.pendingFollowRequest = false;
+    }
+  }
+  saveFollowing(nextHandles);
+  if (!shouldRender || prevKey === nextKey || lastRenderMode !== "main") return;
+  render();
+}
+
 function savePostMeta(meta) {
   void meta;
 }
@@ -1921,6 +1956,7 @@ function resetUserScopedState() {
   state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
   state.selectedBusiness = null;
   state.followingHandles = [];
+  state.pendingFollowRequests = [];
   state.notifications = [];
   state.roleSwitchRoles = [];
   state.roleSwitchRestaurantId = "";
@@ -2234,6 +2270,7 @@ function normalizeProfile(data, user) {
     address: data?.address || "",
     followers: data?.followersCount ?? 0,
     following: data?.followingCount ?? 0,
+    privateAccount: !!data?.privateAccount,
     karma: String(data?.score ?? "0"),
     roles,
     role: data?.role || "user",
@@ -2261,6 +2298,7 @@ function normalizeBusinessProfile(rest = {}, user) {
     address: rest?.address || "",
     followers: rest?.followersCount ?? rest?.followers ?? 0,
     following: rest?.followingCount ?? rest?.following ?? 0,
+    privateAccount: false,
     karma: "0",
     roles: normalizeRoleList(rest?.roles || "owner"),
     role: "business",
@@ -4944,6 +4982,10 @@ function stopLiveListeners() {
     notificationsUnsub();
     notificationsUnsub = null;
   }
+  if (followingUnsub) {
+    followingUnsub();
+    followingUnsub = null;
+  }
   if (userDocUnsub) {
     userDocUnsub();
     userDocUnsub = null;
@@ -5043,6 +5085,13 @@ function bindNotificationsDelegation() {
     const markAll = target.closest("#markAllRead");
     if (markAll) {
       void markAllNotificationsRead();
+      return;
+    }
+    const acceptBtn = target.closest("[data-follow-request-accept]");
+    if (acceptBtn) {
+      const id = acceptBtn.dataset.followRequestAccept;
+      if (!id) return;
+      void acceptFollowRequest(id);
       return;
     }
     const deleteBtn = target.closest("[data-notif-delete]");
@@ -5216,6 +5265,7 @@ function attachProfileViewListener(profile) {
     } else {
       viewProfile.followers = data.followersCount ?? viewProfile.followers;
       viewProfile.following = data.followingCount ?? viewProfile.following;
+      viewProfile.privateAccount = !!data.privateAccount;
       viewProfile.avatar = data.avatarUrl || data.avatar || viewProfile.avatar;
       viewProfile.name = data.displayName || viewProfile.name;
       viewProfile.location = data.city || viewProfile.location;
@@ -6228,6 +6278,8 @@ function renderPublicProfileView() {
   const posts = view.posts || profile.posts || [];
   const followKey = String(profile.handle || "").replace(/^@/, "");
   const isFollowing = state.followingHandles.includes(followKey);
+  const isLocked = !!profile.privateAccount && profile.uid && String(profile.uid) !== String(state.user?.uid || "") && !isFollowing;
+  const hasPendingFollowRequest = !!profile.pendingFollowRequest && !isFollowing;
   const typeLabel = profile.restaurantId ? "Business" : "User";
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
@@ -6240,6 +6292,12 @@ function renderPublicProfileView() {
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
   const topTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
   const topPaddingClass = profile.restaurantId ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
+  const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
+  const followTone = isFollowing
+    ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200"
+    : (hasPendingFollowRequest
+      ? "bg-amber-50 text-amber-700 shadow-none border border-amber-200"
+      : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent");
   return `
     <div class="pb-24">
       ${topTab === "profile" ? `
@@ -6280,13 +6338,13 @@ function renderPublicProfileView() {
             </div>
 
             <div class="flex gap-4">
-              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${isFollowing ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200" : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent"}">
+              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" ${hasPendingFollowRequest ? "disabled" : ""} class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${followTone} ${hasPendingFollowRequest ? "opacity-90 cursor-default" : ""}">
                 <span class="relative z-10 flex items-center gap-2">
                   ${isFollowing ? icon("check", "w-4 h-4") : ""}
-                  ${isFollowing ? "Following" : "Follow"}
+                  ${followLabel}
                 </span>
               </button>
-              <button class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 bg-white text-slate-900 active:scale-[0.95] transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
+              <button ${isLocked ? "disabled" : ""} class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 ${isLocked ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white text-slate-900 active:scale-[0.95]"} transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
                 ${icon("message-circle", "w-5 h-5")}
               </button>
             </div>
@@ -6294,14 +6352,26 @@ function renderPublicProfileView() {
         </div>
       </div>
 
-      ${renderProfileTabs()}
-      ${renderProfileViewControls()}
+      ${!isLocked ? `
+        ${renderProfileTabs()}
+        ${renderProfileViewControls()}
 
-      ${isCheckinTab ? `
-        ${renderProfileCheckins()}
+        ${isCheckinTab ? `
+          ${renderProfileCheckins()}
+        ` : `
+          <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
+            ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
+          </div>
+        `}
       ` : `
-        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
-          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
+        <div class="px-6 pt-4">
+          <div class="bg-white rounded-[2.2rem] border border-slate-100 p-8 text-center">
+            <div class="w-16 h-16 rounded-[1.6rem] bg-slate-100 text-slate-500 mx-auto flex items-center justify-center mb-4">
+              ${icon("lock", "w-7 h-7")}
+            </div>
+            <h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Privates Profil</h3>
+            <p class="text-[11px] font-bold text-slate-400 mt-3 uppercase tracking-wider">Folgen muss zuerst akzeptiert werden</p>
+          </div>
         </div>
       `}
       ` : `
@@ -7376,11 +7446,13 @@ async function openProfileFromUser(input) {
     const cacheKey = uid || handle;
     const cached = userProfileCache.get(cacheKey);
     if (cached) {
+      cached.pendingFollowRequest = await hasPendingFollowRequest(cached.uid || uid || "");
       showPublicProfile(cached, cached.posts || []);
       return;
     }
 
     const fallbackProfile = normalizeExternalUserProfile({ userDoc: null, fallback: input || {}, posts: [] });
+    fallbackProfile.pendingFollowRequest = await hasPendingFollowRequest(fallbackProfile.uid || uid || "");
     showPublicProfile(fallbackProfile, []);
 
     let userDoc = null;
@@ -7399,6 +7471,7 @@ async function openProfileFromUser(input) {
       fallback: input || {},
       posts
     });
+    resolvedProfile.pendingFollowRequest = await hasPendingFollowRequest(resolvedProfile.uid || "");
     userProfileCache.set(cacheKey, resolvedProfile);
     if (state.activeTab !== "profile") return;
     if (uid && state.profileView?.profile?.uid !== uid) return;
@@ -7409,6 +7482,7 @@ async function openProfileFromUser(input) {
 }
 
 async function loadFollowingFromFirebase({ force = false } = {}) {
+  void force;
   if (!state.user) return;
   try {
     const ref = collection(db, "users", state.user.uid, "following");
@@ -7418,8 +7492,7 @@ async function loadFollowingFromFirebase({ force = false } = {}) {
       const data = docSnap.data() || {};
       if (data.handle) handles.push(String(data.handle));
     });
-    state.followingHandles = handles;
-    saveFollowing(handles);
+    applyFollowingHandles(handles, { shouldRender: false });
   } catch (err) {
     console.error(err);
     state.followingHandles = [];
@@ -7471,6 +7544,105 @@ async function pushUserNotification(targetUid, payload) {
       ...payload,
       read: false,
       createdAt: serverTimestamp()
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function hasPendingFollowRequest(targetUid) {
+  const safeTargetUid = String(targetUid || "").trim();
+  if (!safeTargetUid || !state.user?.uid || safeTargetUid === String(state.user.uid)) return false;
+  try {
+    const snap = await getDoc(doc(db, "users", safeTargetUid, "followRequests", state.user.uid));
+    return snap.exists();
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+}
+
+async function sendFollowRequest(handle, target = {}) {
+  if (!state.user) return;
+  const safeHandle = String(handle || "").replace(/^@/, "").trim();
+  const targetUid = String(target.id || target.uid || "").trim();
+  if (!safeHandle || !targetUid || targetUid === String(state.user.uid)) return;
+  if (state.followingHandles.includes(safeHandle) || state.pendingFollowRequests.includes(safeHandle)) return;
+  try {
+    const actor = currentUserBadge();
+    await setDoc(doc(db, "users", targetUid, "followRequests", state.user.uid), {
+      requesterUid: actor.uid,
+      requesterHandle: actor.handle,
+      requesterName: actor.name,
+      requesterAvatar: actor.avatar,
+      targetUid,
+      targetHandle: safeHandle,
+      createdAt: serverTimestamp()
+    }, { merge: true });
+    await setDoc(doc(db, "users", targetUid, "notifications", `follow_request_${state.user.uid}`), {
+      type: "follow_request",
+      user: actor.name,
+      userHandle: actor.handle,
+      userUid: actor.uid,
+      avatar: actor.avatar,
+      text: "moechte dir folgen",
+      read: false,
+      createdAt: serverTimestamp()
+    }, { merge: true });
+    state.pendingFollowRequests = Array.from(new Set([safeHandle, ...state.pendingFollowRequests]));
+    if (state.profileView?.profile?.uid === targetUid) {
+      state.profileView.profile.pendingFollowRequest = true;
+    }
+    render();
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function acceptFollowRequest(notificationId) {
+  if (!state.user?.uid || !notificationId) return;
+  const notif = state.notifications.find((item) => item.id === notificationId);
+  if (!notif || notif.type !== "follow_request") return;
+  const requesterUid = String(notif.userUid || "").trim();
+  if (!requesterUid || requesterUid === String(state.user.uid)) return;
+
+  const actor = currentUserBadge();
+  const targetHandle = String(state.userProfile.handle || actor.handle || normalizeHandle(state.userProfile.name || "user")).replace(/^@/, "");
+  const followRef = doc(db, "users", requesterUid, "following", getFollowDocId("user", state.user.uid, targetHandle));
+
+  try {
+    const existing = await getDoc(followRef);
+    if (!existing.exists()) {
+      await setDoc(followRef, {
+        handle: targetHandle,
+        targetType: "user",
+        targetId: state.user.uid,
+        name: state.userProfile.name || actor.name || "User",
+        avatar: state.userProfile.avatar || actor.avatar || "",
+        createdAt: serverTimestamp()
+      }, { merge: true });
+      await Promise.allSettled([
+        updateDoc(doc(db, "users", requesterUid), { followingCount: increment(1) }),
+        updateDoc(doc(db, "users", state.user.uid), { followersCount: increment(1) })
+      ]);
+    }
+
+    await Promise.allSettled([
+      deleteDoc(doc(db, "users", state.user.uid, "followRequests", requesterUid)),
+      deleteDoc(doc(db, "users", state.user.uid, "notifications", notificationId))
+    ]);
+
+    state.notifications = state.notifications.filter((item) => item.id !== notificationId);
+    saveNotifications(state.notifications);
+    updateNotificationsDom();
+
+    await pushUserNotification(requesterUid, {
+      type: "follow_accepted",
+      user: actor.name,
+      userHandle: actor.handle,
+      userUid: actor.uid,
+      avatar: actor.avatar,
+      text: "hat deine Anfrage akzeptiert"
     });
   } catch (err) {
     console.error(err);
@@ -7610,7 +7782,7 @@ async function openNotificationTarget(id) {
   const notif = state.notifications.find((n) => n.id === id);
   if (!notif) return;
   void markNotificationRead(id);
-  if (notif.type === "follow") {
+  if (notif.type === "follow" || notif.type === "follow_request" || notif.type === "follow_accepted") {
     openProfileFromUser({
       uid: notif.userUid || "",
       handle: notif.userHandle || notif.user || "",
@@ -7671,10 +7843,31 @@ async function toggleFollow(handle, target = {}) {
   if (targetType === "user" && ownUid && String(targetId) === ownUid) return;
   if (!targetId && ownHandle && safeHandle.toLowerCase() === ownHandle) return;
 
-  const docId = `${targetType || "handle"}_${targetId || safeHandle}`;
-  const followRef = doc(db, "users", state.user.uid, "following", docId);
   const idx = state.followingHandles.indexOf(safeHandle);
   const isUnfollow = idx >= 0;
+  let targetIsPrivate = false;
+  if (!isUnfollow && targetType === "user" && targetId) {
+    if (state.profileView?.profile?.uid === targetId) {
+      targetIsPrivate = !!state.profileView.profile.privateAccount;
+    } else if (state.profileModal.profile?.uid === targetId) {
+      targetIsPrivate = !!state.profileModal.profile.privateAccount;
+    } else if (typeof target.privateAccount === "boolean") {
+      targetIsPrivate = !!target.privateAccount;
+    } else {
+      try {
+        const snap = await getDoc(doc(db, "users", targetId));
+        if (snap.exists()) targetIsPrivate = !!(snap.data() || {}).privateAccount;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }
+  if (!isUnfollow && targetIsPrivate) {
+    await sendFollowRequest(safeHandle, { ...target, id: targetId, uid: targetId, type: "user" });
+    return;
+  }
+
+  const followRef = doc(db, "users", state.user.uid, "following", getFollowDocId(targetType, targetId, safeHandle));
   const delta = isUnfollow ? -1 : 1;
   const toNum = (value) => {
     const n = Number(value);
@@ -7743,6 +7936,7 @@ async function toggleFollow(handle, target = {}) {
     }
     if (profileView && profileView.handle === safeHandle) {
       profileView.followers = Math.max(0, toNum(profileView.followers) + delta);
+      if (delta > 0) profileView.pendingFollowRequest = false;
     }
 
     businessProfileCache.forEach((cached) => {
@@ -8946,6 +9140,7 @@ function renderNotificationsList(items) {
         <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
       </div>
       <div class="flex items-center gap-2">
+        ${n.type === "follow_request" ? `<button data-follow-request-accept="${escapeHtml(n.id)}" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest active:scale-95">Accept</button>` : ""}
         ${!n.read ? "<div class=\"w-2 h-2 bg-indigo-500 rounded-full\"></div>" : ""}
         <button data-notif-delete="${n.id}" class="p-2 text-slate-300 hover:text-rose-500">${icon("trash-2", "w-4 h-4")}</button>
       </div>
@@ -11693,8 +11888,10 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
     location: data?.city || rest?.city || "Kosovo",
     followers,
     following,
+    privateAccount: false,
     role: "business",
     restaurantId,
+    pendingFollowRequest: false,
     posts: posts || []
   };
 }
@@ -11713,7 +11910,9 @@ function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
     location: data?.city || fallback?.location || "Prishtina",
     followers: data?.followersCount ?? data?.followers ?? fallback?.followers ?? 0,
     following: data?.followingCount ?? data?.following ?? fallback?.following ?? 0,
+    privateAccount: !!data?.privateAccount,
     role: data?.role || fallback?.role || "user",
+    pendingFollowRequest: false,
     posts: posts || []
   };
 }
