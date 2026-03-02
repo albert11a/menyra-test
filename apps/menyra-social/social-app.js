@@ -367,6 +367,8 @@ const state = {
     item: null,
     status: "",
     loading: false,
+    cropX: 50,
+    cropY: 50,
     imageFile: null,
     imagePreview: ""
   },
@@ -1894,6 +1896,37 @@ function syncMenuModalCropPreview() {
   }
   const xValue = document.getElementById("menuCropXValue");
   const yValue = document.getElementById("menuCropYValue");
+  if (xValue) xValue.textContent = `${crop.x}%`;
+  if (yValue) yValue.textContent = `${crop.y}%`;
+}
+
+function getFocusItemCrop(item) {
+  return {
+    x: clampCropPercent(item?.cropX ?? item?.focusX ?? 50, 50),
+    y: clampCropPercent(item?.cropY ?? item?.focusY ?? 50, 50)
+  };
+}
+
+function getFocusItemObjectPosition(item) {
+  const crop = getFocusItemCrop(item);
+  return `${crop.x}% ${crop.y}%`;
+}
+
+function getFocusModalCrop() {
+  return {
+    x: clampCropPercent(state.focusModal?.cropX ?? 50, 50),
+    y: clampCropPercent(state.focusModal?.cropY ?? 50, 50)
+  };
+}
+
+function syncFocusModalCropPreview() {
+  const preview = document.getElementById("focusHeroPreview");
+  const crop = getFocusModalCrop();
+  if (preview) {
+    preview.style.objectPosition = `${crop.x}% ${crop.y}%`;
+  }
+  const xValue = document.getElementById("focusCropXValue");
+  const yValue = document.getElementById("focusCropYValue");
   if (xValue) xValue.textContent = `${crop.x}%`;
   if (yValue) yValue.textContent = `${crop.y}%`;
 }
@@ -7990,7 +8023,7 @@ function renderFocusAdminSection(restaurantId) {
             return `
               <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
                 <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
-                  <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+                  <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover" style="object-position:${getFocusItemObjectPosition(item)};" loading="lazy" decoding="async" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.title || "Sot ne Fokus")}</p>
@@ -8053,7 +8086,7 @@ function renderFocusCarousel(profile) {
         ` : ""}
       </div>
       <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
-        <img data-focus-image src="${escapeHtml(safeImg)}" class="w-full h-56 object-cover" />
+        <img data-focus-image src="${escapeHtml(safeImg)}" class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" />
       </div>
       <div class="mt-4">
         <p data-focus-title class="text-lg font-black text-slate-900">${escapeHtml(item.title || "Sot ne Fokus")}</p>
@@ -10149,6 +10182,7 @@ function renderFocusModal() {
   const safeImage = isPlaceholderUrl(imageUrl) ? PLACEHOLDER_IMAGE : imageUrl;
   const active = item.active !== false;
   const status = state.focusModal.status || "";
+  const crop = getFocusModalCrop();
 
   const titleId = "focusModalTitle";
   const headerHtml = `
@@ -10166,11 +10200,23 @@ function renderFocusModal() {
     <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
       <input type="file" id="focusImageInput" class="hidden" accept="image/*" />
       <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
-        <img src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" />
+        <img id="focusHeroPreview" src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" />
       </div>
       <button id="focusImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
         Foto hochladen
       </button>
+      <div class="p-4 rounded-[1.8rem] border border-slate-100 bg-white space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Crop Horizontal</p>
+          <span id="focusCropXValue" class="text-[10px] font-black uppercase tracking-widest text-slate-500">${crop.x}%</span>
+        </div>
+        <input id="focusCropX" type="range" min="0" max="100" step="1" value="${crop.x}" class="w-full accent-amber-500" />
+        <div class="flex items-center justify-between">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Crop Vertikal</p>
+          <span id="focusCropYValue" class="text-[10px] font-black uppercase tracking-widest text-slate-500">${crop.y}%</span>
+        </div>
+        <input id="focusCropY" type="range" min="0" max="100" step="1" value="${crop.y}" class="w-full accent-amber-500" />
+      </div>
 
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
         <div>
@@ -12229,6 +12275,8 @@ function bindOverlayEvents({
     const focusSave = document.getElementById("focusModalSave");
     const focusImageTrigger = document.getElementById("focusImageTrigger");
     const focusImageInput = document.getElementById("focusImageInput");
+    const focusCropX = document.getElementById("focusCropX");
+    const focusCropY = document.getElementById("focusCropY");
 
     bindModalDismiss(focusOverlay, closeFocusModal, { selfOnly: true });
     bindModalDismiss(focusClose, closeFocusModal);
@@ -12254,6 +12302,19 @@ function bindOverlayEvents({
         reader.readAsDataURL(file);
       });
     }
+    if (focusCropX) {
+      focusCropX.addEventListener("input", () => {
+        state.focusModal.cropX = clampCropPercent(focusCropX.value, 50);
+        syncFocusModalCropPreview();
+      });
+    }
+    if (focusCropY) {
+      focusCropY.addEventListener("input", () => {
+        state.focusModal.cropY = clampCropPercent(focusCropY.value, 50);
+        syncFocusModalCropPreview();
+      });
+    }
+    syncFocusModalCropPreview();
   }
 
   if (leadChanged) {
@@ -14378,11 +14439,14 @@ function menuCacheKey(restaurantId, source) {
 function normalizeFocusItem(data, fallbackId) {
   const d = data || {};
   const id = d.id || d._id || fallbackId || (crypto.randomUUID?.() || String(Math.random()).slice(2));
+  const crop = getFocusItemCrop(d);
   return {
     id,
     title: d.title || d.name || "Sot ne Fokus",
     text: d.text || d.desc || d.description || "",
     imageUrl: d.imageUrl || d.image || d.photoUrl || "",
+    cropX: crop.x,
+    cropY: crop.y,
     active: d.active !== false
   };
 }
@@ -14434,6 +14498,8 @@ async function publishFocusItems(restaurantId, items) {
       title: item.title || "",
       text: item.text || "",
       imageUrl: item.imageUrl || "",
+      cropX: clampCropPercent(item.cropX ?? 50, 50),
+      cropY: clampCropPercent(item.cropY ?? 50, 50),
       active: item.active !== false
     })),
     updatedAt: serverTimestamp()
@@ -14832,12 +14898,15 @@ async function submitShopCheckout() {
 }
 
 function openFocusModal(mode = "create", item = null) {
+  const crop = getFocusItemCrop(item);
   state.focusModal = {
     open: true,
     mode,
     item,
     status: "",
     loading: false,
+    cropX: crop.x,
+    cropY: crop.y,
     imageFile: null,
     imagePreview: ""
   };
@@ -14851,6 +14920,8 @@ function closeFocusModal() {
     item: null,
     status: "",
     loading: false,
+    cropX: 50,
+    cropY: 50,
     imageFile: null,
     imagePreview: ""
   };
@@ -14869,6 +14940,7 @@ async function saveFocusItemFromModal() {
   const text = document.getElementById("focusText")?.value?.trim() || "";
   const imageUrlInput = document.getElementById("focusImageUrl")?.value?.trim() || "";
   const active = document.getElementById("focusActive")?.checked !== false;
+  const crop = getFocusModalCrop();
   if (!title) {
     state.focusModal.status = "Bitte Titel eingeben.";
     renderOverlays({ updateFocus: true });
@@ -14896,6 +14968,8 @@ async function saveFocusItemFromModal() {
       title,
       text,
       imageUrl,
+      cropX: crop.x,
+      cropY: crop.y,
       active
     };
     const nextItems = Array.isArray(state.focus.items) ? state.focus.items.slice() : [];
