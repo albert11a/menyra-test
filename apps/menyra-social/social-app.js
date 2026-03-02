@@ -9806,9 +9806,11 @@ function renderMain() {
   return `
     <div class="h-full min-h-full bg-slate-50 text-slate-900 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden font-sans">
       ${renderDrawer()}
-      ${renderHeader()}
-      ${renderBusinessTopTabs()}
-      <main class="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-24">${view}</main>
+      <main class="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-24">
+        ${renderHeader()}
+        ${renderBusinessTopTabs()}
+        ${view}
+      </main>
     </div>
   `;
 }
