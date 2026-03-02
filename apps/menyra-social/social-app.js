@@ -481,6 +481,7 @@ let storiesUnsub = null;
 let chatThreadsUnsub = null;
 let chatMessagesUnsub = null;
 let ordersUnsub = null;
+let ordersListenerKey = "";
 let restaurantsUnsub = null;
 let userPostsUnsub = null;
 let businessPostsUnsub = null;
@@ -14316,16 +14317,25 @@ function stopOrdersListener() {
     ordersUnsub();
     ordersUnsub = null;
   }
+  ordersListenerKey = "";
 }
 
 function startOrdersListener(user = state.user) {
-  stopOrdersListener();
   const uid = String(user?.uid || "").trim();
-  if (!uid) return;
+  if (!uid) {
+    stopOrdersListener();
+    return;
+  }
   const isBusiness = isLocalBusinessProfile(state.userProfile) && !!state.userProfile.restaurantId;
+  const nextListenerKey = isBusiness
+    ? `restaurant:${String(state.userProfile.restaurantId || "").trim()}`
+    : `user:${uid}`;
+  if (!nextListenerKey || (ordersUnsub && ordersListenerKey === nextListenerKey)) return;
+  stopOrdersListener();
   const pathRef = isBusiness
     ? collection(db, "restaurants", state.userProfile.restaurantId, "orders")
     : collection(db, "users", uid, "orders");
+  ordersListenerKey = nextListenerKey;
   state.orders = { ...state.orders, loading: true, error: "" };
   if (state.activeTab === "orders") render();
   ordersUnsub = onSnapshot(query(pathRef, orderBy("createdAt", "desc"), limit(60)), (snap) => {
@@ -14336,6 +14346,8 @@ function startOrdersListener(user = state.user) {
     }
   }, (err) => {
     console.error(err);
+    ordersUnsub = null;
+    ordersListenerKey = "";
     state.orders = { ...state.orders, loading: false, error: "Bestellungen konnten nicht geladen werden." };
     if (state.activeTab === "orders" && lastRenderMode === "main") {
       render();
@@ -14433,6 +14445,7 @@ function openShopCheckout() {
   nextCart.checkoutOpen = true;
   nextCart.status = "";
   if (!nextCart.form.name) nextCart.form.name = String(state.userProfile?.name || state.user?.displayName || "").trim();
+  if (!nextCart.form.phone) nextCart.form.phone = String(state.userProfile?.phone || state.user?.phoneNumber || "").trim();
   if (!nextCart.form.city) nextCart.form.city = String(state.userProfile?.location || "").trim();
   if (!nextCart.form.address) nextCart.form.address = String(state.userProfile?.address || "").trim();
   state.shopCart = nextCart;
@@ -14459,7 +14472,7 @@ function getShopCartTotal() {
 async function submitShopCheckout() {
   if (!state.user) return;
   const cart = normalizeShopCartState(state.shopCart);
-  if (!cart.restaurantId || !cart.items.length) return;
+  if (cart.loading || !cart.restaurantId || !cart.items.length) return;
   const contact = {
     name: String(cart.form.name || "").trim(),
     phone: String(cart.form.phone || "").trim(),
@@ -14508,10 +14521,10 @@ async function submitShopCheckout() {
   state.shopCart = { ...cart, loading: true, status: "Bestellung wird gesendet..." };
   render();
   try {
-    await Promise.all([
-      setDoc(orderRef, payload, { merge: true }),
-      setDoc(doc(db, "users", state.user.uid, "orders", orderId), payload, { merge: true })
-    ]);
+    const batch = writeBatch(db);
+    batch.set(orderRef, payload, { merge: true });
+    batch.set(doc(db, "users", state.user.uid, "orders", orderId), payload, { merge: true });
+    await batch.commit();
     clearShopCart({ keepForm: true });
     state.activeTab = "orders";
     state.drawerOpen = false;
