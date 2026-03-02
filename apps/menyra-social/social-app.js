@@ -63,6 +63,7 @@ const STORAGE_KEYS = {
   settings: "menyra_social_settings_v3",
   notifications: "menyra_social_notifications_v1",
   following: "menyra_social_following_v1",
+  chatThreads: "menyra_social_chat_threads_v1",
   postMeta: "menyra_social_post_meta_v1",
   feed: "menyra_social_feed_v1",
   logoCache: "menyra_social_logo_cache_v1",
@@ -277,6 +278,12 @@ const state = {
     open: false,
     profile: null
   },
+  chatModal: {
+    open: false,
+    profile: null,
+    messages: [],
+    draft: ""
+  },
   menu: {
     restaurantId: "",
     items: [],
@@ -407,7 +414,7 @@ let lastCommentAt = 0;
 let lastMenuCommentKey = "";
 let lastMenuCommentAt = 0;
 let menuDetailCloseBound = false;
-let overlayCache = { profile: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
+let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
 let pendingProfileRestaurantId = "";
 let pendingProfileTopTab = "";
 let pendingProfileHandled = false;
@@ -1750,6 +1757,85 @@ function applyFollowingHandles(handles, { shouldRender = true } = {}) {
   render();
 }
 
+function getChatThreadId(profile = state.chatModal.profile) {
+  return String(profile?.uid || profile?.restaurantId || profile?.handle || "").replace(/^@/, "").trim();
+}
+
+function chatThreadStorageKey(profile = state.chatModal.profile) {
+  const threadId = getChatThreadId(profile);
+  const ownerUid = String(state.user?.uid || "guest").trim();
+  if (!threadId || !ownerUid) return "";
+  return `${STORAGE_KEYS.chatThreads}::${ownerUid}::${threadId}`;
+}
+
+function loadChatThreadMessages(profile) {
+  const key = chatThreadStorageKey(profile);
+  if (!key) return [];
+  try {
+    const raw = safeStorage.getItem(key);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveChatThreadMessages(profile, messages) {
+  const key = chatThreadStorageKey(profile);
+  if (!key) return;
+  try {
+    safeStorage.setItem(key, JSON.stringify((messages || []).slice(-100)));
+  } catch {}
+}
+
+function openChatWithProfile(profile) {
+  if (!state.user || !profile) return;
+  const nextProfile = {
+    uid: profile.uid || "",
+    restaurantId: profile.restaurantId || "",
+    handle: profile.handle || normalizeHandle(profile.name || "user"),
+    name: profile.name || "User",
+    avatar: profile.avatar || ""
+  };
+  state.chatModal = {
+    open: true,
+    profile: nextProfile,
+    messages: loadChatThreadMessages(nextProfile),
+    draft: ""
+  };
+  renderOverlays({ updateChat: true });
+}
+
+function closeChatModal() {
+  if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+    document.activeElement.blur();
+  }
+  state.chatModal = { open: false, profile: null, messages: [], draft: "" };
+  syncModalOpenUiState();
+  renderOverlays({ updateChat: true });
+}
+
+function sendChatMessage() {
+  if (!state.chatModal.open || !state.chatModal.profile) return;
+  const input = document.getElementById("chatMessageInput");
+  const text = String(input?.value ?? state.chatModal.draft ?? "").trim();
+  if (!text) return;
+  const nextMessages = [
+    ...(state.chatModal.messages || []),
+    {
+      id: `msg_${Date.now()}`,
+      from: "self",
+      text,
+      createdAt: new Date().toISOString()
+    }
+  ];
+  state.chatModal.messages = nextMessages;
+  state.chatModal.draft = "";
+  saveChatThreadMessages(state.chatModal.profile, nextMessages);
+  renderOverlays({ updateChat: true });
+}
+
 function savePostMeta(meta) {
   void meta;
 }
@@ -1951,6 +2037,7 @@ function resetUserScopedState() {
   state.businessPosts = [];
   state.profileView = null;
   state.profileModal = { open: false, profile: null };
+  state.chatModal = { open: false, profile: null, messages: [], draft: "" };
   state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
   state.likesModal = { open: false, postId: "", animate: false };
   state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
