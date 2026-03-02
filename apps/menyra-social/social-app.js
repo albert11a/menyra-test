@@ -1464,8 +1464,8 @@ function getBusinessProfileType(profile = state.userProfile) {
 function getBusinessCatalogMode(profile = state.userProfile) {
   const type = getBusinessProfileType(profile);
   if (!type) return "menu";
-  if (type === "restaurant" || type === "cafe" || type === "fastfood") return "menu";
-  return "shop";
+  if (type === "ecommerce") return "shop";
+  return "menu";
 }
 
 function getBusinessCatalogLabel(profile = state.userProfile) {
@@ -1483,18 +1483,60 @@ function isRestaurantCafeProfile(profile = state.userProfile) {
   return LEAD_TYPE_ORDER.includes(type);
 }
 
+function normalizeOptionList(value) {
+  const values = [];
+  const add = (entry) => {
+    const str = String(entry || "").trim();
+    if (!str) return;
+    const normalized = str.replace(/\s+/g, " ");
+    if (!values.some((item) => item.toLowerCase() === normalized.toLowerCase())) {
+      values.push(normalized);
+    }
+  };
+  if (Array.isArray(value)) {
+    value.forEach((entry) => {
+      if (entry && typeof entry === "object") {
+        add(entry.label || entry.name || entry.value || "");
+      } else {
+        add(entry);
+      }
+    });
+    return values;
+  }
+  String(value || "")
+    .split(/[\n,;|]+/)
+    .forEach(add);
+  return values;
+}
+
+function buildShopVariantKey(itemId, { size = "", color = "" } = {}) {
+  const baseId = String(itemId || "").trim();
+  const sizeKey = String(size || "").trim().toLowerCase();
+  const colorKey = String(color || "").trim().toLowerCase();
+  return `${baseId}::${sizeKey || "-"}::${colorKey || "-"}`;
+}
+
 function normalizeShopCartState(raw) {
   const base = createEmptyShopCart();
   const source = raw && typeof raw === "object" ? raw : {};
   const items = (Array.isArray(source.items) ? source.items : []).map((item) => ({
     id: String(item?.id || "").trim(),
     itemId: String(item?.itemId || item?.id || "").trim(),
+    cartKey: String(
+      item?.cartKey
+      || buildShopVariantKey(item?.itemId || item?.id || "", {
+        size: item?.selectedSize || item?.size || "",
+        color: item?.selectedColor || item?.color || ""
+      })
+    ).trim(),
     name: String(item?.name || "Produkt").trim() || "Produkt",
     price: String(item?.price ?? "").trim(),
     quantity: Math.max(1, Number(item?.quantity || 1) || 1),
     imageUrl: String(item?.imageUrl || "").trim(),
-    category: String(item?.category || "").trim()
-  })).filter((item) => item.id && item.itemId);
+    category: String(item?.category || "").trim(),
+    selectedSize: String(item?.selectedSize || item?.size || "").trim(),
+    selectedColor: String(item?.selectedColor || item?.color || "").trim()
+  })).filter((item) => item.id && item.itemId && item.cartKey);
   return {
     ...base,
     restaurantId: String(source.restaurantId || "").trim(),
@@ -1669,6 +1711,10 @@ function normalizeMenuItemDoc(data, id) {
       || ""
   );
   const mergedImages = Array.from(new Set([primaryImage, ...rawImages.map(normalizeImg)].filter(Boolean)));
+  const sizes = normalizeOptionList(d.sizes || d.sizeOptions || d.availableSizes || d.variants || d.size);
+  const colors = normalizeOptionList(d.colors || d.colours || d.colorOptions || d.availableColors || d.color);
+  const stockRaw = d.stock ?? d.stockCount ?? d.inventory ?? d.quantity ?? "";
+  const stockNumber = Number(stockRaw);
   return {
     id: d.id || id || "",
     type: normalizeMenuType(d.type || d.menuType || d.kind || d.group || d.section),
@@ -1677,6 +1723,13 @@ function normalizeMenuItemDoc(data, id) {
     description: d.description || d.desc || "",
     longDescription: d.longDescription || "",
     allergens: d.allergens || d.allergen || "",
+    brand: String(d.brand || d.manufacturer || "").trim(),
+    sku: String(d.sku || d.articleNumber || d.articleNo || d.code || "").trim(),
+    stock: stockRaw === "" || stockRaw === null || stockRaw === undefined
+      ? null
+      : (Number.isFinite(stockNumber) ? Math.max(0, Math.round(stockNumber)) : null),
+    sizes,
+    colors,
     price: d.price ?? "",
     available: d.available !== false,
     imageUrl: mergedImages[0] || "",
@@ -7519,13 +7572,21 @@ function resolveMenuItemHero(item) {
 
 function renderMenuFilterRow() {
   const filter = state.menu.filter || "all";
+  const isShop = isShopCatalogProfile(state.userProfile);
+  const labels = isShop
+    ? [
+      { id: "all", label: "Alle" },
+      { id: "food", label: "Produkte" },
+      { id: "drink", label: "Varianten" }
+    ]
+    : [
+      { id: "all", label: "Alle" },
+      { id: "food", label: "Speisen" },
+      { id: "drink", label: "Getraenke" }
+    ];
   return `
     <div class="flex gap-2 mb-5">
-      ${[
-        { id: "all", label: "Alle" },
-        { id: "food", label: "Speisen" },
-        { id: "drink", label: "Getraenke" }
-      ].map((item) => `
+      ${labels.map((item) => `
         <button data-menu-filter="${item.id}" class="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition ${filter === item.id ? "bg-slate-900 text-white shadow-md" : "bg-white text-slate-400 border border-slate-100"}">
           ${item.label}
         </button>
@@ -9030,41 +9091,79 @@ function renderShopProductList(items, { profile = state.profileView?.profile || 
   }
   const canAdd = canAddToShopCart(profile);
   return `
-    <div class="space-y-4">
+    <div class="grid grid-cols-2 gap-4">
       ${items.map((item) => {
-        const rawImg = resolveMenuItemHero(item);
+        const images = getMenuItemImages(item);
+        const rawImg = images[0] || resolveMenuItemHero(item);
         const imgSrc = getOptimizedImageUrl(rawImg, "large");
         const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
         const firebaseFallback = getFirebaseStorageUrl(rawImg);
         const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
         const priceLabel = formatPrice(item.price);
         const category = item.category || "Produkt";
+        const sizes = Array.isArray(item.sizes) ? item.sizes : [];
+        const colors = Array.isArray(item.colors) ? item.colors : [];
+        const brand = String(item.brand || "").trim();
+        const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
+        const thumbImages = images.slice(1, 4);
+        const soldOut = item.available === false || stock === 0;
+        const availabilityLabel = soldOut ? "Nicht verfuegbar" : "Verfuegbar";
+        const availabilityClass = soldOut ? "text-slate-300" : "text-emerald-600";
         return `
-          <div data-menu-open="${escapeHtml(item.id)}" role="button" class="w-full p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer">
-            <div class="flex gap-4">
-              <div class="w-24 h-24 rounded-[1.5rem] overflow-hidden bg-slate-100 shrink-0">
-                <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
-              </div>
-              <div class="flex-1 min-w-0 flex flex-col">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name || "Produkt")}</p>
-                    <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">${escapeHtml(category)}</p>
+          <article data-shop-product-card="true" data-menu-open="${escapeHtml(item.id)}" role="button" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
+            <div class="rounded-[1.5rem] overflow-hidden bg-slate-100">
+              <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-40 object-cover" loading="lazy" decoding="async" />
+            </div>
+            ${thumbImages.length ? `
+              <div class="grid grid-cols-3 gap-2 mt-2">
+                ${thumbImages.map((thumb) => `
+                  <div class="rounded-xl overflow-hidden bg-slate-100 border border-slate-100">
+                    <img src="${escapeHtml(getOptimizedImageUrl(thumb, "thumb"))}" class="w-full h-12 object-cover" loading="lazy" decoding="async" />
                   </div>
-                  <span class="text-xs font-black text-slate-900 shrink-0">${escapeHtml(priceLabel)}</span>
+                `).join("")}
+              </div>
+            ` : ""}
+            <div class="pt-3 flex-1 flex flex-col min-w-0">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                  <p class="text-[13px] font-black text-slate-900 leading-tight line-clamp-2">${escapeHtml(item.name || "Produkt")}</p>
+                  <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1 truncate">${escapeHtml(category)}</p>
                 </div>
-                ${item.description ? `<p class="text-xs text-slate-500 mt-2 line-clamp-3">${escapeHtml(item.description)}</p>` : ""}
-                <div class="mt-auto pt-3 flex items-center justify-between">
-                  <span class="text-[9px] font-black uppercase tracking-widest ${item.available === false ? "text-slate-300" : "text-emerald-600"}">${item.available === false ? "Nicht verfuegbar" : "Verfuegbar"}</span>
-                  ${canAdd && item.available !== false ? `
-                    <button data-cart-add="${escapeHtml(item.id)}" class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-sm active:scale-95">
+                <span class="text-[11px] font-black text-slate-900 shrink-0">${escapeHtml(priceLabel)}</span>
+              </div>
+              ${brand ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-300 mt-2 truncate">${escapeHtml(brand)}</p>` : ""}
+              ${item.description ? `<p class="text-[11px] text-slate-500 mt-2 line-clamp-2">${escapeHtml(item.description)}</p>` : ""}
+              <div class="mt-3 space-y-2">
+                ${sizes.length ? `
+                  <div>
+                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-1">Groesse</p>
+                    <select data-cart-size-select="${escapeHtml(item.id)}" class="w-full h-9 px-3 rounded-xl bg-slate-50 text-[11px] font-bold text-slate-700 border border-slate-100 outline-none">
+                      ${sizes.map((size) => `<option value="${escapeHtml(size)}">${escapeHtml(size)}</option>`).join("")}
+                    </select>
+                  </div>
+                ` : ""}
+                ${colors.length ? `
+                  <div>
+                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-1">Farbe</p>
+                    <select data-cart-color-select="${escapeHtml(item.id)}" class="w-full h-9 px-3 rounded-xl bg-slate-50 text-[11px] font-bold text-slate-700 border border-slate-100 outline-none">
+                      ${colors.map((color) => `<option value="${escapeHtml(color)}">${escapeHtml(color)}</option>`).join("")}
+                    </select>
+                  </div>
+                ` : ""}
+              </div>
+              <div class="mt-auto pt-3 flex items-center justify-between gap-2">
+                <div class="min-w-0">
+                  <span class="block text-[9px] font-black uppercase tracking-widest ${availabilityClass}">${availabilityLabel}</span>
+                  ${stock !== null ? `<span class="block text-[9px] font-bold uppercase tracking-widest text-slate-300 mt-1">${escapeHtml(String(stock))} auf Lager</span>` : ""}
+                </div>
+                ${canAdd && !soldOut ? `
+                  <button data-cart-add="${escapeHtml(item.id)}" class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-sm active:scale-95 shrink-0">
                       ${icon("plus", "w-4 h-4")}
-                    </button>
-                  ` : ""}
-                </div>
+                  </button>
+                ` : ""}
               </div>
             </div>
-          </div>
+          </article>
         `;
       }).join("")}
     </div>
@@ -9100,12 +9199,13 @@ function renderProfileShopCartView(profile = state.profileView?.profile || state
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name)}</p>
+                  ${item.selectedSize || item.selectedColor ? `<p class="text-[9px] font-bold uppercase tracking-widest text-slate-300 mt-1">${escapeHtml([item.selectedSize, item.selectedColor].filter(Boolean).join(" / "))}</p>` : ""}
                   <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${escapeHtml(formatPrice(item.price))}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                  <button data-cart-qty="${escapeHtml(item.itemId)}" data-cart-delta="-1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("minus", "w-3 h-3")}</button>
+                  <button data-cart-qty="${escapeHtml(item.cartKey || item.itemId)}" data-cart-delta="-1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("minus", "w-3 h-3")}</button>
                   <span class="w-6 text-center text-sm font-black text-slate-900">${escapeHtml(item.quantity)}</span>
-                  <button data-cart-qty="${escapeHtml(item.itemId)}" data-cart-delta="1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("plus", "w-3 h-3")}</button>
+                  <button data-cart-qty="${escapeHtml(item.cartKey || item.itemId)}" data-cart-delta="1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("plus", "w-3 h-3")}</button>
                 </div>
               </div>
             `).join("")}
@@ -9704,6 +9804,9 @@ function renderMenuItemModal() {
   const typeValue = normalizeMenuType(item.type || "food");
   const available = item.available !== false;
   const status = state.menuModal.status || "";
+  const sizesValue = Array.isArray(item.sizes) ? item.sizes.join(", ") : "";
+  const colorsValue = Array.isArray(item.colors) ? item.colors.join(", ") : "";
+  const stockValue = Number.isFinite(Number(item.stock)) ? String(Math.max(0, Number(item.stock))) : "";
 
   const titleId = "menuModalTitle";
   const headerHtml = `
@@ -9765,9 +9868,39 @@ function renderMenuItemModal() {
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Beschreibung</label>
           <textarea id="menuItemDesc" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(item.description || "")}</textarea>
         </div>
+        ${isShop ? `
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Details</label>
+            <textarea id="menuItemLongDesc" rows="4" placeholder="Material, Zustand, Lieferdetails..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(item.longDescription || "")}</textarea>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Marke</label>
+              <input id="menuItemBrand" type="text" value="${escapeHtml(item.brand || "")}" placeholder="z.B. Nike" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">SKU</label>
+              <input id="menuItemSku" type="text" value="${escapeHtml(item.sku || "")}" placeholder="ART-001" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Groessen</label>
+              <input id="menuItemSizes" type="text" value="${escapeHtml(sizesValue)}" placeholder="XS, S, M, L" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Farben</label>
+              <input id="menuItemColors" type="text" value="${escapeHtml(colorsValue)}" placeholder="Schwarz, Weiss" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Lagerbestand</label>
+            <input id="menuItemStock" type="number" min="0" inputmode="numeric" value="${escapeHtml(stockValue)}" placeholder="0" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+        ` : ""}
         <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">${isShop ? "Zusatzinfo" : "Allergene"}</label>
-          <input id="menuItemAllergens" type="text" value="${escapeHtml(item.allergens || "")}" placeholder="${isShop ? "z.B. Farbe, Groesse" : "z.B. Milch, Gluten"}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">${isShop ? "Hinweise" : "Allergene"}</label>
+          <input id="menuItemAllergens" type="text" value="${escapeHtml(item.allergens || "")}" placeholder="${isShop ? "z.B. limitierte Edition, ohne Rueckgabe" : "z.B. Milch, Gluten"}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
@@ -9826,6 +9959,12 @@ function renderMenuDetailModal() {
   const category = item.category || "";
   const desc = item.longDescription || item.description || "";
   const allergens = item.allergens || "";
+  const brand = String(item.brand || "").trim();
+  const sku = String(item.sku || "").trim();
+  const sizes = Array.isArray(item.sizes) ? item.sizes : [];
+  const colors = Array.isArray(item.colors) ? item.colors : [];
+  const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
+  const isShop = isShopCatalogProfile(catalogProfile);
   const availability = item.available === false ? "Nicht verfuegbar" : "Verfuegbar";
   const availabilityClass = item.available === false ? "text-rose-500" : "text-emerald-600";
   const restaurantId = state.menuDetail.restaurantId
@@ -9882,10 +10021,33 @@ function renderMenuDetailModal() {
         ${category ? `<span>${escapeHtml(category)}</span>` : ""}
         <span>${escapeHtml(typeLabel)}</span>
       </div>
+      ${brand || sku || stock !== null ? `
+        <div class="grid grid-cols-3 gap-2">
+          ${brand ? `<div class="p-3 rounded-2xl bg-slate-50 border border-slate-100"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(brand)}</p></div>` : ""}
+          ${sku ? `<div class="p-3 rounded-2xl bg-slate-50 border border-slate-100"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(sku)}</p></div>` : ""}
+          ${stock !== null ? `<div class="p-3 rounded-2xl bg-slate-50 border border-slate-100"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Lager</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(String(stock))}</p></div>` : ""}
+        </div>
+      ` : ""}
+      ${sizes.length ? `
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Groessen</p>
+          <div class="flex flex-wrap gap-2">
+            ${sizes.map((size) => `<span class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600">${escapeHtml(size)}</span>`).join("")}
+          </div>
+        </div>
+      ` : ""}
+      ${colors.length ? `
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Farben</p>
+          <div class="flex flex-wrap gap-2">
+            ${colors.map((color) => `<span class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600">${escapeHtml(color)}</span>`).join("")}
+          </div>
+        </div>
+      ` : ""}
       ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${escapeHtml(desc)}</p>` : ""}
       ${allergens ? `
         <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
-          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Allergene</p>
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${isShop ? "Hinweise" : "Allergene"}</p>
           <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
         </div>
       ` : ""}
@@ -10527,7 +10689,7 @@ function renderOrdersView() {
                 <div class="space-y-2">
                   ${order.items.slice(0, 3).map((item) => `
                     <div class="flex items-center justify-between text-sm">
-                      <span class="font-semibold text-slate-700 truncate pr-3">${escapeHtml(item.quantity)}x ${escapeHtml(item.name)}</span>
+                      <span class="font-semibold text-slate-700 truncate pr-3">${escapeHtml(item.quantity)}x ${escapeHtml(item.name)}${item.selectedSize || item.selectedColor ? ` <span class="text-slate-400">(${escapeHtml([item.selectedSize, item.selectedColor].filter(Boolean).join(" / "))})</span>` : ""}</span>
                       <span class="font-black text-slate-900">${escapeHtml(formatPrice(parsePriceValue(item.price) * item.quantity))}</span>
                     </div>
                   `).join("")}
@@ -11074,7 +11236,6 @@ function renderBusinessTopTabs() {
         ${isShop ? `
           <button type="button" data-profile-top-tab="cart" class="${base} relative ${isCartActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
             ${icon("shopping-cart", "w-4 h-4")}
-            <span>Warenkorb</span>
             ${cartCount ? `<span class="absolute top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${cartCount > 9 ? "9+" : cartCount}</span>` : ""}
           </button>
         ` : `
@@ -12277,7 +12438,18 @@ function bindAppEvents() {
       const itemId = btn.dataset.cartAdd || "";
       const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
       if (!item) return;
-      addMenuItemToShopCart(item);
+      const card = btn.closest("[data-shop-product-card]");
+      const size = card?.querySelector("[data-cart-size-select]")?.value || "";
+      const color = card?.querySelector("[data-cart-color-select]")?.value || "";
+      addMenuItemToShopCart(item, undefined, { size, color });
+    });
+  });
+
+  document.querySelectorAll("[data-cart-size-select], [data-cart-color-select]").forEach((input) => {
+    ["click", "change", "pointerdown"].forEach((eventName) => {
+      input.addEventListener(eventName, (event) => {
+        event.stopPropagation();
+      });
     });
   });
 
@@ -14059,6 +14231,11 @@ async function publishMenuToPublic(restaurantId, items) {
       description: item.description || "",
       longDescription: item.longDescription || "",
       allergens: item.allergens || "",
+      brand: item.brand || "",
+      sku: item.sku || "",
+      stock: Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null,
+      sizes: Array.isArray(item.sizes) ? item.sizes : [],
+      colors: Array.isArray(item.colors) ? item.colors : [],
       price: item.price ?? "",
       available: item.available !== false,
       imageUrl: item.imageUrl || null,
@@ -14276,11 +14453,20 @@ function normalizeOrderItem(item) {
   return {
     id: String(item?.id || item?.itemId || "").trim(),
     itemId: String(item?.itemId || item?.id || "").trim(),
+    cartKey: String(
+      item?.cartKey
+      || buildShopVariantKey(item?.itemId || item?.id || "", {
+        size: item?.selectedSize || item?.size || "",
+        color: item?.selectedColor || item?.color || ""
+      })
+    ).trim(),
     name: String(item?.name || "Produkt").trim() || "Produkt",
     price: String(item?.price ?? "").trim(),
     quantity: Math.max(1, Number(item?.quantity || 1) || 1),
     imageUrl: String(item?.imageUrl || "").trim(),
-    category: String(item?.category || "").trim()
+    category: String(item?.category || "").trim(),
+    selectedSize: String(item?.selectedSize || item?.size || "").trim(),
+    selectedColor: String(item?.selectedColor || item?.color || "").trim()
   };
 }
 
@@ -14380,7 +14566,7 @@ function getShopCartProfileContext(profile = getCurrentShopProfile()) {
   };
 }
 
-function addMenuItemToShopCart(item, profile = getCurrentShopProfile()) {
+function addMenuItemToShopCart(item, profile = getCurrentShopProfile(), options = {}) {
   if (!item || !canAddToShopCart(profile)) return;
   const context = getShopCartProfileContext(profile);
   if (!context.restaurantId) return;
@@ -14391,15 +14577,21 @@ function addMenuItemToShopCart(item, profile = getCurrentShopProfile()) {
     clearShopCart({ keepForm: true });
   }
   const nextCart = normalizeShopCartState(state.shopCart);
-  const existingIndex = nextCart.items.findIndex((entry) => String(entry.itemId) === String(item.id));
+  const selectedSize = String(options?.size || "").trim();
+  const selectedColor = String(options?.color || "").trim();
+  const cartKey = buildShopVariantKey(item.id, { size: selectedSize, color: selectedColor });
+  const existingIndex = nextCart.items.findIndex((entry) => String(entry.cartKey || entry.itemId) === cartKey);
   const entry = {
     id: String(item.id || "").trim(),
     itemId: String(item.id || "").trim(),
+    cartKey,
     name: String(item.name || "Produkt").trim() || "Produkt",
     price: String(item.price ?? "").trim(),
     quantity: 1,
     imageUrl: String(resolveMenuItemHero(item) || "").trim(),
-    category: String(item.category || "").trim()
+    category: String(item.category || "").trim(),
+    selectedSize,
+    selectedColor
   };
   if (existingIndex >= 0) {
     nextCart.items[existingIndex] = {
@@ -14424,7 +14616,7 @@ function updateShopCartQuantity(itemId, delta) {
   const nextCart = normalizeShopCartState(state.shopCart);
   nextCart.items = nextCart.items
     .map((entry) => (
-      String(entry.itemId) === safeId
+      String(entry.cartKey || entry.itemId) === safeId
         ? { ...entry, quantity: Math.max(0, Number(entry.quantity || 1) + Number(delta || 0)) }
         : entry
     ))
@@ -14508,7 +14700,13 @@ async function submitShopCheckout() {
       price: item.price,
       quantity: item.quantity,
       imageUrl: item.imageUrl,
-      category: item.category
+      category: item.category,
+      cartKey: item.cartKey || buildShopVariantKey(item.itemId || item.id || "", {
+        size: item.selectedSize || "",
+        color: item.selectedColor || ""
+      }),
+      selectedSize: item.selectedSize || "",
+      selectedColor: item.selectedColor || ""
     })),
     itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
     total: getShopCartTotal(),
@@ -15584,6 +15782,7 @@ function setMenuDetailIndex(nextIndex) {
 async function saveMenuItemFromModal() {
   if (!state.user) return;
   const restaurantId = state.userProfile.restaurantId || "";
+  const isShop = isShopCatalogProfile(state.userProfile);
   if (!restaurantId) {
     state.menuModal.status = "Kein Restaurant ausgewaehlt.";
     renderOverlays({ updateMenu: true });
@@ -15594,9 +15793,18 @@ async function saveMenuItemFromModal() {
   const category = document.getElementById("menuItemCategory")?.value?.trim() || "";
   const type = document.getElementById("menuItemType")?.value || "food";
   const description = document.getElementById("menuItemDesc")?.value?.trim() || "";
+  const longDescription = document.getElementById("menuItemLongDesc")?.value?.trim() || "";
   const allergens = document.getElementById("menuItemAllergens")?.value?.trim() || "";
+  const brand = document.getElementById("menuItemBrand")?.value?.trim() || "";
+  const sku = document.getElementById("menuItemSku")?.value?.trim() || "";
+  const stockRaw = document.getElementById("menuItemStock")?.value?.trim() || "";
+  const sizes = normalizeOptionList(document.getElementById("menuItemSizes")?.value || "");
+  const colors = normalizeOptionList(document.getElementById("menuItemColors")?.value || "");
   const available = document.getElementById("menuItemAvailable")?.checked !== false;
   const imageUrlInput = document.getElementById("menuItemImageUrl")?.value?.trim() || "";
+  const stock = stockRaw === ""
+    ? null
+    : Math.max(0, Math.round(Number(stockRaw) || 0));
 
   if (!name) {
     state.menuModal.status = "Bitte Namen eingeben.";
@@ -15644,7 +15852,13 @@ async function saveMenuItemFromModal() {
       category: category || "Sonstiges",
       name,
       description,
+      longDescription,
       allergens,
+      brand: isShop ? brand : "",
+      sku: isShop ? sku : "",
+      stock: isShop ? stock : null,
+      sizes: isShop ? sizes : [],
+      colors: isShop ? colors : [],
       price: price ?? "",
       available,
       imageUrl: imageUrl || "",
