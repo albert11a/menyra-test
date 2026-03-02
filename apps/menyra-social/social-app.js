@@ -1520,7 +1520,7 @@ function normalizeShopCartState(raw) {
   const base = createEmptyShopCart();
   const source = raw && typeof raw === "object" ? raw : {};
   const items = (Array.isArray(source.items) ? source.items : []).map((item) => ({
-    id: String(item?.id || "").trim(),
+    id: String(item?.id || item?.itemId || "").trim(),
     itemId: String(item?.itemId || item?.id || "").trim(),
     cartKey: String(
       item?.cartKey
