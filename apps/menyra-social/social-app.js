@@ -448,6 +448,8 @@ let userDocUnsub = null;
 let profileViewUnsub = null;
 let feedUnsub = null;
 let storiesUnsub = null;
+let chatThreadsUnsub = null;
+let chatMessagesUnsub = null;
 let restaurantsUnsub = null;
 let userPostsUnsub = null;
 let businessPostsUnsub = null;
@@ -1963,6 +1965,111 @@ function chatThreadStorageKey(profile = state.chatModal.profile) {
   return `${STORAGE_KEYS.chatThreads}::${ownerUid}::${threadId}`;
 }
 
+function chatThreadDocRef(ownerUid, threadId) {
+  const safeOwnerUid = String(ownerUid || "").trim();
+  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+  if (!safeOwnerUid || !safeThreadId) return null;
+  return doc(db, "users", safeOwnerUid, "chatThreads", safeThreadId);
+}
+
+function chatMessageDocRef(ownerUid, threadId, messageId) {
+  const safeOwnerUid = String(ownerUid || "").trim();
+  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+  const safeMessageId = String(messageId || "").trim();
+  if (!safeOwnerUid || !safeThreadId || !safeMessageId) return null;
+  return doc(db, "users", safeOwnerUid, "chatThreads", safeThreadId, "messages", safeMessageId);
+}
+
+function chatMessagesCollectionRef(ownerUid, threadId) {
+  const safeOwnerUid = String(ownerUid || "").trim();
+  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+  if (!safeOwnerUid || !safeThreadId) return null;
+  return collection(db, "users", safeOwnerUid, "chatThreads", safeThreadId, "messages");
+}
+
+function normalizeChatThreadSummary(threadId, data = {}, fallback = {}) {
+  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+  if (!safeThreadId) return null;
+  const source = data && typeof data === "object" ? data : {};
+  const updatedAt = toDateSafe(source.updatedAt || source.updatedAtClient)?.getTime()
+    || Number(source.updatedAtMs || fallback.updatedAt || 0)
+    || Date.now();
+  return {
+    id: safeThreadId,
+    uid: String(source.uid || fallback.uid || safeThreadId).trim(),
+    restaurantId: String(source.restaurantId || fallback.restaurantId || "").trim(),
+    handle: String(source.handle || fallback.handle || safeThreadId).replace(/^@/, "").trim(),
+    name: String(source.name || fallback.name || safeThreadId).trim() || safeThreadId,
+    avatar: String(source.avatar || fallback.avatar || "").trim(),
+    lastMessage: String(source.lastMessage || fallback.lastMessage || "").trim(),
+    unreadCount: Math.max(0, Number(source.unreadCount ?? fallback.unreadCount ?? 0) || 0),
+    updatedAt
+  };
+}
+
+function getCurrentChatSenderProfile() {
+  const handle = String(state.userProfile.handle || normalizeHandle(state.userProfile.name || state.user?.displayName || "user"))
+    .replace(/^@/, "")
+    .trim();
+  return {
+    uid: String(state.user?.uid || "").trim(),
+    handle,
+    name: String(state.userProfile.name || state.user?.displayName || "User").trim() || "User",
+    avatar: String(state.userProfile.avatar || "").trim()
+  };
+}
+
+function sanitizeChatAttachmentsForSync(attachments) {
+  return (Array.isArray(attachments) ? attachments : []).slice(0, 4).map((attachment, index) => {
+    const rawDataUrl = String(attachment?.dataUrl || "");
+    const inlineDataUrl = rawDataUrl && rawDataUrl.length <= 250000 ? rawDataUrl : "";
+    return {
+      id: String(attachment?.id || `att_${index}`).trim() || `att_${index}`,
+      name: String(attachment?.name || "Datei").trim() || "Datei",
+      mime: String(attachment?.mime || "application/octet-stream").trim() || "application/octet-stream",
+      kind: String(attachment?.kind || "file").trim() || "file",
+      dataUrl: inlineDataUrl,
+      size: Math.max(0, Number(attachment?.size || 0) || 0),
+      oversize: !!attachment?.oversize || (!inlineDataUrl && !!rawDataUrl)
+    };
+  });
+}
+
+function normalizeChatMessageRecord(messageId, data = {}, localMap = new Map()) {
+  const safeMessageId = String(messageId || "").trim();
+  if (!safeMessageId) return null;
+  const source = data && typeof data === "object" ? data : {};
+  const local = localMap.get(safeMessageId) || {};
+  const sourceAttachments = Array.isArray(source.attachments) ? source.attachments : [];
+  const localAttachments = Array.isArray(local.attachments) ? local.attachments : [];
+  const localAttachmentMap = new Map(localAttachments.map((attachment) => [String(attachment?.id || "").trim(), attachment]));
+  const mergedAttachments = (sourceAttachments.length ? sourceAttachments : localAttachments).slice(0, 4).map((attachment, index) => {
+    const safeAttachmentId = String(attachment?.id || `att_${index}`).trim() || `att_${index}`;
+    const localAttachment = localAttachmentMap.get(safeAttachmentId) || {};
+    const rawDataUrl = String(attachment?.dataUrl || localAttachment?.dataUrl || "");
+    const inlineDataUrl = rawDataUrl && rawDataUrl.length <= 250000 ? rawDataUrl : "";
+    return {
+      id: safeAttachmentId,
+      name: String(attachment?.name || localAttachment?.name || "Datei").trim() || "Datei",
+      mime: String(attachment?.mime || localAttachment?.mime || "application/octet-stream").trim() || "application/octet-stream",
+      kind: String(attachment?.kind || localAttachment?.kind || "file").trim() || "file",
+      dataUrl: inlineDataUrl,
+      size: Math.max(0, Number(attachment?.size || localAttachment?.size || 0) || 0),
+      oversize: !!attachment?.oversize || !!localAttachment?.oversize || (!inlineDataUrl && !!rawDataUrl)
+    };
+  });
+  return {
+    id: safeMessageId,
+    from: String(source.from || local.from || "other") === "self" ? "self" : "other",
+    text: String(source.text || local.text || ""),
+    attachments: mergedAttachments,
+    liked: typeof local.liked === "boolean" ? local.liked : !!source.liked,
+    saved: typeof local.saved === "boolean" ? local.saved : !!source.saved,
+    read: !!source.read,
+    createdAt: source.createdAt || source.createdAtClient || local.createdAt || new Date().toISOString()
+  };
+}
+
 function getChatMessageTimestamp(message) {
   return toDateSafe(message?.createdAt)?.getTime() || 0;
 }
@@ -2062,6 +2169,201 @@ function saveChatThreadMessages(profile, messages) {
   } catch {}
 }
 
+function stopChatThreadsListener() {
+  if (chatThreadsUnsub) {
+    chatThreadsUnsub();
+    chatThreadsUnsub = null;
+  }
+}
+
+function stopActiveChatMessagesListener() {
+  if (chatMessagesUnsub) {
+    chatMessagesUnsub();
+    chatMessagesUnsub = null;
+  }
+}
+
+function syncLocalChatThreadsFromRemote(remoteThreads, ownerUid = state.user?.uid || "") {
+  const merged = mergeChatThreadLists(loadChatThreadIndex(ownerUid), state.chatThreads, remoteThreads);
+  state.chatThreads = merged;
+  saveChatThreadIndex(merged);
+  if (lastRenderMode === "main" && state.activeTab === "chat" && !state.chatModal.open) {
+    render();
+    return;
+  }
+  updateNotificationBadges();
+}
+
+function startChatThreadsListener(user = state.user) {
+  stopChatThreadsListener();
+  const ownerUid = String(user?.uid || "").trim();
+  if (!ownerUid) return;
+  const ref = collection(db, "users", ownerUid, "chatThreads");
+  chatThreadsUnsub = onSnapshot(ref, (snap) => {
+    const remoteThreads = snap.docs
+      .map((docSnap) => normalizeChatThreadSummary(docSnap.id, docSnap.data() || {}))
+      .filter(Boolean);
+    syncLocalChatThreadsFromRemote(remoteThreads, ownerUid);
+  }, (err) => {
+    console.error(err);
+  });
+}
+
+async function syncRemoteChatReadState(profile, messages = state.chatModal.messages || []) {
+  const ownerUid = String(state.user?.uid || "").trim();
+  const threadId = getChatThreadId(profile);
+  if (!ownerUid || !threadId) return;
+  const unreadMessages = pruneChatMessages(messages).filter((message) => message?.from !== "self" && !message?.read);
+  if (!unreadMessages.length) {
+    const threadRef = chatThreadDocRef(ownerUid, threadId);
+    if (!threadRef) return;
+    try {
+      await setDoc(threadRef, { unreadCount: 0 }, { merge: true });
+    } catch {}
+    return;
+  }
+  const threadRef = chatThreadDocRef(ownerUid, threadId);
+  if (!threadRef) return;
+  try {
+    await Promise.all([
+      ...unreadMessages.map((message) => {
+        const messageRef = chatMessageDocRef(ownerUid, threadId, message.id);
+        if (!messageRef) return Promise.resolve();
+        return setDoc(messageRef, { read: true }, { merge: true });
+      }),
+      setDoc(threadRef, { unreadCount: 0 }, { merge: true })
+    ]);
+  } catch {}
+}
+
+function startActiveChatMessagesListener(profile = state.chatModal.profile) {
+  stopActiveChatMessagesListener();
+  const ownerUid = String(state.user?.uid || "").trim();
+  const threadId = getChatThreadId(profile);
+  const ref = chatMessagesCollectionRef(ownerUid, threadId);
+  if (!ref) return;
+  chatMessagesUnsub = onSnapshot(ref, (snap) => {
+    if (!state.chatModal.open || getChatThreadId(state.chatModal.profile) !== threadId) return;
+    const localSeed = pruneChatMessages([
+      ...loadChatThreadMessages(profile),
+      ...(Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [])
+    ]);
+    if (!snap.docs.length && localSeed.length) {
+      state.chatModal.messages = localSeed;
+      render();
+      return;
+    }
+    const localMap = new Map(localSeed.map((message) => [String(message?.id || "").trim(), message]));
+    const remoteMessages = snap.docs
+      .map((docSnap) => normalizeChatMessageRecord(docSnap.id, docSnap.data() || {}, localMap))
+      .filter(Boolean)
+      .sort((a, b) => getChatMessageTimestamp(a) - getChatMessageTimestamp(b));
+    const hasUnreadIncoming = remoteMessages.some((message) => message?.from !== "self" && !message?.read);
+    let nextMessages = remoteMessages;
+    if (hasUnreadIncoming) {
+      nextMessages = markChatThreadAsRead(profile, remoteMessages);
+      void syncRemoteChatReadState(profile, remoteMessages);
+    } else {
+      saveChatThreadMessages(profile, remoteMessages);
+      syncChatThreadSummary(profile, remoteMessages);
+    }
+    state.chatModal.messages = pruneChatMessages(nextMessages);
+    render();
+  }, (err) => {
+    console.error(err);
+  });
+}
+
+async function persistCurrentChatMessagePatch(messageId, patch = {}) {
+  const ownerUid = String(state.user?.uid || "").trim();
+  const threadId = getChatThreadId(state.chatModal.profile);
+  const safeMessageId = String(messageId || "").trim();
+  if (!ownerUid || !threadId || !safeMessageId || !patch || typeof patch !== "object") return;
+  const messageRef = chatMessageDocRef(ownerUid, threadId, safeMessageId);
+  if (!messageRef) return;
+  try {
+    await setDoc(messageRef, patch, { merge: true });
+  } catch {}
+}
+
+async function syncChatMessageToRemote(message, partnerProfile = state.chatModal.profile) {
+  const senderProfile = getCurrentChatSenderProfile();
+  const senderUid = senderProfile.uid;
+  const partnerUid = String(partnerProfile?.uid || "").trim();
+  const senderThreadId = getChatThreadId(partnerProfile);
+  const recipientThreadId = senderUid;
+  if (!senderUid || !partnerUid || !senderThreadId || !recipientThreadId || senderUid === partnerUid) return;
+
+  const safeAttachments = sanitizeChatAttachmentsForSync(message?.attachments);
+  const preview = buildChatPreviewText({ text: String(message?.text || ""), attachments: safeAttachments });
+  const createdAtClient = String(message?.createdAt || new Date().toISOString());
+  const senderThreadRef = chatThreadDocRef(senderUid, senderThreadId);
+  const senderMessageRef = chatMessageDocRef(senderUid, senderThreadId, message?.id);
+  const recipientThreadRef = chatThreadDocRef(partnerUid, recipientThreadId);
+  const recipientMessageRef = chatMessageDocRef(partnerUid, recipientThreadId, message?.id);
+  if (!senderThreadRef || !senderMessageRef || !recipientThreadRef || !recipientMessageRef) return;
+
+  const senderPayload = {
+    id: String(message?.id || "").trim(),
+    from: "self",
+    text: String(message?.text || ""),
+    attachments: safeAttachments,
+    liked: !!message?.liked,
+    saved: !!message?.saved,
+    read: true,
+    senderUid,
+    createdAt: serverTimestamp(),
+    createdAtClient
+  };
+  const recipientPayload = {
+    id: String(message?.id || "").trim(),
+    from: "other",
+    text: String(message?.text || ""),
+    attachments: safeAttachments,
+    liked: false,
+    saved: false,
+    read: false,
+    senderUid,
+    senderHandle: senderProfile.handle,
+    senderName: senderProfile.name,
+    senderAvatar: senderProfile.avatar,
+    createdAt: serverTimestamp(),
+    createdAtClient
+  };
+
+  await Promise.all([
+    setDoc(senderThreadRef, {
+      uid: partnerUid,
+      restaurantId: String(partnerProfile?.restaurantId || "").trim(),
+      handle: String(partnerProfile?.handle || "").replace(/^@/, "").trim(),
+      name: String(partnerProfile?.name || "User").trim() || "User",
+      avatar: String(partnerProfile?.avatar || "").trim(),
+      lastMessage: preview,
+      unreadCount: 0,
+      updatedAt: serverTimestamp(),
+      updatedAtClient: createdAtClient
+    }, { merge: true }),
+    setDoc(senderMessageRef, senderPayload, { merge: true })
+  ]);
+
+  await runTransaction(db, async (tx) => {
+    const recipientSnap = await tx.get(recipientThreadRef);
+    const recipientUnread = Math.max(0, Number(recipientSnap.exists() ? recipientSnap.data()?.unreadCount : 0) || 0);
+    tx.set(recipientThreadRef, {
+      uid: senderUid,
+      restaurantId: "",
+      handle: senderProfile.handle,
+      name: senderProfile.name,
+      avatar: senderProfile.avatar,
+      lastMessage: preview,
+      unreadCount: recipientUnread + 1,
+      updatedAt: serverTimestamp(),
+      updatedAtClient: createdAtClient
+    }, { merge: true });
+    tx.set(recipientMessageRef, recipientPayload, { merge: true });
+  });
+}
+
 function syncChatThreadSummary(profile, messages) {
   if (!profile) return;
   const threadId = getChatThreadId(profile);
@@ -2155,23 +2457,37 @@ function removePendingChatAttachment(attachmentId) {
 function toggleChatMessageSaved(messageId) {
   const safeId = String(messageId || "");
   if (!safeId) return;
+  let nextSaved = null;
   updateCurrentChatMessages((messages) => messages.map((message) => (
     String(message?.id || "") === safeId
-      ? { ...message, saved: !message.saved }
+      ? (() => {
+        nextSaved = !message.saved;
+        return { ...message, saved: nextSaved };
+      })()
       : message
   )));
   render();
+  if (typeof nextSaved === "boolean") {
+    void persistCurrentChatMessagePatch(safeId, { saved: nextSaved });
+  }
 }
 
 function toggleChatMessageLiked(messageId) {
   const safeId = String(messageId || "");
   if (!safeId) return;
+  let nextLiked = null;
   updateCurrentChatMessages((messages) => messages.map((message) => (
     String(message?.id || "") === safeId
-      ? { ...message, liked: !message.liked }
+      ? (() => {
+        nextLiked = !message.liked;
+        return { ...message, liked: nextLiked };
+      })()
       : message
   )));
   render();
+  if (typeof nextLiked === "boolean") {
+    void persistCurrentChatMessagePatch(safeId, { liked: nextLiked });
+  }
 }
 
 function openChatWithProfile(profile) {
@@ -2197,6 +2513,8 @@ function openChatWithProfile(profile) {
     attachments: sameThread ? (state.chatModal.attachments || []) : []
   };
   syncChatThreadSummary(nextProfile, state.chatModal.messages);
+  void syncRemoteChatReadState(nextProfile, state.chatModal.messages);
+  startActiveChatMessagesListener(nextProfile);
   render();
 }
 
@@ -2204,31 +2522,31 @@ function closeChatModal() {
   if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
   }
+  stopActiveChatMessagesListener();
   state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
   if (state.activeTab === "chat") {
     render();
   }
 }
 
-function sendChatMessage() {
+async function sendChatMessage() {
   if (!state.chatModal.open || !state.chatModal.profile) return;
   const input = document.getElementById("chatMessageInput");
   const text = String(input?.value ?? state.chatModal.draft ?? "").trim();
   const attachments = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments.slice() : [];
   if (!text && !attachments.length) return;
   const createdAt = new Date().toISOString();
-  const nextMessages = [
-    ...(state.chatModal.messages || []),
-    {
-      id: `msg_${Date.now()}`,
-      from: "self",
-      text,
-      attachments,
-      liked: false,
-      saved: false,
-      createdAt
-    }
-  ];
+  const outgoingMessage = {
+    id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    from: "self",
+    text,
+    attachments,
+    liked: false,
+    saved: false,
+    read: true,
+    createdAt
+  };
+  const nextMessages = [...(state.chatModal.messages || []), outgoingMessage];
   state.chatModal.messages = pruneChatMessages(nextMessages);
   state.chatModal.draft = "";
   state.chatModal.attachments = [];
@@ -2239,6 +2557,11 @@ function sendChatMessage() {
     updatedAt: getChatMessageTimestamp({ createdAt })
   });
   render();
+  try {
+    await syncChatMessageToRemote(outgoingMessage, state.chatModal.profile);
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 function savePostMeta(meta) {
@@ -2442,6 +2765,7 @@ function loadUserScopedPersisted(user) {
 }
 
 function resetUserScopedState() {
+  stopActiveChatMessagesListener();
   stopRestaurantMetaListeners();
   stopMenuItemMetaListeners();
   menuDetailCloseBound = false;
@@ -5492,6 +5816,8 @@ function updateDrawerDom() {
 }
 
 function stopLiveListeners() {
+  stopChatThreadsListener();
+  stopActiveChatMessagesListener();
   if (notificationsUnsub) {
     notificationsUnsub();
     notificationsUnsub = null;
@@ -5785,6 +6111,7 @@ function startLiveListeners(user) {
     handleNotificationsUpdate(items);
   });
 
+  startChatThreadsListener(user);
   startFeedListener();
   startStoriesListener();
   if (!hasBusinessProfile) {
