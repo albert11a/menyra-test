@@ -131,6 +131,9 @@ const DEFAULT_MENU_LAYOUT = {
   cardColor: "white"
 };
 
+const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
+const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 1.5 * 1024 * 1024;
+
 const LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992";
 const LEAD_STATUS_ORDER = ["registered", "contacted", "testphase", "kunde", "no_interest"];
 const LEAD_STATUS_LABELS = {
@@ -284,7 +287,8 @@ const state = {
     open: false,
     profile: null,
     messages: [],
-    draft: ""
+    draft: "",
+    attachments: []
   },
   menu: {
     restaurantId: "",
@@ -1822,6 +1826,39 @@ function chatThreadStorageKey(profile = state.chatModal.profile) {
   return `${STORAGE_KEYS.chatThreads}::${ownerUid}::${threadId}`;
 }
 
+function getChatMessageTimestamp(message) {
+  return toDateSafe(message?.createdAt)?.getTime() || 0;
+}
+
+function pruneChatMessages(messages) {
+  const now = Date.now();
+  return (Array.isArray(messages) ? messages : []).filter((message) => {
+    if (!message) return false;
+    if (message.saved) return true;
+    const createdAt = getChatMessageTimestamp(message);
+    if (!createdAt) return false;
+    return (now - createdAt) <= CHAT_MESSAGE_TTL_MS;
+  });
+}
+
+function buildChatPreviewText(message) {
+  if (!message) return "";
+  const text = String(message.text || "").trim();
+  if (text) return text;
+  const count = Array.isArray(message.attachments) ? message.attachments.length : 0;
+  if (!count) return "Chat";
+  return count === 1 ? "1 Anhang" : `${count} Anhaenge`;
+}
+
+async function readFileAsDataUrl(file) {
+  return await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("file_read_failed"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function loadChatThreadMessages(profile) {
   const key = chatThreadStorageKey(profile);
   if (!key) return [];
@@ -1829,7 +1866,12 @@ function loadChatThreadMessages(profile) {
     const raw = safeStorage.getItem(key);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const list = Array.isArray(parsed) ? parsed : [];
+    const next = pruneChatMessages(list);
+    if (next.length !== list.length) {
+      safeStorage.setItem(key, JSON.stringify(next.slice(-100)));
+    }
+    return next;
   } catch {
     return [];
   }
@@ -1839,8 +1881,94 @@ function saveChatThreadMessages(profile, messages) {
   const key = chatThreadStorageKey(profile);
   if (!key) return;
   try {
-    safeStorage.setItem(key, JSON.stringify((messages || []).slice(-100)));
+    const next = pruneChatMessages(messages);
+    safeStorage.setItem(key, JSON.stringify(next.slice(-100)));
   } catch {}
+}
+
+function syncChatThreadSummary(profile, messages) {
+  if (!profile) return;
+  const threadId = getChatThreadId(profile);
+  const existing = (state.chatThreads || []).find((item) => String(item?.id || "") === threadId) || null;
+  const list = pruneChatMessages(messages);
+  const lastMessage = list[list.length - 1] || null;
+  upsertChatThread(profile, {
+    lastMessage: buildChatPreviewText(lastMessage),
+    updatedAt: lastMessage
+      ? Math.max(getChatMessageTimestamp(lastMessage), Number(existing?.updatedAt || 0))
+      : Number(existing?.updatedAt || Date.now())
+  });
+}
+
+function updateCurrentChatMessages(updater) {
+  if (!state.chatModal.profile) return;
+  const current = pruneChatMessages(state.chatModal.messages || []);
+  const nextRaw = typeof updater === "function" ? updater(current) : updater;
+  const nextMessages = pruneChatMessages(nextRaw);
+  state.chatModal.messages = nextMessages;
+  saveChatThreadMessages(state.chatModal.profile, nextMessages);
+  syncChatThreadSummary(state.chatModal.profile, nextMessages);
+}
+
+async function addChatAttachments(fileList) {
+  const files = Array.from(fileList || []).filter(Boolean);
+  if (!files.length) return;
+  const existing = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments : [];
+  const slotsLeft = Math.max(0, 4 - existing.length);
+  if (!slotsLeft) return;
+  const selected = files.slice(0, slotsLeft);
+  const nextAttachments = [];
+  for (const file of selected) {
+    const isImage = /^image\//i.test(String(file.type || ""));
+    let dataUrl = "";
+    if (Number(file.size || 0) <= CHAT_ATTACHMENT_INLINE_MAX_BYTES) {
+      try {
+        dataUrl = await readFileAsDataUrl(file);
+      } catch {
+        dataUrl = "";
+      }
+    }
+    nextAttachments.push({
+      id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      name: file.name || "Datei",
+      mime: file.type || "application/octet-stream",
+      kind: isImage ? "image" : "file",
+      dataUrl,
+      size: Number(file.size || 0),
+      oversize: Number(file.size || 0) > CHAT_ATTACHMENT_INLINE_MAX_BYTES
+    });
+  }
+  state.chatModal.attachments = [...existing, ...nextAttachments];
+  render();
+}
+
+function removePendingChatAttachment(attachmentId) {
+  const safeId = String(attachmentId || "");
+  if (!safeId) return;
+  state.chatModal.attachments = (state.chatModal.attachments || []).filter((item) => String(item?.id || "") !== safeId);
+  render();
+}
+
+function toggleChatMessageSaved(messageId) {
+  const safeId = String(messageId || "");
+  if (!safeId) return;
+  updateCurrentChatMessages((messages) => messages.map((message) => (
+    String(message?.id || "") === safeId
+      ? { ...message, saved: !message.saved }
+      : message
+  )));
+  render();
+}
+
+function toggleChatMessageLiked(messageId) {
+  const safeId = String(messageId || "");
+  if (!safeId) return;
+  updateCurrentChatMessages((messages) => messages.map((message) => (
+    String(message?.id || "") === safeId
+      ? { ...message, liked: !message.liked }
+      : message
+  )));
+  render();
 }
 
 function openChatWithProfile(profile) {
@@ -1856,14 +1984,15 @@ function openChatWithProfile(profile) {
   state.drawerOpen = false;
   state.profileModal = { open: false, profile: null };
   state.activeTab = "chat";
+  const sameThread = state.chatModal.open && getChatThreadId(state.chatModal.profile) === getChatThreadId(nextProfile);
   state.chatModal = {
     open: true,
     profile: nextProfile,
     messages: loadChatThreadMessages(nextProfile),
-    draft: state.chatModal.open && getChatThreadId(state.chatModal.profile) === getChatThreadId(nextProfile)
-      ? (state.chatModal.draft || "")
-      : ""
+    draft: sameThread ? (state.chatModal.draft || "") : "",
+    attachments: sameThread ? (state.chatModal.attachments || []) : []
   };
+  syncChatThreadSummary(nextProfile, state.chatModal.messages);
   render();
 }
 
@@ -1871,7 +2000,7 @@ function closeChatModal() {
   if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
   }
-  state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "" };
+  state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
   if (state.activeTab === "chat") {
     render();
   }
@@ -1881,22 +2010,28 @@ function sendChatMessage() {
   if (!state.chatModal.open || !state.chatModal.profile) return;
   const input = document.getElementById("chatMessageInput");
   const text = String(input?.value ?? state.chatModal.draft ?? "").trim();
-  if (!text) return;
+  const attachments = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments.slice() : [];
+  if (!text && !attachments.length) return;
+  const createdAt = new Date().toISOString();
   const nextMessages = [
     ...(state.chatModal.messages || []),
     {
       id: `msg_${Date.now()}`,
       from: "self",
       text,
-      createdAt: new Date().toISOString()
+      attachments,
+      liked: false,
+      saved: false,
+      createdAt
     }
   ];
-  state.chatModal.messages = nextMessages;
+  state.chatModal.messages = pruneChatMessages(nextMessages);
   state.chatModal.draft = "";
-  saveChatThreadMessages(state.chatModal.profile, nextMessages);
+  state.chatModal.attachments = [];
+  saveChatThreadMessages(state.chatModal.profile, state.chatModal.messages);
   upsertChatThread(state.chatModal.profile, {
-    lastMessage: text,
-    updatedAt: Date.now()
+    lastMessage: text || buildChatPreviewText({ attachments }),
+    updatedAt: getChatMessageTimestamp({ createdAt })
   });
   render();
 }
@@ -2087,7 +2222,18 @@ function loadUserScopedPersisted(user) {
     }
   }
 
-  state.chatThreads = sortChatThreads(loadChatThreadIndex(uid));
+  state.chatThreads = sortChatThreads(loadChatThreadIndex(uid).map((thread) => {
+    const messages = loadChatThreadMessages(thread);
+    const lastMessage = messages[messages.length - 1] || null;
+    return {
+      ...thread,
+      lastMessage: buildChatPreviewText(lastMessage),
+      updatedAt: lastMessage
+        ? Math.max(getChatMessageTimestamp(lastMessage), Number(thread?.updatedAt || 0))
+        : Number(thread?.updatedAt || Date.now())
+    };
+  }));
+  saveChatThreadIndex(state.chatThreads);
 }
 
 function resetUserScopedState() {
@@ -2104,7 +2250,7 @@ function resetUserScopedState() {
   state.businessPosts = [];
   state.profileView = null;
   state.profileModal = { open: false, profile: null };
-  state.chatModal = { open: false, profile: null, messages: [], draft: "" };
+  state.chatModal = { open: false, profile: null, messages: [], draft: "", attachments: [] };
   state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
   state.likesModal = { open: false, postId: "", animate: false };
   state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
@@ -9799,7 +9945,7 @@ function renderChatView() {
   const threads = sortChatThreads(state.chatThreads);
   if (!state.chatModal.open || !state.chatModal.profile) {
     return `
-      <div id="chatListView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+      <div id="chatListView" class="flex-1 min-h-0 overflow-y-auto no-scrollbar p-6 animate-in slide-in-from-right-10 duration-500">
         ${threads.length ? `
           <div class="space-y-3">
             ${threads.map((thread) => {
@@ -9843,19 +9989,60 @@ function renderChatView() {
 
   const partner = state.chatModal.profile;
   const messages = Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [];
+  const pendingAttachments = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments : [];
   return `
-    <div id="chatThreadView" class="px-4 pb-6 animate-in slide-in-from-right-10 duration-500">
-      <div class="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden flex flex-col min-h-[72vh] shadow-sm">
+    <div id="chatThreadView" class="flex-1 min-h-0 px-4 pb-4 flex flex-col animate-in slide-in-from-right-10 duration-500">
+      <div class="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden flex flex-col flex-1 min-h-0 shadow-sm">
         <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto no-scrollbar p-4 space-y-3 bg-slate-50/70">
           ${messages.length ? messages.map((message) => `
             <div class="flex ${message.from === "self" ? "justify-end" : "justify-start"}">
-              <div class="max-w-[82%] rounded-[1.6rem] px-4 py-3 ${message.from === "self" ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-100"}">
-                <div class="text-sm font-medium leading-relaxed whitespace-pre-wrap">${escapeHtml(message.text || "")}</div>
+              <div class="max-w-[84%]">
+                <div class="rounded-[1.6rem] px-4 py-3 ${message.from === "self" ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-100"}">
+                  ${(Array.isArray(message.attachments) && message.attachments.length) ? `
+                    <div class="space-y-2 ${message.text ? "mb-3" : ""}">
+                      ${message.attachments.map((attachment) => `
+                        ${attachment.kind === "image" && attachment.dataUrl ? `
+                          <img src="${escapeHtml(attachment.dataUrl)}" class="w-full max-h-56 rounded-2xl object-cover border ${message.from === "self" ? "border-slate-700" : "border-slate-100"}" />
+                        ` : `
+                          ${attachment.dataUrl ? `
+                            <a href="${escapeHtml(attachment.dataUrl)}" download="${escapeHtml(attachment.name || "datei")}" class="flex items-center gap-3 p-3 rounded-2xl ${message.from === "self" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-700"}">
+                              <div class="w-9 h-9 rounded-xl flex items-center justify-center ${message.from === "self" ? "bg-slate-700" : "bg-white border border-slate-200"}">${icon("paperclip", "w-4 h-4")}</div>
+                              <div class="min-w-0 flex-1">
+                                <div class="text-xs font-black truncate">${escapeHtml(attachment.name || "Datei")}</div>
+                                <div class="text-[9px] font-bold uppercase tracking-widest ${message.from === "self" ? "text-slate-300" : "text-slate-400"}">Datei</div>
+                              </div>
+                            </a>
+                          ` : `
+                            <div class="flex items-center gap-3 p-3 rounded-2xl ${message.from === "self" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-700"}">
+                              <div class="w-9 h-9 rounded-xl flex items-center justify-center ${message.from === "self" ? "bg-slate-700" : "bg-white border border-slate-200"}">${icon("file", "w-4 h-4")}</div>
+                              <div class="min-w-0 flex-1">
+                                <div class="text-xs font-black truncate">${escapeHtml(attachment.name || "Datei")}</div>
+                                <div class="text-[9px] font-bold uppercase tracking-widest ${message.from === "self" ? "text-slate-300" : "text-slate-400"}">${attachment.oversize ? "Zu gross fuer Vorschau" : "Datei"}</div>
+                              </div>
+                            </div>
+                          `}
+                        `}
+                      `).join("")}
+                    </div>
+                  ` : ""}
+                  ${message.text ? `<div class="text-sm font-medium leading-relaxed whitespace-pre-wrap">${escapeHtml(message.text || "")}</div>` : ""}
+                </div>
+                <div class="flex items-center ${message.from === "self" ? "justify-end" : "justify-start"} gap-2 mt-2 px-1">
+                  <button data-chat-save="${escapeHtml(message.id)}" class="w-7 h-7 rounded-full flex items-center justify-center ${message.saved ? "bg-emerald-100 text-emerald-600" : "bg-white text-slate-400 border border-slate-200"}">
+                    ${icon(message.saved ? "check" : "plus", "w-3.5 h-3.5")}
+                  </button>
+                  <button data-chat-like="${escapeHtml(message.id)}" class="w-7 h-7 rounded-full flex items-center justify-center ${message.liked ? "bg-rose-100 text-rose-500" : "bg-white text-slate-400 border border-slate-200"}">
+                    ${icon("heart", `w-3.5 h-3.5 ${message.liked ? "fill-rose-500 text-rose-500" : ""}`)}
+                  </button>
+                  <div class="text-[9px] font-bold uppercase tracking-widest ${message.from === "self" ? "text-slate-400" : "text-slate-300"}">
+                    ${message.saved ? "Gespeichert" : "24h"}
+                  </div>
+                </div>
                 <div class="text-[9px] font-bold uppercase tracking-widest mt-2 ${message.from === "self" ? "text-slate-300" : "text-slate-400"}">${escapeHtml(formatRelative(toDateSafe(message.createdAt) || new Date()))}</div>
               </div>
             </div>
           `).join("") : `
-            <div class="h-full min-h-[48vh] flex items-center justify-center text-center">
+            <div class="h-full min-h-[40vh] flex items-center justify-center text-center">
               <div>
                 <div class="w-14 h-14 rounded-[1.4rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
                   ${icon("message-circle", "w-6 h-6")}
@@ -9866,8 +10053,31 @@ function renderChatView() {
           `}
         </div>
         <div class="p-4 border-t border-slate-100 bg-white">
+          ${(pendingAttachments.length) ? `
+            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-3">
+              ${pendingAttachments.map((attachment) => `
+                <div class="shrink-0 min-w-[84px] max-w-[120px] rounded-2xl border border-slate-100 bg-slate-50 p-2 relative">
+                  <button data-chat-remove-attachment="${escapeHtml(attachment.id)}" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center">
+                    ${icon("x", "w-3 h-3")}
+                  </button>
+                  ${attachment.kind === "image" && attachment.dataUrl ? `
+                    <img src="${escapeHtml(attachment.dataUrl)}" class="w-full h-16 rounded-xl object-cover mb-2" />
+                  ` : `
+                    <div class="w-full h-16 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 mb-2">
+                      ${icon(attachment.kind === "image" ? "image" : "file", "w-5 h-5")}
+                    </div>
+                  `}
+                  <div class="text-[10px] font-black text-slate-600 truncate pr-4">${escapeHtml(attachment.name || "Datei")}</div>
+                </div>
+              `).join("")}
+            </div>
+          ` : ""}
+          <input type="file" id="chatAttachmentInput" class="hidden" multiple />
           <div class="flex items-end gap-3">
-            <textarea id="chatMessageInput" rows="1" placeholder="Nachricht..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none">${escapeHtml(state.chatModal.draft || "")}</textarea>
+            <button id="chatAttachmentTrigger" class="w-[52px] h-[52px] shrink-0 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center active:scale-95">
+              ${icon("plus", "w-5 h-5")}
+            </button>
+            <textarea id="chatMessageInput" rows="1" placeholder="Nachricht..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none max-h-28">${escapeHtml(state.chatModal.draft || "")}</textarea>
             <button id="chatSendBtn" class="px-5 h-[52px] rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest active:scale-95">Send</button>
           </div>
         </div>
@@ -9990,11 +10200,14 @@ function renderMain() {
   if (state.activeTab === "settings") view = renderSettingsView();
   if (state.activeTab === "notifications") view = renderNotificationsView();
   if (state.activeTab === "upload") view = renderUploadView();
+  const mainClass = state.activeTab === "chat"
+    ? "flex-1 min-h-0 flex flex-col overflow-hidden"
+    : "flex-1 min-h-0 overflow-y-auto no-scrollbar pb-24";
 
   return `
     <div class="h-full min-h-full bg-slate-50 text-slate-900 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden font-sans">
       ${renderDrawer()}
-      <main class="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-24">
+      <main class="${mainClass}">
         ${renderHeader()}
         ${renderBusinessTopTabs()}
         ${view}
@@ -11415,6 +11628,40 @@ function bindAppEvents() {
     btn.addEventListener("click", () => {});
   });
 
+  document.querySelectorAll("[data-chat-save]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.chatSave || "";
+      if (!id) return;
+      toggleChatMessageSaved(id);
+    });
+  });
+
+  document.querySelectorAll("[data-chat-like]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.chatLike || "";
+      if (!id) return;
+      toggleChatMessageLiked(id);
+    });
+  });
+
+  document.querySelectorAll("[data-chat-remove-attachment]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.chatRemoveAttachment || "";
+      if (!id) return;
+      removePendingChatAttachment(id);
+    });
+  });
+
+  const chatAttachmentTrigger = document.getElementById("chatAttachmentTrigger");
+  const chatAttachmentInput = document.getElementById("chatAttachmentInput");
+  if (chatAttachmentTrigger && chatAttachmentInput) {
+    chatAttachmentTrigger.addEventListener("click", () => chatAttachmentInput.click());
+    chatAttachmentInput.addEventListener("change", async (e) => {
+      await addChatAttachments(e.target.files || []);
+      chatAttachmentInput.value = "";
+    });
+  }
+
   const chatSendBtn = document.getElementById("chatSendBtn");
   if (chatSendBtn) {
     chatSendBtn.addEventListener("click", () => {
@@ -11426,12 +11673,18 @@ function bindAppEvents() {
   if (chatMessageInput) {
     chatMessageInput.addEventListener("input", () => {
       state.chatModal.draft = chatMessageInput.value;
+      chatMessageInput.style.height = "auto";
+      chatMessageInput.style.height = `${Math.min(chatMessageInput.scrollHeight, 112)}px`;
     });
     chatMessageInput.addEventListener("keydown", (evt) => {
       if (evt.key === "Enter" && !evt.shiftKey) {
         evt.preventDefault();
         sendChatMessage();
       }
+    });
+    queueMicrotask(() => {
+      chatMessageInput.style.height = "auto";
+      chatMessageInput.style.height = `${Math.min(chatMessageInput.scrollHeight, 112)}px`;
     });
   }
 
