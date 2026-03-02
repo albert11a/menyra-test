@@ -1733,6 +1733,12 @@ function applyFollowingHandles(handles, { shouldRender = true } = {}) {
   const nextKey = nextHandles.join("|");
   state.followingHandles = nextHandles;
   state.pendingFollowRequests = state.pendingFollowRequests.filter((handle) => !nextHandles.includes(handle));
+  if (state.profileModal.profile) {
+    const modalHandle = String(state.profileModal.profile.handle || "").replace(/^@/, "");
+    if (modalHandle && nextHandles.includes(modalHandle)) {
+      state.profileModal.profile.pendingFollowRequest = false;
+    }
+  }
   if (state.profileView?.profile) {
     const viewHandle = String(state.profileView.profile.handle || "").replace(/^@/, "");
     if (viewHandle && nextHandles.includes(viewHandle)) {
@@ -4497,7 +4503,7 @@ async function toggleCommentLike(postId, commentId, replyId) {
 function renderAuthScreen() {
   const isRegister = state.auth.mode === "register";
   return `
-    <div class="min-h-screen bg-slate-50 flex flex-col p-8 font-sans animate-in">
+    <div class="h-full min-h-full overflow-y-auto bg-slate-50 flex flex-col p-8 font-sans animate-in">
       <div class="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
         <div class="mb-10 text-center">
           <div class="w-16 h-16 bg-slate-900 rounded-2xl mx-auto mb-6 flex items-center justify-center text-white shadow-2xl">
@@ -5149,6 +5155,7 @@ function startLiveListeners(user) {
         normalized.followers = state.userProfile?.followers ?? normalized.followers;
       }
       state.userProfile = normalized;
+      syncPrivateSettingFromProfile(false);
       saveUserProfileToStorage();
       const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
       if (!isPlaceholderUrl(resolvedAvatar)) {
@@ -5177,11 +5184,13 @@ function startLiveListeners(user) {
         avatar: safeAvatar,
         followers: data.followersCount ?? state.userProfile.followers,
         following: data.followingCount ?? state.userProfile.following,
+        privateAccount: !!data.privateAccount,
         role: data.role || state.userProfile.role,
         location: data.city || state.userProfile.location,
         bio: data.bio || state.userProfile.bio
       };
       Object.assign(state.userProfile, next);
+      syncPrivateSettingFromProfile(next.privateAccount);
       saveUserProfileToStorage();
       const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
       if (!isPlaceholderUrl(resolvedAvatar)) {
@@ -5205,6 +5214,19 @@ function startLiveListeners(user) {
       }
     });
   }
+
+  const followingRef = collection(db, "users", user.uid, "following");
+  followingUnsub = onSnapshot(followingRef, (snap) => {
+    const handles = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() || {};
+      if (data.handle) handles.push(String(data.handle));
+    });
+    dataLoaded.following = true;
+    applyFollowingHandles(handles);
+  }, (err) => {
+    console.error(err);
+  });
 
   const notifRef = collection(db, "users", user.uid, "notifications");
   notificationsUnsub = onSnapshot(query(notifRef, orderBy("createdAt", "desc"), limit(60)), (snap) => {
@@ -7590,6 +7612,9 @@ async function sendFollowRequest(handle, target = {}) {
       createdAt: serverTimestamp()
     }, { merge: true });
     state.pendingFollowRequests = Array.from(new Set([safeHandle, ...state.pendingFollowRequests]));
+    if (state.profileModal.profile?.uid === targetUid) {
+      state.profileModal.profile.pendingFollowRequest = true;
+    }
     if (state.profileView?.profile?.uid === targetUid) {
       state.profileView.profile.pendingFollowRequest = true;
     }
@@ -7959,6 +7984,8 @@ function renderProfileModal() {
   const p = state.profileModal.profile;
   const followKey = String(p.handle || "").replace(/^@/, "");
   const isFollowing = state.followingHandles.includes(followKey);
+  const hasPendingFollowRequest = !!p.pendingFollowRequest && !isFollowing;
+  const isLocked = !!p.privateAccount && p.uid && String(p.uid) !== String(state.user?.uid || "") && !isFollowing;
   const typeLabel = p.restaurantId ? "Business" : "User";
   const avatarUrl = getOptimizedImageUrl(p.avatar, "avatar");
   return `
@@ -7977,8 +8004,8 @@ function renderProfileModal() {
                 <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
               </div>
-              <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
-                ${isFollowing ? "Following" : "Follow"}
+              <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" ${hasPendingFollowRequest ? "disabled" : ""} class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : (hasPendingFollowRequest ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20")} ${hasPendingFollowRequest ? "cursor-default" : ""}">
+                ${isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"))}
               </button>
             </div>
 
@@ -9627,11 +9654,11 @@ function renderMain() {
   if (state.activeTab === "upload") view = renderUploadView();
 
   return `
-    <div class="min-h-screen bg-slate-50 text-slate-900 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden font-sans">
+    <div class="h-full min-h-full bg-slate-50 text-slate-900 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden font-sans">
       ${renderDrawer()}
       ${renderHeader()}
       ${renderBusinessTopTabs()}
-      <main class="flex-1 overflow-y-auto no-scrollbar pb-24">${view}</main>
+      <main class="flex-1 min-h-0 overflow-y-auto no-scrollbar pb-24">${view}</main>
     </div>
   `;
 }
@@ -9849,7 +9876,7 @@ function bindImageFallbacks(root = document) {
 
 function renderLoading() {
   return `
-    <div class="min-h-screen flex items-center justify-center text-slate-400 text-sm font-bold">
+    <div class="h-full min-h-full flex items-center justify-center text-slate-400 text-sm font-bold">
       Lade MENYRA Social...
     </div>
   `;
@@ -10865,6 +10892,11 @@ function bindAppEvents() {
       if (!key) return;
       const next = { ...state.settings, [key]: !state.settings[key] };
       state.settings = next;
+      if (key === "privateAccount") {
+        state.userProfile.privateAccount = !!next[key];
+        saveUserProfileToStorage();
+        void persistPrivateAccountSetting(next[key]);
+      }
       saveSettings(next);
       render();
     });
@@ -11476,6 +11508,18 @@ async function updateRestaurantSelection(restaurantId) {
   }
 }
 
+async function persistPrivateAccountSetting(value) {
+  if (!state.user?.uid) return;
+  try {
+    await setDoc(doc(db, "users", state.user.uid), {
+      privateAccount: !!value,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 async function handleUploadPost() {
   if (!state.user || !state.upload.file) return;
 
@@ -11578,6 +11622,7 @@ async function loadUserProfile(user, { force = false } = {}) {
   if (!user) return;
   await ensureUserProfile(user, { city: "Prishtina" });
   const snap = await getDoc(doc(db, "users", user.uid));
+  void force;
   const data = snap.exists() ? snap.data() : {};
   const prevAvatar = state.userProfile?.avatar || "";
   const normalized = normalizeProfile(data, user);
@@ -11585,6 +11630,7 @@ async function loadUserProfile(user, { force = false } = {}) {
   if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
   state.userProfile = normalized;
   state.userProfile.uid = user.uid;
+  syncPrivateSettingFromProfile(normalized.privateAccount);
   saveUserProfileToStorage();
   const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
   if (!isPlaceholderUrl(resolvedAvatar)) {
@@ -11628,6 +11674,7 @@ async function loadBusinessProfile(user, { restaurant = null, force = false } = 
   }
   state.userProfile = normalized;
   state.userProfile.uid = user.uid;
+  syncPrivateSettingFromProfile(false);
   saveUserProfileToStorage();
   const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
   if (!isPlaceholderUrl(resolvedAvatar)) {

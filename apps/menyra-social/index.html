@@ -37,8 +37,20 @@
   }
   </script>
   <style>
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
     body { background: #f8fafc; color: #0f172a; margin: 0; }
-    #app { min-height: 100vh; }
+    #app {
+      min-height: 100vh;
+      height: 100vh;
+      min-height: 100dvh;
+      height: 100dvh;
+      overflow: hidden;
+    }
     :root {
       --safe-area-bottom: env(safe-area-inset-bottom, 0px);
     }
@@ -127,7 +139,7 @@
   <div id="app"></div>
 
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script type="module" src="./social-app.js?v=2026-01-31-7"></script>
-  <script type="module" src="/apps/menyra-social/pwa.js?v=2026-01-31-7"></script>
+  <script type="module" src="./social-app.js?v=2026-03-02-1"></script>
+  <script type="module" src="/apps/menyra-social/pwa.js?v=2026-03-02-1"></script>
 </body>
 </html>
