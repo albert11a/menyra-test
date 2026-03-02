@@ -5408,9 +5408,9 @@ function renderDrawer() {
     { id: "settings", label: "Optionen", icon: "settings" }
   ];
   return `
-    <div id="drawerRoot" class="fixed inset-0 z-[2000] transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
-      <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
-      <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}">
+    <div id="drawerRoot" class="fixed inset-0 z-[2000] overflow-hidden transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}" style="overscroll-behavior:none;">
+      <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}" style="touch-action:none; overscroll-behavior:none;"></div>
+      <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 max-w-[86vw] bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col overflow-y-auto ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}" style="overscroll-behavior:contain; -webkit-overflow-scrolling:touch;">
         <div class="flex justify-between items-center mb-10">
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Menue</span>
