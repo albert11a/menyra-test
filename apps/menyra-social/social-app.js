@@ -4459,7 +4459,7 @@ async function toggleCommentLike(postId, commentId, replyId) {
 function renderAuthScreen() {
   const isRegister = state.auth.mode === "register";
   return `
-    <div class="min-h-screen bg-slate-50 flex flex-col px-8 pb-8 font-sans animate-in" style="padding-top: calc(var(--safe-area-top) + 2rem); padding-right: calc(var(--safe-area-right) + 2rem); padding-left: calc(var(--safe-area-left) + 2rem);">
+    <div class="min-h-screen bg-slate-50 flex flex-col p-8 font-sans animate-in">
       <div class="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
         <div class="mb-10 text-center">
           <div class="w-16 h-16 bg-slate-900 rounded-2xl mx-auto mb-6 flex items-center justify-center text-white shadow-2xl">
@@ -9368,7 +9368,7 @@ function renderHeader() {
   const titleClass = "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
   const subtitleClass = `text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block${branding.subtitle ? "" : " hidden"}`;
   return `
-    <header class="pb-2 flex justify-between items-center sticky top-0 z-40 backdrop-blur-xl bg-slate-50/80" style="padding-top: calc(var(--safe-area-top) + 1.5rem); padding-right: calc(var(--safe-area-right) + 1.5rem); padding-left: calc(var(--safe-area-left) + 1.5rem);">
+    <header class="p-6 pb-2 flex justify-between items-center sticky top-0 z-40 backdrop-blur-xl bg-slate-50/80">
       <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
         <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
@@ -9654,7 +9654,7 @@ function bindImageFallbacks(root = document) {
 
 function renderLoading() {
   return `
-    <div class="min-h-screen flex items-center justify-center text-slate-400 text-sm font-bold" style="padding-top: var(--safe-area-top); padding-right: var(--safe-area-right); padding-bottom: var(--safe-area-bottom); padding-left: var(--safe-area-left);">
+    <div class="min-h-screen flex items-center justify-center text-slate-400 text-sm font-bold">
       Lade MENYRA Social...
     </div>
   `;
