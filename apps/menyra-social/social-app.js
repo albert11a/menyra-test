@@ -344,6 +344,8 @@ const state = {
     item: null,
     index: 0,
     restaurantId: "",
+    selectedSize: "",
+    selectedColor: "",
     commentText: "",
     loading: false,
     sending: false
@@ -2945,7 +2947,7 @@ function resetUserScopedState() {
   state.chatModal = { open: false, profile: null, messages: [], draft: "", attachments: [] };
   state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
   state.likesModal = { open: false, postId: "", animate: false };
-  state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
+  state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", selectedSize: "", selectedColor: "", commentText: "", loading: false, sending: false };
   state.menuItemMeta = {};
   menuItemCountsRequested.clear();
   state.leads = { items: [], loading: false, error: "", query: "", status: "" };
@@ -9079,7 +9081,7 @@ function renderChatModal() {
   `;
 }
 
-function renderShopProductList(items, { profile = state.profileView?.profile || state.userProfile } = {}) {
+function renderShopProductList(items) {
   if (!items.length) {
     return `
       <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
@@ -9089,7 +9091,6 @@ function renderShopProductList(items, { profile = state.profileView?.profile || 
       </div>
     `;
   }
-  const canAdd = canAddToShopCart(profile);
   return `
     <div class="grid grid-cols-2 gap-4">
       ${items.map((item) => {
@@ -9100,17 +9101,13 @@ function renderShopProductList(items, { profile = state.profileView?.profile || 
         const firebaseFallback = getFirebaseStorageUrl(rawImg);
         const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
         const priceLabel = formatPrice(item.price);
-        const category = item.category || "Produkt";
-        const sizes = Array.isArray(item.sizes) ? item.sizes : [];
-        const colors = Array.isArray(item.colors) ? item.colors : [];
-        const brand = String(item.brand || "").trim();
         const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
         const thumbImages = images.slice(1, 4);
         const soldOut = item.available === false || stock === 0;
         const availabilityLabel = soldOut ? "Nicht verfuegbar" : "Verfuegbar";
         const availabilityClass = soldOut ? "text-slate-300" : "text-emerald-600";
         return `
-          <article data-shop-product-card="true" data-menu-open="${escapeHtml(item.id)}" role="button" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
+          <article data-menu-open="${escapeHtml(item.id)}" role="button" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
             <div class="rounded-[1.5rem] overflow-hidden bg-slate-100">
               <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-40 object-cover" loading="lazy" decoding="async" />
             </div>
@@ -9127,40 +9124,12 @@ function renderShopProductList(items, { profile = state.profileView?.profile || 
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
                   <p class="text-[13px] font-black text-slate-900 leading-tight line-clamp-2">${escapeHtml(item.name || "Produkt")}</p>
-                  <p class="text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1 truncate">${escapeHtml(category)}</p>
                 </div>
                 <span class="text-[11px] font-black text-slate-900 shrink-0">${escapeHtml(priceLabel)}</span>
               </div>
-              ${brand ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-300 mt-2 truncate">${escapeHtml(brand)}</p>` : ""}
               ${item.description ? `<p class="text-[11px] text-slate-500 mt-2 line-clamp-2">${escapeHtml(item.description)}</p>` : ""}
-              <div class="mt-3 space-y-2">
-                ${sizes.length ? `
-                  <div>
-                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-1">Groesse</p>
-                    <select data-cart-size-select="${escapeHtml(item.id)}" class="w-full h-9 px-3 rounded-xl bg-slate-50 text-[11px] font-bold text-slate-700 border border-slate-100 outline-none">
-                      ${sizes.map((size) => `<option value="${escapeHtml(size)}">${escapeHtml(size)}</option>`).join("")}
-                    </select>
-                  </div>
-                ` : ""}
-                ${colors.length ? `
-                  <div>
-                    <p class="text-[9px] font-black uppercase tracking-widest text-slate-300 mb-1">Farbe</p>
-                    <select data-cart-color-select="${escapeHtml(item.id)}" class="w-full h-9 px-3 rounded-xl bg-slate-50 text-[11px] font-bold text-slate-700 border border-slate-100 outline-none">
-                      ${colors.map((color) => `<option value="${escapeHtml(color)}">${escapeHtml(color)}</option>`).join("")}
-                    </select>
-                  </div>
-                ` : ""}
-              </div>
-              <div class="mt-auto pt-3 flex items-center justify-between gap-2">
-                <div class="min-w-0">
-                  <span class="block text-[9px] font-black uppercase tracking-widest ${availabilityClass}">${availabilityLabel}</span>
-                  ${stock !== null ? `<span class="block text-[9px] font-bold uppercase tracking-widest text-slate-300 mt-1">${escapeHtml(String(stock))} auf Lager</span>` : ""}
-                </div>
-                ${canAdd && !soldOut ? `
-                  <button data-cart-add="${escapeHtml(item.id)}" class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-sm active:scale-95 shrink-0">
-                      ${icon("plus", "w-4 h-4")}
-                  </button>
-                ` : ""}
+              <div class="mt-auto pt-3">
+                <span class="block text-[9px] font-black uppercase tracking-widest ${availabilityClass}">${availabilityLabel}</span>
               </div>
             </div>
           </article>
@@ -9965,8 +9934,12 @@ function renderMenuDetailModal() {
   const colors = Array.isArray(item.colors) ? item.colors : [];
   const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
   const isShop = isShopCatalogProfile(catalogProfile);
-  const availability = item.available === false ? "Nicht verfuegbar" : "Verfuegbar";
-  const availabilityClass = item.available === false ? "text-rose-500" : "text-emerald-600";
+  const soldOut = item.available === false || stock === 0;
+  const availability = soldOut ? "Nicht verfuegbar" : "Verfuegbar";
+  const availabilityClass = soldOut ? "text-rose-500" : "text-emerald-600";
+  const selectedSize = sizes.length ? (String(state.menuDetail.selectedSize || sizes[0]).trim() || String(sizes[0])) : "";
+  const selectedColor = colors.length ? (String(state.menuDetail.selectedColor || colors[0]).trim() || String(colors[0])) : "";
+  const canAddToCart = isShop && canAddToShopCart(catalogProfile);
   const restaurantId = state.menuDetail.restaurantId
     || state.menu.restaurantId
     || state.profileView?.profile?.restaurantId
@@ -9996,7 +9969,7 @@ function renderMenuDetailModal() {
   const bodyHtml = `
     <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
       <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50" data-menu-gallery style="touch-action: pan-y;">
-        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-56 object-cover" />
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full ${isShop ? "h-[24rem]" : "h-56"} object-cover" />
         ${images.length > 1 ? `
           <button type="button" data-menu-gallery-nav="prev" class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
             ${icon("chevron-left", "w-4 h-4")}
@@ -10021,27 +9994,26 @@ function renderMenuDetailModal() {
         ${category ? `<span>${escapeHtml(category)}</span>` : ""}
         <span>${escapeHtml(typeLabel)}</span>
       </div>
-      ${brand || sku || stock !== null ? `
-        <div class="grid grid-cols-3 gap-2">
+      ${brand || sku ? `
+        <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-2">
           ${brand ? `<div class="p-3 rounded-2xl bg-slate-50 border border-slate-100"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(brand)}</p></div>` : ""}
           ${sku ? `<div class="p-3 rounded-2xl bg-slate-50 border border-slate-100"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(sku)}</p></div>` : ""}
-          ${stock !== null ? `<div class="p-3 rounded-2xl bg-slate-50 border border-slate-100"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Lager</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(String(stock))}</p></div>` : ""}
         </div>
       ` : ""}
-      ${sizes.length ? `
+      ${isShop && sizes.length ? `
         <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Groessen</p>
-          <div class="flex flex-wrap gap-2">
-            ${sizes.map((size) => `<span class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600">${escapeHtml(size)}</span>`).join("")}
-          </div>
+          <select data-menu-detail-variant="size" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
+            ${sizes.map((size) => `<option value="${escapeHtml(size)}" ${selectedSize === String(size) ? "selected" : ""}>${escapeHtml(size)}</option>`).join("")}
+          </select>
         </div>
       ` : ""}
-      ${colors.length ? `
+      ${isShop && colors.length ? `
         <div class="p-4 rounded-2xl bg-slate-50 border border-slate-100">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Farben</p>
-          <div class="flex flex-wrap gap-2">
-            ${colors.map((color) => `<span class="px-3 py-1.5 rounded-full bg-white border border-slate-200 text-[10px] font-black uppercase tracking-widest text-slate-600">${escapeHtml(color)}</span>`).join("")}
-          </div>
+          <select data-menu-detail-variant="color" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
+            ${colors.map((color) => `<option value="${escapeHtml(color)}" ${selectedColor === String(color) ? "selected" : ""}>${escapeHtml(color)}</option>`).join("")}
+          </select>
         </div>
       ` : ""}
       ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${escapeHtml(desc)}</p>` : ""}
@@ -10050,6 +10022,11 @@ function renderMenuDetailModal() {
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${isShop ? "Hinweise" : "Allergene"}</p>
           <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
         </div>
+      ` : ""}
+      ${isShop && canAddToCart ? `
+        <button id="menuDetailAddToCart" class="w-full py-4 rounded-[1.8rem] ${soldOut ? "bg-slate-200 text-slate-400" : "bg-slate-900 text-white shadow-xl shadow-slate-300/50"} text-[10px] font-black uppercase tracking-[0.2em] active:scale-95" ${soldOut ? "disabled" : ""}>
+          ${soldOut ? "Nicht verfuegbar" : "Shto ne shporte"}
+        </button>
       ` : ""}
 
       <div class="flex items-center justify-between">
@@ -12045,6 +12022,25 @@ function bindOverlayEvents({
     bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
     bindModalDismiss(menuDetailClose, closeMenuDetail);
 
+    document.querySelectorAll("[data-menu-detail-variant]").forEach((input) => {
+      input.addEventListener("change", () => {
+        const field = input.dataset.menuDetailVariant || "";
+        setMenuDetailVariant(field, input.value || "");
+      });
+    });
+
+    const menuDetailAddToCart = document.getElementById("menuDetailAddToCart");
+    if (menuDetailAddToCart) {
+      menuDetailAddToCart.addEventListener("click", () => {
+        if (!state.menuDetail.item) return;
+        const profile = state.profileView?.profile || state.userProfile;
+        addMenuItemToShopCart(state.menuDetail.item, profile, {
+          size: state.menuDetail.selectedSize || "",
+          color: state.menuDetail.selectedColor || ""
+        });
+      });
+    }
+
     const menuDetailLikeBtn = document.getElementById("menuDetailLikeBtn");
     if (menuDetailLikeBtn) {
       menuDetailLikeBtn.addEventListener("click", () => {
@@ -12428,28 +12424,6 @@ function bindAppEvents() {
       const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
       if (!item) return;
       void openMenuDetail(item, state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "");
-    });
-  });
-
-  document.querySelectorAll("[data-cart-add]").forEach((btn) => {
-    btn.addEventListener("click", (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const itemId = btn.dataset.cartAdd || "";
-      const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
-      if (!item) return;
-      const card = btn.closest("[data-shop-product-card]");
-      const size = card?.querySelector("[data-cart-size-select]")?.value || "";
-      const color = card?.querySelector("[data-cart-color-select]")?.value || "";
-      addMenuItemToShopCart(item, undefined, { size, color });
-    });
-  });
-
-  document.querySelectorAll("[data-cart-size-select], [data-cart-color-select]").forEach((input) => {
-    ["click", "change", "pointerdown"].forEach((eventName) => {
-      input.addEventListener(eventName, (event) => {
-        event.stopPropagation();
-      });
     });
   });
 
@@ -15743,6 +15717,8 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
     item,
     index: 0,
     restaurantId,
+    selectedSize: Array.isArray(item?.sizes) && item.sizes.length ? String(item.sizes[0]) : "",
+    selectedColor: Array.isArray(item?.colors) && item.colors.length ? String(item.colors[0]) : "",
     commentText: "",
     loading: true,
     sending: false
@@ -15761,7 +15737,7 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
 
 function closeMenuDetail() {
   stopMenuItemMetaListeners();
-  state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", commentText: "", loading: false, sending: false };
+  state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", selectedSize: "", selectedColor: "", commentText: "", loading: false, sending: false };
   renderOverlays({ updateMenuDetail: true });
 }
 
@@ -15777,6 +15753,13 @@ function setMenuDetailIndex(nextIndex) {
   if (idx === state.menuDetail.index) return;
   state.menuDetail.index = idx;
   renderOverlays({ updateMenuDetail: true });
+}
+
+function setMenuDetailVariant(field, value) {
+  if (!state.menuDetail.open) return;
+  if (field !== "size" && field !== "color") return;
+  const key = field === "size" ? "selectedSize" : "selectedColor";
+  state.menuDetail[key] = String(value || "").trim();
 }
 
 async function saveMenuItemFromModal() {
