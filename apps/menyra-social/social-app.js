@@ -1776,8 +1776,7 @@ function saveChatThreadIndex(threads) {
   } catch {}
 }
 
-function loadChatThreadIndex(uid = state.user?.uid || "") {
-  const key = chatIndexStorageKey(uid);
+function readChatThreadIndexList(key) {
   if (!key) return [];
   try {
     const raw = safeStorage.getItem(key);
@@ -1789,15 +1788,152 @@ function loadChatThreadIndex(uid = state.user?.uid || "") {
   }
 }
 
+function buildChatThreadSummaryFromMessages(threadId, value, fallback = {}) {
+  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+  if (!safeThreadId) return null;
+  const meta = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const rawMessages = Array.isArray(value)
+    ? value
+    : (Array.isArray(meta.messages) ? meta.messages : []);
+  const messages = pruneChatMessages(rawMessages);
+  const lastMessage = messages[messages.length - 1] || null;
+  const unreadCount = messages.filter((message) => message?.from !== "self" && !message?.read).length;
+  return {
+    id: safeThreadId,
+    uid: String(meta.uid || fallback.uid || safeThreadId).trim(),
+    restaurantId: String(meta.restaurantId || fallback.restaurantId || "").trim(),
+    handle: String(meta.handle || fallback.handle || safeThreadId).replace(/^@/, "").trim(),
+    name: String(meta.name || fallback.name || safeThreadId).trim() || safeThreadId,
+    avatar: String(meta.avatar || fallback.avatar || "").trim(),
+    lastMessage: buildChatPreviewText(lastMessage),
+    updatedAt: lastMessage ? getChatMessageTimestamp(lastMessage) : Number(meta.updatedAt || fallback.updatedAt || Date.now()),
+    unreadCount
+  };
+}
+
+function rebuildLegacyChatThreadIndexFromStorage() {
+  const threads = [];
+  if (typeof localStorage === "undefined") return threads;
+  const legacyPrefix = `${STORAGE_KEYS.chatThreads}::`;
+  try {
+    const rawMap = localStorage.getItem(STORAGE_KEYS.chatThreads);
+    if (rawMap) {
+      try {
+        const parsedMap = JSON.parse(rawMap);
+        if (parsedMap && typeof parsedMap === "object" && !Array.isArray(parsedMap)) {
+          Object.entries(parsedMap).forEach(([threadId, value]) => {
+            const summary = buildChatThreadSummaryFromMessages(threadId, value);
+            if (summary) threads.push(summary);
+          });
+        }
+      } catch {}
+    }
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(legacyPrefix)) continue;
+      const suffix = key.slice(legacyPrefix.length).trim();
+      if (!suffix || suffix.includes("::")) continue;
+      const summary = buildChatThreadSummaryFromMessages(suffix, (() => {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : [];
+        } catch {
+          return [];
+        }
+      })());
+      if (summary) threads.push(summary);
+    }
+  } catch {}
+  return sortChatThreads(threads);
+}
+
+function mergeChatThreadLists(...lists) {
+  const byId = new Map();
+  lists.flat().forEach((thread) => {
+    if (!thread || typeof thread !== "object") return;
+    const rawId = String(thread.id || thread.uid || thread.restaurantId || thread.handle || "").replace(/^@/, "").trim();
+    if (!rawId) return;
+    const existing = byId.get(rawId) || {};
+    byId.set(rawId, {
+      ...existing,
+      ...thread,
+      id: rawId,
+      uid: String(thread.uid || existing.uid || rawId).trim(),
+      restaurantId: String(thread.restaurantId || existing.restaurantId || "").trim(),
+      handle: String(thread.handle || existing.handle || rawId).replace(/^@/, "").trim(),
+      name: String(thread.name || existing.name || rawId).trim() || rawId,
+      avatar: String(thread.avatar || existing.avatar || "").trim(),
+      lastMessage: String(thread.lastMessage || existing.lastMessage || "").trim(),
+      unreadCount: Math.max(0, Number(thread.unreadCount ?? existing.unreadCount ?? 0) || 0),
+      updatedAt: Number(thread.updatedAt || existing.updatedAt || 0) || 0
+    });
+  });
+  return sortChatThreads(Array.from(byId.values()));
+}
+
+function loadChatThreadIndex(uid = state.user?.uid || "") {
+  const key = chatIndexStorageKey(uid);
+  const scopedIndex = readChatThreadIndexList(key);
+  const legacyIndex = readChatThreadIndexList(STORAGE_KEYS.chatIndex);
+  const scopedThreads = rebuildChatThreadIndexFromStorage(uid);
+  const legacyThreads = rebuildLegacyChatThreadIndexFromStorage();
+  return mergeChatThreadLists(scopedThreads, legacyThreads, legacyIndex, scopedIndex);
+}
+
 function sortChatThreads(threads) {
   return (Array.isArray(threads) ? threads.slice() : [])
     .sort((a, b) => (Number(b?.updatedAt || 0) - Number(a?.updatedAt || 0)));
 }
 
+function rebuildChatThreadIndexFromStorage(uid = state.user?.uid || "") {
+  const safeUid = String(uid || "").trim();
+  if (!safeUid || typeof localStorage === "undefined") return [];
+  const prefix = `${STORAGE_KEYS.chatThreads}::${safeUid}::`;
+  const threads = [];
+  try {
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(prefix)) continue;
+      const threadId = key.slice(prefix.length).trim();
+      if (!threadId) continue;
+      let messages = [];
+      try {
+        const raw = localStorage.getItem(key);
+        const parsed = raw ? JSON.parse(raw) : [];
+        messages = pruneChatMessages(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        messages = [];
+      }
+      const lastMessage = messages[messages.length - 1] || null;
+      const unreadCount = messages.filter((message) => message?.from !== "self" && !message?.read).length;
+      threads.push({
+        id: threadId,
+        uid: threadId,
+        restaurantId: "",
+        handle: threadId,
+        name: threadId,
+        avatar: "",
+        lastMessage: buildChatPreviewText(lastMessage),
+        updatedAt: lastMessage ? getChatMessageTimestamp(lastMessage) : Date.now(),
+        unreadCount
+      });
+    }
+  } catch {}
+  return sortChatThreads(threads);
+}
+
+function getChatUnreadCount() {
+  return (state.chatThreads || []).reduce((sum, thread) => {
+    const count = Number(thread?.unreadCount || 0);
+    return sum + (Number.isFinite(count) ? count : 0);
+  }, 0);
+}
+
 function upsertChatThread(profile, patch = {}) {
   if (!profile) return;
-  const threadId = String(profile.uid || profile.restaurantId || profile.handle || "").replace(/^@/, "").trim();
+  const threadId = getChatThreadId(profile);
   if (!threadId) return;
+  const existingThread = (state.chatThreads || []).find((item) => String(item?.id || "") === threadId) || null;
   const nextThread = {
     id: threadId,
     uid: profile.uid || "",
@@ -1806,6 +1942,7 @@ function upsertChatThread(profile, patch = {}) {
     name: profile.name || "User",
     avatar: profile.avatar || "",
     lastMessage: "",
+    unreadCount: Number(existingThread?.unreadCount || 0),
     updatedAt: Date.now(),
     ...patch
   };
@@ -1816,7 +1953,7 @@ function upsertChatThread(profile, patch = {}) {
 }
 
 function getChatThreadId(profile = state.chatModal.profile) {
-  return String(profile?.uid || profile?.restaurantId || profile?.handle || "").replace(/^@/, "").trim();
+  return String(profile?.uid || profile?.restaurantId || profile?.handle || profile?.id || "").replace(/^@/, "").trim();
 }
 
 function chatThreadStorageKey(profile = state.chatModal.profile) {
@@ -1850,6 +1987,35 @@ function buildChatPreviewText(message) {
   return count === 1 ? "1 Anhang" : `${count} Anhaenge`;
 }
 
+function loadLegacyChatThreadMessages(threadId) {
+  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+  if (!safeThreadId || typeof localStorage === "undefined") return [];
+  try {
+    const legacyKey = `${STORAGE_KEYS.chatThreads}::${safeThreadId}`;
+    const rawThread = localStorage.getItem(legacyKey);
+    if (rawThread) {
+      try {
+        const parsedThread = JSON.parse(rawThread);
+        if (Array.isArray(parsedThread)) {
+          return pruneChatMessages(parsedThread);
+        }
+        if (parsedThread && typeof parsedThread === "object" && Array.isArray(parsedThread.messages)) {
+          return pruneChatMessages(parsedThread.messages);
+        }
+      } catch {}
+    }
+    const rawMap = localStorage.getItem(STORAGE_KEYS.chatThreads);
+    if (!rawMap) return [];
+    const parsedMap = JSON.parse(rawMap);
+    const entry = parsedMap && typeof parsedMap === "object" ? parsedMap[safeThreadId] : null;
+    if (Array.isArray(entry)) return pruneChatMessages(entry);
+    if (entry && typeof entry === "object" && Array.isArray(entry.messages)) {
+      return pruneChatMessages(entry.messages);
+    }
+  } catch {}
+  return [];
+}
+
 async function readFileAsDataUrl(file) {
   return await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -1861,20 +2027,30 @@ async function readFileAsDataUrl(file) {
 
 function loadChatThreadMessages(profile) {
   const key = chatThreadStorageKey(profile);
-  if (!key) return [];
-  try {
-    const raw = safeStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    const list = Array.isArray(parsed) ? parsed : [];
-    const next = pruneChatMessages(list);
-    if (next.length !== list.length) {
-      safeStorage.setItem(key, JSON.stringify(next.slice(-100)));
+  if (key) {
+    try {
+      const raw = safeStorage.getItem(key);
+      if (raw !== null) {
+        const parsed = JSON.parse(raw);
+        const list = Array.isArray(parsed) ? parsed : [];
+        const next = pruneChatMessages(list);
+        if (next.length !== list.length) {
+          safeStorage.setItem(key, JSON.stringify(next.slice(-100)));
+        }
+        return next;
+      }
+    } catch {
+      return [];
     }
-    return next;
-  } catch {
-    return [];
   }
+  const legacyMessages = loadLegacyChatThreadMessages(getChatThreadId(profile));
+  if (legacyMessages.length && key) {
+    try {
+      safeStorage.setItem(key, JSON.stringify(legacyMessages.slice(-100)));
+    } catch {}
+  }
+  if (!legacyMessages.length) return [];
+  return legacyMessages;
 }
 
 function saveChatThreadMessages(profile, messages) {
@@ -1898,6 +2074,33 @@ function syncChatThreadSummary(profile, messages) {
       ? Math.max(getChatMessageTimestamp(lastMessage), Number(existing?.updatedAt || 0))
       : Number(existing?.updatedAt || Date.now())
   });
+}
+
+function markChatThreadAsRead(profile, messages = null) {
+  if (!profile) return [];
+  const threadId = getChatThreadId(profile);
+  const existing = (state.chatThreads || []).find((item) => String(item?.id || "") === threadId) || null;
+  const currentMessages = pruneChatMessages(Array.isArray(messages) ? messages : loadChatThreadMessages(profile));
+  let changed = false;
+  const nextMessages = currentMessages.map((message) => {
+    if (message?.from !== "self" && !message?.read) {
+      changed = true;
+      return { ...message, read: true };
+    }
+    return message;
+  });
+  if (changed) {
+    saveChatThreadMessages(profile, nextMessages);
+  }
+  const lastMessage = nextMessages[nextMessages.length - 1] || null;
+  upsertChatThread(profile, {
+    lastMessage: buildChatPreviewText(lastMessage),
+    unreadCount: 0,
+    updatedAt: lastMessage
+      ? Math.max(getChatMessageTimestamp(lastMessage), Number(existing?.updatedAt || 0))
+      : Number(existing?.updatedAt || Date.now())
+  });
+  return nextMessages;
 }
 
 function updateCurrentChatMessages(updater) {
@@ -1985,10 +2188,11 @@ function openChatWithProfile(profile) {
   state.profileModal = { open: false, profile: null };
   state.activeTab = "chat";
   const sameThread = state.chatModal.open && getChatThreadId(state.chatModal.profile) === getChatThreadId(nextProfile);
+  const nextMessages = markChatThreadAsRead(nextProfile);
   state.chatModal = {
     open: true,
     profile: nextProfile,
-    messages: loadChatThreadMessages(nextProfile),
+    messages: nextMessages,
     draft: sameThread ? (state.chatModal.draft || "") : "",
     attachments: sameThread ? (state.chatModal.attachments || []) : []
   };
@@ -2031,6 +2235,7 @@ function sendChatMessage() {
   saveChatThreadMessages(state.chatModal.profile, state.chatModal.messages);
   upsertChatThread(state.chatModal.profile, {
     lastMessage: text || buildChatPreviewText({ attachments }),
+    unreadCount: 0,
     updatedAt: getChatMessageTimestamp({ createdAt })
   });
   render();
@@ -2227,7 +2432,7 @@ function loadUserScopedPersisted(user) {
     const lastMessage = messages[messages.length - 1] || null;
     return {
       ...thread,
-      lastMessage: buildChatPreviewText(lastMessage),
+      lastMessage: lastMessage ? buildChatPreviewText(lastMessage) : String(thread?.lastMessage || ""),
       updatedAt: lastMessage
         ? Math.max(getChatMessageTimestamp(lastMessage), Number(thread?.updatedAt || 0))
         : Number(thread?.updatedAt || Date.now())
@@ -4855,6 +5060,7 @@ function renderAuthScreen() {
 
 function renderDrawer() {
   const unread = state.notifications.filter((n) => !n.read).length;
+  const chatUnread = getChatUnreadCount();
   const switchLinks = renderRoleSwitchLinks();
   const isCeo = isCeoUser();
   const catalogLabel = getBusinessCatalogLabel(state.userProfile);
@@ -4867,12 +5073,12 @@ function renderDrawer() {
   const avatarFit = logoFitClass(isLocalBusinessProfile(state.userProfile));
   const navItems = [
     { id: "feed", label: "Feed", icon: "home" },
-    { id: "chat", label: "Chats", icon: "messages-square" },
+    { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat" },
     { id: "search", label: "Suche", icon: "search" },
     { id: "map", label: "Karte", icon: "map" },
     { id: "profile", label: "Profil", icon: "user" },
     { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
-    { id: "notifications", label: "Updates", icon: "bell", badge: unread },
+    { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
     { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
     { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
     { id: "settings", label: "Optionen", icon: "settings" }
@@ -4904,7 +5110,7 @@ function renderDrawer() {
                   : `${icon(item.icon, "w-4 h-4")} ${item.label}`
                 }
               </div>
-              ${item.badge ? `<span data-unread-badge="drawer" class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge}</span>` : ""}
+              ${item.badge ? `<span ${item.badgeType === "chat" ? 'data-chat-badge="drawer"' : 'data-unread-badge="drawer"'} class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge > 9 ? "9+" : item.badge}</span>` : ""}
             </button>
           `).join("")}
         </nav>
@@ -5339,18 +5545,22 @@ function stopLiveListeners() {
 
 function updateNotificationBadges() {
   const unread = state.notifications.filter((n) => !n.read).length;
-  const badgeText = unread > 9 ? "9+" : String(unread);
+  const chatUnread = getChatUnreadCount();
+  const headerUnread = unread + chatUnread;
+  const headerBadgeText = headerUnread > 9 ? "9+" : String(headerUnread);
+  const notifBadgeText = unread > 9 ? "9+" : String(unread);
+  const chatBadgeText = chatUnread > 9 ? "9+" : String(chatUnread);
   const drawerToggle = document.getElementById("drawerToggle");
   if (drawerToggle) {
     let badge = drawerToggle.querySelector("[data-unread-badge=\"header\"]");
-    if (unread > 0) {
+    if (headerUnread > 0) {
       if (!badge) {
         badge = document.createElement("span");
         badge.dataset.unreadBadge = "header";
         badge.className = "absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg";
         drawerToggle.appendChild(badge);
       }
-      if (badge.textContent !== badgeText) badge.textContent = badgeText;
+      if (badge.textContent !== headerBadgeText) badge.textContent = headerBadgeText;
     } else if (badge) {
       badge.remove();
     }
@@ -5366,7 +5576,23 @@ function updateNotificationBadges() {
         badge.className = "bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md";
         drawerNotifBtn.appendChild(badge);
       }
-      if (badge.textContent !== badgeText) badge.textContent = badgeText;
+      if (badge.textContent !== notifBadgeText) badge.textContent = notifBadgeText;
+    } else if (badge) {
+      badge.remove();
+    }
+  }
+
+  const drawerChatBtn = document.querySelector("[data-nav=\"chat\"]");
+  if (drawerChatBtn) {
+    let badge = drawerChatBtn.querySelector("[data-chat-badge=\"drawer\"]");
+    if (chatUnread > 0) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.dataset.chatBadge = "drawer";
+        badge.className = "bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md";
+        drawerChatBtn.appendChild(badge);
+      }
+      if (badge.textContent !== chatBadgeText) badge.textContent = chatBadgeText;
     } else if (badge) {
       badge.remove();
     }
@@ -9950,6 +10176,7 @@ function renderChatView() {
           <div class="space-y-3">
             ${threads.map((thread) => {
               const avatarUrl = getOptimizedImageUrl(thread.avatar, "avatar");
+              const unreadCount = Math.max(0, Number(thread.unreadCount || 0));
               return `
                 <button
                   data-chat-open-thread="true"
@@ -9962,11 +10189,14 @@ function renderChatView() {
                   <img src="${escapeHtml(avatarUrl)}" class="w-14 h-14 rounded-2xl object-cover shadow-sm" />
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center justify-between gap-3">
-                      <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(thread.name || "User")}</p>
+                      <div class="min-w-0 flex-1 flex items-center gap-2">
+                        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(thread.name || "User")}</p>
+                        ${unreadCount ? `<span class="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">${unreadCount > 9 ? "9+" : unreadCount}</span>` : ""}
+                      </div>
                       <span class="text-[9px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(formatRelative(new Date(Number(thread.updatedAt || Date.now()))))}</span>
                     </div>
                     <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate mt-1">@${escapeHtml(String(thread.handle || "user").replace(/^@/, ""))}</p>
-                    <p class="text-sm text-slate-500 truncate mt-2">${escapeHtml(thread.lastMessage || "Chat oeffnen")}</p>
+                    <p class="text-sm ${unreadCount ? "text-slate-800 font-semibold" : "text-slate-500"} truncate mt-2">${escapeHtml(thread.lastMessage || "Chat oeffnen")}</p>
                   </div>
                 </button>
               `;
@@ -10088,7 +10318,9 @@ function renderChatView() {
 
 function renderHeader() {
   const unread = state.notifications.filter((n) => !n.read).length;
-  const badge = unread > 9 ? "9+" : String(unread || "");
+  const chatUnread = getChatUnreadCount();
+  const headerUnread = unread + chatUnread;
+  const badge = headerUnread > 9 ? "9+" : String(headerUnread || "");
   const branding = resolveHeaderBranding();
   const avatarUrl = branding.logoUrl;
   const avatarFit = logoFitClass(branding.isBusinessLogo);
@@ -10124,7 +10356,7 @@ function renderHeader() {
           <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
           <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
           <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
-          ${unread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
+          ${headerUnread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
         </button>
         <div class="text-center">
           <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">CHATS</h1>
@@ -10142,7 +10374,7 @@ function renderHeader() {
         <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
-        ${unread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
+        ${headerUnread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
       </button>
       <div class="text-center cursor-pointer" data-nav="feed">
         <h1 id="headerTitle" class="${titleClass}">${escapeHtml(branding.title)}</h1>
@@ -10645,6 +10877,9 @@ function render() {
   }
 
   renderOverlays();
+  if (mode === "main" || lastRenderMode === "main") {
+    updateNotificationBadges();
+  }
   updateFocusRotation();
 
   if (state.user && state.activeTab === "map") {
