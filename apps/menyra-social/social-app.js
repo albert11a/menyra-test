@@ -4054,6 +4054,10 @@ function closeLikesModal() {
 }
 
 function closeActiveModal() {
+  if (state.chatModal.open) {
+    closeChatModal();
+    return true;
+  }
   if (state.likesModal.open) {
     closeLikesModal();
     return true;
@@ -4091,7 +4095,8 @@ function closeActiveModal() {
 
 function isAnyModalOpen() {
   return !!(
-    state.profileModal.open
+    state.chatModal.open
+    || state.profileModal.open
     || state.postModal.open
     || state.likesModal.open
     || state.menuModal.open
@@ -6457,7 +6462,7 @@ function renderPublicProfileView() {
                   ${followLabel}
                 </span>
               </button>
-              <button ${isLocked ? "disabled" : ""} class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 ${isLocked ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white text-slate-900 active:scale-[0.95]"} transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
+              <button data-open-chat="profile" data-chat-uid="${escapeHtml(profile.uid || "")}" data-chat-handle="${escapeHtml(profile.handle || "")}" data-chat-name="${escapeHtml(profile.name || "")}" data-chat-avatar="${escapeHtml(profile.avatar || "")}" ${isLocked ? "disabled" : ""} class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 ${isLocked ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white text-slate-900 active:scale-[0.95]"} transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
                 ${icon("message-circle", "w-5 h-5")}
               </button>
             </div>
@@ -8070,6 +8075,55 @@ async function toggleFollow(handle, target = {}) {
   }
 }
 
+function renderChatModal() {
+  if (!state.chatModal.open || !state.chatModal.profile) return "";
+  const partner = state.chatModal.profile;
+  const avatarUrl = getOptimizedImageUrl(partner.avatar, "avatar");
+  const messages = Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [];
+  return `
+    <div class="fixed inset-0 z-[65] modal-overlay">
+      <div id="chatModalOverlay" class="absolute inset-0 bg-black/60"></div>
+      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 h-[85vh] flex flex-col overflow-hidden modal-sheet">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
+            <button id="chatModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("arrow-left", "w-4 h-4")}</button>
+            <img src="${escapeHtml(avatarUrl)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
+            <div class="min-w-0 flex-1">
+              <div class="text-sm font-black text-slate-900 truncate">${escapeHtml(partner.name || "User")}</div>
+              <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">@${escapeHtml(String(partner.handle || "user").replace(/^@/, ""))}</div>
+            </div>
+          </div>
+          <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto no-scrollbar modal-scroll px-5 py-4 space-y-3 bg-slate-50">
+            ${messages.length ? messages.map((message) => `
+              <div class="flex ${message.from === "self" ? "justify-end" : "justify-start"}">
+                <div class="max-w-[82%] rounded-[1.6rem] px-4 py-3 ${message.from === "self" ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-100"}">
+                  <div class="text-sm font-medium leading-relaxed whitespace-pre-wrap">${escapeHtml(message.text || "")}</div>
+                  <div class="text-[9px] font-bold uppercase tracking-widest mt-2 ${message.from === "self" ? "text-slate-300" : "text-slate-400"}">${escapeHtml(formatRelative(toDateSafe(message.createdAt) || new Date()))}</div>
+                </div>
+              </div>
+            `).join("") : `
+              <div class="h-full flex items-center justify-center text-center py-16">
+                <div>
+                  <div class="w-14 h-14 rounded-[1.4rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
+                    ${icon("message-circle", "w-6 h-6")}
+                  </div>
+                  <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Noch keine Nachrichten</p>
+                </div>
+              </div>
+            `}
+          </div>
+          <div class="p-4 border-t border-slate-100 bg-white">
+            <div class="flex items-end gap-3">
+              <textarea id="chatMessageInput" rows="1" placeholder="Nachricht..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none">${escapeHtml(state.chatModal.draft || "")}</textarea>
+              <button id="chatSendBtn" class="px-5 h-[52px] rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest active:scale-95">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderProfileModal() {
   if (!state.profileModal.open || !state.profileModal.profile) return "";
   const p = state.profileModal.profile;
@@ -8095,9 +8149,14 @@ function renderProfileModal() {
                 <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
               </div>
-              <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" ${hasPendingFollowRequest ? "disabled" : ""} class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : (hasPendingFollowRequest ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20")} ${hasPendingFollowRequest ? "cursor-default" : ""}">
-                ${isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"))}
-              </button>
+              <div class="flex items-center gap-2">
+                <button id="profileChatBtn" data-chat-uid="${escapeHtml(p.uid || "")}" data-chat-handle="${escapeHtml(p.handle || "")}" data-chat-name="${escapeHtml(p.name || "")}" data-chat-avatar="${escapeHtml(p.avatar || "")}" ${isLocked ? "disabled" : ""} class="w-11 h-11 rounded-2xl border border-slate-200 ${isLocked ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white text-slate-700"} flex items-center justify-center">
+                  ${icon("message-circle", "w-4 h-4")}
+                </button>
+                <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" ${hasPendingFollowRequest ? "disabled" : ""} class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : (hasPendingFollowRequest ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20")} ${hasPendingFollowRequest ? "cursor-default" : ""}">
+                  ${isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"))}
+                </button>
+              </div>
             </div>
 
             <p class="mt-5 text-sm font-medium text-slate-600 leading-relaxed">${escapeHtml(p.bio)}</p>
@@ -9772,6 +9831,11 @@ function ensureOverlayRoot() {
     profileRoot.id = "profileOverlayRoot";
     root.appendChild(profileRoot);
   }
+  if (!document.getElementById("chatOverlayRoot")) {
+    const chatRoot = document.createElement("div");
+    chatRoot.id = "chatOverlayRoot";
+    root.appendChild(chatRoot);
+  }
   if (!document.getElementById("postOverlayRoot")) {
     const postRoot = document.createElement("div");
     postRoot.id = "postOverlayRoot";
@@ -9835,6 +9899,9 @@ function renderOverlays(options = {}) {
   const updateProfile = Object.prototype.hasOwnProperty.call(options, "updateProfile")
     ? options.updateProfile
     : !state.likesModal.open;
+  const updateChat = Object.prototype.hasOwnProperty.call(options, "updateChat")
+    ? options.updateChat
+    : !state.likesModal.open;
   const updatePost = Object.prototype.hasOwnProperty.call(options, "updatePost")
     ? options.updatePost
     : !state.likesModal.open;
@@ -9858,6 +9925,7 @@ function renderOverlays(options = {}) {
     : !state.likesModal.open;
   const root = ensureOverlayRoot();
   const profileRoot = document.getElementById("profileOverlayRoot");
+  const chatRoot = document.getElementById("chatOverlayRoot");
   const postRoot = document.getElementById("postOverlayRoot");
   const likesRoot = document.getElementById("likesOverlayRoot");
   const menuRoot = document.getElementById("menuOverlayRoot");
@@ -9866,6 +9934,7 @@ function renderOverlays(options = {}) {
   const leadRoot = document.getElementById("leadOverlayRoot");
   const customerRoot = document.getElementById("customerOverlayRoot");
   let profileChanged = false;
+  let chatChanged = false;
   let postChanged = false;
   let likesChanged = false;
   let menuChanged = false;
@@ -9880,6 +9949,14 @@ function renderOverlays(options = {}) {
     if (profileRoot && profileChanged) {
       profileRoot.innerHTML = profileHtml;
       overlayCache.profile = profileHtml;
+    }
+  }
+  if (updateChat) {
+    const chatHtml = renderChatModal();
+    chatChanged = chatHtml !== overlayCache.chat;
+    if (chatRoot && chatChanged) {
+      chatRoot.innerHTML = chatHtml;
+      overlayCache.chat = chatHtml;
     }
   }
   if (updatePost) {
@@ -9939,10 +10016,10 @@ function renderOverlays(options = {}) {
     }
   }
   syncModalOpenUiState();
-  if (window.lucide?.createIcons && (profileChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged)) {
+  if (window.lucide?.createIcons && (profileChanged || chatChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged)) {
     window.lucide.createIcons();
   }
-  bindOverlayEvents({ profileChanged, postChanged, likesChanged, menuChanged, menuDetailChanged, focusChanged, leadChanged, customerChanged });
+  bindOverlayEvents({ profileChanged, chatChanged, postChanged, likesChanged, menuChanged, menuDetailChanged, focusChanged, leadChanged, customerChanged });
 }
 
 function bindImageFallbacks(root = document) {
@@ -10251,6 +10328,7 @@ function bindModalDismiss(target, handler, { selfOnly = false } = {}) {
 
 function bindOverlayEvents({
   profileChanged = true,
+  chatChanged = true,
   postChanged = true,
   likesChanged = true,
   menuChanged = true,
@@ -10275,10 +10353,21 @@ function bindOverlayEvents({
   if (profileChanged) {
     const profileModalOverlay = document.getElementById("profileModalOverlay");
     const profileModalClose = document.getElementById("profileModalClose");
+    const profileChatBtn = document.getElementById("profileChatBtn");
     const profileFollowBtn = document.getElementById("profileFollowBtn");
     const profileOpenBtn = document.getElementById("profileOpenBtn");
     bindModalDismiss(profileModalOverlay, closeProfileModal, { selfOnly: true });
     bindModalDismiss(profileModalClose, closeProfileModal);
+    if (profileChatBtn) {
+      profileChatBtn.addEventListener("click", () => {
+        openChatWithProfile({
+          uid: profileChatBtn.dataset.chatUid || "",
+          handle: profileChatBtn.dataset.chatHandle || "",
+          name: profileChatBtn.dataset.chatName || "User",
+          avatar: profileChatBtn.dataset.chatAvatar || ""
+        });
+      });
+    }
     if (profileFollowBtn) {
       profileFollowBtn.addEventListener("click", () => {
         const handle = profileFollowBtn.dataset.handle;
@@ -10301,6 +10390,44 @@ function bindOverlayEvents({
         state.profileModal = { open: false, profile: null };
         state.activeTab = "profile";
         render();
+      });
+    }
+  }
+
+  if (chatChanged) {
+    const chatModalOverlay = document.getElementById("chatModalOverlay");
+    const chatModalClose = document.getElementById("chatModalClose");
+    const chatSendBtn = document.getElementById("chatSendBtn");
+    const chatInput = document.getElementById("chatMessageInput");
+    const chatMessages = document.getElementById("chatMessages");
+    bindModalDismiss(chatModalOverlay, closeChatModal, { selfOnly: true });
+    bindModalDismiss(chatModalClose, closeChatModal);
+    if (chatSendBtn) {
+      chatSendBtn.addEventListener("click", () => {
+        sendChatMessage();
+      });
+    }
+    if (chatInput) {
+      chatInput.addEventListener("input", () => {
+        state.chatModal.draft = chatInput.value;
+      });
+      chatInput.addEventListener("keydown", (evt) => {
+        if (evt.key === "Enter" && !evt.shiftKey) {
+          evt.preventDefault();
+          sendChatMessage();
+        }
+      });
+      queueMicrotask(() => {
+        chatInput.focus({ preventScroll: true });
+        const len = chatInput.value.length;
+        try {
+          chatInput.setSelectionRange(len, len);
+        } catch {}
+      });
+    }
+    if (chatMessages) {
+      queueMicrotask(() => {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
       });
     }
   }
@@ -11061,6 +11188,17 @@ function bindAppEvents() {
         id: btn.dataset.targetId || "",
         name: btn.dataset.targetName || "",
         avatar: btn.dataset.targetAvatar || ""
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-open-chat]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openChatWithProfile({
+        uid: btn.dataset.chatUid || "",
+        handle: btn.dataset.chatHandle || "",
+        name: btn.dataset.chatName || "User",
+        avatar: btn.dataset.chatAvatar || ""
       });
     });
   });
