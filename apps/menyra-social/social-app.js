@@ -103,7 +103,6 @@ const DEFAULT_PROFILE = {
   handle: "",
   bio: "",
   avatar: "",
-  privateAccount: false,
   location: "",
   address: "",
   followers: 0,
@@ -265,7 +264,6 @@ const state = {
   roleSwitchRoles: [],
   roleSwitchRestaurantId: "",
   followingHandles: [],
-  followRequestTargets: [],
   profileView: null,
   profileBackTab: "feed",
   profileViewMode: "grid",
@@ -967,75 +965,6 @@ function normalizeSearchQuery(value) {
 
 function normalizeSearchKey(value) {
   return normalizeSearchQuery(value).toLowerCase();
-}
-
-function toBool(value, fallback = false) {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "number") return value !== 0;
-  if (typeof value === "string") {
-    const key = value.trim().toLowerCase();
-    if (["1", "true", "yes", "ja", "on"].includes(key)) return true;
-    if (["0", "false", "no", "nein", "off"].includes(key)) return false;
-  }
-  return fallback;
-}
-
-function resolvePrivateAccountFlag(source, fallback = false) {
-  if (!source || typeof source !== "object") return !!fallback;
-  if (source.privateAccount !== undefined) return toBool(source.privateAccount, fallback);
-  if (source.isPrivate !== undefined) return toBool(source.isPrivate, fallback);
-  if (source.private !== undefined) return toBool(source.private, fallback);
-  if (source.privacy && typeof source.privacy === "object") {
-    if (source.privacy.privateAccount !== undefined) return toBool(source.privacy.privateAccount, fallback);
-    if (source.privacy.isPrivate !== undefined) return toBool(source.privacy.isPrivate, fallback);
-  }
-  return !!fallback;
-}
-
-function syncPrivateSettingFromProfile(profile = state.userProfile) {
-  const nextPrivate = resolvePrivateAccountFlag(profile, false);
-  if (state.settings.privateAccount === nextPrivate) return;
-  state.settings = { ...state.settings, privateAccount: nextPrivate };
-  saveSettings(state.settings);
-}
-
-function buildFollowDocId(targetType = "", targetId = "", handle = "") {
-  const type = String(targetType || "handle");
-  const id = String(targetId || "").trim();
-  const key = String(handle || "").replace(/^@/, "");
-  return `${type}_${id || key}`;
-}
-
-function buildFollowTargetKey(targetType = "", targetId = "", handle = "") {
-  const type = String(targetType || "handle");
-  const id = String(targetId || "").trim();
-  const key = normalizeHandle(handle || "");
-  if (id) return `${type}:${id}`;
-  if (key) return `${type}:@${key}`;
-  return "";
-}
-
-function isPendingFollowRequestTarget(targetType = "", targetId = "", handle = "") {
-  const key = buildFollowTargetKey(targetType, targetId, handle);
-  if (!key) return false;
-  return Array.isArray(state.followRequestTargets) && state.followRequestTargets.includes(key);
-}
-
-function setPendingFollowRequestTarget(targetType = "", targetId = "", handle = "", pending = true) {
-  const key = buildFollowTargetKey(targetType, targetId, handle);
-  if (!key) return;
-  const list = Array.isArray(state.followRequestTargets) ? state.followRequestTargets.slice() : [];
-  const idx = list.indexOf(key);
-  if (pending && idx < 0) list.push(key);
-  if (!pending && idx >= 0) list.splice(idx, 1);
-  state.followRequestTargets = list;
-}
-
-function findFollowingHandleIndex(handle = "") {
-  const key = normalizeHandle(handle || "");
-  if (!key) return -1;
-  const list = Array.isArray(state.followingHandles) ? state.followingHandles : [];
-  return list.findIndex((item) => normalizeHandle(item || "") === key);
 }
 
 function isCeoUser() {
@@ -1765,29 +1694,6 @@ function saveSettings(settings) {
   safeStorage.setItem(STORAGE_KEYS.settings, JSON.stringify(settings));
 }
 
-async function persistPrivateAccountSetting(enabled) {
-  if (!state.user) return;
-  const isPrivate = !!enabled;
-  const isBusiness = isLocalBusinessProfile(state.userProfile);
-  if (isBusiness && state.userProfile.restaurantId) {
-    const restaurantId = String(state.userProfile.restaurantId || "");
-    await setDoc(doc(db, "restaurants", restaurantId), {
-      privateAccount: isPrivate,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-    const current = state.restaurants.find((r) => String(r.id) === restaurantId) || {};
-    state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...current, privateAccount: isPrivate }]);
-    rebuildBusinessLocations();
-  } else {
-    await setDoc(doc(db, "users", state.user.uid), {
-      privateAccount: isPrivate,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-  }
-  state.userProfile.privateAccount = isPrivate;
-  saveUserProfileToStorage();
-}
-
 function saveNotifications(notifications) {
   const uid = state.user?.uid || "";
   if (!uid) return;
@@ -1923,8 +1829,6 @@ function loadUserScopedPersisted(user) {
     state.userProfile = { ...DEFAULT_PROFILE };
   }
   state.userProfile.uid = uid;
-  state.userProfile.privateAccount = resolvePrivateAccountFlag(state.userProfile, false);
-  syncPrivateSettingFromProfile(state.userProfile);
 
   userAvatarCache = "";
   lastShellAvatarUrl = "";
@@ -1990,7 +1894,6 @@ function loadUserScopedPersisted(user) {
       state.followingHandles = [];
     }
   }
-  state.followRequestTargets = [];
 }
 
 function resetUserScopedState() {
@@ -2018,7 +1921,6 @@ function resetUserScopedState() {
   state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
   state.selectedBusiness = null;
   state.followingHandles = [];
-  state.followRequestTargets = [];
   state.notifications = [];
   state.roleSwitchRoles = [];
   state.roleSwitchRestaurantId = "";
@@ -2323,13 +2225,11 @@ function normalizeProfile(data, user) {
   const roles = normalizeRoleList(data?.roles || data?.role || "");
   const lat = data?.gpsLat ?? data?.lat ?? null;
   const lng = data?.gpsLng ?? data?.lng ?? null;
-  const privateAccount = resolvePrivateAccountFlag(data, false);
   return {
     name: displayName,
     handle: data?.handle || normalizeHandle(displayName),
     bio: data?.bio || "",
     avatar: data?.avatarUrl || data?.avatar || user?.photoURL || "",
-    privateAccount,
     location: data?.city || "Prishtina",
     address: data?.address || "",
     followers: data?.followersCount ?? 0,
@@ -2352,13 +2252,11 @@ function normalizeBusinessProfile(rest = {}, user) {
   const handle = resolvePreferredHandle({ handle: rest?.handle || "", name: displayName }, displayName);
   const lat = rest?.gpsLat ?? rest?.lat ?? null;
   const lng = rest?.gpsLng ?? rest?.lng ?? null;
-  const privateAccount = resolvePrivateAccountFlag(rest, false);
   return {
     name: displayName,
     handle: handle || normalizeHandle(displayName),
     bio: rest?.bio || rest?.description || "",
     avatar: rest?.logoUrl || rest?.logo || "",
-    privateAccount,
     location: rest?.city || "Prishtina",
     address: rest?.address || "",
     followers: rest?.followersCount ?? rest?.followers ?? 0,
@@ -5159,14 +5057,6 @@ function bindNotificationsDelegation() {
       }
       return;
     }
-    const requestActionBtn = target.closest("[data-follow-request-action]");
-    if (requestActionBtn) {
-      const id = requestActionBtn.dataset.notifId;
-      const action = requestActionBtn.dataset.followRequestAction || "";
-      if (!id || !action) return;
-      void handleFollowRequestDecision(id, action);
-      return;
-    }
     const openBtn = target.closest("[data-notif-open]");
     if (openBtn) {
       const id = openBtn.dataset.notifOpen;
@@ -5210,7 +5100,6 @@ function startLiveListeners(user) {
         normalized.followers = state.userProfile?.followers ?? normalized.followers;
       }
       state.userProfile = normalized;
-      syncPrivateSettingFromProfile(state.userProfile);
       saveUserProfileToStorage();
       const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
       if (!isPlaceholderUrl(resolvedAvatar)) {
@@ -5239,13 +5128,11 @@ function startLiveListeners(user) {
         avatar: safeAvatar,
         followers: data.followersCount ?? state.userProfile.followers,
         following: data.followingCount ?? state.userProfile.following,
-        privateAccount: resolvePrivateAccountFlag(data, state.userProfile.privateAccount),
         role: data.role || state.userProfile.role,
         location: data.city || state.userProfile.location,
         bio: data.bio || state.userProfile.bio
       };
       Object.assign(state.userProfile, next);
-      syncPrivateSettingFromProfile(state.userProfile);
       saveUserProfileToStorage();
       const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
       if (!isPlaceholderUrl(resolvedAvatar)) {
@@ -5287,19 +5174,9 @@ function startLiveListeners(user) {
         commentId: data.commentId || "",
         userHandle: data.userHandle || data.handle || "",
         userUid: data.userUid || data.uid || "",
-        requesterUid: data.requesterUid || data.userUid || data.uid || "",
-        requesterHandle: data.requesterHandle || data.userHandle || data.handle || "",
-        requesterRestaurantId: data.requesterRestaurantId || "",
         ownerType: data.ownerType || "",
         ownerId: data.ownerId || "",
-        restaurantId: data.restaurantId || "",
-        requestId: data.requestId || "",
-        requestStatus: data.requestStatus || data.status || "",
-        targetType: data.targetType || "",
-        targetId: data.targetId || "",
-        targetHandle: data.targetHandle || "",
-        targetName: data.targetName || "",
-        targetAvatar: data.targetAvatar || ""
+        restaurantId: data.restaurantId || ""
       };
     });
     handleNotificationsUpdate(items);
@@ -6350,31 +6227,14 @@ function renderPublicProfileView() {
   const profile = view.profile;
   const posts = view.posts || profile.posts || [];
   const followKey = String(profile.handle || "").replace(/^@/, "");
-  const normalizedFollowKey = normalizeHandle(followKey || "");
-  const isFollowing = state.followingHandles.some((entry) => normalizeHandle(entry || "") === normalizedFollowKey);
-  const ownUid = String(state.user?.uid || "");
-  const ownRestaurantId = String(state.userProfile?.restaurantId || "");
-  const isOwnProfile = (profile.uid && String(profile.uid) === ownUid)
-    || (profile.restaurantId && ownRestaurantId && String(profile.restaurantId) === ownRestaurantId);
-  const isPrivateAccount = resolvePrivateAccountFlag(profile, false);
-  const followTargetType = profile.restaurantId ? "restaurant" : (profile.uid ? "user" : "");
-  const followTargetId = profile.restaurantId || profile.uid || "";
-  const isPendingFollowRequest = !isFollowing && isPrivateAccount && isPendingFollowRequestTarget(followTargetType, followTargetId, followKey);
-  const followButtonLabel = isFollowing ? "Following" : (isPendingFollowRequest ? "Angefragt" : "Follow");
-  const followButtonClass = isFollowing
-    ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200"
-    : (isPendingFollowRequest
-      ? "bg-slate-100 text-slate-500 shadow-none border border-slate-200"
-      : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent");
-  const canViewPrivateContent = !isPrivateAccount || isFollowing || isOwnProfile;
-  const visiblePosts = canViewPrivateContent ? posts : [];
+  const isFollowing = state.followingHandles.includes(followKey);
   const typeLabel = profile.restaurantId ? "Business" : "User";
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
   const isMediaTab = state.profileContentTab === "media";
   const isCheckinTab = state.profileContentTab === "checkins";
-  const filteredPosts = isMediaTab ? visiblePosts.filter((p) => p.isVideo) : visiblePosts;
+  const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
@@ -6416,19 +6276,14 @@ function renderPublicProfileView() {
               <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profile.name || "User")}</h1>
               <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>
               <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
-              ${isPrivateAccount ? `
-                <p class="inline-flex items-center gap-1.5 mt-3 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest">
-                  ${icon("lock", "w-3.5 h-3.5")} Privates Konto
-                </p>
-              ` : ""}
               <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / ${typeLabel}</p>
             </div>
 
             <div class="flex gap-4">
-              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-follow-pending="${isPendingFollowRequest ? "1" : "0"}" data-target-type="${escapeHtml(followTargetType)}" data-target-id="${escapeHtml(followTargetId)}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${followButtonClass}">
+              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${isFollowing ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200" : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent"}">
                 <span class="relative z-10 flex items-center gap-2">
-                  ${isFollowing ? icon("check", "w-4 h-4") : (isPendingFollowRequest ? icon("clock-3", "w-4 h-4") : "")}
-                  ${followButtonLabel}
+                  ${isFollowing ? icon("check", "w-4 h-4") : ""}
+                  ${isFollowing ? "Following" : "Follow"}
                 </span>
               </button>
               <button class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 bg-white text-slate-900 active:scale-[0.95] transition-all duration-300 shadow-sm hover:shadow-md hover:border-slate-300 group">
@@ -6445,21 +6300,9 @@ function renderPublicProfileView() {
       ${isCheckinTab ? `
         ${renderProfileCheckins()}
       ` : `
-        ${canViewPrivateContent ? `
-          <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
-            ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
-          </div>
-        ` : `
-          <div class="px-6">
-            <div class="rounded-[2rem] border border-slate-200 bg-slate-50 p-8 text-center">
-              <div class="mx-auto w-12 h-12 rounded-full bg-white border border-slate-200 flex items-center justify-center text-slate-500 mb-4">
-                ${icon("lock", "w-5 h-5")}
-              </div>
-              <p class="font-black text-slate-900 text-sm">Dieses Konto ist privat</p>
-              <p class="text-[11px] font-bold text-slate-400 mt-1">Folge diesem Profil, um die Beitraege zu sehen.</p>
-            </div>
-          </div>
-        `}
+        <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
+          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
+        </div>
       `}
       ` : `
         ${renderProfileMenuView(profile)}
@@ -7565,236 +7408,6 @@ async function openProfileFromUser(input) {
   }
 }
 
-function getFollowRequestsCollectionRef(targetType, targetId) {
-  const type = String(targetType || "");
-  const id = String(targetId || "").trim();
-  if (!id) return null;
-  if (type === "user") return collection(db, "users", id, "followRequests");
-  if (type === "restaurant") return collection(db, "restaurants", id, "followRequests");
-  return null;
-}
-
-async function loadOutgoingFollowRequestsFromFirebase({ force = false } = {}) {
-  void force;
-  if (!state.user) return;
-  try {
-    const ref = collection(db, "users", state.user.uid, "followRequestsOut");
-    const snap = await getDocs(query(ref, limit(300)));
-    const keys = [];
-    snap.forEach((docSnap) => {
-      const data = docSnap.data() || {};
-      if (String(data.status || "").toLowerCase() !== "pending") return;
-      const key = buildFollowTargetKey(
-        data.targetType || "",
-        data.targetId || "",
-        data.targetHandle || data.handle || ""
-      );
-      if (key) keys.push(key);
-    });
-    state.followRequestTargets = Array.from(new Set(keys));
-  } catch (err) {
-    console.error(err);
-    state.followRequestTargets = [];
-  }
-}
-
-async function resolveFollowTargetMeta({ targetType = "", targetId = "", safeHandle = "", target = {} } = {}) {
-  let type = String(targetType || "");
-  let id = String(targetId || "").trim();
-  let handle = String(safeHandle || "").replace(/^@/, "");
-  let name = String(target?.name || "").trim();
-  let avatar = String(target?.avatar || "").trim();
-  let isPrivate = false;
-  let ownerUid = "";
-
-  if (!type && id) {
-    if (state.restaurants.some((item) => String(item.id) === id)) type = "restaurant";
-    else type = "user";
-  }
-
-  if (!id && handle) {
-    const userSnap = await resolveUserByHandle(handle);
-    if (userSnap?.id) {
-      type = type || "user";
-      id = String(userSnap.id);
-    }
-  }
-
-  if (type === "restaurant" && id) {
-    let rest = state.restaurants.find((item) => String(item.id) === id) || null;
-    if (!rest) {
-      try {
-        const snap = await getDoc(doc(db, "restaurants", id));
-        if (snap.exists()) rest = { id: snap.id, ...(snap.data() || {}) };
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    if (rest) {
-      isPrivate = resolvePrivateAccountFlag(rest, false);
-      ownerUid = String(rest.ownerUid || "");
-      handle = String(rest.handle || handle || "").replace(/^@/, "");
-      name = String(rest.name || rest.restaurantName || name || "").trim();
-      avatar = String(rest.logoUrl || rest.logo || avatar || "").trim();
-    }
-  } else if (type === "user" && id) {
-    let userData = null;
-    if (state.profileView?.profile && String(state.profileView.profile.uid || "") === id) {
-      userData = state.profileView.profile;
-    } else {
-      try {
-        const snap = await getDoc(doc(db, "users", id));
-        if (snap.exists()) userData = { id: snap.id, ...(snap.data() || {}) };
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    if (userData) {
-      isPrivate = resolvePrivateAccountFlag(userData, false);
-      ownerUid = id;
-      handle = String(userData.handle || handle || "").replace(/^@/, "");
-      name = String(userData.displayName || userData.name || name || "").trim();
-      avatar = String(userData.avatarUrl || userData.avatar || avatar || "").trim();
-    }
-  }
-
-  if (type === "user" && id) ownerUid = ownerUid || id;
-
-  return {
-    targetType: type || "user",
-    targetId: id,
-    targetHandle: handle,
-    targetName: name,
-    targetAvatar: avatar,
-    isPrivate,
-    targetOwnerUid: ownerUid
-  };
-}
-
-async function handleFollowRequestDecision(notifId, action = "accept") {
-  if (!state.user || !notifId) return;
-  const notif = state.notifications.find((item) => String(item.id) === String(notifId));
-  if (!notif || notif.type !== "follow_request") return;
-  const decision = action === "reject" ? "rejected" : "accepted";
-  const requestId = String(notif.requestId || "").trim();
-  const targetType = String(notif.targetType || "").trim();
-  const targetId = String(notif.targetId || "").trim();
-  const requesterUid = String(notif.requesterUid || notif.userUid || "").trim();
-  if (!requestId || !targetType || !targetId || !requesterUid) return;
-
-  const requestsCol = getFollowRequestsCollectionRef(targetType, targetId);
-  if (!requestsCol) return;
-  const requestRef = doc(requestsCol, requestId);
-  const notifRef = doc(db, "users", state.user.uid, "notifications", String(notif.id));
-  const outgoingRef = doc(db, "users", requesterUid, "followRequestsOut", requestId);
-
-  try {
-    const requestSnap = await getDoc(requestRef);
-    const requestData = requestSnap.exists() ? (requestSnap.data() || {}) : {};
-    const currentStatus = String(requestData.status || notif.requestStatus || "").toLowerCase();
-    if (currentStatus && currentStatus !== "pending") {
-      await setDoc(notifRef, { requestStatus: currentStatus, read: true, updatedAt: serverTimestamp() }, { merge: true });
-      const idx = state.notifications.findIndex((item) => String(item.id) === String(notif.id));
-      if (idx >= 0) {
-        state.notifications[idx] = { ...state.notifications[idx], requestStatus: currentStatus, read: true };
-        saveNotifications(state.notifications);
-      }
-      if (!updateNotificationsDom() && state.activeTab === "notifications") render();
-      return;
-    }
-
-    if (decision === "accepted") {
-      const targetHandle = String(notif.targetHandle || requestData.targetHandle || "").replace(/^@/, "");
-      const followDocId = buildFollowDocId(targetType, targetId, targetHandle);
-      const followRef = doc(db, "users", requesterUid, "following", followDocId);
-      const followSnap = await getDoc(followRef);
-      const alreadyFollowing = followSnap.exists();
-      if (!alreadyFollowing) {
-        await setDoc(followRef, {
-          handle: targetHandle || "",
-          targetType,
-          targetId,
-          name: String(notif.targetName || requestData.targetName || "").trim(),
-          avatar: String(notif.targetAvatar || requestData.targetAvatar || "").trim(),
-          createdAt: serverTimestamp(),
-          acceptedAt: serverTimestamp()
-        }, { merge: true });
-
-        const requesterRestaurantId = String(notif.requesterRestaurantId || requestData.requesterRestaurantId || "").trim();
-        if (requesterRestaurantId) {
-          try {
-            await updateDoc(doc(db, "restaurants", requesterRestaurantId), { followingCount: increment(1) });
-          } catch (err) {
-            console.error(err);
-          }
-        } else {
-          try {
-            await updateDoc(doc(db, "users", requesterUid), { followingCount: increment(1) });
-          } catch (err) {
-            console.error(err);
-          }
-        }
-
-        if (targetType === "user") {
-          try {
-            await updateDoc(doc(db, "users", targetId), { followersCount: increment(1) });
-          } catch (err) {
-            console.error(err);
-          }
-        } else if (targetType === "restaurant") {
-          try {
-            await updateDoc(doc(db, "restaurants", targetId), { followersCount: increment(1) });
-          } catch (err) {
-            console.error(err);
-          }
-        }
-      }
-
-      const actor = currentUserBadge();
-      await pushUserNotification(requesterUid, {
-        type: "follow_accepted",
-        user: actor.name,
-        userHandle: actor.handle,
-        userUid: actor.uid,
-        avatar: actor.avatar,
-        text: "hat deine Anfrage akzeptiert",
-        targetType,
-        targetId,
-        targetHandle: String(notif.targetHandle || requestData.targetHandle || ""),
-        targetName: String(notif.targetName || requestData.targetName || ""),
-        targetAvatar: String(notif.targetAvatar || requestData.targetAvatar || "")
-      });
-    }
-
-    await setDoc(requestRef, {
-      status: decision,
-      requestStatus: decision,
-      resolvedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-    await setDoc(outgoingRef, {
-      status: decision,
-      requestStatus: decision,
-      resolvedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-    await setDoc(notifRef, {
-      requestStatus: decision,
-      read: true,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-
-    const idx = state.notifications.findIndex((item) => String(item.id) === String(notif.id));
-    if (idx >= 0) {
-      state.notifications[idx] = { ...state.notifications[idx], requestStatus: decision, read: true };
-      saveNotifications(state.notifications);
-    }
-    if (!updateNotificationsDom() && state.activeTab === "notifications") render();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
 async function loadFollowingFromFirebase({ force = false } = {}) {
   if (!state.user) return;
   try {
@@ -7807,11 +7420,9 @@ async function loadFollowingFromFirebase({ force = false } = {}) {
     });
     state.followingHandles = handles;
     saveFollowing(handles);
-    await loadOutgoingFollowRequestsFromFirebase({ force });
   } catch (err) {
     console.error(err);
     state.followingHandles = [];
-    state.followRequestTargets = [];
   }
 }
 
@@ -7836,19 +7447,9 @@ async function loadNotificationsFromFirebase({ force = false } = {}) {
         commentId: data.commentId || "",
         userHandle: data.userHandle || data.handle || "",
         userUid: data.userUid || data.uid || "",
-        requesterUid: data.requesterUid || data.userUid || data.uid || "",
-        requesterHandle: data.requesterHandle || data.userHandle || data.handle || "",
-        requesterRestaurantId: data.requesterRestaurantId || "",
         ownerType: data.ownerType || "",
         ownerId: data.ownerId || "",
-        restaurantId: data.restaurantId || "",
-        requestId: data.requestId || "",
-        requestStatus: data.requestStatus || data.status || "",
-        targetType: data.targetType || "",
-        targetId: data.targetId || "",
-        targetHandle: data.targetHandle || "",
-        targetName: data.targetName || "",
-        targetAvatar: data.targetAvatar || ""
+        restaurantId: data.restaurantId || ""
       });
     });
     state.notifications = items;
@@ -8018,35 +7619,6 @@ async function openNotificationTarget(id) {
     });
     return;
   }
-  if (notif.type === "follow_request") {
-    openProfileFromUser({
-      uid: notif.requesterUid || notif.userUid || "",
-      handle: notif.requesterHandle || notif.userHandle || notif.user || "",
-      name: notif.user || "User",
-      avatar: notif.img || ""
-    });
-    return;
-  }
-  if (notif.type === "follow_accepted") {
-    setPendingFollowRequestTarget(notif.targetType || "", notif.targetId || "", notif.targetHandle || "", false);
-    void loadFollowingFromFirebase({ force: true });
-    if (notif.targetType === "restaurant" && notif.targetId) {
-      openProfileViewFromBusiness({
-        id: notif.targetId,
-        name: notif.targetName || ""
-      }, { showBack: false });
-      return;
-    }
-    if (notif.targetType === "user" && notif.targetId) {
-      openProfileFromUser({
-        uid: notif.targetId,
-        handle: notif.targetHandle || "",
-        name: notif.targetName || "User",
-        avatar: notif.targetAvatar || ""
-      });
-      return;
-    }
-  }
   if (notif.type === "like" || notif.type === "comment") {
     await openPostFromNotification(notif);
   }
@@ -8092,26 +7664,16 @@ async function toggleFollow(handle, target = {}) {
     }
   }
 
-  const targetMeta = await resolveFollowTargetMeta({
-    targetType,
-    targetId,
-    safeHandle,
-    target
-  });
-  const resolvedTargetType = String(targetMeta.targetType || targetType || "user");
-  const resolvedTargetId = String(targetMeta.targetId || targetId || "").trim();
-  const resolvedHandle = String(targetMeta.targetHandle || safeHandle || "").replace(/^@/, "");
-
   const ownRestaurantId = String(state.userProfile.restaurantId || "");
   const ownUid = String(state.user.uid || "");
   const ownHandle = String(state.userProfile.handle || "").replace(/^@/, "").toLowerCase();
-  if (resolvedTargetType === "restaurant" && ownRestaurantId && resolvedTargetId === ownRestaurantId) return;
-  if (resolvedTargetType === "user" && ownUid && resolvedTargetId === ownUid) return;
+  if (targetType === "restaurant" && ownRestaurantId && String(targetId) === ownRestaurantId) return;
+  if (targetType === "user" && ownUid && String(targetId) === ownUid) return;
   if (!targetId && ownHandle && safeHandle.toLowerCase() === ownHandle) return;
 
-  const docId = buildFollowDocId(resolvedTargetType, resolvedTargetId, resolvedHandle || safeHandle);
+  const docId = `${targetType || "handle"}_${targetId || safeHandle}`;
   const followRef = doc(db, "users", state.user.uid, "following", docId);
-  const idx = findFollowingHandleIndex(resolvedHandle || safeHandle);
+  const idx = state.followingHandles.indexOf(safeHandle);
   const isUnfollow = idx >= 0;
   const delta = isUnfollow ? -1 : 1;
   const toNum = (value) => {
@@ -8119,99 +7681,21 @@ async function toggleFollow(handle, target = {}) {
     return Number.isFinite(n) ? n : 0;
   };
   const isBusiness = isLocalBusinessProfile(state.userProfile);
-  const targetKeyHandle = resolvedHandle || safeHandle;
 
   try {
-    if (!isUnfollow && targetMeta.isPrivate) {
-      if (!resolvedTargetId) return;
-      const alreadyPending = isPendingFollowRequestTarget(resolvedTargetType, resolvedTargetId, targetKeyHandle);
-      if (alreadyPending) {
-        if (state.profileModal.open && !state.profileView) renderOverlays();
-        else render();
-        return;
-      }
-
-      const requestId = `${state.user.uid}_${resolvedTargetType}_${resolvedTargetId}`;
-      const requestsCol = getFollowRequestsCollectionRef(resolvedTargetType, resolvedTargetId);
-      if (!requestsCol) return;
-      const actor = currentUserBadge();
-      const requesterRestaurantId = isBusiness ? String(state.userProfile.restaurantId || "") : "";
-      const requestPayload = {
-        requestId,
-        status: "pending",
-        requestStatus: "pending",
-        targetType: resolvedTargetType,
-        targetId: resolvedTargetId,
-        targetHandle: targetKeyHandle,
-        targetName: targetMeta.targetName || target.name || "",
-        targetAvatar: targetMeta.targetAvatar || target.avatar || "",
-        requesterUid: state.user.uid,
-        requesterHandle: actor.handle || state.userProfile.handle || "",
-        requesterName: actor.name || state.userProfile.name || "User",
-        requesterAvatar: actor.avatar || "",
-        requesterRestaurantId,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      };
-      await setDoc(doc(requestsCol, requestId), requestPayload, { merge: true });
-      await setDoc(doc(db, "users", state.user.uid, "followRequestsOut", requestId), {
-        requestId,
-        status: "pending",
-        requestStatus: "pending",
-        targetType: resolvedTargetType,
-        targetId: resolvedTargetId,
-        targetHandle: targetKeyHandle,
-        targetName: targetMeta.targetName || target.name || "",
-        targetAvatar: targetMeta.targetAvatar || target.avatar || "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      setPendingFollowRequestTarget(resolvedTargetType, resolvedTargetId, targetKeyHandle, true);
-
-      if (targetMeta.targetOwnerUid && targetMeta.targetOwnerUid !== state.user.uid) {
-        await pushUserNotification(targetMeta.targetOwnerUid, {
-          type: "follow_request",
-          user: actor.name,
-          userHandle: actor.handle,
-          userUid: actor.uid,
-          avatar: actor.avatar,
-          text: "moechte dir folgen",
-          requestId,
-          requestStatus: "pending",
-          targetType: resolvedTargetType,
-          targetId: resolvedTargetId,
-          targetHandle: targetKeyHandle,
-          targetName: targetMeta.targetName || target.name || "",
-          targetAvatar: targetMeta.targetAvatar || target.avatar || "",
-          requesterUid: state.user.uid,
-          requesterHandle: actor.handle,
-          requesterRestaurantId
-        });
-      }
-
-      if (state.profileModal.open && !state.profileView) {
-        renderOverlays();
-      } else {
-        render();
-      }
-      return;
-    }
-
     if (isUnfollow) {
       await deleteDoc(followRef);
       state.followingHandles.splice(idx, 1);
-      setPendingFollowRequestTarget(resolvedTargetType, resolvedTargetId, targetKeyHandle, false);
     } else {
       await setDoc(followRef, {
-        handle: targetKeyHandle,
-        targetType: resolvedTargetType || "handle",
-        targetId: resolvedTargetId || "",
-        name: targetMeta.targetName || target.name || "",
-        avatar: targetMeta.targetAvatar || target.avatar || "",
+        handle: safeHandle,
+        targetType: targetType || "handle",
+        targetId: targetId || "",
+        name: target.name || "",
+        avatar: target.avatar || "",
         createdAt: serverTimestamp()
       });
-      state.followingHandles.unshift(targetKeyHandle);
-      setPendingFollowRequestTarget(resolvedTargetType, resolvedTargetId, targetKeyHandle, false);
+      state.followingHandles.unshift(safeHandle);
     }
 
     state.userProfile.following = Math.max(0, toNum(state.userProfile.following) + delta);
@@ -8225,12 +7709,12 @@ async function toggleFollow(handle, target = {}) {
       console.error(err);
     }
 
-    if (resolvedTargetType === "user" && resolvedTargetId) {
+    if (targetType === "user" && targetId) {
       try {
-        await updateDoc(doc(db, "users", resolvedTargetId), { followersCount: increment(delta) });
+        await updateDoc(doc(db, "users", targetId), { followersCount: increment(delta) });
         if (delta > 0) {
           const actor = currentUserBadge();
-          await pushUserNotification(resolvedTargetId, {
+          await pushUserNotification(targetId, {
             type: "follow",
             user: actor.name,
             userHandle: actor.handle,
@@ -8243,9 +7727,9 @@ async function toggleFollow(handle, target = {}) {
         console.error(err);
       }
     }
-    if (resolvedTargetType === "restaurant" && resolvedTargetId) {
+    if (targetType === "restaurant" && targetId) {
       try {
-        await updateDoc(doc(db, "restaurants", resolvedTargetId), { followersCount: increment(delta) });
+        await updateDoc(doc(db, "restaurants", targetId), { followersCount: increment(delta) });
       } catch (err) {
         console.error(err);
       }
@@ -8254,16 +7738,15 @@ async function toggleFollow(handle, target = {}) {
 
     const profileModal = state.profileModal.profile;
     const profileView = state.profileView?.profile || null;
-    const compareHandle = normalizeHandle(targetKeyHandle || "");
-    if (profileModal && normalizeHandle(profileModal.handle || "") === compareHandle) {
+    if (profileModal && profileModal.handle === safeHandle) {
       profileModal.followers = Math.max(0, toNum(profileModal.followers) + delta);
     }
-    if (profileView && normalizeHandle(profileView.handle || "") === compareHandle) {
+    if (profileView && profileView.handle === safeHandle) {
       profileView.followers = Math.max(0, toNum(profileView.followers) + delta);
     }
 
     businessProfileCache.forEach((cached) => {
-      if (normalizeHandle(cached?.handle || "") !== compareHandle) return;
+      if (cached?.handle !== safeHandle) return;
       cached.followers = Math.max(0, toNum(cached.followers) + delta);
     });
   } catch (err) {
@@ -8281,15 +7764,7 @@ function renderProfileModal() {
   if (!state.profileModal.open || !state.profileModal.profile) return "";
   const p = state.profileModal.profile;
   const followKey = String(p.handle || "").replace(/^@/, "");
-  const isFollowing = findFollowingHandleIndex(followKey) >= 0;
-  const isPrivateAccount = resolvePrivateAccountFlag(p, false);
-  const followTargetType = p.restaurantId ? "restaurant" : (p.uid ? "user" : "");
-  const followTargetId = p.restaurantId || p.uid || "";
-  const isPendingFollowRequest = !isFollowing && isPrivateAccount && isPendingFollowRequestTarget(followTargetType, followTargetId, followKey);
-  const followButtonClass = isFollowing
-    ? "bg-slate-100 text-slate-700"
-    : (isPendingFollowRequest ? "bg-slate-100 text-slate-500" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20");
-  const followButtonLabel = isFollowing ? "Following" : (isPendingFollowRequest ? "Angefragt" : "Follow");
+  const isFollowing = state.followingHandles.includes(followKey);
   const typeLabel = p.restaurantId ? "Business" : "User";
   const avatarUrl = getOptimizedImageUrl(p.avatar, "avatar");
   return `
@@ -8308,8 +7783,8 @@ function renderProfileModal() {
                 <p class="text-xs font-black">@${escapeHtml(p.handle)}</p>
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">${escapeHtml(p.location)} / ${typeLabel}</p>
               </div>
-              <button id="profileFollowBtn" data-follow-pending="${isPendingFollowRequest ? "1" : "0"}" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(followTargetType)}" data-target-id="${escapeHtml(followTargetId)}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${followButtonClass}">
-                ${followButtonLabel}
+              <button id="profileFollowBtn" data-handle="${escapeHtml(p.handle)}" data-target-type="${escapeHtml(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${escapeHtml(p.restaurantId || p.uid || "")}" data-target-name="${escapeHtml(p.name || "")}" data-target-avatar="${escapeHtml(p.avatar || "")}" class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowing ? "bg-slate-100 text-slate-700" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"}">
+                ${isFollowing ? "Following" : "Follow"}
               </button>
             </div>
 
@@ -9463,36 +8938,19 @@ function renderNotificationsList(items) {
   if (!items.length) {
     return "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>";
   }
-  return items.map((n) => {
-    const requestStatus = String(n.requestStatus || "").toLowerCase();
-    const isPendingRequest = n.type === "follow_request" && requestStatus === "pending";
-    const openAttr = isPendingRequest ? "" : `data-notif-open="${escapeHtml(n.id)}"`;
-    const cursorClass = isPendingRequest ? "" : "cursor-pointer";
-    const actionRow = isPendingRequest ? `
-      <div class="flex items-center gap-2 mt-2">
-        <button data-follow-request-action="accept" data-notif-id="${escapeHtml(n.id)}" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-[9px] font-black uppercase tracking-widest active:scale-95 transition-transform">
-          Akzeptieren
-        </button>
-        <button data-follow-request-action="reject" data-notif-id="${escapeHtml(n.id)}" class="px-3 py-1.5 rounded-lg bg-slate-200 text-slate-700 text-[9px] font-black uppercase tracking-widest active:scale-95 transition-transform">
-          Ablehnen
-        </button>
+  return items.map((n) => `
+    <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
+      <img src="${escapeHtml(resolveNotificationAvatar(n))}" data-img-key="notif:${escapeHtml(n.id)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
+        <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
       </div>
-    ` : "";
-    return `
-      <div ${openAttr} class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group ${cursorClass} ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
-        <img src="${escapeHtml(resolveNotificationAvatar(n))}" data-img-key="notif:${escapeHtml(n.id)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
-        <div class="flex-1 min-w-0">
-          <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
-          <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
-          ${actionRow}
-        </div>
-        <div class="flex items-center gap-2">
-          ${!n.read ? "<div class=\"w-2 h-2 bg-indigo-500 rounded-full\"></div>" : ""}
-          <button data-notif-delete="${n.id}" class="p-2 text-slate-300 hover:text-rose-500">${icon("trash-2", "w-4 h-4")}</button>
-        </div>
+      <div class="flex items-center gap-2">
+        ${!n.read ? "<div class=\"w-2 h-2 bg-indigo-500 rounded-full\"></div>" : ""}
+        <button data-notif-delete="${n.id}" class="p-2 text-slate-300 hover:text-rose-500">${icon("trash-2", "w-4 h-4")}</button>
       </div>
-    `;
-  }).join("");
+    </div>
+  `).join("");
 }
 
 function renderCeoGuard(title = "CRM") {
@@ -10510,10 +9968,9 @@ function bindOverlayEvents({
     bindModalDismiss(profileModalClose, closeProfileModal);
     if (profileFollowBtn) {
       profileFollowBtn.addEventListener("click", () => {
-        if (profileFollowBtn.dataset.followPending === "1") return;
         const handle = profileFollowBtn.dataset.handle;
         if (!handle) return;
-        void toggleFollow(handle, {
+        toggleFollow(handle, {
           type: profileFollowBtn.dataset.targetType || "",
           id: profileFollowBtn.dataset.targetId || "",
           name: profileFollowBtn.dataset.targetName || "",
@@ -11208,25 +10665,13 @@ function bindAppEvents() {
   }
 
   document.querySelectorAll("[data-toggle]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       const key = btn.dataset.toggle;
       if (!key) return;
-      const prevSettings = { ...state.settings };
       const next = { ...state.settings, [key]: !state.settings[key] };
       state.settings = next;
       saveSettings(next);
       render();
-      if (key === "privateAccount") {
-        try {
-          await persistPrivateAccountSetting(next.privateAccount);
-        } catch (err) {
-          console.error(err);
-          state.settings = prevSettings;
-          saveSettings(prevSettings);
-          render();
-          alert("Privatkonto konnte nicht gespeichert werden.");
-        }
-      }
     });
   });
 
@@ -11291,10 +10736,9 @@ function bindAppEvents() {
 
   document.querySelectorAll("[data-public-profile-follow]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (btn.dataset.followPending === "1") return;
       const handle = btn.dataset.publicProfileFollow;
       if (!handle) return;
-      void toggleFollow(handle, {
+      toggleFollow(handle, {
         type: btn.dataset.targetType || "",
         id: btn.dataset.targetId || "",
         name: btn.dataset.targetName || "",
@@ -11718,7 +11162,6 @@ async function saveAccountSettings() {
     || (fallbackAlbertCoords && Number.isFinite(Number(fallbackAlbertCoords.lat)) && Number.isFinite(Number(fallbackAlbertCoords.lng))
       ? { lat: Number(fallbackAlbertCoords.lat), lng: Number(fallbackAlbertCoords.lng) }
       : null);
-  const privateAccount = !!state.settings.privateAccount;
   
   const statusEl = document.getElementById("settingsStatus");
   if (statusEl) statusEl.textContent = "Speichere Profil...";
@@ -11732,7 +11175,6 @@ async function saveAccountSettings() {
         handle,
         bio,
         description: bio,
-        privateAccount,
         city,
         address,
         updatedAt: serverTimestamp()
@@ -11758,7 +11200,6 @@ async function saveAccountSettings() {
         displayName: name,
         handle,
         bio,
-        privateAccount,
         city,
         restaurantId,
         updatedAt: serverTimestamp()
@@ -11771,7 +11212,6 @@ async function saveAccountSettings() {
         handle,
         city,
         address,
-        privateAccount,
         updatedAt: serverTimestamp()
       };
       if (effectiveGps && Number.isFinite(effectiveGps.lat) && Number.isFinite(effectiveGps.lng)) {
@@ -11789,7 +11229,6 @@ async function saveAccountSettings() {
       name,
       handle,
       bio,
-      privateAccount,
       location: city,
       address,
       restaurantId
@@ -11951,7 +11390,6 @@ async function loadUserProfile(user, { force = false } = {}) {
   if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
   state.userProfile = normalized;
   state.userProfile.uid = user.uid;
-  syncPrivateSettingFromProfile(state.userProfile);
   saveUserProfileToStorage();
   const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
   if (!isPlaceholderUrl(resolvedAvatar)) {
@@ -11995,7 +11433,6 @@ async function loadBusinessProfile(user, { restaurant = null, force = false } = 
   }
   state.userProfile = normalized;
   state.userProfile.uid = user.uid;
-  syncPrivateSettingFromProfile(state.userProfile);
   saveUserProfileToStorage();
   const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
   if (!isPlaceholderUrl(resolvedAvatar)) {
@@ -12256,7 +11693,6 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
     location: data?.city || rest?.city || "Kosovo",
     followers,
     following,
-    privateAccount: resolvePrivateAccountFlag(data, resolvePrivateAccountFlag(rest, false)),
     role: "business",
     restaurantId,
     posts: posts || []
@@ -12277,7 +11713,6 @@ function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
     location: data?.city || fallback?.location || "Prishtina",
     followers: data?.followersCount ?? data?.followers ?? fallback?.followers ?? 0,
     following: data?.followingCount ?? data?.following ?? fallback?.following ?? 0,
-    privateAccount: resolvePrivateAccountFlag(data, resolvePrivateAccountFlag(fallback, false)),
     role: data?.role || fallback?.role || "user",
     posts: posts || []
   };
