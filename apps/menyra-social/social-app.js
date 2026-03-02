@@ -336,6 +336,8 @@ const state = {
     status: "",
     loading: false,
     imageUrlDraft: "",
+    cropX: 50,
+    cropY: 50,
     imageFiles: [],
     imagePreviews: [],
     existingImages: []
@@ -1538,7 +1540,9 @@ function normalizeShopCartState(raw) {
     imageUrl: String(item?.imageUrl || "").trim(),
     category: String(item?.category || "").trim(),
     selectedSize: String(item?.selectedSize || item?.size || "").trim(),
-    selectedColor: String(item?.selectedColor || item?.color || "").trim()
+    selectedColor: String(item?.selectedColor || item?.color || "").trim(),
+    cropX: clampCropPercent(item?.cropX ?? 50, 50),
+    cropY: clampCropPercent(item?.cropY ?? 50, 50)
   })).filter((item) => item.id && item.itemId && item.cartKey);
   return {
     ...base,
@@ -1718,6 +1722,7 @@ function normalizeMenuItemDoc(data, id) {
   const colors = normalizeOptionList(d.colors || d.colours || d.colorOptions || d.availableColors || d.color);
   const stockRaw = d.stock ?? d.stockCount ?? d.inventory ?? d.quantity ?? "";
   const stockNumber = Number(stockRaw);
+  const crop = getMenuItemCrop(d);
   return {
     id: d.id || id || "",
     type: normalizeMenuType(d.type || d.menuType || d.kind || d.group || d.section),
@@ -1733,6 +1738,8 @@ function normalizeMenuItemDoc(data, id) {
       : (Number.isFinite(stockNumber) ? Math.max(0, Math.round(stockNumber)) : null),
     sizes,
     colors,
+    cropX: crop.x,
+    cropY: crop.y,
     price: d.price ?? "",
     available: d.available !== false,
     imageUrl: mergedImages[0] || "",
@@ -1852,6 +1859,43 @@ function autosizeTextarea(el, { minHeight = 56, maxHeight = 160 } = {}) {
   el.style.height = "auto";
   const next = Math.max(minHeight, Math.min(maxHeight, el.scrollHeight || minHeight));
   el.style.height = `${next}px`;
+}
+
+function clampCropPercent(value, fallback = 50) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(num)));
+}
+
+function getMenuItemCrop(item) {
+  return {
+    x: clampCropPercent(item?.cropX ?? item?.focusX ?? item?.imageFocusX ?? 50, 50),
+    y: clampCropPercent(item?.cropY ?? item?.focusY ?? item?.imageFocusY ?? 50, 50)
+  };
+}
+
+function getMenuItemObjectPosition(item) {
+  const crop = getMenuItemCrop(item);
+  return `${crop.x}% ${crop.y}%`;
+}
+
+function getMenuModalCrop() {
+  return {
+    x: clampCropPercent(state.menuModal?.cropX ?? 50, 50),
+    y: clampCropPercent(state.menuModal?.cropY ?? 50, 50)
+  };
+}
+
+function syncMenuModalCropPreview() {
+  const preview = document.getElementById("menuItemHeroPreview");
+  const crop = getMenuModalCrop();
+  if (preview) {
+    preview.style.objectPosition = `${crop.x}% ${crop.y}%`;
+  }
+  const xValue = document.getElementById("menuCropXValue");
+  const yValue = document.getElementById("menuCropYValue");
+  if (xValue) xValue.textContent = `${crop.x}%`;
+  if (yValue) yValue.textContent = `${crop.y}%`;
 }
 
 function setState(patch) {
@@ -7657,7 +7701,7 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
   return `
     <div ${wrapperAttrs} class="w-full p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-4 ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
-        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
       </div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center justify-between gap-4">
@@ -7723,7 +7767,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
   return `
     <div ${wrapperAttrs} class="w-full ${isDrink ? "p-3 rounded-[1.6rem]" : "p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-full ${isDrink ? "h-28 rounded-[1.4rem]" : "h-44 rounded-[1.8rem]"} overflow-hidden bg-slate-100">
-        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
       </div>
       ${isDrink ? `
         <div class="mt-3">
@@ -9120,7 +9164,7 @@ function renderShopProductList(items) {
         return `
           <article data-menu-open="${escapeHtml(item.id)}" role="button" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
             <div class="rounded-[1.5rem] overflow-hidden bg-slate-100">
-              <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-40 object-cover" loading="lazy" decoding="async" />
+              <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-40 object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
             </div>
             ${thumbImages.length ? `
               <div class="grid grid-cols-3 gap-2 mt-2">
@@ -9175,7 +9219,7 @@ function renderProfileShopCartView(profile = state.profileView?.profile || state
             ${items.map((item) => `
               <div class="flex items-center gap-3 p-3 rounded-[1.6rem] bg-slate-50 border border-slate-100">
                 <div class="w-14 h-14 rounded-2xl overflow-hidden bg-white shrink-0">
-                  <img src="${escapeHtml(getOptimizedImageUrl(item.imageUrl || "", "thumb"))}" class="w-full h-full object-cover" />
+                  <img src="${escapeHtml(getOptimizedImageUrl(item.imageUrl || "", "thumb"))}" class="w-full h-full object-cover" style="object-position:${clampCropPercent(item.cropX ?? 50, 50)}% ${clampCropPercent(item.cropY ?? 50, 50)}%;" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name)}</p>
@@ -9774,11 +9818,12 @@ function renderMenuItemModal() {
   const title = isEdit ? "Produkt bearbeiten" : "Produkt hinzufuegen";
   const existingImages = Array.isArray(state.menuModal.existingImages) ? state.menuModal.existingImages : [];
   const newPreviews = Array.isArray(state.menuModal.imagePreviews) ? state.menuModal.imagePreviews : [];
+  const imageUrlDraft = String(state.menuModal.imageUrlDraft || "").trim();
   const gallery = [
     ...existingImages.map((src, idx) => ({ src, kind: "existing", idx })),
     ...newPreviews.map((src, idx) => ({ src, kind: "new", idx }))
   ].filter((img) => img.src);
-  const heroRaw = gallery[0]?.src || item.imageUrl || "";
+  const heroRaw = gallery[0]?.src || imageUrlDraft || item.imageUrl || "";
   const heroUrl = heroRaw ? getOptimizedImageUrl(heroRaw, "large") : PLACEHOLDER_IMAGE;
   const safeImage = isPlaceholderUrl(heroUrl) ? PLACEHOLDER_IMAGE : heroUrl;
   const typeValue = normalizeMenuType(item.type || "food");
@@ -9787,7 +9832,7 @@ function renderMenuItemModal() {
   const sizesValue = Array.isArray(item.sizes) ? item.sizes.join(", ") : "";
   const colorsValue = Array.isArray(item.colors) ? item.colors.join(", ") : "";
   const stockValue = Number.isFinite(Number(item.stock)) ? String(Math.max(0, Number(item.stock))) : "";
-  const imageUrlDraft = String(state.menuModal.imageUrlDraft || "").trim();
+  const crop = getMenuModalCrop();
 
   const titleId = "menuModalTitle";
   const headerHtml = `
@@ -9805,11 +9850,23 @@ function renderMenuItemModal() {
     <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
       <input type="file" id="menuItemImageInput" class="hidden" accept="image/*" multiple />
       <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
-        <img src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" />
+        <img id="menuItemHeroPreview" src="${escapeHtml(safeImage)}" class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" />
       </div>
       <button id="menuItemImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
         Fotos hochladen
       </button>
+      <div class="p-4 rounded-[1.8rem] border border-slate-100 bg-white space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Crop Horizontal</p>
+          <span id="menuCropXValue" class="text-[10px] font-black uppercase tracking-widest text-slate-500">${crop.x}%</span>
+        </div>
+        <input id="menuItemCropX" type="range" min="0" max="100" step="1" value="${crop.x}" class="w-full accent-indigo-600" />
+        <div class="flex items-center justify-between">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Crop Vertikal</p>
+          <span id="menuCropYValue" class="text-[10px] font-black uppercase tracking-widest text-slate-500">${crop.y}%</span>
+        </div>
+        <input id="menuItemCropY" type="range" min="0" max="100" step="1" value="${crop.y}" class="w-full accent-indigo-600" />
+      </div>
       ${gallery.length ? `
         <div class="grid grid-cols-4 gap-2">
           ${gallery.map((img) => `
@@ -9981,7 +10038,7 @@ function renderMenuDetailModal() {
   const bodyHtml = `
     <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
       <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
-        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full ${isShop ? "h-[24rem]" : "h-56"} object-cover" />
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full ${isShop ? "h-[24rem]" : "h-56"} object-cover" style="object-position:${getMenuItemObjectPosition(item)};" />
         ${images.length > 1 ? `
           <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
             ${icon("chevron-left", "w-4 h-4")}
@@ -11973,6 +12030,8 @@ function bindOverlayEvents({
     const menuImageTrigger = document.getElementById("menuItemImageTrigger");
     const menuImageInput = document.getElementById("menuItemImageInput");
     const menuImageUrl = document.getElementById("menuItemImageUrl");
+    const menuCropX = document.getElementById("menuItemCropX");
+    const menuCropY = document.getElementById("menuItemCropY");
 
     bindModalDismiss(menuModalOverlay, closeMenuModal, { selfOnly: true });
     bindModalDismiss(menuModalClose, closeMenuModal);
@@ -12013,8 +12072,27 @@ function bindOverlayEvents({
     if (menuImageUrl) {
       menuImageUrl.addEventListener("input", () => {
         state.menuModal.imageUrlDraft = menuImageUrl.value || "";
+        const preview = document.getElementById("menuItemHeroPreview");
+        const hasGallery = !!(state.menuModal.existingImages || []).length || !!(state.menuModal.imagePreviews || []).length;
+        if (preview && !hasGallery) {
+          preview.setAttribute("src", menuImageUrl.value.trim() || PLACEHOLDER_IMAGE);
+          syncMenuModalCropPreview();
+        }
       });
     }
+    if (menuCropX) {
+      menuCropX.addEventListener("input", () => {
+        state.menuModal.cropX = clampCropPercent(menuCropX.value, 50);
+        syncMenuModalCropPreview();
+      });
+    }
+    if (menuCropY) {
+      menuCropY.addEventListener("input", () => {
+        state.menuModal.cropY = clampCropPercent(menuCropY.value, 50);
+        syncMenuModalCropPreview();
+      });
+    }
+    syncMenuModalCropPreview();
 
     document.querySelectorAll("[data-menu-image-remove]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -14246,6 +14324,8 @@ async function publishMenuToPublic(restaurantId, items) {
       stock: Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null,
       sizes: Array.isArray(item.sizes) ? item.sizes : [],
       colors: Array.isArray(item.colors) ? item.colors : [],
+      cropX: clampCropPercent(item.cropX ?? 50, 50),
+      cropY: clampCropPercent(item.cropY ?? 50, 50),
       price: item.price ?? "",
       available: item.available !== false,
       imageUrl: item.imageUrl || null,
@@ -14476,7 +14556,9 @@ function normalizeOrderItem(item) {
     imageUrl: String(item?.imageUrl || "").trim(),
     category: String(item?.category || "").trim(),
     selectedSize: String(item?.selectedSize || item?.size || "").trim(),
-    selectedColor: String(item?.selectedColor || item?.color || "").trim()
+    selectedColor: String(item?.selectedColor || item?.color || "").trim(),
+    cropX: clampCropPercent(item?.cropX ?? 50, 50),
+    cropY: clampCropPercent(item?.cropY ?? 50, 50)
   };
 }
 
@@ -14601,7 +14683,9 @@ function addMenuItemToShopCart(item, profile = getCurrentShopProfile(), options 
     imageUrl: String(resolveMenuItemHero(item) || "").trim(),
     category: String(item.category || "").trim(),
     selectedSize,
-    selectedColor
+    selectedColor,
+    cropX: clampCropPercent(item?.cropX ?? 50, 50),
+    cropY: clampCropPercent(item?.cropY ?? 50, 50)
   };
   if (existingIndex >= 0) {
     nextCart.items[existingIndex] = {
@@ -14716,7 +14800,9 @@ async function submitShopCheckout() {
         color: item.selectedColor || ""
       }),
       selectedSize: item.selectedSize || "",
-      selectedColor: item.selectedColor || ""
+      selectedColor: item.selectedColor || "",
+      cropX: clampCropPercent(item.cropX ?? 50, 50),
+      cropY: clampCropPercent(item.cropY ?? 50, 50)
     })),
     itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
     total: getShopCartTotal(),
@@ -15713,6 +15799,7 @@ async function convertLeadToCustomer(leadId) {
 function openMenuModal(mode = "create", item = null) {
   const existingImages = getMenuItemImages(item).filter(Boolean);
   const uniqImages = Array.from(new Set(existingImages));
+  const crop = getMenuItemCrop(item);
   state.menuModal = {
     open: true,
     mode,
@@ -15720,6 +15807,8 @@ function openMenuModal(mode = "create", item = null) {
     status: "",
     loading: false,
     imageUrlDraft: "",
+    cropX: crop.x,
+    cropY: crop.y,
     imageFiles: [],
     imagePreviews: [],
     existingImages: uniqImages
@@ -15735,6 +15824,8 @@ function closeMenuModal() {
     status: "",
     loading: false,
     imageUrlDraft: "",
+    cropX: 50,
+    cropY: 50,
     imageFiles: [],
     imagePreviews: [],
     existingImages: []
@@ -15828,6 +15919,7 @@ async function saveMenuItemFromModal() {
   const stock = stockRaw === ""
     ? null
     : Math.max(0, Math.round(Number(stockRaw) || 0));
+  const crop = getMenuModalCrop();
 
   if (!name) {
     state.menuModal.status = "Bitte Namen eingeben.";
@@ -15882,6 +15974,8 @@ async function saveMenuItemFromModal() {
       stock: isShop ? stock : null,
       sizes: isShop ? sizes : [],
       colors: isShop ? colors : [],
+      cropX: crop.x,
+      cropY: crop.y,
       price: price ?? "",
       available,
       imageUrl: imageUrl || "",
