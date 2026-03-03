@@ -187,6 +187,7 @@ const LEAD_TYPE_LABELS = {
   services: "Services"
 };
 const ALBERT_CEO_HANDLE = "albert_hoti";
+const CEO_COUNTRIES = Object.freeze(["Kosovo", "Albanien", "Serbien"]);
 const PRISHTINA_COORDS = Object.freeze({ lat: 42.6629, lng: 21.1655 });
 const OLC_ALPHABET = "23456789CFGHJMPQRVWX";
 const OLC_SEPARATOR = "+";
@@ -389,6 +390,21 @@ const state = {
     error: "",
     query: ""
   },
+  staff: {
+    items: [],
+    loading: false,
+    error: "",
+    status: "",
+    form: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      country: CEO_COUNTRIES[0],
+      locationLabel: "",
+      coords: null
+    }
+  },
   leadModal: {
     open: false,
     mode: "create",
@@ -473,7 +489,8 @@ let dataLoaded = {
   following: false,
   notifications: false,
   leads: false,
-  customers: false
+  customers: false,
+  staff: false
 };
 let lastAppHtml = "";
 let lastRenderMode = "";
@@ -3057,6 +3074,21 @@ function resetUserScopedState() {
   menuItemCountsRequested.clear();
   state.leads = { items: [], loading: false, error: "", query: "", status: "" };
   state.customers = { items: [], loading: false, error: "", query: "" };
+  state.staff = {
+    items: [],
+    loading: false,
+    error: "",
+    status: "",
+    form: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      country: CEO_COUNTRIES[0],
+      locationLabel: "",
+      coords: null
+    }
+  };
   state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "", coords: null, locations: [] };
   state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
   state.selectedBusiness = null;
@@ -3076,6 +3108,7 @@ function resetUserScopedState() {
   dataLoaded.notifications = false;
   dataLoaded.leads = false;
   dataLoaded.customers = false;
+  dataLoaded.staff = false;
 }
 
 async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
@@ -3388,6 +3421,204 @@ function resolvePreferredHandle(profile, fallbackName = "") {
   return isGenericHandle(candidate) ? normalizeHandle(name || "user") : candidate;
 }
 
+function parseCoordNumber(value) {
+  const raw = typeof value === "string" ? value.replace(",", ".").trim() : value;
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : null;
+}
+
+function uniqueStringList(values = []) {
+  return Array.from(new Set(
+    (values || [])
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+  ));
+}
+
+function normalizeCeoCountry(value) {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return CEO_COUNTRIES[0];
+  if (["xk", "kosovo", "kosove", "kosova"].includes(raw)) return "Kosovo";
+  if (["al", "albania", "albanien", "shqiperi", "shqiperia"].includes(raw)) return "Albanien";
+  if (["rs", "serbia", "serbien", "srbija"].includes(raw)) return "Serbien";
+  const match = CEO_COUNTRIES.find((entry) => entry.toLowerCase() === raw);
+  return match || CEO_COUNTRIES[0];
+}
+
+function normalizeCeoPath(value, fallback = []) {
+  const base = Array.isArray(value)
+    ? value
+    : String(value || "")
+      .split(/[,\s]+/)
+      .filter(Boolean);
+  return uniqueStringList([...(base || []), ...(fallback || [])]);
+}
+
+function buildCeoName({ firstName = "", lastName = "", fallback = "", email = "" } = {}) {
+  const combined = `${String(firstName || "").trim()} ${String(lastName || "").trim()}`.trim();
+  if (combined) return combined;
+  const safeFallback = String(fallback || "").trim();
+  if (safeFallback) return safeFallback;
+  const safeEmail = String(email || "").trim();
+  return safeEmail ? safeEmail.split("@")[0] : "CEO";
+}
+
+function getCurrentCeoMeta(profile = state.userProfile, user = state.user) {
+  const uid = String(user?.uid || profile?.uid || "").trim();
+  const name = String(profile?.name || user?.displayName || user?.email || "").trim() || "CEO";
+  const parentUid = String(profile?.ceoParentUid || profile?.parentCeoUid || "").trim();
+  const rootUid = String(profile?.ceoRootUid || profile?.rootCeoUid || "").trim() || uid;
+  let path = normalizeCeoPath(profile?.ceoPath);
+  if (!path.length) {
+    if (isAlbertCeoUser()) {
+      path = uid ? [uid] : [];
+    } else {
+      path = normalizeCeoPath([], [rootUid, parentUid, uid]);
+    }
+  }
+  if (uid && !path.includes(uid)) path = uniqueStringList([...path, uid]);
+  return {
+    uid,
+    name,
+    parentUid,
+    rootUid: rootUid || uid,
+    rootName: String(profile?.ceoRootName || profile?.rootCeoName || name).trim() || name,
+    path,
+    isRoot: !parentUid || isAlbertCeoUser()
+  };
+}
+
+function normalizeCeoStaffRecord(record = {}, userRecord = {}) {
+  const merged = { ...(userRecord || {}), ...(record || {}) };
+  const uid = String(merged.uid || merged.userId || merged.id || "").trim();
+  const email = String(merged.email || "").trim();
+  const firstName = String(merged.firstName || "").trim();
+  const lastName = String(merged.lastName || "").trim();
+  const name = buildCeoName({
+    firstName,
+    lastName,
+    fallback: merged.name || merged.displayName || "",
+    email
+  });
+  const parentUid = String(merged.ceoParentUid || merged.parentCeoUid || merged.managerUid || "").trim();
+  const rootUid = String(merged.ceoRootUid || merged.rootCeoUid || parentUid || uid).trim() || uid;
+  let ceoPath = normalizeCeoPath(merged.ceoPath, [rootUid, parentUid, uid]);
+  if (!ceoPath.length && uid) ceoPath = [uid];
+  return {
+    ...merged,
+    uid,
+    userId: uid,
+    id: uid,
+    email,
+    firstName,
+    lastName,
+    name,
+    displayName: name,
+    handle: merged.handle || normalizeHandle(name || email || "ceo"),
+    role: "ceo",
+    roles: ["ceo"],
+    country: normalizeCeoCountry(merged.country),
+    locationLabel: String(merged.locationLabel || merged.location || merged.city || "").trim(),
+    ceoParentUid: parentUid,
+    ceoParentName: String(merged.ceoParentName || merged.parentCeoName || merged.managerName || "").trim(),
+    ceoRootUid: rootUid,
+    ceoRootName: String(merged.ceoRootName || merged.rootCeoName || "").trim(),
+    ceoPath,
+    lat: parseCoordNumber(merged.gpsLat ?? merged.lat),
+    lng: parseCoordNumber(merged.gpsLng ?? merged.lng),
+    gpsLat: parseCoordNumber(merged.gpsLat ?? merged.lat),
+    gpsLng: parseCoordNumber(merged.gpsLng ?? merged.lng)
+  };
+}
+
+function canViewCeoRecord(record = {}) {
+  const current = getCurrentCeoMeta();
+  if (!current.uid) return false;
+  if (String(record.uid || "") === current.uid) return true;
+  const path = normalizeCeoPath(record.ceoPath, [record.ceoRootUid, record.ceoParentUid, record.uid]);
+  if (path.includes(current.uid)) return true;
+  if (current.isRoot && !String(record.ceoParentUid || "").trim()) return true;
+  return false;
+}
+
+function getOwnerMeta(row = {}) {
+  const creatorUid = String(
+    row.createdByUid
+    || row.ownerUid
+    || row.socialUid
+    || row.uid
+    || ""
+  ).trim();
+  const creatorName = String(
+    row.createdByName
+    || row.createdByHandle
+    || row.ownerName
+    || ""
+  ).trim();
+  let ceoPath = normalizeCeoPath(row.ceoPath);
+  if (!ceoPath.length && creatorUid) {
+    ceoPath = normalizeCeoPath([], [
+      row.ceoRootUid || row.rootCeoUid || "",
+      row.ceoParentUid || row.parentCeoUid || "",
+      creatorUid
+    ]);
+  }
+  return { creatorUid, creatorName, ceoPath };
+}
+
+function canCurrentCeoSeeRow(row = {}) {
+  if (!isCeoUser()) return true;
+  const current = getCurrentCeoMeta();
+  if (!current.uid) return true;
+  const meta = getOwnerMeta(row);
+  if (meta.creatorUid && meta.creatorUid === current.uid) return true;
+  if (meta.ceoPath.includes(current.uid)) return true;
+  if (current.isRoot && !meta.ceoPath.length && !meta.creatorUid) return true;
+  return false;
+}
+
+function resolveOwnershipMeta(row = {}) {
+  if (!isCeoUser()) return null;
+  const current = getCurrentCeoMeta();
+  if (!current.uid) return null;
+  const meta = getOwnerMeta(row);
+  if (!meta.creatorUid || meta.creatorUid === current.uid) {
+    return { own: true, label: "Eigene", creatorName: "" };
+  }
+  return {
+    own: false,
+    label: "Staff",
+    creatorName: meta.creatorName || meta.creatorUid || "Unbekannt"
+  };
+}
+
+function renderOwnershipPills(row = {}) {
+  const meta = resolveOwnershipMeta(row);
+  if (!meta) return "";
+  const chips = [
+    `<span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest">${escapeHtml(meta.label)}</span>`
+  ];
+  if (!meta.own && meta.creatorName) {
+    chips.push(`<span class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[9px] font-black uppercase tracking-widest">${escapeHtml(meta.creatorName)}</span>`);
+  }
+  return `<div class="flex flex-wrap gap-2 mt-3">${chips.join("")}</div>`;
+}
+
+function buildCeoCreatorMeta(profile = state.userProfile, user = state.user) {
+  const current = getCurrentCeoMeta(profile, user);
+  const handle = String(profile?.handle || normalizeHandle(current.name || "ceo")).trim();
+  return {
+    createdByUid: current.uid || "",
+    createdByRole: "ceo",
+    createdByName: current.name || "",
+    createdByHandle: handle,
+    ceoRootUid: current.rootUid || current.uid || "",
+    ceoRootName: current.rootName || current.name || "",
+    ceoParentUid: current.parentUid || "",
+    ceoPath: Array.isArray(current.path) ? current.path.slice() : []
+  };
+}
+
 function normalizeProfile(data, user) {
   const displayName = data?.displayName || user?.displayName || user?.email?.split("@")[0] || "User";
   const roles = normalizeRoleList(data?.roles || data?.role || "");
@@ -3408,6 +3639,12 @@ function normalizeProfile(data, user) {
     role: data?.role || "user",
     isPremium: data?.isPremium || false,
     restaurantId: data?.restaurantId || "",
+    country: normalizeCeoCountry(data?.country),
+    ceoParentUid: data?.ceoParentUid || data?.parentCeoUid || "",
+    ceoParentName: data?.ceoParentName || data?.parentCeoName || "",
+    ceoRootUid: data?.ceoRootUid || data?.rootCeoUid || "",
+    ceoRootName: data?.ceoRootName || data?.rootCeoName || "",
+    ceoPath: normalizeCeoPath(data?.ceoPath),
     lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
     lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
     gpsLat: Number.isFinite(Number(lat)) ? Number(lat) : null,
@@ -5084,6 +5321,13 @@ function ensureTabData(tab) {
       void loadCustomers();
     }
   }
+
+  if (tab === "staff" && !dataLoaded.staff) {
+    dataLoaded.staff = true;
+    if (isCeoUser()) {
+      void loadCeoStaff();
+    }
+  }
 }
 
 function findPostById(postId) {
@@ -5725,6 +5969,7 @@ function renderDrawer() {
     { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
     { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
     { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
+    { id: "staff", label: "Staff", icon: "users-round", hidden: !isCeo },
     { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
     { id: "settings", label: "Optionen", icon: "settings" }
   ];
@@ -10544,7 +10789,7 @@ function renderLeadsView() {
   const queryKey = normalizeSearchKey(state.leads.query || "");
   const statusFilter = normalizeLeadStatusKey(state.leads.status || "");
   let items = Array.isArray(state.leads.items) ? state.leads.items.slice() : [];
-  items = items.filter((lead) => normalizeLeadStatusKey(lead.status) !== "kunde");
+  items = items.filter((lead) => normalizeLeadStatusKey(lead.status) !== "kunde" && canCurrentCeoSeeRow(lead));
   if (statusFilter) {
     items = items.filter((lead) => normalizeLeadStatusKey(lead.status) === statusFilter);
   }
@@ -10560,6 +10805,7 @@ function renderLeadsView() {
       const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
       const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
       const emailLine = lead.email || lead.socialEmail || "";
+      const ownershipHtml = renderOwnershipPills(lead);
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
           <div class="flex items-center gap-3">
@@ -10572,6 +10818,7 @@ function renderLeadsView() {
             </div>
             <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${tone.bg} ${tone.text}">${escapeHtml(statusLabel)}</span>
           </div>
+          ${ownershipHtml}
           <div class="flex gap-2 mt-4">
             <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
           </div>
@@ -10620,6 +10867,7 @@ function renderCustomersView() {
     String(rest?.id || rest?.restaurantId || rest?.leadId || `${rest?.name || rest?.restaurantName || "customer"}:${index}`),
     rest
   ])).values())
+    .filter((rest) => canCurrentCeoSeeRow(rest))
     .filter((rest) => rest && customerMatchesQuery(rest, queryKey))
     .sort((a, b) => (toDateSafe(b?.createdAt)?.getTime() || 0) - (toDateSafe(a?.createdAt)?.getTime() || 0));
   const listHtml = state.customers.loading
@@ -10631,6 +10879,7 @@ function renderCustomersView() {
       const typeLabel = leadTypeLabel(rest.type || rest.customerType || "");
       const city = rest.city || "";
       const statusLabel = customerStatusLabel(isCustomerRestaurant(rest) ? "kunde" : rest.status);
+      const ownershipHtml = renderOwnershipPills(rest);
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
           <div class="flex items-center gap-3">
@@ -10643,6 +10892,7 @@ function renderCustomersView() {
             </div>
             <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500">${escapeHtml(statusLabel)}</span>
           </div>
+          ${ownershipHtml}
           <div class="flex gap-2 mt-4">
             <button data-customer-edit="${escapeHtml(rest.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
           </div>
@@ -10663,6 +10913,112 @@ function renderCustomersView() {
         <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
       </div>
       ${state.customers.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.customers.error)}</div>` : ""}
+      <div class="space-y-4">${listHtml}</div>
+    </div>
+  `;
+}
+
+function renderStaffView() {
+  if (!isCeoUser()) return renderCeoGuard("Staff");
+  const current = getCurrentCeoMeta();
+  const items = Array.isArray(state.staff.items) ? state.staff.items.slice() : [];
+  const form = state.staff.form || {};
+  const coords = form.coords && Number.isFinite(Number(form.coords.lat)) && Number.isFinite(Number(form.coords.lng))
+    ? { lat: Number(form.coords.lat), lng: Number(form.coords.lng) }
+    : null;
+  const listHtml = state.staff.loading
+    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Staff laden...</div>`
+    : (items.length ? items.map((entry) => {
+      const isSelf = String(entry.uid || "") === String(current.uid || "");
+      const relation = isSelf ? "Du" : (String(entry.ceoParentUid || "") === String(current.uid || "") ? "Direkt" : "Unterstaff");
+      const leadCount = (state.leads.items || []).filter((lead) => String(lead.createdByUid || "") === String(entry.uid || "")).length;
+      const customerCount = (state.customers.items || []).filter((customer) => String(customer.createdByUid || "") === String(entry.uid || "")).length;
+      const locationText = entry.locationLabel || entry.location || entry.city || entry.country || "-";
+      return `
+        <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
+          <div class="flex items-start gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-sm">
+              ${escapeHtml(String(entry.name || "C").trim().slice(0, 1).toUpperCase())}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(entry.name || "CEO")}</p>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(entry.handle || normalizeHandle(entry.name || "ceo"))}</p>
+              <p class="text-[10px] font-bold text-slate-500 mt-2 truncate">${escapeHtml(entry.email || "-")}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isSelf ? "bg-slate-900 text-white" : "bg-indigo-50 text-indigo-600"}">${escapeHtml(relation)}</span>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest">${escapeHtml(entry.country || "-")}</span>
+            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest truncate max-w-full">${escapeHtml(locationText)}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Leads</p>
+              <p class="text-sm font-black text-slate-900 mt-1">${escapeHtml(String(leadCount))}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Kunden</p>
+              <p class="text-sm font-black text-slate-900 mt-1">${escapeHtml(String(customerCount))}</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Noch kein CEO Staff</div>`);
+
+  return `
+    <div id="staffView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CEO</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Staff</h2>
+        </div>
+        <button id="staffReloadBtn" class="w-12 h-12 rounded-2xl bg-white border border-slate-100 text-slate-500 flex items-center justify-center shadow-sm active:scale-95">
+          ${icon("refresh-cw", "w-4 h-4")}
+        </button>
+      </div>
+
+      <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm mb-5">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <p class="text-sm font-black text-slate-900">Neuen CEO Staff erstellen</p>
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Unter deinem CEO-Baum</p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest">${escapeHtml(current.isRoot ? "Haupt CEO" : "CEO")}</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <input id="staffFirstName" type="text" value="${escapeHtml(form.firstName || "")}" placeholder="Vorname" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="staffLastName" type="text" value="${escapeHtml(form.lastName || "")}" placeholder="Nachname" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <input id="staffEmail" type="email" value="${escapeHtml(form.email || "")}" placeholder="name@menyra.com" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="staffPassword" type="password" value="${escapeHtml(form.password || "")}" placeholder="Passwort" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+          <div class="relative">
+            <select id="staffCountry" class="w-full px-4 py-3 pr-10 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
+              ${CEO_COUNTRIES.map((country) => `<option value="${escapeHtml(country)}" ${normalizeCeoCountry(form.country) === country ? "selected" : ""}>${escapeHtml(country)}</option>`).join("")}
+            </select>
+            <div class="absolute inset-y-0 right-4 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
+          </div>
+          <input id="staffLocationLabel" type="text" value="${escapeHtml(form.locationLabel || "")}" placeholder="Standort / Adresse" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+
+        <button id="staffLocationPickBtn" type="button" class="w-full py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform">
+          ${icon("map-pin", "w-4 h-4")} Standort mit Pin waehlen
+        </button>
+        <div id="staffCoordsDisplay" class="mt-3 ${coords ? "" : "hidden"} px-3 py-2 rounded-2xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+          ${icon("check-circle-2", "w-4 h-4")} ${coords ? escapeHtml(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`) : ""}
+        </div>
+
+        ${state.staff.error ? `<div class="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(state.staff.error)}</div>` : ""}
+        ${state.staff.status ? `<div class="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.staff.status)}</div>` : ""}
+
+        <button id="staffCreateBtn" type="button" class="w-full mt-4 py-4 rounded-[1.6rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform">
+          CEO Staff erstellen
+        </button>
+      </div>
+
       <div class="space-y-4">${listHtml}</div>
     </div>
   `;
@@ -11276,6 +11632,7 @@ function renderMain() {
   if (state.activeTab === "menu") view = renderMenuAdminView();
   if (state.activeTab === "orders") view = renderOrdersView();
   if (state.activeTab === "leads") view = renderLeadsView();
+  if (state.activeTab === "staff") view = renderStaffView();
   if (state.activeTab === "customers") view = renderCustomersView();
   if (state.activeTab === "settings") view = renderSettingsView();
   if (state.activeTab === "notifications") view = renderNotificationsView();
@@ -12966,6 +13323,62 @@ function bindAppEvents() {
       if (customer) openCustomerModal(customer);
     });
   });
+
+  [
+    ["staffFirstName", "firstName"],
+    ["staffLastName", "lastName"],
+    ["staffEmail", "email"],
+    ["staffPassword", "password"],
+    ["staffLocationLabel", "locationLabel"]
+  ].forEach(([id, key]) => {
+    const node = document.getElementById(id);
+    if (!node) return;
+    node.addEventListener("input", () => {
+      state.staff.form = {
+        ...state.staff.form,
+        [key]: String(node.value || "")
+      };
+      if (state.staff.status) state.staff.status = "";
+    });
+  });
+
+  const staffCountry = document.getElementById("staffCountry");
+  if (staffCountry) {
+    staffCountry.addEventListener("change", () => {
+      state.staff.form = {
+        ...state.staff.form,
+        country: normalizeCeoCountry(staffCountry.value)
+      };
+      if (state.staff.status) state.staff.status = "";
+    });
+  }
+
+  const staffLocationPickBtn = document.getElementById("staffLocationPickBtn");
+  if (staffLocationPickBtn) {
+    staffLocationPickBtn.addEventListener("click", () => {
+      syncStaffFormFromDom();
+      state.staff.status = "";
+      openLocationPicker({
+        addressInputId: "staffLocationLabel",
+        coordsDisplayId: "staffCoordsDisplay",
+        context: "staff"
+      });
+    });
+  }
+
+  const staffCreateBtn = document.getElementById("staffCreateBtn");
+  if (staffCreateBtn) {
+    staffCreateBtn.addEventListener("click", () => {
+      void saveCeoStaffFromView();
+    });
+  }
+
+  const staffReloadBtn = document.getElementById("staffReloadBtn");
+  if (staffReloadBtn) {
+    staffReloadBtn.addEventListener("click", () => {
+      void loadCeoStaff();
+    });
+  }
 
   // Business selection removed from account settings by design.
 
@@ -15036,6 +15449,14 @@ function normalizeLeadDoc(docSnap) {
     restaurantId: data.restaurantId || data.restaurant || "",
     socialUid: data.socialUid || "",
     socialEmail: data.socialEmail || "",
+    createdByUid: data.createdByUid || "",
+    createdByRole: data.createdByRole || "",
+    createdByName: data.createdByName || "",
+    createdByHandle: data.createdByHandle || "",
+    ceoRootUid: data.ceoRootUid || "",
+    ceoRootName: data.ceoRootName || "",
+    ceoParentUid: data.ceoParentUid || "",
+    ceoPath: normalizeCeoPath(data.ceoPath),
     createdAt: data.createdAt,
     updatedAt: data.updatedAt
   };
@@ -15068,6 +15489,14 @@ function normalizeLeadFromRestaurant(rest) {
     restaurantId: rest.id,
     socialUid: rest.ownerUid || "",
     socialEmail: rest.ownerEmail || "",
+    createdByUid: rest.createdByUid || "",
+    createdByRole: rest.createdByRole || "",
+    createdByName: rest.createdByName || "",
+    createdByHandle: rest.createdByHandle || "",
+    ceoRootUid: rest.ceoRootUid || "",
+    ceoRootName: rest.ceoRootName || "",
+    ceoParentUid: rest.ceoParentUid || "",
+    ceoPath: normalizeCeoPath(rest.ceoPath),
     createdAt: rest.createdAt,
     updatedAt: rest.updatedAt,
     lat: hasLeadLocationCoords(primary) ? primary.lat : (fallbackLat ?? null),
@@ -15144,7 +15573,9 @@ function customerMatchesQuery(rest, queryKey) {
 }
 
 function refreshCustomersFromRestaurants() {
-  const list = Array.isArray(state.restaurants) ? state.restaurants.filter(isCustomerRestaurant) : [];
+  const list = Array.isArray(state.restaurants)
+    ? state.restaurants.filter((rest) => isCustomerRestaurant(rest) && canCurrentCeoSeeRow(rest))
+    : [];
   list.sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
   state.customers.items = list;
 }
@@ -15182,7 +15613,8 @@ async function loadLeads() {
       .map((rest) => normalizeLeadFromRestaurant(rest))
       .filter((lead) => lead && (!lead.restaurantId || !byRestaurant.has(String(lead.restaurantId))) && (!lead.id || !byId.has(String(lead.id))));
 
-    const merged = [...list, ...leadFromRestaurants];
+    const merged = [...list, ...leadFromRestaurants]
+      .filter((lead) => canCurrentCeoSeeRow(lead));
     merged.sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
     state.leads.items = merged;
     state.leads.error = "";
@@ -15213,6 +15645,196 @@ async function loadCustomers() {
     state.customers.error = "Kunden laden fehlgeschlagen.";
   } finally {
     state.customers.loading = false;
+    render();
+  }
+}
+
+function syncStaffFormFromDom() {
+  const read = (id) => {
+    const node = document.getElementById(id);
+    return node ? String(node.value || "") : "";
+  };
+  const nextCoords = state.staff.form.coords && Number.isFinite(Number(state.staff.form.coords.lat)) && Number.isFinite(Number(state.staff.form.coords.lng))
+    ? { lat: Number(state.staff.form.coords.lat), lng: Number(state.staff.form.coords.lng) }
+    : null;
+  state.staff.form = {
+    ...state.staff.form,
+    firstName: read("staffFirstName").trim(),
+    lastName: read("staffLastName").trim(),
+    email: read("staffEmail").trim(),
+    password: read("staffPassword"),
+    country: normalizeCeoCountry(read("staffCountry")),
+    locationLabel: read("staffLocationLabel").trim(),
+    coords: nextCoords
+  };
+}
+
+function resetStaffForm(status = "") {
+  state.staff = {
+    ...state.staff,
+    status,
+    form: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      country: CEO_COUNTRIES[0],
+      locationLabel: "",
+      coords: null
+    }
+  };
+}
+
+async function loadCeoStaff() {
+  if (!isCeoUser()) return;
+  state.staff.loading = true;
+  state.staff.error = "";
+  render();
+  try {
+    const current = getCurrentCeoMeta();
+    const snap = await getDocs(query(collection(db, "superadmins"), limit(200)));
+    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+    const userSnaps = await Promise.all(rows.map((row) => (
+      row?.id ? getDoc(doc(db, "users", row.id)).catch(() => null) : Promise.resolve(null)
+    )));
+    let items = rows.map((row, index) => normalizeCeoStaffRecord(
+      row,
+      userSnaps[index]?.exists?.() ? (userSnaps[index].data() || {}) : {}
+    ));
+    if (current.uid && !items.some((item) => item.uid === current.uid)) {
+      items.unshift(normalizeCeoStaffRecord({
+        uid: current.uid,
+        userId: current.uid,
+        name: current.name,
+        email: state.user?.email || "",
+        handle: state.userProfile.handle || normalizeHandle(current.name || "ceo"),
+        country: state.userProfile.country || state.userProfile.location || CEO_COUNTRIES[0],
+        locationLabel: state.userProfile.address || state.userProfile.location || "",
+        lat: state.userProfile.gpsLat ?? state.userProfile.lat,
+        lng: state.userProfile.gpsLng ?? state.userProfile.lng,
+        ceoParentUid: current.parentUid,
+        ceoParentName: state.userProfile.ceoParentName || "",
+        ceoRootUid: current.rootUid,
+        ceoRootName: current.rootName,
+        ceoPath: current.path
+      }));
+    }
+    items = items
+      .filter((item) => canViewCeoRecord(item))
+      .sort((a, b) => {
+        const ta = toDateSafe(a.createdAt)?.getTime() || 0;
+        const tb = toDateSafe(b.createdAt)?.getTime() || 0;
+        if (tb !== ta) return tb - ta;
+        return String(a.name || "").localeCompare(String(b.name || ""));
+      });
+    state.staff.items = items;
+    state.staff.error = "";
+  } catch (err) {
+    console.error(err);
+    state.staff.error = "Staff laden fehlgeschlagen.";
+  } finally {
+    state.staff.loading = false;
+    render();
+  }
+}
+
+async function saveCeoStaffFromView() {
+  if (!state.user || !isCeoUser()) return;
+  syncStaffFormFromDom();
+  const form = state.staff.form || {};
+  const firstName = String(form.firstName || "").trim();
+  const lastName = String(form.lastName || "").trim();
+  const email = String(form.email || "").trim().toLowerCase();
+  const password = String(form.password || "");
+  const country = normalizeCeoCountry(form.country);
+  const locationLabel = String(form.locationLabel || "").trim() || country;
+  const coords = form.coords && Number.isFinite(Number(form.coords.lat)) && Number.isFinite(Number(form.coords.lng))
+    ? { lat: Number(form.coords.lat), lng: Number(form.coords.lng) }
+    : null;
+  const name = buildCeoName({ firstName, lastName, email });
+  if (!firstName || !lastName || !email || !password) {
+    state.staff.status = "Vorname, Nachname, Email und Passwort sind erforderlich.";
+    render();
+    return;
+  }
+  if (!coords) {
+    state.staff.status = "Standort mit Pin waehlen.";
+    render();
+    return;
+  }
+
+  const current = getCurrentCeoMeta();
+  state.staff.status = "CEO Staff wird erstellt...";
+  render();
+
+  try {
+    const authUser = await createAuthUser(email, password);
+    const uid = String(authUser?.uid || "").trim();
+    if (!uid) throw new Error("Account konnte nicht erstellt werden.");
+    const ceoPath = uniqueStringList([...(current.path || []), uid]);
+    const handle = normalizeHandle(`${firstName}${lastName}`) || normalizeHandle(name) || "ceo";
+    const superadminPayload = {
+      uid,
+      userId: uid,
+      firstName,
+      lastName,
+      name,
+      displayName: name,
+      email,
+      handle,
+      role: "ceo",
+      roles: ["ceo"],
+      status: "active",
+      country,
+      locationLabel,
+      city: locationLabel,
+      lat: coords.lat,
+      lng: coords.lng,
+      gpsLat: coords.lat,
+      gpsLng: coords.lng,
+      ceoParentUid: current.uid || "",
+      ceoParentName: current.name || "",
+      ceoRootUid: current.rootUid || current.uid || uid,
+      ceoRootName: current.rootName || current.name || name,
+      ceoPath,
+      createdByUid: current.uid || "",
+      createdByRole: "ceo",
+      createdByName: current.name || "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(doc(db, "superadmins", uid), superadminPayload, { merge: true });
+    await setDoc(doc(db, "users", uid), {
+      displayName: name,
+      name,
+      firstName,
+      lastName,
+      email,
+      handle,
+      bio: "",
+      city: locationLabel,
+      location: locationLabel,
+      address: locationLabel,
+      country,
+      role: "ceo",
+      roles: ["ceo"],
+      ceoParentUid: current.uid || "",
+      ceoParentName: current.name || "",
+      ceoRootUid: current.rootUid || current.uid || uid,
+      ceoRootName: current.rootName || current.name || name,
+      ceoPath,
+      lat: coords.lat,
+      lng: coords.lng,
+      gpsLat: coords.lat,
+      gpsLng: coords.lng,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+    resetStaffForm("CEO Staff erstellt.");
+    await loadCeoStaff();
+  } catch (err) {
+    console.error(err);
+    state.staff.status = err?.message || "CEO Staff konnte nicht erstellt werden.";
     render();
   }
 }
