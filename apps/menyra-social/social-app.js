@@ -161,6 +161,8 @@ function createEmptyOrdersState() {
 
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 1.5 * 1024 * 1024;
+const CHAT_MESSAGE_READ_LIMIT = 30;
+const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
 const DETAIL_LIKES_LIMIT = 12;
 
@@ -931,6 +933,7 @@ function applyCommentAvatarCache(root = document) {
 }
 
 function scheduleCommentAvatarFetch(comment) {
+  if (!COMMENT_AVATAR_REMOTE_FETCH_ENABLED) return;
   if (!comment) return;
   const handleKey = normalizeHandle(comment.handle || comment.author || "");
   const commentId = comment.id ? String(comment.id) : "";
@@ -2496,7 +2499,8 @@ function startActiveChatMessagesListener(profile = state.chatModal.profile) {
   const threadId = getChatThreadId(profile);
   const ref = chatMessagesCollectionRef(ownerUid, threadId);
   if (!ref) return;
-  chatMessagesUnsub = onSnapshot(ref, (snap) => {
+  const messageQuery = query(ref, orderBy("createdAtClient", "desc"), limit(CHAT_MESSAGE_READ_LIMIT));
+  chatMessagesUnsub = onSnapshot(messageQuery, (snap) => {
     if (!state.chatModal.open || getChatThreadId(state.chatModal.profile) !== threadId) return;
     const localSeed = pruneChatMessages([
       ...loadChatThreadMessages(profile),
@@ -3488,7 +3492,7 @@ function matchesRestaurantIdentity(rest, { uid = "", email = "" } = {}) {
   return false;
 }
 
-async function scanRestaurantsForMatch(matchFn, { max = 400 } = {}) {
+async function scanRestaurantsForMatch(matchFn, { max = 25 } = {}) {
   try {
     const snap = await getDocs(query(collection(db, "restaurants"), limit(max)));
     if (snap.empty) return null;
@@ -3557,7 +3561,7 @@ async function queryLeadByField(field, value) {
   return null;
 }
 
-async function scanLeadsForMatch(matchFn, { max = 400 } = {}) {
+async function scanLeadsForMatch(matchFn, { max = 25 } = {}) {
   try {
     const snap = await getDocs(query(collection(db, "leads"), limit(max)));
     if (snap.empty) return null;
