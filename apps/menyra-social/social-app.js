@@ -392,7 +392,11 @@ const state = {
   },
   staff: {
     items: [],
+    view: "list",
+    editorUid: "",
     loading: false,
+    saving: false,
+    deleting: false,
     error: "",
     status: "",
     form: {
@@ -402,7 +406,10 @@ const state = {
       password: "",
       country: CEO_COUNTRIES[0],
       locationLabel: "",
-      coords: null
+      coords: null,
+      avatarUrl: "",
+      avatarPreview: "",
+      avatarFile: null
     }
   },
   leadModal: {
@@ -3076,7 +3083,11 @@ function resetUserScopedState() {
   state.customers = { items: [], loading: false, error: "", query: "" };
   state.staff = {
     items: [],
+    view: "list",
+    editorUid: "",
     loading: false,
+    saving: false,
+    deleting: false,
     error: "",
     status: "",
     form: {
@@ -3086,7 +3097,10 @@ function resetUserScopedState() {
       password: "",
       country: CEO_COUNTRIES[0],
       locationLabel: "",
-      coords: null
+      coords: null,
+      avatarUrl: "",
+      avatarPreview: "",
+      avatarFile: null
     }
   };
   state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "", coords: null, locations: [] };
@@ -3616,6 +3630,47 @@ function buildCeoCreatorMeta(profile = state.userProfile, user = state.user) {
     ceoRootName: current.rootName || current.name || "",
     ceoParentUid: current.parentUid || "",
     ceoPath: Array.isArray(current.path) ? current.path.slice() : []
+  };
+}
+
+function resolveStoredCeoCreatorMeta(...sources) {
+  let createdByUid = "";
+  let createdByRole = "";
+  let createdByName = "";
+  let createdByHandle = "";
+  let ceoRootUid = "";
+  let ceoRootName = "";
+  let ceoParentUid = "";
+  let ceoPath = [];
+  for (const source of sources) {
+    if (!source || typeof source !== "object") continue;
+    if (!createdByUid) createdByUid = String(source.createdByUid || "").trim();
+    if (!createdByRole) createdByRole = String(source.createdByRole || "").trim();
+    if (!createdByName) createdByName = String(source.createdByName || "").trim();
+    if (!createdByHandle) createdByHandle = String(source.createdByHandle || "").trim();
+    if (!ceoRootUid) ceoRootUid = String(source.ceoRootUid || "").trim();
+    if (!ceoRootName) ceoRootName = String(source.ceoRootName || "").trim();
+    if (!ceoParentUid) ceoParentUid = String(source.ceoParentUid || "").trim();
+    if (!ceoPath.length) {
+      ceoPath = normalizeCeoPath(source.ceoPath, [ceoRootUid, ceoParentUid, createdByUid]);
+    }
+  }
+  if (!createdByUid && ceoPath.length) createdByUid = ceoPath[ceoPath.length - 1];
+  if (!ceoRootUid && ceoPath.length) ceoRootUid = ceoPath[0];
+  if (!ceoParentUid && ceoPath.length > 1) ceoParentUid = ceoPath[ceoPath.length - 2];
+  ceoPath = normalizeCeoPath(ceoPath, [ceoRootUid, ceoParentUid, createdByUid]);
+  if (!(createdByUid || createdByName || createdByHandle || ceoRootUid || ceoParentUid || ceoPath.length)) {
+    return buildCeoCreatorMeta();
+  }
+  return {
+    createdByUid,
+    createdByRole: createdByRole || "ceo",
+    createdByName,
+    createdByHandle,
+    ceoRootUid: ceoRootUid || createdByUid,
+    ceoRootName: ceoRootName || createdByName,
+    ceoParentUid,
+    ceoPath
   };
 }
 
@@ -5325,6 +5380,14 @@ function ensureTabData(tab) {
   if (tab === "staff" && !dataLoaded.staff) {
     dataLoaded.staff = true;
     if (isCeoUser()) {
+      if (!dataLoaded.leads) {
+        dataLoaded.leads = true;
+        void loadLeads();
+      }
+      if (!dataLoaded.customers) {
+        dataLoaded.customers = true;
+        void loadCustomers();
+      }
       void loadCeoStaff();
     }
   }
@@ -10918,14 +10981,101 @@ function renderCustomersView() {
   `;
 }
 
-function renderStaffView() {
-  if (!isCeoUser()) return renderCeoGuard("Staff");
+function renderStaffEditorView() {
   const current = getCurrentCeoMeta();
-  const items = Array.isArray(state.staff.items) ? state.staff.items.slice() : [];
   const form = state.staff.form || {};
+  const isEditing = !!state.staff.editorUid;
+  const isSelfEdit = isEditing && String(state.staff.editorUid || "") === String(current.uid || "");
   const coords = form.coords && Number.isFinite(Number(form.coords.lat)) && Number.isFinite(Number(form.coords.lng))
     ? { lat: Number(form.coords.lat), lng: Number(form.coords.lng) }
     : null;
+  const emailValue = getStaffFormEmail(form, { preferStored: isEditing });
+  const avatarRaw = form.avatarPreview || form.avatarUrl || "";
+  const avatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const safeAvatar = (!avatarUrl || isPlaceholderUrl(avatarUrl)) ? PLACEHOLDER_IMAGE : avatarUrl;
+  const saveLabel = state.staff.saving
+    ? (isEditing ? "Speichern..." : "Erstelle CEO...")
+    : (isEditing ? "CEO speichern" : "CEO erstellen");
+
+  return `
+    <div id="staffEditorView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">
+      <div class="mb-6">
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CEO</span>
+        <h2 class="text-2xl font-black italic uppercase tracking-tighter">${escapeHtml(isEditing ? "Edit Staff" : "Create Staff")}</h2>
+      </div>
+
+      <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <input type="file" id="staffAvatarInput" class="hidden" accept="image/*" />
+        <div class="flex flex-col items-center mb-6">
+          <button id="staffAvatarTrigger" type="button" class="relative group">
+            <img id="staffAvatarPreview" src="${escapeHtml(safeAvatar)}" class="w-28 h-28 rounded-[2.6rem] object-cover border-4 border-white shadow-xl bg-slate-100" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
+            <div class="absolute -bottom-2 -right-2 w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+              ${icon("camera", "w-4 h-4")}
+            </div>
+          </button>
+          <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-4">Profilbild hochladen</p>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vorname</label>
+            <input id="staffFirstName" type="text" value="${escapeHtml(form.firstName || "")}" placeholder="Vorname" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Nachname</label>
+            <input id="staffLastName" type="text" value="${escapeHtml(form.lastName || "")}" placeholder="Nachname" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>
+            <input id="staffEmail" type="email" value="${escapeHtml(emailValue)}" placeholder="vornamenachname@menyra.com" readonly class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500 border-none outline-none" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
+            <input id="staffPassword" type="password" value="" placeholder="${escapeHtml(isEditing ? "Passwort bleibt unveraendert" : "Passwort eingeben")}" ${isEditing ? "disabled" : ""} class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 ${isEditing ? "text-slate-400" : ""}" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Land</label>
+            <div class="relative mt-2">
+              <select id="staffCountry" class="w-full px-5 py-4 pr-12 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
+                ${CEO_COUNTRIES.map((country) => `<option value="${escapeHtml(country)}" ${normalizeCeoCountry(form.country) === country ? "selected" : ""}>${escapeHtml(country)}</option>`).join("")}
+              </select>
+              <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Standort</label>
+            <input id="staffLocationLabel" type="text" value="${escapeHtml(form.locationLabel || "")}" placeholder="Standort / Adresse" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+        </div>
+
+        <button id="staffLocationPickBtn" type="button" class="w-full mt-4 py-4 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform">
+          ${icon("map-pin", "w-4 h-4")} Standort mit Pin waehlen
+        </button>
+        <div id="staffCoordsDisplay" class="mt-3 ${coords ? "" : "hidden"} px-3 py-3 rounded-2xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+          ${icon("check-circle-2", "w-4 h-4")} ${coords ? escapeHtml(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`) : ""}
+        </div>
+
+        ${state.staff.error ? `<div class="mt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(state.staff.error)}</div>` : ""}
+        ${state.staff.status ? `<div class="mt-4 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.staff.status)}</div>` : ""}
+
+        <button id="staffSaveBtn" type="button" class="w-full mt-5 py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${state.staff.saving ? "disabled" : ""}>
+          ${escapeHtml(saveLabel)}
+        </button>
+        ${isEditing ? `
+          <button id="staffDeleteBtn" type="button" class="w-full mt-3 py-4 rounded-[1.8rem] bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest border border-rose-100 active:scale-95 transition-transform ${isSelfEdit ? "opacity-60 cursor-not-allowed" : ""}" ${(state.staff.deleting || isSelfEdit) ? "disabled" : ""}>
+            ${escapeHtml(state.staff.deleting ? "Loeschen..." : "CEO loeschen")}
+          </button>
+        ` : ""}
+      </div>
+    </div>
+  `;
+}
+
+function renderStaffView() {
+  if (!isCeoUser()) return renderCeoGuard("Staff");
+  if (state.staff.view === "form") return renderStaffEditorView();
+  const current = getCurrentCeoMeta();
+  const items = Array.isArray(state.staff.items) ? state.staff.items.slice() : [];
   const listHtml = state.staff.loading
     ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Staff laden...</div>`
     : (items.length ? items.map((entry) => {
@@ -10934,11 +11084,14 @@ function renderStaffView() {
       const leadCount = (state.leads.items || []).filter((lead) => String(lead.createdByUid || "") === String(entry.uid || "")).length;
       const customerCount = (state.customers.items || []).filter((customer) => String(customer.createdByUid || "") === String(entry.uid || "")).length;
       const locationText = entry.locationLabel || entry.location || entry.city || entry.country || "-";
+      const avatarRaw = entry.avatarPreview || entry.avatarUrl || entry.avatar || "";
+      const avatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : PLACEHOLDER_IMAGE;
+      const safeAvatar = (!avatarUrl || isPlaceholderUrl(avatarUrl)) ? PLACEHOLDER_IMAGE : avatarUrl;
       return `
-        <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
-          <div class="flex items-start gap-3">
-            <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-sm">
-              ${escapeHtml(String(entry.name || "C").trim().slice(0, 1).toUpperCase())}
+        <button data-staff-edit="${escapeHtml(entry.uid || "")}" class="w-full text-left bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm active:scale-[0.99] transition-transform">
+          <div class="flex items-center gap-3">
+            <div class="w-14 h-14 rounded-[1.4rem] overflow-hidden bg-slate-100 shrink-0">
+              <img src="${escapeHtml(safeAvatar)}" class="w-full h-full object-cover" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(entry.name || "CEO")}</p>
@@ -10961,64 +11114,27 @@ function renderStaffView() {
               <p class="text-sm font-black text-slate-900 mt-1">${escapeHtml(String(customerCount))}</p>
             </div>
           </div>
-        </div>
+          <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Tippen zum Bearbeiten</span>
+            <span class="w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center">${icon("chevron-right", "w-4 h-4")}</span>
+          </div>
+        </button>
       `;
     }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Noch kein CEO Staff</div>`);
 
   return `
-    <div id="staffView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+    <div id="staffView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">
       <div class="flex items-center justify-between mb-6">
         <div>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CEO</span>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter">Staff</h2>
         </div>
-        <button id="staffReloadBtn" class="w-12 h-12 rounded-2xl bg-white border border-slate-100 text-slate-500 flex items-center justify-center shadow-sm active:scale-95">
-          ${icon("refresh-cw", "w-4 h-4")}
+        <button id="staffNewBtn" class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-xl shadow-slate-200/60 active:scale-95">
+          ${icon("plus", "w-4 h-4")}
         </button>
       </div>
-
-      <div class="bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm mb-5">
-        <div class="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <p class="text-sm font-black text-slate-900">Neuen CEO Staff erstellen</p>
-            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Unter deinem CEO-Baum</p>
-          </div>
-          <span class="px-3 py-1 rounded-full bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest">${escapeHtml(current.isRoot ? "Haupt CEO" : "CEO")}</span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-3 mb-3">
-          <input id="staffFirstName" type="text" value="${escapeHtml(form.firstName || "")}" placeholder="Vorname" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-          <input id="staffLastName" type="text" value="${escapeHtml(form.lastName || "")}" placeholder="Nachname" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-        </div>
-        <div class="grid grid-cols-2 gap-3 mb-3">
-          <input id="staffEmail" type="email" value="${escapeHtml(form.email || "")}" placeholder="name@menyra.com" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-          <input id="staffPassword" type="password" value="${escapeHtml(form.password || "")}" placeholder="Passwort" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-        </div>
-        <div class="grid grid-cols-2 gap-3 mb-3">
-          <div class="relative">
-            <select id="staffCountry" class="w-full px-4 py-3 pr-10 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
-              ${CEO_COUNTRIES.map((country) => `<option value="${escapeHtml(country)}" ${normalizeCeoCountry(form.country) === country ? "selected" : ""}>${escapeHtml(country)}</option>`).join("")}
-            </select>
-            <div class="absolute inset-y-0 right-4 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
-          </div>
-          <input id="staffLocationLabel" type="text" value="${escapeHtml(form.locationLabel || "")}" placeholder="Standort / Adresse" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-        </div>
-
-        <button id="staffLocationPickBtn" type="button" class="w-full py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform">
-          ${icon("map-pin", "w-4 h-4")} Standort mit Pin waehlen
-        </button>
-        <div id="staffCoordsDisplay" class="mt-3 ${coords ? "" : "hidden"} px-3 py-2 rounded-2xl bg-emerald-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
-          ${icon("check-circle-2", "w-4 h-4")} ${coords ? escapeHtml(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`) : ""}
-        </div>
-
-        ${state.staff.error ? `<div class="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(state.staff.error)}</div>` : ""}
-        ${state.staff.status ? `<div class="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.staff.status)}</div>` : ""}
-
-        <button id="staffCreateBtn" type="button" class="w-full mt-4 py-4 rounded-[1.6rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform">
-          CEO Staff erstellen
-        </button>
-      </div>
-
+      ${state.staff.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.staff.error)}</div>` : ""}
+      ${state.staff.status ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">${escapeHtml(state.staff.status)}</div>` : ""}
       <div class="space-y-4">${listHtml}</div>
     </div>
   `;
@@ -11519,6 +11635,22 @@ function renderHeader() {
   const avatarFit = logoFitClass(branding.isBusinessLogo);
   const titleClass = "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
   const subtitleClass = `text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block${branding.subtitle ? "" : " hidden"}`;
+  if (state.activeTab === "staff" && state.staff?.view === "form") {
+    return `
+      <header class="p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
+        <button data-staff-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
+          ${icon("arrow-left", "w-5 h-5")}
+        </button>
+        <div class="text-center">
+          <h1 class="${titleClass}">MENYRA</h1>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">CEO Creation</span>
+        </div>
+        <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
+          <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
+        </button>
+      </header>
+    `;
+  }
   if (state.activeTab === "chat" && state.chatModal.open && state.chatModal.profile) {
     const partner = state.chatModal.profile;
     const partnerAvatar = getOptimizedImageUrl(partner.avatar, "avatar");
@@ -13570,6 +13702,7 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
   const address = document.getElementById(addressInputId)?.value?.trim() || "";
   const pickerContext = String(context || "");
   const isLeadPickerContext = pickerContext === "lead" || pickerContext.startsWith("lead_location:");
+  const isStaffPickerContext = pickerContext === "staff";
   if (isLeadPickerContext && isCeoUser()) {
     const tasks = [];
     if (!state.leads.loading && (!Array.isArray(state.leads.items) || !state.leads.items.length)) {
@@ -13610,6 +13743,11 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
         targetCoords = resolveCoordsFromEntity(primary) || resolveCoordsFromEntity(state.leadModal.coords || {}) || null;
       }
       targetCoords = preferStableCoords(targetCoords, restFallback);
+    }
+  } else if (isStaffPickerContext) {
+    const staffCoords = state.staff.form?.coords;
+    if (staffCoords && Number.isFinite(Number(staffCoords.lat)) && Number.isFinite(Number(staffCoords.lng))) {
+      targetCoords = { lat: Number(staffCoords.lat), lng: Number(staffCoords.lng) };
     }
   } else if (pickerContext === "settings") {
     if (verifiedMapLocation && Number.isFinite(Number(verifiedMapLocation.lat)) && Number.isFinite(Number(verifiedMapLocation.lng))) {
@@ -13689,8 +13827,24 @@ function confirmLocation() {
       const primary = getPrimaryLeadLocation(list);
       state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : null;
     }
+  } else if (context === "staff") {
+    const addressInput = document.getElementById(locationPickerTarget.addressInputId || "");
+    const locationLabel = addressInput ? String(addressInput.value || "").trim() : "";
+    state.staff = {
+      ...state.staff,
+      form: {
+        ...state.staff.form,
+        locationLabel: locationLabel || state.staff.form.locationLabel || state.staff.form.country || CEO_COUNTRIES[0],
+        coords
+      }
+    };
   } else {
     verifiedMapLocation = coords;
+  }
+  if (context === "staff") {
+    closeLocationPicker();
+    render();
+    return;
   }
   const badge = document.getElementById(locationPickerTarget.coordsDisplayId || "coordsDisplay");
   badge?.classList.remove("hidden");
@@ -16067,6 +16221,7 @@ async function saveLeadFromModal() {
     }
     const existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
     const restaurantStatus = resolveRestaurantStatusFromLead(statusValue, existingRest?.status || "");
+    const creatorMeta = resolveStoredCeoCreatorMeta(lead, existingRest);
     const restPayload = {
       name: businessName,
       restaurantName: businessName,
@@ -16083,6 +16238,7 @@ async function saveLeadFromModal() {
       status: restaurantStatus,
       leadId: lead.id || "",
       locations: locationPayload,
+      ...creatorMeta,
       updatedAt: serverTimestamp()
     };
     if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
@@ -16095,9 +16251,7 @@ async function saveLeadFromModal() {
     if (restRef) {
       await setDoc(restRef, {
         ...restPayload,
-        createdAt: serverTimestamp(),
-        createdByUid: state.user.uid,
-        createdByRole: "ceo"
+        createdAt: serverTimestamp()
       });
     } else {
       await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
@@ -16152,8 +16306,7 @@ async function saveLeadFromModal() {
       socialUid,
       socialEmail,
       updatedAt: serverTimestamp(),
-      createdByUid: lead.createdByUid || state.user.uid,
-      createdByRole: "ceo"
+      ...creatorMeta
     };
     if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
       leadPayload.lat = coords.lat;
@@ -16260,6 +16413,11 @@ async function saveCustomerFromModal() {
 
     if (statusKey !== "kunde") {
       const leadId = customer.leadId || payload.leadId || "";
+      const matchedLead = (leadId
+        ? state.leads.items.find((item) => String(item.id || "") === String(leadId))
+        : null)
+        || state.leads.items.find((item) => String(item.restaurantId || "") === String(customer.id));
+      const creatorMeta = resolveStoredCeoCreatorMeta(matchedLead, customer);
       const leadRef = leadId ? doc(db, "leads", leadId) : doc(collection(db, "leads"));
       const leadPayload = {
         businessName: name,
@@ -16275,8 +16433,7 @@ async function saveCustomerFromModal() {
         status: statusKey,
         restaurantId: customer.id,
         updatedAt: serverTimestamp(),
-        createdByUid: state.user.uid,
-        createdByRole: "ceo"
+        ...creatorMeta
       };
       if (!leadId) leadPayload.createdAt = serverTimestamp();
       await setDoc(leadRef, leadPayload, { merge: true });
@@ -16329,6 +16486,7 @@ async function convertLeadToCustomer(leadId) {
     let existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
     const businessName = lead.businessName || "Neuer Kunde";
     const type = resolveCustomerType(lead.customerType || "cafe");
+    const creatorMeta = resolveStoredCeoCreatorMeta(lead, existingRest);
     const locations = normalizeLeadLocations(lead.locations || [], lead.address || "", {
       lat: lead.lat ?? null,
       lng: lead.lng ?? null
@@ -16360,6 +16518,7 @@ async function convertLeadToCustomer(leadId) {
       status: "active",
       leadId: lead.id || "",
       locations: locationPayload,
+      ...creatorMeta,
       updatedAt: serverTimestamp()
     };
     if (hasLeadLocationCoords(primaryLocation)) {
@@ -16375,12 +16534,10 @@ async function convertLeadToCustomer(leadId) {
       restaurantId = restRef.id;
       await setDoc(restRef, {
         ...restPayload,
-        createdAt: serverTimestamp(),
-        createdByUid: state.user.uid,
-        createdByRole: "ceo"
+        createdAt: serverTimestamp()
       });
     } else {
-      await setDoc(doc(db, "restaurants", restaurantId), { status: "active", updatedAt: serverTimestamp() }, { merge: true });
+      await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
     }
     await ensureRestaurantPublicMeta(restaurantId, restPayload);
 
