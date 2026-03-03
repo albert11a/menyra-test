@@ -252,8 +252,8 @@ const FAST_LIMITS = {
   restaurants: 80,
   stories: 24,
   storiesFallback: 30,
-  likes: 40,
-  comments: 80
+  likes: 20,
+  comments: 40
 };
 const SEARCH_LIMITS = {
   users: 10,
@@ -273,7 +273,7 @@ const CACHE_TTL_MS = {
   restaurants: 60 * 60 * 1000,
   stories: 10 * 60 * 1000
 };
-const FEED_DELTA_MIN_MS = 3 * 60 * 1000;
+const FEED_DELTA_MIN_MS = 15 * 60 * 1000;
 const FEED_PRELOAD_LIMIT = 3;
 const FEED_PRELOAD_ATTR = "data-menyrasocial-feed-preload";
 const FEED_META_LISTEN_LIMIT = 20;
@@ -3089,20 +3089,46 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
 
   for (const rid of missing) {
     try {
-      const [restSnap, metaSnap] = await Promise.all([
-        getDoc(doc(db, "restaurants", rid)),
-        getDoc(doc(db, "restaurants", rid, "public", "meta"))
-      ]);
-      const restData = restSnap.exists() ? (restSnap.data() || {}) : {};
-      const metaData = metaSnap.exists() ? (metaSnap.data() || {}) : {};
+      const stored = existing.get(rid) || {};
+      let metaData = {};
+      try {
+        const metaSnap = await getDoc(doc(db, "restaurants", rid, "public", "meta"));
+        if (metaSnap.exists()) metaData = metaSnap.data() || {};
+      } catch {}
+
+      let restData = stored;
+      const currentName = metaData.name || metaData.restaurantName || stored.name || stored.restaurantName || "";
+      const currentLogo = metaData.logoUrl || metaData.logo || stored.logoUrl || stored.logo || stored.logoURL || "";
+      if (!currentName || !currentLogo) {
+        try {
+          const restSnap = await getDoc(doc(db, "restaurants", rid));
+          if (restSnap.exists()) {
+            restData = { ...restData, ...(restSnap.data() || {}) };
+          }
+        } catch {}
+      }
+
       const name = metaData.name || metaData.restaurantName || restData.name || restData.restaurantName || "";
       const logoUrl = metaData.logoUrl || metaData.logo || restData.logoUrl || restData.logo || restData.logoURL || "";
-      if (name || logoUrl) {
+      const city = metaData.city || restData.city || "";
+      const type = normalizeRestaurantType(
+        metaData.type
+        || metaData.customerType
+        || restData.type
+        || restData.customerType
+        || restData.category
+        || restData.kind
+        || restData.restaurantType
+        || ""
+      );
+      if (name || logoUrl || city || type) {
         loaded.push({
           id: rid,
           name,
           restaurantName: restData.restaurantName || "",
-          logoUrl
+          logoUrl,
+          city,
+          ...(type ? { type, customerType: type } : {})
         });
       }
     } catch (e) {
@@ -3230,37 +3256,9 @@ function stopRestaurantMetaListeners() {
 }
 
 function ensureFeedRestaurantMetaListeners(feedPosts = state.feedPosts, { limit = FEED_META_LISTEN_LIMIT } = {}) {
-  if (!Array.isArray(feedPosts) || !feedPosts.length) {
-    stopRestaurantMetaListeners();
-    return;
-  }
-  const ids = [];
-  const seen = new Set();
-  for (const post of feedPosts) {
-    const rid = post.restaurantId || post.ownerId || "";
-    if (!rid || seen.has(rid)) continue;
-    seen.add(rid);
-    ids.push(rid);
-    if (ids.length >= limit) break;
-  }
-  const nextSet = new Set(ids);
-
-  restaurantMetaUnsubs.forEach((unsub, rid) => {
-    if (!nextSet.has(rid)) {
-      try { unsub(); } catch {}
-      restaurantMetaUnsubs.delete(rid);
-    }
-  });
-
-  ids.forEach((rid) => {
-    if (restaurantMetaUnsubs.has(rid)) return;
-    const ref = doc(db, "restaurants", rid, "public", "meta");
-    const unsub = onSnapshot(ref, (snap) => {
-      if (!snap.exists()) return;
-      applyRestaurantMetaUpdate(rid, snap.data() || {});
-    });
-    restaurantMetaUnsubs.set(rid, unsub);
-  });
+  void feedPosts;
+  void limit;
+  stopRestaurantMetaListeners();
 }
 
 async function enrichRestaurantsWithPublicMeta(restaurants) {
@@ -3268,6 +3266,20 @@ async function enrichRestaurantsWithPublicMeta(restaurants) {
   const lookups = restaurants.map((rest) => {
     const rid = rest?.id || "";
     if (!rid) return Promise.resolve(null);
+    const hasCoreName = !!String(rest?.name || rest?.restaurantName || "").trim();
+    const hasCoreLogo = !!String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
+    const hasCoreCity = !!String(rest?.city || "").trim();
+    const hasCoreType = !!normalizeRestaurantType(
+      rest?.type
+      || rest?.customerType
+      || rest?.category
+      || rest?.kind
+      || rest?.restaurantType
+      || ""
+    );
+    if (hasCoreName && hasCoreLogo && hasCoreCity && hasCoreType) {
+      return Promise.resolve(null);
+    }
     return getDoc(doc(db, "restaurants", rid, "public", "meta")).catch(() => null);
   });
   const metaSnaps = await Promise.all(lookups);
@@ -4559,39 +4571,18 @@ function resolveMenuItemCounts(meta) {
 function primeMenuItemCounts(items, restaurantId) {
   if (!restaurantId) return;
   const list = Array.isArray(items) ? items : [];
-  const itemIds = [];
   list.forEach((item) => {
     const itemId = getMenuItemSocialId(item);
     if (!itemId) return;
     const key = menuItemMetaKey(restaurantId, itemId);
-    if (!key || menuItemCountsRequested.has(key)) return;
-    menuItemCountsRequested.add(key);
-    itemIds.push(itemId);
-  });
-  if (!itemIds.length) return;
-
-  Promise.all(itemIds.map((itemId) => (
-    getDoc(doc(db, "restaurants", restaurantId, "menuSocial", itemId))
-      .then((snap) => ({ itemId, snap }))
-      .catch(() => null)
-  ))).then((results) => {
-    let changed = false;
-    results.forEach((res) => {
-      if (!res?.snap || !res.snap.exists()) return;
-      const data = res.snap.data() || {};
-      const key = menuItemMetaKey(restaurantId, res.itemId);
-      const meta = ensureMenuItemMeta(key);
-      meta.counts = {
-        likes: Number(data.likesCount ?? data.likes ?? meta.likes?.length ?? 0) || 0,
-        comments: Number(data.commentsCount ?? data.comments ?? meta.comments?.length ?? 0) || 0
-      };
-      state.menuItemMeta[key] = meta;
-      updateMenuCardCountNodes(res.itemId, resolveMenuItemCounts(meta));
-      changed = true;
-    });
-    if (changed && state.profileTopTab === "menu") {
-      render();
-    }
+    if (!key) return;
+    const meta = ensureMenuItemMeta(key);
+    meta.counts = {
+      likes: Number(item?.likesCount ?? item?.likes ?? meta.counts?.likes ?? 0) || 0,
+      comments: Number(item?.commentsCount ?? item?.comments ?? meta.counts?.comments ?? 0) || 0
+    };
+    state.menuItemMeta[key] = meta;
+    updateMenuCardCountNodes(itemId, resolveMenuItemCounts(meta));
   });
 }
 
@@ -4985,19 +4976,37 @@ function handleSearchInput(value) {
     if (!refreshSearchView()) render();
     return;
   }
+  if (queryKey.length < 3) {
+    state.search.userResults = [];
+    state.search.loading = false;
+    state.search.error = "";
+    if (!refreshSearchView()) render();
+    return;
+  }
   if (!refreshSearchView()) render();
   searchTimer = window.setTimeout(() => {
     void searchRemote(raw);
-  }, 180);
+  }, 450);
 }
 
 function ensureTabData(tab) {
   if (!state.user) return;
-
-  if (tab === "map") {
-    startRestaurantsListener();
+  stopRestaurantsListener();
+  if (tab === "orders") {
+    startOrdersListener(state.user);
   } else {
-    stopRestaurantsListener();
+    stopOrdersListener();
+  }
+  if (tab !== "feed") {
+    stopRestaurantMetaListeners();
+    if (feedUnsub) {
+      feedUnsub();
+      feedUnsub = null;
+    }
+    if (storiesUnsub) {
+      storiesUnsub();
+      storiesUnsub = null;
+    }
   }
 
   if (tab === "feed" && !dataLoaded.feed) {
@@ -5019,13 +5028,13 @@ function ensureTabData(tab) {
     dataLoaded.restaurants = true;
     scheduleIdle(() => {
       loadRestaurants().then(() => {
-        if (!dataLoaded.stories && (state.activeTab === "feed" || state.activeTab === "map")) {
+        if (!dataLoaded.stories && state.activeTab === "feed") {
           dataLoaded.stories = true;
           scheduleIdle(() => void loadStories());
         }
       }).catch((err) => console.error(err));
     });
-  } else if ((tab === "feed" || tab === "map") && !dataLoaded.stories) {
+  } else if (tab === "feed" && !dataLoaded.stories) {
     dataLoaded.stories = true;
     scheduleIdle(() => void loadStories());
   }
@@ -5041,11 +5050,11 @@ function ensureTabData(tab) {
     }
   }
   if (tab === "profile") {
-    void loadAuthProfile(state.user, { force: true });
+    void loadAuthProfile(state.user);
   }
 
   if (tab === "menu") {
-    void loadAuthProfile(state.user, { force: true }).then(() => {
+    void loadAuthProfile(state.user).then(() => {
       const restaurantId = state.userProfile.restaurantId || "";
       if (restaurantId) {
         void loadMenuForRestaurant(restaurantId, { source: "hybrid" });
@@ -5161,7 +5170,6 @@ async function openPostModal(post) {
   };
   renderOverlays();
   state.postModal.animate = false;
-  await loadPostMetaFromFirebase(post);
   attachPostMetaListeners(post);
   state.postModal.loading = false;
   updatePostModalMeta();
@@ -6395,7 +6403,7 @@ function startLiveListeners(user) {
   });
 
   const notifRef = collection(db, "users", user.uid, "notifications");
-  notificationsUnsub = onSnapshot(query(notifRef, orderBy("createdAt", "desc"), limit(60)), (snap) => {
+  notificationsUnsub = onSnapshot(query(notifRef, orderBy("createdAt", "desc"), limit(20)), (snap) => {
     const items = snap.docs.map((docSnap) => {
       const data = docSnap.data() || {};
       return {
@@ -6421,14 +6429,6 @@ function startLiveListeners(user) {
 
   startChatThreadsListener(user);
   startOrdersListener(user);
-  startFeedListener();
-  startStoriesListener();
-  if (!hasBusinessProfile) {
-    startUserPostsListener(user.uid);
-  }
-  if (hasBusinessProfile && state.userProfile.restaurantId) {
-    startBusinessPostsListener(state.userProfile.restaurantId);
-  }
 }
 
 function attachProfileViewListener(profile) {
@@ -8715,7 +8715,7 @@ async function loadNotificationsFromFirebase({ force = false } = {}) {
   if (!state.user) return;
   try {
     const ref = collection(db, "users", state.user.uid, "notifications");
-    const snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(60)));
+    const snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(20)));
     const items = [];
     snap.forEach((docSnap) => {
       const data = docSnap.data() || {};
@@ -16003,7 +16003,6 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
     updateMenuDetailMeta();
     return;
   }
-  await loadMenuItemMetaFromFirebase(item, restaurantId);
   attachMenuItemMetaListeners(item, restaurantId);
   state.menuDetail.loading = false;
   updateMenuDetailMeta();
@@ -16285,11 +16284,9 @@ async function bootstrapUser(user) {
   }
   if (!dataLoaded.following) {
     dataLoaded.following = true;
-    void loadFollowingFromFirebase();
   }
   if (!dataLoaded.notifications) {
     dataLoaded.notifications = true;
-    void loadNotificationsFromFirebase({ force: true });
   }
   startLiveListeners(user);
   ensureTabData(state.activeTab);
