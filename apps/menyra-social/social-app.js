@@ -2450,7 +2450,8 @@ function startChatThreadsListener(user = state.user) {
   const ownerUid = String(user?.uid || "").trim();
   if (!ownerUid) return;
   const ref = collection(db, "users", ownerUid, "chatThreads");
-  chatThreadsUnsub = onSnapshot(ref, (snap) => {
+  const threadQuery = query(ref, orderBy("updatedAt", "desc"), limit(25));
+  chatThreadsUnsub = onSnapshot(threadQuery, (snap) => {
     const remoteThreads = snap.docs
       .map((docSnap) => normalizeChatThreadSummary(docSnap.id, docSnap.data() || {}))
       .filter(Boolean);
@@ -6389,19 +6390,6 @@ function startLiveListeners(user) {
     });
   }
 
-  const followingRef = collection(db, "users", user.uid, "following");
-  followingUnsub = onSnapshot(followingRef, (snap) => {
-    const handles = [];
-    snap.forEach((docSnap) => {
-      const data = docSnap.data() || {};
-      if (data.handle) handles.push(String(data.handle));
-    });
-    dataLoaded.following = true;
-    applyFollowingHandles(handles);
-  }, (err) => {
-    console.error(err);
-  });
-
   const notifRef = collection(db, "users", user.uid, "notifications");
   notificationsUnsub = onSnapshot(query(notifRef, orderBy("createdAt", "desc"), limit(20)), (snap) => {
     const items = snap.docs.map((docSnap) => {
@@ -6428,7 +6416,6 @@ function startLiveListeners(user) {
   });
 
   startChatThreadsListener(user);
-  startOrdersListener(user);
 }
 
 function attachProfileViewListener(profile) {
@@ -16284,6 +16271,7 @@ async function bootstrapUser(user) {
   }
   if (!dataLoaded.following) {
     dataLoaded.following = true;
+    void loadFollowingFromFirebase();
   }
   if (!dataLoaded.notifications) {
     dataLoaded.notifications = true;
