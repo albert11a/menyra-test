@@ -5009,19 +5009,14 @@ function ensureTabData(tab) {
       storiesUnsub = null;
     }
   }
+  if (tab !== "feed" && feedDeltaTimer) {
+    clearInterval(feedDeltaTimer);
+    feedDeltaTimer = null;
+  }
 
   if (tab === "feed" && !dataLoaded.feed) {
     dataLoaded.feed = true;
     void loadFeedPosts();
-    scheduleIdle(() => void loadFeedDelta());
-  }
-
-  if (tab === "feed" && !feedDeltaTimer) {
-    feedDeltaTimer = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      if (state.activeTab !== "feed") return;
-      void loadFeedDelta();
-    }, FEED_DELTA_MIN_MS);
   }
 
   const needsRestaurants = tab === "map" || tab === "search" || (!FAST_MODE && tab === "feed");
@@ -6133,6 +6128,10 @@ function stopLiveListeners() {
   stopChatThreadsListener();
   stopActiveChatMessagesListener();
   stopOrdersListener();
+  if (feedDeltaTimer) {
+    clearInterval(feedDeltaTimer);
+    feedDeltaTimer = null;
+  }
   if (notificationsUnsub) {
     notificationsUnsub();
     notificationsUnsub = null;
@@ -6309,112 +6308,6 @@ function startLiveListeners(user) {
   if (!user) return;
   liveFeedDisabled = false;
   liveStoriesDisabled = false;
-
-  const hasBusinessProfile = isLocalBusinessProfile(state.userProfile);
-  if (hasBusinessProfile && state.userProfile.restaurantId) {
-    const restRef = doc(db, "restaurants", state.userProfile.restaurantId);
-    userDocUnsub = onSnapshot(restRef, (snap) => {
-      if (!snap.exists()) return;
-      const data = snap.data() || {};
-      const prevAvatar = state.userProfile?.avatar || "";
-      const normalized = normalizeBusinessProfile({ id: snap.id, ...data }, user);
-      normalized.uid = user.uid;
-      const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
-      if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
-      if (!Number.isFinite(Number(data.followingCount ?? data.following))) {
-        normalized.following = state.userProfile?.following ?? normalized.following;
-      }
-      if (!Number.isFinite(Number(data.followersCount ?? data.followers))) {
-        normalized.followers = state.userProfile?.followers ?? normalized.followers;
-      }
-      state.userProfile = normalized;
-      syncPrivateSettingFromProfile(false);
-      saveUserProfileToStorage();
-      const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
-      if (!isPlaceholderUrl(resolvedAvatar)) {
-        primeSelfAvatarCache(resolvedAvatar);
-      }
-      state.restaurants = mergeRestaurants(state.restaurants, [{ id: snap.id, ...data }]);
-      rebuildBusinessLocations();
-      startOrdersListener(user);
-      updateShellDom();
-      if (state.activeTab === "profile" && !state.profileView) {
-        render();
-      } else if (state.activeTab === "search") {
-        refreshSearchView();
-      }
-    });
-  } else {
-    const userRef = doc(db, "users", user.uid);
-    userDocUnsub = onSnapshot(userRef, (snap) => {
-      if (!snap.exists()) return;
-      const data = snap.data() || {};
-      const rawAvatar = data.avatarUrl || data.avatar || "";
-      const resolvedAvatarCandidate = getOptimizedImageUrl(rawAvatar, "avatar");
-      const safeAvatar = (!rawAvatar || isPlaceholderUrl(resolvedAvatarCandidate)) ? state.userProfile.avatar : rawAvatar;
-      const next = {
-        name: data.displayName || state.userProfile.name,
-        handle: data.handle || state.userProfile.handle,
-        avatar: safeAvatar,
-        followers: data.followersCount ?? state.userProfile.followers,
-        following: data.followingCount ?? state.userProfile.following,
-        privateAccount: !!data.privateAccount,
-        role: data.role || state.userProfile.role,
-        location: data.city || state.userProfile.location,
-        bio: data.bio || state.userProfile.bio
-      };
-      Object.assign(state.userProfile, next);
-      syncPrivateSettingFromProfile(next.privateAccount);
-      saveUserProfileToStorage();
-      const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
-      if (!isPlaceholderUrl(resolvedAvatar)) {
-        userAvatarCache = resolvedAvatar;
-        scheduleAvatarCacheWrite(resolvedAvatar);
-        if (state.user?.uid) {
-          commentAvatarCache.set(state.user.uid, resolvedAvatar);
-          updateCommentAvatarNodesByUid(state.user.uid, resolvedAvatar);
-        }
-        const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-        if (handleKey) {
-          commentAvatarCache.set(handleKey, resolvedAvatar);
-          updateCommentAvatarNodes(handleKey, resolvedAvatar);
-        }
-      }
-      startOrdersListener(user);
-      updateShellDom();
-      if (state.activeTab === "profile" && !state.profileView) {
-        render();
-      } else if (state.activeTab === "search") {
-        refreshSearchView();
-      }
-    });
-  }
-
-  const notifRef = collection(db, "users", user.uid, "notifications");
-  notificationsUnsub = onSnapshot(query(notifRef, orderBy("createdAt", "desc"), limit(20)), (snap) => {
-    const items = snap.docs.map((docSnap) => {
-      const data = docSnap.data() || {};
-      return {
-        id: docSnap.id,
-        type: data.type || "system",
-        user: data.user || data.userName || "User",
-        text: data.text || "folgt dir jetzt",
-        time: formatRelative(toDateSafe(data.createdAt)),
-        img: data.avatar || data.img || "",
-        read: !!data.read,
-        createdAt: data.createdAt,
-        postId: data.postId || "",
-        commentId: data.commentId || "",
-        userHandle: data.userHandle || data.handle || "",
-        userUid: data.userUid || data.uid || "",
-        ownerType: data.ownerType || "",
-        ownerId: data.ownerId || "",
-        restaurantId: data.restaurantId || ""
-      };
-    });
-    handleNotificationsUpdate(items);
-  });
-
   startChatThreadsListener(user);
 }
 
@@ -16272,9 +16165,6 @@ async function bootstrapUser(user) {
   if (!dataLoaded.following) {
     dataLoaded.following = true;
     void loadFollowingFromFirebase();
-  }
-  if (!dataLoaded.notifications) {
-    dataLoaded.notifications = true;
   }
   startLiveListeners(user);
   ensureTabData(state.activeTab);
