@@ -187,7 +187,7 @@ const LEAD_TYPE_LABELS = {
   services: "Services"
 };
 const ALBERT_CEO_HANDLE = "albert_hoti";
-const CEO_COUNTRIES = Object.freeze(["Kosovo", "Albanien", "Serbien"]);
+const CEO_COUNTRIES = Object.freeze(["Albanien", "Kosovo", "Serbien"]);
 const PRISHTINA_COORDS = Object.freeze({ lat: 42.6629, lng: 21.1655 });
 const OLC_ALPHABET = "23456789CFGHJMPQRVWX";
 const OLC_SEPARATOR = "+";
@@ -11001,7 +11001,7 @@ function renderStaffEditorView() {
     <div id="staffEditorView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">
       <div class="mb-6">
         <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CEO</span>
-        <h2 class="text-2xl font-black italic uppercase tracking-tighter">${escapeHtml(isEditing ? "Edit Staff" : "Create Staff")}</h2>
+        <h2 class="text-2xl font-black italic uppercase tracking-tighter">${escapeHtml(isEditing ? "Edit CEO" : "Create CEO")}</h2>
       </div>
 
       <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
@@ -13456,10 +13456,32 @@ function bindAppEvents() {
     });
   });
 
+  document.querySelectorAll("[data-staff-back]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeStaffEditor();
+      render();
+    });
+  });
+
+  const staffNewBtn = document.getElementById("staffNewBtn");
+  if (staffNewBtn) {
+    staffNewBtn.addEventListener("click", () => {
+      openStaffEditor("create");
+    });
+  }
+
+  document.querySelectorAll("[data-staff-edit]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = btn.dataset.staffEdit || "";
+      if (!id) return;
+      const entry = (state.staff.items || []).find((item) => String(item.uid || "") === String(id));
+      if (entry) openStaffEditor("edit", entry);
+    });
+  });
+
   [
     ["staffFirstName", "firstName"],
     ["staffLastName", "lastName"],
-    ["staffEmail", "email"],
     ["staffPassword", "password"],
     ["staffLocationLabel", "locationLabel"]
   ].forEach(([id, key]) => {
@@ -13470,7 +13492,11 @@ function bindAppEvents() {
         ...state.staff.form,
         [key]: String(node.value || "")
       };
-      if (state.staff.status) state.staff.status = "";
+      state.staff.status = "";
+      if (state.staff.error) state.staff.error = "";
+      if (key === "firstName" || key === "lastName") {
+        syncStaffDerivedEmailField();
+      }
     });
   });
 
@@ -13481,7 +13507,37 @@ function bindAppEvents() {
         ...state.staff.form,
         country: normalizeCeoCountry(staffCountry.value)
       };
-      if (state.staff.status) state.staff.status = "";
+      state.staff.status = "";
+      if (state.staff.error) state.staff.error = "";
+    });
+  }
+
+  const staffAvatarTrigger = document.getElementById("staffAvatarTrigger");
+  const staffAvatarInput = document.getElementById("staffAvatarInput");
+  if (staffAvatarTrigger && staffAvatarInput) {
+    staffAvatarTrigger.addEventListener("click", () => staffAvatarInput.click());
+  }
+  if (staffAvatarInput) {
+    staffAvatarInput.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      state.staff.form = {
+        ...state.staff.form,
+        avatarFile: file
+      };
+      state.staff.status = "";
+      if (state.staff.error) state.staff.error = "";
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const preview = String(reader.result || "");
+        state.staff.form = {
+          ...state.staff.form,
+          avatarPreview: preview
+        };
+        const img = document.getElementById("staffAvatarPreview");
+        if (img && preview) img.setAttribute("src", preview);
+      };
+      reader.readAsDataURL(file);
     });
   }
 
@@ -13498,17 +13554,17 @@ function bindAppEvents() {
     });
   }
 
-  const staffCreateBtn = document.getElementById("staffCreateBtn");
-  if (staffCreateBtn) {
-    staffCreateBtn.addEventListener("click", () => {
+  const staffSaveBtn = document.getElementById("staffSaveBtn");
+  if (staffSaveBtn) {
+    staffSaveBtn.addEventListener("click", () => {
       void saveCeoStaffFromView();
     });
   }
 
-  const staffReloadBtn = document.getElementById("staffReloadBtn");
-  if (staffReloadBtn) {
-    staffReloadBtn.addEventListener("click", () => {
-      void loadCeoStaff();
+  const staffDeleteBtn = document.getElementById("staffDeleteBtn");
+  if (staffDeleteBtn) {
+    staffDeleteBtn.addEventListener("click", () => {
+      void deleteCeoStaffFromView();
     });
   }
 
@@ -15803,6 +15859,104 @@ async function loadCustomers() {
   }
 }
 
+function createEmptyStaffForm() {
+  return {
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    country: normalizeCeoCountry(state.userProfile?.country || CEO_COUNTRIES[0]),
+    locationLabel: "",
+    coords: null,
+    avatarUrl: "",
+    avatarPreview: "",
+    avatarFile: null
+  };
+}
+
+function buildStaffAccountEmail(firstName = "", lastName = "", fallback = "") {
+  const localPart = normalizeHandle(`${firstName || ""}${lastName || ""}`) || normalizeHandle(fallback || "");
+  return localPart ? `${localPart}@menyra.com` : "";
+}
+
+function getStaffFormEmail(form = state.staff.form, { preferStored = false } = {}) {
+  const safeForm = form || {};
+  const stored = normalizeEmailValue(safeForm.email || "");
+  if (preferStored && stored) return stored;
+  return buildStaffAccountEmail(safeForm.firstName || "", safeForm.lastName || "", safeForm.name || stored.split("@")[0] || "");
+}
+
+function syncStaffDerivedEmailField() {
+  if (!state.staff.editorUid) {
+    state.staff.form = {
+      ...state.staff.form,
+      email: getStaffFormEmail(state.staff.form)
+    };
+  }
+  const input = document.getElementById("staffEmail");
+  if (input instanceof HTMLInputElement) {
+    input.value = getStaffFormEmail(state.staff.form, { preferStored: !!state.staff.editorUid });
+  }
+}
+
+function openStaffEditor(mode = "create", entry = null) {
+  if (!isCeoUser()) return;
+  if (mode === "edit" && entry) {
+    const fallbackParts = String(entry.name || "").trim().split(/\s+/).filter(Boolean);
+    const firstName = String(entry.firstName || fallbackParts[0] || "").trim();
+    const lastName = String(entry.lastName || fallbackParts.slice(1).join(" ") || "").trim();
+    const coords = Number.isFinite(Number(entry.gpsLat ?? entry.lat)) && Number.isFinite(Number(entry.gpsLng ?? entry.lng))
+      ? { lat: Number(entry.gpsLat ?? entry.lat), lng: Number(entry.gpsLng ?? entry.lng) }
+      : null;
+    const avatarUrl = String(entry.avatarUrl || entry.avatar || "").trim();
+    state.staff = {
+      ...state.staff,
+      view: "form",
+      editorUid: String(entry.uid || entry.userId || entry.id || "").trim(),
+      saving: false,
+      deleting: false,
+      error: "",
+      status: "",
+      form: {
+        firstName,
+        lastName,
+        email: normalizeEmailValue(entry.email || buildStaffAccountEmail(firstName, lastName, entry.name || "")),
+        password: "",
+        country: normalizeCeoCountry(entry.country),
+        locationLabel: String(entry.locationLabel || entry.location || entry.city || "").trim(),
+        coords,
+        avatarUrl,
+        avatarPreview: avatarUrl,
+        avatarFile: null
+      }
+    };
+  } else {
+    state.staff = {
+      ...state.staff,
+      view: "form",
+      editorUid: "",
+      saving: false,
+      deleting: false,
+      error: "",
+      status: "",
+      form: createEmptyStaffForm()
+    };
+  }
+  render();
+}
+
+function closeStaffEditor(status = "") {
+  state.staff = {
+    ...state.staff,
+    view: "list",
+    editorUid: "",
+    saving: false,
+    deleting: false,
+    status,
+    form: createEmptyStaffForm()
+  };
+}
+
 function syncStaffFormFromDom() {
   const read = (id) => {
     const node = document.getElementById(id);
@@ -15811,32 +15965,21 @@ function syncStaffFormFromDom() {
   const nextCoords = state.staff.form.coords && Number.isFinite(Number(state.staff.form.coords.lat)) && Number.isFinite(Number(state.staff.form.coords.lng))
     ? { lat: Number(state.staff.form.coords.lat), lng: Number(state.staff.form.coords.lng) }
     : null;
-  state.staff.form = {
+  const nextForm = {
     ...state.staff.form,
     firstName: read("staffFirstName").trim(),
     lastName: read("staffLastName").trim(),
-    email: read("staffEmail").trim(),
     password: read("staffPassword"),
     country: normalizeCeoCountry(read("staffCountry")),
     locationLabel: read("staffLocationLabel").trim(),
     coords: nextCoords
   };
+  nextForm.email = getStaffFormEmail(nextForm, { preferStored: !!state.staff.editorUid });
+  state.staff.form = nextForm;
 }
 
 function resetStaffForm(status = "") {
-  state.staff = {
-    ...state.staff,
-    status,
-    form: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      country: CEO_COUNTRIES[0],
-      locationLabel: "",
-      coords: null
-    }
-  };
+  closeStaffEditor(status);
 }
 
 async function loadCeoStaff() {
@@ -15861,6 +16004,8 @@ async function loadCeoStaff() {
         userId: current.uid,
         name: current.name,
         email: state.user?.email || "",
+        avatarUrl: state.userProfile.avatarUrl || state.userProfile.avatar || "",
+        avatar: state.userProfile.avatar || state.userProfile.avatarUrl || "",
         handle: state.userProfile.handle || normalizeHandle(current.name || "ceo"),
         country: state.userProfile.country || state.userProfile.location || CEO_COUNTRIES[0],
         locationLabel: state.userProfile.address || state.userProfile.location || "",
@@ -15896,9 +16041,13 @@ async function saveCeoStaffFromView() {
   if (!state.user || !isCeoUser()) return;
   syncStaffFormFromDom();
   const form = state.staff.form || {};
+  const isEditing = !!state.staff.editorUid;
+  const existingEntry = isEditing
+    ? (state.staff.items || []).find((item) => String(item.uid || "") === String(state.staff.editorUid || ""))
+    : null;
   const firstName = String(form.firstName || "").trim();
   const lastName = String(form.lastName || "").trim();
-  const email = String(form.email || "").trim().toLowerCase();
+  const email = getStaffFormEmail(form, { preferStored: isEditing });
   const password = String(form.password || "");
   const country = normalizeCeoCountry(form.country);
   const locationLabel = String(form.locationLabel || "").trim() || country;
@@ -15906,8 +16055,10 @@ async function saveCeoStaffFromView() {
     ? { lat: Number(form.coords.lat), lng: Number(form.coords.lng) }
     : null;
   const name = buildCeoName({ firstName, lastName, email });
-  if (!firstName || !lastName || !email || !password) {
-    state.staff.status = "Vorname, Nachname, Email und Passwort sind erforderlich.";
+  if (!firstName || !lastName || !email || (!isEditing && !password)) {
+    state.staff.status = isEditing
+      ? "Vorname, Nachname und Email sind erforderlich."
+      : "Vorname, Nachname, Email und Passwort sind erforderlich.";
     render();
     return;
   }
@@ -15918,14 +16069,38 @@ async function saveCeoStaffFromView() {
   }
 
   const current = getCurrentCeoMeta();
-  state.staff.status = "CEO Staff wird erstellt...";
+  state.staff.saving = true;
+  state.staff.deleting = false;
+  state.staff.status = isEditing ? "CEO wird gespeichert..." : "CEO Staff wird erstellt...";
   render();
 
   try {
-    const authUser = await createAuthUser(email, password);
-    const uid = String(authUser?.uid || "").trim();
-    if (!uid) throw new Error("Account konnte nicht erstellt werden.");
-    const ceoPath = uniqueStringList([...(current.path || []), uid]);
+    let uid = String(state.staff.editorUid || "").trim();
+    if (!isEditing) {
+      const authUser = await createAuthUser(email, password);
+      uid = String(authUser?.uid || "").trim();
+      if (!uid) throw new Error("Account konnte nicht erstellt werden.");
+    }
+    let avatarUrl = String(form.avatarUrl || "").trim();
+    if (form.avatarFile && uid) {
+      const { cdnUrl } = await uploadCompressedImage(
+        form.avatarFile,
+        uid,
+        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
+      );
+      avatarUrl = cdnUrl || avatarUrl;
+    }
+    const ceoParentUid = String(existingEntry?.ceoParentUid || current.uid || "").trim();
+    const ceoParentName = String(
+      existingEntry?.ceoParentName
+      || ((ceoParentUid && ceoParentUid === current.uid) ? current.name : "")
+      || ""
+    ).trim();
+    const ceoRootUid = String(existingEntry?.ceoRootUid || current.rootUid || current.uid || uid).trim() || uid;
+    const ceoRootName = String(existingEntry?.ceoRootName || current.rootName || current.name || name).trim() || name;
+    const ceoPath = isEditing
+      ? normalizeCeoPath(existingEntry?.ceoPath, [ceoRootUid, ceoParentUid, uid])
+      : uniqueStringList([...(current.path || []), uid]);
     const handle = normalizeHandle(`${firstName}${lastName}`) || normalizeHandle(name) || "ceo";
     const superadminPayload = {
       uid,
@@ -15939,6 +16114,8 @@ async function saveCeoStaffFromView() {
       role: "ceo",
       roles: ["ceo"],
       status: "active",
+      avatarUrl,
+      avatar: avatarUrl,
       country,
       locationLabel,
       city: locationLabel,
@@ -15946,49 +16123,119 @@ async function saveCeoStaffFromView() {
       lng: coords.lng,
       gpsLat: coords.lat,
       gpsLng: coords.lng,
-      ceoParentUid: current.uid || "",
-      ceoParentName: current.name || "",
-      ceoRootUid: current.rootUid || current.uid || uid,
-      ceoRootName: current.rootName || current.name || name,
+      ceoParentUid,
+      ceoParentName,
+      ceoRootUid,
+      ceoRootName,
       ceoPath,
-      createdByUid: current.uid || "",
-      createdByRole: "ceo",
-      createdByName: current.name || "",
-      createdAt: serverTimestamp(),
+      createdByUid: String(existingEntry?.createdByUid || current.uid || "").trim(),
+      createdByRole: String(existingEntry?.createdByRole || "ceo").trim() || "ceo",
+      createdByName: String(existingEntry?.createdByName || current.name || "").trim(),
       updatedAt: serverTimestamp()
     };
+    if (!isEditing) superadminPayload.createdAt = serverTimestamp();
     await setDoc(doc(db, "superadmins", uid), superadminPayload, { merge: true });
-    await setDoc(doc(db, "users", uid), {
+    const userPayload = {
       displayName: name,
       name,
       firstName,
       lastName,
       email,
       handle,
-      bio: "",
+      avatarUrl,
+      avatar: avatarUrl,
       city: locationLabel,
       location: locationLabel,
       address: locationLabel,
       country,
       role: "ceo",
       roles: ["ceo"],
-      ceoParentUid: current.uid || "",
-      ceoParentName: current.name || "",
-      ceoRootUid: current.rootUid || current.uid || uid,
-      ceoRootName: current.rootName || current.name || name,
+      ceoParentUid,
+      ceoParentName,
+      ceoRootUid,
+      ceoRootName,
       ceoPath,
       lat: coords.lat,
       lng: coords.lng,
       gpsLat: coords.lat,
       gpsLng: coords.lng,
-      createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    }, { merge: true });
-    resetStaffForm("CEO Staff erstellt.");
+    };
+    if (!isEditing) {
+      userPayload.bio = "";
+      userPayload.createdAt = serverTimestamp();
+    }
+    await setDoc(doc(db, "users", uid), userPayload, { merge: true });
+    if (String(uid) === String(state.user.uid || "")) {
+      state.userProfile = {
+        ...state.userProfile,
+        uid,
+        name,
+        displayName: name,
+        firstName,
+        lastName,
+        email,
+        handle,
+        avatar: avatarUrl || state.userProfile.avatar,
+        avatarUrl: avatarUrl || state.userProfile.avatar,
+        location: locationLabel,
+        address: locationLabel,
+        city: locationLabel,
+        country,
+        role: "ceo",
+        roles: ["ceo"],
+        ceoParentUid,
+        ceoParentName,
+        ceoRootUid,
+        ceoRootName,
+        ceoPath,
+        lat: coords.lat,
+        lng: coords.lng,
+        gpsLat: coords.lat,
+        gpsLng: coords.lng
+      };
+      saveUserProfileToStorage();
+    }
+    resetStaffForm(isEditing ? "CEO gespeichert." : "CEO Staff erstellt.");
     await loadCeoStaff();
   } catch (err) {
     console.error(err);
-    state.staff.status = err?.message || "CEO Staff konnte nicht erstellt werden.";
+    state.staff.status = err?.message || (isEditing ? "CEO konnte nicht gespeichert werden." : "CEO Staff konnte nicht erstellt werden.");
+    state.staff.saving = false;
+    state.staff.deleting = false;
+    render();
+  }
+}
+
+async function deleteCeoStaffFromView() {
+  if (!state.user || !isCeoUser()) return;
+  const uid = String(state.staff.editorUid || "").trim();
+  if (!uid) return;
+  if (uid === String(state.user.uid || "")) {
+    state.staff.status = "Du kannst deinen eigenen CEO hier nicht loeschen.";
+    render();
+    return;
+  }
+  const entry = (state.staff.items || []).find((item) => String(item.uid || "") === uid);
+  const label = entry?.name || "diesen CEO";
+  if (!confirm(`Willst du ${label} wirklich loeschen?`)) return;
+
+  state.staff.deleting = true;
+  state.staff.saving = false;
+  state.staff.status = "CEO wird geloescht...";
+  render();
+
+  try {
+    await Promise.all([
+      deleteDoc(doc(db, "superadmins", uid)),
+      deleteDoc(doc(db, "users", uid))
+    ]);
+    resetStaffForm("CEO Staff geloescht.");
+    await loadCeoStaff();
+  } catch (err) {
+    console.error(err);
+    state.staff.status = err?.message || "CEO Staff konnte nicht geloescht werden.";
+    state.staff.deleting = false;
     render();
   }
 }
