@@ -161,6 +161,8 @@ function createEmptyOrdersState() {
 
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 1.5 * 1024 * 1024;
+const DETAIL_COMMENTS_LIMIT = 8;
+const DETAIL_LIKES_LIMIT = 12;
 
 const LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992";
 const LEAD_STATUS_ORDER = ["registered", "contacted", "testphase", "kunde", "no_interest"];
@@ -3700,6 +3702,14 @@ async function resolveRestaurantForAuthUser(user, { preferCached = true } = {}) 
   if (preferCached && hintId) {
     const hinted = state.restaurants.find((rest) => String(rest.id) === hintId) || null;
     if (hinted && matchesRestaurantOwner(hinted, user)) return hinted;
+    try {
+      const hintSnap = await getDoc(doc(db, "restaurants", hintId));
+      if (hintSnap.exists()) {
+        const hintedDoc = { id: hintSnap.id, ...(hintSnap.data() || {}) };
+        state.restaurants = mergeRestaurants(state.restaurants, [hintedDoc]);
+        if (matchesRestaurantOwner(hintedDoc, user)) return hintedDoc;
+      }
+    } catch {}
   }
 
   if (preferCached && Array.isArray(state.restaurants) && state.restaurants.length) {
@@ -5016,6 +5026,7 @@ function ensureTabData(tab) {
 
   if (tab === "feed" && !dataLoaded.feed) {
     dataLoaded.feed = true;
+    dataLoaded.stories = true;
     void loadFeedPosts();
   }
 
@@ -5023,16 +5034,8 @@ function ensureTabData(tab) {
   if (needsRestaurants && !dataLoaded.restaurants) {
     dataLoaded.restaurants = true;
     scheduleIdle(() => {
-      loadRestaurants().then(() => {
-        if (!dataLoaded.stories && state.activeTab === "feed") {
-          dataLoaded.stories = true;
-          scheduleIdle(() => void loadStories());
-        }
-      }).catch((err) => console.error(err));
+      loadRestaurants().catch((err) => console.error(err));
     });
-  } else if (tab === "feed" && !dataLoaded.stories) {
-    dataLoaded.stories = true;
-    scheduleIdle(() => void loadStories());
   }
 
   if (tab === "profile" && !dataLoaded.profile) {
@@ -5167,6 +5170,11 @@ async function openPostModal(post) {
   renderOverlays();
   state.postModal.animate = false;
   attachPostMetaListeners(post);
+  void loadPostMetaFromFirebase(post).then(() => {
+    if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(post.id)) {
+      updatePostModalMeta();
+    }
+  });
   state.postModal.loading = false;
   updatePostModalMeta();
 }
@@ -6680,36 +6688,6 @@ function attachPostMetaListeners(post) {
     updatePostCountNodes(post);
     updatePostModalCountsOnly();
   });
-  modalLikesUnsub = onSnapshot(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)), (snap) => {
-    const meta = ensurePostMeta(postId);
-    meta.likes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    state.postMeta[postId] = meta;
-    updatePostModalCountsOnly();
-  });
-  modalCommentsUnsub = onSnapshot(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)), (snap) => {
-    const meta = ensurePostMeta(postId);
-    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    const byId = new Map();
-    const top = [];
-    rows.forEach((row) => {
-      const item = ensureCommentShape(row);
-      byId.set(item.id, item);
-    });
-    rows.forEach((row) => {
-      const item = byId.get(row.id);
-      const parentId = row.parentId || null;
-      if (parentId && byId.has(parentId)) {
-        const parent = byId.get(parentId);
-        parent.replies = [item, ...(parent.replies || [])];
-      } else if (item) {
-        top.push(item);
-      }
-    });
-    meta.comments = top;
-    state.postMeta[postId] = meta;
-    updatePostModalCountsOnly();
-    updatePostModalCommentsOnly();
-  });
 }
 
 function stopMenuItemMetaListeners() {
@@ -6750,25 +6728,6 @@ function attachMenuItemMetaListeners(item, restaurantId) {
     state.menuItemMeta[key] = meta;
     updateMenuDetailCountsOnly();
   });
-
-  menuDetailLikesUnsub = onSnapshot(query(collection(ref, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)), (snap) => {
-    const meta = ensureMenuItemMeta(key);
-    meta.likes = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    state.menuItemMeta[key] = meta;
-    updateMenuDetailCountsOnly();
-  });
-
-  menuDetailCommentsUnsub = onSnapshot(query(collection(ref, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)), (snap) => {
-    const meta = ensureMenuItemMeta(key);
-    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    const top = rows
-      .filter((row) => !row.parentId)
-      .map((row) => ensureCommentShape(row));
-    meta.comments = top;
-    state.menuItemMeta[key] = meta;
-    updateMenuDetailCountsOnly();
-    updateMenuDetailCommentsOnly();
-  });
 }
 
 async function loadMenuItemMetaFromFirebase(item, restaurantId) {
@@ -6778,32 +6737,27 @@ async function loadMenuItemMetaFromFirebase(item, restaurantId) {
   if (!ref || !rid || !itemId) return;
   const key = menuItemMetaKey(rid, itemId);
   const meta = ensureMenuItemMeta(key);
-  try {
-    const snap = await getDoc(ref);
-    if (snap.exists()) {
-      const data = snap.data() || {};
-      meta.counts = {
-        likes: Number(data.likesCount ?? data.likes ?? meta.likes?.length ?? 0) || 0,
-        comments: Number(data.commentsCount ?? data.comments ?? meta.comments?.length ?? 0) || 0
-      };
+  const userUid = String(state.user?.uid || "");
+  if (userUid) {
+    try {
+      const likeSnap = await getDoc(doc(collection(ref, "likes"), userUid));
+      const retainedLikes = (Array.isArray(meta.likes) ? meta.likes : []).filter((row) => String(row?.uid || "") !== userUid);
+      meta.likes = likeSnap.exists()
+        ? [{ id: likeSnap.id, ...likeSnap.data() }, ...retainedLikes]
+        : retainedLikes;
+    } catch (err) {
+      console.error(err);
     }
-  } catch (err) {
-    console.error(err);
   }
   try {
-    const likesSnap = await getDocs(query(collection(ref, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)));
-    meta.likes = likesSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-  } catch (err) {
-    console.error(err);
-  }
-  try {
-    const commentsSnap = await getDocs(query(collection(ref, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)));
+    const commentsSnap = await getDocs(query(collection(ref, "comments"), orderBy("createdAt", "desc"), limit(DETAIL_COMMENTS_LIMIT)));
     const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
     meta.comments = rows.filter((row) => !row.parentId).map((row) => ensureCommentShape(row));
   } catch (err) {
     console.error(err);
   }
   state.menuItemMeta[key] = meta;
+  return meta;
 }
 
 function renderMapSheet(selected) {
@@ -7304,41 +7258,72 @@ async function resolvePostOwnerUid(post) {
   return "";
 }
 
-async function loadPostMetaFromFirebase(post) {
+async function loadPostMetaFromFirebase(post, { includeLikes = false, includeComments = true } = {}) {
   const postRef = getPostDocRef(post);
-  if (!postRef) return { likes: [], comments: [] };
-  const meta = { likes: [], comments: [] };
-  try {
-    const likesSnap = await getDocs(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.likes)));
-    meta.likes = likesSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-  } catch (err) {
-    console.error(err);
+  const postId = String(post?.id || "");
+  if (!postRef || !postId) return { likes: [], comments: [] };
+  const meta = ensurePostMeta(postId);
+  const userUid = String(state.user?.uid || "");
+  if (includeLikes) {
+    try {
+      const likesSnap = await getDocs(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(DETAIL_LIKES_LIMIT)));
+      meta.likes = likesSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+    } catch (err) {
+      console.error(err);
+    }
+  } else if (userUid) {
+    try {
+      const likeSnap = await getDoc(doc(collection(postRef, "likes"), userUid));
+      const retainedLikes = (Array.isArray(meta.likes) ? meta.likes : []).filter((row) => String(row?.uid || "") !== userUid);
+      meta.likes = likeSnap.exists()
+        ? [{ id: likeSnap.id, ...likeSnap.data() }, ...retainedLikes]
+        : retainedLikes;
+    } catch (err) {
+      console.error(err);
+    }
   }
-  try {
-    const commentsSnap = await getDocs(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.comments)));
-    const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-    const byId = new Map();
-    const top = [];
-    rows.forEach((row) => {
-      const item = ensureCommentShape(row);
-      byId.set(item.id, item);
-    });
-    rows.forEach((row) => {
-      const item = byId.get(row.id);
-      const parentId = row.parentId || null;
-      if (parentId && byId.has(parentId)) {
-        const parent = byId.get(parentId);
-        parent.replies = [item, ...(parent.replies || [])];
-      } else if (item) {
-        top.push(item);
-      }
-    });
-    meta.comments = top;
-  } catch (err) {
-    console.error(err);
+  if (includeComments) {
+    try {
+      const commentsSnap = await getDocs(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(DETAIL_COMMENTS_LIMIT)));
+      const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+      const byId = new Map();
+      const top = [];
+      rows.forEach((row) => {
+        const item = ensureCommentShape(row);
+        byId.set(item.id, item);
+      });
+      rows.forEach((row) => {
+        const item = byId.get(row.id);
+        const parentId = row.parentId || null;
+        if (parentId && byId.has(parentId)) {
+          const parent = byId.get(parentId);
+          parent.replies = [item, ...(parent.replies || [])];
+        } else if (item) {
+          top.push(item);
+        }
+      });
+      meta.comments = top;
+    } catch (err) {
+      console.error(err);
+    }
   }
-  state.postMeta[post.id] = meta;
+  state.postMeta[postId] = meta;
   return meta;
+}
+
+async function loadPostLikesForModal(postId) {
+  const targetId = String(postId || "");
+  if (!targetId) return [];
+  const post = findPostById(targetId);
+  const postRef = getPostDocRef(post);
+  if (!postRef) return [];
+  const meta = await loadPostMetaFromFirebase(post, { includeLikes: true, includeComments: false });
+  if (state.likesModal.open && String(state.likesModal.postId || "") === targetId) {
+    renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
+  } else if (state.postModal.open && String(state.postModal.post?.id || "") === targetId) {
+    updatePostModalCountsOnly();
+  }
+  return meta.likes || [];
 }
 
 function renderPublicProfileView() {
@@ -11950,6 +11935,7 @@ function bindOverlayEvents({
         if (!postId) return;
         state.likesModal = { open: true, postId, animate: false };
         renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
+        void loadPostLikesForModal(postId);
       });
     }
 
@@ -15884,6 +15870,11 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
     return;
   }
   attachMenuItemMetaListeners(item, restaurantId);
+  void loadMenuItemMetaFromFirebase(item, restaurantId).then(() => {
+    if (state.menuDetail.open && state.menuDetail.item && String(state.menuDetail.item.id || "") === String(item.id || "")) {
+      updateMenuDetailMeta();
+    }
+  });
   state.menuDetail.loading = false;
   updateMenuDetailMeta();
 }
@@ -16155,7 +16146,7 @@ async function loadStories() {
 async function bootstrapUser(user) {
   if (!user) return;
   try {
-    await loadAuthProfile(user, { force: true });
+    await loadAuthProfile(user);
     if (state.userProfile.restaurantId) {
       await hydrateRestaurantsByIds([state.userProfile.restaurantId], { max: 1 });
     }
@@ -16164,7 +16155,11 @@ async function bootstrapUser(user) {
   }
   if (!dataLoaded.following) {
     dataLoaded.following = true;
-    void loadFollowingFromFirebase();
+    const cachedFollowing = Array.isArray(state.followingHandles) ? state.followingHandles.length : 0;
+    const followingCount = Number(state.userProfile?.following || 0) || 0;
+    if (!cachedFollowing && followingCount > 0) {
+      void loadFollowingFromFirebase();
+    }
   }
   startLiveListeners(user);
   ensureTabData(state.activeTab);
