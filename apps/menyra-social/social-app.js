@@ -1435,11 +1435,14 @@ function slugify(input) {
 
 function isCustomerRestaurant(rest = {}) {
   const statusKey = normalizeLeadStatusKey(rest.status || "");
+  const typeKey = normalizeRestaurantType(rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "");
+  const hasLinkedOwner = !!String(rest?.ownerUid || rest?.socialUid || rest?.uid || rest?.userUid || "").trim();
   if (statusKey === "kunde") return true;
+  if (typeKey === "ecommerce" && hasLinkedOwner && (!statusKey || ["registered", "contacted"].includes(statusKey))) return true;
   if (["registered", "contacted", "testphase", "no_interest"].includes(statusKey)) return false;
   if (!statusKey) {
     const hasLeadId = !!rest.leadId;
-    const hasOwner = !!rest.ownerUid || !!rest.ownerEmail;
+    const hasOwner = hasLinkedOwner || !!rest.ownerEmail;
     if (hasLeadId || !hasOwner) return false;
   }
   return true;
@@ -1464,7 +1467,17 @@ function normalizeRestaurantType(value) {
 function getBusinessProfileType(profile = state.userProfile) {
   if (!profile?.restaurantId) return "";
   const rest = getRestaurantMetaById(profile.restaurantId);
-  const typeRaw = rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "";
+  const typeRaw = rest?.type
+    || rest?.customerType
+    || rest?.category
+    || rest?.kind
+    || rest?.restaurantType
+    || profile?.type
+    || profile?.customerType
+    || profile?.category
+    || profile?.kind
+    || profile?.restaurantType
+    || "";
   return normalizeRestaurantType(typeRaw);
 }
 
@@ -3142,11 +3155,23 @@ function mergeRestaurantMeta(rest, meta) {
   const data = meta || {};
   const name = data.name || data.restaurantName || rest.name || rest.restaurantName || "";
   const logoUrl = data.logoUrl || data.logo || rest.logoUrl || rest.logo || rest.logoURL || "";
+  const type = normalizeRestaurantType(
+    data.type
+    || data.customerType
+    || rest.type
+    || rest.customerType
+    || rest.category
+    || rest.kind
+    || rest.restaurantType
+    || ""
+  );
   return {
     ...rest,
     name: name || rest.name || "",
     restaurantName: rest.restaurantName || "",
-    logoUrl
+    logoUrl,
+    city: data.city || rest.city || "",
+    ...(type ? { type, customerType: type } : {})
   };
 }
 
@@ -3377,6 +3402,7 @@ function normalizeBusinessProfile(rest = {}, user) {
   const handle = resolvePreferredHandle({ handle: rest?.handle || "", name: displayName }, displayName);
   const lat = rest?.gpsLat ?? rest?.lat ?? null;
   const lng = rest?.gpsLng ?? rest?.lng ?? null;
+  const type = normalizeRestaurantType(rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "");
   return {
     name: displayName,
     handle: handle || normalizeHandle(displayName),
@@ -3394,6 +3420,7 @@ function normalizeBusinessProfile(rest = {}, user) {
     restaurantId: rest?.id || rest?.restaurantId || "",
     phone: rest?.phone || "",
     instagram: rest?.instagram || rest?.insta || "",
+    ...(type ? { type, customerType: type } : {}),
     lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
     lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
     gpsLat: Number.isFinite(Number(lat)) ? Number(lat) : null,
@@ -4139,9 +4166,29 @@ function makeBizDivIcon(b) {
   return window.L.divIcon({ className: "custom-div-icon", html, iconSize: [48, 58], iconAnchor: [24, 58] });
 }
 
+function isDiscoverableMapBusiness(location = {}) {
+  const typeKey = normalizeRestaurantType(
+    location?.type
+    || location?.raw?.type
+    || location?.raw?.customerType
+    || location?.raw?.category
+    || location?.raw?.kind
+    || location?.raw?.restaurantType
+    || ""
+  );
+  return typeKey !== "ecommerce";
+}
+
+function getDiscoverableMapLocations(locations = state.businessLocations) {
+  return (Array.isArray(locations) ? locations : []).filter(isDiscoverableMapBusiness);
+}
+
 function updateMapSheet() {
   const slot = document.getElementById("mapSheetSlot");
   if (!slot) return;
+  if (state.selectedBusiness && !isDiscoverableMapBusiness(state.selectedBusiness)) {
+    state.selectedBusiness = null;
+  }
   slot.innerHTML = state.selectedBusiness ? renderMapSheet(state.selectedBusiness) : "";
   bindMapSheetEvents();
   if (window.lucide?.createIcons) window.lucide.createIcons();
@@ -4202,7 +4249,7 @@ function initLeafletIfNeeded() {
   leafletMap = window.L.map(el, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView([42.6629, 21.1655], 15);
   window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(leafletMap);
 
-  renderLeafletMarkers(state.businessLocations);
+  renderLeafletMarkers(getDiscoverableMapLocations(state.businessLocations));
   updateMapSheet();
   if (window.lucide?.createIcons) window.lucide.createIcons();
 
@@ -4212,13 +4259,14 @@ function initLeafletIfNeeded() {
 
 function renderLeafletMarkers(locations) {
   if (!leafletMap || !window.L) return;
+  const visibleLocations = getDiscoverableMapLocations(locations);
   leafletBizMarkers.forEach(marker => { try { leafletMap.removeLayer(marker); } catch {} });
-  leafletBizMarkers = locations.map((b) => {
+  leafletBizMarkers = visibleLocations.map((b) => {
     const marker = window.L.marker([b.lat, b.lng], { icon: makeBizDivIcon(b) }).addTo(leafletMap);
     marker.__biz = b;
     marker.on("click", () => {
       state.selectedBusiness = b;
-      renderLeafletMarkers(locations);
+      renderLeafletMarkers(visibleLocations);
       updateMapSheet();
       try { leafletMap.panTo([b.lat - 0.003, b.lng], { animate: true, duration: 0.5 }); } catch {}
     });
@@ -4228,8 +4276,9 @@ function renderLeafletMarkers(locations) {
 
 function filterMapLocationsByQuery(query) {
   const key = String(query || "").toLowerCase().trim();
-  if (!key) return state.businessLocations;
-  return state.businessLocations.filter(b =>
+  const baseLocations = getDiscoverableMapLocations(state.businessLocations);
+  if (!key) return baseLocations;
+  return baseLocations.filter(b =>
     b.name.toLowerCase().includes(key) || (b.address || b.city || "").toLowerCase().includes(key)
   );
 }
@@ -10695,7 +10744,15 @@ function renderLeadsView() {
 function renderCustomersView() {
   if (!isCeoUser()) return renderCeoGuard("Kunden");
   const queryKey = normalizeSearchKey(state.customers.query || "");
-  const items = (state.customers.items || []).filter((rest) => customerMatchesQuery(rest, queryKey));
+  const items = Array.from(new Map([
+    ...(Array.isArray(state.restaurants) ? state.restaurants.filter(isCustomerRestaurant) : []),
+    ...(Array.isArray(state.customers.items) ? state.customers.items : [])
+  ].map((rest, index) => [
+    String(rest?.id || rest?.restaurantId || rest?.leadId || `${rest?.name || rest?.restaurantName || "customer"}:${index}`),
+    rest
+  ])).values())
+    .filter((rest) => rest && customerMatchesQuery(rest, queryKey))
+    .sort((a, b) => (toDateSafe(b?.createdAt)?.getTime() || 0) - (toDateSafe(a?.createdAt)?.getTime() || 0));
   const listHtml = state.customers.loading
     ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Kunden laden...</div>`
     : (items.length ? items.map((rest) => {
@@ -10704,7 +10761,7 @@ function renderCustomersView() {
       const name = rest.name || rest.restaurantName || "Business";
       const typeLabel = leadTypeLabel(rest.type || rest.customerType || "");
       const city = rest.city || "";
-      const statusLabel = customerStatusLabel(rest.status);
+      const statusLabel = customerStatusLabel(isCustomerRestaurant(rest) ? "kunde" : rest.status);
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
           <div class="flex items-center gap-3">
@@ -13911,6 +13968,16 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
   const followers = data?.followersCount ?? data?.followers ?? rest?.followersCount ?? rest?.followers ?? 0;
   const following = data?.followingCount ?? data?.following ?? rest?.followingCount ?? rest?.following ?? 0;
   const restaurantId = data?.restaurantId || rest?.id || "";
+  const type = normalizeRestaurantType(
+    data?.type
+    || data?.customerType
+    || rest?.type
+    || rest?.customerType
+    || rest?.category
+    || rest?.kind
+    || rest?.restaurantType
+    || ""
+  );
   return {
     name: displayName,
     handle: handle || normalizeHandle(displayName),
@@ -13923,6 +13990,7 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
     privateAccount: false,
     role: "business",
     restaurantId,
+    ...(type ? { type, customerType: type } : {}),
     pendingFollowRequest: false,
     posts: posts || []
   };
@@ -15141,7 +15209,10 @@ function normalizeLeadFromRestaurant(rest) {
 }
 
 function isRestaurantLeadCandidate(rest = {}) {
+  const typeKey = normalizeRestaurantType(rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "");
+  const hasLinkedOwner = !!String(rest?.ownerUid || rest?.socialUid || rest?.uid || rest?.userUid || "").trim();
   const statusKey = normalizeLeadStatusKey(rest.status || "");
+  if (typeKey === "ecommerce" && hasLinkedOwner && (!statusKey || ["registered", "contacted"].includes(statusKey))) return false;
   if (statusKey === "kunde") return false;
   if (["registered", "contacted", "testphase", "no_interest"].includes(statusKey)) return true;
   if (rest.leadId) return true;
