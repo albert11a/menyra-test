@@ -186,8 +186,40 @@ const LEAD_TYPE_LABELS = {
   apotheken: "Apotheke",
   services: "Services"
 };
-const ALBERT_CEO_HANDLE = "albert_hoti";
+const ALBERT_CEO_UID = "aklBkkIuZ7Nrpx266TJn63rrxX62";
+const ALBERT_CEO_ALIASES = Object.freeze(["alberthoti", "albert_hoti"]);
+const ALBERT_CEO_EMAILS = Object.freeze(["alberthoti.vsa@gmail.com"]);
+const HIDDEN_LEGACY_CEO_EMAILS = Object.freeze(["albert.hoti@menyra.com"]);
+const LEGACY_CEO_DELETE_UIDS = Object.freeze(["rtnM3XzNsKhpp5wzJhxNToyyjsU2"]);
+const MILAN_OWNED_LEAD_EMAILS = Object.freeze([
+  "restorandis@menyra.com",
+  "restoranbelvedere@menyra.com",
+  "restoranoresac@menyra.com",
+  "zeigelrestaurant@menyra.com"
+]);
+const MILAN_OWNED_LEAD_BUSINESSES = Object.freeze([
+  "restoran dis",
+  "restoran belvedere",
+  "restoran oresac",
+  "zeigelrestaurant"
+]);
+const ALBERT_OWNED_LEAD_EMAILS = Object.freeze([
+  "mobishopniti@menyra.com",
+  "pizzeriadon@menyra.com",
+  "antica@menyra.com"
+]);
+const ALBERT_OWNED_LEAD_BUSINESSES = Object.freeze([
+  "mobi shop niti",
+  "pizzeria don napoletano",
+  "antica"
+]);
 const CEO_COUNTRIES = Object.freeze(["Albanien", "Kosovo", "Serbien"]);
+const LEAD_SETTINGS_DEFAULT_COUNTRY = "Kosovo";
+const LEAD_COUNTRY_CENTERS = Object.freeze({
+  Kosovo: Object.freeze({ lat: 42.6629, lng: 21.1655 }),
+  Serbien: Object.freeze({ lat: 44.7866, lng: 20.4489 }),
+  Albanien: Object.freeze({ lat: 41.3275, lng: 19.8187 })
+});
 const PRISHTINA_COORDS = Object.freeze({ lat: 42.6629, lng: 21.1655 });
 const OLC_ALPHABET = "23456789CFGHJMPQRVWX";
 const OLC_SEPARATOR = "+";
@@ -382,13 +414,18 @@ const state = {
     loading: false,
     error: "",
     query: "",
-    status: ""
+    status: "",
+    scope: "own",
+    view: "list",
+    settingsSaving: false,
+    settingsStatus: ""
   },
   customers: {
     items: [],
     loading: false,
     error: "",
-    query: ""
+    query: "",
+    scope: "own"
   },
   staff: {
     items: [],
@@ -475,6 +512,11 @@ const state = {
 };
 
 let renderSuspended = 0;
+let ceoStaffLoadPromise = null;
+let ceoOwnershipReconcilePromise = null;
+let ceoOwnershipReconciled = false;
+let hiddenLegacyCeoUids = [];
+let plusCodeSearchCache = new Map();
 let renderQueued = false;
 let modalEscapeBound = false;
 let profileMenuBound = false;
@@ -1053,6 +1095,81 @@ function normalizeSearchKey(value) {
   return normalizeSearchQuery(value).toLowerCase();
 }
 
+function normalizeLeadCountry(value) {
+  const safe = String(value || "").trim().toLowerCase();
+  if (safe === "serbia" || safe === "serbien") return "Serbien";
+  if (safe === "albania" || safe === "albanien") return "Albanien";
+  if (safe === "kosovo" || safe === "kosova") return "Kosovo";
+  return CEO_COUNTRIES.includes(String(value || "").trim()) ? String(value || "").trim() : LEAD_SETTINGS_DEFAULT_COUNTRY;
+}
+
+function createDefaultLeadPricing() {
+  return LEAD_TYPE_ORDER.reduce((acc, key) => {
+    acc[key] = 0;
+    return acc;
+  }, {});
+}
+
+function normalizeLeadPricing(raw = {}) {
+  const base = createDefaultLeadPricing();
+  Object.keys(base).forEach((key) => {
+    const num = Number(raw?.[key]);
+    base[key] = Number.isFinite(num) && num >= 0 ? num : 0;
+  });
+  return base;
+}
+
+function normalizeLeadSettings(raw = {}) {
+  const input = raw && typeof raw === "object" ? raw : {};
+  return {
+    defaultPassword: String(input.defaultPassword || LEAD_SOCIAL_DEFAULT_PASSWORD || "").trim() || LEAD_SOCIAL_DEFAULT_PASSWORD,
+    defaultCountry: normalizeLeadCountry(input.defaultCountry || input.locationCountry || LEAD_SETTINGS_DEFAULT_COUNTRY),
+    pricing: normalizeLeadPricing(input.pricing || input.typePricing || {})
+  };
+}
+
+function getLeadSettingsConfig() {
+  return normalizeLeadSettings(state.userProfile?.leadSettings || {});
+}
+
+function getLeadCountryCenter(country = LEAD_SETTINGS_DEFAULT_COUNTRY) {
+  const key = normalizeLeadCountry(country);
+  return LEAD_COUNTRY_CENTERS[key] || LEAD_COUNTRY_CENTERS[LEAD_SETTINGS_DEFAULT_COUNTRY] || PRISHTINA_COORDS;
+}
+
+function buildLeadAccountEmail(name = "") {
+  const localPart = String(name || "")
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/_/g, "")
+    .replace(/[^a-z0-9]/g, "");
+  return localPart ? `${localPart}@menyra.com` : "";
+}
+
+function buildLeadContactName(firstName = "", lastName = "", fallback = "") {
+  const combined = `${String(firstName || "").trim()} ${String(lastName || "").trim()}`.trim();
+  return combined || String(fallback || "").trim();
+}
+
+function getLeadMonthlyPrice(type = "", config = getLeadSettingsConfig()) {
+  const pricing = normalizeLeadPricing(config?.pricing || {});
+  const key = resolveCustomerType(type || "cafe");
+  return Number(pricing[key]) || 0;
+}
+
+function getLeadPriceForCycle(type = "", cycle = "monthly", config = getLeadSettingsConfig()) {
+  const monthly = getLeadMonthlyPrice(type, config);
+  return cycle === "yearly" ? monthly * 12 : monthly;
+}
+
+function inferLeadCountryFromText(text = "", fallbackCountry = "") {
+  const value = normalizeSearchKey(text);
+  if (value.includes("serbien") || value.includes("serbia") || value.includes("beograd") || value.includes("belgrad")) return "Serbien";
+  if (value.includes("albanien") || value.includes("albania") || value.includes("tirana")) return "Albanien";
+  if (value.includes("kosovo") || value.includes("kosova") || value.includes("prishtina") || value.includes("pristina")) return "Kosovo";
+  return normalizeLeadCountry(fallbackCountry || getLeadSettingsConfig().defaultCountry);
+}
+
 function isCeoUser() {
   if (state.roleSwitchRoles?.includes("ceo")) return true;
   const roles = normalizeRoleList(state.userProfile?.roles || state.userProfile?.role || "");
@@ -1061,14 +1178,21 @@ function isCeoUser() {
 
 function isAlbertCeoUser() {
   if (!state.user) return false;
+  const email = normalizeEmailValue(state.user?.email || "");
+  if (isHiddenLegacyCeoEmail(email)) return false;
   const handleCandidates = [
     state.userProfile?.handle,
     state.userProfile?.name,
     state.user?.displayName
   ].map((value) => normalizeHandle(value || "")).filter(Boolean);
-  if (handleCandidates.includes(ALBERT_CEO_HANDLE)) return true;
-  const email = normalizeEmailValue(state.user?.email || "");
-  return email.startsWith(`${ALBERT_CEO_HANDLE}@`);
+  if (handleCandidates.some((value) => ALBERT_CEO_ALIASES.includes(value))) return true;
+  if (ALBERT_CEO_EMAILS.includes(email)) return true;
+  return ALBERT_CEO_ALIASES.some((alias) => email.startsWith(`${alias}@`));
+}
+
+function hasGlobalCeoAccess(profile = state.userProfile, user = state.user) {
+  const uid = String(user?.uid || profile?.uid || "").trim();
+  return uid === ALBERT_CEO_UID || isAlbertCeoUser();
 }
 
 function getAlbertCeoGpsOverride() {
@@ -1341,7 +1465,39 @@ function olcRecoverShortCode(shortCode, refLat, refLng) {
   return normalizeCoordPair(lat, lng);
 }
 
-function parsePlusCodeFromAddressInput(value) {
+function resolvePlusCodeReferenceCoords(value = "", refCoords = null) {
+  const direct = normalizeCoordPair(refCoords?.lat, refCoords?.lng);
+  if (direct) return direct;
+  const extracted = extractPlusCodeFromText(value);
+  const inferredCountry = inferLeadCountryFromText(
+    `${String(value || "")} ${String(extracted?.remainder || "")}`,
+    ""
+  );
+  return getLeadCountryCenter(inferredCountry);
+}
+
+async function geocodeReferenceSearch(text = "") {
+  const queryText = String(text || "").trim();
+  if (!queryText) return null;
+  const cacheKey = normalizeSearchKey(queryText);
+  if (plusCodeSearchCache.has(cacheKey)) {
+    return plusCodeSearchCache.get(cacheKey) || null;
+  }
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryText)}&limit=1`);
+    const data = await res.json();
+    const coords = Array.isArray(data) && data[0]
+      ? normalizeCoordPair(data[0].lat, data[0].lon)
+      : null;
+    plusCodeSearchCache.set(cacheKey, coords || null);
+    return coords;
+  } catch {
+    plusCodeSearchCache.set(cacheKey, null);
+    return null;
+  }
+}
+
+function parsePlusCodeFromAddressInput(value, refCoords = null) {
   const extracted = extractPlusCodeFromText(value);
   if (!extracted?.code) return null;
 
@@ -1350,17 +1506,29 @@ function parsePlusCodeFromAddressInput(value) {
   }
 
   if (isLikelyShortPlusCode(extracted.code)) {
-    const ref = PRISHTINA_COORDS;
+    const ref = resolvePlusCodeReferenceCoords(value, refCoords);
     return olcRecoverShortCode(extracted.code, ref.lat, ref.lng);
   }
 
   return null;
 }
 
-function parseCoordsFromAddressInput(value) {
+async function parseCoordsFromAddressInputAsync(value, refCoords = null) {
+  const direct = parseCoordsFromAddressInput(value, refCoords);
+  const extracted = extractPlusCodeFromText(value);
+  const remainder = String(extracted?.remainder || "").trim();
+  if (!extracted?.code || !isLikelyShortPlusCode(extracted.code) || !remainder) {
+    return direct;
+  }
+  const preciseRef = await geocodeReferenceSearch(remainder);
+  if (!preciseRef) return direct;
+  return olcRecoverShortCode(extracted.code, preciseRef.lat, preciseRef.lng) || direct;
+}
+
+function parseCoordsFromAddressInput(value, refCoords = null) {
   const text = String(value || "").trim();
   if (!text) return null;
-  const plusCodeCoords = parsePlusCodeFromAddressInput(text);
+  const plusCodeCoords = parsePlusCodeFromAddressInput(text, refCoords);
   if (plusCodeCoords) return plusCodeCoords;
   const cleaned = text.replace(/[|;]/g, ",").replace(/\s+/g, " ").trim();
   const labeledPattern = /(lat(?:itude)?|lng|lon|long|longitude)\s*[:=]\s*(-?\d+(?:[.,]\d+)?)/gi;
@@ -3484,7 +3652,7 @@ function getCurrentCeoMeta(profile = state.userProfile, user = state.user) {
   const rootUid = String(profile?.ceoRootUid || profile?.rootCeoUid || "").trim() || uid;
   let path = normalizeCeoPath(profile?.ceoPath);
   if (!path.length) {
-    if (isAlbertCeoUser()) {
+    if (hasGlobalCeoAccess(profile, user)) {
       path = uid ? [uid] : [];
     } else {
       path = normalizeCeoPath([], [rootUid, parentUid, uid]);
@@ -3498,7 +3666,7 @@ function getCurrentCeoMeta(profile = state.userProfile, user = state.user) {
     rootUid: rootUid || uid,
     rootName: String(profile?.ceoRootName || profile?.rootCeoName || name).trim() || name,
     path,
-    isRoot: !parentUid || isAlbertCeoUser()
+    isRoot: !parentUid || hasGlobalCeoAccess(profile, user)
   };
 }
 
@@ -3551,33 +3719,66 @@ function canViewCeoRecord(record = {}) {
   if (String(record.uid || "") === current.uid) return true;
   const path = normalizeCeoPath(record.ceoPath, [record.ceoRootUid, record.ceoParentUid, record.uid]);
   if (path.includes(current.uid)) return true;
-  if (current.isRoot && !String(record.ceoParentUid || "").trim()) return true;
+  if (hasGlobalCeoAccess() && !String(record.ceoParentUid || "").trim()) return true;
   return false;
 }
 
 function getOwnerMeta(row = {}) {
+  const source = applyKnownLeadOwnershipOverride(row);
   const creatorUid = String(
-    row.createdByUid
-    || row.ownerUid
-    || row.socialUid
-    || row.uid
+    source.createdByUid
+    || source.ownerUid
+    || source.socialUid
+    || source.uid
     || ""
   ).trim();
   const creatorName = String(
-    row.createdByName
-    || row.createdByHandle
-    || row.ownerName
+    source.createdByName
+    || source.createdByHandle
+    || source.ownerName
     || ""
   ).trim();
-  let ceoPath = normalizeCeoPath(row.ceoPath);
+  let ceoPath = normalizeCeoPath(source.ceoPath);
   if (!ceoPath.length && creatorUid) {
     ceoPath = normalizeCeoPath([], [
-      row.ceoRootUid || row.rootCeoUid || "",
-      row.ceoParentUid || row.parentCeoUid || "",
+      source.ceoRootUid || source.rootCeoUid || "",
+      source.ceoParentUid || source.parentCeoUid || "",
       creatorUid
     ]);
   }
   return { creatorUid, creatorName, ceoPath };
+}
+
+function chunkStringList(values = [], size = 10) {
+  const out = [];
+  const list = uniqueStringList(values);
+  for (let i = 0; i < list.length; i += size) {
+    out.push(list.slice(i, i + size));
+  }
+  return out;
+}
+
+function getVisibleCeoTeamUids() {
+  if (!isCeoUser()) return [];
+  const current = getCurrentCeoMeta();
+  const staffUids = (Array.isArray(state.staff.items) ? state.staff.items : [])
+    .filter((item) => canViewCeoRecord(item))
+    .map((item) => String(item.uid || "").trim())
+    .filter(Boolean);
+  return uniqueStringList([current.uid, ...staffUids]);
+}
+
+function isOwnedByVisibleCeoTeam(row = {}) {
+  if (!isCeoUser()) return true;
+  const current = getCurrentCeoMeta();
+  if (!current.uid) return false;
+  const meta = getOwnerMeta(row);
+  const teamUids = getVisibleCeoTeamUids();
+  if (meta.creatorUid && meta.creatorUid === current.uid) return true;
+  if (meta.ceoPath.includes(current.uid)) return true;
+  if (meta.creatorUid && teamUids.includes(meta.creatorUid)) return true;
+  if (meta.ceoPath.some((uid) => teamUids.includes(uid))) return true;
+  return false;
 }
 
 function canCurrentCeoSeeRow(row = {}) {
@@ -3585,9 +3786,8 @@ function canCurrentCeoSeeRow(row = {}) {
   const current = getCurrentCeoMeta();
   if (!current.uid) return true;
   const meta = getOwnerMeta(row);
-  if (meta.creatorUid && meta.creatorUid === current.uid) return true;
-  if (meta.ceoPath.includes(current.uid)) return true;
-  if (current.isRoot && !meta.ceoPath.length && !meta.creatorUid) return true;
+  if (isOwnedByVisibleCeoTeam(row)) return true;
+  if (hasGlobalCeoAccess() && !meta.ceoPath.length && !meta.creatorUid) return true;
   return false;
 }
 
@@ -3606,9 +3806,57 @@ function resolveOwnershipMeta(row = {}) {
   };
 }
 
-function renderOwnershipPills(row = {}) {
+function isCurrentCeoOwnRow(row = {}) {
+  const meta = resolveOwnershipMeta(row);
+  return !meta || !!meta.own;
+}
+
+function renderCeoScopeTabs({
+  idPrefix = "ceoScope",
+  active = "own",
+  ownLabel = "Meine",
+  ownCount = 0,
+  staffLabel = "Staff",
+  staffCount = 0,
+  tabs = null
+} = {}) {
+  const tabList = Array.isArray(tabs) && tabs.length
+    ? tabs
+    : [
+      {
+        key: "own",
+        label: ownLabel,
+        count: ownCount
+      },
+      {
+        key: "staff",
+        label: staffLabel,
+        count: staffCount
+      }
+    ];
+  return `
+    <div class="grid gap-2 mb-4 w-full" style="grid-template-columns: repeat(${Math.max(1, tabList.length)}, minmax(0, 1fr));">
+      ${tabList.map((tab) => {
+        const selected = tab.key === active;
+        return `
+          <button
+            type="button"
+            data-${escapeHtml(idPrefix)}="${escapeHtml(tab.key)}"
+            class="rounded-[1.5rem] px-3 py-2.5 text-left border transition-all ${selected ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200/70" : "bg-white text-slate-600 border-slate-100 shadow-sm"}"
+          >
+            <p class="text-[8px] font-black uppercase tracking-[0.16em] ${selected ? "text-white/70" : "text-slate-400"}">${escapeHtml(tab.label)}</p>
+            <p class="text-base font-black tracking-tight mt-1">${escapeHtml(String(tab.count))}</p>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderOwnershipPills(row = {}, { hideOwn = false } = {}) {
   const meta = resolveOwnershipMeta(row);
   if (!meta) return "";
+  if (meta.own && hideOwn) return "";
   const chips = [
     `<span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest">${escapeHtml(meta.label)}</span>`
   ];
@@ -5380,15 +5628,16 @@ function ensureTabData(tab) {
   if (tab === "staff" && !dataLoaded.staff) {
     dataLoaded.staff = true;
     if (isCeoUser()) {
-      if (!dataLoaded.leads) {
-        dataLoaded.leads = true;
-        void loadLeads();
-      }
-      if (!dataLoaded.customers) {
-        dataLoaded.customers = true;
-        void loadCustomers();
-      }
-      void loadCeoStaff();
+      void loadCeoStaff().then(async () => {
+        if (!dataLoaded.customers) {
+          dataLoaded.customers = true;
+          await loadCustomers();
+        }
+        if (!dataLoaded.leads) {
+          dataLoaded.leads = true;
+          await loadLeads();
+        }
+      }).catch(() => {});
     }
   }
 }
@@ -10849,11 +11098,22 @@ function renderCeoGuard(title = "CRM") {
 
 function renderLeadsView() {
   if (!isCeoUser()) return renderCeoGuard("Leads");
+  if (state.leads.view === "settings") return renderLeadSettingsView();
+  if (state.leads.view === "create") return renderLeadCreationView();
   const queryKey = normalizeSearchKey(state.leads.query || "");
   const statusFilter = normalizeLeadStatusKey(state.leads.status || "");
-  let items = Array.isArray(state.leads.items) ? state.leads.items.slice() : [];
-  items = items.filter((lead) => normalizeLeadStatusKey(lead.status) !== "kunde" && canCurrentCeoSeeRow(lead));
-  if (statusFilter) {
+  const scope = state.leads.scope === "staff" || state.leads.scope === "archived" ? state.leads.scope : "own";
+  const baseItems = (Array.isArray(state.leads.items) ? state.leads.items.slice() : [])
+    .filter((lead) => normalizeLeadStatusKey(lead.status) !== "kunde" && canCurrentCeoSeeRow(lead));
+  const activeItems = baseItems.filter((lead) => normalizeLeadStatusKey(lead.status) !== "no_interest");
+  const archivedItems = baseItems.filter((lead) => normalizeLeadStatusKey(lead.status) === "no_interest");
+  const ownCount = activeItems.filter((lead) => isCurrentCeoOwnRow(lead)).length;
+  const staffCount = activeItems.filter((lead) => !isCurrentCeoOwnRow(lead)).length;
+  const archivedCount = archivedItems.length;
+  let items = scope === "archived"
+    ? archivedItems.slice()
+    : activeItems.filter((lead) => (scope === "own" ? isCurrentCeoOwnRow(lead) : !isCurrentCeoOwnRow(lead)));
+  if (statusFilter && scope !== "archived") {
     items = items.filter((lead) => normalizeLeadStatusKey(lead.status) === statusFilter);
   }
   items = items.filter((lead) => leadMatchesQuery(lead, queryKey));
@@ -10868,7 +11128,7 @@ function renderLeadsView() {
       const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
       const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
       const emailLine = lead.email || lead.socialEmail || "";
-      const ownershipHtml = renderOwnershipPills(lead);
+      const ownershipHtml = renderOwnershipPills(lead, { hideOwn: scope === "own" });
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
           <div class="flex items-center gap-3">
@@ -10896,42 +11156,590 @@ function renderLeadsView() {
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CRM</span>
           <h2 class="text-2xl font-black italic uppercase tracking-tighter">Leads</h2>
         </div>
-        <button id="newLeadBtn" class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-xl shadow-slate-200/60 active:scale-95">
-          ${icon("plus", "w-4 h-4")}
-        </button>
+        <div class="flex items-center gap-2">
+          <button id="leadSettingsBtn" class="w-12 h-12 rounded-2xl bg-white text-slate-700 border border-slate-100 flex items-center justify-center shadow-sm active:scale-95">
+            ${icon("settings", "w-4 h-4")}
+          </button>
+          <button id="newLeadBtn" class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-xl shadow-slate-200/60 active:scale-95">
+            ${icon("plus", "w-4 h-4")}
+          </button>
+        </div>
       </div>
+      ${renderCeoScopeTabs({
+        idPrefix: "lead-scope",
+        active: scope,
+        tabs: [
+          { key: "own", label: "Meine Leads", count: ownCount },
+          { key: "staff", label: "Staff Leads", count: staffCount },
+          { key: "archived", label: "Archiviert", count: archivedCount }
+        ]
+      })}
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-3 flex items-center gap-3">
         ${icon("search", "w-4 h-4 text-slate-400")}
         <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
       </div>
-      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
-        ${icon("list-filter", "w-4 h-4 text-slate-400")}
-        <select id="leadsStatusFilter" class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 outline-none appearance-none">
-          <option value="">Alle Status</option>
-          ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde").map((key) => `
-            <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
-          `).join("")}
-        </select>
-        ${icon("chevron-down", "w-4 h-4 text-slate-400")}
-      </div>
+      ${scope !== "archived" ? `
+        <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
+          ${icon("list-filter", "w-4 h-4 text-slate-400")}
+          <select id="leadsStatusFilter" class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 outline-none appearance-none">
+            <option value="">Alle Status</option>
+            ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde" && key !== "no_interest").map((key) => `
+              <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
+            `).join("")}
+          </select>
+          ${icon("chevron-down", "w-4 h-4 text-slate-400")}
+        </div>
+      ` : ""}
       ${state.leads.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.leads.error)}</div>` : ""}
       <div class="space-y-4">${listHtml}</div>
     </div>
   `;
 }
 
+function isLeadInlineCreateView() {
+  return state.activeTab === "leads" && state.leads?.view === "create";
+}
+
+function isLeadInlineSettingsView() {
+  return state.activeTab === "leads" && state.leads?.view === "settings";
+}
+
+function renderLeadEditorUi() {
+  if (isLeadInlineCreateView()) {
+    render();
+    return;
+  }
+  renderOverlays({ updateLead: true });
+}
+
+async function refineLeadLocationAddressIndex(index, value, { hydratePrimary = false } = {}) {
+  const idx = Number(index);
+  if (!Number.isInteger(idx) || idx < 0) return null;
+  const inputValue = String(value || "").trim();
+  if (!inputValue) return null;
+  const extracted = extractPlusCodeFromText(inputValue);
+  if (!extracted?.code || !isLikelyShortPlusCode(extracted.code) || !String(extracted.remainder || "").trim()) {
+    return null;
+  }
+  const refined = await parseCoordsFromAddressInputAsync(inputValue, getLeadPlusCodeReference(inputValue));
+  if (!refined) return null;
+  const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
+  while (list.length <= idx) list.push(createLeadLocation());
+  const current = list[idx] || createLeadLocation();
+  list[idx] = createLeadLocation({
+    address: inputValue,
+    lat: refined.lat,
+    lng: refined.lng
+  });
+  state.leadModal.locations = list;
+  if (idx === 0) {
+    state.leadModal.coords = { lat: refined.lat, lng: refined.lng };
+    if (hydratePrimary) {
+      await hydrateLeadGeoFieldsFromCoords(refined, { sourceInputId: `leadLocationAddress_${idx}` });
+    }
+  } else if (hasLeadLocationCoords(current) || hasLeadLocationCoords(list[idx])) {
+    const primary = getPrimaryLeadLocation(list);
+    state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : state.leadModal.coords;
+  }
+  const badgeId = idx === 0 ? "leadCoordsDisplay" : `leadLocationCoords_${idx}`;
+  const badge = document.getElementById(badgeId);
+  if (badge) {
+    badge.classList.remove("hidden");
+    if (idx === 0) {
+      badge.innerHTML = `${icon("check-circle-2", "w-3 h-3")} ${escapeHtml(`${refined.lat.toFixed(4)}, ${refined.lng.toFixed(4)}`)}`;
+      if (window.lucide?.createIcons) window.lucide.createIcons();
+    }
+  }
+  return refined;
+}
+
+function renderLeadSettingsView() {
+  const config = getLeadSettingsConfig();
+  return `
+    <div id="leadSettingsView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">
+      <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <div class="space-y-4">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Lead Passwort Standard</label>
+            <input id="leadSettingsPassword" type="text" value="${escapeHtml(config.defaultPassword || "")}" placeholder="Standard Passwort" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Standard Standort Land</label>
+            <div class="relative mt-2">
+              <select id="leadSettingsDefaultCountry" class="w-full px-5 py-4 pr-12 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
+                ${CEO_COUNTRIES.map((country) => `<option value="${escapeHtml(country)}" ${config.defaultCountry === country ? "selected" : ""}>${escapeHtml(country)}</option>`).join("")}
+              </select>
+              <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
+            </div>
+          </div>
+        </div>
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-3">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Lead Typen / Monatlicher Abo Preis</p>
+            <span class="text-[9px] font-black text-slate-300 uppercase tracking-widest">x12 = Jahr</span>
+          </div>
+          <div class="space-y-3">
+            ${LEAD_TYPE_ORDER.map((key) => {
+              const price = Number(config.pricing?.[key]) || 0;
+              return `
+                <div class="grid grid-cols-[1.2fr_0.8fr] gap-3 items-center">
+                  <div class="px-4 py-4 rounded-2xl bg-slate-50 text-sm font-black text-slate-700">${escapeHtml(LEAD_TYPE_LABELS[key])}</div>
+                  <div class="relative">
+                    <input id="leadPrice_${escapeHtml(key)}" type="number" min="0" step="0.01" value="${escapeHtml(price ? price.toFixed(2) : "0.00")}" class="w-full px-4 py-4 pr-12 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                    <span class="absolute inset-y-0 right-4 flex items-center text-[10px] font-black text-slate-400 uppercase">EUR</span>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+        ${state.leads.settingsStatus ? `<div class="mt-5 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.leads.settingsStatus)}</div>` : ""}
+        <button id="leadSettingsSaveBtn" type="button" class="w-full mt-6 py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-slate-200/70 active:scale-95 transition-transform" ${state.leads.settingsSaving ? "disabled" : ""}>
+          ${escapeHtml(state.leads.settingsSaving ? "Speichern..." : "Leads Settings speichern")}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderLeadCreationView() {
+  const lead = state.leadModal.lead || {};
+  const settings = getLeadSettingsConfig();
+  const logoRaw = state.leadModal.logoPreview || lead.logoUrl || "";
+  const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const customerType = resolveCustomerType(lead.customerType || "cafe");
+  const billingCycle = lead.billingCycle === "yearly" ? "yearly" : "monthly";
+  const locations = normalizeLeadLocations(state.leadModal.locations, lead.address || "", state.leadModal.coords || getLeadCountryCenter(lead.country || settings.defaultCountry));
+  const monthlyPrice = getLeadMonthlyPrice(customerType, settings);
+  const yearlyPrice = monthlyPrice * 12;
+  const totalPrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
+  const coords = state.leadModal.coords && Number.isFinite(Number(state.leadModal.coords.lat)) && Number.isFinite(Number(state.leadModal.coords.lng))
+    ? { lat: Number(state.leadModal.coords.lat), lng: Number(state.leadModal.coords.lng) }
+    : null;
+  return `
+    <div id="leadCreateView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-28">
+      <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <input type="file" id="leadLogoInput" class="hidden" accept="image/*" />
+        <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+          <img id="leadLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
+        </div>
+        <button id="leadLogoTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Logo hochladen</button>
+        <div class="mt-5 space-y-4">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
+            <div class="relative mt-2">
+              <select id="leadCustomerType" class="w-full px-5 py-4 pr-12 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
+                ${LEAD_TYPE_ORDER.map((key) => `<option value="${key}" ${customerType === key ? "selected" : ""}>${escapeHtml(LEAD_TYPE_LABELS[key])}</option>`).join("")}
+              </select>
+              <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Business Name</label>
+            <input id="leadBusinessName" type="text" value="${escapeHtml(lead.businessName || "")}" placeholder="Business Name" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>
+            <input id="leadEmail" type="email" value="${escapeHtml(lead.email || buildLeadAccountEmail(lead.businessName || ""))}" readonly class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500 border-none outline-none" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
+            <input id="leadPassword" type="text" value="${escapeHtml(lead.password || settings.defaultPassword || "")}" readonly class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500 border-none outline-none" />
+          </div>
+        </div>
+        <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kunden Daten</p>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Vorname</label>
+              <input id="leadCustomerFirstName" type="text" value="${escapeHtml(lead.contactFirstName || "")}" placeholder="Vorname" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Nachname</label>
+              <input id="leadCustomerLastName" type="text" value="${escapeHtml(lead.contactLastName || "")}" placeholder="Nachname" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Telefon</label>
+              <input id="leadPhone" type="text" value="${escapeHtml(lead.phone || "")}" placeholder="+383" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Instagram</label>
+              <input id="leadInstagram" type="text" value="${escapeHtml(lead.instagram || "")}" placeholder="@menyra" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Facebook</label>
+              <input id="leadFacebook" type="text" value="${escapeHtml(lead.facebook || "")}" placeholder="Facebook" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">TikTok</label>
+              <input id="leadTiktok" type="text" value="${escapeHtml(lead.tiktok || "")}" placeholder="TikTok" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Google Maps</label>
+            <input id="leadGoogleMaps" type="text" value="${escapeHtml(lead.googleMaps || "")}" placeholder="https://maps.google.com/..." class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+        </div>
+        <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
+          <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Abo</p>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Laufzeit</label>
+            <div class="relative mt-2">
+              <select id="leadBillingCycle" class="w-full px-5 py-4 pr-12 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
+                <option value="monthly" ${billingCycle === "monthly" ? "selected" : ""}>Monatlich</option>
+                <option value="yearly" ${billingCycle === "yearly" ? "selected" : ""}>Jaehrlich</option>
+              </select>
+              <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis monatlich</label>
+              <input id="leadMonthlyPrice" type="text" value="${escapeHtml(monthlyPrice ? `${monthlyPrice.toFixed(2)} EUR / Monat` : "0.00 EUR / Monat")}" readonly class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
+            </div>
+            <div>
+              <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Preis jaehrlich</label>
+              <input id="leadAnnualPrice" type="text" value="${escapeHtml(yearlyPrice ? `${yearlyPrice.toFixed(2)} EUR / Jahr` : "0.00 EUR / Jahr")}" readonly class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Aktueller Preis</label>
+            <input id="leadPriceValue" type="text" value="${escapeHtml(totalPrice ? `${totalPrice.toFixed(2)} EUR` : "0.00 EUR")}" readonly class="w-full mt-2 px-5 py-4 bg-white rounded-2xl text-sm font-bold text-slate-500 border border-slate-100 outline-none" />
+          </div>
+        </div>
+        <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">
+          <div class="flex items-center justify-between">
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Standorte</p>
+            <button type="button" data-lead-location-add class="px-3 py-2 rounded-xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-1">${icon("plus", "w-3.5 h-3.5")} Standort</button>
+          </div>
+          ${locations.map((location, index) => {
+            const hasCoords = hasLeadLocationCoords(location);
+            return `
+              <div class="bg-white p-4 rounded-2xl border border-slate-100 space-y-3">
+                <div class="flex items-center justify-between">
+                  <p class="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Standort ${index + 1}</p>
+                  ${index > 0 ? `<button type="button" data-lead-location-remove="${index}" class="w-8 h-8 rounded-lg bg-slate-50 text-slate-500 flex items-center justify-center border border-slate-200">${icon("x", "w-3.5 h-3.5")}</button>` : ""}
+                </div>
+                <input id="leadLocationAddress_${index}" data-lead-location-address="${index}" type="text" value="${escapeHtml(location.address || "")}" placeholder="Plus Code oder Adresse" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+                <div id="leadLocationCoords_${index}" class="text-[9px] font-bold text-emerald-600 flex items-center gap-1 ${hasCoords ? "" : "hidden"}">${icon("check-circle-2", "w-3 h-3")} Standort auf Karte fixiert</div>
+                <button type="button" data-lead-location-pick="${index}" class="w-full bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform">${icon("map-pin", "w-3.5 h-3.5")} Auf Karte festlegen</button>
+              </div>
+            `;
+          }).join("")}
+          <div id="leadCoordsDisplay" class="${coords ? "" : "hidden"} text-[9px] font-bold text-emerald-600 flex items-center gap-1">
+            ${icon("check-circle-2", "w-3 h-3")} ${coords ? escapeHtml(`${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}`) : ""}
+          </div>
+        </div>
+        <div class="mt-6 space-y-4">
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Land</label>
+            <div class="relative mt-2">
+              <select id="leadCountry" class="w-full px-5 py-4 pr-12 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none appearance-none focus:ring-2 focus:ring-indigo-100">
+                ${CEO_COUNTRIES.map((country) => `<option value="${escapeHtml(country)}" ${normalizeLeadCountry(lead.country || settings.defaultCountry) === country ? "selected" : ""}>${escapeHtml(country)}</option>`).join("")}
+              </select>
+              <div class="absolute inset-y-0 right-5 flex items-center text-slate-400 pointer-events-none">${icon("chevron-down", "w-4 h-4")}</div>
+            </div>
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Stadt</label>
+            <input id="leadCity" type="text" value="${escapeHtml(lead.city || "")}" placeholder="Stadt" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Adresse</label>
+            <input id="leadAddress" type="text" value="${escapeHtml(lead.address || "")}" placeholder="Adresse" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">ZIP Code</label>
+            <input id="leadZipCode" type="text" value="${escapeHtml(lead.zipCode || "")}" placeholder="10000" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          </div>
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Notiz</label>
+            <textarea id="leadNote" rows="3" placeholder="Kurz notieren..." class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtml(lead.note || "")}</textarea>
+          </div>
+        </div>
+        <input id="leadLogoUrl" type="hidden" value="${escapeHtml(lead.logoUrl || "")}" />
+        <input id="leadStatus" type="hidden" value="${escapeHtml(lead.status || "registered")}" />
+        <input id="leadContactName" type="hidden" value="${escapeHtml(buildLeadContactName(lead.contactFirstName, lead.contactLastName, lead.contactName || ""))}" />
+        <div class="mt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.leadModal.status || "")}</div>
+        <button id="leadInlineSaveBtn" type="button" class="w-full mt-5 py-4 rounded-[1.8rem] bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-transform" ${state.leadModal.loading ? "disabled" : ""}>${escapeHtml(state.leadModal.loading ? "Speichern..." : "Lead erstellen")}</button>
+      </div>
+    </div>
+  `;
+}
+
+function resetLeadDraft() {
+  state.leadModal = {
+    open: false,
+    mode: "create",
+    lead: null,
+    status: "",
+    loading: false,
+    logoFile: null,
+    logoPreview: "",
+    coords: null,
+    locations: []
+  };
+}
+
+function createLeadDraftState(mode = "create", lead = null) {
+  const rest = lead?.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
+  const leadCoords = resolveCoordsFromEntity(lead || {});
+  const restCoords = resolveCoordsFromEntity(rest || {});
+  const coords = preferStableCoords(leadCoords, restCoords);
+  const lat = coords?.lat;
+  const lng = coords?.lng;
+  const locations = normalizeLeadLocations(
+    lead?.locations || rest?.locations || [],
+    lead?.address || rest?.address || "",
+    coords
+  );
+  const primary = getPrimaryLeadLocation(locations);
+  const settings = getLeadSettingsConfig();
+  const businessName = lead?.businessName || rest?.name || rest?.restaurantName || "";
+  const monthlyPrice = getLeadMonthlyPrice(lead?.customerType || rest?.type || "cafe", settings);
+  const yearlyPrice = monthlyPrice * 12;
+  const country = normalizeLeadCountry(lead?.country || rest?.country || settings.defaultCountry);
+  const merged = {
+    ...(lead || {}),
+    businessName,
+    city: lead?.city || rest?.city || "",
+    address: locations[0]?.address || lead?.address || rest?.address || "",
+    phone: lead?.phone || rest?.phone || "",
+    instagram: lead?.instagram || lead?.insta || rest?.instagram || rest?.insta || "",
+    facebook: lead?.facebook || rest?.facebook || "",
+    tiktok: lead?.tiktok || rest?.tiktok || "",
+    googleMaps: lead?.googleMaps || rest?.googleMaps || "",
+    logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || "",
+    email: lead?.email || lead?.socialEmail || buildLeadAccountEmail(businessName),
+    password: lead?.password || settings.defaultPassword,
+    country,
+    zipCode: lead?.zipCode || rest?.zipCode || "",
+    contactFirstName: lead?.contactFirstName || rest?.contactFirstName || "",
+    contactLastName: lead?.contactLastName || rest?.contactLastName || "",
+    billingCycle: lead?.billingCycle === "yearly" ? "yearly" : "monthly",
+    monthlyPrice,
+    yearlyPrice,
+    lat: hasLeadLocationCoords(primary) ? primary.lat : (Number.isFinite(lat) ? lat : undefined),
+    lng: hasLeadLocationCoords(primary) ? primary.lng : (Number.isFinite(lng) ? lng : undefined),
+    locations,
+    status: normalizeLeadStatusKey(lead?.status || "registered") || "registered"
+  };
+  return {
+    open: false,
+    mode,
+    lead: merged,
+    status: "",
+    loading: false,
+    logoFile: null,
+    logoPreview: merged.logoUrl || "",
+    coords: hasLeadLocationCoords(primary)
+      ? { lat: primary.lat, lng: primary.lng }
+      : (coords || getLeadCountryCenter(country)),
+    locations
+  };
+}
+
+function openLeadCreator() {
+  if (!isCeoUser()) return;
+  state.leads.view = "create";
+  state.leads.settingsStatus = "";
+  state.leadModal = createLeadDraftState("create", null);
+  render();
+}
+
+function openLeadSettingsView() {
+  if (!isCeoUser()) return;
+  state.leads.view = "settings";
+  state.leads.settingsStatus = "";
+  render();
+}
+
+function closeLeadSubview() {
+  state.leads.view = "list";
+  state.leads.settingsStatus = "";
+  if (!state.leadModal.open) {
+    resetLeadDraft();
+  }
+  render();
+}
+
+async function saveLeadSettings() {
+  if (!state.user) return;
+  const password = String(document.getElementById("leadSettingsPassword")?.value || "").trim();
+  const defaultCountry = normalizeLeadCountry(document.getElementById("leadSettingsDefaultCountry")?.value || LEAD_SETTINGS_DEFAULT_COUNTRY);
+  const pricing = LEAD_TYPE_ORDER.reduce((acc, key) => {
+    const raw = Number(document.getElementById(`leadPrice_${key}`)?.value);
+    acc[key] = Number.isFinite(raw) && raw >= 0 ? Number(raw) : 0;
+    return acc;
+  }, {});
+
+  state.leads.settingsSaving = true;
+  state.leads.settingsStatus = "Speichern...";
+  render();
+
+  try {
+    const leadSettings = normalizeLeadSettings({
+      defaultPassword: password || LEAD_SOCIAL_DEFAULT_PASSWORD,
+      defaultCountry,
+      pricing
+    });
+    await setDoc(doc(db, "users", state.user.uid), { leadSettings, updatedAt: serverTimestamp() }, { merge: true });
+    state.userProfile = {
+      ...state.userProfile,
+      leadSettings
+    };
+    saveUserProfileToStorage();
+    state.leads.settingsSaving = false;
+    state.leads.settingsStatus = "Leads Settings gespeichert.";
+    render();
+  } catch (err) {
+    console.error(err);
+    state.leads.settingsSaving = false;
+    state.leads.settingsStatus = err?.message || "Leads Settings konnten nicht gespeichert werden.";
+    render();
+  }
+}
+
+function getLeadFormCountryValue() {
+  const inputValue = document.getElementById("leadCountry")?.value || state.leadModal?.lead?.country || "";
+  return normalizeLeadCountry(inputValue || getLeadSettingsConfig().defaultCountry);
+}
+
+function getLeadPlusCodeReference(value = "") {
+  return getLeadCountryCenter(inferLeadCountryFromText(value, getLeadFormCountryValue()));
+}
+
+async function reverseGeocodeCoords(coords) {
+  const lat = Number(coords?.lat);
+  const lng = Number(coords?.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  try {
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&zoom=18&addressdetails=1`;
+    const res = await fetch(url);
+    const data = await res.json();
+    const addr = data?.address || {};
+    const addressLine = [
+      addr.road,
+      addr.house_number
+    ].filter(Boolean).join(" ").trim();
+    return {
+      displayName: String(data?.display_name || "").trim(),
+      country: normalizeLeadCountry(addr.country || addr.country_code || ""),
+      city: String(addr.city || addr.town || addr.village || addr.state_district || addr.county || "").trim(),
+      zipCode: String(addr.postcode || "").trim(),
+      addressLine
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function hydrateLeadGeoFieldsFromCoords(coords, { sourceInputId = "" } = {}) {
+  const details = await reverseGeocodeCoords(coords);
+  const sourceInput = sourceInputId ? document.getElementById(sourceInputId) : null;
+  const sourceValue = sourceInput ? String(sourceInput.value || "").trim() : "";
+  const country = normalizeLeadCountry(details?.country || getLeadFormCountryValue());
+  const city = String(details?.city || "").trim();
+  const zipCode = String(details?.zipCode || "").trim();
+  const address = String(details?.displayName || details?.addressLine || sourceValue || "").trim();
+
+  const countryInput = document.getElementById("leadCountry");
+  const cityInput = document.getElementById("leadCity");
+  const addressInput = document.getElementById("leadAddress");
+  const zipInput = document.getElementById("leadZipCode");
+  const googleMapsInput = document.getElementById("leadGoogleMaps");
+
+  if (countryInput) countryInput.value = country;
+  if (cityInput && city) cityInput.value = city;
+  if (addressInput && address) addressInput.value = address;
+  if (zipInput && zipCode) zipInput.value = zipCode;
+  if (sourceInput && address) sourceInput.value = address;
+  if (googleMapsInput && !String(googleMapsInput.value || "").trim()) {
+    googleMapsInput.value = `https://maps.google.com/?q=${coords.lat},${coords.lng}`;
+  }
+
+  const currentLocations = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
+  if (currentLocations.length && address) {
+    const first = currentLocations[0] || createLeadLocation();
+    currentLocations[0] = createLeadLocation({
+      address,
+      lat: Number.isFinite(Number(first.lat)) ? Number(first.lat) : coords.lat,
+      lng: Number.isFinite(Number(first.lng)) ? Number(first.lng) : coords.lng
+    });
+    state.leadModal.locations = currentLocations;
+  }
+
+  const currentLead = { ...(state.leadModal.lead || {}) };
+  currentLead.country = country;
+  if (city) currentLead.city = city;
+  if (address) currentLead.address = address;
+  if (zipCode) currentLead.zipCode = zipCode;
+  if (!String(currentLead.googleMaps || "").trim()) {
+    currentLead.googleMaps = `https://maps.google.com/?q=${coords.lat},${coords.lng}`;
+  }
+  state.leadModal.lead = currentLead;
+}
+
+function syncLeadDerivedFields() {
+  if (!isLeadInlineCreateView()) return;
+  const settings = getLeadSettingsConfig();
+  const businessName = String(document.getElementById("leadBusinessName")?.value || state.leadModal?.lead?.businessName || "").trim();
+  const type = resolveCustomerType(document.getElementById("leadCustomerType")?.value || state.leadModal?.lead?.customerType || "cafe");
+  const cycle = document.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
+  const email = buildLeadAccountEmail(businessName);
+  const password = settings.defaultPassword;
+  const monthly = getLeadMonthlyPrice(type, settings);
+  const total = getLeadPriceForCycle(type, cycle, settings);
+  const yearly = monthly * 12;
+
+  const emailInput = document.getElementById("leadEmail");
+  const passwordInput = document.getElementById("leadPassword");
+  const monthlyInput = document.getElementById("leadMonthlyPrice");
+  const yearlyInput = document.getElementById("leadAnnualPrice");
+  const priceInput = document.getElementById("leadPriceValue");
+
+  if (emailInput) emailInput.value = email;
+  if (passwordInput) passwordInput.value = password;
+  if (monthlyInput) monthlyInput.value = monthly ? `${monthly.toFixed(2)} EUR / Monat` : "0.00 EUR / Monat";
+  if (yearlyInput) yearlyInput.value = yearly ? `${yearly.toFixed(2)} EUR / Jahr` : "0.00 EUR / Jahr";
+  if (priceInput) priceInput.value = total ? `${total.toFixed(2)} EUR` : "0.00 EUR";
+
+  if (state.leadModal?.lead) {
+    state.leadModal.lead = {
+      ...state.leadModal.lead,
+      businessName,
+      customerType: type,
+      email,
+      password,
+      billingCycle: cycle,
+      monthlyPrice: monthly,
+      yearlyPrice: yearly
+    };
+  }
+}
+
 function renderCustomersView() {
   if (!isCeoUser()) return renderCeoGuard("Kunden");
   const queryKey = normalizeSearchKey(state.customers.query || "");
-  const items = Array.from(new Map([
+  const scope = state.customers.scope === "staff" ? "staff" : "own";
+  const baseItems = Array.from(new Map([
     ...(Array.isArray(state.restaurants) ? state.restaurants.filter(isCustomerRestaurant) : []),
     ...(Array.isArray(state.customers.items) ? state.customers.items : [])
   ].map((rest, index) => [
     String(rest?.id || rest?.restaurantId || rest?.leadId || `${rest?.name || rest?.restaurantName || "customer"}:${index}`),
     rest
   ])).values())
-    .filter((rest) => canCurrentCeoSeeRow(rest))
-    .filter((rest) => rest && customerMatchesQuery(rest, queryKey))
+    .filter((rest) => (isCeoUser() ? isOwnedByVisibleCeoTeam(rest) : true))
+    .filter(Boolean);
+  const ownCount = baseItems.filter((rest) => isCurrentCeoOwnRow(rest)).length;
+  const staffCount = baseItems.filter((rest) => !isCurrentCeoOwnRow(rest)).length;
+  const items = baseItems
+    .filter((rest) => (scope === "own" ? isCurrentCeoOwnRow(rest) : !isCurrentCeoOwnRow(rest)))
+    .filter((rest) => customerMatchesQuery(rest, queryKey))
     .sort((a, b) => (toDateSafe(b?.createdAt)?.getTime() || 0) - (toDateSafe(a?.createdAt)?.getTime() || 0));
   const listHtml = state.customers.loading
     ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Kunden laden...</div>`
@@ -10942,7 +11750,7 @@ function renderCustomersView() {
       const typeLabel = leadTypeLabel(rest.type || rest.customerType || "");
       const city = rest.city || "";
       const statusLabel = customerStatusLabel(isCustomerRestaurant(rest) ? "kunde" : rest.status);
-      const ownershipHtml = renderOwnershipPills(rest);
+      const ownershipHtml = renderOwnershipPills(rest, { hideOwn: scope === "own" });
       return `
         <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
           <div class="flex items-center gap-3">
@@ -10971,6 +11779,14 @@ function renderCustomersView() {
           <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kunden</h2>
         </div>
       </div>
+      ${renderCeoScopeTabs({
+        idPrefix: "customer-scope",
+        active: scope,
+        ownLabel: "Meine Kunden",
+        ownCount,
+        staffLabel: "Staff Kunden",
+        staffCount
+      })}
       <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
         ${icon("search", "w-4 h-4 text-slate-400")}
         <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
@@ -11644,6 +12460,23 @@ function renderHeader() {
         <div class="text-center">
           <h1 class="${titleClass}">MENYRA</h1>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">CEO Creation</span>
+        </div>
+        <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
+          <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
+        </button>
+      </header>
+    `;
+  }
+  if (state.activeTab === "leads" && (state.leads?.view === "create" || state.leads?.view === "settings")) {
+    const isSettingsView = state.leads?.view === "settings";
+    return `
+      <header class="p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
+        <button data-leads-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
+          ${isSettingsView ? icon("minus", "w-5 h-5") : icon("arrow-left", "w-5 h-5")}
+        </button>
+        <div class="text-center">
+          <h1 class="${titleClass}">MENYRA</h1>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">${isSettingsView ? "Leads Settings" : "Leads Creation"}</span>
         </div>
         <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
           <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
@@ -12815,7 +13648,7 @@ function bindOverlayEvents({
         const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
         while (list.length <= index) list.push(createLeadLocation());
         const currentRow = list[index] || createLeadLocation();
-        const parsedCoords = parseCoordsFromAddressInput(input.value);
+        const parsedCoords = parseCoordsFromAddressInput(input.value, getLeadPlusCodeReference(input.value));
         list[index] = createLeadLocation({
           address: input.value,
           lat: parsedCoords ? parsedCoords.lat : (hasLeadLocationCoords(currentRow) ? currentRow.lat : null),
@@ -12827,6 +13660,13 @@ function bindOverlayEvents({
         if (badge) badge.classList.toggle("hidden", !hasLeadLocationCoords(list[index]));
         const primary = getPrimaryLeadLocation(list);
         state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : null;
+      });
+      input.addEventListener("blur", () => {
+        const index = Number(input.getAttribute("data-lead-location-address"));
+        if (!Number.isInteger(index) || index < 0) return;
+        void refineLeadLocationAddressIndex(index, input.value, { hydratePrimary: index === 0 }).then(() => {
+          renderOverlays({ updateLead: true });
+        });
       });
     });
   }
@@ -13411,7 +14251,124 @@ function bindAppEvents() {
 
   const newLeadBtn = document.getElementById("newLeadBtn");
   if (newLeadBtn) {
-    newLeadBtn.addEventListener("click", () => openLeadModal("create"));
+    newLeadBtn.addEventListener("click", () => openLeadCreator());
+  }
+
+  const leadSettingsBtn = document.getElementById("leadSettingsBtn");
+  if (leadSettingsBtn) {
+    leadSettingsBtn.addEventListener("click", () => openLeadSettingsView());
+  }
+
+  document.querySelectorAll("[data-leads-back]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeLeadSubview();
+    });
+  });
+
+  const leadSettingsSaveBtn = document.getElementById("leadSettingsSaveBtn");
+  if (leadSettingsSaveBtn) {
+    leadSettingsSaveBtn.addEventListener("click", () => {
+      if (state.leads.settingsSaving) return;
+      void saveLeadSettings();
+    });
+  }
+
+  if (isLeadInlineCreateView()) {
+    const leadInlineSaveBtn = document.getElementById("leadInlineSaveBtn");
+    if (leadInlineSaveBtn) {
+      leadInlineSaveBtn.addEventListener("click", () => {
+        if (state.leadModal.loading) return;
+        void saveLeadFromModal();
+      });
+    }
+    const leadLogoTrigger = document.getElementById("leadLogoTrigger");
+    const leadLogoInput = document.getElementById("leadLogoInput");
+    if (leadLogoTrigger && leadLogoInput) {
+      leadLogoTrigger.addEventListener("click", () => leadLogoInput.click());
+    }
+    if (leadLogoInput) {
+      leadLogoInput.addEventListener("change", (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        state.leadModal.logoFile = file;
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const preview = String(reader.result || "");
+          state.leadModal.logoPreview = preview;
+          const img = document.getElementById("leadLogoPreview");
+          if (img && preview) img.setAttribute("src", preview);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    const syncIds = ["leadBusinessName", "leadCustomerType", "leadBillingCycle"];
+    syncIds.forEach((id) => {
+      const node = document.getElementById(id);
+      if (!node) return;
+      node.addEventListener("input", () => syncLeadDerivedFields());
+      node.addEventListener("change", () => syncLeadDerivedFields());
+    });
+
+    document.querySelectorAll("[data-lead-location-add]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (state.leadModal.loading) return;
+        addLeadModalLocationRow();
+      });
+    });
+    document.querySelectorAll("[data-lead-location-remove]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (state.leadModal.loading) return;
+        removeLeadModalLocationRow(Number(btn.getAttribute("data-lead-location-remove")));
+      });
+    });
+    document.querySelectorAll("[data-lead-location-pick]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const index = Number(btn.getAttribute("data-lead-location-pick"));
+        if (!Number.isInteger(index) || index < 0) return;
+        syncLeadModalDraftFromForm();
+        void openLocationPicker({
+          addressInputId: `leadLocationAddress_${index}`,
+          coordsDisplayId: index === 0 ? "leadCoordsDisplay" : `leadLocationCoords_${index}`,
+          context: `lead_location:${index}`
+        });
+      });
+    });
+    document.querySelectorAll("[data-lead-location-address]").forEach((input) => {
+      input.addEventListener("input", () => {
+        const index = Number(input.getAttribute("data-lead-location-address"));
+        if (!Number.isInteger(index) || index < 0) return;
+        const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
+        while (list.length <= index) list.push(createLeadLocation());
+        const currentRow = list[index] || createLeadLocation();
+        const parsedCoords = parseCoordsFromAddressInput(input.value, getLeadPlusCodeReference(input.value));
+        list[index] = createLeadLocation({
+          address: input.value,
+          lat: parsedCoords ? parsedCoords.lat : (hasLeadLocationCoords(currentRow) ? currentRow.lat : null),
+          lng: parsedCoords ? parsedCoords.lng : (hasLeadLocationCoords(currentRow) ? currentRow.lng : null)
+        });
+        state.leadModal.locations = list;
+        const badge = document.getElementById(index === 0 ? "leadCoordsDisplay" : `leadLocationCoords_${index}`);
+        if (badge) badge.classList.toggle("hidden", !hasLeadLocationCoords(list[index]));
+        const primary = getPrimaryLeadLocation(list);
+        state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : null;
+      });
+      input.addEventListener("change", () => {
+        const index = Number(input.getAttribute("data-lead-location-address"));
+        if (index !== 0) return;
+        const parsedCoords = parseCoordsFromAddressInput(input.value, getLeadPlusCodeReference(input.value));
+        if (!parsedCoords) return;
+        void hydrateLeadGeoFieldsFromCoords(parsedCoords, { sourceInputId: input.id });
+      });
+      input.addEventListener("blur", () => {
+        const index = Number(input.getAttribute("data-lead-location-address"));
+        if (!Number.isInteger(index) || index < 0) return;
+        void refineLeadLocationAddressIndex(index, input.value, { hydratePrimary: index === 0 }).then(() => {
+          if (isLeadInlineCreateView()) render();
+        });
+      });
+    });
+    syncLeadDerivedFields();
   }
 
   const leadsSearchInput = document.getElementById("leadsSearchInput");
@@ -13430,6 +14387,16 @@ function bindAppEvents() {
     });
   }
 
+  document.querySelectorAll("[data-lead-scope]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const rawScope = String(btn.dataset.leadScope || "").trim();
+      const nextScope = ["own", "staff", "archived"].includes(rawScope) ? rawScope : "own";
+      if (state.leads.scope === nextScope) return;
+      state.leads.scope = nextScope;
+      render();
+    });
+  });
+
   document.querySelectorAll("[data-lead-edit]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.leadEdit;
@@ -13446,6 +14413,15 @@ function bindAppEvents() {
       render();
     });
   }
+
+  document.querySelectorAll("[data-customer-scope]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const nextScope = btn.dataset.customerScope === "staff" ? "staff" : "own";
+      if (state.customers.scope === nextScope) return;
+      state.customers.scope = nextScope;
+      render();
+    });
+  });
 
   document.querySelectorAll("[data-customer-edit]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -13550,6 +14526,13 @@ function bindAppEvents() {
         addressInputId: "staffLocationLabel",
         coordsDisplayId: "staffCoordsDisplay",
         context: "staff"
+      });
+      input.addEventListener("blur", () => {
+        const index = Number(input.getAttribute("data-lead-location-address"));
+        if (!Number.isInteger(index) || index < 0) return;
+        void refineLeadLocationAddressIndex(index, input.value, { hydratePrimary: index === 0 }).then(() => {
+          renderOverlays({ updateLead: true });
+        });
       });
     });
   }
@@ -13793,7 +14776,11 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
       const index = Number(pickerContext.split(":")[1]);
       const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
       const row = Number.isInteger(index) && index >= 0 ? list[index] : null;
-      targetCoords = resolveCoordsFromEntity(row) || null;
+      const addressValue = String(row?.address || document.getElementById(addressInputId)?.value || "").trim();
+      targetCoords = await parseCoordsFromAddressInputAsync(addressValue, getLeadPlusCodeReference(addressValue));
+      if (!targetCoords) {
+        targetCoords = resolveCoordsFromEntity(row) || null;
+      }
       if (!targetCoords) {
         const primary = getPrimaryLeadLocation(list);
         targetCoords = resolveCoordsFromEntity(primary) || resolveCoordsFromEntity(state.leadModal.coords || {}) || null;
@@ -13843,7 +14830,8 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
     if (targetCoords && Number.isFinite(Number(targetCoords.lat)) && Number.isFinite(Number(targetCoords.lng))) {
       locationPickerMap.setView([targetCoords.lat, targetCoords.lng], 17, { animate: false });
     } else if (isLeadPickerContext) {
-      locationPickerMap.setView([PRISHTINA_COORDS.lat, PRISHTINA_COORDS.lng], 16, { animate: false });
+      const center = getLeadCountryCenter(getLeadFormCountryValue());
+      locationPickerMap.setView([center.lat, center.lng], 16, { animate: false });
     } else if (address) {
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
@@ -13863,7 +14851,7 @@ function closeLocationPicker() {
   }, 300);
 }
 
-function confirmLocation() {
+async function confirmLocation() {
   if (!locationPickerMap) return;
   const center = locationPickerMap.getCenter();
   const coords = { lat: center.lat, lng: center.lng };
@@ -13882,6 +14870,9 @@ function confirmLocation() {
       state.leadModal.lead = { ...(state.leadModal.lead || {}), address: list[0]?.address || "" };
       const primary = getPrimaryLeadLocation(list);
       state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : null;
+      if (index === 0) {
+        await hydrateLeadGeoFieldsFromCoords(coords, { sourceInputId: locationPickerTarget.addressInputId || "" });
+      }
     }
   } else if (context === "staff") {
     const addressInput = document.getElementById(locationPickerTarget.addressInputId || "");
@@ -13905,6 +14896,9 @@ function confirmLocation() {
   const badge = document.getElementById(locationPickerTarget.coordsDisplayId || "coordsDisplay");
   badge?.classList.remove("hidden");
   closeLocationPicker();
+  if (isLeadInlineCreateView()) {
+    render();
+  }
 }
 
 async function saveAccountSettings() {
@@ -15628,7 +16622,8 @@ async function ensureRestaurantPublicMeta(restaurantId, base) {
 }
 
 function normalizeLeadDoc(docSnap) {
-  const data = typeof docSnap?.data === "function" ? docSnap.data() : (docSnap?.data || docSnap || {});
+  const sourceData = typeof docSnap?.data === "function" ? docSnap.data() : (docSnap?.data || docSnap || {});
+  const data = applyKnownLeadOwnershipOverride(sourceData);
   const status = normalizeLeadStatusKey(data.status || "registered") || "registered";
   const fallbackCoords = resolveCoordsFromEntity(data);
   const fallbackLat = fallbackCoords?.lat ?? null;
@@ -15674,41 +16669,42 @@ function normalizeLeadDoc(docSnap) {
 
 function normalizeLeadFromRestaurant(rest) {
   if (!rest?.id) return null;
-  const status = normalizeLeadStatusKey(rest.status || "registered") || "registered";
-  const fallbackCoords = resolveCoordsFromEntity(rest);
+  const data = applyKnownLeadOwnershipOverride(rest);
+  const status = normalizeLeadStatusKey(data.status || "registered") || "registered";
+  const fallbackCoords = resolveCoordsFromEntity(data);
   const fallbackLat = fallbackCoords?.lat ?? null;
   const fallbackLng = fallbackCoords?.lng ?? null;
-  const locations = normalizeLeadLocations(rest.locations || [], rest.address || "", {
+  const locations = normalizeLeadLocations(data.locations || [], data.address || "", {
     lat: fallbackLat,
     lng: fallbackLng
   });
   const primary = getPrimaryLeadLocation(locations);
   return {
-    id: rest.leadId || rest.id,
-    businessName: rest.name || rest.restaurantName || "",
-    customerType: resolveCustomerType(rest.type || rest.customerType || "cafe"),
-    contactName: rest.ownerName || "",
-    phone: rest.phone || "",
-    email: rest.ownerEmail || "",
-    instagram: rest.instagram || rest.insta || "",
-    city: rest.city || "",
-    address: locations[0]?.address || rest.address || "",
-    logoUrl: rest.logoUrl || rest.logo || "",
+    id: data.leadId || data.id,
+    businessName: data.name || data.restaurantName || "",
+    customerType: resolveCustomerType(data.type || data.customerType || "cafe"),
+    contactName: data.ownerName || "",
+    phone: data.phone || "",
+    email: data.ownerEmail || "",
+    instagram: data.instagram || data.insta || "",
+    city: data.city || "",
+    address: locations[0]?.address || data.address || "",
+    logoUrl: data.logoUrl || data.logo || "",
     note: "",
     status,
-    restaurantId: rest.id,
-    socialUid: rest.ownerUid || "",
-    socialEmail: rest.ownerEmail || "",
-    createdByUid: rest.createdByUid || "",
-    createdByRole: rest.createdByRole || "",
-    createdByName: rest.createdByName || "",
-    createdByHandle: rest.createdByHandle || "",
-    ceoRootUid: rest.ceoRootUid || "",
-    ceoRootName: rest.ceoRootName || "",
-    ceoParentUid: rest.ceoParentUid || "",
-    ceoPath: normalizeCeoPath(rest.ceoPath),
-    createdAt: rest.createdAt,
-    updatedAt: rest.updatedAt,
+    restaurantId: data.id,
+    socialUid: data.ownerUid || "",
+    socialEmail: data.ownerEmail || "",
+    createdByUid: data.createdByUid || "",
+    createdByRole: data.createdByRole || "",
+    createdByName: data.createdByName || "",
+    createdByHandle: data.createdByHandle || "",
+    ceoRootUid: data.ceoRootUid || "",
+    ceoRootName: data.ceoRootName || "",
+    ceoParentUid: data.ceoParentUid || "",
+    ceoPath: normalizeCeoPath(data.ceoPath),
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt,
     lat: hasLeadLocationCoords(primary) ? primary.lat : (fallbackLat ?? null),
     lng: hasLeadLocationCoords(primary) ? primary.lng : (fallbackLng ?? null),
     gpsLat: Number.isFinite(Number(fallbackLat)) ? Number(fallbackLat) : null,
@@ -15784,7 +16780,10 @@ function customerMatchesQuery(rest, queryKey) {
 
 function refreshCustomersFromRestaurants() {
   const list = Array.isArray(state.restaurants)
-    ? state.restaurants.filter((rest) => isCustomerRestaurant(rest) && canCurrentCeoSeeRow(rest))
+    ? state.restaurants.filter((rest) => (
+      isCustomerRestaurant(rest)
+      && (isCeoUser() ? isOwnedByVisibleCeoTeam(rest) : true)
+    ))
     : [];
   list.sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
   state.customers.items = list;
@@ -15796,8 +16795,16 @@ async function loadLeads() {
   state.leads.error = "";
   render();
   try {
-    const snap = await getDocs(query(collection(db, "leads"), limit(200)));
-    const list = snap.docs.map((docSnap) => normalizeLeadDoc(docSnap));
+    await ensureCeoStaffIndexLoaded();
+    const cachedTeamRestaurants = Array.isArray(state.restaurants)
+      ? state.restaurants.filter((row) => isOwnedByVisibleCeoTeam(row))
+      : [];
+    const useCachedRestaurants = dataLoaded.customers && !state.customers.loading && !state.customers.error;
+    const [leadRows, restaurantRows] = await Promise.all([
+      fetchCeoScopedRows("leads"),
+      useCachedRestaurants ? Promise.resolve([]) : fetchCeoScopedRows("restaurants")
+    ]);
+    const list = leadRows.map((row) => normalizeLeadDoc(row));
     const byRestaurant = new Map();
     const byId = new Map();
     list.forEach((lead) => {
@@ -15808,14 +16815,12 @@ async function loadLeads() {
       if (lead?.id) byId.set(String(lead.id), lead);
     });
 
-    let restList = Array.isArray(state.restaurants) && state.restaurants.length ? state.restaurants : [];
-    if (!restList.length) {
-      try {
-        const restSnap = await getDocs(query(collection(db, "restaurants"), limit(200)));
-        const rows = restSnap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
-        restList = rows;
-        state.restaurants = mergeRestaurants(state.restaurants, rows);
-      } catch {}
+    const restList = useCachedRestaurants
+      ? cachedTeamRestaurants
+      : (Array.isArray(restaurantRows) ? restaurantRows : []);
+    if (!useCachedRestaurants && restList.length) {
+      state.restaurants = mergeRestaurants(state.restaurants, restList);
+      rebuildBusinessLocations();
     }
 
     const leadFromRestaurants = restList
@@ -15843,11 +16848,17 @@ async function loadCustomers() {
   state.customers.error = "";
   render();
   try {
-    const snap = await getDocs(query(collection(db, "restaurants"), limit(200)));
-    const list = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
+    await ensureCeoStaffIndexLoaded();
+    const cachedTeamRestaurants = Array.isArray(state.restaurants)
+      ? state.restaurants.filter((row) => isOwnedByVisibleCeoTeam(row))
+      : [];
+    const useCachedRestaurants = dataLoaded.leads && !state.leads.loading && !state.leads.error;
+    const list = useCachedRestaurants ? cachedTeamRestaurants.slice() : await fetchCeoScopedRows("restaurants");
     list.sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-    state.restaurants = mergeRestaurants(state.restaurants, list);
-    rebuildBusinessLocations();
+    if (!useCachedRestaurants) {
+      state.restaurants = mergeRestaurants(state.restaurants, list);
+      rebuildBusinessLocations();
+    }
     refreshCustomersFromRestaurants();
     state.customers.error = "";
   } catch (err) {
@@ -15857,6 +16868,186 @@ async function loadCustomers() {
     state.customers.loading = false;
     render();
   }
+}
+
+async function ensureCeoStaffIndexLoaded() {
+  if (!isCeoUser()) return;
+  if (ceoStaffLoadPromise) {
+    await ceoStaffLoadPromise;
+  } else if (!(dataLoaded.staff && !state.staff.error)) {
+    await loadCeoStaff();
+  }
+  await reconcileKnownLegacyOwnership();
+}
+
+async function fetchCeoScopedRows(collectionName, { maxDocs = 200 } = {}) {
+  if (!isCeoUser()) return [];
+  const current = getCurrentCeoMeta();
+  if (!current.uid) return [];
+  const baseRef = collection(db, collectionName);
+  const teamUids = getVisibleCeoTeamUids();
+  const queryRefs = [
+    query(baseRef, where("ceoPath", "array-contains", current.uid), limit(maxDocs))
+  ];
+  if (hasGlobalCeoAccess()) {
+    queryRefs.push(query(baseRef, limit(maxDocs)));
+  }
+  chunkStringList(teamUids, 10).forEach((uids) => {
+    if (!uids.length) return;
+    queryRefs.push(query(baseRef, where("createdByUid", "in", uids), limit(maxDocs)));
+  });
+  if (collectionName === "leads") {
+    chunkStringList(MILAN_OWNED_LEAD_EMAILS, 10).forEach((emails) => {
+      if (!emails.length) return;
+      queryRefs.push(query(baseRef, where("email", "in", emails), limit(maxDocs)));
+    });
+  }
+  if (collectionName === "restaurants") {
+    chunkStringList(MILAN_OWNED_LEAD_EMAILS, 10).forEach((emails) => {
+      if (!emails.length) return;
+      queryRefs.push(query(baseRef, where("ownerEmail", "in", emails), limit(maxDocs)));
+    });
+  }
+  const snaps = await Promise.all(queryRefs.map((ref) => getDocs(ref).catch(() => null)));
+  const rowMap = new Map();
+  snaps.forEach((snap) => {
+    if (!snap?.docs?.length) return;
+    snap.docs.forEach((docSnap) => {
+      rowMap.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) });
+    });
+  });
+  return Array.from(rowMap.values());
+}
+
+function isHiddenLegacyCeoEmail(email = "") {
+  return HIDDEN_LEGACY_CEO_EMAILS.includes(normalizeEmailValue(email));
+}
+
+function resolveKnownLeadOwnerMeta(entity = {}) {
+  const email = normalizeEmailValue(entity.email || entity.ownerEmail || entity.socialEmail || "");
+  const businessKey = normalizeSearchKey(entity.businessName || entity.name || entity.restaurantName || "");
+  const creatorUid = String(entity.createdByUid || "").trim();
+  const hasStoredMeta = !!String(entity.createdByUid || "").trim() || normalizeCeoPath(entity.ceoPath).length > 0;
+  let targetHandle = "";
+  let targetName = "";
+
+  if (MILAN_OWNED_LEAD_EMAILS.includes(email) || MILAN_OWNED_LEAD_BUSINESSES.includes(businessKey)) {
+    targetHandle = "milannikolic";
+    targetName = "Milan Nikolic";
+  } else if (ALBERT_OWNED_LEAD_EMAILS.includes(email) || ALBERT_OWNED_LEAD_BUSINESSES.includes(businessKey)) {
+    targetHandle = "alberthoti";
+    targetName = "Albert Hoti";
+  } else if (creatorUid && hiddenLegacyCeoUids.includes(creatorUid) && isAlbertCeoUser()) {
+    return buildCeoCreatorMeta();
+  } else if (!hasStoredMeta && isAlbertCeoUser()) {
+    return buildCeoCreatorMeta();
+  }
+
+  if (!targetHandle) return null;
+
+  const normalizedTargetHandle = normalizeHandle(targetHandle);
+  const currentHandle = normalizeHandle(state.userProfile.handle || state.userProfile.name || state.user?.displayName || "");
+  if (currentHandle && currentHandle === normalizedTargetHandle) {
+    const selfMeta = buildCeoCreatorMeta();
+    return {
+      ...selfMeta,
+      createdByName: selfMeta.createdByName || targetName,
+      createdByHandle: state.userProfile.handle || normalizedTargetHandle
+    };
+  }
+
+  const staffEntry = (Array.isArray(state.staff.items) ? state.staff.items : []).find((item) => (
+    normalizeHandle(item.handle || item.name || "") === normalizedTargetHandle
+  ));
+  if (!staffEntry) return null;
+
+  const ceoPath = normalizeCeoPath(staffEntry.ceoPath, [staffEntry.ceoRootUid, staffEntry.ceoParentUid, staffEntry.uid]);
+  return {
+    createdByUid: String(staffEntry.uid || "").trim(),
+    createdByRole: "ceo",
+    createdByName: staffEntry.name || targetName,
+    createdByHandle: staffEntry.handle || normalizedTargetHandle,
+    ceoRootUid: String(staffEntry.ceoRootUid || ceoPath[0] || staffEntry.uid || "").trim(),
+    ceoRootName: String(staffEntry.ceoRootName || "").trim(),
+    ceoParentUid: String(staffEntry.ceoParentUid || "").trim(),
+    ceoPath
+  };
+}
+
+function applyKnownLeadOwnershipOverride(entity = {}) {
+  const meta = resolveKnownLeadOwnerMeta(entity);
+  return meta ? { ...entity, ...meta } : entity;
+}
+
+function hasMatchingOwnerMeta(row = {}, meta = {}) {
+  const currentPath = normalizeCeoPath(row.ceoPath, [row.ceoRootUid, row.ceoParentUid, row.createdByUid]);
+  const nextPath = normalizeCeoPath(meta.ceoPath, [meta.ceoRootUid, meta.ceoParentUid, meta.createdByUid]);
+  if (String(row.createdByUid || "").trim() !== String(meta.createdByUid || "").trim()) return false;
+  if (String(row.createdByHandle || "").trim() !== String(meta.createdByHandle || "").trim()) return false;
+  if (String(row.ceoRootUid || "").trim() !== String(meta.ceoRootUid || "").trim()) return false;
+  if (String(row.ceoParentUid || "").trim() !== String(meta.ceoParentUid || "").trim()) return false;
+  if (currentPath.length !== nextPath.length) return false;
+  return currentPath.every((value, index) => value === nextPath[index]);
+}
+
+async function reconcileKnownLegacyOwnership() {
+  if (!isCeoUser() || !hasGlobalCeoAccess()) return;
+  if (ceoOwnershipReconciled) return;
+  if (ceoOwnershipReconcilePromise) {
+    await ceoOwnershipReconcilePromise;
+    return;
+  }
+  ceoOwnershipReconcilePromise = (async () => {
+    try {
+      const knownEmails = uniqueStringList([
+        ...MILAN_OWNED_LEAD_EMAILS,
+        ...ALBERT_OWNED_LEAD_EMAILS
+      ]);
+      const leadPromises = chunkStringList(knownEmails, 10).map(async (emails) => {
+        const snap = await getDocs(query(collection(db, "leads"), where("email", "in", emails), limit(20)));
+        const writes = snap.docs.map((docSnap) => {
+          const row = { id: docSnap.id, ...(docSnap.data() || {}) };
+          const meta = resolveKnownLeadOwnerMeta(row);
+          if (!meta || hasMatchingOwnerMeta(row, meta)) return null;
+          return setDoc(doc(db, "leads", docSnap.id), {
+            ...meta,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }).filter(Boolean);
+        if (writes.length) await Promise.all(writes);
+      });
+      const restaurantPromises = chunkStringList(knownEmails, 10).map(async (emails) => {
+        const snap = await getDocs(query(collection(db, "restaurants"), where("ownerEmail", "in", emails), limit(20)));
+        const writes = snap.docs.map((docSnap) => {
+          const row = { id: docSnap.id, ...(docSnap.data() || {}) };
+          const meta = resolveKnownLeadOwnerMeta(row);
+          if (!meta || hasMatchingOwnerMeta(row, meta)) return null;
+          return setDoc(doc(db, "restaurants", docSnap.id), {
+            ...meta,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
+        }).filter(Boolean);
+        if (writes.length) await Promise.all(writes);
+      });
+      await Promise.all([...leadPromises, ...restaurantPromises]);
+      if (LEGACY_CEO_DELETE_UIDS.length) {
+        await Promise.all(LEGACY_CEO_DELETE_UIDS.map(async (uid) => {
+          await Promise.all([
+            deleteDoc(doc(db, "superadmins", uid)).catch(() => {}),
+            deleteDoc(doc(db, "users", uid)).catch(() => {})
+          ]);
+          state.staff.items = (state.staff.items || []).filter((item) => String(item.uid || "") !== uid);
+          hiddenLegacyCeoUids = hiddenLegacyCeoUids.filter((value) => value !== uid);
+        }));
+      }
+      ceoOwnershipReconciled = true;
+    } catch (err) {
+      console.error(err);
+    } finally {
+      ceoOwnershipReconcilePromise = null;
+    }
+  })();
+  await ceoOwnershipReconcilePromise;
 }
 
 function createEmptyStaffForm() {
@@ -15875,7 +17066,12 @@ function createEmptyStaffForm() {
 }
 
 function buildStaffAccountEmail(firstName = "", lastName = "", fallback = "") {
-  const localPart = normalizeHandle(`${firstName || ""}${lastName || ""}`) || normalizeHandle(fallback || "");
+  const toEmailLocal = (value) => String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .replace(/_/g, "")
+    .replace(/[^a-z0-9]/g, "");
+  const localPart = toEmailLocal(`${firstName || ""}${lastName || ""}`) || toEmailLocal(fallback || "");
   return localPart ? `${localPart}@menyra.com` : "";
 }
 
@@ -15984,56 +17180,74 @@ function resetStaffForm(status = "") {
 
 async function loadCeoStaff() {
   if (!isCeoUser()) return;
-  state.staff.loading = true;
-  state.staff.error = "";
-  render();
-  try {
-    const current = getCurrentCeoMeta();
-    const snap = await getDocs(query(collection(db, "superadmins"), limit(200)));
-    const rows = snap.docs.map((docSnap) => ({ id: docSnap.id, ...(docSnap.data() || {}) }));
-    const userSnaps = await Promise.all(rows.map((row) => (
-      row?.id ? getDoc(doc(db, "users", row.id)).catch(() => null) : Promise.resolve(null)
-    )));
-    let items = rows.map((row, index) => normalizeCeoStaffRecord(
-      row,
-      userSnaps[index]?.exists?.() ? (userSnaps[index].data() || {}) : {}
-    ));
-    if (current.uid && !items.some((item) => item.uid === current.uid)) {
-      items.unshift(normalizeCeoStaffRecord({
-        uid: current.uid,
-        userId: current.uid,
-        name: current.name,
-        email: state.user?.email || "",
-        avatarUrl: state.userProfile.avatarUrl || state.userProfile.avatar || "",
-        avatar: state.userProfile.avatar || state.userProfile.avatarUrl || "",
-        handle: state.userProfile.handle || normalizeHandle(current.name || "ceo"),
-        country: state.userProfile.country || state.userProfile.location || CEO_COUNTRIES[0],
-        locationLabel: state.userProfile.address || state.userProfile.location || "",
-        lat: state.userProfile.gpsLat ?? state.userProfile.lat,
-        lng: state.userProfile.gpsLng ?? state.userProfile.lng,
-        ceoParentUid: current.parentUid,
-        ceoParentName: state.userProfile.ceoParentName || "",
-        ceoRootUid: current.rootUid,
-        ceoRootName: current.rootName,
-        ceoPath: current.path
-      }));
-    }
-    items = items
-      .filter((item) => canViewCeoRecord(item))
-      .sort((a, b) => {
+  if (ceoStaffLoadPromise) return ceoStaffLoadPromise;
+  ceoStaffLoadPromise = (async () => {
+    state.staff.loading = true;
+    state.staff.error = "";
+    render();
+    try {
+      const current = getCurrentCeoMeta();
+      const staffRef = collection(db, "superadmins");
+      const staffQueries = [
+        query(staffRef, where("ceoPath", "array-contains", current.uid), limit(200)),
+        query(staffRef, where("ceoParentUid", "==", current.uid), limit(200))
+      ];
+      if (hasGlobalCeoAccess()) {
+        staffQueries.push(query(staffRef, limit(200)));
+      }
+      const staffSnaps = await Promise.all(staffQueries.map((ref) => getDocs(ref).catch(() => null)));
+      const rowMap = new Map();
+      staffSnaps.forEach((snap) => {
+        if (!snap?.docs?.length) return;
+        snap.docs.forEach((docSnap) => {
+          rowMap.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) });
+        });
+      });
+      hiddenLegacyCeoUids = uniqueStringList(Array.from(rowMap.values())
+        .filter((row) => isHiddenLegacyCeoEmail(row.email || row.loginEmail || row.ownerEmail || ""))
+        .map((row) => String(row.uid || row.userId || row.id || "").trim()));
+      let items = Array.from(rowMap.values()).map((row) => normalizeCeoStaffRecord(row));
+      items = items.filter((item) => canViewCeoRecord(item) && String(item.uid || "") !== String(current.uid || ""));
+      items = items.filter((item) => !isHiddenLegacyCeoEmail(item.email || ""));
+      const missingAvatarItems = items.filter((item) => (
+        item?.uid
+        && !String(item.avatarUrl || item.avatar || "").trim()
+      ));
+      if (missingAvatarItems.length) {
+        const userSnaps = await Promise.all(missingAvatarItems.map((item) => (
+          getDoc(doc(db, "users", item.uid)).catch(() => null)
+        )));
+        const userFallbackMap = new Map();
+        userSnaps.forEach((snap, index) => {
+          if (!snap?.exists?.()) return;
+          userFallbackMap.set(String(missingAvatarItems[index]?.uid || ""), snap.data() || {});
+        });
+        items = items.map((item) => {
+          const userFallback = userFallbackMap.get(String(item.uid || ""));
+          return userFallback ? normalizeCeoStaffRecord(item, userFallback) : item;
+        });
+      }
+      items = items.sort((a, b) => {
         const ta = toDateSafe(a.createdAt)?.getTime() || 0;
         const tb = toDateSafe(b.createdAt)?.getTime() || 0;
         if (tb !== ta) return tb - ta;
         return String(a.name || "").localeCompare(String(b.name || ""));
       });
-    state.staff.items = items;
-    state.staff.error = "";
-  } catch (err) {
-    console.error(err);
-    state.staff.error = "Staff laden fehlgeschlagen.";
+      dataLoaded.staff = true;
+      state.staff.items = items;
+      state.staff.error = "";
+    } catch (err) {
+      console.error(err);
+      state.staff.error = "Staff laden fehlgeschlagen.";
+    } finally {
+      state.staff.loading = false;
+      render();
+    }
+  })();
+  try {
+    return await ceoStaffLoadPromise;
   } finally {
-    state.staff.loading = false;
-    render();
+    ceoStaffLoadPromise = null;
   }
 }
 
@@ -16249,19 +17463,21 @@ function readLeadModalLocationsFromForm() {
   const rows = inputs.map((input, index) => {
     const saved = current[index] || createLeadLocation();
     const address = String(input.value || "").trim();
-    const parsedCoords = parseCoordsFromAddressInput(address);
+    const parsedCoords = parseCoordsFromAddressInput(address, getLeadPlusCodeReference(address));
     const keepSavedCoords = hasLeadLocationCoords(saved);
+    const extracted = extractPlusCodeFromText(address);
+    const shouldPreferSaved = !!(extracted?.code && isLikelyShortPlusCode(extracted.code) && String(extracted.remainder || "").trim() && keepSavedCoords);
     return createLeadLocation({
       address,
-      lat: parsedCoords ? parsedCoords.lat : (keepSavedCoords ? saved.lat : null),
-      lng: parsedCoords ? parsedCoords.lng : (keepSavedCoords ? saved.lng : null)
+      lat: shouldPreferSaved ? saved.lat : (parsedCoords ? parsedCoords.lat : (keepSavedCoords ? saved.lat : null)),
+      lng: shouldPreferSaved ? saved.lng : (parsedCoords ? parsedCoords.lng : (keepSavedCoords ? saved.lng : null))
     });
   });
   return normalizeLeadLocations(rows, state.leadModal.lead?.address || "", state.leadModal.coords || null);
 }
 
 function syncLeadModalDraftFromForm() {
-  if (!state.leadModal.open) return;
+  if (!state.leadModal.open && !isLeadInlineCreateView()) return;
   const lead = { ...(state.leadModal.lead || {}) };
   const readText = (id) => {
     const node = document.getElementById(id);
@@ -16274,21 +17490,36 @@ function syncLeadModalDraftFromForm() {
 
   lead.businessName = readText("leadBusinessName") || lead.businessName || "";
   lead.customerType = resolveCustomerType(readValue("leadCustomerType") || lead.customerType || "cafe");
-  lead.contactName = readText("leadContactName") || lead.contactName || "";
+  lead.contactFirstName = readText("leadCustomerFirstName") || lead.contactFirstName || "";
+  lead.contactLastName = readText("leadCustomerLastName") || lead.contactLastName || "";
+  lead.contactName = buildLeadContactName(
+    lead.contactFirstName,
+    lead.contactLastName,
+    readText("leadContactName") || lead.contactName || ""
+  );
   lead.phone = readText("leadPhone") || lead.phone || "";
   lead.instagram = readText("leadInstagram") || lead.instagram || "";
+  lead.facebook = readText("leadFacebook") || lead.facebook || "";
+  lead.tiktok = readText("leadTiktok") || lead.tiktok || "";
+  lead.googleMaps = readText("leadGoogleMaps") || lead.googleMaps || "";
   lead.email = readText("leadEmail") || lead.email || "";
+  lead.password = readValue("leadPassword") || lead.password || getLeadSettingsConfig().defaultPassword;
+  lead.country = normalizeLeadCountry(readValue("leadCountry") || lead.country || "");
   lead.city = readText("leadCity") || lead.city || "";
+  lead.zipCode = readText("leadZipCode") || lead.zipCode || "";
+  lead.address = readText("leadAddress") || lead.address || "";
   lead.logoUrl = readText("leadLogoUrl") || lead.logoUrl || "";
   lead.note = readText("leadNote") || lead.note || "";
+  lead.billingCycle = readValue("leadBillingCycle") === "yearly" ? "yearly" : (lead.billingCycle || "monthly");
   lead.status = normalizeLeadStatusKey(readValue("leadStatus") || lead.status || "registered") || "registered";
 
   const locations = readLeadModalLocationsFromForm();
   state.leadModal.locations = locations;
-  lead.address = locations[0]?.address || "";
+  if (!readText("leadAddress")) lead.address = locations[0]?.address || lead.address || "";
   state.leadModal.lead = lead;
   const primary = getPrimaryLeadLocation(locations);
   state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : null;
+  syncLeadDerivedFields();
 }
 
 function addLeadModalLocationRow() {
@@ -16296,7 +17527,7 @@ function addLeadModalLocationRow() {
   const next = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
   next.push(createLeadLocation());
   state.leadModal.locations = next;
-  renderOverlays({ updateLead: true });
+  renderLeadEditorUi();
 }
 
 function removeLeadModalLocationRow(index) {
@@ -16310,47 +17541,14 @@ function removeLeadModalLocationRow(index) {
   state.leadModal.lead = { ...(state.leadModal.lead || {}), address: state.leadModal.locations[0]?.address || "" };
   const primary = getPrimaryLeadLocation(state.leadModal.locations);
   state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : null;
-  renderOverlays({ updateLead: true });
+  renderLeadEditorUi();
 }
 
 function openLeadModal(mode = "create", lead = null) {
   if (!isCeoUser()) return;
-  const rest = lead?.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
-  const leadCoords = resolveCoordsFromEntity(lead || {});
-  const restCoords = resolveCoordsFromEntity(rest || {});
-  const coords = preferStableCoords(leadCoords, restCoords);
-  const lat = coords?.lat;
-  const lng = coords?.lng;
-  const locations = normalizeLeadLocations(
-    lead?.locations || rest?.locations || [],
-    lead?.address || rest?.address || "",
-    coords
-  );
-  const primary = getPrimaryLeadLocation(locations);
-  const merged = {
-    ...(lead || {}),
-    businessName: lead?.businessName || rest?.name || rest?.restaurantName || "",
-    city: lead?.city || rest?.city || "",
-    address: locations[0]?.address || lead?.address || rest?.address || "",
-    phone: lead?.phone || rest?.phone || "",
-    instagram: lead?.instagram || lead?.insta || rest?.instagram || rest?.insta || "",
-    logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || "",
-    lat: hasLeadLocationCoords(primary) ? primary.lat : (Number.isFinite(lat) ? lat : undefined),
-    lng: hasLeadLocationCoords(primary) ? primary.lng : (Number.isFinite(lng) ? lng : undefined),
-    locations
-  };
   state.leadModal = {
-    open: true,
-    mode,
-    lead: merged,
-    status: "",
-    loading: false,
-    logoFile: null,
-    logoPreview: merged.logoUrl || "",
-    coords: hasLeadLocationCoords(primary)
-      ? { lat: primary.lat, lng: primary.lng }
-      : coords,
-    locations
+    ...createLeadDraftState(mode, lead),
+    open: true
   };
   renderOverlays({ updateLead: true });
 }
@@ -16359,17 +17557,7 @@ function closeLeadModal() {
   if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
   }
-  state.leadModal = {
-    open: false,
-    mode: "create",
-    lead: null,
-    status: "",
-    loading: false,
-    logoFile: null,
-    logoPreview: "",
-    coords: null,
-    locations: []
-  };
+  resetLeadDraft();
   syncModalOpenUiState();
   renderOverlays({ updateLead: true });
 }
@@ -16408,22 +17596,43 @@ function closeCustomerModal() {
 async function saveLeadFromModal() {
   if (!state.user) return;
   const lead = state.leadModal.lead || {};
+  const isInlineCreate = isLeadInlineCreateView();
+  const settings = getLeadSettingsConfig();
   syncLeadModalDraftFromForm();
   const businessName = document.getElementById("leadBusinessName")?.value?.trim() || "";
   const customerType = resolveCustomerType(document.getElementById("leadCustomerType")?.value || lead.customerType || "cafe");
-  const contactName = document.getElementById("leadContactName")?.value?.trim() || "";
+  const contactFirstName = document.getElementById("leadCustomerFirstName")?.value?.trim() || lead.contactFirstName || "";
+  const contactLastName = document.getElementById("leadCustomerLastName")?.value?.trim() || lead.contactLastName || "";
+  const contactName = buildLeadContactName(
+    contactFirstName,
+    contactLastName,
+    document.getElementById("leadContactName")?.value?.trim() || lead.contactName || ""
+  );
   const phone = document.getElementById("leadPhone")?.value?.trim() || "";
   const instagram = document.getElementById("leadInstagram")?.value?.trim() || "";
-  const emailInput = document.getElementById("leadEmail")?.value?.trim() || "";
-  const passwordInput = document.getElementById("leadPassword")?.value || "";
+  const facebook = document.getElementById("leadFacebook")?.value?.trim() || lead.facebook || "";
+  const tiktok = document.getElementById("leadTiktok")?.value?.trim() || lead.tiktok || "";
+  const googleMaps = document.getElementById("leadGoogleMaps")?.value?.trim() || lead.googleMaps || "";
+  const emailInput = document.getElementById("leadEmail")?.value?.trim() || (isInlineCreate ? buildLeadAccountEmail(businessName) : "");
+  const passwordInput = document.getElementById("leadPassword")?.value || (isInlineCreate ? settings.defaultPassword : "");
+  const country = normalizeLeadCountry(document.getElementById("leadCountry")?.value || lead.country || settings.defaultCountry);
   const city = document.getElementById("leadCity")?.value?.trim() || "";
+  const addressInputValue = document.getElementById("leadAddress")?.value?.trim() || "";
+  const zipCode = document.getElementById("leadZipCode")?.value?.trim() || lead.zipCode || "";
   const logoUrlInput = document.getElementById("leadLogoUrl")?.value?.trim() || "";
   const note = document.getElementById("leadNote")?.value?.trim() || "";
+  const billingCycle = document.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
   const statusValue = document.getElementById("leadStatus")?.value || lead.status || "registered";
+  const locationInputs = Array.from(document.querySelectorAll("[data-lead-location-address]"));
+  if (locationInputs.length) {
+    await Promise.all(locationInputs.map((input, index) => (
+      refineLeadLocationAddressIndex(index, String(input.value || "").trim(), { hydratePrimary: index === 0 }).catch(() => null)
+    )));
+  }
   const locations = readLeadModalLocationsFromForm();
   state.leadModal.locations = locations;
   const primaryLocation = getPrimaryLeadLocation(locations);
-  const address = primaryLocation.address || "";
+  const address = addressInputValue || primaryLocation.address || "";
   const coords = hasLeadLocationCoords(primaryLocation)
     ? { lat: primaryLocation.lat, lng: primaryLocation.lng }
     : null;
@@ -16441,13 +17650,13 @@ async function saveLeadFromModal() {
 
   if (!businessName) {
     state.leadModal.status = "Bitte Business Name eingeben.";
-    renderOverlays({ updateLead: true });
+    renderLeadEditorUi();
     return;
   }
 
   state.leadModal.loading = true;
   state.leadModal.status = "Speichern...";
-  renderOverlays({ updateLead: true });
+  renderLeadEditorUi();
 
   try {
     let restaurantId = lead.restaurantId || "";
@@ -16469,17 +17678,31 @@ async function saveLeadFromModal() {
     const existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
     const restaurantStatus = resolveRestaurantStatusFromLead(statusValue, existingRest?.status || "");
     const creatorMeta = resolveStoredCeoCreatorMeta(lead, existingRest);
+    const monthlyPrice = getLeadMonthlyPrice(customerType, settings);
+    const yearlyPrice = monthlyPrice * 12;
+    const activePrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
     const restPayload = {
       name: businessName,
       restaurantName: businessName,
       type: customerType,
+      country,
       city,
       address,
+      zipCode,
       phone,
       instagram,
       insta: instagram,
+      facebook,
+      tiktok,
+      googleMaps,
       ownerName: contactName || "",
       ownerEmail: emailInput || "",
+      contactFirstName,
+      contactLastName,
+      billingCycle,
+      monthlyPrice,
+      yearlyPrice,
+      price: activePrice,
       logoUrl,
       logo: logoUrl,
       status: restaurantStatus,
@@ -16542,12 +17765,23 @@ async function saveLeadFromModal() {
       phone,
       instagram,
       insta: instagram,
+      facebook,
+      tiktok,
+      googleMaps,
       email: loginEmail,
+      country,
       city,
       address,
+      zipCode,
       locations: locationPayload,
       logoUrl,
       note,
+      contactFirstName,
+      contactLastName,
+      billingCycle,
+      monthlyPrice,
+      yearlyPrice,
+      price: activePrice,
       status: leadStatusKey,
       restaurantId,
       socialUid,
@@ -16587,8 +17821,14 @@ async function saveLeadFromModal() {
     refreshCustomersFromRestaurants();
 
     state.leadModal.loading = false;
-    closeLeadModal();
-    render();
+    if (isInlineCreate) {
+      state.leads.view = "list";
+      resetLeadDraft();
+      render();
+    } else {
+      closeLeadModal();
+      render();
+    }
     if (loginError) {
       alert(`Lead gespeichert. Login fehlgeschlagen: ${loginError}`);
     }
@@ -16596,7 +17836,7 @@ async function saveLeadFromModal() {
     console.error(err);
     state.leadModal.status = err?.message || "Speichern fehlgeschlagen.";
     state.leadModal.loading = false;
-    renderOverlays({ updateLead: true });
+    renderLeadEditorUi();
   }
 }
 
