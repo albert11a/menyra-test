@@ -27,6 +27,59 @@ self.addEventListener('message', (event) => {
   } catch (err) {}
 });
 
+self.addEventListener('push', (event) => {
+  const payload = (() => {
+    try {
+      return event.data ? event.data.json() : {};
+    } catch (err) {
+      return {};
+    }
+  })();
+
+  const notif = payload.notification || payload.webpush?.notification || {};
+  const title = notif.title || payload.title || 'Menyra';
+  const body = notif.body || payload.body || 'Neue Mitteilung';
+  const icon = notif.icon || payload.icon || '/apps/menyra-social/assets/menyra-social-logo.png';
+  const link = payload.fcmOptions?.link || payload.data?.link || '/apps/menyra-social/';
+  const tag = notif.tag || `menyra_notif_${payload.data?.notificationId || Date.now()}`;
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon,
+      badge: icon,
+      tag,
+      data: {
+        ...(payload.data || {}),
+        url: link
+      }
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification?.close();
+  const data = event.notification?.data || {};
+  const targetUrl = data.url || '/apps/menyra-social/';
+  event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of clientsList) {
+      if ('focus' in client) {
+        try {
+          await client.focus();
+          if ('navigate' in client && targetUrl) {
+            await client.navigate(targetUrl);
+          }
+          return;
+        } catch (err) {}
+      }
+    }
+    if (self.clients.openWindow) {
+      await self.clients.openWindow(targetUrl);
+    }
+  })());
+});
+
 // Smarter fetch handling:
 // - Images: stale-while-revalidate (fast show, update in background)
 // - Navigations & HTML: network-only (no caching)

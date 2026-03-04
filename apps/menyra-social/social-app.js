@@ -10,6 +10,11 @@ import {
   getAuth
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import {
+  getMessaging,
+  getToken,
+  isSupported as isMessagingSupported
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
+import {
   collection,
   collectionGroup,
   doc,
@@ -79,6 +84,9 @@ const avatarKey = (uid) => (uid ? `${STORAGE_KEYS.avatarCache}::${uid}` : "");
 const notificationsKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::${uid}` : "");
 const followingKey = (uid) => (uid ? `${STORAGE_KEYS.following}::${uid}` : "");
 const shopCartKey = (uid) => (uid ? `${STORAGE_KEYS.shopCart}::${uid}` : "");
+const pushSeenKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::push_seen::${uid}` : "");
+const pushTokenMetaKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::push_meta::${uid}` : "");
+const pushDeviceIdKey = () => `${STORAGE_KEYS.notifications}::push_device_id`;
 
 const ADMIN_LOGINS = {
   admin: {
@@ -164,6 +172,11 @@ function createEmptyOrdersState() {
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 1.5 * 1024 * 1024;
 const CHAT_MESSAGE_READ_LIMIT = 30;
+const NOTIFICATIONS_LIVE_LIMIT = 12;
+const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
+const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
+// Firebase Console -> Cloud Messaging -> Web Push certificate key pair (public VAPID key)
+const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
 const DETAIL_LIKES_LIMIT = 12;
@@ -608,6 +621,7 @@ let notificationsUnsub = null;
 let followingUnsub = null;
 let userDocUnsub = null;
 let userDocLiveKey = "";
+let pushMessagingClient = null;
 let profileViewUnsub = null;
 let feedUnsub = null;
 let storiesUnsub = null;
@@ -2226,6 +2240,188 @@ function saveNotifications(notifications) {
   const uid = state.user?.uid || "";
   if (!uid) return;
   safeStorage.setItem(notificationsKey(uid), JSON.stringify(notifications));
+}
+
+function readPushSeenIds(uid = state.user?.uid || "") {
+  const key = pushSeenKey(uid);
+  if (!key) return [];
+  try {
+    const raw = safeStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.map((item) => String(item || "").trim()).filter(Boolean) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePushSeenIds(ids = [], uid = state.user?.uid || "") {
+  const key = pushSeenKey(uid);
+  if (!key) return;
+  const normalized = Array.from(new Set(
+    (Array.isArray(ids) ? ids : [])
+      .map((item) => String(item || "").trim())
+      .filter(Boolean)
+  )).slice(-PUSH_SEEN_NOTIFICATIONS_LIMIT);
+  safeStorage.setItem(key, JSON.stringify(normalized));
+}
+
+function canUseNativeNotifications() {
+  return typeof window !== "undefined" && "Notification" in window;
+}
+
+function canEmitNativePushAlerts() {
+  return !!state.settings?.pushNotifs
+    && canUseNativeNotifications()
+    && Notification.permission === "granted";
+}
+
+async function ensureNotificationPermission({ interactive = false } = {}) {
+  if (!canUseNativeNotifications()) return false;
+  if (Notification.permission === "granted") return true;
+  if (Notification.permission === "denied") return false;
+  if (!interactive) return false;
+  try {
+    const permission = await Notification.requestPermission();
+    return permission === "granted";
+  } catch {
+    return false;
+  }
+}
+
+async function showNativePushAlert(notif) {
+  if (!notif?.id || !canEmitNativePushAlerts()) return;
+  const title = String(notif.user || "Menyra");
+  const body = String(notif.text || "Neue Mitteilung");
+  const icon = String(resolveNotificationAvatar(notif) || "/apps/menyra-social/assets/menyra-social-logo.png");
+  const tag = `menyra_notif_${notif.id}`;
+  const data = {
+    url: "/apps/menyra-social/",
+    notifId: String(notif.id || "")
+  };
+  try {
+    if ("serviceWorker" in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration("/");
+      if (reg?.showNotification) {
+        await reg.showNotification(title, {
+          body,
+          icon,
+          badge: icon,
+          tag,
+          data,
+          renotify: false
+        });
+        return;
+      }
+    }
+    new Notification(title, { body, icon, tag });
+  } catch {}
+}
+
+function getOrCreatePushDeviceId() {
+  const key = pushDeviceIdKey();
+  let existing = String(safeStorage.getItem(key) || "").trim();
+  if (existing) return existing;
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    existing = crypto.randomUUID();
+  } else {
+    existing = `dev_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+  safeStorage.setItem(key, existing);
+  return existing;
+}
+
+function readPushTokenMeta(uid = state.user?.uid || "") {
+  const key = pushTokenMetaKey(uid);
+  if (!key) return null;
+  try {
+    const raw = safeStorage.getItem(key);
+    const parsed = raw ? JSON.parse(raw) : null;
+    if (!parsed || typeof parsed !== "object") return null;
+    return {
+      token: String(parsed.token || "").trim(),
+      ts: Math.max(0, Number(parsed.ts || 0) || 0)
+    };
+  } catch {
+    return null;
+  }
+}
+
+function writePushTokenMeta(uid = state.user?.uid || "", token = "") {
+  const key = pushTokenMetaKey(uid);
+  if (!key) return;
+  safeStorage.setItem(key, JSON.stringify({
+    token: String(token || "").trim(),
+    ts: Date.now()
+  }));
+}
+
+async function ensureMessagingClient() {
+  if (pushMessagingClient) return pushMessagingClient;
+  try {
+    const supported = await isMessagingSupported();
+    if (!supported) return null;
+    pushMessagingClient = getMessaging(app);
+    return pushMessagingClient;
+  } catch {
+    return null;
+  }
+}
+
+async function syncPushDeviceRegistration({ interactive = false, force = false } = {}) {
+  const uid = String(state.user?.uid || "").trim();
+  if (!uid || !state.settings?.pushNotifs) return false;
+  if (!FCM_WEB_PUSH_VAPID_KEY) return false;
+
+  const granted = await ensureNotificationPermission({ interactive });
+  if (!granted) return false;
+  if (!("serviceWorker" in navigator)) return false;
+
+  const messaging = await ensureMessagingClient();
+  if (!messaging) return false;
+
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const token = await getToken(messaging, {
+      vapidKey: FCM_WEB_PUSH_VAPID_KEY,
+      serviceWorkerRegistration: reg
+    });
+    const safeToken = String(token || "").trim();
+    if (!safeToken) return false;
+
+    const meta = readPushTokenMeta(uid);
+    const freshEnough = meta && meta.token === safeToken && (Date.now() - meta.ts) < PUSH_TOKEN_SYNC_INTERVAL_MS;
+    if (!force && freshEnough) return true;
+
+    const deviceId = getOrCreatePushDeviceId();
+    const ref = doc(db, "users", uid, "devices", deviceId);
+    await setDoc(ref, {
+      token: safeToken,
+      enabled: true,
+      platform: "web",
+      app: "menyra-social",
+      userAgent: String(navigator.userAgent || "").slice(0, 190),
+      locale: String(navigator.language || "").slice(0, 24),
+      updatedAt: serverTimestamp(),
+      lastSeenAt: serverTimestamp()
+    }, { merge: true });
+    writePushTokenMeta(uid, safeToken);
+    return true;
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+}
+
+async function disablePushDeviceRegistration() {
+  const uid = String(state.user?.uid || "").trim();
+  if (!uid) return;
+  const deviceId = getOrCreatePushDeviceId();
+  try {
+    await setDoc(doc(db, "users", uid, "devices", deviceId), {
+      enabled: false,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  } catch {}
 }
 
 function saveFollowing(handles) {
@@ -6583,7 +6779,14 @@ function ensureTabData(tab) {
 
   if (tab === "notifications" && !dataLoaded.notifications) {
     dataLoaded.notifications = true;
-    void loadNotificationsFromFirebase({ force: true });
+    if (notificationsUnsub && Array.isArray(state.notifications) && state.notifications.length) {
+      const updated = updateNotificationsDom();
+      if (!updated && state.activeTab === "notifications") {
+        render();
+      }
+    } else {
+      void loadNotificationsFromFirebase({ force: true });
+    }
   }
 
   if (tab === "leads" && !dataLoaded.leads) {
@@ -7849,6 +8052,7 @@ function startLiveListeners(user) {
   liveFeedDisabled = false;
   liveStoriesDisabled = false;
   attachCurrentUserProfileListener();
+  void syncNotificationsPushRuntime({ user, interactive: false, enabled: state.settings?.pushNotifs });
 }
 
 function attachProfileViewListener(profile) {
@@ -10108,32 +10312,114 @@ async function loadFollowingFromFirebase({ force = false } = {}) {
   }
 }
 
+function normalizeNotificationItem(docSnap) {
+  if (!docSnap?.id) return null;
+  const data = docSnap.data() || {};
+  return {
+    id: docSnap.id,
+    type: data.type || "system",
+    user: data.user || data.userName || "User",
+    text: data.text || "folgt dir jetzt",
+    time: formatRelative(toDateSafe(data.createdAt)),
+    img: data.avatar || data.img || "",
+    read: !!data.read,
+    createdAt: data.createdAt,
+    postId: data.postId || "",
+    commentId: data.commentId || "",
+    userHandle: data.userHandle || data.handle || "",
+    userUid: data.userUid || data.uid || "",
+    ownerType: data.ownerType || "",
+    ownerId: data.ownerId || "",
+    restaurantId: data.restaurantId || ""
+  };
+}
+
+function mapNotificationSnapshot(snap) {
+  const items = [];
+  snap?.forEach((docSnap) => {
+    const item = normalizeNotificationItem(docSnap);
+    if (item) items.push(item);
+  });
+  return items;
+}
+
+function shouldSurfaceNativePushNow() {
+  if (typeof document === "undefined") return true;
+  return !(document.visibilityState === "visible" && state.activeTab === "notifications");
+}
+
+function startNotificationsListener(user = state.user, { enableNativePush = false } = {}) {
+  if (notificationsUnsub) {
+    notificationsUnsub();
+    notificationsUnsub = null;
+  }
+  const ownerUid = String(user?.uid || "").trim();
+  if (!ownerUid) return;
+
+  const ref = collection(db, "users", ownerUid, "notifications");
+  const liveQuery = query(ref, orderBy("createdAt", "desc"), limit(NOTIFICATIONS_LIVE_LIMIT));
+  const seenIds = new Set(readPushSeenIds(ownerUid));
+  let seeded = false;
+
+  notificationsUnsub = onSnapshot(liveQuery, (snap) => {
+    const items = mapNotificationSnapshot(snap);
+    handleNotificationsUpdate(items);
+
+    if (!enableNativePush || !canEmitNativePushAlerts()) {
+      if (!seeded) {
+        items.forEach((item) => seenIds.add(item.id));
+        writePushSeenIds(Array.from(seenIds), ownerUid);
+        seeded = true;
+      }
+      return;
+    }
+
+    if (!seeded) {
+      items.forEach((item) => seenIds.add(item.id));
+      writePushSeenIds(Array.from(seenIds), ownerUid);
+      seeded = true;
+      return;
+    }
+
+    const nextNative = snap.docChanges()
+      .filter((change) => change.type === "added" || change.type === "modified")
+      .map((change) => normalizeNotificationItem(change.doc))
+      .filter((item) => item && !item.read && !seenIds.has(item.id));
+    if (!nextNative.length) return;
+
+    nextNative.forEach((item) => seenIds.add(item.id));
+    writePushSeenIds(Array.from(seenIds), ownerUid);
+    if (!shouldSurfaceNativePushNow()) return;
+    void (async () => {
+      for (const item of nextNative) {
+        await showNativePushAlert(item);
+      }
+    })();
+  }, (err) => {
+    console.error(err);
+  });
+}
+
+async function syncNotificationsPushRuntime({ user = state.user, interactive = false, enabled = state.settings?.pushNotifs } = {}) {
+  const ownerUid = String(user?.uid || "").trim();
+  if (!ownerUid) return false;
+  if (!enabled) {
+    startNotificationsListener(user, { enableNativePush: false });
+    return false;
+  }
+
+  const granted = await ensureNotificationPermission({ interactive });
+  startNotificationsListener(user, { enableNativePush: granted });
+  if (!granted) return false;
+  return syncPushDeviceRegistration({ interactive, force: interactive });
+}
+
 async function loadNotificationsFromFirebase({ force = false } = {}) {
   if (!state.user) return;
   try {
     const ref = collection(db, "users", state.user.uid, "notifications");
     const snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(20)));
-    const items = [];
-    snap.forEach((docSnap) => {
-      const data = docSnap.data() || {};
-      items.push({
-        id: docSnap.id,
-        type: data.type || "system",
-        user: data.user || data.userName || "User",
-        text: data.text || "folgt dir jetzt",
-        time: formatRelative(toDateSafe(data.createdAt)),
-        img: data.avatar || data.img || "",
-        read: !!data.read,
-        createdAt: data.createdAt,
-        postId: data.postId || "",
-        commentId: data.commentId || "",
-        userHandle: data.userHandle || data.handle || "",
-        userUid: data.userUid || data.uid || "",
-        ownerType: data.ownerType || "",
-        ownerId: data.ownerId || "",
-        restaurantId: data.restaurantId || ""
-      });
-    });
+    const items = mapNotificationSnapshot(snap);
     state.notifications = items;
     saveNotifications(items);
     const updated = updateNotificationsDom();
@@ -14854,6 +15140,8 @@ function bindAppEvents() {
           safeStorage.removeItem(profileKey(state.user.uid));
           safeStorage.removeItem(avatarKey(state.user.uid));
           safeStorage.removeItem(notificationsKey(state.user.uid));
+          safeStorage.removeItem(pushSeenKey(state.user.uid));
+          safeStorage.removeItem(pushTokenMetaKey(state.user.uid));
           safeStorage.removeItem(followingKey(state.user.uid));
           safeStorage.removeItem(chatIndexStorageKey(state.user.uid));
         }
@@ -15148,10 +15436,28 @@ function bindAppEvents() {
   }
 
   document.querySelectorAll("[data-toggle]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const key = btn.dataset.toggle;
       if (!key) return;
-      const next = { ...state.settings, [key]: !state.settings[key] };
+      const toggledValue = !state.settings[key];
+
+      if (key === "pushNotifs") {
+        if (toggledValue) {
+          const enabled = await syncNotificationsPushRuntime({ user: state.user, interactive: true, enabled: true });
+          if (!enabled) {
+            state.settings = { ...state.settings, pushNotifs: false };
+            saveSettings(state.settings);
+            render();
+            alert("Push konnte nicht aktiviert werden. Browser-Permission und FCM-VAPID-Key pruefen.");
+            return;
+          }
+        } else {
+          await disablePushDeviceRegistration();
+          void syncNotificationsPushRuntime({ user: state.user, interactive: false, enabled: false });
+        }
+      }
+
+      const next = { ...state.settings, [key]: toggledValue };
       state.settings = next;
       if (key === "privateAccount") {
         state.userProfile.privateAccount = !!next[key];
