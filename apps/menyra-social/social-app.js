@@ -420,6 +420,9 @@ const state = {
     draft: "",
     attachments: []
   },
+  chatSettingsOpen: false,
+  chatListScope: "inbox",
+  chatThreadMenuId: "",
   menu: {
     restaurantId: "",
     items: [],
@@ -2374,6 +2377,9 @@ function mergeChatThreadLists(...lists) {
       avatar: String(thread.avatar || existing.avatar || "").trim(),
       lastMessage: String(thread.lastMessage || existing.lastMessage || "").trim(),
       unreadCount: Math.max(0, Number(thread.unreadCount ?? existing.unreadCount ?? 0) || 0),
+      blockedByOwner: !!(thread.blockedByOwner ?? existing.blockedByOwner ?? false),
+      archivedByOwner: !!(thread.archivedByOwner ?? existing.archivedByOwner ?? false),
+      muteUntilMs: Math.max(0, Number(thread.muteUntilMs ?? existing.muteUntilMs ?? 0) || 0),
       updatedAt: Number(thread.updatedAt || existing.updatedAt || 0) || 0
     });
   });
@@ -2433,6 +2439,9 @@ function rebuildChatThreadIndexFromStorage(uid = state.user?.uid || "") {
 
 function getChatUnreadCount() {
   return (state.chatThreads || []).reduce((sum, thread) => {
+    if (thread?.archivedByOwner) return sum;
+    const muted = Number(thread?.muteUntilMs || 0) > Date.now();
+    if (muted) return sum;
     const count = Number(thread?.unreadCount || 0);
     return sum + (Number.isFinite(count) ? count : 0);
   }, 0);
@@ -2444,6 +2453,7 @@ function upsertChatThread(profile, patch = {}) {
   if (!threadId) return;
   const existingThread = (state.chatThreads || []).find((item) => String(item?.id || "") === threadId) || null;
   const nextThread = {
+    ...(existingThread || {}),
     id: threadId,
     uid: profile.uid || "",
     restaurantId: profile.restaurantId || "",
@@ -2459,6 +2469,151 @@ function upsertChatThread(profile, patch = {}) {
   const rest = existing.filter((item) => String(item?.id || "") !== threadId);
   state.chatThreads = sortChatThreads([nextThread, ...rest]);
   saveChatThreadIndex(state.chatThreads);
+}
+
+function isChatThreadArchived(thread) {
+  return !!thread?.archivedByOwner;
+}
+
+function getChatThreadById(threadId) {
+  const safeId = String(threadId || "").replace(/^@/, "").trim();
+  if (!safeId) return null;
+  return (state.chatThreads || []).find((thread) => String(thread?.id || "") === safeId) || null;
+}
+
+async function setChatThreadArchivedById(threadId, archived = true) {
+  const thread = getChatThreadById(threadId);
+  const ownerUid = String(state.user?.uid || "").trim();
+  const safeThreadId = String(thread?.id || threadId || "").replace(/^@/, "").trim();
+  if (!safeThreadId || !ownerUid) return;
+  state.chatThreadMenuId = "";
+  upsertChatThread(thread || { id: safeThreadId, uid: safeThreadId, handle: safeThreadId, name: safeThreadId }, {
+    archivedByOwner: !!archived
+  });
+  render();
+  try {
+    const threadRef = chatThreadDocRef(ownerUid, safeThreadId);
+    if (!threadRef) return;
+    await setDoc(threadRef, { archivedByOwner: !!archived }, { merge: true });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function deleteChatThreadById(threadId) {
+  const thread = getChatThreadById(threadId);
+  const safeThreadId = String(thread?.id || threadId || "").replace(/^@/, "").trim();
+  const ownerUid = String(state.user?.uid || "").trim();
+  if (!safeThreadId || !ownerUid) return;
+  const confirmed = typeof window !== "undefined"
+    ? window.confirm("Diesen Chat wirklich loeschen?")
+    : true;
+  if (!confirmed) return;
+
+  if (state.chatModal.open && getChatThreadId(state.chatModal.profile) === safeThreadId) {
+    stopActiveChatMessagesListener();
+    state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
+  }
+
+  state.chatThreadMenuId = "";
+  state.chatThreads = (state.chatThreads || []).filter((item) => String(item?.id || "") !== safeThreadId);
+  saveChatThreadIndex(state.chatThreads);
+  const localKey = chatThreadStorageKey(thread || { id: safeThreadId, uid: safeThreadId, handle: safeThreadId });
+  if (localKey) safeStorage.removeItem(localKey);
+  render();
+
+  try {
+    const threadRef = chatThreadDocRef(ownerUid, safeThreadId);
+    if (!threadRef) return;
+    await deleteDoc(threadRef);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function getActiveChatThreadSummary(profile = state.chatModal.profile) {
+  const threadId = getChatThreadId(profile);
+  if (!threadId) return null;
+  return (state.chatThreads || []).find((thread) => String(thread?.id || "") === threadId) || null;
+}
+
+function isThreadMuted(thread = getActiveChatThreadSummary(), nowMs = Date.now()) {
+  return Number(thread?.muteUntilMs || 0) > Number(nowMs || Date.now());
+}
+
+function isActiveChatThreadBlocked(profile = state.chatModal.profile) {
+  const thread = getActiveChatThreadSummary(profile);
+  return !!thread?.blockedByOwner;
+}
+
+async function updateActiveChatThreadPrefs(patch = {}) {
+  const ownerUid = String(state.user?.uid || "").trim();
+  const threadId = getChatThreadId(state.chatModal.profile);
+  if (!ownerUid || !threadId || !patch || typeof patch !== "object") return;
+  const threadRef = chatThreadDocRef(ownerUid, threadId);
+  if (!threadRef) return;
+  upsertChatThread(state.chatModal.profile, patch);
+  render();
+  try {
+    await setDoc(threadRef, patch, { merge: true });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+async function muteActiveChatFor24Hours() {
+  if (!state.chatModal.open || !state.chatModal.profile) return;
+  state.chatSettingsOpen = false;
+  const muteUntilMs = Date.now() + CHAT_MESSAGE_TTL_MS;
+  await updateActiveChatThreadPrefs({ muteUntilMs });
+}
+
+async function toggleActiveChatBlocked() {
+  if (!state.chatModal.open || !state.chatModal.profile) return;
+  const thread = getActiveChatThreadSummary();
+  const blockedByOwner = !thread?.blockedByOwner;
+  state.chatSettingsOpen = false;
+  if (blockedByOwner) {
+    state.chatModal.draft = "";
+    state.chatModal.attachments = [];
+  }
+  await updateActiveChatThreadPrefs({ blockedByOwner });
+}
+
+async function deleteActiveChatThread() {
+  if (!state.chatModal.open || !state.chatModal.profile) return;
+  const confirmed = typeof window !== "undefined"
+    ? window.confirm("Diesen Chat wirklich loeschen?")
+    : true;
+  if (!confirmed) return;
+
+  const profile = state.chatModal.profile;
+  const ownerUid = String(state.user?.uid || "").trim();
+  const threadId = getChatThreadId(profile);
+  const messages = Array.isArray(state.chatModal.messages) ? state.chatModal.messages.slice() : [];
+
+  state.chatSettingsOpen = false;
+  stopActiveChatMessagesListener();
+  state.chatThreads = (state.chatThreads || []).filter((thread) => String(thread?.id || "") !== threadId);
+  saveChatThreadIndex(state.chatThreads);
+  const localKey = chatThreadStorageKey(profile);
+  if (localKey) safeStorage.removeItem(localKey);
+  state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
+  render();
+
+  if (!ownerUid || !threadId) return;
+  try {
+    await Promise.all([
+      ...messages.map((message) => {
+        const messageRef = chatMessageDocRef(ownerUid, threadId, message?.id);
+        if (!messageRef) return Promise.resolve();
+        return deleteDoc(messageRef).catch(() => {});
+      }),
+      deleteDoc(chatThreadDocRef(ownerUid, threadId)).catch(() => {})
+    ]);
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 function getChatThreadId(profile = state.chatModal.profile) {
@@ -2498,6 +2653,9 @@ function normalizeChatThreadSummary(threadId, data = {}, fallback = {}) {
   const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
   if (!safeThreadId) return null;
   const source = data && typeof data === "object" ? data : {};
+  const muteUntil = toDateSafe(source.muteUntil || source.muteUntilAt || source.mutedUntil || source.muteUntilMs)
+    || toDateSafe(fallback.muteUntil || fallback.muteUntilAt || fallback.mutedUntil || fallback.muteUntilMs);
+  const muteUntilMs = muteUntil?.getTime() || Number(source.muteUntilMs ?? fallback.muteUntilMs ?? 0) || 0;
   const updatedAt = toDateSafe(source.updatedAt || source.updatedAtClient)?.getTime()
     || Number(source.updatedAtMs || fallback.updatedAt || 0)
     || Date.now();
@@ -2510,6 +2668,9 @@ function normalizeChatThreadSummary(threadId, data = {}, fallback = {}) {
     avatar: String(source.avatar || fallback.avatar || "").trim(),
     lastMessage: String(source.lastMessage || fallback.lastMessage || "").trim(),
     unreadCount: Math.max(0, Number(source.unreadCount ?? fallback.unreadCount ?? 0) || 0),
+    blockedByOwner: !!(source.blockedByOwner ?? fallback.blockedByOwner ?? false),
+    archivedByOwner: !!(source.archivedByOwner ?? fallback.archivedByOwner ?? false),
+    muteUntilMs: Math.max(0, Number(muteUntilMs || 0) || 0),
     updatedAt
   };
 }
@@ -3010,6 +3171,8 @@ function openChatWithProfile(profile) {
   };
   upsertChatThread(nextProfile);
   state.drawerOpen = false;
+  state.chatSettingsOpen = false;
+  state.chatThreadMenuId = "";
   state.profileModal = { open: false, profile: null };
   state.activeTab = "chat";
   const sameThread = state.chatModal.open && getChatThreadId(state.chatModal.profile) === getChatThreadId(nextProfile);
@@ -3032,6 +3195,8 @@ function closeChatModal() {
     document.activeElement.blur();
   }
   stopActiveChatMessagesListener();
+  state.chatSettingsOpen = false;
+  state.chatThreadMenuId = "";
   state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
   if (state.activeTab === "chat") {
     render();
@@ -3040,6 +3205,10 @@ function closeChatModal() {
 
 async function sendChatMessage() {
   if (!state.chatModal.open || !state.chatModal.profile) return;
+  if (isActiveChatThreadBlocked()) {
+    alert("Dieser Chat ist blockiert. Entblocke ihn in der Chat-Uebersicht.");
+    return;
+  }
   const input = document.getElementById("chatMessageInput");
   const text = String(input?.value ?? state.chatModal.draft ?? "").trim();
   const attachments = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments.slice() : [];
@@ -3326,6 +3495,9 @@ function resetUserScopedState() {
   state.businessPosts = [];
   state.profileView = null;
   state.profileModal = { open: false, profile: null };
+  state.chatSettingsOpen = false;
+  state.chatListScope = "inbox";
+  state.chatThreadMenuId = "";
   state.chatModal = { open: false, profile: null, messages: [], draft: "", attachments: [] };
   state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
   state.likesModal = { open: false, postId: "", animate: false };
@@ -7376,6 +7548,9 @@ function bindFeedDelegation() {
         setState({
           activeTab: tab,
           drawerOpen: false,
+          chatSettingsOpen: false,
+          chatListScope: "inbox",
+          chatThreadMenuId: "",
           settingsView: "main",
           selectedBusiness: null,
           profileView: null,
@@ -13130,35 +13305,74 @@ function renderUploadView() {
 function renderChatView() {
   const threads = sortChatThreads(state.chatThreads);
   if (!state.chatModal.open || !state.chatModal.profile) {
+    const scope = state.chatListScope === "archived" ? "archived" : "inbox";
+    const inboxThreads = threads.filter((thread) => !isChatThreadArchived(thread));
+    const archivedThreads = threads.filter((thread) => isChatThreadArchived(thread));
+    const visibleThreads = scope === "archived" ? archivedThreads : inboxThreads;
     return `
       <div id="chatListView" class="flex-1 min-h-0 overflow-y-auto no-scrollbar p-6 animate-in slide-in-from-right-10 duration-500">
-        ${threads.length ? `
+        <div class="mb-4">
+          <div class="bg-white/70 p-1.5 rounded-[1.6rem] border border-white/80 shadow-sm flex items-center gap-1">
+            <button type="button" data-chat-list-tab="inbox" class="flex-1 h-10 rounded-[1.1rem] text-[10px] font-black uppercase tracking-widest transition-all ${scope === "inbox" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}">
+              Postfach (${inboxThreads.length})
+            </button>
+            <button type="button" data-chat-list-tab="archived" class="flex-1 h-10 rounded-[1.1rem] text-[10px] font-black uppercase tracking-widest transition-all ${scope === "archived" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}">
+              Archived (${archivedThreads.length})
+            </button>
+          </div>
+        </div>
+        ${visibleThreads.length ? `
           <div class="space-y-3">
-            ${threads.map((thread) => {
+            ${visibleThreads.map((thread) => {
               const avatarUrl = getOptimizedImageUrl(thread.avatar, "avatar");
               const unreadCount = Math.max(0, Number(thread.unreadCount || 0));
+              const isMuted = Number(thread.muteUntilMs || 0) > Date.now();
+              const visibleUnreadCount = isMuted ? 0 : unreadCount;
+              const isBlocked = !!thread.blockedByOwner;
+              const menuOpen = state.chatThreadMenuId === String(thread.id || "");
               return `
-                <button
-                  data-chat-open-thread="true"
-                  data-chat-uid="${escapeHtml(thread.uid || "")}"
-                  data-chat-handle="${escapeHtml(thread.handle || "")}"
-                  data-chat-name="${escapeHtml(thread.name || "User")}"
-                  data-chat-avatar="${escapeHtml(thread.avatar || "")}"
-                  class="w-full p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm text-left flex items-center gap-4 active:scale-[0.99] transition-all"
-                >
-                  <img src="${escapeHtml(avatarUrl)}" class="w-14 h-14 rounded-2xl object-cover shadow-sm" />
-                  <div class="flex-1 min-w-0">
-                    <div class="flex items-center justify-between gap-3">
-                      <div class="min-w-0 flex-1 flex items-center gap-2">
-                        <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(thread.name || "User")}</p>
-                        ${unreadCount ? `<span class="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">${unreadCount > 9 ? "9+" : unreadCount}</span>` : ""}
+                <div class="relative p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm">
+                  <button
+                    data-chat-open-thread="true"
+                    data-chat-thread-id="${escapeHtml(thread.id || "")}"
+                    data-chat-uid="${escapeHtml(thread.uid || "")}"
+                    data-chat-handle="${escapeHtml(thread.handle || "")}"
+                    data-chat-name="${escapeHtml(thread.name || "User")}"
+                    data-chat-avatar="${escapeHtml(thread.avatar || "")}"
+                    class="w-full text-left flex items-center gap-4 active:scale-[0.99] transition-all"
+                  >
+                    <img src="${escapeHtml(avatarUrl)}" class="w-14 h-14 rounded-2xl object-cover shadow-sm" />
+                    <div class="flex-1 min-w-0 pr-10">
+                      <div class="flex items-center justify-between gap-3">
+                        <div class="min-w-0 flex-1 flex items-center gap-2">
+                          <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(thread.name || "User")}</p>
+                          ${visibleUnreadCount ? `<span class="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">${visibleUnreadCount > 9 ? "9+" : visibleUnreadCount}</span>` : ""}
+                        </div>
+                        <span class="text-[9px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(formatRelative(new Date(Number(thread.updatedAt || Date.now()))))}</span>
                       </div>
-                      <span class="text-[9px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(formatRelative(new Date(Number(thread.updatedAt || Date.now()))))}</span>
+                      <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate mt-1">@${escapeHtml(String(thread.handle || "user").replace(/^@/, ""))}</p>
+                      <p class="text-sm ${visibleUnreadCount ? "text-slate-800 font-semibold" : "text-slate-500"} truncate mt-2">${escapeHtml(thread.lastMessage || "Chat oeffnen")}</p>
+                      ${isMuted ? `<p class="text-[9px] font-black uppercase tracking-widest text-amber-500 mt-1">Ruhemodus aktiv</p>` : ""}
+                      ${isBlocked ? `<p class="text-[9px] font-black uppercase tracking-widest text-rose-500 mt-1">Blockiert</p>` : ""}
                     </div>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate mt-1">@${escapeHtml(String(thread.handle || "user").replace(/^@/, ""))}</p>
-                    <p class="text-sm ${unreadCount ? "text-slate-800 font-semibold" : "text-slate-500"} truncate mt-2">${escapeHtml(thread.lastMessage || "Chat oeffnen")}</p>
-                  </div>
-                </button>
+                  </button>
+                  <button data-chat-thread-menu-toggle="${escapeHtml(thread.id || "")}" class="absolute right-4 top-4 w-8 h-8 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors">
+                    ${icon("ellipsis-vertical", "w-4 h-4")}
+                  </button>
+                  ${menuOpen ? `
+                    <div class="absolute right-4 top-14 z-20 w-44 rounded-2xl border border-slate-100 bg-white p-1.5 shadow-xl">
+                      <button data-chat-thread-action="delete" data-chat-thread-id="${escapeHtml(thread.id || "")}" class="w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-black">
+                        ${icon("trash-2", "w-3.5 h-3.5")}
+                        Loeschen
+                      </button>
+                      <button data-chat-thread-action="${scope === "archived" ? "unarchive" : "archive"}" data-chat-thread-id="${escapeHtml(thread.id || "")}" class="w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 text-xs font-black">
+                        ${icon(scope === "archived" ? "inbox" : "archive", "w-3.5 h-3.5")}
+                        ${scope === "archived" ? "Ins Postfach" : "Archivieren"}
+                      </button>
+                    </div>
+                  ` : ""}
+                  ${menuOpen ? `<button data-chat-thread-menu-close="true" class="fixed inset-0 z-10"></button>` : ""}
+                </div>
               `;
             }).join("")}
           </div>
@@ -13168,8 +13382,8 @@ function renderChatView() {
               <div class="w-16 h-16 rounded-[1.8rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-5 shadow-sm">
                 ${icon("messages-square", "w-7 h-7")}
               </div>
-              <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">Noch keine Chats</p>
-              <p class="text-sm font-medium text-slate-500 mt-3">Oeffne ein Profil und tippe auf das Chat-Icon.</p>
+              <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">${scope === "archived" ? "Keine archivierten Chats" : "Noch keine Chats"}</p>
+              <p class="text-sm font-medium text-slate-500 mt-3">${scope === "archived" ? "Archivierte Chats erscheinen hier." : "Oeffne ein Profil und tippe auf das Chat-Icon."}</p>
             </div>
           </div>
         `}
@@ -13180,10 +13394,25 @@ function renderChatView() {
   const partner = state.chatModal.profile;
   const messages = Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [];
   const pendingAttachments = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments : [];
+  const activeThread = getActiveChatThreadSummary(partner);
+  const blockedByOwner = !!activeThread?.blockedByOwner;
+  const muteUntilMs = Number(activeThread?.muteUntilMs || 0) || 0;
+  const mutedActive = muteUntilMs > Date.now();
+  const muteUntilLabel = mutedActive ? formatRelative(new Date(muteUntilMs)) : "";
   return `
     <div id="chatThreadView" class="flex-1 min-h-0 px-4 pb-4 flex flex-col animate-in slide-in-from-right-10 duration-500">
       <div class="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden flex flex-col flex-1 min-h-0 shadow-sm">
         <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto no-scrollbar p-4 space-y-3 bg-slate-50/70">
+          ${blockedByOwner ? `
+            <div class="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-black uppercase tracking-widest">
+              Chat blockiert
+            </div>
+          ` : ""}
+          ${mutedActive ? `
+            <div class="p-3 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 text-[10px] font-black uppercase tracking-widest">
+              Ruhemodus bis ${escapeHtml(muteUntilLabel)}
+            </div>
+          ` : ""}
           ${messages.length ? messages.map((message) => `
             <div class="flex ${message.from === "self" ? "justify-end" : "justify-start"}">
               <div class="max-w-[84%]">
@@ -13264,11 +13493,11 @@ function renderChatView() {
           ` : ""}
           <input type="file" id="chatAttachmentInput" class="hidden" multiple />
           <div class="flex items-end gap-3">
-            <button id="chatAttachmentTrigger" class="w-[52px] h-[52px] shrink-0 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center active:scale-95">
+            <button id="chatAttachmentTrigger" ${blockedByOwner ? "disabled" : ""} class="w-[52px] h-[52px] shrink-0 rounded-2xl ${blockedByOwner ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-slate-100 text-slate-600 active:scale-95"} flex items-center justify-center">
               ${icon("plus", "w-5 h-5")}
             </button>
-            <textarea id="chatMessageInput" rows="1" placeholder="Nachricht..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none max-h-28">${escapeHtml(state.chatModal.draft || "")}</textarea>
-            <button id="chatSendBtn" class="px-5 h-[52px] rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest active:scale-95">Send</button>
+            <textarea id="chatMessageInput" rows="1" ${blockedByOwner ? "readonly" : ""} placeholder="${blockedByOwner ? "Chat ist blockiert" : "Nachricht..."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none max-h-28">${escapeHtml(state.chatModal.draft || "")}</textarea>
+            <button id="chatSendBtn" ${blockedByOwner ? "disabled" : ""} class="px-5 h-[52px] rounded-2xl ${blockedByOwner ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white active:scale-95"} font-black text-[10px] uppercase tracking-widest">Send</button>
           </div>
         </div>
       </div>
@@ -13335,9 +13564,6 @@ function renderHeader() {
           <div class="w-12 h-12 rounded-2xl overflow-hidden p-1 bg-white border border-slate-100 shadow-sm">
             <img src="${escapeHtml(partnerAvatar)}" class="w-full h-full rounded-[1rem] object-cover" />
           </div>
-          <button data-chat-gift="true" class="w-12 h-12 rounded-2xl bg-white border border-slate-100 text-slate-500 flex items-center justify-center shadow-sm active:scale-95">
-            ${icon("gift", "w-4 h-4")}
-          </button>
         </div>
       </header>
     `;
@@ -14647,6 +14873,9 @@ function bindAppEvents() {
       setState({
         activeTab: tab,
         drawerOpen: false,
+        chatSettingsOpen: false,
+        chatListScope: "inbox",
+        chatThreadMenuId: "",
         settingsView: "main",
         selectedBusiness: null,
         profileView: null,
@@ -15019,6 +15248,7 @@ function bindAppEvents() {
 
   document.querySelectorAll("[data-chat-open-thread]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      state.chatThreadMenuId = "";
       openChatWithProfile({
         uid: btn.dataset.chatUid || "",
         handle: btn.dataset.chatHandle || "",
@@ -15028,14 +15258,59 @@ function bindAppEvents() {
     });
   });
 
+  document.querySelectorAll("[data-chat-list-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tab = String(btn.dataset.chatListTab || "").trim();
+      state.chatListScope = tab === "archived" ? "archived" : "inbox";
+      state.chatThreadMenuId = "";
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-chat-thread-menu-toggle]").forEach((btn) => {
+    btn.addEventListener("click", (evt) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      const id = String(btn.dataset.chatThreadMenuToggle || "").trim();
+      if (!id) return;
+      state.chatThreadMenuId = state.chatThreadMenuId === id ? "" : id;
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-chat-thread-menu-close]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!state.chatThreadMenuId) return;
+      state.chatThreadMenuId = "";
+      render();
+    });
+  });
+
+  document.querySelectorAll("[data-chat-thread-action]").forEach((btn) => {
+    btn.addEventListener("click", async (evt) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      const action = String(btn.dataset.chatThreadAction || "").trim();
+      const threadId = String(btn.dataset.chatThreadId || "").trim();
+      if (!action || !threadId) return;
+      if (action === "delete") {
+        await deleteChatThreadById(threadId);
+        return;
+      }
+      if (action === "archive") {
+        await setChatThreadArchivedById(threadId, true);
+        return;
+      }
+      if (action === "unarchive") {
+        await setChatThreadArchivedById(threadId, false);
+      }
+    });
+  });
+
   document.querySelectorAll("[data-chat-back]").forEach((btn) => {
     btn.addEventListener("click", () => {
       closeChatModal();
     });
-  });
-
-  document.querySelectorAll("[data-chat-gift]").forEach((btn) => {
-    btn.addEventListener("click", () => {});
   });
 
   document.querySelectorAll("[data-chat-save]").forEach((btn) => {
