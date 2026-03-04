@@ -13,6 +13,7 @@ import {
   collection,
   collectionGroup,
   doc,
+  documentId,
   getDoc,
   getDocFromServer,
   getDocs,
@@ -305,11 +306,16 @@ const CACHE_KEYS = {
 };
 const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v1::${uid}` : "");
 const businessPostsKey = (rid) => (rid ? `menyra_social_business_posts_cache_v1::${rid}` : "");
+const staffCacheKey = (uid) => (uid ? `menyra_social_staff_cache_v1::${uid}` : "");
+const leadPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_leads_cache_v1::${uid}::${scope}` : "");
+const customerPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_customers_cache_v1::${uid}::${scope}` : "");
 const CACHE_TTL_MS = {
   feed: 10 * 60 * 1000,
   posts: 10 * 60 * 1000,
   restaurants: 60 * 60 * 1000,
-  stories: 10 * 60 * 1000
+  stories: 10 * 60 * 1000,
+  staff: 90 * 1000,
+  crmPages: 90 * 1000
 };
 const FEED_DELTA_MIN_MS = 15 * 60 * 1000;
 const FEED_PRELOAD_LIMIT = 3;
@@ -598,6 +604,7 @@ const searchCache = new Map();
 let notificationsUnsub = null;
 let followingUnsub = null;
 let userDocUnsub = null;
+let userDocLiveKey = "";
 let profileViewUnsub = null;
 let feedUnsub = null;
 let storiesUnsub = null;
@@ -3093,6 +3100,34 @@ function writeCache(key, data, meta = null) {
   } catch {}
 }
 
+function readLeadScopeCache(uid, scope) {
+  const safeUid = String(uid || "").trim();
+  const safeScope = normalizeLeadScopeKey(scope);
+  if (!safeUid) return null;
+  return readCache(leadPageCacheKey(safeUid, safeScope), CACHE_TTL_MS.crmPages);
+}
+
+function writeLeadScopeCache(uid, scope, rows, meta = {}) {
+  const safeUid = String(uid || "").trim();
+  const safeScope = normalizeLeadScopeKey(scope);
+  if (!safeUid || !Array.isArray(rows)) return;
+  writeCache(leadPageCacheKey(safeUid, safeScope), rows, meta);
+}
+
+function readCustomerScopeCache(uid, scope) {
+  const safeUid = String(uid || "").trim();
+  const safeScope = normalizeCustomerScopeKey(scope);
+  if (!safeUid) return null;
+  return readCache(customerPageCacheKey(safeUid, safeScope), CACHE_TTL_MS.crmPages);
+}
+
+function writeCustomerScopeCache(uid, scope, rows, meta = {}) {
+  const safeUid = String(uid || "").trim();
+  const safeScope = normalizeCustomerScopeKey(scope);
+  if (!safeUid || !Array.isArray(rows)) return;
+  writeCache(customerPageCacheKey(safeUid, safeScope), rows, meta);
+}
+
 function computeLatestTimestamp(posts) {
   let latest = 0;
   posts.forEach((post) => {
@@ -3788,6 +3823,126 @@ function normalizeCeoStaffRecord(record = {}, userRecord = {}) {
   };
 }
 
+function overlayCeoStaffProfile(record = {}, userRecord = {}) {
+  const next = { ...(record || {}) };
+  const readText = (...keys) => {
+    for (const key of keys) {
+      const value = String(userRecord?.[key] || "").trim();
+      if (value) return value;
+    }
+    return "";
+  };
+  const avatarUrl = readText("avatarUrl", "avatar");
+  if (avatarUrl) {
+    next.avatarUrl = avatarUrl;
+    next.avatar = avatarUrl;
+  }
+  const displayName = readText("displayName", "name");
+  if (displayName) {
+    next.displayName = displayName;
+    next.name = displayName;
+  }
+  const firstName = readText("firstName");
+  const lastName = readText("lastName");
+  if (firstName) next.firstName = firstName;
+  if (lastName) next.lastName = lastName;
+  const email = readText("email");
+  if (email) next.email = email;
+  const handle = readText("handle");
+  if (handle) next.handle = handle;
+  const country = readText("country");
+  if (country) next.country = country;
+  const city = readText("city");
+  if (city) next.city = city;
+  const location = readText("locationLabel", "location", "city");
+  if (location) {
+    next.locationLabel = location;
+    if (!String(next.location || "").trim()) next.location = location;
+  }
+  const lat = parseCoordNumber(userRecord?.gpsLat ?? userRecord?.lat);
+  const lng = parseCoordNumber(userRecord?.gpsLng ?? userRecord?.lng);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    next.lat = lat;
+    next.lng = lng;
+    next.gpsLat = lat;
+    next.gpsLng = lng;
+  }
+  return next;
+}
+
+function buildCeoDirectorySyncPatch(record = {}, userRecord = {}) {
+  const patched = overlayCeoStaffProfile(record, userRecord);
+  const nextAvatar = String(patched.avatarUrl || patched.avatar || "").trim();
+  const prevAvatar = String(record.avatarUrl || record.avatar || "").trim();
+  const patch = {};
+  if (nextAvatar && nextAvatar !== prevAvatar) {
+    patch.avatarUrl = nextAvatar;
+    patch.avatar = nextAvatar;
+  }
+  const textKeys = ["displayName", "name", "firstName", "lastName", "email", "handle", "country", "city", "locationLabel"];
+  textKeys.forEach((key) => {
+    const nextValue = String(patched[key] || "").trim();
+    const prevValue = String(record[key] || "").trim();
+    if (nextValue && nextValue !== prevValue) {
+      patch[key] = nextValue;
+    }
+  });
+  ["lat", "lng", "gpsLat", "gpsLng"].forEach((key) => {
+    const nextValue = parseCoordNumber(patched[key]);
+    const prevValue = parseCoordNumber(record[key]);
+    if (Number.isFinite(nextValue) && nextValue !== prevValue) {
+      patch[key] = nextValue;
+    }
+  });
+  return patch;
+}
+
+async function hydrateStaffRecordsFromUserProfiles(items = [], { syncDirectory = false } = {}) {
+  const list = Array.isArray(items) ? items.slice() : [];
+  const uids = uniqueStringList(list.map((item) => String(item?.uid || "").trim()).filter(Boolean));
+  if (!uids.length) return list;
+  const userMap = new Map();
+  const usersRef = collection(db, "users");
+  const chunks = chunkStringList(uids, 10);
+  await Promise.all(chunks.map(async (chunk) => {
+    if (!chunk.length) return;
+    try {
+      const snap = await getDocs(query(usersRef, where(documentId(), "in", chunk)));
+      snap.forEach((docSnap) => {
+        userMap.set(docSnap.id, docSnap.data() || {});
+      });
+      return;
+    } catch {}
+    await Promise.all(chunk.map(async (uid) => {
+      try {
+        const snap = await getDoc(doc(db, "users", uid));
+        if (snap.exists()) userMap.set(uid, snap.data() || {});
+      } catch {}
+    }));
+  }));
+  const syncWrites = [];
+  const nextItems = list.map((item) => {
+    const uid = String(item?.uid || "").trim();
+    if (!uid) return item;
+    const userRecord = userMap.get(uid);
+    if (!userRecord) return item;
+    if (syncDirectory) {
+      const patch = buildCeoDirectorySyncPatch(item, userRecord);
+      if (Object.keys(patch).length) {
+        syncWrites.push(setDoc(doc(db, "superadmins", uid), {
+          ...patch,
+          updatedAt: serverTimestamp()
+        }, { merge: true }).catch(() => {}));
+      }
+    }
+    return normalizeCeoStaffRecord(overlayCeoStaffProfile(item, userRecord));
+  });
+  if (syncWrites.length) {
+    void Promise.all(syncWrites);
+  }
+  return nextItems;
+}
+
 function canViewCeoRecord(record = {}) {
   const current = getCurrentCeoMeta();
   if (!current.uid) return false;
@@ -4436,6 +4591,155 @@ function normalizeBusinessProfile(rest = {}, user) {
     gpsLng: Number.isFinite(Number(lng)) ? Number(lng) : null,
     posts: []
   };
+}
+
+function syncSelfAvatarCachesFromProfile(profile = state.userProfile) {
+  const resolvedAvatar = getOptimizedImageUrl(profile?.avatar || "", "avatar");
+  if (isPlaceholderUrl(resolvedAvatar)) return "";
+  primeSelfAvatarCache(resolvedAvatar);
+  return resolvedAvatar;
+}
+
+function commitLiveSelfProfile(normalized, { syncPrivate = true } = {}) {
+  if (!normalized || typeof normalized !== "object") return;
+  state.userProfile = normalized;
+  if (state.user?.uid) state.userProfile.uid = state.user.uid;
+  if (syncPrivate) syncPrivateSettingFromProfile(normalized.privateAccount);
+  saveUserProfileToStorage();
+  syncSelfAvatarCachesFromProfile(state.userProfile);
+  if (lastRenderMode === "main") {
+    updateShellDom();
+    if (state.activeTab === "search" && refreshSearchView()) return;
+    if (state.activeTab === "feed") return;
+  }
+  render();
+}
+
+function applyLiveUserProfileSnapshot(data = {}) {
+  if (!state.user) return;
+  const prevAvatar = state.userProfile?.avatar || "";
+  const seed = {
+    displayName: state.userProfile?.name || "",
+    handle: state.userProfile?.handle || "",
+    bio: state.userProfile?.bio || "",
+    avatarUrl: state.userProfile?.avatar || "",
+    city: state.userProfile?.location || "",
+    address: state.userProfile?.address || "",
+    followersCount: state.userProfile?.followers ?? 0,
+    followingCount: state.userProfile?.following ?? 0,
+    privateAccount: !!state.userProfile?.privateAccount,
+    score: Number(state.userProfile?.karma || 0),
+    roles: state.userProfile?.roles || [],
+    role: state.userProfile?.role || "user",
+    restaurantId: state.userProfile?.restaurantId || "",
+    leadSettings: state.userProfile?.leadSettings || null,
+    country: state.userProfile?.country || "",
+    ceoParentUid: state.userProfile?.ceoParentUid || "",
+    ceoParentName: state.userProfile?.ceoParentName || "",
+    ceoRootUid: state.userProfile?.ceoRootUid || "",
+    ceoRootName: state.userProfile?.ceoRootName || "",
+    ceoPath: Array.isArray(state.userProfile?.ceoPath) ? state.userProfile.ceoPath.slice() : [],
+    crmCounts: state.userProfile?.crmCounts || null,
+    gpsLat: state.userProfile?.gpsLat ?? state.userProfile?.lat ?? null,
+    gpsLng: state.userProfile?.gpsLng ?? state.userProfile?.lng ?? null,
+    ...(data || {})
+  };
+  const normalized = normalizeProfile(seed, state.user);
+  const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
+  if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
+  normalized.uid = state.user.uid;
+  commitLiveSelfProfile(normalized);
+}
+
+function applyLiveBusinessProfileSnapshot(restData = {}, restaurantId = "") {
+  if (!state.user) return;
+  const safeRestaurantId = String(restaurantId || restData?.id || restData?.restaurantId || state.userProfile?.restaurantId || "").trim();
+  if (!safeRestaurantId) return;
+  const prevAvatar = state.userProfile?.avatar || "";
+  const seed = {
+    id: safeRestaurantId,
+    restaurantId: safeRestaurantId,
+    name: state.userProfile?.name || "",
+    restaurantName: state.userProfile?.name || "",
+    handle: state.userProfile?.handle || "",
+    bio: state.userProfile?.bio || "",
+    description: state.userProfile?.bio || "",
+    logoUrl: state.userProfile?.avatar || "",
+    city: state.userProfile?.location || "",
+    address: state.userProfile?.address || "",
+    followersCount: state.userProfile?.followers ?? 0,
+    followingCount: state.userProfile?.following ?? 0,
+    phone: state.userProfile?.phone || "",
+    instagram: state.userProfile?.instagram || "",
+    roles: state.userProfile?.roles || ["owner"],
+    type: state.userProfile?.type || state.userProfile?.customerType || "",
+    customerType: state.userProfile?.customerType || state.userProfile?.type || "",
+    gpsLat: state.userProfile?.gpsLat ?? state.userProfile?.lat ?? null,
+    gpsLng: state.userProfile?.gpsLng ?? state.userProfile?.lng ?? null,
+    ...(restData || {}),
+    id: safeRestaurantId,
+    restaurantId: safeRestaurantId
+  };
+  const normalized = normalizeBusinessProfile(seed, state.user);
+  const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
+  if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
+  normalized.uid = state.user.uid;
+  state.restaurants = mergeRestaurants(state.restaurants, [{ id: safeRestaurantId, ...seed }]);
+  rebuildBusinessLocations();
+  commitLiveSelfProfile(normalized, { syncPrivate: false });
+}
+
+function attachCurrentUserProfileListener() {
+  const uid = String(state.user?.uid || "").trim();
+  if (!uid) return;
+  const restaurantId = String(state.userProfile?.restaurantId || "").trim();
+  const useRestaurantDoc = !!(restaurantId && isLocalBusinessProfile(state.userProfile));
+  const nextKey = useRestaurantDoc ? `restaurant:${restaurantId}` : `user:${uid}`;
+  if (userDocUnsub && userDocLiveKey === nextKey) return;
+  if (userDocUnsub) {
+    userDocUnsub();
+    userDocUnsub = null;
+  }
+  userDocLiveKey = nextKey;
+  const ref = useRestaurantDoc ? doc(db, "restaurants", restaurantId) : doc(db, "users", uid);
+  userDocUnsub = onSnapshot(ref, (snap) => {
+    if (!snap.exists()) return;
+    const data = snap.data() || {};
+    if (useRestaurantDoc) {
+      applyLiveBusinessProfileSnapshot({ id: restaurantId, ...data }, restaurantId);
+      return;
+    }
+    applyLiveUserProfileSnapshot(data);
+  }, () => {});
+}
+
+async function syncCeoDirectoryProfilePatch(patch = {}) {
+  const uid = String(state.user?.uid || "").trim();
+  if (!uid || !isCeoUser()) return;
+  const payload = {};
+  const textFields = ["name", "displayName", "handle", "city", "locationLabel", "country", "firstName", "lastName", "ceoParentName", "ceoRootName"];
+  textFields.forEach((key) => {
+    if (!(key in patch)) return;
+    const value = String(patch[key] || "").trim();
+    if (!value) return;
+    payload[key] = value;
+  });
+  ["lat", "lng", "gpsLat", "gpsLng"].forEach((key) => {
+    if (!(key in patch)) return;
+    const value = Number(patch[key]);
+    if (!Number.isFinite(value)) return;
+    payload[key] = value;
+  });
+  const avatarUrl = String(patch.avatarUrl || patch.avatar || "").trim();
+  if (avatarUrl) {
+    payload.avatarUrl = avatarUrl;
+    payload.avatar = avatarUrl;
+  }
+  if (!Object.keys(payload).length) return;
+  payload.updatedAt = serverTimestamp();
+  try {
+    await setDoc(doc(db, "superadmins", uid), payload, { merge: true });
+  } catch {}
 }
 
 function normalizeEmailValue(value) {
@@ -7207,6 +7511,7 @@ function stopLiveListeners() {
     userDocUnsub();
     userDocUnsub = null;
   }
+  userDocLiveKey = "";
   if (profileViewUnsub) {
     profileViewUnsub();
     profileViewUnsub = null;
@@ -7371,6 +7676,7 @@ function startLiveListeners(user) {
   if (!user) return;
   liveFeedDisabled = false;
   liveStoriesDisabled = false;
+  attachCurrentUserProfileListener();
 }
 
 function attachProfileViewListener(profile) {
@@ -15267,8 +15573,12 @@ async function uploadAvatar(file) {
     } else {
       await setDoc(doc(db, "users", state.user.uid), {
         avatarUrl: cdnUrl,
+        avatar: cdnUrl,
         updatedAt: serverTimestamp()
       }, { merge: true });
+      await syncCeoDirectoryProfilePatch({
+        avatarUrl: cdnUrl
+      });
     }
     state.userProfile.avatar = cdnUrl;
     saveUserProfileToStorage();
@@ -15553,6 +15863,19 @@ async function saveAccountSettings() {
         updatedAt: serverTimestamp()
       };
       await setDoc(doc(db, "users", state.user.uid), payload, { merge: true });
+      await syncCeoDirectoryProfilePatch({
+        name,
+        displayName: name,
+        handle,
+        city,
+        locationLabel: city,
+        ...(effectiveGps && Number.isFinite(effectiveGps.lat) && Number.isFinite(effectiveGps.lng) ? {
+          lat: effectiveGps.lat,
+          lng: effectiveGps.lng,
+          gpsLat: effectiveGps.lat,
+          gpsLng: effectiveGps.lng
+        } : {})
+      });
     }
 
     if (allowCeoOverride) {
@@ -15591,6 +15914,7 @@ async function saveAccountSettings() {
     }
 
     saveUserProfileToStorage();
+    attachCurrentUserProfileListener();
     
     if (statusEl) statusEl.textContent = "Erfolgreich gespeichert!";
     setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 2000);
@@ -15605,6 +15929,7 @@ async function updateRestaurantSelection(restaurantId) {
   state.userProfile.restaurantId = restaurantId || "";
   state.roleSwitchRestaurantId = restaurantId || state.roleSwitchRestaurantId || "";
   saveUserProfileToStorage();
+  attachCurrentUserProfileListener();
   render();
   if (state.activeTab === "menu") {
     if (restaurantId) {
@@ -15752,6 +16077,7 @@ async function loadUserProfile(user, { force = false } = {}) {
   state.userProfile.uid = user.uid;
   syncPrivateSettingFromProfile(normalized.privateAccount);
   saveUserProfileToStorage();
+  attachCurrentUserProfileListener();
   const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
   if (!isPlaceholderUrl(resolvedAvatar)) {
     userAvatarCache = resolvedAvatar;
@@ -15797,6 +16123,7 @@ async function loadBusinessProfile(user, { restaurant = null, force = false } = 
   state.userProfile.uid = user.uid;
   syncPrivateSettingFromProfile(false);
   saveUserProfileToStorage();
+  attachCurrentUserProfileListener();
   const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
   if (!isPlaceholderUrl(resolvedAvatar)) {
     primeSelfAvatarCache(resolvedAvatar);
@@ -17518,6 +17845,7 @@ async function fetchCustomerScopeRows(scope, desiredCount) {
 function refreshCustomersFromRestaurants() {
   const scope = normalizeCustomerScopeKey(state.customers.scope);
   const size = Math.max(CRM_PAGE_SIZE, Number(state.customers.pageSize?.[scope]) || CRM_PAGE_SIZE);
+  const currentUid = String(state.user?.uid || "").trim();
   const list = Array.isArray(state.restaurants)
     ? state.restaurants.filter((rest) => (
       isCustomerRestaurant(rest)
@@ -17539,11 +17867,18 @@ function refreshCustomersFromRestaurants() {
     [scope]: true
   };
   state.customers.items = state.customers.pages[scope].slice();
+  writeCustomerScopeCache(currentUid, scope, state.customers.pages[scope], {
+    hasMore: state.customers.hasMore?.[scope] || false,
+    knownCount: Array.isArray(list) ? list.length : 0,
+    countExact: true,
+    pageSize: size
+  });
 }
 
 function syncVisibleLeadPageFromItems() {
   const scope = normalizeLeadScopeKey(state.leads.scope);
   const size = Math.max(CRM_PAGE_SIZE, Number(state.leads.pageSize?.[scope]) || CRM_PAGE_SIZE);
+  const currentUid = String(state.user?.uid || "").trim();
   const sourceItems = Array.isArray(state.leads.items) ? state.leads.items.slice() : [];
   const nextItems = sourceItems.slice(0, size);
   state.leads.pages = {
@@ -17558,6 +17893,12 @@ function syncVisibleLeadPageFromItems() {
     ...state.leads.loaded,
     [scope]: true
   };
+  writeLeadScopeCache(currentUid, scope, nextItems, {
+    hasMore: state.leads.hasMore?.[scope] || sourceItems.length > size,
+    knownCount: sourceItems.length,
+    countExact: !(state.leads.hasMore?.[scope] || sourceItems.length > size),
+    pageSize: size
+  });
 }
 
 async function loadLeads({ scope = state.leads.scope, grow = false } = {}) {
@@ -17566,9 +17907,48 @@ async function loadLeads({ scope = state.leads.scope, grow = false } = {}) {
     void ensureCeoCrmCountsLoaded();
   }
   const safeScope = normalizeLeadScopeKey(scope);
+  const currentUid = String(state.user?.uid || "").trim();
   const currentSize = Math.max(CRM_PAGE_SIZE, Number(state.leads.pageSize?.[safeScope]) || CRM_PAGE_SIZE);
   const nextSize = grow ? currentSize + CRM_PAGE_SIZE : currentSize;
   const fetchLimit = Math.min(Math.max(nextSize * (safeScope === "own" ? 3 : 4), CRM_PAGE_SIZE + 1), 160);
+  if (!grow && !state.leads.loaded?.[safeScope] && currentUid) {
+    const cached = readLeadScopeCache(currentUid, safeScope);
+    if (cached?.fresh && Array.isArray(cached.data)) {
+      const cachedRows = cached.data.map((row) => normalizeLeadDoc(row));
+      const cachedPageSize = Math.max(nextSize, Number(cached.meta?.pageSize) || cachedRows.length || nextSize);
+      state.leads.scope = safeScope;
+      state.leads.pageSize = {
+        ...state.leads.pageSize,
+        [safeScope]: cachedPageSize
+      };
+      state.leads.pages = {
+        ...state.leads.pages,
+        [safeScope]: cachedRows.slice(0, cachedPageSize)
+      };
+      state.leads.loaded = {
+        ...state.leads.loaded,
+        [safeScope]: true
+      };
+      state.leads.hasMore = {
+        ...state.leads.hasMore,
+        [safeScope]: !!cached.meta?.hasMore
+      };
+      state.leads.knownCount = {
+        ...state.leads.knownCount,
+        [safeScope]: Math.max(cachedRows.length, Number(cached.meta?.knownCount) || 0)
+      };
+      state.leads.countExact = {
+        ...state.leads.countExact,
+        [safeScope]: cached.meta?.countExact !== false
+      };
+      state.leads.items = state.leads.pages[safeScope].slice();
+      state.leads.loading = false;
+      state.leads.loadingMore = false;
+      state.leads.error = "";
+      render();
+      return;
+    }
+  }
   state.leads.scope = safeScope;
   state.leads.pageSize = {
     ...state.leads.pageSize,
@@ -17603,6 +17983,12 @@ async function loadLeads({ scope = state.leads.scope, grow = false } = {}) {
     };
     state.leads.items = nextItems.slice();
     state.leads.error = "";
+    writeLeadScopeCache(currentUid, safeScope, nextItems, {
+      hasMore: rows.length > nextSize,
+      knownCount: rows.length,
+      countExact: rows.length < fetchLimit,
+      pageSize: nextSize
+    });
   } catch (err) {
     console.error(err);
     state.leads.error = "Leads laden fehlgeschlagen.";
@@ -17619,9 +18005,52 @@ async function loadCustomers({ scope = state.customers.scope, grow = false } = {
     void ensureCeoCrmCountsLoaded();
   }
   const safeScope = normalizeCustomerScopeKey(scope);
+  const currentUid = String(state.user?.uid || "").trim();
   const currentSize = Math.max(CRM_PAGE_SIZE, Number(state.customers.pageSize?.[safeScope]) || CRM_PAGE_SIZE);
   const nextSize = grow ? currentSize + CRM_PAGE_SIZE : currentSize;
   const fetchLimit = Math.min(Math.max(nextSize * (safeScope === "own" ? 3 : 4), CRM_PAGE_SIZE + 1), 160);
+  if (!grow && !state.customers.loaded?.[safeScope] && currentUid) {
+    const cached = readCustomerScopeCache(currentUid, safeScope);
+    if (cached?.fresh && Array.isArray(cached.data)) {
+      const cachedRows = cached.data.slice();
+      const cachedPageSize = Math.max(nextSize, Number(cached.meta?.pageSize) || cachedRows.length || nextSize);
+      if (cachedRows.length) {
+        state.restaurants = mergeRestaurants(state.restaurants, cachedRows);
+        rebuildBusinessLocations();
+      }
+      state.customers.scope = safeScope;
+      state.customers.pageSize = {
+        ...state.customers.pageSize,
+        [safeScope]: cachedPageSize
+      };
+      state.customers.pages = {
+        ...state.customers.pages,
+        [safeScope]: cachedRows.slice(0, cachedPageSize)
+      };
+      state.customers.loaded = {
+        ...state.customers.loaded,
+        [safeScope]: true
+      };
+      state.customers.hasMore = {
+        ...state.customers.hasMore,
+        [safeScope]: !!cached.meta?.hasMore
+      };
+      state.customers.knownCount = {
+        ...state.customers.knownCount,
+        [safeScope]: Math.max(cachedRows.length, Number(cached.meta?.knownCount) || 0)
+      };
+      state.customers.countExact = {
+        ...state.customers.countExact,
+        [safeScope]: cached.meta?.countExact !== false
+      };
+      state.customers.items = state.customers.pages[safeScope].slice();
+      state.customers.loading = false;
+      state.customers.loadingMore = false;
+      state.customers.error = "";
+      render();
+      return;
+    }
+  }
   state.customers.scope = safeScope;
   state.customers.pageSize = {
     ...state.customers.pageSize,
@@ -17660,6 +18089,12 @@ async function loadCustomers({ scope = state.customers.scope, grow = false } = {
     };
     state.customers.items = nextItems.slice();
     state.customers.error = "";
+    writeCustomerScopeCache(currentUid, safeScope, nextItems, {
+      hasMore: rows.length > nextSize,
+      knownCount: rows.length,
+      countExact: rows.length < fetchLimit,
+      pageSize: nextSize
+    });
   } catch (err) {
     console.error(err);
     state.customers.error = "Kunden laden fehlgeschlagen.";
@@ -18013,24 +18448,7 @@ async function loadCeoStaff({ grow = false } = {}) {
       let items = Array.from(rowMap.values()).map((row) => normalizeCeoStaffRecord(row));
       items = items.filter((item) => canViewCeoRecord(item) && String(item.uid || "") !== String(current.uid || ""));
       items = items.filter((item) => !isHiddenLegacyCeoEmail(item.email || ""));
-      const missingAvatarItems = items.filter((item) => (
-        item?.uid
-        && !String(item.avatarUrl || item.avatar || "").trim()
-      ));
-      if (missingAvatarItems.length) {
-        const userSnaps = await Promise.all(missingAvatarItems.map((item) => (
-          getDoc(doc(db, "users", item.uid)).catch(() => null)
-        )));
-        const userFallbackMap = new Map();
-        userSnaps.forEach((snap, index) => {
-          if (!snap?.exists?.()) return;
-          userFallbackMap.set(String(missingAvatarItems[index]?.uid || ""), snap.data() || {});
-        });
-        items = items.map((item) => {
-          const userFallback = userFallbackMap.get(String(item.uid || ""));
-          return userFallback ? normalizeCeoStaffRecord(item, userFallback) : item;
-        });
-      }
+      items = await hydrateStaffRecordsFromUserProfiles(items, { syncDirectory: true });
       items = items.sort((a, b) => {
         const ta = toDateSafe(a.createdAt)?.getTime() || 0;
         const tb = toDateSafe(b.createdAt)?.getTime() || 0;

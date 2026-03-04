@@ -5,7 +5,12 @@
 // =========================================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import {
+  getFirestore,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
 
@@ -21,7 +26,16 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-const db = getFirestore(app);
+let db;
+try {
+  db = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+} catch {
+  db = getFirestore(app);
+}
 const auth = getAuth(app);
 const storage = getStorage(app);
 
