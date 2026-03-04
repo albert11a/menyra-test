@@ -7089,7 +7089,7 @@ function renderDrawer() {
       <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 max-w-[86vw] bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col overflow-y-auto ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}" style="overscroll-behavior:contain; -webkit-overflow-scrolling:touch;">
         <div class="flex justify-between items-center mb-10">
           <div>
-            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Menue</span>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Menyra</span>
             <h3 class="text-2xl font-black italic">NAVIGATE</h3>
           </div>
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
@@ -7098,7 +7098,6 @@ function renderDrawer() {
           <img id="drawerAvatar" data-img-key="avatar:drawer" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl ${avatarFit}" />
           <div>
             <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
-            <p id="drawerHandle" class="text-[9px] font-bold text-slate-400 uppercase">@${escapeHtml(state.userProfile.handle || "user")}</p>
           </div>
         </div>
         <nav class="space-y-2 flex-1">
@@ -7452,8 +7451,6 @@ function updateShellDom() {
   }
   const drawerName = document.getElementById("drawerName");
   if (drawerName) drawerName.textContent = state.userProfile.name || "User";
-  const drawerHandle = document.getElementById("drawerHandle");
-  if (drawerHandle) drawerHandle.textContent = `@${state.userProfile.handle || "user"}`;
   const switchLinks = document.getElementById("drawerSwitchLinks");
   if (switchLinks) switchLinks.innerHTML = renderRoleSwitchLinks();
   const menuNavBtn = document.querySelector('[data-nav="menu"]');
