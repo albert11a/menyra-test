@@ -117,6 +117,7 @@ const DEFAULT_PROFILE = {
   role: "user",
   isPremium: false,
   restaurantId: "",
+  leadSettings: null,
   posts: []
 };
 
@@ -3942,6 +3943,7 @@ function normalizeProfile(data, user) {
     role: data?.role || "user",
     isPremium: data?.isPremium || false,
     restaurantId: data?.restaurantId || "",
+    leadSettings: normalizeLeadSettings(data?.leadSettings || null),
     country: normalizeCeoCountry(data?.country),
     ceoParentUid: data?.ceoParentUid || data?.parentCeoUid || "",
     ceoParentName: data?.ceoParentName || data?.parentCeoName || "",
@@ -4520,6 +4522,32 @@ function cleanupLeaflet() {
   leafletUserMarker = null;
 }
 
+function isLeafletMapMountedOn(element) {
+  if (!leafletMap || !element) return false;
+  try {
+    const container = typeof leafletMap.getContainer === "function" ? leafletMap.getContainer() : null;
+    if (!container) return false;
+    if (container !== element) return false;
+    if (!document.body.contains(container)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function scheduleLeafletRefresh(retries = 3) {
+  if (!leafletMap || !document.getElementById("leafletMap")) return;
+  const run = (left) => {
+    if (!leafletMap) return;
+    const el = document.getElementById("leafletMap");
+    if (!el || !isLeafletMapMountedOn(el)) return;
+    try { leafletMap.invalidateSize(); } catch {}
+    if (left <= 0) return;
+    window.setTimeout(() => run(left - 1), 180);
+  };
+  run(Math.max(0, Number(retries) || 0));
+}
+
 function makeLocationPickerBizIcon(location) {
   const safeImg = location.img && !isPlaceholderUrl(location.img) ? escapeHtml(location.img) : PLACEHOLDER_IMAGE;
   const html = `
@@ -4806,8 +4834,13 @@ function initLeafletIfNeeded() {
   const el = document.getElementById("leafletMap");
   if (!el || !window.L) return;
 
+  if (leafletMap && !isLeafletMapMountedOn(el)) {
+    cleanupLeaflet();
+  }
+
   if (leafletMap) {
     try { leafletMap.invalidateSize(); } catch {}
+    scheduleLeafletRefresh(2);
     bindMapSearchInput();
     return;
   }
@@ -4815,6 +4848,11 @@ function initLeafletIfNeeded() {
   // Zoom Level 15 = ca 2km Radius
   leafletMap = window.L.map(el, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView([42.6629, 21.1655], 15);
   window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(leafletMap);
+  try {
+    leafletMap.whenReady(() => {
+      scheduleLeafletRefresh(3);
+    });
+  } catch {}
 
   renderLeafletMarkers(getDiscoverableMapLocations(state.businessLocations));
   updateMapSheet();
@@ -4822,6 +4860,7 @@ function initLeafletIfNeeded() {
 
   mapLocate();
   bindMapSearchInput();
+  scheduleLeafletRefresh(3);
 }
 
 function renderLeafletMarkers(locations) {
@@ -11255,13 +11294,17 @@ async function refineLeadLocationAddressIndex(index, value, { hydratePrimary = f
 
 function renderLeadSettingsView() {
   const config = getLeadSettingsConfig();
+  const explicitPassword = String(state.userProfile?.leadSettings?.defaultPassword || "").trim();
+  const passwordValue = explicitPassword && explicitPassword !== LEAD_SOCIAL_DEFAULT_PASSWORD
+    ? explicitPassword
+    : "";
   return `
     <div id="leadSettingsView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">
       <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
         <div class="space-y-4">
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Lead Passwort Standard</label>
-            <input id="leadSettingsPassword" type="text" value="${escapeHtml(config.defaultPassword || "")}" placeholder="Standard Passwort" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="leadSettingsPassword" type="text" value="${escapeHtml(passwordValue)}" placeholder="Hier eingeben" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Standard Standort Land</label>
