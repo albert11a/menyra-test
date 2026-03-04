@@ -419,14 +419,16 @@ const state = {
     scope: "own",
     view: "list",
     settingsSaving: false,
-    settingsStatus: ""
+    settingsStatus: "",
+    keepFocus: false
   },
   customers: {
     items: [],
     loading: false,
     error: "",
     query: "",
-    scope: "own"
+    scope: "own",
+    keepFocus: false
   },
   staff: {
     items: [],
@@ -1196,12 +1198,17 @@ function hasGlobalCeoAccess(profile = state.userProfile, user = state.user) {
   return uid === ALBERT_CEO_UID || isAlbertCeoUser();
 }
 
-function getAlbertCeoGpsOverride() {
-  if (!isAlbertCeoUser()) return null;
-  const lat = Number(state.userProfile?.gpsLat);
-  const lng = Number(state.userProfile?.gpsLng);
+function getCeoGpsOverride(profile = state.userProfile) {
+  if (!isCeoUser()) return null;
+  const lat = Number(profile?.gpsLat);
+  const lng = Number(profile?.gpsLng);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
   return { lat, lng };
+}
+
+function getAlbertCeoGpsOverride() {
+  if (!isAlbertCeoUser()) return null;
+  return getCeoGpsOverride(state.userProfile);
 }
 
 function normalizeLeadStatusKey(value) {
@@ -1633,17 +1640,8 @@ function slugify(input) {
 
 function isCustomerRestaurant(rest = {}) {
   const statusKey = normalizeLeadStatusKey(rest.status || "");
-  const typeKey = normalizeRestaurantType(rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "");
-  const hasLinkedOwner = !!String(rest?.ownerUid || rest?.socialUid || rest?.uid || rest?.userUid || "").trim();
   if (statusKey === "kunde") return true;
-  if (typeKey === "ecommerce" && hasLinkedOwner && (!statusKey || ["registered", "contacted"].includes(statusKey))) return true;
-  if (["registered", "contacted", "testphase", "no_interest"].includes(statusKey)) return false;
-  if (!statusKey) {
-    const hasLeadId = !!rest.leadId;
-    const hasOwner = hasLinkedOwner || !!rest.ownerEmail;
-    if (hasLeadId || !hasOwner) return false;
-  }
-  return true;
+  return false;
 }
 
 function normalizeRestaurantType(value) {
@@ -2062,6 +2060,16 @@ function focusSearchInput() {
   if (!input) return;
   input.focus({ preventScroll: true });
   const len = input.value.length;
+  try {
+    input.setSelectionRange(len, len);
+  } catch {}
+}
+
+function focusInputById(id) {
+  const input = document.getElementById(id);
+  if (!input) return;
+  input.focus({ preventScroll: true });
+  const len = String(input.value || "").length;
   try {
     input.setSelectionRange(len, len);
   } catch {}
@@ -4930,9 +4938,8 @@ function setUserMarker(lat, lng, label = "Deine Position") {
 }
 
 function mapLocate() {
-  const override = getAlbertCeoGpsOverride();
-  if (isAlbertCeoUser()) {
-    if (!override) return;
+  const override = getCeoGpsOverride();
+  if (isCeoUser() && override) {
     if (leafletMap) {
       try { leafletMap.setView([override.lat, override.lng], 15, { animate: true }); } catch {}
       setUserMarker(override.lat, override.lng, "Deine Position");
@@ -10887,7 +10894,7 @@ function renderSettingsView() {
   const settings = state.settings;
   const profile = state.userProfile;
   const avatarFit = logoFitClass(isLocalBusinessProfile(profile));
-  const allowGpsSettings = isLocalBusinessProfile(profile) || isAlbertCeoUser();
+  const allowGpsSettings = isLocalBusinessProfile(profile) || isCeoUser();
 
   if (state.settingsView === "main") {
     return `
@@ -11776,6 +11783,7 @@ function renderCustomersView() {
     String(rest?.id || rest?.restaurantId || rest?.leadId || `${rest?.name || rest?.restaurantName || "customer"}:${index}`),
     rest
   ])).values())
+    .filter((rest) => isCustomerRestaurant(rest))
     .filter((rest) => (isCeoUser() ? isOwnedByVisibleCeoTeam(rest) : true))
     .filter(Boolean);
   const ownCount = baseItems.filter((rest) => isCurrentCeoOwnRow(rest)).length;
@@ -13084,6 +13092,14 @@ function render() {
     if (state.activeTab === "search" && state.search.keepFocus) {
       state.search.keepFocus = false;
       focusSearchInput();
+    }
+    if (state.activeTab === "leads" && state.leads.keepFocus) {
+      state.leads.keepFocus = false;
+      focusInputById("leadsSearchInput");
+    }
+    if (state.activeTab === "customers" && state.customers.keepFocus) {
+      state.customers.keepFocus = false;
+      focusInputById("customersSearchInput");
     }
     if (mode === "main") lastRenderedMainTab = state.activeTab;
     else lastRenderedMainTab = "";
@@ -14418,6 +14434,7 @@ function bindAppEvents() {
   if (leadsSearchInput) {
     leadsSearchInput.addEventListener("input", () => {
       state.leads.query = leadsSearchInput.value || "";
+      state.leads.keepFocus = true;
       render();
     });
   }
@@ -14453,6 +14470,7 @@ function bindAppEvents() {
   if (customersSearchInput) {
     customersSearchInput.addEventListener("input", () => {
       state.customers.query = customersSearchInput.value || "";
+      state.customers.keepFocus = true;
       render();
     });
   }
@@ -14839,7 +14857,7 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
     if (verifiedMapLocation && Number.isFinite(Number(verifiedMapLocation.lat)) && Number.isFinite(Number(verifiedMapLocation.lng))) {
       targetCoords = { lat: Number(verifiedMapLocation.lat), lng: Number(verifiedMapLocation.lng) };
     } else {
-      const override = getAlbertCeoGpsOverride();
+      const override = getCeoGpsOverride();
       if (override) {
         targetCoords = override;
       } else if (Number.isFinite(Number(state.userProfile?.lat)) && Number.isFinite(Number(state.userProfile?.lng))) {
@@ -14952,14 +14970,14 @@ async function saveAccountSettings() {
   const city = document.getElementById("settingsCity")?.value?.trim() || "Prishtina";
   const address = document.getElementById("settingsAddress")?.value?.trim() || "";
   const restaurantId = state.userProfile.restaurantId || ""; // Fix: Verlinkung wurde entfernt, bleibt also der bestehende State
-  const allowAlbertOverride = isAlbertCeoUser();
+  const allowCeoOverride = isCeoUser();
   const gpsCoords = verifiedMapLocation
     ? { lat: Number(verifiedMapLocation.lat), lng: Number(verifiedMapLocation.lng) }
     : null;
-  const fallbackAlbertCoords = allowAlbertOverride ? getAlbertCeoGpsOverride() : null;
+  const fallbackCeoCoords = allowCeoOverride ? getCeoGpsOverride() : null;
   const effectiveGps = gpsCoords
-    || (fallbackAlbertCoords && Number.isFinite(Number(fallbackAlbertCoords.lat)) && Number.isFinite(Number(fallbackAlbertCoords.lng))
-      ? { lat: Number(fallbackAlbertCoords.lat), lng: Number(fallbackAlbertCoords.lng) }
+    || (fallbackCeoCoords && Number.isFinite(Number(fallbackCeoCoords.lat)) && Number.isFinite(Number(fallbackCeoCoords.lng))
+      ? { lat: Number(fallbackCeoCoords.lat), lng: Number(fallbackCeoCoords.lng) }
       : null);
   
   const statusEl = document.getElementById("settingsStatus");
@@ -15006,7 +15024,7 @@ async function saveAccountSettings() {
       await setDoc(doc(db, "users", state.user.uid), payload, { merge: true });
     }
 
-    if (allowAlbertOverride) {
+    if (allowCeoOverride) {
       const userGpsPayload = {
         handle,
         city,
@@ -15035,7 +15053,7 @@ async function saveAccountSettings() {
     if (effectiveGps && Number.isFinite(effectiveGps.lat) && Number.isFinite(effectiveGps.lng)) {
       state.userProfile.lat = effectiveGps.lat;
       state.userProfile.lng = effectiveGps.lng;
-      if (allowAlbertOverride) {
+      if (allowCeoOverride) {
         state.userProfile.gpsLat = effectiveGps.lat;
         state.userProfile.gpsLng = effectiveGps.lng;
       }
