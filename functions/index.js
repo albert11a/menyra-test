@@ -20,17 +20,31 @@ function asText(value, fallback = "") {
   return text || fallback;
 }
 
-function resolveNotificationTitle(data = {}) {
+function resolveNotificationActor(data = {}) {
   return asText(
-    data.title || data.user || data.userName || data.senderName || data.senderHandle,
-    "Benachrichtigung"
+    data.user || data.userName || data.senderName || data.senderHandle || data.userHandle,
+    ""
   );
+}
+
+function resolveNotificationTitle(data = {}) {
+  const customTitle = asText(process.env.MENYRA_PUSH_TITLE);
+  return customTitle || "Menyra";
 }
 
 function resolveNotificationBody(data = {}) {
   const type = asText(data.type).toLowerCase();
-  if (type === "chat_message") return asText(data.text, "Neue Nachricht");
-  return asText(data.text || data.body, "Neue Mitteilung");
+  const actor = resolveNotificationActor(data);
+  const text = asText(data.text || data.body);
+  if (type === "chat_message") {
+    if (actor && text) return `${actor} hat dir eine Nachricht geschickt: ${text}`;
+    if (actor) return `${actor} hat dir eine Nachricht geschickt`;
+    if (text) return `Neue Nachricht: ${text}`;
+    return "Neue Nachricht";
+  }
+  if (actor && text) return `${actor} ${text}`;
+  if (text) return text;
+  return "Neue Mitteilung";
 }
 
 function resolveNotificationLink(data = {}) {

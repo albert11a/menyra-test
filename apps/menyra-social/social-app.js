@@ -170,7 +170,15 @@ function createEmptyOrdersState() {
 }
 
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
-const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 1.5 * 1024 * 1024;
+const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 250000;
+const CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS = Object.freeze([
+  Object.freeze({ maxSize: 1600, quality: 0.82 }),
+  Object.freeze({ maxSize: 1280, quality: 0.76 }),
+  Object.freeze({ maxSize: 1080, quality: 0.7 }),
+  Object.freeze({ maxSize: 900, quality: 0.62 }),
+  Object.freeze({ maxSize: 760, quality: 0.56 }),
+  Object.freeze({ maxSize: 640, quality: 0.5 })
+]);
 const CHAT_MESSAGE_READ_LIMIT = 30;
 const NOTIFICATIONS_LIVE_LIMIT = 12;
 const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
@@ -2396,10 +2404,29 @@ async function ensureNotificationPermission({ interactive = false } = {}) {
   }
 }
 
+function resolveNativePushActor(notif = {}) {
+  return String(notif.user || notif.userHandle || "").trim();
+}
+
+function resolveNativePushBody(notif = {}) {
+  const type = String(notif?.type || "").trim().toLowerCase();
+  const actor = resolveNativePushActor(notif);
+  const text = String(notif?.text || "").trim();
+  if (type === "chat_message") {
+    if (actor && text) return `${actor} hat dir eine Nachricht geschickt: ${text}`;
+    if (actor) return `${actor} hat dir eine Nachricht geschickt`;
+    if (text) return `Neue Nachricht: ${text}`;
+    return "Neue Nachricht";
+  }
+  if (actor && text) return `${actor} ${text}`;
+  if (text) return text;
+  return "Neue Mitteilung";
+}
+
 async function showNativePushAlert(notif) {
   if (!notif?.id || !canEmitNativePushAlerts()) return;
-  const title = String(notif.user || notif.userHandle || "Benachrichtigung");
-  const body = String(notif.text || "Neue Nachricht");
+  const title = "Menyra";
+  const body = resolveNativePushBody(notif);
   const icon = String(resolveNotificationAvatar(notif) || "/apps/menyra-social/assets/menyra-social-logo.png");
   const tag = `menyra_notif_${notif.id}`;
   const notifId = String(notif.id || "");
@@ -3097,10 +3124,25 @@ function getCurrentChatSenderProfile() {
   };
 }
 
+function getStringByteSize(value) {
+  const text = String(value || "");
+  try {
+    return new TextEncoder().encode(text).length;
+  } catch {
+    return text.length;
+  }
+}
+
+function isChatInlineDataUrl(dataUrl) {
+  const safeDataUrl = String(dataUrl || "");
+  if (!safeDataUrl) return false;
+  return getStringByteSize(safeDataUrl) <= CHAT_ATTACHMENT_INLINE_MAX_BYTES;
+}
+
 function sanitizeChatAttachmentsForSync(attachments) {
   return (Array.isArray(attachments) ? attachments : []).slice(0, 4).map((attachment, index) => {
     const rawDataUrl = String(attachment?.dataUrl || "");
-    const inlineDataUrl = rawDataUrl && rawDataUrl.length <= 250000 ? rawDataUrl : "";
+    const inlineDataUrl = isChatInlineDataUrl(rawDataUrl) ? rawDataUrl : "";
     return {
       id: String(attachment?.id || `att_${index}`).trim() || `att_${index}`,
       name: String(attachment?.name || "Datei").trim() || "Datei",
@@ -3125,7 +3167,7 @@ function normalizeChatMessageRecord(messageId, data = {}, localMap = new Map()) 
     const safeAttachmentId = String(attachment?.id || `att_${index}`).trim() || `att_${index}`;
     const localAttachment = localAttachmentMap.get(safeAttachmentId) || {};
     const rawDataUrl = String(attachment?.dataUrl || localAttachment?.dataUrl || "");
-    const inlineDataUrl = rawDataUrl && rawDataUrl.length <= 250000 ? rawDataUrl : "";
+    const inlineDataUrl = isChatInlineDataUrl(rawDataUrl) ? rawDataUrl : "";
     return {
       id: safeAttachmentId,
       name: String(attachment?.name || localAttachment?.name || "Datei").trim() || "Datei",
@@ -3208,6 +3250,44 @@ async function readFileAsDataUrl(file) {
     reader.onerror = () => reject(reader.error || new Error("file_read_failed"));
     reader.readAsDataURL(file);
   });
+}
+
+async function buildInlineChatAttachment(file, isImage = false) {
+  const source = file || {};
+  const safeName = String(source.name || "Datei").trim() || "Datei";
+  const safeMime = String(source.type || "application/octet-stream").trim() || "application/octet-stream";
+  const safeSize = Math.max(0, Number(source.size || 0) || 0);
+
+  const readInline = async (candidate) => {
+    try {
+      const dataUrl = await readFileAsDataUrl(candidate);
+      return isChatInlineDataUrl(dataUrl) ? dataUrl : "";
+    } catch {
+      return "";
+    }
+  };
+
+  let finalFile = source;
+  let dataUrl = await readInline(source);
+
+  if (!dataUrl && isImage) {
+    for (const step of CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS) {
+      const compressed = await compressImage(source, step.maxSize, step.quality, "image/jpeg");
+      const candidateDataUrl = await readInline(compressed);
+      if (!candidateDataUrl) continue;
+      finalFile = compressed;
+      dataUrl = candidateDataUrl;
+      break;
+    }
+  }
+
+  return {
+    name: String(finalFile?.name || safeName).trim() || safeName,
+    mime: String(finalFile?.type || safeMime).trim() || safeMime,
+    size: Math.max(0, Number(finalFile?.size || safeSize) || 0),
+    dataUrl,
+    oversize: !dataUrl
+  };
 }
 
 function loadChatThreadMessages(profile) {
@@ -3527,22 +3607,15 @@ async function addChatAttachments(fileList) {
   const nextAttachments = [];
   for (const file of selected) {
     const isImage = /^image\//i.test(String(file.type || ""));
-    let dataUrl = "";
-    if (Number(file.size || 0) <= CHAT_ATTACHMENT_INLINE_MAX_BYTES) {
-      try {
-        dataUrl = await readFileAsDataUrl(file);
-      } catch {
-        dataUrl = "";
-      }
-    }
+    const inlineAttachment = await buildInlineChatAttachment(file, isImage);
     nextAttachments.push({
       id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      name: file.name || "Datei",
-      mime: file.type || "application/octet-stream",
+      name: inlineAttachment.name || file.name || "Datei",
+      mime: inlineAttachment.mime || file.type || "application/octet-stream",
       kind: isImage ? "image" : "file",
-      dataUrl,
-      size: Number(file.size || 0),
-      oversize: Number(file.size || 0) > CHAT_ATTACHMENT_INLINE_MAX_BYTES
+      dataUrl: inlineAttachment.dataUrl || "",
+      size: Math.max(0, Number(inlineAttachment.size || file.size || 0) || 0),
+      oversize: !!inlineAttachment.oversize
     });
   }
   state.chatModal.attachments = [...existing, ...nextAttachments];
