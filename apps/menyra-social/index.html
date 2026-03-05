@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>MENYRA Social</title>
   <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
   <link rel="icon" type="image/png" sizes="1024x1024" href="/apps/menyra-social/assets/menyra-social-logo.png" />
@@ -45,14 +45,18 @@
     }
     body { background: #f8fafc; color: #0f172a; margin: 0; }
     #app {
-      min-height: 100vh;
-      height: 100vh;
-      min-height: 100dvh;
-      height: 100dvh;
+      position: fixed;
+      left: 0;
+      right: 0;
+      top: var(--app-viewport-offset-top, 0px);
+      min-height: var(--app-viewport-height, 100dvh);
+      height: var(--app-viewport-height, 100dvh);
       overflow: hidden;
     }
     :root {
       --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+      --app-viewport-height: 100dvh;
+      --app-viewport-offset-top: 0px;
     }
     html.modal-open,
     body.modal-open {
@@ -139,7 +143,7 @@
   <div id="app"></div>
 
   <script src="https://unpkg.com/lucide@latest"></script>
-  <script type="module" src="./social-app.js?v=2026-03-05-hotfix-3"></script>
-  <script type="module" src="/apps/menyra-social/pwa.js?v=2026-03-05-hotfix-3"></script>
+  <script type="module" src="./social-app.js?v=2026-03-05-hotfix-4"></script>
+  <script type="module" src="/apps/menyra-social/pwa.js?v=2026-03-05-hotfix-4"></script>
 </body>
 </html>
