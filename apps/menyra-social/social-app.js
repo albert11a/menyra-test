@@ -13971,7 +13971,7 @@ function renderChatView() {
     const archivedThreads = threads.filter((thread) => isChatThreadArchived(thread));
     const visibleThreads = scope === "archived" ? archivedThreads : inboxThreads;
     return `
-      <div id="chatListView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+      <div id="chatListView" class="p-6">
         <div class="mb-4">
           <div class="bg-white/70 p-1.5 rounded-[1.6rem] border border-white/80 shadow-sm flex items-center gap-1">
             <button type="button" data-chat-list-tab="inbox" class="flex-1 h-10 rounded-[1.1rem] text-[10px] font-black uppercase tracking-widest transition-all ${scope === "inbox" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}">
@@ -14061,7 +14061,7 @@ function renderChatView() {
   const mutedActive = muteUntilMs > Date.now();
   const muteUntilLabel = mutedActive ? formatRelative(new Date(muteUntilMs)) : "";
   return `
-    <div id="chatThreadView" class="flex-1 min-h-0 px-4 pb-4 flex flex-col animate-in slide-in-from-right-10 duration-500">
+    <div id="chatThreadView" class="flex-1 min-h-0 px-4 pb-4 flex flex-col">
       <div class="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden flex flex-col flex-1 min-h-0 shadow-sm">
         <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto no-scrollbar p-4 space-y-3 bg-slate-50/70">
           ${blockedByOwner ? `
