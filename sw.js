@@ -37,8 +37,8 @@ self.addEventListener('push', (event) => {
   })();
 
   const notif = payload.notification || payload.webpush?.notification || {};
-  const title = notif.title || payload.title || 'Menyra';
-  const body = notif.body || payload.body || 'Neue Mitteilung';
+  const title = notif.title || payload.title || 'Benachrichtigung';
+  const body = notif.body || payload.body || 'Neue Nachricht';
   const icon = notif.icon || payload.icon || '/apps/menyra-social/assets/menyra-social-logo.png';
   const link = payload.fcmOptions?.link || payload.data?.link || '/apps/menyra-social/';
   const tag = notif.tag || `menyra_notif_${payload.data?.notificationId || Date.now()}`;

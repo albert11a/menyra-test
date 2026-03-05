@@ -414,6 +414,7 @@ const state = {
   roleSwitchRoles: [],
   roleSwitchRestaurantId: "",
   followingHandles: [],
+  followingTargetIds: [],
   pendingFollowRequests: [],
   chatThreads: [],
   shopCart: createEmptyShopCart(),
@@ -595,6 +596,7 @@ let lastCommentKey = "";
 let lastCommentAt = 0;
 let lastMenuCommentKey = "";
 let lastMenuCommentAt = 0;
+let chatSendDispatchLock = false;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
 let pendingProfileRestaurantId = "";
@@ -2356,8 +2358,8 @@ async function ensureNotificationPermission({ interactive = false } = {}) {
 
 async function showNativePushAlert(notif) {
   if (!notif?.id || !canEmitNativePushAlerts()) return;
-  const title = String(notif.user || "Menyra");
-  const body = String(notif.text || "Neue Mitteilung");
+  const title = String(notif.user || notif.userHandle || "Benachrichtigung");
+  const body = String(notif.text || "Neue Nachricht");
   const icon = String(resolveNotificationAvatar(notif) || "/apps/menyra-social/assets/menyra-social-logo.png");
   const tag = `menyra_notif_${notif.id}`;
   const data = {
@@ -2558,13 +2560,26 @@ async function disablePushDeviceRegistration() {
   }
 }
 
-function saveFollowing(handles) {
+function saveFollowing(handles, targetIds = state.followingTargetIds) {
   if (!Array.isArray(handles)) return;
   try {
     const uid = state.user?.uid || "";
     if (!uid) return;
-    safeStorage.setItem(followingKey(uid), JSON.stringify(handles.slice(0, 500)));
+    const payload = {
+      handles: handles.slice(0, 500),
+      targetIds: (Array.isArray(targetIds) ? targetIds : [])
+        .map((id) => String(id || "").trim())
+        .filter(Boolean)
+        .slice(0, 500)
+    };
+    safeStorage.setItem(followingKey(uid), JSON.stringify(payload));
   } catch {}
+}
+
+function normalizeFollowHandle(value) {
+  const raw = String(value || "").replace(/^@/, "").trim();
+  if (!raw) return "";
+  return normalizeHandle(raw);
 }
 
 function syncPrivateSettingFromProfile(value) {
@@ -2578,31 +2593,51 @@ function getFollowDocId(targetType, targetId, handle) {
   return `${targetType || "handle"}_${targetId || handle}`;
 }
 
-function applyFollowingHandles(handles, { shouldRender = true } = {}) {
+function applyFollowingHandles(handles, { shouldRender = true, targetIds = state.followingTargetIds } = {}) {
   const nextHandles = Array.from(new Set(
     (Array.isArray(handles) ? handles : [])
-      .map((item) => String(item || "").replace(/^@/, "").trim())
+      .map((item) => normalizeFollowHandle(item))
+      .filter(Boolean)
+  ));
+  const nextTargetIds = Array.from(new Set(
+    (Array.isArray(targetIds) ? targetIds : [])
+      .map((id) => String(id || "").trim())
       .filter(Boolean)
   ));
   const prevKey = state.followingHandles.join("|");
+  const prevIdsKey = state.followingTargetIds.join("|");
   const nextKey = nextHandles.join("|");
+  const nextIdsKey = nextTargetIds.join("|");
   state.followingHandles = nextHandles;
-  state.pendingFollowRequests = state.pendingFollowRequests.filter((handle) => !nextHandles.includes(handle));
+  state.followingTargetIds = nextTargetIds;
+  state.pendingFollowRequests = (Array.isArray(state.pendingFollowRequests) ? state.pendingFollowRequests : [])
+    .map((handle) => normalizeFollowHandle(handle))
+    .filter((handle) => handle && !nextHandles.includes(handle));
   if (state.profileModal.profile) {
-    const modalHandle = String(state.profileModal.profile.handle || "").replace(/^@/, "");
+    const modalHandle = normalizeFollowHandle(state.profileModal.profile.handle || "");
     if (modalHandle && nextHandles.includes(modalHandle)) {
       state.profileModal.profile.pendingFollowRequest = false;
     }
   }
   if (state.profileView?.profile) {
-    const viewHandle = String(state.profileView.profile.handle || "").replace(/^@/, "");
+    const viewHandle = normalizeFollowHandle(state.profileView.profile.handle || "");
     if (viewHandle && nextHandles.includes(viewHandle)) {
       state.profileView.profile.pendingFollowRequest = false;
     }
   }
-  saveFollowing(nextHandles);
-  if (!shouldRender || prevKey === nextKey || lastRenderMode !== "main") return;
-  render();
+  saveFollowing(nextHandles, nextTargetIds);
+  if (!shouldRender || (prevKey === nextKey && prevIdsKey === nextIdsKey)) return;
+  if (lastRenderMode === "main") {
+    render();
+    return;
+  }
+  if (state.profileModal.open && !state.profileView) {
+    renderOverlays();
+    return;
+  }
+  if (state.profileView) {
+    render();
+  }
 }
 
 function chatIndexStorageKey(uid = state.user?.uid || "") {
@@ -3346,9 +3381,13 @@ async function syncChatMessageToRemote(message, partnerProfile = state.chatModal
     setDoc(senderMessageRef, senderPayload, { merge: true })
   ]);
 
-  await runTransaction(db, async (tx) => {
+  const txResult = await runTransaction(db, async (tx) => {
     const recipientSnap = await tx.get(recipientThreadRef);
-    const recipientUnread = Math.max(0, Number(recipientSnap.exists() ? recipientSnap.data()?.unreadCount : 0) || 0);
+    const recipientData = recipientSnap.exists() ? (recipientSnap.data() || {}) : {};
+    const recipientUnread = Math.max(0, Number(recipientData.unreadCount) || 0);
+    const recipientMuted = Number(recipientData.muteUntilMs || 0) > Date.now();
+    const recipientArchived = !!recipientData.archivedByOwner;
+    const recipientBlocked = !!recipientData.blockedByOwner;
     tx.set(recipientThreadRef, {
       uid: senderUid,
       restaurantId: "",
@@ -3361,7 +3400,25 @@ async function syncChatMessageToRemote(message, partnerProfile = state.chatModal
       updatedAtClient: createdAtClient
     }, { merge: true });
     tx.set(recipientMessageRef, recipientPayload, { merge: true });
+    return { recipientMuted, recipientArchived, recipientBlocked };
   });
+
+  const canNotifyRecipient = !!txResult && !txResult.recipientMuted && !txResult.recipientArchived && !txResult.recipientBlocked;
+  if (canNotifyRecipient) {
+    const safeMessageId = String(message?.id || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 90);
+    const notificationId = `chat_${senderUid}_${safeMessageId || Date.now()}`;
+    await pushUserNotificationWithId(partnerUid, notificationId, {
+      type: "chat_message",
+      user: senderProfile.name || senderProfile.handle || "User",
+      userHandle: senderProfile.handle || "",
+      userUid: senderUid,
+      avatar: senderProfile.avatar || "",
+      text: preview || "Neue Nachricht",
+      ownerType: "chat",
+      ownerId: senderUid,
+      link: `/apps/menyra-social/?tab=chat&chat=${encodeURIComponent(senderUid)}`
+    });
+  }
 }
 
 function syncChatThreadSummary(profile, messages) {
@@ -3535,6 +3592,11 @@ function closeChatModal() {
 
 async function sendChatMessage() {
   if (!state.chatModal.open || !state.chatModal.profile) return;
+  if (chatSendDispatchLock) return;
+  chatSendDispatchLock = true;
+  queueMicrotask(() => {
+    chatSendDispatchLock = false;
+  });
   if (isActiveChatThreadBlocked()) {
     alert("Dieser Chat ist blockiert. Entblocke ihn in der Chat-Uebersicht.");
     return;
@@ -3768,19 +3830,45 @@ function loadUserScopedPersisted(user) {
 
   const scopedFollowing = safeStorage.getItem(followingKey(uid));
   if (scopedFollowing) {
-    try { state.followingHandles = JSON.parse(scopedFollowing); } catch { state.followingHandles = []; }
+    try {
+      const parsed = JSON.parse(scopedFollowing);
+      const handlesRaw = Array.isArray(parsed)
+        ? parsed
+        : (Array.isArray(parsed?.handles) ? parsed.handles : []);
+      const targetIdsRaw = Array.isArray(parsed?.targetIds) ? parsed.targetIds : [];
+      state.followingHandles = Array.from(new Set(
+        handlesRaw
+          .map((item) => normalizeFollowHandle(item))
+          .filter(Boolean)
+      ));
+      state.followingTargetIds = Array.from(new Set(
+        targetIdsRaw
+          .map((id) => String(id || "").trim())
+          .filter(Boolean)
+      ));
+    } catch {
+      state.followingHandles = [];
+      state.followingTargetIds = [];
+    }
   } else {
     const legacyFollowing = safeStorage.getItem(STORAGE_KEYS.following);
     if (legacyFollowing) {
       try {
-        state.followingHandles = JSON.parse(legacyFollowing);
-        safeStorage.setItem(followingKey(uid), JSON.stringify(state.followingHandles.slice(0, 500)));
+        state.followingHandles = Array.from(new Set(
+          (JSON.parse(legacyFollowing) || [])
+            .map((item) => normalizeFollowHandle(item))
+            .filter(Boolean)
+        ));
+        state.followingTargetIds = [];
+        saveFollowing(state.followingHandles, state.followingTargetIds);
         safeStorage.removeItem(STORAGE_KEYS.following);
       } catch {
         state.followingHandles = [];
+        state.followingTargetIds = [];
       }
     } else {
       state.followingHandles = [];
+      state.followingTargetIds = [];
     }
   }
 
@@ -3865,6 +3953,7 @@ function resetUserScopedState() {
   state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
   state.selectedBusiness = null;
   state.followingHandles = [];
+  state.followingTargetIds = [];
   state.pendingFollowRequests = [];
   state.chatThreads = [];
   state.shopCart = createEmptyShopCart();
@@ -8186,6 +8275,7 @@ function startLiveListeners(user) {
   liveFeedDisabled = false;
   liveStoriesDisabled = false;
   attachCurrentUserProfileListener();
+  startFollowingListener(user);
   void syncNotificationsPushRuntime({ user, interactive: false, enabled: state.settings?.pushNotifs });
 }
 
@@ -9196,13 +9286,19 @@ async function loadPostLikesForModal(postId) {
   return meta.likes || [];
 }
 
+function isFollowingProfile(profile = {}) {
+  const uid = String(profile?.uid || "").trim();
+  if (uid && state.followingTargetIds.includes(uid)) return true;
+  const followKey = normalizeFollowHandle(profile?.handle || "");
+  return !!(followKey && state.followingHandles.includes(followKey));
+}
+
 function renderPublicProfileView() {
   const view = state.profileView;
   if (!view || !view.profile) return "";
   const profile = view.profile;
   const posts = view.posts || profile.posts || [];
-  const followKey = String(profile.handle || "").replace(/^@/, "");
-  const isFollowing = state.followingHandles.includes(followKey);
+  const isFollowing = isFollowingProfile(profile);
   const isLocked = !!profile.privateAccount && profile.uid && String(profile.uid) !== String(state.user?.uid || "") && !isFollowing;
   const hasPendingFollowRequest = !!profile.pendingFollowRequest && !isFollowing;
   const typeLabel = profile.restaurantId ? "Business" : "User";
@@ -10435,15 +10531,44 @@ async function loadFollowingFromFirebase({ force = false } = {}) {
     const ref = collection(db, "users", state.user.uid, "following");
     const snap = await getDocs(ref);
     const handles = [];
+    const targetIds = [];
     snap.forEach((docSnap) => {
       const data = docSnap.data() || {};
-      if (data.handle) handles.push(String(data.handle));
+      const handle = normalizeFollowHandle(data.handle || data.targetHandle || "");
+      if (handle) handles.push(handle);
+      const targetId = String(data.targetId || "").trim();
+      if (targetId) targetIds.push(targetId);
     });
-    applyFollowingHandles(handles, { shouldRender: false });
+    applyFollowingHandles(handles, { shouldRender: false, targetIds });
   } catch (err) {
     console.error(err);
     state.followingHandles = [];
+    state.followingTargetIds = [];
   }
+}
+
+function startFollowingListener(user = state.user) {
+  if (followingUnsub) {
+    followingUnsub();
+    followingUnsub = null;
+  }
+  const ownerUid = String(user?.uid || "").trim();
+  if (!ownerUid) return;
+  const ref = collection(db, "users", ownerUid, "following");
+  followingUnsub = onSnapshot(ref, (snap) => {
+    const handles = [];
+    const targetIds = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data() || {};
+      const handle = normalizeFollowHandle(data.handle || data.targetHandle || "");
+      if (handle) handles.push(handle);
+      const targetId = String(data.targetId || "").trim();
+      if (targetId) targetIds.push(targetId);
+    });
+    applyFollowingHandles(handles, { targetIds });
+  }, (err) => {
+    console.error(err);
+  });
 }
 
 function normalizeNotificationItem(docSnap) {
@@ -10548,9 +10673,13 @@ async function syncNotificationsPushRuntime({ user = state.user, interactive = f
   clearPushActivationIssue();
 
   const granted = await ensureNotificationPermission({ interactive });
-  startNotificationsListener(user, { enableNativePush: granted });
-  if (!granted) return false;
+  if (!granted) {
+    startNotificationsListener(user, { enableNativePush: false });
+    return false;
+  }
   const registered = await syncPushDeviceRegistration({ interactive, force: interactive, enabled });
+  // Avoid duplicate system notifications: native snapshot alerts are fallback only.
+  startNotificationsListener(user, { enableNativePush: !registered });
   if (!registered && !pushActivationIssue) {
     setPushActivationIssue("Push-Registrierung fehlgeschlagen.");
   }
@@ -10588,6 +10717,21 @@ async function pushUserNotification(targetUid, payload) {
   }
 }
 
+async function pushUserNotificationWithId(targetUid, notificationId, payload) {
+  const safeTargetUid = String(targetUid || "").trim();
+  const safeNotificationId = String(notificationId || "").trim();
+  if (!safeTargetUid || !safeNotificationId) return;
+  try {
+    await setDoc(doc(db, "users", safeTargetUid, "notifications", safeNotificationId), {
+      ...payload,
+      read: false,
+      createdAt: serverTimestamp()
+    }, { merge: true });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 async function hasPendingFollowRequest(targetUid) {
   const safeTargetUid = String(targetUid || "").trim();
   if (!safeTargetUid || !state.user?.uid || safeTargetUid === String(state.user.uid)) return false;
@@ -10602,7 +10746,7 @@ async function hasPendingFollowRequest(targetUid) {
 
 async function sendFollowRequest(handle, target = {}) {
   if (!state.user) return;
-  const safeHandle = String(handle || "").replace(/^@/, "").trim();
+  const safeHandle = normalizeFollowHandle(handle);
   const targetUid = String(target.id || target.uid || "").trim();
   if (!safeHandle || !targetUid || targetUid === String(state.user.uid)) return;
   if (state.followingHandles.includes(safeHandle) || state.pendingFollowRequests.includes(safeHandle)) return;
@@ -10648,7 +10792,7 @@ async function acceptFollowRequest(notificationId) {
   if (!requesterUid || requesterUid === String(state.user.uid)) return;
 
   const actor = currentUserBadge();
-  const targetHandle = String(state.userProfile.handle || actor.handle || normalizeHandle(state.userProfile.name || "user")).replace(/^@/, "");
+  const targetHandle = normalizeFollowHandle(state.userProfile.handle || actor.handle || normalizeHandle(state.userProfile.name || "user"));
   const followRef = doc(db, "users", requesterUid, "following", getFollowDocId("user", state.user.uid, targetHandle));
 
   try {
@@ -10823,6 +10967,23 @@ async function openNotificationTarget(id) {
   const notif = state.notifications.find((n) => n.id === id);
   if (!notif) return;
   void markNotificationRead(id);
+  if (notif.type === "follow_accepted") {
+    const acceptedHandle = normalizeFollowHandle(notif.userHandle || "");
+    const acceptedUid = String(notif.userUid || "").trim();
+    applyFollowingHandles(
+      acceptedHandle ? [acceptedHandle, ...(state.followingHandles || [])] : state.followingHandles,
+      { shouldRender: false, targetIds: [acceptedUid, ...(state.followingTargetIds || [])] }
+    );
+  }
+  if (notif.type === "chat_message") {
+    openChatWithProfile({
+      uid: notif.userUid || "",
+      handle: notif.userHandle || notif.user || "",
+      name: notif.user || "User",
+      avatar: notif.img || ""
+    });
+    return;
+  }
   if (notif.type === "follow" || notif.type === "follow_request" || notif.type === "follow_accepted") {
     openProfileFromUser({
       uid: notif.userUid || "",
@@ -10839,22 +11000,27 @@ async function openNotificationTarget(id) {
 
 async function resolveUserByHandle(handle) {
   if (!handle) return null;
-  const safeHandle = String(handle || "").replace(/^@/, "");
-  try {
-    const snap = await getDocs(query(collection(db, "users"), where("handle", "==", safeHandle), limit(1)));
-    if (!snap.empty) {
-      const docSnap = snap.docs[0];
-      return { id: docSnap.id, data: docSnap.data() || {} };
+  const rawHandle = String(handle || "").replace(/^@/, "").trim();
+  const normalizedHandle = normalizeFollowHandle(rawHandle);
+  const candidates = Array.from(new Set([rawHandle, normalizedHandle].filter(Boolean)));
+  for (const candidate of candidates) {
+    try {
+      const snap = await getDocs(query(collection(db, "users"), where("handle", "==", candidate), limit(1)));
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        return { id: docSnap.id, data: docSnap.data() || {} };
+      }
+    } catch (err) {
+      console.error(err);
     }
-  } catch (err) {
-    console.error(err);
   }
   return null;
 }
 
 async function toggleFollow(handle, target = {}) {
   if (!state.user) return;
-  const safeHandle = String(handle || "").replace(/^@/, "");
+  const rawHandle = String(handle || "").replace(/^@/, "").trim();
+  const safeHandle = normalizeFollowHandle(rawHandle);
   if (!safeHandle) return;
 
   let targetType = target.type || "";
@@ -10869,8 +11035,8 @@ async function toggleFollow(handle, target = {}) {
     }
   }
 
-  if (!targetId && safeHandle) {
-    const userSnap = await resolveUserByHandle(safeHandle);
+  if (!targetId && (rawHandle || safeHandle)) {
+    const userSnap = await resolveUserByHandle(rawHandle || safeHandle);
     if (userSnap?.id) {
       targetType = "user";
       targetId = userSnap.id;
@@ -10885,7 +11051,8 @@ async function toggleFollow(handle, target = {}) {
   if (!targetId && ownHandle && safeHandle.toLowerCase() === ownHandle) return;
 
   const idx = state.followingHandles.indexOf(safeHandle);
-  const isUnfollow = idx >= 0;
+  const safeTargetId = String(targetId || "").trim();
+  const isUnfollow = idx >= 0 || (targetType === "user" && safeTargetId && state.followingTargetIds.includes(safeTargetId));
   let targetIsPrivate = false;
   if (!isUnfollow && targetType === "user" && targetId) {
     if (state.profileView?.profile?.uid === targetId) {
@@ -10919,7 +11086,10 @@ async function toggleFollow(handle, target = {}) {
   try {
     if (isUnfollow) {
       await deleteDoc(followRef);
-      state.followingHandles.splice(idx, 1);
+      if (idx >= 0) state.followingHandles.splice(idx, 1);
+      if (targetType === "user" && safeTargetId) {
+        state.followingTargetIds = state.followingTargetIds.filter((id) => id !== safeTargetId);
+      }
     } else {
       await setDoc(followRef, {
         handle: safeHandle,
@@ -10930,6 +11100,9 @@ async function toggleFollow(handle, target = {}) {
         createdAt: serverTimestamp()
       });
       state.followingHandles.unshift(safeHandle);
+      if (targetType === "user" && safeTargetId) {
+        state.followingTargetIds = Array.from(new Set([safeTargetId, ...state.followingTargetIds]));
+      }
     }
 
     state.userProfile.following = Math.max(0, toNum(state.userProfile.following) + delta);
@@ -10968,7 +11141,7 @@ async function toggleFollow(handle, target = {}) {
         console.error(err);
       }
     }
-    saveFollowing(state.followingHandles);
+    saveFollowing(state.followingHandles, state.followingTargetIds);
 
     const profileModal = state.profileModal.profile;
     const profileView = state.profileView?.profile || null;
@@ -11185,8 +11358,7 @@ function renderProfileShopCartView(profile = state.profileView?.profile || state
 function renderProfileModal() {
   if (!state.profileModal.open || !state.profileModal.profile) return "";
   const p = state.profileModal.profile;
-  const followKey = String(p.handle || "").replace(/^@/, "");
-  const isFollowing = state.followingHandles.includes(followKey);
+  const isFollowing = isFollowingProfile(p);
   const hasPendingFollowRequest = !!p.pendingFollowRequest && !isFollowing;
   const isLocked = !!p.privateAccount && p.uid && String(p.uid) !== String(state.user?.uid || "") && !isFollowing;
   const typeLabel = p.restaurantId ? "Business" : "User";
@@ -14716,6 +14888,8 @@ function bindOverlayEvents({
     if (chatInput) {
       chatInput.addEventListener("input", () => {
         state.chatModal.draft = chatInput.value;
+        chatInput.style.height = "auto";
+        chatInput.style.height = `${Math.min(chatInput.scrollHeight, 112)}px`;
       });
       chatInput.addEventListener("keydown", (evt) => {
         if (evt.key === "Enter" && !evt.shiftKey) {
@@ -14724,6 +14898,8 @@ function bindOverlayEvents({
         }
       });
       queueMicrotask(() => {
+        chatInput.style.height = "auto";
+        chatInput.style.height = `${Math.min(chatInput.scrollHeight, 112)}px`;
         chatInput.focus({ preventScroll: true });
         const len = chatInput.value.length;
         try {
@@ -15793,39 +15969,6 @@ function bindAppEvents() {
     chatAttachmentInput.addEventListener("change", async (e) => {
       await addChatAttachments(e.target.files || []);
       chatAttachmentInput.value = "";
-    });
-  }
-
-  const chatSendBtn = document.getElementById("chatSendBtn");
-  if (chatSendBtn) {
-    chatSendBtn.addEventListener("click", () => {
-      sendChatMessage();
-    });
-  }
-
-  const chatMessageInput = document.getElementById("chatMessageInput");
-  if (chatMessageInput) {
-    chatMessageInput.addEventListener("input", () => {
-      state.chatModal.draft = chatMessageInput.value;
-      chatMessageInput.style.height = "auto";
-      chatMessageInput.style.height = `${Math.min(chatMessageInput.scrollHeight, 112)}px`;
-    });
-    chatMessageInput.addEventListener("keydown", (evt) => {
-      if (evt.key === "Enter" && !evt.shiftKey) {
-        evt.preventDefault();
-        sendChatMessage();
-      }
-    });
-    queueMicrotask(() => {
-      chatMessageInput.style.height = "auto";
-      chatMessageInput.style.height = `${Math.min(chatMessageInput.scrollHeight, 112)}px`;
-    });
-  }
-
-  const chatMessages = document.getElementById("chatMessages");
-  if (chatMessages) {
-    queueMicrotask(() => {
-      chatMessages.scrollTop = chatMessages.scrollHeight;
     });
   }
 
@@ -20419,11 +20562,6 @@ async function bootstrapUser(user) {
   }
   if (!dataLoaded.following) {
     dataLoaded.following = true;
-    const cachedFollowing = Array.isArray(state.followingHandles) ? state.followingHandles.length : 0;
-    const followingCount = Number(state.userProfile?.following || 0) || 0;
-    if (!cachedFollowing && followingCount > 0) {
-      void loadFollowingFromFirebase();
-    }
   }
   startLiveListeners(user);
   ensureTabData(state.activeTab);

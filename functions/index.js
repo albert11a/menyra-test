@@ -21,11 +21,16 @@ function asText(value, fallback = "") {
 }
 
 function resolveNotificationTitle(data = {}) {
-  return asText(data.user || data.userName, "Menyra");
+  return asText(
+    data.title || data.user || data.userName || data.senderName || data.senderHandle,
+    "Benachrichtigung"
+  );
 }
 
 function resolveNotificationBody(data = {}) {
-  return asText(data.text, "Neue Mitteilung");
+  const type = asText(data.type).toLowerCase();
+  if (type === "chat_message") return asText(data.text, "Neue Nachricht");
+  return asText(data.text || data.body, "Neue Mitteilung");
 }
 
 function resolveNotificationLink(data = {}) {
