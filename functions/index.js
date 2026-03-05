@@ -36,9 +36,29 @@ function resolveNotificationBody(data = {}) {
 function resolveNotificationLink(data = {}) {
   const envUrl = asText(process.env.MENYRA_SOCIAL_URL);
   const deepLink = asText(data.link || data.url);
-  if (deepLink.startsWith("http://") || deepLink.startsWith("https://")) return deepLink;
-  if (deepLink.startsWith("/")) return deepLink;
-  return envUrl || DEFAULT_SOCIAL_URL;
+  const baseUrl = envUrl || DEFAULT_SOCIAL_URL;
+  if (!deepLink) return baseUrl;
+  try {
+    return new URL(deepLink, baseUrl).toString();
+  } catch {
+    return baseUrl;
+  }
+}
+
+function addNotificationQuery(link, notificationId) {
+  const safeNotificationId = asText(notificationId);
+  if (!safeNotificationId) return asText(link, DEFAULT_SOCIAL_URL);
+  try {
+    const parsed = new URL(asText(link, DEFAULT_SOCIAL_URL), DEFAULT_SOCIAL_URL);
+    if (!parsed.searchParams.get("notif")) {
+      parsed.searchParams.set("notif", safeNotificationId);
+    }
+    return parsed.toString();
+  } catch {
+    const base = asText(link, DEFAULT_SOCIAL_URL);
+    const glue = base.includes("?") ? "&" : "?";
+    return `${base}${glue}notif=${encodeURIComponent(safeNotificationId)}`;
+  }
 }
 
 exports.sendWebPushOnNotificationCreate = functions
@@ -77,7 +97,7 @@ exports.sendWebPushOnNotificationCreate = functions
 
     const title = resolveNotificationTitle(data);
     const body = resolveNotificationBody(data);
-    const link = resolveNotificationLink(data);
+    const link = addNotificationQuery(resolveNotificationLink(data), notificationId);
     const icon = asText(data.avatar || data.img, DEFAULT_ICON);
 
     const response = await admin.messaging().sendEachForMulticast({
@@ -86,9 +106,13 @@ exports.sendWebPushOnNotificationCreate = functions
       data: {
         notificationId,
         userId,
+        type: asText(data.type),
+        userUid: asText(data.userUid || data.uid),
         ownerType: asText(data.ownerType),
         ownerId: asText(data.ownerId),
-        postId: asText(data.postId)
+        postId: asText(data.postId),
+        commentId: asText(data.commentId),
+        link
       },
       webpush: {
         fcmOptions: {

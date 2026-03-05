@@ -602,6 +602,8 @@ let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuD
 let pendingProfileRestaurantId = "";
 let pendingProfileTopTab = "";
 let pendingProfileHandled = false;
+let pendingNotificationId = "";
+let pendingNotificationHandled = false;
 let dataLoaded = {
   feed: false,
   profile: false,
@@ -678,6 +680,7 @@ let lastAuthUid = "";
 try {
   pendingProfileRestaurantId = qs("r") || qs("restaurant") || "";
   pendingProfileTopTab = qs("tab") || qs("top") || "";
+  pendingNotificationId = qs("notif") || qs("notification") || qs("nid") || "";
 } catch {}
 
 function getActiveUid() {
@@ -2362,9 +2365,14 @@ async function showNativePushAlert(notif) {
   const body = String(notif.text || "Neue Nachricht");
   const icon = String(resolveNotificationAvatar(notif) || "/apps/menyra-social/assets/menyra-social-logo.png");
   const tag = `menyra_notif_${notif.id}`;
+  const notifId = String(notif.id || "");
+  const deepLink = notifId
+    ? `/apps/menyra-social/?notif=${encodeURIComponent(notifId)}`
+    : "/apps/menyra-social/";
   const data = {
-    url: "/apps/menyra-social/",
-    notifId: String(notif.id || "")
+    url: deepLink,
+    notifId,
+    notificationId: notifId
   };
   try {
     if ("serviceWorker" in navigator) {
@@ -10392,6 +10400,57 @@ function openOwnBusinessProfile({ showBack = true, topTab } = {}) {
     ensureMenuDataForProfile();
     ensureFocusDataForProfile();
   }
+}
+
+function clearNotificationQueryParams() {
+  if (typeof window === "undefined" || !window.history?.replaceState) return;
+  try {
+    const url = new URL(window.location.href);
+    const keys = ["notif", "notification", "nid"];
+    let changed = false;
+    keys.forEach((key) => {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key);
+        changed = true;
+      }
+    });
+    if (!changed) return;
+    const query = url.searchParams.toString();
+    const next = `${url.pathname}${query ? `?${query}` : ""}${url.hash || ""}`;
+    window.history.replaceState({}, "", next);
+  } catch {}
+}
+
+async function maybeOpenNotificationFromQuery() {
+  if (pendingNotificationHandled) return;
+  if (!pendingNotificationId) return;
+  if (!state.user?.uid) return;
+
+  const safeNotificationId = String(pendingNotificationId || "").trim();
+  if (!safeNotificationId) return;
+  pendingNotificationHandled = true;
+  pendingNotificationId = "";
+  clearNotificationQueryParams();
+
+  let notificationItem = (state.notifications || []).find((item) => String(item?.id || "") === safeNotificationId) || null;
+  if (!notificationItem) {
+    try {
+      const snap = await getDoc(doc(db, "users", state.user.uid, "notifications", safeNotificationId));
+      if (snap.exists()) {
+        notificationItem = normalizeNotificationItem(snap);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+  if (!notificationItem) return;
+
+  state.notifications = [
+    notificationItem,
+    ...(state.notifications || []).filter((item) => String(item?.id || "") !== safeNotificationId)
+  ];
+  saveNotifications(state.notifications);
+  await openNotificationTarget(safeNotificationId);
 }
 
 function maybeOpenProfileFromQuery() {
@@ -20619,7 +20678,10 @@ onAuthStateChanged(auth, (user) => {
     loadUserScopedPersisted(user);
     render();
     bootstrapUser(user);
-    queueMicrotask(() => maybeOpenProfileFromQuery());
+    queueMicrotask(() => {
+      maybeOpenProfileFromQuery();
+      void maybeOpenNotificationFromQuery();
+    });
   } else {
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";

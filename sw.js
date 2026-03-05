@@ -27,6 +27,21 @@ self.addEventListener('message', (event) => {
   } catch (err) {}
 });
 
+function buildNotificationTargetUrl(rawUrl, notificationId) {
+  const fallback = '/apps/menyra-social/';
+  const safeId = String(notificationId || '').trim();
+  try {
+    const parsed = new URL(rawUrl || fallback, self.location.origin);
+    if (safeId && !parsed.searchParams.get('notif')) {
+      parsed.searchParams.set('notif', safeId);
+    }
+    return parsed.href;
+  } catch (err) {
+    if (!safeId) return fallback;
+    return `${fallback}?notif=${encodeURIComponent(safeId)}`;
+  }
+}
+
 self.addEventListener('push', (event) => {
   const payload = (() => {
     try {
@@ -40,7 +55,11 @@ self.addEventListener('push', (event) => {
   const title = notif.title || payload.title || 'Benachrichtigung';
   const body = notif.body || payload.body || 'Neue Nachricht';
   const icon = notif.icon || payload.icon || '/apps/menyra-social/assets/menyra-social-logo.png';
-  const link = payload.fcmOptions?.link || payload.data?.link || '/apps/menyra-social/';
+  const notificationId = payload.data?.notificationId || payload.data?.notifId || '';
+  const link = buildNotificationTargetUrl(
+    payload.fcmOptions?.link || payload.data?.link || '/apps/menyra-social/',
+    notificationId
+  );
   const tag = notif.tag || `menyra_notif_${payload.data?.notificationId || Date.now()}`;
 
   event.waitUntil(
@@ -51,6 +70,7 @@ self.addEventListener('push', (event) => {
       tag,
       data: {
         ...(payload.data || {}),
+        notificationId: notificationId || payload.data?.notificationId || '',
         url: link
       }
     })
@@ -60,7 +80,10 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification?.close();
   const data = event.notification?.data || {};
-  const targetUrl = data.url || '/apps/menyra-social/';
+  const targetUrl = buildNotificationTargetUrl(
+    data.url || data.link || '/apps/menyra-social/',
+    data.notificationId || data.notifId || ''
+  );
   event.waitUntil((async () => {
     const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of clientsList) {
