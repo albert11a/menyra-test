@@ -80,23 +80,53 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification?.close();
   const data = event.notification?.data || {};
+  const notificationId = String(data.notificationId || data.notifId || '').trim();
   const targetUrl = buildNotificationTargetUrl(
     data.url || data.link || '/apps/menyra-social/',
-    data.notificationId || data.notifId || ''
+    notificationId
   );
   event.waitUntil((async () => {
     const clientsList = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const client of clientsList) {
-      if ('focus' in client) {
+    const socialClient = clientsList.find((client) => {
+      try {
+        const parsed = new URL(client.url);
+        return parsed.origin === self.location.origin && parsed.pathname.startsWith('/apps/menyra-social/');
+      } catch (err) {
+        return false;
+      }
+    });
+    const fallbackClient = socialClient || clientsList[0];
+
+    if (socialClient && 'focus' in socialClient) {
+      try {
+        await socialClient.focus();
+      } catch (err) {}
+
+      try {
+        socialClient.postMessage({
+          type: 'OPEN_NOTIFICATION_TARGET',
+          notificationId,
+          url: targetUrl
+        });
+        return;
+      } catch (err) {}
+
+      if ('navigate' in socialClient && targetUrl) {
         try {
-          await client.focus();
-          if ('navigate' in client && targetUrl) {
-            await client.navigate(targetUrl);
-          }
+          await socialClient.navigate(targetUrl);
           return;
         } catch (err) {}
       }
     }
+
+    if (fallbackClient && 'focus' in fallbackClient && 'navigate' in fallbackClient && targetUrl) {
+      try {
+        await fallbackClient.focus();
+        await fallbackClient.navigate(targetUrl);
+        return;
+      } catch (err) {}
+    }
+
     if (self.clients.openWindow) {
       await self.clients.openWindow(targetUrl);
     }

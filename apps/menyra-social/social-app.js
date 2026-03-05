@@ -177,7 +177,7 @@ const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 // Firebase Console -> Cloud Messaging -> Web Push certificate key pair (public VAPID key)
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
-const PUSH_SW_URL = "/sw.js";
+const PUSH_SW_URL = "/sw.js?v=2026-03-05-hotfix-3";
 const PUSH_SW_SCOPE = "/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
@@ -604,6 +604,7 @@ let pendingProfileTopTab = "";
 let pendingProfileHandled = false;
 let pendingNotificationId = "";
 let pendingNotificationHandled = false;
+let pushOpenMessageBound = false;
 let dataLoaded = {
   feed: false,
   profile: false,
@@ -10452,6 +10453,26 @@ async function maybeOpenNotificationFromQuery() {
   saveNotifications(state.notifications);
   await openNotificationTarget(safeNotificationId);
   return true;
+}
+
+function handlePushOpenTargetMessage(payload = {}) {
+  const safeNotificationId = String(payload?.notificationId || payload?.notifId || "").trim();
+  if (!safeNotificationId) return;
+  pendingNotificationHandled = false;
+  pendingNotificationId = safeNotificationId;
+  if (!state.user?.uid) return;
+  void maybeOpenNotificationFromQuery();
+}
+
+function bindPushOpenTargetMessageHandler() {
+  if (pushOpenMessageBound) return;
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+  navigator.serviceWorker.addEventListener("message", (event) => {
+    const payload = event?.data || {};
+    if (payload?.type !== "OPEN_NOTIFICATION_TARGET") return;
+    handlePushOpenTargetMessage(payload);
+  });
+  pushOpenMessageBound = true;
 }
 
 function maybeOpenProfileFromQuery() {
@@ -20662,6 +20683,7 @@ async function bootstrapUser(user) {
 }
 
 loadPersisted();
+bindPushOpenTargetMessageHandler();
 render();
 
 onAuthStateChanged(auth, (user) => {
