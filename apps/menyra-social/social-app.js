@@ -14120,7 +14120,7 @@ function renderChatView() {
   return `
     <div id="chatThreadView" class="flex-1 min-h-0 px-4 pb-4 flex flex-col">
       <div class="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden flex flex-col flex-1 min-h-0 shadow-sm">
-        <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto no-scrollbar p-4 space-y-3 bg-slate-50/70">
+        <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar p-4 space-y-3 bg-slate-50/70">
           ${blockedByOwner ? `
             <div class="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-black uppercase tracking-widest">
               Chat blockiert
@@ -14189,7 +14189,7 @@ function renderChatView() {
             </div>
           `}
         </div>
-        <div class="p-4 border-t border-slate-100 bg-white">
+        <div class="shrink-0 p-4 border-t border-slate-100 bg-white">
           ${(pendingAttachments.length) ? `
             <div class="flex gap-2 overflow-x-auto no-scrollbar pb-3">
               ${pendingAttachments.map((attachment) => `
@@ -14270,7 +14270,7 @@ function renderHeader() {
     const partner = state.chatModal.profile;
     const partnerAvatar = getOptimizedImageUrl(partner.avatar, "avatar");
     return `
-      <header class="p-6 pb-3 flex items-center justify-between gap-3 relative z-40 bg-slate-50">
+      <header class="shrink-0 p-6 pb-3 flex items-center justify-between gap-3 relative z-40 bg-slate-50">
         <button data-chat-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
           ${icon("arrow-left", "w-5 h-5")}
         </button>
@@ -14288,7 +14288,7 @@ function renderHeader() {
   }
   if (state.activeTab === "chat") {
     return `
-      <header class="p-6 pb-3 flex justify-between items-center relative z-40 bg-slate-50">
+      <header class="shrink-0 p-6 pb-3 flex justify-between items-center relative z-40 bg-slate-50">
         <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
           <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
           <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
