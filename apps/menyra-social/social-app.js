@@ -15972,6 +15972,39 @@ function bindAppEvents() {
     });
   }
 
+  const chatSendBtn = document.getElementById("chatSendBtn");
+  if (chatSendBtn) {
+    chatSendBtn.addEventListener("click", () => {
+      sendChatMessage();
+    });
+  }
+
+  const chatMessageInput = document.getElementById("chatMessageInput");
+  if (chatMessageInput) {
+    chatMessageInput.addEventListener("input", () => {
+      state.chatModal.draft = chatMessageInput.value;
+      chatMessageInput.style.height = "auto";
+      chatMessageInput.style.height = `${Math.min(chatMessageInput.scrollHeight, 112)}px`;
+    });
+    chatMessageInput.addEventListener("keydown", (evt) => {
+      if (evt.key === "Enter" && !evt.shiftKey) {
+        evt.preventDefault();
+        sendChatMessage();
+      }
+    });
+    queueMicrotask(() => {
+      chatMessageInput.style.height = "auto";
+      chatMessageInput.style.height = `${Math.min(chatMessageInput.scrollHeight, 112)}px`;
+    });
+  }
+
+  const chatMessages = document.getElementById("chatMessages");
+  if (chatMessages) {
+    queueMicrotask(() => {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+  }
+
   const uploadFileInput = document.getElementById("uploadFileInput");
   const uploadTrigger = document.getElementById("uploadFileTrigger");
   if (uploadTrigger && uploadFileInput) {
