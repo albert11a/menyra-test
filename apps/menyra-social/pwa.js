@@ -34,12 +34,10 @@ async function registerSW() {
       });
     });
 
-    // Reload once when a new SW takes control to ensure fresh caches.
-    let hasRefreshed = false;
+    // Do not force a runtime reload on controller changes.
+    // A forced reload can interrupt deep-links opened from push notifications.
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (hasRefreshed) return;
-      hasRefreshed = true;
-      window.location.reload();
+      log('controller changed');
     });
   } catch (err) {
     console.warn('[PWA] SW registration failed', err);
