@@ -30,6 +30,7 @@ function resolveNotificationTitle(data = {}) {
 function resolveNotificationBody(data = {}) {
   const type = asText(data.type).toLowerCase();
   if (type === "chat_message") return asText(data.text, "Neue Nachricht");
+  if (type === "chat_call") return asText(data.text, "Eingehender Audio-Anruf");
   return asText(data.text || data.body, "Neue Mitteilung");
 }
 

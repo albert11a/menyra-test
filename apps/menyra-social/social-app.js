@@ -3162,20 +3162,65 @@ function normalizeRtcSessionDescription(input) {
   return { type, sdp };
 }
 
+function normalizeSdpForParser(sdp) {
+  const raw = String(sdp || "");
+  if (!raw) return "";
+  const normalized = raw
+    .replace(/\u0000/g, "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .split("\n")
+    .map((line) => line.replace(/\s+$/g, ""))
+    .filter((line, index, arr) => {
+      if (!line && index === arr.length - 1) return false;
+      return true;
+    })
+    .join("\r\n");
+  return normalized.endsWith("\r\n") ? normalized : `${normalized}\r\n`;
+}
+
+function stripProblematicSdpLines(sdp) {
+  const normalized = normalizeSdpForParser(sdp);
+  if (!normalized) return normalized;
+  const filtered = normalized
+    .split("\r\n")
+    .filter((line) => {
+      const safe = String(line || "").trim();
+      if (!safe) return true;
+      if (/^a=ssrc:\d+\s+msid:/i.test(safe)) return false;
+      return true;
+    })
+    .join("\r\n");
+  return filtered.endsWith("\r\n") ? filtered : `${filtered}\r\n`;
+}
+
 async function setRemoteDescriptionSafe(pc, description) {
   if (!pc || !description) throw new Error("missing_remote_description");
-  try {
-    await pc.setRemoteDescription(description);
-    return;
-  } catch (firstErr) {
-    if (typeof RTCSessionDescription === "undefined") throw firstErr;
+  const base = normalizeRtcSessionDescription(description);
+  if (!base) throw new Error("invalid_remote_description");
+  const variants = [
+    base,
+    { ...base, sdp: normalizeSdpForParser(base.sdp) },
+    { ...base, sdp: stripProblematicSdpLines(base.sdp) }
+  ];
+  let lastErr = null;
+  for (const variant of variants) {
     try {
-      await pc.setRemoteDescription(new RTCSessionDescription(description));
+      await pc.setRemoteDescription(variant);
       return;
-    } catch {
-      throw firstErr;
+    } catch (err) {
+      lastErr = err;
+    }
+    if (typeof RTCSessionDescription !== "undefined") {
+      try {
+        await pc.setRemoteDescription(new RTCSessionDescription(variant));
+        return;
+      } catch (err) {
+        lastErr = err;
+      }
     }
   }
+  throw lastErr || new Error("set_remote_description_failed");
 }
 
 function normalizeChatCallRecord(data = {}) {
@@ -3378,6 +3423,19 @@ async function startOutgoingChatAudioCall() {
       startedAtClient: nowIso,
       updatedAtClient: nowIso
     }, { merge: true });
+    const safeCallNotifId = `call_${participants.selfUid}_${callId}`.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 110);
+    await pushUserNotificationWithId(participants.partnerUid, safeCallNotifId, {
+      type: "chat_call",
+      user: sender.name || sender.handle || "User",
+      userHandle: sender.handle || "",
+      userUid: participants.selfUid,
+      avatar: sender.avatar || "",
+      text: "ruft dich an",
+      ownerType: "chat",
+      ownerId: participants.selfUid,
+      callId,
+      link: `/apps/menyra-social/?tab=chat&chat=${encodeURIComponent(participants.selfUid)}`
+    });
 
     stopChatCallRingTimer();
     chatCallRingTimer = setTimeout(() => {
@@ -11648,7 +11706,7 @@ async function openNotificationTarget(id) {
       { shouldRender: false, targetIds: [acceptedUid, ...(state.followingTargetIds || [])] }
     );
   }
-  if (notif.type === "chat_message") {
+  if (notif.type === "chat_message" || notif.type === "chat_call") {
     openChatWithProfile({
       uid: notif.userUid || "",
       handle: notif.userHandle || notif.user || "",
