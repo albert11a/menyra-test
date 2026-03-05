@@ -13970,7 +13970,7 @@ function renderChatView() {
     const archivedThreads = threads.filter((thread) => isChatThreadArchived(thread));
     const visibleThreads = scope === "archived" ? archivedThreads : inboxThreads;
     return `
-      <div id="chatListView" class="flex-1 min-h-0 overflow-y-auto no-scrollbar p-6 animate-in slide-in-from-right-10 duration-500">
+      <div id="chatListView" class="p-6 animate-in slide-in-from-right-10 duration-500">
         <div class="mb-4">
           <div class="bg-white/70 p-1.5 rounded-[1.6rem] border border-white/80 shadow-sm flex items-center gap-1">
             <button type="button" data-chat-list-tab="inbox" class="flex-1 h-10 rounded-[1.1rem] text-[10px] font-black uppercase tracking-widest transition-all ${scope === "inbox" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}">
@@ -14323,7 +14323,8 @@ function renderMain() {
   if (state.activeTab === "settings") view = renderSettingsView();
   if (state.activeTab === "notifications") view = renderNotificationsView();
   if (state.activeTab === "upload") view = renderUploadView();
-  const mainClass = state.activeTab === "chat"
+  const isChatThreadOpen = state.activeTab === "chat" && state.chatModal.open && state.chatModal.profile;
+  const mainClass = isChatThreadOpen
     ? "flex-1 min-h-0 flex flex-col overflow-hidden"
     : "flex-1 min-h-0 overflow-y-auto no-scrollbar pb-24";
 
