@@ -3162,22 +3162,6 @@ function normalizeRtcSessionDescription(input) {
   return { type, sdp };
 }
 
-async function setRemoteDescriptionSafe(pc, description) {
-  if (!pc || !description) throw new Error("missing_remote_description");
-  try {
-    await pc.setRemoteDescription(description);
-    return;
-  } catch (firstErr) {
-    if (typeof RTCSessionDescription === "undefined") throw firstErr;
-    try {
-      await pc.setRemoteDescription(new RTCSessionDescription(description));
-      return;
-    } catch {
-      throw firstErr;
-    }
-  }
-}
-
 function normalizeChatCallRecord(data = {}) {
   const source = data && typeof data === "object" ? data : {};
   return {
@@ -3397,7 +3381,7 @@ async function applyRemoteAnswerToActiveCall(callData, profile = state.chatModal
   if (chatRemoteAnswerAppliedCallId === callData.id) return;
   chatRemoteAnswerAppliedCallId = callData.id;
   try {
-    await setRemoteDescriptionSafe(chatRtcPeer, callData.answer);
+    await chatRtcPeer.setRemoteDescription(callData.answer);
     stopChatCallRingTimer();
     if (state.chatCall.callId === callData.id && state.chatCall.status !== "active") {
       state.chatCall = {
@@ -3446,12 +3430,8 @@ function startActiveChatCallListener(profile = state.chatModal.profile) {
           startedAtMs: 0
         };
         render();
-      } else if (callData.offer) {
-        const currentOfferKey = JSON.stringify(state.chatCall.offer || {});
-        const nextOfferKey = JSON.stringify(callData.offer || {});
-        if (currentOfferKey !== nextOfferKey) {
-          state.chatCall = { ...state.chatCall, offer: callData.offer };
-        }
+      } else if (!state.chatCall.offer && callData.offer) {
+        state.chatCall = { ...state.chatCall, offer: callData.offer };
       }
       return;
     }
@@ -3491,31 +3471,14 @@ async function acceptIncomingChatAudioCall() {
     alert("Audio-Call wird auf diesem Browser nicht unterstuetzt.");
     return;
   }
-  const participants = getChatCallParticipants(state.chatModal.profile);
-  if (!participants) {
-    alert("Audio-Call Daten sind unvollstaendig.");
-    return;
-  }
   try {
-    let latestOffer = active.offer;
-    try {
-      const latestSnap = await getDoc(participants.selfRef);
-      if (latestSnap.exists()) {
-        const latestData = normalizeChatCallRecord(latestSnap.data() || {});
-        if (latestData?.id === active.callId && latestData?.status === "ringing" && latestData?.offer) {
-          latestOffer = latestData.offer;
-        }
-      }
-    } catch {}
-    if (!latestOffer) throw new Error("missing_offer");
-
     resetChatRtcRuntime();
     chatLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     chatRtcPeer = createChatAudioPeerConnection(active.callId);
     chatLocalStream.getTracks().forEach((track) => {
       chatRtcPeer.addTrack(track, chatLocalStream);
     });
-    await setRemoteDescriptionSafe(chatRtcPeer, latestOffer);
+    await chatRtcPeer.setRemoteDescription(active.offer);
     const answer = await createLocalAnswerWithIce(chatRtcPeer);
     if (!answer) throw new Error("Audio answer konnte nicht erstellt werden.");
     state.chatCall = {
@@ -3534,12 +3497,7 @@ async function acceptIncomingChatAudioCall() {
   } catch (err) {
     console.error(err);
     await endActiveChatCall("failed");
-    const code = String(err?.name || err?.message || "").toLowerCase();
-    if (code.includes("notallowed") || code.includes("permission")) {
-      alert("Mikrofon-Berechtigung fehlt. Bitte Browser-Permission fuer Mikrofon erlauben.");
-      return;
-    }
-    alert("Audio-Call konnte nicht angenommen werden. Bitte erneut probieren.");
+    alert("Audio-Call konnte nicht angenommen werden.");
   }
 }
 
