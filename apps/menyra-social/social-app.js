@@ -624,6 +624,7 @@ let feedDeltaTimer = null;
 let searchTimer = null;
 let searchToken = 0;
 let crmAutoLoadObserver = null;
+let appViewportBound = false;
 const searchCache = new Map();
 let notificationsUnsub = null;
 let followingUnsub = null;
@@ -2193,6 +2194,36 @@ function autosizeTextarea(el, { minHeight = 56, maxHeight = 160 } = {}) {
   el.style.height = "auto";
   const next = Math.max(minHeight, Math.min(maxHeight, el.scrollHeight || minHeight));
   el.style.height = `${next}px`;
+}
+
+function bindAppViewportHeight() {
+  if (appViewportBound) return;
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+  appViewportBound = true;
+  const root = document.documentElement;
+  let rafId = 0;
+
+  const apply = () => {
+    rafId = 0;
+    const vv = window.visualViewport;
+    const nextHeight = Math.round(vv?.height || window.innerHeight || 0);
+    if (nextHeight > 0) {
+      root.style.setProperty("--app-viewport-height", `${nextHeight}px`);
+    }
+  };
+
+  const schedule = () => {
+    if (rafId) return;
+    rafId = window.requestAnimationFrame(apply);
+  };
+
+  apply();
+  window.addEventListener("resize", schedule, { passive: true });
+  window.addEventListener("orientationchange", schedule, { passive: true });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", schedule, { passive: true });
+    window.visualViewport.addEventListener("scroll", schedule, { passive: true });
+  }
 }
 
 function clampCropPercent(value, fallback = 50) {
@@ -20722,6 +20753,7 @@ async function bootstrapUser(user) {
 
 loadPersisted();
 bindPushOpenTargetMessageHandler();
+bindAppViewportHeight();
 render();
 
 onAuthStateChanged(auth, (user) => {
