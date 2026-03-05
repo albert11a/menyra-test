@@ -177,6 +177,9 @@ const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 // Firebase Console -> Cloud Messaging -> Web Push certificate key pair (public VAPID key)
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
+const PUSH_SW_URL = "/sw.js";
+const PUSH_SW_SCOPE = "/";
+const PUSH_SW_READY_TIMEOUT_MS = 10000;
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
 const DETAIL_LIKES_LIMIT = 12;
@@ -622,6 +625,7 @@ let followingUnsub = null;
 let userDocUnsub = null;
 let userDocLiveKey = "";
 let pushMessagingClient = null;
+let pushActivationIssue = "";
 let profileViewUnsub = null;
 let feedUnsub = null;
 let storiesUnsub = null;
@@ -2269,6 +2273,55 @@ function canUseNativeNotifications() {
   return typeof window !== "undefined" && "Notification" in window;
 }
 
+function clearPushActivationIssue() {
+  pushActivationIssue = "";
+}
+
+function setPushActivationIssue(reason = "", err = null) {
+  const base = String(reason || "").trim();
+  const code = String(err?.code || "").trim();
+  const message = String(err?.message || "").trim();
+  const parts = [base];
+  if (code) parts.push(`[${code}]`);
+  if (message) parts.push(message);
+  pushActivationIssue = parts.filter(Boolean).join(" ").trim();
+  if (err) {
+    console.error("[Push]", base || "Push activation failed", err);
+  } else if (base) {
+    console.warn("[Push]", base);
+  }
+}
+
+function getPushActivationIssueMessage() {
+  return pushActivationIssue || "Unbekannter Fehler bei der Push-Initialisierung.";
+}
+
+function mapPushActivationError(stage = "", err = null) {
+  const code = String(err?.code || "").trim();
+  const message = String(err?.message || "").trim();
+  if (code === "permission-denied" && stage === "firestore-write") {
+    return "Firestore-Regeln blockieren users/{uid}/devices. Bitte Rules pruefen.";
+  }
+  if (code === "messaging/permission-blocked") {
+    return "Browser-Permission fuer Benachrichtigungen ist blockiert.";
+  }
+  if (code === "messaging/unsupported-browser") {
+    return "Dieser Browser unterstuetzt FCM Web Push nicht.";
+  }
+  if (code === "messaging/failed-service-worker-registration") {
+    return "Service Worker konnte fuer FCM nicht verwendet werden.";
+  }
+  if (code === "messaging/invalid-sw-registration") {
+    return "Service Worker Registrierung ist fuer FCM ungueltig.";
+  }
+  if (code === "messaging/token-subscribe-failed") {
+    return "FCM Token-Abonnement fehlgeschlagen. VAPID-Key und Push-Service pruefen.";
+  }
+  if (code) return `${stage || "push"} fehlgeschlagen (${code}).`;
+  if (message) return `${stage || "push"} fehlgeschlagen: ${message}`;
+  return `${stage || "push"} fehlgeschlagen.`;
+}
+
 function canEmitNativePushAlerts() {
   return !!state.settings?.pushNotifs
     && canUseNativeNotifications()
@@ -2276,14 +2329,27 @@ function canEmitNativePushAlerts() {
 }
 
 async function ensureNotificationPermission({ interactive = false } = {}) {
-  if (!canUseNativeNotifications()) return false;
+  if (!canUseNativeNotifications()) {
+    setPushActivationIssue("Browser unterstuetzt Notification API nicht.");
+    return false;
+  }
   if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
-  if (!interactive) return false;
+  if (Notification.permission === "denied") {
+    setPushActivationIssue("Browser-Permission fuer Benachrichtigungen ist auf 'denied'.");
+    return false;
+  }
+  if (!interactive) {
+    setPushActivationIssue("Browser-Permission noch nicht erteilt.");
+    return false;
+  }
   try {
     const permission = await Notification.requestPermission();
+    if (permission !== "granted") {
+      setPushActivationIssue(`Browser-Permission wurde nicht freigegeben (${permission}).`);
+    }
     return permission === "granted";
-  } catch {
+  } catch (err) {
+    setPushActivationIssue("Browser-Permission konnte nicht angefragt werden.", err);
     return false;
   }
 }
@@ -2359,10 +2425,41 @@ async function ensureMessagingClient() {
   if (pushMessagingClient) return pushMessagingClient;
   try {
     const supported = await isMessagingSupported();
-    if (!supported) return null;
+    if (!supported) {
+      setPushActivationIssue("FCM wird in diesem Browser/Context nicht unterstuetzt.");
+      return null;
+    }
     pushMessagingClient = getMessaging(app);
     return pushMessagingClient;
-  } catch {
+  } catch (err) {
+    setPushActivationIssue("FCM Messaging konnte nicht initialisiert werden.", err);
+    return null;
+  }
+}
+
+async function ensurePushServiceWorkerRegistration() {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    const existing = await navigator.serviceWorker.getRegistration(PUSH_SW_SCOPE);
+    if (existing) return existing;
+  } catch {}
+  try {
+    return await navigator.serviceWorker.register(PUSH_SW_URL, { scope: PUSH_SW_SCOPE });
+  } catch (err) {
+    setPushActivationIssue("Service Worker Registrierung fehlgeschlagen.", err);
+    return null;
+  }
+}
+
+async function waitForPushServiceWorkerReady() {
+  if (!("serviceWorker" in navigator)) return null;
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("service-worker-ready-timeout")), PUSH_SW_READY_TIMEOUT_MS);
+    });
+    return await Promise.race([navigator.serviceWorker.ready, timeoutPromise]);
+  } catch (err) {
+    setPushActivationIssue("Service Worker ist nicht ready.", err);
     return null;
   }
 }
@@ -2370,30 +2467,64 @@ async function ensureMessagingClient() {
 async function syncPushDeviceRegistration({ interactive = false, force = false, enabled = state.settings?.pushNotifs } = {}) {
   const uid = String(state.user?.uid || "").trim();
   if (!uid || !enabled) return false;
-  if (!FCM_WEB_PUSH_VAPID_KEY) return false;
+  if (!window.isSecureContext) {
+    setPushActivationIssue("Push benoetigt HTTPS oder localhost (secure context).");
+    return false;
+  }
+  if (!FCM_WEB_PUSH_VAPID_KEY) {
+    setPushActivationIssue("FCM VAPID-Key fehlt.");
+    return false;
+  }
 
   const granted = await ensureNotificationPermission({ interactive });
   if (!granted) return false;
-  if (!("serviceWorker" in navigator)) return false;
+  if (!("serviceWorker" in navigator)) {
+    setPushActivationIssue("Service Worker wird vom Browser nicht unterstuetzt.");
+    return false;
+  }
+
+  const reg = await ensurePushServiceWorkerRegistration();
+  if (!reg) {
+    if (!pushActivationIssue) setPushActivationIssue("Service Worker konnte nicht registriert werden.");
+    return false;
+  }
+
+  const readyReg = await waitForPushServiceWorkerReady();
+  const pushReg = readyReg || reg;
+  if (!pushReg) {
+    if (!pushActivationIssue) setPushActivationIssue("Service Worker Registrierung fuer Push fehlt.");
+    return false;
+  }
 
   const messaging = await ensureMessagingClient();
   if (!messaging) return false;
 
+  let safeToken = "";
   try {
-    const reg = await navigator.serviceWorker.ready;
     const token = await getToken(messaging, {
       vapidKey: FCM_WEB_PUSH_VAPID_KEY,
-      serviceWorkerRegistration: reg
+      serviceWorkerRegistration: pushReg
     });
-    const safeToken = String(token || "").trim();
-    if (!safeToken) return false;
+    safeToken = String(token || "").trim();
+  } catch (err) {
+    setPushActivationIssue(mapPushActivationError("fcm-getToken", err), err);
+    return false;
+  }
+  if (!safeToken) {
+    setPushActivationIssue("FCM hat keinen Token geliefert.");
+    return false;
+  }
 
-    const meta = readPushTokenMeta(uid);
-    const freshEnough = meta && meta.token === safeToken && (Date.now() - meta.ts) < PUSH_TOKEN_SYNC_INTERVAL_MS;
-    if (!force && freshEnough) return true;
+  const meta = readPushTokenMeta(uid);
+  const freshEnough = meta && meta.token === safeToken && (Date.now() - meta.ts) < PUSH_TOKEN_SYNC_INTERVAL_MS;
+  if (!force && freshEnough) {
+    clearPushActivationIssue();
+    return true;
+  }
 
-    const deviceId = getOrCreatePushDeviceId();
-    const ref = doc(db, "users", uid, "devices", deviceId);
+  const deviceId = getOrCreatePushDeviceId();
+  const ref = doc(db, "users", uid, "devices", deviceId);
+  try {
     await setDoc(ref, {
       token: safeToken,
       enabled: true,
@@ -2404,12 +2535,13 @@ async function syncPushDeviceRegistration({ interactive = false, force = false, 
       updatedAt: serverTimestamp(),
       lastSeenAt: serverTimestamp()
     }, { merge: true });
-    writePushTokenMeta(uid, safeToken);
-    return true;
   } catch (err) {
-    console.error(err);
+    setPushActivationIssue(mapPushActivationError("firestore-write", err), err);
     return false;
   }
+  writePushTokenMeta(uid, safeToken);
+  clearPushActivationIssue();
+  return true;
 }
 
 async function disablePushDeviceRegistration() {
@@ -2421,7 +2553,9 @@ async function disablePushDeviceRegistration() {
       enabled: false,
       updatedAt: serverTimestamp()
     }, { merge: true });
-  } catch {}
+  } catch (err) {
+    console.error(err);
+  }
 }
 
 function saveFollowing(handles) {
@@ -10402,16 +10536,25 @@ function startNotificationsListener(user = state.user, { enableNativePush = fals
 
 async function syncNotificationsPushRuntime({ user = state.user, interactive = false, enabled = state.settings?.pushNotifs } = {}) {
   const ownerUid = String(user?.uid || "").trim();
-  if (!ownerUid) return false;
+  if (!ownerUid) {
+    setPushActivationIssue("Kein angemeldeter User fuer Push-Registrierung.");
+    return false;
+  }
   if (!enabled) {
+    clearPushActivationIssue();
     startNotificationsListener(user, { enableNativePush: false });
     return false;
   }
+  clearPushActivationIssue();
 
   const granted = await ensureNotificationPermission({ interactive });
   startNotificationsListener(user, { enableNativePush: granted });
   if (!granted) return false;
-  return syncPushDeviceRegistration({ interactive, force: interactive, enabled });
+  const registered = await syncPushDeviceRegistration({ interactive, force: interactive, enabled });
+  if (!registered && !pushActivationIssue) {
+    setPushActivationIssue("Push-Registrierung fehlgeschlagen.");
+  }
+  return registered;
 }
 
 async function loadNotificationsFromFirebase({ force = false } = {}) {
@@ -15448,7 +15591,7 @@ function bindAppEvents() {
             state.settings = { ...state.settings, pushNotifs: false };
             saveSettings(state.settings);
             render();
-            alert("Push konnte nicht aktiviert werden. Browser-Permission und FCM-VAPID-Key pruefen.");
+            alert(`Push konnte nicht aktiviert werden.\n${getPushActivationIssueMessage()}`);
             return;
           }
         } else {

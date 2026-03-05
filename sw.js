@@ -116,8 +116,12 @@ self.addEventListener('fetch', (event) => {
     event.respondWith((async () => {
       const cache = await caches.open(CACHE_NAME);
       const cached = await cache.match(req);
-      const networkPromise = fetch(req).then((res) => {
-        if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone());
+      const networkPromise = fetch(req).then(async (res) => {
+        if (res && (res.ok || res.type === 'opaque')) {
+          try {
+            await cache.put(req, res.clone());
+          } catch (err) {}
+        }
         return res;
       }).catch(() => null);
       if (cached) {
@@ -160,7 +164,7 @@ self.addEventListener('fetch', (event) => {
       try {
         if (networkResp && networkResp.ok) {
           const cache = await caches.open(CACHE_NAME);
-          cache.put(req, networkResp.clone());
+          await cache.put(req, networkResp.clone());
         }
       } catch (e) {}
       return networkResp;
