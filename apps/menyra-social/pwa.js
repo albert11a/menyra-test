@@ -8,45 +8,6 @@ function log(...args) {
   // console.log("[PWA]", ...args);
 }
 
-let viewportBindingStarted = false;
-
-function bindViewportShell() {
-  if (viewportBindingStarted) return;
-  if (typeof window === 'undefined' || typeof document === 'undefined') return;
-  viewportBindingStarted = true;
-  const root = document.documentElement;
-  let rafId = 0;
-
-  const applyViewport = () => {
-    rafId = 0;
-    const vv = window.visualViewport;
-    const height = Math.round(vv?.height || window.innerHeight || 0);
-    const topOffset = Math.max(0, Math.round(vv?.offsetTop || 0));
-    if (height > 0) {
-      root.style.setProperty('--app-viewport-height', `${height}px`);
-    }
-    root.style.setProperty('--app-viewport-offset-top', `${topOffset}px`);
-  };
-
-  const scheduleApply = () => {
-    if (rafId) return;
-    rafId = window.requestAnimationFrame(applyViewport);
-  };
-
-  applyViewport();
-  window.addEventListener('resize', scheduleApply, { passive: true });
-  window.addEventListener('orientationchange', scheduleApply, { passive: true });
-  window.addEventListener('pageshow', scheduleApply, { passive: true });
-  document.addEventListener('focusin', scheduleApply, { passive: true });
-  document.addEventListener('focusout', () => {
-    window.setTimeout(scheduleApply, 120);
-  }, { passive: true });
-  if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', scheduleApply, { passive: true });
-    window.visualViewport.addEventListener('scroll', scheduleApply, { passive: true });
-  }
-}
-
 async function registerSW() {
   if (!('serviceWorker' in navigator)) return;
 
@@ -83,7 +44,6 @@ async function registerSW() {
   }
 }
 
-bindViewportShell();
 window.addEventListener('load', () => {
   registerSW();
 });

@@ -15020,11 +15020,6 @@ function bindOverlayEvents({
       queueMicrotask(() => {
         chatInput.style.height = "auto";
         chatInput.style.height = `${Math.min(chatInput.scrollHeight, 112)}px`;
-        chatInput.focus({ preventScroll: true });
-        const len = chatInput.value.length;
-        try {
-          chatInput.setSelectionRange(len, len);
-        } catch {}
       });
     }
     if (chatMessages) {
