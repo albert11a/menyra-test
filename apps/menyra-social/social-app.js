@@ -2152,6 +2152,42 @@ function focusInputById(id) {
   } catch {}
 }
 
+function captureChatInputFocusState() {
+  if (typeof document === "undefined") return null;
+  const active = document.activeElement;
+  if (!(active instanceof HTMLTextAreaElement)) return null;
+  if (active.id !== "chatMessageInput") return null;
+  return {
+    selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
+    selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null
+  };
+}
+
+function restoreChatInputFocusState(focusState) {
+  if (!focusState) return;
+  if (state.activeTab !== "chat" || !state.chatModal.open || !state.chatModal.profile) return;
+  queueMicrotask(() => {
+    const input = document.getElementById("chatMessageInput");
+    if (!(input instanceof HTMLTextAreaElement)) return;
+    if (input.disabled || input.readOnly) return;
+    try {
+      input.focus({ preventScroll: true });
+    } catch {
+      input.focus();
+    }
+    const len = String(input.value || "").length;
+    const rawStart = Number.isFinite(Number(focusState.selectionStart)) ? Number(focusState.selectionStart) : len;
+    const rawEnd = Number.isFinite(Number(focusState.selectionEnd)) ? Number(focusState.selectionEnd) : rawStart;
+    const start = Math.max(0, Math.min(len, rawStart));
+    const end = Math.max(start, Math.min(len, rawEnd));
+    try {
+      input.setSelectionRange(start, end);
+    } catch {}
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 112)}px`;
+  });
+}
+
 function autosizeTextarea(el, { minHeight = 56, maxHeight = 160 } = {}) {
   if (!(el instanceof HTMLTextAreaElement)) return;
   el.style.height = "auto";
@@ -14738,6 +14774,7 @@ function render() {
     renderQueued = true;
     return;
   }
+  const chatInputFocusState = captureChatInputFocusState();
   document.body.classList.toggle("fast-mode", FAST_MODE);
   let nextHtml = "";
   let mode = "";
@@ -14794,6 +14831,7 @@ function render() {
       state.customers.keepFocus = false;
       focusInputById("customersSearchInput");
     }
+    restoreChatInputFocusState(chatInputFocusState);
     if (mode === "main") lastRenderedMainTab = state.activeTab;
     else lastRenderedMainTab = "";
   }
