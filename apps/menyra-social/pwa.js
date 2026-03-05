@@ -12,7 +12,7 @@ async function registerSW() {
   if (!('serviceWorker' in navigator)) return;
 
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    const reg = await navigator.serviceWorker.register('/sw.js?v=2026-03-05-hotfix-1', { scope: '/' });
     log('registered', reg);
 
     // If there's already a waiting worker, activate it.

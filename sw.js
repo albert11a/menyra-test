@@ -1,5 +1,5 @@
 // MENYRA service worker: network-first with safe caching
-const CACHE_NAME = 'menyra-cache-v5';
+const CACHE_NAME = 'menyra-cache-v7';
 const MAX_AGE = 24 * 60 * 60 * 1000; // 24h (not strictly enforced here)
 
 self.addEventListener('install', (event) => {
