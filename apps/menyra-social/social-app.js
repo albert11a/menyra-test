@@ -10422,12 +10422,12 @@ function clearNotificationQueryParams() {
 }
 
 async function maybeOpenNotificationFromQuery() {
-  if (pendingNotificationHandled) return;
-  if (!pendingNotificationId) return;
-  if (!state.user?.uid) return;
+  if (pendingNotificationHandled) return false;
+  if (!pendingNotificationId) return false;
+  if (!state.user?.uid) return false;
 
   const safeNotificationId = String(pendingNotificationId || "").trim();
-  if (!safeNotificationId) return;
+  if (!safeNotificationId) return false;
   pendingNotificationHandled = true;
   pendingNotificationId = "";
   clearNotificationQueryParams();
@@ -10443,7 +10443,7 @@ async function maybeOpenNotificationFromQuery() {
       console.error(err);
     }
   }
-  if (!notificationItem) return;
+  if (!notificationItem) return false;
 
   state.notifications = [
     notificationItem,
@@ -10451,6 +10451,7 @@ async function maybeOpenNotificationFromQuery() {
   ];
   saveNotifications(state.notifications);
   await openNotificationTarget(safeNotificationId);
+  return true;
 }
 
 function maybeOpenProfileFromQuery() {
@@ -20677,12 +20678,29 @@ onAuthStateChanged(auth, (user) => {
   state.sessionReady = true;
   if (user) {
     loadUserScopedPersisted(user);
-    render();
-    bootstrapUser(user);
-    queueMicrotask(() => {
-      maybeOpenProfileFromQuery();
-      void maybeOpenNotificationFromQuery();
-    });
+    const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();
+    if (hasPendingNotificationQuery) {
+      suspendRender();
+      bootstrapUser(user);
+      queueMicrotask(() => {
+        void (async () => {
+          try {
+            maybeOpenProfileFromQuery();
+            const opened = await maybeOpenNotificationFromQuery();
+            if (!opened) render();
+          } finally {
+            resumeRender();
+          }
+        })();
+      });
+    } else {
+      render();
+      bootstrapUser(user);
+      queueMicrotask(() => {
+        maybeOpenProfileFromQuery();
+        void maybeOpenNotificationFromQuery();
+      });
+    }
   } else {
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";
