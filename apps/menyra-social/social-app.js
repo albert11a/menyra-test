@@ -169,9 +169,25 @@ function createEmptyOrdersState() {
   };
 }
 
+function createEmptyChatCallState() {
+  return {
+    callId: "",
+    status: "idle",
+    direction: "",
+    profileUid: "",
+    offer: null,
+    muted: false,
+    startedAtMs: 0
+  };
+}
+
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 1.5 * 1024 * 1024;
 const CHAT_MESSAGE_READ_LIMIT = 30;
+const CHAT_CALL_RING_TIMEOUT_MS = 35 * 1000;
+const CHAT_CALL_STUN_SERVERS = Object.freeze([
+  { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
+]);
 const NOTIFICATIONS_LIVE_LIMIT = 12;
 const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
@@ -437,6 +453,7 @@ const state = {
     draft: "",
     attachments: []
   },
+  chatCall: createEmptyChatCallState(),
   chatSettingsOpen: false,
   chatListScope: "inbox",
   chatThreadMenuId: "",
@@ -636,6 +653,7 @@ let feedUnsub = null;
 let storiesUnsub = null;
 let chatThreadsUnsub = null;
 let chatMessagesUnsub = null;
+let chatCallUnsub = null;
 let ordersUnsub = null;
 let ordersListenerKey = "";
 let restaurantsUnsub = null;
@@ -655,6 +673,13 @@ let feedStoriesSignature = "";
 let storiesRowSignature = "";
 let focusRotateTimer = null;
 let focusRotateKey = "";
+let chatCallRingTimer = null;
+let chatCallEnding = false;
+let chatRtcPeer = null;
+let chatLocalStream = null;
+let chatRemoteStream = null;
+let chatRemoteAudioEl = null;
+let chatRemoteAnswerAppliedCallId = "";
 
 function suspendRender() {
   renderSuspended += 1;
@@ -2921,7 +2946,13 @@ async function deleteChatThreadById(threadId) {
   if (!confirmed) return;
 
   if (state.chatModal.open && getChatThreadId(state.chatModal.profile) === safeThreadId) {
+    if (state.chatCall.status !== "idle") {
+      void endActiveChatCall("chat_deleted", { renderUi: false });
+    }
     stopActiveChatMessagesListener();
+    stopActiveChatCallListener();
+    resetChatRtcRuntime();
+    clearChatCallState({ renderUi: false });
     state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
   }
 
@@ -3003,7 +3034,13 @@ async function deleteActiveChatThread() {
   const messages = Array.isArray(state.chatModal.messages) ? state.chatModal.messages.slice() : [];
 
   state.chatSettingsOpen = false;
+  if (state.chatCall.status !== "idle") {
+    void endActiveChatCall("chat_deleted", { renderUi: false });
+  }
   stopActiveChatMessagesListener();
+  stopActiveChatCallListener();
+  resetChatRtcRuntime();
+  clearChatCallState({ renderUi: false });
   state.chatThreads = (state.chatThreads || []).filter((thread) => String(thread?.id || "") !== threadId);
   saveChatThreadIndex(state.chatThreads);
   const localKey = chatThreadStorageKey(profile);
@@ -3057,6 +3094,467 @@ function chatMessagesCollectionRef(ownerUid, threadId) {
   const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
   if (!safeOwnerUid || !safeThreadId) return null;
   return collection(db, "users", safeOwnerUid, "chatThreads", safeThreadId, "messages");
+}
+
+function chatCallDocRef(ownerUid, threadId) {
+  const safeOwnerUid = String(ownerUid || "").trim();
+  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
+  if (!safeOwnerUid || !safeThreadId) return null;
+  return doc(db, "users", safeOwnerUid, "chatThreads", safeThreadId, "meta", "callActive");
+}
+
+function stopChatCallRingTimer() {
+  if (!chatCallRingTimer) return;
+  clearTimeout(chatCallRingTimer);
+  chatCallRingTimer = null;
+}
+
+function stopMediaStreamTracks(stream) {
+  const tracks = stream?.getTracks?.() || [];
+  tracks.forEach((track) => {
+    try {
+      track.stop();
+    } catch {}
+  });
+}
+
+function ensureChatRemoteAudioElement() {
+  if (typeof document === "undefined") return null;
+  if (chatRemoteAudioEl && document.body?.contains(chatRemoteAudioEl)) return chatRemoteAudioEl;
+  const el = document.createElement("audio");
+  el.id = "chatRemoteAudioSink";
+  el.autoplay = true;
+  el.playsInline = true;
+  el.style.display = "none";
+  document.body?.appendChild(el);
+  chatRemoteAudioEl = el;
+  return el;
+}
+
+function resetChatRtcRuntime() {
+  stopChatCallRingTimer();
+  if (chatRtcPeer) {
+    try {
+      chatRtcPeer.ontrack = null;
+      chatRtcPeer.onconnectionstatechange = null;
+      chatRtcPeer.onicecandidate = null;
+      chatRtcPeer.close();
+    } catch {}
+  }
+  chatRtcPeer = null;
+  stopMediaStreamTracks(chatLocalStream);
+  stopMediaStreamTracks(chatRemoteStream);
+  chatLocalStream = null;
+  chatRemoteStream = null;
+  chatRemoteAnswerAppliedCallId = "";
+  if (chatRemoteAudioEl) {
+    try {
+      chatRemoteAudioEl.srcObject = null;
+      chatRemoteAudioEl.pause();
+    } catch {}
+  }
+}
+
+function normalizeRtcSessionDescription(input) {
+  const type = String(input?.type || "").trim();
+  const sdp = String(input?.sdp || "").trim();
+  if (!type || !sdp) return null;
+  return { type, sdp };
+}
+
+function normalizeChatCallRecord(data = {}) {
+  const source = data && typeof data === "object" ? data : {};
+  return {
+    id: String(source.id || "").trim(),
+    type: String(source.type || "audio").trim() || "audio",
+    fromUid: String(source.fromUid || "").trim(),
+    fromName: String(source.fromName || "").trim(),
+    fromHandle: String(source.fromHandle || "").replace(/^@/, "").trim(),
+    fromAvatar: String(source.fromAvatar || "").trim(),
+    toUid: String(source.toUid || "").trim(),
+    status: String(source.status || "").trim(),
+    offer: normalizeRtcSessionDescription(source.offer),
+    answer: normalizeRtcSessionDescription(source.answer),
+    endReason: String(source.endReason || "").trim(),
+    startedAtClient: String(source.startedAtClient || "").trim(),
+    updatedAtClient: String(source.updatedAtClient || "").trim()
+  };
+}
+
+function getChatCallParticipants(profile = state.chatModal.profile) {
+  const selfUid = String(state.user?.uid || "").trim();
+  const partnerUid = String(profile?.uid || "").trim();
+  const selfThreadId = getChatThreadId(profile);
+  const partnerThreadId = selfUid;
+  if (!selfUid || !partnerUid || !selfThreadId || !partnerThreadId || selfUid === partnerUid) return null;
+  const selfRef = chatCallDocRef(selfUid, selfThreadId);
+  const partnerRef = chatCallDocRef(partnerUid, partnerThreadId);
+  if (!selfRef || !partnerRef) return null;
+  return { selfUid, partnerUid, selfThreadId, partnerThreadId, selfRef, partnerRef };
+}
+
+async function setChatCallStateForParticipants(profile, patch = {}, { merge = true } = {}) {
+  const participants = getChatCallParticipants(profile);
+  if (!participants) return;
+  const nextPatch = {
+    ...patch,
+    updatedAtClient: String(patch.updatedAtClient || new Date().toISOString())
+  };
+  await Promise.all([
+    setDoc(participants.selfRef, nextPatch, { merge }),
+    setDoc(participants.partnerRef, nextPatch, { merge })
+  ]);
+}
+
+function mapChatCallEndReasonToStatus(reason = "") {
+  const safeReason = String(reason || "").trim();
+  if (safeReason === "declined") return "declined";
+  if (safeReason === "no_answer") return "missed";
+  if (safeReason === "failed") return "failed";
+  if (safeReason === "connection_lost") return "failed";
+  return "ended";
+}
+
+function clearChatCallState({ renderUi = true } = {}) {
+  state.chatCall = createEmptyChatCallState();
+  if (renderUi) render();
+}
+
+function stopActiveChatCallListener() {
+  if (chatCallUnsub) {
+    chatCallUnsub();
+    chatCallUnsub = null;
+  }
+}
+
+function createChatAudioPeerConnection(callId) {
+  const pc = new RTCPeerConnection({ iceServers: CHAT_CALL_STUN_SERVERS });
+  pc.ontrack = (event) => {
+    if (state.chatCall.callId !== callId) return;
+    const [incomingStream] = event.streams || [];
+    if (incomingStream) {
+      chatRemoteStream = incomingStream;
+    } else if (event.track) {
+      if (!chatRemoteStream) chatRemoteStream = new MediaStream();
+      chatRemoteStream.addTrack(event.track);
+    }
+    const remoteAudio = ensureChatRemoteAudioElement();
+    if (remoteAudio && chatRemoteStream) {
+      remoteAudio.srcObject = chatRemoteStream;
+      void remoteAudio.play().catch(() => {});
+    }
+  };
+  pc.onconnectionstatechange = () => {
+    if (chatRtcPeer !== pc || state.chatCall.callId !== callId) return;
+    const current = String(pc.connectionState || "");
+    if (current === "connected") {
+      if (state.chatCall.status !== "active") {
+        state.chatCall = {
+          ...state.chatCall,
+          status: "active",
+          startedAtMs: state.chatCall.startedAtMs || Date.now()
+        };
+        render();
+      }
+      return;
+    }
+    if (current === "failed" || current === "disconnected") {
+      void endActiveChatCall("connection_lost");
+    }
+  };
+  return pc;
+}
+
+function waitForIceGatheringComplete(pc, timeoutMs = 8000) {
+  if (!pc || pc.iceGatheringState === "complete") return Promise.resolve();
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      pc.removeEventListener("icegatheringstatechange", onChange);
+      clearTimeout(timerId);
+      resolve();
+    };
+    const onChange = () => {
+      if (pc.iceGatheringState === "complete") finish();
+    };
+    const timerId = setTimeout(finish, timeoutMs);
+    pc.addEventListener("icegatheringstatechange", onChange);
+  });
+}
+
+async function createLocalOfferWithIce(pc) {
+  if (!pc) return null;
+  const offer = await pc.createOffer({ offerToReceiveAudio: true });
+  await pc.setLocalDescription(offer);
+  await waitForIceGatheringComplete(pc);
+  return normalizeRtcSessionDescription(pc.localDescription);
+}
+
+async function createLocalAnswerWithIce(pc) {
+  if (!pc) return null;
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  await waitForIceGatheringComplete(pc);
+  return normalizeRtcSessionDescription(pc.localDescription);
+}
+
+function getChatCallUiState(partner = state.chatModal.profile) {
+  const partnerUid = String(partner?.uid || "").trim();
+  if (!partnerUid) return createEmptyChatCallState();
+  if (String(state.chatCall.profileUid || "").trim() !== partnerUid) return createEmptyChatCallState();
+  return state.chatCall;
+}
+
+async function startOutgoingChatAudioCall() {
+  if (!state.chatModal.open || !state.chatModal.profile) return;
+  if (state.chatCall.status !== "idle") return;
+  if (isActiveChatThreadBlocked()) {
+    alert("Dieser Chat ist blockiert. Audio-Call ist nicht verfuegbar.");
+    return;
+  }
+  if (typeof RTCPeerConnection === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    alert("Audio-Call wird auf diesem Browser nicht unterstuetzt.");
+    return;
+  }
+  const participants = getChatCallParticipants(state.chatModal.profile);
+  if (!participants) {
+    alert("Audio-Call ist fuer diesen Chat nicht verfuegbar.");
+    return;
+  }
+  const callId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  try {
+    resetChatRtcRuntime();
+    chatLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    chatRtcPeer = createChatAudioPeerConnection(callId);
+    chatLocalStream.getTracks().forEach((track) => {
+      chatRtcPeer.addTrack(track, chatLocalStream);
+    });
+    const offer = await createLocalOfferWithIce(chatRtcPeer);
+    if (!offer) throw new Error("Audio offer konnte nicht erstellt werden.");
+
+    const sender = getCurrentChatSenderProfile();
+    const nowIso = new Date().toISOString();
+    state.chatCall = {
+      callId,
+      status: "dialing",
+      direction: "outgoing",
+      profileUid: participants.partnerUid,
+      offer: null,
+      muted: false,
+      startedAtMs: 0
+    };
+    render();
+
+    await setChatCallStateForParticipants(state.chatModal.profile, {
+      id: callId,
+      type: "audio",
+      status: "ringing",
+      fromUid: participants.selfUid,
+      fromName: sender.name,
+      fromHandle: sender.handle,
+      fromAvatar: sender.avatar,
+      toUid: participants.partnerUid,
+      offer,
+      answer: null,
+      endReason: "",
+      startedAtClient: nowIso,
+      updatedAtClient: nowIso
+    }, { merge: true });
+
+    stopChatCallRingTimer();
+    chatCallRingTimer = setTimeout(() => {
+      if (state.chatCall.callId !== callId || state.chatCall.status === "active") return;
+      void endActiveChatCall("no_answer");
+    }, CHAT_CALL_RING_TIMEOUT_MS);
+  } catch (err) {
+    console.error(err);
+    resetChatRtcRuntime();
+    clearChatCallState({ renderUi: true });
+    alert("Audio-Call konnte nicht gestartet werden.");
+  }
+}
+
+async function applyRemoteAnswerToActiveCall(callData, profile = state.chatModal.profile) {
+  if (!chatRtcPeer || !callData?.answer) return;
+  if (chatRemoteAnswerAppliedCallId === callData.id) return;
+  chatRemoteAnswerAppliedCallId = callData.id;
+  try {
+    await chatRtcPeer.setRemoteDescription(callData.answer);
+    stopChatCallRingTimer();
+    if (state.chatCall.callId === callData.id && state.chatCall.status !== "active") {
+      state.chatCall = {
+        ...state.chatCall,
+        status: "connecting"
+      };
+      render();
+    }
+    await setChatCallStateForParticipants(profile, {
+      id: callData.id,
+      status: "active"
+    }, { merge: true });
+  } catch (err) {
+    console.error(err);
+    await endActiveChatCall("connection_lost");
+  }
+}
+
+function startActiveChatCallListener(profile = state.chatModal.profile) {
+  stopActiveChatCallListener();
+  const ownerUid = String(state.user?.uid || "").trim();
+  const threadId = getChatThreadId(profile);
+  const ref = chatCallDocRef(ownerUid, threadId);
+  if (!ref) return;
+  const partnerUid = String(profile?.uid || "").trim();
+  chatCallUnsub = onSnapshot(ref, (snap) => {
+    if (!state.chatModal.open || getChatThreadId(state.chatModal.profile) !== threadId) return;
+    if (!snap.exists()) return;
+    const callData = normalizeChatCallRecord(snap.data() || {});
+    if (!callData.id || callData.type !== "audio") return;
+
+    const selfUid = String(state.user?.uid || "").trim();
+    const isIncomingRing = callData.status === "ringing"
+      && callData.toUid === selfUid
+      && callData.fromUid === partnerUid;
+    if (isIncomingRing) {
+      if (state.chatCall.callId !== callData.id || state.chatCall.status === "idle") {
+        resetChatRtcRuntime();
+        state.chatCall = {
+          callId: callData.id,
+          status: "incoming",
+          direction: "incoming",
+          profileUid: partnerUid,
+          offer: callData.offer,
+          muted: false,
+          startedAtMs: 0
+        };
+        render();
+      } else if (!state.chatCall.offer && callData.offer) {
+        state.chatCall = { ...state.chatCall, offer: callData.offer };
+      }
+      return;
+    }
+
+    if (state.chatCall.callId && callData.id !== state.chatCall.callId) return;
+    if (callData.status === "declined" || callData.status === "ended" || callData.status === "missed" || callData.status === "failed") {
+      if (state.chatCall.status !== "idle" || String(state.chatCall.profileUid || "").trim() === partnerUid) {
+        resetChatRtcRuntime();
+        clearChatCallState({ renderUi: true });
+      }
+      return;
+    }
+
+    if (callData.answer && state.chatCall.direction === "outgoing") {
+      void applyRemoteAnswerToActiveCall(callData, profile);
+      return;
+    }
+
+    if (callData.status === "active" && state.chatCall.callId === callData.id && state.chatCall.status !== "active") {
+      state.chatCall = {
+        ...state.chatCall,
+        status: "active",
+        startedAtMs: state.chatCall.startedAtMs || Date.now()
+      };
+      render();
+    }
+  }, (err) => {
+    console.error(err);
+  });
+}
+
+async function acceptIncomingChatAudioCall() {
+  if (!state.chatModal.open || !state.chatModal.profile) return;
+  const active = getChatCallUiState(state.chatModal.profile);
+  if (active.status !== "incoming" || !active.callId || !active.offer) return;
+  if (typeof RTCPeerConnection === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    alert("Audio-Call wird auf diesem Browser nicht unterstuetzt.");
+    return;
+  }
+  try {
+    resetChatRtcRuntime();
+    chatLocalStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    chatRtcPeer = createChatAudioPeerConnection(active.callId);
+    chatLocalStream.getTracks().forEach((track) => {
+      chatRtcPeer.addTrack(track, chatLocalStream);
+    });
+    await chatRtcPeer.setRemoteDescription(active.offer);
+    const answer = await createLocalAnswerWithIce(chatRtcPeer);
+    if (!answer) throw new Error("Audio answer konnte nicht erstellt werden.");
+    state.chatCall = {
+      ...state.chatCall,
+      status: "connecting",
+      muted: false,
+      startedAtMs: Date.now()
+    };
+    render();
+    await setChatCallStateForParticipants(state.chatModal.profile, {
+      id: active.callId,
+      status: "active",
+      answer,
+      endReason: ""
+    }, { merge: true });
+  } catch (err) {
+    console.error(err);
+    await endActiveChatCall("failed");
+    alert("Audio-Call konnte nicht angenommen werden.");
+  }
+}
+
+async function declineIncomingChatAudioCall() {
+  if (!state.chatModal.open || !state.chatModal.profile) return;
+  const active = getChatCallUiState(state.chatModal.profile);
+  if (active.status !== "incoming" || !active.callId) return;
+  resetChatRtcRuntime();
+  clearChatCallState({ renderUi: true });
+  await setChatCallStateForParticipants(state.chatModal.profile, {
+    id: active.callId,
+    status: "declined",
+    endReason: "declined",
+    endedAtClient: new Date().toISOString()
+  }, { merge: true });
+}
+
+function toggleActiveChatAudioMute() {
+  if (state.chatCall.status === "idle") return;
+  if (!chatLocalStream) return;
+  const nextMuted = !state.chatCall.muted;
+  const tracks = chatLocalStream.getAudioTracks();
+  tracks.forEach((track) => {
+    track.enabled = !nextMuted;
+  });
+  state.chatCall = {
+    ...state.chatCall,
+    muted: nextMuted
+  };
+  render();
+}
+
+async function endActiveChatCall(reason = "ended", { notifyRemote = true, renderUi = true } = {}) {
+  if (chatCallEnding) return;
+  const active = { ...state.chatCall };
+  if (!active.callId || active.status === "idle") {
+    resetChatRtcRuntime();
+    clearChatCallState({ renderUi: false });
+    return;
+  }
+  chatCallEnding = true;
+  try {
+    resetChatRtcRuntime();
+    clearChatCallState({ renderUi });
+    if (!notifyRemote || !state.chatModal.profile) return;
+    const status = mapChatCallEndReasonToStatus(reason);
+    await setChatCallStateForParticipants(state.chatModal.profile, {
+      id: active.callId,
+      status,
+      endReason: String(reason || ""),
+      endedAtClient: new Date().toISOString()
+    }, { merge: true });
+  } catch (err) {
+    console.error(err);
+  } finally {
+    chatCallEnding = false;
+  }
 }
 
 function normalizeChatThreadSummary(threadId, data = {}, fallback = {}) {
@@ -3601,6 +4099,9 @@ function openChatWithProfile(profile) {
     name: profile.name || "User",
     avatar: profile.avatar || ""
   };
+  if (state.chatCall.status !== "idle" && String(state.chatCall.profileUid || "").trim() !== String(nextProfile.uid || "").trim()) {
+    void endActiveChatCall("switch_thread", { renderUi: false });
+  }
   upsertChatThread(nextProfile);
   state.drawerOpen = false;
   state.chatSettingsOpen = false;
@@ -3619,6 +4120,7 @@ function openChatWithProfile(profile) {
   syncChatThreadSummary(nextProfile, state.chatModal.messages);
   void syncRemoteChatReadState(nextProfile, state.chatModal.messages);
   startActiveChatMessagesListener(nextProfile);
+  startActiveChatCallListener(nextProfile);
   render();
 }
 
@@ -3626,7 +4128,13 @@ function closeChatModal() {
   if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
   }
+  if (state.chatCall.status !== "idle") {
+    void endActiveChatCall("chat_closed", { renderUi: false });
+  }
   stopActiveChatMessagesListener();
+  stopActiveChatCallListener();
+  resetChatRtcRuntime();
+  clearChatCallState({ renderUi: false });
   state.chatSettingsOpen = false;
   state.chatThreadMenuId = "";
   state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
@@ -3945,6 +4453,8 @@ function loadUserScopedPersisted(user) {
 
 function resetUserScopedState() {
   stopActiveChatMessagesListener();
+  stopActiveChatCallListener();
+  resetChatRtcRuntime();
   stopRestaurantMetaListeners();
   stopMenuItemMetaListeners();
   menuDetailCloseBound = false;
@@ -3962,6 +4472,7 @@ function resetUserScopedState() {
   state.chatListScope = "inbox";
   state.chatThreadMenuId = "";
   state.chatModal = { open: false, profile: null, messages: [], draft: "", attachments: [] };
+  state.chatCall = createEmptyChatCallState();
   state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
   state.likesModal = { open: false, postId: "", animate: false };
   state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", selectedSize: "", selectedColor: "", commentText: "", loading: false, sending: false };
@@ -8137,6 +8648,9 @@ function updateDrawerDom() {
 function stopLiveListeners() {
   stopChatThreadsListener();
   stopActiveChatMessagesListener();
+  stopActiveChatCallListener();
+  resetChatRtcRuntime();
+  clearChatCallState({ renderUi: false });
   stopOrdersListener();
   if (feedDeltaTimer) {
     clearInterval(feedDeltaTimer);
@@ -14020,6 +14534,53 @@ function renderUploadView() {
   `;
 }
 
+function renderChatCallBar(partner) {
+  const call = getChatCallUiState(partner);
+  if (call.status === "idle") return "";
+  if (call.status === "incoming") {
+    return `
+      <div class="shrink-0 p-3 border-b border-slate-100 bg-amber-50/80">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <p class="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">Eingehender Anruf</p>
+            <p class="text-xs font-semibold text-slate-700">Audio-Call von ${escapeHtml(partner?.name || "User")}</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="chatCallDeclineBtn" class="h-9 px-3 rounded-xl bg-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest">Ablehnen</button>
+            <button id="chatCallAcceptBtn" class="h-9 px-3 rounded-xl bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest">Annehmen</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  const statusLabel = (() => {
+    if (call.status === "dialing") return "Rufe an...";
+    if (call.status === "connecting") return "Verbinde...";
+    if (call.status === "active") return "Audio-Call aktiv";
+    return "Anruf";
+  })();
+
+  return `
+    <div class="shrink-0 p-3 border-b border-slate-100 bg-slate-50/80">
+      <div class="flex items-center justify-between gap-3">
+        <div>
+          <p class="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Audio Call</p>
+          <p class="text-xs font-semibold text-slate-700">${escapeHtml(statusLabel)}</p>
+        </div>
+        <div class="flex items-center gap-2">
+          ${call.status === "active" || call.status === "connecting" ? `
+            <button id="chatCallMuteBtn" class="h-9 px-3 rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black uppercase tracking-widest">
+              ${call.muted ? "Unmute" : "Mute"}
+            </button>
+          ` : ""}
+          <button id="chatCallHangupBtn" class="h-9 px-3 rounded-xl bg-rose-600 text-white text-[10px] font-black uppercase tracking-widest">Auflegen</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderChatView() {
   const threads = sortChatThreads(state.chatThreads);
   if (!state.chatModal.open || !state.chatModal.profile) {
@@ -14120,6 +14681,7 @@ function renderChatView() {
   return `
     <div id="chatThreadView" class="flex-1 min-h-0 px-4 pb-4 flex flex-col">
       <div class="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden flex flex-col flex-1 min-h-0 shadow-sm">
+        ${renderChatCallBar(partner)}
         <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar p-4 space-y-3 bg-slate-50/70">
           ${blockedByOwner ? `
             <div class="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-black uppercase tracking-widest">
@@ -14269,6 +14831,10 @@ function renderHeader() {
   if (state.activeTab === "chat" && state.chatModal.open && state.chatModal.profile) {
     const partner = state.chatModal.profile;
     const partnerAvatar = getOptimizedImageUrl(partner.avatar, "avatar");
+    const activeThread = getActiveChatThreadSummary(partner);
+    const callUi = getChatCallUiState(partner);
+    const callBusy = callUi.status !== "idle";
+    const callDisabled = !partner?.uid || !!activeThread?.blockedByOwner || callBusy;
     return `
       <header class="shrink-0 p-6 pb-3 flex items-center justify-between gap-3 relative z-40 bg-slate-50">
         <button data-chat-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
@@ -14279,6 +14845,9 @@ function renderHeader() {
           <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.35em] block truncate">@${escapeHtml(String(partner.handle || "user").replace(/^@/, ""))}</span>
         </div>
         <div class="flex items-center gap-2">
+          <button id="chatStartAudioCallBtn" ${callDisabled ? "disabled" : ""} class="w-12 h-12 rounded-2xl flex items-center justify-center ${callDisabled ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white border border-slate-100 text-slate-700 active:scale-95"} shadow-sm">
+            ${icon("phone", "w-4 h-4")}
+          </button>
           <div class="w-12 h-12 rounded-2xl overflow-hidden p-1 bg-white border border-slate-100 shadow-sm">
             <img src="${escapeHtml(partnerAvatar)}" class="w-full h-full rounded-[1rem] object-cover" />
           </div>
@@ -16117,6 +16686,41 @@ function bindAppEvents() {
   if (chatMessages) {
     queueMicrotask(() => {
       chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+  }
+
+  const chatStartAudioCallBtn = document.getElementById("chatStartAudioCallBtn");
+  if (chatStartAudioCallBtn) {
+    chatStartAudioCallBtn.addEventListener("click", () => {
+      void startOutgoingChatAudioCall();
+    });
+  }
+
+  const chatCallAcceptBtn = document.getElementById("chatCallAcceptBtn");
+  if (chatCallAcceptBtn) {
+    chatCallAcceptBtn.addEventListener("click", () => {
+      void acceptIncomingChatAudioCall();
+    });
+  }
+
+  const chatCallDeclineBtn = document.getElementById("chatCallDeclineBtn");
+  if (chatCallDeclineBtn) {
+    chatCallDeclineBtn.addEventListener("click", () => {
+      void declineIncomingChatAudioCall();
+    });
+  }
+
+  const chatCallHangupBtn = document.getElementById("chatCallHangupBtn");
+  if (chatCallHangupBtn) {
+    chatCallHangupBtn.addEventListener("click", () => {
+      void endActiveChatCall("hangup");
+    });
+  }
+
+  const chatCallMuteBtn = document.getElementById("chatCallMuteBtn");
+  if (chatCallMuteBtn) {
+    chatCallMuteBtn.addEventListener("click", () => {
+      toggleActiveChatAudioMute();
     });
   }
 
