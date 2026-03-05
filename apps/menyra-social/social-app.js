@@ -2367,9 +2367,9 @@ async function ensureMessagingClient() {
   }
 }
 
-async function syncPushDeviceRegistration({ interactive = false, force = false } = {}) {
+async function syncPushDeviceRegistration({ interactive = false, force = false, enabled = state.settings?.pushNotifs } = {}) {
   const uid = String(state.user?.uid || "").trim();
-  if (!uid || !state.settings?.pushNotifs) return false;
+  if (!uid || !enabled) return false;
   if (!FCM_WEB_PUSH_VAPID_KEY) return false;
 
   const granted = await ensureNotificationPermission({ interactive });
@@ -10411,7 +10411,7 @@ async function syncNotificationsPushRuntime({ user = state.user, interactive = f
   const granted = await ensureNotificationPermission({ interactive });
   startNotificationsListener(user, { enableNativePush: granted });
   if (!granted) return false;
-  return syncPushDeviceRegistration({ interactive, force: interactive });
+  return syncPushDeviceRegistration({ interactive, force: interactive, enabled });
 }
 
 async function loadNotificationsFromFirebase({ force = false } = {}) {
