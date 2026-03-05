@@ -57,7 +57,7 @@ self.addEventListener('push', (event) => {
   const icon = notif.icon || payload.icon || '/apps/menyra-social/assets/menyra-social-logo.png';
   const notificationId = payload.data?.notificationId || payload.data?.notifId || '';
   const link = buildNotificationTargetUrl(
-    payload.fcmOptions?.link || payload.data?.link || '/apps/menyra-social/',
+    payload.data?.link || payload.fcmOptions?.link || '/apps/menyra-social/',
     notificationId
   );
   const tag = notif.tag || `menyra_notif_${payload.data?.notificationId || Date.now()}`;

@@ -9,6 +9,7 @@ if (!admin.apps.length) {
 
 const db = admin.firestore();
 const DEFAULT_SOCIAL_URL = "https://menyra.com/apps/menyra-social/";
+const DEFAULT_SOCIAL_PATH = "/apps/menyra-social/";
 const DEFAULT_ICON = "/apps/menyra-social/assets/menyra-social-logo.png";
 const INVALID_TOKEN_CODES = new Set([
   "messaging/registration-token-not-registered",
@@ -59,6 +60,22 @@ function resolveNotificationLink(data = {}) {
   }
 }
 
+function resolveNotificationClientLink(data = {}) {
+  const deepLink = asText(data.link || data.url);
+  if (!deepLink) return DEFAULT_SOCIAL_PATH;
+  if (/^https?:\/\//i.test(deepLink)) {
+    try {
+      const parsed = new URL(deepLink);
+      return `${parsed.pathname || DEFAULT_SOCIAL_PATH}${parsed.search || ""}${parsed.hash || ""}` || DEFAULT_SOCIAL_PATH;
+    } catch {
+      return DEFAULT_SOCIAL_PATH;
+    }
+  }
+  if (deepLink.startsWith("/")) return deepLink;
+  if (deepLink.startsWith("?")) return `${DEFAULT_SOCIAL_PATH}${deepLink}`;
+  return `${DEFAULT_SOCIAL_PATH}${deepLink.replace(/^\.?\//, "")}`;
+}
+
 function addNotificationQuery(link, notificationId) {
   const safeNotificationId = asText(notificationId);
   if (!safeNotificationId) return asText(link, DEFAULT_SOCIAL_URL);
@@ -73,6 +90,15 @@ function addNotificationQuery(link, notificationId) {
     const glue = base.includes("?") ? "&" : "?";
     return `${base}${glue}notif=${encodeURIComponent(safeNotificationId)}`;
   }
+}
+
+function addNotificationQueryToClientLink(link, notificationId) {
+  const safeLink = asText(link, DEFAULT_SOCIAL_PATH);
+  const safeNotificationId = asText(notificationId);
+  if (!safeNotificationId) return safeLink;
+  if (/[?&]notif=/.test(safeLink)) return safeLink;
+  const glue = safeLink.includes("?") ? "&" : "?";
+  return `${safeLink}${glue}notif=${encodeURIComponent(safeNotificationId)}`;
 }
 
 exports.sendWebPushOnNotificationCreate = functions
@@ -112,6 +138,7 @@ exports.sendWebPushOnNotificationCreate = functions
     const title = resolveNotificationTitle(data);
     const body = resolveNotificationBody(data);
     const link = addNotificationQuery(resolveNotificationLink(data), notificationId);
+    const clientLink = addNotificationQueryToClientLink(resolveNotificationClientLink(data), notificationId);
     const icon = asText(data.avatar || data.img, DEFAULT_ICON);
 
     const response = await admin.messaging().sendEachForMulticast({
@@ -126,7 +153,7 @@ exports.sendWebPushOnNotificationCreate = functions
         ownerId: asText(data.ownerId),
         postId: asText(data.postId),
         commentId: asText(data.commentId),
-        link
+        link: clientLink
       },
       webpush: {
         fcmOptions: {
