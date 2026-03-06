@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>MNYRA Social</title>
   <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
-  <link rel="icon" type="image/png" sizes="1024x1024" href="/apps/menyra-social/assets/menyra-social-logo.png" />
-  <link rel="apple-touch-icon" href="/apps/menyra-social/assets/menyra-social-logo.png" />
   <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin>
   <link rel="dns-prefetch" href="//menyra-media.alberthoti-vsa.workers.dev">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
+  <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-06-perf-1">
   <script>
     tailwind = {
       config: {
@@ -26,8 +26,7 @@
       }
     };
   </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script defer src="https://cdn.tailwindcss.com"></script>
   <script type="importmap">
   {
     "imports": {
@@ -126,6 +125,47 @@
     body.fast-mode .group-hover\:scale-105 { transform: none !important; }
     img { display: block; background: transparent; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
     .modal-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    #appBootShell {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(120% 120% at 0% 0%, #e0e7ff 0%, #f8fafc 45%, #ffffff 100%);
+      color: #0f172a;
+    }
+    .boot-shell-card {
+      width: min(480px, calc(100vw - 32px));
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      border-radius: 28px;
+      padding: 22px;
+      background: rgba(255, 255, 255, 0.85);
+      box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(10px);
+    }
+    .boot-pulse {
+      width: 62px;
+      height: 62px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, #4f46e5 0%, #0ea5e9 100%);
+      box-shadow: 0 12px 26px rgba(79, 70, 229, 0.32);
+      animation: boot-float 1.6s ease-in-out infinite;
+    }
+    .boot-line {
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
+      background-size: 200% 100%;
+      animation: boot-shimmer 1.4s linear infinite;
+    }
+    @keyframes boot-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    @keyframes boot-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
     @supports (-webkit-touch-callout: none) {
       input,
       textarea,
@@ -136,10 +176,59 @@
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
-  <div id="app"></div>
+  <div id="app">
+    <div id="appBootShell">
+      <div class="boot-shell-card">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div class="boot-pulse" aria-hidden="true"></div>
+          <div style="display:grid;gap:8px;flex:1;">
+            <div style="font-weight:800;letter-spacing:-0.02em;font-size:1.2rem;">MNYRA Social</div>
+            <div style="font-size:0.82rem;color:#475569;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">wird gestartet ...</div>
+          </div>
+        </div>
+        <div style="display:grid;gap:10px;margin-top:18px;">
+          <div class="boot-line" style="width:88%;"></div>
+          <div class="boot-line" style="width:68%;"></div>
+          <div class="boot-line" style="width:76%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script type="module" src="./social-app.js?v=2026-03-05-hotfix-5"></script>
-  <script type="module" src="/apps/menyra-social/pwa.js?v=2026-03-05-hotfix-5"></script>
+  <script type="module">
+    const SOCIAL_ENTRY = "/apps/menyra-social/social-app.js?v=2026-03-06-perf-1";
+    const LUCIDE_URL = "https://unpkg.com/lucide@latest";
+
+    function loadLucideInBackground() {
+      const script = document.createElement("script");
+      script.src = LUCIDE_URL;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
+    async function bootstrapSocialApp() {
+      try {
+        await import(SOCIAL_ENTRY);
+      } catch (err) {
+        const app = document.getElementById("app");
+        if (app) {
+          app.innerHTML = "<div style='padding:24px;font-family:Plus Jakarta Sans,sans-serif;color:#0f172a;'>Start fehlgeschlagen. Bitte Seite neu laden.</div>";
+        }
+        console.error("social bootstrap failed", err);
+      }
+    }
+
+    if ("requestAnimationFrame" in window) {
+      requestAnimationFrame(() => bootstrapSocialApp());
+    } else {
+      setTimeout(() => bootstrapSocialApp(), 0);
+    }
+    if ("requestIdleCallback" in window) {
+      requestIdleCallback(() => loadLucideInBackground(), { timeout: 2000 });
+    } else {
+      setTimeout(() => loadLucideInBackground(), 900);
+    }
+  </script>
+  <script type="module" src="/apps/menyra-social/pwa.js?v=2026-03-06-perf-1"></script>
 </body>
 </html>
