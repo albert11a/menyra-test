@@ -7,6 +7,7 @@
 
 import { app, db, auth } from "../../../../shared/firebase-config.js";
 import { BUNNY_EDGE_BASE } from "../../../../shared/bunny-edge.js";
+import { BRAND_UI } from "../../../../shared/brand-ui.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
   listActiveStories,
@@ -2182,7 +2183,7 @@ function buildLeadSocialEmail(name, suffix = "") {
 async function createLeadSocialAccount({ lead, restaurantId, name, city, logoUrl } = {}) {
   if (!lead || !restaurantId) return null;
   if (lead.socialUid || lead.socialEmail) return { uid: lead.socialUid || "", email: lead.socialEmail || "" };
-  const displayName = name || lead.businessName || lead.contactName || "Menyra Business";
+  const displayName = name || lead.businessName || lead.contactName || `${BRAND_UI.title} Business`;
   const baseEmail = buildLeadSocialEmail(displayName);
   const maxAttempts = 5;
 
@@ -3982,7 +3983,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     const restaurantSel = $("staffRestaurantSelectModal");
 
     const modeTitle = (mode === "edit") ? "bearbeiten" : (mode === "request" ? "Anfrage" : (mode === "approve" ? "bestaetigen" : "neu"));
-    if (title) title.textContent = (kind === "restaurant") ? `Kunden Staff ${modeTitle}` : `Menyra Staff ${modeTitle}`;
+    if (title) title.textContent = (kind === "restaurant") ? `Kunden Staff ${modeTitle}` : `${BRAND_UI.title} Staff ${modeTitle}`;
 
     $("staffFormMode").value = mode;
     $("staffFormKind").value = kind;
@@ -4046,7 +4047,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     }
 
     rows.forEach((req) => {
-      const kindLabel = req.kind === "restaurant" ? "Kunde" : "Menyra";
+      const kindLabel = req.kind === "restaurant" ? "Kunde" : BRAND_UI.title;
       const roleValue = pickRoleValue(req.targetRoles, req.roles, req.targetRole, req.role, "");
       const roleLabel = staffRoleLabel(roleValue, req.kind === "restaurant" ? "restaurant" : "system");
       const restaurantLabel = req.restaurantName || req.restaurantId || "-";
@@ -4283,7 +4284,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
   async function refreshStaffUi() {
     if (role === "owner") return;
     const sysBtn = $("newSystemStaffBtn");
-    if (sysBtn) sysBtn.textContent = (role === "ceo") ? "+ Neuer Menyra Staff" : "+ Neue Anfrage";
+    if (sysBtn) sysBtn.textContent = (role === "ceo") ? `+ Neuer ${BRAND_UI.title} Staff` : "+ Neue Anfrage";
     const restBtn = $("newRestaurantStaffBtn");
     if (restBtn) restBtn.textContent = (role === "ceo") ? "+ Neuer Kunden Staff" : "+ Neue Anfrage";
     fillStaffRestaurantSelects();
@@ -5488,7 +5489,7 @@ $("leadForm")?.addEventListener("submit", async (e) => {
     $("fixOwnerLoginBtn")?.addEventListener("click", async () => {
       if (role !== "ceo") return;
       if (fixOwnerBusy) return;
-      const email = window.prompt("Owner Email eingeben", "shpijaevjeter1@menyra.com");
+      const email = window.prompt("Owner Email eingeben", "shpijaevjeter1@mnyra.com");
       if (!email) return;
       const defaultHint = ($("customerSearch")?.value || "").trim();
       const restHint = window.prompt("Restaurant ID oder Name", defaultHint || "");

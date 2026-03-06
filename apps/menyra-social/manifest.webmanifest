@@ -1,7 +1,7 @@
 {
-  "name": "MENYRA Social",
-  "short_name": "MENYRA",
-  "description": "MENYRA Social feed, discover, and profile.",
+  "name": "MNYRA Social",
+  "short_name": "MNYRA",
+  "description": "MNYRA Social feed, discover, and profile.",
   "id": "/apps/menyra-social/index.html",
   "start_url": "/apps/menyra-social/index.html",
   "scope": "/apps/menyra-social/",

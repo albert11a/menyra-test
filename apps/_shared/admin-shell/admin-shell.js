@@ -68,7 +68,7 @@
 
     // Title from topbar logo or page title fallback
     const titleEl = document.querySelector(".m-topbar .m-brand-name") || document.querySelector(".m-topbar-title");
-    const title = titleEl ? (titleEl.textContent || "").trim() : (document.title || "MENYRA");
+    const title = titleEl ? (titleEl.textContent || "").trim() : (document.title || "MNYRA");
 
     host.innerHTML = `
       <div class="m-menu-top">

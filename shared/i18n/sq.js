@@ -1,1 +1,1 @@
-export default {'app.title':'MENYRA'};
+export default {'app.title':'MNYRA'};

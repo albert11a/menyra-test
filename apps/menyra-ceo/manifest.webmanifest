@@ -1,6 +1,6 @@
 {
-  "name": "MENYRA CEO Platform",
-  "short_name": "MENYRA CEO",
+  "name": "MNYRA CEO Platform",
+  "short_name": "MNYRA CEO",
   "start_url": "/apps/menyra-ceo/dashboard.html",
   "scope": "/apps/menyra-ceo/",
   "display": "standalone",

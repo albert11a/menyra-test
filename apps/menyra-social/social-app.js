@@ -1,5 +1,6 @@
 import { auth, db, app } from "@shared/firebase-config.js";
 import { BUNNY_EDGE_BASE } from "@shared/bunny-edge.js";
+import { BRAND_UI } from "@shared/brand-ui.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
   signInWithEmailAndPassword,
@@ -93,7 +94,7 @@ const ADMIN_LOGINS = {
     email: "admin@menyra.local",
     password: "admin",
     profile: {
-      displayName: "Menyra HQ",
+      displayName: `${BRAND_UI.title} HQ`,
       city: "Prishtina",
       role: "business",
       avatarUrl: ""
@@ -276,7 +277,7 @@ const DEFAULT_NOTIFICATIONS = [
   {
     id: "n3",
     type: "system",
-    user: "Menyra Team",
+    user: `${BRAND_UI.title} Team`,
     text: "Willkommen zurueck!",
     time: "2h",
     img: "",
@@ -1168,7 +1169,7 @@ function getRestaurantMetaById(restaurantId) {
 
 function resolveHeaderBranding() {
   return {
-    title: "MENYRA",
+    title: BRAND_UI.upper,
     subtitle: "Social",
     logoUrl: resolveShellAvatarUrl(),
     isBusinessLogo: isLocalBusinessProfile(state.userProfile)
@@ -2425,7 +2426,7 @@ function resolveNativePushBody(notif = {}) {
 
 async function showNativePushAlert(notif) {
   if (!notif?.id || !canEmitNativePushAlerts()) return;
-  const title = "Menyra";
+  const title = BRAND_UI.title;
   const body = resolveNativePushBody(notif);
   const icon = String(resolveNotificationAvatar(notif) || "/apps/menyra-social/assets/menyra-social-logo.png");
   const tag = `menyra_notif_${notif.id}`;
@@ -5906,7 +5907,7 @@ function mapRestaurantToCard(rest, idx) {
     rating: rest.rating || rest.score || 4.6,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "",
-    desc: rest.description || rest.bio || "Menyra Business"
+    desc: rest.description || rest.bio || `${BRAND_UI.title} Business`
   };
 }
 
@@ -5969,7 +5970,7 @@ function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.8,
     img: rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || "",
-    desc: rest.description || rest.bio || "Offizielles Lokal auf MENYRA.",
+    desc: rest.description || rest.bio || `Offizielles Lokal auf ${BRAND_UI.upper}.`,
     raw: rest
   };
 }
@@ -7729,7 +7730,7 @@ function renderAuthScreen() {
           <div class="w-16 h-16 bg-slate-900 rounded-2xl mx-auto mb-6 flex items-center justify-center text-white shadow-2xl">
             ${icon("zap", "w-8 h-8")}
           </div>
-          <h1 class="text-4xl font-black italic tracking-tighter text-slate-900">MENYRA</h1>
+          <h1 class="text-4xl font-black italic tracking-tighter text-slate-900">${BRAND_UI.upper}</h1>
           <p class="text-slate-400 font-bold text-xs uppercase tracking-widest mt-2">Social Login</p>
         </div>
 
@@ -7805,7 +7806,7 @@ function renderDrawer() {
       <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 max-w-[86vw] bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col overflow-y-auto ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}" style="overscroll-behavior:contain; -webkit-overflow-scrolling:touch;">
         <div class="flex justify-between items-center mb-10">
           <div>
-            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Menyra</span>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${BRAND_UI.title}</span>
             <h3 class="text-2xl font-black italic">NAVIGATE</h3>
           </div>
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
@@ -11869,11 +11870,11 @@ function renderLeadModal() {
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Instagram</label>
-          <input id="leadInstagram" type="text" value="${escapeHtml(leadInstagram)}" placeholder="@menyra" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="leadInstagram" type="text" value="${escapeHtml(leadInstagram)}" placeholder="@mnyra" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email (Login)</label>
-          <input id="leadEmail" type="email" value="${escapeHtml(leadEmail)}" placeholder="owner@menyra.com" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="leadEmail" type="email" value="${escapeHtml(leadEmail)}" placeholder="owner@mnyra.com" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort (optional)</label>
@@ -12020,7 +12021,7 @@ function renderCustomerModal() {
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>
-            <input id="customerOwnerEmail" type="email" value="${escapeHtml(customer.ownerEmail || "")}" placeholder="owner@menyra.com" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <input id="customerOwnerEmail" type="email" value="${escapeHtml(customer.ownerEmail || "")}" placeholder="owner@mnyra.com" class="w-full px-4 py-3 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
@@ -12039,7 +12040,7 @@ function renderCustomerModal() {
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Instagram</label>
-          <input id="customerInstagram" type="text" value="${escapeHtml(customerInstagram)}" placeholder="@menyra" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="customerInstagram" type="text" value="${escapeHtml(customerInstagram)}" placeholder="@mnyra" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
@@ -13143,7 +13144,7 @@ function renderLeadCreationView() {
             </div>
             <div>
               <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Instagram</label>
-              <input id="leadInstagram" type="text" value="${escapeHtml(lead.instagram || "")}" placeholder="@menyra" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input id="leadInstagram" type="text" value="${escapeHtml(lead.instagram || "")}" placeholder="@mnyra" class="w-full mt-2 px-4 py-3 bg-white rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
           </div>
           <div class="grid grid-cols-2 gap-3">
@@ -13625,7 +13626,7 @@ function renderStaffEditorView() {
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Email</label>
-            <input id="staffEmail" type="email" value="${escapeHtml(emailValue)}" placeholder="vornamenachname@menyra.com" readonly class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500 border-none outline-none" />
+            <input id="staffEmail" type="email" value="${escapeHtml(emailValue)}" placeholder="vornamenachname@mnyra.com" readonly class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500 border-none outline-none" />
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
@@ -14313,7 +14314,7 @@ function renderHeader() {
           ${icon("arrow-left", "w-5 h-5")}
         </button>
         <div class="text-center">
-          <h1 class="${titleClass}">MENYRA</h1>
+          <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">CEO Creation</span>
         </div>
         <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
@@ -14330,7 +14331,7 @@ function renderHeader() {
           ${icon("arrow-left", "w-5 h-5")}
         </button>
         <div class="text-center">
-          <h1 class="${titleClass}">MENYRA</h1>
+          <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">${isSettingsView ? "Leads Settings" : "Leads Creation"}</span>
         </div>
         <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
@@ -14703,7 +14704,7 @@ function bindImageFallbacks(root = document) {
 function renderLoading() {
   return `
     <div class="h-full min-h-full flex items-center justify-center text-slate-400 text-sm font-bold">
-      Lade MENYRA Social...
+      Lade ${BRAND_UI.social}...
     </div>
   `;
 }
@@ -17499,7 +17500,7 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
     name: displayName,
     handle: handle || normalizeHandle(displayName),
     uid: data?.uid || rest?.ownerUid || profileDoc?.id || "",
-    bio: data?.bio || rest?.description || rest?.bio || "Offizieller Account auf MENYRA Social.",
+    bio: data?.bio || rest?.description || rest?.bio || `Offizieller Account auf ${BRAND_UI.social}.`,
     avatar: data?.avatarUrl || data?.avatar || rest?.logoUrl || rest?.logo || "",
     location: data?.city || rest?.city || "Kosovo",
     followers,
@@ -20850,4 +20851,3 @@ window.addEventListener("load", () => {
     window.lucide.createIcons();
   }
 });
-

@@ -16,7 +16,7 @@ const ADMIN_LOGINS = {
     email: "admin@menyra.local",
     password: "admin",
     profile: {
-      displayName: "Menyra HQ",
+      displayName: "MNYRA HQ",
       city: "Prishtina",
       avatarUrl: ""
     }

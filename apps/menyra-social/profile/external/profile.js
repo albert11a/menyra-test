@@ -27,7 +27,7 @@ const views = {
 
 const profileData = {
   mine: {
-    name: "Menyra User",
+    name: "MNYRA User",
     roleLabel: "Explorer",
     location: "Prishtina",
     avatar: "",
@@ -41,7 +41,7 @@ const profileData = {
     ]
   },
   public: {
-    name: "Menyra Bistro",
+    name: "MNYRA Bistro",
     location: "Prishtina",
     avatar: "",
     bio: "Fresh plates, late-night bites, and a clean feed.",
