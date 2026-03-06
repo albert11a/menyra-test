@@ -7,12 +7,23 @@
   <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
   <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin>
   <link rel="dns-prefetch" href="//menyra-media.alberthoti-vsa.workers.dev">
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+  <link rel="dns-prefetch" href="//cdn.tailwindcss.com">
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="dns-prefetch" href="//unpkg.com">
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="//www.gstatic.com">
+  <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
+  <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-06-perf-2">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-06-perf-3">
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js" crossorigin>
   <script>
     tailwind = {
       config: {
@@ -26,7 +37,7 @@
       }
     };
   </script>
-  <script defer src="https://cdn.tailwindcss.com"></script>
+  <script async src="https://cdn.tailwindcss.com"></script>
   <script type="importmap">
   {
     "imports": {
@@ -125,6 +136,121 @@
     body.fast-mode .group-hover\:scale-105 { transform: none !important; }
     img { display: block; background: transparent; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
     .modal-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    #initialAppShell {
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      background: #f8fafc;
+    }
+    .shell-header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      backdrop-filter: blur(6px);
+      background: rgba(248, 250, 252, 0.86);
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 16px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .shell-brand {
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #0f172a;
+    }
+    .shell-dot {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: #e2e8f0;
+    }
+    .shell-stories {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+      padding: 10px 16px 12px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+    .shell-story {
+      width: 52px;
+      height: 52px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      flex: 0 0 auto;
+    }
+    .shell-feed {
+      padding: 12px 12px 98px;
+      overflow: hidden;
+      display: grid;
+      gap: 14px;
+    }
+    .shell-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 18px;
+      background: #ffffff;
+      padding: 12px;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+    }
+    .shell-card-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .shell-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      flex: 0 0 auto;
+    }
+    .shell-lines {
+      display: grid;
+      gap: 8px;
+      flex: 1;
+    }
+    .shell-line {
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
+      background-size: 220% 100%;
+      animation: shell-shimmer 1.25s linear infinite;
+    }
+    .shell-line.short { width: 44%; }
+    .shell-line.mid { width: 64%; }
+    .shell-image {
+      border-radius: 14px;
+      height: 188px;
+      background: #e2e8f0;
+      margin-top: 10px;
+    }
+    .shell-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: calc(66px + env(safe-area-inset-bottom));
+      padding: 10px 18px calc(10px + env(safe-area-inset-bottom));
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.92);
+      border-top: 1px solid #e2e8f0;
+      backdrop-filter: blur(8px);
+    }
+    .shell-nav-dot {
+      border-radius: 10px;
+      background: #e2e8f0;
+      height: 100%;
+    }
+    @keyframes shell-shimmer {
+      0% { background-position: 210% 0; }
+      100% { background-position: -210% 0; }
+    }
     @supports (-webkit-touch-callout: none) {
       input,
       textarea,
@@ -135,9 +261,53 @@
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
-  <div id="app"></div>
+  <div id="app">
+    <div id="initialAppShell" aria-hidden="true">
+      <header class="shell-header">
+        <div class="shell-brand">MNYRA Social</div>
+        <div class="shell-dot"></div>
+      </header>
+      <section class="shell-stories">
+        <div class="shell-story"></div>
+        <div class="shell-story"></div>
+        <div class="shell-story"></div>
+        <div class="shell-story"></div>
+        <div class="shell-story"></div>
+        <div class="shell-story"></div>
+      </section>
+      <main class="shell-feed">
+        <article class="shell-card">
+          <div class="shell-card-top">
+            <div class="shell-avatar"></div>
+            <div class="shell-lines">
+              <div class="shell-line mid"></div>
+              <div class="shell-line short"></div>
+            </div>
+          </div>
+          <div class="shell-image"></div>
+        </article>
+        <article class="shell-card">
+          <div class="shell-card-top">
+            <div class="shell-avatar"></div>
+            <div class="shell-lines">
+              <div class="shell-line mid"></div>
+              <div class="shell-line short"></div>
+            </div>
+          </div>
+          <div class="shell-image"></div>
+        </article>
+      </main>
+      <nav class="shell-nav">
+        <div class="shell-nav-dot"></div>
+        <div class="shell-nav-dot"></div>
+        <div class="shell-nav-dot"></div>
+        <div class="shell-nav-dot"></div>
+        <div class="shell-nav-dot"></div>
+      </nav>
+    </div>
+  </div>
   <script async src="https://unpkg.com/lucide@latest"></script>
-  <script type="module" src="/apps/menyra-social/social-app.js?v=2026-03-06-perf-2"></script>
-  <script type="module" src="/apps/menyra-social/pwa.js?v=2026-03-06-perf-2"></script>
+  <script type="module" src="/apps/menyra-social/social-app.js?v=2026-03-06-perf-3"></script>
+  <script type="module" src="/apps/menyra-social/pwa.js?v=2026-03-06-perf-3"></script>
 </body>
 </html>

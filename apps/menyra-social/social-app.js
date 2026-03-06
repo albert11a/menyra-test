@@ -184,7 +184,7 @@ const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 // Firebase Console -> Cloud Messaging -> Web Push certificate key pair (public VAPID key)
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
-const PUSH_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-1";
+const PUSH_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-3";
 const PUSH_SW_SCOPE = "/apps/menyra-social/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
@@ -14762,8 +14762,47 @@ function bindImageFallbacks(root = document) {
 
 function renderLoading() {
   return `
-    <div class="h-full min-h-full flex items-center justify-center text-slate-400 text-sm font-bold">
-      Lade ${BRAND_UI.social}...
+    <div id="initialAppShell" aria-hidden="true">
+      <header class="shell-header">
+        <div class="shell-brand">${BRAND_UI.social}</div>
+        <div class="shell-dot"></div>
+      </header>
+      <section class="shell-stories">
+        <div class="shell-story"></div>
+        <div class="shell-story"></div>
+        <div class="shell-story"></div>
+        <div class="shell-story"></div>
+        <div class="shell-story"></div>
+      </section>
+      <main class="shell-feed">
+        <article class="shell-card">
+          <div class="shell-card-top">
+            <div class="shell-avatar"></div>
+            <div class="shell-lines">
+              <div class="shell-line mid"></div>
+              <div class="shell-line short"></div>
+            </div>
+          </div>
+          <div class="shell-image"></div>
+        </article>
+        <article class="shell-card">
+          <div class="shell-card-top">
+            <div class="shell-avatar"></div>
+            <div class="shell-lines">
+              <div class="shell-line mid"></div>
+              <div class="shell-line short"></div>
+            </div>
+          </div>
+          <div class="shell-image"></div>
+        </article>
+      </main>
+      <nav class="shell-nav">
+        <div class="shell-nav-dot"></div>
+        <div class="shell-nav-dot"></div>
+        <div class="shell-nav-dot"></div>
+        <div class="shell-nav-dot"></div>
+        <div class="shell-nav-dot"></div>
+      </nav>
     </div>
   `;
 }
