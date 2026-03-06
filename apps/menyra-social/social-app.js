@@ -11,11 +11,6 @@ import {
   getAuth
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import {
-  getMessaging,
-  getToken,
-  isSupported as isMessagingSupported
-} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
-import {
   collection,
   collectionGroup,
   doc,
@@ -51,6 +46,9 @@ import { compressImage } from "./_shared/image-compressor.js";
 import { getOptimizedImageUrl, getFirebaseStorageUrl, isPlaceholderUrl, PLACEHOLDER_IMAGE } from "./_shared/image-resolver.js";
 
 const appEl = document.getElementById("app");
+const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
+const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
 
 // --- SAFE STORAGE HELPER ---
 const safeStorage = {
@@ -186,8 +184,8 @@ const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 // Firebase Console -> Cloud Messaging -> Web Push certificate key pair (public VAPID key)
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
-const PUSH_SW_URL = "/sw.js?v=2026-03-05-hotfix-6";
-const PUSH_SW_SCOPE = "/";
+const PUSH_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-1";
+const PUSH_SW_SCOPE = "/apps/menyra-social/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
@@ -639,7 +637,10 @@ let followingUnsub = null;
 let userDocUnsub = null;
 let userDocLiveKey = "";
 let pushMessagingClient = null;
+let firebaseMessagingModulePromise = null;
 let pushActivationIssue = "";
+let leafletLoadPromise = null;
+let leafletLoadFailed = false;
 let profileViewUnsub = null;
 let feedUnsub = null;
 let storiesUnsub = null;
@@ -2441,7 +2442,7 @@ async function showNativePushAlert(notif) {
   };
   try {
     if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration("/");
+      const reg = await navigator.serviceWorker.getRegistration(PUSH_SW_SCOPE);
       if (reg?.showNotification) {
         await reg.showNotification(title, {
           body,
@@ -2496,15 +2497,26 @@ function writePushTokenMeta(uid = state.user?.uid || "", token = "") {
   }));
 }
 
+async function ensureFirebaseMessagingModule() {
+  if (firebaseMessagingModulePromise) return firebaseMessagingModulePromise;
+  firebaseMessagingModulePromise = import(FIREBASE_MESSAGING_MODULE_URL)
+    .catch((err) => {
+      firebaseMessagingModulePromise = null;
+      throw err;
+    });
+  return firebaseMessagingModulePromise;
+}
+
 async function ensureMessagingClient() {
   if (pushMessagingClient) return pushMessagingClient;
   try {
-    const supported = await isMessagingSupported();
+    const messagingModule = await ensureFirebaseMessagingModule();
+    const supported = await messagingModule.isSupported();
     if (!supported) {
       setPushActivationIssue("FCM wird in diesem Browser/Context nicht unterstuetzt.");
       return null;
     }
-    pushMessagingClient = getMessaging(app);
+    pushMessagingClient = messagingModule.getMessaging(app);
     return pushMessagingClient;
   } catch (err) {
     setPushActivationIssue("FCM Messaging konnte nicht initialisiert werden.", err);
@@ -2576,7 +2588,8 @@ async function syncPushDeviceRegistration({ interactive = false, force = false, 
 
   let safeToken = "";
   try {
-    const token = await getToken(messaging, {
+    const messagingModule = await ensureFirebaseMessagingModule();
+    const token = await messagingModule.getToken(messaging, {
       vapidKey: FCM_WEB_PUSH_VAPID_KEY,
       serviceWorkerRegistration: pushReg
     });
@@ -5923,6 +5936,41 @@ function businessIcon(type) {
   return "zap";
 }
 
+function ensureLeafletStylesheet() {
+  if (typeof document === "undefined") return;
+  if (document.querySelector('link[data-leaflet-css="1"]')) return;
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = LEAFLET_CSS_URL;
+  link.dataset.leafletCss = "1";
+  document.head.appendChild(link);
+}
+
+async function ensureLeafletLoaded() {
+  if (window.L) return true;
+  if (leafletLoadFailed) return false;
+  if (leafletLoadPromise) return leafletLoadPromise;
+  ensureLeafletStylesheet();
+  leafletLoadPromise = new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = LEAFLET_JS_URL;
+    script.async = true;
+    script.dataset.leafletJs = "1";
+    script.onload = () => {
+      leafletLoadFailed = !window.L;
+      resolve(!!window.L);
+    };
+    script.onerror = () => {
+      leafletLoadFailed = true;
+      resolve(false);
+    };
+    document.head.appendChild(script);
+  }).finally(() => {
+    leafletLoadPromise = null;
+  });
+  return leafletLoadPromise;
+}
+
 let leafletMap = null;
 let leafletBizMarkers = [];
 let leafletUserMarker = null;
@@ -6302,7 +6350,15 @@ function initLeafletIfNeeded() {
   }
 
   const el = document.getElementById("leafletMap");
-  if (!el || !window.L) return;
+  if (!el) return;
+  if (!window.L) {
+    void ensureLeafletLoaded().then((loaded) => {
+      if (!loaded || state.activeTab !== "map") return;
+      initLeafletIfNeeded();
+      render();
+    });
+    return;
+  }
 
   if (leafletMap && !isLeafletMapMountedOn(el)) {
     cleanupLeaflet();
@@ -8882,6 +8938,9 @@ function renderMapSheet(selected) {
 
 function renderMapView() {
   const hasLeaflet = !!window.L;
+  const mapInfoLabel = leafletLoadFailed
+    ? "Karte konnte nicht geladen werden."
+    : (leafletLoadPromise ? "Karte wird geladen ..." : "Karte wird vorbereitet ...");
   return `
     <div class="p-5 pb-8 h-full flex flex-col relative animate-in fade-in duration-700">
       <div class="mb-4 px-2 flex justify-between items-end">
@@ -8892,8 +8951,8 @@ function renderMapView() {
       </div>
 
       <div class="relative flex-1 bg-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200/50 min-h-[500px]">
-        
-        ${hasLeaflet ? `<div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>` : `<div class="absolute inset-0 flex items-center justify-center opacity-30 text-slate-500 text-xs font-black uppercase tracking-widest">Leaflet laedt nicht...</div>`}
+        <div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>
+        ${hasLeaflet ? "" : `<div class="absolute inset-0 z-20 flex items-center justify-center opacity-40 text-slate-500 text-xs font-black uppercase tracking-widest">${escapeHtml(mapInfoLabel)}</div>`}
         
         <div class="absolute top-5 left-4 right-4 z-30">
           <div class="relative group shadow-lg rounded-2xl">
@@ -16792,6 +16851,15 @@ async function openLocationPicker({ addressInputId = "settingsAddress", coordsDi
       }
     }
   }
+
+  if (!window.L) {
+    const leafletReady = await ensureLeafletLoaded();
+    if (!leafletReady || !window.L) {
+      alert("Karte konnte nicht geladen werden. Bitte Verbindung pruefen.");
+      return;
+    }
+  }
+
   const modal = document.getElementById("locationPickerModal");
   const overlay = document.getElementById("pickerOverlay");
   const panel = document.getElementById("pickerPanel");

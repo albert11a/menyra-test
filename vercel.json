@@ -44,5 +44,37 @@
     { "source": "/social/", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" },
     { "source": "/menyra-restaurants/:path*", "destination": "/apps/menyra-restaurants/:path*" }
+  ],
+  "headers": [
+    {
+      "source": "/apps/menyra-social/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/social-app.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/menyra-social/assets/:path*",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/hub/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
   ]
 }

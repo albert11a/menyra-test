@@ -1,5 +1,5 @@
-// MENYRA Social – PWA bootstrap
-// Registers the root service worker so images and static assets cache aggressively.
+// MNYRA Social – PWA bootstrap
+// Registers an app-scoped service worker for social routes.
 
 // Note: Service workers only work on HTTPS (or localhost).
 
@@ -8,11 +8,14 @@ function log(...args) {
   // console.log("[PWA]", ...args);
 }
 
+const SOCIAL_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-1";
+const SOCIAL_SW_SCOPE = "/apps/menyra-social/";
+
 async function registerSW() {
   if (!('serviceWorker' in navigator)) return;
 
   try {
-    const reg = await navigator.serviceWorker.register('/sw.js?v=2026-03-05-hotfix-3', { scope: '/' });
+    const reg = await navigator.serviceWorker.register(SOCIAL_SW_URL, { scope: SOCIAL_SW_SCOPE });
     log('registered', reg);
 
     // If there's already a waiting worker, activate it.
@@ -44,6 +47,10 @@ async function registerSW() {
   }
 }
 
-window.addEventListener('load', () => {
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    registerSW();
+  }, { once: true });
+} else {
   registerSW();
-});
+}
