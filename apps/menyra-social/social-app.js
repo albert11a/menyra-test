@@ -184,7 +184,7 @@ const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 // Firebase Console -> Cloud Messaging -> Web Push certificate key pair (public VAPID key)
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
-const PUSH_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-5";
+const PUSH_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-6";
 const PUSH_SW_SCOPE = "/apps/menyra-social/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
@@ -3853,52 +3853,60 @@ function loadPersisted() {
   // user-scoped profile/avatar loaded after login
 
   const restaurantsCache = readCache(CACHE_KEYS.restaurants);
+  let needsRestaurantMetaHydration = false;
   if (restaurantsCache?.data?.length) {
     state.restaurants = restaurantsCache.data;
-    rebuildBusinessLocations();
-    syncFeedPostLogos();
-    refreshFeedStories({ force: true });
-    const needsMeta = restaurantsCache.data.some((rest) => !(rest?.logoUrl || rest?.logo || rest?.logoURL));
-    if (needsMeta) {
-      suspendRender();
-      Promise.resolve(enrichRestaurantsWithPublicMeta(restaurantsCache.data))
-        .then((list) => {
-          state.restaurants = list;
-          rebuildBusinessLocations();
-          syncFeedPostLogos();
-          refreshFeedStories({ force: true });
-          writeCache(CACHE_KEYS.restaurants, list);
-        })
-        .finally(() => resumeRender());
-    }
+    needsRestaurantMetaHydration = restaurantsCache.data.some((rest) => !(rest?.logoUrl || rest?.logo || rest?.logoURL));
   }
 
   const feedCache = readCache(CACHE_KEYS.feed);
+  let cachedHydrationIds = [];
   if (feedCache?.data?.length) {
     state.feedPosts = feedCache.data;
-    syncFeedPostLogos();
-    refreshFeedStories({ posts: feedCache.data, force: true });
-    preloadFeedHeroImages(state.feedPosts);
-    const cachedHydrationIds = collectFeedHydrationIds(feedCache.data, { max: 6 });
-    if (cachedHydrationIds.length) {
-      const needsHydrate = cachedHydrationIds.some((id) => {
-        const rest = state.restaurants.find((item) => item.id === id);
-        return !rest || !(rest.logoUrl || rest.logo || rest.logoURL);
-      });
-      if (needsHydrate) {
-        suspendRender();
-        Promise.resolve(hydrateRestaurantsByIds(cachedHydrationIds, { max: cachedHydrationIds.length }))
-          .finally(() => resumeRender());
-      } else {
-        void hydrateRestaurantsByIds(cachedHydrationIds, { max: cachedHydrationIds.length });
-      }
-    }
+    cachedHydrationIds = collectFeedHydrationIds(feedCache.data, { max: 6 });
   }
 
   const storiesCache = readCache(CACHE_KEYS.stories);
   if (!state.stories.length && storiesCache?.data?.length) state.stories = storiesCache.data;
 
   state.postMeta = {};
+
+  scheduleIdle(() => {
+    if (state.restaurants.length) {
+      rebuildBusinessLocations();
+    }
+
+    const feedUpdated = syncFeedPostLogos();
+    const storiesUpdated = refreshFeedStories({ posts: state.feedPosts, force: true });
+    preloadFeedHeroImages(state.feedPosts);
+
+    if (feedUpdated || storiesUpdated) {
+      const inMain = lastRenderMode === "main";
+      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+      if (!updatedFeed) render();
+    }
+
+    if (needsRestaurantMetaHydration) {
+      void Promise.resolve(enrichRestaurantsWithPublicMeta(state.restaurants))
+        .then((list) => {
+          state.restaurants = list;
+          rebuildBusinessLocations();
+          const feedChanged = syncFeedPostLogos();
+          const storiesChanged = refreshFeedStories({ posts: state.feedPosts, force: true });
+          writeCache(CACHE_KEYS.restaurants, list);
+          if (feedChanged || storiesChanged) {
+            const inMain = lastRenderMode === "main";
+            const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+            if (!updatedFeed) render();
+          }
+        })
+        .catch(() => null);
+    }
+
+    if (cachedHydrationIds.length) {
+      void hydrateRestaurantsByIds(cachedHydrationIds, { max: cachedHydrationIds.length });
+    }
+  });
 }
 
 function loadUserScopedPersisted(user) {

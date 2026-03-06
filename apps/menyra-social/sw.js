@@ -1,7 +1,14 @@
-const CACHE_NAME = "mnyra-social-cache-v1";
+const CACHE_NAME = "mnyra-social-cache-v2";
 const CACHE_PREFIX = "mnyra-social-cache-";
 const APP_SCOPE = "/apps/menyra-social/";
 const APP_SHELL_URL = "/apps/menyra-social/index.html";
+const EXTERNAL_STATIC_HOSTS = new Set([
+  "www.gstatic.com",
+  "fonts.googleapis.com",
+  "fonts.gstatic.com",
+  "cdn.tailwindcss.com",
+  "unpkg.com"
+]);
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -122,6 +129,11 @@ function isInSocialScope(url) {
   );
 }
 
+function isExternalStaticRequest(url, request) {
+  if (!EXTERNAL_STATIC_HOSTS.has(url.hostname)) return false;
+  return ["script", "style", "font", "image"].includes(request.destination);
+}
+
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
@@ -155,8 +167,9 @@ self.addEventListener("fetch", (event) => {
   const isNavigation = req.mode === "navigate";
   const isImage = req.destination === "image" || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname);
   const isStaticAsset = ["script", "style", "font"].includes(req.destination);
+  const isExternalStatic = isExternalStaticRequest(url, req);
 
-  if (!inScope && !isImage) return;
+  if (!inScope && !isImage && !isExternalStatic) return;
 
   if (isNavigation && inScope) {
     event.respondWith((async () => {
@@ -174,6 +187,11 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (isImage || (inScope && isStaticAsset)) {
+    event.respondWith(staleWhileRevalidate(req));
+    return;
+  }
+
+  if (isExternalStatic) {
     event.respondWith(staleWhileRevalidate(req));
     return;
   }
