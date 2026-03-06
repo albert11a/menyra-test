@@ -184,7 +184,7 @@ const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 // Firebase Console -> Cloud Messaging -> Web Push certificate key pair (public VAPID key)
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
-const PUSH_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-3";
+const PUSH_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-4";
 const PUSH_SW_SCOPE = "/apps/menyra-social/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
@@ -402,7 +402,6 @@ function createEmptyCustomersState() {
 }
 
 const state = {
-  sessionReady: false,
   user: null,
   activeTab: "feed",
   drawerOpen: false,
@@ -626,7 +625,6 @@ let dataLoaded = {
 let lastAppHtml = "";
 let lastRenderMode = "";
 let lastRenderedMainTab = "";
-let authReadyTimer = null;
 let feedDeltaTimer = null;
 let searchTimer = null;
 let searchToken = 0;
@@ -14760,53 +14758,6 @@ function bindImageFallbacks(root = document) {
   });
 }
 
-function renderLoading() {
-  return `
-    <div id="initialAppShell" aria-hidden="true">
-      <header class="shell-header">
-        <div class="shell-brand">${BRAND_UI.social}</div>
-        <div class="shell-dot"></div>
-      </header>
-      <section class="shell-stories">
-        <div class="shell-story"></div>
-        <div class="shell-story"></div>
-        <div class="shell-story"></div>
-        <div class="shell-story"></div>
-        <div class="shell-story"></div>
-      </section>
-      <main class="shell-feed">
-        <article class="shell-card">
-          <div class="shell-card-top">
-            <div class="shell-avatar"></div>
-            <div class="shell-lines">
-              <div class="shell-line mid"></div>
-              <div class="shell-line short"></div>
-            </div>
-          </div>
-          <div class="shell-image"></div>
-        </article>
-        <article class="shell-card">
-          <div class="shell-card-top">
-            <div class="shell-avatar"></div>
-            <div class="shell-lines">
-              <div class="shell-line mid"></div>
-              <div class="shell-line short"></div>
-            </div>
-          </div>
-          <div class="shell-image"></div>
-        </article>
-      </main>
-      <nav class="shell-nav">
-        <div class="shell-nav-dot"></div>
-        <div class="shell-nav-dot"></div>
-        <div class="shell-nav-dot"></div>
-        <div class="shell-nav-dot"></div>
-        <div class="shell-nav-dot"></div>
-      </nav>
-    </div>
-  `;
-}
-
 function getImageKey(img) {
   if (!img) return "";
   const direct = img.dataset.imgKey;
@@ -14950,10 +14901,7 @@ function render() {
   document.body.classList.toggle("fast-mode", FAST_MODE);
   let nextHtml = "";
   let mode = "";
-  if (!state.sessionReady) {
-    nextHtml = renderLoading();
-    mode = "loading";
-  } else if (!state.user) {
+  if (!state.user) {
     nextHtml = renderAuthScreen();
     mode = "auth";
   } else {
@@ -20898,20 +20846,20 @@ async function bootstrapUser(user) {
 
 loadPersisted();
 bindPushOpenTargetMessageHandler();
+state.user = auth.currentUser || null;
+if (state.user) {
+  loadUserScopedPersisted(state.user);
+  lastAuthUid = state.user.uid || "";
+}
 render();
 
 onAuthStateChanged(auth, (user) => {
-  if (authReadyTimer) {
-    clearTimeout(authReadyTimer);
-    authReadyTimer = null;
-  }
   const nextUid = user?.uid || "";
   const prevUid = lastAuthUid;
   if ((prevUid && !nextUid) || (prevUid && nextUid && prevUid !== nextUid)) {
     resetUserScopedState();
   }
   state.user = user;
-  state.sessionReady = true;
   if (user) {
     loadUserScopedPersisted(user);
     const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();
@@ -20946,15 +20894,9 @@ onAuthStateChanged(auth, (user) => {
   lastAuthUid = nextUid;
 });
 
-authReadyTimer = window.setTimeout(() => {
-  if (!state.sessionReady) {
-    state.sessionReady = true;
-    render();
-  }
-}, 4000);
-
 window.addEventListener("load", () => {
   if (window.lucide?.createIcons) {
     window.lucide.createIcons();
   }
 });
+
