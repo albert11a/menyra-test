@@ -198,3 +198,6 @@ exports.sendWebPushOnNotificationCreate = functions
       failed: response.failureCount
     });
   });
+
+const { migrateEmailsToMnyra } = require("./email-domain-migration");
+exports.migrateEmailsToMnyra = migrateEmailsToMnyra;
