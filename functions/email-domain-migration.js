@@ -349,9 +349,101 @@ async function commitPatches(patches) {
   return writes;
 }
 
+function rewriteEmailFieldValue(value, fromDomain, toDomain) {
+  const current = asText(value);
+  if (!current) return "";
+  const next = mapEmailDomain(current, fromDomain, toDomain);
+  if (!next) return "";
+  if (sameEmail(current, next)) return "";
+  return next;
+}
+
+async function rewriteLeadDomainPage(db, { fromDomain, toDomain, limit, pageToken }) {
+  const pageSize = Math.max(1, Math.min(MAX_BATCH_WRITES, parseIntSafe(limit, 200) || 200));
+  const startAfterId = asText(pageToken);
+  let query = db.collection("leads")
+    .orderBy(admin.firestore.FieldPath.documentId())
+    .limit(pageSize);
+  if (startAfterId) {
+    query = query.startAfter(startAfterId);
+  }
+
+  const snap = await query.get();
+  if (snap.empty) {
+    return {
+      nextPageToken: "",
+      leadDocsScanned: 0,
+      leadDocsUpdated: 0,
+      leadFieldUpdates: 0
+    };
+  }
+
+  const batch = admin.firestore().batch();
+  let leadDocsScanned = 0;
+  let leadDocsUpdated = 0;
+  let leadFieldUpdates = 0;
+
+  snap.forEach((docSnap) => {
+    leadDocsScanned += 1;
+    const data = docSnap.data() || {};
+    const patch = {};
+    for (const field of EMAIL_FIELDS) {
+      const nextValue = rewriteEmailFieldValue(data[field], fromDomain, toDomain);
+      if (!nextValue) continue;
+      patch[field] = nextValue;
+    }
+    const changedFields = Object.keys(patch);
+    if (!changedFields.length) return;
+    leadDocsUpdated += 1;
+    leadFieldUpdates += changedFields.length;
+    batch.set(docSnap.ref, patch, { merge: true });
+  });
+
+  if (leadDocsUpdated > 0) {
+    await batch.commit();
+  }
+
+  const lastDoc = snap.docs[snap.docs.length - 1];
+  return {
+    nextPageToken: asText(lastDoc?.id),
+    leadDocsScanned,
+    leadDocsUpdated,
+    leadFieldUpdates
+  };
+}
+
 async function runMigration({ mode, fromDomain, toDomain, limit, scanFirestore, pageToken, pageSize }) {
   const auth = admin.auth();
   const db = admin.firestore();
+
+  if (mode === "leads-rewrite") {
+    const leadPage = await rewriteLeadDomainPage(db, {
+      fromDomain,
+      toDomain,
+      limit,
+      pageToken
+    });
+    return {
+      mode,
+      fromDomain,
+      toDomain,
+      usersScanned: 0,
+      nextPageToken: leadPage.nextPageToken,
+      candidates: leadPage.leadDocsScanned,
+      safeCandidates: leadPage.leadDocsScanned,
+      blockedCandidates: 0,
+      authUpdated: 0,
+      firestoreDocsUpdated: leadPage.leadDocsUpdated,
+      leadDocsScanned: leadPage.leadDocsScanned,
+      leadDocsUpdated: leadPage.leadDocsUpdated,
+      leadFieldUpdates: leadPage.leadFieldUpdates,
+      duplicateTargets: [],
+      externalCollisions: [],
+      errors: [],
+      perUser: []
+    };
+  }
+
   const userPage = await listAllUsers(auth, { limit, pageToken, pageSize });
   const users = userPage.users;
   const plan = buildMigrationPlan(users, fromDomain, toDomain);
@@ -456,7 +548,7 @@ const migrateEmailsToMnyra = functions
     }
 
     const modeRaw = lower(req.body?.mode || req.query?.mode || "dry-run");
-    const mode = ["dry-run", "execute", "firestore-repair"].includes(modeRaw)
+    const mode = ["dry-run", "execute", "firestore-repair", "leads-rewrite"].includes(modeRaw)
       ? modeRaw
       : "dry-run";
     const fromDomain = lower(req.body?.fromDomain || req.query?.fromDomain || DEFAULT_FROM_DOMAIN);

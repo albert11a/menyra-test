@@ -1232,7 +1232,7 @@ function buildLeadAccountEmail(name = "") {
     .replace(/\s+/g, "")
     .replace(/_/g, "")
     .replace(/[^a-z0-9]/g, "");
-  return localPart ? `${localPart}@menyra.com` : "";
+  return localPart ? `${localPart}@mnyra.com` : "";
 }
 
 function buildLeadContactName(firstName = "", lastName = "", fallback = "") {
@@ -19393,7 +19393,7 @@ function buildStaffAccountEmail(firstName = "", lastName = "", fallback = "") {
     .replace(/_/g, "")
     .replace(/[^a-z0-9]/g, "");
   const localPart = toEmailLocal(`${firstName || ""}${lastName || ""}`) || toEmailLocal(fallback || "");
-  return localPart ? `${localPart}@menyra.com` : "";
+  return localPart ? `${localPart}@mnyra.com` : "";
 }
 
 function getStaffFormEmail(form = state.staff.form, { preferStored = false } = {}) {

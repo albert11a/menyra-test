@@ -2177,7 +2177,7 @@ function buildDemoStaffName(businessName, role) {
 function buildLeadSocialEmail(name, suffix = "") {
   const localBase = slugify(name || "").replace(/-+/g, "") || "customer";
   const safeSuffix = suffix ? String(suffix).replace(/[^0-9]/g, "") : "";
-  return `${localBase}${safeSuffix}@menyra.com`;
+  return `${localBase}${safeSuffix}@mnyra.com`;
 }
 
 async function createLeadSocialAccount({ lead, restaurantId, name, city, logoUrl } = {}) {
