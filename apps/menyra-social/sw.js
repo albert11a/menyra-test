@@ -6,7 +6,6 @@ const EXTERNAL_STATIC_HOSTS = new Set([
   "www.gstatic.com",
   "fonts.googleapis.com",
   "fonts.gstatic.com",
-  "cdn.tailwindcss.com",
   "unpkg.com"
 ]);
 
