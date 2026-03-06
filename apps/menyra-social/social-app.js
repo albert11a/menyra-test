@@ -184,7 +184,7 @@ const PUSH_SEEN_NOTIFICATIONS_LIMIT = 120;
 const PUSH_TOKEN_SYNC_INTERVAL_MS = 12 * 60 * 60 * 1000;
 // Firebase Console -> Cloud Messaging -> Web Push certificate key pair (public VAPID key)
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
-const PUSH_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-4";
+const PUSH_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-06-perf-5";
 const PUSH_SW_SCOPE = "/apps/menyra-social/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
@@ -663,6 +663,7 @@ let feedStoriesSignature = "";
 let storiesRowSignature = "";
 let focusRotateTimer = null;
 let focusRotateKey = "";
+let authInitialized = false;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -14897,6 +14898,9 @@ function render() {
     renderQueued = true;
     return;
   }
+  if (!authInitialized && !state.user) {
+    return;
+  }
   const chatInputFocusState = captureChatInputFocusState();
   document.body.classList.toggle("fast-mode", FAST_MODE);
   let nextHtml = "";
@@ -20847,6 +20851,7 @@ async function bootstrapUser(user) {
 loadPersisted();
 bindPushOpenTargetMessageHandler();
 state.user = auth.currentUser || null;
+authInitialized = !!state.user;
 if (state.user) {
   loadUserScopedPersisted(state.user);
   lastAuthUid = state.user.uid || "";
@@ -20854,6 +20859,7 @@ if (state.user) {
 render();
 
 onAuthStateChanged(auth, (user) => {
+  authInitialized = true;
   const nextUid = user?.uid || "";
   const prevUid = lastAuthUid;
   if ((prevUid && !nextUid) || (prevUid && nextUid && prevUid !== nextUid)) {
@@ -20899,4 +20905,5 @@ window.addEventListener("load", () => {
     window.lucide.createIcons();
   }
 });
+
 
