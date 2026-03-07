@@ -86,6 +86,7 @@ const shopCartKey = (uid) => (uid ? `${STORAGE_KEYS.shopCart}::${uid}` : "");
 const pushSeenKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::push_seen::${uid}` : "");
 const pushTokenMetaKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::push_meta::${uid}` : "");
 const pushDeviceIdKey = () => `${STORAGE_KEYS.notifications}::push_device_id`;
+const GUEST_SCOPE_UID = "guest";
 
 const ADMIN_LOGINS = {
   admin: {
@@ -596,7 +597,8 @@ const state = {
     mode: "login",
     role: "user",
     loading: false,
-    error: ""
+    error: "",
+    open: false
   }
 };
 
@@ -749,6 +751,29 @@ function normalizeAuthMode(value) {
   return "";
 }
 
+function isGuestSession() {
+  return !state.user;
+}
+
+function sanitizeTabForSession(tab, { hasProfileView = !!state.profileView } = {}) {
+  const next = String(tab || "").trim() || "feed";
+  if (!isGuestSession()) return next;
+  const guestAllowed = new Set(["feed", "search", "map", "orders", "profile"]);
+  if (!guestAllowed.has(next)) return "feed";
+  if (next === "profile" && !hasProfileView) return "feed";
+  return next;
+}
+
+function openGuestAuthPrompt(message = "Bitte registrieren oder einloggen, um diese Funktion zu nutzen.") {
+  if (!isGuestSession()) return false;
+  state.auth.mode = normalizeAuthMode(state.auth.mode) || "login";
+  state.auth.error = String(message || "").trim() || "Bitte registrieren oder einloggen.";
+  state.auth.open = true;
+  state.drawerOpen = false;
+  render();
+  return true;
+}
+
 function applyPendingInitialRouteState() {
   if (pendingInitialTab) {
     state.activeTab = pendingInitialTab;
@@ -756,8 +781,10 @@ function applyPendingInitialRouteState() {
   }
   if (!state.user && pendingAuthMode) {
     state.auth.mode = pendingAuthMode;
+    state.auth.open = true;
     pendingAuthMode = "";
   }
+  state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
 }
 
 function getActiveUid() {
@@ -2006,7 +2033,7 @@ function normalizeShopCartState(raw) {
   };
 }
 
-function saveShopCartToStorage(uid = state.user?.uid || "") {
+function saveShopCartToStorage(uid = state.user?.uid || GUEST_SCOPE_UID) {
   const key = shopCartKey(uid);
   if (!key) return;
   try {
@@ -2025,7 +2052,7 @@ function getCartCountForRestaurant(restaurantId = "") {
 
 function canAddToShopCart(profile = state.profileView?.profile || state.userProfile) {
   const restaurantId = String(profile?.restaurantId || "").trim();
-  if (!state.user || !restaurantId || !isShopCatalogProfile(profile)) return false;
+  if (!restaurantId || !isShopCatalogProfile(profile)) return false;
   if (state.userProfile?.restaurantId && String(state.userProfile.restaurantId).trim() === restaurantId) return false;
   return true;
 }
@@ -2423,6 +2450,11 @@ function setState(patch) {
   const prevTab = state.activeTab;
   const keys = Object.keys(patch || {});
   const drawerOnly = keys.length === 1 && keys[0] === "drawerOpen";
+  if (patch && Object.prototype.hasOwnProperty.call(patch, "activeTab")) {
+    patch.activeTab = sanitizeTabForSession(patch.activeTab, {
+      hasProfileView: !!state.profileView
+    });
+  }
   Object.assign(state, patch);
   if (drawerOnly && lastRenderMode === "main") {
     updateDrawerDom();
@@ -3826,7 +3858,11 @@ function toggleChatMessageLiked(messageId) {
 }
 
 function openChatWithProfile(profile) {
-  if (!state.user || !profile) return;
+  if (!profile) return;
+  if (!state.user) {
+    openGuestAuthPrompt("Bitte einloggen, um Chats zu nutzen.");
+    return;
+  }
   const nextProfile = {
     uid: profile.uid || "",
     restaurantId: profile.restaurantId || "",
@@ -4182,6 +4218,20 @@ function loadUserScopedPersisted(user) {
     };
   }));
   saveChatThreadIndex(state.chatThreads);
+}
+
+function loadGuestScopedPersisted() {
+  const scopedCart = safeStorage.getItem(shopCartKey(GUEST_SCOPE_UID));
+  if (scopedCart) {
+    try {
+      state.shopCart = normalizeShopCartState(JSON.parse(scopedCart));
+    } catch {
+      state.shopCart = createEmptyShopCart();
+    }
+  } else {
+    state.shopCart = createEmptyShopCart();
+  }
+  state.orders = createEmptyOrdersState();
 }
 
 function resetUserScopedState() {
@@ -6518,7 +6568,7 @@ function bindMapSheetEvents() {
 }
 
 function initLeafletIfNeeded() {
-  if (!state.user || state.activeTab !== "map") {
+  if (state.activeTab !== "map") {
     cleanupLeaflet();
     return;
   }
@@ -7130,6 +7180,10 @@ function isBusinessSearchUser(user) {
 }
 
 async function searchUsersRemote(queryRaw, token) {
+  if (isGuestSession()) {
+    state.search.userResults = [];
+    return;
+  }
   const queryKey = normalizeSearchKey(queryRaw);
   const nameKey = normalizeSearchQuery(queryRaw);
   if (!queryKey) {
@@ -7311,14 +7365,20 @@ function handleSearchInput(value) {
 }
 
 function ensureTabData(tab) {
-  if (!state.user) return;
+  const safeTab = sanitizeTabForSession(tab, { hasProfileView: !!state.profileView });
+  if (safeTab !== state.activeTab) {
+    state.activeTab = safeTab;
+    render();
+  }
+  tab = safeTab;
+  const hasUser = !!state.user;
   stopRestaurantsListener();
-  if (tab === "chat") {
+  if (hasUser && tab === "chat") {
     startChatThreadsListener(state.user);
   } else {
     stopChatThreadsListener();
   }
-  if (tab === "orders") {
+  if (hasUser && tab === "orders") {
     startOrdersListener(state.user);
   } else {
     stopOrdersListener();
@@ -7339,7 +7399,7 @@ function ensureTabData(tab) {
     feedDeltaTimer = null;
   }
 
-  if ((tab === "leads" || tab === "staff" || tab === "customers") && isCeoUser()) {
+  if (hasUser && (tab === "leads" || tab === "staff" || tab === "customers") && isCeoUser()) {
     prefetchCrmLazyRenderers();
   }
 
@@ -7349,7 +7409,7 @@ function ensureTabData(tab) {
     void loadFeedPosts();
   }
 
-  const needsRestaurants = tab === "map" || tab === "search" || (!FAST_MODE && tab === "feed");
+  const needsRestaurants = tab === "map" || tab === "search" || tab === "orders" || (!FAST_MODE && tab === "feed");
   if (needsRestaurants && !dataLoaded.restaurants) {
     dataLoaded.restaurants = true;
     scheduleIdle(() => {
@@ -7357,7 +7417,7 @@ function ensureTabData(tab) {
     });
   }
 
-  if (tab === "profile" && !dataLoaded.profile) {
+  if (hasUser && tab === "profile" && !dataLoaded.profile) {
     dataLoaded.profile = true;
     const hasBusinessProfile = isLocalBusinessProfile(state.userProfile);
     if (!hasBusinessProfile) {
@@ -7367,11 +7427,11 @@ function ensureTabData(tab) {
       void loadBusinessPosts();
     }
   }
-  if (tab === "profile") {
+  if (hasUser && tab === "profile") {
     void loadAuthProfile(state.user);
   }
 
-  if (tab === "menu") {
+  if (hasUser && tab === "menu") {
     void loadAuthProfile(state.user).then(() => {
       const restaurantId = state.userProfile.restaurantId || "";
       if (restaurantId) {
@@ -7381,7 +7441,7 @@ function ensureTabData(tab) {
     });
   }
 
-  if (tab === "notifications" && !dataLoaded.notifications) {
+  if (hasUser && tab === "notifications" && !dataLoaded.notifications) {
     dataLoaded.notifications = true;
     if (notificationsUnsub && Array.isArray(state.notifications) && state.notifications.length) {
       const updated = updateNotificationsDom();
@@ -7393,25 +7453,25 @@ function ensureTabData(tab) {
     }
   }
 
-  if (tab === "leads" && !dataLoaded.leads) {
+  if (hasUser && tab === "leads" && !dataLoaded.leads) {
     dataLoaded.leads = true;
     if (isCeoUser()) {
       void loadLeads({ scope: state.leads.scope });
     }
-  } else if (tab === "leads" && isCeoUser() && !state.leads.loaded?.[normalizeLeadScopeKey(state.leads.scope)]) {
+  } else if (hasUser && tab === "leads" && isCeoUser() && !state.leads.loaded?.[normalizeLeadScopeKey(state.leads.scope)]) {
     void loadLeads({ scope: state.leads.scope });
   }
 
-  if (tab === "customers" && !dataLoaded.customers) {
+  if (hasUser && tab === "customers" && !dataLoaded.customers) {
     dataLoaded.customers = true;
     if (isCeoUser()) {
       void loadCustomers({ scope: state.customers.scope });
     }
-  } else if (tab === "customers" && isCeoUser() && !state.customers.loaded?.[normalizeCustomerScopeKey(state.customers.scope)]) {
+  } else if (hasUser && tab === "customers" && isCeoUser() && !state.customers.loaded?.[normalizeCustomerScopeKey(state.customers.scope)]) {
     void loadCustomers({ scope: state.customers.scope });
   }
 
-  if (tab === "staff" && !dataLoaded.staff) {
+  if (hasUser && tab === "staff" && !dataLoaded.staff) {
     dataLoaded.staff = true;
     if (isCeoUser()) {
       void loadCeoStaff().catch(() => {});
@@ -7592,7 +7652,11 @@ async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0, skipR
 
 async function addComment(postId, text, replyTo) {
   const trimmed = String(text || "").trim();
-  if (!trimmed || !state.user) return;
+  if (!trimmed) return;
+  if (!state.user) {
+    openGuestAuthPrompt("Bitte registrieren oder einloggen, um Kommentare zu schreiben.");
+    return;
+  }
   const key = `${postId}|${state.user.uid || ""}|${trimmed}`;
   const now = Date.now();
   if (key === lastCommentKey && now - lastCommentAt < 1500) return;
@@ -7731,7 +7795,10 @@ async function addComment(postId, text, replyTo) {
 }
 
 async function togglePostLike(postId) {
-  if (!state.user) return;
+  if (!state.user) {
+    openGuestAuthPrompt("Bitte registrieren oder einloggen, um Beitrage zu liken.");
+    return;
+  }
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
   if (!user.uid) return;
@@ -7805,7 +7872,10 @@ async function togglePostLike(postId) {
 }
 
 async function toggleMenuItemLike() {
-  if (!state.user) return;
+  if (!state.user) {
+    openGuestAuthPrompt("Bitte registrieren oder einloggen, um Produkte zu liken.");
+    return;
+  }
   const ctx = getMenuDetailContext();
   if (!ctx) return;
   const { ref, key } = ctx;
@@ -7854,7 +7924,11 @@ async function toggleMenuItemLike() {
 
 async function addMenuItemComment(text) {
   const trimmed = String(text || "").trim();
-  if (!trimmed || !state.user) return;
+  if (!trimmed) return;
+  if (!state.user) {
+    openGuestAuthPrompt("Bitte registrieren oder einloggen, um Kommentare zu schreiben.");
+    return;
+  }
   const ctx = getMenuDetailContext();
   if (!ctx) return;
   const { ref, key } = ctx;
@@ -7932,7 +8006,10 @@ async function addMenuItemComment(text) {
 }
 
 async function toggleCommentLike(postId, commentId, replyId) {
-  if (!state.user) return;
+  if (!state.user) {
+    openGuestAuthPrompt("Bitte registrieren oder einloggen, um Kommentare zu liken.");
+    return;
+  }
   const meta = ensurePostMeta(postId);
   const user = currentUserBadge();
   if (!user.uid) return;
@@ -7985,8 +8062,16 @@ async function toggleCommentLike(postId, commentId, replyId) {
 }
 function renderAuthScreen() {
   const isRegister = state.auth.mode === "register";
+  const canClose = !state.user;
   return `
     <div class="h-full min-h-full overflow-y-auto bg-slate-50 flex flex-col p-8 font-sans animate-in">
+      ${canClose ? `
+        <div class="max-w-sm mx-auto w-full mb-4">
+          <button id="authCloseBtn" class="w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-sm text-slate-600 flex items-center justify-center">
+            ${icon("arrow-left", "w-4 h-4")}
+          </button>
+        </div>
+      ` : ""}
       <div class="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
         <div class="mb-10 text-center">
           <div class="w-16 h-16 bg-slate-900 rounded-2xl mx-auto mb-6 flex items-center justify-center text-white shadow-2xl">
@@ -8036,9 +8121,10 @@ function renderAuthScreen() {
 }
 
 function renderDrawer() {
-  const unread = state.notifications.filter((n) => !n.read).length;
-  const chatUnread = getChatUnreadCount();
-  const switchLinks = renderRoleSwitchLinks();
+  const isGuest = isGuestSession();
+  const unread = isGuest ? 0 : state.notifications.filter((n) => !n.read).length;
+  const chatUnread = isGuest ? 0 : getChatUnreadCount();
+  const switchLinks = isGuest ? "" : renderRoleSwitchLinks();
   const isCeo = isCeoUser();
   const catalogLabel = getBusinessCatalogLabel(state.userProfile);
   const catalogIcon = catalogLabel === "Shop" ? "shopping-bag" : "utensils";
@@ -8048,20 +8134,27 @@ function renderDrawer() {
     || isRestaurantCafeProfile(state.userProfile);
   const avatarUrl = resolveUserAvatar(state.userProfile.avatar);
   const avatarFit = logoFitClass(isLocalBusinessProfile(state.userProfile));
-  const navItems = [
-    { id: "feed", label: "Feed", icon: "home" },
-    { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat" },
-    { id: "search", label: "Suche", icon: "search" },
-    { id: "map", label: "Karte", icon: "map" },
-    { id: "profile", label: "Profil", icon: "user" },
-    { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
-    { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
-    { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
-    { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
-    { id: "staff", label: "Staff", icon: "users-round", hidden: !isCeo },
-    { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
-    { id: "settings", label: "Optionen", icon: "settings" }
-  ];
+  const navItems = isGuest
+    ? [
+      { id: "feed", label: "Feed", icon: "home" },
+      { id: "search", label: "Suche", icon: "search" },
+      { id: "map", label: "Karte", icon: "map" },
+      { id: "orders", label: "Bestellungen", icon: "shopping-cart" }
+    ]
+    : [
+      { id: "feed", label: "Feed", icon: "home" },
+      { id: "chat", label: "Chats", icon: "messages-square", badge: chatUnread, badgeType: "chat" },
+      { id: "search", label: "Suche", icon: "search" },
+      { id: "map", label: "Karte", icon: "map" },
+      { id: "profile", label: "Profil", icon: "user" },
+      { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
+      { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
+      { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
+      { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
+      { id: "staff", label: "Staff", icon: "users-round", hidden: !isCeo },
+      { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
+      { id: "settings", label: "Optionen", icon: "settings" }
+    ];
   return `
     <div id="drawerRoot" class="fixed inset-0 z-[2000] overflow-hidden transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}" style="overscroll-behavior:none;">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}" style="touch-action:none; overscroll-behavior:none;"></div>
@@ -8074,9 +8167,13 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          <img id="drawerAvatar" data-img-key="avatar:drawer" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl ${avatarFit}" />
+          ${isGuest
+            ? `<div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("user", "w-4 h-4")}</div>`
+            : `<img id="drawerAvatar" data-img-key="avatar:drawer" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl ${avatarFit}" />`
+          }
           <div>
-            <p id="drawerName" class="text-xs font-black">${escapeHtml(state.userProfile.name || "User")}</p>
+            <p id="drawerName" class="text-xs font-black">${escapeHtml(isGuest ? "Gast" : (state.userProfile.name || "User"))}</p>
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">${isGuest ? "Gastmodus" : "Account"}</p>
           </div>
         </div>
         <nav class="space-y-2 flex-1">
@@ -8093,7 +8190,10 @@ function renderDrawer() {
           `).join("")}
         </nav>
         <div id="drawerSwitchLinks">${switchLinks}</div>
-        <button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} Abmelden</button>
+        ${isGuest
+          ? `<button data-auth-open="true" class="mt-auto flex items-center justify-center gap-3 p-4 text-indigo-600 font-black uppercase text-[10px] tracking-widest bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-colors">${icon("log-in", "w-4 h-4")} Login / Registrieren</button>`
+          : `<button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} Abmelden</button>`
+        }
       </div>
     </div>
   `;
@@ -8166,7 +8266,7 @@ function renderStoryItem(story, index = 0) {
 }
 
 function renderStoriesRow(stories) {
-  return `
+  const uploadSlot = state.user ? `
     <div class="flex-shrink-0 flex flex-col items-center gap-2" data-story-upload-wrap data-nav="upload">
       <div data-story-upload class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
         <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
@@ -8174,6 +8274,9 @@ function renderStoriesRow(stories) {
       </div>
       <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Story</span>
     </div>
+  ` : "";
+  return `
+    ${uploadSlot}
     ${stories.length ? stories.map((story, index) => renderStoryItem(story, index)).join("") : `
       <div class="flex items-center text-slate-400 text-xs font-bold uppercase">Keine Stories</div>
     `}
@@ -8531,8 +8634,8 @@ function stopLiveListeners() {
 }
 
 function updateNotificationBadges() {
-  const unread = state.notifications.filter((n) => !n.read).length;
-  const chatUnread = getChatUnreadCount();
+  const unread = isGuestSession() ? 0 : state.notifications.filter((n) => !n.read).length;
+  const chatUnread = isGuestSession() ? 0 : getChatUnreadCount();
   const headerUnread = unread + chatUnread;
   const headerBadgeText = headerUnread > 9 ? "9+" : String(headerUnread);
   const notifBadgeText = unread > 9 ? "9+" : String(unread);
@@ -10983,6 +11086,10 @@ async function openProfileViewFromBusiness(input, { showBack = true, topTab } = 
 }
 
 async function openProfileFromUser(input) {
+  if (!state.user) {
+    openGuestAuthPrompt("Bitte einloggen, um User-Profile zu sehen.");
+    return;
+  }
   try {
     const uid = typeof input === "string" ? input : (input?.uid || "");
     const handle = String(typeof input === "string" ? "" : (input?.handle || input?.name || "")).replace(/^@/, "");
@@ -11520,7 +11627,10 @@ async function resolveUserByHandle(handle) {
 }
 
 async function toggleFollow(handle, target = {}) {
-  if (!state.user) return;
+  if (!state.user) {
+    openGuestAuthPrompt("Bitte einloggen, um Profile zu folgen.");
+    return;
+  }
   const rawHandle = String(handle || "").replace(/^@/, "").trim();
   const safeHandle = normalizeFollowHandle(rawHandle);
   if (!safeHandle) return;
@@ -13730,13 +13840,26 @@ function renderSearchBusinessItem(biz) {
 function renderSearchView() {
   const query = state.search.query;
   const queryKey = normalizeSearchKey(query);
-  const filter = state.search.filter;
+  const isGuest = isGuestSession();
+  const filter = String(state.search.filter || "all");
+  const safeFilter = isGuest && (filter === "all" || filter === "users") ? "business" : filter;
   const users = state.search.userResults || [];
   const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
-  const showUsers = filter === "all" || filter === "users";
-  const showBusinesses = filter === "all" || filter === "business" || filter === "local";
-  const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
+  const showUsers = !isGuest && (safeFilter === "all" || safeFilter === "users");
+  const showBusinesses = safeFilter === "all" || safeFilter === "business" || safeFilter === "local";
+  const localLabel = safeFilter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
   const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
+  const filters = isGuest
+    ? [
+      { id: "business", label: "Business" },
+      { id: "local", label: "Lokal" }
+    ]
+    : [
+      { id: "all", label: "Alles" },
+      { id: "users", label: "User" },
+      { id: "business", label: "Business" },
+      { id: "local", label: "Lokal" }
+    ];
 
   return `
     <div id="searchView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
@@ -13753,13 +13876,8 @@ function renderSearchView() {
       </div>
 
       <div class="flex gap-2 mb-6">
-        ${[
-          { id: "all", label: "Alles" },
-          { id: "users", label: "User" },
-          { id: "business", label: "Business" },
-          { id: "local", label: "Lokal" }
-        ].map((item) => `
-          <button data-search-filter="${item.id}" class="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition ${filter === item.id ? "bg-slate-900 text-white shadow-md" : "bg-white text-slate-400 border border-slate-100"}">
+        ${filters.map((item) => `
+          <button data-search-filter="${item.id}" class="px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition ${safeFilter === item.id ? "bg-slate-900 text-white shadow-md" : "bg-white text-slate-400 border border-slate-100"}">
             ${item.label}
           </button>
         `).join("")}
@@ -13798,12 +13916,14 @@ function updateSearchDom() {
 
   const query = state.search.query;
   const queryKey = normalizeSearchKey(query);
-  const filter = state.search.filter;
+  const isGuest = isGuestSession();
+  const filter = String(state.search.filter || "all");
+  const safeFilter = isGuest && (filter === "all" || filter === "users") ? "business" : filter;
   const users = state.search.userResults || [];
   const businesses = state.search.businessResults?.length ? state.search.businessResults : buildLocalBusinessResults(queryKey);
-  const showUsers = filter === "all" || filter === "users";
-  const showBusinesses = filter === "all" || filter === "business" || filter === "local";
-  const localLabel = filter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
+  const showUsers = !isGuest && (safeFilter === "all" || safeFilter === "users");
+  const showBusinesses = safeFilter === "all" || safeFilter === "business" || safeFilter === "local";
+  const localLabel = safeFilter === "local" || queryKey === "lokal" || queryKey === "local" ? "Lokal" : "Business";
   const hasResults = (showUsers && users.length) || (showBusinesses && businesses.length);
 
   const searchInput = document.getElementById("searchInput");
@@ -13855,7 +13975,7 @@ function updateSearchDom() {
   }
 
   document.querySelectorAll("[data-search-filter]").forEach((btn) => {
-    const isActive = btn.dataset.searchFilter === filter;
+    const isActive = btn.dataset.searchFilter === safeFilter;
     btn.classList.toggle("bg-slate-900", isActive);
     btn.classList.toggle("text-white", isActive);
     btn.classList.toggle("shadow-md", isActive);
@@ -14170,9 +14290,24 @@ function renderChatView() {
   `;
 }
 
+function renderHeaderActionButton(avatarUrl, avatarFit) {
+  if (isGuestSession()) {
+    return `
+      <button data-auth-open="true" class="h-14 px-5 rounded-3xl shadow-xl overflow-hidden active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30 text-slate-900 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
+        ${icon("log-in", "w-4 h-4")} Login
+      </button>
+    `;
+  }
+  return `
+    <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
+      <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
+    </button>
+  `;
+}
+
 function renderHeader() {
-  const unread = state.notifications.filter((n) => !n.read).length;
-  const chatUnread = getChatUnreadCount();
+  const unread = isGuestSession() ? 0 : state.notifications.filter((n) => !n.read).length;
+  const chatUnread = isGuestSession() ? 0 : getChatUnreadCount();
   const headerUnread = unread + chatUnread;
   const badge = headerUnread > 9 ? "9+" : String(headerUnread || "");
   const branding = resolveHeaderBranding();
@@ -14190,9 +14325,7 @@ function renderHeader() {
           <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">CEO Creation</span>
         </div>
-        <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-          <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
-        </button>
+        ${renderHeaderActionButton(avatarUrl, avatarFit)}
       </header>
     `;
   }
@@ -14207,9 +14340,7 @@ function renderHeader() {
           <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">${isSettingsView ? "Leads Settings" : "Leads Creation"}</span>
         </div>
-        <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-          <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
-        </button>
+        ${renderHeaderActionButton(avatarUrl, avatarFit)}
       </header>
     `;
   }
@@ -14246,9 +14377,7 @@ function renderHeader() {
           <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">CHATS</h1>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">DIRECT</span>
         </div>
-        <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-          <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
-        </button>
+        ${renderHeaderActionButton(avatarUrl, avatarFit)}
       </header>
     `;
   }
@@ -14264,9 +14393,7 @@ function renderHeader() {
         <h1 id="headerTitle" class="${titleClass}">${escapeHtml(branding.title)}</h1>
         <span id="headerSubtitle" class="${subtitleClass}">${escapeHtml(branding.subtitle)}</span>
       </div>
-      <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-        <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
-      </button>
+      ${renderHeaderActionButton(avatarUrl, avatarFit)}
     </header>
   `;
 }
@@ -14713,17 +14840,16 @@ function render() {
     renderQueued = true;
     return;
   }
-  if (!authInitialized && !state.user) {
-    return;
-  }
   const chatInputFocusState = captureChatInputFocusState();
   document.body.classList.toggle("fast-mode", FAST_MODE);
   let nextHtml = "";
   let mode = "";
-  if (!state.user) {
+  const showGuestAuth = !state.user && !!state.auth.open;
+  if (showGuestAuth) {
     nextHtml = renderAuthScreen();
     mode = "auth";
   } else {
+    state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
     nextHtml = renderMain();
     mode = "main";
   }
@@ -14782,7 +14908,7 @@ function render() {
   }
   updateFocusRotation();
 
-  if (state.user && state.activeTab === "map") {
+  if (mode === "main" && state.activeTab === "map") {
     window.setTimeout(() => {
       initLeafletIfNeeded();
       updateMapSheet();
@@ -14795,6 +14921,14 @@ function render() {
 function bindAuthEvents() {
   const authForm = document.getElementById("authForm");
   const toggleBtn = document.getElementById("authToggle");
+  const authCloseBtn = document.getElementById("authCloseBtn");
+  if (authCloseBtn) {
+    authCloseBtn.addEventListener("click", () => {
+      state.auth.open = false;
+      state.auth.error = "";
+      render();
+    });
+  }
   if (toggleBtn) {
     toggleBtn.addEventListener("click", () => {
       state.auth.mode = state.auth.mode === "login" ? "register" : "login";
@@ -15547,6 +15681,16 @@ function bindAppEvents() {
         leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
         customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
       });
+    });
+  });
+
+  document.querySelectorAll("[data-auth-open]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      state.drawerOpen = false;
+      state.auth.mode = normalizeAuthMode(state.auth.mode) || "login";
+      state.auth.error = "";
+      state.auth.open = true;
+      render();
     });
   });
 
@@ -16473,7 +16617,10 @@ function bindSearchEvents() {
 
     const filterBtn = target.closest("[data-search-filter]");
     if (filterBtn) {
-      const filter = filterBtn.dataset.searchFilter || "all";
+      const requested = filterBtn.dataset.searchFilter || "all";
+      const filter = isGuestSession() && (requested === "all" || requested === "users")
+        ? "business"
+        : requested;
       state.search.filter = filter;
       if (!refreshSearchView()) render();
       return;
@@ -16481,6 +16628,10 @@ function bindSearchEvents() {
 
     const userBtn = target.closest("[data-search-user]");
     if (userBtn) {
+      if (isGuestSession()) {
+        openGuestAuthPrompt("Bitte einloggen, um User-Profile zu sehen.");
+        return;
+      }
       openProfileFromUser({
         uid: userBtn.dataset.searchUser || "",
         handle: userBtn.dataset.searchHandle || "",
@@ -18336,9 +18487,9 @@ function getShopCartTotal() {
 }
 
 async function submitShopCheckout() {
-  if (!state.user) return;
   const cart = normalizeShopCartState(state.shopCart);
   if (cart.loading || !cart.restaurantId || !cart.items.length) return;
+  const hasUser = !!String(state.user?.uid || "").trim();
   const contact = {
     name: String(cart.form.name || "").trim(),
     phone: String(cart.form.phone || "").trim(),
@@ -18356,16 +18507,18 @@ async function submitShopCheckout() {
   const orderRef = doc(collection(db, "restaurants", cart.restaurantId, "orders"));
   const orderId = orderRef.id;
   const nowIso = new Date().toISOString();
-  const buyerHandle = String(state.userProfile.handle || normalizeHandle(state.userProfile.name || state.user?.displayName || "user")).replace(/^@/, "").trim();
+  const buyerHandle = hasUser
+    ? String(state.userProfile.handle || normalizeHandle(state.userProfile.name || state.user?.displayName || "user")).replace(/^@/, "").trim()
+    : "guest";
   const payload = {
     id: orderId,
     restaurantId: cart.restaurantId,
     businessName: cart.businessName || restaurant.name || restaurant.restaurantName || "Shop",
     businessAvatar,
-    buyerUid: state.user.uid,
-    buyerName: state.userProfile.name || state.user?.displayName || "User",
+    buyerUid: hasUser ? String(state.user?.uid || "").trim() : "",
+    buyerName: hasUser ? (state.userProfile.name || state.user?.displayName || contact.name || "User") : (contact.name || "Gast"),
     buyerHandle,
-    buyerAvatar: state.userProfile.avatar || "",
+    buyerAvatar: hasUser ? (state.userProfile.avatar || "") : "",
     contact,
     items: cart.items.map((item) => ({
       id: item.id,
@@ -18397,8 +18550,19 @@ async function submitShopCheckout() {
   try {
     const batch = writeBatch(db);
     batch.set(orderRef, payload, { merge: true });
-    batch.set(doc(db, "users", state.user.uid, "orders", orderId), payload, { merge: true });
+    if (hasUser) {
+      batch.set(doc(db, "users", state.user.uid, "orders", orderId), payload, { merge: true });
+    }
     await batch.commit();
+    if (!hasUser) {
+      const guestOrder = normalizeOrderDoc(payload, orderId);
+      state.orders = {
+        ...state.orders,
+        loading: false,
+        error: "",
+        items: [guestOrder, ...(Array.isArray(state.orders.items) ? state.orders.items : [])]
+      };
+    }
     clearShopCart({ keepForm: true });
     state.activeTab = "orders";
     state.drawerOpen = false;
@@ -21095,9 +21259,15 @@ authInitialized = !!state.user;
 if (state.user) {
   loadUserScopedPersisted(state.user);
   lastAuthUid = state.user.uid || "";
+} else {
+  loadGuestScopedPersisted();
+  lastAuthUid = "";
 }
 applyPendingInitialRouteState();
 render();
+if (!state.user) {
+  queueMicrotask(() => ensureTabData(state.activeTab));
+}
 
 onAuthStateChanged(auth, (user) => {
   authInitialized = true;
@@ -21109,6 +21279,7 @@ onAuthStateChanged(auth, (user) => {
   state.user = user;
   applyPendingInitialRouteState();
   if (user) {
+    state.auth.open = false;
     loadUserScopedPersisted(user);
     const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();
     const hasPendingPostQuery = !!String(pendingPostId || "").trim();
@@ -21140,6 +21311,10 @@ onAuthStateChanged(auth, (user) => {
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";
     stopLiveListeners();
+    state.auth.open = false;
+    loadGuestScopedPersisted();
+    state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
+    ensureTabData(state.activeTab);
     render();
   }
   lastAuthUid = nextUid;
