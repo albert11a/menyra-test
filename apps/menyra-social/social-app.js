@@ -1952,6 +1952,9 @@ function getBusinessProfileType(profile = state.userProfile) {
 }
 
 function getBusinessCatalogMode(profile = state.userProfile) {
+  const explicitMode = String(profile?.catalogMode || "").trim().toLowerCase();
+  if (explicitMode === "shop") return "shop";
+  if (explicitMode === "menu") return "menu";
   const type = getBusinessProfileType(profile);
   if (!type) return "menu";
   if (type === "ecommerce") return "shop";
@@ -7144,18 +7147,26 @@ function buildCatalogProfileForRestaurant(restaurantId = "", fallback = {}) {
     || fallback?.name
     || "Shop"
   ).trim() || "Shop";
+  const explicitCatalogMode = String(
+    fallback?.catalogMode
+    || restaurant?.catalogMode
+    || restaurant?.catalog
+    || ""
+  ).trim().toLowerCase();
   const fallbackCatalogMode = String(fallback?.catalogMode || "").trim().toLowerCase();
-  const type = normalizeRestaurantType(
-    restaurant?.type
-    || restaurant?.customerType
-    || restaurant?.category
-    || restaurant?.kind
-    || restaurant?.restaurantType
-    || fallback?.type
-    || fallback?.customerType
-    || fallback?.restaurantType
-    || (fallbackCatalogMode === "shop" ? "ecommerce" : "")
-  );
+  const type = explicitCatalogMode === "shop"
+    ? "ecommerce"
+    : normalizeRestaurantType(
+      restaurant?.type
+      || restaurant?.customerType
+      || restaurant?.category
+      || restaurant?.kind
+      || restaurant?.restaurantType
+      || fallback?.type
+      || fallback?.customerType
+      || fallback?.restaurantType
+      || (fallbackCatalogMode === "shop" ? "ecommerce" : "")
+    );
   return {
     name: displayName,
     handle: resolvePreferredHandle({
@@ -7176,6 +7187,7 @@ function buildCatalogProfileForRestaurant(restaurantId = "", fallback = {}) {
     following: Number(restaurant?.followingCount ?? restaurant?.following ?? fallback?.following ?? 0) || 0,
     privateAccount: false,
     role: "business",
+    catalogMode: explicitCatalogMode || (type === "ecommerce" ? "shop" : "menu"),
     restaurantId: safeRestaurantId,
     ...(type ? { type, customerType: type } : {})
   };
