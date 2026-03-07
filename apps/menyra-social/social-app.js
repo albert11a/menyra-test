@@ -180,6 +180,21 @@ function createEmptyFavoriteMenuItemsState() {
   };
 }
 
+function createClosedMenuDetailState() {
+  return {
+    open: false,
+    closing: false,
+    item: null,
+    index: 0,
+    restaurantId: "",
+    selectedSize: "",
+    selectedColor: "",
+    commentText: "",
+    loading: false,
+    sending: false
+  };
+}
+
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 250000;
 const CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS = Object.freeze([
@@ -203,6 +218,7 @@ const CRM_LAZY_RENDERERS_MODULE_URL = "/apps/menyra-social/_shared/crm-lazy-rend
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
 const DETAIL_LIKES_LIMIT = 12;
+const MENU_DETAIL_CLOSE_MS = 260;
 
 const LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992";
 const LEAD_STATUS_ORDER = ["registered", "contacted", "testphase", "kunde", "no_interest"];
@@ -493,15 +509,7 @@ const state = {
     existingImages: []
   },
   menuDetail: {
-    open: false,
-    item: null,
-    index: 0,
-    restaurantId: "",
-    selectedSize: "",
-    selectedColor: "",
-    commentText: "",
-    loading: false,
-    sending: false
+    ...createClosedMenuDetailState()
   },
   focus: {
     restaurantId: "",
@@ -633,6 +641,7 @@ let lastMenuOpenGestureKey = "";
 let lastMenuOpenGestureAt = 0;
 let chatSendDispatchLock = false;
 let menuDetailCloseBound = false;
+let menuDetailCloseTimer = null;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
 let pendingProfileRestaurantId = "";
 let pendingProfileTopTab = "";
@@ -4272,7 +4281,11 @@ function resetUserScopedState() {
   state.chatModal = { open: false, profile: null, messages: [], draft: "", attachments: [] };
   state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
   state.likesModal = { open: false, postId: "", animate: false };
-  state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", selectedSize: "", selectedColor: "", commentText: "", loading: false, sending: false };
+  if (menuDetailCloseTimer) {
+    clearTimeout(menuDetailCloseTimer);
+    menuDetailCloseTimer = null;
+  }
+  state.menuDetail = createClosedMenuDetailState();
   state.menuItemMeta = {};
   menuItemCountsRequested.clear();
   state.leads = createEmptyLeadsState();
@@ -7800,6 +7813,7 @@ function isAnyModalOpen() {
     || state.likesModal.open
     || state.menuModal.open
     || state.menuDetail.open
+    || state.menuDetail.closing
     || state.focusModal.open
     || state.leadModal.open
     || state.customerModal.open
@@ -13079,8 +13093,9 @@ function renderMenuItemModal() {
 }
 
 function renderMenuDetailModal() {
-  if (!state.menuDetail.open || !state.menuDetail.item) return "";
+  if ((!state.menuDetail.open && !state.menuDetail.closing) || !state.menuDetail.item) return "";
   const item = state.menuDetail.item;
+  const isClosing = !!state.menuDetail.closing;
   const images = getMenuItemImages(item);
   const maxIndex = images.length ? images.length - 1 : 0;
   const safeIndex = Math.max(0, Math.min(state.menuDetail.index || 0, maxIndex));
@@ -13126,10 +13141,10 @@ function renderMenuDetailModal() {
     ? `
       <div class="flex items-center justify-between gap-3 px-7 pt-7 pb-4 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
         <div class="flex items-center gap-2 min-w-0">
-          <button type="button" id="menuDetailHeaderCartBtn" class="relative inline-flex items-center gap-1.5 px-3 h-11 rounded-2xl bg-slate-900 text-white text-[9px] font-black uppercase tracking-[0.12em] shadow-sm active:scale-95 ${canAddToCart && !soldOut ? "" : "opacity-50 pointer-events-none"}">
+          <button type="button" id="menuDetailHeaderCartBtn" class="inline-flex items-center gap-2 px-4 h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black shadow-sm active:scale-95 ${canAddToCart && !soldOut ? "" : "opacity-50 pointer-events-none"}">
             ${icon("shopping-cart", "w-4 h-4")}
-            IN WARENKORB
-            ${shopCartCount ? `<span class="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${shopCartCount > 9 ? "9+" : shopCartCount}</span>` : ""}
+            <span>In den Warenkorb</span>
+            ${shopCartCount ? `<span class="inline-flex min-w-[20px] h-5 px-1.5 rounded-full bg-white/14 border border-white/20 text-white text-[9px] font-black items-center justify-center leading-none">${shopCartCount > 99 ? "99+" : shopCartCount}</span>` : ""}
           </button>
           ${canUseFavorites ? `
             <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="Favoriten" title="Favoriten" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isLiked ? "bg-slate-900 text-white border-slate-900" : "bg-slate-100 text-slate-700 border-slate-200"}">
@@ -13226,20 +13241,21 @@ function renderMenuDetailModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-7 pb-7 pt-5 border-t border-slate-100 bg-white/98 backdrop-blur-sm">
+    <div class="px-7 pb-5 pt-6 border-t border-slate-100 bg-white/98 backdrop-blur-sm">
       <div class="flex gap-3">
-        <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 px-5 py-4 rounded-[1.8rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
-        <button id="menuDetailCommentSend" class="w-14 h-14 rounded-[1.8rem] bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
+        <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
+        <button id="menuDetailCommentSend" class="w-[52px] h-[52px] rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
           ${icon("send", "w-4 h-4")}
         </button>
       </div>
     </div>
   `;
-  const animClass = "";
+  const overlayClass = isClosing ? "opacity-0" : "opacity-100";
+  const animClass = `${isClosing ? "translate-y-[108%] scale-[0.98]" : "translate-y-0 scale-100"} transition-transform duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform`;
 
   return `
-    <div class="fixed inset-0 z-[75] modal-overlay">
-      <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
+    <div class="fixed inset-0 z-[75] modal-overlay ${isClosing ? "pointer-events-none" : ""}">
+      <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60 transition-opacity duration-[220ms] ${overlayClass}"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border border-slate-100 ${animClass} flex flex-col h-[88vh] overflow-hidden modal-sheet">
           ${headerHtml}
@@ -15720,13 +15736,16 @@ function bindOverlayEvents({
           color: state.menuDetail.selectedColor || ""
         });
         const targetRestaurantId = String(profile?.restaurantId || "").trim();
-        closeMenuDetail();
-        if (targetRestaurantId && String(state.profileView?.profile?.restaurantId || "").trim() !== targetRestaurantId) {
-          showPublicProfile(profile, [], { showBack: false, topTab: "cart" });
-          return;
-        }
-        if (targetRestaurantId) state.profileTopTab = "cart";
-        setState({ activeTab: "profile" });
+        closeMenuDetail({
+          afterClose: () => {
+            if (targetRestaurantId && String(state.profileView?.profile?.restaurantId || "").trim() !== targetRestaurantId) {
+              showPublicProfile(profile, [], { showBack: false, topTab: "cart" });
+              return;
+            }
+            if (targetRestaurantId) state.profileTopTab = "cart";
+            setState({ activeTab: "profile" });
+          }
+        });
       });
     }
 
@@ -15757,10 +15776,10 @@ function bindOverlayEvents({
 
     const menuDetailCommentInput = document.getElementById("menuDetailCommentInput");
     if (menuDetailCommentInput) {
-      autosizeTextarea(menuDetailCommentInput, { minHeight: 56, maxHeight: 160 });
+      autosizeTextarea(menuDetailCommentInput, { minHeight: 52, maxHeight: 160 });
       menuDetailCommentInput.addEventListener("input", () => {
         state.menuDetail.commentText = menuDetailCommentInput.value;
-        autosizeTextarea(menuDetailCommentInput, { minHeight: 56, maxHeight: 160 });
+        autosizeTextarea(menuDetailCommentInput, { minHeight: 52, maxHeight: 160 });
       });
       menuDetailCommentInput.addEventListener("focus", () => {
         window.setTimeout(() => {
@@ -21419,6 +21438,10 @@ function closeMenuModal() {
 
 async function openMenuDetail(item, restaurantIdOverride = "") {
   if (!item) return;
+  if (menuDetailCloseTimer) {
+    clearTimeout(menuDetailCloseTimer);
+    menuDetailCloseTimer = null;
+  }
   stopMenuItemMetaListeners();
   const restaurantId = String(
     restaurantIdOverride
@@ -21430,6 +21453,7 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
   ).trim();
   state.menuDetail = {
     open: true,
+    closing: false,
     item,
     index: 0,
     restaurantId,
@@ -21455,10 +21479,31 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
   updateMenuDetailMeta();
 }
 
-function closeMenuDetail() {
+function closeMenuDetail({ animate = true, afterClose = null } = {}) {
+  if (menuDetailCloseTimer) {
+    clearTimeout(menuDetailCloseTimer);
+    menuDetailCloseTimer = null;
+  }
   stopMenuItemMetaListeners();
-  state.menuDetail = { open: false, item: null, index: 0, restaurantId: "", selectedSize: "", selectedColor: "", commentText: "", loading: false, sending: false };
+  const finalize = () => {
+    state.menuDetail = createClosedMenuDetailState();
+    renderOverlays({ updateMenuDetail: true });
+    if (typeof afterClose === "function") afterClose();
+  };
+  if (!animate || !state.menuDetail.item) {
+    finalize();
+    return;
+  }
+  state.menuDetail = {
+    ...state.menuDetail,
+    open: false,
+    closing: true
+  };
   renderOverlays({ updateMenuDetail: true });
+  menuDetailCloseTimer = window.setTimeout(() => {
+    menuDetailCloseTimer = null;
+    finalize();
+  }, MENU_DETAIL_CLOSE_MS);
 }
 
 function setMenuDetailIndex(nextIndex) {
