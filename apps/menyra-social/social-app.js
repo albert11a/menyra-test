@@ -217,6 +217,16 @@ const ALBERT_CEO_ALIASES = Object.freeze(["alberthoti", "albert_hoti"]);
 const ALBERT_CEO_EMAILS = Object.freeze(["alberthoti.vsa@gmail.com"]);
 const HIDDEN_LEGACY_CEO_EMAILS = Object.freeze(["albert.hoti@menyra.com"]);
 const LEGACY_CEO_DELETE_UIDS = Object.freeze(["rtnM3XzNsKhpp5wzJhxNToyyjsU2"]);
+const FORCE_HIDDEN_SOCIAL_HANDLES = Object.freeze(["allo88", "alo2", "alo", "hhh", "llll"]);
+const FORCE_HIDDEN_SOCIAL_UIDS = Object.freeze([
+  "oqyh9TmALTdH3GqUvtz1qO9DFcC2",
+  "5rdVYRGrfFfMna0W9irKsidxIpr1",
+  "5h3DKB7fu9Q0xiIkhUsYC1PqJPh2",
+  "4l9h3hDWaPPQq5ePoDhy2aVJeaf1",
+  "hYlBZN6WNQMIlrgEZDPLbyRGsro1"
+]);
+const FORCE_HIDDEN_SOCIAL_HANDLE_SET = new Set(FORCE_HIDDEN_SOCIAL_HANDLES);
+const FORCE_HIDDEN_SOCIAL_UID_SET = new Set(FORCE_HIDDEN_SOCIAL_UIDS);
 const MILAN_OWNED_LEAD_EMAILS = Object.freeze([
   "restorandis@menyra.com",
   "restoranbelvedere@menyra.com",
@@ -1386,9 +1396,64 @@ function isRestaurantMarkedDeleted(rest = {}) {
   return statusKey === "deleted";
 }
 
+function forceHiddenEmailLocalPart(value = "") {
+  const email = normalizeEmailValue(value);
+  const atIndex = email.indexOf("@");
+  if (atIndex <= 0) return "";
+  return email.slice(0, atIndex);
+}
+
+function isForceHiddenHandle(value = "") {
+  const key = normalizeHandle(value || "");
+  return !!key && FORCE_HIDDEN_SOCIAL_HANDLE_SET.has(key);
+}
+
+function isForceHiddenUid(value = "") {
+  const key = String(value || "").trim();
+  return !!key && FORCE_HIDDEN_SOCIAL_UID_SET.has(key);
+}
+
+function isForceHiddenEmail(value = "") {
+  const localPart = forceHiddenEmailLocalPart(value);
+  return !!localPart && FORCE_HIDDEN_SOCIAL_HANDLE_SET.has(localPart);
+}
+
+function isForceHiddenBusinessEntity(entity = {}) {
+  if (!entity || typeof entity !== "object") return false;
+  if (getRestaurantUidCandidates(entity).some((value) => isForceHiddenUid(value))) return true;
+  if (getRestaurantEmailCandidates(entity).some((value) => isForceHiddenEmail(value))) return true;
+
+  const handleCandidates = [
+    entity.handle,
+    entity.ownerHandle,
+    entity.socialHandle,
+    entity.userHandle,
+    entity.accountHandle,
+    entity.username,
+    entity.ownerUsername,
+    entity.socialUsername,
+    entity.createdByHandle
+  ].map((value) => normalizeHandle(value || "")).filter(Boolean);
+
+  [entity.id, entity.restaurantId, entity.ownerId].forEach((value) => {
+    const key = normalizeHandle(value || "");
+    if (key) handleCandidates.push(key);
+  });
+
+  [entity.name, entity.restaurantName, entity.displayName, entity.businessName].forEach((value) => {
+    const raw = String(value || "").trim();
+    if (!raw.startsWith("@")) return;
+    const key = normalizeHandle(raw);
+    if (key) handleCandidates.push(key);
+  });
+
+  return handleCandidates.some((value) => isForceHiddenHandle(value));
+}
+
 function isPublicBusinessRecord(rest = {}) {
   if (!rest || typeof rest !== "object") return false;
   if (isRestaurantMarkedDeleted(rest)) return false;
+  if (isForceHiddenBusinessEntity(rest)) return false;
   return true;
 }
 
@@ -6989,6 +7054,19 @@ function buildBusinessResultsFromFeed(posts) {
     const id = post.restaurantId || post.ownerId || "";
     const key = id || String(post.business || "").toLowerCase();
     if (!key || map.has(key)) return;
+    if (isForceHiddenBusinessEntity({
+      id: id || key,
+      restaurantId: id || key,
+      ownerId: post.ownerId || "",
+      ownerUid: post.ownerUid || "",
+      handle: post.handle || "",
+      businessName: post.business || "",
+      restaurantName: post.restaurantName || "",
+      ownerEmail: post.ownerEmail || "",
+      email: post.email || ""
+    })) {
+      return;
+    }
     map.set(key, {
       id: id || key,
       name: post.business || "Business",
@@ -7028,11 +7106,14 @@ function normalizeUserSearchResult(doc) {
   const data = typeof doc?.data === "function" ? doc.data() : (doc?.data || doc || {});
   const rawName = data.displayName || data.name || data.handle || "";
   const handle = data.handle || normalizeHandle(rawName || "user");
+  const email = data.email || data.loginEmail || data.ownerEmail || "";
+  if (isForceHiddenHandle(handle || rawName) || isForceHiddenEmail(email)) return null;
   const name = sanitizeDisplayName(rawName, handle || "User");
   return {
     uid: doc?.id || data.uid || "",
     name,
     handle,
+    email,
     avatar: data.avatarUrl || data.avatar || '',
     location: data.city || "Prishtina",
     followers: data.followersCount ?? data.followers ?? 0,
@@ -7058,7 +7139,12 @@ async function searchUsersRemote(queryRaw, token) {
   const cacheKey = `users:${queryKey}`;
   const cached = searchCache.get(cacheKey);
   if (cached) {
-    state.search.userResults = cached.filter((item) => !isBusinessSearchUser(item));
+    state.search.userResults = cached.filter((item) => (
+      item?.uid
+      && !isBusinessSearchUser(item)
+      && !isForceHiddenHandle(item?.handle || item?.name || "")
+      && !isForceHiddenEmail(item?.email || "")
+    ));
     return;
   }
   try {
@@ -7074,7 +7160,7 @@ async function searchUsersRemote(queryRaw, token) {
       ));
       snap.forEach((docSnap) => {
         const item = normalizeUserSearchResult(docSnap);
-        if (item.uid && !isBusinessSearchUser(item)) users.set(item.uid, item);
+        if (item?.uid && !isBusinessSearchUser(item)) users.set(item.uid, item);
       });
     }
     const nameVariants = new Set();
@@ -7093,13 +7179,17 @@ async function searchUsersRemote(queryRaw, token) {
       ));
       nameSnap.forEach((docSnap) => {
         const item = normalizeUserSearchResult(docSnap);
-        if (item.uid && !isBusinessSearchUser(item)) users.set(item.uid, item);
+        if (item?.uid && !isBusinessSearchUser(item)) users.set(item.uid, item);
       });
     }
     if (token !== searchToken) return;
     const key = normalizeSearchKey(queryRaw);
     const results = Array.from(users.values())
-      .filter((item) => !isBusinessSearchUser(item))
+      .filter((item) => (
+        !isBusinessSearchUser(item)
+        && !isForceHiddenHandle(item?.handle || item?.name || "")
+        && !isForceHiddenEmail(item?.email || "")
+      ))
       .map((item) => ({
         ...item,
         _score: Math.max(
@@ -17255,6 +17345,7 @@ async function loadRestaurants({ force = false } = {}) {
 function canShowFeedRestaurantId(restaurantId) {
   const rid = String(restaurantId || "").trim();
   if (!rid) return true;
+  if (isForceHiddenUid(rid) || isForceHiddenHandle(rid)) return false;
   const restaurant = state.restaurants.find((row) => String(row?.id || "") === rid) || null;
   if (!restaurant) return true;
   return isPublicBusinessRecord(restaurant);
@@ -17262,6 +17353,7 @@ function canShowFeedRestaurantId(restaurantId) {
 
 function normalizeFeedPost(row) {
   const restaurantId = String(row.rid || row.restaurantId || "").trim();
+  if (isForceHiddenBusinessEntity({ id: restaurantId, restaurantId, ...row })) return null;
   if (!canShowFeedRestaurantId(restaurantId)) return null;
   const restaurant = state.restaurants.find((r) => r.id === restaurantId) || {};
   const thumb = row.thumbUrl || row.mediaUrl || row.media?.[0]?.thumbUrl || row.media?.[0]?.url || "";
