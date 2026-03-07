@@ -12716,21 +12716,41 @@ function renderMenuDetailModal() {
   const canSocial = !!restaurantId && !!itemId;
   const canInteract = canSocial && !!state.user;
   const titleId = "menuDetailTitle";
-  const headerHtml = `
-    <div class="flex items-start justify-between px-7 pt-7 pb-5 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
-      <div>
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
-        <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${escapeHtml(item.name || "Produkt")}</h3>
+  const shopCartCount = isShop ? getCartCountForRestaurant(restaurantId || catalogProfile?.restaurantId || "") : 0;
+  const headerHtml = isShop
+    ? `
+      <div class="flex items-center justify-between gap-3 px-7 pt-7 pb-4 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+        <div class="flex items-center gap-2 min-w-0">
+          <button type="button" id="menuDetailHeaderCartBtn" class="relative inline-flex items-center gap-2 px-4 h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest shadow-sm active:scale-95">
+            ${icon("shopping-cart", "w-4 h-4")}
+            In den Warenkorb
+            ${shopCartCount ? `<span class="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${shopCartCount > 9 ? "9+" : shopCartCount}</span>` : ""}
+          </button>
+          <button type="button" id="menuDetailHeaderFavoritesBtn" class="inline-flex items-center gap-2 px-4 h-11 rounded-2xl bg-slate-100 text-slate-700 text-[10px] font-black uppercase tracking-widest border border-slate-200 active:scale-95">
+            ${icon("bookmark", "w-4 h-4")}
+            Favoriten
+          </button>
+        </div>
+        <button id="menuDetailClose" data-menu-detail-close="true" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 shrink-0">
+          ${icon("x", "w-4 h-4")}
+        </button>
       </div>
-      <button id="menuDetailClose" data-menu-detail-close="true" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
-        ${icon("x", "w-4 h-4")}
-      </button>
-    </div>
-  `;
+    `
+    : `
+      <div class="flex items-start justify-between px-7 pt-7 pb-5 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
+          <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${escapeHtml(item.name || "Produkt")}</h3>
+        </div>
+        <button id="menuDetailClose" data-menu-detail-close="true" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+          ${icon("x", "w-4 h-4")}
+        </button>
+      </div>
+    `;
   const bodyHtml = `
     <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
-      <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
-        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full ${isShop ? "h-[24rem]" : "h-56"} object-cover" style="object-position:${getMenuItemObjectPosition(item)};" />
+      <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;${isShop ? " aspect-ratio:4 / 5;" : ""}">
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full ${isShop ? "h-full" : "h-56"} object-cover" style="object-position:${getMenuItemObjectPosition(item)};" />
         ${images.length > 1 ? `
           <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
             ${icon("chevron-left", "w-4 h-4")}
@@ -15276,6 +15296,24 @@ function bindOverlayEvents({
     const menuDetailClose = document.getElementById("menuDetailClose");
     bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
     bindModalDismiss(menuDetailClose, closeMenuDetail);
+
+    const menuDetailHeaderCartBtn = document.getElementById("menuDetailHeaderCartBtn");
+    if (menuDetailHeaderCartBtn) {
+      menuDetailHeaderCartBtn.addEventListener("click", () => {
+        const profile = state.profileView?.profile || state.userProfile;
+        closeMenuDetail();
+        if (profile?.restaurantId) state.profileTopTab = "cart";
+        setState({ activeTab: "profile" });
+      });
+    }
+
+    const menuDetailHeaderFavoritesBtn = document.getElementById("menuDetailHeaderFavoritesBtn");
+    if (menuDetailHeaderFavoritesBtn) {
+      menuDetailHeaderFavoritesBtn.addEventListener("click", () => {
+        closeMenuDetail();
+        setState({ activeTab: "settings", settingsView: "saved", drawerOpen: false });
+      });
+    }
 
     document.querySelectorAll("[data-menu-detail-variant]").forEach((input) => {
       input.addEventListener("change", () => {
