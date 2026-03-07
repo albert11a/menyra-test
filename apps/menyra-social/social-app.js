@@ -11862,8 +11862,8 @@ function renderShopProductList(items) {
             ${thumbImages.length ? `
               <div class="grid grid-cols-3 gap-2 mt-2">
                 ${thumbImages.map((thumb) => `
-                  <div class="rounded-xl overflow-hidden bg-slate-100 border border-slate-100">
-                    <img src="${escapeHtml(getOptimizedImageUrl(thumb, "thumb"))}" class="w-full h-12 object-cover" loading="lazy" decoding="async" />
+                  <div class="rounded-xl overflow-hidden bg-slate-100 border border-slate-100" style="aspect-ratio:4 / 5;">
+                    <img src="${escapeHtml(getOptimizedImageUrl(thumb, "thumb"))}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
                   </div>
                 `).join("")}
               </div>
