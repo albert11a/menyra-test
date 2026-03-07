@@ -11856,8 +11856,8 @@ function renderShopProductList(items) {
         const availabilityClass = soldOut ? "text-slate-300" : "text-emerald-600";
         return `
           <article data-menu-open="${escapeHtml(item.id)}" role="button" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
-            <div class="rounded-[1.5rem] overflow-hidden bg-slate-100">
-              <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-40 object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
+            <div class="rounded-[1.5rem] overflow-hidden bg-slate-100" style="aspect-ratio:4 / 5;">
+              <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
             </div>
             ${thumbImages.length ? `
               <div class="grid grid-cols-3 gap-2 mt-2">
