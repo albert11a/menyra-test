@@ -129,12 +129,167 @@
         font-size: 16px !important;
       }
     }
+    .shell-skeleton {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 120%);
+    }
+    .shell-topbar {
+      padding: 18px 16px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .shell-brand {
+      width: 132px;
+      height: 20px;
+      border-radius: 999px;
+      background: #e2e8f0;
+    }
+    .shell-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      background: #e2e8f0;
+    }
+    .shell-content {
+      flex: 1;
+      padding: 14px 14px calc(92px + var(--safe-area-bottom));
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .shell-card {
+      border-radius: 20px;
+      border: 1px solid #e2e8f0;
+      background: rgba(255, 255, 255, 0.75);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .shell-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .shell-dot {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      flex-shrink: 0;
+    }
+    .shell-line {
+      height: 10px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      flex: 1;
+    }
+    .shell-line.w-40 { max-width: 40%; }
+    .shell-media {
+      width: 100%;
+      aspect-ratio: 16 / 10;
+      border-radius: 14px;
+      background: #e2e8f0;
+    }
+    .shell-nav {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: calc(76px + var(--safe-area-bottom));
+      padding: 12px 18px calc(12px + var(--safe-area-bottom));
+      border-top: 1px solid #e2e8f0;
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .shell-pill {
+      height: 34px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      flex: 1;
+      max-width: 84px;
+    }
+    .shell-skeleton .shell-brand,
+    .shell-skeleton .shell-avatar,
+    .shell-skeleton .shell-dot,
+    .shell-skeleton .shell-line,
+    .shell-skeleton .shell-media,
+    .shell-skeleton .shell-pill {
+      animation: shell-pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes shell-pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.58; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .shell-skeleton .shell-brand,
+      .shell-skeleton .shell-avatar,
+      .shell-skeleton .shell-dot,
+      .shell-skeleton .shell-line,
+      .shell-skeleton .shell-media,
+      .shell-skeleton .shell-pill {
+        animation: none;
+      }
+    }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
-  <div id="app"></div>
+  <div id="app" aria-busy="true">
+    <div class="shell-skeleton" aria-hidden="true">
+      <div class="shell-topbar">
+        <div class="shell-brand"></div>
+        <div class="shell-avatar"></div>
+      </div>
+      <div class="shell-content">
+        <div class="shell-card">
+          <div class="shell-row">
+            <div class="shell-dot"></div>
+            <div class="shell-line"></div>
+            <div class="shell-line w-40"></div>
+          </div>
+          <div class="shell-media"></div>
+          <div class="shell-line"></div>
+          <div class="shell-line w-40"></div>
+        </div>
+        <div class="shell-card">
+          <div class="shell-row">
+            <div class="shell-dot"></div>
+            <div class="shell-line"></div>
+            <div class="shell-line w-40"></div>
+          </div>
+          <div class="shell-media"></div>
+        </div>
+      </div>
+      <div class="shell-nav">
+        <div class="shell-pill"></div>
+        <div class="shell-pill"></div>
+        <div class="shell-pill"></div>
+        <div class="shell-pill"></div>
+      </div>
+    </div>
+  </div>
   <script async src="https://unpkg.com/lucide@latest"></script>
   <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-07-perf-7"></script>
-  <script type="module" src="/apps/menyra-social/pwa.js?v=2026-03-07-perf-7"></script>
+  <script>
+    (() => {
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-03-07-perf-7").catch(() => {});
+      if ("requestIdleCallback" in window) {
+        window.requestIdleCallback(() => loadPwa(), { timeout: 3500 });
+      } else {
+        window.setTimeout(loadPwa, 1200);
+      }
+    })();
+  </script>
 </body>
 </html>

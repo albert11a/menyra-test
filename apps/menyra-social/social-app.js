@@ -15023,6 +15023,7 @@ function render() {
       : null;
     const prevScrollTop = preserveMainScroll ? document.querySelector("main")?.scrollTop ?? 0 : 0;
     appEl.innerHTML = nextHtml;
+    appEl.removeAttribute("aria-busy");
     lastAppHtml = nextHtml;
     lastRenderMode = mode;
     if (mode === "auth") {
