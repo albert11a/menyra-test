@@ -1389,7 +1389,10 @@ function isRestaurantMarkedDeleted(rest = {}) {
 function isPublicBusinessRecord(rest = {}) {
   if (!rest || typeof rest !== "object") return false;
   if (isRestaurantMarkedDeleted(rest)) return false;
-  return isCustomerRestaurant(rest);
+  const statusKey = normalizeLeadStatusKey(rest.status || rest.state || "");
+  if (!statusKey) return true;
+  if (["registered", "contacted", "testphase", "no_interest"].includes(statusKey)) return false;
+  return true;
 }
 
 function normalizeLeadTypeKey(value) {
