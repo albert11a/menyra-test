@@ -350,3 +350,343 @@ export function renderStaffEditorView(ctx = {}) {
     </div>
   `;
 }
+
+
+export function renderLeadsView(ctx = {}) {
+  const {
+    state,
+    icon,
+    escapeHtml,
+    isCeoUser,
+    renderCeoGuard,
+    renderLeadSettingsView,
+    renderLeadCreationView,
+    normalizeSearchKey,
+    normalizeLeadStatusKey,
+    normalizeLeadScopeKey,
+    createLeadScopeMap,
+    sanitizeCeoCrmCounts,
+    hasStoredCeoCrmCounts,
+    resolveKnownScopeCountLabel,
+    leadMatchesQuery,
+    leadStatusTone,
+    leadStatusLabel,
+    getOptimizedImageUrl,
+    PLACEHOLDER_IMAGE,
+    renderOwnershipPills,
+    renderCeoScopeTabs,
+    LEAD_STATUS_ORDER,
+    LEAD_STATUS_LABELS
+  } = ctx;
+  if (!isCeoUser()) return renderCeoGuard("Leads");
+  if (state.leads.view === "settings") return renderLeadSettingsView();
+  if (state.leads.view === "create") return renderLeadCreationView();
+  const queryKey = normalizeSearchKey(state.leads.query || "");
+  const statusFilter = normalizeLeadStatusKey(state.leads.status || "");
+  const scope = normalizeLeadScopeKey(state.leads.scope);
+  const scopePages = state.leads.pages || createLeadScopeMap(() => []);
+  const scopeHasMore = state.leads.hasMore || createLeadScopeMap(() => false);
+  const scopeLoaded = state.leads.loaded || createLeadScopeMap(() => false);
+  const knownCount = state.leads.knownCount || createLeadScopeMap(() => 0);
+  const countExact = state.leads.countExact || createLeadScopeMap(() => false);
+  const profileCounts = sanitizeCeoCrmCounts(state.userProfile?.crmCounts || {});
+  const ownCount = hasStoredCeoCrmCounts(state.userProfile?.crmCounts)
+    ? String(profileCounts.ownLeads)
+    : resolveKnownScopeCountLabel(knownCount.own, !!countExact.own, !!scopeLoaded.own);
+  const staffCount = hasStoredCeoCrmCounts(state.userProfile?.crmCounts)
+    ? String(profileCounts.staffLeads)
+    : resolveKnownScopeCountLabel(knownCount.staff, !!countExact.staff, !!scopeLoaded.staff);
+  const archivedCount = hasStoredCeoCrmCounts(state.userProfile?.crmCounts)
+    ? String(profileCounts.archivedLeads)
+    : resolveKnownScopeCountLabel(knownCount.archived, !!countExact.archived, !!scopeLoaded.archived);
+  let items = Array.isArray(scopePages[scope]) ? scopePages[scope].slice() : [];
+  if (statusFilter && scope !== "archived") {
+    items = items.filter((lead) => normalizeLeadStatusKey(lead.status) === statusFilter);
+  }
+  items = items.filter((lead) => leadMatchesQuery(lead, queryKey));
+
+  const listHtml = state.leads.loading
+    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Leads laden...</div>`
+    : (items.length ? items.map((lead) => {
+      const tone = leadStatusTone(lead.status);
+      const statusLabel = leadStatusLabel(lead.status);
+      const rest = lead.restaurantId ? state.restaurants.find((r) => String(r.id) === String(lead.restaurantId)) : null;
+      const logoRaw = lead.logoUrl || lead.logo || rest?.logoUrl || rest?.logo || "";
+      const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+      const businessName = lead.businessName || rest?.name || rest?.restaurantName || "Business";
+      const emailLine = lead.email || lead.socialEmail || "";
+      const ownershipHtml = renderOwnershipPills(lead, { hideOwn: scope === "own" });
+      return `
+        <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden flex items-center justify-center">
+              <img src="${escapeHtml(logoUrl)}" class="w-full h-full object-contain bg-white" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(businessName)}</p>
+              ${emailLine ? `<p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(emailLine)}</p>` : ""}
+            </div>
+            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${tone.bg} ${tone.text}">${escapeHtml(statusLabel)}</span>
+          </div>
+          ${ownershipHtml}
+          <div class="flex gap-2 mt-4">
+            <button data-lead-edit="${escapeHtml(lead.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
+          </div>
+        </div>
+      `;
+    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Keine Leads</div>`);
+
+  return `
+    <div id="leadsView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CRM</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Leads</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="leadSettingsBtn" class="w-12 h-12 rounded-2xl bg-white text-slate-700 border border-slate-100 flex items-center justify-center shadow-sm active:scale-95">
+            ${icon("settings", "w-4 h-4")}
+          </button>
+          <button id="newLeadBtn" class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-xl shadow-slate-200/60 active:scale-95">
+            ${icon("plus", "w-4 h-4")}
+          </button>
+        </div>
+      </div>
+      ${renderCeoScopeTabs({
+        idPrefix: "lead-scope",
+        active: scope,
+        tabs: [
+          { key: "own", label: "Meine Leads", count: ownCount },
+          { key: "staff", label: "Staff Leads", count: staffCount },
+          { key: "archived", label: "Archiviert", count: archivedCount }
+        ]
+      })}
+      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-3 flex items-center gap-3">
+        ${icon("search", "w-4 h-4 text-slate-400")}
+        <input id="leadsSearchInput" type="text" value="${escapeHtml(state.leads.query || "")}" placeholder="Lead suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
+      </div>
+      ${scope !== "archived" ? `
+        <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
+          ${icon("list-filter", "w-4 h-4 text-slate-400")}
+          <select id="leadsStatusFilter" class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 outline-none appearance-none">
+            <option value="">Alle Status</option>
+            ${LEAD_STATUS_ORDER.filter((key) => key !== "kunde" && key !== "no_interest").map((key) => `
+              <option value="${key}" ${statusFilter === key ? "selected" : ""}>${LEAD_STATUS_LABELS[key]}</option>
+            `).join("")}
+          </select>
+          ${icon("chevron-down", "w-4 h-4 text-slate-400")}
+        </div>
+      ` : ""}
+      ${state.leads.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.leads.error)}</div>` : ""}
+      <div class="space-y-4">${listHtml}</div>
+      ${state.leads.hasMore?.[scope] ? `
+        <div id="leadsLoadMoreSentinel" class="w-full mt-4 py-4 rounded-[1.8rem] bg-white text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-sm text-center">
+          ${escapeHtml(state.leads.loadingMore ? "Laedt..." : "Scrollt weiter...")}
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+export function renderCustomersView(ctx = {}) {
+  const {
+    state,
+    icon,
+    escapeHtml,
+    isCeoUser,
+    renderCeoGuard,
+    normalizeSearchKey,
+    normalizeCustomerScopeKey,
+    createCustomerScopeMap,
+    sanitizeCeoCrmCounts,
+    hasStoredCeoCrmCounts,
+    resolveKnownScopeCountLabel,
+    customerMatchesQuery,
+    toDateSafe,
+    getOptimizedImageUrl,
+    PLACEHOLDER_IMAGE,
+    leadTypeLabel,
+    customerStatusLabel,
+    isCustomerRestaurant,
+    renderOwnershipPills,
+    renderCeoScopeTabs
+  } = ctx;
+  if (!isCeoUser()) return renderCeoGuard("Kunden");
+  const queryKey = normalizeSearchKey(state.customers.query || "");
+  const scope = normalizeCustomerScopeKey(state.customers.scope);
+  const scopePages = state.customers.pages || createCustomerScopeMap(() => []);
+  const scopeHasMore = state.customers.hasMore || createCustomerScopeMap(() => false);
+  const scopeLoaded = state.customers.loaded || createCustomerScopeMap(() => false);
+  const knownCount = state.customers.knownCount || createCustomerScopeMap(() => 0);
+  const countExact = state.customers.countExact || createCustomerScopeMap(() => false);
+  const profileCounts = sanitizeCeoCrmCounts(state.userProfile?.crmCounts || {});
+  const ownCount = hasStoredCeoCrmCounts(state.userProfile?.crmCounts)
+    ? String(profileCounts.ownCustomers)
+    : resolveKnownScopeCountLabel(knownCount.own, !!countExact.own, !!scopeLoaded.own);
+  const staffCount = hasStoredCeoCrmCounts(state.userProfile?.crmCounts)
+    ? String(profileCounts.staffCustomers)
+    : resolveKnownScopeCountLabel(knownCount.staff, !!countExact.staff, !!scopeLoaded.staff);
+  const items = (Array.isArray(scopePages[scope]) ? scopePages[scope].slice() : [])
+    .filter((rest) => customerMatchesQuery(rest, queryKey))
+    .sort((a, b) => (toDateSafe(b?.createdAt)?.getTime() || 0) - (toDateSafe(a?.createdAt)?.getTime() || 0));
+  const listHtml = state.customers.loading
+    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Kunden laden...</div>`
+    : (items.length ? items.map((rest) => {
+      const logoRaw = rest.logoUrl || rest.logo || "";
+      const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+      const name = rest.name || rest.restaurantName || "Business";
+      const typeLabel = leadTypeLabel(rest.type || rest.customerType || "");
+      const city = rest.city || "";
+      const statusLabel = customerStatusLabel(isCustomerRestaurant(rest) ? "kunde" : rest.status);
+      const ownershipHtml = renderOwnershipPills(rest, { hideOwn: scope === "own" });
+      return `
+        <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-2xl bg-slate-100 overflow-hidden flex items-center justify-center">
+              <img src="${escapeHtml(logoUrl)}" class="w-full h-full object-contain bg-white" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml([typeLabel, city].filter(Boolean).join(" / "))}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500">${escapeHtml(statusLabel)}</span>
+          </div>
+          ${ownershipHtml}
+          <div class="flex gap-2 mt-4">
+            <button data-customer-edit="${escapeHtml(rest.id)}" class="flex-1 py-3 rounded-2xl bg-slate-50 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
+          </div>
+        </div>
+      `;
+    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Keine Kunden</div>`);
+
+  return `
+    <div id="customersView" class="p-6 animate-in slide-in-from-right-10 duration-500">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CRM</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Kunden</h2>
+        </div>
+      </div>
+      ${renderCeoScopeTabs({
+        idPrefix: "customer-scope",
+        active: scope,
+        ownLabel: "Meine Kunden",
+        ownCount,
+        staffLabel: "Staff Kunden",
+        staffCount
+      })}
+      <div class="bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm mb-4 flex items-center gap-3">
+        ${icon("search", "w-4 h-4 text-slate-400")}
+        <input id="customersSearchInput" type="text" value="${escapeHtml(state.customers.query || "")}" placeholder="Kunde suchen..." class="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-700 placeholder:text-slate-400 outline-none" />
+      </div>
+      ${state.customers.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.customers.error)}</div>` : ""}
+      <div class="space-y-4">${listHtml}</div>
+      ${state.customers.hasMore?.[scope] ? `
+        <div id="customersLoadMoreSentinel" class="w-full mt-4 py-4 rounded-[1.8rem] bg-white text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-sm text-center">
+          ${escapeHtml(state.customers.loadingMore ? "Laedt..." : "Scrollt weiter...")}
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+export function renderStaffView(ctx = {}) {
+  const {
+    state,
+    icon,
+    escapeHtml,
+    isCeoUser,
+    renderCeoGuard,
+    renderStaffEditorView,
+    getCurrentCeoMeta,
+    getOptimizedImageUrl,
+    isPlaceholderUrl,
+    PLACEHOLDER_IMAGE,
+    normalizeHandle
+  } = ctx;
+  if (!isCeoUser()) return renderCeoGuard("Staff");
+  if (state.staff.view === "form") return renderStaffEditorView();
+  const current = getCurrentCeoMeta();
+  const items = Array.isArray(state.staff.items) ? state.staff.items.slice() : [];
+  const loadedLeadRows = [
+    ...(Array.isArray(state.leads.pages?.own) ? state.leads.pages.own : []),
+    ...(Array.isArray(state.leads.pages?.staff) ? state.leads.pages.staff : []),
+    ...(Array.isArray(state.leads.pages?.archived) ? state.leads.pages.archived : [])
+  ];
+  const loadedCustomerRows = [
+    ...(Array.isArray(state.customers.pages?.own) ? state.customers.pages.own : []),
+    ...(Array.isArray(state.customers.pages?.staff) ? state.customers.pages.staff : [])
+  ];
+  const listHtml = state.staff.loading
+    ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Staff laden...</div>`
+    : (items.length ? items.map((entry) => {
+      const isSelf = String(entry.uid || "") === String(current.uid || "");
+      const relation = isSelf ? "Du" : (String(entry.ceoParentUid || "") === String(current.uid || "") ? "Direkt" : "Unterstaff");
+      const storedCounts = entry.crmCounts && typeof entry.crmCounts === "object" ? entry.crmCounts : {};
+      const leadCount = Number.isFinite(Number(storedCounts.ownLeads))
+        ? Number(storedCounts.ownLeads)
+        : loadedLeadRows.filter((lead) => String(lead.createdByUid || "") === String(entry.uid || "")).length;
+      const customerCount = Number.isFinite(Number(storedCounts.ownCustomers))
+        ? Number(storedCounts.ownCustomers)
+        : loadedCustomerRows.filter((customer) => String(customer.createdByUid || "") === String(entry.uid || "")).length;
+      const locationText = entry.locationLabel || entry.location || entry.city || entry.country || "-";
+      const avatarRaw = entry.avatarPreview || entry.avatarUrl || entry.avatar || "";
+      const avatarUrl = avatarRaw ? getOptimizedImageUrl(avatarRaw, "avatar") : PLACEHOLDER_IMAGE;
+      const safeAvatar = (!avatarUrl || isPlaceholderUrl(avatarUrl)) ? PLACEHOLDER_IMAGE : avatarUrl;
+      return `
+        <button data-staff-edit="${escapeHtml(entry.uid || "")}" class="w-full text-left bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm active:scale-[0.99] transition-transform">
+          <div class="flex items-center gap-3">
+            <div class="w-14 h-14 rounded-[1.4rem] overflow-hidden bg-slate-100 shrink-0">
+              <img src="${escapeHtml(safeAvatar)}" class="w-full h-full object-cover" onerror="this.src='${PLACEHOLDER_IMAGE}'" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(entry.name || "CEO")}</p>
+              <p class="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">@${escapeHtml(entry.handle || normalizeHandle(entry.name || "ceo"))}</p>
+              <p class="text-[10px] font-bold text-slate-500 mt-2 truncate">${escapeHtml(entry.email || "-")}</p>
+            </div>
+            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${isSelf ? "bg-slate-900 text-white" : "bg-indigo-50 text-indigo-600"}">${escapeHtml(relation)}</span>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-3">
+            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest">${escapeHtml(entry.country || "-")}</span>
+            <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest truncate max-w-full">${escapeHtml(locationText)}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-3 mt-4">
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Leads</p>
+              <p class="text-sm font-black text-slate-900 mt-1">${escapeHtml(String(leadCount))}</p>
+            </div>
+            <div class="rounded-2xl bg-slate-50 px-4 py-3">
+              <p class="text-[9px] font-black uppercase tracking-widest text-slate-400">Kunden</p>
+              <p class="text-sm font-black text-slate-900 mt-1">${escapeHtml(String(customerCount))}</p>
+            </div>
+          </div>
+          <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Tippen zum Bearbeiten</span>
+            <span class="w-9 h-9 rounded-2xl bg-slate-50 text-slate-400 flex items-center justify-center">${icon("chevron-right", "w-4 h-4")}</span>
+          </div>
+        </button>
+      `;
+    }).join("") : `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400 py-16">Noch kein CEO Staff</div>`);
+
+  return `
+    <div id="staffView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CEO</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Staff</h2>
+        </div>
+        <button id="staffNewBtn" class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-xl shadow-slate-200/60 active:scale-95">
+          ${icon("plus", "w-4 h-4")}
+        </button>
+      </div>
+      ${state.staff.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.staff.error)}</div>` : ""}
+      ${state.staff.status ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">${escapeHtml(state.staff.status)}</div>` : ""}
+      <div class="space-y-4">${listHtml}</div>
+      ${state.staff.hasMore ? `
+        <div id="staffLoadMoreSentinel" class="w-full mt-4 py-4 rounded-[1.8rem] bg-white text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-sm text-center">
+          ${escapeHtml(state.staff.loadingMore ? "Laedt..." : "Scrollt weiter...")}
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
