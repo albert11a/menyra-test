@@ -1364,7 +1364,32 @@ function normalizeLeadStatusKey(value) {
   if (["contacted", "kontakt", "kontaktiert", "follow_up", "waiting", "interested"].includes(key)) return "contacted";
   if (["registered", "registriert", "new", "lead", "prospect", "open"].includes(key)) return "registered";
   if (["archived", "archive", "archiv"].includes(key)) return "no_interest";
+  if ([
+    "deleted",
+    "delete",
+    "geloscht",
+    "geloescht",
+    "removed",
+    "remove",
+    "inactive",
+    "disabled",
+    "blocked"
+  ].includes(key)) return "deleted";
   return key;
+}
+
+function isRestaurantMarkedDeleted(rest = {}) {
+  if (!rest || typeof rest !== "object") return false;
+  if (rest.deleted === true || rest.isDeleted === true || rest.hiddenFromDiscover === true) return true;
+  if (rest.deletedAt) return true;
+  const statusKey = normalizeLeadStatusKey(rest.status || rest.state || "");
+  return statusKey === "deleted";
+}
+
+function isPublicBusinessRecord(rest = {}) {
+  if (!rest || typeof rest !== "object") return false;
+  if (isRestaurantMarkedDeleted(rest)) return false;
+  return isCustomerRestaurant(rest);
 }
 
 function normalizeLeadTypeKey(value) {
@@ -4286,7 +4311,9 @@ function mergeRestaurants(existing = [], additions = []) {
 }
 
 function rebuildBusinessLocations() {
-  state.businessLocations = state.restaurants.flatMap((rest, idx) => buildRestaurantLocations(rest, idx));
+  state.businessLocations = state.restaurants
+    .filter((rest) => isPublicBusinessRecord(rest))
+    .flatMap((rest, idx) => buildRestaurantLocations(rest, idx));
   state.restaurants.forEach((rest) => {
     if (!rest?.id) return;
     const rawLogo = rest.logoUrl || rest.logo || rest.logoURL || "";
@@ -4415,15 +4442,28 @@ function syncFeedPostLogos() {
     if (rest?.id) restMap.set(rest.id, rest);
   });
   let changed = false;
-  const next = state.feedPosts.map((post) => {
-    const restaurant = restMap.get(post.restaurantId) || restMap.get(post.ownerId) || {};
+  const next = [];
+  state.feedPosts.forEach((post) => {
+    const rid = String(post.restaurantId || post.ownerId || "").trim();
+    if (!rid) {
+      changed = true;
+      return;
+    }
+    const restaurant = restMap.get(rid) || {};
+    if (restaurant?.id && !isPublicBusinessRecord(restaurant)) {
+      changed = true;
+      return;
+    }
     const bestLogo = restaurant.logoUrl || restaurant.logo || restaurant.logoURL || post.logo || "";
-    const resolved = resolveRestaurantLogo(post.restaurantId || post.ownerId, bestLogo, "avatar");
-    if (isPlaceholderUrl(resolved) || resolved === post.logo) return post;
+    const resolved = resolveRestaurantLogo(rid, bestLogo, "avatar");
+    if (isPlaceholderUrl(resolved) || resolved === post.logo) {
+      next.push(post);
+      return;
+    }
     changed = true;
-    return { ...post, logo: resolved };
+    next.push({ ...post, logo: resolved });
   });
-  if (!changed) return false;
+  if (!changed && next.length === state.feedPosts.length) return false;
   state.feedPosts = next;
   return true;
 }
@@ -5581,7 +5621,7 @@ async function scanRestaurantsForMatch(matchFn, { max = 25 } = {}) {
     if (rows.length) {
       state.restaurants = mergeRestaurants(state.restaurants, rows);
     }
-    return rows.find((row) => matchFn(row)) || null;
+    return rows.find((row) => !isRestaurantMarkedDeleted(row) && matchFn(row)) || null;
   } catch {}
   return null;
 }
@@ -5593,7 +5633,9 @@ async function queryRestaurantByField(field, value) {
     const snap = await getDocs(query(collection(db, "restaurants"), where(field, "==", needle), limit(1)));
     if (!snap.empty) {
       const docSnap = snap.docs[0];
-      return { id: docSnap.id, ...(docSnap.data() || {}) };
+      const row = { id: docSnap.id, ...(docSnap.data() || {}) };
+      if (isRestaurantMarkedDeleted(row)) return null;
+      return row;
     }
   } catch {}
   return null;
@@ -5612,7 +5654,7 @@ async function findRestaurantByEmail(email) {
     }
   }
   const cached = (state.restaurants || []).find((rest) => matchesRestaurantIdentity(rest, { email: needle })) || null;
-  if (cached) return cached;
+  if (cached && !isRestaurantMarkedDeleted(cached)) return cached;
   return scanRestaurantsForMatch((rest) => matchesRestaurantIdentity(rest, { email: needle }));
 }
 
@@ -5625,7 +5667,7 @@ async function findRestaurantByUid(uid) {
     if (rest) return rest;
   }
   const cached = (state.restaurants || []).find((rest) => matchesRestaurantIdentity(rest, { uid: needle })) || null;
-  if (cached) return cached;
+  if (cached && !isRestaurantMarkedDeleted(cached)) return cached;
   return scanRestaurantsForMatch((rest) => matchesRestaurantIdentity(rest, { uid: needle }));
 }
 
@@ -5772,6 +5814,7 @@ async function ensureRestaurantForLead(lead, user) {
 
 function matchesRestaurantOwner(rest, user) {
   if (!rest || !user) return false;
+  if (isRestaurantMarkedDeleted(rest)) return false;
   return matchesRestaurantIdentity(rest, {
     uid: String(user.uid || ""),
     email: String(user.email || "")
@@ -5804,12 +5847,12 @@ async function resolveRestaurantForAuthUser(user, { preferCached = true } = {}) 
 
   if (uid) {
     const byUid = await findRestaurantByUid(uid);
-    if (byUid) return byUid;
+    if (byUid && !isRestaurantMarkedDeleted(byUid)) return byUid;
   }
 
   if (email) {
     const byEmail = await findRestaurantByEmail(email);
-    if (byEmail) return byEmail;
+    if (byEmail && !isRestaurantMarkedDeleted(byEmail)) return byEmail;
   }
 
   return null;
@@ -6344,6 +6387,8 @@ function makeBizDivIcon(b) {
 }
 
 function isDiscoverableMapBusiness(location = {}) {
+  const row = location?.raw || {};
+  if (!isPublicBusinessRecord(row)) return false;
   const typeKey = normalizeRestaurantType(
     location?.type
     || location?.raw?.type
@@ -6928,6 +6973,7 @@ function scheduleIdle(fn) {
 }
 
 function normalizeBusinessResult(rest) {
+  if (!isPublicBusinessRecord(rest)) return null;
   const name = rest.name || rest.restaurantName || "Business";
   return {
     id: rest.id || rest.restaurantId || "",
@@ -6954,7 +7000,9 @@ function buildBusinessResultsFromFeed(posts) {
 }
 
 function buildLocalBusinessResults(queryKey) {
-  const list = state.restaurants.length ? state.restaurants.map(normalizeBusinessResult) : buildBusinessResultsFromFeed(state.feedPosts);
+  const list = state.restaurants.length
+    ? state.restaurants.map(normalizeBusinessResult).filter(Boolean)
+    : buildBusinessResultsFromFeed(state.feedPosts);
   const localKey = normalizeSearchKey(state.userProfile.location || "");
   const isLocalQuery = queryKey === "lokal" || queryKey === "local" || (!queryKey && localKey);
   const filtered = list.filter((item) => {
@@ -7091,7 +7139,7 @@ async function searchBusinessesRemote(queryRaw, token) {
       ));
       snap.forEach((docSnap) => {
         const row = normalizeBusinessResult({ id: docSnap.id, ...docSnap.data() });
-        if (row.id) results.set(row.id, row);
+        if (row?.id) results.set(row.id, row);
       });
     } catch {}
     try {
@@ -7104,7 +7152,7 @@ async function searchBusinessesRemote(queryRaw, token) {
       ));
       snap.forEach((docSnap) => {
         const row = normalizeBusinessResult({ id: docSnap.id, ...docSnap.data() });
-        if (row.id) results.set(row.id, row);
+        if (row?.id) results.set(row.id, row);
       });
     } catch {}
     if (token !== searchToken) return;
@@ -8568,6 +8616,7 @@ function startFeedListener() {
     const next = rows
       .filter((row) => (row.status || "active") === "active")
       .map(normalizeFeedPost)
+      .filter(Boolean)
       .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
     const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
     const nextIds = next.map((item) => String(item.id)).join("|");
@@ -10531,6 +10580,8 @@ async function openProfileFromBusiness(input) {
     const rest = restaurantId
       ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
       : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
+    const hasRestState = !!(rest && Object.keys(rest).length > 1);
+    if (hasRestState && rest?.id && !isPublicBusinessRecord(rest)) return;
 
     const fallbackPosts = state.feedPosts
       .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
@@ -10568,6 +10619,8 @@ async function openProfileFromBusiness(input) {
       fetchBusinessProfileDoc({ restaurantId, restaurant: rest }),
       restaurantId ? loadBusinessPostsForRestaurant(restaurantId) : Promise.resolve(fallbackPosts)
     ]);
+    const resolvedRestData = profileSnap?.data ? { id: profileSnap.id, ...(profileSnap.data || {}) } : rest;
+    if (restaurantId && resolvedRestData?.id && !isPublicBusinessRecord(resolvedRestData)) return;
 
     const resolved = normalizeExternalProfile({
       profileDoc: profileSnap,
@@ -16951,7 +17004,7 @@ async function loadUserProfile(user, { force = false } = {}) {
 async function loadBusinessProfile(user, { restaurant = null, force = false } = {}) {
   if (!user) return;
   const rest = restaurant || await resolveRestaurantForAuthUser(user, { preferCached: !force });
-  if (!rest) {
+  if (!rest || isRestaurantMarkedDeleted(rest)) {
     await loadUserProfile(user, { force });
     return;
   }
@@ -16989,6 +17042,9 @@ async function loadBusinessProfile(user, { restaurant = null, force = false } = 
 
 async function loadAuthProfile(user, { force = false } = {}) {
   if (!user) return;
+  const normalizeAuthRestaurant = (candidate) => (
+    candidate && !isRestaurantMarkedDeleted(candidate) ? candidate : null
+  );
   const profileHint = state.userProfile || {};
   const hintRoles = normalizeRoleList(profileHint.roles || profileHint.role || "");
   const hintRoleKey = String(profileHint.role || "").toLowerCase();
@@ -17015,17 +17071,21 @@ async function loadAuthProfile(user, { force = false } = {}) {
     const hasBusinessProfile = !!String(profile?.restaurantId || "").trim() || normalizedRoleKey === "business" || normalizedRoles.includes("owner");
     if (!hasBusinessProfile) return;
   }
-  let rest = await resolveRestaurantForAuthUser(user, { preferCached: !force });
+  let rest = normalizeAuthRestaurant(await resolveRestaurantForAuthUser(user, { preferCached: !force }));
   if (!rest && user?.uid) {
     const leadByUid = await resolveLeadByUid(user.uid);
     if (leadByUid) {
-      rest = findRestaurantByLeadId(leadByUid.id) || await ensureRestaurantForLead(leadByUid, user);
+      rest = normalizeAuthRestaurant(
+        findRestaurantByLeadId(leadByUid.id) || await ensureRestaurantForLead(leadByUid, user)
+      );
     }
   }
   if (!rest && user?.email) {
     const lead = await resolveLeadByEmail(user.email);
     if (lead) {
-      rest = findRestaurantByLeadId(lead.id) || await ensureRestaurantForLead(lead, user);
+      rest = normalizeAuthRestaurant(
+        findRestaurantByLeadId(lead.id) || await ensureRestaurantForLead(lead, user)
+      );
     }
   }
   if (!rest) {
@@ -17064,7 +17124,8 @@ async function loadAuthProfile(user, { force = false } = {}) {
               patch.updatedAt = serverTimestamp();
               await setDoc(doc(db, "restaurants", restId), patch, { merge: true });
             }
-            rest = { id: restSnap.id, ...restData, ...patch };
+            const candidate = { id: restSnap.id, ...restData, ...patch };
+            rest = normalizeAuthRestaurant(candidate);
           }
         }
       }
@@ -17191,14 +17252,24 @@ async function loadRestaurants({ force = false } = {}) {
   }
 }
 
+function canShowFeedRestaurantId(restaurantId) {
+  const rid = String(restaurantId || "").trim();
+  if (!rid) return false;
+  const restaurant = state.restaurants.find((row) => String(row?.id || "") === rid) || null;
+  if (!restaurant) return true;
+  return isPublicBusinessRecord(restaurant);
+}
+
 function normalizeFeedPost(row) {
-  const restaurant = state.restaurants.find((r) => r.id === (row.rid || row.restaurantId)) || {};
+  const restaurantId = String(row.rid || row.restaurantId || "").trim();
+  if (!canShowFeedRestaurantId(restaurantId)) return null;
+  const restaurant = state.restaurants.find((r) => r.id === restaurantId) || {};
   const thumb = row.thumbUrl || row.mediaUrl || row.media?.[0]?.thumbUrl || row.media?.[0]?.url || "";
   const rowLogo = row.logoUrl || row.logo || row.logoURL || "";
   const caption = row.caption || row.captionShort || "";
   return {
     id: row.id,
-    restaurantId: row.rid || row.restaurantId || "",
+    restaurantId,
     business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
     logo: restaurant.logoUrl || restaurant.logo || rowLogo || "",
     location: row.city || restaurant.city || "Prishtina",
@@ -17211,7 +17282,7 @@ function normalizeFeedPost(row) {
     category: row.postType || "food",
     isLive: row.isLive || false,
     ownerType: "restaurant",
-    ownerId: row.rid || row.restaurantId || ""
+    ownerId: restaurantId
   };
 }
 
@@ -17220,7 +17291,7 @@ function buildStoriesFromFeed(posts) {
   const map = new Map();
   posts.forEach((post) => {
     const rid = post.restaurantId || post.ownerId || "";
-    if (!rid || map.has(rid)) return;
+    if (!rid || map.has(rid) || !canShowFeedRestaurantId(rid)) return;
     const rest = state.restaurants.find(r => r.id === rid) || {};
     const logo = rest.logoUrl || rest.logo || post.logo || "";
     map.set(rid, {
@@ -17298,12 +17369,19 @@ function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
 
 async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
   const rest = restaurant || (restaurantId ? state.restaurants.find((r) => r.id === restaurantId) : null) || null;
-  if (rest?.id) return { id: rest.id, data: rest };
+  if (rest?.id) {
+    if (!isPublicBusinessRecord(rest)) return null;
+    return { id: rest.id, data: rest };
+  }
   const restId = restaurantId || rest?.id || "";
   if (!restId) return null;
   try {
     const snap = await getDoc(doc(db, "restaurants", restId));
-    if (snap.exists()) return { id: snap.id, data: snap.data() || {} };
+    if (snap.exists()) {
+      const data = snap.data() || {};
+      if (!isPublicBusinessRecord({ id: snap.id, ...data })) return null;
+      return { id: snap.id, data };
+    }
   } catch {}
   return null;
 }
@@ -17439,7 +17517,8 @@ async function loadFeedDelta({ force = false } = {}) {
     }
     const fresh = rows
       .filter((row) => (row.status || "active") === "active")
-      .map(normalizeFeedPost);
+      .map(normalizeFeedPost)
+      .filter(Boolean);
     if (!fresh.length) {
       saveFeedPosts(state.feedPosts, { lastDeltaCheck: Date.now() });
       return;
@@ -19942,6 +20021,245 @@ async function saveLeadFromModal() {
   }
 }
 
+async function resolveRestaurantLinkedToLead(lead = {}) {
+  const directId = String(lead?.restaurantId || "").trim();
+  if (directId) {
+    const cached = (state.restaurants || []).find((row) => String(row?.id || "") === directId) || null;
+    if (cached?.id) return { id: directId, ...cached };
+    try {
+      const snap = await getDoc(doc(db, "restaurants", directId));
+      if (snap.exists()) return { id: snap.id, ...(snap.data() || {}) };
+    } catch {}
+  }
+
+  const leadId = String(lead?.id || "").trim();
+  if (leadId) {
+    const cachedByLead = (state.restaurants || []).find((row) => String(row?.leadId || "") === leadId) || null;
+    if (cachedByLead?.id) return { id: String(cachedByLead.id || ""), ...cachedByLead };
+    try {
+      const snap = await getDocs(query(collection(db, "restaurants"), where("leadId", "==", leadId), limit(1)));
+      if (!snap.empty) {
+        const docSnap = snap.docs[0];
+        return { id: docSnap.id, ...(docSnap.data() || {}) };
+      }
+    } catch {}
+  }
+
+  const uidCandidates = uniqueStringList([
+    lead?.socialUid,
+    lead?.ownerUid,
+    lead?.uid
+  ].map((value) => String(value || "").trim()).filter(Boolean));
+  for (const uid of uidCandidates) {
+    const match = await findRestaurantByUid(uid);
+    if (match?.id) return match;
+  }
+
+  const emailCandidates = uniqueStringList([
+    lead?.socialEmail,
+    lead?.email,
+    lead?.ownerEmail
+  ].map((value) => normalizeEmailValue(value)).filter(Boolean));
+  for (const email of emailCandidates) {
+    const match = await findRestaurantByEmail(email);
+    if (match?.id) return match;
+  }
+
+  return null;
+}
+
+function collectLeadIdentityPayload(lead = {}, restaurant = null) {
+  const linkedRestaurantId = String(restaurant?.id || lead?.restaurantId || "").trim();
+  const uidList = uniqueStringList([
+    lead?.socialUid,
+    lead?.ownerUid,
+    restaurant?.ownerUid,
+    restaurant?.socialUid,
+    restaurant?.uid,
+    restaurant?.userUid
+  ].map((value) => String(value || "").trim()).filter(Boolean));
+  const emailList = uniqueStringList([
+    lead?.socialEmail,
+    lead?.email,
+    lead?.ownerEmail,
+    restaurant?.ownerEmail,
+    restaurant?.socialEmail,
+    restaurant?.email,
+    restaurant?.contactEmail
+  ].map((value) => normalizeEmailValue(value)).filter(Boolean));
+  return {
+    restaurantId: linkedRestaurantId,
+    uids: uidList,
+    emails: emailList
+  };
+}
+
+async function findUserIdsByEmailList(emails = []) {
+  const list = uniqueStringList((emails || []).map((value) => normalizeEmailValue(value)).filter(Boolean));
+  if (!list.length) return [];
+  const found = new Set();
+  const usersRef = collection(db, "users");
+  await Promise.all(list.map(async (email) => {
+    try {
+      const snap = await getDocs(query(usersRef, where("email", "==", email), limit(10)));
+      snap.forEach((docSnap) => found.add(docSnap.id));
+    } catch {}
+  }));
+  return Array.from(found);
+}
+
+async function deactivateLinkedBusinessUsers({ restaurantId = "", explicitUids = [], emails = [] } = {}) {
+  const rid = String(restaurantId || "").trim();
+  const explicitUidList = uniqueStringList((explicitUids || []).map((value) => String(value || "").trim()).filter(Boolean));
+  const explicitUidSet = new Set(explicitUidList);
+  const emailList = uniqueStringList((emails || []).map((value) => normalizeEmailValue(value)).filter(Boolean));
+  const uidSet = new Set(explicitUidList);
+
+  if (rid) {
+    try {
+      const snap = await getDocs(query(collection(db, "users"), where("restaurantId", "==", rid), limit(20)));
+      snap.forEach((docSnap) => uidSet.add(docSnap.id));
+    } catch {}
+  }
+
+  const idsByEmail = await findUserIdsByEmailList(emailList);
+  idsByEmail.forEach((uid) => uidSet.add(uid));
+
+  const currentUid = String(state.user?.uid || "").trim();
+  const tasks = [];
+  uidSet.forEach((uid) => {
+    const safeUid = String(uid || "").trim();
+    if (!safeUid || safeUid === currentUid) return;
+    tasks.push((async () => {
+      try {
+        const snap = await getDoc(doc(db, "users", safeUid));
+        if (!snap.exists()) return;
+        const data = snap.data() || {};
+        const roleKey = String(data.role || "").toLowerCase();
+        const roles = normalizeRoleList(data.roles || data.role || "");
+        if (roles.includes("ceo") || roles.includes("staff") || roleKey === "ceo" || roleKey === "staff") return;
+
+        const linkedRestaurantId = String(data.restaurantId || "").trim();
+        const linkedEmail = normalizeEmailValue(data.email || "");
+        const matchesRestaurant = !!(rid && linkedRestaurantId === rid);
+        const matchesEmail = !!(linkedEmail && emailList.includes(linkedEmail));
+        const isBusiness = roleKey === "business" || roles.includes("owner") || roles.includes("business");
+        const isExplicit = explicitUidSet.has(safeUid);
+        if (!(isExplicit || matchesRestaurant || (isBusiness && matchesEmail))) return;
+
+        await setDoc(doc(db, "users", safeUid), {
+          restaurantId: "",
+          role: "user",
+          roles: ["user"],
+          businessStatus: "deleted",
+          businessDeleted: true,
+          deletedRestaurantId: rid || linkedRestaurantId || "",
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch {}
+    })());
+  });
+
+  if (tasks.length) {
+    await Promise.all(tasks);
+  }
+}
+
+async function purgeRestaurantSocialPresence(restaurantId) {
+  const rid = String(restaurantId || "").trim();
+  if (!rid) return;
+
+  const postIds = new Set();
+  try {
+    const postsSnap = await getDocs(query(collection(db, "restaurants", rid, "socialPosts"), limit(300)));
+    const deletes = [];
+    postsSnap.forEach((docSnap) => {
+      postIds.add(docSnap.id);
+      deletes.push(deleteDoc(docSnap.ref).catch(() => {}));
+    });
+    if (deletes.length) await Promise.all(deletes);
+  } catch {}
+
+  try {
+    const storiesSnap = await getDocs(query(collection(db, "restaurants", rid, "stories"), limit(300)));
+    const storyDeletes = [];
+    storiesSnap.forEach((docSnap) => {
+      storyDeletes.push(deleteDoc(docSnap.ref).catch(() => {}));
+    });
+    if (storyDeletes.length) await Promise.all(storyDeletes);
+  } catch {}
+
+  const feedDeletes = [];
+  postIds.forEach((postId) => {
+    feedDeletes.push(deleteDoc(doc(db, "socialFeed", postId)).catch(() => {}));
+  });
+
+  await Promise.all([
+    (async () => {
+      try {
+        const snap = await getDocs(query(collection(db, "socialFeed"), where("rid", "==", rid), limit(300)));
+        snap.forEach((docSnap) => {
+          feedDeletes.push(deleteDoc(docSnap.ref).catch(() => {}));
+        });
+      } catch {}
+    })(),
+    (async () => {
+      try {
+        const snap = await getDocs(query(collection(db, "socialFeed"), where("restaurantId", "==", rid), limit(300)));
+        snap.forEach((docSnap) => {
+          feedDeletes.push(deleteDoc(docSnap.ref).catch(() => {}));
+        });
+      } catch {}
+    })()
+  ]);
+
+  if (feedDeletes.length) {
+    await Promise.all(feedDeletes);
+  }
+
+  writeCache(businessPostsKey(rid), []);
+  menuCache.delete(menuCacheKey(rid, "collection"));
+  menuCache.delete(menuCacheKey(rid, "hybrid"));
+  focusCache.delete(focusCacheKey(rid));
+}
+
+function applyDeletedRestaurantStateLocally(restaurantId) {
+  const rid = String(restaurantId || "").trim();
+  if (!rid) return;
+
+  state.restaurants = (state.restaurants || []).map((row) => {
+    if (String(row?.id || "") !== rid) return row;
+    return {
+      ...row,
+      leadId: "",
+      status: "deleted",
+      hiddenFromDiscover: true,
+      deleted: true,
+      isDeleted: true,
+      ownerUid: "",
+      ownerEmail: "",
+      ownerName: ""
+    };
+  });
+
+  state.feedPosts = (state.feedPosts || []).filter((post) => String(post?.restaurantId || post?.ownerId || "") !== rid);
+  state.stories = (state.stories || []).filter((story) => String(story?.restaurantId || "") !== rid);
+  state.businessPosts = (state.businessPosts || []).filter((post) => String(post?.restaurantId || post?.ownerId || "") !== rid);
+
+  const cachedFeed = readCache(CACHE_KEYS.feed);
+  saveFeedPosts(state.feedPosts, { lastDeltaCheck: cachedFeed?.meta?.lastDeltaCheck || 0 });
+  writeCache(CACHE_KEYS.stories, state.stories);
+  feedStoriesSignature = buildStoriesSignature(state.stories);
+  writeCache(businessPostsKey(rid), []);
+
+  if (state.selectedBusiness && String(state.selectedBusiness.id || "") === rid) {
+    state.selectedBusiness = null;
+  }
+
+  rebuildBusinessLocations();
+  refreshCustomersFromRestaurants();
+}
+
 async function deleteLeadFromModal() {
   if (!state.user || !isCeoUser()) return false;
   const lead = state.leadModal?.lead || {};
@@ -19959,8 +20277,16 @@ async function deleteLeadFromModal() {
   renderLeadEditorUi();
 
   try {
+    const linkedRestaurant = await resolveRestaurantLinkedToLead(lead);
+    if (linkedRestaurant?.id) {
+      state.restaurants = mergeRestaurants(state.restaurants, [{ id: linkedRestaurant.id, ...linkedRestaurant }]);
+    }
+    const identityPayload = collectLeadIdentityPayload(lead, linkedRestaurant);
+    const restaurantId = String(identityPayload.restaurantId || "").trim();
     const prevLeadContribution = buildLeadCrmContribution(lead);
-    const restaurantId = String(lead.restaurantId || "").trim();
+    const prevCustomerContribution = linkedRestaurant?.id
+      ? buildCustomerCrmContribution({ id: linkedRestaurant.id, ...linkedRestaurant })
+      : null;
 
     await deleteDoc(doc(db, "leads", leadId));
 
@@ -19968,27 +20294,51 @@ async function deleteLeadFromModal() {
       await setDoc(doc(db, "restaurants", restaurantId), {
         leadId: "",
         status: "deleted",
+        hiddenFromDiscover: true,
+        deleted: true,
+        isDeleted: true,
+        deletedAt: serverTimestamp(),
+        ownerUid: "",
+        ownerEmail: "",
+        ownerName: "",
         updatedAt: serverTimestamp()
       }, { merge: true }).catch(() => {});
 
-      state.restaurants = (state.restaurants || []).map((row) => {
-        if (String(row?.id || "") !== restaurantId) return row;
-        return {
-          ...row,
-          leadId: "",
-          status: "deleted"
-        };
-      });
-      rebuildBusinessLocations();
-      refreshCustomersFromRestaurants();
+      await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), {
+        status: "deleted",
+        hiddenFromDiscover: true,
+        deleted: true,
+        isDeleted: true,
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
+
+      await Promise.all([
+        purgeRestaurantSocialPresence(restaurantId).catch(() => {}),
+        deactivateLinkedBusinessUsers({
+          restaurantId,
+          explicitUids: identityPayload.uids,
+          emails: identityPayload.emails
+        }).catch(() => {})
+      ]);
+      applyDeletedRestaurantStateLocally(restaurantId);
+    } else if (identityPayload.uids.length || identityPayload.emails.length) {
+      await deactivateLinkedBusinessUsers({
+        restaurantId: "",
+        explicitUids: identityPayload.uids,
+        emails: identityPayload.emails
+      }).catch(() => {});
     }
 
     const crmDeltaMap = new Map();
     accumulateCeoCrmDelta(crmDeltaMap, prevLeadContribution, -1);
+    accumulateCeoCrmDelta(crmDeltaMap, prevCustomerContribution, -1);
     await applyCeoCrmCountDeltas(crmDeltaMap);
 
     const removeLeadById = (rows) => (Array.isArray(rows)
-      ? rows.filter((item) => String(item?.id || "") !== leadId)
+      ? rows.filter((item) => (
+        String(item?.id || "") !== leadId
+        && (!restaurantId || String(item?.restaurantId || "") !== restaurantId)
+      ))
       : []);
 
     const scopeKeys = ["own", "staff", "archived"];
@@ -19999,7 +20349,7 @@ async function deleteLeadFromModal() {
 
     scopeKeys.forEach((scopeKey) => {
       const currentRows = Array.isArray(nextPages[scopeKey]) ? nextPages[scopeKey] : [];
-      const filteredRows = currentRows.filter((item) => String(item?.id || "") !== leadId);
+      const filteredRows = removeLeadById(currentRows);
       if (filteredRows.length === currentRows.length) return;
       const removedCount = currentRows.length - filteredRows.length;
       nextPages[scopeKey] = filteredRows;
