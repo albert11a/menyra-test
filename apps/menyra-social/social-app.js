@@ -8224,7 +8224,7 @@ function renderFeedView() {
   const stories = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeed(feedPosts) : state.stories);
   return `
     <div id="feedView">
-      <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pb-8 no-scrollbar">
+      <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pt-4 pb-8 no-scrollbar">
         ${renderStoriesRow(stories)}
       </div>
       ${isLocalBusinessProfile(state.userProfile) ? `
@@ -14293,8 +14293,9 @@ function renderChatView() {
 function renderHeaderActionButton(avatarUrl, avatarFit) {
   if (isGuestSession()) {
     return `
-      <button data-auth-open="true" class="h-14 px-5 rounded-3xl shadow-xl overflow-hidden active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30 text-slate-900 text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
-        ${icon("log-in", "w-4 h-4")} Login
+      <button data-auth-open="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30 text-slate-900 flex flex-col items-center justify-center leading-none">
+        ${icon("log-in", "w-4 h-4")}
+        <span class="text-[8px] font-black uppercase tracking-[0.2em] mt-1">Login</span>
       </button>
     `;
   }
