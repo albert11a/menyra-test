@@ -8,7 +8,7 @@ function log(...args) {
   // console.log("[PWA]", ...args);
 }
 
-const SOCIAL_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-07-perf-7";
+const SOCIAL_SW_URL = "/apps/menyra-social/sw.js?v=2026-03-07-favorites-8";
 const SOCIAL_SW_SCOPE = "/apps/menyra-social/";
 
 async function registerSW() {

@@ -8400,9 +8400,12 @@ function renderDrawer() {
         </div>
         <nav class="space-y-2 flex-1">
           ${navItems.map((item) => {
+            const isFavoritesView = state.activeTab === "profile" && state.profileTopTab === "favorites";
             const isActive = item.id === "favorites"
-              ? (state.activeTab === "profile" && state.profileTopTab === "favorites")
-              : state.activeTab === item.id;
+              ? isFavoritesView
+              : (item.id === "profile"
+                ? (state.activeTab === "profile" && !isFavoritesView)
+                : state.activeTab === item.id);
             return `
             <button data-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${item.hidden ? "hidden" : ""} ${isActive ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
               <div class="flex items-center gap-4">
@@ -12117,7 +12120,7 @@ function renderShopProductList(items, { source = "menu", showRestaurantName = fa
           ? ` data-menu-open-restaurant="${escapeHtml(item.restaurantId)}"`
           : "";
         return `
-          <article data-menu-open="${escapeHtml(item.id)}" data-menu-open-source="${escapeHtml(source)}"${restaurantAttr} role="button" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
+          <article data-menu-open="${escapeHtml(item.id)}" data-menu-open-source="${escapeHtml(source)}"${restaurantAttr} role="button" tabindex="0" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col" style="touch-action:manipulation;">
             <div class="rounded-[1.5rem] overflow-hidden bg-slate-100" style="aspect-ratio:4 / 5;">
               <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
             </div>
@@ -12202,6 +12205,26 @@ function renderProfileShopFavoritesView(profile = state.profileView?.profile || 
       `}
     </div>
   `;
+}
+
+function openMenuDetailFromTrigger(trigger) {
+  const itemId = trigger?.dataset?.menuOpen || "";
+  if (!itemId) return;
+  const source = trigger?.dataset?.menuOpenSource || "menu";
+  const sourceItems = source === "favorites"
+    ? (Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [])
+    : (state.menu.items || []);
+  const item = sourceItems.find((it) => String(it.id) === String(itemId));
+  if (!item) return;
+  void openMenuDetail(
+    item,
+    trigger?.dataset?.menuOpenRestaurant
+      || item.restaurantId
+      || state.menu.restaurantId
+      || state.profileView?.profile?.restaurantId
+      || state.userProfile.restaurantId
+      || ""
+  );
 }
 
 function renderProfileShopCartView(profile = state.profileView?.profile || state.userProfile) {
@@ -16152,22 +16175,12 @@ function bindAppEvents() {
 
   document.querySelectorAll("[data-menu-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const itemId = btn.dataset.menuOpen || "";
-      const source = btn.dataset.menuOpenSource || "menu";
-      const sourceItems = source === "favorites"
-        ? (Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [])
-        : (state.menu.items || []);
-      const item = sourceItems.find((it) => String(it.id) === String(itemId));
-      if (!item) return;
-      void openMenuDetail(
-        item,
-        btn.dataset.menuOpenRestaurant
-          || item.restaurantId
-          || state.menu.restaurantId
-          || state.profileView?.profile?.restaurantId
-          || state.userProfile.restaurantId
-          || ""
-      );
+      openMenuDetailFromTrigger(btn);
+    });
+    btn.addEventListener("keydown", (evt) => {
+      if (evt.key !== "Enter" && evt.key !== " ") return;
+      evt.preventDefault();
+      openMenuDetailFromTrigger(btn);
     });
   });
 

@@ -1,4 +1,4 @@
-const CACHE_NAME = "mnyra-social-cache-v2";
+const CACHE_NAME = "mnyra-social-cache-v3";
 const CACHE_PREFIX = "mnyra-social-cache-";
 const APP_SCOPE = "/apps/menyra-social/";
 const APP_SHELL_URL = "/apps/menyra-social/index.html";
