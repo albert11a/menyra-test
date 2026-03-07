@@ -1,4 +1,4 @@
-import { auth, db, app } from "@shared/firebase-config.js";
+import { auth, db, app } from "@shared/firebase-config.js?v=2026-03-07-auth-1";
 import { BUNNY_EDGE_BASE } from "@shared/bunny-edge.js";
 import { BRAND_UI } from "@shared/brand-ui.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
@@ -8,7 +8,9 @@ import {
   updateProfile,
   onAuthStateChanged,
   signOut,
-  getAuth
+  getAuth,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import {
   collection,
@@ -627,6 +629,8 @@ let lastCommentKey = "";
 let lastCommentAt = 0;
 let lastMenuCommentKey = "";
 let lastMenuCommentAt = 0;
+let lastMenuOpenGestureKey = "";
+let lastMenuOpenGestureAt = 0;
 let chatSendDispatchLock = false;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
@@ -6918,6 +6922,21 @@ function buildFavoriteMenuItemPayload(item, restaurantId, { includeServerTimesta
   const restaurantMeta = getRestaurantMetaById(safeRestaurantId) || {};
   const images = getMenuItemImages(item);
   const nowIso = new Date().toISOString();
+  const catalogType = normalizeRestaurantType(
+    profileMatch?.type
+    || profileMatch?.customerType
+    || profileMatch?.category
+    || profileMatch?.kind
+    || profileMatch?.restaurantType
+    || restaurantMeta?.type
+    || restaurantMeta?.customerType
+    || restaurantMeta?.category
+    || restaurantMeta?.kind
+    || restaurantMeta?.restaurantType
+    || item?.restaurantType
+    || item?.customerType
+    || "ecommerce"
+  ) || "ecommerce";
   return {
     restaurantId: safeRestaurantId,
     itemId,
@@ -6948,6 +6967,9 @@ function buildFavoriteMenuItemPayload(item, restaurantId, { includeServerTimesta
     cropY: clampCropPercent(item?.cropY ?? 50, 50),
     price: item?.price ?? "",
     available: item?.available !== false,
+    catalogMode: "shop",
+    restaurantType: catalogType,
+    customerType: catalogType,
     imageUrl: images[0] || resolveMenuItemHero(item) || "",
     imageUrls: images,
     savedAtClient: nowIso,
@@ -6966,6 +6988,9 @@ function normalizeFavoriteMenuItemDoc(data, docId = "") {
     restaurantId: String(payload?.restaurantId || "").trim(),
     restaurantName: String(payload?.restaurantName || "").trim(),
     restaurantAvatar: String(payload?.restaurantAvatar || "").trim(),
+    catalogMode: String(payload?.catalogMode || "").trim(),
+    restaurantType: String(payload?.restaurantType || "").trim(),
+    customerType: String(payload?.customerType || "").trim(),
     savedAtClient: String(payload?.savedAtClient || "").trim()
   };
 }
@@ -7119,6 +7144,7 @@ function buildCatalogProfileForRestaurant(restaurantId = "", fallback = {}) {
     || fallback?.name
     || "Shop"
   ).trim() || "Shop";
+  const fallbackCatalogMode = String(fallback?.catalogMode || "").trim().toLowerCase();
   const type = normalizeRestaurantType(
     restaurant?.type
     || restaurant?.customerType
@@ -7127,7 +7153,8 @@ function buildCatalogProfileForRestaurant(restaurantId = "", fallback = {}) {
     || restaurant?.restaurantType
     || fallback?.type
     || fallback?.customerType
-    || "ecommerce"
+    || fallback?.restaurantType
+    || (fallbackCatalogMode === "shop" ? "ecommerce" : "")
   );
   return {
     name: displayName,
@@ -12178,11 +12205,12 @@ function renderProfileShopFavoritesView(profile = state.profileView?.profile || 
   const favoriteItems = Array.isArray(favoriteState.items) ? favoriteState.items : [];
   const isLoading = favoriteState.loading || (!favoriteState.loaded && !favoriteItems.length);
   return `
-    <div class="px-5 pb-24 space-y-5">
-      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
-        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Favoriten</span>
-        <h3 class="text-xl font-black italic tracking-tighter mt-2">Gespeicherte Produkte</h3>
-        <p class="text-[11px] font-medium text-slate-500 mt-2">Hier siehst du alle Shop-Produkte, die du favorisiert hast.</p>
+    <div class="p-6 pb-24 space-y-5">
+      <div class="flex items-center justify-between">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Favoriten</span>
+          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Du liebst</h2>
+        </div>
       </div>
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
@@ -12216,8 +12244,16 @@ function openMenuDetailFromTrigger(trigger) {
     : (state.menu.items || []);
   const item = sourceItems.find((it) => String(it.id) === String(itemId));
   if (!item) return;
+  const detailItem = source === "favorites"
+    ? {
+      ...item,
+      catalogMode: "shop",
+      restaurantType: item.restaurantType || item.customerType || "ecommerce",
+      customerType: item.customerType || item.restaurantType || "ecommerce"
+    }
+    : item;
   void openMenuDetail(
-    item,
+    detailItem,
     trigger?.dataset?.menuOpenRestaurant
       || item.restaurantId
       || state.menu.restaurantId
@@ -12225,6 +12261,26 @@ function openMenuDetailFromTrigger(trigger) {
       || state.userProfile.restaurantId
       || ""
   );
+}
+
+function triggerMenuDetailOpenFromGesture(trigger) {
+  const key = [
+    trigger?.dataset?.menuOpenSource || "menu",
+    trigger?.dataset?.menuOpenRestaurant || "",
+    trigger?.dataset?.menuOpen || ""
+  ].join("::");
+  const now = Date.now();
+  if (key && key === lastMenuOpenGestureKey && now - lastMenuOpenGestureAt < 700) return;
+  lastMenuOpenGestureKey = key;
+  lastMenuOpenGestureAt = now;
+  openMenuDetailFromTrigger(trigger);
+}
+
+let authPersistenceReady = null;
+function ensureAuthLocalPersistence() {
+  if (authPersistenceReady) return authPersistenceReady;
+  authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch(() => null);
+  return authPersistenceReady;
 }
 
 function renderProfileShopCartView(profile = state.profileView?.profile || state.userProfile) {
@@ -15312,6 +15368,7 @@ function bindAuthEvents() {
       render();
 
       try {
+        await ensureAuthLocalPersistence();
         if (state.auth.mode === "login") {
           const admin = resolveAdminLogin(email, password);
           const cred = admin ? await signInOrCreateAdmin(admin) : await signInWithEmailAndPassword(auth, email, password);
@@ -16175,12 +16232,23 @@ function bindAppEvents() {
 
   document.querySelectorAll("[data-menu-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      openMenuDetailFromTrigger(btn);
+      triggerMenuDetailOpenFromGesture(btn);
+    });
+    btn.addEventListener("pointerup", (evt) => {
+      if (evt.pointerType === "mouse") return;
+      evt.preventDefault();
+      triggerMenuDetailOpenFromGesture(btn);
+    });
+    if (typeof window !== "undefined" && !("PointerEvent" in window)) {
+      btn.addEventListener("touchend", (evt) => {
+        evt.preventDefault();
+        triggerMenuDetailOpenFromGesture(btn);
+      }, { passive: false });
     });
     btn.addEventListener("keydown", (evt) => {
       if (evt.key !== "Enter" && evt.key !== " ") return;
       evt.preventDefault();
-      openMenuDetailFromTrigger(btn);
+      triggerMenuDetailOpenFromGesture(btn);
     });
   });
 
@@ -21658,6 +21726,7 @@ async function bootstrapUser(user) {
 
 loadPersisted();
 bindPushOpenTargetMessageHandler();
+void ensureAuthLocalPersistence();
 state.user = auth.currentUser || null;
 authInitialized = !!state.user;
 if (state.user) {

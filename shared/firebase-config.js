@@ -11,7 +11,13 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
-import { getAuth } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+import {
+  getAuth,
+  initializeAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
 import { getStorage } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-storage.js";
 
 const firebaseConfig = {
@@ -36,7 +42,14 @@ try {
 } catch {
   db = getFirestore(app);
 }
-const auth = getAuth(app);
+let auth;
+try {
+  auth = initializeAuth(app, {
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence]
+  });
+} catch {
+  auth = getAuth(app);
+}
 const storage = getStorage(app);
 
 export { app, db, auth, storage };
