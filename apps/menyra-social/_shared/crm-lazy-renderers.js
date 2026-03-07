@@ -85,6 +85,9 @@ export function renderLeadCreationView(ctx = {}) {
   const settings = getLeadSettingsConfig();
   const logoRaw = state.leadModal.logoPreview || lead.logoUrl || "";
   const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const isEdit = state.leadModal.mode === "edit" && !!lead.id;
+  const actionsOpen = !!state.leadModal.actionsOpen;
+  const deleting = !!state.leadModal.deleting;
   const customerType = resolveCustomerType(lead.customerType || "cafe");
   const billingCycle = lead.billingCycle === "yearly" ? "yearly" : "monthly";
   const locations = normalizeLeadLocations(state.leadModal.locations, lead.address || "", state.leadModal.coords || getLeadCountryCenter(lead.country || settings.defaultCountry));
@@ -97,6 +100,26 @@ export function renderLeadCreationView(ctx = {}) {
   return `
     <div id="leadCreateView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-28">
       <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <div class="mb-6 flex items-start justify-between">
+          <div>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">CRM</span>
+            <h2 class="text-2xl font-black italic uppercase tracking-tighter">${escapeHtml(isEdit ? "Lead bearbeiten" : "Neuer Lead")}</h2>
+          </div>
+          ${isEdit ? `
+            <div class="relative">
+              <button id="leadInlineActionsToggle" type="button" class="w-11 h-11 rounded-2xl bg-slate-50 text-slate-500 border border-slate-100 flex items-center justify-center active:scale-95 ${deleting ? "opacity-60 cursor-not-allowed" : ""}" ${deleting ? "disabled" : ""}>
+                ${icon("ellipsis-vertical", "w-4 h-4")}
+              </button>
+              ${actionsOpen ? `<button id="leadInlineActionsBackdrop" type="button" class="fixed inset-0 z-[5] bg-transparent"></button>` : ""}
+              <div class="absolute right-0 top-14 z-10 min-w-[170px] rounded-2xl border border-slate-100 bg-white shadow-xl p-2 ${actionsOpen ? "" : "hidden"}">
+                <button id="leadInlineDeleteBtn" type="button" class="w-full px-4 py-3 rounded-xl bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest text-left flex items-center gap-2 active:scale-95 ${deleting ? "opacity-60 cursor-not-allowed" : ""}" ${deleting ? "disabled" : ""}>
+                  ${icon("trash-2", "w-3.5 h-3.5")}
+                  ${escapeHtml(deleting ? "Loeschen..." : "Lead loeschen")}
+                </button>
+              </div>
+            </div>
+          ` : ""}
+        </div>
         <input type="file" id="leadLogoInput" class="hidden" accept="image/*" />
         <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
           <img id="leadLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
@@ -243,7 +266,7 @@ export function renderLeadCreationView(ctx = {}) {
         <input id="leadStatus" type="hidden" value="${escapeHtml(lead.status || "registered")}" />
         <input id="leadContactName" type="hidden" value="${escapeHtml(buildLeadContactName(lead.contactFirstName, lead.contactLastName, lead.contactName || ""))}" />
         <div class="mt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.leadModal.status || "")}</div>
-        <button id="leadInlineSaveBtn" type="button" class="w-full mt-5 py-4 rounded-[1.8rem] bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-transform" ${state.leadModal.loading ? "disabled" : ""}>${escapeHtml(state.leadModal.loading ? "Speichern..." : "Lead erstellen")}</button>
+        <button id="leadInlineSaveBtn" type="button" class="w-full mt-5 py-4 rounded-[1.8rem] bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-transform" ${state.leadModal.loading ? "disabled" : ""}>${escapeHtml(state.leadModal.loading ? "Speichern..." : (isEdit ? "Lead speichern" : "Lead erstellen"))}</button>
       </div>
     </div>
   `;

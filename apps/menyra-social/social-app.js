@@ -532,6 +532,8 @@ const state = {
     lead: null,
     status: "",
     loading: false,
+    deleting: false,
+    actionsOpen: false,
     logoFile: null,
     logoPreview: "",
     coords: null,
@@ -4143,7 +4145,7 @@ function resetUserScopedState() {
       avatarFile: null
     }
   };
-  state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "", coords: null, locations: [] };
+  state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] };
   state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
   state.selectedBusiness = null;
   state.followingHandles = [];
@@ -8224,7 +8226,7 @@ function bindFeedDelegation() {
           profileModal: { open: false, profile: null },
           postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
           likesModal: { open: false, postId: "", animate: false },
-          leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
+          leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
           customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
         });
       }
@@ -13214,6 +13216,8 @@ function resetLeadDraft() {
     lead: null,
     status: "",
     loading: false,
+    deleting: false,
+    actionsOpen: false,
     logoFile: null,
     logoPreview: "",
     coords: null,
@@ -13270,6 +13274,8 @@ function createLeadDraftState(mode = "create", lead = null) {
     lead: merged,
     status: "",
     loading: false,
+    deleting: false,
+    actionsOpen: false,
     logoFile: null,
     logoPreview: merged.logoUrl || "",
     coords: hasLeadLocationCoords(primary)
@@ -15395,7 +15401,7 @@ function bindAppEvents() {
         profileModal: { open: false, profile: null },
         postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
         likesModal: { open: false, postId: "", animate: false },
-        leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
+        leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
         customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
       });
     });
@@ -15970,6 +15976,35 @@ function bindAppEvents() {
   }
 
   if (isLeadInlineCreateView()) {
+    const leadInlineActionsToggle = document.getElementById("leadInlineActionsToggle");
+    const leadInlineActionsBackdrop = document.getElementById("leadInlineActionsBackdrop");
+    const leadInlineDeleteBtn = document.getElementById("leadInlineDeleteBtn");
+
+    if (leadInlineActionsToggle) {
+      leadInlineActionsToggle.addEventListener("click", (evt) => {
+        evt.preventDefault();
+        evt.stopPropagation();
+        if (state.leadModal.loading || state.leadModal.deleting) return;
+        state.leadModal.actionsOpen = !state.leadModal.actionsOpen;
+        render();
+      });
+    }
+
+    if (leadInlineActionsBackdrop) {
+      leadInlineActionsBackdrop.addEventListener("click", () => {
+        if (!state.leadModal.actionsOpen) return;
+        state.leadModal.actionsOpen = false;
+        render();
+      });
+    }
+
+    if (leadInlineDeleteBtn) {
+      leadInlineDeleteBtn.addEventListener("click", () => {
+        if (state.leadModal.loading || state.leadModal.deleting) return;
+        void deleteLeadFromModal();
+      });
+    }
+
     const leadInlineSaveBtn = document.getElementById("leadInlineSaveBtn");
     if (leadInlineSaveBtn) {
       leadInlineSaveBtn.addEventListener("click", () => {
@@ -19707,6 +19742,7 @@ async function saveLeadFromModal() {
   }
 
   state.leadModal.loading = true;
+  state.leadModal.actionsOpen = false;
   state.leadModal.status = "Speichern...";
   renderLeadEditorUi();
 
@@ -19903,6 +19939,101 @@ async function saveLeadFromModal() {
     state.leadModal.status = err?.message || "Speichern fehlgeschlagen.";
     state.leadModal.loading = false;
     renderLeadEditorUi();
+  }
+}
+
+async function deleteLeadFromModal() {
+  if (!state.user || !isCeoUser()) return false;
+  const lead = state.leadModal?.lead || {};
+  const leadId = String(lead.id || "").trim();
+  if (!leadId) return false;
+
+  const leadName = String(lead.businessName || lead.name || "").trim() || "diesen Lead";
+  if (!confirm(`Lead "${leadName}" wirklich loeschen?`)) {
+    return false;
+  }
+
+  state.leadModal.actionsOpen = false;
+  state.leadModal.deleting = true;
+  state.leadModal.status = "Loeschen...";
+  renderLeadEditorUi();
+
+  try {
+    const prevLeadContribution = buildLeadCrmContribution(lead);
+    const restaurantId = String(lead.restaurantId || "").trim();
+
+    await deleteDoc(doc(db, "leads", leadId));
+
+    if (restaurantId) {
+      await setDoc(doc(db, "restaurants", restaurantId), {
+        leadId: "",
+        status: "deleted",
+        updatedAt: serverTimestamp()
+      }, { merge: true }).catch(() => {});
+
+      state.restaurants = (state.restaurants || []).map((row) => {
+        if (String(row?.id || "") !== restaurantId) return row;
+        return {
+          ...row,
+          leadId: "",
+          status: "deleted"
+        };
+      });
+      rebuildBusinessLocations();
+      refreshCustomersFromRestaurants();
+    }
+
+    const crmDeltaMap = new Map();
+    accumulateCeoCrmDelta(crmDeltaMap, prevLeadContribution, -1);
+    await applyCeoCrmCountDeltas(crmDeltaMap);
+
+    const removeLeadById = (rows) => (Array.isArray(rows)
+      ? rows.filter((item) => String(item?.id || "") !== leadId)
+      : []);
+
+    const scopeKeys = ["own", "staff", "archived"];
+    const nextPages = { ...(state.leads.pages || createLeadScopeMap(() => [])) };
+    const nextKnown = { ...(state.leads.knownCount || createLeadScopeMap(() => 0)) };
+    const nextCountExact = { ...(state.leads.countExact || createLeadScopeMap(() => false)) };
+    const currentUid = String(state.user?.uid || "").trim();
+
+    scopeKeys.forEach((scopeKey) => {
+      const currentRows = Array.isArray(nextPages[scopeKey]) ? nextPages[scopeKey] : [];
+      const filteredRows = currentRows.filter((item) => String(item?.id || "") !== leadId);
+      if (filteredRows.length === currentRows.length) return;
+      const removedCount = currentRows.length - filteredRows.length;
+      nextPages[scopeKey] = filteredRows;
+      if (state.leads.loaded?.[scopeKey]) {
+        const prevKnown = Number(nextKnown[scopeKey]) || 0;
+        nextKnown[scopeKey] = Math.max(0, prevKnown - removedCount);
+        if (!state.leads.hasMore?.[scopeKey]) nextCountExact[scopeKey] = true;
+        const pageSize = Math.max(CRM_PAGE_SIZE, Number(state.leads.pageSize?.[scopeKey]) || CRM_PAGE_SIZE);
+        writeLeadScopeCache(currentUid, scopeKey, filteredRows, {
+          hasMore: !!state.leads.hasMore?.[scopeKey],
+          knownCount: nextKnown[scopeKey],
+          countExact: nextCountExact[scopeKey] !== false,
+          pageSize
+        });
+      }
+    });
+
+    state.leads.pages = nextPages;
+    state.leads.knownCount = nextKnown;
+    state.leads.countExact = nextCountExact;
+    state.leads.items = removeLeadById(state.leads.items);
+
+    const currentScope = normalizeLeadScopeKey(state.leads.scope);
+    state.leads.items = Array.isArray(nextPages[currentScope]) ? nextPages[currentScope].slice() : [];
+    state.leads.view = "list";
+    resetLeadDraft();
+    render();
+    return true;
+  } catch (err) {
+    console.error(err);
+    state.leadModal.deleting = false;
+    state.leadModal.status = err?.message || "Loeschen fehlgeschlagen.";
+    renderLeadEditorUi();
+    return false;
   }
 }
 
