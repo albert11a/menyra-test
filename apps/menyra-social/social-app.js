@@ -1389,9 +1389,6 @@ function isRestaurantMarkedDeleted(rest = {}) {
 function isPublicBusinessRecord(rest = {}) {
   if (!rest || typeof rest !== "object") return false;
   if (isRestaurantMarkedDeleted(rest)) return false;
-  const statusKey = normalizeLeadStatusKey(rest.status || rest.state || "");
-  if (!statusKey) return true;
-  if (["registered", "contacted", "testphase", "no_interest"].includes(statusKey)) return false;
   return true;
 }
 
@@ -4449,7 +4446,7 @@ function syncFeedPostLogos() {
   state.feedPosts.forEach((post) => {
     const rid = String(post.restaurantId || post.ownerId || "").trim();
     if (!rid) {
-      changed = true;
+      next.push(post);
       return;
     }
     const restaurant = restMap.get(rid) || {};
@@ -17257,7 +17254,7 @@ async function loadRestaurants({ force = false } = {}) {
 
 function canShowFeedRestaurantId(restaurantId) {
   const rid = String(restaurantId || "").trim();
-  if (!rid) return false;
+  if (!rid) return true;
   const restaurant = state.restaurants.find((row) => String(row?.id || "") === rid) || null;
   if (!restaurant) return true;
   return isPublicBusinessRecord(restaurant);
