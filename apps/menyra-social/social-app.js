@@ -9757,7 +9757,7 @@ function renderProfileCheckins() {
   const checkins = state.profileCheckins || [];
   if (!checkins.length) {
     return `
-      <div class="px-6 pb-24 text-center">
+      <div class="px-6 app-main-content-safe text-center">
         <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
           ${icon("map-pin", "w-9 h-9")}
         </div>
@@ -9766,7 +9766,7 @@ function renderProfileCheckins() {
     `;
   }
   return `
-    <div class="px-6 flex flex-col gap-4 pb-24 animate-in fade-in duration-300">
+    <div class="px-6 flex flex-col gap-4 app-main-content-safe animate-in fade-in duration-300">
       ${checkins.map((place) => {
         const imageUrl = getOptimizedImageUrl(place.image, "thumb");
         return `
@@ -10104,7 +10104,7 @@ function renderPublicProfileView() {
       ? "bg-amber-50 text-amber-700 shadow-none border border-amber-200"
       : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent");
   return `
-    <div class="pb-24">
+    <div class="app-main-content-safe">
       ${topTab === "profile" ? `
       <div class="px-5 pb-2 ${topPaddingClass}">
 
@@ -10812,7 +10812,7 @@ function renderMenuAdminView() {
 
   if (!isEligible) {
     return `
-      <div class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
+      <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500">
         <div class="bg-white rounded-[2.5rem] p-8 border border-slate-100 text-center">
           <div class="w-16 h-16 rounded-[1.8rem] bg-slate-100 flex items-center justify-center text-slate-400 mx-auto mb-4">
             ${icon("lock", "w-6 h-6")}
@@ -10825,7 +10825,7 @@ function renderMenuAdminView() {
   }
 
   return `
-    <div class="p-6 pb-24 animate-in slide-in-from-right-10 duration-500">
+    <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500">
       <div class="flex items-end justify-between mb-6">
         <div>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${catalogLabel}</span>
@@ -10919,7 +10919,7 @@ function renderProfileMenuView(profile) {
     primeMenuItemCounts(items, restaurantId);
   }
   return `
-    <div class="px-5 pb-24 space-y-5">
+    <div class="px-5 app-main-content-safe space-y-5">
       ${renderFocusCarousel(profile)}
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
@@ -10982,7 +10982,7 @@ function renderProfileView() {
   }
   const topPaddingClass = profile.restaurantId ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   return `
-    <div class="pb-24">
+    <div class="app-main-content-safe">
       ${topTab === "profile" ? `
       <div class="px-5 pb-2 ${topPaddingClass}">
         <input type="file" id="profileAvatarInput" class="hidden" accept="image/*" />
@@ -12095,8 +12095,8 @@ function renderChatModal() {
   return `
     <div class="fixed inset-0 z-[65] modal-overlay">
       <div id="chatModalOverlay" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 h-[85vh] flex flex-col overflow-hidden modal-sheet">
+      <div class="modal-frame">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 modal-sheet-85 flex flex-col overflow-hidden modal-sheet">
           <div class="px-5 py-4 border-b border-slate-100 flex items-center gap-3">
             <button id="chatModalClose" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("arrow-left", "w-4 h-4")}</button>
             <img src="${escapeHtml(avatarUrl)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
@@ -12202,7 +12202,7 @@ function renderProfileShopFavoritesView(profile = state.profileView?.profile || 
   const userUid = String(state.user?.uid || "").trim();
   if (!userUid) {
     return `
-      <div class="px-5 pb-24">
+      <div class="px-5 app-main-content-safe">
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm text-center">
           <div class="w-14 h-14 rounded-[1.4rem] bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
             ${icon("bookmark", "w-6 h-6")}
@@ -12223,7 +12223,7 @@ function renderProfileShopFavoritesView(profile = state.profileView?.profile || 
   const favoriteItems = Array.isArray(favoriteState.items) ? favoriteState.items : [];
   const isLoading = favoriteState.loading || (!favoriteState.loaded && !favoriteItems.length);
   return `
-    <div class="p-6 pb-24 space-y-5">
+    <div class="p-6 app-main-content-safe space-y-5">
       <div class="flex items-center justify-between">
         <div>
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Favoriten</span>
@@ -12308,7 +12308,7 @@ function renderProfileShopCartView(profile = state.profileView?.profile || state
   const total = cartMatches ? getShopCartTotal() : 0;
   const hasOtherCart = !!state.shopCart.restaurantId && !cartMatches && (state.shopCart.items || []).length;
   return `
-    <div class="px-5 pb-24 space-y-5">
+    <div class="px-5 app-main-content-safe space-y-5">
       <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
         <div class="flex items-center justify-between mb-4">
           <div>
@@ -12392,8 +12392,8 @@ function renderProfileModal() {
   return `
     <div class="fixed inset-0 z-[60] modal-overlay">
       <div id="profileModalOverlay" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 h-[85vh] flex flex-col overflow-hidden modal-sheet">
+      <div class="modal-frame">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 modal-sheet-85 flex flex-col overflow-hidden modal-sheet">
           <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
             <div class="flex justify-end mb-4">
               <button id="profileModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${icon("x", "w-4 h-4")}</button>
@@ -12545,8 +12545,8 @@ function renderPostModal() {
   return `
       <div class="fixed inset-0 z-[70] modal-overlay">
         <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
-        <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
+        <div class="modal-frame">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
             <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
               <div class="flex items-center justify-between mb-4">
                 <div>
@@ -12613,8 +12613,8 @@ function renderLikesModal() {
   return `
       <div class="fixed inset-0 z-[80] modal-overlay">
         <div id="likesModalOverlay" class="absolute inset-0 bg-black/70"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
+      <div class="modal-frame">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
           <div class="p-7 pb-4 flex items-center justify-between">
             <div>
               <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Likes</span>
@@ -12793,8 +12793,8 @@ function renderLeadModal() {
   return `
     <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="leadModalOverlay" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col h-[85vh] overflow-hidden modal-sheet">
+      <div class="modal-frame">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -12905,8 +12905,8 @@ function renderCustomerModal() {
   return `
     <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="customerModalOverlay" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col h-[85vh] overflow-hidden modal-sheet">
+      <div class="modal-frame">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -13073,8 +13073,8 @@ function renderMenuItemModal() {
   return `
     <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="menuModalOverlay" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
+      <div class="modal-frame">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -13232,7 +13232,7 @@ function renderMenuDetailModal() {
     </div>
   `;
   const footerHtml = `
-    <div class="px-7 pb-5 pt-6 border-t border-slate-100 bg-white/98 backdrop-blur-sm">
+    <div class="px-7 pb-5 pt-6 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe">
       <div class="flex gap-3">
         <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
         <button id="menuDetailCommentSend" class="w-[52px] h-[52px] rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
@@ -13246,8 +13246,8 @@ function renderMenuDetailModal() {
   return `
     <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border border-slate-100 ${animClass} flex flex-col h-[88vh] overflow-hidden modal-sheet">
+      <div class="modal-frame">
+        <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -13339,8 +13339,8 @@ function renderFocusModal() {
   return `
     <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="focusModalOverlay" class="absolute inset-0 bg-black/60"></div>
-      <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
-        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col h-[85vh] overflow-hidden modal-sheet">
+      <div class="modal-frame">
+        <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}
@@ -13471,7 +13471,7 @@ function renderSettingsView() {
 
   if (state.settingsView === "main") {
     return `
-      <div class="p-6 animate-in slide-in-from-left-10 duration-500 pb-24">
+      <div class="p-6 animate-in slide-in-from-left-10 duration-500 app-main-content-safe">
         <h2 class="text-2xl font-black italic uppercase mb-8 px-2">Einstellungen</h2>
         <div class="space-y-3 mb-8">
           ${[
@@ -13559,7 +13559,7 @@ function renderSettingsView() {
       </div>
 
       <!-- LOCATION PICKER MODAL (FEINJUSTIERUNG) -->
-      <div id="locationPickerModal" class="fixed inset-0 z-[3000] hidden flex flex-col p-4 pt-10">
+      <div id="locationPickerModal" class="fixed inset-0 z-[3000] hidden flex flex-col fullscreen-safe-pad">
         <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-md transition-opacity duration-300 opacity-0" id="pickerOverlay"></div>
         <div class="bg-white rounded-[2.5rem] flex-1 flex flex-col overflow-hidden relative shadow-2xl transition-transform duration-300 translate-y-full" id="pickerPanel">
           <div class="p-5 flex justify-between items-center bg-white z-20 shadow-sm">
@@ -14753,7 +14753,7 @@ function renderHeader() {
   const subtitleClass = `text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block${branding.subtitle ? "" : " hidden"}`;
   if (state.activeTab === "staff" && state.staff?.view === "form") {
     return `
-      <header class="p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
+      <header class="app-header-safe p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
         <button data-staff-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
           ${icon("arrow-left", "w-5 h-5")}
         </button>
@@ -14768,7 +14768,7 @@ function renderHeader() {
   if (state.activeTab === "leads" && (state.leads?.view === "create" || state.leads?.view === "settings")) {
     const isSettingsView = state.leads?.view === "settings";
     return `
-      <header class="p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
+      <header class="app-header-safe p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
         <button data-leads-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
           ${icon("arrow-left", "w-5 h-5")}
         </button>
@@ -14784,7 +14784,7 @@ function renderHeader() {
     const partner = state.chatModal.profile;
     const partnerAvatar = getOptimizedImageUrl(partner.avatar, "avatar");
     return `
-      <header class="shrink-0 p-6 pb-3 flex items-center justify-between gap-3 relative z-40 bg-slate-50">
+      <header class="app-header-safe shrink-0 p-6 pb-3 flex items-center justify-between gap-3 relative z-40 bg-slate-50">
         <button data-chat-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
           ${icon("arrow-left", "w-5 h-5")}
         </button>
@@ -14802,7 +14802,7 @@ function renderHeader() {
   }
   if (state.activeTab === "chat") {
     return `
-      <header class="shrink-0 p-6 pb-3 flex justify-between items-center relative z-40 bg-slate-50">
+      <header class="app-header-safe shrink-0 p-6 pb-3 flex justify-between items-center relative z-40 bg-slate-50">
         <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
           <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
           <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
@@ -14818,7 +14818,7 @@ function renderHeader() {
     `;
   }
   return `
-    <header class="p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
+    <header class="app-header-safe p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
       <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
         <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
         <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
@@ -14894,10 +14894,10 @@ function renderMain() {
   const isChatThreadOpen = state.activeTab === "chat" && state.chatModal.open && state.chatModal.profile;
   const mainClass = isChatThreadOpen
     ? "flex-1 min-h-0 flex flex-col overflow-hidden"
-    : "flex-1 min-h-0 overflow-y-auto no-scrollbar pb-24";
+    : "flex-1 min-h-0 overflow-y-auto no-scrollbar app-main-scroll";
 
   return `
-    <div class="h-full min-h-full bg-slate-50 text-slate-900 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden font-sans">
+    <div class="app-shell h-full min-h-full bg-slate-50 text-slate-900 max-w-md mx-auto shadow-2xl relative flex flex-col overflow-hidden font-sans">
       ${renderDrawer()}
       <main class="${mainClass}">
         ${renderHeader()}
@@ -17216,7 +17216,7 @@ function ensureLocationPickerModal() {
   if (document.getElementById("locationPickerModal")) return;
   const modal = document.createElement("div");
   modal.id = "locationPickerModal";
-  modal.className = "fixed inset-0 z-[3000] hidden flex flex-col p-4 pt-10";
+  modal.className = "fixed inset-0 z-[3000] hidden flex flex-col fullscreen-safe-pad";
   modal.innerHTML = `
     <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-md transition-opacity duration-300 opacity-0" id="pickerOverlay"></div>
     <div class="bg-white rounded-[2.5rem] flex-1 flex flex-col overflow-hidden relative shadow-2xl transition-transform duration-300 translate-y-full" id="pickerPanel">

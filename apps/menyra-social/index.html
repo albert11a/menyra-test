@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+  <meta name="theme-color" content="#f8fafc" />
   <title>MNYRA Social</title>
   <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
   <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin>
@@ -39,33 +40,73 @@
       overflow: hidden;
       overscroll-behavior: none;
     }
-    body { background: #f8fafc; color: #0f172a; margin: 0; }
+    body { background: var(--app-bg); color: #0f172a; margin: 0; }
     #app {
       min-height: 100vh;
       height: 100vh;
       min-height: 100dvh;
       height: 100dvh;
       overflow: hidden;
+      padding-left: var(--safe-area-left);
+      padding-right: var(--safe-area-right);
+      box-sizing: border-box;
     }
     :root {
+      --safe-area-top: env(safe-area-inset-top, 0px);
+      --safe-area-right: env(safe-area-inset-right, 0px);
       --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-area-left: env(safe-area-inset-left, 0px);
+      --app-bg: #f8fafc;
+      --app-surface: #ffffff;
     }
     html.modal-open,
     body.modal-open {
       overflow: hidden;
       overscroll-behavior: none;
     }
-    html.modal-open { background: #ffffff; }
-    body.modal-open { background: #ffffff; }
+    html.modal-open { background: var(--app-surface); }
+    body.modal-open { background: var(--app-surface); }
     body.modal-open #app,
-    body.modal-open #app > .min-h-screen { background: #ffffff !important; }
+    body.modal-open #app > .min-h-screen { background: var(--app-surface) !important; }
     body.modal-open #app { pointer-events: none; visibility: hidden; }
     body.modal-open #overlayRoot,
     body.modal-open #overlayRoot > * { pointer-events: auto; visibility: visible; }
-    .modal-overlay { position: fixed; inset: 0; padding-bottom: env(safe-area-inset-bottom); }
+    .modal-overlay { position: fixed; inset: 0; padding-bottom: var(--safe-area-bottom); }
     .modal-sheet {
-      max-height: calc(100dvh - env(safe-area-inset-bottom));
+      max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom));
       border-bottom-width: 0 !important;
+    }
+    .app-shell { min-height: 100dvh; background: var(--app-bg); }
+    .app-header-safe { padding-top: calc(var(--safe-area-top) + 1rem) !important; }
+    .app-main-scroll { padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important; }
+    .app-main-content-safe { padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important; }
+    .modal-frame {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      max-width: 28rem;
+      margin-left: auto;
+      margin-right: auto;
+      padding-left: var(--safe-area-left);
+      padding-right: var(--safe-area-right);
+      box-sizing: border-box;
+    }
+    .modal-sheet-85 {
+      height: min(85dvh, calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom))) !important;
+    }
+    .modal-sheet-88 {
+      height: min(88dvh, calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom))) !important;
+    }
+    .modal-footer-safe {
+      padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important;
+    }
+    .fullscreen-safe-pad {
+      padding-top: calc(var(--safe-area-top) + 0.75rem) !important;
+      padding-right: calc(var(--safe-area-right) + 1rem) !important;
+      padding-bottom: calc(var(--safe-area-bottom) + 0.75rem) !important;
+      padding-left: calc(var(--safe-area-left) + 1rem) !important;
     }
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
