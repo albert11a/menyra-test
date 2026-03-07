@@ -17401,7 +17401,7 @@ function stopRestaurantsListener() {
 function startRestaurantsListener() {
   if (restaurantsUnsub) return;
   const restRef = collection(db, "restaurants");
-  const restQuery = query(restRef, limit(FAST_LIMITS.restaurants));
+  const restQuery = query(restRef);
   restaurantsUnsub = onSnapshot(restQuery, (snap) => {
     const rawList = [];
     snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
@@ -17463,7 +17463,7 @@ async function loadRestaurants({ force = false } = {}) {
     if (cached.fresh && !force) return;
   }
   try {
-    const snap = await getDocs(query(collection(db, "restaurants"), limit(FAST_LIMITS.restaurants)));
+    const snap = await getDocs(query(collection(db, "restaurants")));
     const rawList = [];
     snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
     const list = await enrichRestaurantsWithPublicMeta(rawList);
