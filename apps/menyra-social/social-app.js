@@ -2480,7 +2480,7 @@ async function showNativePushAlert(notif) {
   if (!notif?.id || !canEmitNativePushAlerts()) return;
   const title = BRAND_UI.title;
   const body = resolveNativePushBody(notif);
-  const icon = String(resolveNotificationAvatar(notif) || "/apps/menyra-social/assets/menyra-social-logo.png");
+  const icon = String(resolveNotificationAvatar(notif) || "/apps/menyra-social/assets/icon-192.png");
   const tag = `menyra_notif_${notif.id}`;
   const notifId = String(notif.id || "");
   const deepLink = notifId

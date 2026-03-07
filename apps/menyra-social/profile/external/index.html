@@ -3,101 +3,18 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MNYRA Social - Profil Export</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./profile.css" />
+  <title>MNYRA Social</title>
+  <script>
+    const target = new URL("/apps/menyra-social/index.html", window.location.origin);
+    target.searchParams.set("tab", "profile");
+    const incoming = new URLSearchParams(window.location.search);
+    incoming.forEach((value, key) => {
+      if (!target.searchParams.has(key)) target.searchParams.set(key, value);
+    });
+    window.location.replace(`${target.pathname}${target.search}${window.location.hash || ""}`);
+  </script>
 </head>
 <body>
-  <div class="shell">
-    <header class="topbar">
-      <div class="brand">
-        <span class="brand-mark"></span>
-        <div>
-          <div class="brand-title">MNYRA</div>
-          <div class="brand-sub">Social Profile Export</div>
-        </div>
-      </div>
-      <div class="tabs">
-        <button class="tab is-active" data-view="mine">Mein Profil</button>
-        <button class="tab" data-view="public">Oeffentlich</button>
-      </div>
-    </header>
-
-    <main class="app">
-      <section class="profile-view" id="view-mine">
-        <div class="profile-hero">
-          <div class="avatar-wrap">
-            <div class="avatar-ring">
-              <img id="mineAvatar" alt="Avatar" />
-              <span class="avatar-fallback" id="mineInitials">MU</span>
-            </div>
-            <button class="avatar-badge" type="button">Edit</button>
-          </div>
-          <h2 id="mineName">MNYRA User</h2>
-          <p class="profile-sub" id="mineRole">Explorer / Prishtina</p>
-          <div class="stats">
-            <div class="stat">
-              <span class="stat-num" id="minePosts">0</span>
-              <span class="stat-label">Posts</span>
-            </div>
-            <span class="stat-divider"></span>
-            <div class="stat">
-              <span class="stat-num" id="mineFollowers">0</span>
-              <span class="stat-label">Follower</span>
-            </div>
-            <span class="stat-divider"></span>
-            <div class="stat">
-              <span class="stat-num" id="mineFollowing">0</span>
-              <span class="stat-label">Following</span>
-            </div>
-          </div>
-          <button class="action-btn" type="button">Status</button>
-        </div>
-
-        <div class="post-grid" id="minePostsGrid"></div>
-      </section>
-
-      <section class="profile-view is-hidden" id="view-public">
-        <div class="public-header">
-          <button class="ghost-btn" type="button">&larr;</button>
-          <div>
-            <div class="public-label">Profil</div>
-            <div class="public-title" id="publicNameHeading">Business</div>
-          </div>
-        </div>
-        <div class="profile-hero">
-          <div class="avatar-ring">
-            <img id="publicAvatar" alt="Avatar" />
-            <span class="avatar-fallback" id="publicInitials">BU</span>
-          </div>
-          <p class="profile-sub" id="publicLocation">Prishtina / Business</p>
-          <div class="stats">
-            <div class="stat">
-              <span class="stat-num" id="publicPosts">0</span>
-              <span class="stat-label">Posts</span>
-            </div>
-            <span class="stat-divider"></span>
-            <div class="stat">
-              <span class="stat-num" id="publicFollowers">0</span>
-              <span class="stat-label">Follower</span>
-            </div>
-            <span class="stat-divider"></span>
-            <div class="stat">
-              <span class="stat-num" id="publicFollowing">0</span>
-              <span class="stat-label">Following</span>
-            </div>
-          </div>
-          <button class="follow-btn" id="publicFollowBtn" type="button">Follow</button>
-          <p class="profile-bio" id="publicBio"></p>
-        </div>
-
-        <div class="post-grid" id="publicPostsGrid"></div>
-      </section>
-    </main>
-  </div>
-
-  <script src="./profile.js"></script>
+  <p>Weiterleitung zu MNYRA Social...</p>
 </body>
 </html>

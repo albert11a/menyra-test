@@ -10,7 +10,7 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 const DEFAULT_SOCIAL_URL = "https://menyra.com/apps/menyra-social/";
 const DEFAULT_SOCIAL_PATH = "/apps/menyra-social/";
-const DEFAULT_ICON = "/apps/menyra-social/assets/menyra-social-logo.png";
+const DEFAULT_ICON = "/apps/menyra-social/assets/icon-192.png";
 const INVALID_TOKEN_CODES = new Set([
   "messaging/registration-token-not-registered",
   "messaging/invalid-registration-token"
