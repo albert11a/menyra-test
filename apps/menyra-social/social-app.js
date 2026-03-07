@@ -16244,7 +16244,7 @@ function bindAppEvents() {
         evt.preventDefault();
         triggerMenuDetailOpenFromGesture(btn);
       }, { passive: false });
-    });
+    }
     btn.addEventListener("keydown", (evt) => {
       if (evt.key !== "Enter" && evt.key !== " ") return;
       evt.preventDefault();
