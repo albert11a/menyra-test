@@ -169,6 +169,15 @@ function createEmptyOrdersState() {
   };
 }
 
+function createEmptyFavoriteMenuItemsState() {
+  return {
+    items: [],
+    loading: false,
+    error: "",
+    loaded: false
+  };
+}
+
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 250000;
 const CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS = Object.freeze([
@@ -437,6 +446,7 @@ const state = {
   chatThreads: [],
   shopCart: createEmptyShopCart(),
   orders: createEmptyOrdersState(),
+  favoriteMenuItems: createEmptyFavoriteMenuItemsState(),
   profileView: null,
   profileBackTab: "feed",
   profileViewMode: "grid",
@@ -4294,6 +4304,7 @@ function resetUserScopedState() {
   state.chatThreads = [];
   state.shopCart = createEmptyShopCart();
   state.orders = createEmptyOrdersState();
+  state.favoriteMenuItems = createEmptyFavoriteMenuItemsState();
   state.notifications = [];
   state.roleSwitchRoles = [];
   state.roleSwitchRestaurantId = "";
@@ -6891,6 +6902,146 @@ function getMenuItemSocialDocRef(item, restaurantIdOverride = "") {
   return doc(db, "restaurants", restaurantId, "menuSocial", itemId);
 }
 
+function favoriteMenuItemDocId(restaurantId, itemId) {
+  const safeRestaurantId = encodeURIComponent(String(restaurantId || "").trim());
+  const safeItemId = String(itemId || "").trim();
+  if (!safeRestaurantId || !safeItemId) return "";
+  return `${safeRestaurantId}__${safeItemId}`;
+}
+
+function buildFavoriteMenuItemPayload(item, restaurantId, { includeServerTimestamp = false } = {}) {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  const itemId = getMenuItemSocialId(item);
+  const profileMatch = state.profileView?.profile?.restaurantId === safeRestaurantId
+    ? state.profileView.profile
+    : (state.userProfile?.restaurantId === safeRestaurantId ? state.userProfile : null);
+  const restaurantMeta = getRestaurantMetaById(safeRestaurantId) || {};
+  const images = getMenuItemImages(item);
+  const nowIso = new Date().toISOString();
+  return {
+    restaurantId: safeRestaurantId,
+    itemId,
+    restaurantName: String(
+      profileMatch?.name
+      || restaurantMeta?.name
+      || restaurantMeta?.restaurantName
+      || "Shop"
+    ).trim() || "Shop",
+    restaurantAvatar: String(
+      profileMatch?.avatar
+      || restaurantMeta?.logoUrl
+      || restaurantMeta?.logo
+      || ""
+    ).trim(),
+    type: item?.type || "food",
+    category: String(item?.category || "").trim(),
+    name: String(item?.name || "Produkt").trim() || "Produkt",
+    description: String(item?.description || "").trim(),
+    longDescription: String(item?.longDescription || "").trim(),
+    allergens: String(item?.allergens || "").trim(),
+    brand: String(item?.brand || "").trim(),
+    sku: String(item?.sku || "").trim(),
+    stock: Number.isFinite(Number(item?.stock)) ? Math.max(0, Number(item.stock)) : null,
+    sizes: Array.isArray(item?.sizes) ? item.sizes : [],
+    colors: Array.isArray(item?.colors) ? item.colors : [],
+    cropX: clampCropPercent(item?.cropX ?? 50, 50),
+    cropY: clampCropPercent(item?.cropY ?? 50, 50),
+    price: item?.price ?? "",
+    available: item?.available !== false,
+    imageUrl: images[0] || resolveMenuItemHero(item) || "",
+    imageUrls: images,
+    savedAtClient: nowIso,
+    ...(includeServerTimestamp ? { savedAt: serverTimestamp() } : {})
+  };
+}
+
+function normalizeFavoriteMenuItemDoc(data, docId = "") {
+  const payload = data || {};
+  const itemId = String(payload?.itemId || "").trim();
+  const item = normalizeMenuItemDoc(payload, itemId || docId || `favorite_${Date.now()}`);
+  return {
+    ...item,
+    id: itemId || item.id,
+    favoriteId: docId || favoriteMenuItemDocId(payload?.restaurantId, itemId),
+    restaurantId: String(payload?.restaurantId || "").trim(),
+    restaurantName: String(payload?.restaurantName || "").trim(),
+    restaurantAvatar: String(payload?.restaurantAvatar || "").trim(),
+    savedAtClient: String(payload?.savedAtClient || "").trim()
+  };
+}
+
+function updateFavoriteMenuItemsLocal(item, restaurantId, { remove = false } = {}) {
+  const safeRestaurantId = String(restaurantId || "").trim();
+  const itemId = getMenuItemSocialId(item);
+  const favoriteId = favoriteMenuItemDocId(safeRestaurantId, itemId);
+  if (!favoriteId) return;
+  const currentItems = Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [];
+  let nextItems = currentItems.slice();
+  if (remove) {
+    nextItems = nextItems.filter((entry) => String(entry.favoriteId || "") !== favoriteId);
+  } else {
+    const nextItem = normalizeFavoriteMenuItemDoc(buildFavoriteMenuItemPayload(item, safeRestaurantId), favoriteId);
+    const existingIndex = nextItems.findIndex((entry) => String(entry.favoriteId || "") === favoriteId);
+    if (existingIndex >= 0) nextItems[existingIndex] = nextItem;
+    else nextItems.unshift(nextItem);
+  }
+  state.favoriteMenuItems = {
+    ...state.favoriteMenuItems,
+    items: nextItems
+  };
+  if (state.activeTab === "profile" && state.profileTopTab === "favorites" && lastRenderMode === "main") {
+    render();
+  }
+}
+
+async function loadFavoriteMenuItems({ force = false } = {}) {
+  const uid = String(state.user?.uid || "").trim();
+  if (!uid) {
+    state.favoriteMenuItems = createEmptyFavoriteMenuItemsState();
+    return;
+  }
+  if (state.favoriteMenuItems.loading) return;
+  if (state.favoriteMenuItems.loaded && !force) return;
+  state.favoriteMenuItems = {
+    ...state.favoriteMenuItems,
+    loading: true,
+    error: ""
+  };
+  if (state.activeTab === "profile" && state.profileTopTab === "favorites" && lastRenderMode === "main") {
+    render();
+  }
+  try {
+    const ref = collection(db, "users", uid, "menuFavorites");
+    let snap = null;
+    try {
+      snap = await getDocs(query(ref, orderBy("savedAtClient", "desc"), limit(120)));
+    } catch (err) {
+      snap = await getDocs(ref);
+    }
+    const items = snap.docs
+      .map((docSnap) => normalizeFavoriteMenuItemDoc(docSnap.data() || {}, docSnap.id))
+      .filter((item) => item.id && item.restaurantId)
+      .sort((a, b) => String(b.savedAtClient || "").localeCompare(String(a.savedAtClient || "")));
+    state.favoriteMenuItems = {
+      items,
+      loading: false,
+      error: "",
+      loaded: true
+    };
+  } catch (err) {
+    console.error(err);
+    state.favoriteMenuItems = {
+      ...state.favoriteMenuItems,
+      loading: false,
+      error: "Favoriten konnten nicht geladen werden.",
+      loaded: true
+    };
+  }
+  if (state.activeTab === "profile" && state.profileTopTab === "favorites" && lastRenderMode === "main") {
+    render();
+  }
+}
+
 function ensureMenuItemMeta(key) {
   if (!key) return { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
   if (!state.menuItemMeta[key]) {
@@ -6932,16 +7083,81 @@ function primeMenuItemCounts(items, restaurantId) {
 function getMenuDetailContext() {
   if (!state.menuDetail?.open || !state.menuDetail?.item) return null;
   const item = state.menuDetail.item;
-  const restaurantId = state.menuDetail.restaurantId
-    || state.menu.restaurantId
-    || state.profileView?.profile?.restaurantId
-    || state.userProfile.restaurantId
-    || "";
+  const restaurantId = getMenuDetailRestaurantId(item);
   const itemId = getMenuItemSocialId(item);
   if (!restaurantId || !itemId) return null;
   const key = menuItemMetaKey(restaurantId, itemId);
   const ref = doc(db, "restaurants", restaurantId, "menuSocial", itemId);
   return { item, restaurantId, itemId, key, ref };
+}
+
+function getMenuDetailRestaurantId(item = state.menuDetail?.item) {
+  return String(
+    state.menuDetail?.restaurantId
+    || item?.restaurantId
+    || state.menu.restaurantId
+    || state.profileView?.profile?.restaurantId
+    || state.userProfile.restaurantId
+    || ""
+  ).trim();
+}
+
+function buildCatalogProfileForRestaurant(restaurantId = "", fallback = {}) {
+  const safeRestaurantId = String(restaurantId || fallback?.restaurantId || "").trim();
+  if (!safeRestaurantId) return fallback || {};
+  if (String(state.profileView?.profile?.restaurantId || "").trim() === safeRestaurantId) {
+    return state.profileView.profile;
+  }
+  if (String(state.userProfile?.restaurantId || "").trim() === safeRestaurantId) {
+    return state.userProfile;
+  }
+  const restaurant = getRestaurantMetaById(safeRestaurantId) || {};
+  const displayName = String(
+    restaurant?.name
+    || restaurant?.restaurantName
+    || fallback?.restaurantName
+    || fallback?.name
+    || "Shop"
+  ).trim() || "Shop";
+  const type = normalizeRestaurantType(
+    restaurant?.type
+    || restaurant?.customerType
+    || restaurant?.category
+    || restaurant?.kind
+    || restaurant?.restaurantType
+    || fallback?.type
+    || fallback?.customerType
+    || "ecommerce"
+  );
+  return {
+    name: displayName,
+    handle: resolvePreferredHandle({
+      handle: restaurant?.handle || fallback?.handle || "",
+      name: displayName
+    }, displayName),
+    uid: String(restaurant?.ownerUid || restaurant?.ownerId || fallback?.uid || "").trim(),
+    bio: String(restaurant?.description || restaurant?.bio || fallback?.description || "").trim(),
+    avatar: String(
+      restaurant?.logoUrl
+      || restaurant?.logo
+      || fallback?.restaurantAvatar
+      || fallback?.avatar
+      || ""
+    ).trim(),
+    location: String(restaurant?.city || restaurant?.location || fallback?.location || "").trim(),
+    followers: Number(restaurant?.followersCount ?? restaurant?.followers ?? fallback?.followers ?? 0) || 0,
+    following: Number(restaurant?.followingCount ?? restaurant?.following ?? fallback?.following ?? 0) || 0,
+    privateAccount: false,
+    role: "business",
+    restaurantId: safeRestaurantId,
+    ...(type ? { type, customerType: type } : {})
+  };
+}
+
+function getMenuDetailCatalogProfile(item = state.menuDetail?.item) {
+  const restaurantId = getMenuDetailRestaurantId(item);
+  if (!restaurantId) return state.profileView?.profile || state.userProfile;
+  return buildCatalogProfileForRestaurant(restaurantId, item || {});
 }
 
 function resolvePostCounts(post) {
@@ -7878,11 +8094,12 @@ async function toggleMenuItemLike() {
   }
   const ctx = getMenuDetailContext();
   if (!ctx) return;
-  const { ref, key } = ctx;
+  const { ref, key, item, restaurantId, itemId } = ctx;
   const user = currentUserBadge();
   if (!user.uid) return;
   const likeId = user.uid;
   const likeRef = doc(collection(ref, "likes"), likeId);
+  const favoriteRef = doc(db, "users", user.uid, "menuFavorites", favoriteMenuItemDocId(restaurantId, itemId));
   let delta = 0;
 
   try {
@@ -7890,6 +8107,7 @@ async function toggleMenuItemLike() {
       const likeSnap = await tx.get(likeRef);
       if (likeSnap.exists()) {
         tx.delete(likeRef);
+        tx.delete(favoriteRef);
         delta = -1;
       } else {
         tx.set(likeRef, {
@@ -7899,6 +8117,7 @@ async function toggleMenuItemLike() {
           avatar: user.avatar,
           createdAt: serverTimestamp()
         });
+        tx.set(favoriteRef, buildFavoriteMenuItemPayload(item, restaurantId, { includeServerTimestamp: true }), { merge: true });
         delta = 1;
       }
       tx.set(ref, { likesCount: increment(delta) }, { merge: true });
@@ -7915,6 +8134,7 @@ async function toggleMenuItemLike() {
     meta.counts = meta.counts || { likes: 0, comments: 0 };
     meta.counts.likes = Math.max(0, (Number(meta.counts.likes) || 0) + delta);
     state.menuItemMeta[key] = meta;
+    updateFavoriteMenuItemsLocal(item, restaurantId, { remove: delta < 0 });
     updateMenuDetailCountsOnly();
     updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
   } catch (err) {
@@ -8149,7 +8369,7 @@ function renderDrawer() {
       { id: "map", label: "Karte", icon: "map" },
       { id: "profile", label: "Profil", icon: "user" },
       { id: "menu", label: catalogLabel, icon: catalogIcon, hidden: !showMenuTab },
-      { id: "favorites", label: "Favoriten", icon: "bookmark", hidden: !showMenuTab || !isRegisteredUser },
+      { id: "favorites", label: "Favoriten", icon: "bookmark", hidden: !isRegisteredUser },
       { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
       { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
       { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
@@ -8572,7 +8792,7 @@ function updateShellDom() {
   }
   const favoritesNavBtn = document.querySelector('[data-nav="favorites"]');
   if (favoritesNavBtn) {
-    favoritesNavBtn.classList.toggle("hidden", !showMenuTab || !isRegisteredUser);
+    favoritesNavBtn.classList.toggle("hidden", !isRegisteredUser);
   }
   document.querySelectorAll('[data-nav="leads"], [data-nav="customers"]').forEach((btn) => {
     btn.classList.toggle("hidden", !showCeoTabs);
@@ -9820,10 +10040,14 @@ function renderPublicProfileView() {
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
-  const requestedTopTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
-  const topTab = requestedTopTab === "favorites" && !String(state.user?.uid || "").trim()
-    ? "menu"
-    : requestedTopTab;
+  const requestedTopTab = state.profileTopTab || "profile";
+  const hasRegisteredUser = !!String(state.user?.uid || "").trim();
+  let topTab = "profile";
+  if (profile.restaurantId) {
+    topTab = requestedTopTab;
+  } else if (requestedTopTab === "favorites" && hasRegisteredUser) {
+    topTab = "favorites";
+  }
   const topPaddingClass = profile.restaurantId ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
   const followTone = isFollowing
@@ -10700,10 +10924,14 @@ function renderProfileView() {
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(isBusiness);
-  const requestedTopTab = profile.restaurantId ? (state.profileTopTab || "profile") : "profile";
-  const topTab = requestedTopTab === "favorites" && !String(state.user?.uid || "").trim()
-    ? "menu"
-    : requestedTopTab;
+  const requestedTopTab = state.profileTopTab || "profile";
+  const hasRegisteredUser = !!String(state.user?.uid || "").trim();
+  let topTab = "profile";
+  if (profile.restaurantId) {
+    topTab = requestedTopTab;
+  } else if (requestedTopTab === "favorites" && hasRegisteredUser) {
+    topTab = "favorites";
+  }
   const topPaddingClass = profile.restaurantId ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   return `
     <div class="pb-24">
@@ -11860,7 +12088,7 @@ function renderChatModal() {
   `;
 }
 
-function renderShopProductList(items) {
+function renderShopProductList(items, { source = "menu", showRestaurantName = false } = {}) {
   if (!items.length) {
     return `
       <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
@@ -11885,8 +12113,11 @@ function renderShopProductList(items) {
         const soldOut = item.available === false || stock === 0;
         const availabilityLabel = soldOut ? "Nicht verfuegbar" : "Verfuegbar";
         const availabilityClass = soldOut ? "text-slate-300" : "text-emerald-600";
+        const restaurantAttr = source === "favorites" && item.restaurantId
+          ? ` data-menu-open-restaurant="${escapeHtml(item.restaurantId)}"`
+          : "";
         return `
-          <article data-menu-open="${escapeHtml(item.id)}" role="button" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
+          <article data-menu-open="${escapeHtml(item.id)}" data-menu-open-source="${escapeHtml(source)}"${restaurantAttr} role="button" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col">
             <div class="rounded-[1.5rem] overflow-hidden bg-slate-100" style="aspect-ratio:4 / 5;">
               <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
             </div>
@@ -11900,6 +12131,7 @@ function renderShopProductList(items) {
               </div>
             ` : ""}
             <div class="pt-3 flex-1 flex flex-col min-w-0">
+              ${showRestaurantName && item.restaurantName ? `<p class="text-[9px] font-black uppercase tracking-widest text-indigo-600 truncate mb-1">${escapeHtml(item.restaurantName)}</p>` : ""}
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
                   <p class="text-[13px] font-black text-slate-900 leading-tight line-clamp-2">${escapeHtml(item.name || "Produkt")}</p>
@@ -11916,16 +12148,6 @@ function renderShopProductList(items) {
       }).join("")}
     </div>
   `;
-}
-
-function isMenuItemFavoritedByCurrentUser(item, restaurantId = "") {
-  const uid = String(state.user?.uid || "").trim();
-  if (!uid) return false;
-  const itemId = getMenuItemSocialId(item);
-  const key = menuItemMetaKey(restaurantId, itemId);
-  if (!key) return false;
-  const meta = ensureMenuItemMeta(key);
-  return (meta.likes || []).some((row) => String(row?.uid || "").trim() === uid);
 }
 
 function renderProfileShopFavoritesView(profile = state.profileView?.profile || state.userProfile) {
@@ -11946,34 +12168,29 @@ function renderProfileShopFavoritesView(profile = state.profileView?.profile || 
       </div>
     `;
   }
-  const restaurantId = String(profile?.restaurantId || "").trim();
-  if (!restaurantId) {
-    return `
-      <div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">
-        Keine Restaurant-ID gefunden
-      </div>
-    `;
+  if (!state.favoriteMenuItems.loading && !state.favoriteMenuItems.loaded && !(state.favoriteMenuItems.items || []).length) {
+    void loadFavoriteMenuItems();
   }
-  if (!state.menu.loading && state.menu.restaurantId !== restaurantId) {
-    ensureMenuDataForProfile(profile);
-  }
-  const isSameRestaurant = state.menu.restaurantId === restaurantId;
-  const isLoading = state.menu.loading || !isSameRestaurant;
-  const items = isSameRestaurant
-    ? getFilteredMenuItems(state.menu.items, { filter: "all", query: "" })
-    : [];
-  if (items.length) {
-    primeMenuItemCounts(items, restaurantId);
-  }
-  const favoriteItems = items.filter((item) => isMenuItemFavoritedByCurrentUser(item, restaurantId));
+  const favoriteState = state.favoriteMenuItems || createEmptyFavoriteMenuItemsState();
+  const favoriteItems = Array.isArray(favoriteState.items) ? favoriteState.items : [];
+  const isLoading = favoriteState.loading || (!favoriteState.loaded && !favoriteItems.length);
   return `
     <div class="px-5 pb-24 space-y-5">
+      <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Favoriten</span>
+        <h3 class="text-xl font-black italic tracking-tighter mt-2">Gespeicherte Produkte</h3>
+        <p class="text-[11px] font-medium text-slate-500 mt-2">Hier siehst du alle Shop-Produkte, die du favorisiert hast.</p>
+      </div>
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
           <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-slate-400">Favoriten werden geladen...</div>
         </div>
+      ` : favoriteState.error ? `
+        <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+          <div class="text-center py-12 text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(favoriteState.error)}</div>
+        </div>
       ` : favoriteItems.length ? `
-        ${renderShopProductList(favoriteItems)}
+        ${renderShopProductList(favoriteItems, { source: "favorites", showRestaurantName: true })}
       ` : `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm text-center">
           <div class="w-14 h-14 rounded-[1.4rem] bg-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
@@ -12782,7 +12999,8 @@ function renderMenuDetailModal() {
   const firebaseFallback = getFirebaseStorageUrl(rawImg);
   const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPrice(item.price);
-  const catalogProfile = state.profileView?.profile || state.userProfile;
+  const restaurantId = getMenuDetailRestaurantId(item);
+  const catalogProfile = getMenuDetailCatalogProfile(item);
   const typeLabel = isShopCatalogProfile(catalogProfile)
     ? (normalizeMenuType(item.type) === "drink" ? "Variante" : "Produkt")
     : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
@@ -12801,11 +13019,6 @@ function renderMenuDetailModal() {
   const selectedSize = sizes.length ? (String(state.menuDetail.selectedSize || sizes[0]).trim() || String(sizes[0])) : "";
   const selectedColor = colors.length ? (String(state.menuDetail.selectedColor || colors[0]).trim() || String(colors[0])) : "";
   const canAddToCart = isShop && canAddToShopCart(catalogProfile);
-  const restaurantId = state.menuDetail.restaurantId
-    || state.menu.restaurantId
-    || state.profileView?.profile?.restaurantId
-    || state.userProfile.restaurantId
-    || "";
   const itemId = getMenuItemSocialId(item);
   const metaKey = menuItemMetaKey(restaurantId, itemId);
   const meta = metaKey ? ensureMenuItemMeta(metaKey) : { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
@@ -12828,7 +13041,7 @@ function renderMenuDetailModal() {
             ${shopCartCount ? `<span class="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${shopCartCount > 9 ? "9+" : shopCartCount}</span>` : ""}
           </button>
           ${canUseFavorites ? `
-            <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="Favoriten" title="Favoriten" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isLiked ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-slate-100 text-slate-700 border-slate-200"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
+            <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="Favoriten" title="Favoriten" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isLiked ? "bg-slate-900 text-white border-slate-900" : "bg-slate-100 text-slate-700 border-slate-200"}">
               ${icon("bookmark", "w-4 h-4")}
             </button>
           ` : ""}
@@ -13111,9 +13324,9 @@ function updateMenuDetailCountsOnly() {
   }
   const headerFavBtn = document.getElementById("menuDetailHeaderFavoritesBtn");
   if (headerFavBtn) {
-    headerFavBtn.classList.toggle("bg-rose-50", !!isLiked);
-    headerFavBtn.classList.toggle("text-rose-600", !!isLiked);
-    headerFavBtn.classList.toggle("border-rose-200", !!isLiked);
+    headerFavBtn.classList.toggle("bg-slate-900", !!isLiked);
+    headerFavBtn.classList.toggle("text-white", !!isLiked);
+    headerFavBtn.classList.toggle("border-slate-900", !!isLiked);
     headerFavBtn.classList.toggle("bg-slate-100", !isLiked);
     headerFavBtn.classList.toggle("text-slate-700", !isLiked);
     headerFavBtn.classList.toggle("border-slate-200", !isLiked);
@@ -15405,8 +15618,8 @@ function bindOverlayEvents({
     const menuDetailHeaderCartBtn = document.getElementById("menuDetailHeaderCartBtn");
     if (menuDetailHeaderCartBtn) {
       menuDetailHeaderCartBtn.addEventListener("click", () => {
-        const profile = state.profileView?.profile || state.userProfile;
         const item = state.menuDetail.item;
+        const profile = getMenuDetailCatalogProfile(item);
         if (!item || !canAddToShopCart(profile)) return;
         const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
         if (item.available === false || stock === 0) return;
@@ -15414,8 +15627,13 @@ function bindOverlayEvents({
           size: state.menuDetail.selectedSize || "",
           color: state.menuDetail.selectedColor || ""
         });
+        const targetRestaurantId = String(profile?.restaurantId || "").trim();
         closeMenuDetail();
-        if (profile?.restaurantId) state.profileTopTab = "cart";
+        if (targetRestaurantId && String(state.profileView?.profile?.restaurantId || "").trim() !== targetRestaurantId) {
+          showPublicProfile(profile, [], { showBack: false, topTab: "cart" });
+          return;
+        }
+        if (targetRestaurantId) state.profileTopTab = "cart";
         setState({ activeTab: "profile" });
       });
     }
@@ -15423,6 +15641,10 @@ function bindOverlayEvents({
     const menuDetailHeaderFavoritesBtn = document.getElementById("menuDetailHeaderFavoritesBtn");
     if (menuDetailHeaderFavoritesBtn) {
       menuDetailHeaderFavoritesBtn.addEventListener("click", () => {
+        if (!String(state.user?.uid || "").trim()) {
+          openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+          return;
+        }
         void toggleMenuItemLike();
       });
     }
@@ -15931,9 +16153,21 @@ function bindAppEvents() {
   document.querySelectorAll("[data-menu-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const itemId = btn.dataset.menuOpen || "";
-      const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
+      const source = btn.dataset.menuOpenSource || "menu";
+      const sourceItems = source === "favorites"
+        ? (Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [])
+        : (state.menu.items || []);
+      const item = sourceItems.find((it) => String(it.id) === String(itemId));
       if (!item) return;
-      void openMenuDetail(item, state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "");
+      void openMenuDetail(
+        item,
+        btn.dataset.menuOpenRestaurant
+          || item.restaurantId
+          || state.menu.restaurantId
+          || state.profileView?.profile?.restaurantId
+          || state.userProfile.restaurantId
+          || ""
+      );
     });
   });
 
@@ -21093,11 +21327,14 @@ function closeMenuModal() {
 async function openMenuDetail(item, restaurantIdOverride = "") {
   if (!item) return;
   stopMenuItemMetaListeners();
-  const restaurantId = restaurantIdOverride
+  const restaurantId = String(
+    restaurantIdOverride
+    || item?.restaurantId
     || state.menu.restaurantId
     || state.profileView?.profile?.restaurantId
     || state.userProfile.restaurantId
-    || "";
+    || ""
+  ).trim();
   state.menuDetail = {
     open: true,
     item,
