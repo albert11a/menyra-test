@@ -610,6 +610,8 @@ let pendingProfileTopTab = "";
 let pendingProfileHandled = false;
 let pendingNotificationId = "";
 let pendingNotificationHandled = false;
+let pendingPostId = "";
+let pendingPostHandled = false;
 let pushOpenMessageBound = false;
 let dataLoaded = {
   feed: false,
@@ -694,7 +696,9 @@ try {
   const queryTab = qs("tab") || qs("top") || "";
   pendingProfileTopTab = pendingProfileRestaurantId ? queryTab : "";
   pendingNotificationId = qs("notif") || qs("notification") || qs("nid") || "";
+  pendingPostId = qs("post") || qs("postId") || "";
   pendingInitialTab = normalizeInitialTab(queryTab || qs("view") || "");
+  if (!pendingInitialTab && pendingPostId) pendingInitialTab = "feed";
   pendingAuthMode = normalizeAuthMode(qs("auth") || "");
 } catch {}
 
@@ -10646,6 +10650,25 @@ function clearNotificationQueryParams() {
   } catch {}
 }
 
+function clearPostQueryParams() {
+  if (typeof window === "undefined" || !window.history?.replaceState) return;
+  try {
+    const url = new URL(window.location.href);
+    const keys = ["post", "postId"];
+    let changed = false;
+    keys.forEach((key) => {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key);
+        changed = true;
+      }
+    });
+    if (!changed) return;
+    const query = url.searchParams.toString();
+    const next = `${url.pathname}${query ? `?${query}` : ""}${url.hash || ""}`;
+    window.history.replaceState({}, "", next);
+  } catch {}
+}
+
 async function maybeOpenNotificationFromQuery() {
   if (pendingNotificationHandled) return false;
   if (!pendingNotificationId) return false;
@@ -10676,6 +10699,28 @@ async function maybeOpenNotificationFromQuery() {
   ];
   saveNotifications(state.notifications);
   await openNotificationTarget(safeNotificationId);
+  return true;
+}
+
+async function maybeOpenPostFromQuery() {
+  if (pendingPostHandled) return false;
+  if (!pendingPostId) return false;
+  if (!state.user?.uid) return false;
+
+  const safePostId = String(pendingPostId || "").trim();
+  if (!safePostId) return false;
+  pendingPostHandled = true;
+  pendingPostId = "";
+  clearPostQueryParams();
+
+  let post = findPostById(safePostId) || state.feedPosts.find((item) => String(item.id) === safePostId) || null;
+  if (!post) {
+    post = await fetchPostForNotification({ postId: safePostId });
+  }
+  if (!post) return false;
+
+  state.activeTab = "feed";
+  await openPostModal(post);
   return true;
 }
 
@@ -20927,15 +20972,17 @@ onAuthStateChanged(auth, (user) => {
   if (user) {
     loadUserScopedPersisted(user);
     const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();
-    if (hasPendingNotificationQuery) {
+    const hasPendingPostQuery = !!String(pendingPostId || "").trim();
+    if (hasPendingNotificationQuery || hasPendingPostQuery) {
       suspendRender();
       bootstrapUser(user);
       queueMicrotask(() => {
         void (async () => {
           try {
             maybeOpenProfileFromQuery();
-            const opened = await maybeOpenNotificationFromQuery();
-            if (!opened) render();
+            const openedNotification = await maybeOpenNotificationFromQuery();
+            const openedPost = await maybeOpenPostFromQuery();
+            if (!openedNotification && !openedPost) render();
           } finally {
             resumeRender();
           }
@@ -20947,6 +20994,7 @@ onAuthStateChanged(auth, (user) => {
       queueMicrotask(() => {
         maybeOpenProfileFromQuery();
         void maybeOpenNotificationFromQuery();
+        void maybeOpenPostFromQuery();
       });
     }
   } else {
