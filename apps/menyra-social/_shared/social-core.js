@@ -146,7 +146,7 @@ export function attachAuthHeader({
 } = {}) {
   const link = document.getElementById(linkId);
   const userLine = document.getElementById(userId);
-  const loginHref = link?.getAttribute("data-login") || buildUrl("apps/menyra-social/login/index.html");
+  const loginHref = link?.getAttribute("data-login") || buildUrl("apps/menyra-social/index.html", { auth: "login" });
 
   onAuthStateChanged(auth, (user) => {
     if (userLine) userLine.textContent = user ? user.email : "guest";

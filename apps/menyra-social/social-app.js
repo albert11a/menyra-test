@@ -664,6 +664,8 @@ let storiesRowSignature = "";
 let focusRotateTimer = null;
 let focusRotateKey = "";
 let authInitialized = false;
+let pendingInitialTab = "";
+let pendingAuthMode = "";
 
 function suspendRender() {
   renderSuspended += 1;
@@ -689,9 +691,55 @@ let avatarCacheWriteTimer = null;
 let lastAuthUid = "";
 try {
   pendingProfileRestaurantId = qs("r") || qs("restaurant") || "";
-  pendingProfileTopTab = qs("tab") || qs("top") || "";
+  const queryTab = qs("tab") || qs("top") || "";
+  pendingProfileTopTab = pendingProfileRestaurantId ? queryTab : "";
   pendingNotificationId = qs("notif") || qs("notification") || qs("nid") || "";
+  pendingInitialTab = normalizeInitialTab(queryTab || qs("view") || "");
+  pendingAuthMode = normalizeAuthMode(qs("auth") || "");
 } catch {}
+
+function normalizeInitialTab(value) {
+  const key = String(value || "").trim().toLowerCase();
+  if (!key) return "";
+  const aliases = {
+    discover: "search",
+    login: "feed",
+    register: "feed"
+  };
+  const resolved = aliases[key] || key;
+  const allowed = new Set([
+    "feed",
+    "chat",
+    "search",
+    "map",
+    "profile",
+    "menu",
+    "orders",
+    "leads",
+    "staff",
+    "customers",
+    "settings"
+  ]);
+  return allowed.has(resolved) ? resolved : "";
+}
+
+function normalizeAuthMode(value) {
+  const key = String(value || "").trim().toLowerCase();
+  if (key === "register" || key === "signup") return "register";
+  if (key === "login" || key === "signin") return "login";
+  return "";
+}
+
+function applyPendingInitialRouteState() {
+  if (pendingInitialTab) {
+    state.activeTab = pendingInitialTab;
+    pendingInitialTab = "";
+  }
+  if (!state.user && pendingAuthMode) {
+    state.auth.mode = pendingAuthMode;
+    pendingAuthMode = "";
+  }
+}
 
 function getActiveUid() {
   return state.user?.uid || state.userProfile?.uid || "";
@@ -20864,6 +20912,7 @@ if (state.user) {
   loadUserScopedPersisted(state.user);
   lastAuthUid = state.user.uid || "";
 }
+applyPendingInitialRouteState();
 render();
 
 onAuthStateChanged(auth, (user) => {
@@ -20874,6 +20923,7 @@ onAuthStateChanged(auth, (user) => {
     resetUserScopedState();
   }
   state.user = user;
+  applyPendingInitialRouteState();
   if (user) {
     loadUserScopedPersisted(user);
     const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();

@@ -56,10 +56,10 @@ function buildLinks(rid, tid){
     ceo: `${root}apps/menyra-ceo/dashboard.html`,
     staff: `${root}apps/menyra-staff/dashboard.html`,
     socialFeed: `${root}apps/menyra-social/index.html`,
-    socialDiscover: `${root}apps/menyra-social/discover/index.html`,
-    socialProfile: `${root}apps/menyra-social/profile/index.html`,
-    socialLogin: `${root}apps/menyra-social/login/index.html`,
-    socialRegister: `${root}apps/menyra-social/register/index.html`
+    socialDiscover: `${root}apps/menyra-social/index.html?tab=search`,
+    socialProfile: `${root}apps/menyra-social/index.html?tab=profile`,
+    socialLogin: `${root}apps/menyra-social/index.html?auth=login`,
+    socialRegister: `${root}apps/menyra-social/index.html?auth=register`
   };
 }
 

@@ -119,7 +119,7 @@ async function loadPost() {
 likeBtn.addEventListener("click", async () => {
   if (!currentPost) return;
   if (!currentUser) {
-    window.location.href = buildUrl("apps/menyra-social/login/index.html", { next: window.location.href });
+    window.location.href = buildUrl("apps/menyra-social/index.html", { auth: "login", next: window.location.href });
     return;
   }
   try {
@@ -138,7 +138,7 @@ likeBtn.addEventListener("click", async () => {
 reportBtn.addEventListener("click", async () => {
   if (!currentPost) return;
   if (!currentUser) {
-    window.location.href = buildUrl("apps/menyra-social/login/index.html", { next: window.location.href });
+    window.location.href = buildUrl("apps/menyra-social/index.html", { auth: "login", next: window.location.href });
     return;
   }
   try {
