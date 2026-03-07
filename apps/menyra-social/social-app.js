@@ -180,10 +180,9 @@ function createEmptyFavoriteMenuItemsState() {
   };
 }
 
-function createClosedMenuDetailState() {
+function createEmptyMenuDetailState() {
   return {
     open: false,
-    closing: false,
     item: null,
     index: 0,
     restaurantId: "",
@@ -218,7 +217,6 @@ const CRM_LAZY_RENDERERS_MODULE_URL = "/apps/menyra-social/_shared/crm-lazy-rend
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
 const DETAIL_LIKES_LIMIT = 12;
-const MENU_DETAIL_CLOSE_MS = 260;
 
 const LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992";
 const LEAD_STATUS_ORDER = ["registered", "contacted", "testphase", "kunde", "no_interest"];
@@ -509,7 +507,7 @@ const state = {
     existingImages: []
   },
   menuDetail: {
-    ...createClosedMenuDetailState()
+    ...createEmptyMenuDetailState()
   },
   focus: {
     restaurantId: "",
@@ -641,7 +639,6 @@ let lastMenuOpenGestureKey = "";
 let lastMenuOpenGestureAt = 0;
 let chatSendDispatchLock = false;
 let menuDetailCloseBound = false;
-let menuDetailCloseTimer = null;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
 let pendingProfileRestaurantId = "";
 let pendingProfileTopTab = "";
@@ -4281,11 +4278,7 @@ function resetUserScopedState() {
   state.chatModal = { open: false, profile: null, messages: [], draft: "", attachments: [] };
   state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
   state.likesModal = { open: false, postId: "", animate: false };
-  if (menuDetailCloseTimer) {
-    clearTimeout(menuDetailCloseTimer);
-    menuDetailCloseTimer = null;
-  }
-  state.menuDetail = createClosedMenuDetailState();
+  state.menuDetail = createEmptyMenuDetailState();
   state.menuItemMeta = {};
   menuItemCountsRequested.clear();
   state.leads = createEmptyLeadsState();
@@ -7813,7 +7806,6 @@ function isAnyModalOpen() {
     || state.likesModal.open
     || state.menuModal.open
     || state.menuDetail.open
-    || state.menuDetail.closing
     || state.focusModal.open
     || state.leadModal.open
     || state.customerModal.open
@@ -13093,9 +13085,8 @@ function renderMenuItemModal() {
 }
 
 function renderMenuDetailModal() {
-  if ((!state.menuDetail.open && !state.menuDetail.closing) || !state.menuDetail.item) return "";
+  if (!state.menuDetail.open || !state.menuDetail.item) return "";
   const item = state.menuDetail.item;
-  const isClosing = !!state.menuDetail.closing;
   const images = getMenuItemImages(item);
   const maxIndex = images.length ? images.length - 1 : 0;
   const safeIndex = Math.max(0, Math.min(state.menuDetail.index || 0, maxIndex));
@@ -13250,12 +13241,11 @@ function renderMenuDetailModal() {
       </div>
     </div>
   `;
-  const overlayClass = isClosing ? "opacity-0" : "opacity-100";
-  const animClass = `${isClosing ? "translate-y-[108%] scale-[0.98]" : "translate-y-0 scale-100"} transition-transform duration-[260ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform`;
+  const animClass = "";
 
   return `
-    <div class="fixed inset-0 z-[75] modal-overlay ${isClosing ? "pointer-events-none" : ""}">
-      <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60 transition-opacity duration-[220ms] ${overlayClass}"></div>
+    <div class="fixed inset-0 z-[75] modal-overlay">
+      <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
       <div class="absolute inset-x-0 bottom-0 max-w-md mx-auto">
         <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border border-slate-100 ${animClass} flex flex-col h-[88vh] overflow-hidden modal-sheet">
           ${headerHtml}
@@ -21438,10 +21428,6 @@ function closeMenuModal() {
 
 async function openMenuDetail(item, restaurantIdOverride = "") {
   if (!item) return;
-  if (menuDetailCloseTimer) {
-    clearTimeout(menuDetailCloseTimer);
-    menuDetailCloseTimer = null;
-  }
   stopMenuItemMetaListeners();
   const restaurantId = String(
     restaurantIdOverride
@@ -21453,7 +21439,6 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
   ).trim();
   state.menuDetail = {
     open: true,
-    closing: false,
     item,
     index: 0,
     restaurantId,
@@ -21479,31 +21464,11 @@ async function openMenuDetail(item, restaurantIdOverride = "") {
   updateMenuDetailMeta();
 }
 
-function closeMenuDetail({ animate = true, afterClose = null } = {}) {
-  if (menuDetailCloseTimer) {
-    clearTimeout(menuDetailCloseTimer);
-    menuDetailCloseTimer = null;
-  }
+function closeMenuDetail({ afterClose = null } = {}) {
   stopMenuItemMetaListeners();
-  const finalize = () => {
-    state.menuDetail = createClosedMenuDetailState();
-    renderOverlays({ updateMenuDetail: true });
-    if (typeof afterClose === "function") afterClose();
-  };
-  if (!animate || !state.menuDetail.item) {
-    finalize();
-    return;
-  }
-  state.menuDetail = {
-    ...state.menuDetail,
-    open: false,
-    closing: true
-  };
+  state.menuDetail = createEmptyMenuDetailState();
   renderOverlays({ updateMenuDetail: true });
-  menuDetailCloseTimer = window.setTimeout(() => {
-    menuDetailCloseTimer = null;
-    finalize();
-  }, MENU_DETAIL_CLOSE_MS);
+  if (typeof afterClose === "function") afterClose();
 }
 
 function setMenuDetailIndex(nextIndex) {
