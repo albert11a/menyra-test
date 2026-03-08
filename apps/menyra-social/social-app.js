@@ -514,6 +514,7 @@ import {
   bindFocusOverlayEventsCore
 } from "./core/overlay-menu-focus-bind-utils.js";
 import { bindLeadOverlayEventsCore } from "./core/overlay-lead-bind-utils.js";
+import { bindMenuDetailOverlayEventsCore } from "./core/overlay-menu-detail-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14232,139 +14233,25 @@ function bindOverlayEvents({
   }
 
   if (menuDetailChanged) {
-    const menuDetailOverlay = document.getElementById("menuDetailOverlay");
-    const menuDetailClose = document.getElementById("menuDetailClose");
-    bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
-    bindModalDismiss(menuDetailClose, closeMenuDetail);
-
-    const menuDetailHeaderCartBtn = document.getElementById("menuDetailHeaderCartBtn");
-    if (menuDetailHeaderCartBtn) {
-      menuDetailHeaderCartBtn.addEventListener("click", () => {
-        const item = state.menuDetail.item;
-        const profile = getMenuDetailCatalogProfile(item);
-        if (!item || !canAddToShopCart(profile)) return;
-        const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
-        if (item.available === false || stock === 0) return;
-        addMenuItemToShopCart(item, profile, {
-          size: state.menuDetail.selectedSize || "",
-          color: state.menuDetail.selectedColor || ""
-        });
-        const targetRestaurantId = String(profile?.restaurantId || "").trim();
-        closeMenuDetail({
-          afterClose: () => {
-            if (targetRestaurantId && String(state.profileView?.profile?.restaurantId || "").trim() !== targetRestaurantId) {
-              showPublicProfile(profile, [], { showBack: false, topTab: "cart" });
-              return;
-            }
-            if (targetRestaurantId) state.profileTopTab = "cart";
-            setState({ activeTab: "profile" });
-          }
-        });
-      });
-    }
-
-    const menuDetailHeaderFavoritesBtn = document.getElementById("menuDetailHeaderFavoritesBtn");
-    if (menuDetailHeaderFavoritesBtn) {
-      menuDetailHeaderFavoritesBtn.addEventListener("click", () => {
-        if (!String(state.user?.uid || "").trim()) {
-          openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
-          return;
-        }
-        void toggleMenuItemLike();
-      });
-    }
-
-    document.querySelectorAll("[data-menu-detail-variant]").forEach((input) => {
-      input.addEventListener("change", () => {
-        const field = input.dataset.menuDetailVariant || "";
-        setMenuDetailVariant(field, input.value || "");
-      });
+    bindMenuDetailOverlayEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      windowObj: typeof window === "undefined" ? null : window,
+      bindModalDismissFn: bindModalDismiss,
+      closeMenuDetailFn: closeMenuDetail,
+      getMenuDetailCatalogProfileFn: getMenuDetailCatalogProfile,
+      canAddToShopCartFn: canAddToShopCart,
+      addMenuItemToShopCartFn: addMenuItemToShopCart,
+      showPublicProfileFn: showPublicProfile,
+      setStateFn: setState,
+      openGuestAuthPromptFn: openGuestAuthPrompt,
+      toggleMenuItemLikeFn: toggleMenuItemLike,
+      setMenuDetailVariantFn: setMenuDetailVariant,
+      autosizeTextareaFn: autosizeTextarea,
+      addMenuItemCommentFn: addMenuItemComment,
+      applyCommentAvatarCacheFn: applyCommentAvatarCache,
+      setMenuDetailIndexFn: setMenuDetailIndex,
+      state
     });
-
-    const menuDetailLikeBtn = document.getElementById("menuDetailLikeBtn");
-    if (menuDetailLikeBtn) {
-      menuDetailLikeBtn.addEventListener("click", () => {
-        void toggleMenuItemLike();
-      });
-    }
-
-    const menuDetailCommentInput = document.getElementById("menuDetailCommentInput");
-    if (menuDetailCommentInput) {
-      autosizeTextarea(menuDetailCommentInput, { minHeight: 52, maxHeight: 160 });
-      menuDetailCommentInput.addEventListener("input", () => {
-        state.menuDetail.commentText = menuDetailCommentInput.value;
-        autosizeTextarea(menuDetailCommentInput, { minHeight: 52, maxHeight: 160 });
-      });
-      menuDetailCommentInput.addEventListener("focus", () => {
-        window.setTimeout(() => {
-          try {
-            menuDetailCommentInput.scrollIntoView({ block: "nearest", behavior: "smooth" });
-          } catch {}
-        }, 180);
-      });
-      menuDetailCommentInput.addEventListener("keydown", (evt) => {
-        if (evt.key === "Enter" && !evt.shiftKey) {
-          evt.preventDefault();
-          const text = menuDetailCommentInput.value || state.menuDetail.commentText;
-          if (!String(text || "").trim() || state.menuDetail.sending) return;
-          state.menuDetail.commentText = text;
-          void addMenuItemComment(text);
-        }
-      });
-    }
-
-    const menuDetailCommentSend = document.getElementById("menuDetailCommentSend");
-    if (menuDetailCommentSend) {
-      menuDetailCommentSend.addEventListener("click", () => {
-        const inputEl = document.getElementById("menuDetailCommentInput");
-        const text = inputEl ? inputEl.value : state.menuDetail.commentText;
-        if (!String(text || "").trim() || state.menuDetail.sending) return;
-        state.menuDetail.commentText = text;
-        void addMenuItemComment(text);
-      });
-    }
-
-    const menuDetailComments = document.getElementById("menuDetailComments");
-    if (menuDetailComments) applyCommentAvatarCache(menuDetailComments);
-
-    document.querySelectorAll("[data-menu-gallery-nav]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const dir = btn.dataset.menuGalleryNav || "next";
-        const delta = dir === "prev" ? -1 : 1;
-        setMenuDetailIndex(state.menuDetail.index + delta);
-      });
-    });
-
-    document.querySelectorAll("[data-menu-gallery-dot]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const idx = Number(btn.dataset.menuGalleryDot || "0");
-        setMenuDetailIndex(idx);
-      });
-    });
-
-    const gallery = document.querySelector("[data-menu-gallery]");
-    if (gallery) {
-      let startX = 0;
-      let startY = 0;
-      let tracking = false;
-      gallery.addEventListener("pointerdown", (evt) => {
-        tracking = true;
-        startX = evt.clientX;
-        startY = evt.clientY;
-        try { gallery.setPointerCapture(evt.pointerId); } catch {}
-      });
-      gallery.addEventListener("pointerup", (evt) => {
-        if (!tracking) return;
-        tracking = false;
-        try { gallery.releasePointerCapture(evt.pointerId); } catch {}
-        const dx = evt.clientX - startX;
-        const dy = evt.clientY - startY;
-        if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy)) return;
-        if (dx < 0) setMenuDetailIndex(state.menuDetail.index + 1);
-        else setMenuDetailIndex(state.menuDetail.index - 1);
-      });
-      gallery.addEventListener("pointercancel", () => { tracking = false; });
-    }
   }
 
   if (focusChanged) {
