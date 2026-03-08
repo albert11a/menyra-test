@@ -242,6 +242,14 @@ import {
   normalizeSearchKeyCore
 } from "./core/text-normalize-utils.js";
 import {
+  createLeadScopeMapCore,
+  createCustomerScopeMapCore,
+  normalizeLeadScopeKeyCore,
+  normalizeCustomerScopeKeyCore,
+  createEmptyLeadsStateCore,
+  createEmptyCustomersStateCore
+} from "./core/crm-scope-state-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -603,58 +611,23 @@ const FEED_META_LISTEN_LIMIT = 20;
 const CRM_PAGE_SIZE = 20;
 
 function createLeadScopeMap(factory = () => null) {
-  return {
-    own: factory("own"),
-    staff: factory("staff"),
-    archived: factory("archived")
-  };
+  return createLeadScopeMapCore(factory);
 }
 
 function createCustomerScopeMap(factory = () => null) {
-  return {
-    own: factory("own"),
-    staff: factory("staff")
-  };
+  return createCustomerScopeMapCore(factory);
 }
 
 function createEmptyLeadsState() {
-  return {
-    items: [],
-    loading: false,
-    loadingMore: false,
-    error: "",
-    query: "",
-    status: "",
-    scope: "own",
-    view: "list",
-    settingsSaving: false,
-    settingsStatus: "",
-    keepFocus: false,
-    pages: createLeadScopeMap(() => []),
-    pageSize: createLeadScopeMap(() => CRM_PAGE_SIZE),
-    hasMore: createLeadScopeMap(() => false),
-    loaded: createLeadScopeMap(() => false),
-    knownCount: createLeadScopeMap(() => 0),
-    countExact: createLeadScopeMap(() => false)
-  };
+  return createEmptyLeadsStateCore({
+    pageSize: CRM_PAGE_SIZE
+  });
 }
 
 function createEmptyCustomersState() {
-  return {
-    items: [],
-    loading: false,
-    loadingMore: false,
-    error: "",
-    query: "",
-    scope: "own",
-    keepFocus: false,
-    pages: createCustomerScopeMap(() => []),
-    pageSize: createCustomerScopeMap(() => CRM_PAGE_SIZE),
-    hasMore: createCustomerScopeMap(() => false),
-    loaded: createCustomerScopeMap(() => false),
-    knownCount: createCustomerScopeMap(() => 0),
-    countExact: createCustomerScopeMap(() => false)
-  };
+  return createEmptyCustomersStateCore({
+    pageSize: CRM_PAGE_SIZE
+  });
 }
 
 const state = {
@@ -4732,11 +4705,11 @@ function isCurrentCeoOwnRow(row = {}) {
 }
 
 function normalizeLeadScopeKey(value) {
-  return ["own", "staff", "archived"].includes(String(value || "").trim()) ? String(value || "").trim() : "own";
+  return normalizeLeadScopeKeyCore(value);
 }
 
 function normalizeCustomerScopeKey(value) {
-  return String(value || "").trim() === "staff" ? "staff" : "own";
+  return normalizeCustomerScopeKeyCore(value);
 }
 
 function resolveKnownScopeCountLabel(count = 0, isExact = false, isLoaded = false) {
