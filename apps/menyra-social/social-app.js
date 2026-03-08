@@ -707,7 +707,7 @@ let pendingInitialTab = "";
 let pendingAuthMode = "";
 let crmLazyRenderers = null;
 let crmLazyRenderersPromise = null;
-const MENU_OPEN_TAP_MAX_MOVE_PX = 14;
+const MENU_OPEN_TAP_MAX_MOVE_PX = 10;
 const MENU_OPEN_TAP_MAX_MS = 700;
 const MENU_OPEN_SCROLL_GUARD_MS = 180;
 const MENU_OPEN_CLICK_SUPPRESS_MS = 420;
@@ -16379,6 +16379,7 @@ function bindAppEvents() {
     if (typeof window !== "undefined" && "PointerEvent" in window) {
       btn.addEventListener("pointerdown", (evt) => {
         if (evt.pointerType === "mouse") return;
+        suppressMenuOpenClick(btn);
         setMenuOpenTapState(btn, evt);
       });
       btn.addEventListener("pointermove", (evt) => {
@@ -16386,6 +16387,7 @@ function bindAppEvents() {
         updateMenuOpenTapState(btn, evt);
       });
       btn.addEventListener("pointercancel", () => {
+        suppressMenuOpenClick(btn);
         clearMenuOpenTapState(btn);
       });
       btn.addEventListener("pointerup", (evt) => {
@@ -16396,12 +16398,14 @@ function bindAppEvents() {
       });
     } else {
       btn.addEventListener("touchstart", (evt) => {
+        suppressMenuOpenClick(btn);
         setMenuOpenTapState(btn, evt);
       }, { passive: true });
       btn.addEventListener("touchmove", (evt) => {
         updateMenuOpenTapState(btn, evt);
       }, { passive: true });
       btn.addEventListener("touchcancel", () => {
+        suppressMenuOpenClick(btn);
         clearMenuOpenTapState(btn);
       });
       btn.addEventListener("touchend", (evt) => {
