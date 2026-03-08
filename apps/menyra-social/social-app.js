@@ -155,6 +155,15 @@ import {
   buildChatMessageNotificationCore
 } from "./core/chat-remote-sync-utils.js";
 import {
+  normalizeChatOpenProfileCore,
+  buildChatModalStateOnOpenCore,
+  buildClosedChatModalStateCore,
+  buildFallbackChatThreadProfileCore,
+  getSafeChatThreadIdFromThreadCore,
+  shouldCloseChatModalForThreadCore,
+  filterChatThreadsAfterDeleteCore
+} from "./core/chat-thread-action-state-utils.js";
+import {
   buildNextChatAttachmentsCore,
   removePendingChatAttachmentCore,
   toggleChatMessageFlagCore,
@@ -3065,10 +3074,13 @@ function getChatThreadById(threadId) {
 async function setChatThreadArchivedById(threadId, archived = true) {
   const thread = getChatThreadById(threadId);
   const ownerUid = String(state.user?.uid || "").trim();
-  const safeThreadId = String(thread?.id || threadId || "").replace(/^@/, "").trim();
+  const safeThreadId = getSafeChatThreadIdFromThreadCore({
+    thread,
+    threadId
+  });
   if (!safeThreadId || !ownerUid) return;
   state.chatThreadMenuId = "";
-  upsertChatThread(thread || { id: safeThreadId, uid: safeThreadId, handle: safeThreadId, name: safeThreadId }, {
+  upsertChatThread(thread || buildFallbackChatThreadProfileCore(safeThreadId), {
     archivedByOwner: !!archived
   });
   render();
@@ -3083,7 +3095,10 @@ async function setChatThreadArchivedById(threadId, archived = true) {
 
 async function deleteChatThreadById(threadId) {
   const thread = getChatThreadById(threadId);
-  const safeThreadId = String(thread?.id || threadId || "").replace(/^@/, "").trim();
+  const safeThreadId = getSafeChatThreadIdFromThreadCore({
+    thread,
+    threadId
+  });
   const ownerUid = String(state.user?.uid || "").trim();
   if (!safeThreadId || !ownerUid) return;
   const confirmed = typeof window !== "undefined"
@@ -3091,15 +3106,22 @@ async function deleteChatThreadById(threadId) {
     : true;
   if (!confirmed) return;
 
-  if (state.chatModal.open && getChatThreadId(state.chatModal.profile) === safeThreadId) {
+  if (shouldCloseChatModalForThreadCore({
+    chatModal: state.chatModal,
+    safeThreadId,
+    getChatThreadId: (profile) => getChatThreadId(profile)
+  })) {
     stopActiveChatMessagesListener();
-    state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
+    state.chatModal = buildClosedChatModalStateCore(state.chatModal);
   }
 
   state.chatThreadMenuId = "";
-  state.chatThreads = (state.chatThreads || []).filter((item) => String(item?.id || "") !== safeThreadId);
+  state.chatThreads = filterChatThreadsAfterDeleteCore({
+    threads: state.chatThreads,
+    threadId: safeThreadId
+  });
   saveChatThreadIndex(state.chatThreads);
-  const localKey = chatThreadStorageKey(thread || { id: safeThreadId, uid: safeThreadId, handle: safeThreadId });
+  const localKey = chatThreadStorageKey(thread || buildFallbackChatThreadProfileCore(safeThreadId));
   if (localKey) safeStorage.removeItem(localKey);
   render();
 
@@ -3600,28 +3622,24 @@ function openChatWithProfile(profile) {
     openGuestAuthPrompt("Bitte einloggen, um Chats zu nutzen.");
     return;
   }
-  const nextProfile = {
-    uid: profile.uid || "",
-    restaurantId: profile.restaurantId || "",
-    handle: String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, ""),
-    name: profile.name || "User",
-    avatar: profile.avatar || ""
-  };
+  const nextProfile = normalizeChatOpenProfileCore({
+    profile,
+    normalizeHandle: (value) => normalizeHandle(value)
+  });
+  if (!nextProfile) return;
   upsertChatThread(nextProfile);
   state.drawerOpen = false;
   state.chatSettingsOpen = false;
   state.chatThreadMenuId = "";
   state.profileModal = { open: false, profile: null };
   state.activeTab = "chat";
-  const sameThread = state.chatModal.open && getChatThreadId(state.chatModal.profile) === getChatThreadId(nextProfile);
   const nextMessages = markChatThreadAsRead(nextProfile);
-  state.chatModal = {
-    open: true,
-    profile: nextProfile,
-    messages: nextMessages,
-    draft: sameThread ? (state.chatModal.draft || "") : "",
-    attachments: sameThread ? (state.chatModal.attachments || []) : []
-  };
+  state.chatModal = buildChatModalStateOnOpenCore({
+    currentChatModal: state.chatModal,
+    nextProfile,
+    nextMessages,
+    getChatThreadId: (value) => getChatThreadId(value)
+  });
   syncChatThreadSummary(nextProfile, state.chatModal.messages);
   void syncRemoteChatReadState(nextProfile, state.chatModal.messages);
   startActiveChatMessagesListener(nextProfile);
@@ -3635,7 +3653,7 @@ function closeChatModal() {
   stopActiveChatMessagesListener();
   state.chatSettingsOpen = false;
   state.chatThreadMenuId = "";
-  state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
+  state.chatModal = buildClosedChatModalStateCore(state.chatModal);
   if (state.activeTab === "chat") {
     render();
   }
