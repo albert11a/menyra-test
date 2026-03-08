@@ -167,6 +167,11 @@ import {
   prependNotificationByIdCore
 } from "./core/notification-route-open-utils.js";
 import {
+  normalizePendingProfileRestaurantIdCore,
+  isPendingProfileAlreadyOpenCore,
+  normalizeProfileTopTabFromRouteCore
+} from "./core/profile-route-open-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10723,23 +10728,22 @@ function maybeOpenProfileFromQuery() {
   if (pendingProfileHandled) return;
   if (!pendingProfileRestaurantId) return;
   if (!state.user) return;
-  if (state.profileView?.profile?.restaurantId === pendingProfileRestaurantId) {
+  const safeRestaurantId = normalizePendingProfileRestaurantIdCore(pendingProfileRestaurantId);
+  if (isPendingProfileAlreadyOpenCore({
+    pendingProfileRestaurantId: safeRestaurantId,
+    currentProfileRestaurantId: state.profileView?.profile?.restaurantId || ""
+  })) {
     pendingProfileHandled = true;
     pendingProfileRestaurantId = "";
     pendingProfileTopTab = "";
     return;
   }
   pendingProfileHandled = true;
-  const nextId = pendingProfileRestaurantId;
+  const nextId = safeRestaurantId;
   const nextTabRaw = pendingProfileTopTab;
   pendingProfileRestaurantId = "";
   pendingProfileTopTab = "";
-  const nextTab = (() => {
-    const key = String(nextTabRaw || "").trim().toLowerCase();
-    if (!key) return "";
-    if (key === "menu" || key === "karte" || key === "speisekarte" || key === "shop") return "menu";
-    return "";
-  })();
+  const nextTab = normalizeProfileTopTabFromRouteCore(nextTabRaw);
   openProfileViewFromBusiness({ id: nextId }, { showBack: false, topTab: nextTab });
 }
 
