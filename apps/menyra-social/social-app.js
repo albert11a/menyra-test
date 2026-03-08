@@ -173,6 +173,11 @@ import {
 } from "./core/chat-render-utils.js";
 import { renderChatListPanelCore } from "./core/chat-list-render-utils.js";
 import {
+  mapChatThreadDocsToSummariesCore,
+  buildMergedChatThreadsFromRemoteCore,
+  shouldRenderChatThreadListAfterRemoteSyncCore
+} from "./core/chat-thread-listener-utils.js";
+import {
   normalizeChatOpenProfileCore,
   buildChatModalStateOnOpenCore,
   buildClosedChatModalStateCore,
@@ -3340,10 +3345,20 @@ function stopActiveChatMessagesListener() {
 }
 
 function syncLocalChatThreadsFromRemote(remoteThreads, ownerUid = state.user?.uid || "") {
-  const merged = mergeChatThreadLists(loadChatThreadIndex(ownerUid), state.chatThreads, remoteThreads);
+  const merged = buildMergedChatThreadsFromRemoteCore({
+    ownerUid,
+    stateThreads: state.chatThreads,
+    remoteThreads,
+    loadChatThreadIndex: (uid) => loadChatThreadIndex(uid),
+    mergeChatThreadLists: (...lists) => mergeChatThreadLists(...lists)
+  });
   state.chatThreads = merged;
   saveChatThreadIndex(merged);
-  if (lastRenderMode === "main" && state.activeTab === "chat" && !state.chatModal.open) {
+  if (shouldRenderChatThreadListAfterRemoteSyncCore({
+    lastRenderMode,
+    activeTab: state.activeTab,
+    chatModalOpen: !!state.chatModal.open
+  })) {
     render();
     return;
   }
@@ -3357,9 +3372,10 @@ function startChatThreadsListener(user = state.user) {
   const ref = collection(db, "users", ownerUid, "chatThreads");
   const threadQuery = query(ref, orderBy("updatedAt", "desc"), limit(25));
   chatThreadsUnsub = onSnapshot(threadQuery, (snap) => {
-    const remoteThreads = snap.docs
-      .map((docSnap) => normalizeChatThreadSummary(docSnap.id, docSnap.data() || {}))
-      .filter(Boolean);
+    const remoteThreads = mapChatThreadDocsToSummariesCore({
+      docs: snap.docs,
+      normalizeChatThreadSummary: (threadId, data = {}, fallback = {}) => normalizeChatThreadSummary(threadId, data, fallback)
+    });
     syncLocalChatThreadsFromRemote(remoteThreads, ownerUid);
   }, (err) => {
     console.error(err);
