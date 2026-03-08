@@ -5811,22 +5811,17 @@ function buildRoleUrl(role, params = "") {
 }
 
 function buildRoleSwitchUrl(role, profile, restaurantIdOverride = "") {
-  const params = new URLSearchParams();
   const ownerRestaurantId = restaurantIdOverride || profile?.restaurantId || "";
-  if (role === "owner" && ownerRestaurantId) params.set("r", ownerRestaurantId);
-  const query = params.toString();
-  const path = window.location.pathname || "";
-  const fileMap = {
-    ceo: "/apps/menyra-ceo/dashboard.html",
-    owner: "/apps/menyra-owner/index.html",
-    staff: "/apps/menyra-staff/dashboard.html"
+  const roleTabMap = {
+    ceo: "leads",
+    owner: "profile",
+    staff: "staff"
   };
-
-  if (path.includes("/apps/") && fileMap[role]) {
-    return `${window.location.origin}${fileMap[role]}${query ? `?${query}` : ""}`;
-  }
-
-  return buildRoleUrl(role, query);
+  const tab = roleTabMap[role] || "";
+  const params = {};
+  if (tab) params.tab = tab;
+  if (role === "owner" && ownerRestaurantId) params.r = ownerRestaurantId;
+  return buildUrl("apps/menyra-social/index.html", params);
 }
 
 async function findOwnerRestaurantId(user) {
@@ -8278,7 +8273,7 @@ function renderFeedView() {
 
 function renderStoryItem(story, index = 0) {
   const borderClass = story.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
-  const storyUrl = buildUrl("apps/menyra-restaurants/guest/story/index.html", { r: story.restaurantId });
+  const storyUrl = buildUrl("apps/menyra-social/index.html", { r: story.restaurantId, tab: "profile" });
   const restaurant = state.restaurants.find((r) => r.id === story.restaurantId) || {};
   const logoSource = restaurant.logoUrl || restaurant.logo || story.img || "";
   const imgUrl = resolveRestaurantLogo(story.restaurantId, logoSource, "thumb");
