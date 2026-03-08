@@ -163,6 +163,11 @@ import {
   hasUnreadIncomingRemoteMessagesCore
 } from "./core/chat-read-sync-utils.js";
 import {
+  collectUnreadIncomingChatMessageIdsCore,
+  buildChatUnreadResetPatchCore,
+  buildChatMessageReadPatchCore
+} from "./core/chat-remote-read-write-utils.js";
+import {
   renderChatMessagesPanelCore,
   renderChatPendingAttachmentsCore
 } from "./core/chat-render-utils.js";
@@ -3365,15 +3370,17 @@ async function syncRemoteChatReadState(profile, messages = state.chatModal.messa
   const ownerUid = String(state.user?.uid || "").trim();
   const threadId = getChatThreadId(profile);
   if (!ownerUid || !threadId) return;
-  const unreadMessages = collectUnreadIncomingChatMessagesCore({
+  const unreadMessageIds = collectUnreadIncomingChatMessageIdsCore({
     messages,
     pruneChatMessages: (items) => pruneChatMessages(items)
   });
-  if (!unreadMessages.length) {
+  const threadUnreadResetPatch = buildChatUnreadResetPatchCore();
+  const messageReadPatch = buildChatMessageReadPatchCore();
+  if (!unreadMessageIds.length) {
     const threadRef = chatThreadDocRef(ownerUid, threadId);
     if (!threadRef) return;
     try {
-      await setDoc(threadRef, { unreadCount: 0 }, { merge: true });
+      await setDoc(threadRef, threadUnreadResetPatch, { merge: true });
     } catch {}
     return;
   }
@@ -3381,12 +3388,12 @@ async function syncRemoteChatReadState(profile, messages = state.chatModal.messa
   if (!threadRef) return;
   try {
     await Promise.all([
-      ...unreadMessages.map((message) => {
-        const messageRef = chatMessageDocRef(ownerUid, threadId, message.id);
+      ...unreadMessageIds.map((messageId) => {
+        const messageRef = chatMessageDocRef(ownerUid, threadId, messageId);
         if (!messageRef) return Promise.resolve();
-        return setDoc(messageRef, { read: true }, { merge: true });
+        return setDoc(messageRef, messageReadPatch, { merge: true });
       }),
-      setDoc(threadRef, { unreadCount: 0 }, { merge: true })
+      setDoc(threadRef, threadUnreadResetPatch, { merge: true })
     ]);
   } catch {}
 }
