@@ -163,6 +163,10 @@ import {
   hasUnreadIncomingRemoteMessagesCore
 } from "./core/chat-read-sync-utils.js";
 import {
+  renderChatMessagesPanelCore,
+  renderChatPendingAttachmentsCore
+} from "./core/chat-render-utils.js";
+import {
   normalizeChatOpenProfileCore,
   buildChatModalStateOnOpenCore,
   buildClosedChatModalStateCore,
@@ -13901,6 +13905,35 @@ function renderUploadView() {
   `;
 }
 
+function renderChatMessagesPanel({
+  messages,
+  blockedByOwner,
+  mutedActive,
+  muteUntilLabel,
+  partnerName
+} = {}) {
+  return renderChatMessagesPanelCore({
+    messages,
+    blockedByOwner,
+    mutedActive,
+    muteUntilLabel,
+    partnerName,
+    escapeHtml,
+    icon,
+    formatRelative,
+    toDateSafe,
+    nowMs: Date.now()
+  });
+}
+
+function renderChatPendingAttachments(pendingAttachments) {
+  return renderChatPendingAttachmentsCore({
+    pendingAttachments,
+    escapeHtml,
+    icon
+  });
+}
+
 function renderChatView() {
   const threads = sortChatThreads(state.chatThreads);
   if (!state.chatModal.open || !state.chatModal.profile) {
@@ -14002,94 +14035,16 @@ function renderChatView() {
     <div id="chatThreadView" class="flex-1 min-h-0 px-4 pb-4 flex flex-col">
       <div class="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden flex flex-col flex-1 min-h-0 shadow-sm">
         <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar p-4 space-y-3 bg-slate-50/70">
-          ${blockedByOwner ? `
-            <div class="p-3 rounded-2xl bg-rose-50 border border-rose-100 text-rose-600 text-[10px] font-black uppercase tracking-widest">
-              Chat blockiert
-            </div>
-          ` : ""}
-          ${mutedActive ? `
-            <div class="p-3 rounded-2xl bg-amber-50 border border-amber-100 text-amber-600 text-[10px] font-black uppercase tracking-widest">
-              Ruhemodus bis ${escapeHtml(muteUntilLabel)}
-            </div>
-          ` : ""}
-          ${messages.length ? messages.map((message) => `
-            <div class="flex ${message.from === "self" ? "justify-end" : "justify-start"}">
-              <div class="max-w-[84%]">
-                <div class="rounded-[1.6rem] px-4 py-3 ${message.from === "self" ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-100"}">
-                  ${(Array.isArray(message.attachments) && message.attachments.length) ? `
-                    <div class="space-y-2 ${message.text ? "mb-3" : ""}">
-                      ${message.attachments.map((attachment) => `
-                        ${attachment.kind === "image" && attachment.dataUrl ? `
-                          <img src="${escapeHtml(attachment.dataUrl)}" class="w-full max-h-56 rounded-2xl object-cover border ${message.from === "self" ? "border-slate-700" : "border-slate-100"}" />
-                        ` : `
-                          ${attachment.dataUrl ? `
-                            <a href="${escapeHtml(attachment.dataUrl)}" download="${escapeHtml(attachment.name || "datei")}" class="flex items-center gap-3 p-3 rounded-2xl ${message.from === "self" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-700"}">
-                              <div class="w-9 h-9 rounded-xl flex items-center justify-center ${message.from === "self" ? "bg-slate-700" : "bg-white border border-slate-200"}">${icon("paperclip", "w-4 h-4")}</div>
-                              <div class="min-w-0 flex-1">
-                                <div class="text-xs font-black truncate">${escapeHtml(attachment.name || "Datei")}</div>
-                                <div class="text-[9px] font-bold uppercase tracking-widest ${message.from === "self" ? "text-slate-300" : "text-slate-400"}">Datei</div>
-                              </div>
-                            </a>
-                          ` : `
-                            <div class="flex items-center gap-3 p-3 rounded-2xl ${message.from === "self" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-700"}">
-                              <div class="w-9 h-9 rounded-xl flex items-center justify-center ${message.from === "self" ? "bg-slate-700" : "bg-white border border-slate-200"}">${icon("file", "w-4 h-4")}</div>
-                              <div class="min-w-0 flex-1">
-                                <div class="text-xs font-black truncate">${escapeHtml(attachment.name || "Datei")}</div>
-                                <div class="text-[9px] font-bold uppercase tracking-widest ${message.from === "self" ? "text-slate-300" : "text-slate-400"}">${attachment.oversize ? "Zu gross fuer Vorschau" : "Datei"}</div>
-                              </div>
-                            </div>
-                          `}
-                        `}
-                      `).join("")}
-                    </div>
-                  ` : ""}
-                  ${message.text ? `<div class="text-sm font-medium leading-relaxed whitespace-pre-wrap">${escapeHtml(message.text || "")}</div>` : ""}
-                </div>
-                <div class="flex items-center ${message.from === "self" ? "justify-end" : "justify-start"} gap-2 mt-2 px-1">
-                  <button data-chat-save="${escapeHtml(message.id)}" class="w-7 h-7 rounded-full flex items-center justify-center ${message.saved ? "bg-emerald-100 text-emerald-600" : "bg-white text-slate-400 border border-slate-200"}">
-                    ${icon(message.saved ? "check" : "plus", "w-3.5 h-3.5")}
-                  </button>
-                  <button data-chat-like="${escapeHtml(message.id)}" class="w-7 h-7 rounded-full flex items-center justify-center ${message.liked ? "bg-rose-100 text-rose-500" : "bg-white text-slate-400 border border-slate-200"}">
-                    ${icon("heart", `w-3.5 h-3.5 ${message.liked ? "fill-rose-500 text-rose-500" : ""}`)}
-                  </button>
-                  <div class="text-[9px] font-bold uppercase tracking-widest ${message.from === "self" ? "text-slate-400" : "text-slate-300"}">
-                    ${message.saved ? "Gespeichert" : "24h"}
-                  </div>
-                </div>
-                <div class="text-[9px] font-bold uppercase tracking-widest mt-2 ${message.from === "self" ? "text-slate-300" : "text-slate-400"}">${escapeHtml(formatRelative(toDateSafe(message.createdAt) || new Date()))}</div>
-              </div>
-            </div>
-          `).join("") : `
-            <div class="h-full min-h-[40vh] flex items-center justify-center text-center">
-              <div>
-                <div class="w-14 h-14 rounded-[1.4rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">
-                  ${icon("message-circle", "w-6 h-6")}
-                </div>
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Schreib ${escapeHtml(partner.name || "User")} zuerst</p>
-              </div>
-            </div>
-          `}
+          ${renderChatMessagesPanel({
+            messages,
+            blockedByOwner,
+            mutedActive,
+            muteUntilLabel,
+            partnerName: partner.name || "User"
+          })}
         </div>
         <div class="shrink-0 p-4 border-t border-slate-100 bg-white">
-          ${(pendingAttachments.length) ? `
-            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-3">
-              ${pendingAttachments.map((attachment) => `
-                <div class="shrink-0 min-w-[84px] max-w-[120px] rounded-2xl border border-slate-100 bg-slate-50 p-2 relative">
-                  <button data-chat-remove-attachment="${escapeHtml(attachment.id)}" class="absolute top-1 right-1 w-5 h-5 rounded-full bg-white border border-slate-200 text-slate-400 flex items-center justify-center">
-                    ${icon("x", "w-3 h-3")}
-                  </button>
-                  ${attachment.kind === "image" && attachment.dataUrl ? `
-                    <img src="${escapeHtml(attachment.dataUrl)}" class="w-full h-16 rounded-xl object-cover mb-2" />
-                  ` : `
-                    <div class="w-full h-16 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 mb-2">
-                      ${icon(attachment.kind === "image" ? "image" : "file", "w-5 h-5")}
-                    </div>
-                  `}
-                  <div class="text-[10px] font-black text-slate-600 truncate pr-4">${escapeHtml(attachment.name || "Datei")}</div>
-                </div>
-              `).join("")}
-            </div>
-          ` : ""}
+          ${renderChatPendingAttachments(pendingAttachments)}
           <input type="file" id="chatAttachmentInput" class="hidden" multiple />
           <div class="flex items-end gap-3">
             <button id="chatAttachmentTrigger" ${blockedByOwner ? "disabled" : ""} class="w-[52px] h-[52px] shrink-0 rounded-2xl ${blockedByOwner ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-slate-100 text-slate-600 active:scale-95"} flex items-center justify-center">
