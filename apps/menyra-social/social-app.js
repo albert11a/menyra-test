@@ -530,7 +530,6 @@ const ROLE_SWITCH_LABELS = {
   owner: "Owner",
   staff: "Staff"
 };
-const ROLE_HOSTS = new Set(["ceo", "owner", "staff", "waiter", "kitchen", "social"]);
 const businessProfileCache = new Map();
 const userProfileCache = new Map();
 const restaurantOwnerCache = new Map();
@@ -5786,28 +5785,6 @@ function roleLabel(role) {
   if (!role) return "";
   const key = String(role || "").toLowerCase();
   return ROLE_SWITCH_LABELS[key] || (key.charAt(0).toUpperCase() + key.slice(1));
-}
-
-function getRoleOrigin(role) {
-  const host = window.location.hostname;
-  const proto = window.location.protocol;
-  const isLocal = host === "localhost" || host === "127.0.0.1" || host.endsWith(".local");
-  if (isLocal || host.endsWith(".vercel.app")) return window.location.origin;
-  const parts = host.split(".");
-  const root = ROLE_HOSTS.has(parts[0]) ? parts.slice(1).join(".") : host;
-  return `${proto}//${role}.${root}`;
-}
-
-function roleBasePath(role) {
-  const origin = getRoleOrigin(role);
-  return origin === window.location.origin ? `/${role}/` : "/";
-}
-
-function buildRoleUrl(role, params = "") {
-  const origin = getRoleOrigin(role);
-  const basePath = roleBasePath(role);
-  const suffix = params ? `?${params}` : "";
-  return `${origin}${basePath}${suffix}`;
 }
 
 function buildRoleSwitchUrl(role, profile, restaurantIdOverride = "") {
