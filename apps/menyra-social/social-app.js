@@ -242,6 +242,12 @@ import {
   normalizeSearchKeyCore
 } from "./core/text-normalize-utils.js";
 import {
+  normalizeHandleCore,
+  isGenericHandleCore,
+  resolvePreferredHandleCore,
+  normalizeFollowHandleCore
+} from "./core/handle-utils.js";
+import {
   createLeadScopeMapCore,
   createCustomerScopeMapCore,
   normalizeLeadScopeKeyCore,
@@ -2641,9 +2647,9 @@ function saveFollowing(handles, targetIds = state.followingTargetIds) {
 }
 
 function normalizeFollowHandle(value) {
-  const raw = String(value || "").replace(/^@/, "").trim();
-  if (!raw) return "";
-  return normalizeHandle(raw);
+  return normalizeFollowHandleCore(value, {
+    normalizeHandleFn: normalizeHandle
+  });
 }
 
 function syncPrivateSettingFromProfile(value) {
@@ -4110,23 +4116,20 @@ async function signInOrCreateAdmin(admin) {
 }
 
 function normalizeHandle(name) {
-  return String(name || "user")
-    .toLowerCase()
-    .replace(/\s+/g, "_")
-    .replace(/[^a-z0-9_]/g, "");
+  return normalizeHandleCore(name);
 }
 
 function isGenericHandle(handle) {
-  const key = normalizeHandle(handle || "");
-  if (!key || key.length < 3) return true;
-  return ["admin", "owner", "user", "business", "staff", "ceo", "demo"].includes(key);
+  return isGenericHandleCore(handle, {
+    normalizeHandleFn: normalizeHandle
+  });
 }
 
 function resolvePreferredHandle(profile, fallbackName = "") {
-  const raw = String(profile?.handle || "").trim();
-  const name = fallbackName || profile?.name || "";
-  const candidate = raw || normalizeHandle(name || "user");
-  return isGenericHandle(candidate) ? normalizeHandle(name || "user") : candidate;
+  return resolvePreferredHandleCore(profile, fallbackName, {
+    normalizeHandleFn: normalizeHandle,
+    isGenericHandleFn: isGenericHandle
+  });
 }
 
 function parseCoordNumber(value) {
