@@ -71,6 +71,13 @@ import {
   normalizeAuthMode
 } from "./core/route-auth-utils.js";
 import { resolveInitialRouteState } from "./core/initial-route-state.js";
+import {
+  readAuthBootstrapSnapshotCore,
+  buildAuthBootstrapSnapshotPayload,
+  persistAuthBootstrapSnapshot,
+  clearAuthBootstrapSnapshotStorage,
+  applyAuthBootstrapSnapshotToProfile
+} from "./core/auth-bootstrap-snapshot.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -733,57 +740,54 @@ function saveUserProfileToStorage(profile = state.userProfile) {
 }
 
 function readAuthBootstrapSnapshot() {
-  const raw = safeStorage.getItem(STORAGE_KEYS.authSnapshot);
-  if (!raw) return null;
-  try {
-    const parsed = JSON.parse(raw);
-    const uid = String(parsed?.uid || "").trim();
-    if (!uid) return null;
-    const name = String(parsed?.name || "").trim();
-    const handle = String(parsed?.handle || "").replace(/^@/, "").trim();
-    const avatar = String(parsed?.avatar || "").trim();
-    return { uid, name, handle, avatar, ts: Number(parsed?.ts || 0) || Date.now() };
-  } catch {
-    return null;
-  }
+  return readAuthBootstrapSnapshotCore({
+    safeStorage,
+    authSnapshotKey: STORAGE_KEYS.authSnapshot,
+    now: () => Date.now()
+  });
 }
 
 function writeAuthBootstrapSnapshot(snapshot = null) {
-  const source = snapshot && typeof snapshot === "object" ? snapshot : {};
-  const uid = String(source.uid || state.user?.uid || state.userProfile?.uid || "").trim();
-  if (!uid) return;
-  const name = sanitizeDisplayName(
-    source.name || state.userProfile?.name || state.user?.displayName || "",
-    ""
-  );
-  const handle = String(source.handle || state.userProfile?.handle || "").replace(/^@/, "").trim();
-  const avatarRaw = String(
-    source.avatar || state.userProfile?.avatar || state.user?.photoURL || userAvatarCache || ""
-  ).trim();
-  const avatarResolved = getOptimizedImageUrl(avatarRaw, "avatar");
-  const avatar = avatarResolved && !isPlaceholderUrl(avatarResolved) ? avatarRaw : "";
-  const payload = { uid, name, handle, avatar, ts: Date.now() };
+  const payload = buildAuthBootstrapSnapshotPayload({
+    snapshot,
+    user: state.user,
+    userProfile: state.userProfile,
+    userAvatarCache,
+    sanitizeDisplayName,
+    getOptimizedImageUrl,
+    isPlaceholderUrl,
+    now: () => Date.now()
+  });
+  if (!payload) return;
   authBootstrapSnapshot = payload;
-  safeStorage.setItem(STORAGE_KEYS.authSnapshot, JSON.stringify(payload));
+  persistAuthBootstrapSnapshot({
+    safeStorage,
+    authSnapshotKey: STORAGE_KEYS.authSnapshot,
+    payload
+  });
 }
 
 function clearAuthBootstrapSnapshot() {
   authBootstrapSnapshot = null;
-  safeStorage.removeItem(STORAGE_KEYS.authSnapshot);
+  clearAuthBootstrapSnapshotStorage({
+    safeStorage,
+    authSnapshotKey: STORAGE_KEYS.authSnapshot
+  });
 }
 
 function applyAuthBootstrapSnapshot(snapshot = authBootstrapSnapshot) {
-  if (!snapshot?.uid) return false;
-  const nextProfile = { ...DEFAULT_PROFILE, ...state.userProfile };
-  nextProfile.uid = snapshot.uid;
-  if (snapshot.name) nextProfile.name = sanitizeDisplayName(snapshot.name, nextProfile.name || "User");
-  if (snapshot.handle) nextProfile.handle = String(snapshot.handle || "").replace(/^@/, "").trim();
-  if (snapshot.avatar) nextProfile.avatar = String(snapshot.avatar || "").trim();
-  state.userProfile = nextProfile;
-  const resolved = getOptimizedImageUrl(nextProfile.avatar || "", "avatar");
-  if (resolved && !isPlaceholderUrl(resolved)) {
-    userAvatarCache = resolved;
-    lastShellAvatarUrl = resolved;
+  const result = applyAuthBootstrapSnapshotToProfile({
+    snapshot,
+    defaultProfile: DEFAULT_PROFILE,
+    currentProfile: state.userProfile,
+    sanitizeDisplayName,
+    getOptimizedImageUrl
+  });
+  if (!result.applied) return false;
+  state.userProfile = result.nextProfile;
+  if (result.resolvedAvatar && !isPlaceholderUrl(result.resolvedAvatar)) {
+    userAvatarCache = result.resolvedAvatar;
+    lastShellAvatarUrl = result.resolvedAvatar;
   }
   return true;
 }
