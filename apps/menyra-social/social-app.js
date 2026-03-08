@@ -1423,11 +1423,6 @@ function getCeoGpsOverride(profile = state.userProfile) {
   return { lat, lng };
 }
 
-function getAlbertCeoGpsOverride() {
-  if (!isAlbertCeoUser()) return null;
-  return getCeoGpsOverride(state.userProfile);
-}
-
 function normalizeLeadStatusKey(value) {
   const raw = String(value || "").trim().toLowerCase();
   if (!raw) return "";
@@ -3197,21 +3192,6 @@ function isActiveChatThreadBlocked(profile = state.chatModal.profile) {
   return !!thread?.blockedByOwner;
 }
 
-async function updateActiveChatThreadPrefs(patch = {}) {
-  const ownerUid = String(state.user?.uid || "").trim();
-  const threadId = getChatThreadId(state.chatModal.profile);
-  if (!ownerUid || !threadId || !patch || typeof patch !== "object") return;
-  const threadRef = chatThreadDocRef(ownerUid, threadId);
-  if (!threadRef) return;
-  upsertChatThread(state.chatModal.profile, patch);
-  render();
-  try {
-    await setDoc(threadRef, patch, { merge: true });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
 function getChatThreadId(profile = state.chatModal.profile) {
   return String(profile?.uid || profile?.restaurantId || profile?.handle || profile?.id || "").replace(/^@/, "").trim();
 }
@@ -3913,10 +3893,6 @@ async function sendChatMessage() {
   } catch (err) {
     console.error(err);
   }
-}
-
-function savePostMeta(meta) {
-  void meta;
 }
 
 function readCache(key, ttlMs) {
@@ -4962,10 +4938,6 @@ function normalizeCustomerScopeKey(value) {
 function formatPagedScopeCount(count = 0, hasMore = false) {
   const safeCount = Math.max(0, Number(count) || 0);
   return hasMore ? `${safeCount}+` : String(safeCount);
-}
-
-function resolvePagedScopeCount(count = 0, hasMore = false, isLoaded = false) {
-  return isLoaded ? formatPagedScopeCount(count, hasMore) : "...";
 }
 
 function resolveKnownScopeCountLabel(count = 0, isExact = false, isLoaded = false) {
@@ -6097,33 +6069,6 @@ async function resolveRoleSwitchTargets(user) {
     if (state.activeTab === "feed") return;
   }
   render();
-}
-
-function mapRestaurantToCard(rest, idx) {
-  const hash = Array.from(rest.id || "").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-  const x = 20 + ((hash + idx * 13) % 60);
-  const y = 20 + ((hash + idx * 29) % 55);
-  return {
-    ...rest,
-    x: `${x}%`,
-    y: `${y}%`,
-    rating: rest.rating || rest.score || 4.6,
-    hours: rest.hours || rest.openHours || "08:00 - 23:00",
-    img: rest.heroUrl || rest.coverUrl || rest.logoUrl || rest.logo || "",
-    desc: rest.description || rest.bio || `${BRAND_UI.title} Business`
-  };
-}
-
-function businessIcon(type) {
-  const value = normalizeLeadTypeKey(type) || String(type || "").toLowerCase();
-  if (["food", "restaurant", "cafe", "fastfood"].includes(value)) return "utensils";
-  if (["ecommerce", "lebensmittel"].includes(value)) return "shopping-bag";
-  if (["apotheken"].includes(value)) return "cross";
-  if (["tankstelle"].includes(value)) return "fuel";
-  if (["services"].includes(value)) return "wrench";
-  if (["live", "nightlife", "club", "bar"].includes(value)) return "radio";
-  if (["drink", "cocktail"].includes(value)) return "zap";
-  return "zap";
 }
 
 function ensureLeafletStylesheet() {
@@ -9531,30 +9476,6 @@ function renderMapView() {
   `;
 }
 
-function renderProfileGridItem(item) {
-  const counts = resolvePostCounts(item);
-  const postId = item.id ? String(item.id) : "";
-  const postAttr = postId ? `data-open-post="${escapeHtml(postId)}"` : "";
-  const likeAttr = postId ? `data-post-like-count="${escapeHtml(postId)}"` : "";
-  const commentAttr = postId ? `data-post-comment-count="${escapeHtml(postId)}"` : "";
-  const imgKeyAttr = postId ? `data-img-key="profile-post:${escapeHtml(postId)}"` : "";
-  return `
-    <button type="button" ${postAttr} class="rounded-[2.5rem] overflow-hidden shadow-md relative group text-left ${item.type === "wide" || item.type === "hero" ? "col-span-2 aspect-[2/1]" : "aspect-square"}">
-      <img src="${escapeHtml(item.url)}" loading="lazy" decoding="async" width="400" height="400" ${imgKeyAttr} class="w-full h-full object-cover" />
-      ${item.title ? `<div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent p-6 flex flex-col justify-end"><h3 class="text-white text-lg font-black italic">${escapeHtml(item.title)}</h3></div>` : ""}
-      <div class="absolute inset-x-0 bottom-0 p-3">
-        <div class="flex items-center justify-between text-white bg-black/45 backdrop-blur rounded-2xl px-3 py-2">
-          <div class="flex items-center gap-3 text-[10px] font-black">
-            <div class="flex items-center gap-1">${icon("heart", "w-3 h-3")}<span ${likeAttr}>${escapeHtml(counts.likeLabel)}</span></div>
-            <div class="flex items-center gap-1">${icon("message-circle", "w-3 h-3")}<span ${commentAttr}>${escapeHtml(counts.commentLabel)}</span></div>
-          </div>
-          ${item.isVideo ? `<div class="w-9 h-9 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center">${icon("play", "w-4 h-4")}</div>` : ""}
-        </div>
-      </div>
-    </button>
-  `;
-}
-
 function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   const counts = resolvePostCounts(item);
   const postId = item.id ? String(item.id) : "";
@@ -11310,29 +11231,6 @@ async function openProfileFromUser(input) {
     showPublicProfile(resolvedProfile, resolvedProfile.posts);
   } catch (err) {
     console.error(err);
-  }
-}
-
-async function loadFollowingFromFirebase({ force = false } = {}) {
-  void force;
-  if (!state.user) return;
-  try {
-    const ref = collection(db, "users", state.user.uid, "following");
-    const snap = await getDocs(ref);
-    const handles = [];
-    const targetIds = [];
-    snap.forEach((docSnap) => {
-      const data = docSnap.data() || {};
-      const handle = normalizeFollowHandle(data.handle || data.targetHandle || "");
-      if (handle) handles.push(handle);
-      const targetId = String(data.targetId || "").trim();
-      if (targetId) targetIds.push(targetId);
-    });
-    applyFollowingHandles(handles, { shouldRender: false, targetIds });
-  } catch (err) {
-    console.error(err);
-    state.followingHandles = [];
-    state.followingTargetIds = [];
   }
 }
 
@@ -13699,10 +13597,6 @@ function renderLeadsView() {
 
 function isLeadInlineCreateView() {
   return state.activeTab === "leads" && state.leads?.view === "create";
-}
-
-function isLeadInlineSettingsView() {
-  return state.activeTab === "leads" && state.leads?.view === "settings";
 }
 
 function renderLeadEditorUi() {

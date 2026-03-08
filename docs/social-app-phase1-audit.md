@@ -2,8 +2,8 @@
 
 ## Snapshot
 - Datei: `apps/menyra-social/social-app.js`
-- Zeilen: 20221
-- Top-Level Funktionen: 753
+- Zeilen: 19971
+- Top-Level Funktionen: 744
 - Aktueller Status: erster Shared-Storage Split bereits gemacht (`social-storage.js`)
 
 ## Strukturkarte (grob)
@@ -15,30 +15,22 @@
 - Main Render + Event-Bindings: ab 15340
 - Data/Firestore/CRM/Auth-Lader: ab 17656 bis Ende
 
-## Echte Remove-Kandidaten (statische Prüfung)
+## Echte Remove-Kandidaten (statische Pruefung)
 Kriterium: Funktionsname kommt genau 1x vor (nur Deklaration), keine Referenz in anderen Dateien.
 
-1. `getAlbertCeoGpsOverride` (Zeile 1425)
-2. `updateActiveChatThreadPrefs` (Zeile 3199)
-3. `savePostMeta` (Zeile 3917)
-4. `applyRestaurantMetaUpdate` (Zeile 4431)
-5. `resolvePagedScopeCount` (Zeile 4966)
-6. `mapRestaurantToCard` (Zeile 6101)
-7. `businessIcon` (Zeile 6116)
-8. `startFeedListener` (Zeile 9046)
-9. `areProfilePostsEquivalent` (Zeile 9198)
-10. `startUserPostsListener` (Zeile 9256)
-11. `startBusinessPostsListener` (Zeile 9307)
-12. `renderProfileGridItem` (Zeile 9533)
-13. `loadFollowingFromFirebase` (Zeile 11315)
-14. `isLeadInlineSettingsView` (Zeile 13703)
-15. `updateRestaurantSelection` (Zeile 17302)
-16. `startRestaurantsListener` (Zeile 17634)
-17. `loadFeedDelta` (Zeile 17967)
-18. `ensureSocialBusinessProfile` (Zeile 18951)
-19. `ensureCeoStaffIndexLoaded` (Zeile 19521)
-20. `fetchCeoScopedRows` (Zeile 19531)
-21. `loadStories` (Zeile 21377)
+1. `applyRestaurantMetaUpdate` (Zeile 4407)
+2. `formatPagedScopeCount` (Zeile 4937)
+3. `startFeedListener` (Zeile 8991)
+4. `areProfilePostsEquivalent` (Zeile 9143)
+5. `startUserPostsListener` (Zeile 9201)
+6. `startBusinessPostsListener` (Zeile 9252)
+7. `updateRestaurantSelection` (Zeile 17196)
+8. `startRestaurantsListener` (Zeile 17528)
+9. `loadFeedDelta` (Zeile 17861)
+10. `ensureSocialBusinessProfile` (Zeile 18845)
+11. `ensureCeoStaffIndexLoaded` (Zeile 19415)
+12. `fetchCeoScopedRows` (Zeile 19425)
+13. `loadStories` (Zeile 21271)
 
 ## Batch A erledigt
 Entfernt (statisch unreferenziert, no-op/legacy-helper):
@@ -61,6 +53,18 @@ Entfernt (statisch unreferenziert):
 6. `openProfileFromBusiness`
 7. `getImageKey`
 
+## Batch C erledigt
+Entfernt (statisch unreferenziert):
+1. `getAlbertCeoGpsOverride`
+2. `updateActiveChatThreadPrefs`
+3. `savePostMeta`
+4. `resolvePagedScopeCount`
+5. `mapRestaurantToCard`
+6. `businessIcon`
+7. `renderProfileGridItem`
+8. `loadFollowingFromFirebase`
+9. `isLeadInlineSettingsView`
+
 ## Legacy-Bloecke (nicht sofort loeschen)
 - Chat Legacy-Migration (`rebuildLegacyChatThreadIndexFromStorage`, `loadLegacyChatThreadMessages`)
 - Notifications/Following Legacy-Migration (`legacyNotifs`, `legacyFollowing`)
@@ -70,9 +74,9 @@ Entfernt (statisch unreferenziert):
 Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage final entscheiden.
 
 ## Konkreter Ablauf ab jetzt
-1. Batch C: 6-8 Low-Risk Remove-Kandidaten entfernen, Check + Smoke + Commit.
-2. Batch D: naechste 6-8 Remove-Kandidaten, Check + Smoke + Commit.
-3. Batch E: Rest Remove-Kandidaten, Check + Smoke + Commit.
+1. Batch D: 6-8 Low-Risk Remove-Kandidaten entfernen, Check + Smoke + Commit.
+2. Batch E: naechste 6-8 Remove-Kandidaten, Check + Smoke + Commit.
+3. Batch F: Rest Remove-Kandidaten, Check + Smoke + Commit.
 4. Danach Core-Split starten (`core/state.js`, `core/bootstrap.js`, `core/render.js`).
 
 ## Gate pro Batch
