@@ -963,14 +963,6 @@ function resolveShellAvatarUrl() {
   return PLACEHOLDER_IMAGE;
 }
 
-function captureShellAvatarFromDom() {
-  return;
-}
-
-function getLiveAvatarFromDom() {
-  return "";
-}
-
 function getSelfAvatarUrl() {
   const raw = state.userProfile.avatar || state.user?.photoURL || userAvatarCache || "";
   const url = getOptimizedImageUrl(raw, "avatar");
@@ -995,21 +987,6 @@ function primeSelfAvatarCache(url) {
 
 function resolveUserAvatarInstant(raw) {
   return resolveUserAvatar(raw);
-}
-
-function resolveSearchUserAvatar(uid, raw) {
-  const url = getOptimizedImageUrl(raw, "avatar");
-  if (uid) {
-    if (!isPlaceholderUrl(url)) {
-      if (userSearchAvatarCache.get(uid) !== url) {
-        userSearchAvatarCache.set(uid, url);
-      }
-      return url;
-    }
-    const cached = userSearchAvatarCache.get(uid);
-    if (cached) return cached;
-  }
-  return getOptimizedImageUrl("", "avatar");
 }
 
 function resolveSearchUserAvatarDisplay(user) {
@@ -1947,15 +1924,6 @@ function customerStatusLabel(value) {
   if (key === "contacted") return "Kontaktiert";
   if (key === "kunde") return "Kunde";
   return String(value || "").toUpperCase();
-}
-
-function slugify(input) {
-  return String(input || "")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "")
-    .slice(0, 60) || "kunde";
 }
 
 function isCustomerRestaurant(rest = {}) {
@@ -15224,117 +15192,6 @@ function getImageKey(img) {
   const notif = img.closest("[data-notif-open]");
   if (notif?.dataset.notifOpen) return `notif-avatar:${notif.dataset.notifOpen}`;
   return "";
-}
-
-function cacheCurrentImages(root = appEl) {
-  const cache = { byKey: new Map(), bySrc: new Map() };
-  if (!root) return cache;
-  root.querySelectorAll("img").forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    const src = img.currentSrc || img.getAttribute("src") || "";
-    if (!src || isPlaceholderUrl(src)) return;
-    const key = getImageKey(img);
-    if (key) {
-      const list = cache.byKey.get(key);
-      if (list) list.push(img);
-      else cache.byKey.set(key, [img]);
-    }
-    const bySrc = cache.bySrc.get(src);
-    if (bySrc) bySrc.push(img);
-    else cache.bySrc.set(src, [img]);
-  });
-  return cache;
-}
-
-function syncImageAttributes(target, source, { preserveSource = true } = {}) {
-  if (!target || !source) return;
-  target.className = source.className;
-  target.style.cssText = source.style.cssText || "";
-  target.width = source.width;
-  target.height = source.height;
-  if (source.alt) {
-    target.alt = source.alt;
-  } else {
-    target.removeAttribute("alt");
-  }
-  if (source.loading) {
-    target.loading = source.loading;
-  } else {
-    target.removeAttribute("loading");
-  }
-  if (source.decoding) {
-    target.decoding = source.decoding;
-  } else {
-    target.removeAttribute("decoding");
-  }
-  const fetchPriority = source.getAttribute("fetchpriority");
-  if (fetchPriority) {
-    target.setAttribute("fetchpriority", fetchPriority);
-  } else {
-    target.removeAttribute("fetchpriority");
-  }
-  if (source.referrerPolicy) {
-    target.referrerPolicy = source.referrerPolicy;
-  } else {
-    target.removeAttribute("referrerpolicy");
-  }
-  if (!preserveSource) {
-    if (source.sizes) {
-      target.sizes = source.sizes;
-    } else {
-      target.removeAttribute("sizes");
-    }
-    if (source.srcset) {
-      target.srcset = source.srcset;
-    } else {
-      target.removeAttribute("srcset");
-    }
-  }
-  Object.keys(target.dataset).forEach((key) => {
-    if (!(key in source.dataset)) delete target.dataset[key];
-  });
-  Object.keys(source.dataset).forEach((key) => {
-    target.dataset[key] = source.dataset[key];
-  });
-}
-
-function queueImageSwap(target, source) {
-  if (!target || !source) return;
-  const nextSrc = source.currentSrc || source.getAttribute("src") || "";
-  if (!nextSrc || isPlaceholderUrl(nextSrc)) return;
-  if (target.dataset.pendingSrc === nextSrc) return;
-  target.dataset.pendingSrc = nextSrc;
-  const loader = new Image();
-  const nextSrcset = source.getAttribute("srcset") || "";
-  const nextSizes = source.getAttribute("sizes") || "";
-  if (nextSrcset) loader.srcset = nextSrcset;
-  if (nextSizes) loader.sizes = nextSizes;
-  loader.decoding = "async";
-  loader.onload = () => {
-    if (target.dataset.pendingSrc !== nextSrc) return;
-    target.src = nextSrc;
-    if (nextSrcset) {
-      target.srcset = nextSrcset;
-    } else {
-      target.removeAttribute("srcset");
-    }
-    if (nextSizes) {
-      target.sizes = nextSizes;
-    } else {
-      target.removeAttribute("sizes");
-    }
-    delete target.dataset.pendingSrc;
-  };
-  loader.onerror = () => {
-    if (target.dataset.pendingSrc === nextSrc) {
-      delete target.dataset.pendingSrc;
-    }
-  };
-  loader.src = nextSrc;
-}
-
-function rehydrateImages() {
-  return;
 }
 
 function render() {
