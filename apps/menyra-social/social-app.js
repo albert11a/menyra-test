@@ -193,6 +193,11 @@ import {
 import { highlightCommentInModalCore } from "./core/notification-comment-highlight-utils.js";
 import { buildFollowAcceptedFollowingStateCore } from "./core/follow-accepted-state-utils.js";
 import {
+  buildResolveUserByHandleCandidatesCore,
+  deriveFollowTargetIdentityCore,
+  isSelfFollowTargetCore
+} from "./core/follow-target-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -11299,9 +11304,10 @@ async function openNotificationTarget(id) {
 
 async function resolveUserByHandle(handle) {
   if (!handle) return null;
-  const rawHandle = String(handle || "").replace(/^@/, "").trim();
-  const normalizedHandle = normalizeFollowHandle(rawHandle);
-  const candidates = Array.from(new Set([rawHandle, normalizedHandle].filter(Boolean)));
+  const candidates = buildResolveUserByHandleCandidatesCore({
+    handle,
+    normalizeFollowHandle: (value) => normalizeFollowHandle(value)
+  });
   for (const candidate of candidates) {
     try {
       const snap = await getDocs(query(collection(db, "users"), where("handle", "==", candidate), limit(1)));
@@ -11325,17 +11331,7 @@ async function toggleFollow(handle, target = {}) {
   const safeHandle = normalizeFollowHandle(rawHandle);
   if (!safeHandle) return;
 
-  let targetType = target.type || "";
-  let targetId = target.id || "";
-  if (!targetType) {
-    if (target.restaurantId) {
-      targetType = "restaurant";
-      targetId = target.restaurantId;
-    } else if (target.uid) {
-      targetType = "user";
-      targetId = target.uid;
-    }
-  }
+  let { targetType, targetId } = deriveFollowTargetIdentityCore(target);
 
   if (!targetId && (rawHandle || safeHandle)) {
     const userSnap = await resolveUserByHandle(rawHandle || safeHandle);
@@ -11348,9 +11344,14 @@ async function toggleFollow(handle, target = {}) {
   const ownRestaurantId = String(state.userProfile.restaurantId || "");
   const ownUid = String(state.user.uid || "");
   const ownHandle = String(state.userProfile.handle || "").replace(/^@/, "").toLowerCase();
-  if (targetType === "restaurant" && ownRestaurantId && String(targetId) === ownRestaurantId) return;
-  if (targetType === "user" && ownUid && String(targetId) === ownUid) return;
-  if (!targetId && ownHandle && safeHandle.toLowerCase() === ownHandle) return;
+  if (isSelfFollowTargetCore({
+    targetType,
+    targetId,
+    safeHandle,
+    ownRestaurantId,
+    ownUid,
+    ownHandle
+  })) return;
 
   const idx = state.followingHandles.indexOf(safeHandle);
   const safeTargetId = String(targetId || "").trim();
