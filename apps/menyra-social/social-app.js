@@ -500,6 +500,11 @@ import {
   scrollChatMessagesToBottomCore,
   autosizeTextareaCore
 } from "./core/chat-dom-utils.js";
+import {
+  bindProfileOverlayEventsCore,
+  bindLikesOverlayEventsCore,
+  bindCustomerOverlayEventsCore
+} from "./core/overlay-basic-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14150,37 +14155,13 @@ function bindOverlayEvents({
     document.addEventListener("touchstart", closeHandler, { capture: true, passive: false });
   }
   if (profileChanged) {
-    const profileModalOverlay = document.getElementById("profileModalOverlay");
-    const profileModalClose = document.getElementById("profileModalClose");
-    const profileChatBtn = document.getElementById("profileChatBtn");
-    const profileFollowBtn = document.getElementById("profileFollowBtn");
-    const profileOpenBtn = document.getElementById("profileOpenBtn");
-    bindModalDismiss(profileModalOverlay, closeProfileModal, { selfOnly: true });
-    bindModalDismiss(profileModalClose, closeProfileModal);
-    if (profileChatBtn) {
-      profileChatBtn.addEventListener("click", () => {
-        openChatWithProfile({
-          uid: profileChatBtn.dataset.chatUid || "",
-          handle: profileChatBtn.dataset.chatHandle || "",
-          name: profileChatBtn.dataset.chatName || "User",
-          avatar: profileChatBtn.dataset.chatAvatar || ""
-        });
-      });
-    }
-    if (profileFollowBtn) {
-      profileFollowBtn.addEventListener("click", () => {
-        const handle = profileFollowBtn.dataset.handle;
-        if (!handle) return;
-        toggleFollow(handle, {
-          type: profileFollowBtn.dataset.targetType || "",
-          id: profileFollowBtn.dataset.targetId || "",
-          name: profileFollowBtn.dataset.targetName || "",
-          avatar: profileFollowBtn.dataset.targetAvatar || ""
-        });
-      });
-    }
-    if (profileOpenBtn) {
-      profileOpenBtn.addEventListener("click", () => {
+    bindProfileOverlayEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      bindModalDismissFn: bindModalDismiss,
+      closeProfileModalFn: closeProfileModal,
+      openChatWithProfileFn: openChatWithProfile,
+      toggleFollowFn: toggleFollow,
+      onProfileOpenFn: () => {
         if (!state.profileModal.profile) return;
         state.profileView = {
           profile: state.profileModal.profile,
@@ -14189,8 +14170,8 @@ function bindOverlayEvents({
         state.profileModal = { open: false, profile: null };
         state.activeTab = "profile";
         render();
-      });
-    }
+      }
+    });
   }
 
   if (chatChanged) {
@@ -14300,10 +14281,11 @@ function bindOverlayEvents({
   }
 
   if (likesChanged) {
-    const likesModalOverlay = document.getElementById("likesModalOverlay");
-    const likesModalClose = document.getElementById("likesModalClose");
-    bindModalDismiss(likesModalOverlay, closeLikesModal, { selfOnly: true });
-    bindModalDismiss(likesModalClose, closeLikesModal);
+    bindLikesOverlayEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      bindModalDismissFn: bindModalDismiss,
+      closeLikesModalFn: closeLikesModal
+    });
   }
 
   if (menuChanged) {
@@ -14685,46 +14667,14 @@ function bindOverlayEvents({
   }
 
   if (customerChanged) {
-    const customerOverlay = document.getElementById("customerModalOverlay");
-    const customerClose = document.getElementById("customerModalClose");
-    const customerSave = document.getElementById("customerModalSave");
-    const customerLogoTrigger = document.getElementById("customerLogoTrigger");
-    const customerLogoInput = document.getElementById("customerLogoInput");
-    const customerLogoUrl = document.getElementById("customerLogoUrl");
-
-    bindModalDismiss(customerOverlay, closeCustomerModal, { selfOnly: true });
-    bindModalDismiss(customerClose, closeCustomerModal);
-    if (customerSave) {
-      customerSave.addEventListener("click", () => {
-        if (state.customerModal.loading) return;
-        void saveCustomerFromModal();
-      });
-    }
-    if (customerLogoTrigger && customerLogoInput) {
-      customerLogoTrigger.addEventListener("click", () => customerLogoInput.click());
-    }
-    if (customerLogoInput) {
-      customerLogoInput.addEventListener("change", (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        state.customerModal.logoFile = file;
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const preview = String(reader.result || "");
-          state.customerModal.logoPreview = preview;
-          const img = document.getElementById("customerLogoPreview");
-          if (img && preview) img.setAttribute("src", preview);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-    if (customerLogoUrl) {
-      customerLogoUrl.addEventListener("input", () => {
-        const val = customerLogoUrl.value.trim();
-        const img = document.getElementById("customerLogoPreview");
-        if (img) img.setAttribute("src", val || PLACEHOLDER_IMAGE);
-      });
-    }
+    bindCustomerOverlayEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      bindModalDismissFn: bindModalDismiss,
+      closeCustomerModalFn: closeCustomerModal,
+      saveCustomerFromModalFn: saveCustomerFromModal,
+      state,
+      placeholderImage: PLACEHOLDER_IMAGE
+    });
   }
 
   if (menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged) {
