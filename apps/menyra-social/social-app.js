@@ -353,6 +353,15 @@ import {
   getPrimaryLeadLocationCore
 } from "./core/lead-location-utils.js";
 import {
+  isRestaurantMarkedDeletedCore,
+  forceHiddenEmailLocalPartCore,
+  isForceHiddenHandleCore,
+  isForceHiddenUidCore,
+  isForceHiddenEmailCore,
+  isForceHiddenBusinessEntityCore,
+  isPublicBusinessRecordCore
+} from "./core/business-visibility-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -1708,72 +1717,53 @@ function normalizeLeadStatusKey(value) {
 }
 
 function isRestaurantMarkedDeleted(rest = {}) {
-  if (!rest || typeof rest !== "object") return false;
-  if (rest.deleted === true || rest.isDeleted === true || rest.hiddenFromDiscover === true) return true;
-  if (rest.deletedAt) return true;
-  const statusKey = normalizeLeadStatusKey(rest.status || rest.state || "");
-  return statusKey === "deleted";
+  return isRestaurantMarkedDeletedCore(rest, {
+    normalizeLeadStatusKeyFn: normalizeLeadStatusKey
+  });
 }
 
 function forceHiddenEmailLocalPart(value = "") {
-  const email = normalizeEmailValue(value);
-  const atIndex = email.indexOf("@");
-  if (atIndex <= 0) return "";
-  return email.slice(0, atIndex);
+  return forceHiddenEmailLocalPartCore(value, {
+    normalizeEmailValueFn: normalizeEmailValue
+  });
 }
 
 function isForceHiddenHandle(value = "") {
-  const key = normalizeHandle(value || "");
-  return !!key && FORCE_HIDDEN_SOCIAL_HANDLE_SET.has(key);
+  return isForceHiddenHandleCore(value, {
+    normalizeHandleFn: normalizeHandle,
+    forceHiddenSocialHandleSet: FORCE_HIDDEN_SOCIAL_HANDLE_SET
+  });
 }
 
 function isForceHiddenUid(value = "") {
-  const key = String(value || "").trim();
-  return !!key && FORCE_HIDDEN_SOCIAL_UID_SET.has(key);
+  return isForceHiddenUidCore(value, {
+    forceHiddenSocialUidSet: FORCE_HIDDEN_SOCIAL_UID_SET
+  });
 }
 
 function isForceHiddenEmail(value = "") {
-  const localPart = forceHiddenEmailLocalPart(value);
-  return !!localPart && FORCE_HIDDEN_SOCIAL_HANDLE_SET.has(localPart);
+  return isForceHiddenEmailCore(value, {
+    forceHiddenEmailLocalPartFn: forceHiddenEmailLocalPart,
+    forceHiddenSocialHandleSet: FORCE_HIDDEN_SOCIAL_HANDLE_SET
+  });
 }
 
 function isForceHiddenBusinessEntity(entity = {}) {
-  if (!entity || typeof entity !== "object") return false;
-  if (getRestaurantUidCandidates(entity).some((value) => isForceHiddenUid(value))) return true;
-  if (getRestaurantEmailCandidates(entity).some((value) => isForceHiddenEmail(value))) return true;
-
-  const handleCandidates = [
-    entity.handle,
-    entity.ownerHandle,
-    entity.socialHandle,
-    entity.userHandle,
-    entity.accountHandle,
-    entity.username,
-    entity.ownerUsername,
-    entity.socialUsername,
-    entity.createdByHandle
-  ].map((value) => normalizeHandle(value || "")).filter(Boolean);
-
-  [entity.id, entity.restaurantId, entity.ownerId].forEach((value) => {
-    const key = normalizeHandle(value || "");
-    if (key) handleCandidates.push(key);
+  return isForceHiddenBusinessEntityCore(entity, {
+    getRestaurantUidCandidatesFn: getRestaurantUidCandidates,
+    isForceHiddenUidFn: isForceHiddenUid,
+    getRestaurantEmailCandidatesFn: getRestaurantEmailCandidates,
+    isForceHiddenEmailFn: isForceHiddenEmail,
+    normalizeHandleFn: normalizeHandle,
+    isForceHiddenHandleFn: isForceHiddenHandle
   });
-
-  [entity.name, entity.restaurantName, entity.displayName, entity.businessName].forEach((value) => {
-    const raw = String(value || "").trim();
-    if (!raw.startsWith("@")) return;
-    const key = normalizeHandle(raw);
-    if (key) handleCandidates.push(key);
-  });
-
-  return handleCandidates.some((value) => isForceHiddenHandle(value));
 }
 
 function isPublicBusinessRecord(rest = {}) {
-  if (!rest || typeof rest !== "object") return false;
-  if (isRestaurantMarkedDeleted(rest)) return false;
-  if (isForceHiddenBusinessEntity(rest)) return false;
-  return true;
+  return isPublicBusinessRecordCore(rest, {
+    isRestaurantMarkedDeletedFn: isRestaurantMarkedDeleted,
+    isForceHiddenBusinessEntityFn: isForceHiddenBusinessEntity
+  });
 }
 
 function normalizeLeadTypeKey(value) {
