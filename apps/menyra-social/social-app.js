@@ -276,6 +276,7 @@ import {
   renderFocusModalCore
 } from "./core/customer-focus-modal-render-utils.js";
 import { bindOverlayEventsCore } from "./core/overlay-bind-orchestrator-utils.js";
+import { renderOverlaysCore } from "./core/overlay-render-orchestrator-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
 import { saveLeadFromModalCore } from "./core/lead-save-utils.js";
 import { deleteLeadFromModalCore } from "./core/lead-delete-utils.js";
@@ -541,6 +542,7 @@ import {
   bindCrmStaffEventsCore,
   bindLeadInlineCreateEventsCore
 } from "./core/app-events-crm-staff-bind-utils.js";
+import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events-main-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -13042,130 +13044,25 @@ function syncModalOpenUiState() {
 }
 
 function renderOverlays(options = {}) {
-  const updateProfile = Object.prototype.hasOwnProperty.call(options, "updateProfile")
-    ? options.updateProfile
-    : !state.likesModal.open;
-  const updateChat = Object.prototype.hasOwnProperty.call(options, "updateChat")
-    ? options.updateChat
-    : false;
-  const updatePost = Object.prototype.hasOwnProperty.call(options, "updatePost")
-    ? options.updatePost
-    : !state.likesModal.open;
-  const updateLikes = Object.prototype.hasOwnProperty.call(options, "updateLikes")
-    ? options.updateLikes
-    : !state.likesModal.open;
-  const updateMenu = Object.prototype.hasOwnProperty.call(options, "updateMenu")
-    ? options.updateMenu
-    : !state.likesModal.open;
-  const updateMenuDetail = Object.prototype.hasOwnProperty.call(options, "updateMenuDetail")
-    ? options.updateMenuDetail
-    : !state.likesModal.open;
-  const updateFocus = Object.prototype.hasOwnProperty.call(options, "updateFocus")
-    ? options.updateFocus
-    : !state.likesModal.open;
-  const updateLead = Object.prototype.hasOwnProperty.call(options, "updateLead")
-    ? options.updateLead
-    : !state.likesModal.open;
-  const updateCustomer = Object.prototype.hasOwnProperty.call(options, "updateCustomer")
-    ? options.updateCustomer
-    : !state.likesModal.open;
-  const root = ensureOverlayRoot();
-  const profileRoot = document.getElementById("profileOverlayRoot");
-  const chatRoot = document.getElementById("chatOverlayRoot");
-  const postRoot = document.getElementById("postOverlayRoot");
-  const likesRoot = document.getElementById("likesOverlayRoot");
-  const menuRoot = document.getElementById("menuOverlayRoot");
-  const menuDetailRoot = document.getElementById("menuDetailOverlayRoot");
-  const focusRoot = document.getElementById("focusOverlayRoot");
-  const leadRoot = document.getElementById("leadOverlayRoot");
-  const customerRoot = document.getElementById("customerOverlayRoot");
-  let profileChanged = false;
-  let chatChanged = false;
-  let postChanged = false;
-  let likesChanged = false;
-  let menuChanged = false;
-  let menuDetailChanged = false;
-  let focusChanged = false;
-  let leadChanged = false;
-  let customerChanged = false;
-
-  if (updateProfile) {
-    const profileHtml = renderProfileModal();
-    profileChanged = profileHtml !== overlayCache.profile;
-    if (profileRoot && profileChanged) {
-      profileRoot.innerHTML = profileHtml;
-      overlayCache.profile = profileHtml;
-    }
-  }
-  if (updateChat) {
-    const chatHtml = renderChatModal();
-    chatChanged = chatHtml !== overlayCache.chat;
-    if (chatRoot && chatChanged) {
-      chatRoot.innerHTML = chatHtml;
-      overlayCache.chat = chatHtml;
-    }
-  }
-  if (updatePost) {
-    const postHtml = renderPostModal();
-    postChanged = postHtml !== overlayCache.post;
-    if (postRoot && postChanged) {
-      postRoot.innerHTML = postHtml;
-      overlayCache.post = postHtml;
-    }
-  }
-  if (updateLikes) {
-    const likesHtml = renderLikesModal();
-    likesChanged = likesHtml !== overlayCache.likes;
-    if (likesRoot && likesChanged) {
-      likesRoot.innerHTML = likesHtml;
-      overlayCache.likes = likesHtml;
-    }
-  }
-  if (updateMenu) {
-    const menuHtml = renderMenuItemModal();
-    menuChanged = menuHtml !== overlayCache.menu;
-    if (menuRoot && menuChanged) {
-      menuRoot.innerHTML = menuHtml;
-      overlayCache.menu = menuHtml;
-    }
-  }
-  if (updateMenuDetail) {
-    const detailHtml = renderMenuDetailModal();
-    menuDetailChanged = detailHtml !== overlayCache.menuDetail;
-    if (menuDetailRoot && menuDetailChanged) {
-      menuDetailRoot.innerHTML = detailHtml;
-      overlayCache.menuDetail = detailHtml;
-    }
-  }
-  if (updateFocus) {
-    const focusHtml = renderFocusModal();
-    focusChanged = focusHtml !== overlayCache.focus;
-    if (focusRoot && focusChanged) {
-      focusRoot.innerHTML = focusHtml;
-      overlayCache.focus = focusHtml;
-    }
-  }
-  if (updateLead) {
-    const leadHtml = renderLeadModal();
-    leadChanged = leadHtml !== overlayCache.lead;
-    if (leadRoot && leadChanged) {
-      leadRoot.innerHTML = leadHtml;
-      overlayCache.lead = leadHtml;
-    }
-  }
-  if (updateCustomer) {
-    const customerHtml = renderCustomerModal();
-    customerChanged = customerHtml !== overlayCache.customer;
-    if (customerRoot && customerChanged) {
-      customerRoot.innerHTML = customerHtml;
-      overlayCache.customer = customerHtml;
-    }
-  }
-  syncModalOpenUiState();
-  if (window.lucide?.createIcons && (profileChanged || chatChanged || postChanged || likesChanged || menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged)) {
-    window.lucide.createIcons();
-  }
-  bindOverlayEvents({ profileChanged, chatChanged, postChanged, likesChanged, menuChanged, menuDetailChanged, focusChanged, leadChanged, customerChanged });
+  return renderOverlaysCore({
+    options,
+    state,
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    ensureOverlayRootFn: ensureOverlayRoot,
+    renderProfileModalFn: renderProfileModal,
+    renderChatModalFn: renderChatModal,
+    renderPostModalFn: renderPostModal,
+    renderLikesModalFn: renderLikesModal,
+    renderMenuItemModalFn: renderMenuItemModal,
+    renderMenuDetailModalFn: renderMenuDetailModal,
+    renderFocusModalFn: renderFocusModal,
+    renderLeadModalFn: renderLeadModal,
+    renderCustomerModalFn: renderCustomerModal,
+    overlayCache,
+    syncModalOpenUiStateFn: syncModalOpenUiState,
+    bindOverlayEventsFn: bindOverlayEvents
+  });
 }
 
 function bindImageFallbacks(root = document) {
@@ -13499,9 +13396,10 @@ function bindCrmAutoLoadObserver() {
 }
 
 function bindAppEvents() {
-  bindAppShellEventsCore({
+  return bindAppEventsMainCore({
     documentObj: typeof document === "undefined" ? null : document,
     state,
+    bindAppShellEventsCoreFn: bindAppShellEventsCore,
     setStateFn: setState,
     signOutFn: signOut,
     auth,
@@ -13521,13 +13419,8 @@ function bindAppEvents() {
     normalizeAuthModeFn: normalizeAuthMode,
     renderFn: render,
     ensureMenuDataForProfileFn: ensureMenuDataForProfile,
-    ensureFocusDataForProfileFn: ensureFocusDataForProfile
-  });
-
-  const menuFocusBinding = bindAppMenuFocusEventsCore({
-    documentObj: typeof document === "undefined" ? null : document,
-    state,
-    renderFn: render,
+    ensureFocusDataForProfileFn: ensureFocusDataForProfile,
+    bindAppMenuFocusEventsCoreFn: bindAppMenuFocusEventsCore,
     saveMenuLayoutToStorageFn: saveMenuLayoutToStorage,
     openMenuModalFn: openMenuModal,
     deleteMenuItemByIdFn: deleteMenuItemById,
@@ -13547,16 +13440,12 @@ function bindAppEvents() {
     deleteProfilePostFn: deleteProfilePost,
     setProfileMenuOpenFn: setProfileMenuOpen,
     profileMenuBound,
+    setProfileMenuBoundFn: (next) => {
+      profileMenuBound = !!next;
+    },
     mapLocateFn: mapLocate,
-    bindNotificationsDelegationFn: bindNotificationsDelegation
-  });
-  profileMenuBound = !!menuFocusBinding?.profileMenuBound;
-
-  bindAppSettingsProfileEventsCore({
-    documentObj: typeof document === "undefined" ? null : document,
-    state,
-    setStateFn: setState,
-    renderFn: render,
+    bindNotificationsDelegationFn: bindNotificationsDelegation,
+    bindAppSettingsProfileEventsCoreFn: bindAppSettingsProfileEventsCore,
     iconFn: icon,
     saveAccountSettingsFn: saveAccountSettings,
     openLocationPickerFn: openLocationPicker,
@@ -13578,13 +13467,8 @@ function bindAppEvents() {
       profileViewUnsub = next;
     },
     toggleFollowFn: toggleFollow,
-    alertFn: (msg) => alert(msg)
-  });
-
-  bindAppChatUploadEventsCore({
-    documentObj: typeof document === "undefined" ? null : document,
-    state,
-    renderFn: render,
+    alertFn: (msg) => alert(msg),
+    bindAppChatUploadEventsCoreFn: bindAppChatUploadEventsCore,
     openChatWithProfileFn: openChatWithProfile,
     deleteChatThreadByIdFn: deleteChatThreadById,
     setChatThreadArchivedByIdFn: setChatThreadArchivedById,
@@ -13596,38 +13480,28 @@ function bindAppEvents() {
     sendChatMessageFn: sendChatMessage,
     scrollChatMessagesToBottomFn: scrollChatMessagesToBottom,
     queueMicrotaskFn: (fn) => queueMicrotask(fn),
-    handleUploadPostFn: handleUploadPost
-  });
-
-  bindCrmStaffEventsCore({
-    documentObj: typeof document === "undefined" ? null : document,
-    state,
-    renderFn: render,
+    handleUploadPostFn: handleUploadPost,
+    bindCrmStaffEventsCoreFn: bindCrmStaffEventsCore,
     openLeadCreatorFn: openLeadCreator,
     openLeadSettingsViewFn: openLeadSettingsView,
     closeLeadSubviewFn: closeLeadSubview,
     saveLeadSettingsFn: saveLeadSettings,
     isLeadInlineCreateViewFn: isLeadInlineCreateView,
-    bindLeadInlineCreateEventsFn: () => bindLeadInlineCreateEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      state,
-      renderFn: render,
-      deleteLeadFromModalFn: deleteLeadFromModal,
-      saveLeadFromModalFn: saveLeadFromModal,
-      syncLeadDerivedFieldsFn: syncLeadDerivedFields,
-      addLeadModalLocationRowFn: addLeadModalLocationRow,
-      removeLeadModalLocationRowFn: removeLeadModalLocationRow,
-      syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
-      openLocationPickerFn: openLocationPicker,
-      normalizeLeadLocationsFn: normalizeLeadLocations,
-      createLeadLocationFn: createLeadLocation,
-      parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
-      getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
-      hasLeadLocationCoordsFn: hasLeadLocationCoords,
-      getPrimaryLeadLocationFn: getPrimaryLeadLocation,
-      hydrateLeadGeoFieldsFromCoordsFn: hydrateLeadGeoFieldsFromCoords,
-      refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex
-    }),
+    bindLeadInlineCreateEventsCoreFn: bindLeadInlineCreateEventsCore,
+    deleteLeadFromModalFn: deleteLeadFromModal,
+    saveLeadFromModalFn: saveLeadFromModal,
+    syncLeadDerivedFieldsFn: syncLeadDerivedFields,
+    addLeadModalLocationRowFn: addLeadModalLocationRow,
+    removeLeadModalLocationRowFn: removeLeadModalLocationRow,
+    syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
+    normalizeLeadLocationsFn: normalizeLeadLocations,
+    createLeadLocationFn: createLeadLocation,
+    parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
+    getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
+    hasLeadLocationCoordsFn: hasLeadLocationCoords,
+    getPrimaryLeadLocationFn: getPrimaryLeadLocation,
+    hydrateLeadGeoFieldsFromCoordsFn: hydrateLeadGeoFieldsFromCoords,
+    refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex,
     normalizeLeadScopeKeyFn: normalizeLeadScopeKey,
     loadLeadsFn: loadLeads,
     openLeadModalFn: openLeadModal,
@@ -13639,14 +13513,12 @@ function bindAppEvents() {
     syncStaffDerivedEmailFieldFn: syncStaffDerivedEmailField,
     normalizeCeoCountryFn: normalizeCeoCountry,
     syncStaffFormFromDomFn: syncStaffFormFromDom,
-    openLocationPickerFn: openLocationPicker,
     saveCeoStaffFromViewFn: saveCeoStaffFromView,
-    deleteCeoStaffFromViewFn: deleteCeoStaffFromView
+    deleteCeoStaffFromViewFn: deleteCeoStaffFromView,
+    bindImageFallbacksFn: bindImageFallbacks,
+    bindCrmAutoLoadObserverFn: bindCrmAutoLoadObserver,
+    bindSearchEventsFn: bindSearchEvents
   });
-
-  bindImageFallbacks();
-  bindCrmAutoLoadObserver();
-  bindSearchEvents();
 }
 
 function bindSearchEvents() {
