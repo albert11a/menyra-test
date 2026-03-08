@@ -348,6 +348,11 @@ import {
   parseCoordsFromAddressInputAsyncCore
 } from "./core/plus-code-utils.js";
 import {
+  createLeadLocationCore,
+  normalizeLeadLocationsCore,
+  getPrimaryLeadLocationCore
+} from "./core/lead-location-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -1951,50 +1956,23 @@ function parseCoordsFromAddressInput(value, refCoords = null) {
 }
 
 function createLeadLocation({ address = "", lat = null, lng = null } = {}) {
-  const nextAddress = String(address || "").trim();
-  const nextLat = Number(lat);
-  const nextLng = Number(lng);
-  return {
-    address: nextAddress,
-    lat: Number.isFinite(nextLat) ? nextLat : null,
-    lng: Number.isFinite(nextLng) ? nextLng : null
-  };
+  return createLeadLocationCore({ address, lat, lng });
 }
 
 function normalizeLeadLocations(locations, fallbackAddress = "", fallbackCoords = null) {
-  const source = Array.isArray(locations) ? locations : [];
-  const list = source.map((entry) => {
-    const row = entry || {};
-    const directCoords = resolveCoordsFromEntity(row);
-    return createLeadLocation({
-      address: row.address || row.label || "",
-      lat: directCoords?.lat ?? row.gpsLat ?? row.lat ?? row.latitude ?? row.coords?.lat ?? row.coords?.latitude,
-      lng: directCoords?.lng ?? row.gpsLng ?? row.lng ?? row.lon ?? row.longitude ?? row.coords?.lng ?? row.coords?.longitude
-    });
-  }).filter((row) => row.address || hasLeadLocationCoords(row));
-
-  if (!list.length) {
-    const fallback = createLeadLocation({
-      address: fallbackAddress,
-      lat: fallbackCoords?.lat,
-      lng: fallbackCoords?.lng
-    });
-    if (fallback.address || hasLeadLocationCoords(fallback)) {
-      list.push(fallback);
-    }
-  }
-
-  if (!list.length) {
-    list.push(createLeadLocation());
-  }
-
-  return list.slice(0, 12);
+  return normalizeLeadLocationsCore(locations, fallbackAddress, fallbackCoords, {
+    resolveCoordsFromEntityFn: resolveCoordsFromEntity,
+    createLeadLocationFn: createLeadLocation,
+    hasLeadLocationCoordsFn: hasLeadLocationCoords
+  });
 }
 
 function getPrimaryLeadLocation(locations) {
-  const list = normalizeLeadLocations(locations);
-  const withCoords = list.find((item) => hasLeadLocationCoords(item));
-  return withCoords || list[0] || createLeadLocation();
+  return getPrimaryLeadLocationCore(locations, {
+    normalizeLeadLocationsFn: normalizeLeadLocations,
+    hasLeadLocationCoordsFn: hasLeadLocationCoords,
+    createLeadLocationFn: createLeadLocation
+  });
 }
 
 function customerStatusLabel(value) {
