@@ -110,6 +110,10 @@ import {
   waitForPushServiceWorkerReadyCore
 } from "./core/push-service-worker-utils.js";
 import {
+  normalizeNotificationItemCore,
+  mapNotificationSnapshotCore
+} from "./core/notification-item-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10827,34 +10831,18 @@ function startFollowingListener(user = state.user) {
 }
 
 function normalizeNotificationItem(docSnap) {
-  if (!docSnap?.id) return null;
-  const data = docSnap.data() || {};
-  return {
-    id: docSnap.id,
-    type: data.type || "system",
-    user: data.user || data.userName || "User",
-    text: data.text || "folgt dir jetzt",
-    time: formatRelative(toDateSafe(data.createdAt)),
-    img: data.avatar || data.img || "",
-    read: !!data.read,
-    createdAt: data.createdAt,
-    postId: data.postId || "",
-    commentId: data.commentId || "",
-    userHandle: data.userHandle || data.handle || "",
-    userUid: data.userUid || data.uid || "",
-    ownerType: data.ownerType || "",
-    ownerId: data.ownerId || "",
-    restaurantId: data.restaurantId || ""
-  };
+  return normalizeNotificationItemCore({
+    docSnap,
+    formatRelative,
+    toDateSafe
+  });
 }
 
 function mapNotificationSnapshot(snap) {
-  const items = [];
-  snap?.forEach((docSnap) => {
-    const item = normalizeNotificationItem(docSnap);
-    if (item) items.push(item);
+  return mapNotificationSnapshotCore({
+    snap,
+    normalizeNotificationItem: (docSnap) => normalizeNotificationItem(docSnap)
   });
-  return items;
 }
 
 function shouldSurfaceNativePushNow() {
