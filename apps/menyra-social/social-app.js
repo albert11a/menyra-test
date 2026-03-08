@@ -283,6 +283,7 @@ import {
   buildLeadAccountEmailCore,
   inferLeadCountryFromTextCore
 } from "./core/lead-country-utils.js";
+import { normalizeShopCartStateCore } from "./core/shop-cart-state-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -2199,44 +2200,11 @@ function buildShopVariantKey(itemId, { size = "", color = "" } = {}) {
 }
 
 function normalizeShopCartState(raw) {
-  const base = createEmptyShopCart();
-  const source = raw && typeof raw === "object" ? raw : {};
-  const items = (Array.isArray(source.items) ? source.items : []).map((item) => ({
-    id: String(item?.id || item?.itemId || "").trim(),
-    itemId: String(item?.itemId || item?.id || "").trim(),
-    cartKey: String(
-      item?.cartKey
-      || buildShopVariantKey(item?.itemId || item?.id || "", {
-        size: item?.selectedSize || item?.size || "",
-        color: item?.selectedColor || item?.color || ""
-      })
-    ).trim(),
-    name: String(item?.name || "Produkt").trim() || "Produkt",
-    price: String(item?.price ?? "").trim(),
-    quantity: Math.max(1, Number(item?.quantity || 1) || 1),
-    imageUrl: String(item?.imageUrl || "").trim(),
-    category: String(item?.category || "").trim(),
-    selectedSize: String(item?.selectedSize || item?.size || "").trim(),
-    selectedColor: String(item?.selectedColor || item?.color || "").trim(),
-    cropX: clampCropPercent(item?.cropX ?? 50, 50),
-    cropY: clampCropPercent(item?.cropY ?? 50, 50)
-  })).filter((item) => item.id && item.itemId && item.cartKey);
-  return {
-    ...base,
-    restaurantId: String(source.restaurantId || "").trim(),
-    businessName: String(source.businessName || "").trim(),
-    businessAvatar: String(source.businessAvatar || "").trim(),
-    items,
-    checkoutOpen: !!source.checkoutOpen,
-    form: {
-      name: String(source.form?.name || "").trim(),
-      phone: String(source.form?.phone || "").trim(),
-      city: String(source.form?.city || "").trim(),
-      address: String(source.form?.address || "").trim()
-    },
-    status: String(source.status || "").trim(),
-    loading: !!source.loading
-  };
+  return normalizeShopCartStateCore(raw, {
+    createEmptyShopCartFn: createEmptyShopCart,
+    buildShopVariantKeyFn: buildShopVariantKey,
+    clampCropPercentFn: clampCropPercent
+  });
 }
 
 function saveShopCartToStorage(uid = state.user?.uid || GUEST_SCOPE_UID) {
