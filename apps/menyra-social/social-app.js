@@ -909,6 +909,7 @@ let pendingInitialTab = "";
 let pendingAuthMode = "";
 let crmLazyRenderers = null;
 let crmLazyRenderersPromise = null;
+let crmLazyRenderersPrefetchQueued = false;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -7402,7 +7403,7 @@ function ensureTabData(tab) {
   }
 
   if (hasUser && (tab === "leads" || tab === "staff" || tab === "customers") && isCeoUser()) {
-    prefetchCrmLazyRenderers();
+    queueCrmLazyRenderersPrefetch();
   }
 
   if (tab === "feed" && !dataLoaded.feed) {
@@ -13167,6 +13168,16 @@ function prefetchCrmLazyRenderers() {
       render();
     }
   }).catch(() => {});
+}
+
+function queueCrmLazyRenderersPrefetch() {
+  if (crmLazyRenderers || crmLazyRenderersPromise || crmLazyRenderersPrefetchQueued) return;
+  crmLazyRenderersPrefetchQueued = true;
+  const enqueue = typeof queueMicrotask === "function" ? queueMicrotask : (fn) => window.setTimeout(fn, 0);
+  enqueue(() => {
+    crmLazyRenderersPrefetchQueued = false;
+    prefetchCrmLazyRenderers();
+  });
 }
 
 function renderCeoGuard(title = "CRM") {
