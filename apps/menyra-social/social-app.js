@@ -270,6 +270,7 @@ import {
   renderMenuDetailModalCore
 } from "./core/menu-modal-render-utils.js";
 import { saveMenuItemFromModalCore } from "./core/menu-save-utils.js";
+import { deleteMenuItemByIdCore } from "./core/menu-delete-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
 import { saveLeadFromModalCore } from "./core/lead-save-utils.js";
 import { deleteLeadFromModalCore } from "./core/lead-delete-utils.js";
@@ -17386,20 +17387,18 @@ async function saveMenuItemFromModal() {
 }
 
 async function deleteMenuItemById(itemId) {
-  if (!state.user || !itemId) return;
-  const restaurantId = state.userProfile.restaurantId || "";
-  if (!restaurantId) return;
-  if (!confirm("Produkt wirklich loeschen?")) return;
-  try {
-    await deleteDoc(doc(db, "restaurants", restaurantId, "menuItems", itemId));
-    const nextItems = (state.menu.items || []).filter((it) => String(it.id) !== String(itemId));
-    syncMenuCaches(restaurantId, nextItems);
-    await publishMenuToPublic(restaurantId, nextItems);
-    render();
-  } catch (err) {
-    console.error(err);
-    alert("Loeschen fehlgeschlagen.");
-  }
+  return deleteMenuItemByIdCore({
+    itemId,
+    state,
+    confirmFn: confirm,
+    doc,
+    db,
+    deleteDoc,
+    syncMenuCaches,
+    publishMenuToPublic,
+    render,
+    alertFn: alert
+  });
 }
 
 async function bootstrapUser(user) {
