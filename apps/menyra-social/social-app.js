@@ -83,6 +83,15 @@ import {
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
 } from "./core/session-tab-guards.js";
+import {
+  loadLogoCacheCore,
+  scheduleLogoCacheWriteCore,
+  loadAvatarCacheCore,
+  scheduleAvatarCacheWriteCore,
+  resolveRestaurantLogoCore,
+  resolveUserAvatarCore,
+  resolveShellAvatarUrlCore
+} from "./core/avatar-logo-cache.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -813,92 +822,102 @@ function getFocusCardClass() {
 }
 
 function loadLogoCache() {
-  const raw = safeStorage.getItem(STORAGE_KEYS.logoCache);
-  if (!raw) return;
-  try {
-    const data = JSON.parse(raw);
-    if (!data || typeof data !== "object") return;
-    Object.entries(data).forEach(([id, url]) => {
-      if (id && url && !isPlaceholderUrl(url)) restaurantLogoCache.set(id, url);
-    });
-  } catch {}
+  loadLogoCacheCore({
+    safeStorage,
+    logoCacheKey: STORAGE_KEYS.logoCache,
+    isPlaceholderUrl,
+    restaurantLogoCache
+  });
 }
 
 function scheduleLogoCacheWrite() {
-  if (typeof window === "undefined") return;
-  if (logoCacheWriteTimer) return;
-  logoCacheWriteTimer = window.setTimeout(() => {
-    logoCacheWriteTimer = null;
-    try {
-      const payload = {};
-      restaurantLogoCache.forEach((url, id) => {
-        if (id && url) payload[id] = url;
-      });
-      safeStorage.setItem(STORAGE_KEYS.logoCache, JSON.stringify(payload));
-    } catch {}
-  }, 400);
+  scheduleLogoCacheWriteCore({
+    windowObj: typeof window === "undefined" ? null : window,
+    hasPendingTimer: !!logoCacheWriteTimer,
+    setPendingTimer: (timer) => { logoCacheWriteTimer = timer; },
+    safeStorage,
+    logoCacheKey: STORAGE_KEYS.logoCache,
+    restaurantLogoCache,
+    delayMs: 400
+  });
 }
 
 function loadAvatarCache(uid) {
-  if (!uid) return;
-  const raw = safeStorage.getItem(avatarKey(uid));
-  if (!raw) return;
-  const trimmed = String(raw || "").trim();
-  if (!trimmed || trimmed === "undefined" || trimmed === "null") return;
-  userAvatarCache = trimmed;
+  const cached = loadAvatarCacheCore({
+    uid,
+    safeStorage,
+    avatarKey
+  });
+  if (!cached) return;
+  userAvatarCache = cached;
 }
 
 function scheduleAvatarCacheWrite(url, uid = getActiveUid()) {
-  if (typeof window === "undefined") return;
-  if (!url || isPlaceholderUrl(url)) return;
-  if (!uid) return;
-  if (avatarCacheWriteTimer) return;
-  avatarCacheWriteTimer = window.setTimeout(() => {
-    avatarCacheWriteTimer = null;
-    safeStorage.setItem(avatarKey(uid), url);
-    writeAuthBootstrapSnapshot({ uid, avatar: url });
-  }, 300);
+  scheduleAvatarCacheWriteCore({
+    windowObj: typeof window === "undefined" ? null : window,
+    url,
+    uid,
+    isPlaceholderUrl,
+    hasPendingTimer: !!avatarCacheWriteTimer,
+    setPendingTimer: (timer) => { avatarCacheWriteTimer = timer; },
+    safeStorage,
+    avatarKey,
+    onPersist: (persistedUid, persistedUrl) => {
+      writeAuthBootstrapSnapshot({ uid: persistedUid, avatar: persistedUrl });
+    },
+    delayMs: 300
+  });
 }
 
 function resolveRestaurantLogo(restaurantId, raw, size = "avatar") {
-  const url = getOptimizedImageUrl(raw, size);
-  if (restaurantId) {
-    if (!isPlaceholderUrl(url)) {
-      if (restaurantLogoCache.get(restaurantId) !== url) {
-        restaurantLogoCache.set(restaurantId, url);
-        scheduleLogoCacheWrite();
-      }
-      return url;
-    }
-    const cached = restaurantLogoCache.get(restaurantId);
-    if (cached) return cached;
-  }
-  return url;
+  return resolveRestaurantLogoCore({
+    restaurantId,
+    raw,
+    size,
+    getOptimizedImageUrl,
+    isPlaceholderUrl,
+    restaurantLogoCache,
+    onCacheUpdated: scheduleLogoCacheWrite
+  });
 }
 
 function resolveUserAvatar(raw) {
-  const candidate = raw || state.user?.photoURL || "";
-  const url = getOptimizedImageUrl(candidate, "avatar");
-  if (!isPlaceholderUrl(url)) {
-    userAvatarCache = url;
-    scheduleAvatarCacheWrite(url);
-    return url;
+  const result = resolveUserAvatarCore({
+    raw,
+    userPhotoURL: state.user?.photoURL || "",
+    userAvatarCache,
+    getOptimizedImageUrl,
+    isPlaceholderUrl
+  });
+  if (result.nextUserAvatarCache && result.nextUserAvatarCache !== userAvatarCache) {
+    userAvatarCache = result.nextUserAvatarCache;
   }
-  if (userAvatarCache && !isPlaceholderUrl(userAvatarCache)) return userAvatarCache;
-  return getOptimizedImageUrl("", "avatar");
+  if (result.shouldScheduleWrite && userAvatarCache) {
+    scheduleAvatarCacheWrite(userAvatarCache);
+  }
+  return result.url;
 }
 
 function resolveShellAvatarUrl() {
-  const raw = state.userProfile.avatar || state.user?.photoURL || userAvatarCache || "";
-  const resolved = getOptimizedImageUrl(raw, "avatar");
-  if (!isPlaceholderUrl(resolved)) {
-    userAvatarCache = resolved;
-    scheduleAvatarCacheWrite(resolved);
-    lastShellAvatarUrl = resolved;
-    return resolved;
+  const result = resolveShellAvatarUrlCore({
+    profileAvatar: state.userProfile.avatar || "",
+    userPhotoURL: state.user?.photoURL || "",
+    userAvatarCache,
+    lastShellAvatarUrl,
+    getOptimizedImageUrl,
+    isPlaceholderUrl,
+    placeholderImage: PLACEHOLDER_IMAGE
+  });
+  if (result.nextUserAvatarCache && result.nextUserAvatarCache !== userAvatarCache) {
+    userAvatarCache = result.nextUserAvatarCache;
   }
-  if (lastShellAvatarUrl && !isPlaceholderUrl(lastShellAvatarUrl)) return lastShellAvatarUrl;
-  return PLACEHOLDER_IMAGE;
+  if (result.nextLastShellAvatarUrl && result.nextLastShellAvatarUrl !== lastShellAvatarUrl) {
+    lastShellAvatarUrl = result.nextLastShellAvatarUrl;
+  }
+  if (result.shouldScheduleWrite && result.url && !isPlaceholderUrl(result.url)) {
+    scheduleAvatarCacheWrite(result.url);
+  }
+  return result.url;
 }
 
 function getSelfAvatarUrl() {
