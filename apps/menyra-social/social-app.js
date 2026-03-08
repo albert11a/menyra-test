@@ -84,6 +84,11 @@ import {
   applyPendingRouteStateCore
 } from "./core/push-route-query-utils.js";
 import {
+  resolveNativePushActorCore,
+  resolveNativePushBodyCore,
+  buildNativePushAlertPayloadCore
+} from "./core/push-alert-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -2689,55 +2694,41 @@ async function ensureNotificationPermission({ interactive = false } = {}) {
 }
 
 function resolveNativePushActor(notif = {}) {
-  return String(notif.user || notif.userHandle || "").trim();
+  return resolveNativePushActorCore(notif);
 }
 
 function resolveNativePushBody(notif = {}) {
-  const type = String(notif?.type || "").trim().toLowerCase();
-  const actor = resolveNativePushActor(notif);
-  const text = String(notif?.text || "").trim();
-  if (type === "chat_message") {
-    if (actor && text) return `${actor} hat dir eine Nachricht geschickt: ${text}`;
-    if (actor) return `${actor} hat dir eine Nachricht geschickt`;
-    if (text) return `Neue Nachricht: ${text}`;
-    return "Neue Nachricht";
-  }
-  if (actor && text) return `${actor} ${text}`;
-  if (text) return text;
-  return "Neue Mitteilung";
+  return resolveNativePushBodyCore(notif);
 }
 
 async function showNativePushAlert(notif) {
   if (!notif?.id || !canEmitNativePushAlerts()) return;
-  const title = BRAND_UI.title;
-  const body = resolveNativePushBody(notif);
-  const icon = String(resolveNotificationAvatar(notif) || "/apps/menyra-social/assets/icon-192.png");
-  const tag = `menyra_notif_${notif.id}`;
-  const notifId = String(notif.id || "");
-  const deepLink = notifId
-    ? `/apps/menyra-social/?notif=${encodeURIComponent(notifId)}`
-    : "/apps/menyra-social/";
-  const data = {
-    url: deepLink,
-    notifId,
-    notificationId: notifId
-  };
+  const alertPayload = buildNativePushAlertPayloadCore({
+    notif,
+    brandTitle: BRAND_UI.title,
+    resolveNotificationAvatar: (entry) => resolveNotificationAvatar(entry),
+    encodeURIComponentFn: (value) => encodeURIComponent(value)
+  });
   try {
     if ("serviceWorker" in navigator) {
       const reg = await navigator.serviceWorker.getRegistration(PUSH_SW_SCOPE);
       if (reg?.showNotification) {
-        await reg.showNotification(title, {
-          body,
-          icon,
-          badge: icon,
-          tag,
-          data,
+        await reg.showNotification(alertPayload.title, {
+          body: alertPayload.body,
+          icon: alertPayload.icon,
+          badge: alertPayload.icon,
+          tag: alertPayload.tag,
+          data: alertPayload.data,
           renotify: false
         });
         return;
       }
     }
-    new Notification(title, { body, icon, tag });
+    new Notification(alertPayload.title, {
+      body: alertPayload.body,
+      icon: alertPayload.icon,
+      tag: alertPayload.tag
+    });
   } catch {}
 }
 
