@@ -2,8 +2,8 @@
 
 ## Snapshot
 - Datei: `apps/menyra-social/social-app.js`
-- Zeilen: 19530
-- Top-Level Funktionen: 726
+- Zeilen: 19463
+- Top-Level Funktionen: 725
 - Aktueller Status: erster Shared-Storage Split bereits gemacht (`social-storage.js`)
 
 ## Strukturkarte (grob)
@@ -18,7 +18,7 @@
 ## Echte Remove-Kandidaten (statische Pruefung)
 Kriterium: Funktionsname kommt genau 1x vor (nur Deklaration), keine Referenz in anderen Dateien.
 
-1. `reconcileKnownLegacyOwnership` (Zeile 19006)
+Keine offenen Kandidaten.
 
 ## Batch A erledigt
 Entfernt (statisch unreferenziert, no-op/legacy-helper):
@@ -75,16 +75,24 @@ Entfernt (statisch unreferenziert):
 
 Hinweis: `buildStoriesSignature` wurde nach Batch D wiederhergestellt, da es weiterhin von `refreshFeedStories` verwendet wird.
 
+## Batch E erledigt
+Entfernt (statisch unreferenziert):
+1. `reconcileKnownLegacyOwnership`
+2. `hasMatchingOwnerMeta`
+3. `ceoOwnershipReconcilePromise` (State-Flag)
+4. `ceoOwnershipReconciled` (State-Flag)
+5. `LEGACY_CEO_DELETE_UIDS` (Konstante)
+
 ## Legacy-Bloecke (nicht sofort loeschen)
 - Chat Legacy-Migration (`rebuildLegacyChatThreadIndexFromStorage`, `loadLegacyChatThreadMessages`)
 - Notifications/Following Legacy-Migration (`legacyNotifs`, `legacyFollowing`)
 - Legacy Menu-Fallback (`loadLegacyMenuItems`)
-- CEO Legacy Ownership Mapping (`HIDDEN_LEGACY_CEO_EMAILS`, `LEGACY_CEO_DELETE_UIDS`)
+- CEO Legacy Ownership Mapping (`HIDDEN_LEGACY_CEO_EMAILS`)
 
 Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage final entscheiden.
 
 ## Konkreter Ablauf ab jetzt
-1. Batch E: Rest-Remove-Kandidaten pruefen (`reconcileKnownLegacyOwnership`), Check + Smoke + Commit.
+1. Phase 1 Aussortieren ist abgeschlossen.
 2. Danach Core-Split starten (`core/state.js`, `core/bootstrap.js`, `core/render.js`).
 
 ## Gate pro Batch

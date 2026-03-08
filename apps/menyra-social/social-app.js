@@ -218,7 +218,6 @@ const ALBERT_CEO_UID = "aklBkkIuZ7Nrpx266TJn63rrxX62";
 const ALBERT_CEO_ALIASES = Object.freeze(["alberthoti", "albert_hoti"]);
 const ALBERT_CEO_EMAILS = Object.freeze(["alberthoti.vsa@gmail.com"]);
 const HIDDEN_LEGACY_CEO_EMAILS = Object.freeze(["albert.hoti@menyra.com"]);
-const LEGACY_CEO_DELETE_UIDS = Object.freeze(["rtnM3XzNsKhpp5wzJhxNToyyjsU2"]);
 const FORCE_HIDDEN_SOCIAL_HANDLES = Object.freeze(["allo88", "alo2", "alo", "hhh", "llll"]);
 const FORCE_HIDDEN_SOCIAL_UIDS = Object.freeze([
   "oqyh9TmALTdH3GqUvtz1qO9DFcC2",
@@ -598,8 +597,6 @@ const state = {
 
 let renderSuspended = 0;
 let ceoStaffLoadPromise = null;
-let ceoOwnershipReconcilePromise = null;
-let ceoOwnershipReconciled = false;
 let ceoCrmCountsPromise = null;
 let hiddenLegacyCeoUids = [];
 let plusCodeSearchCache = new Map();
@@ -18997,77 +18994,6 @@ function resolveKnownLeadOwnerMeta(entity = {}) {
 function applyKnownLeadOwnershipOverride(entity = {}) {
   const meta = resolveKnownLeadOwnerMeta(entity);
   return meta ? { ...entity, ...meta } : entity;
-}
-
-function hasMatchingOwnerMeta(row = {}, meta = {}) {
-  const currentPath = normalizeCeoPath(row.ceoPath, [row.ceoRootUid, row.ceoParentUid, row.createdByUid]);
-  const nextPath = normalizeCeoPath(meta.ceoPath, [meta.ceoRootUid, meta.ceoParentUid, meta.createdByUid]);
-  if (String(row.createdByUid || "").trim() !== String(meta.createdByUid || "").trim()) return false;
-  if (String(row.createdByHandle || "").trim() !== String(meta.createdByHandle || "").trim()) return false;
-  if (String(row.ceoRootUid || "").trim() !== String(meta.ceoRootUid || "").trim()) return false;
-  if (String(row.ceoParentUid || "").trim() !== String(meta.ceoParentUid || "").trim()) return false;
-  if (currentPath.length !== nextPath.length) return false;
-  return currentPath.every((value, index) => value === nextPath[index]);
-}
-
-async function reconcileKnownLegacyOwnership() {
-  if (!isCeoUser() || !hasGlobalCeoAccess()) return;
-  if (ceoOwnershipReconciled) return;
-  if (ceoOwnershipReconcilePromise) {
-    await ceoOwnershipReconcilePromise;
-    return;
-  }
-  ceoOwnershipReconcilePromise = (async () => {
-    try {
-      const knownEmails = uniqueStringList([
-        ...MILAN_OWNED_LEAD_EMAILS,
-        ...ALBERT_OWNED_LEAD_EMAILS
-      ]);
-      const leadPromises = chunkStringList(knownEmails, 10).map(async (emails) => {
-        const snap = await getDocs(query(collection(db, "leads"), where("email", "in", emails), limit(20)));
-        const writes = snap.docs.map((docSnap) => {
-          const row = { id: docSnap.id, ...(docSnap.data() || {}) };
-          const meta = resolveKnownLeadOwnerMeta(row);
-          if (!meta || hasMatchingOwnerMeta(row, meta)) return null;
-          return setDoc(doc(db, "leads", docSnap.id), {
-            ...meta,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
-        }).filter(Boolean);
-        if (writes.length) await Promise.all(writes);
-      });
-      const restaurantPromises = chunkStringList(knownEmails, 10).map(async (emails) => {
-        const snap = await getDocs(query(collection(db, "restaurants"), where("ownerEmail", "in", emails), limit(20)));
-        const writes = snap.docs.map((docSnap) => {
-          const row = { id: docSnap.id, ...(docSnap.data() || {}) };
-          const meta = resolveKnownLeadOwnerMeta(row);
-          if (!meta || hasMatchingOwnerMeta(row, meta)) return null;
-          return setDoc(doc(db, "restaurants", docSnap.id), {
-            ...meta,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
-        }).filter(Boolean);
-        if (writes.length) await Promise.all(writes);
-      });
-      await Promise.all([...leadPromises, ...restaurantPromises]);
-      if (LEGACY_CEO_DELETE_UIDS.length) {
-        await Promise.all(LEGACY_CEO_DELETE_UIDS.map(async (uid) => {
-          await Promise.all([
-            deleteDoc(doc(db, "superadmins", uid)).catch(() => {}),
-            deleteDoc(doc(db, "users", uid)).catch(() => {})
-          ]);
-          state.staff.items = (state.staff.items || []).filter((item) => String(item.uid || "") !== uid);
-          hiddenLegacyCeoUids = hiddenLegacyCeoUids.filter((value) => value !== uid);
-        }));
-      }
-      ceoOwnershipReconciled = true;
-    } catch (err) {
-      console.error(err);
-    } finally {
-      ceoOwnershipReconcilePromise = null;
-    }
-  })();
-  await ceoOwnershipReconcilePromise;
 }
 
 function createEmptyStaffForm() {
