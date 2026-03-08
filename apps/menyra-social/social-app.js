@@ -166,6 +166,7 @@ import {
   renderChatMessagesPanelCore,
   renderChatPendingAttachmentsCore
 } from "./core/chat-render-utils.js";
+import { renderChatListPanelCore } from "./core/chat-list-render-utils.js";
 import {
   normalizeChatOpenProfileCore,
   buildChatModalStateOnOpenCore,
@@ -13934,6 +13935,27 @@ function renderChatPendingAttachments(pendingAttachments) {
   });
 }
 
+function renderChatListPanel({
+  scope = "inbox",
+  inboxThreads = [],
+  archivedThreads = [],
+  visibleThreads = [],
+  chatThreadMenuId = state.chatThreadMenuId
+} = {}) {
+  return renderChatListPanelCore({
+    scope,
+    inboxThreads,
+    archivedThreads,
+    visibleThreads,
+    chatThreadMenuId,
+    escapeHtml,
+    icon,
+    formatRelative,
+    getOptimizedImageUrl,
+    nowMs: Date.now()
+  });
+}
+
 function renderChatView() {
   const threads = sortChatThreads(state.chatThreads);
   if (!state.chatModal.open || !state.chatModal.profile) {
@@ -13941,86 +13963,13 @@ function renderChatView() {
     const inboxThreads = threads.filter((thread) => !isChatThreadArchived(thread));
     const archivedThreads = threads.filter((thread) => isChatThreadArchived(thread));
     const visibleThreads = scope === "archived" ? archivedThreads : inboxThreads;
-    return `
-      <div id="chatListView" class="p-6">
-        <div class="mb-4">
-          <div class="bg-white/70 p-1.5 rounded-[1.6rem] border border-white/80 shadow-sm flex items-center gap-1">
-            <button type="button" data-chat-list-tab="inbox" class="flex-1 h-10 rounded-[1.1rem] text-[10px] font-black uppercase tracking-widest transition-all ${scope === "inbox" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}">
-              Postfach (${inboxThreads.length})
-            </button>
-            <button type="button" data-chat-list-tab="archived" class="flex-1 h-10 rounded-[1.1rem] text-[10px] font-black uppercase tracking-widest transition-all ${scope === "archived" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-800"}">
-              Archived (${archivedThreads.length})
-            </button>
-          </div>
-        </div>
-        ${visibleThreads.length ? `
-          <div class="space-y-3">
-            ${visibleThreads.map((thread) => {
-              const avatarUrl = getOptimizedImageUrl(thread.avatar, "avatar");
-              const unreadCount = Math.max(0, Number(thread.unreadCount || 0));
-              const isMuted = Number(thread.muteUntilMs || 0) > Date.now();
-              const visibleUnreadCount = isMuted ? 0 : unreadCount;
-              const isBlocked = !!thread.blockedByOwner;
-              const menuOpen = state.chatThreadMenuId === String(thread.id || "");
-              return `
-                <div class="relative p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm">
-                  <button
-                    data-chat-open-thread="true"
-                    data-chat-thread-id="${escapeHtml(thread.id || "")}"
-                    data-chat-uid="${escapeHtml(thread.uid || "")}"
-                    data-chat-handle="${escapeHtml(thread.handle || "")}"
-                    data-chat-name="${escapeHtml(thread.name || "User")}"
-                    data-chat-avatar="${escapeHtml(thread.avatar || "")}"
-                    class="w-full text-left flex items-center gap-4 active:scale-[0.99] transition-all"
-                  >
-                    <img src="${escapeHtml(avatarUrl)}" class="w-14 h-14 rounded-2xl object-cover shadow-sm" />
-                    <div class="flex-1 min-w-0 pr-10">
-                      <div class="flex items-center justify-between gap-3">
-                        <div class="min-w-0 flex-1 flex items-center gap-2">
-                          <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(thread.name || "User")}</p>
-                          ${visibleUnreadCount ? `<span class="shrink-0 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center">${visibleUnreadCount > 9 ? "9+" : visibleUnreadCount}</span>` : ""}
-                        </div>
-                        <span class="text-[9px] font-bold uppercase tracking-widest text-slate-300">${escapeHtml(formatRelative(new Date(Number(thread.updatedAt || Date.now()))))}</span>
-                      </div>
-                      <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate mt-1">@${escapeHtml(String(thread.handle || "user").replace(/^@/, ""))}</p>
-                      <p class="text-sm ${visibleUnreadCount ? "text-slate-800 font-semibold" : "text-slate-500"} truncate mt-2">${escapeHtml(thread.lastMessage || "Chat oeffnen")}</p>
-                      ${isMuted ? `<p class="text-[9px] font-black uppercase tracking-widest text-amber-500 mt-1">Ruhemodus aktiv</p>` : ""}
-                      ${isBlocked ? `<p class="text-[9px] font-black uppercase tracking-widest text-rose-500 mt-1">Blockiert</p>` : ""}
-                    </div>
-                  </button>
-                  <button data-chat-thread-menu-toggle="${escapeHtml(thread.id || "")}" class="absolute right-4 top-4 w-8 h-8 rounded-xl bg-slate-100 text-slate-500 flex items-center justify-center hover:bg-slate-200 transition-colors">
-                    ${icon("ellipsis-vertical", "w-4 h-4")}
-                  </button>
-                  ${menuOpen ? `
-                    <div class="absolute right-4 top-14 z-20 w-44 rounded-2xl border border-slate-100 bg-white p-1.5 shadow-xl">
-                      <button data-chat-thread-action="delete" data-chat-thread-id="${escapeHtml(thread.id || "")}" class="w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-rose-600 hover:bg-rose-50 text-xs font-black">
-                        ${icon("trash-2", "w-3.5 h-3.5")}
-                        Loeschen
-                      </button>
-                      <button data-chat-thread-action="${scope === "archived" ? "unarchive" : "archive"}" data-chat-thread-id="${escapeHtml(thread.id || "")}" class="w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 text-xs font-black">
-                        ${icon(scope === "archived" ? "inbox" : "archive", "w-3.5 h-3.5")}
-                        ${scope === "archived" ? "Ins Postfach" : "Archivieren"}
-                      </button>
-                    </div>
-                  ` : ""}
-                  ${menuOpen ? `<button data-chat-thread-menu-close="true" class="fixed inset-0 z-10"></button>` : ""}
-                </div>
-              `;
-            }).join("")}
-          </div>
-        ` : `
-          <div class="min-h-[60vh] flex items-center justify-center text-center">
-            <div>
-              <div class="w-16 h-16 rounded-[1.8rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-5 shadow-sm">
-                ${icon("messages-square", "w-7 h-7")}
-              </div>
-              <p class="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">${scope === "archived" ? "Keine archivierten Chats" : "Noch keine Chats"}</p>
-              <p class="text-sm font-medium text-slate-500 mt-3">${scope === "archived" ? "Archivierte Chats erscheinen hier." : "Oeffne ein Profil und tippe auf das Chat-Icon."}</p>
-            </div>
-          </div>
-        `}
-      </div>
-    `;
+    return renderChatListPanel({
+      scope,
+      inboxThreads,
+      archivedThreads,
+      visibleThreads,
+      chatThreadMenuId: state.chatThreadMenuId
+    });
   }
 
   const partner = state.chatModal.profile;
