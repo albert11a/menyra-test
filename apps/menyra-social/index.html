@@ -5,12 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script>
     (() => {
+      if ("scrollRestoration" in window.history) {
+        window.history.scrollRestoration = "manual";
+      }
       const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
       if (standalone) {
         const vp = document.querySelector('meta[name="viewport"]');
         if (vp) vp.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
         document.documentElement.classList.add("is-standalone");
       }
+      const forceTop = () => window.scrollTo(0, 0);
+      window.addEventListener("pageshow", forceTop, { once: true });
+      window.addEventListener("load", forceTop, { once: true });
     })();
   </script>
   <meta name="theme-color" content="#f8fafc" />
@@ -29,7 +35,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-28">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-29">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7">
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js" crossorigin>
@@ -47,6 +53,7 @@
     html,
     body {
       min-height: 100%;
+      overflow-anchor: none;
     }
     html {
       overflow-x: hidden;
@@ -61,12 +68,12 @@
     }
     #app {
       min-height: 100svh;
-      min-height: 100dvh;
       overflow: visible;
       padding-left: var(--safe-area-left);
       padding-right: var(--safe-area-right);
       box-sizing: border-box;
     }
+    html.is-standalone #app { min-height: 100dvh; }
     :root {
       --safe-area-top: 0px;
       --safe-area-right: 0px;
@@ -108,7 +115,8 @@
       max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom));
       border-bottom-width: 0 !important;
     }
-    .app-shell { min-height: 100dvh; background: var(--app-bg); }
+    .app-shell { min-height: 100svh; background: var(--app-bg); }
+    html.is-standalone .app-shell { min-height: 100dvh; }
     .app-header-safe { padding-top: 1.25rem !important; }
     .app-main-scroll { padding-bottom: 1rem !important; }
     .app-main-content-safe { padding-bottom: 6rem !important; }
@@ -210,7 +218,7 @@
 <body class="bg-slate-50 text-slate-900">
   <div id="app" aria-busy="true"></div>
   <script async src="https://unpkg.com/lucide@latest"></script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-28"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-29"></script>
   <script>
     (() => {
       const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-03-07-favorites-10").catch(() => {});
