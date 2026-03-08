@@ -86,6 +86,7 @@ import {
   runPostLoginPendingRouteOpenFlowCore,
   runPostLoginNonBlockingRouteOpenFlowCore
 } from "./core/auth-post-login-route-open-utils.js";
+import { bootstrapAuthenticatedSessionCore } from "./core/auth-user-bootstrap-utils.js";
 import {
   clearQueryParamsFromCurrentUrlCore,
   resolveRouteStateFromTargetUrlCore,
@@ -20499,20 +20500,19 @@ async function deleteMenuItemById(itemId) {
 }
 
 async function bootstrapUser(user) {
-  if (!user) return;
-  try {
-    await loadAuthProfile(user);
-    if (state.userProfile.restaurantId) {
-      await hydrateRestaurantsByIds([state.userProfile.restaurantId], { max: 1 });
-    }
-    await resolveRoleSwitchTargets(user);
-  } finally {
-  }
-  if (!dataLoaded.following) {
-    dataLoaded.following = true;
-  }
-  startLiveListeners(user);
-  ensureTabData(state.activeTab);
+  await bootstrapAuthenticatedSessionCore({
+    user,
+    loadAuthProfile: (currentUser) => loadAuthProfile(currentUser),
+    getRestaurantId: () => state.userProfile.restaurantId || "",
+    hydrateRestaurantsByIds: (ids, options) => hydrateRestaurantsByIds(ids, options),
+    resolveRoleSwitchTargets: (currentUser) => resolveRoleSwitchTargets(currentUser),
+    ensureFollowingLoaded: () => {
+      if (!dataLoaded.following) dataLoaded.following = true;
+    },
+    startLiveListeners: (currentUser) => startLiveListeners(currentUser),
+    ensureTabData: (tab) => ensureTabData(tab),
+    activeTab: state.activeTab
+  });
 }
 
 loadPersisted();
