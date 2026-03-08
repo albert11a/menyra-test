@@ -101,6 +101,11 @@ import {
   writePushSeenIdsCore
 } from "./core/push-seen-storage-utils.js";
 import {
+  getOrCreatePushDeviceIdCore,
+  readPushTokenMetaCore,
+  writePushTokenMetaCore
+} from "./core/push-token-storage-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -2700,41 +2705,33 @@ async function showNativePushAlert(notif) {
 }
 
 function getOrCreatePushDeviceId() {
-  const key = pushDeviceIdKey();
-  let existing = String(safeStorage.getItem(key) || "").trim();
-  if (existing) return existing;
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    existing = crypto.randomUUID();
-  } else {
-    existing = `dev_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-  }
-  safeStorage.setItem(key, existing);
-  return existing;
+  return getOrCreatePushDeviceIdCore({
+    resolvePushDeviceIdKey: pushDeviceIdKey,
+    storage: safeStorage,
+    randomUUIDFn: typeof crypto !== "undefined" && crypto.randomUUID
+      ? () => crypto.randomUUID()
+      : null,
+    nowFn: () => Date.now(),
+    randomFn: () => Math.random()
+  });
 }
 
 function readPushTokenMeta(uid = state.user?.uid || "") {
-  const key = pushTokenMetaKey(uid);
-  if (!key) return null;
-  try {
-    const raw = safeStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : null;
-    if (!parsed || typeof parsed !== "object") return null;
-    return {
-      token: String(parsed.token || "").trim(),
-      ts: Math.max(0, Number(parsed.ts || 0) || 0)
-    };
-  } catch {
-    return null;
-  }
+  return readPushTokenMetaCore({
+    uid,
+    resolvePushTokenMetaKey: pushTokenMetaKey,
+    storage: safeStorage
+  });
 }
 
 function writePushTokenMeta(uid = state.user?.uid || "", token = "") {
-  const key = pushTokenMetaKey(uid);
-  if (!key) return;
-  safeStorage.setItem(key, JSON.stringify({
-    token: String(token || "").trim(),
-    ts: Date.now()
-  }));
+  writePushTokenMetaCore({
+    uid,
+    token,
+    resolvePushTokenMetaKey: pushTokenMetaKey,
+    storage: safeStorage,
+    nowFn: () => Date.now()
+  });
 }
 
 async function ensureFirebaseMessagingModule() {
