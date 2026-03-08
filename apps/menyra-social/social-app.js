@@ -14741,13 +14741,6 @@ function renderChatView() {
 }
 
 function renderHeaderActionButton(avatarUrl, avatarFit) {
-  if (!authInitialized) {
-    return `
-      <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden bg-white border border-slate-50 shadow-slate-200/30 flex items-center justify-center">
-        <span class="w-6 h-6 rounded-full bg-slate-200 animate-pulse"></span>
-      </div>
-    `;
-  }
   if (isGuestSession()) {
     return `
       <button data-auth-open="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30 text-slate-900 flex flex-col items-center justify-center leading-none">
