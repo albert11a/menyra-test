@@ -234,6 +234,7 @@ import {
   scheduleIdleCore,
   enqueueMicrotaskCore
 } from "./core/task-schedule-utils.js";
+import { focusInputByIdCore } from "./core/dom-focus-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -2494,23 +2495,19 @@ function icon(name, className = "") {
 }
 
 function focusSearchInput() {
-  const input = document.getElementById("searchInput");
-  if (!input) return;
-  input.focus({ preventScroll: true });
-  const len = input.value.length;
-  try {
-    input.setSelectionRange(len, len);
-  } catch {}
+  focusInputByIdCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    inputId: "searchInput",
+    preventScroll: true
+  });
 }
 
 function focusInputById(id) {
-  const input = document.getElementById(id);
-  if (!input) return;
-  input.focus({ preventScroll: true });
-  const len = String(input.value || "").length;
-  try {
-    input.setSelectionRange(len, len);
-  } catch {}
+  focusInputByIdCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    inputId: id,
+    preventScroll: true
+  });
 }
 
 function captureChatInputFocusState() {
