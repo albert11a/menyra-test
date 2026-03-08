@@ -177,6 +177,11 @@ import {
   shouldHandlePushOpenTargetCore
 } from "./core/push-open-target-message-utils.js";
 import {
+  normalizePendingPostIdCore,
+  findPostInLocalSourcesCore,
+  resolveNotificationCommentHighlightIdCore
+} from "./core/post-notification-open-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10638,13 +10643,17 @@ async function maybeOpenPostFromQuery() {
   if (!pendingPostId) return false;
   if (!state.user?.uid) return false;
 
-  const safePostId = String(pendingPostId || "").trim();
+  const safePostId = normalizePendingPostIdCore(pendingPostId);
   if (!safePostId) return false;
   pendingPostHandled = true;
   pendingPostId = "";
   clearPostQueryParams();
 
-  let post = findPostById(safePostId) || state.feedPosts.find((item) => String(item.id) === safePostId) || null;
+  let post = findPostInLocalSourcesCore({
+    postId: safePostId,
+    findPostById: (id) => findPostById(id),
+    feedPosts: state.feedPosts
+  });
   if (!post) {
     post = await fetchPostForNotification({ postId: safePostId });
   }
@@ -11248,9 +11257,13 @@ function highlightCommentInModal(commentId) {
 }
 
 async function openPostFromNotification(notif) {
-  const postId = String(notif.postId || "");
+  const postId = normalizePendingPostIdCore(notif.postId);
   if (!postId) return;
-  let post = findPostById(postId) || state.feedPosts.find((item) => String(item.id) === postId) || null;
+  let post = findPostInLocalSourcesCore({
+    postId,
+    findPostById: (id) => findPostById(id),
+    feedPosts: state.feedPosts
+  });
   if (!post) {
     post = await fetchPostForNotification(notif);
   }
@@ -11258,8 +11271,12 @@ async function openPostFromNotification(notif) {
     pendingCommentHighlight = "";
     return;
   }
-  if (notif.type === "comment" && notif.commentId) {
-    pendingCommentHighlight = String(notif.commentId);
+  const highlightId = resolveNotificationCommentHighlightIdCore({
+    notificationType: notif.type,
+    commentId: notif.commentId
+  });
+  if (highlightId) {
+    pendingCommentHighlight = highlightId;
   }
   await openPostModal(post);
   if (pendingCommentHighlight) {
