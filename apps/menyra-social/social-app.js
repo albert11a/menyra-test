@@ -155,6 +155,14 @@ import {
   buildChatMessageNotificationCore
 } from "./core/chat-remote-sync-utils.js";
 import {
+  collectUnreadIncomingChatMessagesCore,
+  buildChatListenerLocalSeedCore,
+  shouldUseChatLocalSeedCore,
+  buildChatLocalMessageMapCore,
+  buildSortedRemoteChatMessagesCore,
+  hasUnreadIncomingRemoteMessagesCore
+} from "./core/chat-read-sync-utils.js";
+import {
   normalizeChatOpenProfileCore,
   buildChatModalStateOnOpenCore,
   buildClosedChatModalStateCore,
@@ -3348,7 +3356,10 @@ async function syncRemoteChatReadState(profile, messages = state.chatModal.messa
   const ownerUid = String(state.user?.uid || "").trim();
   const threadId = getChatThreadId(profile);
   if (!ownerUid || !threadId) return;
-  const unreadMessages = pruneChatMessages(messages).filter((message) => message?.from !== "self" && !message?.read);
+  const unreadMessages = collectUnreadIncomingChatMessagesCore({
+    messages,
+    pruneChatMessages: (items) => pruneChatMessages(items)
+  });
   if (!unreadMessages.length) {
     const threadRef = chatThreadDocRef(ownerUid, threadId);
     if (!threadRef) return;
@@ -3380,21 +3391,30 @@ function startActiveChatMessagesListener(profile = state.chatModal.profile) {
   const messageQuery = query(ref, orderBy("createdAtClient", "desc"), limit(CHAT_MESSAGE_READ_LIMIT));
   chatMessagesUnsub = onSnapshot(messageQuery, (snap) => {
     if (!state.chatModal.open || getChatThreadId(state.chatModal.profile) !== threadId) return;
-    const localSeed = pruneChatMessages([
-      ...loadChatThreadMessages(profile),
-      ...(Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [])
-    ]);
-    if (!snap.docs.length && localSeed.length) {
+    const localSeed = buildChatListenerLocalSeedCore({
+      storedMessages: loadChatThreadMessages(profile),
+      modalMessages: Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [],
+      pruneChatMessages: (items) => pruneChatMessages(items)
+    });
+    if (shouldUseChatLocalSeedCore({
+      remoteDocsCount: snap.docs.length,
+      localSeed
+    })) {
       state.chatModal.messages = localSeed;
       render();
       return;
     }
-    const localMap = new Map(localSeed.map((message) => [String(message?.id || "").trim(), message]));
-    const remoteMessages = snap.docs
-      .map((docSnap) => normalizeChatMessageRecord(docSnap.id, docSnap.data() || {}, localMap))
-      .filter(Boolean)
-      .sort((a, b) => getChatMessageTimestamp(a) - getChatMessageTimestamp(b));
-    const hasUnreadIncoming = remoteMessages.some((message) => message?.from !== "self" && !message?.read);
+    const localMap = buildChatLocalMessageMapCore(localSeed);
+    const remoteMessages = buildSortedRemoteChatMessagesCore({
+      entries: snap.docs.map((docSnap) => ({
+        id: docSnap.id,
+        data: docSnap.data() || {}
+      })),
+      localMap,
+      normalizeChatMessageRecord: (messageId, data = {}, map = new Map()) => normalizeChatMessageRecord(messageId, data, map),
+      getChatMessageTimestamp: (message) => getChatMessageTimestamp(message)
+    });
+    const hasUnreadIncoming = hasUnreadIncomingRemoteMessagesCore(remoteMessages);
     let nextMessages = remoteMessages;
     if (hasUnreadIncoming) {
       nextMessages = markChatThreadAsRead(profile, remoteMessages);
