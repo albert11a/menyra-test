@@ -118,6 +118,10 @@ Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage fin
 20. Chat-Utility-Helper (`getChatThreadId`, `chatThreadStorageKey`, `chatThreadDocRef`, `chatMessageDocRef`, `chatMessagesCollectionRef`, `getChatMessageTimestamp`, `pruneChatMessages`, `buildChatPreviewText`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
 21. `core/chat-thread-index-utils.js` erstellt.
 22. Chat-Thread-Index-Helper (`saveChatThreadIndex`, `readChatThreadIndexList`, `buildChatThreadSummaryFromMessages`, `rebuildLegacyChatThreadIndexFromStorage`, `mergeChatThreadLists`, `loadChatThreadIndex`, `sortChatThreads`, `rebuildChatThreadIndexFromStorage`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
+23. `core/chat-thread-state-utils.js` erstellt.
+24. Chat-Thread-State-Helper (`normalizeChatThreadSummary`, `getChatUnreadCount`, `upsertChatThreadList`, `isChatThreadArchived`, `getChatThreadById`, `getActiveChatThreadSummary`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
+25. `core/chat-message-utils.js` und `core/chat-message-state-utils.js` erstellt.
+26. Chat-Message- und Patch-Helper (`getStringByteSize`, `isChatInlineDataUrl`, `sanitizeChatAttachmentsForSync`, `normalizeChatMessageRecord`, `loadLegacyChatThreadMessages`, `readFileAsDataUrl`, `buildInlineChatAttachment`, `loadChatThreadMessages`, `saveChatThreadMessages`, `buildChatThreadPatchFromMessages`, `markIncomingChatMessagesAsRead`, `updateChatMessageList`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
 
 ## Gate pro Batch
 1. `node --check apps/menyra-social/social-app.js`

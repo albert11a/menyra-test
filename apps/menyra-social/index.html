@@ -132,7 +132,16 @@
       border-bottom-width: 0 !important;
     }
     .app-shell { min-height: 100svh; background: var(--app-bg); }
+    .app-shell--chat-open {
+      height: 100svh;
+      max-height: 100svh;
+      overflow: hidden;
+    }
     html.is-standalone .app-shell { min-height: 100dvh; }
+    html.is-standalone .app-shell--chat-open {
+      height: 100dvh;
+      max-height: 100dvh;
+    }
     .app-header-safe { padding-top: 1rem !important; }
     .app-main-scroll { padding-bottom: 1rem !important; }
     .app-main-content-safe { padding-bottom: 6rem !important; }
