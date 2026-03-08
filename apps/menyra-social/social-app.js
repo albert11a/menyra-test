@@ -270,6 +270,7 @@ import {
   renderMenuDetailModalCore
 } from "./core/menu-modal-render-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
+import { saveLeadFromModalCore } from "./core/lead-save-utils.js";
 import { saveCeoStaffFromViewCore } from "./core/staff-save-utils.js";
 import { renderSettingsViewCore } from "./core/settings-render-utils.js";
 import { escapeHtmlCore } from "./core/html-utils.js";
@@ -16878,265 +16879,49 @@ function closeCustomerModal() {
 }
 
 async function saveLeadFromModal() {
-  if (!state.user) return;
-  const lead = state.leadModal.lead || {};
-  const isInlineCreate = isLeadInlineCreateView();
-  const settings = getLeadSettingsConfig();
-  syncLeadModalDraftFromForm();
-  const businessName = document.getElementById("leadBusinessName")?.value?.trim() || "";
-  const customerType = resolveCustomerType(document.getElementById("leadCustomerType")?.value || lead.customerType || "cafe");
-  const contactFirstName = document.getElementById("leadCustomerFirstName")?.value?.trim() || lead.contactFirstName || "";
-  const contactLastName = document.getElementById("leadCustomerLastName")?.value?.trim() || lead.contactLastName || "";
-  const contactName = buildLeadContactName(
-    contactFirstName,
-    contactLastName,
-    document.getElementById("leadContactName")?.value?.trim() || lead.contactName || ""
-  );
-  const phone = document.getElementById("leadPhone")?.value?.trim() || "";
-  const instagram = document.getElementById("leadInstagram")?.value?.trim() || "";
-  const facebook = document.getElementById("leadFacebook")?.value?.trim() || lead.facebook || "";
-  const tiktok = document.getElementById("leadTiktok")?.value?.trim() || lead.tiktok || "";
-  const googleMaps = document.getElementById("leadGoogleMaps")?.value?.trim() || lead.googleMaps || "";
-  const emailInput = document.getElementById("leadEmail")?.value?.trim() || (isInlineCreate ? buildLeadAccountEmail(businessName) : "");
-  const passwordInput = document.getElementById("leadPassword")?.value || (isInlineCreate ? settings.defaultPassword : "");
-  const country = normalizeLeadCountry(document.getElementById("leadCountry")?.value || lead.country || settings.defaultCountry);
-  const city = document.getElementById("leadCity")?.value?.trim() || "";
-  const addressInputValue = document.getElementById("leadAddress")?.value?.trim() || "";
-  const zipCode = document.getElementById("leadZipCode")?.value?.trim() || lead.zipCode || "";
-  const logoUrlInput = document.getElementById("leadLogoUrl")?.value?.trim() || "";
-  const note = document.getElementById("leadNote")?.value?.trim() || "";
-  const billingCycle = document.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
-  const statusValue = document.getElementById("leadStatus")?.value || lead.status || "registered";
-  const locationInputs = Array.from(document.querySelectorAll("[data-lead-location-address]"));
-  if (locationInputs.length) {
-    await Promise.all(locationInputs.map((input, index) => (
-      refineLeadLocationAddressIndex(index, String(input.value || "").trim(), { hydratePrimary: index === 0 }).catch(() => null)
-    )));
-  }
-  const locations = readLeadModalLocationsFromForm();
-  state.leadModal.locations = locations;
-  const primaryLocation = getPrimaryLeadLocation(locations);
-  const address = addressInputValue || primaryLocation.address || "";
-  const coords = hasLeadLocationCoords(primaryLocation)
-    ? { lat: primaryLocation.lat, lng: primaryLocation.lng }
-    : null;
-  state.leadModal.coords = coords;
-  const locationPayload = locations
-    .filter((item) => item.address || hasLeadLocationCoords(item))
-    .map((item) => {
-      const row = { address: item.address || "" };
-      if (hasLeadLocationCoords(item)) {
-        row.lat = Number(item.lat);
-        row.lng = Number(item.lng);
-      }
-      return row;
-    });
-
-  if (!businessName) {
-    state.leadModal.status = "Bitte Business Name eingeben.";
-    renderLeadEditorUi();
-    return;
-  }
-
-  state.leadModal.loading = true;
-  state.leadModal.actionsOpen = false;
-  state.leadModal.status = "Speichern...";
-  renderLeadEditorUi();
-
-  try {
-    let restaurantId = lead.restaurantId || "";
-    let restRef = null;
-    if (!restaurantId) {
-      restRef = doc(collection(db, "restaurants"));
-      restaurantId = restRef.id;
-    }
-
-    let logoUrl = logoUrlInput || state.leadModal.logoPreview || lead.logoUrl || "";
-    if (state.leadModal.logoFile) {
-      const { cdnUrl } = await uploadCompressedImage(
-        state.leadModal.logoFile,
-        restaurantId || state.user.uid,
-        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
-      );
-      logoUrl = cdnUrl || logoUrl;
-    }
-    const existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
-    const prevLeadContribution = lead?.id ? buildLeadCrmContribution(lead) : null;
-    const prevCustomerContribution = existingRest ? buildCustomerCrmContribution(existingRest) : null;
-    const restaurantStatus = resolveRestaurantStatusFromLead(statusValue, existingRest?.status || "");
-    const creatorMeta = resolveStoredCeoCreatorMeta(lead, existingRest);
-    const monthlyPrice = getLeadMonthlyPrice(customerType, settings);
-    const yearlyPrice = monthlyPrice * 12;
-    const activePrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
-    const restPayload = {
-      name: businessName,
-      restaurantName: businessName,
-      type: customerType,
-      country,
-      city,
-      address,
-      zipCode,
-      phone,
-      instagram,
-      insta: instagram,
-      facebook,
-      tiktok,
-      googleMaps,
-      ownerName: contactName || "",
-      ownerEmail: emailInput || "",
-      contactFirstName,
-      contactLastName,
-      billingCycle,
-      monthlyPrice,
-      yearlyPrice,
-      price: activePrice,
-      logoUrl,
-      logo: logoUrl,
-      status: restaurantStatus,
-      leadId: lead.id || "",
-      locations: locationPayload,
-      ...creatorMeta,
-      updatedAt: serverTimestamp()
-    };
-    if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
-      restPayload.lat = coords.lat;
-      restPayload.lng = coords.lng;
-      restPayload.gpsLat = coords.lat;
-      restPayload.gpsLng = coords.lng;
-    }
-
-    if (restRef) {
-      await setDoc(restRef, {
-        ...restPayload,
-        createdAt: serverTimestamp()
-      });
-    } else {
-      await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
-    }
-    await ensureRestaurantPublicMeta(restaurantId, restPayload);
-
-    let socialUid = lead.socialUid || "";
-    let socialEmail = lead.socialEmail || "";
-    const loginEmail = emailInput || socialEmail || "";
-    let loginError = "";
-    if (!socialUid && loginEmail) {
-      try {
-        const password = passwordInput || LEAD_SOCIAL_DEFAULT_PASSWORD;
-        const user = await createAuthUser(loginEmail, password);
-        if (user?.uid) {
-          socialUid = user.uid;
-          socialEmail = loginEmail;
-        }
-      } catch (err) {
-        loginError = err?.message || "Login fehlgeschlagen.";
-      }
-    }
-    if (restaurantId) {
-      const ownerPatch = {};
-      if (socialUid) ownerPatch.ownerUid = socialUid;
-      if (loginEmail || socialEmail) ownerPatch.ownerEmail = loginEmail || socialEmail;
-      if (contactName || businessName) ownerPatch.ownerName = contactName || businessName;
-      if (Object.keys(ownerPatch).length) {
-        ownerPatch.updatedAt = serverTimestamp();
-        await setDoc(doc(db, "restaurants", restaurantId), ownerPatch, { merge: true });
-      }
-    }
-
-    const leadRef = lead.id ? doc(db, "leads", lead.id) : doc(collection(db, "leads"));
-    const leadId = lead.id || leadRef.id;
-    const leadStatusKey = normalizeLeadStatusKey(statusValue) || "registered";
-    const leadPayload = {
-      businessName,
-      customerType,
-      contactName,
-      phone,
-      instagram,
-      insta: instagram,
-      facebook,
-      tiktok,
-      googleMaps,
-      email: loginEmail,
-      country,
-      city,
-      address,
-      zipCode,
-      locations: locationPayload,
-      logoUrl,
-      note,
-      contactFirstName,
-      contactLastName,
-      billingCycle,
-      monthlyPrice,
-      yearlyPrice,
-      price: activePrice,
-      status: leadStatusKey,
-      restaurantId,
-      socialUid,
-      socialEmail,
-      updatedAt: serverTimestamp(),
-      ...creatorMeta
-    };
-    if (coords && Number.isFinite(coords.lat) && Number.isFinite(coords.lng)) {
-      leadPayload.lat = coords.lat;
-      leadPayload.lng = coords.lng;
-      leadPayload.gpsLat = coords.lat;
-      leadPayload.gpsLng = coords.lng;
-    }
-    if (!lead.id) {
-      leadPayload.createdAt = serverTimestamp();
-    }
-    await setDoc(leadRef, leadPayload, { merge: true });
-    if (restaurantId && leadId) {
-      await setDoc(doc(db, "restaurants", restaurantId), { leadId }, { merge: true });
-    }
-    const nextLeadContribution = buildLeadCrmContribution({ id: leadId, ...leadPayload });
-    const nextCustomerContribution = buildCustomerCrmContribution({ id: restaurantId, ...(existingRest || {}), ...restPayload });
-    const crmDeltaMap = new Map();
-    accumulateCeoCrmDelta(crmDeltaMap, prevLeadContribution, -1);
-    accumulateCeoCrmDelta(crmDeltaMap, prevCustomerContribution, -1);
-    accumulateCeoCrmDelta(crmDeltaMap, nextLeadContribution, 1);
-    accumulateCeoCrmDelta(crmDeltaMap, nextCustomerContribution, 1);
-    await applyCeoCrmCountDeltas(crmDeltaMap);
-
-    const normalized = normalizeLeadDoc({ id: leadId, ...leadPayload });
-    const idx = state.leads.items.findIndex((item) => String(item.id) === String(leadId));
-    const visibleInCurrentScope = leadBelongsToScope(normalized);
-    if (leadStatusKey === "kunde") {
-      state.leads.items = state.leads.items.filter((item) => (
-        String(item.id || "") !== String(leadId)
-        && String(item.restaurantId || "") !== String(restaurantId)
-      ));
-    } else if (!visibleInCurrentScope) {
-      state.leads.items = state.leads.items.filter((item) => String(item.id || "") !== String(leadId));
-    } else if (idx >= 0) {
-      state.leads.items[idx] = { ...state.leads.items[idx], ...normalized };
-    } else {
-      state.leads.items.unshift(normalized);
-    }
-    syncVisibleLeadPageFromItems();
-
-    state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...(existingRest || {}), ...restPayload }]);
-    rebuildBusinessLocations();
-    refreshCustomersFromRestaurants();
-
-    state.leadModal.loading = false;
-    if (isInlineCreate) {
-      state.leads.view = "list";
-      resetLeadDraft();
-      render();
-    } else {
-      closeLeadModal();
-      render();
-    }
-    if (loginError) {
-      alert(`Lead gespeichert. Login fehlgeschlagen: ${loginError}`);
-    }
-  } catch (err) {
-    console.error(err);
-    state.leadModal.status = err?.message || "Speichern fehlgeschlagen.";
-    state.leadModal.loading = false;
-    renderLeadEditorUi();
-  }
+  return saveLeadFromModalCore({
+    state,
+    documentObj: typeof document !== "undefined" ? document : null,
+    isLeadInlineCreateView,
+    getLeadSettingsConfig,
+    syncLeadModalDraftFromForm,
+    resolveCustomerType,
+    buildLeadContactName,
+    buildLeadAccountEmail,
+    normalizeLeadCountry,
+    normalizeLeadStatusKey,
+    refineLeadLocationAddressIndex,
+    readLeadModalLocationsFromForm,
+    getPrimaryLeadLocation,
+    hasLeadLocationCoords,
+    renderLeadEditorUi,
+    doc,
+    collection,
+    db,
+    uploadCompressedImage,
+    serverTimestamp,
+    setDoc,
+    ensureRestaurantPublicMeta,
+    createAuthUser,
+    LEAD_SOCIAL_DEFAULT_PASSWORD,
+    buildLeadCrmContribution,
+    buildCustomerCrmContribution,
+    resolveRestaurantStatusFromLead,
+    resolveStoredCeoCreatorMeta,
+    getLeadMonthlyPrice,
+    accumulateCeoCrmDelta,
+    applyCeoCrmCountDeltas,
+    normalizeLeadDoc,
+    leadBelongsToScope,
+    syncVisibleLeadPageFromItems,
+    mergeRestaurants,
+    rebuildBusinessLocations,
+    refreshCustomersFromRestaurants,
+    resetLeadDraft,
+    closeLeadModal,
+    render,
+    alertFn: typeof alert === "function" ? alert : null
+  });
 }
 
 async function resolveRestaurantLinkedToLead(lead = {}) {
