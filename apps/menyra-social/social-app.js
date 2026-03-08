@@ -142,6 +142,13 @@ import {
   markAllNotificationsReadInListCore
 } from "./core/notification-read-state-utils.js";
 import {
+  isChatNotificationTypeCore,
+  isFollowNotificationTypeCore,
+  isPostNotificationTypeCore,
+  buildNotificationChatTargetCore,
+  buildNotificationProfileTargetCore
+} from "./core/notification-target-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -11262,25 +11269,15 @@ async function openNotificationTarget(id) {
       { shouldRender: false, targetIds: [acceptedUid, ...(state.followingTargetIds || [])] }
     );
   }
-  if (notif.type === "chat_message") {
-    openChatWithProfile({
-      uid: notif.userUid || "",
-      handle: notif.userHandle || notif.user || "",
-      name: notif.user || "User",
-      avatar: notif.img || ""
-    });
+  if (isChatNotificationTypeCore(notif.type)) {
+    openChatWithProfile(buildNotificationChatTargetCore(notif));
     return;
   }
-  if (notif.type === "follow" || notif.type === "follow_request" || notif.type === "follow_accepted") {
-    openProfileFromUser({
-      uid: notif.userUid || "",
-      handle: notif.userHandle || notif.user || "",
-      name: notif.user || "User",
-      avatar: notif.img || ""
-    });
+  if (isFollowNotificationTypeCore(notif.type)) {
+    openProfileFromUser(buildNotificationProfileTargetCore(notif));
     return;
   }
-  if (notif.type === "like" || notif.type === "comment") {
+  if (isPostNotificationTypeCore(notif.type)) {
     await openPostFromNotification(notif);
   }
 }
