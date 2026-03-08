@@ -275,6 +275,10 @@ import {
 import { normalizeRestaurantTypeCore } from "./core/restaurant-type-utils.js";
 import { buildShopVariantKeyCore } from "./core/shop-variant-utils.js";
 import {
+  normalizeOptionListCore,
+  normalizeMenuTypeCore
+} from "./core/menu-input-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -2189,29 +2193,7 @@ function isRestaurantCafeProfile(profile = state.userProfile) {
 }
 
 function normalizeOptionList(value) {
-  const values = [];
-  const add = (entry) => {
-    const str = String(entry || "").trim();
-    if (!str) return;
-    const normalized = str.replace(/\s+/g, " ");
-    if (!values.some((item) => item.toLowerCase() === normalized.toLowerCase())) {
-      values.push(normalized);
-    }
-  };
-  if (Array.isArray(value)) {
-    value.forEach((entry) => {
-      if (entry && typeof entry === "object") {
-        add(entry.label || entry.name || entry.value || "");
-      } else {
-        add(entry);
-      }
-    });
-    return values;
-  }
-  String(value || "")
-    .split(/[\n,;|]+/)
-    .forEach(add);
-  return values;
+  return normalizeOptionListCore(value);
 }
 
 function buildShopVariantKey(itemId, { size = "", color = "" } = {}) {
@@ -2284,9 +2266,7 @@ function canAddToShopCart(profile = state.profileView?.profile || state.userProf
 }
 
 function normalizeMenuType(value) {
-  const t = String(value || "").toLowerCase().trim();
-  if (t === "drink" || t === "drinks" || t === "beverage" || t === "getraenke" || t === "getränke") return "drink";
-  return "food";
+  return normalizeMenuTypeCore(value);
 }
 
 function formatPrice(value, currency = "€") {
