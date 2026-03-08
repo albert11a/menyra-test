@@ -290,6 +290,7 @@ import {
   isShopCatalogProfileCore,
   isRestaurantCafeProfileCore
 } from "./core/catalog-mode-utils.js";
+import { getBusinessProfileTypeCore } from "./core/business-profile-type-utils.js";
 import {
   createDefaultLeadPricingCore,
   normalizeLeadPricingCore
@@ -2171,20 +2172,10 @@ function normalizeRestaurantType(value) {
 }
 
 function getBusinessProfileType(profile = state.userProfile) {
-  if (!profile?.restaurantId) return "";
-  const rest = getRestaurantMetaById(profile.restaurantId);
-  const typeRaw = rest?.type
-    || rest?.customerType
-    || rest?.category
-    || rest?.kind
-    || rest?.restaurantType
-    || profile?.type
-    || profile?.customerType
-    || profile?.category
-    || profile?.kind
-    || profile?.restaurantType
-    || "";
-  return normalizeRestaurantType(typeRaw);
+  return getBusinessProfileTypeCore(profile, {
+    getRestaurantMetaByIdFn: getRestaurantMetaById,
+    normalizeRestaurantTypeFn: normalizeRestaurantType
+  });
 }
 
 function getBusinessCatalogMode(profile = state.userProfile) {
