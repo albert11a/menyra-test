@@ -3192,10 +3192,6 @@ function getActiveChatThreadSummary(profile = state.chatModal.profile) {
   return (state.chatThreads || []).find((thread) => String(thread?.id || "") === threadId) || null;
 }
 
-function isThreadMuted(thread = getActiveChatThreadSummary(), nowMs = Date.now()) {
-  return Number(thread?.muteUntilMs || 0) > Number(nowMs || Date.now());
-}
-
 function isActiveChatThreadBlocked(profile = state.chatModal.profile) {
   const thread = getActiveChatThreadSummary(profile);
   return !!thread?.blockedByOwner;
@@ -3211,61 +3207,6 @@ async function updateActiveChatThreadPrefs(patch = {}) {
   render();
   try {
     await setDoc(threadRef, patch, { merge: true });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function muteActiveChatFor24Hours() {
-  if (!state.chatModal.open || !state.chatModal.profile) return;
-  state.chatSettingsOpen = false;
-  const muteUntilMs = Date.now() + CHAT_MESSAGE_TTL_MS;
-  await updateActiveChatThreadPrefs({ muteUntilMs });
-}
-
-async function toggleActiveChatBlocked() {
-  if (!state.chatModal.open || !state.chatModal.profile) return;
-  const thread = getActiveChatThreadSummary();
-  const blockedByOwner = !thread?.blockedByOwner;
-  state.chatSettingsOpen = false;
-  if (blockedByOwner) {
-    state.chatModal.draft = "";
-    state.chatModal.attachments = [];
-  }
-  await updateActiveChatThreadPrefs({ blockedByOwner });
-}
-
-async function deleteActiveChatThread() {
-  if (!state.chatModal.open || !state.chatModal.profile) return;
-  const confirmed = typeof window !== "undefined"
-    ? window.confirm("Diesen Chat wirklich loeschen?")
-    : true;
-  if (!confirmed) return;
-
-  const profile = state.chatModal.profile;
-  const ownerUid = String(state.user?.uid || "").trim();
-  const threadId = getChatThreadId(profile);
-  const messages = Array.isArray(state.chatModal.messages) ? state.chatModal.messages.slice() : [];
-
-  state.chatSettingsOpen = false;
-  stopActiveChatMessagesListener();
-  state.chatThreads = (state.chatThreads || []).filter((thread) => String(thread?.id || "") !== threadId);
-  saveChatThreadIndex(state.chatThreads);
-  const localKey = chatThreadStorageKey(profile);
-  if (localKey) safeStorage.removeItem(localKey);
-  state.chatModal = { ...state.chatModal, open: false, profile: null, messages: [], draft: "", attachments: [] };
-  render();
-
-  if (!ownerUid || !threadId) return;
-  try {
-    await Promise.all([
-      ...messages.map((message) => {
-        const messageRef = chatMessageDocRef(ownerUid, threadId, message?.id);
-        if (!messageRef) return Promise.resolve();
-        return deleteDoc(messageRef).catch(() => {});
-      }),
-      deleteDoc(chatThreadDocRef(ownerUid, threadId)).catch(() => {})
-    ]);
   } catch (err) {
     console.error(err);
   }
@@ -9590,17 +9531,6 @@ function renderMapView() {
   `;
 }
 
-function renderProfilePosts(posts) {
-  if (!posts.length) {
-    return `
-      <div class="aspect-square rounded-[2rem] border-2 border-dashed flex flex-col items-center justify-center gap-2 text-slate-300 border-slate-200">
-        ${icon("image", "w-6 h-6")}<span class="text-[9px] font-black uppercase text-slate-400">Leer</span>
-      </div>
-    `;
-  }
-  return posts.map((item) => renderProfileGridItem(item)).join("");
-}
-
 function renderProfileGridItem(item) {
   const counts = resolvePostCounts(item);
   const postId = item.id ? String(item.id) : "";
@@ -11078,81 +11008,6 @@ function renderProfileView() {
       `}
     </div>
   `;
-}
-
-async function openProfileFromBusiness(input) {
-  try {
-    const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
-    const restaurantId = typeof input === "string" ? "" : (input?.id || "");
-    if (!safeName && !restaurantId) return;
-
-    if (isOwnBusinessTarget({ restaurantId, name: safeName })) {
-      openOwnBusinessProfile({ showBack: false, topTab: "profile" });
-      return;
-    }
-
-    if (restaurantId) {
-      void hydrateRestaurantsByIds([restaurantId], { max: 1 });
-    }
-
-    const rest = restaurantId
-      ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
-      : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
-    const hasRestState = !!(rest && Object.keys(rest).length > 1);
-    if (hasRestState && rest?.id && !isPublicBusinessRecord(rest)) return;
-
-    const fallbackPosts = state.feedPosts
-      .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
-      .map((p, idx) => ({
-        id: p.id || `feed_${idx}`,
-        url: p.image,
-        type: p.type || "square",
-        caption: p.content || "",
-        createdAt: p.createdAt,
-        likes: p.likes ?? 0,
-        comments: p.comments ?? 0,
-        ownerType: "restaurant",
-        ownerId: restaurantId || p.restaurantId || ""
-      }));
-
-    const cacheKey = restaurantId || safeName;
-    const cached = businessProfileCache.get(cacheKey);
-    if (cached) {
-    state.profileModal = { open: true, profile: cached };
-    renderOverlays();
-    return;
-  }
-
-    const placeholderProfile = normalizeExternalProfile({
-      profileDoc: null,
-      restaurant: rest,
-      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-      posts: fallbackPosts
-    });
-
-    state.profileModal = { open: true, profile: placeholderProfile };
-    renderOverlays();
-
-    const [profileSnap, posts] = await Promise.all([
-      fetchBusinessProfileDoc({ restaurantId, restaurant: rest }),
-      restaurantId ? loadBusinessPostsForRestaurant(restaurantId) : Promise.resolve(fallbackPosts)
-    ]);
-    const resolvedRestData = profileSnap?.data ? { id: profileSnap.id, ...(profileSnap.data || {}) } : rest;
-    if (restaurantId && resolvedRestData?.id && !isPublicBusinessRecord(resolvedRestData)) return;
-
-    const resolved = normalizeExternalProfile({
-      profileDoc: profileSnap,
-      restaurant: rest,
-      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-      posts: posts && posts.length ? posts : fallbackPosts
-    });
-
-    businessProfileCache.set(cacheKey, resolved);
-    state.profileModal = { open: true, profile: resolved };
-    renderOverlays();
-  } catch (err) {
-    console.error(err);
-  }
 }
 
 function showPublicProfile(profile, posts, { showBack = true, backTab, topTab } = {}) {
@@ -15169,29 +15024,6 @@ function bindImageFallbacks(root = document) {
       }
     });
   });
-}
-
-function getImageKey(img) {
-  if (!img) return "";
-  const direct = img.dataset.imgKey;
-  if (direct) return direct;
-  if (img.id) return `id:${img.id}`;
-  if (img.dataset.feedLogo) return `feed-logo:${img.dataset.feedLogo}`;
-  if (img.dataset.storyLogo) return `story-logo:${img.dataset.storyLogo}`;
-  if (img.dataset.searchLogo) return `search-logo:${img.dataset.searchLogo}`;
-  const feed = img.closest("[data-feed-id]");
-  if (feed?.dataset.feedId) return `feed-image:${feed.dataset.feedId}`;
-  const profilePost = img.closest("[data-open-post]");
-  if (profilePost?.dataset.openPost) return `profile-post:${profilePost.dataset.openPost}`;
-  const searchUser = img.closest("[data-search-user]");
-  if (searchUser?.dataset.searchUser) return `search-user:${searchUser.dataset.searchUser}`;
-  const searchBiz = img.closest("[data-search-business]");
-  if (searchBiz?.dataset.searchBusiness) return `search-biz:${searchBiz.dataset.searchBusiness}`;
-  const comment = img.closest("[data-comment-id]");
-  if (comment?.dataset.commentId) return `comment-avatar:${comment.dataset.commentId}`;
-  const notif = img.closest("[data-notif-open]");
-  if (notif?.dataset.notifOpen) return `notif-avatar:${notif.dataset.notifOpen}`;
-  return "";
 }
 
 function render() {

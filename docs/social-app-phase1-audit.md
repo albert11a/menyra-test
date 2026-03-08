@@ -2,8 +2,8 @@
 
 ## Snapshot
 - Datei: `apps/menyra-social/social-app.js`
-- Zeilen: 20357
-- Top-Level Funktionen: 760
+- Zeilen: 20221
+- Top-Level Funktionen: 753
 - Aktueller Status: erster Shared-Storage Split bereits gemacht (`social-storage.js`)
 
 ## Strukturkarte (grob)
@@ -19,31 +19,26 @@
 Kriterium: Funktionsname kommt genau 1x vor (nur Deklaration), keine Referenz in anderen Dateien.
 
 1. `getAlbertCeoGpsOverride` (Zeile 1425)
-2. `isThreadMuted` (Zeile 3194)
-3. `muteActiveChatFor24Hours` (Zeile 3218)
-4. `toggleActiveChatBlocked` (Zeile 3225)
-5. `deleteActiveChatThread` (Zeile 3237)
-6. `savePostMeta` (Zeile 3976)
-7. `applyRestaurantMetaUpdate` (Zeile 4490)
-8. `resolvePagedScopeCount` (Zeile 5025)
-9. `mapRestaurantToCard` (Zeile 6160)
-10. `businessIcon` (Zeile 6175)
-11. `startFeedListener` (Zeile 9105)
-12. `areProfilePostsEquivalent` (Zeile 9257)
-13. `startUserPostsListener` (Zeile 9315)
-14. `startBusinessPostsListener` (Zeile 9366)
-15. `renderProfilePosts` (Zeile 9592)
-16. `openProfileFromBusiness` (Zeile 11082)
-17. `loadFollowingFromFirebase` (Zeile 11460)
-18. `isLeadInlineSettingsView` (Zeile 13848)
-19. `getImageKey` (Zeile 15173)
-20. `updateRestaurantSelection` (Zeile 17470)
-21. `startRestaurantsListener` (Zeile 17802)
-22. `loadFeedDelta` (Zeile 18135)
-23. `ensureSocialBusinessProfile` (Zeile 19119)
-24. `ensureCeoStaffIndexLoaded` (Zeile 19689)
-25. `fetchCeoScopedRows` (Zeile 19699)
-26. `loadStories` (Zeile 21545)
+2. `updateActiveChatThreadPrefs` (Zeile 3199)
+3. `savePostMeta` (Zeile 3917)
+4. `applyRestaurantMetaUpdate` (Zeile 4431)
+5. `resolvePagedScopeCount` (Zeile 4966)
+6. `mapRestaurantToCard` (Zeile 6101)
+7. `businessIcon` (Zeile 6116)
+8. `startFeedListener` (Zeile 9046)
+9. `areProfilePostsEquivalent` (Zeile 9198)
+10. `startUserPostsListener` (Zeile 9256)
+11. `startBusinessPostsListener` (Zeile 9307)
+12. `renderProfileGridItem` (Zeile 9533)
+13. `loadFollowingFromFirebase` (Zeile 11315)
+14. `isLeadInlineSettingsView` (Zeile 13703)
+15. `updateRestaurantSelection` (Zeile 17302)
+16. `startRestaurantsListener` (Zeile 17634)
+17. `loadFeedDelta` (Zeile 17967)
+18. `ensureSocialBusinessProfile` (Zeile 18951)
+19. `ensureCeoStaffIndexLoaded` (Zeile 19521)
+20. `fetchCeoScopedRows` (Zeile 19531)
+21. `loadStories` (Zeile 21377)
 
 ## Batch A erledigt
 Entfernt (statisch unreferenziert, no-op/legacy-helper):
@@ -56,6 +51,16 @@ Entfernt (statisch unreferenziert, no-op/legacy-helper):
 7. `queueImageSwap`
 8. `rehydrateImages`
 
+## Batch B erledigt
+Entfernt (statisch unreferenziert):
+1. `isThreadMuted`
+2. `muteActiveChatFor24Hours`
+3. `toggleActiveChatBlocked`
+4. `deleteActiveChatThread`
+5. `renderProfilePosts`
+6. `openProfileFromBusiness`
+7. `getImageKey`
+
 ## Legacy-Bloecke (nicht sofort loeschen)
 - Chat Legacy-Migration (`rebuildLegacyChatThreadIndexFromStorage`, `loadLegacyChatThreadMessages`)
 - Notifications/Following Legacy-Migration (`legacyNotifs`, `legacyFollowing`)
@@ -65,9 +70,9 @@ Entfernt (statisch unreferenziert, no-op/legacy-helper):
 Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage final entscheiden.
 
 ## Konkreter Ablauf ab jetzt
-1. Batch B: 6-8 Low-Risk Remove-Kandidaten entfernen, Check + Smoke + Commit.
-2. Batch C: naechste 6-8 Remove-Kandidaten, Check + Smoke + Commit.
-3. Batch D: Rest Remove-Kandidaten, Check + Smoke + Commit.
+1. Batch C: 6-8 Low-Risk Remove-Kandidaten entfernen, Check + Smoke + Commit.
+2. Batch D: naechste 6-8 Remove-Kandidaten, Check + Smoke + Commit.
+3. Batch E: Rest Remove-Kandidaten, Check + Smoke + Commit.
 4. Danach Core-Split starten (`core/state.js`, `core/bootstrap.js`, `core/render.js`).
 
 ## Gate pro Batch
