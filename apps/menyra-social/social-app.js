@@ -519,6 +519,10 @@ import { bindAppShellEventsCore } from "./core/app-events-shell-bind-utils.js";
 import { bindAppMenuFocusEventsCore } from "./core/app-events-menu-focus-bind-utils.js";
 import { bindAppSettingsProfileEventsCore } from "./core/app-events-settings-profile-bind-utils.js";
 import { bindAppChatUploadEventsCore } from "./core/app-events-chat-upload-bind-utils.js";
+import {
+  bindCrmStaffEventsCore,
+  bindLeadInlineCreateEventsCore
+} from "./core/app-events-crm-staff-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14459,342 +14463,50 @@ function bindAppEvents() {
     handleUploadPostFn: handleUploadPost
   });
 
-  const newLeadBtn = document.getElementById("newLeadBtn");
-  if (newLeadBtn) {
-    newLeadBtn.addEventListener("click", () => openLeadCreator());
-  }
-
-  const leadSettingsBtn = document.getElementById("leadSettingsBtn");
-  if (leadSettingsBtn) {
-    leadSettingsBtn.addEventListener("click", () => openLeadSettingsView());
-  }
-
-  document.querySelectorAll("[data-leads-back]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      closeLeadSubview();
-    });
+  bindCrmStaffEventsCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    state,
+    renderFn: render,
+    openLeadCreatorFn: openLeadCreator,
+    openLeadSettingsViewFn: openLeadSettingsView,
+    closeLeadSubviewFn: closeLeadSubview,
+    saveLeadSettingsFn: saveLeadSettings,
+    isLeadInlineCreateViewFn: isLeadInlineCreateView,
+    bindLeadInlineCreateEventsFn: () => bindLeadInlineCreateEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      state,
+      renderFn: render,
+      deleteLeadFromModalFn: deleteLeadFromModal,
+      saveLeadFromModalFn: saveLeadFromModal,
+      syncLeadDerivedFieldsFn: syncLeadDerivedFields,
+      addLeadModalLocationRowFn: addLeadModalLocationRow,
+      removeLeadModalLocationRowFn: removeLeadModalLocationRow,
+      syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
+      openLocationPickerFn: openLocationPicker,
+      normalizeLeadLocationsFn: normalizeLeadLocations,
+      createLeadLocationFn: createLeadLocation,
+      parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
+      getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
+      hasLeadLocationCoordsFn: hasLeadLocationCoords,
+      getPrimaryLeadLocationFn: getPrimaryLeadLocation,
+      hydrateLeadGeoFieldsFromCoordsFn: hydrateLeadGeoFieldsFromCoords,
+      refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex
+    }),
+    normalizeLeadScopeKeyFn: normalizeLeadScopeKey,
+    loadLeadsFn: loadLeads,
+    openLeadModalFn: openLeadModal,
+    normalizeCustomerScopeKeyFn: normalizeCustomerScopeKey,
+    loadCustomersFn: loadCustomers,
+    openCustomerModalFn: openCustomerModal,
+    closeStaffEditorFn: closeStaffEditor,
+    openStaffEditorFn: openStaffEditor,
+    syncStaffDerivedEmailFieldFn: syncStaffDerivedEmailField,
+    normalizeCeoCountryFn: normalizeCeoCountry,
+    syncStaffFormFromDomFn: syncStaffFormFromDom,
+    openLocationPickerFn: openLocationPicker,
+    saveCeoStaffFromViewFn: saveCeoStaffFromView,
+    deleteCeoStaffFromViewFn: deleteCeoStaffFromView
   });
-
-  const leadSettingsSaveBtn = document.getElementById("leadSettingsSaveBtn");
-  if (leadSettingsSaveBtn) {
-    leadSettingsSaveBtn.addEventListener("click", () => {
-      if (state.leads.settingsSaving) return;
-      void saveLeadSettings();
-    });
-  }
-
-  if (isLeadInlineCreateView()) {
-    const leadInlineActionsToggle = document.getElementById("leadInlineActionsToggle");
-    const leadInlineActionsBackdrop = document.getElementById("leadInlineActionsBackdrop");
-    const leadInlineDeleteBtn = document.getElementById("leadInlineDeleteBtn");
-
-    if (leadInlineActionsToggle) {
-      leadInlineActionsToggle.addEventListener("click", (evt) => {
-        evt.preventDefault();
-        evt.stopPropagation();
-        if (state.leadModal.loading || state.leadModal.deleting) return;
-        state.leadModal.actionsOpen = !state.leadModal.actionsOpen;
-        render();
-      });
-    }
-
-    if (leadInlineActionsBackdrop) {
-      leadInlineActionsBackdrop.addEventListener("click", () => {
-        if (!state.leadModal.actionsOpen) return;
-        state.leadModal.actionsOpen = false;
-        render();
-      });
-    }
-
-    if (leadInlineDeleteBtn) {
-      leadInlineDeleteBtn.addEventListener("click", () => {
-        if (state.leadModal.loading || state.leadModal.deleting) return;
-        void deleteLeadFromModal();
-      });
-    }
-
-    const leadInlineSaveBtn = document.getElementById("leadInlineSaveBtn");
-    if (leadInlineSaveBtn) {
-      leadInlineSaveBtn.addEventListener("click", () => {
-        if (state.leadModal.loading) return;
-        void saveLeadFromModal();
-      });
-    }
-    const leadLogoTrigger = document.getElementById("leadLogoTrigger");
-    const leadLogoInput = document.getElementById("leadLogoInput");
-    if (leadLogoTrigger && leadLogoInput) {
-      leadLogoTrigger.addEventListener("click", () => leadLogoInput.click());
-    }
-    if (leadLogoInput) {
-      leadLogoInput.addEventListener("change", (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        state.leadModal.logoFile = file;
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const preview = String(reader.result || "");
-          state.leadModal.logoPreview = preview;
-          const img = document.getElementById("leadLogoPreview");
-          if (img && preview) img.setAttribute("src", preview);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-
-    const syncIds = ["leadBusinessName", "leadCustomerType", "leadBillingCycle"];
-    syncIds.forEach((id) => {
-      const node = document.getElementById(id);
-      if (!node) return;
-      node.addEventListener("input", () => syncLeadDerivedFields());
-      node.addEventListener("change", () => syncLeadDerivedFields());
-    });
-
-    document.querySelectorAll("[data-lead-location-add]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (state.leadModal.loading) return;
-        addLeadModalLocationRow();
-      });
-    });
-    document.querySelectorAll("[data-lead-location-remove]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (state.leadModal.loading) return;
-        removeLeadModalLocationRow(Number(btn.getAttribute("data-lead-location-remove")));
-      });
-    });
-    document.querySelectorAll("[data-lead-location-pick]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const index = Number(btn.getAttribute("data-lead-location-pick"));
-        if (!Number.isInteger(index) || index < 0) return;
-        syncLeadModalDraftFromForm();
-        void openLocationPicker({
-          addressInputId: `leadLocationAddress_${index}`,
-          coordsDisplayId: index === 0 ? "leadCoordsDisplay" : `leadLocationCoords_${index}`,
-          context: `lead_location:${index}`
-        });
-      });
-    });
-    document.querySelectorAll("[data-lead-location-address]").forEach((input) => {
-      input.addEventListener("input", () => {
-        const index = Number(input.getAttribute("data-lead-location-address"));
-        if (!Number.isInteger(index) || index < 0) return;
-        const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
-        while (list.length <= index) list.push(createLeadLocation());
-        const currentRow = list[index] || createLeadLocation();
-        const parsedCoords = parseCoordsFromAddressInput(input.value, getLeadPlusCodeReference(input.value));
-        list[index] = createLeadLocation({
-          address: input.value,
-          lat: parsedCoords ? parsedCoords.lat : (hasLeadLocationCoords(currentRow) ? currentRow.lat : null),
-          lng: parsedCoords ? parsedCoords.lng : (hasLeadLocationCoords(currentRow) ? currentRow.lng : null)
-        });
-        state.leadModal.locations = list;
-        const badge = document.getElementById(index === 0 ? "leadCoordsDisplay" : `leadLocationCoords_${index}`);
-        if (badge) badge.classList.toggle("hidden", !hasLeadLocationCoords(list[index]));
-        const primary = getPrimaryLeadLocation(list);
-        state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : null;
-      });
-      input.addEventListener("change", () => {
-        const index = Number(input.getAttribute("data-lead-location-address"));
-        if (index !== 0) return;
-        const parsedCoords = parseCoordsFromAddressInput(input.value, getLeadPlusCodeReference(input.value));
-        if (!parsedCoords) return;
-        void hydrateLeadGeoFieldsFromCoords(parsedCoords, { sourceInputId: input.id });
-      });
-      input.addEventListener("blur", () => {
-        const index = Number(input.getAttribute("data-lead-location-address"));
-        if (!Number.isInteger(index) || index < 0) return;
-        void refineLeadLocationAddressIndex(index, input.value, { hydratePrimary: index === 0 }).then(() => {
-          if (isLeadInlineCreateView()) render();
-        });
-      });
-    });
-    syncLeadDerivedFields();
-  }
-
-  const leadsSearchInput = document.getElementById("leadsSearchInput");
-  if (leadsSearchInput) {
-    leadsSearchInput.addEventListener("input", () => {
-      state.leads.query = leadsSearchInput.value || "";
-      state.leads.keepFocus = true;
-      render();
-    });
-  }
-
-  const leadsStatusFilter = document.getElementById("leadsStatusFilter");
-  if (leadsStatusFilter) {
-    leadsStatusFilter.addEventListener("change", () => {
-      state.leads.status = leadsStatusFilter.value || "";
-      render();
-    });
-  }
-
-  document.querySelectorAll("[data-lead-scope]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const nextScope = normalizeLeadScopeKey(btn.dataset.leadScope || "");
-      if (state.leads.scope === nextScope) return;
-      state.leads.scope = nextScope;
-      if (state.leads.loaded?.[nextScope]) {
-        state.leads.items = Array.isArray(state.leads.pages?.[nextScope]) ? state.leads.pages[nextScope].slice() : [];
-        render();
-        return;
-      }
-      void loadLeads({ scope: nextScope });
-    });
-  });
-
-  document.querySelectorAll("[data-lead-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.leadEdit;
-      if (!id) return;
-      const lead = state.leads.items.find((item) => String(item.id) === String(id));
-      if (lead) openLeadModal("edit", lead);
-    });
-  });
-
-  const customersSearchInput = document.getElementById("customersSearchInput");
-  if (customersSearchInput) {
-    customersSearchInput.addEventListener("input", () => {
-      state.customers.query = customersSearchInput.value || "";
-      state.customers.keepFocus = true;
-      render();
-    });
-  }
-
-  document.querySelectorAll("[data-customer-scope]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const nextScope = normalizeCustomerScopeKey(btn.dataset.customerScope || "");
-      if (state.customers.scope === nextScope) return;
-      state.customers.scope = nextScope;
-      if (state.customers.loaded?.[nextScope]) {
-        state.customers.items = Array.isArray(state.customers.pages?.[nextScope]) ? state.customers.pages[nextScope].slice() : [];
-        render();
-        return;
-      }
-      void loadCustomers({ scope: nextScope });
-    });
-  });
-
-  document.querySelectorAll("[data-customer-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.customerEdit;
-      if (!id) return;
-      const customer = (state.customers.items || []).find((item) => String(item.id) === String(id));
-      if (customer) openCustomerModal(customer);
-    });
-  });
-
-  document.querySelectorAll("[data-staff-back]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      closeStaffEditor();
-      render();
-    });
-  });
-
-  const staffNewBtn = document.getElementById("staffNewBtn");
-  if (staffNewBtn) {
-    staffNewBtn.addEventListener("click", () => {
-      openStaffEditor("create");
-    });
-  }
-
-  document.querySelectorAll("[data-staff-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.staffEdit || "";
-      if (!id) return;
-      const entry = (state.staff.items || []).find((item) => String(item.uid || "") === String(id));
-      if (entry) openStaffEditor("edit", entry);
-    });
-  });
-
-  [
-    ["staffFirstName", "firstName"],
-    ["staffLastName", "lastName"],
-    ["staffPassword", "password"],
-    ["staffLocationLabel", "locationLabel"]
-  ].forEach(([id, key]) => {
-    const node = document.getElementById(id);
-    if (!node) return;
-    node.addEventListener("input", () => {
-      state.staff.form = {
-        ...state.staff.form,
-        [key]: String(node.value || "")
-      };
-      state.staff.status = "";
-      if (state.staff.error) state.staff.error = "";
-      if (key === "firstName" || key === "lastName") {
-        syncStaffDerivedEmailField();
-      }
-    });
-  });
-
-  const staffCountry = document.getElementById("staffCountry");
-  if (staffCountry) {
-    staffCountry.addEventListener("change", () => {
-      state.staff.form = {
-        ...state.staff.form,
-        country: normalizeCeoCountry(staffCountry.value)
-      };
-      state.staff.status = "";
-      if (state.staff.error) state.staff.error = "";
-    });
-  }
-
-  const staffAvatarTrigger = document.getElementById("staffAvatarTrigger");
-  const staffAvatarInput = document.getElementById("staffAvatarInput");
-  if (staffAvatarTrigger && staffAvatarInput) {
-    staffAvatarTrigger.addEventListener("click", () => staffAvatarInput.click());
-  }
-  if (staffAvatarInput) {
-    staffAvatarInput.addEventListener("change", (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      state.staff.form = {
-        ...state.staff.form,
-        avatarFile: file
-      };
-      state.staff.status = "";
-      if (state.staff.error) state.staff.error = "";
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const preview = String(reader.result || "");
-        state.staff.form = {
-          ...state.staff.form,
-          avatarPreview: preview
-        };
-        const img = document.getElementById("staffAvatarPreview");
-        if (img && preview) img.setAttribute("src", preview);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  const staffLocationPickBtn = document.getElementById("staffLocationPickBtn");
-  if (staffLocationPickBtn) {
-    staffLocationPickBtn.addEventListener("click", () => {
-      syncStaffFormFromDom();
-      state.staff.status = "";
-      openLocationPicker({
-        addressInputId: "staffLocationLabel",
-        coordsDisplayId: "staffCoordsDisplay",
-        context: "staff"
-      });
-    });
-  }
-
-  const staffSaveBtn = document.getElementById("staffSaveBtn");
-  if (staffSaveBtn) {
-    staffSaveBtn.addEventListener("click", () => {
-      void saveCeoStaffFromView();
-    });
-  }
-
-  const staffDeleteBtn = document.getElementById("staffDeleteBtn");
-  if (staffDeleteBtn) {
-    staffDeleteBtn.addEventListener("click", () => {
-      void deleteCeoStaffFromView();
-    });
-  }
-
-  // Business selection removed from account settings by design.
 
   bindImageFallbacks();
   bindCrmAutoLoadObserver();
