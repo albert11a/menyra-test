@@ -106,6 +106,10 @@ import {
   writePushTokenMetaCore
 } from "./core/push-token-storage-utils.js";
 import {
+  ensurePushServiceWorkerRegistrationCore,
+  waitForPushServiceWorkerReadyCore
+} from "./core/push-service-worker-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -2762,30 +2766,20 @@ async function ensureMessagingClient() {
 }
 
 async function ensurePushServiceWorkerRegistration() {
-  if (!("serviceWorker" in navigator)) return null;
-  try {
-    const existing = await navigator.serviceWorker.getRegistration(PUSH_SW_SCOPE);
-    if (existing) return existing;
-  } catch {}
-  try {
-    return await navigator.serviceWorker.register(PUSH_SW_URL, { scope: PUSH_SW_SCOPE });
-  } catch (err) {
-    setPushActivationIssue("Service Worker Registrierung fehlgeschlagen.", err);
-    return null;
-  }
+  return await ensurePushServiceWorkerRegistrationCore({
+    navigatorObj: typeof navigator !== "undefined" ? navigator : null,
+    serviceWorkerScope: PUSH_SW_SCOPE,
+    serviceWorkerUrl: PUSH_SW_URL,
+    setPushActivationIssue: (reason, err) => setPushActivationIssue(reason, err)
+  });
 }
 
 async function waitForPushServiceWorkerReady() {
-  if (!("serviceWorker" in navigator)) return null;
-  try {
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error("service-worker-ready-timeout")), PUSH_SW_READY_TIMEOUT_MS);
-    });
-    return await Promise.race([navigator.serviceWorker.ready, timeoutPromise]);
-  } catch (err) {
-    setPushActivationIssue("Service Worker ist nicht ready.", err);
-    return null;
-  }
+  return await waitForPushServiceWorkerReadyCore({
+    navigatorObj: typeof navigator !== "undefined" ? navigator : null,
+    timeoutMs: PUSH_SW_READY_TIMEOUT_MS,
+    setPushActivationIssue: (reason, err) => setPushActivationIssue(reason, err)
+  });
 }
 
 async function syncPushDeviceRegistration({ interactive = false, force = false, enabled = state.settings?.pushNotifs } = {}) {
