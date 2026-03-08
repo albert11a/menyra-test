@@ -97,6 +97,10 @@ import {
   getMenuLayoutThemeCore,
   getFocusCardClassCore
 } from "./core/menu-layout-utils.js";
+import {
+  computeLatestTimestampCore,
+  saveFeedPostsCore
+} from "./core/feed-cache-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -3916,22 +3920,21 @@ function writeCustomerScopeCache(uid, scope, rows, meta = {}) {
 }
 
 function computeLatestTimestamp(posts) {
-  let latest = 0;
-  posts.forEach((post) => {
-    const ts = toDateSafe(post.createdAt)?.getTime() || 0;
-    if (ts > latest) latest = ts;
+  return computeLatestTimestampCore({
+    posts,
+    toDateSafe
   });
-  return latest;
 }
 
 function saveFeedPosts(posts, extraMeta = {}) {
-  if (!Array.isArray(posts)) return;
-  const latestTs = computeLatestTimestamp(posts);
-  writeCache(
-    CACHE_KEYS.feed,
-    posts.slice(0, FAST_LIMITS.feedFallback),
-    { latestTs, ...extraMeta }
-  );
+  saveFeedPostsCore({
+    posts,
+    extraMeta,
+    toDateSafe,
+    writeCache,
+    feedCacheKey: CACHE_KEYS.feed,
+    feedFallbackLimit: FAST_LIMITS.feedFallback
+  });
 }
 
 function loadPersisted() {

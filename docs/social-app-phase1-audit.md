@@ -110,6 +110,8 @@ Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage fin
 12. Avatar/Logo-Cache-Helper (`loadLogoCache`, `scheduleLogoCacheWrite`, `loadAvatarCache`, `scheduleAvatarCacheWrite`, `resolveRestaurantLogo`, `resolveUserAvatar`, `resolveShellAvatarUrl`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
 13. `core/menu-layout-utils.js` erstellt.
 14. Menu-Layout-Helper (`saveMenuLayoutToStorage`, `getMenuLayoutTheme`, `getFocusCardClass`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
+15. `core/feed-cache-utils.js` erstellt.
+16. Feed-Cache-Helper (`computeLatestTimestamp`, `saveFeedPosts`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
 
 ## Gate pro Batch
 1. `node --check apps/menyra-social/social-app.js`
