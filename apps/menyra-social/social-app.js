@@ -295,6 +295,14 @@ import {
   normalizeLeadPricingCore
 } from "./core/lead-pricing-utils.js";
 import {
+  normalizeLeadSettingsCore,
+  getLeadSettingsConfigCore,
+  getLeadCountryCenterCore,
+  buildLeadContactNameCore,
+  getLeadMonthlyPriceCore,
+  getLeadPriceForCycleCore
+} from "./core/lead-settings-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -1568,21 +1576,27 @@ function normalizeLeadPricing(raw = {}) {
 }
 
 function normalizeLeadSettings(raw = {}) {
-  const input = raw && typeof raw === "object" ? raw : {};
-  return {
-    defaultPassword: String(input.defaultPassword || LEAD_SOCIAL_DEFAULT_PASSWORD || "").trim() || LEAD_SOCIAL_DEFAULT_PASSWORD,
-    defaultCountry: normalizeLeadCountry(input.defaultCountry || input.locationCountry || LEAD_SETTINGS_DEFAULT_COUNTRY),
-    pricing: normalizeLeadPricing(input.pricing || input.typePricing || {})
-  };
+  return normalizeLeadSettingsCore(raw, {
+    defaultPassword: LEAD_SOCIAL_DEFAULT_PASSWORD,
+    defaultCountry: LEAD_SETTINGS_DEFAULT_COUNTRY,
+    normalizeLeadCountryFn: normalizeLeadCountry,
+    normalizeLeadPricingFn: normalizeLeadPricing
+  });
 }
 
 function getLeadSettingsConfig() {
-  return normalizeLeadSettings(state.userProfile?.leadSettings || {});
+  return getLeadSettingsConfigCore(state.userProfile, {
+    normalizeLeadSettingsFn: normalizeLeadSettings
+  });
 }
 
 function getLeadCountryCenter(country = LEAD_SETTINGS_DEFAULT_COUNTRY) {
-  const key = normalizeLeadCountry(country);
-  return LEAD_COUNTRY_CENTERS[key] || LEAD_COUNTRY_CENTERS[LEAD_SETTINGS_DEFAULT_COUNTRY] || PRISHTINA_COORDS;
+  return getLeadCountryCenterCore(country, {
+    normalizeLeadCountryFn: normalizeLeadCountry,
+    countryCenters: LEAD_COUNTRY_CENTERS,
+    defaultCountry: LEAD_SETTINGS_DEFAULT_COUNTRY,
+    defaultCenter: PRISHTINA_COORDS
+  });
 }
 
 function buildLeadAccountEmail(name = "") {
@@ -1590,19 +1604,20 @@ function buildLeadAccountEmail(name = "") {
 }
 
 function buildLeadContactName(firstName = "", lastName = "", fallback = "") {
-  const combined = `${String(firstName || "").trim()} ${String(lastName || "").trim()}`.trim();
-  return combined || String(fallback || "").trim();
+  return buildLeadContactNameCore(firstName, lastName, fallback);
 }
 
 function getLeadMonthlyPrice(type = "", config = getLeadSettingsConfig()) {
-  const pricing = normalizeLeadPricing(config?.pricing || {});
-  const key = resolveCustomerType(type || "cafe");
-  return Number(pricing[key]) || 0;
+  return getLeadMonthlyPriceCore(type, config, {
+    normalizeLeadPricingFn: normalizeLeadPricing,
+    resolveCustomerTypeFn: resolveCustomerType
+  });
 }
 
 function getLeadPriceForCycle(type = "", cycle = "monthly", config = getLeadSettingsConfig()) {
-  const monthly = getLeadMonthlyPrice(type, config);
-  return cycle === "yearly" ? monthly * 12 : monthly;
+  return getLeadPriceForCycleCore(type, cycle, config, {
+    getLeadMonthlyPriceFn: getLeadMonthlyPrice
+  });
 }
 
 function inferLeadCountryFromText(text = "", fallbackCountry = "") {
