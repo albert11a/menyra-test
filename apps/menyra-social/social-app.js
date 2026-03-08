@@ -291,6 +291,11 @@ import {
   getShopCartTotalCore
 } from "./core/shop-cart-access-utils.js";
 import {
+  getMenuRestaurantForProfileCore,
+  ensureMenuDataForProfileCore,
+  ensureFocusDataForProfileCore
+} from "./core/profile-menu-focus-utils.js";
+import {
   getBusinessCatalogModeCore,
   getBusinessCatalogLabelCore,
   isShopCatalogProfileCore,
@@ -17610,19 +17615,21 @@ function syncMenuCaches(restaurantId, items) {
 }
 
 function getMenuRestaurantForProfile(profile) {
-  return profile?.restaurantId || "";
+  return getMenuRestaurantForProfileCore(profile);
 }
 
 function ensureMenuDataForProfile(profile = state.profileView?.profile || state.userProfile) {
-  const restaurantId = getMenuRestaurantForProfile(profile);
-  if (!restaurantId) return;
-  void loadMenuForRestaurant(restaurantId, { source: "hybrid" });
+  ensureMenuDataForProfileCore(profile, {
+    getMenuRestaurantForProfileFn: getMenuRestaurantForProfile,
+    loadMenuForRestaurantFn: loadMenuForRestaurant
+  });
 }
 
 function ensureFocusDataForProfile(profile = state.profileView?.profile || state.userProfile) {
-  const restaurantId = getMenuRestaurantForProfile(profile);
-  if (!restaurantId) return;
-  void loadFocusForRestaurant(restaurantId);
+  ensureFocusDataForProfileCore(profile, {
+    getMenuRestaurantForProfileFn: getMenuRestaurantForProfile,
+    loadFocusForRestaurantFn: loadFocusForRestaurant
+  });
 }
 
 function normalizeOrderItem(item) {
