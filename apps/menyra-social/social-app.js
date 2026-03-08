@@ -79,6 +79,10 @@ import {
   applyAuthBootstrapSnapshotToProfile
 } from "./core/auth-bootstrap-snapshot.js";
 import {
+  shouldResetUserScopedStateCore,
+  resolvePendingAuthRouteFlagsCore
+} from "./core/auth-bootstrap-flow-utils.js";
+import {
   clearQueryParamsFromCurrentUrlCore,
   resolveRouteStateFromTargetUrlCore,
   applyPendingRouteStateCore
@@ -20530,7 +20534,7 @@ onAuthStateChanged(auth, (user) => {
   authInitialized = true;
   const nextUid = user?.uid || "";
   const prevUid = lastAuthUid;
-  if ((prevUid && !nextUid) || (prevUid && nextUid && prevUid !== nextUid)) {
+  if (shouldResetUserScopedStateCore({ prevUid, nextUid })) {
     resetUserScopedState();
   }
   state.user = user;
@@ -20539,10 +20543,12 @@ onAuthStateChanged(auth, (user) => {
     state.auth.open = false;
     loadUserScopedPersisted(user);
     writeAuthBootstrapSnapshot();
-    const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();
-    const hasPendingPostQuery = !!String(pendingPostId || "").trim();
-    const hasPendingChatQuery = !!String(pendingChatUid || "").trim();
-    if (hasPendingNotificationQuery || hasPendingPostQuery || hasPendingChatQuery) {
+    const pendingRouteFlags = resolvePendingAuthRouteFlagsCore({
+      pendingNotificationId,
+      pendingPostId,
+      pendingChatUid
+    });
+    if (pendingRouteFlags.hasAny) {
       suspendRender();
       bootstrapUser(user);
       queueMicrotask(() => {
