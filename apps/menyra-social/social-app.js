@@ -46,50 +46,24 @@ import {
 } from "./_shared/social-core.js";
 import { compressImage } from "./_shared/image-compressor.js";
 import { getOptimizedImageUrl, getFirebaseStorageUrl, isPlaceholderUrl, PLACEHOLDER_IMAGE } from "./_shared/image-resolver.js";
+import {
+  safeStorage,
+  STORAGE_KEYS,
+  profileKey,
+  avatarKey,
+  notificationsKey,
+  followingKey,
+  shopCartKey,
+  pushSeenKey,
+  pushTokenMetaKey,
+  pushDeviceIdKey,
+  GUEST_SCOPE_UID
+} from "./_shared/social-storage.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
 const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-
-// --- SAFE STORAGE HELPER ---
-const safeStorage = {
-  getItem: (key) => {
-    try { return localStorage.getItem(key); } catch { return null; }
-  },
-  setItem: (key, val) => {
-    try { localStorage.setItem(key, val); } catch {}
-  },
-  removeItem: (key) => {
-    try { localStorage.removeItem(key); } catch {}
-  }
-};
-
-const STORAGE_KEYS = {
-  profile: "menyra_social_profile_v3",
-  settings: "menyra_social_settings_v3",
-  notifications: "menyra_social_notifications_v1",
-  following: "menyra_social_following_v1",
-  shopCart: "menyra_social_shop_cart_v1",
-  chatIndex: "menyra_social_chat_index_v1",
-  chatThreads: "menyra_social_chat_threads_v1",
-  postMeta: "menyra_social_post_meta_v1",
-  feed: "menyra_social_feed_v1",
-  logoCache: "menyra_social_logo_cache_v1",
-  avatarCache: "menyra_social_avatar_cache_v1",
-  menuLayout: "menyra_social_menu_layout_v1",
-  authSnapshot: "menyra_social_auth_snapshot_v1"
-};
-
-const profileKey = (uid) => (uid ? `${STORAGE_KEYS.profile}::${uid}` : "");
-const avatarKey = (uid) => (uid ? `${STORAGE_KEYS.avatarCache}::${uid}` : "");
-const notificationsKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::${uid}` : "");
-const followingKey = (uid) => (uid ? `${STORAGE_KEYS.following}::${uid}` : "");
-const shopCartKey = (uid) => (uid ? `${STORAGE_KEYS.shopCart}::${uid}` : "");
-const pushSeenKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::push_seen::${uid}` : "");
-const pushTokenMetaKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::push_meta::${uid}` : "");
-const pushDeviceIdKey = () => `${STORAGE_KEYS.notifications}::push_device_id`;
-const GUEST_SCOPE_UID = "guest";
 
 const ADMIN_LOGINS = {
   admin: {
