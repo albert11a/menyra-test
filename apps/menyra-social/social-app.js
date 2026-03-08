@@ -70,6 +70,7 @@ import {
   normalizeInitialTab,
   normalizeAuthMode
 } from "./core/route-auth-utils.js";
+import { resolveInitialRouteState } from "./core/initial-route-state.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -664,14 +665,17 @@ let logoCacheWriteTimer = null;
 let avatarCacheWriteTimer = null;
 let lastAuthUid = "";
 try {
-  pendingProfileRestaurantId = qs("r") || qs("restaurant") || "";
-  const queryTab = qs("tab") || qs("top") || "";
-  pendingProfileTopTab = pendingProfileRestaurantId ? queryTab : "";
-  pendingNotificationId = qs("notif") || qs("notification") || qs("nid") || "";
-  pendingPostId = qs("post") || qs("postId") || "";
-  pendingInitialTab = normalizeInitialTab(queryTab || qs("view") || "");
-  if (!pendingInitialTab && pendingPostId) pendingInitialTab = "feed";
-  pendingAuthMode = normalizeAuthMode(qs("auth") || "");
+  const initialRouteState = resolveInitialRouteState({
+    qs,
+    normalizeInitialTab,
+    normalizeAuthMode
+  });
+  pendingProfileRestaurantId = initialRouteState.pendingProfileRestaurantId;
+  pendingProfileTopTab = initialRouteState.pendingProfileTopTab;
+  pendingNotificationId = initialRouteState.pendingNotificationId;
+  pendingPostId = initialRouteState.pendingPostId;
+  pendingInitialTab = initialRouteState.pendingInitialTab;
+  pendingAuthMode = initialRouteState.pendingAuthMode;
 } catch {}
 
 function isGuestSession() {

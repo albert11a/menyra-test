@@ -100,6 +100,8 @@ Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage fin
 2. `createEmptyShopCart`, `createEmptyOrdersState`, `createEmptyFavoriteMenuItemsState`, `createEmptyMenuDetailState` aus `social-app.js` ausgelagert.
 3. `core/route-auth-utils.js` erstellt.
 4. `normalizeInitialTab` und `normalizeAuthMode` aus `social-app.js` ausgelagert.
+5. `core/initial-route-state.js` erstellt.
+6. Initiales Query-Parsing (`pending*` Route/Auth) aus `social-app.js` ausgelagert.
 
 ## Gate pro Batch
 1. `node --check apps/menyra-social/social-app.js`
