@@ -1,13 +1,24 @@
-const CACHE_NAME = "mnyra-social-cache-v3";
+const CACHE_NAME = "mnyra-social-cache-v4-beta-update";
 const CACHE_PREFIX = "mnyra-social-cache-";
 const APP_SCOPE = "/apps/menyra-social/";
 const APP_SHELL_URL = "/apps/menyra-social/index.html";
+const BETA_UPDATE_CHANNEL = "beta-auto-update-v1";
+const CODE_ASSET_NETWORK_TIMEOUT_MS = 1100;
 const EXTERNAL_STATIC_HOSTS = new Set([
   "www.gstatic.com",
   "fonts.googleapis.com",
   "fonts.gstatic.com",
   "unpkg.com"
 ]);
+
+async function broadcastToClients(payload) {
+  const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  clientsList.forEach((client) => {
+    try {
+      client.postMessage(payload);
+    } catch {}
+  });
+}
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -18,6 +29,11 @@ self.addEventListener("activate", (event) => {
     await self.clients.claim();
     const keys = await caches.keys();
     await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key)));
+    await broadcastToClients({
+      type: "PWA_BETA_CHANNEL_ACTIVE",
+      channel: BETA_UPDATE_CHANNEL,
+      cacheName: CACHE_NAME
+    });
   })());
 });
 
@@ -155,6 +171,31 @@ async function staleWhileRevalidate(request) {
   return network || cached || new Response("", { status: 504, statusText: "Fetch failed" });
 }
 
+async function networkFirstWithTimeout(request, { timeoutMs = CODE_ASSET_NETWORK_TIMEOUT_MS } = {}) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  const networkPromise = (async () => {
+    try {
+      const cacheBypassReq = new Request(request, { cache: "no-cache" });
+      const response = await fetch(cacheBypassReq);
+      if (response && (response.ok || response.type === "opaque")) {
+        cache.put(request, response.clone()).catch(() => null);
+      }
+      return response;
+    } catch {
+      return null;
+    }
+  })();
+  const timeoutPromise = new Promise((resolve) => {
+    setTimeout(() => resolve(null), timeoutMs);
+  });
+  const raceResponse = await Promise.race([networkPromise, timeoutPromise]);
+  if (raceResponse) return raceResponse;
+  if (cached) return cached;
+  const eventualResponse = await networkPromise;
+  return eventualResponse || new Response("", { status: 504, statusText: "Network failed" });
+}
+
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
@@ -166,6 +207,9 @@ self.addEventListener("fetch", (event) => {
   const isNavigation = req.mode === "navigate";
   const isImage = req.destination === "image" || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname);
   const isStaticAsset = ["script", "style", "font"].includes(req.destination);
+  const isCodeAsset = req.destination === "script"
+    || req.destination === "style"
+    || /\.(mjs|js|css)$/i.test(url.pathname);
   const isExternalStatic = isExternalStaticRequest(url, req);
 
   if (!inScope && !isImage && !isExternalStatic) return;
@@ -182,6 +226,11 @@ self.addEventListener("fetch", (event) => {
         return cachedShell || new Response("Offline", { status: 503, statusText: "Offline" });
       }
     })());
+    return;
+  }
+
+  if (inScope && isCodeAsset) {
+    event.respondWith(networkFirstWithTimeout(req));
     return;
   }
 
