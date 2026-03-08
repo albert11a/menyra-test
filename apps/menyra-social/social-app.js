@@ -637,6 +637,8 @@ let lastMenuCommentKey = "";
 let lastMenuCommentAt = 0;
 let lastMenuOpenGestureKey = "";
 let lastMenuOpenGestureAt = 0;
+let lastMenuOpenScrollAt = 0;
+let menuOpenScrollGuardBound = false;
 let chatSendDispatchLock = false;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
@@ -705,6 +707,10 @@ let pendingInitialTab = "";
 let pendingAuthMode = "";
 let crmLazyRenderers = null;
 let crmLazyRenderersPromise = null;
+const MENU_OPEN_TAP_MAX_MOVE_PX = 14;
+const MENU_OPEN_TAP_MAX_MS = 700;
+const MENU_OPEN_SCROLL_GUARD_MS = 180;
+const MENU_OPEN_CLICK_SUPPRESS_MS = 420;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -12165,7 +12171,7 @@ function renderShopProductList(items, { source = "menu", showRestaurantName = fa
           ? ` data-menu-open-restaurant="${escapeHtml(item.restaurantId)}"`
           : "";
         return `
-          <article data-menu-open="${escapeHtml(item.id)}" data-menu-open-source="${escapeHtml(source)}"${restaurantAttr} role="button" tabindex="0" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col" style="touch-action:manipulation;">
+          <article data-menu-open="${escapeHtml(item.id)}" data-menu-open-source="${escapeHtml(source)}"${restaurantAttr} role="button" tabindex="0" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col" style="touch-action:pan-y;">
             <div class="rounded-[1.5rem] overflow-hidden bg-slate-100" style="aspect-ratio:4 / 5;">
               <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
             </div>
@@ -12292,6 +12298,118 @@ function triggerMenuDetailOpenFromGesture(trigger) {
   lastMenuOpenGestureKey = key;
   lastMenuOpenGestureAt = now;
   openMenuDetailFromTrigger(trigger);
+}
+
+function markMenuOpenScrollActivity() {
+  lastMenuOpenScrollAt = Date.now();
+}
+
+function shouldSuppressMenuOpenByScroll(now = Date.now()) {
+  return now - lastMenuOpenScrollAt < MENU_OPEN_SCROLL_GUARD_MS;
+}
+
+function suppressMenuOpenClick(node, now = Date.now()) {
+  if (!node) return;
+  node.__menuOpenIgnoreClickUntil = now + MENU_OPEN_CLICK_SUPPRESS_MS;
+}
+
+function shouldSuppressMenuOpenClick(node, now = Date.now()) {
+  const until = Number(node?.__menuOpenIgnoreClickUntil || 0);
+  return until > now;
+}
+
+function bindMenuOpenScrollGuard() {
+  if (menuOpenScrollGuardBound || typeof document === "undefined") return;
+  menuOpenScrollGuardBound = true;
+  const onScroll = () => {
+    markMenuOpenScrollActivity();
+  };
+  document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+}
+
+function getMenuOpenGesturePoint(evt) {
+  const touch = evt?.changedTouches?.[0] || evt?.touches?.[0] || null;
+  if (touch) {
+    return {
+      x: Number(touch.clientX) || 0,
+      y: Number(touch.clientY) || 0
+    };
+  }
+  if (typeof evt?.clientX === "number" && typeof evt?.clientY === "number") {
+    return {
+      x: Number(evt.clientX) || 0,
+      y: Number(evt.clientY) || 0
+    };
+  }
+  return null;
+}
+
+function setMenuOpenTapState(node, evt) {
+  if (!node) return;
+  const point = getMenuOpenGesturePoint(evt);
+  if (!point) {
+    node.__menuOpenTapState = null;
+    return;
+  }
+  node.__menuOpenTapState = {
+    startedAt: Date.now(),
+    x: point.x,
+    y: point.y,
+    moved: false,
+    pointerId: typeof evt?.pointerId === "number" ? evt.pointerId : null
+  };
+}
+
+function updateMenuOpenTapState(node, evt) {
+  const stateRef = node?.__menuOpenTapState;
+  if (!node || !stateRef) return;
+  if (stateRef.pointerId !== null && typeof evt?.pointerId === "number" && stateRef.pointerId !== evt.pointerId) return;
+  const point = getMenuOpenGesturePoint(evt);
+  if (!point) return;
+  const dx = Math.abs(point.x - stateRef.x);
+  const dy = Math.abs(point.y - stateRef.y);
+  if (dx > MENU_OPEN_TAP_MAX_MOVE_PX || dy > MENU_OPEN_TAP_MAX_MOVE_PX) {
+    stateRef.moved = true;
+  }
+}
+
+function clearMenuOpenTapState(node) {
+  if (!node) return;
+  node.__menuOpenTapState = null;
+}
+
+function consumeMenuOpenTapState(node, evt) {
+  const now = Date.now();
+  const stateRef = node?.__menuOpenTapState;
+  clearMenuOpenTapState(node);
+  if (!stateRef) {
+    suppressMenuOpenClick(node, now);
+    return false;
+  }
+  if (stateRef.pointerId !== null && typeof evt?.pointerId === "number" && stateRef.pointerId !== evt.pointerId) {
+    suppressMenuOpenClick(node, now);
+    return false;
+  }
+  const point = getMenuOpenGesturePoint(evt);
+  if (!point) {
+    suppressMenuOpenClick(node, now);
+    return false;
+  }
+  const dx = Math.abs(point.x - stateRef.x);
+  const dy = Math.abs(point.y - stateRef.y);
+  if (stateRef.moved || dx > MENU_OPEN_TAP_MAX_MOVE_PX || dy > MENU_OPEN_TAP_MAX_MOVE_PX) {
+    suppressMenuOpenClick(node, now);
+    return false;
+  }
+  if (now - stateRef.startedAt > MENU_OPEN_TAP_MAX_MS) {
+    suppressMenuOpenClick(node, now);
+    return false;
+  }
+  if (shouldSuppressMenuOpenByScroll(now)) {
+    suppressMenuOpenClick(node, now);
+    return false;
+  }
+  return true;
 }
 
 let authPersistenceReady = null;
@@ -16251,17 +16369,43 @@ function bindAppEvents() {
     });
   });
 
+  bindMenuOpenScrollGuard();
   document.querySelectorAll("[data-menu-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      if (shouldSuppressMenuOpenClick(btn)) return;
+      if (shouldSuppressMenuOpenByScroll()) return;
       triggerMenuDetailOpenFromGesture(btn);
     });
-    btn.addEventListener("pointerup", (evt) => {
-      if (evt.pointerType === "mouse") return;
-      evt.preventDefault();
-      triggerMenuDetailOpenFromGesture(btn);
-    });
-    if (typeof window !== "undefined" && !("PointerEvent" in window)) {
+    if (typeof window !== "undefined" && "PointerEvent" in window) {
+      btn.addEventListener("pointerdown", (evt) => {
+        if (evt.pointerType === "mouse") return;
+        setMenuOpenTapState(btn, evt);
+      });
+      btn.addEventListener("pointermove", (evt) => {
+        if (evt.pointerType === "mouse") return;
+        updateMenuOpenTapState(btn, evt);
+      });
+      btn.addEventListener("pointercancel", () => {
+        clearMenuOpenTapState(btn);
+      });
+      btn.addEventListener("pointerup", (evt) => {
+        if (evt.pointerType === "mouse") return;
+        if (!consumeMenuOpenTapState(btn, evt)) return;
+        evt.preventDefault();
+        triggerMenuDetailOpenFromGesture(btn);
+      });
+    } else {
+      btn.addEventListener("touchstart", (evt) => {
+        setMenuOpenTapState(btn, evt);
+      }, { passive: true });
+      btn.addEventListener("touchmove", (evt) => {
+        updateMenuOpenTapState(btn, evt);
+      }, { passive: true });
+      btn.addEventListener("touchcancel", () => {
+        clearMenuOpenTapState(btn);
+      });
       btn.addEventListener("touchend", (evt) => {
+        if (!consumeMenuOpenTapState(btn, evt)) return;
         evt.preventDefault();
         triggerMenuDetailOpenFromGesture(btn);
       }, { passive: false });
