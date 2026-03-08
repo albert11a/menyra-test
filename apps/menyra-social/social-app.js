@@ -505,6 +505,10 @@ import {
   bindLikesOverlayEventsCore,
   bindCustomerOverlayEventsCore
 } from "./core/overlay-basic-bind-utils.js";
+import {
+  bindChatOverlayEventsCore,
+  bindPostOverlayEventsCore
+} from "./core/overlay-chat-post-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14175,109 +14179,29 @@ function bindOverlayEvents({
   }
 
   if (chatChanged) {
-    const chatModalOverlay = document.getElementById("chatModalOverlay");
-    const chatModalClose = document.getElementById("chatModalClose");
-    const chatSendBtn = document.getElementById("chatSendBtn");
-    const chatInput = document.getElementById("chatMessageInput");
-    const chatMessages = document.getElementById("chatMessages");
-    bindModalDismiss(chatModalOverlay, closeChatModal, { selfOnly: true });
-    bindModalDismiss(chatModalClose, closeChatModal);
-    if (chatSendBtn) {
-      chatSendBtn.addEventListener("click", () => {
-        sendChatMessage();
-      });
-    }
-    if (chatInput) {
-      chatInput.addEventListener("input", () => {
-        state.chatModal.draft = chatInput.value;
-        chatInput.style.height = "auto";
-        chatInput.style.height = `${Math.min(chatInput.scrollHeight, 112)}px`;
-      });
-      chatInput.addEventListener("keydown", (evt) => {
-        if (evt.key === "Enter" && !evt.shiftKey) {
-          evt.preventDefault();
-          sendChatMessage();
-        }
-      });
-      queueMicrotask(() => {
-        chatInput.style.height = "auto";
-        chatInput.style.height = `${Math.min(chatInput.scrollHeight, 112)}px`;
-      });
-    }
-    if (chatMessages) {
-      scrollChatMessagesToBottom();
-    }
+    bindChatOverlayEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      bindModalDismissFn: bindModalDismiss,
+      closeChatModalFn: closeChatModal,
+      sendChatMessageFn: sendChatMessage,
+      scrollChatMessagesToBottomFn: scrollChatMessagesToBottom,
+      queueMicrotaskFn: (fn) => queueMicrotask(fn),
+      state
+    });
   }
 
   if (postChanged) {
-    const postModalOverlay = document.getElementById("postModalOverlay");
-    const postModalClose = document.getElementById("postModalClose");
-    bindModalDismiss(postModalOverlay, closePostModal, { selfOnly: true });
-    bindModalDismiss(postModalClose, closePostModal);
-
-    const postLikeBtn = document.getElementById("postLikeBtn");
-    if (postLikeBtn) {
-      postLikeBtn.addEventListener("click", () => {
-        const postId = postLikeBtn.dataset.postId;
-        if (postId) togglePostLike(postId);
-      });
-    }
-
-    const postLikesBtn = document.getElementById("postLikesBtn");
-    if (postLikesBtn) {
-      postLikesBtn.addEventListener("click", () => {
-        const postId = postLikesBtn.dataset.postId;
-        if (!postId) return;
-        state.likesModal = { open: true, postId, animate: false };
-        renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
-        void loadPostLikesForModal(postId);
-      });
-    }
-
-    const postReplyCancel = document.getElementById("postReplyCancel");
-    if (postReplyCancel) {
-      postReplyCancel.addEventListener("click", () => {
-        state.postModal.replyTo = null;
-        renderOverlays();
-      });
-    }
-
-    const postCommentSend = document.getElementById("postCommentSend");
-    if (postCommentSend) {
-      postCommentSend.addEventListener("click", () => {
-        const postId = postCommentSend.dataset.postId;
-        if (!postId) return;
-        const inputEl = document.getElementById("postCommentInput");
-        const text = inputEl ? inputEl.value : state.postModal.commentText;
-        if (!String(text || "").trim() || state.postModal.sending) return;
-        state.postModal.commentText = text;
-        addComment(postId, text, state.postModal.replyTo);
-      });
-    }
-
-    document.querySelectorAll("[data-comment-reply]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        state.postModal.replyTo = btn.dataset.commentId || null;
-        renderOverlays();
-      });
+    bindPostOverlayEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      bindModalDismissFn: bindModalDismiss,
+      closePostModalFn: closePostModal,
+      togglePostLikeFn: togglePostLike,
+      renderOverlaysFn: renderOverlays,
+      loadPostLikesForModalFn: loadPostLikesForModal,
+      addCommentFn: addComment,
+      toggleCommentLikeFn: toggleCommentLike,
+      state
     });
-
-    document.querySelectorAll("[data-comment-like]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const postId = btn.dataset.postId;
-        const commentId = btn.dataset.commentId;
-        const replyId = btn.dataset.replyId || "";
-        if (!postId || !commentId) return;
-        toggleCommentLike(postId, commentId, replyId || null);
-      });
-    });
-
-    const postCommentInput = document.getElementById("postCommentInput");
-    if (postCommentInput) {
-      postCommentInput.addEventListener("input", () => {
-        state.postModal.commentText = postCommentInput.value;
-      });
-    }
   }
 
   if (likesChanged) {
