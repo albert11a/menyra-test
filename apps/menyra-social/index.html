@@ -139,6 +139,20 @@
     @supports (color-scheme: only light) {
       :root { color-scheme: only light; }
     }
+    html.is-standalone::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--safe-area-top);
+      background: var(--app-bg);
+      pointer-events: none;
+      z-index: 55;
+    }
+    html.is-standalone.modal-open::before {
+      background: var(--app-surface);
+    }
     @media (prefers-color-scheme: dark) {
       :root,
       html,
