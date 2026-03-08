@@ -2,8 +2,8 @@
 
 ## Snapshot
 - Datei: `apps/menyra-social/social-app.js`
-- Zeilen: 19971
-- Top-Level Funktionen: 744
+- Zeilen: 19530
+- Top-Level Funktionen: 726
 - Aktueller Status: erster Shared-Storage Split bereits gemacht (`social-storage.js`)
 
 ## Strukturkarte (grob)
@@ -18,19 +18,7 @@
 ## Echte Remove-Kandidaten (statische Pruefung)
 Kriterium: Funktionsname kommt genau 1x vor (nur Deklaration), keine Referenz in anderen Dateien.
 
-1. `applyRestaurantMetaUpdate` (Zeile 4407)
-2. `formatPagedScopeCount` (Zeile 4937)
-3. `startFeedListener` (Zeile 8991)
-4. `areProfilePostsEquivalent` (Zeile 9143)
-5. `startUserPostsListener` (Zeile 9201)
-6. `startBusinessPostsListener` (Zeile 9252)
-7. `updateRestaurantSelection` (Zeile 17196)
-8. `startRestaurantsListener` (Zeile 17528)
-9. `loadFeedDelta` (Zeile 17861)
-10. `ensureSocialBusinessProfile` (Zeile 18845)
-11. `ensureCeoStaffIndexLoaded` (Zeile 19415)
-12. `fetchCeoScopedRows` (Zeile 19425)
-13. `loadStories` (Zeile 21271)
+1. `reconcileKnownLegacyOwnership` (Zeile 19006)
 
 ## Batch A erledigt
 Entfernt (statisch unreferenziert, no-op/legacy-helper):
@@ -65,6 +53,27 @@ Entfernt (statisch unreferenziert):
 8. `loadFollowingFromFirebase`
 9. `isLeadInlineSettingsView`
 
+## Batch D erledigt
+Entfernt (statisch unreferenziert):
+1. `applyRestaurantMetaUpdate`
+2. `formatPagedScopeCount`
+3. `startFeedListener`
+4. `startFeedFallbackListener`
+5. `startStoriesListener`
+6. `areProfilePostsEquivalent`
+7. `areProfilePostsStructureEquivalent`
+8. `patchProfilePostCounts`
+9. `startUserPostsListener`
+10. `startBusinessPostsListener`
+11. `updateRestaurantSelection`
+12. `startRestaurantsListener`
+13. `loadFeedDelta`
+14. `ensureSocialBusinessProfile`
+15. `ensureCeoStaffIndexLoaded`
+16. `fetchCeoScopedRows`
+17. `buildStoriesSignature`
+18. `loadStories`
+
 ## Legacy-Bloecke (nicht sofort loeschen)
 - Chat Legacy-Migration (`rebuildLegacyChatThreadIndexFromStorage`, `loadLegacyChatThreadMessages`)
 - Notifications/Following Legacy-Migration (`legacyNotifs`, `legacyFollowing`)
@@ -74,10 +83,8 @@ Entfernt (statisch unreferenziert):
 Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage final entscheiden.
 
 ## Konkreter Ablauf ab jetzt
-1. Batch D: 6-8 Low-Risk Remove-Kandidaten entfernen, Check + Smoke + Commit.
-2. Batch E: naechste 6-8 Remove-Kandidaten, Check + Smoke + Commit.
-3. Batch F: Rest Remove-Kandidaten, Check + Smoke + Commit.
-4. Danach Core-Split starten (`core/state.js`, `core/bootstrap.js`, `core/render.js`).
+1. Batch E: Rest-Remove-Kandidaten pruefen (`reconcileKnownLegacyOwnership`), Check + Smoke + Commit.
+2. Danach Core-Split starten (`core/state.js`, `core/bootstrap.js`, `core/render.js`).
 
 ## Gate pro Batch
 1. `node --check apps/menyra-social/social-app.js`
