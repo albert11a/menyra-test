@@ -155,6 +155,12 @@ import {
   buildChatMessageNotificationCore
 } from "./core/chat-remote-sync-utils.js";
 import {
+  buildNextChatAttachmentsCore,
+  removePendingChatAttachmentCore,
+  toggleChatMessageFlagCore,
+  createOutgoingChatMessageCore
+} from "./core/chat-compose-utils.js";
+import {
   captureChatInputFocusStateCore,
   restoreChatInputFocusStateCore,
   scrollChatMessagesToBottomCore,
@@ -3528,29 +3534,25 @@ async function addChatAttachments(fileList) {
   const existing = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments : [];
   const slotsLeft = Math.max(0, 4 - existing.length);
   if (!slotsLeft) return;
-  const selected = files.slice(0, slotsLeft);
-  const nextAttachments = [];
-  for (const file of selected) {
-    const isImage = /^image\//i.test(String(file.type || ""));
-    const inlineAttachment = await buildInlineChatAttachment(file, isImage);
-    nextAttachments.push({
-      id: `att_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      name: inlineAttachment.name || file.name || "Datei",
-      mime: inlineAttachment.mime || file.type || "application/octet-stream",
-      kind: isImage ? "image" : "file",
-      dataUrl: inlineAttachment.dataUrl || "",
-      size: Math.max(0, Number(inlineAttachment.size || file.size || 0) || 0),
-      oversize: !!inlineAttachment.oversize
-    });
-  }
-  state.chatModal.attachments = [...existing, ...nextAttachments];
+  const nextAttachments = await buildNextChatAttachmentsCore({
+    fileList: files.slice(0, slotsLeft),
+    existingAttachments: existing,
+    maxAttachments: 4,
+    buildInlineChatAttachment: (file, isImage) => buildInlineChatAttachment(file, isImage),
+    nowMsFn: () => Date.now(),
+    randomFn: () => Math.random()
+  });
+  state.chatModal.attachments = nextAttachments;
   render();
 }
 
 function removePendingChatAttachment(attachmentId) {
   const safeId = String(attachmentId || "");
   if (!safeId) return;
-  state.chatModal.attachments = (state.chatModal.attachments || []).filter((item) => String(item?.id || "") !== safeId);
+  state.chatModal.attachments = removePendingChatAttachmentCore({
+    attachments: state.chatModal.attachments,
+    attachmentId: safeId
+  });
   render();
 }
 
@@ -3558,14 +3560,15 @@ function toggleChatMessageSaved(messageId) {
   const safeId = String(messageId || "");
   if (!safeId) return;
   let nextSaved = null;
-  updateCurrentChatMessages((messages) => messages.map((message) => (
-    String(message?.id || "") === safeId
-      ? (() => {
-        nextSaved = !message.saved;
-        return { ...message, saved: nextSaved };
-      })()
-      : message
-  )));
+  updateCurrentChatMessages((messages) => {
+    const result = toggleChatMessageFlagCore({
+      messages,
+      messageId: safeId,
+      flag: "saved"
+    });
+    nextSaved = result.nextValue;
+    return result.messages;
+  });
   render();
   if (typeof nextSaved === "boolean") {
     void persistCurrentChatMessagePatch(safeId, { saved: nextSaved });
@@ -3576,14 +3579,15 @@ function toggleChatMessageLiked(messageId) {
   const safeId = String(messageId || "");
   if (!safeId) return;
   let nextLiked = null;
-  updateCurrentChatMessages((messages) => messages.map((message) => (
-    String(message?.id || "") === safeId
-      ? (() => {
-        nextLiked = !message.liked;
-        return { ...message, liked: nextLiked };
-      })()
-      : message
-  )));
+  updateCurrentChatMessages((messages) => {
+    const result = toggleChatMessageFlagCore({
+      messages,
+      messageId: safeId,
+      flag: "liked"
+    });
+    nextLiked = result.nextValue;
+    return result.messages;
+  });
   render();
   if (typeof nextLiked === "boolean") {
     void persistCurrentChatMessagePatch(safeId, { liked: nextLiked });
@@ -3653,16 +3657,13 @@ async function sendChatMessage() {
   const attachments = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments.slice() : [];
   if (!text && !attachments.length) return;
   const createdAt = new Date().toISOString();
-  const outgoingMessage = {
-    id: `msg_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    from: "self",
+  const outgoingMessage = createOutgoingChatMessageCore({
     text,
     attachments,
-    liked: false,
-    saved: false,
-    read: true,
-    createdAt
-  };
+    createdAt,
+    nowMsFn: () => Date.now(),
+    randomFn: () => Math.random()
+  });
   const nextMessages = [...(state.chatModal.messages || []), outgoingMessage];
   state.chatModal.messages = pruneChatMessages(nextMessages);
   state.chatModal.draft = "";
