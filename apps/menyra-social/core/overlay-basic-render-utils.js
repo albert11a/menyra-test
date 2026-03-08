@@ -210,3 +210,114 @@ export function renderLikesModalCore({
     </div>
   `;
 }
+
+export function renderPostModalCore({
+  state,
+  ensurePostMeta,
+  resolvePostCounts,
+  getOptimizedImageUrl,
+  ensureCommentShape,
+  currentUserBadge,
+  renderPostComments,
+  formatDateLabel,
+  escapeHtml,
+  icon
+} = {}) {
+  if (!state?.postModal?.open || !state?.postModal?.post) return "";
+  const ensureMeta = typeof ensurePostMeta === "function"
+    ? ensurePostMeta
+    : (() => ({}));
+  const resolveCounts = typeof resolvePostCounts === "function"
+    ? resolvePostCounts
+    : (() => ({ likeLabel: "0", commentLabel: "0" }));
+  const getImage = typeof getOptimizedImageUrl === "function"
+    ? getOptimizedImageUrl
+    : ((value) => value || "");
+  const ensureComment = typeof ensureCommentShape === "function"
+    ? ensureCommentShape
+    : ((value) => value || {});
+  const getUserBadge = typeof currentUserBadge === "function"
+    ? currentUserBadge
+    : (() => ({ uid: "", handle: "" }));
+  const renderComments = typeof renderPostComments === "function"
+    ? renderPostComments
+    : (() => "");
+  const formatDate = typeof formatDateLabel === "function"
+    ? formatDateLabel
+    : ((value) => String(value ?? ""));
+  const esc = typeof escapeHtml === "function"
+    ? escapeHtml
+    : ((value) => String(value ?? ""));
+  const iconFn = typeof icon === "function" ? icon : (() => "");
+
+  const post = state.postModal.post;
+  const meta = ensureMeta(post.id);
+  const counts = resolveCounts(post);
+  const caption = post.caption || post.title || "";
+  const rawImageUrl = post.url || post.image || "";
+  const imageUrl = getImage(rawImageUrl, "large");
+  const comments = (meta.comments || []).map(ensureComment);
+  const userBadge = getUserBadge();
+  const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
+  const replyTarget = comments.find((item) => item.id === state.postModal.replyTo);
+  const animClass = "";
+
+  return `
+      <div class="fixed inset-0 z-[70] modal-overlay">
+        <div id="postModalOverlay" class="absolute inset-0 bg-black/60"></div>
+        <div class="modal-frame">
+          <div class="bg-white rounded-t-[3rem] shadow-2xl border border-slate-100 ${animClass} flex flex-col modal-sheet-85 overflow-hidden modal-sheet">
+            <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll p-7">
+              <div class="flex items-center justify-between mb-4">
+                <div>
+                  <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Post</span>
+                  <h3 class="text-xl font-black italic tracking-tighter">${esc(formatDate(post.createdAt || new Date()))}</h3>
+                  <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
+                </div>
+                <button id="postModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${iconFn("x", "w-4 h-4")}</button>
+              </div>
+
+              <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
+                <img src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover" />
+              </div>
+
+              ${caption ? `
+                <div class="mt-4 text-sm text-slate-600 leading-relaxed">${esc(caption)}</div>
+              ` : ""}
+
+              <div class="mt-4 flex items-center justify-between">
+                <button id="postLikeBtn" data-post-id="${esc(post.id)}" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"}">
+                  ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+                </button>
+                <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                  <button id="postLikesBtn" data-post-id="${esc(post.id)}" class="hover:text-slate-700">${esc(counts.likeLabel)} Likes</button>
+                  <span id="postCommentsCount">${esc(counts.commentLabel)} Kommentare</span>
+                </div>
+              </div>
+
+              <div id="postModalComments" class="mt-5 space-y-4">
+                ${renderComments(comments)}
+              </div>
+
+              ${replyTarget ? `
+                <div class="mt-4 flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                  <div class="text-[10px] font-bold uppercase text-slate-400">Antwort an @${esc(replyTarget.handle)}</div>
+                  <button id="postReplyCancel" class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Abbrechen</button>
+                </div>
+              ` : ""}
+            </div>
+
+            <div class="p-7 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
+              <div class="flex gap-3">
+                <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${esc(state.postModal.commentText || "")}</textarea>
+                <button id="postCommentSend" data-post-id="${esc(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
+                  ${iconFn("send", "w-4 h-4")}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
