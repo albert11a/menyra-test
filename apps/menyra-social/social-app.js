@@ -115,6 +115,16 @@ import {
   pruneChatMessagesCore,
   buildChatPreviewTextCore
 } from "./core/chat-utils.js";
+import {
+  saveChatThreadIndexCore,
+  readChatThreadIndexListCore,
+  buildChatThreadSummaryFromMessagesCore,
+  rebuildLegacyChatThreadIndexFromStorageCore,
+  mergeChatThreadListsCore,
+  loadChatThreadIndexCore,
+  sortChatThreadsCore,
+  rebuildChatThreadIndexFromStorageCore
+} from "./core/chat-thread-index-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -2918,160 +2928,73 @@ function applyFollowingHandles(handles, { shouldRender = true, targetIds = state
 }
 
 function saveChatThreadIndex(threads) {
-  const key = chatIndexKey(state.user?.uid || "");
-  if (!key) return;
-  try {
-    safeStorage.setItem(key, JSON.stringify((Array.isArray(threads) ? threads : []).slice(0, 100)));
-  } catch {}
+  saveChatThreadIndexCore({
+    threads,
+    key: chatIndexKey(state.user?.uid || ""),
+    safeStorage,
+    maxItems: 100
+  });
 }
 
 function readChatThreadIndexList(key) {
-  if (!key) return [];
-  try {
-    const raw = safeStorage.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
+  return readChatThreadIndexListCore({
+    key,
+    safeStorage
+  });
 }
 
 function buildChatThreadSummaryFromMessages(threadId, value, fallback = {}) {
-  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
-  if (!safeThreadId) return null;
-  const meta = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  const rawMessages = Array.isArray(value)
-    ? value
-    : (Array.isArray(meta.messages) ? meta.messages : []);
-  const messages = pruneChatMessages(rawMessages);
-  const lastMessage = messages[messages.length - 1] || null;
-  const unreadCount = messages.filter((message) => message?.from !== "self" && !message?.read).length;
-  return {
-    id: safeThreadId,
-    uid: String(meta.uid || fallback.uid || safeThreadId).trim(),
-    restaurantId: String(meta.restaurantId || fallback.restaurantId || "").trim(),
-    handle: String(meta.handle || fallback.handle || safeThreadId).replace(/^@/, "").trim(),
-    name: String(meta.name || fallback.name || safeThreadId).trim() || safeThreadId,
-    avatar: String(meta.avatar || fallback.avatar || "").trim(),
-    lastMessage: buildChatPreviewText(lastMessage),
-    updatedAt: lastMessage ? getChatMessageTimestamp(lastMessage) : Number(meta.updatedAt || fallback.updatedAt || Date.now()),
-    unreadCount
-  };
+  return buildChatThreadSummaryFromMessagesCore({
+    threadId,
+    value,
+    fallback,
+    pruneChatMessages: (messages) => pruneChatMessages(messages),
+    buildChatPreviewText: (message) => buildChatPreviewText(message),
+    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message),
+    nowMs: Date.now()
+  });
 }
 
 function rebuildLegacyChatThreadIndexFromStorage() {
-  const threads = [];
-  if (typeof localStorage === "undefined") return threads;
-  const legacyPrefix = `${STORAGE_KEYS.chatThreads}::`;
-  try {
-    const rawMap = localStorage.getItem(STORAGE_KEYS.chatThreads);
-    if (rawMap) {
-      try {
-        const parsedMap = JSON.parse(rawMap);
-        if (parsedMap && typeof parsedMap === "object" && !Array.isArray(parsedMap)) {
-          Object.entries(parsedMap).forEach(([threadId, value]) => {
-            const summary = buildChatThreadSummaryFromMessages(threadId, value);
-            if (summary) threads.push(summary);
-          });
-        }
-      } catch {}
-    }
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key || !key.startsWith(legacyPrefix)) continue;
-      const suffix = key.slice(legacyPrefix.length).trim();
-      if (!suffix || suffix.includes("::")) continue;
-      const summary = buildChatThreadSummaryFromMessages(suffix, (() => {
-        try {
-          const raw = localStorage.getItem(key);
-          return raw ? JSON.parse(raw) : [];
-        } catch {
-          return [];
-        }
-      })());
-      if (summary) threads.push(summary);
-    }
-  } catch {}
-  return sortChatThreads(threads);
+  return rebuildLegacyChatThreadIndexFromStorageCore({
+    localStorageObj: typeof localStorage === "undefined" ? null : localStorage,
+    chatThreadsStorageKey: STORAGE_KEYS.chatThreads,
+    buildChatThreadSummaryFromMessages: (threadId, value, fallback = {}) => buildChatThreadSummaryFromMessages(threadId, value, fallback),
+    sortChatThreads: (threads) => sortChatThreads(threads)
+  });
 }
 
 function mergeChatThreadLists(...lists) {
-  const byId = new Map();
-  lists.flat().forEach((thread) => {
-    if (!thread || typeof thread !== "object") return;
-    const rawId = String(thread.id || thread.uid || thread.restaurantId || thread.handle || "").replace(/^@/, "").trim();
-    if (!rawId) return;
-    const existing = byId.get(rawId) || {};
-    byId.set(rawId, {
-      ...existing,
-      ...thread,
-      id: rawId,
-      uid: String(thread.uid || existing.uid || rawId).trim(),
-      restaurantId: String(thread.restaurantId || existing.restaurantId || "").trim(),
-      handle: String(thread.handle || existing.handle || rawId).replace(/^@/, "").trim(),
-      name: String(thread.name || existing.name || rawId).trim() || rawId,
-      avatar: String(thread.avatar || existing.avatar || "").trim(),
-      lastMessage: String(thread.lastMessage || existing.lastMessage || "").trim(),
-      unreadCount: Math.max(0, Number(thread.unreadCount ?? existing.unreadCount ?? 0) || 0),
-      blockedByOwner: !!(thread.blockedByOwner ?? existing.blockedByOwner ?? false),
-      archivedByOwner: !!(thread.archivedByOwner ?? existing.archivedByOwner ?? false),
-      muteUntilMs: Math.max(0, Number(thread.muteUntilMs ?? existing.muteUntilMs ?? 0) || 0),
-      updatedAt: Number(thread.updatedAt || existing.updatedAt || 0) || 0
-    });
-  });
-  return sortChatThreads(Array.from(byId.values()));
+  return mergeChatThreadListsCore(...lists);
 }
 
 function loadChatThreadIndex(uid = state.user?.uid || "") {
-  const key = chatIndexKey(uid);
-  const scopedIndex = readChatThreadIndexList(key);
-  const legacyIndex = readChatThreadIndexList(STORAGE_KEYS.chatIndex);
-  const scopedThreads = rebuildChatThreadIndexFromStorage(uid);
-  const legacyThreads = rebuildLegacyChatThreadIndexFromStorage();
-  return mergeChatThreadLists(scopedThreads, legacyThreads, legacyIndex, scopedIndex);
+  return loadChatThreadIndexCore({
+    uid,
+    chatIndexKey,
+    legacyChatIndexKey: STORAGE_KEYS.chatIndex,
+    readChatThreadIndexList: (key) => readChatThreadIndexList(key),
+    rebuildChatThreadIndexFromStorage: (ownerUid) => rebuildChatThreadIndexFromStorage(ownerUid),
+    rebuildLegacyChatThreadIndexFromStorage: () => rebuildLegacyChatThreadIndexFromStorage(),
+    mergeChatThreadLists: (...lists) => mergeChatThreadLists(...lists)
+  });
 }
 
 function sortChatThreads(threads) {
-  return (Array.isArray(threads) ? threads.slice() : [])
-    .sort((a, b) => (Number(b?.updatedAt || 0) - Number(a?.updatedAt || 0)));
+  return sortChatThreadsCore(threads);
 }
 
 function rebuildChatThreadIndexFromStorage(uid = state.user?.uid || "") {
-  const safeUid = String(uid || "").trim();
-  if (!safeUid || typeof localStorage === "undefined") return [];
-  const prefix = `${STORAGE_KEYS.chatThreads}::${safeUid}::`;
-  const threads = [];
-  try {
-    for (let i = 0; i < localStorage.length; i += 1) {
-      const key = localStorage.key(i);
-      if (!key || !key.startsWith(prefix)) continue;
-      const threadId = key.slice(prefix.length).trim();
-      if (!threadId) continue;
-      let messages = [];
-      try {
-        const raw = localStorage.getItem(key);
-        const parsed = raw ? JSON.parse(raw) : [];
-        messages = pruneChatMessages(Array.isArray(parsed) ? parsed : []);
-      } catch {
-        messages = [];
-      }
-      const lastMessage = messages[messages.length - 1] || null;
-      const unreadCount = messages.filter((message) => message?.from !== "self" && !message?.read).length;
-      threads.push({
-        id: threadId,
-        uid: threadId,
-        restaurantId: "",
-        handle: threadId,
-        name: threadId,
-        avatar: "",
-        lastMessage: buildChatPreviewText(lastMessage),
-        updatedAt: lastMessage ? getChatMessageTimestamp(lastMessage) : Date.now(),
-        unreadCount
-      });
-    }
-  } catch {}
-  return sortChatThreads(threads);
+  return rebuildChatThreadIndexFromStorageCore({
+    uid,
+    localStorageObj: typeof localStorage === "undefined" ? null : localStorage,
+    chatThreadsStorageKey: STORAGE_KEYS.chatThreads,
+    pruneChatMessages: (messages) => pruneChatMessages(messages),
+    buildChatPreviewText: (message) => buildChatPreviewText(message),
+    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message),
+    sortChatThreads: (threads) => sortChatThreads(threads),
+    nowMs: Date.now()
+  });
 }
 
 function getChatUnreadCount() {

@@ -116,6 +116,8 @@ Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage fin
 18. Feed-Story-Helper (`buildStoriesSignature`, `refreshFeedStories`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
 19. `core/chat-utils.js` erstellt.
 20. Chat-Utility-Helper (`getChatThreadId`, `chatThreadStorageKey`, `chatThreadDocRef`, `chatMessageDocRef`, `chatMessagesCollectionRef`, `getChatMessageTimestamp`, `pruneChatMessages`, `buildChatPreviewText`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
+21. `core/chat-thread-index-utils.js` erstellt.
+22. Chat-Thread-Index-Helper (`saveChatThreadIndex`, `readChatThreadIndexList`, `buildChatThreadSummaryFromMessages`, `rebuildLegacyChatThreadIndexFromStorage`, `mergeChatThreadLists`, `loadChatThreadIndex`, `sortChatThreads`, `rebuildChatThreadIndexFromStorage`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
 
 ## Gate pro Batch
 1. `node --check apps/menyra-social/social-app.js`
