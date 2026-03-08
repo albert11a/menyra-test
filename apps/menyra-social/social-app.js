@@ -191,6 +191,7 @@ import {
   shouldFetchRestaurantNotificationPostCore
 } from "./core/post-notification-fetch-utils.js";
 import { highlightCommentInModalCore } from "./core/notification-comment-highlight-utils.js";
+import { buildFollowAcceptedFollowingStateCore } from "./core/follow-accepted-state-utils.js";
 import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
@@ -11272,11 +11273,15 @@ async function openNotificationTarget(id) {
   if (!notif) return;
   void markNotificationRead(id);
   if (notif.type === "follow_accepted") {
-    const acceptedHandle = normalizeFollowHandle(notif.userHandle || "");
-    const acceptedUid = String(notif.userUid || "").trim();
+    const nextFollowing = buildFollowAcceptedFollowingStateCore({
+      notif,
+      followingHandles: state.followingHandles,
+      followingTargetIds: state.followingTargetIds,
+      normalizeFollowHandle: (value) => normalizeFollowHandle(value)
+    });
     applyFollowingHandles(
-      acceptedHandle ? [acceptedHandle, ...(state.followingHandles || [])] : state.followingHandles,
-      { shouldRender: false, targetIds: [acceptedUid, ...(state.followingTargetIds || [])] }
+      nextFollowing.handles,
+      { shouldRender: false, targetIds: nextFollowing.targetIds }
     );
   }
   if (isChatNotificationTypeCore(notif.type)) {
