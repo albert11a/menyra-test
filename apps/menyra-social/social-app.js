@@ -14317,7 +14317,7 @@ function renderMain() {
     : "flex-1 min-h-0 app-main-scroll";
 
   return `
-    <div class="app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative flex flex-col font-sans">
+    <div class="app-shell ${isChatThreadOpen ? "app-shell--chat-open" : ""} bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative flex flex-col font-sans">
       ${renderDrawer()}
       <main class="${mainClass}">
         ${renderHeader()}
