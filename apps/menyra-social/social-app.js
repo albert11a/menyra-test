@@ -269,6 +269,7 @@ import {
   renderMenuItemModalCore,
   renderMenuDetailModalCore
 } from "./core/menu-modal-render-utils.js";
+import { saveMenuItemFromModalCore } from "./core/menu-save-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
 import { saveLeadFromModalCore } from "./core/lead-save-utils.js";
 import { deleteLeadFromModalCore } from "./core/lead-delete-utils.js";
@@ -17362,121 +17363,26 @@ function setMenuDetailVariant(field, value) {
 }
 
 async function saveMenuItemFromModal() {
-  if (!state.user) return;
-  const restaurantId = state.userProfile.restaurantId || "";
-  const isShop = isShopCatalogProfile(state.userProfile);
-  if (!restaurantId) {
-    state.menuModal.status = "Kein Restaurant ausgewaehlt.";
-    renderOverlays({ updateMenu: true });
-    return;
-  }
-  const name = document.getElementById("menuItemName")?.value?.trim() || "";
-  const price = document.getElementById("menuItemPrice")?.value?.trim() || "";
-  const category = document.getElementById("menuItemCategory")?.value?.trim() || "";
-  const type = document.getElementById("menuItemType")?.value || "food";
-  const description = document.getElementById("menuItemDesc")?.value?.trim() || "";
-  const longDescription = document.getElementById("menuItemLongDesc")?.value?.trim() || "";
-  const allergens = document.getElementById("menuItemAllergens")?.value?.trim() || "";
-  const brand = document.getElementById("menuItemBrand")?.value?.trim() || "";
-  const sku = document.getElementById("menuItemSku")?.value?.trim() || "";
-  const stockRaw = document.getElementById("menuItemStock")?.value?.trim() || "";
-  const sizes = normalizeOptionList(document.getElementById("menuItemSizes")?.value || "");
-  const colors = normalizeOptionList(document.getElementById("menuItemColors")?.value || "");
-  const available = document.getElementById("menuItemAvailable")?.checked !== false;
-  const imageUrlInput = String(state.menuModal.imageUrlDraft || "").trim()
-    || document.getElementById("menuItemImageUrl")?.value?.trim()
-    || "";
-  const stock = stockRaw === ""
-    ? null
-    : Math.max(0, Math.round(Number(stockRaw) || 0));
-  const crop = getMenuModalCrop();
-
-  if (!name) {
-    state.menuModal.status = "Bitte Namen eingeben.";
-    renderOverlays({ updateMenu: true });
-    return;
-  }
-
-  state.menuModal.loading = true;
-  state.menuModal.status = "Speichern...";
-  renderOverlays({ updateMenu: true });
-
-  try {
-    const ownerId = restaurantId;
-    const existingImages = Array.isArray(state.menuModal.existingImages)
-      ? state.menuModal.existingImages.slice()
-      : [];
-    const uploadedUrls = [];
-    const files = Array.isArray(state.menuModal.imageFiles) ? state.menuModal.imageFiles : [];
-    for (const file of files) {
-      const { cdnUrl } = await uploadCompressedImage(
-        file,
-        ownerId,
-        { maxSize: 1080, quality: 0.8, mimeType: "image/jpeg" }
-      );
-      if (cdnUrl) uploadedUrls.push(String(cdnUrl));
-    }
-
-    const merged = [
-      imageUrlInput,
-      ...(existingImages || []),
-      ...(uploadedUrls || [])
-    ].filter(Boolean);
-    const imageUrls = Array.from(new Set(merged));
-    let imageUrl = imageUrls[0] || "";
-
-    const mode = state.menuModal.mode;
-    const ref = mode === "edit" && state.menuModal.item?.id
-      ? doc(db, "restaurants", restaurantId, "menuItems", state.menuModal.item.id)
-      : doc(collection(db, "restaurants", restaurantId, "menuItems"));
-    const id = state.menuModal.item?.id || ref.id;
-
-    const payload = {
-      id,
-      type: normalizeMenuType(type),
-      category: category || "Sonstiges",
-      name,
-      description,
-      longDescription,
-      allergens,
-      brand: isShop ? brand : "",
-      sku: isShop ? sku : "",
-      stock: isShop ? stock : null,
-      sizes: isShop ? sizes : [],
-      colors: isShop ? colors : [],
-      cropX: crop.x,
-      cropY: crop.y,
-      price: price ?? "",
-      available,
-      imageUrl: imageUrl || "",
-      imageUrls,
-      updatedAt: serverTimestamp()
-    };
-    if (mode !== "edit") payload.createdAt = serverTimestamp();
-
-    await setDoc(ref, payload, { merge: true });
-
-    const nextItems = Array.isArray(state.menu.items) ? state.menu.items.slice() : [];
-    const idx = nextItems.findIndex((it) => String(it.id) === String(id));
-    const normalized = normalizeMenuItemDoc(payload, id);
-    if (idx >= 0) {
-      nextItems[idx] = { ...nextItems[idx], ...normalized };
-    } else {
-      nextItems.unshift(normalized);
-    }
-    syncMenuCaches(restaurantId, nextItems);
-    await publishMenuToPublic(restaurantId, nextItems);
-
-    state.menuModal.status = "Gespeichert.";
-    state.menuModal.loading = false;
-    closeMenuModal();
-    render();
-  } catch (err) {
-    console.error(err);
-    state.menuModal.status = err?.message || "Speichern fehlgeschlagen.";
-    state.menuModal.loading = false;
-    renderOverlays({ updateMenu: true });
-  }
+  return saveMenuItemFromModalCore({
+    state,
+    documentObj: typeof document !== "undefined" ? document : null,
+    isShopCatalogProfile,
+    renderOverlays,
+    normalizeOptionList,
+    getMenuModalCrop,
+    uploadCompressedImage,
+    doc,
+    collection,
+    db,
+    normalizeMenuType,
+    serverTimestamp,
+    setDoc,
+    normalizeMenuItemDoc,
+    syncMenuCaches,
+    publishMenuToPublic,
+    closeMenuModal,
+    render
+  });
 }
 
 async function deleteMenuItemById(itemId) {
