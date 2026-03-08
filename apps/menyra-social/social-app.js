@@ -267,6 +267,11 @@ import {
   getFocusItemCropCore,
   getFocusItemObjectPositionCore
 } from "./core/crop-utils.js";
+import { formatPriceCore, parsePriceValueCore } from "./core/price-utils.js";
+import {
+  normalizeOrderItemCore,
+  normalizeOrderDocCore
+} from "./core/order-normalize-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -2296,19 +2301,11 @@ function normalizeMenuType(value) {
 }
 
 function formatPrice(value, currency = "€") {
-  if (value === null || value === undefined || value === "") return "-";
-  const num = Number(value);
-  if (Number.isFinite(num)) return `${num.toFixed(2)} ${currency}`;
-  const str = String(value).trim();
-  return str ? `${str} ${currency}` : "-";
+  return formatPriceCore(value, currency);
 }
 
 function parsePriceValue(value) {
-  const raw = String(value ?? "").trim();
-  if (!raw) return 0;
-  const normalized = raw.replace(/[^0-9,.-]/g, "").replace(",", ".");
-  const num = Number(normalized);
-  return Number.isFinite(num) ? num : 0;
+  return parsePriceValueCore(value);
 }
 
 function normalizeMenuItemDoc(data, id) {
@@ -17678,54 +17675,17 @@ function ensureFocusDataForProfile(profile = state.profileView?.profile || state
 }
 
 function normalizeOrderItem(item) {
-  return {
-    id: String(item?.id || item?.itemId || "").trim(),
-    itemId: String(item?.itemId || item?.id || "").trim(),
-    cartKey: String(
-      item?.cartKey
-      || buildShopVariantKey(item?.itemId || item?.id || "", {
-        size: item?.selectedSize || item?.size || "",
-        color: item?.selectedColor || item?.color || ""
-      })
-    ).trim(),
-    name: String(item?.name || "Produkt").trim() || "Produkt",
-    price: String(item?.price ?? "").trim(),
-    quantity: Math.max(1, Number(item?.quantity || 1) || 1),
-    imageUrl: String(item?.imageUrl || "").trim(),
-    category: String(item?.category || "").trim(),
-    selectedSize: String(item?.selectedSize || item?.size || "").trim(),
-    selectedColor: String(item?.selectedColor || item?.color || "").trim(),
-    cropX: clampCropPercent(item?.cropX ?? 50, 50),
-    cropY: clampCropPercent(item?.cropY ?? 50, 50)
-  };
+  return normalizeOrderItemCore(item, {
+    buildShopVariantKeyFn: buildShopVariantKey,
+    clampCropPercentFn: clampCropPercent
+  });
 }
 
 function normalizeOrderDoc(data, id) {
-  const source = data && typeof data === "object" ? data : {};
-  const items = (Array.isArray(source.items) ? source.items : []).map(normalizeOrderItem).filter((item) => item.id && item.itemId);
-  const total = Number(source.total);
-  return {
-    id: String(id || source.id || "").trim(),
-    restaurantId: String(source.restaurantId || "").trim(),
-    businessName: String(source.businessName || "").trim(),
-    businessAvatar: String(source.businessAvatar || "").trim(),
-    buyerUid: String(source.buyerUid || "").trim(),
-    buyerName: String(source.buyerName || "").trim(),
-    buyerHandle: String(source.buyerHandle || "").trim(),
-    buyerAvatar: String(source.buyerAvatar || "").trim(),
-    contact: {
-      name: String(source.contact?.name || "").trim(),
-      phone: String(source.contact?.phone || "").trim(),
-      city: String(source.contact?.city || "").trim(),
-      address: String(source.contact?.address || "").trim()
-    },
-    items,
-    itemCount: Math.max(1, Number(source.itemCount || items.reduce((sum, item) => sum + item.quantity, 0) || 1) || 1),
-    total: Number.isFinite(total) ? total : items.reduce((sum, item) => sum + (parsePriceValue(item.price) * item.quantity), 0),
-    status: String(source.status || "Neu").trim() || "Neu",
-    createdAt: source.createdAt || source.createdAtClient || new Date().toISOString(),
-    updatedAt: source.updatedAt || source.updatedAtClient || source.createdAt || source.createdAtClient || new Date().toISOString()
-  };
+  return normalizeOrderDocCore(data, id, {
+    normalizeOrderItemFn: normalizeOrderItem,
+    parsePriceValueFn: parsePriceValue
+  });
 }
 
 function stopOrdersListener() {
