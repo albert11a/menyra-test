@@ -270,6 +270,7 @@ import {
   renderMenuDetailModalCore
 } from "./core/menu-modal-render-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
+import { saveCeoStaffFromViewCore } from "./core/staff-save-utils.js";
 import { renderSettingsViewCore } from "./core/settings-render-utils.js";
 import { escapeHtmlCore } from "./core/html-utils.js";
 import {
@@ -16671,176 +16672,30 @@ async function loadCeoStaff({ grow = false } = {}) {
 }
 
 async function saveCeoStaffFromView() {
-  if (!state.user || !isCeoUser()) return;
-  syncStaffFormFromDom();
-  const form = state.staff.form || {};
-  const isEditing = !!state.staff.editorUid;
-  const existingEntry = isEditing
-    ? (state.staff.items || []).find((item) => String(item.uid || "") === String(state.staff.editorUid || ""))
-    : null;
-  const firstName = String(form.firstName || "").trim();
-  const lastName = String(form.lastName || "").trim();
-  const email = getStaffFormEmail(form, { preferStored: isEditing });
-  const password = String(form.password || "");
-  const country = normalizeCeoCountry(form.country);
-  const locationLabel = String(form.locationLabel || "").trim() || country;
-  const coords = form.coords && Number.isFinite(Number(form.coords.lat)) && Number.isFinite(Number(form.coords.lng))
-    ? { lat: Number(form.coords.lat), lng: Number(form.coords.lng) }
-    : null;
-  const name = buildCeoName({ firstName, lastName, email });
-  if (!firstName || !lastName || !email || (!isEditing && !password)) {
-    state.staff.status = isEditing
-      ? "Vorname, Nachname und Email sind erforderlich."
-      : "Vorname, Nachname, Email und Passwort sind erforderlich.";
-    render();
-    return;
-  }
-  if (!coords) {
-    state.staff.status = "Standort mit Pin waehlen.";
-    render();
-    return;
-  }
-
-  const current = getCurrentCeoMeta();
-  state.staff.saving = true;
-  state.staff.deleting = false;
-  state.staff.status = isEditing ? "CEO wird gespeichert..." : "CEO Staff wird erstellt...";
-  render();
-
-  try {
-    let uid = String(state.staff.editorUid || "").trim();
-    if (!isEditing) {
-      const authUser = await createAuthUser(email, password);
-      uid = String(authUser?.uid || "").trim();
-      if (!uid) throw new Error("Account konnte nicht erstellt werden.");
-    }
-    let avatarUrl = String(form.avatarUrl || "").trim();
-    if (form.avatarFile && uid) {
-      const { cdnUrl } = await uploadCompressedImage(
-        form.avatarFile,
-        uid,
-        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
-      );
-      avatarUrl = cdnUrl || avatarUrl;
-    }
-    const ceoParentUid = String(existingEntry?.ceoParentUid || current.uid || "").trim();
-    const ceoParentName = String(
-      existingEntry?.ceoParentName
-      || ((ceoParentUid && ceoParentUid === current.uid) ? current.name : "")
-      || ""
-    ).trim();
-    const ceoRootUid = String(existingEntry?.ceoRootUid || current.rootUid || current.uid || uid).trim() || uid;
-    const ceoRootName = String(existingEntry?.ceoRootName || current.rootName || current.name || name).trim() || name;
-    const ceoPath = isEditing
-      ? normalizeCeoPath(existingEntry?.ceoPath, [ceoRootUid, ceoParentUid, uid])
-      : uniqueStringList([...(current.path || []), uid]);
-    const handle = normalizeHandle(`${firstName}${lastName}`) || normalizeHandle(name) || "ceo";
-    const superadminPayload = {
-      uid,
-      userId: uid,
-      firstName,
-      lastName,
-      name,
-      displayName: name,
-      email,
-      handle,
-      role: "ceo",
-      roles: ["ceo"],
-      status: "active",
-      avatarUrl,
-      avatar: avatarUrl,
-      country,
-      locationLabel,
-      city: locationLabel,
-      lat: coords.lat,
-      lng: coords.lng,
-      gpsLat: coords.lat,
-      gpsLng: coords.lng,
-      ceoParentUid,
-      ceoParentName,
-      ceoRootUid,
-      ceoRootName,
-      ceoPath,
-      createdByUid: String(existingEntry?.createdByUid || current.uid || "").trim(),
-      createdByRole: String(existingEntry?.createdByRole || "ceo").trim() || "ceo",
-      createdByName: String(existingEntry?.createdByName || current.name || "").trim(),
-      crmCounts: existingEntry?.crmCounts && typeof existingEntry.crmCounts === "object" ? existingEntry.crmCounts : {},
-      updatedAt: serverTimestamp()
-    };
-    if (!isEditing) superadminPayload.createdAt = serverTimestamp();
-    await setDoc(doc(db, "superadmins", uid), superadminPayload, { merge: true });
-    const userPayload = {
-      displayName: name,
-      name,
-      firstName,
-      lastName,
-      email,
-      handle,
-      avatarUrl,
-      avatar: avatarUrl,
-      city: locationLabel,
-      location: locationLabel,
-      address: locationLabel,
-      country,
-      role: "ceo",
-      roles: ["ceo"],
-      ceoParentUid,
-      ceoParentName,
-      ceoRootUid,
-      ceoRootName,
-      ceoPath,
-      crmCounts: existingEntry?.crmCounts && typeof existingEntry.crmCounts === "object" ? existingEntry.crmCounts : createEmptyCeoCrmCounts(),
-      lat: coords.lat,
-      lng: coords.lng,
-      gpsLat: coords.lat,
-      gpsLng: coords.lng,
-      updatedAt: serverTimestamp()
-    };
-    if (!isEditing) {
-      userPayload.bio = "";
-      userPayload.createdAt = serverTimestamp();
-    }
-    await setDoc(doc(db, "users", uid), userPayload, { merge: true });
-    if (String(uid) === String(state.user.uid || "")) {
-      state.userProfile = {
-        ...state.userProfile,
-        uid,
-        name,
-        displayName: name,
-        firstName,
-        lastName,
-        email,
-        handle,
-        avatar: avatarUrl || state.userProfile.avatar,
-        avatarUrl: avatarUrl || state.userProfile.avatar,
-        location: locationLabel,
-        address: locationLabel,
-        city: locationLabel,
-        country,
-        role: "ceo",
-        roles: ["ceo"],
-        crmCounts: sanitizeCeoCrmCounts(state.userProfile?.crmCounts || existingEntry?.crmCounts || {}),
-        ceoParentUid,
-        ceoParentName,
-        ceoRootUid,
-        ceoRootName,
-        ceoPath,
-        lat: coords.lat,
-        lng: coords.lng,
-        gpsLat: coords.lat,
-        gpsLng: coords.lng
-      };
-      saveUserProfileToStorage();
-    }
-    resetStaffForm(isEditing ? "CEO gespeichert." : "CEO Staff erstellt.");
-    await loadCeoStaff();
-  } catch (err) {
-    console.error(err);
-    state.staff.status = err?.message || (isEditing ? "CEO konnte nicht gespeichert werden." : "CEO Staff konnte nicht erstellt werden.");
-    state.staff.saving = false;
-    state.staff.deleting = false;
-    render();
-  }
+  return saveCeoStaffFromViewCore({
+    state,
+    isCeoUser,
+    syncStaffFormFromDom,
+    getStaffFormEmail,
+    normalizeCeoCountry,
+    buildCeoName,
+    render,
+    getCurrentCeoMeta,
+    createAuthUser,
+    uploadCompressedImage,
+    normalizeCeoPath,
+    uniqueStringList,
+    normalizeHandle,
+    setDoc,
+    doc,
+    db,
+    serverTimestamp,
+    createEmptyCeoCrmCounts,
+    resetStaffForm,
+    loadCeoStaff,
+    saveUserProfileToStorage,
+    sanitizeCeoCrmCounts
+  });
 }
 
 async function deleteCeoStaffFromView() {
