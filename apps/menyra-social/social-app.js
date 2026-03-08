@@ -114,6 +114,12 @@ import {
   ensureMessagingClientCore
 } from "./core/push-messaging-utils.js";
 import {
+  hasPushDeviceRegistrationPrerequisitesCore,
+  isPushTokenSyncFreshCore,
+  buildPushDeviceRegistrationPayloadCore,
+  buildPushDeviceDisablePayloadCore
+} from "./core/push-device-registration-utils.js";
+import {
   normalizeNotificationItemCore,
   mapNotificationSnapshotCore
 } from "./core/notification-item-utils.js";
@@ -2789,22 +2795,18 @@ async function waitForPushServiceWorkerReady() {
 
 async function syncPushDeviceRegistration({ interactive = false, force = false, enabled = state.settings?.pushNotifs } = {}) {
   const uid = String(state.user?.uid || "").trim();
-  if (!uid || !enabled) return false;
-  if (!window.isSecureContext) {
-    setPushActivationIssue("Push benoetigt HTTPS oder localhost (secure context).");
-    return false;
-  }
-  if (!FCM_WEB_PUSH_VAPID_KEY) {
-    setPushActivationIssue("FCM VAPID-Key fehlt.");
-    return false;
-  }
+  const prerequisitesOk = hasPushDeviceRegistrationPrerequisitesCore({
+    uid,
+    enabled,
+    isSecureContext: !!window.isSecureContext,
+    vapidKey: FCM_WEB_PUSH_VAPID_KEY,
+    hasServiceWorker: typeof navigator !== "undefined" && ("serviceWorker" in navigator),
+    setPushActivationIssue: (reason) => setPushActivationIssue(reason)
+  });
+  if (!prerequisitesOk) return false;
 
   const granted = await ensureNotificationPermission({ interactive });
   if (!granted) return false;
-  if (!("serviceWorker" in navigator)) {
-    setPushActivationIssue("Service Worker wird vom Browser nicht unterstuetzt.");
-    return false;
-  }
 
   const reg = await ensurePushServiceWorkerRegistration();
   if (!reg) {
@@ -2840,7 +2842,12 @@ async function syncPushDeviceRegistration({ interactive = false, force = false, 
   }
 
   const meta = readPushTokenMeta(uid);
-  const freshEnough = meta && meta.token === safeToken && (Date.now() - meta.ts) < PUSH_TOKEN_SYNC_INTERVAL_MS;
+  const freshEnough = isPushTokenSyncFreshCore({
+    meta,
+    token: safeToken,
+    nowTs: Date.now(),
+    intervalMs: PUSH_TOKEN_SYNC_INTERVAL_MS
+  });
   if (!force && freshEnough) {
     clearPushActivationIssue();
     return true;
@@ -2849,16 +2856,13 @@ async function syncPushDeviceRegistration({ interactive = false, force = false, 
   const deviceId = getOrCreatePushDeviceId();
   const ref = doc(db, "users", uid, "devices", deviceId);
   try {
-    await setDoc(ref, {
+    const stamp = serverTimestamp();
+    await setDoc(ref, buildPushDeviceRegistrationPayloadCore({
       token: safeToken,
-      enabled: true,
-      platform: "web",
-      app: "menyra-social",
-      userAgent: String(navigator.userAgent || "").slice(0, 190),
-      locale: String(navigator.language || "").slice(0, 24),
-      updatedAt: serverTimestamp(),
-      lastSeenAt: serverTimestamp()
-    }, { merge: true });
+      userAgent: String(navigator.userAgent || ""),
+      locale: String(navigator.language || ""),
+      serverTimestampValue: stamp
+    }), { merge: true });
   } catch (err) {
     setPushActivationIssue(mapPushActivationError("firestore-write", err), err);
     return false;
@@ -2873,10 +2877,9 @@ async function disablePushDeviceRegistration() {
   if (!uid) return;
   const deviceId = getOrCreatePushDeviceId();
   try {
-    await setDoc(doc(db, "users", uid, "devices", deviceId), {
-      enabled: false,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
+    await setDoc(doc(db, "users", uid, "devices", deviceId), buildPushDeviceDisablePayloadCore({
+      serverTimestampValue: serverTimestamp()
+    }), { merge: true });
   } catch (err) {
     console.error(err);
   }
