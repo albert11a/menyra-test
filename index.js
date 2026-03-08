@@ -42,24 +42,26 @@ function projectRoot(){
 function buildLinks(rid, tid){
   const root = projectRoot();
   const qR = `?r=${encodeURIComponent(rid)}`;
-  const qG = tid ? `?r=${encodeURIComponent(rid)}&t=${encodeURIComponent(tid)}` : qR;
+  const socialBase = `${root}apps/menyra-social/index.html`;
+  const socialMenu = `${socialBase}?r=${encodeURIComponent(rid)}&tab=menu`;
+  const socialProfile = `${socialBase}?r=${encodeURIComponent(rid)}&tab=profile`;
 
   return {
     main: `${root}apps/menyra-main/index.html${qR}`,
-    karte: `${root}apps/menyra-restaurants/guest/karte/index.html${qG}`,
-    detajet: `${root}apps/menyra-restaurants/guest/detajet/index.html${qG}&item=DEMO_ITEM_ID`,
-    porosia: `${root}apps/menyra-restaurants/guest/porosia/index.html${qG}`,
-    story: `${root}apps/menyra-restaurants/guest/story/index.html${qR}`,
-    owner: `${root}apps/menyra-owner/index.html${qR}`,
-    waiter: `${root}apps/menyra-restaurants/waiter/index.html${qR}`,
-    kitchen: `${root}apps/menyra-restaurants/kitchen/index.html${qR}`,
-    ceo: `${root}apps/menyra-ceo/dashboard.html`,
-    staff: `${root}apps/menyra-staff/dashboard.html`,
-    socialFeed: `${root}apps/menyra-social/index.html`,
-    socialDiscover: `${root}apps/menyra-social/index.html?tab=search`,
-    socialProfile: `${root}apps/menyra-social/index.html?tab=profile`,
-    socialLogin: `${root}apps/menyra-social/index.html?auth=login`,
-    socialRegister: `${root}apps/menyra-social/index.html?auth=register`
+    karte: socialMenu,
+    detajet: socialMenu,
+    porosia: socialMenu,
+    story: socialProfile,
+    owner: socialProfile,
+    waiter: socialMenu,
+    kitchen: socialMenu,
+    ceo: `${socialBase}?tab=leads`,
+    staff: `${socialBase}?tab=staff`,
+    socialFeed: socialBase,
+    socialDiscover: `${socialBase}?tab=search`,
+    socialProfile: `${socialBase}?tab=profile`,
+    socialLogin: `${socialBase}?auth=login`,
+    socialRegister: `${socialBase}?auth=register`
   };
 }
 
@@ -99,7 +101,7 @@ function renderLinks(){
       <a class="btn" href="${L.socialLogin}" target="_blank">Login</a>
       <a class="btn" href="${L.socialRegister}" target="_blank">Register</a>
     </div>
-    <div class="muted" style="margin-top:10px">Details-Link nutzt item=DEMO_ITEM_ID (Dummy).</div>
+    <div class="muted" style="margin-top:10px">Legacy-Links werden auf Social-Routen abgebildet.</div>
   `;
 }
 
