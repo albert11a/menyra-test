@@ -154,6 +154,7 @@ import {
   buildAcceptedFollowRecordPayloadCore,
   buildFollowAcceptedNotificationPayloadCore
 } from "./core/follow-request-payload-utils.js";
+import { mapFollowingSnapshotCore } from "./core/following-listener-utils.js";
 import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
@@ -10845,14 +10846,9 @@ function startFollowingListener(user = state.user) {
   if (!ownerUid) return;
   const ref = collection(db, "users", ownerUid, "following");
   followingUnsub = onSnapshot(ref, (snap) => {
-    const handles = [];
-    const targetIds = [];
-    snap.forEach((docSnap) => {
-      const data = docSnap.data() || {};
-      const handle = normalizeFollowHandle(data.handle || data.targetHandle || "");
-      if (handle) handles.push(handle);
-      const targetId = String(data.targetId || "").trim();
-      if (targetId) targetIds.push(targetId);
+    const { handles, targetIds } = mapFollowingSnapshotCore({
+      snap,
+      normalizeFollowHandle: (value) => normalizeFollowHandle(value)
     });
     applyFollowingHandles(handles, { targetIds });
   }, (err) => {
