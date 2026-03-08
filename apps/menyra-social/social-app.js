@@ -261,6 +261,13 @@ import {
 } from "./core/profile-display-utils.js";
 import { escapeHtmlCore } from "./core/html-utils.js";
 import {
+  clampCropPercentCore,
+  getMenuItemCropCore,
+  getMenuItemObjectPositionCore,
+  getFocusItemCropCore,
+  getFocusItemObjectPositionCore
+} from "./core/crop-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -2514,21 +2521,15 @@ function autosizeTextarea(el, { minHeight = 56, maxHeight = 160 } = {}) {
 }
 
 function clampCropPercent(value, fallback = 50) {
-  const num = Number(value);
-  if (!Number.isFinite(num)) return fallback;
-  return Math.max(0, Math.min(100, Math.round(num)));
+  return clampCropPercentCore(value, fallback);
 }
 
 function getMenuItemCrop(item) {
-  return {
-    x: clampCropPercent(item?.cropX ?? item?.focusX ?? item?.imageFocusX ?? 50, 50),
-    y: clampCropPercent(item?.cropY ?? item?.focusY ?? item?.imageFocusY ?? 50, 50)
-  };
+  return getMenuItemCropCore(item);
 }
 
 function getMenuItemObjectPosition(item) {
-  const crop = getMenuItemCrop(item);
-  return `${crop.x}% ${crop.y}%`;
+  return getMenuItemObjectPositionCore(item);
 }
 
 function getMenuModalCrop() {
@@ -2551,15 +2552,11 @@ function syncMenuModalCropPreview() {
 }
 
 function getFocusItemCrop(item) {
-  return {
-    x: clampCropPercent(item?.cropX ?? item?.focusX ?? 50, 50),
-    y: clampCropPercent(item?.cropY ?? item?.focusY ?? 50, 50)
-  };
+  return getFocusItemCropCore(item);
 }
 
 function getFocusItemObjectPosition(item) {
-  const crop = getFocusItemCrop(item);
-  return `${crop.x}% ${crop.y}%`;
+  return getFocusItemObjectPositionCore(item);
 }
 
 function getFocusModalCrop() {
