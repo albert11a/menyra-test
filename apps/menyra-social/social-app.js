@@ -362,6 +362,12 @@ import {
   isPublicBusinessRecordCore
 } from "./core/business-visibility-utils.js";
 import {
+  isCeoUserCore,
+  isAlbertCeoUserCore,
+  hasGlobalCeoAccessCore,
+  getCeoGpsOverrideCore
+} from "./core/ceo-access-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -1680,36 +1686,32 @@ function inferLeadCountryFromText(text = "", fallbackCountry = "") {
 }
 
 function isCeoUser() {
-  if (state.roleSwitchRoles?.includes("ceo")) return true;
-  const roles = normalizeRoleList(state.userProfile?.roles || state.userProfile?.role || "");
-  return roles.includes("ceo");
+  return isCeoUserCore(state, {
+    normalizeRoleListFn: normalizeRoleList
+  });
 }
 
 function isAlbertCeoUser() {
-  if (!state.user) return false;
-  const email = normalizeEmailValue(state.user?.email || "");
-  if (isHiddenLegacyCeoEmail(email)) return false;
-  const handleCandidates = [
-    state.userProfile?.handle,
-    state.userProfile?.name,
-    state.user?.displayName
-  ].map((value) => normalizeHandle(value || "")).filter(Boolean);
-  if (handleCandidates.some((value) => ALBERT_CEO_ALIASES.includes(value))) return true;
-  if (ALBERT_CEO_EMAILS.includes(email)) return true;
-  return ALBERT_CEO_ALIASES.some((alias) => email.startsWith(`${alias}@`));
+  return isAlbertCeoUserCore(state, {
+    normalizeEmailValueFn: normalizeEmailValue,
+    isHiddenLegacyCeoEmailFn: isHiddenLegacyCeoEmail,
+    normalizeHandleFn: normalizeHandle,
+    albertCeoAliases: ALBERT_CEO_ALIASES,
+    albertCeoEmails: ALBERT_CEO_EMAILS
+  });
 }
 
 function hasGlobalCeoAccess(profile = state.userProfile, user = state.user) {
-  const uid = String(user?.uid || profile?.uid || "").trim();
-  return uid === ALBERT_CEO_UID || isAlbertCeoUser();
+  return hasGlobalCeoAccessCore(profile, user, {
+    albertCeoUid: ALBERT_CEO_UID,
+    isAlbertCeoUserFn: isAlbertCeoUser
+  });
 }
 
 function getCeoGpsOverride(profile = state.userProfile) {
-  if (!isCeoUser()) return null;
-  const lat = Number(profile?.gpsLat);
-  const lng = Number(profile?.gpsLng);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  return { lat, lng };
+  return getCeoGpsOverrideCore(profile, {
+    isCeoUserFn: isCeoUser
+  });
 }
 
 function normalizeLeadStatusKey(value) {
