@@ -250,6 +250,11 @@ import {
   createEmptyCustomersStateCore
 } from "./core/crm-scope-state-utils.js";
 import {
+  normalizeRoleListCore,
+  roleLabelCore,
+  buildRoleSwitchUrlCore
+} from "./core/role-switch-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -5686,36 +5691,27 @@ async function resolveRestaurantForAuthUser(user, { preferCached = true } = {}) 
 }
 
 function normalizeRoleList(value) {
-  if (!value) return [];
-  if (Array.isArray(value)) {
-    return value
-      .map((item) => String(item || "").trim().toLowerCase())
-      .filter(Boolean);
-  }
-  return String(value)
-    .split(/[,\s]+/)
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
+  return normalizeRoleListCore(value);
 }
 
 function roleLabel(role) {
-  if (!role) return "";
-  const key = String(role || "").toLowerCase();
-  return ROLE_SWITCH_LABELS[key] || (key.charAt(0).toUpperCase() + key.slice(1));
+  return roleLabelCore(role, {
+    labels: ROLE_SWITCH_LABELS
+  });
 }
 
 function buildRoleSwitchUrl(role, profile, restaurantIdOverride = "") {
-  const ownerRestaurantId = restaurantIdOverride || profile?.restaurantId || "";
-  const roleTabMap = {
-    ceo: "leads",
-    owner: "profile",
-    staff: "staff"
-  };
-  const tab = roleTabMap[role] || "";
-  const params = {};
-  if (tab) params.tab = tab;
-  if (role === "owner" && ownerRestaurantId) params.r = ownerRestaurantId;
-  return buildUrl("apps/menyra-social/index.html", params);
+  return buildRoleSwitchUrlCore({
+    role,
+    profile,
+    restaurantIdOverride,
+    roleTabMap: {
+      ceo: "leads",
+      owner: "profile",
+      staff: "staff"
+    },
+    buildUrlFn: buildUrl
+  });
 }
 
 async function findOwnerRestaurantId(user) {
