@@ -186,6 +186,11 @@ import {
   normalizeRestaurantPostDocCore
 } from "./core/post-doc-normalize-utils.js";
 import {
+  readNotificationPostLookupCore,
+  shouldFetchUserNotificationPostCore,
+  shouldFetchRestaurantNotificationPostCore
+} from "./core/post-notification-fetch-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -11198,17 +11203,18 @@ function normalizeRestaurantPostDoc(postId, data, restaurantId) {
 }
 
 async function fetchPostForNotification(notif) {
-  const postId = String(notif.postId || "");
+  const lookup = readNotificationPostLookupCore(notif);
+  const postId = lookup.postId;
   if (!postId) return null;
-  const ownerType = notif.ownerType || "";
-  const ownerId = notif.ownerId || notif.restaurantId || "";
+  const ownerType = lookup.ownerType;
+  const ownerId = lookup.ownerId;
 
   try {
-    if (ownerType === "user" && ownerId) {
+    if (shouldFetchUserNotificationPostCore({ ownerType, ownerId })) {
       const snap = await getDoc(doc(db, "users", ownerId, "posts", postId));
       if (snap.exists()) return normalizeUserPostDoc(postId, snap.data() || {}, ownerId);
     }
-    if (ownerType === "restaurant" && ownerId) {
+    if (shouldFetchRestaurantNotificationPostCore({ ownerType, ownerId })) {
       const snap = await getDoc(doc(db, "restaurants", ownerId, "socialPosts", postId));
       if (snap.exists()) return normalizeRestaurantPostDoc(postId, snap.data() || {}, ownerId);
     }
