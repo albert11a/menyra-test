@@ -98,6 +98,8 @@ Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage fin
 ## Phase 2 Start
 1. `core/state-factories.js` erstellt.
 2. `createEmptyShopCart`, `createEmptyOrdersState`, `createEmptyFavoriteMenuItemsState`, `createEmptyMenuDetailState` aus `social-app.js` ausgelagert.
+3. `core/route-auth-utils.js` erstellt.
+4. `normalizeInitialTab` und `normalizeAuthMode` aus `social-app.js` ausgelagert.
 
 ## Gate pro Batch
 1. `node --check apps/menyra-social/social-app.js`

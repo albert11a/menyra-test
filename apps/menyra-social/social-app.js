@@ -66,6 +66,10 @@ import {
   createEmptyFavoriteMenuItemsState,
   createEmptyMenuDetailState
 } from "./core/state-factories.js";
+import {
+  normalizeInitialTab,
+  normalizeAuthMode
+} from "./core/route-auth-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -669,38 +673,6 @@ try {
   if (!pendingInitialTab && pendingPostId) pendingInitialTab = "feed";
   pendingAuthMode = normalizeAuthMode(qs("auth") || "");
 } catch {}
-
-function normalizeInitialTab(value) {
-  const key = String(value || "").trim().toLowerCase();
-  if (!key) return "";
-  const aliases = {
-    discover: "search",
-    login: "feed",
-    register: "feed"
-  };
-  const resolved = aliases[key] || key;
-  const allowed = new Set([
-    "feed",
-    "chat",
-    "search",
-    "map",
-    "profile",
-    "menu",
-    "orders",
-    "leads",
-    "staff",
-    "customers",
-    "settings"
-  ]);
-  return allowed.has(resolved) ? resolved : "";
-}
-
-function normalizeAuthMode(value) {
-  const key = String(value || "").trim().toLowerCase();
-  if (key === "register" || key === "signup") return "register";
-  if (key === "login" || key === "signin") return "login";
-  return "";
-}
 
 function isGuestSession() {
   return !state.user;
