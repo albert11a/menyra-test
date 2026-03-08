@@ -275,6 +275,7 @@ import {
   renderCustomerModalCore,
   renderFocusModalCore
 } from "./core/customer-focus-modal-render-utils.js";
+import { bindOverlayEventsCore } from "./core/overlay-bind-orchestrator-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
 import { saveLeadFromModalCore } from "./core/lead-save-utils.js";
 import { deleteLeadFromModalCore } from "./core/lead-delete-utils.js";
@@ -13367,160 +13368,87 @@ function bindOverlayEvents({
   leadChanged = true,
   customerChanged = true
 } = {}) {
-  if (!menuDetailCloseBound) {
-    menuDetailCloseBound = true;
-    const closeHandler = (evt) => {
-      const target = evt.target?.closest?.("[data-menu-detail-close]");
-      if (!target) return;
-      if (!state.menuDetail.open) return;
-      evt.preventDefault();
-      closeMenuDetail();
-    };
-    document.addEventListener("click", closeHandler, true);
-    document.addEventListener("pointerdown", closeHandler, true);
-    document.addEventListener("touchstart", closeHandler, { capture: true, passive: false });
-  }
-  if (profileChanged) {
-    bindProfileOverlayEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      bindModalDismissFn: bindModalDismiss,
-      closeProfileModalFn: closeProfileModal,
-      openChatWithProfileFn: openChatWithProfile,
-      toggleFollowFn: toggleFollow,
-      onProfileOpenFn: () => {
-        if (!state.profileModal.profile) return;
-        state.profileView = {
-          profile: state.profileModal.profile,
-          posts: state.profileModal.profile.posts || []
-        };
-        state.profileModal = { open: false, profile: null };
-        state.activeTab = "profile";
-        render();
-      }
-    });
-  }
-
-  if (chatChanged) {
-    bindChatOverlayEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      bindModalDismissFn: bindModalDismiss,
-      closeChatModalFn: closeChatModal,
-      sendChatMessageFn: sendChatMessage,
-      scrollChatMessagesToBottomFn: scrollChatMessagesToBottom,
-      queueMicrotaskFn: (fn) => queueMicrotask(fn),
-      state
-    });
-  }
-
-  if (postChanged) {
-    bindPostOverlayEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      bindModalDismissFn: bindModalDismiss,
-      closePostModalFn: closePostModal,
-      togglePostLikeFn: togglePostLike,
-      renderOverlaysFn: renderOverlays,
-      loadPostLikesForModalFn: loadPostLikesForModal,
-      addCommentFn: addComment,
-      toggleCommentLikeFn: toggleCommentLike,
-      state
-    });
-  }
-
-  if (likesChanged) {
-    bindLikesOverlayEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      bindModalDismissFn: bindModalDismiss,
-      closeLikesModalFn: closeLikesModal
-    });
-  }
-
-  if (menuChanged) {
-    bindMenuOverlayEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      bindModalDismissFn: bindModalDismiss,
-      closeMenuModalFn: closeMenuModal,
-      saveMenuItemFromModalFn: saveMenuItemFromModal,
-      renderOverlaysFn: renderOverlays,
-      syncMenuModalCropPreviewFn: syncMenuModalCropPreview,
-      clampCropPercentFn: clampCropPercent,
-      state,
-      placeholderImage: PLACEHOLDER_IMAGE
-    });
-  }
-
-  if (menuDetailChanged) {
-    bindMenuDetailOverlayEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      windowObj: typeof window === "undefined" ? null : window,
-      bindModalDismissFn: bindModalDismiss,
-      closeMenuDetailFn: closeMenuDetail,
-      getMenuDetailCatalogProfileFn: getMenuDetailCatalogProfile,
-      canAddToShopCartFn: canAddToShopCart,
-      addMenuItemToShopCartFn: addMenuItemToShopCart,
-      showPublicProfileFn: showPublicProfile,
-      setStateFn: setState,
-      openGuestAuthPromptFn: openGuestAuthPrompt,
-      toggleMenuItemLikeFn: toggleMenuItemLike,
-      setMenuDetailVariantFn: setMenuDetailVariant,
-      autosizeTextareaFn: autosizeTextarea,
-      addMenuItemCommentFn: addMenuItemComment,
-      applyCommentAvatarCacheFn: applyCommentAvatarCache,
-      setMenuDetailIndexFn: setMenuDetailIndex,
-      state
-    });
-  }
-
-  if (focusChanged) {
-    bindFocusOverlayEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      bindModalDismissFn: bindModalDismiss,
-      closeFocusModalFn: closeFocusModal,
-      saveFocusItemFromModalFn: saveFocusItemFromModal,
-      renderOverlaysFn: renderOverlays,
-      syncFocusModalCropPreviewFn: syncFocusModalCropPreview,
-      clampCropPercentFn: clampCropPercent,
-      state
-    });
-  }
-
-  if (leadChanged) {
-    bindLeadOverlayEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      bindModalDismissFn: bindModalDismiss,
-      closeLeadModalFn: closeLeadModal,
-      saveLeadFromModalFn: saveLeadFromModal,
-      convertLeadToCustomerFn: convertLeadToCustomer,
-      addLeadModalLocationRowFn: addLeadModalLocationRow,
-      removeLeadModalLocationRowFn: removeLeadModalLocationRow,
-      syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
-      openLocationPickerFn: openLocationPicker,
-      normalizeLeadLocationsFn: normalizeLeadLocations,
-      createLeadLocationFn: createLeadLocation,
-      parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
-      getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
-      hasLeadLocationCoordsFn: hasLeadLocationCoords,
-      getPrimaryLeadLocationFn: getPrimaryLeadLocation,
-      refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex,
-      renderOverlaysFn: renderOverlays,
-      state,
-      placeholderImage: PLACEHOLDER_IMAGE
-    });
-  }
-
-  if (customerChanged) {
-    bindCustomerOverlayEventsCore({
-      documentObj: typeof document === "undefined" ? null : document,
-      bindModalDismissFn: bindModalDismiss,
-      closeCustomerModalFn: closeCustomerModal,
-      saveCustomerFromModalFn: saveCustomerFromModal,
-      state,
-      placeholderImage: PLACEHOLDER_IMAGE
-    });
-  }
-
-  if (menuChanged || menuDetailChanged || focusChanged || leadChanged || customerChanged) {
-    bindImageFallbacks();
-  }
+  return bindOverlayEventsCore({
+    profileChanged,
+    chatChanged,
+    postChanged,
+    likesChanged,
+    menuChanged,
+    menuDetailChanged,
+    focusChanged,
+    leadChanged,
+    customerChanged,
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    isMenuDetailCloseBoundFn: () => menuDetailCloseBound,
+    setMenuDetailCloseBoundFn: (next) => {
+      menuDetailCloseBound = !!next;
+    },
+    state,
+    bindProfileOverlayEventsFn: bindProfileOverlayEventsCore,
+    bindChatOverlayEventsFn: bindChatOverlayEventsCore,
+    bindPostOverlayEventsFn: bindPostOverlayEventsCore,
+    bindLikesOverlayEventsFn: bindLikesOverlayEventsCore,
+    bindMenuOverlayEventsFn: bindMenuOverlayEventsCore,
+    bindMenuDetailOverlayEventsFn: bindMenuDetailOverlayEventsCore,
+    bindFocusOverlayEventsFn: bindFocusOverlayEventsCore,
+    bindLeadOverlayEventsFn: bindLeadOverlayEventsCore,
+    bindCustomerOverlayEventsFn: bindCustomerOverlayEventsCore,
+    bindModalDismissFn: bindModalDismiss,
+    closeMenuDetailFn: closeMenuDetail,
+    closeProfileModalFn: closeProfileModal,
+    openChatWithProfileFn: openChatWithProfile,
+    toggleFollowFn: toggleFollow,
+    renderFn: render,
+    closeChatModalFn: closeChatModal,
+    sendChatMessageFn: sendChatMessage,
+    scrollChatMessagesToBottomFn: scrollChatMessagesToBottom,
+    queueMicrotaskFn: (fn) => queueMicrotask(fn),
+    closePostModalFn: closePostModal,
+    togglePostLikeFn: togglePostLike,
+    renderOverlaysFn: renderOverlays,
+    loadPostLikesForModalFn: loadPostLikesForModal,
+    addCommentFn: addComment,
+    toggleCommentLikeFn: toggleCommentLike,
+    closeLikesModalFn: closeLikesModal,
+    closeMenuModalFn: closeMenuModal,
+    saveMenuItemFromModalFn: saveMenuItemFromModal,
+    syncMenuModalCropPreviewFn: syncMenuModalCropPreview,
+    clampCropPercentFn: clampCropPercent,
+    getMenuDetailCatalogProfileFn: getMenuDetailCatalogProfile,
+    canAddToShopCartFn: canAddToShopCart,
+    addMenuItemToShopCartFn: addMenuItemToShopCart,
+    showPublicProfileFn: showPublicProfile,
+    setStateFn: setState,
+    openGuestAuthPromptFn: openGuestAuthPrompt,
+    toggleMenuItemLikeFn: toggleMenuItemLike,
+    setMenuDetailVariantFn: setMenuDetailVariant,
+    autosizeTextareaFn: autosizeTextarea,
+    addMenuItemCommentFn: addMenuItemComment,
+    applyCommentAvatarCacheFn: applyCommentAvatarCache,
+    setMenuDetailIndexFn: setMenuDetailIndex,
+    closeFocusModalFn: closeFocusModal,
+    saveFocusItemFromModalFn: saveFocusItemFromModal,
+    syncFocusModalCropPreviewFn: syncFocusModalCropPreview,
+    closeLeadModalFn: closeLeadModal,
+    saveLeadFromModalFn: saveLeadFromModal,
+    convertLeadToCustomerFn: convertLeadToCustomer,
+    addLeadModalLocationRowFn: addLeadModalLocationRow,
+    removeLeadModalLocationRowFn: removeLeadModalLocationRow,
+    syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
+    openLocationPickerFn: openLocationPicker,
+    normalizeLeadLocationsFn: normalizeLeadLocations,
+    createLeadLocationFn: createLeadLocation,
+    parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
+    getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
+    hasLeadLocationCoordsFn: hasLeadLocationCoords,
+    getPrimaryLeadLocationFn: getPrimaryLeadLocation,
+    refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex,
+    closeCustomerModalFn: closeCustomerModal,
+    saveCustomerFromModalFn: saveCustomerFromModal,
+    bindImageFallbacksFn: bindImageFallbacks,
+    placeholderImage: PLACEHOLDER_IMAGE
+  });
 }
 
 function stopCrmAutoLoadObserver() {
