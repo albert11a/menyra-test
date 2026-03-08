@@ -47,7 +47,7 @@ function buildLinks(rid, tid){
   const socialProfile = `${socialBase}?r=${encodeURIComponent(rid)}&tab=profile`;
 
   return {
-    main: `${root}apps/menyra-main/index.html${qR}`,
+    main: socialProfile,
     karte: socialMenu,
     detajet: socialMenu,
     porosia: socialMenu,
