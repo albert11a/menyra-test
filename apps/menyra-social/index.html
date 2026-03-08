@@ -128,8 +128,9 @@
     body.modal-open #overlayRoot > * { pointer-events: auto; visibility: visible; }
     .modal-overlay { position: fixed; inset: 0; padding-bottom: var(--safe-area-bottom); }
     .modal-sheet {
-      height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom)) !important;
-      max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom)) !important;
+      height: calc(100dvh - var(--safe-area-bottom)) !important;
+      max-height: calc(100dvh - var(--safe-area-bottom)) !important;
+      padding-top: var(--safe-area-top);
       border-radius: 0 !important;
       border-bottom-width: 0 !important;
     }
@@ -165,10 +166,10 @@
       box-sizing: border-box;
     }
     .modal-sheet-85 {
-      height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom)) !important;
+      height: calc(100dvh - var(--safe-area-bottom)) !important;
     }
     .modal-sheet-88 {
-      height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom)) !important;
+      height: calc(100dvh - var(--safe-area-bottom)) !important;
     }
     .modal-footer-safe {
       padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important;
