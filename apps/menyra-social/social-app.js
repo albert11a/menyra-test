@@ -15291,6 +15291,10 @@ function render() {
     renderQueued = true;
     return;
   }
+  if (!authInitialized) {
+    if (appEl) appEl.setAttribute("aria-busy", "true");
+    return;
+  }
   const chatInputFocusState = captureChatInputFocusState();
   document.body.classList.toggle("fast-mode", FAST_MODE);
   let nextHtml = "";
@@ -21751,18 +21755,12 @@ loadPersisted();
 bindPushOpenTargetMessageHandler();
 void ensureAuthLocalPersistence();
 state.user = auth.currentUser || null;
-authInitialized = !!state.user;
+authInitialized = false;
 if (state.user) {
   loadUserScopedPersisted(state.user);
   lastAuthUid = state.user.uid || "";
 } else {
-  loadGuestScopedPersisted();
   lastAuthUid = "";
-}
-applyPendingInitialRouteState();
-render();
-if (!state.user) {
-  queueMicrotask(() => ensureTabData(state.activeTab));
 }
 
 onAuthStateChanged(auth, (user) => {
