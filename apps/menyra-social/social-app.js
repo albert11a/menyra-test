@@ -660,6 +660,8 @@ let pendingNotificationId = "";
 let pendingNotificationHandled = false;
 let pendingPostId = "";
 let pendingPostHandled = false;
+let pendingChatUid = "";
+let pendingChatHandled = false;
 let pushOpenMessageBound = false;
 let dataLoaded = {
   feed: false,
@@ -752,6 +754,7 @@ try {
   pendingProfileTopTab = initialRouteState.pendingProfileTopTab;
   pendingNotificationId = initialRouteState.pendingNotificationId;
   pendingPostId = initialRouteState.pendingPostId;
+  pendingChatUid = initialRouteState.pendingChatUid;
   pendingInitialTab = initialRouteState.pendingInitialTab;
   pendingAuthMode = initialRouteState.pendingAuthMode;
 } catch {}
@@ -2416,6 +2419,40 @@ function restoreChatInputFocusState(focusState) {
     input.style.height = "auto";
     input.style.height = `${Math.min(input.scrollHeight, 112)}px`;
   });
+}
+
+function scrollChatMessagesToBottom() {
+  if (typeof document === "undefined") return false;
+  const chatMessages = document.getElementById("chatMessages");
+  if (!(chatMessages instanceof HTMLElement)) return false;
+  const scrollToBottom = () => {
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  };
+  scrollToBottom();
+  queueMicrotask(scrollToBottom);
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => {
+      scrollToBottom();
+      window.requestAnimationFrame(scrollToBottom);
+    });
+  }
+  chatMessages.querySelectorAll("img,video").forEach((media) => {
+    if (!(media instanceof HTMLElement)) return;
+    if (media.dataset.chatScrollBound === "true") return;
+    media.dataset.chatScrollBound = "true";
+    if (media instanceof HTMLImageElement) {
+      if (media.complete) return;
+      media.addEventListener("load", scrollToBottom, { once: true });
+      media.addEventListener("error", scrollToBottom, { once: true });
+      return;
+    }
+    if (media instanceof HTMLVideoElement) {
+      if (media.readyState >= 2) return;
+      media.addEventListener("loadeddata", scrollToBottom, { once: true });
+      media.addEventListener("error", scrollToBottom, { once: true });
+    }
+  });
+  return true;
 }
 
 function autosizeTextarea(el, { minHeight = 56, maxHeight = 160 } = {}) {
@@ -10501,6 +10538,77 @@ function clearPostQueryParams() {
   } catch {}
 }
 
+function clearChatQueryParams() {
+  if (typeof window === "undefined" || !window.history?.replaceState) return;
+  try {
+    const url = new URL(window.location.href);
+    const keys = ["chat", "thread"];
+    let changed = false;
+    keys.forEach((key) => {
+      if (url.searchParams.has(key)) {
+        url.searchParams.delete(key);
+        changed = true;
+      }
+    });
+    if (!changed) return;
+    const query = url.searchParams.toString();
+    const next = `${url.pathname}${query ? `?${query}` : ""}${url.hash || ""}`;
+    window.history.replaceState({}, "", next);
+  } catch {}
+}
+
+function resolveRouteStateFromTargetUrl(rawUrl = "") {
+  const safeRawUrl = String(rawUrl || "").trim();
+  if (!safeRawUrl) return null;
+  if (typeof window === "undefined") return null;
+  try {
+    const parsed = new URL(safeRawUrl, window.location.origin);
+    return resolveInitialRouteState({
+      qs: (key) => String(parsed.searchParams.get(String(key || "")) || ""),
+      normalizeInitialTab,
+      normalizeAuthMode
+    });
+  } catch {
+    return null;
+  }
+}
+
+function applyPendingRouteStateFromTargetUrl(rawUrl = "") {
+  const routeState = resolveRouteStateFromTargetUrl(rawUrl);
+  if (!routeState) return false;
+  let changed = false;
+  if (routeState.pendingProfileRestaurantId) {
+    pendingProfileRestaurantId = routeState.pendingProfileRestaurantId;
+    pendingProfileTopTab = routeState.pendingProfileTopTab;
+    pendingProfileHandled = false;
+    changed = true;
+  }
+  if (routeState.pendingNotificationId) {
+    pendingNotificationId = routeState.pendingNotificationId;
+    pendingNotificationHandled = false;
+    changed = true;
+  }
+  if (routeState.pendingPostId) {
+    pendingPostId = routeState.pendingPostId;
+    pendingPostHandled = false;
+    changed = true;
+  }
+  if (routeState.pendingChatUid) {
+    pendingChatUid = routeState.pendingChatUid;
+    pendingChatHandled = false;
+    changed = true;
+  }
+  if (routeState.pendingInitialTab) {
+    pendingInitialTab = routeState.pendingInitialTab;
+    changed = true;
+  }
+  if (routeState.pendingAuthMode) {
+    pendingAuthMode = routeState.pendingAuthMode;
+    changed = true;
+  }
+  return changed;
+}
+
 async function maybeOpenNotificationFromQuery() {
   if (pendingNotificationHandled) return false;
   if (!pendingNotificationId) return false;
@@ -10556,13 +10664,66 @@ async function maybeOpenPostFromQuery() {
   return true;
 }
 
+function maybeOpenChatFromQuery() {
+  if (pendingChatHandled) return false;
+  if (!pendingChatUid) return false;
+  if (!state.user?.uid) return false;
+
+  const safeChatUid = String(pendingChatUid || "").trim();
+  if (!safeChatUid) return false;
+  if (safeChatUid === String(state.user.uid || "").trim()) {
+    pendingChatHandled = true;
+    pendingChatUid = "";
+    clearChatQueryParams();
+    return false;
+  }
+
+  pendingChatHandled = true;
+  pendingChatUid = "";
+  clearChatQueryParams();
+
+  if (state.chatModal.open && getChatThreadId(state.chatModal.profile) === safeChatUid) {
+    return true;
+  }
+
+  const thread = getChatThreadById(safeChatUid);
+  openChatWithProfile({
+    uid: String(thread?.uid || safeChatUid).trim() || safeChatUid,
+    restaurantId: String(thread?.restaurantId || "").trim(),
+    handle: String(thread?.handle || safeChatUid).replace(/^@/, "").trim() || safeChatUid,
+    name: String(thread?.name || thread?.handle || "User").trim() || "User",
+    avatar: String(thread?.avatar || "").trim()
+  });
+  return true;
+}
+
 function handlePushOpenTargetMessage(payload = {}) {
   const safeNotificationId = String(payload?.notificationId || payload?.notifId || "").trim();
-  if (!safeNotificationId) return;
-  pendingNotificationHandled = false;
-  pendingNotificationId = safeNotificationId;
-  if (!state.user?.uid) return;
-  void maybeOpenNotificationFromQuery();
+  const targetUrl = String(payload?.url || payload?.link || "").trim();
+  const hasRouteFromUrl = applyPendingRouteStateFromTargetUrl(targetUrl);
+  if (safeNotificationId) {
+    pendingNotificationHandled = false;
+    pendingNotificationId = safeNotificationId;
+  }
+  if (!safeNotificationId && !hasRouteFromUrl) return;
+  const prevActiveTab = state.activeTab;
+  applyPendingInitialRouteState();
+  const tabChangedByRoute = state.activeTab !== prevActiveTab;
+  if (!state.user?.uid) {
+    if (tabChangedByRoute) render();
+    return;
+  }
+  void (async () => {
+    maybeOpenProfileFromQuery();
+    const openedNotification = await maybeOpenNotificationFromQuery();
+    if (openedNotification) return;
+    const openedPost = await maybeOpenPostFromQuery();
+    if (openedPost) return;
+    const openedChat = maybeOpenChatFromQuery();
+    if (!openedChat && (tabChangedByRoute || hasRouteFromUrl)) {
+      render();
+    }
+  })();
 }
 
 function bindPushOpenTargetMessageHandler() {
@@ -14416,9 +14577,14 @@ function render() {
   }
   const changed = nextHtml !== lastAppHtml || mode !== lastRenderMode;
   if (changed) {
+    const isChatThreadOpen = mode === "main"
+      && state.activeTab === "chat"
+      && !!state.chatModal.open
+      && !!state.chatModal.profile;
     const preserveMainScroll = mode === "main"
       && lastRenderMode === "main"
-      && state.activeTab === lastRenderedMainTab;
+      && state.activeTab === lastRenderedMainTab
+      && !isChatThreadOpen;
     const reuseFeed = preserveMainScroll && state.activeTab === "feed"
       ? document.getElementById("feedView")
       : null;
@@ -14659,9 +14825,7 @@ function bindOverlayEvents({
       });
     }
     if (chatMessages) {
-      queueMicrotask(() => {
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      });
+      scrollChatMessagesToBottom();
     }
   }
 
@@ -15804,9 +15968,7 @@ function bindAppEvents() {
 
   const chatMessages = document.getElementById("chatMessages");
   if (chatMessages) {
-    queueMicrotask(() => {
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    });
+    scrollChatMessagesToBottom();
   }
 
   const uploadFileInput = document.getElementById("uploadFileInput");
@@ -20532,7 +20694,8 @@ onAuthStateChanged(auth, (user) => {
     writeAuthBootstrapSnapshot();
     const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();
     const hasPendingPostQuery = !!String(pendingPostId || "").trim();
-    if (hasPendingNotificationQuery || hasPendingPostQuery) {
+    const hasPendingChatQuery = !!String(pendingChatUid || "").trim();
+    if (hasPendingNotificationQuery || hasPendingPostQuery || hasPendingChatQuery) {
       suspendRender();
       bootstrapUser(user);
       queueMicrotask(() => {
@@ -20541,7 +20704,8 @@ onAuthStateChanged(auth, (user) => {
             maybeOpenProfileFromQuery();
             const openedNotification = await maybeOpenNotificationFromQuery();
             const openedPost = await maybeOpenPostFromQuery();
-            if (!openedNotification && !openedPost) render();
+            const openedChat = maybeOpenChatFromQuery();
+            if (!openedNotification && !openedPost && !openedChat) render();
           } finally {
             resumeRender();
           }
@@ -20554,6 +20718,7 @@ onAuthStateChanged(auth, (user) => {
         maybeOpenProfileFromQuery();
         void maybeOpenNotificationFromQuery();
         void maybeOpenPostFromQuery();
+        maybeOpenChatFromQuery();
       });
     }
   } else {

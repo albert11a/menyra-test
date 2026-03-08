@@ -29,10 +29,15 @@ export function applyPendingInitialRouteStateCore({
   let nextPendingAuthMode = String(pendingAuthMode || "");
   let nextAuthMode = String(authMode || "");
   let nextAuthOpen = !!authOpen;
+  const isGuest = isGuestSessionCore(user);
 
   if (nextPendingInitialTab) {
-    nextActiveTab = nextPendingInitialTab;
-    nextPendingInitialTab = "";
+    const requestedTab = nextPendingInitialTab;
+    const sanitizedRequestedTab = sanitizeTabForSessionCore(requestedTab, { user, hasProfileView });
+    if (!isGuest || sanitizedRequestedTab === requestedTab) {
+      nextActiveTab = sanitizedRequestedTab;
+      nextPendingInitialTab = "";
+    }
   }
   if (!user && nextPendingAuthMode) {
     nextAuthMode = nextPendingAuthMode;

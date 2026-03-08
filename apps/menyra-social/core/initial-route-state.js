@@ -12,7 +12,9 @@ export function resolveInitialRouteState({
   const pendingProfileTopTab = pendingProfileRestaurantId ? queryTab : "";
   const pendingNotificationId = readQuery("notif") || readQuery("notification") || readQuery("nid") || "";
   const pendingPostId = readQuery("post") || readQuery("postId") || "";
+  const pendingChatUid = readQuery("chat") || readQuery("thread") || "";
   let pendingInitialTab = toInitialTab(queryTab || readQuery("view") || "");
+  if (!pendingInitialTab && pendingChatUid) pendingInitialTab = "chat";
   if (!pendingInitialTab && pendingPostId) pendingInitialTab = "feed";
   const pendingAuthMode = toAuthMode(readQuery("auth") || "");
 
@@ -21,6 +23,7 @@ export function resolveInitialRouteState({
     pendingProfileTopTab,
     pendingNotificationId,
     pendingPostId,
+    pendingChatUid,
     pendingInitialTab,
     pendingAuthMode
   };
