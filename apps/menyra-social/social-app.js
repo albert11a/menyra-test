@@ -149,6 +149,12 @@ import {
   markIncomingChatMessagesAsReadCore,
   updateChatMessageListCore
 } from "./core/chat-message-state-utils.js";
+import {
+  captureChatInputFocusStateCore,
+  restoreChatInputFocusStateCore,
+  scrollChatMessagesToBottomCore,
+  autosizeTextareaCore
+} from "./core/chat-dom-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -2386,80 +2392,34 @@ function focusInputById(id) {
 }
 
 function captureChatInputFocusState() {
-  if (typeof document === "undefined") return null;
-  const active = document.activeElement;
-  if (!(active instanceof HTMLTextAreaElement)) return null;
-  if (active.id !== "chatMessageInput") return null;
-  return {
-    selectionStart: typeof active.selectionStart === "number" ? active.selectionStart : null,
-    selectionEnd: typeof active.selectionEnd === "number" ? active.selectionEnd : null
-  };
+  return captureChatInputFocusStateCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    inputId: "chatMessageInput"
+  });
 }
 
 function restoreChatInputFocusState(focusState) {
-  if (!focusState) return;
-  if (state.activeTab !== "chat" || !state.chatModal.open || !state.chatModal.profile) return;
-  queueMicrotask(() => {
-    const input = document.getElementById("chatMessageInput");
-    if (!(input instanceof HTMLTextAreaElement)) return;
-    if (input.disabled || input.readOnly) return;
-    try {
-      input.focus({ preventScroll: true });
-    } catch {
-      input.focus();
-    }
-    const len = String(input.value || "").length;
-    const rawStart = Number.isFinite(Number(focusState.selectionStart)) ? Number(focusState.selectionStart) : len;
-    const rawEnd = Number.isFinite(Number(focusState.selectionEnd)) ? Number(focusState.selectionEnd) : rawStart;
-    const start = Math.max(0, Math.min(len, rawStart));
-    const end = Math.max(start, Math.min(len, rawEnd));
-    try {
-      input.setSelectionRange(start, end);
-    } catch {}
-    input.style.height = "auto";
-    input.style.height = `${Math.min(input.scrollHeight, 112)}px`;
+  restoreChatInputFocusStateCore({
+    focusState,
+    canRestore: state.activeTab === "chat" && !!state.chatModal.open && !!state.chatModal.profile,
+    documentObj: typeof document === "undefined" ? null : document,
+    queueMicrotaskFn: (fn) => queueMicrotask(fn),
+    inputId: "chatMessageInput",
+    maxHeight: 112
   });
 }
 
 function scrollChatMessagesToBottom() {
-  if (typeof document === "undefined") return false;
-  const chatMessages = document.getElementById("chatMessages");
-  if (!(chatMessages instanceof HTMLElement)) return false;
-  const scrollToBottom = () => {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
-  };
-  scrollToBottom();
-  queueMicrotask(scrollToBottom);
-  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-    window.requestAnimationFrame(() => {
-      scrollToBottom();
-      window.requestAnimationFrame(scrollToBottom);
-    });
-  }
-  chatMessages.querySelectorAll("img,video").forEach((media) => {
-    if (!(media instanceof HTMLElement)) return;
-    if (media.dataset.chatScrollBound === "true") return;
-    media.dataset.chatScrollBound = "true";
-    if (media instanceof HTMLImageElement) {
-      if (media.complete) return;
-      media.addEventListener("load", scrollToBottom, { once: true });
-      media.addEventListener("error", scrollToBottom, { once: true });
-      return;
-    }
-    if (media instanceof HTMLVideoElement) {
-      if (media.readyState >= 2) return;
-      media.addEventListener("loadeddata", scrollToBottom, { once: true });
-      media.addEventListener("error", scrollToBottom, { once: true });
-    }
+  return scrollChatMessagesToBottomCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    queueMicrotaskFn: (fn) => queueMicrotask(fn),
+    containerId: "chatMessages"
   });
-  return true;
 }
 
 function autosizeTextarea(el, { minHeight = 56, maxHeight = 160 } = {}) {
-  if (!(el instanceof HTMLTextAreaElement)) return;
-  el.style.height = "auto";
-  const next = Math.max(minHeight, Math.min(maxHeight, el.scrollHeight || minHeight));
-  el.style.height = `${next}px`;
+  autosizeTextareaCore(el, { minHeight, maxHeight });
 }
 
 function clampCropPercent(value, fallback = 50) {
