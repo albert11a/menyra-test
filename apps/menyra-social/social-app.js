@@ -254,6 +254,7 @@ import {
   roleLabelCore,
   buildRoleSwitchUrlCore
 } from "./core/role-switch-utils.js";
+import { formatCountCore } from "./core/count-format-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -1481,11 +1482,7 @@ function escapeHtml(value) {
 }
 
 function formatCount(value) {
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  const num = Number(value);
-  if (Number.isFinite(num)) return String(num);
-  const str = String(value ?? "").trim();
-  return str || "0";
+  return formatCountCore(value);
 }
 
 function sanitizeDisplayName(value, fallback) {
