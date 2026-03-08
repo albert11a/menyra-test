@@ -79,6 +79,11 @@ import {
   applyAuthBootstrapSnapshotToProfile
 } from "./core/auth-bootstrap-snapshot.js";
 import {
+  clearQueryParamsFromCurrentUrlCore,
+  resolveRouteStateFromTargetUrlCore,
+  applyPendingRouteStateCore
+} from "./core/push-route-query-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10523,112 +10528,67 @@ function openOwnBusinessProfile({ showBack = true, topTab } = {}) {
 }
 
 function clearNotificationQueryParams() {
-  if (typeof window === "undefined" || !window.history?.replaceState) return;
-  try {
-    const url = new URL(window.location.href);
-    const keys = ["notif", "notification", "nid"];
-    let changed = false;
-    keys.forEach((key) => {
-      if (url.searchParams.has(key)) {
-        url.searchParams.delete(key);
-        changed = true;
-      }
-    });
-    if (!changed) return;
-    const query = url.searchParams.toString();
-    const next = `${url.pathname}${query ? `?${query}` : ""}${url.hash || ""}`;
-    window.history.replaceState({}, "", next);
-  } catch {}
+  clearQueryParamsFromCurrentUrlCore({
+    windowObj: typeof window === "undefined" ? null : window,
+    keys: ["notif", "notification", "nid"]
+  });
 }
 
 function clearPostQueryParams() {
-  if (typeof window === "undefined" || !window.history?.replaceState) return;
-  try {
-    const url = new URL(window.location.href);
-    const keys = ["post", "postId"];
-    let changed = false;
-    keys.forEach((key) => {
-      if (url.searchParams.has(key)) {
-        url.searchParams.delete(key);
-        changed = true;
-      }
-    });
-    if (!changed) return;
-    const query = url.searchParams.toString();
-    const next = `${url.pathname}${query ? `?${query}` : ""}${url.hash || ""}`;
-    window.history.replaceState({}, "", next);
-  } catch {}
+  clearQueryParamsFromCurrentUrlCore({
+    windowObj: typeof window === "undefined" ? null : window,
+    keys: ["post", "postId"]
+  });
 }
 
 function clearChatQueryParams() {
-  if (typeof window === "undefined" || !window.history?.replaceState) return;
-  try {
-    const url = new URL(window.location.href);
-    const keys = ["chat", "thread"];
-    let changed = false;
-    keys.forEach((key) => {
-      if (url.searchParams.has(key)) {
-        url.searchParams.delete(key);
-        changed = true;
-      }
-    });
-    if (!changed) return;
-    const query = url.searchParams.toString();
-    const next = `${url.pathname}${query ? `?${query}` : ""}${url.hash || ""}`;
-    window.history.replaceState({}, "", next);
-  } catch {}
+  clearQueryParamsFromCurrentUrlCore({
+    windowObj: typeof window === "undefined" ? null : window,
+    keys: ["chat", "thread"]
+  });
 }
 
 function resolveRouteStateFromTargetUrl(rawUrl = "") {
-  const safeRawUrl = String(rawUrl || "").trim();
-  if (!safeRawUrl) return null;
-  if (typeof window === "undefined") return null;
-  try {
-    const parsed = new URL(safeRawUrl, window.location.origin);
-    return resolveInitialRouteState({
-      qs: (key) => String(parsed.searchParams.get(String(key || "")) || ""),
-      normalizeInitialTab,
-      normalizeAuthMode
-    });
-  } catch {
-    return null;
-  }
+  return resolveRouteStateFromTargetUrlCore({
+    rawUrl,
+    windowObj: typeof window === "undefined" ? null : window,
+    resolveInitialRouteState,
+    normalizeInitialTab,
+    normalizeAuthMode
+  });
 }
 
 function applyPendingRouteStateFromTargetUrl(rawUrl = "") {
   const routeState = resolveRouteStateFromTargetUrl(rawUrl);
-  if (!routeState) return false;
-  let changed = false;
-  if (routeState.pendingProfileRestaurantId) {
-    pendingProfileRestaurantId = routeState.pendingProfileRestaurantId;
-    pendingProfileTopTab = routeState.pendingProfileTopTab;
-    pendingProfileHandled = false;
-    changed = true;
-  }
-  if (routeState.pendingNotificationId) {
-    pendingNotificationId = routeState.pendingNotificationId;
-    pendingNotificationHandled = false;
-    changed = true;
-  }
-  if (routeState.pendingPostId) {
-    pendingPostId = routeState.pendingPostId;
-    pendingPostHandled = false;
-    changed = true;
-  }
-  if (routeState.pendingChatUid) {
-    pendingChatUid = routeState.pendingChatUid;
-    pendingChatHandled = false;
-    changed = true;
-  }
-  if (routeState.pendingInitialTab) {
-    pendingInitialTab = routeState.pendingInitialTab;
-    changed = true;
-  }
-  if (routeState.pendingAuthMode) {
-    pendingAuthMode = routeState.pendingAuthMode;
-    changed = true;
-  }
-  return changed;
+  const applied = applyPendingRouteStateCore({
+    current: {
+      pendingProfileRestaurantId,
+      pendingProfileTopTab,
+      pendingProfileHandled,
+      pendingNotificationId,
+      pendingNotificationHandled,
+      pendingPostId,
+      pendingPostHandled,
+      pendingChatUid,
+      pendingChatHandled,
+      pendingInitialTab,
+      pendingAuthMode
+    },
+    routeState
+  });
+  if (!applied.changed) return false;
+  pendingProfileRestaurantId = applied.next.pendingProfileRestaurantId;
+  pendingProfileTopTab = applied.next.pendingProfileTopTab;
+  pendingProfileHandled = applied.next.pendingProfileHandled;
+  pendingNotificationId = applied.next.pendingNotificationId;
+  pendingNotificationHandled = applied.next.pendingNotificationHandled;
+  pendingPostId = applied.next.pendingPostId;
+  pendingPostHandled = applied.next.pendingPostHandled;
+  pendingChatUid = applied.next.pendingChatUid;
+  pendingChatHandled = applied.next.pendingChatHandled;
+  pendingInitialTab = applied.next.pendingInitialTab;
+  pendingAuthMode = applied.next.pendingAuthMode;
+  return true;
 }
 
 async function maybeOpenNotificationFromQuery() {
