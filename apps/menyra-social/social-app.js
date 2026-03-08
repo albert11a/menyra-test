@@ -105,6 +105,16 @@ import {
   buildStoriesSignatureCore,
   refreshFeedStoriesCore
 } from "./core/feed-story-utils.js";
+import {
+  getChatThreadIdCore,
+  chatThreadStorageKeyCore,
+  chatThreadDocRefCore,
+  chatMessageDocRefCore,
+  chatMessagesCollectionRefCore,
+  getChatMessageTimestampCore,
+  pruneChatMessagesCore,
+  buildChatPreviewTextCore
+} from "./core/chat-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -3170,36 +3180,40 @@ function isActiveChatThreadBlocked(profile = state.chatModal.profile) {
 }
 
 function getChatThreadId(profile = state.chatModal.profile) {
-  return String(profile?.uid || profile?.restaurantId || profile?.handle || profile?.id || "").replace(/^@/, "").trim();
+  return getChatThreadIdCore(profile);
 }
 
 function chatThreadStorageKey(profile = state.chatModal.profile) {
-  const threadId = getChatThreadId(profile);
-  const ownerUid = String(state.user?.uid || "guest").trim();
-  if (!threadId || !ownerUid) return "";
-  return `${STORAGE_KEYS.chatThreads}::${ownerUid}::${threadId}`;
+  return chatThreadStorageKeyCore({
+    profile,
+    ownerUid: String(state.user?.uid || "guest").trim(),
+    chatThreadsStorageKey: STORAGE_KEYS.chatThreads
+  });
 }
 
 function chatThreadDocRef(ownerUid, threadId) {
-  const safeOwnerUid = String(ownerUid || "").trim();
-  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
-  if (!safeOwnerUid || !safeThreadId) return null;
-  return doc(db, "users", safeOwnerUid, "chatThreads", safeThreadId);
+  return chatThreadDocRefCore({
+    docFn: (...segments) => doc(db, ...segments),
+    ownerUid,
+    threadId
+  });
 }
 
 function chatMessageDocRef(ownerUid, threadId, messageId) {
-  const safeOwnerUid = String(ownerUid || "").trim();
-  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
-  const safeMessageId = String(messageId || "").trim();
-  if (!safeOwnerUid || !safeThreadId || !safeMessageId) return null;
-  return doc(db, "users", safeOwnerUid, "chatThreads", safeThreadId, "messages", safeMessageId);
+  return chatMessageDocRefCore({
+    docFn: (...segments) => doc(db, ...segments),
+    ownerUid,
+    threadId,
+    messageId
+  });
 }
 
 function chatMessagesCollectionRef(ownerUid, threadId) {
-  const safeOwnerUid = String(ownerUid || "").trim();
-  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
-  if (!safeOwnerUid || !safeThreadId) return null;
-  return collection(db, "users", safeOwnerUid, "chatThreads", safeThreadId, "messages");
+  return chatMessagesCollectionRefCore({
+    collectionFn: (...segments) => collection(db, ...segments),
+    ownerUid,
+    threadId
+  });
 }
 
 function normalizeChatThreadSummary(threadId, data = {}, fallback = {}) {
@@ -3307,27 +3321,23 @@ function normalizeChatMessageRecord(messageId, data = {}, localMap = new Map()) 
 }
 
 function getChatMessageTimestamp(message) {
-  return toDateSafe(message?.createdAt)?.getTime() || 0;
+  return getChatMessageTimestampCore({
+    message,
+    toDateSafe
+  });
 }
 
 function pruneChatMessages(messages) {
-  const now = Date.now();
-  return (Array.isArray(messages) ? messages : []).filter((message) => {
-    if (!message) return false;
-    if (message.saved) return true;
-    const createdAt = getChatMessageTimestamp(message);
-    if (!createdAt) return false;
-    return (now - createdAt) <= CHAT_MESSAGE_TTL_MS;
+  return pruneChatMessagesCore({
+    messages,
+    ttlMs: CHAT_MESSAGE_TTL_MS,
+    nowMs: Date.now(),
+    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message)
   });
 }
 
 function buildChatPreviewText(message) {
-  if (!message) return "";
-  const text = String(message.text || "").trim();
-  if (text) return text;
-  const count = Array.isArray(message.attachments) ? message.attachments.length : 0;
-  if (!count) return "Chat";
-  return count === 1 ? "1 Anhang" : `${count} Anhaenge`;
+  return buildChatPreviewTextCore(message);
 }
 
 function loadLegacyChatThreadMessages(threadId) {
