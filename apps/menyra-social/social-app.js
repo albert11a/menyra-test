@@ -543,6 +543,10 @@ import {
   bindLeadInlineCreateEventsCore
 } from "./core/app-events-crm-staff-bind-utils.js";
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events-main-bind-utils.js";
+import {
+  ensureTabDataCore,
+  loadAuthProfileCore
+} from "./core/tab-auth-load-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -6938,118 +6942,52 @@ function handleSearchInput(value) {
 }
 
 function ensureTabData(tab) {
-  const safeTab = sanitizeTabForSession(tab, { hasProfileView: !!state.profileView });
-  if (safeTab !== state.activeTab) {
-    state.activeTab = safeTab;
-    render();
-  }
-  tab = safeTab;
-  const hasUser = !!state.user;
-  stopRestaurantsListener();
-  if (hasUser && tab === "chat") {
-    startChatThreadsListener(state.user);
-  } else {
-    stopChatThreadsListener();
-  }
-  if (hasUser && tab === "orders") {
-    startOrdersListener(state.user);
-  } else {
-    stopOrdersListener();
-  }
-  if (tab !== "feed") {
-    stopRestaurantMetaListeners();
-    if (feedUnsub) {
-      feedUnsub();
-      feedUnsub = null;
-    }
-    if (storiesUnsub) {
-      storiesUnsub();
-      storiesUnsub = null;
-    }
-  }
-  if (tab !== "feed" && feedDeltaTimer) {
-    clearInterval(feedDeltaTimer);
-    feedDeltaTimer = null;
-  }
-
-  if (hasUser && (tab === "leads" || tab === "staff" || tab === "customers") && isCeoUser()) {
-    queueCrmLazyRenderersPrefetch();
-  }
-
-  if (tab === "feed" && !dataLoaded.feed) {
-    dataLoaded.feed = true;
-    dataLoaded.stories = true;
-    void loadFeedPosts();
-  }
-
-  const needsRestaurants = tab === "map" || tab === "search" || tab === "orders" || (!FAST_MODE && tab === "feed");
-  if (needsRestaurants && !dataLoaded.restaurants) {
-    dataLoaded.restaurants = true;
-    scheduleIdle(() => {
-      loadRestaurants().catch((err) => console.error(err));
-    });
-  }
-
-  if (hasUser && tab === "profile" && !dataLoaded.profile) {
-    dataLoaded.profile = true;
-    const hasBusinessProfile = isLocalBusinessProfile(state.userProfile);
-    if (!hasBusinessProfile) {
-      void loadUserPosts();
-    }
-    if (hasBusinessProfile) {
-      void loadBusinessPosts();
-    }
-  }
-  if (hasUser && tab === "profile") {
-    void loadAuthProfile(state.user);
-  }
-
-  if (hasUser && tab === "menu") {
-    void loadAuthProfile(state.user).then(() => {
-      const restaurantId = state.userProfile.restaurantId || "";
-      if (restaurantId) {
-        void loadMenuForRestaurant(restaurantId, { source: "hybrid" });
-        void loadFocusForRestaurant(restaurantId);
-      }
-    });
-  }
-
-  if (hasUser && tab === "notifications" && !dataLoaded.notifications) {
-    dataLoaded.notifications = true;
-    if (notificationsUnsub && Array.isArray(state.notifications) && state.notifications.length) {
-      const updated = updateNotificationsDom();
-      if (!updated && state.activeTab === "notifications") {
-        render();
-      }
-    } else {
-      void loadNotificationsFromFirebase({ force: true });
-    }
-  }
-
-  if (hasUser && tab === "leads" && !dataLoaded.leads) {
-    dataLoaded.leads = true;
-    if (isCeoUser()) {
-      void loadLeads({ scope: state.leads.scope });
-    }
-  } else if (hasUser && tab === "leads" && isCeoUser() && !state.leads.loaded?.[normalizeLeadScopeKey(state.leads.scope)]) {
-    void loadLeads({ scope: state.leads.scope });
-  }
-
-  if (hasUser && tab === "customers" && !dataLoaded.customers) {
-    dataLoaded.customers = true;
-    if (isCeoUser()) {
-      void loadCustomers({ scope: state.customers.scope });
-    }
-  } else if (hasUser && tab === "customers" && isCeoUser() && !state.customers.loaded?.[normalizeCustomerScopeKey(state.customers.scope)]) {
-    void loadCustomers({ scope: state.customers.scope });
-  }
-
-  if (hasUser && tab === "staff" && !dataLoaded.staff) {
-    dataLoaded.staff = true;
-    if (isCeoUser()) {
-      void loadCeoStaff().catch(() => {});
-    }
-  }
+  return ensureTabDataCore({
+    tab,
+    state,
+    dataLoaded,
+    FAST_MODE,
+    sanitizeTabForSession,
+    render,
+    stopRestaurantsListener,
+    startChatThreadsListener,
+    stopChatThreadsListener,
+    startOrdersListener,
+    stopOrdersListener,
+    stopRestaurantMetaListeners,
+    getFeedUnsubFn: () => feedUnsub,
+    setFeedUnsubFn: (next) => {
+      feedUnsub = next;
+    },
+    getStoriesUnsubFn: () => storiesUnsub,
+    setStoriesUnsubFn: (next) => {
+      storiesUnsub = next;
+    },
+    getFeedDeltaTimerFn: () => feedDeltaTimer,
+    setFeedDeltaTimerFn: (next) => {
+      feedDeltaTimer = next;
+    },
+    clearIntervalFn: (id) => clearInterval(id),
+    isCeoUser,
+    queueCrmLazyRenderersPrefetch,
+    loadFeedPosts,
+    scheduleIdle,
+    loadRestaurants,
+    isLocalBusinessProfile,
+    loadUserPosts,
+    loadBusinessPosts,
+    loadAuthProfile,
+    loadMenuForRestaurant,
+    loadFocusForRestaurant,
+    notificationsUnsub,
+    updateNotificationsDom,
+    loadNotificationsFromFirebase,
+    normalizeLeadScopeKey,
+    loadLeads,
+    normalizeCustomerScopeKey,
+    loadCustomers,
+    loadCeoStaff
+  });
 }
 
 function findPostById(postId) {
@@ -14193,112 +14131,25 @@ async function loadBusinessProfile(user, { restaurant = null, force = false } = 
 }
 
 async function loadAuthProfile(user, { force = false } = {}) {
-  if (!user) return;
-  const normalizeAuthRestaurant = (candidate) => (
-    candidate && !isRestaurantMarkedDeleted(candidate) ? candidate : null
-  );
-  const profileHint = state.userProfile || {};
-  const hintRoles = normalizeRoleList(profileHint.roles || profileHint.role || "");
-  const hintRoleKey = String(profileHint.role || "").toLowerCase();
-  const hasStoredProfileHint = (
-    hintRoles.length > 0
-    || !!String(profileHint.name || "").trim()
-    || !!String(profileHint.handle || "").trim()
-    || !!String(profileHint.ceoParentUid || profileHint.ceoRootUid || "").trim()
-    || !!String(profileHint.restaurantId || "").trim()
-    || hintRoleKey !== "user"
-  );
-  const hasBusinessHint = !!String(profileHint.restaurantId || "").trim() || hintRoleKey === "business" || hintRoles.includes("owner");
-  const hasTrustedNonBusinessHint = hasStoredProfileHint && !hasBusinessHint && (
-    hintRoleKey === "ceo"
-    || hintRoleKey === "staff"
-    || hintRoleKey === "user"
-    || hintRoles.includes("ceo")
-    || hintRoles.includes("staff")
-  );
-  if (hasTrustedNonBusinessHint && !force) {
-    const profile = await loadUserProfile(user, { force });
-    const normalizedRoles = normalizeRoleList(profile?.roles || profile?.role || "");
-    const normalizedRoleKey = String(profile?.role || "").toLowerCase();
-    const hasBusinessProfile = !!String(profile?.restaurantId || "").trim() || normalizedRoleKey === "business" || normalizedRoles.includes("owner");
-    if (!hasBusinessProfile) return;
-  }
-  let rest = normalizeAuthRestaurant(await resolveRestaurantForAuthUser(user, { preferCached: !force }));
-  if (!rest && user?.uid) {
-    const leadByUid = await resolveLeadByUid(user.uid);
-    if (leadByUid) {
-      rest = normalizeAuthRestaurant(
-        findRestaurantByLeadId(leadByUid.id) || await ensureRestaurantForLead(leadByUid, user)
-      );
-    }
-  }
-  if (!rest && user?.email) {
-    const lead = await resolveLeadByEmail(user.email);
-    if (lead) {
-      rest = normalizeAuthRestaurant(
-        findRestaurantByLeadId(lead.id) || await ensureRestaurantForLead(lead, user)
-      );
-    }
-  }
-  if (!rest) {
-    try {
-      const legacySnap = await getDoc(doc(db, "users", user.uid));
-      if (legacySnap.exists()) {
-        const legacy = legacySnap.data() || {};
-        const roleKey = String(legacy.role || "").toLowerCase();
-        const restId = legacy.restaurantId || "";
-        if ((roleKey === "business" || restId) && restId) {
-          const restSnap = await getDoc(doc(db, "restaurants", restId));
-          if (restSnap.exists()) {
-            const restData = restSnap.data() || {};
-            const patch = {};
-            const legacyEmail = legacy.email || user.email || "";
-            if (!restData.ownerUid) patch.ownerUid = user.uid;
-            if (legacyEmail && !restData.ownerEmail) patch.ownerEmail = legacyEmail;
-            const legacyName = legacy.displayName || legacy.name || "";
-            if (legacyName && !(restData.name || restData.restaurantName)) {
-              patch.name = legacyName;
-              patch.restaurantName = legacyName;
-            }
-            const legacyAvatar = legacy.avatarUrl || legacy.avatar || "";
-            if (legacyAvatar && !(restData.logoUrl || restData.logo)) {
-              patch.logoUrl = legacyAvatar;
-              patch.logo = legacyAvatar;
-            }
-            if (legacy.city && !restData.city) patch.city = legacy.city;
-            if (legacy.address && !restData.address) patch.address = legacy.address;
-            if (legacy.phone && !restData.phone) patch.phone = legacy.phone;
-            if (legacy.instagram && !restData.instagram) {
-              patch.instagram = legacy.instagram;
-              patch.insta = legacy.instagram;
-            }
-            if (Object.keys(patch).length) {
-              patch.updatedAt = serverTimestamp();
-              await setDoc(doc(db, "restaurants", restId), patch, { merge: true });
-            }
-            const candidate = { id: restSnap.id, ...restData, ...patch };
-            rest = normalizeAuthRestaurant(candidate);
-          }
-        }
-      }
-    } catch {}
-  }
-  if (rest && user?.uid) {
-    const patch = {};
-    const email = user.email || "";
-    if (!rest.ownerUid) patch.ownerUid = user.uid;
-    if (email && !rest.ownerEmail) patch.ownerEmail = email;
-    if (Object.keys(patch).length && rest.id) {
-      patch.updatedAt = serverTimestamp();
-      await setDoc(doc(db, "restaurants", rest.id), patch, { merge: true });
-      rest = { ...rest, ...patch };
-    }
-  }
-  if (rest) {
-    await loadBusinessProfile(user, { restaurant: rest, force });
-    return;
-  }
-  await loadUserProfile(user, { force });
+  return loadAuthProfileCore({
+    user,
+    force,
+    state,
+    normalizeRoleList,
+    isRestaurantMarkedDeleted,
+    resolveRestaurantForAuthUser,
+    resolveLeadByUid,
+    findRestaurantByLeadId,
+    ensureRestaurantForLead,
+    resolveLeadByEmail,
+    getDoc,
+    doc,
+    db,
+    serverTimestamp,
+    setDoc,
+    loadBusinessProfile,
+    loadUserProfile
+  });
 }
 
 function stopRestaurantsListener() {
