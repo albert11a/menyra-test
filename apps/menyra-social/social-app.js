@@ -126,6 +126,14 @@ import {
   rebuildChatThreadIndexFromStorageCore
 } from "./core/chat-thread-index-utils.js";
 import {
+  normalizeChatThreadSummaryCore,
+  getChatUnreadCountCore,
+  upsertChatThreadListCore,
+  isChatThreadArchivedCore,
+  getChatThreadByIdCore,
+  getActiveChatThreadSummaryCore
+} from "./core/chat-thread-state-utils.js";
+import {
   getStringByteSizeCore,
   isChatInlineDataUrlCore,
   sanitizeChatAttachmentsForSyncCore,
@@ -3009,47 +3017,36 @@ function rebuildChatThreadIndexFromStorage(uid = state.user?.uid || "") {
 }
 
 function getChatUnreadCount() {
-  return (state.chatThreads || []).reduce((sum, thread) => {
-    if (thread?.archivedByOwner) return sum;
-    const muted = Number(thread?.muteUntilMs || 0) > Date.now();
-    if (muted) return sum;
-    const count = Number(thread?.unreadCount || 0);
-    return sum + (Number.isFinite(count) ? count : 0);
-  }, 0);
+  return getChatUnreadCountCore({
+    threads: state.chatThreads,
+    nowMs: Date.now()
+  });
 }
 
 function upsertChatThread(profile, patch = {}) {
-  if (!profile) return;
-  const threadId = getChatThreadId(profile);
-  if (!threadId) return;
-  const existingThread = (state.chatThreads || []).find((item) => String(item?.id || "") === threadId) || null;
-  const nextThread = {
-    ...(existingThread || {}),
-    id: threadId,
-    uid: profile.uid || "",
-    restaurantId: profile.restaurantId || "",
-    handle: String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, ""),
-    name: profile.name || "User",
-    avatar: profile.avatar || "",
-    lastMessage: "",
-    unreadCount: Number(existingThread?.unreadCount || 0),
-    updatedAt: Date.now(),
-    ...patch
-  };
-  const existing = Array.isArray(state.chatThreads) ? state.chatThreads : [];
-  const rest = existing.filter((item) => String(item?.id || "") !== threadId);
-  state.chatThreads = sortChatThreads([nextThread, ...rest]);
+  const nextThreads = upsertChatThreadListCore({
+    profile,
+    patch,
+    threads: state.chatThreads,
+    getChatThreadId: (value) => getChatThreadId(value),
+    normalizeHandle: (value) => normalizeHandle(value),
+    sortChatThreads: (threads) => sortChatThreads(threads),
+    nowMs: Date.now()
+  });
+  if (!nextThreads) return;
+  state.chatThreads = nextThreads;
   saveChatThreadIndex(state.chatThreads);
 }
 
 function isChatThreadArchived(thread) {
-  return !!thread?.archivedByOwner;
+  return isChatThreadArchivedCore(thread);
 }
 
 function getChatThreadById(threadId) {
-  const safeId = String(threadId || "").replace(/^@/, "").trim();
-  if (!safeId) return null;
-  return (state.chatThreads || []).find((thread) => String(thread?.id || "") === safeId) || null;
+  return getChatThreadByIdCore({
+    threadId,
+    threads: state.chatThreads
+  });
 }
 
 async function setChatThreadArchivedById(threadId, archived = true) {
@@ -3103,9 +3100,11 @@ async function deleteChatThreadById(threadId) {
 }
 
 function getActiveChatThreadSummary(profile = state.chatModal.profile) {
-  const threadId = getChatThreadId(profile);
-  if (!threadId) return null;
-  return (state.chatThreads || []).find((thread) => String(thread?.id || "") === threadId) || null;
+  return getActiveChatThreadSummaryCore({
+    profile,
+    threads: state.chatThreads,
+    getChatThreadId: (value) => getChatThreadId(value)
+  });
 }
 
 function isActiveChatThreadBlocked(profile = state.chatModal.profile) {
@@ -3151,29 +3150,13 @@ function chatMessagesCollectionRef(ownerUid, threadId) {
 }
 
 function normalizeChatThreadSummary(threadId, data = {}, fallback = {}) {
-  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
-  if (!safeThreadId) return null;
-  const source = data && typeof data === "object" ? data : {};
-  const muteUntil = toDateSafe(source.muteUntil || source.muteUntilAt || source.mutedUntil || source.muteUntilMs)
-    || toDateSafe(fallback.muteUntil || fallback.muteUntilAt || fallback.mutedUntil || fallback.muteUntilMs);
-  const muteUntilMs = muteUntil?.getTime() || Number(source.muteUntilMs ?? fallback.muteUntilMs ?? 0) || 0;
-  const updatedAt = toDateSafe(source.updatedAt || source.updatedAtClient)?.getTime()
-    || Number(source.updatedAtMs || fallback.updatedAt || 0)
-    || Date.now();
-  return {
-    id: safeThreadId,
-    uid: String(source.uid || fallback.uid || safeThreadId).trim(),
-    restaurantId: String(source.restaurantId || fallback.restaurantId || "").trim(),
-    handle: String(source.handle || fallback.handle || safeThreadId).replace(/^@/, "").trim(),
-    name: String(source.name || fallback.name || safeThreadId).trim() || safeThreadId,
-    avatar: String(source.avatar || fallback.avatar || "").trim(),
-    lastMessage: String(source.lastMessage || fallback.lastMessage || "").trim(),
-    unreadCount: Math.max(0, Number(source.unreadCount ?? fallback.unreadCount ?? 0) || 0),
-    blockedByOwner: !!(source.blockedByOwner ?? fallback.blockedByOwner ?? false),
-    archivedByOwner: !!(source.archivedByOwner ?? fallback.archivedByOwner ?? false),
-    muteUntilMs: Math.max(0, Number(muteUntilMs || 0) || 0),
-    updatedAt
-  };
+  return normalizeChatThreadSummaryCore({
+    threadId,
+    data,
+    fallback,
+    toDateSafe,
+    nowMs: Date.now()
+  });
 }
 
 function getCurrentChatSenderProfile() {
