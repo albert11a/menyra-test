@@ -315,6 +315,14 @@ import {
   getLeadPriceForCycleCore
 } from "./core/lead-settings-utils.js";
 import {
+  normalizeLeadStatusKeyCore,
+  leadStatusLabelCore,
+  customerStatusLabelCore,
+  isCustomerRestaurantCore,
+  leadTypeLabelCore,
+  resolveCustomerTypeCore
+} from "./core/lead-taxonomy-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -1673,27 +1681,7 @@ function getCeoGpsOverride(profile = state.userProfile) {
 }
 
 function normalizeLeadStatusKey(value) {
-  const raw = String(value || "").trim().toLowerCase();
-  if (!raw) return "";
-  const key = raw.replace(/[\s-]+/g, "_");
-  if (["kein_interesse", "keine_interesse", "no_interest", "nointerest", "nointeresse"].includes(key)) return "no_interest";
-  if (["demo", "testphase", "test_phase", "trial", "test"].includes(key)) return "testphase";
-  if (["kunde", "customer", "converted", "active"].includes(key)) return "kunde";
-  if (["contacted", "kontakt", "kontaktiert", "follow_up", "waiting", "interested"].includes(key)) return "contacted";
-  if (["registered", "registriert", "new", "lead", "prospect", "open"].includes(key)) return "registered";
-  if (["archived", "archive", "archiv"].includes(key)) return "no_interest";
-  if ([
-    "deleted",
-    "delete",
-    "geloscht",
-    "geloescht",
-    "removed",
-    "remove",
-    "inactive",
-    "disabled",
-    "blocked"
-  ].includes(key)) return "deleted";
-  return key;
+  return normalizeLeadStatusKeyCore(value);
 }
 
 function isRestaurantMarkedDeleted(rest = {}) {
@@ -1784,19 +1772,23 @@ function normalizeLeadTypeKey(value) {
 }
 
 function leadStatusLabel(value) {
-  const key = normalizeLeadStatusKey(value);
-  return LEAD_STATUS_LABELS[key] || value || "-";
+  return leadStatusLabelCore(value, {
+    normalizeLeadStatusKeyFn: normalizeLeadStatusKey,
+    leadStatusLabels: LEAD_STATUS_LABELS
+  });
 }
 
 function leadTypeLabel(value) {
-  const key = normalizeLeadTypeKey(value);
-  return LEAD_TYPE_LABELS[key] || value || "-";
+  return leadTypeLabelCore(value, {
+    normalizeLeadTypeKeyFn: normalizeLeadTypeKey,
+    leadTypeLabels: LEAD_TYPE_LABELS
+  });
 }
 
 function resolveCustomerType(value) {
-  const key = normalizeLeadTypeKey(value);
-  if (LEAD_TYPE_ORDER.includes(key)) return key;
-  return "cafe";
+  return resolveCustomerTypeCore(value, {
+    normalizeLeadTypeKeyFn: normalizeLeadTypeKey
+  });
 }
 
 function hasLeadLocationCoords(location) {
@@ -2160,20 +2152,15 @@ function getPrimaryLeadLocation(locations) {
 }
 
 function customerStatusLabel(value) {
-  if (!value) return "Kunde";
-  const key = normalizeLeadStatusKey(value || "kunde") || "kunde";
-  if (key === "testphase") return "Testphase";
-  if (key === "no_interest") return "Keine Interesse";
-  if (key === "registered") return "Registriert";
-  if (key === "contacted") return "Kontaktiert";
-  if (key === "kunde") return "Kunde";
-  return String(value || "").toUpperCase();
+  return customerStatusLabelCore(value, {
+    normalizeLeadStatusKeyFn: normalizeLeadStatusKey
+  });
 }
 
 function isCustomerRestaurant(rest = {}) {
-  const statusKey = normalizeLeadStatusKey(rest.status || "");
-  if (statusKey === "kunde") return true;
-  return false;
+  return isCustomerRestaurantCore(rest, {
+    normalizeLeadStatusKeyFn: normalizeLeadStatusKey
+  });
 }
 
 function normalizeRestaurantType(value) {
