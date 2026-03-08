@@ -89,6 +89,10 @@ import {
   buildNativePushAlertPayloadCore
 } from "./core/push-alert-utils.js";
 import {
+  readPushSeenIdsCore,
+  writePushSeenIdsCore
+} from "./core/push-seen-storage-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -2586,26 +2590,21 @@ function saveNotifications(notifications) {
 }
 
 function readPushSeenIds(uid = state.user?.uid || "") {
-  const key = pushSeenKey(uid);
-  if (!key) return [];
-  try {
-    const raw = safeStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.map((item) => String(item || "").trim()).filter(Boolean) : [];
-  } catch {
-    return [];
-  }
+  return readPushSeenIdsCore({
+    uid,
+    resolvePushSeenKey: pushSeenKey,
+    storage: safeStorage
+  });
 }
 
 function writePushSeenIds(ids = [], uid = state.user?.uid || "") {
-  const key = pushSeenKey(uid);
-  if (!key) return;
-  const normalized = Array.from(new Set(
-    (Array.isArray(ids) ? ids : [])
-      .map((item) => String(item || "").trim())
-      .filter(Boolean)
-  )).slice(-PUSH_SEEN_NOTIFICATIONS_LIMIT);
-  safeStorage.setItem(key, JSON.stringify(normalized));
+  writePushSeenIdsCore({
+    ids,
+    uid,
+    resolvePushSeenKey: pushSeenKey,
+    storage: safeStorage,
+    maxItems: PUSH_SEEN_NOTIFICATIONS_LIMIT
+  });
 }
 
 function canUseNativeNotifications() {
