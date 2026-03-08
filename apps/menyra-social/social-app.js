@@ -291,6 +291,10 @@ import {
   isRestaurantCafeProfileCore
 } from "./core/catalog-mode-utils.js";
 import {
+  createDefaultLeadPricingCore,
+  normalizeLeadPricingCore
+} from "./core/lead-pricing-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -1552,19 +1556,15 @@ function normalizeLeadCountry(value) {
 }
 
 function createDefaultLeadPricing() {
-  return LEAD_TYPE_ORDER.reduce((acc, key) => {
-    acc[key] = 0;
-    return acc;
-  }, {});
+  return createDefaultLeadPricingCore({
+    leadTypeOrder: LEAD_TYPE_ORDER
+  });
 }
 
 function normalizeLeadPricing(raw = {}) {
-  const base = createDefaultLeadPricing();
-  Object.keys(base).forEach((key) => {
-    const num = Number(raw?.[key]);
-    base[key] = Number.isFinite(num) && num >= 0 ? num : 0;
+  return normalizeLeadPricingCore(raw, {
+    leadTypeOrder: LEAD_TYPE_ORDER
   });
-  return base;
 }
 
 function normalizeLeadSettings(raw = {}) {
