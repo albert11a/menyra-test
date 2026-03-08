@@ -190,6 +190,7 @@ import {
   shouldFetchUserNotificationPostCore,
   shouldFetchRestaurantNotificationPostCore
 } from "./core/post-notification-fetch-utils.js";
+import { highlightCommentInModalCore } from "./core/notification-comment-highlight-utils.js";
 import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
@@ -11227,18 +11228,13 @@ async function fetchPostForNotification(notif) {
 }
 
 function highlightCommentInModal(commentId) {
-  const commentsRoot = document.getElementById("postModalComments");
-  if (!commentsRoot) return false;
-  const safeId = String(commentId || "");
-  if (!safeId) return false;
-  const target = commentsRoot.querySelector(`[data-comment-id="${safeId}"]`);
-  if (!target) return false;
-  target.classList.add("ring-2", "ring-indigo-300", "bg-indigo-50/70");
-  target.scrollIntoView({ behavior: "smooth", block: "center" });
-  setTimeout(() => {
-    target.classList.remove("ring-2", "ring-indigo-300", "bg-indigo-50/70");
-  }, 2000);
-  return true;
+  return highlightCommentInModalCore({
+    documentObj: typeof document !== "undefined" ? document : null,
+    commentId,
+    commentsRootId: "postModalComments",
+    timeoutMs: 2000,
+    setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
+  });
 }
 
 async function openPostFromNotification(notif) {
