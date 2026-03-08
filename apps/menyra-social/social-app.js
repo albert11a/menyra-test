@@ -92,6 +92,11 @@ import {
   resolveUserAvatarCore,
   resolveShellAvatarUrlCore
 } from "./core/avatar-logo-cache.js";
+import {
+  saveMenuLayoutToStorageCore,
+  getMenuLayoutThemeCore,
+  getFocusCardClassCore
+} from "./core/menu-layout-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -806,19 +811,26 @@ function applyAuthBootstrapSnapshot(snapshot = authBootstrapSnapshot) {
 }
 
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
-  try {
-    safeStorage.setItem(STORAGE_KEYS.menuLayout, JSON.stringify(layout || {}));
-  } catch {}
+  saveMenuLayoutToStorageCore({
+    safeStorage,
+    menuLayoutKey: STORAGE_KEYS.menuLayout,
+    layout
+  });
 }
 
 function getMenuLayoutTheme(colorId = state.menuLayout?.cardColor) {
-  const id = String(colorId || "").trim();
-  return MENU_LAYOUT_COLORS.find((theme) => theme.id === id) || MENU_LAYOUT_COLORS[0];
+  return getMenuLayoutThemeCore({
+    colorId,
+    themes: MENU_LAYOUT_COLORS
+  });
 }
 
 function getFocusCardClass() {
-  const theme = getMenuLayoutTheme();
-  return theme?.cardClass || "bg-white border-slate-100";
+  return getFocusCardClassCore({
+    colorId: state.menuLayout?.cardColor,
+    themes: MENU_LAYOUT_COLORS,
+    fallbackClass: "bg-white border-slate-100"
+  });
 }
 
 function loadLogoCache() {
