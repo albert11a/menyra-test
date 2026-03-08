@@ -169,7 +169,7 @@ export function renderMenuItemModalCore({
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       <button id="menuModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.menuModal.loading ? "disabled" : ""}>
         ${state.menuModal.loading ? "Speichern..." : "Speichern"}
       </button>

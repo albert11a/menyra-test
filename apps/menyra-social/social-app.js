@@ -10998,7 +10998,7 @@ function renderChatModal() {
               </div>
             `}
           </div>
-          <div class="p-4 border-t border-slate-100 bg-white">
+          <div class="p-4 border-t border-slate-100 bg-white modal-footer-safe">
             <div class="flex items-end gap-3">
               <textarea id="chatMessageInput" rows="1" placeholder="Nachricht..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none">${escapeHtml(state.chatModal.draft || "")}</textarea>
               <button id="chatSendBtn" class="px-5 h-[52px] rounded-2xl bg-slate-900 text-white font-black text-[10px] uppercase tracking-widest active:scale-95">Send</button>
@@ -11461,7 +11461,7 @@ function renderPostModal() {
               ` : ""}
             </div>
 
-            <div class="p-7 pt-4 border-t border-slate-100 bg-white">
+            <div class="p-7 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
               <div class="flex gap-3">
                 <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.postModal.commentText || "")}</textarea>
                 <button id="postCommentSend" data-post-id="${escapeHtml(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">

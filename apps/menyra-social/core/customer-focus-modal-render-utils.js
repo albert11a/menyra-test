@@ -100,7 +100,7 @@ export function renderCustomerModalCore({
   `;
 
   const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       <button id="customerModalSave" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-500/20 active:scale-95 transition-all" ${state.customerModal.loading ? "disabled" : ""}>
         ${state.customerModal.loading ? "Speichern..." : "Speichern"}
       </button>
@@ -200,7 +200,7 @@ export function renderFocusModalCore({
     </div>
   `;
   const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       <button id="focusModalSave" class="w-full py-4 rounded-[1.8rem] bg-amber-500 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-400/30 active:scale-95 transition-all" ${state.focusModal.loading ? "disabled" : ""}>
         ${state.focusModal.loading ? "Speichern..." : "Speichern"}
       </button>

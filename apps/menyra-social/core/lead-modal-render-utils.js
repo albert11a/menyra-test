@@ -167,7 +167,7 @@ export function renderLeadModalCore({
   `;
 
   const footerHtml = `
-    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white">
+    <div class="px-6 pb-6 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
       ${canConvert ? `
         <button id="leadConvertBtn" class="w-full py-4 rounded-[1.8rem] bg-emerald-600 text-white font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/20 active:scale-95 transition-all mb-3">
           Zu Kunde
