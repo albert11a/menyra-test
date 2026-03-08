@@ -71,8 +71,9 @@ Entfernt (statisch unreferenziert):
 14. `ensureSocialBusinessProfile`
 15. `ensureCeoStaffIndexLoaded`
 16. `fetchCeoScopedRows`
-17. `buildStoriesSignature`
-18. `loadStories`
+17. `loadStories`
+
+Hinweis: `buildStoriesSignature` wurde nach Batch D wiederhergestellt, da es weiterhin von `refreshFeedStories` verwendet wird.
 
 ## Legacy-Bloecke (nicht sofort loeschen)
 - Chat Legacy-Migration (`rebuildLegacyChatThreadIndexFromStorage`, `loadLegacyChatThreadMessages`)
