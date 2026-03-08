@@ -285,6 +285,12 @@ import {
 } from "./core/lead-country-utils.js";
 import { normalizeShopCartStateCore } from "./core/shop-cart-state-utils.js";
 import {
+  getBusinessCatalogModeCore,
+  getBusinessCatalogLabelCore,
+  isShopCatalogProfileCore,
+  isRestaurantCafeProfileCore
+} from "./core/catalog-mode-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -2167,28 +2173,28 @@ function getBusinessProfileType(profile = state.userProfile) {
 }
 
 function getBusinessCatalogMode(profile = state.userProfile) {
-  const explicitMode = String(profile?.catalogMode || "").trim().toLowerCase();
-  if (explicitMode === "shop") return "shop";
-  if (explicitMode === "menu") return "menu";
-  const type = getBusinessProfileType(profile);
-  if (!type) return "menu";
-  if (type === "ecommerce") return "shop";
-  return "menu";
+  return getBusinessCatalogModeCore(profile, {
+    getBusinessProfileTypeFn: getBusinessProfileType
+  });
 }
 
 function getBusinessCatalogLabel(profile = state.userProfile) {
-  return getBusinessCatalogMode(profile) === "shop" ? "Shop" : "Menue";
+  return getBusinessCatalogLabelCore(profile, {
+    getBusinessCatalogModeFn: getBusinessCatalogMode
+  });
 }
 
 function isShopCatalogProfile(profile = state.userProfile) {
-  return getBusinessCatalogMode(profile) === "shop";
+  return isShopCatalogProfileCore(profile, {
+    getBusinessCatalogModeFn: getBusinessCatalogMode
+  });
 }
 
 function isRestaurantCafeProfile(profile = state.userProfile) {
-  if (!profile?.restaurantId) return false;
-  const type = getBusinessProfileType(profile);
-  if (!type) return true;
-  return LEAD_TYPE_ORDER.includes(type);
+  return isRestaurantCafeProfileCore(profile, {
+    getBusinessProfileTypeFn: getBusinessProfileType,
+    leadTypeOrder: LEAD_TYPE_ORDER
+  });
 }
 
 function normalizeOptionList(value) {
