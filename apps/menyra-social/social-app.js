@@ -77,7 +77,8 @@ const STORAGE_KEYS = {
   feed: "menyra_social_feed_v1",
   logoCache: "menyra_social_logo_cache_v1",
   avatarCache: "menyra_social_avatar_cache_v1",
-  menuLayout: "menyra_social_menu_layout_v1"
+  menuLayout: "menyra_social_menu_layout_v1",
+  authSnapshot: "menyra_social_auth_snapshot_v1"
 };
 
 const profileKey = (uid) => (uid ? `${STORAGE_KEYS.profile}::${uid}` : "");
@@ -701,6 +702,7 @@ let storiesRowSignature = "";
 let focusRotateTimer = null;
 let focusRotateKey = "";
 let authInitialized = false;
+let authBootstrapSnapshot = null;
 let pendingInitialTab = "";
 let pendingAuthMode = "";
 let crmLazyRenderers = null;
@@ -817,6 +819,68 @@ function saveUserProfileToStorage(profile = state.userProfile) {
   try {
     safeStorage.setItem(profileKey(uid), JSON.stringify(profile));
   } catch {}
+  writeAuthBootstrapSnapshot({
+    uid,
+    name: profile?.name || state.user?.displayName || "",
+    handle: profile?.handle || "",
+    avatar: profile?.avatar || state.user?.photoURL || userAvatarCache || ""
+  });
+}
+
+function readAuthBootstrapSnapshot() {
+  const raw = safeStorage.getItem(STORAGE_KEYS.authSnapshot);
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    const uid = String(parsed?.uid || "").trim();
+    if (!uid) return null;
+    const name = String(parsed?.name || "").trim();
+    const handle = String(parsed?.handle || "").replace(/^@/, "").trim();
+    const avatar = String(parsed?.avatar || "").trim();
+    return { uid, name, handle, avatar, ts: Number(parsed?.ts || 0) || Date.now() };
+  } catch {
+    return null;
+  }
+}
+
+function writeAuthBootstrapSnapshot(snapshot = null) {
+  const source = snapshot && typeof snapshot === "object" ? snapshot : {};
+  const uid = String(source.uid || state.user?.uid || state.userProfile?.uid || "").trim();
+  if (!uid) return;
+  const name = sanitizeDisplayName(
+    source.name || state.userProfile?.name || state.user?.displayName || "",
+    ""
+  );
+  const handle = String(source.handle || state.userProfile?.handle || "").replace(/^@/, "").trim();
+  const avatarRaw = String(
+    source.avatar || state.userProfile?.avatar || state.user?.photoURL || userAvatarCache || ""
+  ).trim();
+  const avatarResolved = getOptimizedImageUrl(avatarRaw, "avatar");
+  const avatar = avatarResolved && !isPlaceholderUrl(avatarResolved) ? avatarRaw : "";
+  const payload = { uid, name, handle, avatar, ts: Date.now() };
+  authBootstrapSnapshot = payload;
+  safeStorage.setItem(STORAGE_KEYS.authSnapshot, JSON.stringify(payload));
+}
+
+function clearAuthBootstrapSnapshot() {
+  authBootstrapSnapshot = null;
+  safeStorage.removeItem(STORAGE_KEYS.authSnapshot);
+}
+
+function applyAuthBootstrapSnapshot(snapshot = authBootstrapSnapshot) {
+  if (!snapshot?.uid) return false;
+  const nextProfile = { ...DEFAULT_PROFILE, ...state.userProfile };
+  nextProfile.uid = snapshot.uid;
+  if (snapshot.name) nextProfile.name = sanitizeDisplayName(snapshot.name, nextProfile.name || "User");
+  if (snapshot.handle) nextProfile.handle = String(snapshot.handle || "").replace(/^@/, "").trim();
+  if (snapshot.avatar) nextProfile.avatar = String(snapshot.avatar || "").trim();
+  state.userProfile = nextProfile;
+  const resolved = getOptimizedImageUrl(nextProfile.avatar || "", "avatar");
+  if (resolved && !isPlaceholderUrl(resolved)) {
+    userAvatarCache = resolved;
+    lastShellAvatarUrl = resolved;
+  }
+  return true;
 }
 
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
@@ -879,6 +943,7 @@ function scheduleAvatarCacheWrite(url, uid = getActiveUid()) {
   avatarCacheWriteTimer = window.setTimeout(() => {
     avatarCacheWriteTimer = null;
     safeStorage.setItem(avatarKey(uid), url);
+    writeAuthBootstrapSnapshot({ uid, avatar: url });
   }, 300);
 }
 
@@ -14742,6 +14807,15 @@ function renderChatView() {
 
 function renderHeaderActionButton(avatarUrl, avatarFit) {
   if (!authInitialized) {
+    const restoringRaw = authBootstrapSnapshot?.avatar || state.userProfile.avatar || userAvatarCache || "";
+    const restoringAvatar = getOptimizedImageUrl(restoringRaw, "avatar");
+    if (restoringAvatar && !isPlaceholderUrl(restoringAvatar)) {
+      return `
+        <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
+          <img src="${escapeHtml(restoringAvatar)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
+        </div>
+      `;
+    }
     return `
       <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
         <div class="w-full h-full rounded-[1.4rem] bg-slate-200 animate-pulse"></div>
@@ -16128,6 +16202,7 @@ function bindAppEvents() {
     if (btn) {
       btn.addEventListener("click", async () => {
         await signOut(auth);
+        clearAuthBootstrapSnapshot();
         if (state.user?.uid) {
           safeStorage.removeItem(profileKey(state.user.uid));
           safeStorage.removeItem(avatarKey(state.user.uid));
@@ -21755,15 +21830,17 @@ async function bootstrapUser(user) {
 }
 
 loadPersisted();
+authBootstrapSnapshot = readAuthBootstrapSnapshot();
 bindPushOpenTargetMessageHandler();
-void ensureAuthLocalPersistence();
 state.user = auth.currentUser || null;
 authInitialized = false;
 if (state.user) {
   loadUserScopedPersisted(state.user);
+  writeAuthBootstrapSnapshot();
   lastAuthUid = state.user.uid || "";
 } else {
-  lastAuthUid = "";
+  const appliedSnapshot = applyAuthBootstrapSnapshot(authBootstrapSnapshot);
+  lastAuthUid = appliedSnapshot ? String(authBootstrapSnapshot?.uid || "").trim() : "";
 }
 applyPendingInitialRouteState();
 render();
@@ -21783,6 +21860,7 @@ onAuthStateChanged(auth, (user) => {
   if (user) {
     state.auth.open = false;
     loadUserScopedPersisted(user);
+    writeAuthBootstrapSnapshot();
     const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();
     const hasPendingPostQuery = !!String(pendingPostId || "").trim();
     if (hasPendingNotificationQuery || hasPendingPostQuery) {
@@ -21810,6 +21888,7 @@ onAuthStateChanged(auth, (user) => {
       });
     }
   } else {
+    clearAuthBootstrapSnapshot();
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";
     stopLiveListeners();
