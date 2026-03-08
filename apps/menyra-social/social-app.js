@@ -114,6 +114,11 @@ import {
   mapNotificationSnapshotCore
 } from "./core/notification-item-utils.js";
 import {
+  shouldSurfaceNativePushNowCore,
+  addNotificationItemsToSeenSetCore,
+  collectUnseenUnreadNotificationItemsFromChangesCore
+} from "./core/notification-native-push-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10846,8 +10851,10 @@ function mapNotificationSnapshot(snap) {
 }
 
 function shouldSurfaceNativePushNow() {
-  if (typeof document === "undefined") return true;
-  return !(document.visibilityState === "visible" && state.activeTab === "notifications");
+  return shouldSurfaceNativePushNowCore({
+    documentObj: typeof document !== "undefined" ? document : null,
+    activeTab: state.activeTab
+  });
 }
 
 function startNotificationsListener(user = state.user, { enableNativePush = false } = {}) {
@@ -10869,7 +10876,7 @@ function startNotificationsListener(user = state.user, { enableNativePush = fals
 
     if (!enableNativePush || !canEmitNativePushAlerts()) {
       if (!seeded) {
-        items.forEach((item) => seenIds.add(item.id));
+        addNotificationItemsToSeenSetCore({ items, seenIds });
         writePushSeenIds(Array.from(seenIds), ownerUid);
         seeded = true;
       }
@@ -10877,16 +10884,17 @@ function startNotificationsListener(user = state.user, { enableNativePush = fals
     }
 
     if (!seeded) {
-      items.forEach((item) => seenIds.add(item.id));
+      addNotificationItemsToSeenSetCore({ items, seenIds });
       writePushSeenIds(Array.from(seenIds), ownerUid);
       seeded = true;
       return;
     }
 
-    const nextNative = snap.docChanges()
-      .filter((change) => change.type === "added" || change.type === "modified")
-      .map((change) => normalizeNotificationItem(change.doc))
-      .filter((item) => item && !item.read && !seenIds.has(item.id));
+    const nextNative = collectUnseenUnreadNotificationItemsFromChangesCore({
+      changes: snap.docChanges(),
+      normalizeNotificationItem: (docSnap) => normalizeNotificationItem(docSnap),
+      seenIds
+    });
     if (!nextNative.length) return;
 
     nextNative.forEach((item) => seenIds.add(item.id));
