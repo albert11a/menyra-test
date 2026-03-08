@@ -172,6 +172,10 @@ import {
   buildChatMessageReadPatchCore
 } from "./core/chat-remote-read-write-utils.js";
 import {
+  normalizeRemoteChatReadSyncInputsCore,
+  buildRemoteChatReadSyncWriteTasksCore
+} from "./core/chat-remote-read-sync-plan-utils.js";
+import {
   renderChatMessagesPanelCore,
   renderChatPendingAttachmentsCore
 } from "./core/chat-render-utils.js";
@@ -3387,34 +3391,30 @@ function startChatThreadsListener(user = state.user) {
 }
 
 async function syncRemoteChatReadState(profile, messages = state.chatModal.messages || []) {
-  const ownerUid = String(state.user?.uid || "").trim();
-  const threadId = getChatThreadId(profile);
-  if (!ownerUid || !threadId) return;
-  const unreadMessageIds = collectUnreadIncomingChatMessageIdsCore({
-    messages,
-    pruneChatMessages: (items) => pruneChatMessages(items)
+  const syncInputs = normalizeRemoteChatReadSyncInputsCore({
+    ownerUid: String(state.user?.uid || "").trim(),
+    threadId: getChatThreadId(profile),
+    unreadMessageIds: collectUnreadIncomingChatMessageIdsCore({
+      messages,
+      pruneChatMessages: (items) => pruneChatMessages(items)
+    })
   });
+  if (!syncInputs.canSync) return;
   const threadUnreadResetPatch = buildChatUnreadResetPatchCore();
   const messageReadPatch = buildChatMessageReadPatchCore();
-  if (!unreadMessageIds.length) {
-    const threadRef = chatThreadDocRef(ownerUid, threadId);
-    if (!threadRef) return;
-    try {
-      await setDoc(threadRef, threadUnreadResetPatch, { merge: true });
-    } catch {}
-    return;
-  }
-  const threadRef = chatThreadDocRef(ownerUid, threadId);
-  if (!threadRef) return;
+  const writeTasks = buildRemoteChatReadSyncWriteTasksCore({
+    ownerUid: syncInputs.ownerUid,
+    threadId: syncInputs.threadId,
+    unreadMessageIds: syncInputs.unreadMessageIds,
+    chatThreadDocRef: (ownerUid, threadId) => chatThreadDocRef(ownerUid, threadId),
+    chatMessageDocRef: (ownerUid, threadId, messageId) => chatMessageDocRef(ownerUid, threadId, messageId),
+    setDocFn: (ref, payload, options) => setDoc(ref, payload, options),
+    threadUnreadResetPatch,
+    messageReadPatch
+  });
+  if (!writeTasks.length) return;
   try {
-    await Promise.all([
-      ...unreadMessageIds.map((messageId) => {
-        const messageRef = chatMessageDocRef(ownerUid, threadId, messageId);
-        if (!messageRef) return Promise.resolve();
-        return setDoc(messageRef, messageReadPatch, { merge: true });
-      }),
-      setDoc(threadRef, threadUnreadResetPatch, { merge: true })
-    ]);
+    await Promise.all(writeTasks.map((task) => task()));
   } catch {}
 }
 
