@@ -149,6 +149,12 @@ import {
   buildNotificationProfileTargetCore
 } from "./core/notification-target-utils.js";
 import {
+  buildFollowRequestDocPayloadCore,
+  buildFollowRequestNotificationPayloadCore,
+  buildAcceptedFollowRecordPayloadCore,
+  buildFollowAcceptedNotificationPayloadCore
+} from "./core/follow-request-payload-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -11041,25 +11047,16 @@ async function sendFollowRequest(handle, target = {}) {
   if (state.followingHandles.includes(safeHandle) || state.pendingFollowRequests.includes(safeHandle)) return;
   try {
     const actor = currentUserBadge();
-    await setDoc(doc(db, "users", targetUid, "followRequests", state.user.uid), {
-      requesterUid: actor.uid,
-      requesterHandle: actor.handle,
-      requesterName: actor.name,
-      requesterAvatar: actor.avatar,
+    await setDoc(doc(db, "users", targetUid, "followRequests", state.user.uid), buildFollowRequestDocPayloadCore({
+      actor,
       targetUid,
       targetHandle: safeHandle,
-      createdAt: serverTimestamp()
-    }, { merge: true });
-    await setDoc(doc(db, "users", targetUid, "notifications", `follow_request_${state.user.uid}`), {
-      type: "follow_request",
-      user: actor.name,
-      userHandle: actor.handle,
-      userUid: actor.uid,
-      avatar: actor.avatar,
-      text: "moechte dir folgen",
-      read: false,
-      createdAt: serverTimestamp()
-    }, { merge: true });
+      serverTimestampValue: serverTimestamp()
+    }), { merge: true });
+    await setDoc(doc(db, "users", targetUid, "notifications", `follow_request_${state.user.uid}`), buildFollowRequestNotificationPayloadCore({
+      actor,
+      serverTimestampValue: serverTimestamp()
+    }), { merge: true });
     state.pendingFollowRequests = Array.from(new Set([safeHandle, ...state.pendingFollowRequests]));
     if (state.profileModal.profile?.uid === targetUid) {
       state.profileModal.profile.pendingFollowRequest = true;
@@ -11087,14 +11084,14 @@ async function acceptFollowRequest(notificationId) {
   try {
     const existing = await getDoc(followRef);
     if (!existing.exists()) {
-      await setDoc(followRef, {
-        handle: targetHandle,
-        targetType: "user",
-        targetId: state.user.uid,
-        name: state.userProfile.name || actor.name || "User",
-        avatar: state.userProfile.avatar || actor.avatar || "",
-        createdAt: serverTimestamp()
-      }, { merge: true });
+      await setDoc(followRef, buildAcceptedFollowRecordPayloadCore({
+        targetUid: state.user.uid,
+        targetHandle,
+        profileName: state.userProfile.name,
+        profileAvatar: state.userProfile.avatar,
+        actor,
+        serverTimestampValue: serverTimestamp()
+      }), { merge: true });
       await Promise.allSettled([
         updateDoc(doc(db, "users", requesterUid), { followingCount: increment(1) }),
         updateDoc(doc(db, "users", state.user.uid), { followersCount: increment(1) })
@@ -11110,14 +11107,7 @@ async function acceptFollowRequest(notificationId) {
     saveNotifications(state.notifications);
     updateNotificationsDom();
 
-    await pushUserNotification(requesterUid, {
-      type: "follow_accepted",
-      user: actor.name,
-      userHandle: actor.handle,
-      userUid: actor.uid,
-      avatar: actor.avatar,
-      text: "hat deine Anfrage akzeptiert"
-    });
+    await pushUserNotification(requesterUid, buildFollowAcceptedNotificationPayloadCore({ actor }));
   } catch (err) {
     console.error(err);
   }
