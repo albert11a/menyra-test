@@ -150,6 +150,11 @@ import {
   updateChatMessageListCore
 } from "./core/chat-message-state-utils.js";
 import {
+  buildChatMessageSyncContextCore,
+  buildChatRemotePayloadBundleCore,
+  buildChatMessageNotificationCore
+} from "./core/chat-remote-sync-utils.js";
+import {
   captureChatInputFocusStateCore,
   restoreChatInputFocusStateCore,
   scrollChatMessagesToBottomCore,
@@ -3397,56 +3402,36 @@ async function syncChatMessageToRemote(message, partnerProfile = state.chatModal
   const recipientThreadId = senderUid;
   if (!senderUid || !partnerUid || !senderThreadId || !recipientThreadId || senderUid === partnerUid) return;
 
-  const safeAttachments = sanitizeChatAttachmentsForSync(message?.attachments);
-  const preview = buildChatPreviewText({ text: String(message?.text || ""), attachments: safeAttachments });
-  const createdAtClient = String(message?.createdAt || new Date().toISOString());
+  const syncContext = buildChatMessageSyncContextCore({
+    message,
+    sanitizeChatAttachmentsForSync: (attachments) => sanitizeChatAttachmentsForSync(attachments),
+    buildChatPreviewText: (entry) => buildChatPreviewText(entry),
+    createdAtClientFallback: new Date().toISOString()
+  });
+  const safeAttachments = syncContext.safeAttachments;
+  const preview = syncContext.preview;
+  const createdAtClient = syncContext.createdAtClient;
   const senderThreadRef = chatThreadDocRef(senderUid, senderThreadId);
   const senderMessageRef = chatMessageDocRef(senderUid, senderThreadId, message?.id);
   const recipientThreadRef = chatThreadDocRef(partnerUid, recipientThreadId);
   const recipientMessageRef = chatMessageDocRef(partnerUid, recipientThreadId, message?.id);
   if (!senderThreadRef || !senderMessageRef || !recipientThreadRef || !recipientMessageRef) return;
 
-  const senderPayload = {
-    id: String(message?.id || "").trim(),
-    from: "self",
-    text: String(message?.text || ""),
-    attachments: safeAttachments,
-    liked: !!message?.liked,
-    saved: !!message?.saved,
-    read: true,
+  const payloads = buildChatRemotePayloadBundleCore({
+    message,
+    safeAttachments,
+    preview,
+    createdAtClient,
+    senderProfile,
+    partnerProfile,
     senderUid,
-    createdAt: serverTimestamp(),
-    createdAtClient
-  };
-  const recipientPayload = {
-    id: String(message?.id || "").trim(),
-    from: "other",
-    text: String(message?.text || ""),
-    attachments: safeAttachments,
-    liked: false,
-    saved: false,
-    read: false,
-    senderUid,
-    senderHandle: senderProfile.handle,
-    senderName: senderProfile.name,
-    senderAvatar: senderProfile.avatar,
-    createdAt: serverTimestamp(),
-    createdAtClient
-  };
+    partnerUid,
+    serverTimestampFn: () => serverTimestamp()
+  });
 
   await Promise.all([
-    setDoc(senderThreadRef, {
-      uid: partnerUid,
-      restaurantId: String(partnerProfile?.restaurantId || "").trim(),
-      handle: String(partnerProfile?.handle || "").replace(/^@/, "").trim(),
-      name: String(partnerProfile?.name || "User").trim() || "User",
-      avatar: String(partnerProfile?.avatar || "").trim(),
-      lastMessage: preview,
-      unreadCount: 0,
-      updatedAt: serverTimestamp(),
-      updatedAtClient: createdAtClient
-    }, { merge: true }),
-    setDoc(senderMessageRef, senderPayload, { merge: true })
+    setDoc(senderThreadRef, payloads.senderThreadPayload, { merge: true }),
+    setDoc(senderMessageRef, payloads.senderMessagePayload, { merge: true })
   ]);
 
   const txResult = await runTransaction(db, async (tx) => {
@@ -3457,34 +3442,25 @@ async function syncChatMessageToRemote(message, partnerProfile = state.chatModal
     const recipientArchived = !!recipientData.archivedByOwner;
     const recipientBlocked = !!recipientData.blockedByOwner;
     tx.set(recipientThreadRef, {
-      uid: senderUid,
-      restaurantId: "",
-      handle: senderProfile.handle,
-      name: senderProfile.name,
-      avatar: senderProfile.avatar,
-      lastMessage: preview,
+      ...payloads.recipientThreadPayloadBase,
       unreadCount: recipientUnread + 1,
-      updatedAt: serverTimestamp(),
-      updatedAtClient: createdAtClient
     }, { merge: true });
-    tx.set(recipientMessageRef, recipientPayload, { merge: true });
+    tx.set(recipientMessageRef, payloads.recipientMessagePayload, { merge: true });
     return { recipientMuted, recipientArchived, recipientBlocked };
   });
 
   const canNotifyRecipient = !!txResult && !txResult.recipientMuted && !txResult.recipientArchived && !txResult.recipientBlocked;
   if (canNotifyRecipient) {
-    const safeMessageId = String(message?.id || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 90);
-    const notificationId = `chat_${senderUid}_${safeMessageId || Date.now()}`;
-    await pushUserNotificationWithId(partnerUid, notificationId, {
-      type: "chat_message",
-      user: senderProfile.name || senderProfile.handle || "User",
-      userHandle: senderProfile.handle || "",
-      userUid: senderUid,
-      avatar: senderProfile.avatar || "",
-      text: preview || "Neue Nachricht",
-      ownerType: "chat",
-      ownerId: senderUid,
-      link: `/apps/menyra-social/?tab=chat&chat=${encodeURIComponent(senderUid)}`
+    const notification = buildChatMessageNotificationCore({
+      messageId: message?.id,
+      senderUid,
+      senderProfile,
+      preview,
+      nowMs: Date.now(),
+      encodeURIComponentFn: (value) => encodeURIComponent(value)
+    });
+    await pushUserNotificationWithId(partnerUid, notification.notificationId, {
+      ...notification.payload
     });
   }
 }
