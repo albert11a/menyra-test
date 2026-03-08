@@ -9,6 +9,32 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <script>
     (() => {
+      const LIGHT_UI_COLOR = "#f8fafc";
+      const ensureMeta = (name, content) => {
+        let meta = document.querySelector(`meta[name="${name}"]`);
+        if (!meta) {
+          meta = document.createElement("meta");
+          meta.setAttribute("name", name);
+          document.head.appendChild(meta);
+        }
+        meta.setAttribute("content", content);
+      };
+      const forceLightUiChrome = () => {
+        const themeMetas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
+        if (themeMetas.length) {
+          themeMetas[0].setAttribute("content", LIGHT_UI_COLOR);
+          themeMetas[0].removeAttribute("media");
+          for (let i = 1; i < themeMetas.length; i += 1) themeMetas[i].remove();
+        } else {
+          ensureMeta("theme-color", LIGHT_UI_COLOR);
+        }
+        ensureMeta("apple-mobile-web-app-status-bar-style", "default");
+        ensureMeta("color-scheme", "light");
+        ensureMeta("supported-color-schemes", "light");
+        document.documentElement.style.backgroundColor = LIGHT_UI_COLOR;
+        if (document.body) document.body.style.backgroundColor = LIGHT_UI_COLOR;
+      };
+
       if ("scrollRestoration" in window.history) {
         window.history.scrollRestoration = "manual";
       }
@@ -23,13 +49,18 @@
         if (y > 0) window.scrollTo(0, 0);
       };
       window.addEventListener("pageshow", () => {
+        forceLightUiChrome();
         window.requestAnimationFrame(forceTop);
       }, { once: true });
+      window.matchMedia?.("(prefers-color-scheme: dark)")?.addEventListener?.("change", forceLightUiChrome);
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", forceLightUiChrome, { once: true });
+      } else {
+        forceLightUiChrome();
+      }
     })();
   </script>
   <meta name="theme-color" content="#f8fafc" />
-  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f8fafc" />
-  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#f8fafc" />
   <title>MNYRA Social</title>
   <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
   <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin>
