@@ -637,8 +637,6 @@ let lastMenuCommentKey = "";
 let lastMenuCommentAt = 0;
 let lastMenuOpenGestureKey = "";
 let lastMenuOpenGestureAt = 0;
-let lastMenuOpenScrollAt = 0;
-let menuOpenScrollGuardBound = false;
 let chatSendDispatchLock = false;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
@@ -707,11 +705,6 @@ let pendingInitialTab = "";
 let pendingAuthMode = "";
 let crmLazyRenderers = null;
 let crmLazyRenderersPromise = null;
-const MENU_OPEN_TAP_MAX_MOVE_PX = 10;
-const MENU_OPEN_VERTICAL_SCROLL_INTENT_PX = 6;
-const MENU_OPEN_TAP_MAX_MS = 350;
-const MENU_OPEN_SCROLL_GUARD_MS = 180;
-const MENU_OPEN_CLICK_SUPPRESS_MS = 420;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -12301,125 +12294,6 @@ function triggerMenuDetailOpenFromGesture(trigger) {
   openMenuDetailFromTrigger(trigger);
 }
 
-function markMenuOpenScrollActivity() {
-  lastMenuOpenScrollAt = Date.now();
-}
-
-function shouldSuppressMenuOpenByScroll(now = Date.now()) {
-  return now - lastMenuOpenScrollAt < MENU_OPEN_SCROLL_GUARD_MS;
-}
-
-function suppressMenuOpenClick(node, now = Date.now()) {
-  if (!node) return;
-  node.__menuOpenIgnoreClickUntil = now + MENU_OPEN_CLICK_SUPPRESS_MS;
-}
-
-function shouldSuppressMenuOpenClick(node, now = Date.now()) {
-  const until = Number(node?.__menuOpenIgnoreClickUntil || 0);
-  return until > now;
-}
-
-function bindMenuOpenScrollGuard() {
-  if (menuOpenScrollGuardBound || typeof document === "undefined") return;
-  menuOpenScrollGuardBound = true;
-  const onScroll = () => {
-    markMenuOpenScrollActivity();
-  };
-  document.addEventListener("scroll", onScroll, { capture: true, passive: true });
-}
-
-function getMenuOpenGesturePoint(evt) {
-  const touch = evt?.changedTouches?.[0] || evt?.touches?.[0] || null;
-  if (touch) {
-    return {
-      x: Number(touch.clientX) || 0,
-      y: Number(touch.clientY) || 0
-    };
-  }
-  if (typeof evt?.clientX === "number" && typeof evt?.clientY === "number") {
-    return {
-      x: Number(evt.clientX) || 0,
-      y: Number(evt.clientY) || 0
-    };
-  }
-  return null;
-}
-
-function setMenuOpenTapState(node, evt) {
-  if (!node) return;
-  const point = getMenuOpenGesturePoint(evt);
-  if (!point) {
-    node.__menuOpenTapState = null;
-    return;
-  }
-  node.__menuOpenTapState = {
-    startedAt: Date.now(),
-    x: point.x,
-    y: point.y,
-    moved: false,
-    scrollIntent: false,
-    pointerId: typeof evt?.pointerId === "number" ? evt.pointerId : null
-  };
-}
-
-function updateMenuOpenTapState(node, evt) {
-  const stateRef = node?.__menuOpenTapState;
-  if (!node || !stateRef) return;
-  if (stateRef.pointerId !== null && typeof evt?.pointerId === "number" && stateRef.pointerId !== evt.pointerId) return;
-  const point = getMenuOpenGesturePoint(evt);
-  if (!point) return;
-  const dx = Math.abs(point.x - stateRef.x);
-  const dy = Math.abs(point.y - stateRef.y);
-  if (dy >= MENU_OPEN_VERTICAL_SCROLL_INTENT_PX && dy > dx) {
-    stateRef.moved = true;
-    stateRef.scrollIntent = true;
-    return;
-  }
-  if (dx > MENU_OPEN_TAP_MAX_MOVE_PX || dy > MENU_OPEN_TAP_MAX_MOVE_PX) {
-    stateRef.moved = true;
-  }
-}
-
-function clearMenuOpenTapState(node) {
-  if (!node) return;
-  node.__menuOpenTapState = null;
-}
-
-function consumeMenuOpenTapState(node, evt) {
-  const now = Date.now();
-  const stateRef = node?.__menuOpenTapState;
-  clearMenuOpenTapState(node);
-  if (!stateRef) {
-    suppressMenuOpenClick(node, now);
-    return false;
-  }
-  if (stateRef.pointerId !== null && typeof evt?.pointerId === "number" && stateRef.pointerId !== evt.pointerId) {
-    suppressMenuOpenClick(node, now);
-    return false;
-  }
-  const point = getMenuOpenGesturePoint(evt);
-  if (!point) {
-    suppressMenuOpenClick(node, now);
-    return false;
-  }
-  const dx = Math.abs(point.x - stateRef.x);
-  const dy = Math.abs(point.y - stateRef.y);
-  const verticalScrollIntent = dy >= MENU_OPEN_VERTICAL_SCROLL_INTENT_PX && dy > dx;
-  if (stateRef.scrollIntent || verticalScrollIntent || stateRef.moved || dx > MENU_OPEN_TAP_MAX_MOVE_PX || dy > MENU_OPEN_TAP_MAX_MOVE_PX) {
-    suppressMenuOpenClick(node, now);
-    return false;
-  }
-  if (now - stateRef.startedAt > MENU_OPEN_TAP_MAX_MS) {
-    suppressMenuOpenClick(node, now);
-    return false;
-  }
-  if (shouldSuppressMenuOpenByScroll(now)) {
-    suppressMenuOpenClick(node, now);
-    return false;
-  }
-  return true;
-}
-
 let authPersistenceReady = null;
 function ensureAuthLocalPersistence() {
   if (authPersistenceReady) return authPersistenceReady;
@@ -16377,51 +16251,10 @@ function bindAppEvents() {
     });
   });
 
-  bindMenuOpenScrollGuard();
   document.querySelectorAll("[data-menu-open]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      if (shouldSuppressMenuOpenClick(btn)) return;
-      if (shouldSuppressMenuOpenByScroll()) return;
       triggerMenuDetailOpenFromGesture(btn);
     });
-    if (typeof window !== "undefined" && "PointerEvent" in window) {
-      btn.addEventListener("pointerdown", (evt) => {
-        if (evt.pointerType === "mouse") return;
-        suppressMenuOpenClick(btn);
-        setMenuOpenTapState(btn, evt);
-      });
-      btn.addEventListener("pointermove", (evt) => {
-        if (evt.pointerType === "mouse") return;
-        updateMenuOpenTapState(btn, evt);
-      });
-      btn.addEventListener("pointercancel", () => {
-        suppressMenuOpenClick(btn);
-        clearMenuOpenTapState(btn);
-      });
-      btn.addEventListener("pointerup", (evt) => {
-        if (evt.pointerType === "mouse") return;
-        if (!consumeMenuOpenTapState(btn, evt)) return;
-        evt.preventDefault();
-        triggerMenuDetailOpenFromGesture(btn);
-      });
-    } else {
-      btn.addEventListener("touchstart", (evt) => {
-        suppressMenuOpenClick(btn);
-        setMenuOpenTapState(btn, evt);
-      }, { passive: true });
-      btn.addEventListener("touchmove", (evt) => {
-        updateMenuOpenTapState(btn, evt);
-      }, { passive: true });
-      btn.addEventListener("touchcancel", () => {
-        suppressMenuOpenClick(btn);
-        clearMenuOpenTapState(btn);
-      });
-      btn.addEventListener("touchend", (evt) => {
-        if (!consumeMenuOpenTapState(btn, evt)) return;
-        evt.preventDefault();
-        triggerMenuDetailOpenFromGesture(btn);
-      }, { passive: false });
-    }
     btn.addEventListener("keydown", (evt) => {
       if (evt.key !== "Enter" && evt.key !== " ") return;
       evt.preventDefault();
