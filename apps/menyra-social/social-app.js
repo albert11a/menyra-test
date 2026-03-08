@@ -1,4 +1,4 @@
-import { auth, db, app } from "/shared/firebase-config.js?v=2026-03-07-auth-1";
+import { auth, db, app } from "/shared/firebase-config.js?v=2026-03-08-firestore-net-1";
 import { BUNNY_EDGE_BASE } from "/shared/bunny-edge.js";
 import { BRAND_UI } from "/shared/brand-ui.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
