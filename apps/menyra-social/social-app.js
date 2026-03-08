@@ -256,6 +256,11 @@ import {
 } from "./core/role-switch-utils.js";
 import { formatCountCore } from "./core/count-format-utils.js";
 import {
+  logoFitClassCore,
+  isLocalBusinessProfileCore
+} from "./core/profile-display-utils.js";
+import { escapeHtmlCore } from "./core/html-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -1468,17 +1473,11 @@ function scheduleCommentAvatarFetch(comment) {
 }
 
 function logoFitClass(isBusiness) {
-  return isBusiness ? "object-contain bg-white" : "object-cover";
+  return logoFitClassCore(isBusiness);
 }
 
 function escapeHtml(value) {
-  return String(value || "").replace(/[&<>"']/g, (ch) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[ch] || ch));
+  return escapeHtmlCore(value);
 }
 
 function formatCount(value) {
@@ -1490,7 +1489,7 @@ function sanitizeDisplayName(value, fallback) {
 }
 
 function isLocalBusinessProfile(profile = state.userProfile) {
-  return !!profile?.restaurantId && profile?.role === "business";
+  return isLocalBusinessProfileCore(profile);
 }
 
 function getRestaurantMetaById(restaurantId) {
