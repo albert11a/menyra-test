@@ -82,7 +82,10 @@ import {
   shouldResetUserScopedStateCore,
   resolvePendingAuthRouteFlagsCore
 } from "./core/auth-bootstrap-flow-utils.js";
-import { runPostLoginPendingRouteOpenFlowCore } from "./core/auth-post-login-route-open-utils.js";
+import {
+  runPostLoginPendingRouteOpenFlowCore,
+  runPostLoginNonBlockingRouteOpenFlowCore
+} from "./core/auth-post-login-route-open-utils.js";
 import {
   clearQueryParamsFromCurrentUrlCore,
   resolveRouteStateFromTargetUrlCore,
@@ -20571,10 +20574,12 @@ onAuthStateChanged(auth, (user) => {
       render();
       bootstrapUser(user);
       queueMicrotask(() => {
-        maybeOpenProfileFromQuery();
-        void maybeOpenNotificationFromQuery();
-        void maybeOpenPostFromQuery();
-        maybeOpenChatFromQuery();
+        runPostLoginNonBlockingRouteOpenFlowCore({
+          openProfileFromQuery: () => maybeOpenProfileFromQuery(),
+          openNotificationFromQuery: () => maybeOpenNotificationFromQuery(),
+          openPostFromQuery: () => maybeOpenPostFromQuery(),
+          openChatFromQuery: () => maybeOpenChatFromQuery()
+        });
       });
     }
   } else {
