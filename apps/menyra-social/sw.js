@@ -1,4 +1,4 @@
-const CACHE_NAME = "mnyra-social-cache-v4-beta-update";
+const CACHE_NAME = "mnyra-social-cache-v5-beta-update";
 const CACHE_PREFIX = "mnyra-social-cache-";
 const APP_SCOPE = "/apps/menyra-social/";
 const APP_SHELL_URL = "/apps/menyra-social/index.html";
@@ -217,7 +217,8 @@ self.addEventListener("fetch", (event) => {
   if (isNavigation && inScope) {
     event.respondWith((async () => {
       try {
-        const networkResp = await fetch(req);
+        const navReq = new Request(req, { cache: "no-cache" });
+        const networkResp = await fetch(navReq);
         const cache = await caches.open(CACHE_NAME);
         cache.put(APP_SHELL_URL, networkResp.clone()).catch(() => null);
         return networkResp;

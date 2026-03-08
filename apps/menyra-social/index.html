@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="color-scheme" content="light" />
   <meta name="supported-color-schemes" content="light" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -107,6 +107,14 @@
     }
     @supports (color-scheme: only light) {
       :root { color-scheme: only light; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root,
+      html,
+      body {
+        background: #f8fafc !important;
+        color: #0f172a !important;
+      }
     }
     @supports (padding: env(safe-area-inset-top)) {
       :root {

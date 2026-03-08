@@ -32,7 +32,10 @@ async function registerSW() {
   if (!('serviceWorker' in navigator)) return;
 
   try {
-    const reg = await navigator.serviceWorker.register(SOCIAL_SW_URL, { scope: SOCIAL_SW_SCOPE });
+    const reg = await navigator.serviceWorker.register(SOCIAL_SW_URL, {
+      scope: SOCIAL_SW_SCOPE,
+      updateViaCache: "none"
+    });
     document.documentElement.dataset.pwaUpdateChannel = BETA_UPDATE_CHANNEL;
     log('registered', reg);
     scheduleSwUpdateChecks(reg);
