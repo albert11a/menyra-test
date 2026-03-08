@@ -518,6 +518,7 @@ import { bindMenuDetailOverlayEventsCore } from "./core/overlay-menu-detail-bind
 import { bindAppShellEventsCore } from "./core/app-events-shell-bind-utils.js";
 import { bindAppMenuFocusEventsCore } from "./core/app-events-menu-focus-bind-utils.js";
 import { bindAppSettingsProfileEventsCore } from "./core/app-events-settings-profile-bind-utils.js";
+import { bindAppChatUploadEventsCore } from "./core/app-events-chat-upload-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14440,182 +14441,23 @@ function bindAppEvents() {
     alertFn: (msg) => alert(msg)
   });
 
-  document.querySelectorAll("[data-open-chat]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      openChatWithProfile({
-        uid: btn.dataset.chatUid || "",
-        handle: btn.dataset.chatHandle || "",
-        name: btn.dataset.chatName || "User",
-        avatar: btn.dataset.chatAvatar || ""
-      });
-    });
+  bindAppChatUploadEventsCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    state,
+    renderFn: render,
+    openChatWithProfileFn: openChatWithProfile,
+    deleteChatThreadByIdFn: deleteChatThreadById,
+    setChatThreadArchivedByIdFn: setChatThreadArchivedById,
+    closeChatModalFn: closeChatModal,
+    toggleChatMessageSavedFn: toggleChatMessageSaved,
+    toggleChatMessageLikedFn: toggleChatMessageLiked,
+    removePendingChatAttachmentFn: removePendingChatAttachment,
+    addChatAttachmentsFn: addChatAttachments,
+    sendChatMessageFn: sendChatMessage,
+    scrollChatMessagesToBottomFn: scrollChatMessagesToBottom,
+    queueMicrotaskFn: (fn) => queueMicrotask(fn),
+    handleUploadPostFn: handleUploadPost
   });
-
-  document.querySelectorAll("[data-chat-open-thread]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.chatThreadMenuId = "";
-      openChatWithProfile({
-        uid: btn.dataset.chatUid || "",
-        handle: btn.dataset.chatHandle || "",
-        name: btn.dataset.chatName || "User",
-        avatar: btn.dataset.chatAvatar || ""
-      });
-    });
-  });
-
-  document.querySelectorAll("[data-chat-list-tab]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = String(btn.dataset.chatListTab || "").trim();
-      state.chatListScope = tab === "archived" ? "archived" : "inbox";
-      state.chatThreadMenuId = "";
-      render();
-    });
-  });
-
-  document.querySelectorAll("[data-chat-thread-menu-toggle]").forEach((btn) => {
-    btn.addEventListener("click", (evt) => {
-      evt.preventDefault();
-      evt.stopPropagation();
-      const id = String(btn.dataset.chatThreadMenuToggle || "").trim();
-      if (!id) return;
-      state.chatThreadMenuId = state.chatThreadMenuId === id ? "" : id;
-      render();
-    });
-  });
-
-  document.querySelectorAll("[data-chat-thread-menu-close]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      if (!state.chatThreadMenuId) return;
-      state.chatThreadMenuId = "";
-      render();
-    });
-  });
-
-  document.querySelectorAll("[data-chat-thread-action]").forEach((btn) => {
-    btn.addEventListener("click", async (evt) => {
-      evt.preventDefault();
-      evt.stopPropagation();
-      const action = String(btn.dataset.chatThreadAction || "").trim();
-      const threadId = String(btn.dataset.chatThreadId || "").trim();
-      if (!action || !threadId) return;
-      if (action === "delete") {
-        await deleteChatThreadById(threadId);
-        return;
-      }
-      if (action === "archive") {
-        await setChatThreadArchivedById(threadId, true);
-        return;
-      }
-      if (action === "unarchive") {
-        await setChatThreadArchivedById(threadId, false);
-      }
-    });
-  });
-
-  document.querySelectorAll("[data-chat-back]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      closeChatModal();
-    });
-  });
-
-  document.querySelectorAll("[data-chat-save]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.chatSave || "";
-      if (!id) return;
-      toggleChatMessageSaved(id);
-    });
-  });
-
-  document.querySelectorAll("[data-chat-like]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.chatLike || "";
-      if (!id) return;
-      toggleChatMessageLiked(id);
-    });
-  });
-
-  document.querySelectorAll("[data-chat-remove-attachment]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const id = btn.dataset.chatRemoveAttachment || "";
-      if (!id) return;
-      removePendingChatAttachment(id);
-    });
-  });
-
-  const chatAttachmentTrigger = document.getElementById("chatAttachmentTrigger");
-  const chatAttachmentInput = document.getElementById("chatAttachmentInput");
-  if (chatAttachmentTrigger && chatAttachmentInput) {
-    chatAttachmentTrigger.addEventListener("click", () => chatAttachmentInput.click());
-    chatAttachmentInput.addEventListener("change", async (e) => {
-      await addChatAttachments(e.target.files || []);
-      chatAttachmentInput.value = "";
-    });
-  }
-
-  const chatSendBtn = document.getElementById("chatSendBtn");
-  if (chatSendBtn) {
-    chatSendBtn.addEventListener("click", () => {
-      sendChatMessage();
-    });
-  }
-
-  const chatMessageInput = document.getElementById("chatMessageInput");
-  if (chatMessageInput) {
-    chatMessageInput.addEventListener("input", () => {
-      state.chatModal.draft = chatMessageInput.value;
-      chatMessageInput.style.height = "auto";
-      chatMessageInput.style.height = `${Math.min(chatMessageInput.scrollHeight, 112)}px`;
-    });
-    chatMessageInput.addEventListener("keydown", (evt) => {
-      if (evt.key === "Enter" && !evt.shiftKey) {
-        evt.preventDefault();
-        sendChatMessage();
-      }
-    });
-    queueMicrotask(() => {
-      chatMessageInput.style.height = "auto";
-      chatMessageInput.style.height = `${Math.min(chatMessageInput.scrollHeight, 112)}px`;
-    });
-  }
-
-  const chatMessages = document.getElementById("chatMessages");
-  if (chatMessages) {
-    scrollChatMessagesToBottom();
-  }
-
-  const uploadFileInput = document.getElementById("uploadFileInput");
-  const uploadTrigger = document.getElementById("uploadFileTrigger");
-  if (uploadTrigger && uploadFileInput) {
-    uploadTrigger.addEventListener("click", () => uploadFileInput.click());
-  }
-  if (uploadFileInput) {
-    uploadFileInput.addEventListener("change", (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        state.upload.preview = reader.result;
-        state.upload.file = file;
-        state.upload.status = "";
-        render();
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-
-  const uploadPostBtn = document.getElementById("uploadPostBtn");
-  if (uploadPostBtn) {
-    uploadPostBtn.addEventListener("click", async () => {
-      await handleUploadPost();
-    });
-  }
-
-  const uploadCaption = document.getElementById("uploadCaption");
-  if (uploadCaption) {
-    uploadCaption.addEventListener("input", () => {
-      state.upload.caption = uploadCaption.value;
-    });
-  }
 
   const newLeadBtn = document.getElementById("newLeadBtn");
   if (newLeadBtn) {
