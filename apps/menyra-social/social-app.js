@@ -285,6 +285,12 @@ import {
 } from "./core/lead-country-utils.js";
 import { normalizeShopCartStateCore } from "./core/shop-cart-state-utils.js";
 import {
+  getShopCartProfileContextCore,
+  getCartCountForRestaurantCore,
+  canAddToShopCartCore,
+  getShopCartTotalCore
+} from "./core/shop-cart-access-utils.js";
+import {
   getBusinessCatalogModeCore,
   getBusinessCatalogLabelCore,
   isShopCatalogProfileCore,
@@ -2231,16 +2237,14 @@ function saveShopCartToStorage(uid = state.user?.uid || GUEST_SCOPE_UID) {
 }
 
 function getCartCountForRestaurant(restaurantId = "") {
-  const safeRestaurantId = String(restaurantId || "").trim();
-  if (!safeRestaurantId || String(state.shopCart?.restaurantId || "").trim() !== safeRestaurantId) return 0;
-  return (state.shopCart.items || []).reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0);
+  return getCartCountForRestaurantCore(restaurantId, state.shopCart);
 }
 
 function canAddToShopCart(profile = state.profileView?.profile || state.userProfile) {
-  const restaurantId = String(profile?.restaurantId || "").trim();
-  if (!restaurantId || !isShopCatalogProfile(profile)) return false;
-  if (state.userProfile?.restaurantId && String(state.userProfile.restaurantId).trim() === restaurantId) return false;
-  return true;
+  return canAddToShopCartCore(profile, {
+    isShopCatalogProfileFn: isShopCatalogProfile,
+    currentUserRestaurantId: state.userProfile?.restaurantId || ""
+  });
 }
 
 function normalizeMenuType(value) {
@@ -17694,13 +17698,9 @@ function getCurrentShopProfile() {
 }
 
 function getShopCartProfileContext(profile = getCurrentShopProfile()) {
-  const restaurantId = String(profile?.restaurantId || "").trim();
-  const rest = restaurantId ? getRestaurantMetaById(restaurantId) : null;
-  return {
-    restaurantId,
-    businessName: String(profile?.name || rest?.name || rest?.restaurantName || "Shop").trim() || "Shop",
-    businessAvatar: String(profile?.avatar || rest?.logoUrl || rest?.logo || "").trim()
-  };
+  return getShopCartProfileContextCore(profile, {
+    getRestaurantMetaByIdFn: getRestaurantMetaById
+  });
 }
 
 function addMenuItemToShopCart(item, profile = getCurrentShopProfile(), options = {}) {
@@ -17795,9 +17795,9 @@ function updateShopCheckoutField(field, value) {
 }
 
 function getShopCartTotal() {
-  return (state.shopCart.items || []).reduce((sum, item) => {
-    return sum + (parsePriceValue(item.price) * Math.max(1, Number(item.quantity || 1) || 1));
-  }, 0);
+  return getShopCartTotalCore(state.shopCart.items || [], {
+    parsePriceValueFn: parsePriceValue
+  });
 }
 
 async function submitShopCheckout() {
