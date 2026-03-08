@@ -78,6 +78,11 @@ import {
   clearAuthBootstrapSnapshotStorage,
   applyAuthBootstrapSnapshotToProfile
 } from "./core/auth-bootstrap-snapshot.js";
+import {
+  isGuestSessionCore,
+  sanitizeTabForSessionCore,
+  applyPendingInitialRouteStateCore
+} from "./core/session-tab-guards.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -686,16 +691,11 @@ try {
 } catch {}
 
 function isGuestSession() {
-  return !state.user;
+  return isGuestSessionCore(state.user);
 }
 
 function sanitizeTabForSession(tab, { hasProfileView = !!state.profileView } = {}) {
-  const next = String(tab || "").trim() || "feed";
-  if (!isGuestSession()) return next;
-  const guestAllowed = new Set(["feed", "search", "map", "orders", "profile"]);
-  if (!guestAllowed.has(next)) return "feed";
-  if (next === "profile" && !hasProfileView) return "feed";
-  return next;
+  return sanitizeTabForSessionCore(tab, { user: state.user, hasProfileView });
 }
 
 function openGuestAuthPrompt(message = "Bitte registrieren oder einloggen, um diese Funktion zu nutzen.") {
@@ -709,16 +709,20 @@ function openGuestAuthPrompt(message = "Bitte registrieren oder einloggen, um di
 }
 
 function applyPendingInitialRouteState() {
-  if (pendingInitialTab) {
-    state.activeTab = pendingInitialTab;
-    pendingInitialTab = "";
-  }
-  if (!state.user && pendingAuthMode) {
-    state.auth.mode = pendingAuthMode;
-    state.auth.open = true;
-    pendingAuthMode = "";
-  }
-  state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
+  const next = applyPendingInitialRouteStateCore({
+    activeTab: state.activeTab,
+    user: state.user,
+    hasProfileView: !!state.profileView,
+    pendingInitialTab,
+    pendingAuthMode,
+    authMode: state.auth.mode,
+    authOpen: !!state.auth.open
+  });
+  state.activeTab = next.activeTab;
+  pendingInitialTab = next.pendingInitialTab;
+  pendingAuthMode = next.pendingAuthMode;
+  state.auth.mode = next.authMode;
+  state.auth.open = next.authOpen;
 }
 
 function getActiveUid() {

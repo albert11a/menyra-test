@@ -104,6 +104,8 @@ Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage fin
 6. Initiales Query-Parsing (`pending*` Route/Auth) aus `social-app.js` ausgelagert.
 7. `core/auth-bootstrap-snapshot.js` erstellt.
 8. Auth-Bootstrap Snapshot-Helper (`read/write/apply/clear`) aus `social-app.js` ausgelagert (mit Wrappern fuer identisches Verhalten).
+9. `core/session-tab-guards.js` erstellt.
+10. Session/Tab-Guards (`isGuestSession`, `sanitizeTabForSession`, `applyPendingInitialRouteState`) in Core ausgelagert (Wrapper in `social-app.js` beibehalten).
 
 ## Gate pro Batch
 1. `node --check apps/menyra-social/social-app.js`
