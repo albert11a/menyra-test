@@ -237,6 +237,11 @@ import {
 import { focusInputByIdCore } from "./core/dom-focus-utils.js";
 import { scoreSearchMatchCore } from "./core/search-score-utils.js";
 import {
+  sanitizeDisplayNameCore,
+  normalizeSearchQueryCore,
+  normalizeSearchKeyCore
+} from "./core/text-normalize-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -1506,11 +1511,7 @@ function formatCount(value) {
 }
 
 function sanitizeDisplayName(value, fallback) {
-  const cleaned = String(value || "").trim();
-  if (!cleaned) return fallback;
-  const lower = cleaned.toLowerCase();
-  if (lower === "data" || lower === "undefined" || lower === "null") return fallback;
-  return cleaned;
+  return sanitizeDisplayNameCore(value, fallback);
 }
 
 function isLocalBusinessProfile(profile = state.userProfile) {
@@ -1532,11 +1533,11 @@ function resolveHeaderBranding() {
 }
 
 function normalizeSearchQuery(value) {
-  return String(value || "").trim();
+  return normalizeSearchQueryCore(value);
 }
 
 function normalizeSearchKey(value) {
-  return normalizeSearchQuery(value).toLowerCase();
+  return normalizeSearchKeyCore(value);
 }
 
 function normalizeLeadCountry(value) {
