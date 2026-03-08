@@ -279,6 +279,11 @@ import {
   normalizeMenuTypeCore
 } from "./core/menu-input-utils.js";
 import {
+  normalizeLeadCountryCore,
+  buildLeadAccountEmailCore,
+  inferLeadCountryFromTextCore
+} from "./core/lead-country-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -1533,11 +1538,10 @@ function normalizeSearchKey(value) {
 }
 
 function normalizeLeadCountry(value) {
-  const safe = String(value || "").trim().toLowerCase();
-  if (safe === "serbia" || safe === "serbien") return "Serbien";
-  if (safe === "albania" || safe === "albanien") return "Albanien";
-  if (safe === "kosovo" || safe === "kosova") return "Kosovo";
-  return CEO_COUNTRIES.includes(String(value || "").trim()) ? String(value || "").trim() : LEAD_SETTINGS_DEFAULT_COUNTRY;
+  return normalizeLeadCountryCore(value, {
+    allowedCountries: CEO_COUNTRIES,
+    fallbackCountry: LEAD_SETTINGS_DEFAULT_COUNTRY
+  });
 }
 
 function createDefaultLeadPricing() {
@@ -1575,12 +1579,7 @@ function getLeadCountryCenter(country = LEAD_SETTINGS_DEFAULT_COUNTRY) {
 }
 
 function buildLeadAccountEmail(name = "") {
-  const localPart = String(name || "")
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/_/g, "")
-    .replace(/[^a-z0-9]/g, "");
-  return localPart ? `${localPart}@mnyra.com` : "";
+  return buildLeadAccountEmailCore(name);
 }
 
 function buildLeadContactName(firstName = "", lastName = "", fallback = "") {
@@ -1600,11 +1599,10 @@ function getLeadPriceForCycle(type = "", cycle = "monthly", config = getLeadSett
 }
 
 function inferLeadCountryFromText(text = "", fallbackCountry = "") {
-  const value = normalizeSearchKey(text);
-  if (value.includes("serbien") || value.includes("serbia") || value.includes("beograd") || value.includes("belgrad")) return "Serbien";
-  if (value.includes("albanien") || value.includes("albania") || value.includes("tirana")) return "Albanien";
-  if (value.includes("kosovo") || value.includes("kosova") || value.includes("prishtina") || value.includes("pristina")) return "Kosovo";
-  return normalizeLeadCountry(fallbackCountry || getLeadSettingsConfig().defaultCountry);
+  return inferLeadCountryFromTextCore(text, fallbackCountry || getLeadSettingsConfig().defaultCountry, {
+    normalizeSearchKeyFn: normalizeSearchKey,
+    normalizeLeadCountryFn: normalizeLeadCountry
+  });
 }
 
 function isCeoUser() {
