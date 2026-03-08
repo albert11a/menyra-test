@@ -19,7 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-08-map-guest-22">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-23">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7">
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js" crossorigin>
@@ -40,6 +40,7 @@
     }
     html {
       overflow-x: hidden;
+      background: var(--app-bg);
     }
     body { background: var(--app-bg); color: #0f172a; margin: 0; }
     body {
@@ -57,12 +58,28 @@
       box-sizing: border-box;
     }
     :root {
-      --safe-area-top: env(safe-area-inset-top, 0px);
-      --safe-area-right: env(safe-area-inset-right, 0px);
-      --safe-area-bottom: env(safe-area-inset-bottom, 0px);
-      --safe-area-left: env(safe-area-inset-left, 0px);
+      --safe-area-top: 0px;
+      --safe-area-right: 0px;
+      --safe-area-bottom: 0px;
+      --safe-area-left: 0px;
       --app-bg: #f8fafc;
       --app-surface: #ffffff;
+    }
+    @supports (padding: env(safe-area-inset-top)) {
+      :root {
+        --safe-area-top: env(safe-area-inset-top);
+        --safe-area-right: env(safe-area-inset-right);
+        --safe-area-bottom: env(safe-area-inset-bottom);
+        --safe-area-left: env(safe-area-inset-left);
+      }
+    }
+    @supports (padding: constant(safe-area-inset-top)) {
+      :root {
+        --safe-area-top: constant(safe-area-inset-top);
+        --safe-area-right: constant(safe-area-inset-right);
+        --safe-area-bottom: constant(safe-area-inset-bottom);
+        --safe-area-left: constant(safe-area-inset-left);
+      }
     }
     html.modal-open,
     body.modal-open {
@@ -180,7 +197,7 @@
 <body class="bg-slate-50 text-slate-900">
   <div id="app" aria-busy="true"></div>
   <script async src="https://unpkg.com/lucide@latest"></script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-08-map-guest-22"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-23"></script>
   <script>
     (() => {
       const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-03-07-favorites-10").catch(() => {});
