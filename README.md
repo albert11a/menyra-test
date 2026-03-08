@@ -1,79 +1,32 @@
-# MENYRA Platform - Current Overview (2025-12-24)
+# MENYRA Social - Current Overview (2026-03-08)
 
-This repo hosts System 1 (Restaurants) and System 2 (Social). It summarizes apps,
-roles, data flow, and the current working features.
+This repository is now social-first and keeps only the Social web app.
 
-## Apps and Roles
-- CEO Platform (`apps/menyra-ceo/`): full access to all customers and dashboards.
-- Staff Platform (`apps/menyra-staff/`): scoped to assigned customers.
-- Owner Admin (`apps/menyra-owner/`): per customer via `?r=<id>`.
-- Main Page (`apps/menyra-main/`): public landing page per business.
-- Guest (`apps/menyra-restaurants/guest/`): menu, details, ordering, stories.
-- Social (`apps/menyra-social/`): feed, discover, post detail, profile, login/register.
-- Waiter (`apps/menyra-restaurants/waiter/`): live orders for a restaurant.
-- Kitchen (`apps/menyra-restaurants/kitchen/`): food-only items + status updates.
+## Active App
+- Social (`apps/menyra-social/`)
+  - feed, search/discover, profile, chat, notifications, shop/cart, CRM tabs
+  - login/register/auth bootstrap
+  - PWA/service worker and push open-target handling
 
-## Auth and Access
-- Boot overlay: body starts with `m-boot m-app-hidden`; UI shows after auth + access.
-- CEO: `superadmins/{uid}` must exist.
-- Staff: `staffAdmins/{uid}` or `superadmins/{uid}`.
-- Owner: `restaurants/{rid}/staff/{uid}` role `owner|admin|manager`.
-- Waiter/Kitchen: same staff role checks (basic; rules hardening still needed).
+## Routing and Compatibility
+- Primary entry: `/` -> `/apps/menyra-social/index.html`
+- Legacy role paths (`/ceo`, `/owner`, `/staff`, `/waiter`, `/kitchen`) are mapped to social tabs via `vercel.json`.
+- Legacy removed app paths (`/apps/menyra-ceo/*`, `/apps/menyra-owner/*`, `/apps/menyra-staff/*`, `/apps/menyra-restaurants/*`) are compatibility-routed to Social.
 
-## System 1 (Restaurants) - Current Capabilities
-- Guest ordering via QR: reads `public/meta`, `public/menu`, `public/offers`.
-- Orders are written to `restaurants/{rid}/orders`.
-- Stories via Bunny Stream, TTL cleanup from Owner.
-- Admin dashboard: active customers, revenue, demos, leads, next billing,
-  active stories, live stats, system logs.
-- Caching: localStorage TTL (~2 min), refresh (~50s). Live only where needed.
-- Waiter/Kitchen: real-time orders + status updates
-  (`new/accepted/cooking/ready/done/cancelled`).
+## Data Model (Social-Relevant Core)
+- Restaurants/business entities: `restaurants/{rid}`
+- Social feed index: `socialFeed/{postId}`
+- Restaurant social posts: `restaurants/{rid}/socialPosts/{postId}`
+- User social data under `users/{uid}/...` (notifications, following, devices, etc.)
 
-## System 2 (Social) - Current Capabilities
-- Social feed with tabs + "All" tab (reads `socialFeed` index).
-- Discover by city/type; links to Main Page.
-- Post detail page (image/video).
-- User login/register + profile (MVP).
-- Owner/Staff/CEO can post for a restaurant:
-  - upload image to Bunny Storage
-  - write to `restaurants/{rid}/socialPosts`
-  - mirror into `socialFeed` index
-- City selection is manual in Owner (datalist from existing restaurant cities).
-
-## Data Model (Core)
-- Restaurants: `restaurants/{rid}` (type, status, city, geo, plan, assignedStaffId, etc)
-- Public profile: `restaurants/{rid}/publicProfile/profile`
-- Social source: `restaurants/{rid}/socialPosts/{postId}`
-- Social index: `socialFeed/{postId}`
-- Orders: `restaurants/{rid}/orders/{orderId}` (items include type + category)
-- Stories: `restaurants/{rid}/stories/{storyId}` (Bunny Stream videoId)
-- System logs: `systemLogs/{logId}`
-
-Note: the main collection is still named `restaurants`, but `type` supports
-non-restaurant businesses (services, ecommerce, etc).
-
-## Media Edge (Cloudflare R2)
-- Script: `cloudflare-edge/menyra-media-worker.js`
-- Base URL: `shared/bunny-edge.js` (`BUNNY_EDGE_BASE`)
-- Endpoints:
-  - `POST /story/upload` (multipart/form-data: `file`, `restaurantId`)
-  - `POST /story/delete` (json: `videoId`)
-  - `POST /image/upload` (multipart/form-data: `file`, `restaurantId`)
-- CORS is controlled by `ALLOWED_ORIGINS`.
+## Tech Notes
+- Firebase (Auth, Firestore, Storage) via browser ES modules (`shared/firebase-config.js`)
+- Firestore initialized with long-polling auto-detect for unstable webchannel networks
+- Shared UI/assets in `shared/` and `apps/menyra-social/assets`
 
 ## Local Start
-1) Run a static server in the repo root.
-2) Open `/index.html`.
+1. Start a static server in repo root.
+2. Open `/index.html`.
 
-## Known TODO
-- Production rules hardening for Owner/Waiter/Kitchen.
-- Social moderation tools for CEO/Staff (not implemented yet).
-- E-commerce phase (themes/products/orders) not implemented yet.
-- Guest edge-case hardening.
-
-## Recent Changes
-- Owner and Main moved to `apps/menyra-owner` and `apps/menyra-main`.
-- Social feed improvements (All tab + URL normalization).
-- Waiter/Kitchen baseline implemented.
-- Bunny Edge upload endpoints for images + stories.
+## Rollback Safety
+- Safe restore tag: `social-safepoint-2026-03-08-pre-cleanup`

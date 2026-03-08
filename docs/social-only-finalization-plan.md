@@ -3,6 +3,20 @@
 Date: 2026-03-08
 Scope: Keep `menyra-social` as primary app, remove unrelated apps only after safe decoupling.
 
+## Progress Status
+- Completed:
+  - Step 1 Decouple social runtime links
+  - Step 2 Add temporary compatibility redirects
+  - Step 5 Remove dead code and legacy paths (ongoing incremental cleanup)
+  - Step 6 Soft-disable external app entrypoints
+  - Step 7 Delete non-social app directories (including `apps/menyra-main`)
+- In progress:
+  - Step 8 Clean platform config (remaining: final routing simplification after regression pass)
+- Pending:
+  - Step 3 Split social bootstrap + lazy loading
+  - Step 4 Listener lifecycle hardening
+  - Step 9 Regression + performance pass
+
 ## Current Safety Baseline
 - Restore tag pushed: `social-safepoint-2026-03-08-pre-cleanup`
 - Rollback command:
@@ -22,6 +36,9 @@ git push --force-with-lease origin main
   - `vercel.json` host/path rewrites for `ceo`, `owner`, `staff`, `waiter`, `kitchen`, `menyra-restaurants`
   - `index.js` demo links include restaurants/ceo/staff/owner entries
   - `apps/menyra-main/main.js` links to restaurants guest pages
+
+Status:
+- All findings above have been addressed in code/routing before directory removal.
 
 ## Execution Strategy (small reversible steps)
 1. Decouple social runtime links
