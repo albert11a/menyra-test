@@ -381,6 +381,7 @@ import {
   normalizeCeoPathCore,
   buildCeoNameCore
 } from "./core/ceo-normalize-utils.js";
+import { getCurrentCeoMetaCore } from "./core/ceo-meta-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -4151,28 +4152,11 @@ function buildCeoName({ firstName = "", lastName = "", fallback = "", email = ""
 }
 
 function getCurrentCeoMeta(profile = state.userProfile, user = state.user) {
-  const uid = String(user?.uid || profile?.uid || "").trim();
-  const name = String(profile?.name || user?.displayName || user?.email || "").trim() || "CEO";
-  const parentUid = String(profile?.ceoParentUid || profile?.parentCeoUid || "").trim();
-  const rootUid = String(profile?.ceoRootUid || profile?.rootCeoUid || "").trim() || uid;
-  let path = normalizeCeoPath(profile?.ceoPath);
-  if (!path.length) {
-    if (hasGlobalCeoAccess(profile, user)) {
-      path = uid ? [uid] : [];
-    } else {
-      path = normalizeCeoPath([], [rootUid, parentUid, uid]);
-    }
-  }
-  if (uid && !path.includes(uid)) path = uniqueStringList([...path, uid]);
-  return {
-    uid,
-    name,
-    parentUid,
-    rootUid: rootUid || uid,
-    rootName: String(profile?.ceoRootName || profile?.rootCeoName || name).trim() || name,
-    path,
-    isRoot: !parentUid || hasGlobalCeoAccess(profile, user)
-  };
+  return getCurrentCeoMetaCore(profile, user, {
+    normalizeCeoPathFn: normalizeCeoPath,
+    hasGlobalCeoAccessFn: hasGlobalCeoAccess,
+    uniqueStringListFn: uniqueStringList
+  });
 }
 
 function normalizeCeoStaffRecord(record = {}, userRecord = {}) {
