@@ -82,6 +82,7 @@ import {
   shouldResetUserScopedStateCore,
   resolvePendingAuthRouteFlagsCore
 } from "./core/auth-bootstrap-flow-utils.js";
+import { runPostLoginPendingRouteOpenFlowCore } from "./core/auth-post-login-route-open-utils.js";
 import {
   clearQueryParamsFromCurrentUrlCore,
   resolveRouteStateFromTargetUrlCore,
@@ -20554,11 +20555,13 @@ onAuthStateChanged(auth, (user) => {
       queueMicrotask(() => {
         void (async () => {
           try {
-            maybeOpenProfileFromQuery();
-            const openedNotification = await maybeOpenNotificationFromQuery();
-            const openedPost = await maybeOpenPostFromQuery();
-            const openedChat = maybeOpenChatFromQuery();
-            if (!openedNotification && !openedPost && !openedChat) render();
+            await runPostLoginPendingRouteOpenFlowCore({
+              openProfileFromQuery: () => maybeOpenProfileFromQuery(),
+              openNotificationFromQuery: () => maybeOpenNotificationFromQuery(),
+              openPostFromQuery: () => maybeOpenPostFromQuery(),
+              openChatFromQuery: () => maybeOpenChatFromQuery(),
+              renderFallback: () => render()
+            });
           } finally {
             resumeRender();
           }
