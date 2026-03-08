@@ -273,6 +273,7 @@ import {
   normalizeOrderDocCore
 } from "./core/order-normalize-utils.js";
 import { normalizeRestaurantTypeCore } from "./core/restaurant-type-utils.js";
+import { buildShopVariantKeyCore } from "./core/shop-variant-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -2214,10 +2215,7 @@ function normalizeOptionList(value) {
 }
 
 function buildShopVariantKey(itemId, { size = "", color = "" } = {}) {
-  const baseId = String(itemId || "").trim();
-  const sizeKey = String(size || "").trim().toLowerCase();
-  const colorKey = String(color || "").trim().toLowerCase();
-  return `${baseId}::${sizeKey || "-"}::${colorKey || "-"}`;
+  return buildShopVariantKeyCore(itemId, { size, color });
 }
 
 function normalizeShopCartState(raw) {
