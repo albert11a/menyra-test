@@ -235,6 +235,7 @@ import {
   enqueueMicrotaskCore
 } from "./core/task-schedule-utils.js";
 import { focusInputByIdCore } from "./core/dom-focus-utils.js";
+import { scoreSearchMatchCore } from "./core/search-score-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -2483,11 +2484,7 @@ function coerceMenuItemsFromData(data) {
 }
 
 function scoreSearchMatch(text, query) {
-  if (!text || !query) return 0;
-  const hay = String(text).toLowerCase();
-  if (hay.startsWith(query)) return 3;
-  if (hay.includes(query)) return 1;
-  return 0;
+  return scoreSearchMatchCore(text, query);
 }
 
 function icon(name, className = "") {
