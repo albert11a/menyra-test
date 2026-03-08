@@ -517,6 +517,7 @@ import { bindLeadOverlayEventsCore } from "./core/overlay-lead-bind-utils.js";
 import { bindMenuDetailOverlayEventsCore } from "./core/overlay-menu-detail-bind-utils.js";
 import { bindAppShellEventsCore } from "./core/app-events-shell-bind-utils.js";
 import { bindAppMenuFocusEventsCore } from "./core/app-events-menu-focus-bind-utils.js";
+import { bindAppSettingsProfileEventsCore } from "./core/app-events-settings-profile-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14410,150 +14411,33 @@ function bindAppEvents() {
   });
   profileMenuBound = !!menuFocusBinding?.profileMenuBound;
 
-  document.querySelectorAll("[data-settings]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      setState({ settingsView: btn.dataset.settings });
-    });
-  });
-
-  document.querySelectorAll("[data-settings-back]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      setState({ settingsView: "main" });
-    });
-  });
-
-  const saveAccountBtn = document.getElementById("saveAccountBtn");
-  if (saveAccountBtn) {
-    saveAccountBtn.addEventListener("click", async () => {
-      if (saveAccountBtn.disabled) return;
-      saveAccountBtn.innerHTML = `${icon("loader-2", "w-4 h-4 animate-spin")} Speichere...`;
-      await saveAccountSettings();
-      setState({ settingsView: "main" });
-    });
-  }
-
-  const openLocationPickerBtn = document.getElementById("openLocationPickerBtn");
-  if (openLocationPickerBtn) {
-    openLocationPickerBtn.addEventListener("click", () => openLocationPicker({
-      addressInputId: "settingsAddress",
-      coordsDisplayId: "coordsDisplay",
-      context: "settings"
-    }));
-  }
-
-  const settingsAddress = document.getElementById("settingsAddress");
-  if (settingsAddress) {
-    settingsAddress.addEventListener("input", () => {
+  bindAppSettingsProfileEventsCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    state,
+    setStateFn: setState,
+    renderFn: render,
+    iconFn: icon,
+    saveAccountSettingsFn: saveAccountSettings,
+    openLocationPickerFn: openLocationPicker,
+    clearVerifiedMapLocationFn: () => {
       verifiedMapLocation = null;
-      const badge = document.getElementById("coordsDisplay");
-      if (badge) badge.classList.add("hidden");
-    });
-  }
-
-  document.querySelectorAll("[data-toggle]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const key = btn.dataset.toggle;
-      if (!key) return;
-      const toggledValue = !state.settings[key];
-
-      if (key === "pushNotifs") {
-        if (toggledValue) {
-          const enabled = await syncNotificationsPushRuntime({ user: state.user, interactive: true, enabled: true });
-          if (!enabled) {
-            state.settings = { ...state.settings, pushNotifs: false };
-            saveSettings(state.settings);
-            render();
-            alert(`Push konnte nicht aktiviert werden.\n${getPushActivationIssueMessage()}`);
-            return;
-          }
-        } else {
-          await disablePushDeviceRegistration();
-          void syncNotificationsPushRuntime({ user: state.user, interactive: false, enabled: false });
-        }
-      }
-
-      const next = { ...state.settings, [key]: toggledValue };
-      state.settings = next;
-      if (key === "privateAccount") {
-        state.userProfile.privateAccount = !!next[key];
-        saveUserProfileToStorage();
-        void persistPrivateAccountSetting(next[key]);
-      }
-      saveSettings(next);
-      render();
-    });
-  });
-
-  const profileAvatarTrigger = document.getElementById("profileAvatarTrigger");
-  const profileAvatarInput = document.getElementById("profileAvatarInput");
-  if (profileAvatarTrigger && profileAvatarInput) {
-    profileAvatarTrigger.addEventListener("click", () => profileAvatarInput.click());
-    profileAvatarInput.addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        await uploadAvatar(file);
-      }
-    });
-  }
-
-  const settingsAvatarTrigger = document.getElementById("settingsAvatarTrigger");
-  const settingsAvatarInput = document.getElementById("settingsAvatarInput");
-  if (settingsAvatarTrigger && settingsAvatarInput) {
-    settingsAvatarTrigger.addEventListener("click", () => settingsAvatarInput.click());
-    settingsAvatarInput.addEventListener("change", async (e) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        await uploadAvatar(file);
-      }
-    });
-  }
-
-  document.querySelectorAll("[data-profile-business]").forEach((btn) => {
-    if (btn.closest("#feedView")) return;
-    btn.addEventListener("click", () => {
-      openProfileViewFromBusiness({
-        id: btn.dataset.profileId || "",
-        name: btn.dataset.profileBusiness || ""
-      }, { showBack: false });
-    });
-  });
-
-  document.querySelectorAll("[data-open-post]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const target = e.target;
-      if (target instanceof Element) {
-        if (target.closest("[data-profile-menu]") || target.closest("[data-profile-menu-button]")) return;
-      }
-      const postId = btn.dataset.openPost;
-      const post = findPostById(postId);
-      if (post) openPostModal(post);
-    });
-  });
-
-  document.querySelectorAll("[data-public-profile-back]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.profileView = null;
-      const backTab = state.profileBackTab || "feed";
-      state.profileBackTab = "feed";
-      if (profileViewUnsub) {
-        profileViewUnsub();
-        profileViewUnsub = null;
-      }
-      setState({ activeTab: backTab, drawerOpen: false });
-    });
-  });
-
-  document.querySelectorAll("[data-public-profile-follow]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const handle = btn.dataset.publicProfileFollow;
-      if (!handle) return;
-      toggleFollow(handle, {
-        type: btn.dataset.targetType || "",
-        id: btn.dataset.targetId || "",
-        name: btn.dataset.targetName || "",
-        avatar: btn.dataset.targetAvatar || ""
-      });
-    });
+    },
+    syncNotificationsPushRuntimeFn: syncNotificationsPushRuntime,
+    saveSettingsFn: saveSettings,
+    disablePushDeviceRegistrationFn: disablePushDeviceRegistration,
+    getPushActivationIssueMessageFn: getPushActivationIssueMessage,
+    saveUserProfileToStorageFn: saveUserProfileToStorage,
+    persistPrivateAccountSettingFn: persistPrivateAccountSetting,
+    uploadAvatarFn: uploadAvatar,
+    openProfileViewFromBusinessFn: openProfileViewFromBusiness,
+    findPostByIdFn: findPostById,
+    openPostModalFn: openPostModal,
+    getProfileViewUnsubFn: () => profileViewUnsub,
+    setProfileViewUnsubFn: (next) => {
+      profileViewUnsub = next;
+    },
+    toggleFollowFn: toggleFollow,
+    alertFn: (msg) => alert(msg)
   });
 
   document.querySelectorAll("[data-open-chat]").forEach((btn) => {
