@@ -271,6 +271,9 @@ import {
 } from "./core/menu-modal-render-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
 import { saveLeadFromModalCore } from "./core/lead-save-utils.js";
+import { deleteLeadFromModalCore } from "./core/lead-delete-utils.js";
+import { saveCustomerFromModalCore } from "./core/customer-save-utils.js";
+import { convertLeadToCustomerCore } from "./core/lead-convert-utils.js";
 import { saveCeoStaffFromViewCore } from "./core/staff-save-utils.js";
 import { renderSettingsViewCore } from "./core/settings-render-utils.js";
 import { escapeHtmlCore } from "./core/html-utils.js";
@@ -17164,386 +17167,95 @@ function applyDeletedRestaurantStateLocally(restaurantId) {
 }
 
 async function deleteLeadFromModal() {
-  if (!state.user || !isCeoUser()) return false;
-  const lead = state.leadModal?.lead || {};
-  const leadId = String(lead.id || "").trim();
-  if (!leadId) return false;
-
-  const leadName = String(lead.businessName || lead.name || "").trim() || "diesen Lead";
-  if (!confirm(`Lead "${leadName}" wirklich loeschen?`)) {
-    return false;
-  }
-
-  state.leadModal.actionsOpen = false;
-  state.leadModal.deleting = true;
-  state.leadModal.status = "Loeschen...";
-  renderLeadEditorUi();
-
-  try {
-    const linkedRestaurant = await resolveRestaurantLinkedToLead(lead);
-    if (linkedRestaurant?.id) {
-      state.restaurants = mergeRestaurants(state.restaurants, [{ id: linkedRestaurant.id, ...linkedRestaurant }]);
-    }
-    const identityPayload = collectLeadIdentityPayload(lead, linkedRestaurant);
-    const restaurantId = String(identityPayload.restaurantId || "").trim();
-    const prevLeadContribution = buildLeadCrmContribution(lead);
-    const prevCustomerContribution = linkedRestaurant?.id
-      ? buildCustomerCrmContribution({ id: linkedRestaurant.id, ...linkedRestaurant })
-      : null;
-
-    await deleteDoc(doc(db, "leads", leadId));
-
-    if (restaurantId) {
-      await setDoc(doc(db, "restaurants", restaurantId), {
-        leadId: "",
-        status: "deleted",
-        hiddenFromDiscover: true,
-        deleted: true,
-        isDeleted: true,
-        deletedAt: serverTimestamp(),
-        ownerUid: "",
-        ownerEmail: "",
-        ownerName: "",
-        updatedAt: serverTimestamp()
-      }, { merge: true }).catch(() => {});
-
-      await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), {
-        status: "deleted",
-        hiddenFromDiscover: true,
-        deleted: true,
-        isDeleted: true,
-        updatedAt: serverTimestamp()
-      }, { merge: true }).catch(() => {});
-
-      await Promise.all([
-        purgeRestaurantSocialPresence(restaurantId).catch(() => {}),
-        deactivateLinkedBusinessUsers({
-          restaurantId,
-          explicitUids: identityPayload.uids,
-          emails: identityPayload.emails
-        }).catch(() => {})
-      ]);
-      applyDeletedRestaurantStateLocally(restaurantId);
-    } else if (identityPayload.uids.length || identityPayload.emails.length) {
-      await deactivateLinkedBusinessUsers({
-        restaurantId: "",
-        explicitUids: identityPayload.uids,
-        emails: identityPayload.emails
-      }).catch(() => {});
-    }
-
-    const crmDeltaMap = new Map();
-    accumulateCeoCrmDelta(crmDeltaMap, prevLeadContribution, -1);
-    accumulateCeoCrmDelta(crmDeltaMap, prevCustomerContribution, -1);
-    await applyCeoCrmCountDeltas(crmDeltaMap);
-
-    const removeLeadById = (rows) => (Array.isArray(rows)
-      ? rows.filter((item) => (
-        String(item?.id || "") !== leadId
-        && (!restaurantId || String(item?.restaurantId || "") !== restaurantId)
-      ))
-      : []);
-
-    const scopeKeys = ["own", "staff", "archived"];
-    const nextPages = { ...(state.leads.pages || createLeadScopeMap(() => [])) };
-    const nextKnown = { ...(state.leads.knownCount || createLeadScopeMap(() => 0)) };
-    const nextCountExact = { ...(state.leads.countExact || createLeadScopeMap(() => false)) };
-    const currentUid = String(state.user?.uid || "").trim();
-
-    scopeKeys.forEach((scopeKey) => {
-      const currentRows = Array.isArray(nextPages[scopeKey]) ? nextPages[scopeKey] : [];
-      const filteredRows = removeLeadById(currentRows);
-      if (filteredRows.length === currentRows.length) return;
-      const removedCount = currentRows.length - filteredRows.length;
-      nextPages[scopeKey] = filteredRows;
-      if (state.leads.loaded?.[scopeKey]) {
-        const prevKnown = Number(nextKnown[scopeKey]) || 0;
-        nextKnown[scopeKey] = Math.max(0, prevKnown - removedCount);
-        if (!state.leads.hasMore?.[scopeKey]) nextCountExact[scopeKey] = true;
-        const pageSize = Math.max(CRM_PAGE_SIZE, Number(state.leads.pageSize?.[scopeKey]) || CRM_PAGE_SIZE);
-        writeLeadScopeCache(currentUid, scopeKey, filteredRows, {
-          hasMore: !!state.leads.hasMore?.[scopeKey],
-          knownCount: nextKnown[scopeKey],
-          countExact: nextCountExact[scopeKey] !== false,
-          pageSize
-        });
-      }
-    });
-
-    state.leads.pages = nextPages;
-    state.leads.knownCount = nextKnown;
-    state.leads.countExact = nextCountExact;
-    state.leads.items = removeLeadById(state.leads.items);
-
-    const currentScope = normalizeLeadScopeKey(state.leads.scope);
-    state.leads.items = Array.isArray(nextPages[currentScope]) ? nextPages[currentScope].slice() : [];
-    state.leads.view = "list";
-    resetLeadDraft();
-    render();
-    return true;
-  } catch (err) {
-    console.error(err);
-    state.leadModal.deleting = false;
-    state.leadModal.status = err?.message || "Loeschen fehlgeschlagen.";
-    renderLeadEditorUi();
-    return false;
-  }
+  return deleteLeadFromModalCore({
+    state,
+    isCeoUser,
+    confirmFn: typeof confirm === "function" ? confirm : null,
+    renderLeadEditorUi,
+    resolveRestaurantLinkedToLead,
+    mergeRestaurants,
+    collectLeadIdentityPayload,
+    buildLeadCrmContribution,
+    buildCustomerCrmContribution,
+    deleteDoc,
+    doc,
+    db,
+    setDoc,
+    serverTimestamp,
+    purgeRestaurantSocialPresence,
+    deactivateLinkedBusinessUsers,
+    applyDeletedRestaurantStateLocally,
+    accumulateCeoCrmDelta,
+    applyCeoCrmCountDeltas,
+    createLeadScopeMap,
+    CRM_PAGE_SIZE,
+    writeLeadScopeCache,
+    normalizeLeadScopeKey,
+    resetLeadDraft,
+    render
+  });
 }
 
 async function saveCustomerFromModal() {
-  if (!state.user) return;
-  const customer = state.customerModal.customer;
-  if (!customer?.id) return;
-
-  const name = document.getElementById("customerName")?.value?.trim() || "";
-  const type = resolveCustomerType(document.getElementById("customerType")?.value || customer.type || "cafe");
-  const ownerName = document.getElementById("customerOwnerName")?.value?.trim() || "";
-  const ownerEmail = document.getElementById("customerOwnerEmail")?.value?.trim() || "";
-  const phone = document.getElementById("customerPhone")?.value?.trim() || "";
-  const instagram = document.getElementById("customerInstagram")?.value?.trim() || "";
-  const city = document.getElementById("customerCity")?.value?.trim() || "";
-  const address = document.getElementById("customerAddress")?.value?.trim() || "";
-  const logoUrlInput = document.getElementById("customerLogoUrl")?.value?.trim() || "";
-  const statusValue = document.getElementById("customerStatus")?.value || customer.status || "kunde";
-
-  if (!name) {
-    state.customerModal.status = "Bitte Business Name eingeben.";
-    renderOverlays({ updateCustomer: true });
-    return;
-  }
-
-  state.customerModal.loading = true;
-  state.customerModal.status = "Speichern...";
-  renderOverlays({ updateCustomer: true });
-
-  try {
-    const prevCustomerContribution = buildCustomerCrmContribution(customer);
-    let logoUrl = logoUrlInput || state.customerModal.logoPreview || customer.logoUrl || "";
-    if (state.customerModal.logoFile) {
-      const { cdnUrl } = await uploadCompressedImage(
-        state.customerModal.logoFile,
-        customer.id,
-        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
-      );
-      logoUrl = cdnUrl || logoUrl;
-    }
-
-    const statusKey = normalizeLeadStatusKey(statusValue) || "kunde";
-    const restaurantStatus = resolveRestaurantStatusFromLead(statusKey, customer.status || "");
-    const payload = {
-      name,
-      restaurantName: name,
-      type,
-      ownerName,
-      ownerEmail,
-      phone,
-      instagram,
-      insta: instagram,
-      city,
-      address,
-      logoUrl,
-      logo: logoUrl,
-      status: restaurantStatus,
-      updatedAt: serverTimestamp()
-    };
-    await setDoc(doc(db, "restaurants", customer.id), payload, { merge: true });
-    await ensureRestaurantPublicMeta(customer.id, payload);
-
-    const crmDeltaMap = new Map();
-    accumulateCeoCrmDelta(crmDeltaMap, prevCustomerContribution, -1);
-
-    if (statusKey !== "kunde") {
-      const leadId = customer.leadId || payload.leadId || "";
-      const matchedLead = (leadId
-        ? state.leads.items.find((item) => String(item.id || "") === String(leadId))
-        : null)
-        || state.leads.items.find((item) => String(item.restaurantId || "") === String(customer.id));
-      const creatorMeta = resolveStoredCeoCreatorMeta(matchedLead, customer);
-      const leadRef = leadId ? doc(db, "leads", leadId) : doc(collection(db, "leads"));
-      const leadPayload = {
-        businessName: name,
-        customerType: type,
-        contactName: ownerName,
-        phone,
-        instagram,
-        insta: instagram,
-        email: ownerEmail,
-        city,
-        address,
-        logoUrl,
-        status: statusKey,
-        restaurantId: customer.id,
-        updatedAt: serverTimestamp(),
-        ...creatorMeta
-      };
-      if (!leadId) leadPayload.createdAt = serverTimestamp();
-      await setDoc(leadRef, leadPayload, { merge: true });
-      if (!leadId) {
-        await setDoc(doc(db, "restaurants", customer.id), { leadId: leadRef.id }, { merge: true });
-        payload.leadId = leadRef.id;
-      }
-      accumulateCeoCrmDelta(crmDeltaMap, buildLeadCrmContribution({ id: leadRef.id, ...leadPayload }), 1);
-      const normalizedLead = normalizeLeadDoc({ id: leadRef.id, ...leadPayload });
-      const idx = state.leads.items.findIndex((item) => String(item.id) === String(leadRef.id));
-      const visibleInCurrentScope = leadBelongsToScope(normalizedLead);
-      if (!visibleInCurrentScope) {
-        state.leads.items = state.leads.items.filter((item) => String(item.id || "") !== String(leadRef.id));
-      } else if (idx >= 0) state.leads.items[idx] = { ...state.leads.items[idx], ...normalizedLead };
-      else state.leads.items.unshift(normalizedLead);
-      syncVisibleLeadPageFromItems();
-    } else {
-      const matchedLead = state.leads.items.find((item) => String(item.restaurantId || "") === String(customer.id));
-      const leadId = customer.leadId || matchedLead?.id || "";
-      if (leadId) {
-        await setDoc(doc(db, "leads", leadId), {
-          status: "kunde",
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }
-      accumulateCeoCrmDelta(crmDeltaMap, buildCustomerCrmContribution({ id: customer.id, ...customer, ...payload }), 1);
-      state.leads.items = state.leads.items.filter((item) => (
-        String(item.restaurantId || "") !== String(customer.id)
-        && String(item.id || "") !== String(leadId)
-      ));
-      syncVisibleLeadPageFromItems();
-    }
-
-    await applyCeoCrmCountDeltas(crmDeltaMap);
-
-    state.restaurants = mergeRestaurants(state.restaurants, [{ id: customer.id, ...customer, ...payload }]);
-    rebuildBusinessLocations();
-    refreshCustomersFromRestaurants();
-
-    state.customerModal.loading = false;
-    closeCustomerModal();
-    render();
-  } catch (err) {
-    console.error(err);
-    state.customerModal.status = err?.message || "Speichern fehlgeschlagen.";
-    state.customerModal.loading = false;
-    renderOverlays({ updateCustomer: true });
-  }
+  return saveCustomerFromModalCore({
+    state,
+    documentObj: typeof document !== "undefined" ? document : null,
+    resolveCustomerType,
+    renderOverlays,
+    buildCustomerCrmContribution,
+    uploadCompressedImage,
+    normalizeLeadStatusKey,
+    resolveRestaurantStatusFromLead,
+    serverTimestamp,
+    setDoc,
+    doc,
+    collection,
+    db,
+    ensureRestaurantPublicMeta,
+    accumulateCeoCrmDelta,
+    resolveStoredCeoCreatorMeta,
+    buildLeadCrmContribution,
+    normalizeLeadDoc,
+    leadBelongsToScope,
+    syncVisibleLeadPageFromItems,
+    applyCeoCrmCountDeltas,
+    mergeRestaurants,
+    rebuildBusinessLocations,
+    refreshCustomersFromRestaurants,
+    closeCustomerModal,
+    render
+  });
 }
 
 async function convertLeadToCustomer(leadId) {
-  if (!state.user || !leadId) return false;
-  const lead = state.leads.items.find((item) => String(item.id) === String(leadId));
-  if (!lead) return false;
-  if (!confirm("Lead als Kunde aktivieren?")) return false;
-
-  try {
-    const prevLeadContribution = buildLeadCrmContribution(lead);
-    let restaurantId = lead.restaurantId || "";
-    let existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
-    const businessName = lead.businessName || "Neuer Kunde";
-    const type = resolveCustomerType(lead.customerType || "cafe");
-    const creatorMeta = resolveStoredCeoCreatorMeta(lead, existingRest);
-    const locations = normalizeLeadLocations(lead.locations || [], lead.address || "", {
-      lat: lead.lat ?? null,
-      lng: lead.lng ?? null
-    });
-    const primaryLocation = getPrimaryLeadLocation(locations);
-    const locationPayload = locations
-      .filter((item) => item.address || hasLeadLocationCoords(item))
-      .map((item) => {
-        const row = { address: item.address || "" };
-        if (hasLeadLocationCoords(item)) {
-          row.lat = Number(item.lat);
-          row.lng = Number(item.lng);
-        }
-        return row;
-      });
-    const restPayload = {
-      name: businessName,
-      restaurantName: businessName,
-      type,
-      city: lead.city || "",
-      address: primaryLocation.address || lead.address || "",
-      phone: lead.phone || "",
-      instagram: lead.instagram || lead.insta || "",
-      insta: lead.instagram || lead.insta || "",
-      ownerName: lead.contactName || "",
-      ownerEmail: lead.email || lead.socialEmail || "",
-      logoUrl: lead.logoUrl || "",
-      logo: lead.logoUrl || "",
-      status: "active",
-      leadId: lead.id || "",
-      locations: locationPayload,
-      ...creatorMeta,
-      updatedAt: serverTimestamp()
-    };
-    if (hasLeadLocationCoords(primaryLocation)) {
-      restPayload.lat = Number(primaryLocation.lat);
-      restPayload.lng = Number(primaryLocation.lng);
-    } else if (Number.isFinite(Number(lead.lat)) && Number.isFinite(Number(lead.lng))) {
-      restPayload.lat = Number(lead.lat);
-      restPayload.lng = Number(lead.lng);
-    }
-
-    if (!restaurantId) {
-      const restRef = doc(collection(db, "restaurants"));
-      restaurantId = restRef.id;
-      await setDoc(restRef, {
-        ...restPayload,
-        createdAt: serverTimestamp()
-      });
-    } else {
-      await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
-    }
-    await ensureRestaurantPublicMeta(restaurantId, restPayload);
-
-    let socialUid = lead.socialUid || "";
-    let socialEmail = lead.socialEmail || lead.email || "";
-    let loginError = "";
-    if (!socialUid && socialEmail) {
-      try {
-        const user = await createAuthUser(socialEmail, LEAD_SOCIAL_DEFAULT_PASSWORD);
-        if (user?.uid) {
-          socialUid = user.uid;
-        }
-      } catch (err) {
-        loginError = err?.message || "Login fehlgeschlagen.";
-      }
-    }
-    if (restaurantId) {
-      const ownerPatch = {};
-      if (socialUid) ownerPatch.ownerUid = socialUid;
-      if (socialEmail) ownerPatch.ownerEmail = socialEmail;
-      if (lead.contactName || businessName) ownerPatch.ownerName = lead.contactName || businessName;
-      if (Object.keys(ownerPatch).length) {
-        ownerPatch.updatedAt = serverTimestamp();
-        await setDoc(doc(db, "restaurants", restaurantId), ownerPatch, { merge: true });
-      }
-    }
-
-    await setDoc(doc(db, "leads", lead.id), {
-      status: "kunde",
-      restaurantId,
-      socialUid,
-      socialEmail,
-      convertedAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-    const crmDeltaMap = new Map();
-    accumulateCeoCrmDelta(crmDeltaMap, prevLeadContribution, -1);
-    accumulateCeoCrmDelta(crmDeltaMap, buildCustomerCrmContribution({ id: restaurantId, ...(existingRest || {}), ...restPayload, status: "active" }), 1);
-    await applyCeoCrmCountDeltas(crmDeltaMap);
-
-    state.leads.items = state.leads.items.filter((item) => String(item.id) !== String(lead.id));
-    syncVisibleLeadPageFromItems();
-    state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...(existingRest || {}), ...restPayload, status: "active" }]);
-    rebuildBusinessLocations();
-    refreshCustomersFromRestaurants();
-    render();
-    if (loginError) {
-      alert(`Kunde aktiviert. Login fehlgeschlagen: ${loginError}`);
-    }
-    return true;
-  } catch (err) {
-    console.error(err);
-    alert(err?.message || "Umwandlung fehlgeschlagen.");
-    return false;
-  }
+  return convertLeadToCustomerCore({
+    leadId,
+    state,
+    confirmFn: confirm,
+    buildLeadCrmContribution,
+    resolveCustomerType,
+    resolveStoredCeoCreatorMeta,
+    normalizeLeadLocations,
+    getPrimaryLeadLocation,
+    hasLeadLocationCoords,
+    serverTimestamp,
+    doc,
+    collection,
+    db,
+    setDoc,
+    ensureRestaurantPublicMeta,
+    createAuthUser,
+    LEAD_SOCIAL_DEFAULT_PASSWORD,
+    accumulateCeoCrmDelta,
+    buildCustomerCrmContribution,
+    applyCeoCrmCountDeltas,
+    syncVisibleLeadPageFromItems,
+    mergeRestaurants,
+    rebuildBusinessLocations,
+    refreshCustomersFromRestaurants,
+    render,
+    alertFn: alert
+  });
 }
 
 function openMenuModal(mode = "create", item = null) {
