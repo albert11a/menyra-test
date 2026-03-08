@@ -6244,10 +6244,14 @@ function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0
   const hash = hashValue(`${rest.id || rest.name || idx}:${locationIndex}`);
 
   const row = location || {};
-  let lat = parseFloat(row.lat ?? rest.lat ?? geo?.lat);
-  let lng = parseFloat(row.lng ?? rest.lng ?? geo?.lng);
+  const rowCoords = resolveCoordsFromEntity(row);
+  const restCoords = resolveCoordsFromEntity(rest)
+    || normalizeCoordPair(rest?.lat ?? geo?.lat, rest?.lng ?? geo?.lng);
+  const normalizedCoords = preferStableCoords(rowCoords, restCoords);
+  let lat = normalizedCoords?.lat ?? null;
+  let lng = normalizedCoords?.lng ?? null;
 
-  if (isNaN(lat) || isNaN(lng)) {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     lat = baseLat + (((hash % 200) - 100) * 0.0025);
     lng = baseLng + ((((hash >> 3) % 200) - 100) * 0.003);
   }
@@ -6641,17 +6645,28 @@ function renderLeafletMarkers(locations) {
   if (!leafletMap || !window.L) return;
   const visibleLocations = getDiscoverableMapLocations(locations);
   leafletBizMarkers.forEach(marker => { try { leafletMap.removeLayer(marker); } catch {} });
-  leafletBizMarkers = visibleLocations.map((b) => {
-    const marker = window.L.marker([b.lat, b.lng], { icon: makeBizDivIcon(b) }).addTo(leafletMap);
-    marker.__biz = b;
-    marker.on("click", () => {
-      state.selectedBusiness = b;
-      renderLeafletMarkers(visibleLocations);
-      updateMapSheet();
-      try { leafletMap.panTo([b.lat - 0.003, b.lng], { animate: true, duration: 0.5 }); } catch {}
-    });
-    return marker;
+  const nextMarkers = [];
+  visibleLocations.forEach((entry) => {
+    const coords = normalizeCoordPair(entry?.lat, entry?.lng);
+    if (!coords) return;
+    const b = (coords.lat === entry.lat && coords.lng === entry.lng)
+      ? entry
+      : { ...entry, lat: coords.lat, lng: coords.lng };
+    try {
+      const marker = window.L.marker([b.lat, b.lng], { icon: makeBizDivIcon(b) }).addTo(leafletMap);
+      marker.__biz = b;
+      marker.on("click", () => {
+        state.selectedBusiness = b;
+        renderLeafletMarkers(visibleLocations);
+        updateMapSheet();
+        try { leafletMap.panTo([b.lat - 0.003, b.lng], { animate: true, duration: 0.5 }); } catch {}
+      });
+      nextMarkers.push(marker);
+    } catch (err) {
+      console.warn("Skipping invalid map marker", b?.id || "", err);
+    }
   });
+  leafletBizMarkers = nextMarkers;
 }
 
 function filterMapLocationsByQuery(query) {
@@ -17946,9 +17961,6 @@ async function loadRestaurants({ force = false } = {}) {
     snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
     const list = await enrichRestaurantsWithPublicMeta(rawList);
     writeCache(CACHE_KEYS.restaurants, list);
-    const prevIds = state.restaurants.map((item) => String(item.id)).join("|");
-    const nextIds = list.map((item) => String(item.id)).join("|");
-    if (prevIds === nextIds) return;
     state.restaurants = list;
     rebuildBusinessLocations();
     if (lastRenderMode === "main") updateShellDom();
