@@ -708,7 +708,8 @@ let pendingAuthMode = "";
 let crmLazyRenderers = null;
 let crmLazyRenderersPromise = null;
 const MENU_OPEN_TAP_MAX_MOVE_PX = 10;
-const MENU_OPEN_TAP_MAX_MS = 700;
+const MENU_OPEN_VERTICAL_SCROLL_INTENT_PX = 6;
+const MENU_OPEN_TAP_MAX_MS = 350;
 const MENU_OPEN_SCROLL_GUARD_MS = 180;
 const MENU_OPEN_CLICK_SUPPRESS_MS = 420;
 
@@ -12356,6 +12357,7 @@ function setMenuOpenTapState(node, evt) {
     x: point.x,
     y: point.y,
     moved: false,
+    scrollIntent: false,
     pointerId: typeof evt?.pointerId === "number" ? evt.pointerId : null
   };
 }
@@ -12368,6 +12370,11 @@ function updateMenuOpenTapState(node, evt) {
   if (!point) return;
   const dx = Math.abs(point.x - stateRef.x);
   const dy = Math.abs(point.y - stateRef.y);
+  if (dy >= MENU_OPEN_VERTICAL_SCROLL_INTENT_PX && dy > dx) {
+    stateRef.moved = true;
+    stateRef.scrollIntent = true;
+    return;
+  }
   if (dx > MENU_OPEN_TAP_MAX_MOVE_PX || dy > MENU_OPEN_TAP_MAX_MOVE_PX) {
     stateRef.moved = true;
   }
@@ -12397,7 +12404,8 @@ function consumeMenuOpenTapState(node, evt) {
   }
   const dx = Math.abs(point.x - stateRef.x);
   const dy = Math.abs(point.y - stateRef.y);
-  if (stateRef.moved || dx > MENU_OPEN_TAP_MAX_MOVE_PX || dy > MENU_OPEN_TAP_MAX_MOVE_PX) {
+  const verticalScrollIntent = dy >= MENU_OPEN_VERTICAL_SCROLL_INTENT_PX && dy > dx;
+  if (stateRef.scrollIntent || verticalScrollIntent || stateRef.moved || dx > MENU_OPEN_TAP_MAX_MOVE_PX || dy > MENU_OPEN_TAP_MAX_MOVE_PX) {
     suppressMenuOpenClick(node, now);
     return false;
   }
