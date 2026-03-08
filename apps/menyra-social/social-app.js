@@ -515,6 +515,7 @@ import {
 } from "./core/overlay-menu-focus-bind-utils.js";
 import { bindLeadOverlayEventsCore } from "./core/overlay-lead-bind-utils.js";
 import { bindMenuDetailOverlayEventsCore } from "./core/overlay-menu-detail-bind-utils.js";
+import { bindAppShellEventsCore } from "./core/app-events-shell-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14355,115 +14356,29 @@ function bindCrmAutoLoadObserver() {
 }
 
 function bindAppEvents() {
-  const drawerToggle = document.getElementById("drawerToggle");
-  const drawerOverlay = document.getElementById("drawerOverlay");
-  const drawerClose = document.getElementById("drawerClose");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const settingsLogout = document.getElementById("settingsLogout");
-
-  if (drawerToggle) drawerToggle.addEventListener("click", () => setState({ drawerOpen: true }));
-  if (drawerOverlay) drawerOverlay.addEventListener("click", () => setState({ drawerOpen: false }));
-  if (drawerClose) drawerClose.addEventListener("click", () => setState({ drawerOpen: false }));
-
-  [logoutBtn, settingsLogout].forEach((btn) => {
-    if (btn) {
-      btn.addEventListener("click", async () => {
-        await signOut(auth);
-        clearAuthBootstrapSnapshot();
-        if (state.user?.uid) {
-          safeStorage.removeItem(profileKey(state.user.uid));
-          safeStorage.removeItem(avatarKey(state.user.uid));
-          safeStorage.removeItem(notificationsKey(state.user.uid));
-          safeStorage.removeItem(pushSeenKey(state.user.uid));
-          safeStorage.removeItem(pushTokenMetaKey(state.user.uid));
-          safeStorage.removeItem(followingKey(state.user.uid));
-          safeStorage.removeItem(chatIndexKey(state.user.uid));
-        }
-        safeStorage.removeItem(STORAGE_KEYS.postMeta);
-        resetUserScopedState();
-        cleanupLeaflet();
-        setState({ activeTab: "feed", drawerOpen: false });
-      });
-    }
-  });
-
-  document.querySelectorAll("[data-nav]").forEach((btn) => {
-    if (btn.closest("#feedView")) return;
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.nav;
-      if (!tab) return;
-      if (tab === "favorites" && !String(state.user?.uid || "").trim()) {
-        openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
-        return;
-      }
-      const activeTab = tab === "favorites" ? "profile" : tab;
-      const nextProfileTopTab = tab === "favorites"
-        ? "favorites"
-        : (tab === "profile" ? "profile" : state.profileTopTab);
-      setState({
-        activeTab,
-        profileTopTab: nextProfileTopTab,
-        drawerOpen: false,
-        chatSettingsOpen: false,
-        chatListScope: "inbox",
-        chatThreadMenuId: "",
-        settingsView: "main",
-        selectedBusiness: null,
-        profileView: null,
-        profileModal: { open: false, profile: null },
-        postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
-        likesModal: { open: false, postId: "", animate: false },
-        leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
-        customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
-      });
-    });
-  });
-
-  document.querySelectorAll("[data-auth-open]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      state.drawerOpen = false;
-      state.auth.mode = normalizeAuthMode(state.auth.mode) || "login";
-      state.auth.error = "";
-      state.auth.open = true;
-      render();
-    });
-  });
-
-  document.querySelectorAll("[data-profile-tab]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.profileTab;
-      if (!tab) return;
-      state.profileContentTab = tab;
-      render();
-    });
-  });
-
-  document.querySelectorAll("[data-profile-top-tab]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.profileTopTab;
-      if (!tab) return;
-      if (tab === "favorites" && !String(state.user?.uid || "").trim()) {
-        openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
-        return;
-      }
-      state.profileTopTab = tab;
-      if (tab === "menu" || tab === "favorites") {
-        ensureMenuDataForProfile();
-      }
-      if (tab === "menu") {
-        ensureFocusDataForProfile();
-      }
-      render();
-    });
-  });
-
-  document.querySelectorAll("[data-profile-view]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const mode = btn.dataset.profileView;
-      if (!mode) return;
-      state.profileViewMode = mode;
-      render();
-    });
+  bindAppShellEventsCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    state,
+    setStateFn: setState,
+    signOutFn: signOut,
+    auth,
+    clearAuthBootstrapSnapshotFn: clearAuthBootstrapSnapshot,
+    safeStorageObj: safeStorage,
+    profileKeyFn: profileKey,
+    avatarKeyFn: avatarKey,
+    notificationsKeyFn: notificationsKey,
+    pushSeenKeyFn: pushSeenKey,
+    pushTokenMetaKeyFn: pushTokenMetaKey,
+    followingKeyFn: followingKey,
+    chatIndexKeyFn: chatIndexKey,
+    storageKeys: STORAGE_KEYS,
+    resetUserScopedStateFn: resetUserScopedState,
+    cleanupLeafletFn: cleanupLeaflet,
+    openGuestAuthPromptFn: openGuestAuthPrompt,
+    normalizeAuthModeFn: normalizeAuthMode,
+    renderFn: render,
+    ensureMenuDataForProfileFn: ensureMenuDataForProfile,
+    ensureFocusDataForProfileFn: ensureFocusDataForProfile
   });
 
   const menuSearchInput = document.getElementById("menuSearchInput");
