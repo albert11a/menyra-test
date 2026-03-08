@@ -101,6 +101,10 @@ import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
+import {
+  buildStoriesSignatureCore,
+  refreshFeedStoriesCore
+} from "./core/feed-story-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -4453,21 +4457,21 @@ function syncFeedPostLogos() {
 }
 
 function buildStoriesSignature(storyItems = []) {
-  return (Array.isArray(storyItems) ? storyItems : [])
-    .map((item) => `${item?.id || ""}|${item?.img || ""}`)
-    .join(",");
+  return buildStoriesSignatureCore(storyItems);
 }
 
 function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
-  if (!FAST_MODE) return false;
-  if (!Array.isArray(posts) || !posts.length) return false;
-  const storySeed = buildStoriesFromFeed(posts);
-  if (!storySeed.length) return false;
-  const nextSig = buildStoriesSignature(storySeed);
-  if (!force && feedStoriesSignature === nextSig) return false;
-  feedStoriesSignature = nextSig;
-  state.stories = storySeed;
-  writeCache(CACHE_KEYS.stories, storySeed);
+  const result = refreshFeedStoriesCore({
+    posts,
+    force,
+    fastMode: FAST_MODE,
+    buildStoriesFromFeed,
+    currentSignature: feedStoriesSignature
+  });
+  if (!result.updated) return false;
+  feedStoriesSignature = result.signature;
+  state.stories = result.stories;
+  writeCache(CACHE_KEYS.stories, result.stories);
   return true;
 }
 
