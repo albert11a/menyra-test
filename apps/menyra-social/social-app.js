@@ -125,6 +125,17 @@ import {
   sortChatThreadsCore,
   rebuildChatThreadIndexFromStorageCore
 } from "./core/chat-thread-index-utils.js";
+import {
+  getStringByteSizeCore,
+  isChatInlineDataUrlCore,
+  sanitizeChatAttachmentsForSyncCore,
+  normalizeChatMessageRecordCore,
+  loadLegacyChatThreadMessagesCore,
+  readFileAsDataUrlCore,
+  buildInlineChatAttachmentCore,
+  loadChatThreadMessagesCore,
+  saveChatThreadMessagesCore
+} from "./core/chat-message-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -3178,69 +3189,33 @@ function getCurrentChatSenderProfile() {
 }
 
 function getStringByteSize(value) {
-  const text = String(value || "");
-  try {
-    return new TextEncoder().encode(text).length;
-  } catch {
-    return text.length;
-  }
+  return getStringByteSizeCore(value);
 }
 
 function isChatInlineDataUrl(dataUrl) {
-  const safeDataUrl = String(dataUrl || "");
-  if (!safeDataUrl) return false;
-  return getStringByteSize(safeDataUrl) <= CHAT_ATTACHMENT_INLINE_MAX_BYTES;
+  return isChatInlineDataUrlCore({
+    dataUrl,
+    getStringByteSize: (value) => getStringByteSize(value),
+    maxInlineBytes: CHAT_ATTACHMENT_INLINE_MAX_BYTES
+  });
 }
 
 function sanitizeChatAttachmentsForSync(attachments) {
-  return (Array.isArray(attachments) ? attachments : []).slice(0, 4).map((attachment, index) => {
-    const rawDataUrl = String(attachment?.dataUrl || "");
-    const inlineDataUrl = isChatInlineDataUrl(rawDataUrl) ? rawDataUrl : "";
-    return {
-      id: String(attachment?.id || `att_${index}`).trim() || `att_${index}`,
-      name: String(attachment?.name || "Datei").trim() || "Datei",
-      mime: String(attachment?.mime || "application/octet-stream").trim() || "application/octet-stream",
-      kind: String(attachment?.kind || "file").trim() || "file",
-      dataUrl: inlineDataUrl,
-      size: Math.max(0, Number(attachment?.size || 0) || 0),
-      oversize: !!attachment?.oversize || (!inlineDataUrl && !!rawDataUrl)
-    };
+  return sanitizeChatAttachmentsForSyncCore({
+    attachments,
+    isChatInlineDataUrl: (dataUrl) => isChatInlineDataUrl(dataUrl),
+    maxAttachments: 4
   });
 }
 
 function normalizeChatMessageRecord(messageId, data = {}, localMap = new Map()) {
-  const safeMessageId = String(messageId || "").trim();
-  if (!safeMessageId) return null;
-  const source = data && typeof data === "object" ? data : {};
-  const local = localMap.get(safeMessageId) || {};
-  const sourceAttachments = Array.isArray(source.attachments) ? source.attachments : [];
-  const localAttachments = Array.isArray(local.attachments) ? local.attachments : [];
-  const localAttachmentMap = new Map(localAttachments.map((attachment) => [String(attachment?.id || "").trim(), attachment]));
-  const mergedAttachments = (sourceAttachments.length ? sourceAttachments : localAttachments).slice(0, 4).map((attachment, index) => {
-    const safeAttachmentId = String(attachment?.id || `att_${index}`).trim() || `att_${index}`;
-    const localAttachment = localAttachmentMap.get(safeAttachmentId) || {};
-    const rawDataUrl = String(attachment?.dataUrl || localAttachment?.dataUrl || "");
-    const inlineDataUrl = isChatInlineDataUrl(rawDataUrl) ? rawDataUrl : "";
-    return {
-      id: safeAttachmentId,
-      name: String(attachment?.name || localAttachment?.name || "Datei").trim() || "Datei",
-      mime: String(attachment?.mime || localAttachment?.mime || "application/octet-stream").trim() || "application/octet-stream",
-      kind: String(attachment?.kind || localAttachment?.kind || "file").trim() || "file",
-      dataUrl: inlineDataUrl,
-      size: Math.max(0, Number(attachment?.size || localAttachment?.size || 0) || 0),
-      oversize: !!attachment?.oversize || !!localAttachment?.oversize || (!inlineDataUrl && !!rawDataUrl)
-    };
+  return normalizeChatMessageRecordCore({
+    messageId,
+    data,
+    localMap,
+    isChatInlineDataUrl: (dataUrl) => isChatInlineDataUrl(dataUrl),
+    maxAttachments: 4
   });
-  return {
-    id: safeMessageId,
-    from: String(source.from || local.from || "other") === "self" ? "self" : "other",
-    text: String(source.text || local.text || ""),
-    attachments: mergedAttachments,
-    liked: typeof local.liked === "boolean" ? local.liked : !!source.liked,
-    saved: typeof local.saved === "boolean" ? local.saved : !!source.saved,
-    read: !!source.read,
-    createdAt: source.createdAt || source.createdAtClient || local.createdAt || new Date().toISOString()
-  };
 }
 
 function getChatMessageTimestamp(message) {
@@ -3264,116 +3239,50 @@ function buildChatPreviewText(message) {
 }
 
 function loadLegacyChatThreadMessages(threadId) {
-  const safeThreadId = String(threadId || "").replace(/^@/, "").trim();
-  if (!safeThreadId || typeof localStorage === "undefined") return [];
-  try {
-    const legacyKey = `${STORAGE_KEYS.chatThreads}::${safeThreadId}`;
-    const rawThread = localStorage.getItem(legacyKey);
-    if (rawThread) {
-      try {
-        const parsedThread = JSON.parse(rawThread);
-        if (Array.isArray(parsedThread)) {
-          return pruneChatMessages(parsedThread);
-        }
-        if (parsedThread && typeof parsedThread === "object" && Array.isArray(parsedThread.messages)) {
-          return pruneChatMessages(parsedThread.messages);
-        }
-      } catch {}
-    }
-    const rawMap = localStorage.getItem(STORAGE_KEYS.chatThreads);
-    if (!rawMap) return [];
-    const parsedMap = JSON.parse(rawMap);
-    const entry = parsedMap && typeof parsedMap === "object" ? parsedMap[safeThreadId] : null;
-    if (Array.isArray(entry)) return pruneChatMessages(entry);
-    if (entry && typeof entry === "object" && Array.isArray(entry.messages)) {
-      return pruneChatMessages(entry.messages);
-    }
-  } catch {}
-  return [];
-}
-
-async function readFileAsDataUrl(file) {
-  return await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(reader.error || new Error("file_read_failed"));
-    reader.readAsDataURL(file);
+  return loadLegacyChatThreadMessagesCore({
+    threadId,
+    localStorageObj: typeof localStorage === "undefined" ? null : localStorage,
+    chatThreadsStorageKey: STORAGE_KEYS.chatThreads,
+    pruneChatMessages: (messages) => pruneChatMessages(messages)
   });
 }
 
+async function readFileAsDataUrl(file) {
+  return await readFileAsDataUrlCore(file);
+}
+
 async function buildInlineChatAttachment(file, isImage = false) {
-  const source = file || {};
-  const safeName = String(source.name || "Datei").trim() || "Datei";
-  const safeMime = String(source.type || "application/octet-stream").trim() || "application/octet-stream";
-  const safeSize = Math.max(0, Number(source.size || 0) || 0);
-
-  const readInline = async (candidate) => {
-    try {
-      const dataUrl = await readFileAsDataUrl(candidate);
-      return isChatInlineDataUrl(dataUrl) ? dataUrl : "";
-    } catch {
-      return "";
-    }
-  };
-
-  let finalFile = source;
-  let dataUrl = await readInline(source);
-
-  if (!dataUrl && isImage) {
-    for (const step of CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS) {
-      const compressed = await compressImage(source, step.maxSize, step.quality, "image/jpeg");
-      const candidateDataUrl = await readInline(compressed);
-      if (!candidateDataUrl) continue;
-      finalFile = compressed;
-      dataUrl = candidateDataUrl;
-      break;
-    }
-  }
-
-  return {
-    name: String(finalFile?.name || safeName).trim() || safeName,
-    mime: String(finalFile?.type || safeMime).trim() || safeMime,
-    size: Math.max(0, Number(finalFile?.size || safeSize) || 0),
-    dataUrl,
-    oversize: !dataUrl
-  };
+  return await buildInlineChatAttachmentCore({
+    file,
+    isImage,
+    readFileAsDataUrl: (candidate) => readFileAsDataUrl(candidate),
+    isChatInlineDataUrl: (dataUrl) => isChatInlineDataUrl(dataUrl),
+    compressImage: (source, maxSize, quality, mimeType) => compressImage(source, maxSize, quality, mimeType),
+    compressionSteps: CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS
+  });
 }
 
 function loadChatThreadMessages(profile) {
-  const key = chatThreadStorageKey(profile);
-  if (key) {
-    try {
-      const raw = safeStorage.getItem(key);
-      if (raw !== null) {
-        const parsed = JSON.parse(raw);
-        const list = Array.isArray(parsed) ? parsed : [];
-        const next = pruneChatMessages(list);
-        if (next.length !== list.length) {
-          safeStorage.setItem(key, JSON.stringify(next.slice(-100)));
-        }
-        return next;
-      }
-    } catch {
-      return [];
-    }
-  }
-  const legacyMessages = loadLegacyChatThreadMessages(getChatThreadId(profile));
-  if (legacyMessages.length && key) {
-    try {
-      safeStorage.setItem(key, JSON.stringify(legacyMessages.slice(-100)));
-    } catch {}
-  }
-  if (!legacyMessages.length) return [];
-  return legacyMessages;
+  return loadChatThreadMessagesCore({
+    profile,
+    chatThreadStorageKey: (value) => chatThreadStorageKey(value),
+    safeStorage,
+    pruneChatMessages: (messages) => pruneChatMessages(messages),
+    loadLegacyChatThreadMessages: (threadId) => loadLegacyChatThreadMessages(threadId),
+    getChatThreadId: (value) => getChatThreadId(value),
+    maxItems: 100
+  });
 }
 
 function saveChatThreadMessages(profile, messages) {
-  const key = chatThreadStorageKey(profile);
-  if (!key) return;
-  try {
-    const next = pruneChatMessages(messages);
-    safeStorage.setItem(key, JSON.stringify(next.slice(-100)));
-  } catch {}
+  saveChatThreadMessagesCore({
+    profile,
+    messages,
+    chatThreadStorageKey: (value) => chatThreadStorageKey(value),
+    safeStorage,
+    pruneChatMessages: (items) => pruneChatMessages(items),
+    maxItems: 100
+  });
 }
 
 function stopChatThreadsListener() {
