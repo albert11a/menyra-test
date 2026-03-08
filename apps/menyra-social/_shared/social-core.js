@@ -1,4 +1,4 @@
-import { db, auth } from "@shared/firebase-config.js";
+import { db, auth } from "/shared/firebase-config.js?v=2026-03-07-auth-1";
 import {
   doc,
   getDoc,
