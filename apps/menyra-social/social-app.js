@@ -14741,6 +14741,13 @@ function renderChatView() {
 }
 
 function renderHeaderActionButton(avatarUrl, avatarFit) {
+  if (!authInitialized) {
+    return `
+      <button type="button" disabled aria-label="Authentifizierung wird geladen" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
+        <span class="sr-only">Authentifizierung wird geladen</span>
+      </button>
+    `;
+  }
   if (isGuestSession()) {
     return `
       <button data-auth-open="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30 text-slate-900 flex flex-col items-center justify-center leading-none">
@@ -21751,12 +21758,11 @@ loadPersisted();
 bindPushOpenTargetMessageHandler();
 void ensureAuthLocalPersistence();
 state.user = auth.currentUser || null;
-authInitialized = !!state.user;
+authInitialized = false;
 if (state.user) {
   loadUserScopedPersisted(state.user);
   lastAuthUid = state.user.uid || "";
 } else {
-  loadGuestScopedPersisted();
   lastAuthUid = "";
 }
 applyPendingInitialRouteState();
