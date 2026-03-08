@@ -134,6 +134,10 @@ import {
   fetchNotificationsFromQueryCore
 } from "./core/notification-query-utils.js";
 import {
+  buildNotificationWritePayloadCore,
+  normalizeNotificationWriteIdsCore
+} from "./core/notification-write-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10981,26 +10985,26 @@ async function pushUserNotification(targetUid, payload) {
   if (!targetUid) return;
   try {
     const ref = doc(collection(db, "users", targetUid, "notifications"));
-    await setDoc(ref, {
-      ...payload,
-      read: false,
-      createdAt: serverTimestamp()
-    });
+    await setDoc(ref, buildNotificationWritePayloadCore({
+      payload,
+      serverTimestampValue: serverTimestamp()
+    }));
   } catch (err) {
     console.error(err);
   }
 }
 
 async function pushUserNotificationWithId(targetUid, notificationId, payload) {
-  const safeTargetUid = String(targetUid || "").trim();
-  const safeNotificationId = String(notificationId || "").trim();
+  const { targetUid: safeTargetUid, notificationId: safeNotificationId } = normalizeNotificationWriteIdsCore({
+    targetUid,
+    notificationId
+  });
   if (!safeTargetUid || !safeNotificationId) return;
   try {
-    await setDoc(doc(db, "users", safeTargetUid, "notifications", safeNotificationId), {
-      ...payload,
-      read: false,
-      createdAt: serverTimestamp()
-    }, { merge: true });
+    await setDoc(doc(db, "users", safeTargetUid, "notifications", safeNotificationId), buildNotificationWritePayloadCore({
+      payload,
+      serverTimestampValue: serverTimestamp()
+    }), { merge: true });
   } catch (err) {
     console.error(err);
   }
