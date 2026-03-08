@@ -513,6 +513,7 @@ import {
   bindMenuOverlayEventsCore,
   bindFocusOverlayEventsCore
 } from "./core/overlay-menu-focus-bind-utils.js";
+import { bindLeadOverlayEventsCore } from "./core/overlay-lead-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14380,107 +14381,26 @@ function bindOverlayEvents({
   }
 
   if (leadChanged) {
-    const leadOverlay = document.getElementById("leadModalOverlay");
-    const leadClose = document.getElementById("leadModalClose");
-    const leadSave = document.getElementById("leadModalSave");
-    const leadConvert = document.getElementById("leadConvertBtn");
-    const leadLogoTrigger = document.getElementById("leadLogoTrigger");
-    const leadLogoInput = document.getElementById("leadLogoInput");
-    const leadLogoUrl = document.getElementById("leadLogoUrl");
-
-    bindModalDismiss(leadOverlay, closeLeadModal, { selfOnly: true });
-    bindModalDismiss(leadClose, closeLeadModal);
-    if (leadSave) {
-      leadSave.addEventListener("click", () => {
-        if (state.leadModal.loading) return;
-        void saveLeadFromModal();
-      });
-    }
-    if (leadConvert) {
-      leadConvert.addEventListener("click", async () => {
-        if (state.leadModal.loading) return;
-        const id = state.leadModal.lead?.id || "";
-        if (!id) return;
-        const converted = await convertLeadToCustomer(id);
-        if (converted) closeLeadModal();
-      });
-    }
-    if (leadLogoTrigger && leadLogoInput) {
-      leadLogoTrigger.addEventListener("click", () => leadLogoInput.click());
-    }
-    if (leadLogoInput) {
-      leadLogoInput.addEventListener("change", (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        state.leadModal.logoFile = file;
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const preview = String(reader.result || "");
-          state.leadModal.logoPreview = preview;
-          const img = document.getElementById("leadLogoPreview");
-          if (img && preview) img.setAttribute("src", preview);
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-    if (leadLogoUrl) {
-      leadLogoUrl.addEventListener("input", () => {
-        const val = leadLogoUrl.value.trim();
-        const img = document.getElementById("leadLogoPreview");
-        if (img) img.setAttribute("src", val || PLACEHOLDER_IMAGE);
-      });
-    }
-    document.querySelectorAll("[data-lead-location-add]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (state.leadModal.loading) return;
-        addLeadModalLocationRow();
-      });
-    });
-    document.querySelectorAll("[data-lead-location-remove]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        if (state.leadModal.loading) return;
-        removeLeadModalLocationRow(Number(btn.getAttribute("data-lead-location-remove")));
-      });
-    });
-    document.querySelectorAll("[data-lead-location-pick]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const index = Number(btn.getAttribute("data-lead-location-pick"));
-        if (!Number.isInteger(index) || index < 0) return;
-        syncLeadModalDraftFromForm();
-        void openLocationPicker({
-          addressInputId: `leadLocationAddress_${index}`,
-          coordsDisplayId: `leadLocationCoords_${index}`,
-          context: `lead_location:${index}`
-        });
-      });
-    });
-    document.querySelectorAll("[data-lead-location-address]").forEach((input) => {
-      input.addEventListener("input", () => {
-        const index = Number(input.getAttribute("data-lead-location-address"));
-        if (!Number.isInteger(index) || index < 0) return;
-        const list = normalizeLeadLocations(state.leadModal.locations, state.leadModal.lead?.address || "", state.leadModal.coords || null);
-        while (list.length <= index) list.push(createLeadLocation());
-        const currentRow = list[index] || createLeadLocation();
-        const parsedCoords = parseCoordsFromAddressInput(input.value, getLeadPlusCodeReference(input.value));
-        list[index] = createLeadLocation({
-          address: input.value,
-          lat: parsedCoords ? parsedCoords.lat : (hasLeadLocationCoords(currentRow) ? currentRow.lat : null),
-          lng: parsedCoords ? parsedCoords.lng : (hasLeadLocationCoords(currentRow) ? currentRow.lng : null)
-        });
-        state.leadModal.locations = list;
-        state.leadModal.lead = { ...(state.leadModal.lead || {}), address: list[0]?.address || "" };
-        const badge = document.getElementById(`leadLocationCoords_${index}`);
-        if (badge) badge.classList.toggle("hidden", !hasLeadLocationCoords(list[index]));
-        const primary = getPrimaryLeadLocation(list);
-        state.leadModal.coords = hasLeadLocationCoords(primary) ? { lat: primary.lat, lng: primary.lng } : null;
-      });
-      input.addEventListener("blur", () => {
-        const index = Number(input.getAttribute("data-lead-location-address"));
-        if (!Number.isInteger(index) || index < 0) return;
-        void refineLeadLocationAddressIndex(index, input.value, { hydratePrimary: index === 0 }).then(() => {
-          renderOverlays({ updateLead: true });
-        });
-      });
+    bindLeadOverlayEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      bindModalDismissFn: bindModalDismiss,
+      closeLeadModalFn: closeLeadModal,
+      saveLeadFromModalFn: saveLeadFromModal,
+      convertLeadToCustomerFn: convertLeadToCustomer,
+      addLeadModalLocationRowFn: addLeadModalLocationRow,
+      removeLeadModalLocationRowFn: removeLeadModalLocationRow,
+      syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
+      openLocationPickerFn: openLocationPicker,
+      normalizeLeadLocationsFn: normalizeLeadLocations,
+      createLeadLocationFn: createLeadLocation,
+      parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
+      getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
+      hasLeadLocationCoordsFn: hasLeadLocationCoords,
+      getPrimaryLeadLocationFn: getPrimaryLeadLocation,
+      refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex,
+      renderOverlaysFn: renderOverlays,
+      state,
+      placeholderImage: PLACEHOLDER_IMAGE
     });
   }
 
