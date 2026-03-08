@@ -4480,6 +4480,12 @@ function syncFeedPostLogos() {
   return true;
 }
 
+function buildStoriesSignature(storyItems = []) {
+  return (Array.isArray(storyItems) ? storyItems : [])
+    .map((item) => `${item?.id || ""}|${item?.img || ""}`)
+    .join(",");
+}
+
 function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
   if (!FAST_MODE) return false;
   if (!Array.isArray(posts) || !posts.length) return false;
