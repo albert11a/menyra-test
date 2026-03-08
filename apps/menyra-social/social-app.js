@@ -331,6 +331,23 @@ import {
   resolveCoordsFromEntityCore
 } from "./core/geo-coord-utils.js";
 import {
+  olcNormalizeLongitudeCore,
+  olcClipLatitudeCore,
+  sanitizePlusCodeCore,
+  extractPlusCodeFromTextCore,
+  olcDecodeValueCore,
+  isLikelyFullPlusCodeCore,
+  isLikelyShortPlusCodeCore,
+  olcDecodeFullPlusCodeCore,
+  olcEncodePairPrefixCore,
+  olcRecoverShortCodeCore,
+  resolvePlusCodeReferenceCoordsCore,
+  geocodeReferenceSearchCore,
+  parsePlusCodeFromAddressInputCore,
+  parseCoordsFromAddressInputCore,
+  parseCoordsFromAddressInputAsyncCore
+} from "./core/plus-code-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -592,12 +609,6 @@ const LEAD_COUNTRY_CENTERS = Object.freeze({
   Albanien: Object.freeze({ lat: 41.3275, lng: 19.8187 })
 });
 const PRISHTINA_COORDS = Object.freeze({ lat: 42.6629, lng: 21.1655 });
-const OLC_ALPHABET = "23456789CFGHJMPQRVWX";
-const OLC_SEPARATOR = "+";
-const OLC_SEPARATOR_POSITION = 8;
-const OLC_PAIR_RESOLUTIONS = [20, 1, 0.05, 0.0025, 0.000125];
-const OLC_GRID_ROWS = 5;
-const OLC_GRID_COLUMNS = 4;
 
 const DEFAULT_NOTIFICATIONS = [
   {
@@ -897,7 +908,6 @@ let renderSuspended = 0;
 let ceoStaffLoadPromise = null;
 let ceoCrmCountsPromise = null;
 let hiddenLegacyCeoUids = [];
-let plusCodeSearchCache = new Map();
 let renderQueued = false;
 let modalEscapeBound = false;
 let profileMenuBound = false;
@@ -1833,257 +1843,111 @@ function resolveCoordsFromEntity(entity) {
 }
 
 function olcNormalizeLongitude(value) {
-  let lng = Number(value);
-  if (!Number.isFinite(lng)) return null;
-  while (lng < -180) lng += 360;
-  while (lng >= 180) lng -= 360;
-  return lng;
+  return olcNormalizeLongitudeCore(value);
 }
 
 function olcClipLatitude(value) {
-  const lat = Number(value);
-  if (!Number.isFinite(lat)) return null;
-  return Math.min(90, Math.max(-90, lat));
+  return olcClipLatitudeCore(value);
 }
 
 function sanitizePlusCode(raw) {
-  const text = String(raw || "").toUpperCase();
-  return text
-    .replace(/\s+/g, "")
-    .replace(/[^23456789CFGHJMPQRVWX+0]/g, "");
+  return sanitizePlusCodeCore(raw);
 }
 
 function extractPlusCodeFromText(text) {
-  const input = String(text || "");
-  if (!input.includes("+")) return null;
-  const match = input.toUpperCase().match(/([23456789CFGHJMPQRVWX]{2,8}\+[23456789CFGHJMPQRVWX]{2,})/);
-  if (!match?.[1]) return null;
-  const code = sanitizePlusCode(match[1]);
-  if (!code.includes(OLC_SEPARATOR)) return null;
-  const remainder = input.replace(match[1], " ").replace(/\s+/g, " ").trim();
-  return { code, remainder };
+  return extractPlusCodeFromTextCore(text, {
+    sanitizePlusCodeFn: sanitizePlusCode
+  });
 }
 
 function olcDecodeValue(ch) {
-  const idx = OLC_ALPHABET.indexOf(String(ch || "").toUpperCase());
-  return idx >= 0 ? idx : -1;
+  return olcDecodeValueCore(ch);
 }
 
 function isLikelyFullPlusCode(code) {
-  const clean = sanitizePlusCode(code);
-  const sep = clean.indexOf(OLC_SEPARATOR);
-  if (sep !== OLC_SEPARATOR_POSITION) return false;
-  if (clean.indexOf(OLC_SEPARATOR, sep + 1) !== -1) return false;
-  const withoutSep = clean.replace(OLC_SEPARATOR, "").replace(/0/g, "");
-  if (withoutSep.length < 2) return false;
-  return /^[23456789CFGHJMPQRVWX]+$/.test(withoutSep);
+  return isLikelyFullPlusCodeCore(code, {
+    sanitizePlusCodeFn: sanitizePlusCode
+  });
 }
 
 function isLikelyShortPlusCode(code) {
-  const clean = sanitizePlusCode(code);
-  const sep = clean.indexOf(OLC_SEPARATOR);
-  if (sep <= 0 || sep >= OLC_SEPARATOR_POSITION) return false;
-  if (clean.indexOf(OLC_SEPARATOR, sep + 1) !== -1) return false;
-  const withoutSep = clean.replace(OLC_SEPARATOR, "").replace(/0/g, "");
-  if (withoutSep.length < 2) return false;
-  return /^[23456789CFGHJMPQRVWX]+$/.test(withoutSep);
+  return isLikelyShortPlusCodeCore(code, {
+    sanitizePlusCodeFn: sanitizePlusCode
+  });
 }
 
 function olcDecodeFullPlusCode(code) {
-  if (!isLikelyFullPlusCode(code)) return null;
-  const clean = sanitizePlusCode(code);
-  const digits = clean.replace(OLC_SEPARATOR, "").replace(/0/g, "");
-  if (!digits.length) return null;
-
-  const pairLength = Math.min(10, digits.length - (digits.length % 2));
-  if (pairLength < 2) return null;
-
-  let lat = -90;
-  let lng = -180;
-  let latPlace = 20;
-  let lngPlace = 20;
-
-  for (let i = 0; i < pairLength; i += 2) {
-    const latVal = olcDecodeValue(digits[i]);
-    const lngVal = olcDecodeValue(digits[i + 1]);
-    if (latVal < 0 || lngVal < 0) return null;
-    const place = OLC_PAIR_RESOLUTIONS[i / 2];
-    lat += latVal * place;
-    lng += lngVal * place;
-    latPlace = place;
-    lngPlace = place;
-  }
-
-  if (digits.length > pairLength) {
-    latPlace = OLC_PAIR_RESOLUTIONS[OLC_PAIR_RESOLUTIONS.length - 1];
-    lngPlace = OLC_PAIR_RESOLUTIONS[OLC_PAIR_RESOLUTIONS.length - 1];
-    for (let i = pairLength; i < digits.length; i += 1) {
-      const val = olcDecodeValue(digits[i]);
-      if (val < 0) return null;
-      const row = Math.floor(val / OLC_GRID_COLUMNS);
-      const col = val % OLC_GRID_COLUMNS;
-      latPlace /= OLC_GRID_ROWS;
-      lngPlace /= OLC_GRID_COLUMNS;
-      lat += row * latPlace;
-      lng += col * lngPlace;
-    }
-  }
-
-  return normalizeCoordPair(lat + (latPlace / 2), lng + (lngPlace / 2));
+  return olcDecodeFullPlusCodeCore(code, {
+    isLikelyFullPlusCodeFn: isLikelyFullPlusCode,
+    sanitizePlusCodeFn: sanitizePlusCode,
+    olcDecodeValueFn: olcDecodeValue,
+    normalizeCoordPairFn: normalizeCoordPair
+  });
 }
 
 function olcEncodePairPrefix(latValue, lngValue, prefixLength) {
-  const latClipped = olcClipLatitude(latValue);
-  const lngNorm = olcNormalizeLongitude(lngValue);
-  const length = Math.max(0, Number(prefixLength) || 0);
-  if (latClipped === null || lngNorm === null || !length) return "";
-
-  let lat = latClipped;
-  let lng = lngNorm;
-  if (lat === 90) lat = 90 - 1e-12;
-  lat += 90;
-  lng += 180;
-
-  let out = "";
-  for (let i = 0; i < OLC_PAIR_RESOLUTIONS.length && out.length < Math.max(length, OLC_SEPARATOR_POSITION); i += 1) {
-    const place = OLC_PAIR_RESOLUTIONS[i];
-    const latDigit = Math.floor(lat / place);
-    const lngDigit = Math.floor(lng / place);
-    lat -= latDigit * place;
-    lng -= lngDigit * place;
-    out += OLC_ALPHABET[Math.max(0, Math.min(OLC_ALPHABET.length - 1, latDigit))];
-    out += OLC_ALPHABET[Math.max(0, Math.min(OLC_ALPHABET.length - 1, lngDigit))];
-  }
-
-  return out.slice(0, length);
+  return olcEncodePairPrefixCore(latValue, lngValue, prefixLength, {
+    olcClipLatitudeFn: olcClipLatitude,
+    olcNormalizeLongitudeFn: olcNormalizeLongitude
+  });
 }
 
 function olcRecoverShortCode(shortCode, refLat, refLng) {
-  if (!isLikelyShortPlusCode(shortCode)) return null;
-  const clean = sanitizePlusCode(shortCode);
-  const sep = clean.indexOf(OLC_SEPARATOR);
-  if (sep <= 0 || sep >= OLC_SEPARATOR_POSITION) return null;
-
-  const prefixLength = OLC_SEPARATOR_POSITION - sep;
-  const refLatClipped = olcClipLatitude(refLat);
-  const refLngNorm = olcNormalizeLongitude(refLng);
-  if (refLatClipped === null || refLngNorm === null) return null;
-
-  const prefix = olcEncodePairPrefix(refLatClipped, refLngNorm, prefixLength);
-  if (!prefix || prefix.length !== prefixLength) return null;
-  const fullCode = `${prefix}${clean}`;
-  const decoded = olcDecodeFullPlusCode(fullCode);
-  if (!decoded) return null;
-
-  const resolution = Math.pow(20, 2 - (prefixLength / 2));
-  const edge = resolution / 2;
-  let lat = decoded.lat;
-  let lng = decoded.lng;
-
-  if (refLatClipped + edge < lat) lat -= resolution;
-  else if (refLatClipped - edge > lat) lat += resolution;
-  if (refLngNorm + edge < lng) lng -= resolution;
-  else if (refLngNorm - edge > lng) lng += resolution;
-
-  return normalizeCoordPair(lat, lng);
+  return olcRecoverShortCodeCore(shortCode, refLat, refLng, {
+    isLikelyShortPlusCodeFn: isLikelyShortPlusCode,
+    sanitizePlusCodeFn: sanitizePlusCode,
+    olcClipLatitudeFn: olcClipLatitude,
+    olcNormalizeLongitudeFn: olcNormalizeLongitude,
+    olcEncodePairPrefixFn: olcEncodePairPrefix,
+    olcDecodeFullPlusCodeFn: olcDecodeFullPlusCode,
+    normalizeCoordPairFn: normalizeCoordPair
+  });
 }
 
 function resolvePlusCodeReferenceCoords(value = "", refCoords = null) {
-  const direct = normalizeCoordPair(refCoords?.lat, refCoords?.lng);
-  if (direct) return direct;
-  const extracted = extractPlusCodeFromText(value);
-  const inferredCountry = inferLeadCountryFromText(
-    `${String(value || "")} ${String(extracted?.remainder || "")}`,
-    ""
-  );
-  return getLeadCountryCenter(inferredCountry);
+  return resolvePlusCodeReferenceCoordsCore(value, refCoords, {
+    normalizeCoordPairFn: normalizeCoordPair,
+    extractPlusCodeFromTextFn: extractPlusCodeFromText,
+    inferLeadCountryFromTextFn: inferLeadCountryFromText,
+    getLeadCountryCenterFn: getLeadCountryCenter
+  });
 }
 
 async function geocodeReferenceSearch(text = "") {
-  const queryText = String(text || "").trim();
-  if (!queryText) return null;
-  const cacheKey = normalizeSearchKey(queryText);
-  if (plusCodeSearchCache.has(cacheKey)) {
-    return plusCodeSearchCache.get(cacheKey) || null;
-  }
-  try {
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryText)}&limit=1`);
-    const data = await res.json();
-    const coords = Array.isArray(data) && data[0]
-      ? normalizeCoordPair(data[0].lat, data[0].lon)
-      : null;
-    plusCodeSearchCache.set(cacheKey, coords || null);
-    return coords;
-  } catch {
-    plusCodeSearchCache.set(cacheKey, null);
-    return null;
-  }
+  return geocodeReferenceSearchCore(text, {
+    normalizeSearchKeyFn: normalizeSearchKey,
+    normalizeCoordPairFn: normalizeCoordPair,
+    fetchFn: fetch
+  });
 }
 
 function parsePlusCodeFromAddressInput(value, refCoords = null) {
-  const extracted = extractPlusCodeFromText(value);
-  if (!extracted?.code) return null;
-
-  if (isLikelyFullPlusCode(extracted.code)) {
-    return olcDecodeFullPlusCode(extracted.code);
-  }
-
-  if (isLikelyShortPlusCode(extracted.code)) {
-    const ref = resolvePlusCodeReferenceCoords(value, refCoords);
-    return olcRecoverShortCode(extracted.code, ref.lat, ref.lng);
-  }
-
-  return null;
+  return parsePlusCodeFromAddressInputCore(value, refCoords, {
+    extractPlusCodeFromTextFn: extractPlusCodeFromText,
+    isLikelyFullPlusCodeFn: isLikelyFullPlusCode,
+    olcDecodeFullPlusCodeFn: olcDecodeFullPlusCode,
+    isLikelyShortPlusCodeFn: isLikelyShortPlusCode,
+    resolvePlusCodeReferenceCoordsFn: resolvePlusCodeReferenceCoords,
+    olcRecoverShortCodeFn: olcRecoverShortCode
+  });
 }
 
 async function parseCoordsFromAddressInputAsync(value, refCoords = null) {
-  const direct = parseCoordsFromAddressInput(value, refCoords);
-  const extracted = extractPlusCodeFromText(value);
-  const remainder = String(extracted?.remainder || "").trim();
-  if (!extracted?.code || !isLikelyShortPlusCode(extracted.code) || !remainder) {
-    return direct;
-  }
-  const preciseRef = await geocodeReferenceSearch(remainder);
-  if (!preciseRef) return direct;
-  return olcRecoverShortCode(extracted.code, preciseRef.lat, preciseRef.lng) || direct;
+  return parseCoordsFromAddressInputAsyncCore(value, refCoords, {
+    parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
+    extractPlusCodeFromTextFn: extractPlusCodeFromText,
+    isLikelyShortPlusCodeFn: isLikelyShortPlusCode,
+    geocodeReferenceSearchFn: geocodeReferenceSearch,
+    olcRecoverShortCodeFn: olcRecoverShortCode
+  });
 }
 
 function parseCoordsFromAddressInput(value, refCoords = null) {
-  const text = String(value || "").trim();
-  if (!text) return null;
-  const plusCodeCoords = parsePlusCodeFromAddressInput(text, refCoords);
-  if (plusCodeCoords) return plusCodeCoords;
-  const cleaned = text.replace(/[|;]/g, ",").replace(/\s+/g, " ").trim();
-  const labeledPattern = /(lat(?:itude)?|lng|lon|long|longitude)\s*[:=]\s*(-?\d+(?:[.,]\d+)?)/gi;
-  const labeledCoords = {};
-  let labeledMatch = null;
-  while ((labeledMatch = labeledPattern.exec(cleaned)) !== null) {
-    const key = String(labeledMatch[1] || "").toLowerCase();
-    const num = toFiniteCoordNumber(labeledMatch[2]);
-    if (num === null) continue;
-    if (key.startsWith("lat")) labeledCoords.lat = num;
-    else labeledCoords.lng = num;
-  }
-  if (Number.isFinite(labeledCoords.lat) && Number.isFinite(labeledCoords.lng)) {
-    return normalizeCoordPair(labeledCoords.lat, labeledCoords.lng);
-  }
-
-  const pairMatch = cleaned.match(/^(-?\d+(?:[.,]\d+)?)\s*[, ]\s*(-?\d+(?:[.,]\d+)?)$/);
-  if (!pairMatch) return null;
-  const first = toFiniteCoordNumber(pairMatch[1]);
-  const second = toFiniteCoordNumber(pairMatch[2]);
-  if (first === null || second === null) return null;
-
-  const kosovoLat = (v) => v >= 41 && v <= 44.5;
-  const kosovoLng = (v) => v >= 19 && v <= 22.5;
-  if (kosovoLng(first) && kosovoLat(second)) {
-    return { lat: second, lng: first };
-  }
-  if (kosovoLat(first) && kosovoLng(second)) {
-    return { lat: first, lng: second };
-  }
-
-  return normalizeCoordPair(first, second);
+  return parseCoordsFromAddressInputCore(value, refCoords, {
+    parsePlusCodeFromAddressInputFn: parsePlusCodeFromAddressInput,
+    toFiniteCoordNumberFn: toFiniteCoordNumber,
+    normalizeCoordPairFn: normalizeCoordPair
+  });
 }
 
 function createLeadLocation({ address = "", lat = null, lng = null } = {}) {
