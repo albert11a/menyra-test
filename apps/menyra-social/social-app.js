@@ -162,6 +162,11 @@ import {
   buildChatRouteTargetProfileCore
 } from "./core/chat-route-open-utils.js";
 import {
+  normalizePendingNotificationIdCore,
+  findNotificationByIdCore,
+  prependNotificationByIdCore
+} from "./core/notification-route-open-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10586,13 +10591,16 @@ async function maybeOpenNotificationFromQuery() {
   if (!pendingNotificationId) return false;
   if (!state.user?.uid) return false;
 
-  const safeNotificationId = String(pendingNotificationId || "").trim();
+  const safeNotificationId = normalizePendingNotificationIdCore(pendingNotificationId);
   if (!safeNotificationId) return false;
   pendingNotificationHandled = true;
   pendingNotificationId = "";
   clearNotificationQueryParams();
 
-  let notificationItem = (state.notifications || []).find((item) => String(item?.id || "") === safeNotificationId) || null;
+  let notificationItem = findNotificationByIdCore({
+    notifications: state.notifications || [],
+    notificationId: safeNotificationId
+  });
   if (!notificationItem) {
     try {
       const snap = await getDoc(doc(db, "users", state.user.uid, "notifications", safeNotificationId));
@@ -10605,10 +10613,11 @@ async function maybeOpenNotificationFromQuery() {
   }
   if (!notificationItem) return false;
 
-  state.notifications = [
+  state.notifications = prependNotificationByIdCore({
+    notifications: state.notifications || [],
     notificationItem,
-    ...(state.notifications || []).filter((item) => String(item?.id || "") !== safeNotificationId)
-  ];
+    notificationId: safeNotificationId
+  });
   saveNotifications(state.notifications);
   await openNotificationTarget(safeNotificationId);
   return true;
