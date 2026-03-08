@@ -163,6 +163,10 @@ import {
   hasUnreadIncomingRemoteMessagesCore
 } from "./core/chat-read-sync-utils.js";
 import {
+  shouldIgnoreChatMessagesSnapshotCore,
+  resolveChatMessagesAfterSnapshotCore
+} from "./core/chat-message-listener-utils.js";
+import {
   collectUnreadIncomingChatMessageIdsCore,
   buildChatUnreadResetPatchCore,
   buildChatMessageReadPatchCore
@@ -3422,7 +3426,11 @@ function startActiveChatMessagesListener(profile = state.chatModal.profile) {
   if (!ref) return;
   const messageQuery = query(ref, orderBy("createdAtClient", "desc"), limit(CHAT_MESSAGE_READ_LIMIT));
   chatMessagesUnsub = onSnapshot(messageQuery, (snap) => {
-    if (!state.chatModal.open || getChatThreadId(state.chatModal.profile) !== threadId) return;
+    if (shouldIgnoreChatMessagesSnapshotCore({
+      chatModalOpen: !!state.chatModal.open,
+      activeModalThreadId: getChatThreadId(state.chatModal.profile),
+      listenerThreadId: threadId
+    })) return;
     const localSeed = buildChatListenerLocalSeedCore({
       storedMessages: loadChatThreadMessages(profile),
       modalMessages: Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [],
@@ -3446,15 +3454,15 @@ function startActiveChatMessagesListener(profile = state.chatModal.profile) {
       normalizeChatMessageRecord: (messageId, data = {}, map = new Map()) => normalizeChatMessageRecord(messageId, data, map),
       getChatMessageTimestamp: (message) => getChatMessageTimestamp(message)
     });
-    const hasUnreadIncoming = hasUnreadIncomingRemoteMessagesCore(remoteMessages);
-    let nextMessages = remoteMessages;
-    if (hasUnreadIncoming) {
-      nextMessages = markChatThreadAsRead(profile, remoteMessages);
-      void syncRemoteChatReadState(profile, remoteMessages);
-    } else {
-      saveChatThreadMessages(profile, remoteMessages);
-      syncChatThreadSummary(profile, remoteMessages);
-    }
+    const nextMessages = resolveChatMessagesAfterSnapshotCore({
+      profile,
+      remoteMessages,
+      hasUnreadIncomingRemoteMessages: (messages) => hasUnreadIncomingRemoteMessagesCore(messages),
+      markChatThreadAsRead: (threadProfile, messages) => markChatThreadAsRead(threadProfile, messages),
+      syncRemoteChatReadState: (threadProfile, messages) => void syncRemoteChatReadState(threadProfile, messages),
+      saveChatThreadMessages: (threadProfile, messages) => saveChatThreadMessages(threadProfile, messages),
+      syncChatThreadSummary: (threadProfile, messages) => syncChatThreadSummary(threadProfile, messages)
+    });
     state.chatModal.messages = pruneChatMessages(nextMessages);
     render();
   }, (err) => {
