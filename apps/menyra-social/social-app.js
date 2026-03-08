@@ -14743,9 +14743,9 @@ function renderChatView() {
 function renderHeaderActionButton(avatarUrl, avatarFit) {
   if (!authInitialized) {
     return `
-      <button type="button" disabled aria-label="Authentifizierung wird geladen" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
-        <span class="sr-only">Authentifizierung wird geladen</span>
-      </button>
+      <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
+        <div class="w-full h-full rounded-[1.4rem] bg-slate-200 animate-pulse"></div>
+      </div>
     `;
   }
   if (isGuestSession()) {
