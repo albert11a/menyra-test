@@ -231,6 +231,10 @@ import {
   coerceMenuItemsFromDataCore
 } from "./core/menu-item-coercion-utils.js";
 import {
+  scheduleIdleCore,
+  enqueueMicrotaskCore
+} from "./core/task-schedule-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -7017,12 +7021,12 @@ function updatePostCaches(post) {
 }
 
 function scheduleIdle(fn) {
-  if (typeof window === "undefined") return;
-  if ("requestIdleCallback" in window) {
-    window.requestIdleCallback(fn, { timeout: 800 });
-  } else {
-    window.setTimeout(fn, 0);
-  }
+  scheduleIdleCore({
+    fn,
+    windowObj: typeof window === "undefined" ? null : window,
+    timeout: 800,
+    fallbackDelayMs: 0
+  });
 }
 
 function normalizeBusinessResult(rest) {
@@ -13108,10 +13112,15 @@ function prefetchCrmLazyRenderers() {
 function queueCrmLazyRenderersPrefetch() {
   if (crmLazyRenderers || crmLazyRenderersPromise || crmLazyRenderersPrefetchQueued) return;
   crmLazyRenderersPrefetchQueued = true;
-  const enqueue = typeof queueMicrotask === "function" ? queueMicrotask : (fn) => window.setTimeout(fn, 0);
-  enqueue(() => {
-    crmLazyRenderersPrefetchQueued = false;
-    prefetchCrmLazyRenderers();
+  enqueueMicrotaskCore({
+    fn: () => {
+      crmLazyRenderersPrefetchQueued = false;
+      prefetchCrmLazyRenderers();
+    },
+    queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
+    setTimeoutFn: typeof window !== "undefined" && typeof window.setTimeout === "function"
+      ? window.setTimeout.bind(window)
+      : null
   });
 }
 
