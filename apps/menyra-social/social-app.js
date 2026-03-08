@@ -89,6 +89,13 @@ import {
   buildNativePushAlertPayloadCore
 } from "./core/push-alert-utils.js";
 import {
+  canUseNativeNotificationsCore,
+  buildPushActivationIssueCore,
+  getPushActivationIssueMessageCore,
+  mapPushActivationErrorCore,
+  canEmitNativePushAlertsCore
+} from "./core/push-activation-utils.js";
+import {
   readPushSeenIdsCore,
   writePushSeenIdsCore
 } from "./core/push-seen-storage-utils.js";
@@ -2608,7 +2615,9 @@ function writePushSeenIds(ids = [], uid = state.user?.uid || "") {
 }
 
 function canUseNativeNotifications() {
-  return typeof window !== "undefined" && "Notification" in window;
+  return canUseNativeNotificationsCore({
+    windowObj: typeof window !== "undefined" ? window : undefined
+  });
 }
 
 function clearPushActivationIssue() {
@@ -2617,12 +2626,7 @@ function clearPushActivationIssue() {
 
 function setPushActivationIssue(reason = "", err = null) {
   const base = String(reason || "").trim();
-  const code = String(err?.code || "").trim();
-  const message = String(err?.message || "").trim();
-  const parts = [base];
-  if (code) parts.push(`[${code}]`);
-  if (message) parts.push(message);
-  pushActivationIssue = parts.filter(Boolean).join(" ").trim();
+  pushActivationIssue = buildPushActivationIssueCore({ reason, err });
   if (err) {
     console.error("[Push]", base || "Push activation failed", err);
   } else if (base) {
@@ -2631,39 +2635,19 @@ function setPushActivationIssue(reason = "", err = null) {
 }
 
 function getPushActivationIssueMessage() {
-  return pushActivationIssue || "Unbekannter Fehler bei der Push-Initialisierung.";
+  return getPushActivationIssueMessageCore(pushActivationIssue);
 }
 
 function mapPushActivationError(stage = "", err = null) {
-  const code = String(err?.code || "").trim();
-  const message = String(err?.message || "").trim();
-  if (code === "permission-denied" && stage === "firestore-write") {
-    return "Firestore-Regeln blockieren users/{uid}/devices. Bitte Rules pruefen.";
-  }
-  if (code === "messaging/permission-blocked") {
-    return "Browser-Permission fuer Benachrichtigungen ist blockiert.";
-  }
-  if (code === "messaging/unsupported-browser") {
-    return "Dieser Browser unterstuetzt FCM Web Push nicht.";
-  }
-  if (code === "messaging/failed-service-worker-registration") {
-    return "Service Worker konnte fuer FCM nicht verwendet werden.";
-  }
-  if (code === "messaging/invalid-sw-registration") {
-    return "Service Worker Registrierung ist fuer FCM ungueltig.";
-  }
-  if (code === "messaging/token-subscribe-failed") {
-    return "FCM Token-Abonnement fehlgeschlagen. VAPID-Key und Push-Service pruefen.";
-  }
-  if (code) return `${stage || "push"} fehlgeschlagen (${code}).`;
-  if (message) return `${stage || "push"} fehlgeschlagen: ${message}`;
-  return `${stage || "push"} fehlgeschlagen.`;
+  return mapPushActivationErrorCore(stage, err);
 }
 
 function canEmitNativePushAlerts() {
-  return !!state.settings?.pushNotifs
-    && canUseNativeNotifications()
-    && Notification.permission === "granted";
+  return canEmitNativePushAlertsCore({
+    settings: state.settings,
+    canUseNativeNotifications: canUseNativeNotifications(),
+    notificationPermission: Notification.permission
+  });
 }
 
 async function ensureNotificationPermission({ interactive = false } = {}) {
