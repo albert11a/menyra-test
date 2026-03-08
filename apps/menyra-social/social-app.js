@@ -383,6 +383,11 @@ import {
 } from "./core/ceo-normalize-utils.js";
 import { getCurrentCeoMetaCore } from "./core/ceo-meta-utils.js";
 import {
+  normalizeCeoStaffRecordCore,
+  overlayCeoStaffProfileCore,
+  buildCeoDirectorySyncPatchCore
+} from "./core/ceo-staff-sync-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -4160,121 +4165,28 @@ function getCurrentCeoMeta(profile = state.userProfile, user = state.user) {
 }
 
 function normalizeCeoStaffRecord(record = {}, userRecord = {}) {
-  const merged = { ...(userRecord || {}), ...(record || {}) };
-  const uid = String(merged.uid || merged.userId || merged.id || "").trim();
-  const email = String(merged.email || "").trim();
-  const firstName = String(merged.firstName || "").trim();
-  const lastName = String(merged.lastName || "").trim();
-  const name = buildCeoName({
-    firstName,
-    lastName,
-    fallback: merged.name || merged.displayName || "",
-    email
+  return normalizeCeoStaffRecordCore(record, userRecord, {
+    buildCeoNameFn: buildCeoName,
+    normalizeCeoPathFn: normalizeCeoPath,
+    normalizeHandleFn: normalizeHandle,
+    normalizeCeoCountryFn: normalizeCeoCountry,
+    hasStoredCeoCrmCountsFn: hasStoredCeoCrmCounts,
+    sanitizeCeoCrmCountsFn: sanitizeCeoCrmCounts,
+    parseCoordNumberFn: parseCoordNumber
   });
-  const parentUid = String(merged.ceoParentUid || merged.parentCeoUid || merged.managerUid || "").trim();
-  const rootUid = String(merged.ceoRootUid || merged.rootCeoUid || parentUid || uid).trim() || uid;
-  let ceoPath = normalizeCeoPath(merged.ceoPath, [rootUid, parentUid, uid]);
-  if (!ceoPath.length && uid) ceoPath = [uid];
-  return {
-    ...merged,
-    uid,
-    userId: uid,
-    id: uid,
-    email,
-    firstName,
-    lastName,
-    name,
-    displayName: name,
-    handle: merged.handle || normalizeHandle(name || email || "ceo"),
-    role: "ceo",
-    roles: ["ceo"],
-    country: normalizeCeoCountry(merged.country),
-    locationLabel: String(merged.locationLabel || merged.location || merged.city || "").trim(),
-    ceoParentUid: parentUid,
-    ceoParentName: String(merged.ceoParentName || merged.parentCeoName || merged.managerName || "").trim(),
-    ceoRootUid: rootUid,
-    ceoRootName: String(merged.ceoRootName || merged.rootCeoName || "").trim(),
-    ceoPath,
-    crmCounts: hasStoredCeoCrmCounts(merged.crmCounts) ? sanitizeCeoCrmCounts(merged.crmCounts) : null,
-    lat: parseCoordNumber(merged.gpsLat ?? merged.lat),
-    lng: parseCoordNumber(merged.gpsLng ?? merged.lng),
-    gpsLat: parseCoordNumber(merged.gpsLat ?? merged.lat),
-    gpsLng: parseCoordNumber(merged.gpsLng ?? merged.lng)
-  };
 }
 
 function overlayCeoStaffProfile(record = {}, userRecord = {}) {
-  const next = { ...(record || {}) };
-  const readText = (...keys) => {
-    for (const key of keys) {
-      const value = String(userRecord?.[key] || "").trim();
-      if (value) return value;
-    }
-    return "";
-  };
-  const avatarUrl = readText("avatarUrl", "avatar");
-  if (avatarUrl) {
-    next.avatarUrl = avatarUrl;
-    next.avatar = avatarUrl;
-  }
-  const displayName = readText("displayName", "name");
-  if (displayName) {
-    next.displayName = displayName;
-    next.name = displayName;
-  }
-  const firstName = readText("firstName");
-  const lastName = readText("lastName");
-  if (firstName) next.firstName = firstName;
-  if (lastName) next.lastName = lastName;
-  const email = readText("email");
-  if (email) next.email = email;
-  const handle = readText("handle");
-  if (handle) next.handle = handle;
-  const country = readText("country");
-  if (country) next.country = country;
-  const city = readText("city");
-  if (city) next.city = city;
-  const location = readText("locationLabel", "location", "city");
-  if (location) {
-    next.locationLabel = location;
-    if (!String(next.location || "").trim()) next.location = location;
-  }
-  const lat = parseCoordNumber(userRecord?.gpsLat ?? userRecord?.lat);
-  const lng = parseCoordNumber(userRecord?.gpsLng ?? userRecord?.lng);
-  if (Number.isFinite(lat) && Number.isFinite(lng)) {
-    next.lat = lat;
-    next.lng = lng;
-    next.gpsLat = lat;
-    next.gpsLng = lng;
-  }
-  return next;
+  return overlayCeoStaffProfileCore(record, userRecord, {
+    parseCoordNumberFn: parseCoordNumber
+  });
 }
 
 function buildCeoDirectorySyncPatch(record = {}, userRecord = {}) {
-  const patched = overlayCeoStaffProfile(record, userRecord);
-  const nextAvatar = String(patched.avatarUrl || patched.avatar || "").trim();
-  const prevAvatar = String(record.avatarUrl || record.avatar || "").trim();
-  const patch = {};
-  if (nextAvatar && nextAvatar !== prevAvatar) {
-    patch.avatarUrl = nextAvatar;
-    patch.avatar = nextAvatar;
-  }
-  const textKeys = ["displayName", "name", "firstName", "lastName", "email", "handle", "country", "city", "locationLabel"];
-  textKeys.forEach((key) => {
-    const nextValue = String(patched[key] || "").trim();
-    const prevValue = String(record[key] || "").trim();
-    if (nextValue && nextValue !== prevValue) {
-      patch[key] = nextValue;
-    }
+  return buildCeoDirectorySyncPatchCore(record, userRecord, {
+    overlayCeoStaffProfileFn: overlayCeoStaffProfile,
+    parseCoordNumberFn: parseCoordNumber
   });
-  ["lat", "lng", "gpsLat", "gpsLng"].forEach((key) => {
-    const nextValue = parseCoordNumber(patched[key]);
-    const prevValue = parseCoordNumber(record[key]);
-    if (Number.isFinite(nextValue) && nextValue !== prevValue) {
-      patch[key] = nextValue;
-    }
-  });
-  return patch;
 }
 
 async function hydrateStaffRecordsFromUserProfiles(items = [], { syncDirectory = false } = {}) {
