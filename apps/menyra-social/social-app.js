@@ -516,6 +516,7 @@ import {
 import { bindLeadOverlayEventsCore } from "./core/overlay-lead-bind-utils.js";
 import { bindMenuDetailOverlayEventsCore } from "./core/overlay-menu-detail-bind-utils.js";
 import { bindAppShellEventsCore } from "./core/app-events-shell-bind-utils.js";
+import { bindAppMenuFocusEventsCore } from "./core/app-events-menu-focus-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14381,195 +14382,33 @@ function bindAppEvents() {
     ensureFocusDataForProfileFn: ensureFocusDataForProfile
   });
 
-  const menuSearchInput = document.getElementById("menuSearchInput");
-  if (menuSearchInput) {
-    menuSearchInput.addEventListener("input", () => {
-      state.menu.query = menuSearchInput.value;
-      render();
-    });
-  }
-
-  document.querySelectorAll("[data-menu-filter]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const filter = btn.dataset.menuFilter || "all";
-      state.menu.filter = filter;
-      render();
-    });
+  const menuFocusBinding = bindAppMenuFocusEventsCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    state,
+    renderFn: render,
+    saveMenuLayoutToStorageFn: saveMenuLayoutToStorage,
+    openMenuModalFn: openMenuModal,
+    deleteMenuItemByIdFn: deleteMenuItemById,
+    triggerMenuDetailOpenFromGestureFn: triggerMenuDetailOpenFromGesture,
+    updateShopCartQuantityFn: updateShopCartQuantity,
+    openShopCheckoutFn: openShopCheckout,
+    submitShopCheckoutFn: submitShopCheckout,
+    updateShopCheckoutFieldFn: updateShopCheckoutField,
+    focusCache,
+    focusCacheKeyFn: focusCacheKey,
+    saveFocusEnabledFn: saveFocusEnabled,
+    openFocusModalFn: openFocusModal,
+    deleteFocusItemByIdFn: deleteFocusItemById,
+    setFocusIndexFn: setFocusIndex,
+    toggleProfilePostMenuFn: toggleProfilePostMenu,
+    toggleProfilePostWidthFn: toggleProfilePostWidth,
+    deleteProfilePostFn: deleteProfilePost,
+    setProfileMenuOpenFn: setProfileMenuOpen,
+    profileMenuBound,
+    mapLocateFn: mapLocate,
+    bindNotificationsDelegationFn: bindNotificationsDelegation
   });
-
-  document.querySelectorAll("[data-menu-layout-color]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const color = btn.dataset.menuLayoutColor || "";
-      if (!color) return;
-      state.menuLayout = { ...state.menuLayout, cardColor: color };
-      saveMenuLayoutToStorage();
-      render();
-    });
-  });
-
-  document.querySelectorAll("[data-menu-add]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      openMenuModal("create");
-    });
-  });
-
-  document.querySelectorAll("[data-menu-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const itemId = btn.dataset.menuEdit || "";
-      const item = (state.menu.items || []).find((it) => String(it.id) === String(itemId));
-      if (!item) return;
-      openMenuModal("edit", item);
-    });
-  });
-
-  document.querySelectorAll("[data-menu-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const itemId = btn.dataset.menuDelete || "";
-      if (!itemId) return;
-      void deleteMenuItemById(itemId);
-    });
-  });
-
-  document.querySelectorAll("[data-menu-open]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      triggerMenuDetailOpenFromGesture(btn);
-    });
-    btn.addEventListener("keydown", (evt) => {
-      if (evt.key !== "Enter" && evt.key !== " ") return;
-      evt.preventDefault();
-      triggerMenuDetailOpenFromGesture(btn);
-    });
-  });
-
-  document.querySelectorAll("[data-cart-qty]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const itemId = btn.dataset.cartQty || "";
-      const delta = Number(btn.dataset.cartDelta || "0");
-      if (!itemId || !delta) return;
-      updateShopCartQuantity(itemId, delta);
-    });
-  });
-
-  document.querySelectorAll("[data-cart-checkout]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const action = btn.dataset.cartCheckout || "";
-      if (action === "open") {
-        openShopCheckout();
-        return;
-      }
-      if (action === "submit") {
-        void submitShopCheckout();
-      }
-    });
-  });
-
-  document.querySelectorAll("[data-cart-field]").forEach((input) => {
-    input.addEventListener("input", () => {
-      updateShopCheckoutField(input.dataset.cartField || "", input.value || "");
-    });
-  });
-
-  const focusEnabledToggle = document.getElementById("focusEnabledToggle");
-  if (focusEnabledToggle) {
-    focusEnabledToggle.addEventListener("change", () => {
-      const restaurantId = state.userProfile.restaurantId || "";
-      if (!restaurantId) return;
-      const enabled = !!focusEnabledToggle.checked;
-      state.focus.enabled = enabled;
-      const cachedItems = state.focus.restaurantId === restaurantId ? (state.focus.items || []) : [];
-      focusCache.set(focusCacheKey(restaurantId), { items: cachedItems, enabled, ts: Date.now() });
-      void saveFocusEnabled(restaurantId, enabled);
-      render();
-    });
-  }
-
-  document.querySelectorAll("[data-focus-add]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      openFocusModal("create");
-    });
-  });
-
-  document.querySelectorAll("[data-focus-edit]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const itemId = btn.dataset.focusEdit || "";
-      const item = (state.focus.items || []).find((it) => String(it.id) === String(itemId));
-      if (!item) return;
-      openFocusModal("edit", item);
-    });
-  });
-
-  document.querySelectorAll("[data-focus-delete]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const itemId = btn.dataset.focusDelete || "";
-      if (!itemId) return;
-      void deleteFocusItemById(itemId);
-    });
-  });
-
-  document.querySelectorAll("[data-focus-nav]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const dir = btn.dataset.focusNav || "next";
-      const delta = dir === "prev" ? -1 : 1;
-      setFocusIndex(state.focus.index + delta);
-    });
-  });
-
-  document.querySelectorAll("[data-focus-dot]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.dataset.focusDot || "0");
-      setFocusIndex(idx);
-    });
-  });
-
-  document.querySelectorAll("[data-profile-menu-button]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const postId = btn.dataset.profileMenuButton;
-      if (!postId) return;
-      toggleProfilePostMenu(postId);
-    });
-  });
-
-  document.querySelectorAll("[data-profile-post-toggle]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const postId = btn.dataset.profilePostToggle;
-      if (!postId) return;
-      toggleProfilePostWidth(postId);
-    });
-  });
-
-  document.querySelectorAll("[data-profile-post-delete]").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.stopPropagation();
-      const postId = btn.dataset.profilePostDelete;
-      if (!postId) return;
-      deleteProfilePost(postId);
-    });
-  });
-
-  if (!profileMenuBound) {
-    document.addEventListener("click", (e) => {
-      if (!state.profilePostMenuId) return;
-      const target = e.target;
-      if (!(target instanceof Element)) return;
-      if (target.closest("[data-profile-menu]") || target.closest("[data-profile-menu-button]")) return;
-      state.profilePostMenuId = null;
-      setProfileMenuOpen(null);
-    });
-    profileMenuBound = true;
-  }
-
-  if (state.profilePostMenuId) {
-    setProfileMenuOpen(state.profilePostMenuId);
-  }
-
-  const mapLocateBtn = document.getElementById("mapLocateBtn");
-  if (mapLocateBtn) {
-    mapLocateBtn.addEventListener("click", () => mapLocate());
-  }
-
-  bindNotificationsDelegation();
+  profileMenuBound = !!menuFocusBinding?.profileMenuBound;
 
   document.querySelectorAll("[data-settings]").forEach((btn) => {
     btn.addEventListener("click", () => {
