@@ -110,6 +110,10 @@ import {
   waitForPushServiceWorkerReadyCore
 } from "./core/push-service-worker-utils.js";
 import {
+  ensureFirebaseMessagingModuleCore,
+  ensureMessagingClientCore
+} from "./core/push-messaging-utils.js";
+import {
   normalizeNotificationItemCore,
   mapNotificationSnapshotCore
 } from "./core/notification-item-utils.js";
@@ -2748,30 +2752,22 @@ function writePushTokenMeta(uid = state.user?.uid || "", token = "") {
 }
 
 async function ensureFirebaseMessagingModule() {
-  if (firebaseMessagingModulePromise) return firebaseMessagingModulePromise;
-  firebaseMessagingModulePromise = import(FIREBASE_MESSAGING_MODULE_URL)
-    .catch((err) => {
-      firebaseMessagingModulePromise = null;
-      throw err;
-    });
-  return firebaseMessagingModulePromise;
+  return ensureFirebaseMessagingModuleCore({
+    currentPromise: firebaseMessagingModulePromise,
+    moduleUrl: FIREBASE_MESSAGING_MODULE_URL,
+    importModule: (url) => import(url),
+    setModulePromise: (value) => { firebaseMessagingModulePromise = value; }
+  });
 }
 
 async function ensureMessagingClient() {
-  if (pushMessagingClient) return pushMessagingClient;
-  try {
-    const messagingModule = await ensureFirebaseMessagingModule();
-    const supported = await messagingModule.isSupported();
-    if (!supported) {
-      setPushActivationIssue("FCM wird in diesem Browser/Context nicht unterstuetzt.");
-      return null;
-    }
-    pushMessagingClient = messagingModule.getMessaging(app);
-    return pushMessagingClient;
-  } catch (err) {
-    setPushActivationIssue("FCM Messaging konnte nicht initialisiert werden.", err);
-    return null;
-  }
+  return await ensureMessagingClientCore({
+    currentClient: pushMessagingClient,
+    ensureFirebaseMessagingModule: () => ensureFirebaseMessagingModule(),
+    setPushActivationIssue: (reason, err) => setPushActivationIssue(reason, err),
+    app,
+    setMessagingClient: (client) => { pushMessagingClient = client; }
+  });
 }
 
 async function ensurePushServiceWorkerRegistration() {
