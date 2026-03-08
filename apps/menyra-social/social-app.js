@@ -129,6 +129,11 @@ import {
   collectUnseenUnreadNotificationItemsFromChangesCore
 } from "./core/notification-native-push-utils.js";
 import {
+  buildNotificationsLiveQueryCore,
+  buildNotificationsFetchQueryCore,
+  fetchNotificationsFromQueryCore
+} from "./core/notification-query-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10864,8 +10869,16 @@ function startNotificationsListener(user = state.user, { enableNativePush = fals
   const ownerUid = String(user?.uid || "").trim();
   if (!ownerUid) return;
 
-  const ref = collection(db, "users", ownerUid, "notifications");
-  const liveQuery = query(ref, orderBy("createdAt", "desc"), limit(NOTIFICATIONS_LIVE_LIMIT));
+  const liveQuery = buildNotificationsLiveQueryCore({
+    db,
+    ownerUid,
+    collection,
+    query,
+    orderBy,
+    limit,
+    liveLimit: NOTIFICATIONS_LIVE_LIMIT
+  });
+  if (!liveQuery) return;
   const seenIds = new Set(readPushSeenIds(ownerUid));
   let seeded = false;
 
@@ -10939,9 +10952,20 @@ async function syncNotificationsPushRuntime({ user = state.user, interactive = f
 async function loadNotificationsFromFirebase({ force = false } = {}) {
   if (!state.user) return;
   try {
-    const ref = collection(db, "users", state.user.uid, "notifications");
-    const snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(20)));
-    const items = mapNotificationSnapshot(snap);
+    const notificationsQuery = buildNotificationsFetchQueryCore({
+      db,
+      ownerUid: state.user.uid,
+      collection,
+      query,
+      orderBy,
+      limit,
+      fetchLimit: 20
+    });
+    const items = await fetchNotificationsFromQueryCore({
+      queryRef: notificationsQuery,
+      getDocs,
+      mapNotificationSnapshot: (snap) => mapNotificationSnapshot(snap)
+    });
     state.notifications = items;
     saveNotifications(items);
     const updated = updateNotificationsDom();
