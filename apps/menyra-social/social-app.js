@@ -375,6 +375,13 @@ import {
   getCeoGpsOverrideCore
 } from "./core/ceo-access-utils.js";
 import {
+  parseCoordNumberCore,
+  uniqueStringListCore,
+  normalizeCeoCountryCore,
+  normalizeCeoPathCore,
+  buildCeoNameCore
+} from "./core/ceo-normalize-utils.js";
+import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed-cache-utils.js";
@@ -4120,45 +4127,27 @@ function resolvePreferredHandle(profile, fallbackName = "") {
 }
 
 function parseCoordNumber(value) {
-  const raw = typeof value === "string" ? value.replace(",", ".").trim() : value;
-  const num = Number(raw);
-  return Number.isFinite(num) ? num : null;
+  return parseCoordNumberCore(value);
 }
 
 function uniqueStringList(values = []) {
-  return Array.from(new Set(
-    (values || [])
-      .map((value) => String(value || "").trim())
-      .filter(Boolean)
-  ));
+  return uniqueStringListCore(values);
 }
 
 function normalizeCeoCountry(value) {
-  const raw = String(value || "").trim().toLowerCase();
-  if (!raw) return CEO_COUNTRIES[0];
-  if (["xk", "kosovo", "kosove", "kosova"].includes(raw)) return "Kosovo";
-  if (["al", "albania", "albanien", "shqiperi", "shqiperia"].includes(raw)) return "Albanien";
-  if (["rs", "serbia", "serbien", "srbija"].includes(raw)) return "Serbien";
-  const match = CEO_COUNTRIES.find((entry) => entry.toLowerCase() === raw);
-  return match || CEO_COUNTRIES[0];
+  return normalizeCeoCountryCore(value, {
+    allowedCountries: CEO_COUNTRIES
+  });
 }
 
 function normalizeCeoPath(value, fallback = []) {
-  const base = Array.isArray(value)
-    ? value
-    : String(value || "")
-      .split(/[,\s]+/)
-      .filter(Boolean);
-  return uniqueStringList([...(base || []), ...(fallback || [])]);
+  return normalizeCeoPathCore(value, fallback, {
+    uniqueStringListFn: uniqueStringList
+  });
 }
 
 function buildCeoName({ firstName = "", lastName = "", fallback = "", email = "" } = {}) {
-  const combined = `${String(firstName || "").trim()} ${String(lastName || "").trim()}`.trim();
-  if (combined) return combined;
-  const safeFallback = String(fallback || "").trim();
-  if (safeFallback) return safeFallback;
-  const safeEmail = String(email || "").trim();
-  return safeEmail ? safeEmail.split("@")[0] : "CEO";
+  return buildCeoNameCore({ firstName, lastName, fallback, email });
 }
 
 function getCurrentCeoMeta(profile = state.userProfile, user = state.user) {
