@@ -509,6 +509,10 @@ import {
   bindChatOverlayEventsCore,
   bindPostOverlayEventsCore
 } from "./core/overlay-chat-post-bind-utils.js";
+import {
+  bindMenuOverlayEventsCore,
+  bindFocusOverlayEventsCore
+} from "./core/overlay-menu-focus-bind-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -14213,91 +14217,16 @@ function bindOverlayEvents({
   }
 
   if (menuChanged) {
-    const menuModalOverlay = document.getElementById("menuModalOverlay");
-    const menuModalClose = document.getElementById("menuModalClose");
-    const menuModalSave = document.getElementById("menuModalSave");
-    const menuImageTrigger = document.getElementById("menuItemImageTrigger");
-    const menuImageInput = document.getElementById("menuItemImageInput");
-    const menuImageUrl = document.getElementById("menuItemImageUrl");
-    const menuCropX = document.getElementById("menuItemCropX");
-    const menuCropY = document.getElementById("menuItemCropY");
-
-    bindModalDismiss(menuModalOverlay, closeMenuModal, { selfOnly: true });
-    bindModalDismiss(menuModalClose, closeMenuModal);
-    if (menuModalSave) {
-      menuModalSave.addEventListener("click", () => {
-        if (state.menuModal.loading) return;
-        void saveMenuItemFromModal();
-      });
-    }
-    if (menuImageTrigger && menuImageInput) {
-      menuImageTrigger.addEventListener("click", () => menuImageInput.click());
-    }
-    if (menuImageInput) {
-      menuImageInput.addEventListener("change", (e) => {
-        const files = Array.from(e.target.files || []);
-        if (!files.length) return;
-        const nextFiles = [...(state.menuModal.imageFiles || []), ...files];
-        const previews = [];
-        let remaining = files.length;
-        files.forEach((file) => {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            previews.push(reader.result || "");
-            remaining -= 1;
-            if (remaining <= 0) {
-              state.menuModal.imageFiles = nextFiles;
-              state.menuModal.imagePreviews = [
-                ...(state.menuModal.imagePreviews || []),
-                ...previews
-              ];
-              renderOverlays({ updateMenu: true });
-            }
-          };
-          reader.readAsDataURL(file);
-        });
-      });
-    }
-    if (menuImageUrl) {
-      menuImageUrl.addEventListener("input", () => {
-        state.menuModal.imageUrlDraft = menuImageUrl.value || "";
-        const preview = document.getElementById("menuItemHeroPreview");
-        const hasGallery = !!(state.menuModal.existingImages || []).length || !!(state.menuModal.imagePreviews || []).length;
-        if (preview && !hasGallery) {
-          preview.setAttribute("src", menuImageUrl.value.trim() || PLACEHOLDER_IMAGE);
-          syncMenuModalCropPreview();
-        }
-      });
-    }
-    if (menuCropX) {
-      menuCropX.addEventListener("input", () => {
-        state.menuModal.cropX = clampCropPercent(menuCropX.value, 50);
-        syncMenuModalCropPreview();
-      });
-    }
-    if (menuCropY) {
-      menuCropY.addEventListener("input", () => {
-        state.menuModal.cropY = clampCropPercent(menuCropY.value, 50);
-        syncMenuModalCropPreview();
-      });
-    }
-    syncMenuModalCropPreview();
-
-    document.querySelectorAll("[data-menu-image-remove]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const idx = Number(btn.dataset.menuImageRemove || "0");
-        const source = btn.dataset.menuImageSource || "existing";
-        if (source === "existing") {
-          const next = (state.menuModal.existingImages || []).filter((_, i) => i !== idx);
-          state.menuModal.existingImages = next;
-        } else {
-          const nextFiles = (state.menuModal.imageFiles || []).filter((_, i) => i !== idx);
-          const nextPreviews = (state.menuModal.imagePreviews || []).filter((_, i) => i !== idx);
-          state.menuModal.imageFiles = nextFiles;
-          state.menuModal.imagePreviews = nextPreviews;
-        }
-        renderOverlays({ updateMenu: true });
-      });
+    bindMenuOverlayEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      bindModalDismissFn: bindModalDismiss,
+      closeMenuModalFn: closeMenuModal,
+      saveMenuItemFromModalFn: saveMenuItemFromModal,
+      renderOverlaysFn: renderOverlays,
+      syncMenuModalCropPreviewFn: syncMenuModalCropPreview,
+      clampCropPercentFn: clampCropPercent,
+      state,
+      placeholderImage: PLACEHOLDER_IMAGE
     });
   }
 
@@ -14438,51 +14367,16 @@ function bindOverlayEvents({
   }
 
   if (focusChanged) {
-    const focusOverlay = document.getElementById("focusModalOverlay");
-    const focusClose = document.getElementById("focusModalClose");
-    const focusSave = document.getElementById("focusModalSave");
-    const focusImageTrigger = document.getElementById("focusImageTrigger");
-    const focusImageInput = document.getElementById("focusImageInput");
-    const focusCropX = document.getElementById("focusCropX");
-    const focusCropY = document.getElementById("focusCropY");
-
-    bindModalDismiss(focusOverlay, closeFocusModal, { selfOnly: true });
-    bindModalDismiss(focusClose, closeFocusModal);
-    if (focusSave) {
-      focusSave.addEventListener("click", () => {
-        if (state.focusModal.loading) return;
-        void saveFocusItemFromModal();
-      });
-    }
-    if (focusImageTrigger && focusImageInput) {
-      focusImageTrigger.addEventListener("click", () => focusImageInput.click());
-    }
-    if (focusImageInput) {
-      focusImageInput.addEventListener("change", (e) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          state.focusModal.imageFile = file;
-          state.focusModal.imagePreview = reader.result || "";
-          renderOverlays({ updateFocus: true });
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-    if (focusCropX) {
-      focusCropX.addEventListener("input", () => {
-        state.focusModal.cropX = clampCropPercent(focusCropX.value, 50);
-        syncFocusModalCropPreview();
-      });
-    }
-    if (focusCropY) {
-      focusCropY.addEventListener("input", () => {
-        state.focusModal.cropY = clampCropPercent(focusCropY.value, 50);
-        syncFocusModalCropPreview();
-      });
-    }
-    syncFocusModalCropPreview();
+    bindFocusOverlayEventsCore({
+      documentObj: typeof document === "undefined" ? null : document,
+      bindModalDismissFn: bindModalDismiss,
+      closeFocusModalFn: closeFocusModal,
+      saveFocusItemFromModalFn: saveFocusItemFromModal,
+      renderOverlaysFn: renderOverlays,
+      syncFocusModalCropPreviewFn: syncFocusModalCropPreview,
+      clampCropPercentFn: clampCropPercent,
+      state
+    });
   }
 
   if (leadChanged) {
