@@ -2,7 +2,17 @@
 <html lang="de">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    (() => {
+      const standalone = window.matchMedia?.("(display-mode: standalone)")?.matches || window.navigator.standalone === true;
+      if (standalone) {
+        const vp = document.querySelector('meta[name="viewport"]');
+        if (vp) vp.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
+        document.documentElement.classList.add("is-standalone");
+      }
+    })();
+  </script>
   <meta name="theme-color" content="#f8fafc" />
   <title>MNYRA Social</title>
   <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
@@ -19,7 +29,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-27">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-28">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7">
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js" crossorigin>
@@ -93,33 +103,18 @@
     body.modal-open #app { pointer-events: none; visibility: hidden; }
     body.modal-open #overlayRoot,
     body.modal-open #overlayRoot > * { pointer-events: auto; visibility: visible; }
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      padding-bottom: var(--safe-area-bottom);
-      padding-bottom: constant(safe-area-inset-bottom);
-      padding-bottom: env(safe-area-inset-bottom);
-    }
+    .modal-overlay { position: fixed; inset: 0; padding-bottom: var(--safe-area-bottom); }
     .modal-sheet {
       max-height: calc(100dvh - var(--safe-area-top) - var(--safe-area-bottom));
       border-bottom-width: 0 !important;
     }
     .app-shell { min-height: 100dvh; background: var(--app-bg); }
-    .app-header-safe {
-      padding-top: calc(var(--safe-area-top) + 1.25rem) !important;
-      padding-top: calc(constant(safe-area-inset-top) + 1.25rem) !important;
-      padding-top: calc(env(safe-area-inset-top) + 1.25rem) !important;
-    }
-    .app-main-scroll {
-      padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important;
-      padding-bottom: calc(constant(safe-area-inset-bottom) + 1rem) !important;
-      padding-bottom: calc(env(safe-area-inset-bottom) + 1rem) !important;
-    }
-    .app-main-content-safe {
-      padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important;
-      padding-bottom: calc(constant(safe-area-inset-bottom) + 6rem) !important;
-      padding-bottom: calc(env(safe-area-inset-bottom) + 6rem) !important;
-    }
+    .app-header-safe { padding-top: 1.25rem !important; }
+    .app-main-scroll { padding-bottom: 1rem !important; }
+    .app-main-content-safe { padding-bottom: 6rem !important; }
+    html.is-standalone .app-header-safe { padding-top: calc(var(--safe-area-top) + 1.25rem) !important; }
+    html.is-standalone .app-main-scroll { padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important; }
+    html.is-standalone .app-main-content-safe { padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important; }
     .modal-frame {
       position: absolute;
       left: 0;
@@ -215,7 +210,7 @@
 <body class="bg-slate-50 text-slate-900">
   <div id="app" aria-busy="true"></div>
   <script async src="https://unpkg.com/lucide@latest"></script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-27"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-08-safearea-28"></script>
   <script>
     (() => {
       const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-03-07-favorites-10").catch(() => {});
