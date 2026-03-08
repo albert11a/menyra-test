@@ -33,6 +33,7 @@ export const avatarKey = (uid) => (uid ? `${STORAGE_KEYS.avatarCache}::${uid}` :
 export const notificationsKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::${uid}` : "");
 export const followingKey = (uid) => (uid ? `${STORAGE_KEYS.following}::${uid}` : "");
 export const shopCartKey = (uid) => (uid ? `${STORAGE_KEYS.shopCart}::${uid}` : "");
+export const chatIndexKey = (uid) => (uid ? `${STORAGE_KEYS.chatIndex}::${uid}` : "");
 export const pushSeenKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::push_seen::${uid}` : "");
 export const pushTokenMetaKey = (uid) => (uid ? `${STORAGE_KEYS.notifications}::push_meta::${uid}` : "");
 export const pushDeviceIdKey = () => `${STORAGE_KEYS.notifications}::push_device_id`;

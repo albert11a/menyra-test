@@ -54,6 +54,7 @@ import {
   notificationsKey,
   followingKey,
   shopCartKey,
+  chatIndexKey,
   pushSeenKey,
   pushTokenMetaKey,
   pushDeviceIdKey,
@@ -2966,13 +2967,8 @@ function applyFollowingHandles(handles, { shouldRender = true, targetIds = state
   }
 }
 
-function chatIndexStorageKey(uid = state.user?.uid || "") {
-  const safeUid = String(uid || "").trim();
-  return safeUid ? `${STORAGE_KEYS.chatIndex}::${safeUid}` : "";
-}
-
 function saveChatThreadIndex(threads) {
-  const key = chatIndexStorageKey();
+  const key = chatIndexKey(state.user?.uid || "");
   if (!key) return;
   try {
     safeStorage.setItem(key, JSON.stringify((Array.isArray(threads) ? threads : []).slice(0, 100)));
@@ -3078,7 +3074,7 @@ function mergeChatThreadLists(...lists) {
 }
 
 function loadChatThreadIndex(uid = state.user?.uid || "") {
-  const key = chatIndexStorageKey(uid);
+  const key = chatIndexKey(uid);
   const scopedIndex = readChatThreadIndexList(key);
   const legacyIndex = readChatThreadIndexList(STORAGE_KEYS.chatIndex);
   const scopedThreads = rebuildChatThreadIndexFromStorage(uid);
@@ -16184,7 +16180,7 @@ function bindAppEvents() {
           safeStorage.removeItem(pushSeenKey(state.user.uid));
           safeStorage.removeItem(pushTokenMetaKey(state.user.uid));
           safeStorage.removeItem(followingKey(state.user.uid));
-          safeStorage.removeItem(chatIndexStorageKey(state.user.uid));
+          safeStorage.removeItem(chatIndexKey(state.user.uid));
         }
         safeStorage.removeItem(STORAGE_KEYS.postMeta);
         resetUserScopedState();
