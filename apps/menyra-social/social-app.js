@@ -183,6 +183,10 @@ import {
   createOutgoingChatMessageCore
 } from "./core/chat-compose-utils.js";
 import {
+  resolveChatSendPayloadCore,
+  buildChatSendLocalUpdateCore
+} from "./core/chat-send-flow-utils.js";
+import {
   captureChatInputFocusStateCore,
   restoreChatInputFocusStateCore,
   scrollChatMessagesToBottomCore,
@@ -3696,30 +3700,37 @@ async function sendChatMessage() {
     return;
   }
   const input = document.getElementById("chatMessageInput");
-  const text = String(input?.value ?? state.chatModal.draft ?? "").trim();
-  const attachments = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments.slice() : [];
-  if (!text && !attachments.length) return;
-  const createdAt = new Date().toISOString();
-  const outgoingMessage = createOutgoingChatMessageCore({
-    text,
-    attachments,
-    createdAt,
-    nowMsFn: () => Date.now(),
-    randomFn: () => Math.random()
+  const sendPayload = resolveChatSendPayloadCore({
+    inputValue: input?.value,
+    draft: state.chatModal.draft,
+    attachments: state.chatModal.attachments
   });
-  const nextMessages = [...(state.chatModal.messages || []), outgoingMessage];
-  state.chatModal.messages = pruneChatMessages(nextMessages);
+  if (!sendPayload.canSend) return;
+  const createdAt = new Date().toISOString();
+  const localUpdate = buildChatSendLocalUpdateCore({
+    currentMessages: state.chatModal.messages,
+    text: sendPayload.text,
+    attachments: sendPayload.attachments,
+    createdAt,
+    createOutgoingChatMessage: ({ text, attachments, createdAt }) => createOutgoingChatMessageCore({
+      text,
+      attachments,
+      createdAt,
+      nowMsFn: () => Date.now(),
+      randomFn: () => Math.random()
+    }),
+    pruneChatMessages: (messages) => pruneChatMessages(messages),
+    buildChatPreviewText: (entry) => buildChatPreviewText(entry),
+    getChatMessageTimestamp: (entry) => getChatMessageTimestamp(entry)
+  });
+  state.chatModal.messages = localUpdate.nextMessages;
   state.chatModal.draft = "";
   state.chatModal.attachments = [];
   saveChatThreadMessages(state.chatModal.profile, state.chatModal.messages);
-  upsertChatThread(state.chatModal.profile, {
-    lastMessage: text || buildChatPreviewText({ attachments }),
-    unreadCount: 0,
-    updatedAt: getChatMessageTimestamp({ createdAt })
-  });
+  upsertChatThread(state.chatModal.profile, localUpdate.threadPatch);
   render();
   try {
-    await syncChatMessageToRemote(outgoingMessage, state.chatModal.profile);
+    await syncChatMessageToRemote(localUpdate.outgoingMessage, state.chatModal.profile);
   } catch (err) {
     console.error(err);
   }
