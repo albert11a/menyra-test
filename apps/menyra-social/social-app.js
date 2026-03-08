@@ -95,6 +95,7 @@ import {
   mapPushActivationErrorCore,
   canEmitNativePushAlertsCore
 } from "./core/push-activation-utils.js";
+import { ensureNotificationPermissionCore } from "./core/push-permission-utils.js";
 import {
   readPushSeenIdsCore,
   writePushSeenIdsCore
@@ -2651,29 +2652,12 @@ function canEmitNativePushAlerts() {
 }
 
 async function ensureNotificationPermission({ interactive = false } = {}) {
-  if (!canUseNativeNotifications()) {
-    setPushActivationIssue("Browser unterstuetzt Notification API nicht.");
-    return false;
-  }
-  if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") {
-    setPushActivationIssue("Browser-Permission fuer Benachrichtigungen ist auf 'denied'.");
-    return false;
-  }
-  if (!interactive) {
-    setPushActivationIssue("Browser-Permission noch nicht erteilt.");
-    return false;
-  }
-  try {
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      setPushActivationIssue(`Browser-Permission wurde nicht freigegeben (${permission}).`);
-    }
-    return permission === "granted";
-  } catch (err) {
-    setPushActivationIssue("Browser-Permission konnte nicht angefragt werden.", err);
-    return false;
-  }
+  return await ensureNotificationPermissionCore({
+    interactive,
+    canUseNativeNotifications: () => canUseNativeNotifications(),
+    notificationApi: typeof Notification !== "undefined" ? Notification : null,
+    setPushActivationIssue: (reason, err) => setPushActivationIssue(reason, err)
+  });
 }
 
 function resolveNativePushActor(notif = {}) {
