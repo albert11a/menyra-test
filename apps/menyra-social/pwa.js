@@ -15,32 +15,6 @@ const SW_UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 
 let swUpdateTimer = null;
 
-function showBetaUpdateInfo(text) {
-  if (!document?.body) return;
-  const existing = document.getElementById("pwaBetaUpdateInfo");
-  if (existing) existing.remove();
-  const node = document.createElement("div");
-  node.id = "pwaBetaUpdateInfo";
-  node.textContent = text;
-  node.style.cssText = [
-    "position:fixed",
-    "right:12px",
-    "bottom:12px",
-    "z-index:2147483647",
-    "max-width:300px",
-    "padding:10px 12px",
-    "border-radius:12px",
-    "background:#0f172a",
-    "color:#e2e8f0",
-    "font:600 12px/1.35 'Plus Jakarta Sans', Arial, sans-serif",
-    "box-shadow:0 10px 30px rgba(15,23,42,.35)"
-  ].join(";");
-  document.body.appendChild(node);
-  window.setTimeout(() => {
-    if (node.isConnected) node.remove();
-  }, 6500);
-}
-
 function scheduleSwUpdateChecks(reg) {
   const runUpdate = () => reg.update().catch(() => null);
   runUpdate();
@@ -85,14 +59,7 @@ async function registerSW() {
     // Do not force a runtime reload on controller changes.
     // A forced reload can interrupt deep-links opened from push notifications.
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      showBetaUpdateInfo("Beta-Update aktiv: Neue Version bereit. Erstes Laden kann kurz minimal laenger dauern.");
       log('controller changed');
-    });
-
-    navigator.serviceWorker.addEventListener("message", (event) => {
-      if (event?.data?.type === "PWA_BETA_CHANNEL_ACTIVE") {
-        showBetaUpdateInfo("Beta-Update-Kanal aktiv: schnelle Auto-Updates eingeschaltet.");
-      }
     });
   } catch (err) {
     console.warn('[PWA] SW registration failed', err);
