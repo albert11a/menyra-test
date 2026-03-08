@@ -172,6 +172,11 @@ import {
   normalizeProfileTopTabFromRouteCore
 } from "./core/profile-route-open-utils.js";
 import {
+  isPushOpenTargetMessageCore,
+  parsePushOpenTargetPayloadCore,
+  shouldHandlePushOpenTargetCore
+} from "./core/push-open-target-message-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10685,14 +10690,15 @@ function maybeOpenChatFromQuery() {
 }
 
 function handlePushOpenTargetMessage(payload = {}) {
-  const safeNotificationId = String(payload?.notificationId || payload?.notifId || "").trim();
-  const targetUrl = String(payload?.url || payload?.link || "").trim();
+  const parsed = parsePushOpenTargetPayloadCore(payload);
+  const safeNotificationId = parsed.notificationId;
+  const targetUrl = parsed.targetUrl;
   const hasRouteFromUrl = applyPendingRouteStateFromTargetUrl(targetUrl);
   if (safeNotificationId) {
     pendingNotificationHandled = false;
     pendingNotificationId = safeNotificationId;
   }
-  if (!safeNotificationId && !hasRouteFromUrl) return;
+  if (!shouldHandlePushOpenTargetCore({ notificationId: safeNotificationId, hasRouteFromUrl })) return;
   const prevActiveTab = state.activeTab;
   applyPendingInitialRouteState();
   const tabChangedByRoute = state.activeTab !== prevActiveTab;
@@ -10718,7 +10724,7 @@ function bindPushOpenTargetMessageHandler() {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
   navigator.serviceWorker.addEventListener("message", (event) => {
     const payload = event?.data || {};
-    if (payload?.type !== "OPEN_NOTIFICATION_TARGET") return;
+    if (!isPushOpenTargetMessageCore(payload)) return;
     handlePushOpenTargetMessage(payload);
   });
   pushOpenMessageBound = true;
