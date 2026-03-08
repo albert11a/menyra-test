@@ -144,6 +144,11 @@ import {
   loadChatThreadMessagesCore,
   saveChatThreadMessagesCore
 } from "./core/chat-message-utils.js";
+import {
+  buildChatThreadPatchFromMessagesCore,
+  markIncomingChatMessagesAsReadCore,
+  updateChatMessageListCore
+} from "./core/chat-message-state-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -3491,13 +3496,17 @@ function syncChatThreadSummary(profile, messages) {
   if (!profile) return;
   const threadId = getChatThreadId(profile);
   const existing = (state.chatThreads || []).find((item) => String(item?.id || "") === threadId) || null;
-  const list = pruneChatMessages(messages);
-  const lastMessage = list[list.length - 1] || null;
+  const summaryPatch = buildChatThreadPatchFromMessagesCore({
+    messages,
+    existingUpdatedAt: Number(existing?.updatedAt || 0),
+    pruneChatMessages: (items) => pruneChatMessages(items),
+    buildChatPreviewText: (message) => buildChatPreviewText(message),
+    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message),
+    nowMs: Date.now()
+  });
   upsertChatThread(profile, {
-    lastMessage: buildChatPreviewText(lastMessage),
-    updatedAt: lastMessage
-      ? Math.max(getChatMessageTimestamp(lastMessage), Number(existing?.updatedAt || 0))
-      : Number(existing?.updatedAt || Date.now())
+    lastMessage: summaryPatch.lastMessage,
+    updatedAt: summaryPatch.updatedAt
   });
 }
 
@@ -3505,34 +3514,36 @@ function markChatThreadAsRead(profile, messages = null) {
   if (!profile) return [];
   const threadId = getChatThreadId(profile);
   const existing = (state.chatThreads || []).find((item) => String(item?.id || "") === threadId) || null;
-  const currentMessages = pruneChatMessages(Array.isArray(messages) ? messages : loadChatThreadMessages(profile));
-  let changed = false;
-  const nextMessages = currentMessages.map((message) => {
-    if (message?.from !== "self" && !message?.read) {
-      changed = true;
-      return { ...message, read: true };
-    }
-    return message;
+  const readResult = markIncomingChatMessagesAsReadCore({
+    messages: Array.isArray(messages) ? messages : loadChatThreadMessages(profile),
+    pruneChatMessages: (items) => pruneChatMessages(items)
   });
-  if (changed) {
-    saveChatThreadMessages(profile, nextMessages);
+  if (readResult.changed) {
+    saveChatThreadMessages(profile, readResult.messages);
   }
-  const lastMessage = nextMessages[nextMessages.length - 1] || null;
-  upsertChatThread(profile, {
-    lastMessage: buildChatPreviewText(lastMessage),
-    unreadCount: 0,
-    updatedAt: lastMessage
-      ? Math.max(getChatMessageTimestamp(lastMessage), Number(existing?.updatedAt || 0))
-      : Number(existing?.updatedAt || Date.now())
+  const summaryPatch = buildChatThreadPatchFromMessagesCore({
+    messages: readResult.messages,
+    existingUpdatedAt: Number(existing?.updatedAt || 0),
+    pruneChatMessages: (items) => pruneChatMessages(items),
+    buildChatPreviewText: (message) => buildChatPreviewText(message),
+    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message),
+    nowMs: Date.now()
   });
-  return nextMessages;
+  upsertChatThread(profile, {
+    lastMessage: summaryPatch.lastMessage,
+    unreadCount: 0,
+    updatedAt: summaryPatch.updatedAt
+  });
+  return readResult.messages;
 }
 
 function updateCurrentChatMessages(updater) {
   if (!state.chatModal.profile) return;
-  const current = pruneChatMessages(state.chatModal.messages || []);
-  const nextRaw = typeof updater === "function" ? updater(current) : updater;
-  const nextMessages = pruneChatMessages(nextRaw);
+  const nextMessages = updateChatMessageListCore({
+    currentMessages: state.chatModal.messages || [],
+    updater,
+    pruneChatMessages: (items) => pruneChatMessages(items)
+  });
   state.chatModal.messages = nextMessages;
   saveChatThreadMessages(state.chatModal.profile, nextMessages);
   syncChatThreadSummary(state.chatModal.profile, nextMessages);
