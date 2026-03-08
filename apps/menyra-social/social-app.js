@@ -60,6 +60,12 @@ import {
   pushDeviceIdKey,
   GUEST_SCOPE_UID
 } from "./_shared/social-storage.js";
+import {
+  createEmptyShopCart,
+  createEmptyOrdersState,
+  createEmptyFavoriteMenuItemsState,
+  createEmptyMenuDetailState
+} from "./core/state-factories.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
@@ -120,55 +126,6 @@ const DEFAULT_SETTINGS = {
 const DEFAULT_MENU_LAYOUT = {
   cardColor: "white"
 };
-
-function createEmptyShopCart() {
-  return {
-    restaurantId: "",
-    businessName: "",
-    businessAvatar: "",
-    items: [],
-    checkoutOpen: false,
-    form: {
-      name: "",
-      phone: "",
-      city: "",
-      address: ""
-    },
-    status: "",
-    loading: false
-  };
-}
-
-function createEmptyOrdersState() {
-  return {
-    items: [],
-    loading: false,
-    error: ""
-  };
-}
-
-function createEmptyFavoriteMenuItemsState() {
-  return {
-    items: [],
-    loading: false,
-    error: "",
-    loaded: false
-  };
-}
-
-function createEmptyMenuDetailState() {
-  return {
-    open: false,
-    item: null,
-    index: 0,
-    restaurantId: "",
-    selectedSize: "",
-    selectedColor: "",
-    commentText: "",
-    loading: false,
-    sending: false
-  };
-}
 
 const CHAT_MESSAGE_TTL_MS = 24 * 60 * 60 * 1000;
 const CHAT_ATTACHMENT_INLINE_MAX_BYTES = 250000;

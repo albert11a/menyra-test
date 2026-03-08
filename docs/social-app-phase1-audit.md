@@ -95,6 +95,10 @@ Diese Bloecke bleiben vorerst drin, bis wir Migrations-Fenster und Datenlage fin
 1. Phase 1 Aussortieren ist abgeschlossen.
 2. Danach Core-Split starten (`core/state.js`, `core/bootstrap.js`, `core/render.js`).
 
+## Phase 2 Start
+1. `core/state-factories.js` erstellt.
+2. `createEmptyShopCart`, `createEmptyOrdersState`, `createEmptyFavoriteMenuItemsState`, `createEmptyMenuDetailState` aus `social-app.js` ausgelagert.
+
 ## Gate pro Batch
 1. `node --check apps/menyra-social/social-app.js`
 2. Smoke: Safari Reload, Auth-Avatar, Feed, Shop Scroll/Tap.
