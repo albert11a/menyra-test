@@ -138,6 +138,10 @@ import {
   normalizeNotificationWriteIdsCore
 } from "./core/notification-write-utils.js";
 import {
+  markNotificationReadInListCore,
+  markAllNotificationsReadInListCore
+} from "./core/notification-read-state-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -11114,9 +11118,12 @@ async function acceptFollowRequest(notificationId) {
 
 async function markNotificationRead(id) {
   if (!id) return;
-  const idx = state.notifications.findIndex((n) => n.id === id);
-  if (idx >= 0 && !state.notifications[idx].read) {
-    state.notifications[idx].read = true;
+  const local = markNotificationReadInListCore({
+    notifications: state.notifications,
+    id
+  });
+  if (local.changed) {
+    state.notifications = local.nextNotifications;
     saveNotifications(state.notifications);
     const updated = updateNotificationsDom();
     if (!updated && state.activeTab === "notifications") {
@@ -11133,17 +11140,19 @@ async function markNotificationRead(id) {
 }
 
 async function markAllNotificationsRead() {
-  const unread = state.notifications.filter((n) => !n.read);
-  if (!unread.length) return;
-  state.notifications = state.notifications.map((n) => ({ ...n, read: true }));
+  const local = markAllNotificationsReadInListCore({
+    notifications: state.notifications
+  });
+  if (!local.changed) return;
+  state.notifications = local.nextNotifications;
   saveNotifications(state.notifications);
   const updated = updateNotificationsDom();
   if (!updated && state.activeTab === "notifications") {
     render();
   }
   if (state.user?.uid) {
-    await Promise.allSettled(unread.map((n) =>
-      updateDoc(doc(db, "users", state.user.uid, "notifications", n.id), { read: true })
+    await Promise.allSettled(local.unreadIds.map((notifId) =>
+      updateDoc(doc(db, "users", state.user.uid, "notifications", notifId), { read: true })
     ));
   }
 }
