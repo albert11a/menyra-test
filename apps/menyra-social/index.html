@@ -14,9 +14,13 @@
         if (vp) vp.setAttribute("content", "width=device-width, initial-scale=1, viewport-fit=cover");
         document.documentElement.classList.add("is-standalone");
       }
-      const forceTop = () => window.scrollTo(0, 0);
-      window.addEventListener("pageshow", forceTop, { once: true });
-      window.addEventListener("load", forceTop, { once: true });
+      const forceTop = () => {
+        const y = window.scrollY || document.documentElement.scrollTop || 0;
+        if (y > 0) window.scrollTo(0, 0);
+      };
+      window.addEventListener("pageshow", () => {
+        window.requestAnimationFrame(forceTop);
+      }, { once: true });
     })();
   </script>
   <meta name="theme-color" content="#f8fafc" />
@@ -35,7 +39,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-08-authboot-31">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-08-authboot-32">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7">
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js" crossorigin>
@@ -57,14 +61,26 @@
     }
     html {
       overflow-x: hidden;
+      background: #f8fafc;
       background: var(--app-bg);
     }
-    body { background: var(--app-bg); color: #0f172a; margin: 0; }
+    body { background: #f8fafc; background: var(--app-bg); color: #0f172a; margin: 0; }
     body {
       overflow-x: hidden;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: auto;
+    }
+    html,
+    body {
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
     }
     #app {
       min-height: 100svh;
@@ -218,7 +234,7 @@
 <body class="bg-slate-50 text-slate-900">
   <div id="app" aria-busy="true"></div>
   <script async src="https://unpkg.com/lucide@latest"></script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-08-authboot-31"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-08-authboot-32"></script>
   <script>
     (() => {
       const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-03-07-favorites-10").catch(() => {});
