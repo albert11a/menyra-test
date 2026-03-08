@@ -156,6 +156,12 @@ import {
 } from "./core/follow-request-payload-utils.js";
 import { mapFollowingSnapshotCore } from "./core/following-listener-utils.js";
 import {
+  normalizePendingChatUidCore,
+  isSelfPendingChatTargetCore,
+  isChatThreadAlreadyOpenCore,
+  buildChatRouteTargetProfileCore
+} from "./core/chat-route-open-utils.js";
+import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
@@ -10635,9 +10641,12 @@ function maybeOpenChatFromQuery() {
   if (!pendingChatUid) return false;
   if (!state.user?.uid) return false;
 
-  const safeChatUid = String(pendingChatUid || "").trim();
+  const safeChatUid = normalizePendingChatUidCore(pendingChatUid);
   if (!safeChatUid) return false;
-  if (safeChatUid === String(state.user.uid || "").trim()) {
+  if (isSelfPendingChatTargetCore({
+    chatUid: safeChatUid,
+    currentUid: state.user.uid
+  })) {
     pendingChatHandled = true;
     pendingChatUid = "";
     clearChatQueryParams();
@@ -10648,18 +10657,16 @@ function maybeOpenChatFromQuery() {
   pendingChatUid = "";
   clearChatQueryParams();
 
-  if (state.chatModal.open && getChatThreadId(state.chatModal.profile) === safeChatUid) {
+  if (isChatThreadAlreadyOpenCore({
+    chatModalOpen: state.chatModal.open,
+    currentThreadId: getChatThreadId(state.chatModal.profile),
+    targetUid: safeChatUid
+  })) {
     return true;
   }
 
   const thread = getChatThreadById(safeChatUid);
-  openChatWithProfile({
-    uid: String(thread?.uid || safeChatUid).trim() || safeChatUid,
-    restaurantId: String(thread?.restaurantId || "").trim(),
-    handle: String(thread?.handle || safeChatUid).replace(/^@/, "").trim() || safeChatUid,
-    name: String(thread?.name || thread?.handle || "User").trim() || "User",
-    avatar: String(thread?.avatar || "").trim()
-  });
+  openChatWithProfile(buildChatRouteTargetProfileCore({ thread, targetUid: safeChatUid }));
   return true;
 }
 
