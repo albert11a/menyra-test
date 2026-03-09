@@ -221,10 +221,11 @@ Firebase Functions:
 
 ## 13) Refactor-Status (jetzt)
 Aktueller Stand:
-- `social-app.js`: 16120 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
-- `apps/menyra-social/core/`: 129 Module (inkl. Unterordner)
+- `social-app.js`: 14885 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
+- `apps/menyra-social/core/`: 130 Module (inkl. Unterordner)
 - `apps/menyra-social/core/` flache Root-Dateien: 0 (vorher >70)
 - Aktive Domain-Ordner: `app-events/`, `auth/`, `chat/`, `common/`, `crm/`, `feed/`, `follow/`, `leads/`, `map/`, `media/`, `menu/`, `notifications/`, `orders/`, `overlays/`, `profile/`, `push/`, `router/`, `shop/`, `ui/`
+- Neue Auslagerung (lokal): Overlay-Orchestrierung aus `social-app.js` nach `apps/menyra-social/core/overlays/overlay-orchestration-controller.js`
 - Letzte Refactor-Commits:
   - `3a29d7d` Notifications-Runtime-Flow (Live-Listener + Native-Push-Fallback) nach `core/notifications/notifications-runtime-flow-utils.js` ausgelagert
   - `f3c66fa` Profile-Open-Flow (`own business`, `public business`, `public user`) nach `core/profile/profile-open-flow-utils.js` ausgelagert
