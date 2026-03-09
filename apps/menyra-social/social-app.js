@@ -92,6 +92,7 @@ import {
   resolveRouteStateFromTargetUrlCore,
   applyPendingRouteStateCore
 } from "./core/push/push-route-query-utils.js";
+import { createDeeplinkFlowControllerCore } from "./core/router/deeplink-flow-utils.js";
 import {
   resolveNativePushActorCore,
   resolveNativePushBodyCore,
@@ -9789,230 +9790,131 @@ function openOwnBusinessProfile({ showBack = true, topTab } = {}) {
   }
 }
 
-function clearNotificationQueryParams() {
-  clearQueryParamsFromCurrentUrlCore({
-    windowObj: typeof window === "undefined" ? null : window,
-    keys: ["notif", "notification", "nid"]
-  });
-}
-
-function clearPostQueryParams() {
-  clearQueryParamsFromCurrentUrlCore({
-    windowObj: typeof window === "undefined" ? null : window,
-    keys: ["post", "postId"]
-  });
-}
-
-function clearChatQueryParams() {
-  clearQueryParamsFromCurrentUrlCore({
-    windowObj: typeof window === "undefined" ? null : window,
-    keys: ["chat", "thread"]
-  });
-}
-
-function resolveRouteStateFromTargetUrl(rawUrl = "") {
-  return resolveRouteStateFromTargetUrlCore({
+const deeplinkFlowController = createDeeplinkFlowControllerCore({
+  state,
+  getPendingState: () => ({
+    pendingProfileRestaurantId,
+    pendingProfileTopTab,
+    pendingProfileHandled,
+    pendingNotificationId,
+    pendingNotificationHandled,
+    pendingPostId,
+    pendingPostHandled,
+    pendingChatUid,
+    pendingChatHandled,
+    pendingInitialTab,
+    pendingAuthMode
+  }),
+  setPendingState: (patch = {}) => {
+    if (!patch || typeof patch !== "object") return;
+    if ("pendingProfileRestaurantId" in patch) pendingProfileRestaurantId = patch.pendingProfileRestaurantId;
+    if ("pendingProfileTopTab" in patch) pendingProfileTopTab = patch.pendingProfileTopTab;
+    if ("pendingProfileHandled" in patch) pendingProfileHandled = !!patch.pendingProfileHandled;
+    if ("pendingNotificationId" in patch) pendingNotificationId = patch.pendingNotificationId;
+    if ("pendingNotificationHandled" in patch) pendingNotificationHandled = !!patch.pendingNotificationHandled;
+    if ("pendingPostId" in patch) pendingPostId = patch.pendingPostId;
+    if ("pendingPostHandled" in patch) pendingPostHandled = !!patch.pendingPostHandled;
+    if ("pendingChatUid" in patch) pendingChatUid = patch.pendingChatUid;
+    if ("pendingChatHandled" in patch) pendingChatHandled = !!patch.pendingChatHandled;
+    if ("pendingInitialTab" in patch) pendingInitialTab = patch.pendingInitialTab;
+    if ("pendingAuthMode" in patch) pendingAuthMode = patch.pendingAuthMode;
+  },
+  clearQueryParamsFromCurrentUrl: ({ keys = [] } = {}) => {
+    clearQueryParamsFromCurrentUrlCore({
+      windowObj: typeof window === "undefined" ? null : window,
+      keys
+    });
+  },
+  resolveRouteStateFromTargetUrl: (rawUrl = "") => resolveRouteStateFromTargetUrlCore({
     rawUrl,
     windowObj: typeof window === "undefined" ? null : window,
     resolveInitialRouteState,
     normalizeInitialTab,
     normalizeAuthMode
-  });
-}
-
-function applyPendingRouteStateFromTargetUrl(rawUrl = "") {
-  const routeState = resolveRouteStateFromTargetUrl(rawUrl);
-  const applied = applyPendingRouteStateCore({
-    current: {
-      pendingProfileRestaurantId,
-      pendingProfileTopTab,
-      pendingProfileHandled,
-      pendingNotificationId,
-      pendingNotificationHandled,
-      pendingPostId,
-      pendingPostHandled,
-      pendingChatUid,
-      pendingChatHandled,
-      pendingInitialTab,
-      pendingAuthMode
-    },
+  }),
+  applyPendingRouteState: (current, routeState) => applyPendingRouteStateCore({
+    current,
     routeState
-  });
-  if (!applied.changed) return false;
-  pendingProfileRestaurantId = applied.next.pendingProfileRestaurantId;
-  pendingProfileTopTab = applied.next.pendingProfileTopTab;
-  pendingProfileHandled = applied.next.pendingProfileHandled;
-  pendingNotificationId = applied.next.pendingNotificationId;
-  pendingNotificationHandled = applied.next.pendingNotificationHandled;
-  pendingPostId = applied.next.pendingPostId;
-  pendingPostHandled = applied.next.pendingPostHandled;
-  pendingChatUid = applied.next.pendingChatUid;
-  pendingChatHandled = applied.next.pendingChatHandled;
-  pendingInitialTab = applied.next.pendingInitialTab;
-  pendingAuthMode = applied.next.pendingAuthMode;
-  return true;
-}
-
-async function maybeOpenNotificationFromQuery() {
-  if (pendingNotificationHandled) return false;
-  if (!pendingNotificationId) return false;
-  if (!state.user?.uid) return false;
-
-  const safeNotificationId = normalizePendingNotificationIdCore(pendingNotificationId);
-  if (!safeNotificationId) return false;
-  pendingNotificationHandled = true;
-  pendingNotificationId = "";
-  clearNotificationQueryParams();
-
-  let notificationItem = findNotificationByIdCore({
-    notifications: state.notifications || [],
-    notificationId: safeNotificationId
-  });
-  if (!notificationItem) {
-    try {
-      const snap = await getDoc(doc(db, "users", state.user.uid, "notifications", safeNotificationId));
-      if (snap.exists()) {
-        notificationItem = normalizeNotificationItem(snap);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-  if (!notificationItem) return false;
-
-  state.notifications = prependNotificationByIdCore({
-    notifications: state.notifications || [],
+  }),
+  normalizePendingNotificationId: (value) => normalizePendingNotificationIdCore(value),
+  findNotificationById: ({ notifications = [], notificationId = "" } = {}) => findNotificationByIdCore({
+    notifications,
+    notificationId
+  }),
+  fetchNotificationById: async (notificationId, ownerUid) => {
+    const safeOwnerUid = String(ownerUid || "").trim();
+    const safeNotificationId = String(notificationId || "").trim();
+    if (!safeOwnerUid || !safeNotificationId) return null;
+    const snap = await getDoc(doc(db, "users", safeOwnerUid, "notifications", safeNotificationId));
+    if (!snap.exists()) return null;
+    return normalizeNotificationItem(snap);
+  },
+  prependNotificationById: ({ notifications = [], notificationItem = null, notificationId = "" } = {}) => prependNotificationByIdCore({
+    notifications,
     notificationItem,
-    notificationId: safeNotificationId
-  });
-  saveNotifications(state.notifications);
-  await openNotificationTarget(safeNotificationId);
-  return true;
-}
-
-async function maybeOpenPostFromQuery() {
-  if (pendingPostHandled) return false;
-  if (!pendingPostId) return false;
-  if (!state.user?.uid) return false;
-
-  const safePostId = normalizePendingPostIdCore(pendingPostId);
-  if (!safePostId) return false;
-  pendingPostHandled = true;
-  pendingPostId = "";
-  clearPostQueryParams();
-
-  let post = findPostInLocalSourcesCore({
-    postId: safePostId,
+    notificationId
+  }),
+  saveNotifications: (notifications) => saveNotifications(notifications),
+  openNotificationTarget: async (notificationId) => openNotificationTarget(notificationId),
+  normalizePendingPostId: (value) => normalizePendingPostIdCore(value),
+  findPostInLocalSources: ({ postId = "" } = {}) => findPostInLocalSourcesCore({
+    postId,
     findPostById: (id) => findPostById(id),
     feedPosts: state.feedPosts
-  });
-  if (!post) {
-    post = await fetchPostForNotification({ postId: safePostId });
-  }
-  if (!post) return false;
-
-  state.activeTab = "feed";
-  await openPostModal(post);
-  return true;
-}
-
-function maybeOpenChatFromQuery() {
-  if (pendingChatHandled) return false;
-  if (!pendingChatUid) return false;
-  if (!state.user?.uid) return false;
-
-  const safeChatUid = normalizePendingChatUidCore(pendingChatUid);
-  if (!safeChatUid) return false;
-  if (isSelfPendingChatTargetCore({
-    chatUid: safeChatUid,
-    currentUid: state.user.uid
-  })) {
-    pendingChatHandled = true;
-    pendingChatUid = "";
-    clearChatQueryParams();
-    return false;
-  }
-
-  pendingChatHandled = true;
-  pendingChatUid = "";
-  clearChatQueryParams();
-
-  if (isChatThreadAlreadyOpenCore({
+  }),
+  fetchPostForNotification: async ({ postId = "" } = {}) => fetchPostForNotification({ postId }),
+  openPostModal: async (post) => openPostModal(post),
+  normalizePendingChatUid: (value) => normalizePendingChatUidCore(value),
+  isSelfPendingChatTarget: ({ chatUid = "", currentUid = "" } = {}) => isSelfPendingChatTargetCore({
+    chatUid,
+    currentUid
+  }),
+  isChatThreadAlreadyOpen: ({ targetUid = "" } = {}) => isChatThreadAlreadyOpenCore({
     chatModalOpen: state.chatModal.open,
     currentThreadId: getChatThreadId(state.chatModal.profile),
-    targetUid: safeChatUid
-  })) {
-    return true;
-  }
-
-  const thread = getChatThreadById(safeChatUid);
-  openChatWithProfile(buildChatRouteTargetProfileCore({ thread, targetUid: safeChatUid }));
-  return true;
-}
-
-function handlePushOpenTargetMessage(payload = {}) {
-  const parsed = parsePushOpenTargetPayloadCore(payload);
-  const safeNotificationId = parsed.notificationId;
-  const targetUrl = parsed.targetUrl;
-  const hasRouteFromUrl = applyPendingRouteStateFromTargetUrl(targetUrl);
-  if (safeNotificationId) {
-    pendingNotificationHandled = false;
-    pendingNotificationId = safeNotificationId;
-  }
-  if (!shouldHandlePushOpenTargetCore({ notificationId: safeNotificationId, hasRouteFromUrl })) return;
-  const prevActiveTab = state.activeTab;
-  applyPendingInitialRouteState();
-  const tabChangedByRoute = state.activeTab !== prevActiveTab;
-  if (!state.user?.uid) {
-    if (tabChangedByRoute) render();
-    return;
-  }
-  void (async () => {
-    maybeOpenProfileFromQuery();
-    const openedNotification = await maybeOpenNotificationFromQuery();
-    if (openedNotification) return;
-    const openedPost = await maybeOpenPostFromQuery();
-    if (openedPost) return;
-    const openedChat = maybeOpenChatFromQuery();
-    if (!openedChat && (tabChangedByRoute || hasRouteFromUrl)) {
-      render();
-    }
-  })();
-}
-
-function bindPushOpenTargetMessageHandler() {
-  if (pushOpenMessageBound) return;
-  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
-  navigator.serviceWorker.addEventListener("message", (event) => {
-    const payload = event?.data || {};
-    if (!isPushOpenTargetMessageCore(payload)) return;
-    handlePushOpenTargetMessage(payload);
-  });
-  pushOpenMessageBound = true;
-}
-
-function maybeOpenProfileFromQuery() {
-  if (pendingProfileHandled) return;
-  if (!pendingProfileRestaurantId) return;
-  if (!state.user) return;
-  const safeRestaurantId = normalizePendingProfileRestaurantIdCore(pendingProfileRestaurantId);
-  if (isPendingProfileAlreadyOpenCore({
-    pendingProfileRestaurantId: safeRestaurantId,
+    targetUid
+  }),
+  getChatThreadById: (threadId) => getChatThreadById(threadId),
+  buildChatRouteTargetProfile: ({ thread = null, targetUid = "" } = {}) => buildChatRouteTargetProfileCore({
+    thread,
+    targetUid
+  }),
+  openChatWithProfile: (profile) => openChatWithProfile(profile),
+  normalizePendingProfileRestaurantId: (value) => normalizePendingProfileRestaurantIdCore(value),
+  isPendingProfileAlreadyOpen: ({ pendingProfileRestaurantId = "" } = {}) => isPendingProfileAlreadyOpenCore({
+    pendingProfileRestaurantId,
     currentProfileRestaurantId: state.profileView?.profile?.restaurantId || ""
-  })) {
-    pendingProfileHandled = true;
-    pendingProfileRestaurantId = "";
-    pendingProfileTopTab = "";
-    return;
+  }),
+  normalizeProfileTopTabFromRoute: (value) => normalizeProfileTopTabFromRouteCore(value),
+  openProfileViewFromBusiness: (input, options = {}) => openProfileViewFromBusiness(input, options),
+  parsePushOpenTargetPayload: (payload = {}) => parsePushOpenTargetPayloadCore(payload),
+  shouldHandlePushOpenTarget: ({ notificationId = "", hasRouteFromUrl = false } = {}) => shouldHandlePushOpenTargetCore({
+    notificationId,
+    hasRouteFromUrl
+  }),
+  applyPendingInitialRouteState: () => applyPendingInitialRouteState(),
+  render: () => render(),
+  isPushOpenTargetMessage: (payload = {}) => isPushOpenTargetMessageCore(payload),
+  getNavigator: () => (typeof navigator === "undefined" ? null : navigator),
+  isPushOpenMessageBound: () => pushOpenMessageBound,
+  markPushOpenMessageBound: () => {
+    pushOpenMessageBound = true;
   }
-  pendingProfileHandled = true;
-  const nextId = safeRestaurantId;
-  const nextTabRaw = pendingProfileTopTab;
-  pendingProfileRestaurantId = "";
-  pendingProfileTopTab = "";
-  const nextTab = normalizeProfileTopTabFromRouteCore(nextTabRaw);
-  openProfileViewFromBusiness({ id: nextId }, { showBack: false, topTab: nextTab });
-}
+});
+
+const {
+  clearNotificationQueryParams,
+  clearPostQueryParams,
+  clearChatQueryParams,
+  resolveRouteStateFromTargetUrl,
+  applyPendingRouteStateFromTargetUrl,
+  maybeOpenNotificationFromQuery,
+  maybeOpenPostFromQuery,
+  maybeOpenChatFromQuery,
+  handlePushOpenTargetMessage,
+  bindPushOpenTargetMessageHandler,
+  maybeOpenProfileFromQuery
+} = deeplinkFlowController;
 
 async function openProfileViewFromBusiness(input, { showBack = true, topTab } = {}) {
   try {
