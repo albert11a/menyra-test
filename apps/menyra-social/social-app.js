@@ -181,6 +181,7 @@ import {
   isPendingProfileAlreadyOpenCore,
   normalizeProfileTopTabFromRouteCore
 } from "./core/profile/profile-route-open-utils.js";
+import { createProfileOpenFlowControllerCore } from "./core/profile/profile-open-flow-utils.js";
 import {
   isPushOpenTargetMessageCore,
   parsePushOpenTargetPayloadCore,
@@ -9754,41 +9755,34 @@ function showPublicProfile(profile, posts, { showBack = true, backTab, topTab } 
   attachProfileViewListener(profile);
 }
 
-function isOwnBusinessTarget({ restaurantId = "", name = "" } = {}) {
-  if (!isLocalBusinessProfile(state.userProfile)) return false;
-  const ownRestaurantId = String(state.userProfile.restaurantId || "").trim();
-  const targetRestaurantId = String(restaurantId || "").trim();
-  if (ownRestaurantId && targetRestaurantId && ownRestaurantId === targetRestaurantId) return true;
+const profileOpenFlowController = createProfileOpenFlowControllerCore({
+  state,
+  isLocalBusinessProfile: (profile) => isLocalBusinessProfile(profile),
+  getRestaurantMetaById: (restaurantId) => getRestaurantMetaById(restaurantId),
+  normalizeSearchKey: (value) => normalizeSearchKey(value),
+  render: () => render(),
+  ensureMenuDataForProfile: () => ensureMenuDataForProfile(),
+  ensureFocusDataForProfile: () => ensureFocusDataForProfile(),
+  hydrateRestaurantsByIds: (restaurantIds, options = {}) => hydrateRestaurantsByIds(restaurantIds, options),
+  normalizeExternalProfile: (payload = {}) => normalizeExternalProfile(payload),
+  showPublicProfile: (profile, posts, options = {}) => showPublicProfile(profile, posts, options),
+  fetchBusinessProfileDoc: (payload = {}) => fetchBusinessProfileDoc(payload),
+  loadBusinessPostsForRestaurant: (restaurantId) => loadBusinessPostsForRestaurant(restaurantId),
+  normalizeExternalUserProfile: (payload = {}) => normalizeExternalUserProfile(payload),
+  openGuestAuthPrompt: (message = "") => openGuestAuthPrompt(message),
+  userProfileCache,
+  hasPendingFollowRequest: async (targetUid) => hasPendingFollowRequest(targetUid),
+  fetchUserDocByUid: async (uid) => getDoc(doc(db, "users", uid)),
+  resolveUserByHandle: async (handle) => resolveUserByHandle(handle),
+  loadUserPostsForUser: async (uid) => loadUserPostsForUser(uid)
+});
 
-  const ownRest = ownRestaurantId ? getRestaurantMetaById(ownRestaurantId) : null;
-  const ownNames = [
-    state.userProfile.name,
-    ownRest?.name,
-    ownRest?.restaurantName
-  ].map((item) => normalizeSearchKey(item)).filter(Boolean);
-  const targetName = normalizeSearchKey(name);
-  if (!targetName) return false;
-  return ownNames.includes(targetName);
-}
-
-function openOwnBusinessProfile({ showBack = true, topTab } = {}) {
-  const prevTab = state.activeTab || "feed";
-  const nextTopTab = topTab === "menu" ? "menu" : "profile";
-  state.profileView = null;
-  state.profileModal = { open: false, profile: null };
-  state.profileContentTab = "posts";
-  state.profileTopTab = nextTopTab;
-  state.profileViewMode = "grid";
-  state.profilePostMenuId = null;
-  state.drawerOpen = false;
-  state.activeTab = "profile";
-  state.profileBackTab = showBack ? prevTab : "";
-  render();
-  if (nextTopTab === "menu") {
-    ensureMenuDataForProfile();
-    ensureFocusDataForProfile();
-  }
-}
+const {
+  isOwnBusinessTarget,
+  openOwnBusinessProfile,
+  openProfileViewFromBusiness,
+  openProfileFromUser
+} = profileOpenFlowController;
 
 const deeplinkFlowController = createDeeplinkFlowControllerCore({
   state,
@@ -9915,116 +9909,6 @@ const {
   bindPushOpenTargetMessageHandler,
   maybeOpenProfileFromQuery
 } = deeplinkFlowController;
-
-async function openProfileViewFromBusiness(input, { showBack = true, topTab } = {}) {
-  try {
-    const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
-    const restaurantId = typeof input === "string" ? "" : (input?.id || "");
-    if (!safeName && !restaurantId) return;
-
-    if (isOwnBusinessTarget({ restaurantId, name: safeName })) {
-      openOwnBusinessProfile({ showBack, topTab });
-      return;
-    }
-
-    if (restaurantId) {
-      void hydrateRestaurantsByIds([restaurantId], { max: 1 });
-    }
-
-    const rest = restaurantId
-      ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
-      : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
-
-    const fallbackPosts = state.feedPosts
-      .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
-      .map((p, idx) => ({
-        id: p.id || `feed_${idx}`,
-        url: p.image,
-        type: p.type || "square",
-        caption: p.content || "",
-        createdAt: p.createdAt,
-        likes: p.likes ?? 0,
-        comments: p.comments ?? 0,
-        ownerType: "restaurant",
-        ownerId: restaurantId || p.restaurantId || ""
-      }));
-
-    const placeholderProfile = normalizeExternalProfile({
-      profileDoc: null,
-      restaurant: rest,
-      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-      posts: fallbackPosts
-    });
-
-    showPublicProfile(placeholderProfile, placeholderProfile.posts, { showBack, topTab });
-
-    const [profileSnap, posts] = await Promise.all([
-      fetchBusinessProfileDoc({ restaurantId, restaurant: rest }),
-      restaurantId ? loadBusinessPostsForRestaurant(restaurantId) : Promise.resolve(fallbackPosts)
-    ]);
-
-    const resolved = normalizeExternalProfile({
-      profileDoc: profileSnap,
-      restaurant: rest,
-      fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-      posts: posts && posts.length ? posts : fallbackPosts
-    });
-
-    if (state.activeTab !== "profile") return;
-    if (restaurantId && state.profileView?.profile?.restaurantId !== restaurantId) return;
-    showPublicProfile(resolved, resolved.posts, { showBack, topTab });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function openProfileFromUser(input) {
-  if (!state.user) {
-    openGuestAuthPrompt("Bitte einloggen, um User-Profile zu sehen.");
-    return;
-  }
-  try {
-    const uid = typeof input === "string" ? input : (input?.uid || "");
-    const handle = String(typeof input === "string" ? "" : (input?.handle || input?.name || "")).replace(/^@/, "");
-    if (!uid && !handle) return;
-
-    const cacheKey = uid || handle;
-    const cached = userProfileCache.get(cacheKey);
-    if (cached) {
-      cached.pendingFollowRequest = await hasPendingFollowRequest(cached.uid || uid || "");
-      showPublicProfile(cached, cached.posts || []);
-      return;
-    }
-
-    const fallbackProfile = normalizeExternalUserProfile({ userDoc: null, fallback: input || {}, posts: [] });
-    fallbackProfile.pendingFollowRequest = await hasPendingFollowRequest(fallbackProfile.uid || uid || "");
-    showPublicProfile(fallbackProfile, []);
-
-    let userDoc = null;
-    if (uid) {
-      const snap = await getDoc(doc(db, "users", uid));
-      if (snap.exists()) userDoc = snap;
-    } else if (handle) {
-      const resolved = await resolveUserByHandle(handle);
-      if (resolved?.id) userDoc = { id: resolved.id, data: resolved.data };
-    }
-
-    if (!userDoc) return;
-    const posts = await loadUserPostsForUser(userDoc.id);
-    const resolvedProfile = normalizeExternalUserProfile({
-      userDoc,
-      fallback: input || {},
-      posts
-    });
-    resolvedProfile.pendingFollowRequest = await hasPendingFollowRequest(resolvedProfile.uid || "");
-    userProfileCache.set(cacheKey, resolvedProfile);
-    if (state.activeTab !== "profile") return;
-    if (uid && state.profileView?.profile?.uid !== uid) return;
-    showPublicProfile(resolvedProfile, resolvedProfile.posts);
-  } catch (err) {
-    console.error(err);
-  }
-}
 
 function startFollowingListener(user = state.user) {
   if (followingUnsub) {
