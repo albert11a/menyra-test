@@ -4166,7 +4166,11 @@ function commitLiveSelfProfile(normalized, { syncPrivate = true } = {}) {
   if (lastRenderMode === "main") {
     updateShellDom();
     if (state.activeTab === "search" && refreshSearchView()) return;
-    if (state.activeTab === "feed") return;
+    if (state.activeTab === "feed") {
+      const updatedFeed = updateFeedDom();
+      if (!updatedFeed) render();
+      return;
+    }
   }
   render();
 }
@@ -4660,7 +4664,11 @@ async function resolveRoleSwitchTargets(user) {
   if (lastRenderMode === "main") {
     updateShellDom();
     if (state.activeTab === "search" && refreshSearchView()) return;
-    if (state.activeTab === "feed") return;
+    if (state.activeTab === "feed") {
+      const updatedFeed = updateFeedDom();
+      if (!updatedFeed) render();
+      return;
+    }
   }
   render();
 }
@@ -8967,7 +8975,11 @@ async function loadUserProfile(user, { force = false } = {}) {
   if (lastRenderMode === "main") {
     updateShellDom();
     if (state.activeTab === "search" && refreshSearchView()) return normalized;
-    if (state.activeTab === "feed") return normalized;
+    if (state.activeTab === "feed") {
+      const updatedFeed = updateFeedDom();
+      if (!updatedFeed) render();
+      return normalized;
+    }
   }
   render();
   return normalized;

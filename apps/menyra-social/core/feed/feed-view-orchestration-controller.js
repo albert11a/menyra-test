@@ -40,6 +40,19 @@ export function createFeedViewOrchestrationController({
 
   const doc = documentObj || (typeof document !== "undefined" ? document : null);
   const win = windowObj || (typeof window !== "undefined" ? window : null);
+  const shouldShowStoryUploadSlot = () => !!state.user;
+  const shouldShowFeedComposer = () => !!isLocalBusinessProfileFn(state.userProfile);
+
+  function renderFeedComposer() {
+    if (!shouldShowFeedComposer()) return "";
+    return `
+      <div data-feed-composer-wrap class="px-8 mb-6">
+        <button data-nav="upload" class="w-full p-4 rounded-[2rem] bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
+          ${iconFn("plus-square", "w-4 h-4")} Neuer Feed Post
+        </button>
+      </div>
+    `;
+  }
 
   function renderStoryItem(story, index = 0) {
     const borderClass = story.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
@@ -66,7 +79,7 @@ export function createFeedViewOrchestrationController({
   }
 
   function renderStoriesRow(stories) {
-    const uploadSlot = state.user ? `
+    const uploadSlot = shouldShowStoryUploadSlot() ? `
     <div class="flex-shrink-0 flex flex-col items-center gap-2" data-story-upload-wrap data-nav="upload">
       <div data-story-upload class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
         <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
@@ -217,6 +230,24 @@ export function createFeedViewOrchestrationController({
     return true;
   }
 
+  function ensureFeedComposerVisibility(feedView) {
+    if (!doc || !feedView) return;
+    const feedList = doc.getElementById("feedList");
+    if (!feedList) return;
+    const existingComposer = feedView.querySelector("[data-feed-composer-wrap]");
+    const showComposer = shouldShowFeedComposer();
+    if (!showComposer) {
+      if (existingComposer) existingComposer.remove();
+      return;
+    }
+    if (existingComposer) return;
+    const tpl = doc.createElement("template");
+    tpl.innerHTML = renderFeedComposer();
+    const node = tpl.content.firstElementChild;
+    if (!node) return;
+    feedList.parentNode?.insertBefore(node, feedList);
+  }
+
   function updateFeedDom() {
     const feedView = doc?.getElementById("feedView");
     if (!feedView) return false;
@@ -225,7 +256,7 @@ export function createFeedViewOrchestrationController({
       .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
     const stories = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeedFn(feedPosts) : state.stories);
     const storiesRow = doc.getElementById("storiesRow");
-    const nextSig = buildStoriesRowSignatureFn(stories);
+    const nextSig = `${buildStoriesRowSignatureFn(stories)}|upload:${shouldShowStoryUploadSlot() ? "1" : "0"}`;
     if (storiesRow) {
       if (getStoriesRowSignatureFn() !== nextSig) {
         patchStoriesRow(stories);
@@ -236,6 +267,7 @@ export function createFeedViewOrchestrationController({
         updateStoryMetaNodesFn(story);
       });
     }
+    ensureFeedComposerVisibility(feedView);
     patchFeedList(feedPosts);
     feedPosts.forEach(updateFeedLogoNodesFn);
     ensureFeedRestaurantMetaListenersFn(feedPosts);
@@ -255,13 +287,7 @@ export function createFeedViewOrchestrationController({
       <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pt-4 pb-8 no-scrollbar">
         ${renderStoriesRow(stories)}
       </div>
-      ${isLocalBusinessProfileFn(state.userProfile) ? `
-        <div class="px-8 mb-6">
-          <button data-nav="upload" class="w-full p-4 rounded-[2rem] bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
-            ${iconFn("plus-square", "w-4 h-4")} Neuer Feed Post
-          </button>
-        </div>
-      ` : ""}
+      ${renderFeedComposer()}
       <div id="feedList" class="px-8 py-4 space-y-12">
         ${renderFeedList(feedPosts)}
       </div>
