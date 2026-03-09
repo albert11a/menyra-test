@@ -2970,7 +2970,7 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
     state.restaurants = mergeRestaurants(state.restaurants, loaded);
     rebuildBusinessLocations();
     const feedUpdated = syncFeedPostLogos();
-    const storiesUpdated = refreshFeedStories({ force: true });
+    const storiesUpdated = state.stories.length ? false : refreshFeedStories({ force: true });
     if ((feedUpdated || storiesUpdated) && state.activeTab === "feed" && lastRenderMode === "main") {
       updateFeedDom();
     } else if (feedUpdated || storiesUpdated) {
@@ -3113,6 +3113,9 @@ function buildStoriesSignature(storyItems = []) {
 }
 
 function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
+  if (Array.isArray(state.stories) && state.stories.length) {
+    return false;
+  }
   const result = refreshFeedStoriesCore({
     posts,
     force,
