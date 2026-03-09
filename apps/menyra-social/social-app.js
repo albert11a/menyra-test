@@ -280,26 +280,26 @@ import {
   renderProfileModalCore,
   renderLikesModalCore,
   renderPostModalCore
-} from "./core/overlay-basic-render-utils.js";
+} from "./core/overlays/overlay-basic-render-utils.js";
 import {
   renderCommentItemCore,
   renderPostCommentsCore,
   renderMenuCommentItemCore,
   renderMenuDetailCommentsCore
-} from "./core/overlay-comment-render-utils.js";
+} from "./core/overlays/overlay-comment-render-utils.js";
 import {
   updatePostModalCountsOnlyCore,
   updatePostModalCommentsOnlyCore
-} from "./core/post-modal-update-utils.js";
+} from "./core/overlays/post-modal-update-utils.js";
 import {
   updateMenuDetailCountsOnlyCore,
   updateMenuDetailCommentsOnlyCore
-} from "./core/menu-detail-update-utils.js";
+} from "./core/overlays/menu-detail-update-utils.js";
 import {
   ensureOverlayRootCore,
   ensureModalEscapeHandlerCore,
   syncModalOpenUiStateCore
-} from "./core/overlay-root-ui-utils.js";
+} from "./core/overlays/overlay-root-ui-utils.js";
 import { renderMainCore } from "./core/main-shell-render-utils.js";
 import {
   renderNotificationsViewCore,
@@ -309,8 +309,8 @@ import {
   renderCrmLazyLoadingViewCore,
   renderCeoGuardCore
 } from "./core/crm-shared-render-utils.js";
-import { bindOverlayEventsCore } from "./core/overlay-bind-orchestrator-utils.js";
-import { renderOverlaysCore } from "./core/overlay-render-orchestrator-utils.js";
+import { bindOverlayEventsCore } from "./core/overlays/overlay-bind-orchestrator-utils.js";
+import { renderOverlaysCore } from "./core/overlays/overlay-render-orchestrator-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
 import { saveLeadFromModalCore } from "./core/lead-save-utils.js";
 import { deleteLeadFromModalCore } from "./core/lead-delete-utils.js";
@@ -557,17 +557,17 @@ import {
   bindProfileOverlayEventsCore,
   bindLikesOverlayEventsCore,
   bindCustomerOverlayEventsCore
-} from "./core/overlay-basic-bind-utils.js";
+} from "./core/overlays/overlay-basic-bind-utils.js";
 import {
   bindChatOverlayEventsCore,
   bindPostOverlayEventsCore
-} from "./core/overlay-chat-post-bind-utils.js";
+} from "./core/overlays/overlay-chat-post-bind-utils.js";
 import {
   bindMenuOverlayEventsCore,
   bindFocusOverlayEventsCore
-} from "./core/overlay-menu-focus-bind-utils.js";
-import { bindLeadOverlayEventsCore } from "./core/overlay-lead-bind-utils.js";
-import { bindMenuDetailOverlayEventsCore } from "./core/overlay-menu-detail-bind-utils.js";
+} from "./core/overlays/overlay-menu-focus-bind-utils.js";
+import { bindLeadOverlayEventsCore } from "./core/overlays/overlay-lead-bind-utils.js";
+import { bindMenuDetailOverlayEventsCore } from "./core/overlays/overlay-menu-detail-bind-utils.js";
 import { bindAppShellEventsCore } from "./core/app-events-shell-bind-utils.js";
 import { bindAppMenuFocusEventsCore } from "./core/app-events-menu-focus-bind-utils.js";
 import { bindAppSettingsProfileEventsCore } from "./core/app-events-settings-profile-bind-utils.js";
