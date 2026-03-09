@@ -1,5 +1,5 @@
 # MNYRA Social Platform
-Stand: 2026-03-08
+Stand: 2026-03-09
 
 Dieses Repository ist auf eine zentrale App reduziert: **MNYRA Social**.
 Alte Einzel-Apps (ceo/owner/staff/restaurants) sind als kompatible Routen auf Social gemappt.
@@ -168,7 +168,7 @@ Safe Area Basis:
   - `constant(safe-area-inset-*)` (legacy fallback)
 
 Wichtiges Verhalten:
-- `viewport-fit=cover` wird in `index.html` **nur im standalone mode** gesetzt.
+- `viewport-fit=cover` ist im `index.html` Viewport-Meta aktiv.
 - In normalem Safari bleibt Header absichtlich mit normalem Top-Spacing (`.app-header-safe`), um Browser-Chrome sauber zu respektieren.
 - In standalone/PWA wird zusaetzlicher Safe-Area-Top/Bottom Padding aktiviert.
 
@@ -190,11 +190,16 @@ Technische Leitlinien:
 Top-Level:
 - `apps/menyra-social/` Haupt-App
 - `apps/menyra-social/core/` modulare Business-Logik Utilities
+  - `apps/menyra-social/core/overlays/` Overlay-Rendering, Overlay-Binding, Modal-Update-Orchestrierung
 - `apps/menyra-social/_shared/` shared Browser-Utilities
 - `shared/` globale shared Konfig/Styles
 - `functions/` Firebase Cloud Functions
 - `hub/` internes Test-Hub UI
 - `index.html` Root-Weiterleitung auf Social
+
+Struktur-Konvention (laufend):
+- Neue Core-Dateien werden thematisch in Sub-Ordnern angelegt.
+- Bestehende Root-Core-Dateien werden schrittweise in passende Ordner verschoben (reversible Commits).
 
 ## 11) Lokaler Start
 Voraussetzungen:
@@ -216,12 +221,22 @@ Firebase Functions:
 
 ## 13) Refactor-Status (jetzt)
 Aktueller Stand:
-- `social-app.js`: 19264 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
-- `apps/menyra-social/core/`: 60 Module (bereits ausgelagert)
+- `social-app.js`: 15641 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
+- `apps/menyra-social/core/`: 124 Module (inkl. Unterordner)
+- Letzte Refactor-Commits:
+  - `d5802e8` CRM Shared Renderer ausgelagert
+  - `ac8ab27` Main Shell + Notifications Renderer ausgelagert
+  - `9088e6c` Overlay Root/UI + MenuDetail Update-Logik ausgelagert
+  - `33814bb` Post-Modal Update-Logik ausgelagert
+  - `4a81672` Comment-Renderer ausgelagert
 
 Zielbild:
 - `social-app.js` wird weiter auf Orchestrierung + Event-Wiring reduziert.
 - Feature-Logik (feed/chat/shop/crm/push/profile/map) liegt modular in `core/`.
+- Nach Abschluss liegen Utilities thematisch in Sub-Ordnern (mindestens `overlays/`, danach `auth/`, `chat/`, `push/`, `leads/`, `ui/`).
+
+README-Pflege:
+- Der Refactor-Status in dieser README wird nach jedem groesseren Refactor-Block aktualisiert.
 
 ## 14) Definition of Done (final)
 Ein finaler "fertig" Zustand bedeutet:
