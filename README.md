@@ -190,14 +190,7 @@ Technische Leitlinien:
 Top-Level:
 - `apps/menyra-social/` Haupt-App
 - `apps/menyra-social/core/` modulare Business-Logik Utilities
-  - `apps/menyra-social/core/app-events/` App Event-Binding Utilities
-  - `apps/menyra-social/core/auth/` Auth/Session/Route-Guard Utilities
-  - `apps/menyra-social/core/chat/` Chat State/Sync/Render Utilities
-  - `apps/menyra-social/core/crm/` CRM/CEO/Staff Utilities
-  - `apps/menyra-social/core/leads/` Lead Domain Utilities
-  - `apps/menyra-social/core/notifications/` Notification Domain Utilities
-  - `apps/menyra-social/core/overlays/` Overlay-Rendering, Overlay-Binding, Modal-Update-Orchestrierung
-  - `apps/menyra-social/core/push/` Push Activation/Token/Route Utilities
+  - Themenordner (aktuell): `app-events/`, `auth/`, `chat/`, `common/`, `crm/`, `feed/`, `follow/`, `leads/`, `map/`, `media/`, `menu/`, `notifications/`, `orders/`, `overlays/`, `profile/`, `push/`, `shop/`, `ui/`
 - `apps/menyra-social/_shared/` shared Browser-Utilities
 - `shared/` globale shared Konfig/Styles
 - `functions/` Firebase Cloud Functions
@@ -230,9 +223,11 @@ Firebase Functions:
 Aktueller Stand:
 - `social-app.js`: 16683 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
 - `apps/menyra-social/core/`: 124 Module (inkl. Unterordner)
-- `apps/menyra-social/core/` flache Root-Dateien: 42 (vorher >70)
-- Neu gruppierte Domain-Ordner: `app-events/`, `auth/`, `chat/`, `crm/`, `leads/`, `notifications/`, `push/`
+- `apps/menyra-social/core/` flache Root-Dateien: 0 (vorher >70)
+- Aktive Domain-Ordner: `app-events/`, `auth/`, `chat/`, `common/`, `crm/`, `feed/`, `follow/`, `leads/`, `map/`, `media/`, `menu/`, `notifications/`, `orders/`, `overlays/`, `profile/`, `push/`, `shop/`, `ui/`
 - Letzte Refactor-Commits:
+  - `4e10d58` Restliche Root-Utilities in Domain-Unterordner verschoben
+  - `f5748c1` Auth/Chat/Push/Notifications/Leads/CRM/App-Events gruppiert
   - `d5802e8` CRM Shared Renderer ausgelagert
   - `ac8ab27` Main Shell + Notifications Renderer ausgelagert
   - `9088e6c` Overlay Root/UI + MenuDetail Update-Logik ausgelagert
@@ -242,7 +237,7 @@ Aktueller Stand:
 Zielbild:
 - `social-app.js` wird weiter auf Orchestrierung + Event-Wiring reduziert.
 - Feature-Logik (feed/chat/shop/crm/push/profile/map) liegt modular in `core/`.
-- Utilities werden weiter thematisch aus der Core-Root in Sub-Ordner verschoben (naechste Kandidaten: `feed/`, `shop/`, `profile/`, `map/`, `ui/`).
+- Naechster Schwerpunkt: weitere Auslagerung aus `social-app.js` in Feature-Orchestratoren pro Domain.
 
 README-Pflege:
 - Der Refactor-Status in dieser README wird nach jedem groesseren Refactor-Block aktualisiert.
