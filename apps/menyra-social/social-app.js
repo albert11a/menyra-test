@@ -143,6 +143,7 @@ import {
   buildNotificationsFetchQueryCore,
   fetchNotificationsFromQueryCore
 } from "./core/notifications/notification-query-utils.js";
+import { createNotificationsRuntimeFlowControllerCore } from "./core/notifications/notifications-runtime-flow-utils.js";
 import {
   buildNotificationWritePayloadCore,
   normalizeNotificationWriteIdsCore
@@ -9929,143 +9930,80 @@ function startFollowingListener(user = state.user) {
   });
 }
 
-function normalizeNotificationItem(docSnap) {
-  return normalizeNotificationItemCore({
+const notificationsRuntimeFlowController = createNotificationsRuntimeFlowControllerCore({
+  state,
+  getNotificationsUnsub: () => notificationsUnsub,
+  setNotificationsUnsub: (nextUnsub) => {
+    notificationsUnsub = typeof nextUnsub === "function" ? nextUnsub : null;
+  },
+  normalizeNotificationItemFromDoc: (docSnap) => normalizeNotificationItemCore({
     docSnap,
     formatRelative,
     toDateSafe
-  });
-}
-
-function mapNotificationSnapshot(snap) {
-  return mapNotificationSnapshotCore({
+  }),
+  mapNotificationSnapshotFromSnap: (snap, normalizeNotificationItemFn) => mapNotificationSnapshotCore({
     snap,
-    normalizeNotificationItem: (docSnap) => normalizeNotificationItem(docSnap)
-  });
-}
-
-function shouldSurfaceNativePushNow() {
-  return shouldSurfaceNativePushNowCore({
+    normalizeNotificationItem: (docSnap) => normalizeNotificationItemFn(docSnap)
+  }),
+  shouldSurfaceNativePushNowFn: () => shouldSurfaceNativePushNowCore({
     documentObj: typeof document !== "undefined" ? document : null,
     activeTab: state.activeTab
-  });
-}
-
-function startNotificationsListener(user = state.user, { enableNativePush = false } = {}) {
-  if (notificationsUnsub) {
-    notificationsUnsub();
-    notificationsUnsub = null;
-  }
-  const ownerUid = String(user?.uid || "").trim();
-  if (!ownerUid) return;
-
-  const liveQuery = buildNotificationsLiveQueryCore({
+  }),
+  buildNotificationsLiveQuery: (ownerUid, liveLimit) => buildNotificationsLiveQueryCore({
     db,
     ownerUid,
     collection,
     query,
     orderBy,
     limit,
-    liveLimit: NOTIFICATIONS_LIVE_LIMIT
-  });
-  if (!liveQuery) return;
-  const seenIds = new Set(readPushSeenIds(ownerUid));
-  let seeded = false;
+    liveLimit
+  }),
+  readPushSeenIds: (ownerUid) => readPushSeenIds(ownerUid),
+  addNotificationItemsToSeenSet: (items, seenIds) => addNotificationItemsToSeenSetCore({ items, seenIds }),
+  writePushSeenIds: (ids = [], ownerUid = "") => writePushSeenIds(ids, ownerUid),
+  canEmitNativePushAlerts: () => canEmitNativePushAlerts(),
+  collectUnseenUnreadNotificationItemsFromChanges: (changes = [], seenIds = new Set(), normalizeNotificationItemFn) => collectUnseenUnreadNotificationItemsFromChangesCore({
+    changes,
+    normalizeNotificationItem: (docSnap) => normalizeNotificationItemFn(docSnap),
+    seenIds
+  }),
+  showNativePushAlert: async (item) => showNativePushAlert(item),
+  handleNotificationsUpdate: (items) => handleNotificationsUpdate(items),
+  subscribeNotifications: (queryRef, onNext, onError) => onSnapshot(queryRef, onNext, onError),
+  buildNotificationsFetchQuery: (ownerUid, fetchLimit) => buildNotificationsFetchQueryCore({
+    db,
+    ownerUid,
+    collection,
+    query,
+    orderBy,
+    limit,
+    fetchLimit
+  }),
+  fetchNotificationsFromQuery: async (queryRef, mapNotificationSnapshotFn) => fetchNotificationsFromQueryCore({
+    queryRef,
+    getDocs,
+    mapNotificationSnapshot: (snap) => mapNotificationSnapshotFn(snap)
+  }),
+  saveNotifications: (notifications) => saveNotifications(notifications),
+  updateNotificationsDom: () => updateNotificationsDom(),
+  render: () => render(),
+  setPushActivationIssue: (message) => setPushActivationIssue(message),
+  clearPushActivationIssue: () => clearPushActivationIssue(),
+  ensureNotificationPermission: async (options = {}) => ensureNotificationPermission(options),
+  syncPushDeviceRegistration: async (options = {}) => syncPushDeviceRegistration(options),
+  getPushActivationIssue: () => pushActivationIssue,
+  notificationsLiveLimit: NOTIFICATIONS_LIVE_LIMIT,
+  fetchLimit: 20
+});
 
-  notificationsUnsub = onSnapshot(liveQuery, (snap) => {
-    const items = mapNotificationSnapshot(snap);
-    handleNotificationsUpdate(items);
-
-    if (!enableNativePush || !canEmitNativePushAlerts()) {
-      if (!seeded) {
-        addNotificationItemsToSeenSetCore({ items, seenIds });
-        writePushSeenIds(Array.from(seenIds), ownerUid);
-        seeded = true;
-      }
-      return;
-    }
-
-    if (!seeded) {
-      addNotificationItemsToSeenSetCore({ items, seenIds });
-      writePushSeenIds(Array.from(seenIds), ownerUid);
-      seeded = true;
-      return;
-    }
-
-    const nextNative = collectUnseenUnreadNotificationItemsFromChangesCore({
-      changes: snap.docChanges(),
-      normalizeNotificationItem: (docSnap) => normalizeNotificationItem(docSnap),
-      seenIds
-    });
-    if (!nextNative.length) return;
-
-    nextNative.forEach((item) => seenIds.add(item.id));
-    writePushSeenIds(Array.from(seenIds), ownerUid);
-    if (!shouldSurfaceNativePushNow()) return;
-    void (async () => {
-      for (const item of nextNative) {
-        await showNativePushAlert(item);
-      }
-    })();
-  }, (err) => {
-    console.error(err);
-  });
-}
-
-async function syncNotificationsPushRuntime({ user = state.user, interactive = false, enabled = state.settings?.pushNotifs } = {}) {
-  const ownerUid = String(user?.uid || "").trim();
-  if (!ownerUid) {
-    setPushActivationIssue("Kein angemeldeter User fuer Push-Registrierung.");
-    return false;
-  }
-  if (!enabled) {
-    clearPushActivationIssue();
-    startNotificationsListener(user, { enableNativePush: false });
-    return false;
-  }
-  clearPushActivationIssue();
-
-  const granted = await ensureNotificationPermission({ interactive });
-  if (!granted) {
-    startNotificationsListener(user, { enableNativePush: false });
-    return false;
-  }
-  const registered = await syncPushDeviceRegistration({ interactive, force: interactive, enabled });
-  // Avoid duplicate system notifications: native snapshot alerts are fallback only.
-  startNotificationsListener(user, { enableNativePush: !registered });
-  if (!registered && !pushActivationIssue) {
-    setPushActivationIssue("Push-Registrierung fehlgeschlagen.");
-  }
-  return registered;
-}
-
-async function loadNotificationsFromFirebase({ force = false } = {}) {
-  if (!state.user) return;
-  try {
-    const notificationsQuery = buildNotificationsFetchQueryCore({
-      db,
-      ownerUid: state.user.uid,
-      collection,
-      query,
-      orderBy,
-      limit,
-      fetchLimit: 20
-    });
-    const items = await fetchNotificationsFromQueryCore({
-      queryRef: notificationsQuery,
-      getDocs,
-      mapNotificationSnapshot: (snap) => mapNotificationSnapshot(snap)
-    });
-    state.notifications = items;
-    saveNotifications(items);
-    const updated = updateNotificationsDom();
-    if (!updated && state.activeTab === "notifications") {
-      render();
-    }
-  } catch (err) {
-    console.error(err);
-  }
-}
+const {
+  normalizeNotificationItem,
+  mapNotificationSnapshot,
+  shouldSurfaceNativePushNow,
+  startNotificationsListener,
+  syncNotificationsPushRuntime,
+  loadNotificationsFromFirebase
+} = notificationsRuntimeFlowController;
 
 async function pushUserNotification(targetUid, payload) {
   if (!targetUid) return;
