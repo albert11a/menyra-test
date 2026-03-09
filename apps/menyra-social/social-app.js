@@ -96,6 +96,7 @@ import { createAppControllerBridge } from "./core/app-shell/app-controller-bridg
 import { createAppShellRuntimeController } from "./core/app-shell/app-shell-runtime-controller.js";
 import { createProfileMenuFocusRenderController } from "./core/profile/profile-menu-focus-render-controller.js";
 import { createCrmRuntimeController } from "./core/crm/crm-runtime-controller.js";
+import { createChatRuntimeController } from "./core/chat/chat-runtime-controller.js";
 import {
   resolveNativePushActorCore,
   resolveNativePushBodyCore,
@@ -1048,7 +1049,6 @@ let lastMenuCommentKey = "";
 let lastMenuCommentAt = 0;
 let lastMenuOpenGestureKey = "";
 let lastMenuOpenGestureAt = 0;
-let chatSendDispatchLock = false;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
 let pendingProfileRestaurantId = "";
@@ -1075,6 +1075,7 @@ let dataLoaded = {
 let shellRuntimeController = null;
 let profileMenuFocusRenderController = null;
 let crmRuntimeController = null;
+let chatRuntimeController = null;
 let lastAppHtml = "";
 let lastRenderMode = "";
 let lastRenderedMainTab = "";
@@ -1090,8 +1091,6 @@ let pushActivationIssue = "";
 let profileViewUnsub = null;
 let feedUnsub = null;
 let storiesUnsub = null;
-let chatThreadsUnsub = null;
-let chatMessagesUnsub = null;
 let ordersUnsub = null;
 let ordersListenerKey = "";
 let restaurantsUnsub = null;
@@ -2561,724 +2560,207 @@ function applyFollowingHandles(handles, { shouldRender = true, targetIds = state
 }
 
 function saveChatThreadIndex(threads) {
-  saveChatThreadIndexCore({
-    threads,
-    key: chatIndexKey(state.user?.uid || ""),
-    safeStorage,
-    maxItems: 100
-  });
+  return chatRuntimeController.saveChatThreadIndex(threads);
 }
 
 function readChatThreadIndexList(key) {
-  return readChatThreadIndexListCore({
-    key,
-    safeStorage
-  });
+  return chatRuntimeController.readChatThreadIndexList(key);
 }
 
 function buildChatThreadSummaryFromMessages(threadId, value, fallback = {}) {
-  return buildChatThreadSummaryFromMessagesCore({
-    threadId,
-    value,
-    fallback,
-    pruneChatMessages: (messages) => pruneChatMessages(messages),
-    buildChatPreviewText: (message) => buildChatPreviewText(message),
-    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message),
-    nowMs: Date.now()
-  });
+  return chatRuntimeController.buildChatThreadSummaryFromMessages(threadId, value, fallback);
 }
 
 function rebuildLegacyChatThreadIndexFromStorage() {
-  return rebuildLegacyChatThreadIndexFromStorageCore({
-    localStorageObj: typeof localStorage === "undefined" ? null : localStorage,
-    chatThreadsStorageKey: STORAGE_KEYS.chatThreads,
-    buildChatThreadSummaryFromMessages: (threadId, value, fallback = {}) => buildChatThreadSummaryFromMessages(threadId, value, fallback),
-    sortChatThreads: (threads) => sortChatThreads(threads)
-  });
+  return chatRuntimeController.rebuildLegacyChatThreadIndexFromStorage();
 }
 
 function mergeChatThreadLists(...lists) {
-  return mergeChatThreadListsCore(...lists);
+  return chatRuntimeController.mergeChatThreadLists(...lists);
 }
 
 function loadChatThreadIndex(uid = state.user?.uid || "") {
-  return loadChatThreadIndexCore({
-    uid,
-    chatIndexKey,
-    legacyChatIndexKey: STORAGE_KEYS.chatIndex,
-    readChatThreadIndexList: (key) => readChatThreadIndexList(key),
-    rebuildChatThreadIndexFromStorage: (ownerUid) => rebuildChatThreadIndexFromStorage(ownerUid),
-    rebuildLegacyChatThreadIndexFromStorage: () => rebuildLegacyChatThreadIndexFromStorage(),
-    mergeChatThreadLists: (...lists) => mergeChatThreadLists(...lists)
-  });
+  return chatRuntimeController.loadChatThreadIndex(uid);
 }
 
 function sortChatThreads(threads) {
-  return sortChatThreadsCore(threads);
+  return chatRuntimeController.sortChatThreads(threads);
 }
 
 function rebuildChatThreadIndexFromStorage(uid = state.user?.uid || "") {
-  return rebuildChatThreadIndexFromStorageCore({
-    uid,
-    localStorageObj: typeof localStorage === "undefined" ? null : localStorage,
-    chatThreadsStorageKey: STORAGE_KEYS.chatThreads,
-    pruneChatMessages: (messages) => pruneChatMessages(messages),
-    buildChatPreviewText: (message) => buildChatPreviewText(message),
-    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message),
-    sortChatThreads: (threads) => sortChatThreads(threads),
-    nowMs: Date.now()
-  });
+  return chatRuntimeController.rebuildChatThreadIndexFromStorage(uid);
 }
 
 function getChatUnreadCount() {
-  return getChatUnreadCountCore({
-    threads: state.chatThreads,
-    nowMs: Date.now()
-  });
+  return chatRuntimeController.getChatUnreadCount();
 }
 
 function upsertChatThread(profile, patch = {}) {
-  const nextThreads = upsertChatThreadListCore({
-    profile,
-    patch,
-    threads: state.chatThreads,
-    getChatThreadId: (value) => getChatThreadId(value),
-    normalizeHandle: (value) => normalizeHandle(value),
-    sortChatThreads: (threads) => sortChatThreads(threads),
-    nowMs: Date.now()
-  });
-  if (!nextThreads) return;
-  state.chatThreads = nextThreads;
-  saveChatThreadIndex(state.chatThreads);
+  return chatRuntimeController.upsertChatThread(profile, patch);
 }
 
 function isChatThreadArchived(thread) {
-  return isChatThreadArchivedCore(thread);
+  return chatRuntimeController.isChatThreadArchived(thread);
 }
 
 function getChatThreadById(threadId) {
-  return getChatThreadByIdCore({
-    threadId,
-    threads: state.chatThreads
-  });
+  return chatRuntimeController.getChatThreadById(threadId);
 }
 
 async function setChatThreadArchivedById(threadId, archived = true) {
-  const thread = getChatThreadById(threadId);
-  const ownerUid = String(state.user?.uid || "").trim();
-  const safeThreadId = getSafeChatThreadIdFromThreadCore({
-    thread,
-    threadId
-  });
-  if (!safeThreadId || !ownerUid) return;
-  state.chatThreadMenuId = "";
-  upsertChatThread(thread || buildFallbackChatThreadProfileCore(safeThreadId), {
-    archivedByOwner: !!archived
-  });
-  render();
-  try {
-    const threadRef = chatThreadDocRef(ownerUid, safeThreadId);
-    if (!threadRef) return;
-    await setDoc(threadRef, { archivedByOwner: !!archived }, { merge: true });
-  } catch (err) {
-    console.error(err);
-  }
+  return chatRuntimeController.setChatThreadArchivedById(threadId, archived);
 }
 
 async function deleteChatThreadById(threadId) {
-  const thread = getChatThreadById(threadId);
-  const safeThreadId = getSafeChatThreadIdFromThreadCore({
-    thread,
-    threadId
-  });
-  const ownerUid = String(state.user?.uid || "").trim();
-  if (!safeThreadId || !ownerUid) return;
-  const confirmed = typeof window !== "undefined"
-    ? window.confirm("Diesen Chat wirklich loeschen?")
-    : true;
-  if (!confirmed) return;
-
-  if (shouldCloseChatModalForThreadCore({
-    chatModal: state.chatModal,
-    safeThreadId,
-    getChatThreadId: (profile) => getChatThreadId(profile)
-  })) {
-    stopActiveChatMessagesListener();
-    state.chatModal = buildClosedChatModalStateCore(state.chatModal);
-  }
-
-  state.chatThreadMenuId = "";
-  state.chatThreads = filterChatThreadsAfterDeleteCore({
-    threads: state.chatThreads,
-    threadId: safeThreadId
-  });
-  saveChatThreadIndex(state.chatThreads);
-  const localKey = chatThreadStorageKey(thread || buildFallbackChatThreadProfileCore(safeThreadId));
-  if (localKey) safeStorage.removeItem(localKey);
-  render();
-
-  try {
-    const threadRef = chatThreadDocRef(ownerUid, safeThreadId);
-    if (!threadRef) return;
-    await deleteDoc(threadRef);
-  } catch (err) {
-    console.error(err);
-  }
+  return chatRuntimeController.deleteChatThreadById(threadId);
 }
 
 function getActiveChatThreadSummary(profile = state.chatModal.profile) {
-  return getActiveChatThreadSummaryCore({
-    profile,
-    threads: state.chatThreads,
-    getChatThreadId: (value) => getChatThreadId(value)
-  });
+  return chatRuntimeController.getActiveChatThreadSummary(profile);
 }
 
 function isActiveChatThreadBlocked(profile = state.chatModal.profile) {
-  const thread = getActiveChatThreadSummary(profile);
-  return !!thread?.blockedByOwner;
+  return chatRuntimeController.isActiveChatThreadBlocked(profile);
 }
 
 function getChatThreadId(profile = state.chatModal.profile) {
-  return getChatThreadIdCore(profile);
+  return chatRuntimeController.getChatThreadId(profile);
 }
 
 function chatThreadStorageKey(profile = state.chatModal.profile) {
-  return chatThreadStorageKeyCore({
-    profile,
-    ownerUid: String(state.user?.uid || "guest").trim(),
-    chatThreadsStorageKey: STORAGE_KEYS.chatThreads
-  });
+  return chatRuntimeController.chatThreadStorageKey(profile);
 }
 
 function chatThreadDocRef(ownerUid, threadId) {
-  return chatThreadDocRefCore({
-    docFn: (...segments) => doc(db, ...segments),
-    ownerUid,
-    threadId
-  });
+  return chatRuntimeController.chatThreadDocRef(ownerUid, threadId);
 }
 
 function chatMessageDocRef(ownerUid, threadId, messageId) {
-  return chatMessageDocRefCore({
-    docFn: (...segments) => doc(db, ...segments),
-    ownerUid,
-    threadId,
-    messageId
-  });
+  return chatRuntimeController.chatMessageDocRef(ownerUid, threadId, messageId);
 }
 
 function chatMessagesCollectionRef(ownerUid, threadId) {
-  return chatMessagesCollectionRefCore({
-    collectionFn: (...segments) => collection(db, ...segments),
-    ownerUid,
-    threadId
-  });
+  return chatRuntimeController.chatMessagesCollectionRef(ownerUid, threadId);
 }
 
 function normalizeChatThreadSummary(threadId, data = {}, fallback = {}) {
-  return normalizeChatThreadSummaryCore({
-    threadId,
-    data,
-    fallback,
-    toDateSafe,
-    nowMs: Date.now()
-  });
+  return chatRuntimeController.normalizeChatThreadSummary(threadId, data, fallback);
 }
 
 function getCurrentChatSenderProfile() {
-  const handle = String(state.userProfile.handle || normalizeHandle(state.userProfile.name || state.user?.displayName || "user"))
-    .replace(/^@/, "")
-    .trim();
-  return {
-    uid: String(state.user?.uid || "").trim(),
-    handle,
-    name: String(state.userProfile.name || state.user?.displayName || "User").trim() || "User",
-    avatar: String(state.userProfile.avatar || "").trim()
-  };
+  return chatRuntimeController.getCurrentChatSenderProfile();
 }
 
 function getStringByteSize(value) {
-  return getStringByteSizeCore(value);
+  return chatRuntimeController.getStringByteSize(value);
 }
 
 function isChatInlineDataUrl(dataUrl) {
-  return isChatInlineDataUrlCore({
-    dataUrl,
-    getStringByteSize: (value) => getStringByteSize(value),
-    maxInlineBytes: CHAT_ATTACHMENT_INLINE_MAX_BYTES
-  });
+  return chatRuntimeController.isChatInlineDataUrl(dataUrl);
 }
 
 function sanitizeChatAttachmentsForSync(attachments) {
-  return sanitizeChatAttachmentsForSyncCore({
-    attachments,
-    isChatInlineDataUrl: (dataUrl) => isChatInlineDataUrl(dataUrl),
-    maxAttachments: 4
-  });
+  return chatRuntimeController.sanitizeChatAttachmentsForSync(attachments);
 }
 
 function normalizeChatMessageRecord(messageId, data = {}, localMap = new Map()) {
-  return normalizeChatMessageRecordCore({
-    messageId,
-    data,
-    localMap,
-    isChatInlineDataUrl: (dataUrl) => isChatInlineDataUrl(dataUrl),
-    maxAttachments: 4
-  });
+  return chatRuntimeController.normalizeChatMessageRecord(messageId, data, localMap);
 }
 
 function getChatMessageTimestamp(message) {
-  return getChatMessageTimestampCore({
-    message,
-    toDateSafe
-  });
+  return chatRuntimeController.getChatMessageTimestamp(message);
 }
 
 function pruneChatMessages(messages) {
-  return pruneChatMessagesCore({
-    messages,
-    ttlMs: CHAT_MESSAGE_TTL_MS,
-    nowMs: Date.now(),
-    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message)
-  });
+  return chatRuntimeController.pruneChatMessages(messages);
 }
 
 function buildChatPreviewText(message) {
-  return buildChatPreviewTextCore(message);
+  return chatRuntimeController.buildChatPreviewText(message);
 }
 
 function loadLegacyChatThreadMessages(threadId) {
-  return loadLegacyChatThreadMessagesCore({
-    threadId,
-    localStorageObj: typeof localStorage === "undefined" ? null : localStorage,
-    chatThreadsStorageKey: STORAGE_KEYS.chatThreads,
-    pruneChatMessages: (messages) => pruneChatMessages(messages)
-  });
+  return chatRuntimeController.loadLegacyChatThreadMessages(threadId);
 }
 
 async function readFileAsDataUrl(file) {
-  return await readFileAsDataUrlCore(file);
+  return chatRuntimeController.readFileAsDataUrl(file);
 }
 
 async function buildInlineChatAttachment(file, isImage = false) {
-  return await buildInlineChatAttachmentCore({
-    file,
-    isImage,
-    readFileAsDataUrl: (candidate) => readFileAsDataUrl(candidate),
-    isChatInlineDataUrl: (dataUrl) => isChatInlineDataUrl(dataUrl),
-    compressImage: (source, maxSize, quality, mimeType) => compressImage(source, maxSize, quality, mimeType),
-    compressionSteps: CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS
-  });
+  return chatRuntimeController.buildInlineChatAttachment(file, isImage);
 }
 
 function loadChatThreadMessages(profile) {
-  return loadChatThreadMessagesCore({
-    profile,
-    chatThreadStorageKey: (value) => chatThreadStorageKey(value),
-    safeStorage,
-    pruneChatMessages: (messages) => pruneChatMessages(messages),
-    loadLegacyChatThreadMessages: (threadId) => loadLegacyChatThreadMessages(threadId),
-    getChatThreadId: (value) => getChatThreadId(value),
-    maxItems: 100
-  });
+  return chatRuntimeController.loadChatThreadMessages(profile);
 }
 
 function saveChatThreadMessages(profile, messages) {
-  saveChatThreadMessagesCore({
-    profile,
-    messages,
-    chatThreadStorageKey: (value) => chatThreadStorageKey(value),
-    safeStorage,
-    pruneChatMessages: (items) => pruneChatMessages(items),
-    maxItems: 100
-  });
+  return chatRuntimeController.saveChatThreadMessages(profile, messages);
 }
 
 function stopChatThreadsListener() {
-  if (chatThreadsUnsub) {
-    chatThreadsUnsub();
-    chatThreadsUnsub = null;
-  }
+  return chatRuntimeController.stopChatThreadsListener();
 }
 
 function stopActiveChatMessagesListener() {
-  if (chatMessagesUnsub) {
-    chatMessagesUnsub();
-    chatMessagesUnsub = null;
-  }
+  return chatRuntimeController.stopActiveChatMessagesListener();
 }
 
 function syncLocalChatThreadsFromRemote(remoteThreads, ownerUid = state.user?.uid || "") {
-  const merged = buildMergedChatThreadsFromRemoteCore({
-    ownerUid,
-    stateThreads: state.chatThreads,
-    remoteThreads,
-    loadChatThreadIndex: (uid) => loadChatThreadIndex(uid),
-    mergeChatThreadLists: (...lists) => mergeChatThreadLists(...lists)
-  });
-  state.chatThreads = merged;
-  saveChatThreadIndex(merged);
-  if (shouldRenderChatThreadListAfterRemoteSyncCore({
-    lastRenderMode,
-    activeTab: state.activeTab,
-    chatModalOpen: !!state.chatModal.open
-  })) {
-    render();
-    return;
-  }
-  updateNotificationBadges();
+  return chatRuntimeController.syncLocalChatThreadsFromRemote(remoteThreads, ownerUid);
 }
 
 function startChatThreadsListener(user = state.user) {
-  stopChatThreadsListener();
-  const ownerUid = String(user?.uid || "").trim();
-  if (!ownerUid) return;
-  const ref = collection(db, "users", ownerUid, "chatThreads");
-  const threadQuery = query(ref, orderBy("updatedAt", "desc"), limit(25));
-  chatThreadsUnsub = onSnapshot(threadQuery, (snap) => {
-    const remoteThreads = mapChatThreadDocsToSummariesCore({
-      docs: snap.docs,
-      normalizeChatThreadSummary: (threadId, data = {}, fallback = {}) => normalizeChatThreadSummary(threadId, data, fallback)
-    });
-    syncLocalChatThreadsFromRemote(remoteThreads, ownerUid);
-  }, (err) => {
-    console.error(err);
-  });
+  return chatRuntimeController.startChatThreadsListener(user);
 }
 
 async function syncRemoteChatReadState(profile, messages = state.chatModal.messages || []) {
-  const syncInputs = normalizeRemoteChatReadSyncInputsCore({
-    ownerUid: String(state.user?.uid || "").trim(),
-    threadId: getChatThreadId(profile),
-    unreadMessageIds: collectUnreadIncomingChatMessageIdsCore({
-      messages,
-      pruneChatMessages: (items) => pruneChatMessages(items)
-    })
-  });
-  if (!syncInputs.canSync) return;
-  const threadUnreadResetPatch = buildChatUnreadResetPatchCore();
-  const messageReadPatch = buildChatMessageReadPatchCore();
-  const writeTasks = buildRemoteChatReadSyncWriteTasksCore({
-    ownerUid: syncInputs.ownerUid,
-    threadId: syncInputs.threadId,
-    unreadMessageIds: syncInputs.unreadMessageIds,
-    chatThreadDocRef: (ownerUid, threadId) => chatThreadDocRef(ownerUid, threadId),
-    chatMessageDocRef: (ownerUid, threadId, messageId) => chatMessageDocRef(ownerUid, threadId, messageId),
-    setDocFn: (ref, payload, options) => setDoc(ref, payload, options),
-    threadUnreadResetPatch,
-    messageReadPatch
-  });
-  if (!writeTasks.length) return;
-  try {
-    await Promise.all(writeTasks.map((task) => task()));
-  } catch {}
+  return chatRuntimeController.syncRemoteChatReadState(profile, messages);
 }
 
 function startActiveChatMessagesListener(profile = state.chatModal.profile) {
-  stopActiveChatMessagesListener();
-  const ownerUid = String(state.user?.uid || "").trim();
-  const threadId = getChatThreadId(profile);
-  const ref = chatMessagesCollectionRef(ownerUid, threadId);
-  if (!ref) return;
-  const messageQuery = query(ref, orderBy("createdAtClient", "desc"), limit(CHAT_MESSAGE_READ_LIMIT));
-  chatMessagesUnsub = onSnapshot(messageQuery, (snap) => {
-    if (shouldIgnoreChatMessagesSnapshotCore({
-      chatModalOpen: !!state.chatModal.open,
-      activeModalThreadId: getChatThreadId(state.chatModal.profile),
-      listenerThreadId: threadId
-    })) return;
-    const localSeed = buildChatListenerLocalSeedCore({
-      storedMessages: loadChatThreadMessages(profile),
-      modalMessages: Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [],
-      pruneChatMessages: (items) => pruneChatMessages(items)
-    });
-    if (shouldUseChatLocalSeedCore({
-      remoteDocsCount: snap.docs.length,
-      localSeed
-    })) {
-      state.chatModal.messages = localSeed;
-      render();
-      return;
-    }
-    const localMap = buildChatLocalMessageMapCore(localSeed);
-    const remoteMessages = buildSortedRemoteChatMessagesCore({
-      entries: snap.docs.map((docSnap) => ({
-        id: docSnap.id,
-        data: docSnap.data() || {}
-      })),
-      localMap,
-      normalizeChatMessageRecord: (messageId, data = {}, map = new Map()) => normalizeChatMessageRecord(messageId, data, map),
-      getChatMessageTimestamp: (message) => getChatMessageTimestamp(message)
-    });
-    const nextMessages = resolveChatMessagesAfterSnapshotCore({
-      profile,
-      remoteMessages,
-      hasUnreadIncomingRemoteMessages: (messages) => hasUnreadIncomingRemoteMessagesCore(messages),
-      markChatThreadAsRead: (threadProfile, messages) => markChatThreadAsRead(threadProfile, messages),
-      syncRemoteChatReadState: (threadProfile, messages) => void syncRemoteChatReadState(threadProfile, messages),
-      saveChatThreadMessages: (threadProfile, messages) => saveChatThreadMessages(threadProfile, messages),
-      syncChatThreadSummary: (threadProfile, messages) => syncChatThreadSummary(threadProfile, messages)
-    });
-    state.chatModal.messages = pruneChatMessages(nextMessages);
-    render();
-  }, (err) => {
-    console.error(err);
-  });
+  return chatRuntimeController.startActiveChatMessagesListener(profile);
 }
 
 async function persistCurrentChatMessagePatch(messageId, patch = {}) {
-  const ownerUid = String(state.user?.uid || "").trim();
-  const threadId = getChatThreadId(state.chatModal.profile);
-  const safeMessageId = String(messageId || "").trim();
-  if (!ownerUid || !threadId || !safeMessageId || !patch || typeof patch !== "object") return;
-  const messageRef = chatMessageDocRef(ownerUid, threadId, safeMessageId);
-  if (!messageRef) return;
-  try {
-    await setDoc(messageRef, patch, { merge: true });
-  } catch {}
+  return chatRuntimeController.persistCurrentChatMessagePatch(messageId, patch);
 }
 
 async function syncChatMessageToRemote(message, partnerProfile = state.chatModal.profile) {
-  const senderProfile = getCurrentChatSenderProfile();
-  const senderUid = senderProfile.uid;
-  const partnerUid = String(partnerProfile?.uid || "").trim();
-  const senderThreadId = getChatThreadId(partnerProfile);
-  const recipientThreadId = senderUid;
-  if (!senderUid || !partnerUid || !senderThreadId || !recipientThreadId || senderUid === partnerUid) return;
-
-  const syncContext = buildChatMessageSyncContextCore({
-    message,
-    sanitizeChatAttachmentsForSync: (attachments) => sanitizeChatAttachmentsForSync(attachments),
-    buildChatPreviewText: (entry) => buildChatPreviewText(entry),
-    createdAtClientFallback: new Date().toISOString()
-  });
-  const safeAttachments = syncContext.safeAttachments;
-  const preview = syncContext.preview;
-  const createdAtClient = syncContext.createdAtClient;
-  const senderThreadRef = chatThreadDocRef(senderUid, senderThreadId);
-  const senderMessageRef = chatMessageDocRef(senderUid, senderThreadId, message?.id);
-  const recipientThreadRef = chatThreadDocRef(partnerUid, recipientThreadId);
-  const recipientMessageRef = chatMessageDocRef(partnerUid, recipientThreadId, message?.id);
-  if (!senderThreadRef || !senderMessageRef || !recipientThreadRef || !recipientMessageRef) return;
-
-  const payloads = buildChatRemotePayloadBundleCore({
-    message,
-    safeAttachments,
-    preview,
-    createdAtClient,
-    senderProfile,
-    partnerProfile,
-    senderUid,
-    partnerUid,
-    serverTimestampFn: () => serverTimestamp()
-  });
-
-  await Promise.all([
-    setDoc(senderThreadRef, payloads.senderThreadPayload, { merge: true }),
-    setDoc(senderMessageRef, payloads.senderMessagePayload, { merge: true })
-  ]);
-
-  const txResult = await runTransaction(db, async (tx) => {
-    const recipientSnap = await tx.get(recipientThreadRef);
-    const recipientData = recipientSnap.exists() ? (recipientSnap.data() || {}) : {};
-    const recipientUnread = Math.max(0, Number(recipientData.unreadCount) || 0);
-    const recipientMuted = Number(recipientData.muteUntilMs || 0) > Date.now();
-    const recipientArchived = !!recipientData.archivedByOwner;
-    const recipientBlocked = !!recipientData.blockedByOwner;
-    tx.set(recipientThreadRef, {
-      ...payloads.recipientThreadPayloadBase,
-      unreadCount: recipientUnread + 1,
-    }, { merge: true });
-    tx.set(recipientMessageRef, payloads.recipientMessagePayload, { merge: true });
-    return { recipientMuted, recipientArchived, recipientBlocked };
-  });
-
-  const canNotifyRecipient = !!txResult && !txResult.recipientMuted && !txResult.recipientArchived && !txResult.recipientBlocked;
-  if (canNotifyRecipient) {
-    const notification = buildChatMessageNotificationCore({
-      messageId: message?.id,
-      senderUid,
-      senderProfile,
-      preview,
-      nowMs: Date.now(),
-      encodeURIComponentFn: (value) => encodeURIComponent(value)
-    });
-    await pushUserNotificationWithId(partnerUid, notification.notificationId, {
-      ...notification.payload
-    });
-  }
+  return chatRuntimeController.syncChatMessageToRemote(message, partnerProfile);
 }
 
 function syncChatThreadSummary(profile, messages) {
-  if (!profile) return;
-  const threadId = getChatThreadId(profile);
-  const existing = (state.chatThreads || []).find((item) => String(item?.id || "") === threadId) || null;
-  const summaryPatch = buildChatThreadPatchFromMessagesCore({
-    messages,
-    existingUpdatedAt: Number(existing?.updatedAt || 0),
-    pruneChatMessages: (items) => pruneChatMessages(items),
-    buildChatPreviewText: (message) => buildChatPreviewText(message),
-    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message),
-    nowMs: Date.now()
-  });
-  upsertChatThread(profile, {
-    lastMessage: summaryPatch.lastMessage,
-    updatedAt: summaryPatch.updatedAt
-  });
+  return chatRuntimeController.syncChatThreadSummary(profile, messages);
 }
 
 function markChatThreadAsRead(profile, messages = null) {
-  if (!profile) return [];
-  const threadId = getChatThreadId(profile);
-  const existing = (state.chatThreads || []).find((item) => String(item?.id || "") === threadId) || null;
-  const readResult = markIncomingChatMessagesAsReadCore({
-    messages: Array.isArray(messages) ? messages : loadChatThreadMessages(profile),
-    pruneChatMessages: (items) => pruneChatMessages(items)
-  });
-  if (readResult.changed) {
-    saveChatThreadMessages(profile, readResult.messages);
-  }
-  const summaryPatch = buildChatThreadPatchFromMessagesCore({
-    messages: readResult.messages,
-    existingUpdatedAt: Number(existing?.updatedAt || 0),
-    pruneChatMessages: (items) => pruneChatMessages(items),
-    buildChatPreviewText: (message) => buildChatPreviewText(message),
-    getChatMessageTimestamp: (message) => getChatMessageTimestamp(message),
-    nowMs: Date.now()
-  });
-  upsertChatThread(profile, {
-    lastMessage: summaryPatch.lastMessage,
-    unreadCount: 0,
-    updatedAt: summaryPatch.updatedAt
-  });
-  return readResult.messages;
+  return chatRuntimeController.markChatThreadAsRead(profile, messages);
 }
 
 function updateCurrentChatMessages(updater) {
-  if (!state.chatModal.profile) return;
-  const nextMessages = updateChatMessageListCore({
-    currentMessages: state.chatModal.messages || [],
-    updater,
-    pruneChatMessages: (items) => pruneChatMessages(items)
-  });
-  state.chatModal.messages = nextMessages;
-  saveChatThreadMessages(state.chatModal.profile, nextMessages);
-  syncChatThreadSummary(state.chatModal.profile, nextMessages);
+  return chatRuntimeController.updateCurrentChatMessages(updater);
 }
 
 async function addChatAttachments(fileList) {
-  const files = Array.from(fileList || []).filter(Boolean);
-  if (!files.length) return;
-  const existing = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments : [];
-  const slotsLeft = Math.max(0, 4 - existing.length);
-  if (!slotsLeft) return;
-  const nextAttachments = await buildNextChatAttachmentsCore({
-    fileList: files.slice(0, slotsLeft),
-    existingAttachments: existing,
-    maxAttachments: 4,
-    buildInlineChatAttachment: (file, isImage) => buildInlineChatAttachment(file, isImage),
-    nowMsFn: () => Date.now(),
-    randomFn: () => Math.random()
-  });
-  state.chatModal.attachments = nextAttachments;
-  render();
+  return chatRuntimeController.addChatAttachments(fileList);
 }
 
 function removePendingChatAttachment(attachmentId) {
-  const safeId = String(attachmentId || "");
-  if (!safeId) return;
-  state.chatModal.attachments = removePendingChatAttachmentCore({
-    attachments: state.chatModal.attachments,
-    attachmentId: safeId
-  });
-  render();
+  return chatRuntimeController.removePendingChatAttachment(attachmentId);
 }
 
 function toggleChatMessageSaved(messageId) {
-  const safeId = String(messageId || "");
-  if (!safeId) return;
-  let nextSaved = null;
-  updateCurrentChatMessages((messages) => {
-    const result = toggleChatMessageFlagCore({
-      messages,
-      messageId: safeId,
-      flag: "saved"
-    });
-    nextSaved = result.nextValue;
-    return result.messages;
-  });
-  render();
-  if (typeof nextSaved === "boolean") {
-    void persistCurrentChatMessagePatch(safeId, { saved: nextSaved });
-  }
+  return chatRuntimeController.toggleChatMessageSaved(messageId);
 }
 
 function toggleChatMessageLiked(messageId) {
-  const safeId = String(messageId || "");
-  if (!safeId) return;
-  let nextLiked = null;
-  updateCurrentChatMessages((messages) => {
-    const result = toggleChatMessageFlagCore({
-      messages,
-      messageId: safeId,
-      flag: "liked"
-    });
-    nextLiked = result.nextValue;
-    return result.messages;
-  });
-  render();
-  if (typeof nextLiked === "boolean") {
-    void persistCurrentChatMessagePatch(safeId, { liked: nextLiked });
-  }
+  return chatRuntimeController.toggleChatMessageLiked(messageId);
 }
 
 async function sendChatMessage() {
-  if (!state.chatModal.open || !state.chatModal.profile) return;
-  if (chatSendDispatchLock) return;
-  chatSendDispatchLock = true;
-  queueMicrotask(() => {
-    chatSendDispatchLock = false;
-  });
-  if (isActiveChatThreadBlocked()) {
-    alert("Dieser Chat ist blockiert. Entblocke ihn in der Chat-Uebersicht.");
-    return;
-  }
-  const input = document.getElementById("chatMessageInput");
-  const sendPayload = resolveChatSendPayloadCore({
-    inputValue: input?.value,
-    draft: state.chatModal.draft,
-    attachments: state.chatModal.attachments
-  });
-  if (!sendPayload.canSend) return;
-  const createdAt = new Date().toISOString();
-  const localUpdate = buildChatSendLocalUpdateCore({
-    currentMessages: state.chatModal.messages,
-    text: sendPayload.text,
-    attachments: sendPayload.attachments,
-    createdAt,
-    createOutgoingChatMessage: ({ text, attachments, createdAt }) => createOutgoingChatMessageCore({
-      text,
-      attachments,
-      createdAt,
-      nowMsFn: () => Date.now(),
-      randomFn: () => Math.random()
-    }),
-    pruneChatMessages: (messages) => pruneChatMessages(messages),
-    buildChatPreviewText: (entry) => buildChatPreviewText(entry),
-    getChatMessageTimestamp: (entry) => getChatMessageTimestamp(entry)
-  });
-  state.chatModal.messages = localUpdate.nextMessages;
-  state.chatModal.draft = "";
-  state.chatModal.attachments = [];
-  saveChatThreadMessages(state.chatModal.profile, state.chatModal.messages);
-  upsertChatThread(state.chatModal.profile, localUpdate.threadPatch);
-  render();
-  try {
-    await syncChatMessageToRemote(localUpdate.outgoingMessage, state.chatModal.profile);
-  } catch (err) {
-    console.error(err);
-  }
+  return chatRuntimeController.sendChatMessage();
 }
 
 function readCache(key, ttlMs) {
@@ -8014,6 +7496,70 @@ const {
   setMenuDetailVariant
 } = bridgeApi;
 
+chatRuntimeController = createChatRuntimeController({
+  state,
+  safeStorage,
+  STORAGE_KEYS,
+  chatIndexKey,
+  toDateSafe,
+  normalizeHandle,
+  normalizeFollowHandle,
+  compressImage,
+  CHAT_ATTACHMENT_INLINE_MAX_BYTES,
+  CHAT_MESSAGE_TTL_MS,
+  CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS,
+  CHAT_MESSAGE_READ_LIMIT,
+  db,
+  collection,
+  query,
+  orderBy,
+  where,
+  limit,
+  onSnapshot,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  increment,
+  serverTimestamp,
+  runTransaction,
+  currentUserBadge,
+  render,
+  renderOverlays,
+  updateNotificationBadges,
+  saveNotifications,
+  updateNotificationsDom,
+  openPostModal,
+  openChatWithProfile,
+  openProfileFromUser,
+  openGuestAuthPrompt,
+  applyFollowingHandles,
+  getFollowDocId,
+  isLocalBusinessProfile,
+  saveFollowing,
+  businessProfileCache,
+  findPostById,
+  normalizeFeedPost,
+  pushUserNotification,
+  pushUserNotificationWithId,
+  getPendingCommentHighlight: () => pendingCommentHighlight,
+  setPendingCommentHighlight: (value) => {
+    pendingCommentHighlight = value;
+  },
+  getLastRenderMode: () => lastRenderMode,
+  escapeHtml,
+  icon,
+  formatRelative,
+  getOptimizedImageUrl,
+  getDocumentObj: () => (typeof document === "undefined" ? null : document),
+  getWindowObj: () => (typeof window === "undefined" ? null : window),
+  alertFn: (message) => alert(message),
+  queueMicrotaskFn: (fn) => queueMicrotask(fn),
+  setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
+});
+
 crmRuntimeController = createCrmRuntimeController({
   state,
   icon,
@@ -8421,400 +7967,55 @@ async function pushUserNotificationWithId(targetUid, notificationId, payload) {
 }
 
 async function hasPendingFollowRequest(targetUid) {
-  const safeTargetUid = String(targetUid || "").trim();
-  if (!safeTargetUid || !state.user?.uid || safeTargetUid === String(state.user.uid)) return false;
-  try {
-    const snap = await getDoc(doc(db, "users", safeTargetUid, "followRequests", state.user.uid));
-    return snap.exists();
-  } catch (err) {
-    console.error(err);
-    return false;
-  }
+  return chatRuntimeController.hasPendingFollowRequest(targetUid);
 }
 
 async function sendFollowRequest(handle, target = {}) {
-  if (!state.user) return;
-  const safeHandle = normalizeFollowHandle(handle);
-  const targetUid = String(target.id || target.uid || "").trim();
-  if (!safeHandle || !targetUid || targetUid === String(state.user.uid)) return;
-  if (state.followingHandles.includes(safeHandle) || state.pendingFollowRequests.includes(safeHandle)) return;
-  try {
-    const actor = currentUserBadge();
-    await setDoc(doc(db, "users", targetUid, "followRequests", state.user.uid), buildFollowRequestDocPayloadCore({
-      actor,
-      targetUid,
-      targetHandle: safeHandle,
-      serverTimestampValue: serverTimestamp()
-    }), { merge: true });
-    await setDoc(doc(db, "users", targetUid, "notifications", `follow_request_${state.user.uid}`), buildFollowRequestNotificationPayloadCore({
-      actor,
-      serverTimestampValue: serverTimestamp()
-    }), { merge: true });
-    state.pendingFollowRequests = Array.from(new Set([safeHandle, ...state.pendingFollowRequests]));
-    if (state.profileModal.profile?.uid === targetUid) {
-      state.profileModal.profile.pendingFollowRequest = true;
-    }
-    if (state.profileView?.profile?.uid === targetUid) {
-      state.profileView.profile.pendingFollowRequest = true;
-    }
-    render();
-  } catch (err) {
-    console.error(err);
-  }
+  return chatRuntimeController.sendFollowRequest(handle, target);
 }
 
 async function acceptFollowRequest(notificationId) {
-  if (!state.user?.uid || !notificationId) return;
-  const notif = state.notifications.find((item) => item.id === notificationId);
-  if (!notif || notif.type !== "follow_request") return;
-  const requesterUid = String(notif.userUid || "").trim();
-  if (!requesterUid || requesterUid === String(state.user.uid)) return;
-
-  const actor = currentUserBadge();
-  const targetHandle = normalizeFollowHandle(state.userProfile.handle || actor.handle || normalizeHandle(state.userProfile.name || "user"));
-  const followRef = doc(db, "users", requesterUid, "following", getFollowDocId("user", state.user.uid, targetHandle));
-
-  try {
-    const existing = await getDoc(followRef);
-    if (!existing.exists()) {
-      await setDoc(followRef, buildAcceptedFollowRecordPayloadCore({
-        targetUid: state.user.uid,
-        targetHandle,
-        profileName: state.userProfile.name,
-        profileAvatar: state.userProfile.avatar,
-        actor,
-        serverTimestampValue: serverTimestamp()
-      }), { merge: true });
-      await Promise.allSettled([
-        updateDoc(doc(db, "users", requesterUid), { followingCount: increment(1) }),
-        updateDoc(doc(db, "users", state.user.uid), { followersCount: increment(1) })
-      ]);
-    }
-
-    await Promise.allSettled([
-      deleteDoc(doc(db, "users", state.user.uid, "followRequests", requesterUid)),
-      deleteDoc(doc(db, "users", state.user.uid, "notifications", notificationId))
-    ]);
-
-    state.notifications = state.notifications.filter((item) => item.id !== notificationId);
-    saveNotifications(state.notifications);
-    updateNotificationsDom();
-
-    await pushUserNotification(requesterUid, buildFollowAcceptedNotificationPayloadCore({ actor }));
-  } catch (err) {
-    console.error(err);
-  }
+  return chatRuntimeController.acceptFollowRequest(notificationId);
 }
 
 async function markNotificationRead(id) {
-  if (!id) return;
-  const local = markNotificationReadInListCore({
-    notifications: state.notifications,
-    id
-  });
-  if (local.changed) {
-    state.notifications = local.nextNotifications;
-    saveNotifications(state.notifications);
-    const updated = updateNotificationsDom();
-    if (!updated && state.activeTab === "notifications") {
-      render();
-    }
-  }
-  if (state.user?.uid) {
-    try {
-      await updateDoc(doc(db, "users", state.user.uid, "notifications", id), { read: true });
-    } catch (err) {
-      console.error(err);
-    }
-  }
+  return chatRuntimeController.markNotificationRead(id);
 }
 
 async function markAllNotificationsRead() {
-  const local = markAllNotificationsReadInListCore({
-    notifications: state.notifications
-  });
-  if (!local.changed) return;
-  state.notifications = local.nextNotifications;
-  saveNotifications(state.notifications);
-  const updated = updateNotificationsDom();
-  if (!updated && state.activeTab === "notifications") {
-    render();
-  }
-  if (state.user?.uid) {
-    await Promise.allSettled(local.unreadIds.map((notifId) =>
-      updateDoc(doc(db, "users", state.user.uid, "notifications", notifId), { read: true })
-    ));
-  }
+  return chatRuntimeController.markAllNotificationsRead();
 }
 
 function normalizeUserPostDoc(postId, data, ownerId) {
-  return normalizeUserPostDocCore(postId, data, ownerId);
+  return chatRuntimeController.normalizeUserPostDoc(postId, data, ownerId);
 }
 
 function normalizeRestaurantPostDoc(postId, data, restaurantId) {
-  return normalizeRestaurantPostDocCore(postId, data, restaurantId);
+  return chatRuntimeController.normalizeRestaurantPostDoc(postId, data, restaurantId);
 }
 
 async function fetchPostForNotification(notif) {
-  const lookup = readNotificationPostLookupCore(notif);
-  const postId = lookup.postId;
-  if (!postId) return null;
-  const ownerType = lookup.ownerType;
-  const ownerId = lookup.ownerId;
-
-  try {
-    if (shouldFetchUserNotificationPostCore({ ownerType, ownerId })) {
-      const snap = await getDoc(doc(db, "users", ownerId, "posts", postId));
-      if (snap.exists()) return normalizeUserPostDoc(postId, snap.data() || {}, ownerId);
-    }
-    if (shouldFetchRestaurantNotificationPostCore({ ownerType, ownerId })) {
-      const snap = await getDoc(doc(db, "restaurants", ownerId, "socialPosts", postId));
-      if (snap.exists()) return normalizeRestaurantPostDoc(postId, snap.data() || {}, ownerId);
-    }
-    const feedSnap = await getDoc(doc(db, "socialFeed", postId));
-    if (feedSnap.exists()) return normalizeFeedPost({ id: feedSnap.id, ...feedSnap.data() });
-  } catch (err) {
-    console.error(err);
-  }
-  return null;
+  return chatRuntimeController.fetchPostForNotification(notif);
 }
 
 function highlightCommentInModal(commentId) {
-  return highlightCommentInModalCore({
-    documentObj: typeof document !== "undefined" ? document : null,
-    commentId,
-    commentsRootId: "postModalComments",
-    timeoutMs: 2000,
-    setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
-  });
+  return chatRuntimeController.highlightCommentInModal(commentId);
 }
 
 async function openPostFromNotification(notif) {
-  const postId = normalizePendingPostIdCore(notif.postId);
-  if (!postId) return;
-  let post = findPostInLocalSourcesCore({
-    postId,
-    findPostById: (id) => findPostById(id),
-    feedPosts: state.feedPosts
-  });
-  if (!post) {
-    post = await fetchPostForNotification(notif);
-  }
-  if (!post) {
-    pendingCommentHighlight = "";
-    return;
-  }
-  const highlightId = resolveNotificationCommentHighlightIdCore({
-    notificationType: notif.type,
-    commentId: notif.commentId
-  });
-  if (highlightId) {
-    pendingCommentHighlight = highlightId;
-  }
-  await openPostModal(post);
-  if (pendingCommentHighlight) {
-    if (highlightCommentInModal(pendingCommentHighlight)) {
-      pendingCommentHighlight = "";
-    }
-  }
+  return chatRuntimeController.openPostFromNotification(notif);
 }
 
 async function openNotificationTarget(id) {
-  const notif = state.notifications.find((n) => n.id === id);
-  if (!notif) return;
-  void markNotificationRead(id);
-  if (notif.type === "follow_accepted") {
-    const nextFollowing = buildFollowAcceptedFollowingStateCore({
-      notif,
-      followingHandles: state.followingHandles,
-      followingTargetIds: state.followingTargetIds,
-      normalizeFollowHandle: (value) => normalizeFollowHandle(value)
-    });
-    applyFollowingHandles(
-      nextFollowing.handles,
-      { shouldRender: false, targetIds: nextFollowing.targetIds }
-    );
-  }
-  if (isChatNotificationTypeCore(notif.type)) {
-    openChatWithProfile(buildNotificationChatTargetCore(notif));
-    return;
-  }
-  if (isFollowNotificationTypeCore(notif.type)) {
-    openProfileFromUser(buildNotificationProfileTargetCore(notif));
-    return;
-  }
-  if (isPostNotificationTypeCore(notif.type)) {
-    await openPostFromNotification(notif);
-  }
+  return chatRuntimeController.openNotificationTarget(id);
 }
 
 async function resolveUserByHandle(handle) {
-  if (!handle) return null;
-  const candidates = buildResolveUserByHandleCandidatesCore({
-    handle,
-    normalizeFollowHandle: (value) => normalizeFollowHandle(value)
-  });
-  for (const candidate of candidates) {
-    try {
-      const snap = await getDocs(query(collection(db, "users"), where("handle", "==", candidate), limit(1)));
-      if (!snap.empty) {
-        const docSnap = snap.docs[0];
-        return { id: docSnap.id, data: docSnap.data() || {} };
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-  return null;
+  return chatRuntimeController.resolveUserByHandle(handle);
 }
 
 async function toggleFollow(handle, target = {}) {
-  if (!state.user) {
-    openGuestAuthPrompt("Bitte einloggen, um Profile zu folgen.");
-    return;
-  }
-  const rawHandle = String(handle || "").replace(/^@/, "").trim();
-  const safeHandle = normalizeFollowHandle(rawHandle);
-  if (!safeHandle) return;
-
-  let { targetType, targetId } = deriveFollowTargetIdentityCore(target);
-
-  if (!targetId && (rawHandle || safeHandle)) {
-    const userSnap = await resolveUserByHandle(rawHandle || safeHandle);
-    if (userSnap?.id) {
-      targetType = "user";
-      targetId = userSnap.id;
-    }
-  }
-
-  const ownRestaurantId = String(state.userProfile.restaurantId || "");
-  const ownUid = String(state.user.uid || "");
-  const ownHandle = String(state.userProfile.handle || "").replace(/^@/, "").toLowerCase();
-  if (isSelfFollowTargetCore({
-    targetType,
-    targetId,
-    safeHandle,
-    ownRestaurantId,
-    ownUid,
-    ownHandle
-  })) return;
-
-  const idx = state.followingHandles.indexOf(safeHandle);
-  const safeTargetId = String(targetId || "").trim();
-  const isUnfollow = idx >= 0 || (targetType === "user" && safeTargetId && state.followingTargetIds.includes(safeTargetId));
-  let targetIsPrivate = false;
-  if (!isUnfollow && targetType === "user" && targetId) {
-    if (state.profileView?.profile?.uid === targetId) {
-      targetIsPrivate = !!state.profileView.profile.privateAccount;
-    } else if (state.profileModal.profile?.uid === targetId) {
-      targetIsPrivate = !!state.profileModal.profile.privateAccount;
-    } else if (typeof target.privateAccount === "boolean") {
-      targetIsPrivate = !!target.privateAccount;
-    } else {
-      try {
-        const snap = await getDoc(doc(db, "users", targetId));
-        if (snap.exists()) targetIsPrivate = !!(snap.data() || {}).privateAccount;
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  }
-  if (!isUnfollow && targetIsPrivate) {
-    await sendFollowRequest(safeHandle, { ...target, id: targetId, uid: targetId, type: "user" });
-    return;
-  }
-
-  const followRef = doc(db, "users", state.user.uid, "following", getFollowDocId(targetType, targetId, safeHandle));
-  const delta = isUnfollow ? -1 : 1;
-  const toNum = (value) => {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : 0;
-  };
-  const isBusiness = isLocalBusinessProfile(state.userProfile);
-
-  try {
-    if (isUnfollow) {
-      await deleteDoc(followRef);
-      if (idx >= 0) state.followingHandles.splice(idx, 1);
-      if (targetType === "user" && safeTargetId) {
-        state.followingTargetIds = state.followingTargetIds.filter((id) => id !== safeTargetId);
-      }
-    } else {
-      await setDoc(followRef, {
-        handle: safeHandle,
-        targetType: targetType || "handle",
-        targetId: targetId || "",
-        name: target.name || "",
-        avatar: target.avatar || "",
-        createdAt: serverTimestamp()
-      });
-      state.followingHandles.unshift(safeHandle);
-      if (targetType === "user" && safeTargetId) {
-        state.followingTargetIds = Array.from(new Set([safeTargetId, ...state.followingTargetIds]));
-      }
-    }
-
-    state.userProfile.following = Math.max(0, toNum(state.userProfile.following) + delta);
-    try {
-      if (isBusiness && state.userProfile.restaurantId) {
-        await updateDoc(doc(db, "restaurants", state.userProfile.restaurantId), { followingCount: increment(delta) });
-      } else {
-        await updateDoc(doc(db, "users", state.user.uid), { followingCount: increment(delta) });
-      }
-    } catch (err) {
-      console.error(err);
-    }
-
-    if (targetType === "user" && targetId) {
-      try {
-        await updateDoc(doc(db, "users", targetId), { followersCount: increment(delta) });
-        if (delta > 0) {
-          const actor = currentUserBadge();
-          await pushUserNotification(targetId, {
-            type: "follow",
-            user: actor.name,
-            userHandle: actor.handle,
-            userUid: actor.uid,
-            avatar: actor.avatar,
-            text: "folgt dir jetzt"
-          });
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    if (targetType === "restaurant" && targetId) {
-      try {
-        await updateDoc(doc(db, "restaurants", targetId), { followersCount: increment(delta) });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    saveFollowing(state.followingHandles, state.followingTargetIds);
-
-    const profileModal = state.profileModal.profile;
-    const profileView = state.profileView?.profile || null;
-    if (profileModal && profileModal.handle === safeHandle) {
-      profileModal.followers = Math.max(0, toNum(profileModal.followers) + delta);
-    }
-    if (profileView && profileView.handle === safeHandle) {
-      profileView.followers = Math.max(0, toNum(profileView.followers) + delta);
-      if (delta > 0) profileView.pendingFollowRequest = false;
-    }
-
-    businessProfileCache.forEach((cached) => {
-      if (cached?.handle !== safeHandle) return;
-      cached.followers = Math.max(0, toNum(cached.followers) + delta);
-    });
-  } catch (err) {
-    console.error(err);
-  }
-
-  if (state.profileModal.open && !state.profileView) {
-    renderOverlays();
-  } else {
-    render();
-  }
+  return chatRuntimeController.toggleFollow(handle, target);
 }
 
 function renderChatModal() {
@@ -9315,26 +8516,17 @@ function renderChatMessagesPanel({
   muteUntilLabel,
   partnerName
 } = {}) {
-  return renderChatMessagesPanelCore({
+  return chatRuntimeController.renderChatMessagesPanel({
     messages,
     blockedByOwner,
     mutedActive,
     muteUntilLabel,
-    partnerName,
-    escapeHtml,
-    icon,
-    formatRelative,
-    toDateSafe,
-    nowMs: Date.now()
+    partnerName
   });
 }
 
 function renderChatPendingAttachments(pendingAttachments) {
-  return renderChatPendingAttachmentsCore({
-    pendingAttachments,
-    escapeHtml,
-    icon
-  });
+  return chatRuntimeController.renderChatPendingAttachments(pendingAttachments);
 }
 
 function renderChatListPanel({
@@ -9344,70 +8536,17 @@ function renderChatListPanel({
   visibleThreads = [],
   chatThreadMenuId = state.chatThreadMenuId
 } = {}) {
-  return renderChatListPanelCore({
+  return chatRuntimeController.renderChatListPanel({
     scope,
     inboxThreads,
     archivedThreads,
     visibleThreads,
-    chatThreadMenuId,
-    escapeHtml,
-    icon,
-    formatRelative,
-    getOptimizedImageUrl,
-    nowMs: Date.now()
+    chatThreadMenuId
   });
 }
 
 function renderChatView() {
-  const threads = sortChatThreads(state.chatThreads);
-  if (!state.chatModal.open || !state.chatModal.profile) {
-    const scope = state.chatListScope === "archived" ? "archived" : "inbox";
-    const inboxThreads = threads.filter((thread) => !isChatThreadArchived(thread));
-    const archivedThreads = threads.filter((thread) => isChatThreadArchived(thread));
-    const visibleThreads = scope === "archived" ? archivedThreads : inboxThreads;
-    return renderChatListPanel({
-      scope,
-      inboxThreads,
-      archivedThreads,
-      visibleThreads,
-      chatThreadMenuId: state.chatThreadMenuId
-    });
-  }
-
-  const partner = state.chatModal.profile;
-  const messages = Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [];
-  const pendingAttachments = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments : [];
-  const activeThread = getActiveChatThreadSummary(partner);
-  const blockedByOwner = !!activeThread?.blockedByOwner;
-  const muteUntilMs = Number(activeThread?.muteUntilMs || 0) || 0;
-  const mutedActive = muteUntilMs > Date.now();
-  const muteUntilLabel = mutedActive ? formatRelative(new Date(muteUntilMs)) : "";
-  return `
-    <div id="chatThreadView" class="flex-1 min-h-0 px-4 pb-4 flex flex-col">
-      <div class="bg-white rounded-[2.5rem] border border-slate-100 overflow-hidden flex flex-col flex-1 min-h-0 shadow-sm">
-        <div id="chatMessages" class="flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar p-4 space-y-3 bg-slate-50/70">
-          ${renderChatMessagesPanel({
-            messages,
-            blockedByOwner,
-            mutedActive,
-            muteUntilLabel,
-            partnerName: partner.name || "User"
-          })}
-        </div>
-        <div class="shrink-0 p-4 border-t border-slate-100 bg-white">
-          ${renderChatPendingAttachments(pendingAttachments)}
-          <input type="file" id="chatAttachmentInput" class="hidden" multiple />
-          <div class="flex items-end gap-3">
-            <button id="chatAttachmentTrigger" ${blockedByOwner ? "disabled" : ""} class="w-[52px] h-[52px] shrink-0 rounded-2xl ${blockedByOwner ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-slate-100 text-slate-600 active:scale-95"} flex items-center justify-center">
-              ${icon("plus", "w-5 h-5")}
-            </button>
-            <textarea id="chatMessageInput" rows="1" ${blockedByOwner ? "readonly" : ""} placeholder="${blockedByOwner ? "Chat ist blockiert" : "Nachricht..."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none max-h-28">${escapeHtml(state.chatModal.draft || "")}</textarea>
-            <button id="chatSendBtn" ${blockedByOwner ? "disabled" : ""} class="px-5 h-[52px] rounded-2xl ${blockedByOwner ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white active:scale-95"} font-black text-[10px] uppercase tracking-widest">Send</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+  return chatRuntimeController.renderChatView();
 }
 
 function renderHeaderActionButton(avatarUrl, avatarFit) {
