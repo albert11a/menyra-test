@@ -291,6 +291,15 @@ import {
   updatePostModalCountsOnlyCore,
   updatePostModalCommentsOnlyCore
 } from "./core/post-modal-update-utils.js";
+import {
+  updateMenuDetailCountsOnlyCore,
+  updateMenuDetailCommentsOnlyCore
+} from "./core/menu-detail-update-utils.js";
+import {
+  ensureOverlayRootCore,
+  ensureModalEscapeHandlerCore,
+  syncModalOpenUiStateCore
+} from "./core/overlay-root-ui-utils.js";
 import { bindOverlayEventsCore } from "./core/overlay-bind-orchestrator-utils.js";
 import { renderOverlaysCore } from "./core/overlay-render-orchestrator-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
@@ -11452,48 +11461,30 @@ function updateMenuDetailMeta() {
 }
 
 function updateMenuDetailCountsOnly() {
-  if (!state.menuDetail.open || !state.menuDetail.item) return;
-  const ctx = getMenuDetailContext();
-  if (!ctx) return;
-  const meta = ensureMenuItemMeta(ctx.key);
-  const counts = resolveMenuItemCounts(meta);
-  const userBadge = currentUserBadge();
-  const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
-
-  const likeBtn = document.getElementById("menuDetailLikeBtn");
-  if (likeBtn) {
-    likeBtn.classList.toggle("text-rose-500", !!isLiked);
-    likeBtn.classList.toggle("text-slate-700", !isLiked);
-    likeBtn.innerHTML = `${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}`;
-  }
-  const headerFavBtn = document.getElementById("menuDetailHeaderFavoritesBtn");
-  if (headerFavBtn) {
-    headerFavBtn.classList.toggle("bg-slate-900", !!isLiked);
-    headerFavBtn.classList.toggle("text-white", !!isLiked);
-    headerFavBtn.classList.toggle("border-slate-900", !!isLiked);
-    headerFavBtn.classList.toggle("bg-slate-100", !isLiked);
-    headerFavBtn.classList.toggle("text-slate-700", !isLiked);
-    headerFavBtn.classList.toggle("border-slate-200", !isLiked);
-  }
-  const likesCount = document.getElementById("menuDetailLikesCount");
-  if (likesCount) likesCount.textContent = `${formatCount(counts.likes)} Likes`;
-  const commentsCount = document.getElementById("menuDetailCommentsCount");
-  if (commentsCount) commentsCount.textContent = `${formatCount(counts.comments)} Kommentare`;
-  if (window.lucide?.createIcons) window.lucide.createIcons();
+  return updateMenuDetailCountsOnlyCore({
+    state,
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    getMenuDetailContextFn: getMenuDetailContext,
+    ensureMenuItemMetaFn: ensureMenuItemMeta,
+    resolveMenuItemCountsFn: resolveMenuItemCounts,
+    currentUserBadgeFn: currentUserBadge,
+    formatCountFn: formatCount,
+    iconFn: icon
+  });
 }
 
 function updateMenuDetailCommentsOnly() {
-  if (!state.menuDetail.open || !state.menuDetail.item) return;
-  const ctx = getMenuDetailContext();
-  if (!ctx) return;
-  const meta = ensureMenuItemMeta(ctx.key);
-  const comments = (meta.comments || []).map(ensureCommentShape);
-  const commentsRoot = document.getElementById("menuDetailComments");
-  if (commentsRoot) {
-    commentsRoot.innerHTML = renderMenuDetailComments(comments);
-    applyCommentAvatarCache(commentsRoot);
-  }
-  if (window.lucide?.createIcons) window.lucide.createIcons();
+  return updateMenuDetailCommentsOnlyCore({
+    state,
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    getMenuDetailContextFn: getMenuDetailContext,
+    ensureMenuItemMetaFn: ensureMenuItemMeta,
+    ensureCommentShapeFn: ensureCommentShape,
+    renderMenuDetailCommentsFn: renderMenuDetailComments,
+    applyCommentAvatarCacheFn: applyCommentAvatarCache
+  });
 }
 
 function updateCommentLikeButton(postId, commentId, replyId, likeCount) {
@@ -12689,85 +12680,28 @@ function renderMain() {
 }
 
 function ensureOverlayRoot() {
-  let root = document.getElementById("overlayRoot");
-  if (!root) {
-    root = document.createElement("div");
-    root.id = "overlayRoot";
-    document.body.appendChild(root);
-  }
-  if (!document.getElementById("modalUnderlay")) {
-    const underlay = document.createElement("div");
-    underlay.id = "modalUnderlay";
-    underlay.className = "fixed inset-0 bg-white z-[50] hidden pointer-events-none";
-    root.appendChild(underlay);
-  }
-  if (!document.getElementById("profileOverlayRoot")) {
-    const profileRoot = document.createElement("div");
-    profileRoot.id = "profileOverlayRoot";
-    root.appendChild(profileRoot);
-  }
-  if (!document.getElementById("chatOverlayRoot")) {
-    const chatRoot = document.createElement("div");
-    chatRoot.id = "chatOverlayRoot";
-    root.appendChild(chatRoot);
-  }
-  if (!document.getElementById("postOverlayRoot")) {
-    const postRoot = document.createElement("div");
-    postRoot.id = "postOverlayRoot";
-    root.appendChild(postRoot);
-  }
-  if (!document.getElementById("likesOverlayRoot")) {
-    const likesRoot = document.createElement("div");
-    likesRoot.id = "likesOverlayRoot";
-    root.appendChild(likesRoot);
-  }
-  if (!document.getElementById("menuOverlayRoot")) {
-    const menuRoot = document.createElement("div");
-    menuRoot.id = "menuOverlayRoot";
-    root.appendChild(menuRoot);
-  }
-  if (!document.getElementById("menuDetailOverlayRoot")) {
-    const menuDetailRoot = document.createElement("div");
-    menuDetailRoot.id = "menuDetailOverlayRoot";
-    root.appendChild(menuDetailRoot);
-  }
-  if (!document.getElementById("focusOverlayRoot")) {
-    const focusRoot = document.createElement("div");
-    focusRoot.id = "focusOverlayRoot";
-    root.appendChild(focusRoot);
-  }
-  if (!document.getElementById("leadOverlayRoot")) {
-    const leadRoot = document.createElement("div");
-    leadRoot.id = "leadOverlayRoot";
-    root.appendChild(leadRoot);
-  }
-  if (!document.getElementById("customerOverlayRoot")) {
-    const customerRoot = document.createElement("div");
-    customerRoot.id = "customerOverlayRoot";
-    root.appendChild(customerRoot);
-  }
-  return root;
+  return ensureOverlayRootCore({
+    documentObj: typeof document === "undefined" ? null : document
+  });
 }
 
 function ensureModalEscapeHandler() {
-  if (modalEscapeBound || typeof document === "undefined") return;
-  const handler = (evt) => {
-    if (evt.key !== "Escape") return;
-    if (closeActiveModal()) {
-      evt.preventDefault();
-    }
-  };
-  document.addEventListener("keydown", handler);
-  modalEscapeBound = true;
+  return ensureModalEscapeHandlerCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    isBound: modalEscapeBound,
+    setBoundFn: (value) => {
+      modalEscapeBound = !!value;
+    },
+    closeActiveModalFn: closeActiveModal
+  });
 }
 
 function syncModalOpenUiState() {
-  const anyModalOpen = isAnyModalOpen();
-  const underlay = document.getElementById("modalUnderlay");
-  if (underlay) underlay.classList.toggle("hidden", !anyModalOpen);
-  document.documentElement.classList.toggle("modal-open", anyModalOpen);
-  document.body.classList.toggle("modal-open", anyModalOpen);
-  if (anyModalOpen) ensureModalEscapeHandler();
+  return syncModalOpenUiStateCore({
+    documentObj: typeof document === "undefined" ? null : document,
+    isAnyModalOpenFn: isAnyModalOpen,
+    ensureModalEscapeHandlerFn: ensureModalEscapeHandler
+  });
 }
 
 function renderOverlays(options = {}) {
