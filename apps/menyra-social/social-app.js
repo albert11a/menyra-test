@@ -69,94 +69,94 @@ import {
 import {
   normalizeInitialTab,
   normalizeAuthMode
-} from "./core/route-auth-utils.js";
-import { resolveInitialRouteState } from "./core/initial-route-state.js";
+} from "./core/auth/route-auth-utils.js";
+import { resolveInitialRouteState } from "./core/auth/initial-route-state.js";
 import {
   readAuthBootstrapSnapshotCore,
   buildAuthBootstrapSnapshotPayload,
   persistAuthBootstrapSnapshot,
   clearAuthBootstrapSnapshotStorage,
   applyAuthBootstrapSnapshotToProfile
-} from "./core/auth-bootstrap-snapshot.js";
+} from "./core/auth/auth-bootstrap-snapshot.js";
 import {
   shouldResetUserScopedStateCore,
   resolvePendingAuthRouteFlagsCore
-} from "./core/auth-bootstrap-flow-utils.js";
+} from "./core/auth/auth-bootstrap-flow-utils.js";
 import {
   runPostLoginPendingRouteOpenFlowCore,
   runPostLoginNonBlockingRouteOpenFlowCore
-} from "./core/auth-post-login-route-open-utils.js";
-import { bootstrapAuthenticatedSessionCore } from "./core/auth-user-bootstrap-utils.js";
+} from "./core/auth/auth-post-login-route-open-utils.js";
+import { bootstrapAuthenticatedSessionCore } from "./core/auth/auth-user-bootstrap-utils.js";
 import {
   clearQueryParamsFromCurrentUrlCore,
   resolveRouteStateFromTargetUrlCore,
   applyPendingRouteStateCore
-} from "./core/push-route-query-utils.js";
+} from "./core/push/push-route-query-utils.js";
 import {
   resolveNativePushActorCore,
   resolveNativePushBodyCore,
   buildNativePushAlertPayloadCore
-} from "./core/push-alert-utils.js";
+} from "./core/push/push-alert-utils.js";
 import {
   canUseNativeNotificationsCore,
   buildPushActivationIssueCore,
   getPushActivationIssueMessageCore,
   mapPushActivationErrorCore,
   canEmitNativePushAlertsCore
-} from "./core/push-activation-utils.js";
-import { ensureNotificationPermissionCore } from "./core/push-permission-utils.js";
+} from "./core/push/push-activation-utils.js";
+import { ensureNotificationPermissionCore } from "./core/push/push-permission-utils.js";
 import {
   readPushSeenIdsCore,
   writePushSeenIdsCore
-} from "./core/push-seen-storage-utils.js";
+} from "./core/push/push-seen-storage-utils.js";
 import {
   getOrCreatePushDeviceIdCore,
   readPushTokenMetaCore,
   writePushTokenMetaCore
-} from "./core/push-token-storage-utils.js";
+} from "./core/push/push-token-storage-utils.js";
 import {
   ensurePushServiceWorkerRegistrationCore,
   waitForPushServiceWorkerReadyCore
-} from "./core/push-service-worker-utils.js";
+} from "./core/push/push-service-worker-utils.js";
 import {
   ensureFirebaseMessagingModuleCore,
   ensureMessagingClientCore
-} from "./core/push-messaging-utils.js";
+} from "./core/push/push-messaging-utils.js";
 import {
   hasPushDeviceRegistrationPrerequisitesCore,
   isPushTokenSyncFreshCore,
   buildPushDeviceRegistrationPayloadCore,
   buildPushDeviceDisablePayloadCore
-} from "./core/push-device-registration-utils.js";
+} from "./core/push/push-device-registration-utils.js";
 import {
   normalizeNotificationItemCore,
   mapNotificationSnapshotCore
-} from "./core/notification-item-utils.js";
+} from "./core/notifications/notification-item-utils.js";
 import {
   shouldSurfaceNativePushNowCore,
   addNotificationItemsToSeenSetCore,
   collectUnseenUnreadNotificationItemsFromChangesCore
-} from "./core/notification-native-push-utils.js";
+} from "./core/notifications/notification-native-push-utils.js";
 import {
   buildNotificationsLiveQueryCore,
   buildNotificationsFetchQueryCore,
   fetchNotificationsFromQueryCore
-} from "./core/notification-query-utils.js";
+} from "./core/notifications/notification-query-utils.js";
 import {
   buildNotificationWritePayloadCore,
   normalizeNotificationWriteIdsCore
-} from "./core/notification-write-utils.js";
+} from "./core/notifications/notification-write-utils.js";
 import {
   markNotificationReadInListCore,
   markAllNotificationsReadInListCore
-} from "./core/notification-read-state-utils.js";
+} from "./core/notifications/notification-read-state-utils.js";
 import {
   isChatNotificationTypeCore,
   isFollowNotificationTypeCore,
   isPostNotificationTypeCore,
   buildNotificationChatTargetCore,
   buildNotificationProfileTargetCore
-} from "./core/notification-target-utils.js";
+} from "./core/notifications/notification-target-utils.js";
 import {
   buildFollowRequestDocPayloadCore,
   buildFollowRequestNotificationPayloadCore,
@@ -169,12 +169,12 @@ import {
   isSelfPendingChatTargetCore,
   isChatThreadAlreadyOpenCore,
   buildChatRouteTargetProfileCore
-} from "./core/chat-route-open-utils.js";
+} from "./core/chat/chat-route-open-utils.js";
 import {
   normalizePendingNotificationIdCore,
   findNotificationByIdCore,
   prependNotificationByIdCore
-} from "./core/notification-route-open-utils.js";
+} from "./core/notifications/notification-route-open-utils.js";
 import {
   normalizePendingProfileRestaurantIdCore,
   isPendingProfileAlreadyOpenCore,
@@ -184,12 +184,12 @@ import {
   isPushOpenTargetMessageCore,
   parsePushOpenTargetPayloadCore,
   shouldHandlePushOpenTargetCore
-} from "./core/push-open-target-message-utils.js";
+} from "./core/push/push-open-target-message-utils.js";
 import {
   normalizePendingPostIdCore,
   findPostInLocalSourcesCore,
   resolveNotificationCommentHighlightIdCore
-} from "./core/post-notification-open-utils.js";
+} from "./core/notifications/post-notification-open-utils.js";
 import {
   normalizeUserPostDocCore,
   normalizeRestaurantPostDocCore
@@ -198,8 +198,8 @@ import {
   readNotificationPostLookupCore,
   shouldFetchUserNotificationPostCore,
   shouldFetchRestaurantNotificationPostCore
-} from "./core/post-notification-fetch-utils.js";
-import { highlightCommentInModalCore } from "./core/notification-comment-highlight-utils.js";
+} from "./core/notifications/post-notification-fetch-utils.js";
+import { highlightCommentInModalCore } from "./core/notifications/notification-comment-highlight-utils.js";
 import { buildFollowAcceptedFollowingStateCore } from "./core/follow-accepted-state-utils.js";
 import {
   buildResolveUserByHandleCandidatesCore,
@@ -210,7 +210,7 @@ import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
   applyPendingInitialRouteStateCore
-} from "./core/session-tab-guards.js";
+} from "./core/auth/session-tab-guards.js";
 import {
   loadLogoCacheCore,
   scheduleLogoCacheWriteCore,
@@ -254,7 +254,7 @@ import {
   normalizeCustomerScopeKeyCore,
   createEmptyLeadsStateCore,
   createEmptyCustomersStateCore
-} from "./core/crm-scope-state-utils.js";
+} from "./core/crm/crm-scope-state-utils.js";
 import {
   normalizeRoleListCore,
   roleLabelCore,
@@ -304,19 +304,19 @@ import { renderMainCore } from "./core/main-shell-render-utils.js";
 import {
   renderNotificationsViewCore,
   renderNotificationsListCore
-} from "./core/notifications-render-utils.js";
+} from "./core/notifications/notifications-render-utils.js";
 import {
   renderCrmLazyLoadingViewCore,
   renderCeoGuardCore
-} from "./core/crm-shared-render-utils.js";
+} from "./core/crm/crm-shared-render-utils.js";
 import { bindOverlayEventsCore } from "./core/overlays/overlay-bind-orchestrator-utils.js";
 import { renderOverlaysCore } from "./core/overlays/overlay-render-orchestrator-utils.js";
-import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
-import { saveLeadFromModalCore } from "./core/lead-save-utils.js";
-import { deleteLeadFromModalCore } from "./core/lead-delete-utils.js";
+import { renderLeadModalCore } from "./core/leads/lead-modal-render-utils.js";
+import { saveLeadFromModalCore } from "./core/leads/lead-save-utils.js";
+import { deleteLeadFromModalCore } from "./core/leads/lead-delete-utils.js";
 import { saveCustomerFromModalCore } from "./core/customer-save-utils.js";
-import { convertLeadToCustomerCore } from "./core/lead-convert-utils.js";
-import { saveCeoStaffFromViewCore } from "./core/staff-save-utils.js";
+import { convertLeadToCustomerCore } from "./core/leads/lead-convert-utils.js";
+import { saveCeoStaffFromViewCore } from "./core/crm/staff-save-utils.js";
 import { renderSettingsViewCore } from "./core/settings-render-utils.js";
 import { escapeHtmlCore } from "./core/html-utils.js";
 import {
@@ -341,7 +341,7 @@ import {
   normalizeLeadCountryCore,
   buildLeadAccountEmailCore,
   inferLeadCountryFromTextCore
-} from "./core/lead-country-utils.js";
+} from "./core/leads/lead-country-utils.js";
 import { normalizeShopCartStateCore } from "./core/shop-cart-state-utils.js";
 import {
   getShopCartProfileContextCore,
@@ -364,7 +364,7 @@ import { getBusinessProfileTypeCore } from "./core/business-profile-type-utils.j
 import {
   createDefaultLeadPricingCore,
   normalizeLeadPricingCore
-} from "./core/lead-pricing-utils.js";
+} from "./core/leads/lead-pricing-utils.js";
 import {
   normalizeLeadSettingsCore,
   getLeadSettingsConfigCore,
@@ -372,7 +372,7 @@ import {
   buildLeadContactNameCore,
   getLeadMonthlyPriceCore,
   getLeadPriceForCycleCore
-} from "./core/lead-settings-utils.js";
+} from "./core/leads/lead-settings-utils.js";
 import {
   normalizeLeadStatusKeyCore,
   leadStatusLabelCore,
@@ -380,8 +380,8 @@ import {
   isCustomerRestaurantCore,
   leadTypeLabelCore,
   resolveCustomerTypeCore
-} from "./core/lead-taxonomy-utils.js";
-import { normalizeLeadTypeKeyCore } from "./core/lead-type-utils.js";
+} from "./core/leads/lead-taxonomy-utils.js";
+import { normalizeLeadTypeKeyCore } from "./core/leads/lead-type-utils.js";
 import {
   hasLeadLocationCoordsCore,
   toFiniteCoordNumberCore,
@@ -411,7 +411,7 @@ import {
   createLeadLocationCore,
   normalizeLeadLocationsCore,
   getPrimaryLeadLocationCore
-} from "./core/lead-location-utils.js";
+} from "./core/leads/lead-location-utils.js";
 import {
   isRestaurantMarkedDeletedCore,
   forceHiddenEmailLocalPartCore,
@@ -426,20 +426,20 @@ import {
   isAlbertCeoUserCore,
   hasGlobalCeoAccessCore,
   getCeoGpsOverrideCore
-} from "./core/ceo-access-utils.js";
+} from "./core/crm/ceo-access-utils.js";
 import {
   parseCoordNumberCore,
   uniqueStringListCore,
   normalizeCeoCountryCore,
   normalizeCeoPathCore,
   buildCeoNameCore
-} from "./core/ceo-normalize-utils.js";
-import { getCurrentCeoMetaCore } from "./core/ceo-meta-utils.js";
+} from "./core/crm/ceo-normalize-utils.js";
+import { getCurrentCeoMetaCore } from "./core/crm/ceo-meta-utils.js";
 import {
   normalizeCeoStaffRecordCore,
   overlayCeoStaffProfileCore,
   buildCeoDirectorySyncPatchCore
-} from "./core/ceo-staff-sync-utils.js";
+} from "./core/crm/ceo-staff-sync-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -457,7 +457,7 @@ import {
   getChatMessageTimestampCore,
   pruneChatMessagesCore,
   buildChatPreviewTextCore
-} from "./core/chat-utils.js";
+} from "./core/chat/chat-utils.js";
 import {
   saveChatThreadIndexCore,
   readChatThreadIndexListCore,
@@ -467,7 +467,7 @@ import {
   loadChatThreadIndexCore,
   sortChatThreadsCore,
   rebuildChatThreadIndexFromStorageCore
-} from "./core/chat-thread-index-utils.js";
+} from "./core/chat/chat-thread-index-utils.js";
 import {
   normalizeChatThreadSummaryCore,
   getChatUnreadCountCore,
@@ -475,7 +475,7 @@ import {
   isChatThreadArchivedCore,
   getChatThreadByIdCore,
   getActiveChatThreadSummaryCore
-} from "./core/chat-thread-state-utils.js";
+} from "./core/chat/chat-thread-state-utils.js";
 import {
   getStringByteSizeCore,
   isChatInlineDataUrlCore,
@@ -486,17 +486,17 @@ import {
   buildInlineChatAttachmentCore,
   loadChatThreadMessagesCore,
   saveChatThreadMessagesCore
-} from "./core/chat-message-utils.js";
+} from "./core/chat/chat-message-utils.js";
 import {
   buildChatThreadPatchFromMessagesCore,
   markIncomingChatMessagesAsReadCore,
   updateChatMessageListCore
-} from "./core/chat-message-state-utils.js";
+} from "./core/chat/chat-message-state-utils.js";
 import {
   buildChatMessageSyncContextCore,
   buildChatRemotePayloadBundleCore,
   buildChatMessageNotificationCore
-} from "./core/chat-remote-sync-utils.js";
+} from "./core/chat/chat-remote-sync-utils.js";
 import {
   collectUnreadIncomingChatMessagesCore,
   buildChatListenerLocalSeedCore,
@@ -504,30 +504,30 @@ import {
   buildChatLocalMessageMapCore,
   buildSortedRemoteChatMessagesCore,
   hasUnreadIncomingRemoteMessagesCore
-} from "./core/chat-read-sync-utils.js";
+} from "./core/chat/chat-read-sync-utils.js";
 import {
   shouldIgnoreChatMessagesSnapshotCore,
   resolveChatMessagesAfterSnapshotCore
-} from "./core/chat-message-listener-utils.js";
+} from "./core/chat/chat-message-listener-utils.js";
 import {
   collectUnreadIncomingChatMessageIdsCore,
   buildChatUnreadResetPatchCore,
   buildChatMessageReadPatchCore
-} from "./core/chat-remote-read-write-utils.js";
+} from "./core/chat/chat-remote-read-write-utils.js";
 import {
   normalizeRemoteChatReadSyncInputsCore,
   buildRemoteChatReadSyncWriteTasksCore
-} from "./core/chat-remote-read-sync-plan-utils.js";
+} from "./core/chat/chat-remote-read-sync-plan-utils.js";
 import {
   renderChatMessagesPanelCore,
   renderChatPendingAttachmentsCore
-} from "./core/chat-render-utils.js";
-import { renderChatListPanelCore } from "./core/chat-list-render-utils.js";
+} from "./core/chat/chat-render-utils.js";
+import { renderChatListPanelCore } from "./core/chat/chat-list-render-utils.js";
 import {
   mapChatThreadDocsToSummariesCore,
   buildMergedChatThreadsFromRemoteCore,
   shouldRenderChatThreadListAfterRemoteSyncCore
-} from "./core/chat-thread-listener-utils.js";
+} from "./core/chat/chat-thread-listener-utils.js";
 import {
   normalizeChatOpenProfileCore,
   buildChatModalStateOnOpenCore,
@@ -536,23 +536,23 @@ import {
   getSafeChatThreadIdFromThreadCore,
   shouldCloseChatModalForThreadCore,
   filterChatThreadsAfterDeleteCore
-} from "./core/chat-thread-action-state-utils.js";
+} from "./core/chat/chat-thread-action-state-utils.js";
 import {
   buildNextChatAttachmentsCore,
   removePendingChatAttachmentCore,
   toggleChatMessageFlagCore,
   createOutgoingChatMessageCore
-} from "./core/chat-compose-utils.js";
+} from "./core/chat/chat-compose-utils.js";
 import {
   resolveChatSendPayloadCore,
   buildChatSendLocalUpdateCore
-} from "./core/chat-send-flow-utils.js";
+} from "./core/chat/chat-send-flow-utils.js";
 import {
   captureChatInputFocusStateCore,
   restoreChatInputFocusStateCore,
   scrollChatMessagesToBottomCore,
   autosizeTextareaCore
-} from "./core/chat-dom-utils.js";
+} from "./core/chat/chat-dom-utils.js";
 import {
   bindProfileOverlayEventsCore,
   bindLikesOverlayEventsCore,
@@ -568,19 +568,19 @@ import {
 } from "./core/overlays/overlay-menu-focus-bind-utils.js";
 import { bindLeadOverlayEventsCore } from "./core/overlays/overlay-lead-bind-utils.js";
 import { bindMenuDetailOverlayEventsCore } from "./core/overlays/overlay-menu-detail-bind-utils.js";
-import { bindAppShellEventsCore } from "./core/app-events-shell-bind-utils.js";
-import { bindAppMenuFocusEventsCore } from "./core/app-events-menu-focus-bind-utils.js";
-import { bindAppSettingsProfileEventsCore } from "./core/app-events-settings-profile-bind-utils.js";
-import { bindAppChatUploadEventsCore } from "./core/app-events-chat-upload-bind-utils.js";
+import { bindAppShellEventsCore } from "./core/app-events/app-events-shell-bind-utils.js";
+import { bindAppMenuFocusEventsCore } from "./core/app-events/app-events-menu-focus-bind-utils.js";
+import { bindAppSettingsProfileEventsCore } from "./core/app-events/app-events-settings-profile-bind-utils.js";
+import { bindAppChatUploadEventsCore } from "./core/app-events/app-events-chat-upload-bind-utils.js";
 import {
   bindCrmStaffEventsCore,
   bindLeadInlineCreateEventsCore
-} from "./core/app-events-crm-staff-bind-utils.js";
-import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events-main-bind-utils.js";
+} from "./core/app-events/app-events-crm-staff-bind-utils.js";
+import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
 import {
   ensureTabDataCore,
   loadAuthProfileCore
-} from "./core/tab-auth-load-utils.js";
+} from "./core/auth/tab-auth-load-utils.js";
 
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
