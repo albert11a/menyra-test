@@ -92,7 +92,7 @@ import {
   resolveRouteStateFromTargetUrlCore,
   applyPendingRouteStateCore
 } from "./core/push/push-route-query-utils.js";
-import { createDeeplinkFlowControllerCore } from "./core/router/deeplink-flow-utils.js";
+import { createAppControllerBridge } from "./core/app-shell/app-controller-bridge.js";
 import {
   resolveNativePushActorCore,
   resolveNativePushBodyCore,
@@ -143,7 +143,6 @@ import {
   buildNotificationsFetchQueryCore,
   fetchNotificationsFromQueryCore
 } from "./core/notifications/notification-query-utils.js";
-import { createNotificationsRuntimeFlowControllerCore } from "./core/notifications/notifications-runtime-flow-utils.js";
 import {
   buildNotificationWritePayloadCore,
   normalizeNotificationWriteIdsCore
@@ -182,7 +181,6 @@ import {
   isPendingProfileAlreadyOpenCore,
   normalizeProfileTopTabFromRouteCore
 } from "./core/profile/profile-route-open-utils.js";
-import { createProfileOpenFlowControllerCore } from "./core/profile/profile-open-flow-utils.js";
 import {
   isPushOpenTargetMessageCore,
   parsePushOpenTargetPayloadCore,
@@ -320,7 +318,6 @@ import {
 } from "./core/crm/crm-shared-render-utils.js";
 import { bindOverlayEventsCore } from "./core/overlays/overlay-bind-orchestrator-utils.js";
 import { renderOverlaysCore } from "./core/overlays/overlay-render-orchestrator-utils.js";
-import { createOverlayOrchestrationController } from "./core/overlays/overlay-orchestration-controller.js";
 import { renderLeadModalCore } from "./core/leads/lead-modal-render-utils.js";
 import { saveLeadFromModalCore } from "./core/leads/lead-save-utils.js";
 import { deleteLeadFromModalCore } from "./core/leads/lead-delete-utils.js";
@@ -360,7 +357,6 @@ import {
   canAddToShopCartCore,
   getShopCartTotalCore
 } from "./core/shop/shop-cart-access-utils.js";
-import { createShopViewCartOrchestrationController } from "./core/shop/shop-view-cart-orchestration-controller.js";
 import {
   getMenuRestaurantForProfileCore,
   ensureMenuDataForProfileCore,
@@ -460,7 +456,6 @@ import {
   buildStoriesSignatureCore,
   refreshFeedStoriesCore
 } from "./core/feed/feed-story-utils.js";
-import { createFeedViewOrchestrationController } from "./core/feed/feed-view-orchestration-controller.js";
 import {
   getChatThreadIdCore,
   chatThreadStorageKeyCore,
@@ -3240,14 +3235,6 @@ function toggleChatMessageLiked(messageId) {
   if (typeof nextLiked === "boolean") {
     void persistCurrentChatMessagePatch(safeId, { liked: nextLiked });
   }
-}
-
-function openChatWithProfile(profile) {
-  return overlayOrchestrationController.openChatWithProfile(profile);
-}
-
-function closeChatModal() {
-  return overlayOrchestrationController.closeChatModal();
 }
 
 async function sendChatMessage() {
@@ -6720,30 +6707,6 @@ function findPostById(postId) {
   return modalPosts.find((item) => String(item.id) === String(postId)) || null;
 }
 
-function closeProfileModal() {
-  return overlayOrchestrationController.closeProfileModal();
-}
-
-function closeLikesModal() {
-  return overlayOrchestrationController.closeLikesModal();
-}
-
-function closeActiveModal() {
-  return overlayOrchestrationController.closeActiveModal();
-}
-
-function isAnyModalOpen() {
-  return overlayOrchestrationController.isAnyModalOpen();
-}
-
-async function openPostModal(post) {
-  return overlayOrchestrationController.openPostModal(post);
-}
-
-function closePostModal() {
-  return overlayOrchestrationController.closePostModal();
-}
-
 function ensureCommentShape(comment) {
   const rawLikes = Array.isArray(comment.likes) ? comment.likes : [];
   const likesCount = Number.isFinite(Number(comment.likesCount)) ? Number(comment.likesCount) : rawLikes.length;
@@ -7389,42 +7352,6 @@ function renderRoleSwitchLinks() {
       }).join("")}
     </div>
   `;
-}
-
-function renderFeedView() {
-  return feedViewOrchestrationController.renderFeedView();
-}
-
-function renderStoryItem(story, index = 0) {
-  return feedViewOrchestrationController.renderStoryItem(story, index);
-}
-
-function renderStoriesRow(stories) {
-  return feedViewOrchestrationController.renderStoriesRow(stories);
-}
-
-function renderFeedItem(post, index) {
-  return feedViewOrchestrationController.renderFeedItem(post, index);
-}
-
-function renderFeedList(feedPosts) {
-  return feedViewOrchestrationController.renderFeedList(feedPosts);
-}
-
-function patchFeedList(feedPosts) {
-  return feedViewOrchestrationController.patchFeedList(feedPosts);
-}
-
-function patchStoriesRow(stories) {
-  return feedViewOrchestrationController.patchStoriesRow(stories);
-}
-
-function updateFeedDom() {
-  return feedViewOrchestrationController.updateFeedDom();
-}
-
-function bindFeedDelegation() {
-  return feedViewOrchestrationController.bindFeedDelegation();
 }
 
 function updateShellDom() {
@@ -9416,38 +9343,8 @@ function showPublicProfile(profile, posts, { showBack = true, backTab, topTab } 
   attachProfileViewListener(profile);
 }
 
-const profileOpenFlowController = createProfileOpenFlowControllerCore({
-  state,
-  isLocalBusinessProfile: (profile) => isLocalBusinessProfile(profile),
-  getRestaurantMetaById: (restaurantId) => getRestaurantMetaById(restaurantId),
-  normalizeSearchKey: (value) => normalizeSearchKey(value),
-  render: () => render(),
-  ensureMenuDataForProfile: () => ensureMenuDataForProfile(),
-  ensureFocusDataForProfile: () => ensureFocusDataForProfile(),
-  hydrateRestaurantsByIds: (restaurantIds, options = {}) => hydrateRestaurantsByIds(restaurantIds, options),
-  normalizeExternalProfile: (payload = {}) => normalizeExternalProfile(payload),
-  showPublicProfile: (profile, posts, options = {}) => showPublicProfile(profile, posts, options),
-  fetchBusinessProfileDoc: (payload = {}) => fetchBusinessProfileDoc(payload),
-  loadBusinessPostsForRestaurant: (restaurantId) => loadBusinessPostsForRestaurant(restaurantId),
-  normalizeExternalUserProfile: (payload = {}) => normalizeExternalUserProfile(payload),
-  openGuestAuthPrompt: (message = "") => openGuestAuthPrompt(message),
-  userProfileCache,
-  hasPendingFollowRequest: async (targetUid) => hasPendingFollowRequest(targetUid),
-  fetchUserDocByUid: async (uid) => getDoc(doc(db, "users", uid)),
-  resolveUserByHandle: async (handle) => resolveUserByHandle(handle),
-  loadUserPostsForUser: async (uid) => loadUserPostsForUser(uid)
-});
-
-const {
-  isOwnBusinessTarget,
-  openOwnBusinessProfile,
-  openProfileViewFromBusiness,
-  openProfileFromUser
-} = profileOpenFlowController;
-
-const deeplinkFlowController = createDeeplinkFlowControllerCore({
-  state,
-  getPendingState: () => ({
+function getDeeplinkPendingState() {
+  return {
     pendingProfileRestaurantId,
     pendingProfileTopTab,
     pendingProfileHandled,
@@ -9459,117 +9356,23 @@ const deeplinkFlowController = createDeeplinkFlowControllerCore({
     pendingChatHandled,
     pendingInitialTab,
     pendingAuthMode
-  }),
-  setPendingState: (patch = {}) => {
-    if (!patch || typeof patch !== "object") return;
-    if ("pendingProfileRestaurantId" in patch) pendingProfileRestaurantId = patch.pendingProfileRestaurantId;
-    if ("pendingProfileTopTab" in patch) pendingProfileTopTab = patch.pendingProfileTopTab;
-    if ("pendingProfileHandled" in patch) pendingProfileHandled = !!patch.pendingProfileHandled;
-    if ("pendingNotificationId" in patch) pendingNotificationId = patch.pendingNotificationId;
-    if ("pendingNotificationHandled" in patch) pendingNotificationHandled = !!patch.pendingNotificationHandled;
-    if ("pendingPostId" in patch) pendingPostId = patch.pendingPostId;
-    if ("pendingPostHandled" in patch) pendingPostHandled = !!patch.pendingPostHandled;
-    if ("pendingChatUid" in patch) pendingChatUid = patch.pendingChatUid;
-    if ("pendingChatHandled" in patch) pendingChatHandled = !!patch.pendingChatHandled;
-    if ("pendingInitialTab" in patch) pendingInitialTab = patch.pendingInitialTab;
-    if ("pendingAuthMode" in patch) pendingAuthMode = patch.pendingAuthMode;
-  },
-  clearQueryParamsFromCurrentUrl: ({ keys = [] } = {}) => {
-    clearQueryParamsFromCurrentUrlCore({
-      windowObj: typeof window === "undefined" ? null : window,
-      keys
-    });
-  },
-  resolveRouteStateFromTargetUrl: (rawUrl = "") => resolveRouteStateFromTargetUrlCore({
-    rawUrl,
-    windowObj: typeof window === "undefined" ? null : window,
-    resolveInitialRouteState,
-    normalizeInitialTab,
-    normalizeAuthMode
-  }),
-  applyPendingRouteState: (current, routeState) => applyPendingRouteStateCore({
-    current,
-    routeState
-  }),
-  normalizePendingNotificationId: (value) => normalizePendingNotificationIdCore(value),
-  findNotificationById: ({ notifications = [], notificationId = "" } = {}) => findNotificationByIdCore({
-    notifications,
-    notificationId
-  }),
-  fetchNotificationById: async (notificationId, ownerUid) => {
-    const safeOwnerUid = String(ownerUid || "").trim();
-    const safeNotificationId = String(notificationId || "").trim();
-    if (!safeOwnerUid || !safeNotificationId) return null;
-    const snap = await getDoc(doc(db, "users", safeOwnerUid, "notifications", safeNotificationId));
-    if (!snap.exists()) return null;
-    return normalizeNotificationItem(snap);
-  },
-  prependNotificationById: ({ notifications = [], notificationItem = null, notificationId = "" } = {}) => prependNotificationByIdCore({
-    notifications,
-    notificationItem,
-    notificationId
-  }),
-  saveNotifications: (notifications) => saveNotifications(notifications),
-  openNotificationTarget: async (notificationId) => openNotificationTarget(notificationId),
-  normalizePendingPostId: (value) => normalizePendingPostIdCore(value),
-  findPostInLocalSources: ({ postId = "" } = {}) => findPostInLocalSourcesCore({
-    postId,
-    findPostById: (id) => findPostById(id),
-    feedPosts: state.feedPosts
-  }),
-  fetchPostForNotification: async ({ postId = "" } = {}) => fetchPostForNotification({ postId }),
-  openPostModal: async (post) => openPostModal(post),
-  normalizePendingChatUid: (value) => normalizePendingChatUidCore(value),
-  isSelfPendingChatTarget: ({ chatUid = "", currentUid = "" } = {}) => isSelfPendingChatTargetCore({
-    chatUid,
-    currentUid
-  }),
-  isChatThreadAlreadyOpen: ({ targetUid = "" } = {}) => isChatThreadAlreadyOpenCore({
-    chatModalOpen: state.chatModal.open,
-    currentThreadId: getChatThreadId(state.chatModal.profile),
-    targetUid
-  }),
-  getChatThreadById: (threadId) => getChatThreadById(threadId),
-  buildChatRouteTargetProfile: ({ thread = null, targetUid = "" } = {}) => buildChatRouteTargetProfileCore({
-    thread,
-    targetUid
-  }),
-  openChatWithProfile: (profile) => openChatWithProfile(profile),
-  normalizePendingProfileRestaurantId: (value) => normalizePendingProfileRestaurantIdCore(value),
-  isPendingProfileAlreadyOpen: ({ pendingProfileRestaurantId = "" } = {}) => isPendingProfileAlreadyOpenCore({
-    pendingProfileRestaurantId,
-    currentProfileRestaurantId: state.profileView?.profile?.restaurantId || ""
-  }),
-  normalizeProfileTopTabFromRoute: (value) => normalizeProfileTopTabFromRouteCore(value),
-  openProfileViewFromBusiness: (input, options = {}) => openProfileViewFromBusiness(input, options),
-  parsePushOpenTargetPayload: (payload = {}) => parsePushOpenTargetPayloadCore(payload),
-  shouldHandlePushOpenTarget: ({ notificationId = "", hasRouteFromUrl = false } = {}) => shouldHandlePushOpenTargetCore({
-    notificationId,
-    hasRouteFromUrl
-  }),
-  applyPendingInitialRouteState: () => applyPendingInitialRouteState(),
-  render: () => render(),
-  isPushOpenTargetMessage: (payload = {}) => isPushOpenTargetMessageCore(payload),
-  getNavigator: () => (typeof navigator === "undefined" ? null : navigator),
-  isPushOpenMessageBound: () => pushOpenMessageBound,
-  markPushOpenMessageBound: () => {
-    pushOpenMessageBound = true;
-  }
-});
+  };
+}
 
-const {
-  clearNotificationQueryParams,
-  clearPostQueryParams,
-  clearChatQueryParams,
-  resolveRouteStateFromTargetUrl,
-  applyPendingRouteStateFromTargetUrl,
-  maybeOpenNotificationFromQuery,
-  maybeOpenPostFromQuery,
-  maybeOpenChatFromQuery,
-  handlePushOpenTargetMessage,
-  bindPushOpenTargetMessageHandler,
-  maybeOpenProfileFromQuery
-} = deeplinkFlowController;
+function setDeeplinkPendingState(patch = {}) {
+  if (!patch || typeof patch !== "object") return;
+  if ("pendingProfileRestaurantId" in patch) pendingProfileRestaurantId = patch.pendingProfileRestaurantId;
+  if ("pendingProfileTopTab" in patch) pendingProfileTopTab = patch.pendingProfileTopTab;
+  if ("pendingProfileHandled" in patch) pendingProfileHandled = !!patch.pendingProfileHandled;
+  if ("pendingNotificationId" in patch) pendingNotificationId = patch.pendingNotificationId;
+  if ("pendingNotificationHandled" in patch) pendingNotificationHandled = !!patch.pendingNotificationHandled;
+  if ("pendingPostId" in patch) pendingPostId = patch.pendingPostId;
+  if ("pendingPostHandled" in patch) pendingPostHandled = !!patch.pendingPostHandled;
+  if ("pendingChatUid" in patch) pendingChatUid = patch.pendingChatUid;
+  if ("pendingChatHandled" in patch) pendingChatHandled = !!patch.pendingChatHandled;
+  if ("pendingInitialTab" in patch) pendingInitialTab = patch.pendingInitialTab;
+  if ("pendingAuthMode" in patch) pendingAuthMode = patch.pendingAuthMode;
+}
 
 function startFollowingListener(user = state.user) {
   if (followingUnsub) {
@@ -9590,80 +9393,365 @@ function startFollowingListener(user = state.user) {
   });
 }
 
-const notificationsRuntimeFlowController = createNotificationsRuntimeFlowControllerCore({
-  state,
-  getNotificationsUnsub: () => notificationsUnsub,
-  setNotificationsUnsub: (nextUnsub) => {
-    notificationsUnsub = typeof nextUnsub === "function" ? nextUnsub : null;
+const appControllerBridge = createAppControllerBridge({
+  profile: {
+    state,
+    isLocalBusinessProfile,
+    getRestaurantMetaById,
+    normalizeSearchKey,
+    render,
+    ensureMenuDataForProfile,
+    ensureFocusDataForProfile,
+    hydrateRestaurantsByIds,
+    normalizeExternalProfile,
+    showPublicProfile,
+    fetchBusinessProfileDoc,
+    loadBusinessPostsForRestaurant,
+    normalizeExternalUserProfile,
+    openGuestAuthPrompt,
+    userProfileCache,
+    hasPendingFollowRequest,
+    getDoc,
+    doc,
+    db,
+    resolveUserByHandle,
+    loadUserPostsForUser
   },
-  normalizeNotificationItemFromDoc: (docSnap) => normalizeNotificationItemCore({
-    docSnap,
+  deeplink: {
+    state,
+    getPendingState: getDeeplinkPendingState,
+    setPendingState: setDeeplinkPendingState,
+    clearQueryParamsFromCurrentUrlCore,
+    windowObj: typeof window === "undefined" ? null : window,
+    resolveRouteStateFromTargetUrlCore,
+    resolveInitialRouteState,
+    normalizeInitialTab,
+    normalizeAuthMode,
+    applyPendingRouteStateCore,
+    normalizePendingNotificationIdCore,
+    findNotificationByIdCore,
+    db,
+    getDoc,
+    doc,
+    prependNotificationByIdCore,
+    saveNotifications,
+    openNotificationTarget,
+    normalizePendingPostIdCore,
+    findPostInLocalSourcesCore,
+    findPostById,
+    fetchPostForNotification,
+    normalizePendingChatUidCore,
+    isSelfPendingChatTargetCore,
+    isChatThreadAlreadyOpenCore,
+    getChatThreadId,
+    getChatThreadById,
+    buildChatRouteTargetProfileCore,
+    normalizePendingProfileRestaurantIdCore,
+    isPendingProfileAlreadyOpenCore,
+    normalizeProfileTopTabFromRouteCore,
+    parsePushOpenTargetPayloadCore,
+    shouldHandlePushOpenTargetCore,
+    applyPendingInitialRouteState,
+    render,
+    isPushOpenTargetMessageCore,
+    navigatorObj: typeof navigator === "undefined" ? null : navigator,
+    isPushOpenMessageBound: () => pushOpenMessageBound,
+    markPushOpenMessageBound: () => {
+      pushOpenMessageBound = true;
+    }
+  },
+  notifications: {
+    state,
+    getNotificationsUnsub: () => notificationsUnsub,
+    setNotificationsUnsub: (nextUnsub) => {
+      notificationsUnsub = typeof nextUnsub === "function" ? nextUnsub : null;
+    },
+    normalizeNotificationItemCore,
     formatRelative,
-    toDateSafe
-  }),
-  mapNotificationSnapshotFromSnap: (snap, normalizeNotificationItemFn) => mapNotificationSnapshotCore({
-    snap,
-    normalizeNotificationItem: (docSnap) => normalizeNotificationItemFn(docSnap)
-  }),
-  shouldSurfaceNativePushNowFn: () => shouldSurfaceNativePushNowCore({
-    documentObj: typeof document !== "undefined" ? document : null,
-    activeTab: state.activeTab
-  }),
-  buildNotificationsLiveQuery: (ownerUid, liveLimit) => buildNotificationsLiveQueryCore({
+    toDateSafe,
+    mapNotificationSnapshotCore,
+    shouldSurfaceNativePushNowCore,
+    documentObj: typeof document === "undefined" ? null : document,
     db,
-    ownerUid,
     collection,
     query,
     orderBy,
     limit,
-    liveLimit
-  }),
-  readPushSeenIds: (ownerUid) => readPushSeenIds(ownerUid),
-  addNotificationItemsToSeenSet: (items, seenIds) => addNotificationItemsToSeenSetCore({ items, seenIds }),
-  writePushSeenIds: (ids = [], ownerUid = "") => writePushSeenIds(ids, ownerUid),
-  canEmitNativePushAlerts: () => canEmitNativePushAlerts(),
-  collectUnseenUnreadNotificationItemsFromChanges: (changes = [], seenIds = new Set(), normalizeNotificationItemFn) => collectUnseenUnreadNotificationItemsFromChangesCore({
-    changes,
-    normalizeNotificationItem: (docSnap) => normalizeNotificationItemFn(docSnap),
-    seenIds
-  }),
-  showNativePushAlert: async (item) => showNativePushAlert(item),
-  handleNotificationsUpdate: (items) => handleNotificationsUpdate(items),
-  subscribeNotifications: (queryRef, onNext, onError) => onSnapshot(queryRef, onNext, onError),
-  buildNotificationsFetchQuery: (ownerUid, fetchLimit) => buildNotificationsFetchQueryCore({
-    db,
-    ownerUid,
-    collection,
-    query,
-    orderBy,
-    limit,
-    fetchLimit
-  }),
-  fetchNotificationsFromQuery: async (queryRef, mapNotificationSnapshotFn) => fetchNotificationsFromQueryCore({
-    queryRef,
+    buildNotificationsLiveQueryCore,
+    readPushSeenIds,
+    addNotificationItemsToSeenSetCore,
+    writePushSeenIds,
+    canEmitNativePushAlerts,
+    collectUnseenUnreadNotificationItemsFromChangesCore,
+    showNativePushAlert,
+    handleNotificationsUpdate,
+    onSnapshot,
+    buildNotificationsFetchQueryCore,
+    fetchNotificationsFromQueryCore,
     getDocs,
-    mapNotificationSnapshot: (snap) => mapNotificationSnapshotFn(snap)
-  }),
-  saveNotifications: (notifications) => saveNotifications(notifications),
-  updateNotificationsDom: () => updateNotificationsDom(),
-  render: () => render(),
-  setPushActivationIssue: (message) => setPushActivationIssue(message),
-  clearPushActivationIssue: () => clearPushActivationIssue(),
-  ensureNotificationPermission: async (options = {}) => ensureNotificationPermission(options),
-  syncPushDeviceRegistration: async (options = {}) => syncPushDeviceRegistration(options),
-  getPushActivationIssue: () => pushActivationIssue,
-  notificationsLiveLimit: NOTIFICATIONS_LIVE_LIMIT,
-  fetchLimit: 20
+    saveNotifications,
+    updateNotificationsDom,
+    render,
+    setPushActivationIssue,
+    clearPushActivationIssue,
+    ensureNotificationPermission,
+    syncPushDeviceRegistration,
+    getPushActivationIssue: () => pushActivationIssue,
+    notificationsLiveLimit: NOTIFICATIONS_LIVE_LIMIT,
+    fetchLimit: 20
+  },
+  shop: {
+    state,
+    getMenuItemImages,
+    resolveMenuItemHero,
+    getOptimizedImageUrl,
+    isPlaceholderUrl,
+    placeholderImage: PLACEHOLDER_IMAGE,
+    getFirebaseStorageUrl,
+    isDirectImageUrl,
+    formatPrice,
+    escapeHtml,
+    getMenuItemObjectPosition: getMenuItemObjectPosition,
+    icon,
+    loadFavoriteMenuItems,
+    createEmptyFavoriteMenuItemsState,
+    getShopCartProfileContextCore,
+    getRestaurantMetaById,
+    getShopCartTotalCore,
+    parsePriceValue,
+    canAddToShopCart,
+    normalizeShopCartState,
+    buildShopVariantKey,
+    clampCropPercent,
+    createEmptyShopCart,
+    saveShopCartToStorage,
+    render,
+    confirm
+  },
+  feed: {
+    state,
+    toDateSafe,
+    getStoriesRowSignature: () => storiesRowSignature,
+    setStoriesRowSignature: (next) => {
+      storiesRowSignature = next;
+    },
+    fastMode: FAST_MODE,
+    buildStoriesFromFeed,
+    updateStoryLogoNodes,
+    updateStoryMetaNodes,
+    updateFeedLogoNodes,
+    updatePostCountNodes,
+    ensureFeedRestaurantMetaListeners,
+    preloadFeedHeroImages,
+    buildStoriesRowSignature,
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    isLocalBusinessProfile,
+    icon,
+    escapeHtml,
+    buildUrl,
+    resolveRestaurantLogo,
+    getOptimizedImageUrl,
+    setState,
+    openGuestAuthPrompt
+  },
+  overlay: {
+    state,
+    getDocumentObj: () => (typeof document === "undefined" ? null : document),
+    getWindowObj: () => (typeof window === "undefined" ? null : window),
+    getOverlayCache: () => overlayCache,
+    isModalEscapeBound: () => modalEscapeBound,
+    setModalEscapeBound: (value) => {
+      modalEscapeBound = !!value;
+    },
+    isMenuDetailCloseBound: () => menuDetailCloseBound,
+    setMenuDetailCloseBound: (next) => {
+      menuDetailCloseBound = !!next;
+    },
+    getLastMenuOpenGestureKey: () => lastMenuOpenGestureKey,
+    setLastMenuOpenGestureKey: (next) => {
+      lastMenuOpenGestureKey = next;
+    },
+    getLastMenuOpenGestureAt: () => lastMenuOpenGestureAt,
+    setLastMenuOpenGestureAt: (next) => {
+      lastMenuOpenGestureAt = next;
+    },
+    setPendingCommentHighlight: (value) => {
+      pendingCommentHighlight = value;
+    },
+    openGuestAuthPrompt,
+    normalizeChatOpenProfileCore,
+    normalizeHandle,
+    upsertChatThread,
+    markChatThreadAsRead,
+    buildChatModalStateOnOpenCore,
+    getChatThreadId,
+    syncChatThreadSummary,
+    syncRemoteChatReadState,
+    startActiveChatMessagesListener,
+    stopActiveChatMessagesListener,
+    buildClosedChatModalStateCore,
+    render,
+    ensurePostMeta,
+    attachPostMetaListeners,
+    loadPostMetaFromFirebase,
+    updatePostModalMeta,
+    stopPostMetaListeners,
+    getFocusItemCrop,
+    isCeoUser,
+    createLeadDraftState,
+    resetLeadDraft,
+    getMenuItemImages,
+    getMenuItemCrop,
+    createEmptyMenuDetailState,
+    attachMenuItemMetaListeners,
+    loadMenuItemMetaFromFirebase,
+    updateMenuDetailMeta,
+    stopMenuItemMetaListeners,
+    ensureOverlayRootCore,
+    ensureModalEscapeHandlerCore,
+    syncModalOpenUiStateCore,
+    renderOverlaysCore,
+    renderProfileModal,
+    renderChatModal,
+    renderPostModal,
+    renderLikesModal,
+    renderMenuItemModal,
+    renderMenuDetailModal,
+    renderFocusModal,
+    renderLeadModal,
+    renderCustomerModal,
+    bindOverlayEventsCore,
+    bindProfileOverlayEventsCore,
+    bindChatOverlayEventsCore,
+    bindPostOverlayEventsCore,
+    bindLikesOverlayEventsCore,
+    bindMenuOverlayEventsCore,
+    bindMenuDetailOverlayEventsCore,
+    bindFocusOverlayEventsCore,
+    bindLeadOverlayEventsCore,
+    bindCustomerOverlayEventsCore,
+    toggleFollow,
+    sendChatMessage,
+    scrollChatMessagesToBottom,
+    queueMicrotask,
+    togglePostLike,
+    loadPostLikesForModal,
+    addComment,
+    toggleCommentLike,
+    saveMenuItemFromModal,
+    syncMenuModalCropPreview,
+    clampCropPercent,
+    getMenuDetailCatalogProfile,
+    canAddToShopCart,
+    showPublicProfile,
+    setState,
+    toggleMenuItemLike,
+    autosizeTextarea,
+    addMenuItemComment,
+    applyCommentAvatarCache,
+    saveFocusItemFromModal,
+    syncFocusModalCropPreview,
+    saveLeadFromModal,
+    convertLeadToCustomer,
+    addLeadModalLocationRow,
+    removeLeadModalLocationRow,
+    syncLeadModalDraftFromForm,
+    openLocationPicker,
+    normalizeLeadLocations,
+    createLeadLocation,
+    parseCoordsFromAddressInput,
+    getLeadPlusCodeReference,
+    hasLeadLocationCoords,
+    getPrimaryLeadLocation,
+    refineLeadLocationAddressIndex,
+    saveCustomerFromModal,
+    bindImageFallbacks,
+    placeholderImage: PLACEHOLDER_IMAGE
+  }
 });
 
 const {
-  normalizeNotificationItem,
-  mapNotificationSnapshot,
-  shouldSurfaceNativePushNow,
-  startNotificationsListener,
-  syncNotificationsPushRuntime,
-  loadNotificationsFromFirebase
-} = notificationsRuntimeFlowController;
+  profileApi: {
+    isOwnBusinessTarget,
+    openOwnBusinessProfile,
+    openProfileViewFromBusiness,
+    openProfileFromUser
+  },
+  deeplinkApi: {
+    clearNotificationQueryParams,
+    clearPostQueryParams,
+    clearChatQueryParams,
+    resolveRouteStateFromTargetUrl,
+    applyPendingRouteStateFromTargetUrl,
+    maybeOpenNotificationFromQuery,
+    maybeOpenPostFromQuery,
+    maybeOpenChatFromQuery,
+    handlePushOpenTargetMessage,
+    bindPushOpenTargetMessageHandler,
+    maybeOpenProfileFromQuery
+  },
+  notificationsApi: {
+    normalizeNotificationItem,
+    mapNotificationSnapshot,
+    shouldSurfaceNativePushNow,
+    startNotificationsListener,
+    syncNotificationsPushRuntime,
+    loadNotificationsFromFirebase
+  },
+  bridgeApi
+} = appControllerBridge;
+
+const {
+  openChatWithProfile,
+  closeChatModal,
+  closeProfileModal,
+  closeLikesModal,
+  closeActiveModal,
+  isAnyModalOpen,
+  openPostModal,
+  closePostModal,
+  renderFeedView,
+  renderStoryItem,
+  renderStoriesRow,
+  renderFeedItem,
+  renderFeedList,
+  patchFeedList,
+  patchStoriesRow,
+  updateFeedDom,
+  bindFeedDelegation,
+  renderShopProductList,
+  renderProfileShopFavoritesView,
+  openMenuDetailFromTrigger,
+  triggerMenuDetailOpenFromGesture,
+  renderProfileShopCartView,
+  ensureOverlayRoot,
+  ensureModalEscapeHandler,
+  syncModalOpenUiState,
+  renderOverlays,
+  bindModalDismiss,
+  bindOverlayEvents,
+  clearShopCart,
+  getCurrentShopProfile,
+  getShopCartProfileContext,
+  addMenuItemToShopCart,
+  updateShopCartQuantity,
+  openShopCheckout,
+  updateShopCheckoutField,
+  getShopCartTotal,
+  openFocusModal,
+  closeFocusModal,
+  openLeadModal,
+  closeLeadModal,
+  openCustomerModal,
+  closeCustomerModal,
+  openMenuModal,
+  closeMenuModal,
+  openMenuDetail,
+  closeMenuDetail,
+  setMenuDetailIndex,
+  setMenuDetailVariant
+} = bridgeApi;
 
 async function pushUserNotification(targetUid, payload) {
   if (!targetUid) return;
@@ -10102,31 +10190,11 @@ function renderChatModal() {
   });
 }
 
-function renderShopProductList(items, { source = "menu", showRestaurantName = false } = {}) {
-  return shopViewCartOrchestrationController.renderShopProductList(items, { source, showRestaurantName });
-}
-
-function renderProfileShopFavoritesView(profile = state.profileView?.profile || state.userProfile) {
-  return shopViewCartOrchestrationController.renderProfileShopFavoritesView(profile);
-}
-
-function openMenuDetailFromTrigger(trigger) {
-  return overlayOrchestrationController.openMenuDetailFromTrigger(trigger);
-}
-
-function triggerMenuDetailOpenFromGesture(trigger) {
-  return overlayOrchestrationController.triggerMenuDetailOpenFromGesture(trigger);
-}
-
 let authPersistenceReady = null;
 function ensureAuthLocalPersistence() {
   if (authPersistenceReady) return authPersistenceReady;
   authPersistenceReady = setPersistence(auth, browserLocalPersistence).catch(() => null);
   return authPersistenceReady;
-}
-
-function renderProfileShopCartView(profile = state.profileView?.profile || state.userProfile) {
-  return shopViewCartOrchestrationController.renderProfileShopCartView(profile);
 }
 
 function renderProfileModal() {
@@ -11532,22 +11600,6 @@ function renderMain() {
   });
 }
 
-function ensureOverlayRoot() {
-  return overlayOrchestrationController.ensureOverlayRoot();
-}
-
-function ensureModalEscapeHandler() {
-  return overlayOrchestrationController.ensureModalEscapeHandler();
-}
-
-function syncModalOpenUiState() {
-  return overlayOrchestrationController.syncModalOpenUiState();
-}
-
-function renderOverlays(options = {}) {
-  return overlayOrchestrationController.renderOverlays(options);
-}
-
 function bindImageFallbacks(root = document) {
   if (!root) return;
   root.querySelectorAll("img[data-fallback-src]").forEach((img) => {
@@ -11723,34 +11775,6 @@ function bindAuthEvents() {
       }
     });
   }
-}
-
-function bindModalDismiss(target, handler, { selfOnly = false } = {}) {
-  return overlayOrchestrationController.bindModalDismiss(target, handler, { selfOnly });
-}
-
-function bindOverlayEvents({
-  profileChanged = true,
-  chatChanged = true,
-  postChanged = true,
-  likesChanged = true,
-  menuChanged = true,
-  menuDetailChanged = true,
-  focusChanged = true,
-  leadChanged = true,
-  customerChanged = true
-} = {}) {
-  return overlayOrchestrationController.bindOverlayEvents({
-    profileChanged,
-    chatChanged,
-    postChanged,
-    likesChanged,
-    menuChanged,
-    menuDetailChanged,
-    focusChanged,
-    leadChanged,
-    customerChanged
-  });
 }
 
 function stopCrmAutoLoadObserver() {
@@ -13460,38 +13484,6 @@ function startOrdersListener(user = state.user) {
   });
 }
 
-function clearShopCart({ keepForm = false } = {}) {
-  return shopViewCartOrchestrationController.clearShopCart({ keepForm });
-}
-
-function getCurrentShopProfile() {
-  return shopViewCartOrchestrationController.getCurrentShopProfile();
-}
-
-function getShopCartProfileContext(profile = getCurrentShopProfile()) {
-  return shopViewCartOrchestrationController.getShopCartProfileContext(profile);
-}
-
-function addMenuItemToShopCart(item, profile = getCurrentShopProfile(), options = {}) {
-  return shopViewCartOrchestrationController.addMenuItemToShopCart(item, profile, options);
-}
-
-function updateShopCartQuantity(itemId, delta) {
-  return shopViewCartOrchestrationController.updateShopCartQuantity(itemId, delta);
-}
-
-function openShopCheckout() {
-  return shopViewCartOrchestrationController.openShopCheckout();
-}
-
-function updateShopCheckoutField(field, value) {
-  return shopViewCartOrchestrationController.updateShopCheckoutField(field, value);
-}
-
-function getShopCartTotal() {
-  return shopViewCartOrchestrationController.getShopCartTotal();
-}
-
 async function submitShopCheckout() {
   const cart = normalizeShopCartState(state.shopCart);
   if (cart.loading || !cart.restaurantId || !cart.items.length) return;
@@ -13579,14 +13571,6 @@ async function submitShopCheckout() {
     saveShopCartToStorage();
     render();
   }
-}
-
-function openFocusModal(mode = "create", item = null) {
-  return overlayOrchestrationController.openFocusModal(mode, item);
-}
-
-function closeFocusModal() {
-  return overlayOrchestrationController.closeFocusModal();
 }
 
 async function saveFocusItemFromModal() {
@@ -14663,22 +14647,6 @@ function removeLeadModalLocationRow(index) {
   renderLeadEditorUi();
 }
 
-function openLeadModal(mode = "create", lead = null) {
-  return overlayOrchestrationController.openLeadModal(mode, lead);
-}
-
-function closeLeadModal() {
-  return overlayOrchestrationController.closeLeadModal();
-}
-
-function openCustomerModal(customer) {
-  return overlayOrchestrationController.openCustomerModal(customer);
-}
-
-function closeCustomerModal() {
-  return overlayOrchestrationController.closeCustomerModal();
-}
-
 async function saveLeadFromModal() {
   return saveLeadFromModalCore({
     state,
@@ -15056,30 +15024,6 @@ async function convertLeadToCustomer(leadId) {
   });
 }
 
-function openMenuModal(mode = "create", item = null) {
-  return overlayOrchestrationController.openMenuModal(mode, item);
-}
-
-function closeMenuModal() {
-  return overlayOrchestrationController.closeMenuModal();
-}
-
-async function openMenuDetail(item, restaurantIdOverride = "") {
-  return overlayOrchestrationController.openMenuDetail(item, restaurantIdOverride);
-}
-
-function closeMenuDetail({ afterClose = null } = {}) {
-  return overlayOrchestrationController.closeMenuDetail({ afterClose });
-}
-
-function setMenuDetailIndex(nextIndex) {
-  return overlayOrchestrationController.setMenuDetailIndex(nextIndex);
-}
-
-function setMenuDetailVariant(field, value) {
-  return overlayOrchestrationController.setMenuDetailVariant(field, value);
-}
-
 async function saveMenuItemFromModal() {
   return saveMenuItemFromModalCore({
     state,
@@ -15133,180 +15077,6 @@ async function bootstrapUser(user) {
     activeTab: state.activeTab
   });
 }
-
-const shopViewCartOrchestrationController = createShopViewCartOrchestrationController({
-  state,
-  getMenuItemImagesFn: getMenuItemImages,
-  resolveMenuItemHeroFn: resolveMenuItemHero,
-  getOptimizedImageUrlFn: getOptimizedImageUrl,
-  isPlaceholderUrlFn: isPlaceholderUrl,
-  placeholderImage: PLACEHOLDER_IMAGE,
-  getFirebaseStorageUrlFn: getFirebaseStorageUrl,
-  isDirectImageUrlFn: isDirectImageUrl,
-  formatPriceFn: formatPrice,
-  escapeHtmlFn: escapeHtml,
-  getMenuItemObjectPositionFn: getMenuItemObjectPosition,
-  iconFn: icon,
-  loadFavoriteMenuItemsFn: loadFavoriteMenuItems,
-  createEmptyFavoriteMenuItemsStateFn: createEmptyFavoriteMenuItemsState,
-  getShopCartProfileContextCoreFn: getShopCartProfileContextCore,
-  getRestaurantMetaByIdFn: getRestaurantMetaById,
-  getShopCartTotalCoreFn: getShopCartTotalCore,
-  parsePriceValueFn: parsePriceValue,
-  canAddToShopCartFn: canAddToShopCart,
-  normalizeShopCartStateFn: normalizeShopCartState,
-  buildShopVariantKeyFn: buildShopVariantKey,
-  clampCropPercentFn: clampCropPercent,
-  createEmptyShopCartFn: createEmptyShopCart,
-  saveShopCartToStorageFn: saveShopCartToStorage,
-  renderFn: render,
-  confirmFn: confirm
-});
-
-const feedViewOrchestrationController = createFeedViewOrchestrationController({
-  state,
-  toDateSafeFn: toDateSafe,
-  getStoriesRowSignatureFn: () => storiesRowSignature,
-  setStoriesRowSignatureFn: (next) => {
-    storiesRowSignature = next;
-  },
-  FAST_MODE,
-  buildStoriesFromFeedFn: buildStoriesFromFeed,
-  updateStoryLogoNodesFn: updateStoryLogoNodes,
-  updateStoryMetaNodesFn: updateStoryMetaNodes,
-  updateFeedLogoNodesFn: updateFeedLogoNodes,
-  updatePostCountNodesFn: updatePostCountNodes,
-  ensureFeedRestaurantMetaListenersFn: ensureFeedRestaurantMetaListeners,
-  preloadFeedHeroImagesFn: preloadFeedHeroImages,
-  buildStoriesRowSignatureFn: buildStoriesRowSignature,
-  documentObj: typeof document === "undefined" ? null : document,
-  windowObj: typeof window === "undefined" ? null : window,
-  isLocalBusinessProfileFn: isLocalBusinessProfile,
-  iconFn: icon,
-  escapeHtmlFn: escapeHtml,
-  buildUrlFn: buildUrl,
-  resolveRestaurantLogoFn: resolveRestaurantLogo,
-  getOptimizedImageUrlFn: getOptimizedImageUrl,
-  setStateFn: setState,
-  openGuestAuthPromptFn: openGuestAuthPrompt,
-  openProfileViewFromBusinessFn: openProfileViewFromBusiness
-});
-
-const overlayOrchestrationController = createOverlayOrchestrationController({
-  state,
-  getDocumentObjFn: () => (typeof document === "undefined" ? null : document),
-  getWindowObjFn: () => (typeof window === "undefined" ? null : window),
-  getOverlayCacheFn: () => overlayCache,
-  isModalEscapeBoundFn: () => modalEscapeBound,
-  setModalEscapeBoundFn: (value) => {
-    modalEscapeBound = !!value;
-  },
-  isMenuDetailCloseBoundFn: () => menuDetailCloseBound,
-  setMenuDetailCloseBoundFn: (next) => {
-    menuDetailCloseBound = !!next;
-  },
-  getLastMenuOpenGestureKeyFn: () => lastMenuOpenGestureKey,
-  setLastMenuOpenGestureKeyFn: (next) => {
-    lastMenuOpenGestureKey = next;
-  },
-  getLastMenuOpenGestureAtFn: () => lastMenuOpenGestureAt,
-  setLastMenuOpenGestureAtFn: (next) => {
-    lastMenuOpenGestureAt = next;
-  },
-  setPendingCommentHighlightFn: (value) => {
-    pendingCommentHighlight = value;
-  },
-  openGuestAuthPromptFn: openGuestAuthPrompt,
-  normalizeChatOpenProfileCoreFn: normalizeChatOpenProfileCore,
-  normalizeHandleFn: normalizeHandle,
-  upsertChatThreadFn: upsertChatThread,
-  markChatThreadAsReadFn: markChatThreadAsRead,
-  buildChatModalStateOnOpenCoreFn: buildChatModalStateOnOpenCore,
-  getChatThreadIdFn: getChatThreadId,
-  syncChatThreadSummaryFn: syncChatThreadSummary,
-  syncRemoteChatReadStateFn: syncRemoteChatReadState,
-  startActiveChatMessagesListenerFn: startActiveChatMessagesListener,
-  stopActiveChatMessagesListenerFn: stopActiveChatMessagesListener,
-  buildClosedChatModalStateCoreFn: buildClosedChatModalStateCore,
-  renderFn: render,
-  ensurePostMetaFn: ensurePostMeta,
-  attachPostMetaListenersFn: attachPostMetaListeners,
-  loadPostMetaFromFirebaseFn: loadPostMetaFromFirebase,
-  updatePostModalMetaFn: updatePostModalMeta,
-  stopPostMetaListenersFn: stopPostMetaListeners,
-  getFocusItemCropFn: getFocusItemCrop,
-  isCeoUserFn: isCeoUser,
-  createLeadDraftStateFn: createLeadDraftState,
-  resetLeadDraftFn: resetLeadDraft,
-  getMenuItemImagesFn: getMenuItemImages,
-  getMenuItemCropFn: getMenuItemCrop,
-  createEmptyMenuDetailStateFn: createEmptyMenuDetailState,
-  attachMenuItemMetaListenersFn: attachMenuItemMetaListeners,
-  loadMenuItemMetaFromFirebaseFn: loadMenuItemMetaFromFirebase,
-  updateMenuDetailMetaFn: updateMenuDetailMeta,
-  stopMenuItemMetaListenersFn: stopMenuItemMetaListeners,
-  ensureOverlayRootCoreFn: ensureOverlayRootCore,
-  ensureModalEscapeHandlerCoreFn: ensureModalEscapeHandlerCore,
-  syncModalOpenUiStateCoreFn: syncModalOpenUiStateCore,
-  renderOverlaysCoreFn: renderOverlaysCore,
-  renderProfileModalFn: renderProfileModal,
-  renderChatModalFn: renderChatModal,
-  renderPostModalFn: renderPostModal,
-  renderLikesModalFn: renderLikesModal,
-  renderMenuItemModalFn: renderMenuItemModal,
-  renderMenuDetailModalFn: renderMenuDetailModal,
-  renderFocusModalFn: renderFocusModal,
-  renderLeadModalFn: renderLeadModal,
-  renderCustomerModalFn: renderCustomerModal,
-  bindOverlayEventsCoreFn: bindOverlayEventsCore,
-  bindProfileOverlayEventsCoreFn: bindProfileOverlayEventsCore,
-  bindChatOverlayEventsCoreFn: bindChatOverlayEventsCore,
-  bindPostOverlayEventsCoreFn: bindPostOverlayEventsCore,
-  bindLikesOverlayEventsCoreFn: bindLikesOverlayEventsCore,
-  bindMenuOverlayEventsCoreFn: bindMenuOverlayEventsCore,
-  bindMenuDetailOverlayEventsCoreFn: bindMenuDetailOverlayEventsCore,
-  bindFocusOverlayEventsCoreFn: bindFocusOverlayEventsCore,
-  bindLeadOverlayEventsCoreFn: bindLeadOverlayEventsCore,
-  bindCustomerOverlayEventsCoreFn: bindCustomerOverlayEventsCore,
-  toggleFollowFn: toggleFollow,
-  sendChatMessageFn: sendChatMessage,
-  scrollChatMessagesToBottomFn: scrollChatMessagesToBottom,
-  queueMicrotaskFn: (fn) => queueMicrotask(fn),
-  togglePostLikeFn: togglePostLike,
-  loadPostLikesForModalFn: loadPostLikesForModal,
-  addCommentFn: addComment,
-  toggleCommentLikeFn: toggleCommentLike,
-  saveMenuItemFromModalFn: saveMenuItemFromModal,
-  syncMenuModalCropPreviewFn: syncMenuModalCropPreview,
-  clampCropPercentFn: clampCropPercent,
-  getMenuDetailCatalogProfileFn: getMenuDetailCatalogProfile,
-  canAddToShopCartFn: canAddToShopCart,
-  addMenuItemToShopCartFn: addMenuItemToShopCart,
-  showPublicProfileFn: showPublicProfile,
-  setStateFn: setState,
-  toggleMenuItemLikeFn: toggleMenuItemLike,
-  autosizeTextareaFn: autosizeTextarea,
-  addMenuItemCommentFn: addMenuItemComment,
-  applyCommentAvatarCacheFn: applyCommentAvatarCache,
-  saveFocusItemFromModalFn: saveFocusItemFromModal,
-  syncFocusModalCropPreviewFn: syncFocusModalCropPreview,
-  saveLeadFromModalFn: saveLeadFromModal,
-  convertLeadToCustomerFn: convertLeadToCustomer,
-  addLeadModalLocationRowFn: addLeadModalLocationRow,
-  removeLeadModalLocationRowFn: removeLeadModalLocationRow,
-  syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
-  openLocationPickerFn: openLocationPicker,
-  normalizeLeadLocationsFn: normalizeLeadLocations,
-  createLeadLocationFn: createLeadLocation,
-  parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
-  getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
-  hasLeadLocationCoordsFn: hasLeadLocationCoords,
-  getPrimaryLeadLocationFn: getPrimaryLeadLocation,
-  refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex,
-  saveCustomerFromModalFn: saveCustomerFromModal,
-  bindImageFallbacksFn: bindImageFallbacks,
-  placeholderImage: PLACEHOLDER_IMAGE
-});
 
 loadPersisted();
 authBootstrapSnapshot = readAuthBootstrapSnapshot();
