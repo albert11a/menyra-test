@@ -1265,6 +1265,35 @@ function applyAuthBootstrapSnapshot(snapshot = authBootstrapSnapshot) {
   return true;
 }
 
+function applyPersistedAuthProfileHints(uid = "") {
+  const safeUid = String(uid || "").trim();
+  if (!safeUid) return false;
+  const raw = safeStorage.getItem(profileKey(safeUid));
+  if (!raw) return false;
+  try {
+    const parsed = JSON.parse(raw) || {};
+    const restaurantId = String(parsed.restaurantId || "").trim();
+    const role = String(parsed.role || "").trim();
+    const roles = Array.isArray(parsed.roles) ? parsed.roles.slice() : [];
+    const name = sanitizeDisplayName(parsed.name || "", "");
+    const handle = String(parsed.handle || "").replace(/^@/, "").trim();
+    const avatar = String(parsed.avatar || "").trim();
+    state.userProfile = {
+      ...state.userProfile,
+      uid: safeUid,
+      role: role || state.userProfile.role,
+      roles: roles.length ? roles : state.userProfile.roles,
+      restaurantId: restaurantId || state.userProfile.restaurantId,
+      name: name || state.userProfile.name,
+      handle: handle || state.userProfile.handle,
+      avatar: avatar || state.userProfile.avatar
+    };
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
   saveMenuLayoutToStorageCore({
     safeStorage,
@@ -9237,7 +9266,11 @@ if (state.user) {
   lastAuthUid = state.user.uid || "";
 } else {
   const appliedSnapshot = applyAuthBootstrapSnapshot(authBootstrapSnapshot);
-  lastAuthUid = appliedSnapshot ? String(authBootstrapSnapshot?.uid || "").trim() : "";
+  const snapshotUid = appliedSnapshot ? String(authBootstrapSnapshot?.uid || "").trim() : "";
+  if (snapshotUid) {
+    applyPersistedAuthProfileHints(snapshotUid);
+  }
+  lastAuthUid = snapshotUid;
 }
 applyPendingInitialRouteState();
 render();
