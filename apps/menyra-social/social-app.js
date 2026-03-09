@@ -94,6 +94,13 @@ import {
 } from "./core/push/push-route-query-utils.js";
 import { createAppControllerBridge } from "./core/app-shell/app-controller-bridge.js";
 import { createAppShellRuntimeController } from "./core/app-shell/app-shell-runtime-controller.js";
+import {
+  buildStorySystemControllerDeps,
+  buildAppControllerBridgeDeps,
+  buildAppShellRuntimeControllerDeps,
+  buildSessionDataRuntimeControllerDeps
+} from "./core/app-shell/controller-deps-factory.js";
+import { createSessionDataRuntimeController } from "./core/app-shell/session-data-runtime-controller.js";
 import { createProfileMenuFocusRenderController } from "./core/profile/profile-menu-focus-render-controller.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
 import { createCrmRuntimeController } from "./core/crm/crm-runtime-controller.js";
@@ -1077,6 +1084,7 @@ let dataLoaded = {
 };
 let shellRuntimeController = null;
 let profileMenuFocusRenderController = null;
+let sessionDataRuntimeController = null;
 let socialEngagementRuntimeController = null;
 let crmRuntimeController = null;
 let chatRuntimeController = null;
@@ -2837,292 +2845,17 @@ function saveFeedPosts(posts, extraMeta = {}) {
 }
 
 function loadPersisted() {
-  loadLogoCache();
-  const savedSettings = safeStorage.getItem(STORAGE_KEYS.settings);
-  if (savedSettings) {
-    try { state.settings = { ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) }; } catch {}
-  }
-  const savedMenuLayout = safeStorage.getItem(STORAGE_KEYS.menuLayout);
-  if (savedMenuLayout) {
-    try { state.menuLayout = { ...DEFAULT_MENU_LAYOUT, ...JSON.parse(savedMenuLayout) }; } catch {}
-  }
-
-  // user-scoped profile/avatar loaded after login
-
-  const restaurantsCache = readCache(CACHE_KEYS.restaurants);
-  let needsRestaurantMetaHydration = false;
-  if (restaurantsCache?.data?.length) {
-    state.restaurants = restaurantsCache.data;
-    needsRestaurantMetaHydration = restaurantsCache.data.some((rest) => !(rest?.logoUrl || rest?.logo || rest?.logoURL));
-  }
-
-  const feedCache = readCache(CACHE_KEYS.feed);
-  let cachedHydrationIds = [];
-  if (feedCache?.data?.length) {
-    state.feedPosts = feedCache.data;
-    cachedHydrationIds = collectFeedHydrationIds(feedCache.data, { max: 6 });
-  }
-
-  const storiesCache = readCache(CACHE_KEYS.stories);
-  if (!state.stories.length && storiesCache?.data?.length) state.stories = storiesCache.data;
-
-  state.postMeta = {};
-
-  scheduleIdle(() => {
-    if (state.restaurants.length) {
-      rebuildBusinessLocations();
-    }
-
-    const feedUpdated = syncFeedPostLogos();
-    const storiesUpdated = refreshFeedStories({ posts: state.feedPosts, force: true });
-    preloadFeedHeroImages(state.feedPosts);
-
-    if (feedUpdated || storiesUpdated) {
-      const inMain = lastRenderMode === "main";
-      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-      if (!updatedFeed) render();
-    }
-
-    if (needsRestaurantMetaHydration) {
-      void Promise.resolve(enrichRestaurantsWithPublicMeta(state.restaurants))
-        .then((list) => {
-          state.restaurants = list;
-          rebuildBusinessLocations();
-          const feedChanged = syncFeedPostLogos();
-          const storiesChanged = refreshFeedStories({ posts: state.feedPosts, force: true });
-          writeCache(CACHE_KEYS.restaurants, list);
-          if (feedChanged || storiesChanged) {
-            const inMain = lastRenderMode === "main";
-            const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-            if (!updatedFeed) render();
-          }
-        })
-        .catch(() => null);
-    }
-
-    if (cachedHydrationIds.length) {
-      void hydrateRestaurantsByIds(cachedHydrationIds, { max: cachedHydrationIds.length });
-    }
-  });
+  return sessionDataRuntimeController.loadPersisted(...arguments);
 }
-
 function loadUserScopedPersisted(user) {
-  if (!user?.uid) return;
-  const uid = user.uid;
-  const savedProfile = safeStorage.getItem(profileKey(uid));
-  if (savedProfile) {
-    try { state.userProfile = { ...DEFAULT_PROFILE, ...JSON.parse(savedProfile) }; } catch { state.userProfile = { ...DEFAULT_PROFILE }; }
-  } else {
-    state.userProfile = { ...DEFAULT_PROFILE };
-  }
-  state.userProfile.uid = uid;
-
-  userAvatarCache = "";
-  lastShellAvatarUrl = "";
-  loadAvatarCache(uid);
-  if (!state.userProfile.avatar && userAvatarCache && !isPlaceholderUrl(userAvatarCache)) {
-    state.userProfile.avatar = userAvatarCache;
-  }
-  if (userAvatarCache && !isPlaceholderUrl(userAvatarCache)) {
-    lastShellAvatarUrl = userAvatarCache;
-  }
-
-  try {
-    const raw = state.userProfile.avatar || userAvatarCache || "";
-    const url = getOptimizedImageUrl(raw, "avatar");
-    if (url && !isPlaceholderUrl(url)) {
-      primeSelfAvatarCache(url);
-    }
-  } catch {}
-
-  const userPostsCache = readCache(userPostsKey(uid));
-  state.userPosts = userPostsCache?.data?.length ? userPostsCache.data : [];
-
-  const rid = state.userProfile.restaurantId || "";
-  if (rid) {
-    const businessCache = readCache(businessPostsKey(rid));
-    state.businessPosts = businessCache?.data?.length ? businessCache.data : [];
-  } else {
-    state.businessPosts = [];
-  }
-
-  const scopedNotifs = safeStorage.getItem(notificationsKey(uid));
-  if (scopedNotifs) {
-    try { state.notifications = JSON.parse(scopedNotifs); } catch { state.notifications = []; }
-  } else {
-    const legacyNotifs = safeStorage.getItem(STORAGE_KEYS.notifications);
-    if (legacyNotifs) {
-      try {
-        state.notifications = JSON.parse(legacyNotifs);
-        safeStorage.setItem(notificationsKey(uid), JSON.stringify(state.notifications));
-        safeStorage.removeItem(STORAGE_KEYS.notifications);
-      } catch {
-        state.notifications = [];
-      }
-    } else {
-      state.notifications = [];
-    }
-  }
-
-  const scopedFollowing = safeStorage.getItem(followingKey(uid));
-  if (scopedFollowing) {
-    try {
-      const parsed = JSON.parse(scopedFollowing);
-      const handlesRaw = Array.isArray(parsed)
-        ? parsed
-        : (Array.isArray(parsed?.handles) ? parsed.handles : []);
-      const targetIdsRaw = Array.isArray(parsed?.targetIds) ? parsed.targetIds : [];
-      state.followingHandles = Array.from(new Set(
-        handlesRaw
-          .map((item) => normalizeFollowHandle(item))
-          .filter(Boolean)
-      ));
-      state.followingTargetIds = Array.from(new Set(
-        targetIdsRaw
-          .map((id) => String(id || "").trim())
-          .filter(Boolean)
-      ));
-    } catch {
-      state.followingHandles = [];
-      state.followingTargetIds = [];
-    }
-  } else {
-    const legacyFollowing = safeStorage.getItem(STORAGE_KEYS.following);
-    if (legacyFollowing) {
-      try {
-        state.followingHandles = Array.from(new Set(
-          (JSON.parse(legacyFollowing) || [])
-            .map((item) => normalizeFollowHandle(item))
-            .filter(Boolean)
-        ));
-        state.followingTargetIds = [];
-        saveFollowing(state.followingHandles, state.followingTargetIds);
-        safeStorage.removeItem(STORAGE_KEYS.following);
-      } catch {
-        state.followingHandles = [];
-        state.followingTargetIds = [];
-      }
-    } else {
-      state.followingHandles = [];
-      state.followingTargetIds = [];
-    }
-  }
-
-  const scopedCart = safeStorage.getItem(shopCartKey(uid));
-  if (scopedCart) {
-    try {
-      state.shopCart = normalizeShopCartState(JSON.parse(scopedCart));
-    } catch {
-      state.shopCart = createEmptyShopCart();
-    }
-  } else {
-    state.shopCart = createEmptyShopCart();
-  }
-  state.orders = createEmptyOrdersState();
-
-  state.chatThreads = sortChatThreads(loadChatThreadIndex(uid).map((thread) => {
-    const messages = loadChatThreadMessages(thread);
-    const lastMessage = messages[messages.length - 1] || null;
-    return {
-      ...thread,
-      lastMessage: lastMessage ? buildChatPreviewText(lastMessage) : String(thread?.lastMessage || ""),
-      updatedAt: lastMessage
-        ? Math.max(getChatMessageTimestamp(lastMessage), Number(thread?.updatedAt || 0))
-        : Number(thread?.updatedAt || Date.now())
-    };
-  }));
-  saveChatThreadIndex(state.chatThreads);
+  return sessionDataRuntimeController.loadUserScopedPersisted(...arguments);
 }
-
 function loadGuestScopedPersisted() {
-  const scopedCart = safeStorage.getItem(shopCartKey(GUEST_SCOPE_UID));
-  if (scopedCart) {
-    try {
-      state.shopCart = normalizeShopCartState(JSON.parse(scopedCart));
-    } catch {
-      state.shopCart = createEmptyShopCart();
-    }
-  } else {
-    state.shopCart = createEmptyShopCart();
-  }
-  state.orders = createEmptyOrdersState();
+  return sessionDataRuntimeController.loadGuestScopedPersisted(...arguments);
 }
-
 function resetUserScopedState() {
-  stopActiveChatMessagesListener();
-  stopRestaurantMetaListeners();
-  stopMenuItemMetaListeners();
-  menuDetailCloseBound = false;
-  commentAvatarCache.clear();
-  commentAvatarPending.clear();
-  userSearchAvatarCache.clear();
-  businessProfileCache.clear();
-  userProfileCache.clear();
-  state.postMeta = {};
-  state.userPosts = [];
-  state.businessPosts = [];
-  state.profileView = null;
-  state.profileModal = { open: false, profile: null };
-  state.chatSettingsOpen = false;
-  state.chatListScope = "inbox";
-  state.chatThreadMenuId = "";
-  state.chatModal = { open: false, profile: null, messages: [], draft: "", attachments: [] };
-  state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
-  state.likesModal = { open: false, postId: "", animate: false };
-  state.menuDetail = createEmptyMenuDetailState();
-  state.menuItemMeta = {};
-  menuItemCountsRequested.clear();
-  state.leads = createEmptyLeadsState();
-  state.customers = createEmptyCustomersState();
-  state.staff = {
-    items: [],
-    view: "list",
-    editorUid: "",
-    loading: false,
-    loadingMore: false,
-    hasMore: false,
-    pageSize: CRM_PAGE_SIZE,
-    saving: false,
-    deleting: false,
-    error: "",
-    status: "",
-    form: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      country: CEO_COUNTRIES[0],
-      locationLabel: "",
-      coords: null,
-      avatarUrl: "",
-      avatarPreview: "",
-      avatarFile: null
-    }
-  };
-  state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] };
-  state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
-  state.selectedBusiness = null;
-  state.followingHandles = [];
-  state.followingTargetIds = [];
-  state.pendingFollowRequests = [];
-  state.chatThreads = [];
-  state.shopCart = createEmptyShopCart();
-  state.orders = createEmptyOrdersState();
-  state.favoriteMenuItems = createEmptyFavoriteMenuItemsState();
-  state.notifications = [];
-  state.roleSwitchRoles = [];
-  state.roleSwitchRestaurantId = "";
-  state.userProfile = { ...DEFAULT_PROFILE };
-  userAvatarCache = "";
-  lastShellAvatarUrl = "";
-  dataLoaded.profile = false;
-  dataLoaded.following = false;
-  dataLoaded.notifications = false;
-  dataLoaded.leads = false;
-  dataLoaded.customers = false;
-  dataLoaded.staff = false;
+  return sessionDataRuntimeController.resetUserScopedState(...arguments);
 }
-
 function collectFeedHydrationIds(feedRows = [], { max = 6 } = {}) {
   if (!Array.isArray(feedRows) || !feedRows.length) return [];
   const existing = new Map((state.restaurants || []).map((rest) => [String(rest?.id || "").trim(), rest]));
@@ -6489,6 +6222,112 @@ function startFollowingListener(user = state.user) {
   });
 }
 
+sessionDataRuntimeController = createSessionDataRuntimeController(buildSessionDataRuntimeControllerDeps({
+  state,
+  dataLoaded,
+  DEFAULT_SETTINGS,
+  DEFAULT_MENU_LAYOUT,
+  DEFAULT_PROFILE,
+  CACHE_KEYS,
+  STORAGE_KEYS,
+  GUEST_SCOPE_UID,
+  CRM_PAGE_SIZE,
+  CEO_COUNTRIES,
+  safeStorage,
+  readCache,
+  writeCache,
+  scheduleIdle,
+  collectFeedHydrationIds,
+  hydrateRestaurantsByIds,
+  rebuildBusinessLocations,
+  syncFeedPostLogos,
+  refreshFeedStories,
+  preloadFeedHeroImages,
+  render,
+  getLastRenderMode: () => lastRenderMode,
+  updateFeedDom: (...args) => updateFeedDom(...args),
+  enrichRestaurantsWithPublicMeta,
+  loadLogoCache,
+  profileKey,
+  notificationsKey,
+  followingKey,
+  shopCartKey,
+  userPostsKey,
+  businessPostsKey,
+  normalizeShopCartState,
+  createEmptyShopCart,
+  createEmptyOrdersState,
+  createEmptyFavoriteMenuItemsState,
+  createEmptyMenuDetailState,
+  createEmptyLeadsState,
+  createEmptyCustomersState,
+  sortChatThreads,
+  loadChatThreadIndex,
+  loadChatThreadMessages,
+  buildChatPreviewText,
+  getChatMessageTimestamp,
+  saveChatThreadIndex,
+  loadAvatarCache,
+  getOptimizedImageUrl,
+  isPlaceholderUrl,
+  primeSelfAvatarCache,
+  normalizeFollowHandle,
+  saveFollowing,
+  stopActiveChatMessagesListener,
+  stopRestaurantMetaListeners,
+  stopMenuItemMetaListeners,
+  menuItemCountsRequested,
+  commentAvatarCache,
+  commentAvatarPending,
+  userSearchAvatarCache,
+  businessProfileCache,
+  userProfileCache,
+  setMenuDetailCloseBound: (next) => {
+    menuDetailCloseBound = !!next;
+  },
+  getUserAvatarCache: () => userAvatarCache,
+  setUserAvatarCache: (next) => {
+    userAvatarCache = String(next || "");
+  },
+  getLastShellAvatarUrl: () => lastShellAvatarUrl,
+  setLastShellAvatarUrl: (next) => {
+    lastShellAvatarUrl = String(next || "");
+  },
+  bootstrapAuthenticatedSessionCore,
+  loadAuthProfile,
+  resolveRoleSwitchTargets,
+  startLiveListeners,
+  ensureTabData,
+  CACHE_TTL_MS,
+  FAST_LIMITS,
+  db,
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocs,
+  toDateSafe,
+  updateShellDom,
+  refreshSearchView: (...args) => refreshSearchView(...args),
+  cleanupLeaflet: (...args) => cleanupLeaflet(...args),
+  normalizeFeedPost,
+  loadStoriesForFeed,
+  saveFeedPosts,
+  focusCache,
+  menuCache,
+  focusCacheKey,
+  menuCacheKey,
+  loadFocusItems,
+  loadFocusMeta,
+  hasMenuItemImages,
+  loadMenuItemsFromCollection,
+  loadPublicMenuItems,
+  loadLegacyMenuItems,
+  fillMenuImagesFromFallback,
+  loadMenuHybrid
+}));
+
 socialEngagementRuntimeController = createSocialEngagementRuntimeController({
   state,
   db,
@@ -6587,345 +6426,277 @@ socialEngagementRuntimeController = createSocialEngagementRuntimeController({
   }
 });
 
-const storySystemController = createStorySystemController({
-  buildUrlFn: buildUrl,
-  iconFn: icon,
-  escapeHtmlFn: escapeHtml,
-  isLocalBusinessProfileFn: isLocalBusinessProfile,
-  collectionFn: collection,
-  docFn: doc,
-  setDocFn: setDoc,
-  serverTimestampFn: serverTimestamp,
+const storySystemController = createStorySystemController(buildStorySystemControllerDeps({
+  buildUrl,
+  icon,
+  escapeHtml,
+  isLocalBusinessProfile,
+  collection,
+  doc,
+  setDoc,
+  serverTimestamp,
   db
-});
+}));
 
-const appControllerBridge = createAppControllerBridge({
-  profile: {
-    state,
-    isLocalBusinessProfile,
-    getRestaurantMetaById,
-    normalizeSearchKey,
-    render,
-    ensureMenuDataForProfile,
-    ensureFocusDataForProfile,
-    hydrateRestaurantsByIds,
-    normalizeExternalProfile,
-    showPublicProfile,
-    fetchBusinessProfileDoc,
-    loadBusinessPostsForRestaurant,
-    normalizeExternalUserProfile,
-    openGuestAuthPrompt,
-    userProfileCache,
-    hasPendingFollowRequest,
-    getDoc,
-    doc,
-    db,
-    resolveUserByHandle,
-    loadUserPostsForUser
+const appControllerBridge = createAppControllerBridge(buildAppControllerBridgeDeps({
+  state,
+  BRAND_UI,
+  FAST_MODE,
+  LEAFLET_JS_URL,
+  LEAFLET_CSS_URL,
+  SEARCH_LIMITS,
+  PLACEHOLDER_IMAGE,
+  documentObj: typeof document === "undefined" ? null : document,
+  windowObj: typeof window === "undefined" ? null : window,
+  navigatorObj: typeof navigator === "undefined" ? null : navigator,
+  pushActivationIssue,
+  notificationsLiveLimit: NOTIFICATIONS_LIVE_LIMIT,
+  getPendingState: getDeeplinkPendingState,
+  setPendingState: setDeeplinkPendingState,
+  getPushOpenMessageBound: () => pushOpenMessageBound,
+  markPushOpenMessageBound: () => {
+    pushOpenMessageBound = true;
   },
-  deeplink: {
-    state,
-    getPendingState: getDeeplinkPendingState,
-    setPendingState: setDeeplinkPendingState,
-    clearQueryParamsFromCurrentUrlCore,
-    windowObj: typeof window === "undefined" ? null : window,
-    resolveRouteStateFromTargetUrlCore,
-    resolveInitialRouteState,
-    normalizeInitialTab,
-    normalizeAuthMode,
-    applyPendingRouteStateCore,
-    normalizePendingNotificationIdCore,
-    findNotificationByIdCore,
-    db,
-    getDoc,
-    doc,
-    prependNotificationByIdCore,
-    saveNotifications,
-    openNotificationTarget,
-    normalizePendingPostIdCore,
-    findPostInLocalSourcesCore,
-    findPostById,
-    fetchPostForNotification,
-    normalizePendingChatUidCore,
-    isSelfPendingChatTargetCore,
-    isChatThreadAlreadyOpenCore,
-    getChatThreadId,
-    getChatThreadById,
-    buildChatRouteTargetProfileCore,
-    normalizePendingProfileRestaurantIdCore,
-    isPendingProfileAlreadyOpenCore,
-    normalizeProfileTopTabFromRouteCore,
-    parsePushOpenTargetPayloadCore,
-    shouldHandlePushOpenTargetCore,
-    applyPendingInitialRouteState,
-    render,
-    isPushOpenTargetMessageCore,
-    navigatorObj: typeof navigator === "undefined" ? null : navigator,
-    isPushOpenMessageBound: () => pushOpenMessageBound,
-    markPushOpenMessageBound: () => {
-      pushOpenMessageBound = true;
-    }
+  getNotificationsUnsub: () => notificationsUnsub,
+  setNotificationsUnsub: (nextUnsub) => {
+    notificationsUnsub = typeof nextUnsub === "function" ? nextUnsub : null;
   },
-  notifications: {
-    state,
-    getNotificationsUnsub: () => notificationsUnsub,
-    setNotificationsUnsub: (nextUnsub) => {
-      notificationsUnsub = typeof nextUnsub === "function" ? nextUnsub : null;
-    },
-    normalizeNotificationItemCore,
-    formatRelative,
-    toDateSafe,
-    mapNotificationSnapshotCore,
-    shouldSurfaceNativePushNowCore,
-    documentObj: typeof document === "undefined" ? null : document,
-    db,
-    collection,
-    query,
-    orderBy,
-    limit,
-    buildNotificationsLiveQueryCore,
-    readPushSeenIds,
-    addNotificationItemsToSeenSetCore,
-    writePushSeenIds,
-    canEmitNativePushAlerts,
-    collectUnseenUnreadNotificationItemsFromChangesCore,
-    showNativePushAlert,
-    handleNotificationsUpdate,
-    onSnapshot,
-    buildNotificationsFetchQueryCore,
-    fetchNotificationsFromQueryCore,
-    getDocs,
-    saveNotifications,
-    updateNotificationsDom,
-    render,
-    setPushActivationIssue,
-    clearPushActivationIssue,
-    ensureNotificationPermission,
-    syncPushDeviceRegistration,
-    getPushActivationIssue: () => pushActivationIssue,
-    notificationsLiveLimit: NOTIFICATIONS_LIVE_LIMIT,
-    fetchLimit: 20
+  getStoriesRowSignature: () => storiesRowSignature,
+  setStoriesRowSignature: (next) => {
+    storiesRowSignature = next;
   },
-  shop: {
-    state,
-    getMenuItemImages,
-    resolveMenuItemHero,
-    getOptimizedImageUrl,
-    isPlaceholderUrl,
-    placeholderImage: PLACEHOLDER_IMAGE,
-    getFirebaseStorageUrl,
-    isDirectImageUrl,
-    formatPrice,
-    escapeHtml,
-    getMenuItemObjectPosition: getMenuItemObjectPosition,
-    icon,
-    loadFavoriteMenuItems,
-    createEmptyFavoriteMenuItemsState,
-    getShopCartProfileContextCore,
-    getRestaurantMetaById,
-    getShopCartTotalCore,
-    parsePriceValue,
-    canAddToShopCart,
-    normalizeShopCartState,
-    buildShopVariantKey,
-    clampCropPercent,
-    createEmptyShopCart,
-    saveShopCartToStorage,
-    render,
-    confirm
+  getOverlayCache: () => overlayCache,
+  isModalEscapeBound: () => modalEscapeBound,
+  setModalEscapeBound: (value) => {
+    modalEscapeBound = !!value;
   },
-  feed: {
-    state,
-    toDateSafe,
-    getStoriesRowSignature: () => storiesRowSignature,
-    setStoriesRowSignature: (next) => {
-      storiesRowSignature = next;
-    },
-    fastMode: FAST_MODE,
-    buildStoriesFromFeed,
-    updateStoryLogoNodes,
-    updateStoryMetaNodes,
-    updateFeedLogoNodes,
-    updatePostCountNodes,
-    ensureFeedRestaurantMetaListeners,
-    preloadFeedHeroImages,
-    buildStoriesRowSignature,
-    documentObj: typeof document === "undefined" ? null : document,
-    windowObj: typeof window === "undefined" ? null : window,
-    isLocalBusinessProfile,
-    icon,
-    escapeHtml,
-    buildUrl,
-    buildStoryViewerUrl: (restaurantId = "") => storySystemController.buildStoryViewerUrl(restaurantId),
-    resolveRestaurantLogo,
-    getOptimizedImageUrl,
-    buildUploadStateForIntent: (intent = "", currentUpload = {}) => storySystemController.buildUploadStateForIntent(intent, currentUpload),
-    setState,
-    openGuestAuthPrompt
+  isMenuDetailCloseBound: () => menuDetailCloseBound,
+  setMenuDetailCloseBound: (next) => {
+    menuDetailCloseBound = !!next;
   },
-  discovery: {
-    state,
-    brandUi: BRAND_UI,
-    documentObj: typeof document === "undefined" ? null : document,
-    windowObj: typeof window === "undefined" ? null : window,
-    navigatorObj: typeof navigator === "undefined" ? null : navigator,
-    leafletJsUrl: LEAFLET_JS_URL,
-    leafletCssUrl: LEAFLET_CSS_URL,
-    searchLimits: SEARCH_LIMITS,
-    placeholderImage: PLACEHOLDER_IMAGE,
-    getGeo,
-    normalizeLeadLocations,
-    resolveCoordsFromEntity,
-    normalizeCoordPair,
-    preferStableCoords,
-    isPlaceholderUrl,
-    escapeHtml,
-    isPublicBusinessRecord,
-    normalizeRestaurantType,
-    render,
-    getSelfAvatarUrl,
-    isCeoUser,
-    getCeoGpsOverride,
-    alert,
-    icon,
-    getOptimizedImageUrl,
-    resolveRestaurantLogo,
-    normalizeSearchKey,
-    normalizeSearchQuery,
-    scoreSearchMatch,
-    sanitizeDisplayName,
-    normalizeHandle,
-    resolveSearchUserAvatarDisplay,
-    isForceHiddenBusinessEntity,
-    isForceHiddenHandle,
-    isForceHiddenEmail,
-    isGuestSession,
-    escapeSelector,
-    collection,
-    query,
-    orderBy,
-    startAt,
-    endAt,
-    limit,
-    getDocs,
-    db,
-    getLastRenderMode: () => lastRenderMode
+  getLastMenuOpenGestureKey: () => lastMenuOpenGestureKey,
+  setLastMenuOpenGestureKey: (next) => {
+    lastMenuOpenGestureKey = next;
   },
-  overlay: {
-    state,
-    getDocumentObj: () => (typeof document === "undefined" ? null : document),
-    getWindowObj: () => (typeof window === "undefined" ? null : window),
-    getOverlayCache: () => overlayCache,
-    isModalEscapeBound: () => modalEscapeBound,
-    setModalEscapeBound: (value) => {
-      modalEscapeBound = !!value;
-    },
-    isMenuDetailCloseBound: () => menuDetailCloseBound,
-    setMenuDetailCloseBound: (next) => {
-      menuDetailCloseBound = !!next;
-    },
-    getLastMenuOpenGestureKey: () => lastMenuOpenGestureKey,
-    setLastMenuOpenGestureKey: (next) => {
-      lastMenuOpenGestureKey = next;
-    },
-    getLastMenuOpenGestureAt: () => lastMenuOpenGestureAt,
-    setLastMenuOpenGestureAt: (next) => {
-      lastMenuOpenGestureAt = next;
-    },
-    setPendingCommentHighlight: (value) => {
-      pendingCommentHighlight = value;
-    },
-    openGuestAuthPrompt,
-    normalizeChatOpenProfileCore,
-    normalizeHandle,
-    upsertChatThread,
-    markChatThreadAsRead,
-    buildChatModalStateOnOpenCore,
-    getChatThreadId,
-    syncChatThreadSummary,
-    syncRemoteChatReadState,
-    startActiveChatMessagesListener,
-    stopActiveChatMessagesListener,
-    buildClosedChatModalStateCore,
-    render,
-    ensurePostMeta,
-    attachPostMetaListeners,
-    loadPostMetaFromFirebase,
-    updatePostModalMeta,
-    stopPostMetaListeners,
-    getFocusItemCrop,
-    isCeoUser,
-    createLeadDraftState,
-    resetLeadDraft,
-    getMenuItemImages,
-    getMenuItemCrop,
-    createEmptyMenuDetailState,
-    attachMenuItemMetaListeners,
-    loadMenuItemMetaFromFirebase,
-    updateMenuDetailMeta,
-    stopMenuItemMetaListeners,
-    ensureOverlayRootCore,
-    ensureModalEscapeHandlerCore,
-    syncModalOpenUiStateCore,
-    renderOverlaysCore,
-    renderProfileModal,
-    renderChatModal,
-    renderPostModal,
-    renderLikesModal,
-    renderMenuItemModal,
-    renderMenuDetailModal,
-    renderFocusModal,
-    renderLeadModal,
-    renderCustomerModal,
-    bindOverlayEventsCore,
-    bindProfileOverlayEventsCore,
-    bindChatOverlayEventsCore,
-    bindPostOverlayEventsCore,
-    bindLikesOverlayEventsCore,
-    bindMenuOverlayEventsCore,
-    bindMenuDetailOverlayEventsCore,
-    bindFocusOverlayEventsCore,
-    bindLeadOverlayEventsCore,
-    bindCustomerOverlayEventsCore,
-    toggleFollow,
-    sendChatMessage,
-    scrollChatMessagesToBottom,
-    queueMicrotask,
-    togglePostLike,
-    loadPostLikesForModal,
-    addComment,
-    toggleCommentLike,
-    saveMenuItemFromModal,
-    syncMenuModalCropPreview,
-    clampCropPercent,
-    getMenuDetailCatalogProfile,
-    canAddToShopCart,
-    showPublicProfile,
-    setState,
-    toggleMenuItemLike,
-    autosizeTextarea,
-    addMenuItemComment,
-    applyCommentAvatarCache,
-    saveFocusItemFromModal,
-    syncFocusModalCropPreview,
-    saveLeadFromModal,
-    convertLeadToCustomer,
-    addLeadModalLocationRow,
-    removeLeadModalLocationRow,
-    syncLeadModalDraftFromForm,
-    openLocationPicker,
-    normalizeLeadLocations,
-    createLeadLocation,
-    parseCoordsFromAddressInput,
-    getLeadPlusCodeReference,
-    hasLeadLocationCoords,
-    getPrimaryLeadLocation,
-    refineLeadLocationAddressIndex,
-    saveCustomerFromModal,
-    bindImageFallbacks,
-    placeholderImage: PLACEHOLDER_IMAGE
-  }
-});
+  getLastMenuOpenGestureAt: () => lastMenuOpenGestureAt,
+  setLastMenuOpenGestureAt: (next) => {
+    lastMenuOpenGestureAt = next;
+  },
+  setPendingCommentHighlight: (value) => {
+    pendingCommentHighlight = value;
+  },
+  collection,
+  query,
+  orderBy,
+  startAt,
+  endAt,
+  where,
+  limit,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  setDoc,
+  doc,
+  db,
+  isLocalBusinessProfile,
+  getRestaurantMetaById,
+  normalizeSearchKey,
+  render,
+  ensureMenuDataForProfile,
+  ensureFocusDataForProfile,
+  hydrateRestaurantsByIds,
+  normalizeExternalProfile,
+  showPublicProfile,
+  fetchBusinessProfileDoc,
+  loadBusinessPostsForRestaurant,
+  normalizeExternalUserProfile,
+  openGuestAuthPrompt,
+  userProfileCache,
+  hasPendingFollowRequest,
+  resolveUserByHandle,
+  loadUserPostsForUser,
+  clearQueryParamsFromCurrentUrlCore,
+  resolveRouteStateFromTargetUrlCore,
+  resolveInitialRouteState,
+  normalizeInitialTab,
+  normalizeAuthMode,
+  applyPendingRouteStateCore,
+  normalizePendingNotificationIdCore,
+  findNotificationByIdCore,
+  prependNotificationByIdCore,
+  saveNotifications,
+  openNotificationTarget,
+  normalizePendingPostIdCore,
+  findPostInLocalSourcesCore,
+  findPostById,
+  fetchPostForNotification,
+  normalizePendingChatUidCore,
+  isSelfPendingChatTargetCore,
+  isChatThreadAlreadyOpenCore,
+  getChatThreadId,
+  getChatThreadById,
+  buildChatRouteTargetProfileCore,
+  normalizePendingProfileRestaurantIdCore,
+  isPendingProfileAlreadyOpenCore,
+  normalizeProfileTopTabFromRouteCore,
+  parsePushOpenTargetPayloadCore,
+  shouldHandlePushOpenTargetCore,
+  applyPendingInitialRouteState,
+  isPushOpenTargetMessageCore,
+  normalizeNotificationItemCore,
+  formatRelative,
+  toDateSafe,
+  mapNotificationSnapshotCore,
+  shouldSurfaceNativePushNowCore,
+  buildNotificationsLiveQueryCore,
+  readPushSeenIds,
+  addNotificationItemsToSeenSetCore,
+  writePushSeenIds,
+  canEmitNativePushAlerts,
+  collectUnseenUnreadNotificationItemsFromChangesCore,
+  showNativePushAlert,
+  handleNotificationsUpdate,
+  buildNotificationsFetchQueryCore,
+  fetchNotificationsFromQueryCore,
+  updateNotificationsDom,
+  setPushActivationIssue,
+  clearPushActivationIssue,
+  ensureNotificationPermission,
+  syncPushDeviceRegistration,
+  getMenuItemImages,
+  resolveMenuItemHero,
+  getOptimizedImageUrl,
+  isPlaceholderUrl,
+  getFirebaseStorageUrl,
+  isDirectImageUrl,
+  formatPrice,
+  escapeHtml,
+  getMenuItemObjectPosition,
+  icon,
+  loadFavoriteMenuItems,
+  createEmptyFavoriteMenuItemsState,
+  getShopCartProfileContextCore,
+  getShopCartTotalCore,
+  parsePriceValue,
+  canAddToShopCart,
+  normalizeShopCartState,
+  buildShopVariantKey,
+  clampCropPercent,
+  createEmptyShopCart,
+  saveShopCartToStorage,
+  confirm,
+  buildStoriesFromFeed,
+  updateStoryLogoNodes,
+  updateStoryMetaNodes,
+  updateFeedLogoNodes,
+  updatePostCountNodes,
+  ensureFeedRestaurantMetaListeners,
+  preloadFeedHeroImages,
+  buildStoriesRowSignature,
+  storySystemController,
+  buildUrl,
+  resolveRestaurantLogo,
+  getLastRenderMode: () => lastRenderMode,
+  setState,
+  getGeo,
+  normalizeLeadLocations,
+  resolveCoordsFromEntity,
+  normalizeCoordPair,
+  preferStableCoords,
+  isPublicBusinessRecord,
+  normalizeRestaurantType,
+  getSelfAvatarUrl,
+  isCeoUser,
+  getCeoGpsOverride,
+  alert,
+  normalizeSearchQuery,
+  scoreSearchMatch,
+  sanitizeDisplayName,
+  normalizeHandle,
+  resolveSearchUserAvatarDisplay,
+  isForceHiddenBusinessEntity,
+  isForceHiddenHandle,
+  isForceHiddenEmail,
+  isGuestSession,
+  escapeSelector,
+  normalizeChatOpenProfileCore,
+  upsertChatThread,
+  markChatThreadAsRead,
+  buildChatModalStateOnOpenCore,
+  syncChatThreadSummary,
+  syncRemoteChatReadState,
+  startActiveChatMessagesListener,
+  stopActiveChatMessagesListener,
+  buildClosedChatModalStateCore,
+  ensurePostMeta,
+  attachPostMetaListeners,
+  loadPostMetaFromFirebase,
+  updatePostModalMeta,
+  stopPostMetaListeners,
+  getFocusItemCrop,
+  createLeadDraftState,
+  resetLeadDraft,
+  getMenuItemCrop,
+  createEmptyMenuDetailState,
+  attachMenuItemMetaListeners,
+  loadMenuItemMetaFromFirebase,
+  updateMenuDetailMeta,
+  stopMenuItemMetaListeners,
+  ensureOverlayRootCore,
+  ensureModalEscapeHandlerCore,
+  syncModalOpenUiStateCore,
+  renderOverlaysCore,
+  renderProfileModal,
+  renderChatModal,
+  renderPostModal,
+  renderLikesModal,
+  renderMenuItemModal,
+  renderMenuDetailModal,
+  renderFocusModal,
+  renderLeadModal,
+  renderCustomerModal,
+  bindOverlayEventsCore,
+  bindProfileOverlayEventsCore,
+  bindChatOverlayEventsCore,
+  bindPostOverlayEventsCore,
+  bindLikesOverlayEventsCore,
+  bindMenuOverlayEventsCore,
+  bindMenuDetailOverlayEventsCore,
+  bindFocusOverlayEventsCore,
+  bindLeadOverlayEventsCore,
+  bindCustomerOverlayEventsCore,
+  toggleFollow,
+  sendChatMessage,
+  scrollChatMessagesToBottom,
+  queueMicrotask,
+  togglePostLike,
+  loadPostLikesForModal,
+  addComment,
+  toggleCommentLike,
+  saveMenuItemFromModal,
+  syncMenuModalCropPreview,
+  getMenuDetailCatalogProfile,
+  toggleMenuItemLike,
+  autosizeTextarea,
+  addMenuItemComment,
+  applyCommentAvatarCache,
+  saveFocusItemFromModal,
+  syncFocusModalCropPreview,
+  saveLeadFromModal,
+  convertLeadToCustomer,
+  addLeadModalLocationRow,
+  removeLeadModalLocationRow,
+  syncLeadModalDraftFromForm,
+  openLocationPicker,
+  createLeadLocation,
+  parseCoordsFromAddressInput,
+  getLeadPlusCodeReference,
+  hasLeadLocationCoords,
+  getPrimaryLeadLocation,
+  refineLeadLocationAddressIndex,
+  saveCustomerFromModal,
+  bindImageFallbacks
+}));
 
 const {
   profileApi: {
@@ -7272,7 +7043,7 @@ profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   normalizeFollowHandleFn: normalizeFollowHandle
 });
 
-shellRuntimeController = createAppShellRuntimeController({
+shellRuntimeController = createAppShellRuntimeController(buildAppShellRuntimeControllerDeps({
   state,
   BRAND_UI,
   FAST_MODE,
@@ -7325,141 +7096,141 @@ shellRuntimeController = createAppShellRuntimeController({
   getCartCountForRestaurant,
   renderAuthScreen,
   sanitizeTabForSession,
-  renderMainFn: renderMain,
-  bindFeedDelegationFn: bindFeedDelegation,
-  updateFeedDomFn: updateFeedDom,
-  focusSearchInputFn: focusSearchInput,
-  focusInputByIdFn: focusInputById,
-  captureChatInputFocusStateFn: captureChatInputFocusState,
-  restoreChatInputFocusStateFn: restoreChatInputFocusState,
-  renderOverlaysFn: renderOverlays,
-  updateNotificationBadgesFn: updateNotificationBadges,
-  updateFocusRotationFn: updateFocusRotation,
-  initLeafletIfNeededFn: initLeafletIfNeeded,
-  updateMapSheetFn: updateMapSheet,
-  cleanupLeafletFn: cleanupLeaflet,
-  ensureAuthLocalPersistenceFn: ensureAuthLocalPersistence,
-  resolveAdminLoginFn: resolveAdminLogin,
-  signInOrCreateAdminFn: signInOrCreateAdmin,
-  signInWithEmailAndPasswordFn: signInWithEmailAndPassword,
+  renderMain,
+  bindFeedDelegation,
+  updateFeedDom,
+  focusSearchInput,
+  focusInputById,
+  captureChatInputFocusState,
+  restoreChatInputFocusState,
+  renderOverlays,
+  updateNotificationBadges,
+  updateFocusRotation,
+  initLeafletIfNeeded,
+  updateMapSheet,
+  cleanupLeaflet,
+  ensureAuthLocalPersistence,
+  resolveAdminLogin,
+  signInOrCreateAdmin,
+  signInWithEmailAndPassword,
   auth,
-  ensureUserProfileFn: ensureUserProfile,
-  createUserWithEmailAndPasswordFn: createUserWithEmailAndPassword,
-  updateProfileFn: updateProfile,
-  setDocFn: setDoc,
-  docFn: doc,
+  ensureUserProfile,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  setDoc,
+  doc,
   db,
-  normalizeHandleFn: normalizeHandle,
-  serverTimestampFn: serverTimestamp,
-  normalizeLeadScopeKeyFn: normalizeLeadScopeKey,
-  loadLeadsFn: loadLeads,
-  normalizeCustomerScopeKeyFn: normalizeCustomerScopeKey,
-  loadCustomersFn: loadCustomers,
-  loadCeoStaffFn: loadCeoStaff,
-  bindAppEventsMainCoreFn: bindAppEventsMainCore,
-  bindAppShellEventsCoreFn: bindAppShellEventsCore,
-  setStateFn: setState,
-  signOutFn: signOut,
-  clearAuthBootstrapSnapshotFn: clearAuthBootstrapSnapshot,
-  safeStorageObj: safeStorage,
-  profileKeyFn: profileKey,
-  avatarKeyFn: avatarKey,
-  notificationsKeyFn: notificationsKey,
-  pushSeenKeyFn: pushSeenKey,
-  pushTokenMetaKeyFn: pushTokenMetaKey,
-  followingKeyFn: followingKey,
-  chatIndexKeyFn: chatIndexKey,
-  storageKeys: STORAGE_KEYS,
-  resetUserScopedStateFn: resetUserScopedState,
-  openGuestAuthPromptFn: openGuestAuthPrompt,
-  normalizeAuthModeFn: normalizeAuthMode,
-  ensureMenuDataForProfileFn: ensureMenuDataForProfile,
-  ensureFocusDataForProfileFn: ensureFocusDataForProfile,
-  bindAppMenuFocusEventsCoreFn: bindAppMenuFocusEventsCore,
-  saveMenuLayoutToStorageFn: saveMenuLayoutToStorage,
-  openMenuModalFn: openMenuModal,
-  deleteMenuItemByIdFn: deleteMenuItemById,
-  triggerMenuDetailOpenFromGestureFn: triggerMenuDetailOpenFromGesture,
-  updateShopCartQuantityFn: updateShopCartQuantity,
-  openShopCheckoutFn: openShopCheckout,
-  submitShopCheckoutFn: submitShopCheckout,
-  updateShopCheckoutFieldFn: updateShopCheckoutField,
+  normalizeHandle,
+  serverTimestamp,
+  normalizeLeadScopeKey,
+  loadLeads,
+  normalizeCustomerScopeKey,
+  loadCustomers,
+  loadCeoStaff,
+  bindAppEventsMainCore,
+  bindAppShellEventsCore,
+  setState,
+  signOut,
+  clearAuthBootstrapSnapshot,
+  safeStorage,
+  profileKey,
+  avatarKey,
+  notificationsKey,
+  pushSeenKey,
+  pushTokenMetaKey,
+  followingKey,
+  chatIndexKey,
+  STORAGE_KEYS,
+  resetUserScopedState,
+  openGuestAuthPrompt,
+  normalizeAuthMode,
+  ensureMenuDataForProfile,
+  ensureFocusDataForProfile,
+  bindAppMenuFocusEventsCore,
+  saveMenuLayoutToStorage,
+  openMenuModal,
+  deleteMenuItemById,
+  triggerMenuDetailOpenFromGesture,
+  updateShopCartQuantity,
+  openShopCheckout,
+  submitShopCheckout,
+  updateShopCheckoutField,
   focusCache,
-  focusCacheKeyFn: focusCacheKey,
-  saveFocusEnabledFn: saveFocusEnabled,
-  openFocusModalFn: openFocusModal,
-  deleteFocusItemByIdFn: deleteFocusItemById,
-  setFocusIndexFn: setFocusIndex,
-  toggleProfilePostMenuFn: toggleProfilePostMenu,
-  toggleProfilePostWidthFn: toggleProfilePostWidth,
-  deleteProfilePostFn: deleteProfilePost,
-  setProfileMenuOpenFn: setProfileMenuOpen,
-  mapLocateFn: mapLocate,
-  bindNotificationsDelegationFn: bindNotificationsDelegation,
-  bindAppSettingsProfileEventsCoreFn: bindAppSettingsProfileEventsCore,
-  saveAccountSettingsFn: saveAccountSettings,
-  openLocationPickerFn: openLocationPicker,
-  clearVerifiedMapLocationFn: () => clearVerifiedMapLocation(),
-  syncNotificationsPushRuntimeFn: syncNotificationsPushRuntime,
-  saveSettingsFn: saveSettings,
-  disablePushDeviceRegistrationFn: disablePushDeviceRegistration,
-  getPushActivationIssueMessageFn: getPushActivationIssueMessage,
-  saveUserProfileToStorageFn: saveUserProfileToStorage,
-  persistPrivateAccountSettingFn: persistPrivateAccountSetting,
-  uploadAvatarFn: uploadAvatar,
-  openProfileViewFromBusinessFn: openProfileViewFromBusiness,
-  findPostByIdFn: findPostById,
-  openPostModalFn: openPostModal,
-  toggleFollowFn: toggleFollow,
-  alertFn: (msg) => alert(msg),
-  bindAppChatUploadEventsCoreFn: bindAppChatUploadEventsCore,
-  openChatWithProfileFn: openChatWithProfile,
-  deleteChatThreadByIdFn: deleteChatThreadById,
-  setChatThreadArchivedByIdFn: setChatThreadArchivedById,
-  closeChatModalFn: closeChatModal,
-  toggleChatMessageSavedFn: toggleChatMessageSaved,
-  toggleChatMessageLikedFn: toggleChatMessageLiked,
-  removePendingChatAttachmentFn: removePendingChatAttachment,
-  addChatAttachmentsFn: addChatAttachments,
-  sendChatMessageFn: sendChatMessage,
-  scrollChatMessagesToBottomFn: scrollChatMessagesToBottom,
-  queueMicrotaskFn: (fn) => queueMicrotask(fn),
-  handleUploadPostFn: handleUploadPost,
-  bindCrmStaffEventsCoreFn: bindCrmStaffEventsCore,
-  openLeadCreatorFn: openLeadCreator,
-  openLeadSettingsViewFn: openLeadSettingsView,
-  closeLeadSubviewFn: closeLeadSubview,
-  saveLeadSettingsFn: saveLeadSettings,
-  isLeadInlineCreateViewFn: isLeadInlineCreateView,
-  bindLeadInlineCreateEventsCoreFn: bindLeadInlineCreateEventsCore,
-  deleteLeadFromModalFn: deleteLeadFromModal,
-  saveLeadFromModalFn: saveLeadFromModal,
-  syncLeadDerivedFieldsFn: syncLeadDerivedFields,
-  addLeadModalLocationRowFn: addLeadModalLocationRow,
-  removeLeadModalLocationRowFn: removeLeadModalLocationRow,
-  syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
-  normalizeLeadLocationsFn: normalizeLeadLocations,
-  createLeadLocationFn: createLeadLocation,
-  parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
-  getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
-  hasLeadLocationCoordsFn: hasLeadLocationCoords,
-  getPrimaryLeadLocationFn: getPrimaryLeadLocation,
-  hydrateLeadGeoFieldsFromCoordsFn: hydrateLeadGeoFieldsFromCoords,
-  refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex,
-  openLeadModalFn: openLeadModal,
-  openCustomerModalFn: openCustomerModal,
-  closeStaffEditorFn: closeStaffEditor,
-  openStaffEditorFn: openStaffEditor,
-  syncStaffDerivedEmailFieldFn: syncStaffDerivedEmailField,
-  normalizeCeoCountryFn: normalizeCeoCountry,
-  syncStaffFormFromDomFn: syncStaffFormFromDom,
-  saveCeoStaffFromViewFn: saveCeoStaffFromView,
-  deleteCeoStaffFromViewFn: deleteCeoStaffFromView,
-  handleSearchInputFn: handleSearchInput,
-  buildLocalBusinessResultsFn: buildLocalBusinessResults,
-  refreshSearchViewFn: refreshSearchView,
-  openProfileFromUserFn: openProfileFromUser
-});
+  focusCacheKey,
+  saveFocusEnabled,
+  openFocusModal,
+  deleteFocusItemById,
+  setFocusIndex,
+  toggleProfilePostMenu,
+  toggleProfilePostWidth,
+  deleteProfilePost,
+  setProfileMenuOpen,
+  mapLocate,
+  bindNotificationsDelegation,
+  bindAppSettingsProfileEventsCore,
+  saveAccountSettings,
+  openLocationPicker,
+  clearVerifiedMapLocation,
+  syncNotificationsPushRuntime,
+  saveSettings,
+  disablePushDeviceRegistration,
+  getPushActivationIssueMessage,
+  saveUserProfileToStorage,
+  persistPrivateAccountSetting,
+  uploadAvatar,
+  openProfileViewFromBusiness,
+  findPostById,
+  openPostModal,
+  toggleFollow,
+  alert,
+  bindAppChatUploadEventsCore,
+  openChatWithProfile,
+  deleteChatThreadById,
+  setChatThreadArchivedById,
+  closeChatModal,
+  toggleChatMessageSaved,
+  toggleChatMessageLiked,
+  removePendingChatAttachment,
+  addChatAttachments,
+  sendChatMessage,
+  scrollChatMessagesToBottom,
+  queueMicrotask,
+  handleUploadPost,
+  bindCrmStaffEventsCore,
+  openLeadCreator,
+  openLeadSettingsView,
+  closeLeadSubview,
+  saveLeadSettings,
+  isLeadInlineCreateView,
+  bindLeadInlineCreateEventsCore,
+  deleteLeadFromModal,
+  saveLeadFromModal,
+  syncLeadDerivedFields,
+  addLeadModalLocationRow,
+  removeLeadModalLocationRow,
+  syncLeadModalDraftFromForm,
+  normalizeLeadLocations,
+  createLeadLocation,
+  parseCoordsFromAddressInput,
+  getLeadPlusCodeReference,
+  hasLeadLocationCoords,
+  getPrimaryLeadLocation,
+  hydrateLeadGeoFieldsFromCoords,
+  refineLeadLocationAddressIndex,
+  openLeadModal,
+  openCustomerModal,
+  closeStaffEditor,
+  openStaffEditor,
+  syncStaffDerivedEmailField,
+  normalizeCeoCountry,
+  syncStaffFormFromDom,
+  saveCeoStaffFromView,
+  deleteCeoStaffFromView,
+  handleSearchInput,
+  buildLocalBusinessResults,
+  refreshSearchView,
+  openProfileFromUser
+}));
 
 async function pushUserNotification(targetUid, payload) {
   if (!targetUid) return;
@@ -8668,59 +8439,7 @@ function stopRestaurantsListener() {
 }
 
 async function loadRestaurants({ force = false } = {}) {
-  const cached = readCache(CACHE_KEYS.restaurants, CACHE_TTL_MS.restaurants);
-  if (cached?.data?.length) {
-    if (!state.restaurants.length) {
-      state.restaurants = await enrichRestaurantsWithPublicMeta(cached.data);
-      rebuildBusinessLocations();
-      if (lastRenderMode === "main") updateShellDom();
-      syncFeedPostLogos();
-      refreshFeedStories({ force: true });
-      void loadStoriesForFeed({ force: true, refreshUi: state.activeTab === "feed" });
-      cleanupLeaflet();
-      const inMain = lastRenderMode === "main";
-      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-      const updatedSearch = state.activeTab === "search" && inMain && refreshSearchView();
-      if (!updatedFeed && !updatedSearch) {
-        if (!inMain) {
-          render();
-        } else if (state.activeTab === "map") {
-          render();
-        } else if (state.activeTab === "feed" || state.activeTab === "search") {
-          render();
-        }
-      }
-    }
-    if (cached.fresh && !force) return;
-  }
-  try {
-    const snap = await getDocs(query(collection(db, "restaurants")));
-    const rawList = [];
-    snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
-    const list = await enrichRestaurantsWithPublicMeta(rawList);
-    writeCache(CACHE_KEYS.restaurants, list);
-    state.restaurants = list;
-    rebuildBusinessLocations();
-    if (lastRenderMode === "main") updateShellDom();
-    syncFeedPostLogos();
-    refreshFeedStories({ force: true });
-    void loadStoriesForFeed({ force: true, refreshUi: state.activeTab === "feed" });
-    cleanupLeaflet();
-    const inMain = lastRenderMode === "main";
-    const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-    const updatedSearch = state.activeTab === "search" && inMain && refreshSearchView();
-    if (!updatedFeed && !updatedSearch) {
-      if (!inMain) {
-        render();
-      } else if (state.activeTab === "map") {
-        render();
-      } else if (state.activeTab === "feed" || state.activeTab === "search") {
-        render();
-      }
-    }
-  } catch (err) {
-    console.error(err);
-  }
+  return sessionDataRuntimeController.loadRestaurants(...arguments);
 }
 
 function canShowFeedRestaurantId(restaurantId) {
@@ -8895,74 +8614,7 @@ async function loadBusinessPostsForRestaurant(restaurantId) {
 }
 
 async function loadFeedPosts({ force = false } = {}) {
-  const cached = readCache(CACHE_KEYS.feed, CACHE_TTL_MS.feed);
-  if (cached?.data?.length) {
-    const wasEmpty = !state.feedPosts.length;
-    if (wasEmpty) {
-      state.feedPosts = cached.data;
-    }
-    syncFeedPostLogos();
-    const storiesUpdated = state.stories.length ? false : refreshFeedStories({ force: wasEmpty });
-    void loadStoriesForFeed({ force, refreshUi: state.activeTab === "feed" });
-    if (wasEmpty || storiesUpdated) {
-      const inMain = lastRenderMode === "main";
-      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-      if (updatedFeed) return;
-      if (!inMain) {
-        render();
-        return;
-      }
-      if (state.activeTab === "feed") {
-        render();
-      }
-    }
-    preloadFeedHeroImages(state.feedPosts);
-    if (cached.fresh && !force) return;
-  }
-
-  try {
-    const ref = collection(db, "socialFeed");
-    let snap = null;
-    try {
-      snap = await getDocs(query(ref, where("status", "==", "active"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.feed)));
-    } catch (err) {
-      snap = await getDocs(query(ref, limit(FAST_LIMITS.feedFallback)));
-    }
-    const rows = [];
-    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    const hydrationIds = collectFeedHydrationIds(rows, { max: 8 });
-    if (hydrationIds.length) {
-      await hydrateRestaurantsByIds(hydrationIds, { max: hydrationIds.length });
-    }
-    const next = rows
-      .filter((row) => (row.status || "active") === "active")
-      .map(normalizeFeedPost)
-      .sort((a, b) => (toDateSafe(b.createdAt)?.getTime() || 0) - (toDateSafe(a.createdAt)?.getTime() || 0));
-    const cachedFeed = readCache(CACHE_KEYS.feed);
-    saveFeedPosts(next, { lastDeltaCheck: cachedFeed?.meta?.lastDeltaCheck || 0 });
-
-    const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
-    const nextIds = next.map((item) => String(item.id)).join("|");
-    state.feedPosts = next;
-    const storiesChanged = state.stories.length ? false : refreshFeedStories({ posts: next });
-    void loadStoriesForFeed({ force, refreshUi: state.activeTab === "feed" });
-    preloadFeedHeroImages(next);
-    if (prevIds === nextIds && !storiesChanged) return;
-    const inMain = lastRenderMode === "main";
-    const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-    if (updatedFeed) return;
-    const updatedSearch = state.activeTab === "search" && inMain && refreshSearchView();
-    if (updatedSearch) return;
-    if (!inMain) {
-      render();
-      return;
-    }
-    if (state.activeTab === "feed" || state.activeTab === "search") {
-      render();
-    }
-  } catch (err) {
-    console.error(err);
-  }
+  return sessionDataRuntimeController.loadFeedPosts(...arguments);
 }
 
 async function loadUserPostsForUser(uid) {
@@ -8999,109 +8651,11 @@ async function loadUserPostsForUser(uid) {
 }
 
 async function loadUserPosts({ force = false } = {}) {
-  if (!state.user) return;
-  const cached = readCache(userPostsKey(state.user.uid), CACHE_TTL_MS.posts);
-  if (cached?.data?.length) {
-    if (!state.userPosts.length) {
-      state.userPosts = cached.data.map((post) => ({
-        ...post,
-        ownerType: post.ownerType || "user",
-        ownerId: post.ownerId || state.user.uid
-      }));
-      render();
-    }
-    if (cached.fresh && !force) return;
-  }
-  try {
-    const ref = collection(db, "users", state.user.uid, "posts");
-    let snap = null;
-    try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.userPosts)));
-    } catch (err) {
-      snap = await getDocs(ref);
-    }
-    const rows = [];
-    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    const next = rows.map((row) => ({
-      id: row.id,
-      url: row.url,
-      type: row.type || "square",
-      title: row.title || "",
-      caption: row.caption || "",
-      createdAt: row.createdAt,
-      likes: row.likesCount ?? row.likes ?? 0,
-      comments: row.commentsCount ?? row.comments ?? 0,
-      isVideo: !!row.isVideo,
-      ownerType: "user",
-      ownerId: state.user.uid
-    }));
-    writeCache(userPostsKey(state.user.uid), next);
-    const prevIds = state.userPosts.map((item) => String(item.id)).join("|");
-    const nextIds = next.map((item) => String(item.id)).join("|");
-    if (prevIds === nextIds) return;
-    state.userPosts = next;
-    render();
-  } catch (err) {
-    console.error(err);
-  }
+  return sessionDataRuntimeController.loadUserPosts(...arguments);
 }
 
 async function loadBusinessPosts({ force = false } = {}) {
-  const restaurantId = state.userProfile.restaurantId;
-  if (!restaurantId) {
-    state.businessPosts = [];
-    render();
-    return;
-  }
-  const cached = readCache(businessPostsKey(restaurantId), CACHE_TTL_MS.posts);
-  if (cached?.data?.length) {
-    if (!state.businessPosts.length) {
-      state.businessPosts = cached.data.map((post) => ({
-        ...post,
-        ownerType: post.ownerType || "restaurant",
-        ownerId: post.ownerId || restaurantId,
-        restaurantId: post.restaurantId || restaurantId
-      }));
-      render();
-    }
-    if (cached.fresh && !force) return;
-  }
-  try {
-    const ref = collection(db, "restaurants", restaurantId, "socialPosts");
-    let snap = null;
-    try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.businessPosts)));
-    } catch (err) {
-      snap = await getDocs(ref);
-    }
-    const rows = [];
-    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    const next = rows
-      .filter((row) => (row.status || "active") === "active")
-      .map((row) => ({
-        id: row.id,
-        url: row.media?.[0]?.url || row.mediaUrl || "",
-        type: row.type || "square",
-        title: "",
-        caption: row.caption || "",
-        createdAt: row.createdAt,
-        likes: row.likesCount ?? row.likes ?? 0,
-        comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: row.media?.[0]?.type === "video",
-        ownerType: "restaurant",
-        ownerId: restaurantId,
-        restaurantId
-      }))
-      .filter((row) => row.url);
-    writeCache(businessPostsKey(restaurantId), next);
-    const prevIds = state.businessPosts.map((item) => String(item.id)).join("|");
-    const nextIds = next.map((item) => String(item.id)).join("|");
-    if (prevIds === nextIds) return;
-    state.businessPosts = next;
-    render();
-  } catch (err) {
-    console.error(err);
-  }
+  return sessionDataRuntimeController.loadBusinessPosts(...arguments);
 }
 
 async function loadPublicMenuItems(restaurantId) {
@@ -9353,72 +8907,11 @@ function focusCacheKey(restaurantId) {
 }
 
 async function loadFocusForRestaurant(restaurantId, { force = false } = {}) {
-  if (!restaurantId) {
-    state.focus = { ...state.focus, restaurantId: "", items: [], loading: false, error: "" };
-    return;
-  }
-  const cacheKey = focusCacheKey(restaurantId);
-  const cached = focusCache.get(cacheKey);
-  if (cached && cached.items?.length && !force) {
-    state.focus = { ...state.focus, restaurantId, items: cached.items, enabled: cached.enabled, loading: false, error: "", index: 0 };
-    return;
-  }
-  state.focus = { ...state.focus, restaurantId, loading: true, error: "" };
-  render();
-  try {
-    const [items, enabled] = await Promise.all([
-      loadFocusItems(restaurantId),
-      loadFocusMeta(restaurantId)
-    ]);
-    focusCache.set(cacheKey, { items, enabled, ts: Date.now() });
-    state.focus = { ...state.focus, restaurantId, items, enabled, loading: false, error: "", index: 0 };
-    render();
-  } catch (err) {
-    console.error(err);
-    state.focus = { ...state.focus, restaurantId, items: [], loading: false, error: "Fokus laden fehlgeschlagen." };
-    render();
-  }
+  return sessionDataRuntimeController.loadFocusForRestaurant(...arguments);
 }
 
 async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
-  if (!restaurantId) {
-    state.menu = { ...state.menu, restaurantId: "", items: [], loading: false, error: "", source };
-    return;
-  }
-  const cacheKey = menuCacheKey(restaurantId, source);
-  const cached = menuCache.get(cacheKey);
-  if (cached && cached.items?.length && !force) {
-    const cachedNeedsImages = cached.items.some((it) => !hasMenuItemImages(it));
-    if (!cachedNeedsImages) {
-      state.menu = { ...state.menu, restaurantId, items: cached.items, loading: false, error: "", source };
-      return;
-    }
-  }
-  state.menu = { ...state.menu, restaurantId, loading: true, error: "", source };
-  render();
-  try {
-    let items = [];
-    if (source === "collection") {
-      items = await loadMenuItemsFromCollection(restaurantId);
-      const needsImages = items.some((it) => !hasMenuItemImages(it));
-      if (needsImages) {
-        const publicItems = await loadPublicMenuItems(restaurantId);
-        const fallbackItems = publicItems.length ? publicItems : await loadLegacyMenuItems(restaurantId);
-        if (fallbackItems.length) {
-          items = fillMenuImagesFromFallback(items, fallbackItems);
-        }
-      }
-    } else {
-      items = await loadMenuHybrid(restaurantId);
-    }
-    menuCache.set(cacheKey, { items, ts: Date.now() });
-    state.menu = { ...state.menu, restaurantId, items, loading: false, error: "", source };
-    render();
-  } catch (err) {
-    console.error(err);
-    state.menu = { ...state.menu, restaurantId, items: [], loading: false, error: "Menu laden fehlgeschlagen.", source };
-    render();
-  }
+  return sessionDataRuntimeController.loadMenuForRestaurant(...arguments);
 }
 
 function syncMenuCaches(restaurantId, items) {
@@ -9814,19 +9307,7 @@ async function deleteMenuItemById(itemId) {
 }
 
 async function bootstrapUser(user) {
-  await bootstrapAuthenticatedSessionCore({
-    user,
-    loadAuthProfile: (currentUser) => loadAuthProfile(currentUser),
-    getRestaurantId: () => state.userProfile.restaurantId || "",
-    hydrateRestaurantsByIds: (ids, options) => hydrateRestaurantsByIds(ids, options),
-    resolveRoleSwitchTargets: (currentUser) => resolveRoleSwitchTargets(currentUser),
-    ensureFollowingLoaded: () => {
-      if (!dataLoaded.following) dataLoaded.following = true;
-    },
-    startLiveListeners: (currentUser) => startLiveListeners(currentUser),
-    ensureTabData: (tab) => ensureTabData(tab),
-    activeTab: state.activeTab
-  });
+  return sessionDataRuntimeController.bootstrapUser(...arguments);
 }
 
 loadPersisted();
