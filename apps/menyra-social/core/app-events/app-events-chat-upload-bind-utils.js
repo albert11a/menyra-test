@@ -38,6 +38,14 @@ export function bindAppChatUploadEventsCore({
     ? queueMicrotaskFn
     : ((fn) => Promise.resolve().then(fn));
   const handleUploadPost = typeof handleUploadPostFn === "function" ? handleUploadPostFn : null;
+  const revokePreviewUrl = (value) => {
+    const preview = String(value || "").trim();
+    if (!preview || !preview.startsWith("blob:")) return;
+    if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") return;
+    try {
+      URL.revokeObjectURL(preview);
+    } catch {}
+  };
 
   doc.querySelectorAll("[data-open-chat]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -185,6 +193,21 @@ export function bindAppChatUploadEventsCore({
 
   const uploadFileInput = doc.getElementById("uploadFileInput");
   const uploadTrigger = doc.getElementById("uploadFileTrigger");
+  doc.querySelectorAll("[data-upload-mode]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = String(btn.dataset.uploadMode || "").trim().toLowerCase();
+      if (!mode) return;
+      revokePreviewUrl(state.upload?.preview);
+      state.upload = {
+        preview: "",
+        caption: "",
+        file: null,
+        status: "",
+        mode
+      };
+      render();
+    });
+  });
   if (uploadTrigger && uploadFileInput) {
     uploadTrigger.addEventListener("click", () => uploadFileInput.click());
   }
@@ -192,6 +215,30 @@ export function bindAppChatUploadEventsCore({
     uploadFileInput.addEventListener("change", (e) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      const mode = String(state.upload?.mode || "").trim().toLowerCase();
+      const mime = String(file.type || "").trim().toLowerCase();
+      const isImage = mime.startsWith("image/");
+      const isVideo = mime.startsWith("video/");
+      if (!isImage && !isVideo) {
+        state.upload.status = "Nur Bild oder Video moeglich.";
+        render();
+        uploadFileInput.value = "";
+        return;
+      }
+      if (isVideo && mode !== "story") {
+        state.upload.status = "Video nur fuer Story Upload moeglich.";
+        render();
+        uploadFileInput.value = "";
+        return;
+      }
+      revokePreviewUrl(state.upload?.preview);
+      if (isVideo && typeof URL !== "undefined" && typeof URL.createObjectURL === "function") {
+        state.upload.preview = URL.createObjectURL(file);
+        state.upload.file = file;
+        state.upload.status = "";
+        render();
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         state.upload.preview = reader.result;

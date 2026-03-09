@@ -277,8 +277,18 @@ export function createAppControllerBridge({
     iconFn: feed.icon,
     escapeHtmlFn: feed.escapeHtml,
     buildUrlFn: feed.buildUrl,
+    buildStoryViewerUrlFn: (restaurantId = "") => (
+      typeof feed.buildStoryViewerUrl === "function"
+        ? feed.buildStoryViewerUrl(restaurantId)
+        : feed.buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "profile" })
+    ),
     resolveRestaurantLogoFn: feed.resolveRestaurantLogo,
     getOptimizedImageUrlFn: feed.getOptimizedImageUrl,
+    buildUploadStateForIntentFn: (intent = "", currentUpload = {}) => (
+      typeof feed.buildUploadStateForIntent === "function"
+        ? feed.buildUploadStateForIntent(intent, currentUpload)
+        : currentUpload
+    ),
     setStateFn: feed.setState,
     openGuestAuthPromptFn: feed.openGuestAuthPrompt,
     openProfileViewFromBusinessFn: (input, options = {}) => openProfileViewFromBusiness(input, options)

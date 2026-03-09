@@ -98,6 +98,23 @@ export function bindAppShellEventsCore({
         openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
         return;
       }
+      const uploadIntent = tab === "upload"
+        ? String(btn.dataset.uploadIntent || "feed").trim().toLowerCase()
+        : "";
+      const nextUploadMode = uploadIntent === "chooser"
+        ? "chooser"
+        : (uploadIntent === "story" ? "story" : "feed");
+      const uploadPatch = tab === "upload"
+        ? {
+            upload: nextUploadMode === "chooser"
+              ? { preview: "", caption: "", file: null, status: "", mode: "chooser" }
+              : {
+                  ...(state.upload && typeof state.upload === "object" ? state.upload : {}),
+                  status: "",
+                  mode: nextUploadMode
+                }
+          }
+        : {};
       const activeTab = tab === "favorites" ? "profile" : tab;
       const nextProfileTopTab = tab === "favorites"
         ? "favorites"
@@ -116,7 +133,8 @@ export function bindAppShellEventsCore({
         postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
         likesModal: { open: false, postId: "", animate: false },
         leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
-        customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
+        customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" },
+        ...uploadPatch
       });
     });
   });

@@ -460,6 +460,7 @@ import {
   buildStoriesSignatureCore,
   refreshFeedStoriesCore
 } from "./core/feed/feed-story-utils.js";
+import { createStorySystemController } from "./core/stories/story-system-controller.js";
 import {
   getChatThreadIdCore,
   chatThreadStorageKeyCore,
@@ -1017,7 +1018,8 @@ const state = {
     preview: "",
     caption: "",
     file: null,
-    status: ""
+    status: "",
+    mode: "feed"
   },
   search: {
     query: "",
@@ -3364,6 +3366,59 @@ function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
   state.stories = result.stories;
   writeCache(CACHE_KEYS.stories, result.stories);
   return true;
+}
+
+async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
+  const cached = readCache(CACHE_KEYS.stories, CACHE_TTL_MS.stories);
+  if (cached?.data?.length) {
+    state.stories = cached.data;
+    feedStoriesSignature = buildStoriesSignature(state.stories);
+    if (cached.fresh && !force) return true;
+  }
+
+  try {
+    const storiesRef = collectionGroup(db, "stories");
+    let snap = null;
+    try {
+      snap = await getDocs(query(storiesRef, where("status", "==", "active"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.storiesFallback)));
+    } catch (statusErr) {
+      try {
+        snap = await getDocs(query(storiesRef, orderBy("createdAt", "desc"), limit(FAST_LIMITS.storiesFallback)));
+      } catch (sortErr) {
+        snap = await getDocs(query(storiesRef, limit(FAST_LIMITS.storiesFallback)));
+      }
+    }
+    const docSnaps = [];
+    snap.forEach((docSnap) => docSnaps.push(docSnap));
+    const nextStories = storySystemController.mapStorySnapshotRowsToFeedStories({
+      docSnaps,
+      restaurants: state.restaurants,
+      canShowFeedRestaurantIdFn: canShowFeedRestaurantId,
+      maxItems: FAST_LIMITS.stories,
+      toDateSafeFn: toDateSafe
+    });
+    if (!nextStories.length) return false;
+
+    const prevSignature = buildStoriesSignature(state.stories);
+    const nextSignature = buildStoriesSignature(nextStories);
+    if (prevSignature === nextSignature) return true;
+
+    state.stories = nextStories;
+    feedStoriesSignature = nextSignature;
+    writeCache(CACHE_KEYS.stories, nextStories);
+
+    if (refreshUi) {
+      const inMain = lastRenderMode === "main";
+      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+      if (!updatedFeed && state.activeTab === "feed") {
+        render();
+      }
+    }
+    return true;
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
 }
 
 function preloadFeedHeroImages(feedPosts, { limit = FEED_PRELOAD_LIMIT } = {}) {
@@ -7085,6 +7140,18 @@ function startFollowingListener(user = state.user) {
   });
 }
 
+const storySystemController = createStorySystemController({
+  buildUrlFn: buildUrl,
+  iconFn: icon,
+  escapeHtmlFn: escapeHtml,
+  isLocalBusinessProfileFn: isLocalBusinessProfile,
+  collectionFn: collection,
+  docFn: doc,
+  setDocFn: setDoc,
+  serverTimestampFn: serverTimestamp,
+  db
+});
+
 const appControllerBridge = createAppControllerBridge({
   profile: {
     state,
@@ -7242,8 +7309,10 @@ const appControllerBridge = createAppControllerBridge({
     icon,
     escapeHtml,
     buildUrl,
+    buildStoryViewerUrl: (restaurantId = "") => storySystemController.buildStoryViewerUrl(restaurantId),
     resolveRestaurantLogo,
     getOptimizedImageUrl,
+    buildUploadStateForIntent: (intent = "", currentUpload = {}) => storySystemController.buildUploadStateForIntent(intent, currentUpload),
     setState,
     openGuestAuthPrompt
   },
@@ -8488,29 +8557,52 @@ function renderOrdersView() {
 
 function renderUploadView() {
   const profile = state.userProfile;
-  const previewUrl = getOptimizedImageUrl(state.upload.preview, "large");
+  const uploadMode = storySystemController.normalizeUploadIntent(state.upload.mode, { fallback: "feed" });
+  if (uploadMode === "chooser") {
+    return `
+      <div class="p-6 animate-in slide-in-from-bottom-10 duration-700 min-h-[70vh] flex flex-col">
+        <header class="flex items-center justify-between mb-8">
+          <button data-nav="feed" class="p-3 rounded-2xl bg-slate-100 text-slate-500">${icon("arrow-left", "w-4 h-4")}</button>
+          <h2 class="text-xl font-black italic uppercase text-slate-900">Post waehlen</h2>
+          <div class="w-10"></div>
+        </header>
+        ${storySystemController.renderUploadChooserView({ profile })}
+      </div>
+    `;
+  }
+
+  const isStoryMode = uploadMode === "story";
+  const selectedUploadMediaType = detectUploadMediaType(state.upload.file);
+  const isVideoPreview = selectedUploadMediaType === "video";
+  const previewUrl = isVideoPreview
+    ? String(state.upload.preview || "").trim()
+    : getOptimizedImageUrl(state.upload.preview, "large");
+  const uploadAccept = isStoryMode ? "image/*,video/*" : "image/*";
   return `
     <div class="p-6 animate-in slide-in-from-bottom-10 duration-700 min-h-[70vh] flex flex-col">
       <header class="flex items-center justify-between mb-8">
         <button data-nav="feed" class="p-3 rounded-2xl bg-slate-100 text-slate-500">${icon("arrow-left", "w-4 h-4")}</button>
-        <h2 class="text-xl font-black italic uppercase text-slate-900">Neuer Post</h2>
+        <h2 class="text-xl font-black italic uppercase text-slate-900">${isStoryMode ? "Neue Story" : "Neuer Post"}</h2>
         <div class="w-10"></div>
       </header>
-      <input type="file" id="uploadFileInput" class="hidden" accept="image/*" />
+      <input type="file" id="uploadFileInput" class="hidden" accept="${uploadAccept}" />
       ${state.upload.preview ? `
         <div class="space-y-6">
-          <img src="${escapeHtml(previewUrl)}" class="w-full h-64 object-cover rounded-[2.5rem] shadow-lg" />
+          ${isVideoPreview
+            ? `<video src="${escapeHtml(previewUrl)}" class="w-full h-64 object-cover rounded-[2.5rem] shadow-lg bg-black" autoplay muted loop playsinline preload="metadata"></video>`
+            : `<img src="${escapeHtml(previewUrl)}" class="w-full h-64 object-cover rounded-[2.5rem] shadow-lg" />`
+          }
           <div class="p-5 rounded-[2rem] border bg-white border-slate-100">
-            <textarea id="uploadCaption" placeholder="Bildunterschrift..." class="w-full bg-transparent text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.upload.caption)}</textarea>
+            <textarea id="uploadCaption" placeholder="${isStoryMode ? "Story Text..." : "Bildunterschrift..."}" class="w-full bg-transparent text-sm font-medium outline-none resize-none" rows="2">${escapeHtml(state.upload.caption)}</textarea>
           </div>
-          <button id="uploadPostBtn" class="w-full bg-indigo-600 text-white py-4 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/30">${state.upload.status || "Posten"}</button>
+          <button id="uploadPostBtn" class="w-full bg-indigo-600 text-white py-4 rounded-[2rem] font-black uppercase tracking-widest shadow-xl shadow-indigo-500/30">${state.upload.status || (isStoryMode ? "Story posten" : "Posten")}</button>
           <div class="text-center text-[10px] font-bold text-slate-400">${escapeHtml(state.upload.status)}</div>
         </div>
       ` : `
         <div id="uploadFileTrigger" class="flex-1 flex flex-col items-center justify-center rounded-[3rem] border-4 border-dashed p-8 text-center cursor-pointer transition-all border-slate-200 bg-white">
           <div class="w-20 h-20 bg-indigo-50 rounded-[2rem] flex items-center justify-center text-indigo-600 mb-6">${icon("upload", "w-8 h-8")}</div>
-          <h3 class="text-lg font-black mb-2 italic text-slate-900">Foto waehlen</h3>
-          <p class="text-sm font-medium text-slate-500">Posten als ${isLocalBusinessProfile(profile) ? "Business (Feed)" : "User (Profil)"}</p>
+          <h3 class="text-lg font-black mb-2 italic text-slate-900">${isStoryMode ? "Foto oder Video waehlen" : "Foto waehlen"}</h3>
+          <p class="text-sm font-medium text-slate-500">Posten als ${isStoryMode ? "Business (Story)" : (isLocalBusinessProfile(profile) ? "Business (Feed)" : "User (Profil)")}</p>
         </div>
       `}
     </div>
@@ -8634,6 +8726,39 @@ async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data?.url) throw new Error(data?.error || "Upload fehlgeschlagen.");
   return {url: String(data.url), cdnUrl: String(data.cdnUrl) };
+}
+
+function detectUploadMediaType(file) {
+  const mime = String(file?.type || "").trim().toLowerCase();
+  if (mime.startsWith("video/")) return "video";
+  if (mime.startsWith("image/")) return "image";
+  return "";
+}
+
+async function uploadRawMediaFile(file, ownerId, { maxBytes = 50 * 1024 * 1024 } = {}) {
+  if (!file) throw new Error("Datei fehlt.");
+  if (file.size > maxBytes) throw new Error("Max 50MB pro Story Video.");
+  const form = new FormData();
+  form.append("file", file, file.name || "media");
+  form.append("restaurantId", ownerId || "");
+  const res = await fetch(`${BUNNY_EDGE_BASE}/story/upload`, {
+    method: "POST",
+    body: form
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.url) throw new Error(data?.error || "Upload fehlgeschlagen.");
+  const cdnUrl = String(data.cdnUrl || data.url || "").trim();
+  const videoId = String(data.videoId || "").trim();
+  return { url: String(data.url || "").trim(), cdnUrl, videoId };
+}
+
+function releaseUploadPreviewUrl(previewUrl = "") {
+  const url = String(previewUrl || "").trim();
+  if (!url || !url.startsWith("blob:")) return;
+  if (typeof URL === "undefined" || typeof URL.revokeObjectURL !== "function") return;
+  try {
+    URL.revokeObjectURL(url);
+  } catch {}
 }
 
 async function uploadAvatar(file) {
@@ -8850,11 +8975,23 @@ async function handleUploadPost() {
   if (!state.user || !state.upload.file) return;
 
   const caption = document.getElementById("uploadCaption")?.value?.trim() || "";
+  const uploadMode = storySystemController.normalizeUploadIntent(state.upload.mode, { fallback: "feed" });
+  if (uploadMode === "chooser") {
+    state.upload.status = "Bitte zuerst Story oder Feed waehlen.";
+    render();
+    return;
+  }
+  const isStoryMode = uploadMode === "story";
   const isBusiness = isLocalBusinessProfile(state.userProfile);
   const restaurantId = state.userProfile.restaurantId || document.getElementById("uploadRestaurantSelect")?.value || "";
 
   if (isBusiness && !restaurantId) {
     state.upload.status = "Bitte Business im Account waehlen.";
+    render();
+    return;
+  }
+  if (isStoryMode && (!isBusiness || !restaurantId)) {
+    state.upload.status = "Story Upload nur mit Business Profil moeglich.";
     render();
     return;
   }
@@ -8864,9 +9001,34 @@ async function handleUploadPost() {
     render();
 
     const ownerId = isBusiness ? restaurantId : state.user.uid;
-    const { cdnUrl } = await uploadCompressedImage(state.upload.file, ownerId, {maxSize: 1080, quality: 0.78, mimeType: 'image/jpeg'});
+    const mediaType = detectUploadMediaType(state.upload.file);
+    if (!mediaType) {
+      state.upload.status = "Nur Bild oder Video moeglich.";
+      render();
+      return;
+    }
+    if (!isStoryMode && mediaType !== "image") {
+      state.upload.status = "Feed Upload nur mit Bild moeglich.";
+      render();
+      return;
+    }
 
-    if (isBusiness) {
+    const uploadResult = mediaType === "video"
+      ? await uploadRawMediaFile(state.upload.file, ownerId)
+      : await uploadCompressedImage(state.upload.file, ownerId, { maxSize: 1080, quality: 0.78, mimeType: "image/jpeg" });
+    const cdnUrl = String(uploadResult?.cdnUrl || uploadResult?.url || "").trim();
+    if (!cdnUrl) throw new Error("Upload fehlgeschlagen.");
+
+    if (isStoryMode) {
+      await storySystemController.createBusinessStory({
+        restaurantId,
+        caption,
+        mediaUrl: cdnUrl,
+        mediaType,
+        createdByUid: state.user.uid
+      });
+      await loadStoriesForFeed({ force: true, refreshUi: true });
+    } else if (isBusiness) {
       await createBusinessPost({
         restaurantId,
         caption,
@@ -8884,7 +9046,8 @@ async function handleUploadPost() {
       await loadUserPosts({ force: true });
     }
 
-    state.upload = { preview: "", caption: "", file: null, status: "" };
+    releaseUploadPreviewUrl(state.upload.preview);
+    state.upload = { preview: "", caption: "", file: null, status: "", mode: "feed" };
     setState({ activeTab: isBusiness ? "feed" : "profile" });
   } catch (err) {
     console.error(err);
@@ -9019,7 +9182,11 @@ async function loadBusinessProfile(user, { restaurant = null, force = false } = 
   if (lastRenderMode === "main") {
     updateShellDom();
     if (state.activeTab === "search" && refreshSearchView()) return;
-    if (state.activeTab === "feed") return;
+    if (state.activeTab === "feed") {
+      const updatedFeed = updateFeedDom();
+      if (!updatedFeed) render();
+      return;
+    }
   }
   render();
 }
@@ -9062,6 +9229,7 @@ async function loadRestaurants({ force = false } = {}) {
       if (lastRenderMode === "main") updateShellDom();
       syncFeedPostLogos();
       refreshFeedStories({ force: true });
+      void loadStoriesForFeed({ force: true, refreshUi: state.activeTab === "feed" });
       cleanupLeaflet();
       const inMain = lastRenderMode === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
@@ -9089,6 +9257,7 @@ async function loadRestaurants({ force = false } = {}) {
     if (lastRenderMode === "main") updateShellDom();
     syncFeedPostLogos();
     refreshFeedStories({ force: true });
+    void loadStoriesForFeed({ force: true, refreshUi: state.activeTab === "feed" });
     cleanupLeaflet();
     const inMain = lastRenderMode === "main";
     const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
@@ -9286,7 +9455,8 @@ async function loadFeedPosts({ force = false } = {}) {
       state.feedPosts = cached.data;
     }
     syncFeedPostLogos();
-    const storiesUpdated = refreshFeedStories({ force: wasEmpty });
+    const storiesUpdated = state.stories.length ? false : refreshFeedStories({ force: wasEmpty });
+    void loadStoriesForFeed({ force, refreshUi: state.activeTab === "feed" });
     if (wasEmpty || storiesUpdated) {
       const inMain = lastRenderMode === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
@@ -9327,7 +9497,8 @@ async function loadFeedPosts({ force = false } = {}) {
     const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
     const nextIds = next.map((item) => String(item.id)).join("|");
     state.feedPosts = next;
-    const storiesChanged = refreshFeedStories({ posts: next });
+    const storiesChanged = state.stories.length ? false : refreshFeedStories({ posts: next });
+    void loadStoriesForFeed({ force, refreshUi: state.activeTab === "feed" });
     preloadFeedHeroImages(next);
     if (prevIds === nextIds && !storiesChanged) return;
     const inMain = lastRenderMode === "main";

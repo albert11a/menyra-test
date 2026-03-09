@@ -18,8 +18,10 @@ export function createFeedViewOrchestrationController({
   iconFn = () => "",
   escapeHtmlFn = (value) => String(value || ""),
   buildUrlFn = () => "",
+  buildStoryViewerUrlFn = (restaurantId = "") => buildUrlFn("apps/menyra-social/index.html", { r: restaurantId, tab: "profile" }),
   resolveRestaurantLogoFn = () => "",
   getOptimizedImageUrlFn = () => "",
+  buildUploadStateForIntentFn = (_intent = "", currentUpload = {}) => currentUpload,
   setStateFn = () => {},
   openGuestAuthPromptFn = () => false,
   openProfileViewFromBusinessFn = () => {}
@@ -47,7 +49,7 @@ export function createFeedViewOrchestrationController({
     if (!shouldShowFeedComposer()) return "";
     return `
       <div data-feed-composer-wrap class="px-8 mb-6">
-        <button data-nav="upload" class="w-full p-4 rounded-[2rem] bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
+        <button data-nav="upload" data-upload-intent="feed" class="w-full p-4 rounded-[2rem] bg-slate-900 text-white text-xs font-black uppercase tracking-widest shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-transform">
           ${iconFn("plus-square", "w-4 h-4")} Neuer Feed Post
         </button>
       </div>
@@ -56,7 +58,7 @@ export function createFeedViewOrchestrationController({
 
   function renderStoryItem(story, index = 0) {
     const borderClass = story.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
-    const storyUrl = buildUrlFn("apps/menyra-restaurants/guest/story/index.html", { r: story.restaurantId });
+    const storyUrl = buildStoryViewerUrlFn(story.restaurantId);
     const restaurant = state.restaurants.find((r) => r.id === story.restaurantId) || {};
     const logoSource = restaurant.logoUrl || restaurant.logo || story.img || "";
     const imgUrl = resolveRestaurantLogoFn(story.restaurantId, logoSource, "thumb");
@@ -80,7 +82,7 @@ export function createFeedViewOrchestrationController({
 
   function renderStoriesRow(stories) {
     const uploadSlot = shouldShowStoryUploadSlot() ? `
-    <div class="flex-shrink-0 flex flex-col items-center gap-2" data-story-upload-wrap data-nav="upload">
+    <div class="flex-shrink-0 flex flex-col items-center gap-2" data-story-upload-wrap data-nav="upload" data-upload-intent="chooser">
       <div data-story-upload class="w-20 h-20 rounded-[2.2rem] bg-indigo-600 flex items-center justify-center text-white shadow-2xl shadow-indigo-500/30 overflow-hidden relative group">
         <div class="absolute inset-0 bg-gradient-to-br from-indigo-400 to-indigo-800"></div>
         ${iconFn("camera", "w-7 h-7 relative z-10")}
@@ -309,6 +311,9 @@ export function createFeedViewOrchestrationController({
             openGuestAuthPromptFn("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
             return;
           }
+          const uploadPatch = tab === "upload"
+            ? { upload: buildUploadStateForIntentFn(navBtn.dataset.uploadIntent || "", state.upload) }
+            : {};
           const activeTab = tab === "favorites" ? "profile" : tab;
           const nextProfileTopTab = tab === "favorites"
             ? "favorites"
@@ -327,7 +332,8 @@ export function createFeedViewOrchestrationController({
             postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
             likesModal: { open: false, postId: "", animate: false },
             leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
-            customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" }
+            customerModal: { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" },
+            ...uploadPatch
           });
         }
         return;
