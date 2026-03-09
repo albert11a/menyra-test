@@ -44,7 +44,19 @@ export function createFeedViewOrchestrationController({
   const win = windowObj || (typeof window !== "undefined" ? window : null);
   const hasProfileUid = () => !!String(state.userProfile?.uid || "").trim();
   const hasBusinessProfileHint = () => !!String(state.userProfile?.restaurantId || "").trim();
-  const shouldShowStoryUploadSlot = () => !!state.user || (hasProfileUid() && hasBusinessProfileHint());
+  const hasCeoOwnerProfileHint = () => {
+    const roleKey = String(state.userProfile?.role || "").toLowerCase();
+    if (roleKey === "ceo" || roleKey === "business") return true;
+    const roles = Array.isArray(state.userProfile?.roles) ? state.userProfile.roles : [];
+    return roles.some((role) => {
+      const key = String(role || "").toLowerCase();
+      return key === "ceo" || key === "owner";
+    });
+  };
+  const shouldShowStoryUploadSlot = () => (
+    !!state.user
+    || (hasProfileUid() && (hasBusinessProfileHint() || hasCeoOwnerProfileHint()))
+  );
   const shouldShowFeedComposer = () => (
     !!isLocalBusinessProfileFn(state.userProfile)
     || (hasBusinessProfileHint() && (!!state.user || hasProfileUid()))
