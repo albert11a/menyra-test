@@ -190,7 +190,14 @@ Technische Leitlinien:
 Top-Level:
 - `apps/menyra-social/` Haupt-App
 - `apps/menyra-social/core/` modulare Business-Logik Utilities
+  - `apps/menyra-social/core/app-events/` App Event-Binding Utilities
+  - `apps/menyra-social/core/auth/` Auth/Session/Route-Guard Utilities
+  - `apps/menyra-social/core/chat/` Chat State/Sync/Render Utilities
+  - `apps/menyra-social/core/crm/` CRM/CEO/Staff Utilities
+  - `apps/menyra-social/core/leads/` Lead Domain Utilities
+  - `apps/menyra-social/core/notifications/` Notification Domain Utilities
   - `apps/menyra-social/core/overlays/` Overlay-Rendering, Overlay-Binding, Modal-Update-Orchestrierung
+  - `apps/menyra-social/core/push/` Push Activation/Token/Route Utilities
 - `apps/menyra-social/_shared/` shared Browser-Utilities
 - `shared/` globale shared Konfig/Styles
 - `functions/` Firebase Cloud Functions
@@ -221,8 +228,10 @@ Firebase Functions:
 
 ## 13) Refactor-Status (jetzt)
 Aktueller Stand:
-- `social-app.js`: 15641 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
+- `social-app.js`: 16683 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
 - `apps/menyra-social/core/`: 124 Module (inkl. Unterordner)
+- `apps/menyra-social/core/` flache Root-Dateien: 42 (vorher >70)
+- Neu gruppierte Domain-Ordner: `app-events/`, `auth/`, `chat/`, `crm/`, `leads/`, `notifications/`, `push/`
 - Letzte Refactor-Commits:
   - `d5802e8` CRM Shared Renderer ausgelagert
   - `ac8ab27` Main Shell + Notifications Renderer ausgelagert
@@ -233,7 +242,7 @@ Aktueller Stand:
 Zielbild:
 - `social-app.js` wird weiter auf Orchestrierung + Event-Wiring reduziert.
 - Feature-Logik (feed/chat/shop/crm/push/profile/map) liegt modular in `core/`.
-- Nach Abschluss liegen Utilities thematisch in Sub-Ordnern (mindestens `overlays/`, danach `auth/`, `chat/`, `push/`, `leads/`, `ui/`).
+- Utilities werden weiter thematisch aus der Core-Root in Sub-Ordner verschoben (naechste Kandidaten: `feed/`, `shop/`, `profile/`, `map/`, `ui/`).
 
 README-Pflege:
 - Der Refactor-Status in dieser README wird nach jedem groesseren Refactor-Block aktualisiert.
