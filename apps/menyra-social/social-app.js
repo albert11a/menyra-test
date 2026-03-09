@@ -248,6 +248,12 @@ import {
   normalizeFollowHandleCore
 } from "./core/profile/handle-utils.js";
 import {
+  normalizeEmailValueCore as normalizeEmailValue,
+  getRestaurantEmailCandidatesCore as getRestaurantEmailCandidates,
+  getRestaurantUidCandidatesCore as getRestaurantUidCandidates,
+  matchesRestaurantIdentityCore as matchesRestaurantIdentity
+} from "./core/profile/restaurant-identity-utils.js";
+import {
   createLeadScopeMapCore,
   createCustomerScopeMapCore,
   normalizeLeadScopeKeyCore,
@@ -4854,50 +4860,6 @@ async function syncCeoDirectoryProfilePatch(patch = {}) {
   try {
     await setDoc(doc(db, "superadmins", uid), payload, { merge: true });
   } catch {}
-}
-
-function normalizeEmailValue(value) {
-  return String(value || "").trim().toLowerCase();
-}
-
-function getRestaurantEmailCandidates(rest = {}) {
-  return [
-    rest.ownerEmail,
-    rest.email,
-    rest.contactEmail,
-    rest.socialEmail,
-    rest.loginEmail,
-    rest.accountEmail,
-    rest?.owner?.email,
-    rest?.contact?.email,
-    rest?.account?.email
-  ].map((item) => String(item || "").trim()).filter(Boolean);
-}
-
-function getRestaurantUidCandidates(rest = {}) {
-  return [
-    rest.ownerUid,
-    rest.socialUid,
-    rest.uid,
-    rest.userUid,
-    rest.accountUid,
-    rest.ownerId
-  ].map((item) => String(item || "").trim()).filter(Boolean);
-}
-
-function matchesRestaurantIdentity(rest, { uid = "", email = "" } = {}) {
-  if (!rest) return false;
-  const uidKey = String(uid || "").trim();
-  if (uidKey) {
-    const byUid = getRestaurantUidCandidates(rest).some((candidate) => candidate === uidKey);
-    if (byUid) return true;
-  }
-  const emailKey = normalizeEmailValue(email);
-  if (emailKey) {
-    const byEmail = getRestaurantEmailCandidates(rest).some((candidate) => normalizeEmailValue(candidate) === emailKey);
-    if (byEmail) return true;
-  }
-  return false;
 }
 
 async function scanRestaurantsForMatch(matchFn, { max = 25 } = {}) {
