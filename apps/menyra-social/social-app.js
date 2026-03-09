@@ -300,6 +300,11 @@ import {
   ensureModalEscapeHandlerCore,
   syncModalOpenUiStateCore
 } from "./core/overlay-root-ui-utils.js";
+import { renderMainCore } from "./core/main-shell-render-utils.js";
+import {
+  renderNotificationsViewCore,
+  renderNotificationsListCore
+} from "./core/notifications-render-utils.js";
 import { bindOverlayEventsCore } from "./core/overlay-bind-orchestrator-utils.js";
 import { renderOverlaysCore } from "./core/overlay-render-orchestrator-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
@@ -11515,37 +11520,19 @@ function renderSettingsView() {
 }
 
 function renderNotificationsView() {
-  return `
-    <div id="notificationsView" class="p-6 animate-in slide-in-from-right-10 duration-700 h-full">
-      <div class="flex justify-between items-end mb-8 px-2">
-        <h2 class="text-2xl font-black italic uppercase">Updates</h2>
-        <button id="markAllRead" class="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:text-indigo-500">Alle gelesen</button>
-      </div>
-      <div id="notificationsList" class="space-y-3">
-        ${renderNotificationsList(state.notifications)}
-      </div>
-    </div>
-  `;
+  return renderNotificationsViewCore({
+    state,
+    renderNotificationsListFn: renderNotificationsList
+  });
 }
 
 function renderNotificationsList(items) {
-  if (!items.length) {
-    return "<div class='text-center py-20 text-slate-400 font-bold text-xs uppercase'>Keine neuen Updates</div>";
-  }
-  return items.map((n) => `
-    <div data-notif-open="${escapeHtml(n.id)}" class="flex items-center gap-4 p-4 rounded-[2rem] border transition-all relative overflow-hidden group cursor-pointer ${n.read ? "bg-white border-slate-50" : "bg-indigo-50/50 border-indigo-100"}">
-      <img src="${escapeHtml(resolveNotificationAvatar(n))}" data-img-key="notif:${escapeHtml(n.id)}" class="w-12 h-12 rounded-2xl object-cover shadow-sm" />
-      <div class="flex-1 min-w-0">
-        <p class="text-xs font-medium text-slate-800"><span class="font-black">${escapeHtml(n.user)}</span> ${escapeHtml(n.text)}</p>
-        <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${escapeHtml(n.time)}</p>
-      </div>
-      <div class="flex items-center gap-2">
-        ${n.type === "follow_request" ? `<button data-follow-request-accept="${escapeHtml(n.id)}" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest active:scale-95">Accept</button>` : ""}
-        ${!n.read ? "<div class=\"w-2 h-2 bg-indigo-500 rounded-full\"></div>" : ""}
-        <button data-notif-delete="${n.id}" class="p-2 text-slate-300 hover:text-rose-500">${icon("trash-2", "w-4 h-4")}</button>
-      </div>
-    </div>
-  `).join("");
+  return renderNotificationsListCore({
+    items,
+    escapeHtml,
+    resolveNotificationAvatar,
+    icon
+  });
 }
 
 function renderCrmLazyLoadingView(label = "CRM laden...") {
@@ -12648,35 +12635,26 @@ function renderBusinessTopTabs() {
 }
 
 function renderMain() {
-  let view = "";
-  if (state.activeTab === "feed") view = renderFeedView();
-  if (state.activeTab === "chat") view = renderChatView();
-  if (state.activeTab === "search") view = renderSearchView();
-  if (state.activeTab === "map") view = renderMapView();
-  if (state.activeTab === "profile") view = state.profileView ? renderPublicProfileView() : renderProfileView();
-  if (state.activeTab === "menu") view = renderMenuAdminView();
-  if (state.activeTab === "orders") view = renderOrdersView();
-  if (state.activeTab === "leads") view = renderLeadsView();
-  if (state.activeTab === "staff") view = renderStaffView();
-  if (state.activeTab === "customers") view = renderCustomersView();
-  if (state.activeTab === "settings") view = renderSettingsView();
-  if (state.activeTab === "notifications") view = renderNotificationsView();
-  if (state.activeTab === "upload") view = renderUploadView();
-  const isChatThreadOpen = state.activeTab === "chat" && state.chatModal.open && state.chatModal.profile;
-  const mainClass = isChatThreadOpen
-    ? "flex-1 min-h-0 flex flex-col overflow-hidden"
-    : "flex-1 min-h-0 app-main-scroll";
-
-  return `
-    <div class="app-shell ${isChatThreadOpen ? "app-shell--chat-open" : ""} bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative flex flex-col font-sans">
-      ${renderDrawer()}
-      <main class="${mainClass}">
-        ${renderHeader()}
-        ${renderBusinessTopTabs()}
-        ${view}
-      </main>
-    </div>
-  `;
+  return renderMainCore({
+    state,
+    renderFeedViewFn: renderFeedView,
+    renderChatViewFn: renderChatView,
+    renderSearchViewFn: renderSearchView,
+    renderMapViewFn: renderMapView,
+    renderPublicProfileViewFn: renderPublicProfileView,
+    renderProfileViewFn: renderProfileView,
+    renderMenuAdminViewFn: renderMenuAdminView,
+    renderOrdersViewFn: renderOrdersView,
+    renderLeadsViewFn: renderLeadsView,
+    renderStaffViewFn: renderStaffView,
+    renderCustomersViewFn: renderCustomersView,
+    renderSettingsViewFn: renderSettingsView,
+    renderNotificationsViewFn: renderNotificationsView,
+    renderUploadViewFn: renderUploadView,
+    renderDrawerFn: renderDrawer,
+    renderHeaderFn: renderHeader,
+    renderBusinessTopTabsFn: renderBusinessTopTabs
+  });
 }
 
 function ensureOverlayRoot() {
