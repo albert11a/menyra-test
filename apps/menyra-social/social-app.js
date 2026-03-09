@@ -226,8 +226,8 @@ import {
   getFocusCardClassCore
 } from "./core/menu/menu-layout-utils.js";
 import {
-  foldMenuTextCore,
-  inferMenuTypeHintCore,
+  foldMenuTextCore as foldMenuText,
+  inferMenuTypeHintCore as inferMenuTypeHint,
   coerceMenuItemsFromDataCore
 } from "./core/menu/menu-item-coercion-utils.js";
 import {
@@ -235,14 +235,14 @@ import {
   enqueueMicrotaskCore
 } from "./core/common/task-schedule-utils.js";
 import { focusInputByIdCore } from "./core/ui/dom-focus-utils.js";
-import { scoreSearchMatchCore } from "./core/map/search-score-utils.js";
+import { scoreSearchMatchCore as scoreSearchMatch } from "./core/map/search-score-utils.js";
 import {
-  sanitizeDisplayNameCore,
-  normalizeSearchQueryCore,
-  normalizeSearchKeyCore
+  sanitizeDisplayNameCore as sanitizeDisplayName,
+  normalizeSearchQueryCore as normalizeSearchQuery,
+  normalizeSearchKeyCore as normalizeSearchKey
 } from "./core/common/text-normalize-utils.js";
 import {
-  normalizeHandleCore,
+  normalizeHandleCore as normalizeHandle,
   isGenericHandleCore,
   resolvePreferredHandleCore,
   normalizeFollowHandleCore
@@ -260,9 +260,9 @@ import {
   roleLabelCore,
   buildRoleSwitchUrlCore
 } from "./core/profile/role-switch-utils.js";
-import { formatCountCore } from "./core/common/count-format-utils.js";
+import { formatCountCore as formatCount } from "./core/common/count-format-utils.js";
 import {
-  logoFitClassCore,
+  logoFitClassCore as logoFitClass,
   isLocalBusinessProfileCore
 } from "./core/profile/profile-display-utils.js";
 import {
@@ -318,7 +318,7 @@ import { saveCustomerFromModalCore } from "./core/crm/customer-save-utils.js";
 import { convertLeadToCustomerCore } from "./core/leads/lead-convert-utils.js";
 import { saveCeoStaffFromViewCore } from "./core/crm/staff-save-utils.js";
 import { renderSettingsViewCore } from "./core/ui/settings-render-utils.js";
-import { escapeHtmlCore } from "./core/common/html-utils.js";
+import { escapeHtmlCore as escapeHtml } from "./core/common/html-utils.js";
 import {
   clampCropPercentCore,
   getMenuItemCropCore,
@@ -326,7 +326,7 @@ import {
   getFocusItemCropCore,
   getFocusItemObjectPositionCore
 } from "./core/media/crop-utils.js";
-import { formatPriceCore, parsePriceValueCore } from "./core/common/price-utils.js";
+import { formatPriceCore as formatPrice, parsePriceValueCore as parsePriceValue } from "./core/common/price-utils.js";
 import {
   normalizeOrderItemCore,
   normalizeOrderDocCore
@@ -334,12 +334,12 @@ import {
 import { normalizeRestaurantTypeCore } from "./core/profile/restaurant-type-utils.js";
 import { buildShopVariantKeyCore } from "./core/shop/shop-variant-utils.js";
 import {
-  normalizeOptionListCore,
-  normalizeMenuTypeCore
+  normalizeOptionListCore as normalizeOptionList,
+  normalizeMenuTypeCore as normalizeMenuType
 } from "./core/menu/menu-input-utils.js";
 import {
   normalizeLeadCountryCore,
-  buildLeadAccountEmailCore,
+  buildLeadAccountEmailCore as buildLeadAccountEmail,
   inferLeadCountryFromTextCore
 } from "./core/leads/lead-country-utils.js";
 import { normalizeShopCartStateCore } from "./core/shop/shop-cart-state-utils.js";
@@ -369,33 +369,33 @@ import {
   normalizeLeadSettingsCore,
   getLeadSettingsConfigCore,
   getLeadCountryCenterCore,
-  buildLeadContactNameCore,
+  buildLeadContactNameCore as buildLeadContactName,
   getLeadMonthlyPriceCore,
   getLeadPriceForCycleCore
 } from "./core/leads/lead-settings-utils.js";
 import {
-  normalizeLeadStatusKeyCore,
+  normalizeLeadStatusKeyCore as normalizeLeadStatusKey,
   leadStatusLabelCore,
   customerStatusLabelCore,
   isCustomerRestaurantCore,
   leadTypeLabelCore,
   resolveCustomerTypeCore
 } from "./core/leads/lead-taxonomy-utils.js";
-import { normalizeLeadTypeKeyCore } from "./core/leads/lead-type-utils.js";
+import { normalizeLeadTypeKeyCore as normalizeLeadTypeKey } from "./core/leads/lead-type-utils.js";
 import {
-  hasLeadLocationCoordsCore,
-  toFiniteCoordNumberCore,
+  hasLeadLocationCoordsCore as hasLeadLocationCoords,
+  toFiniteCoordNumberCore as toFiniteCoordNumber,
   normalizeCoordPairCore,
   preferStableCoordsCore,
   resolveCoordsFromShapeCore,
   resolveCoordsFromEntityCore
 } from "./core/map/geo-coord-utils.js";
 import {
-  olcNormalizeLongitudeCore,
-  olcClipLatitudeCore,
-  sanitizePlusCodeCore,
+  olcNormalizeLongitudeCore as olcNormalizeLongitude,
+  olcClipLatitudeCore as olcClipLatitude,
+  sanitizePlusCodeCore as sanitizePlusCode,
   extractPlusCodeFromTextCore,
-  olcDecodeValueCore,
+  olcDecodeValueCore as olcDecodeValue,
   isLikelyFullPlusCodeCore,
   isLikelyShortPlusCodeCore,
   olcDecodeFullPlusCodeCore,
@@ -408,7 +408,7 @@ import {
   parseCoordsFromAddressInputAsyncCore
 } from "./core/map/plus-code-utils.js";
 import {
-  createLeadLocationCore,
+  createLeadLocationCore as createLeadLocation,
   normalizeLeadLocationsCore,
   getPrimaryLeadLocationCore
 } from "./core/leads/lead-location-utils.js";
@@ -428,11 +428,11 @@ import {
   getCeoGpsOverrideCore
 } from "./core/crm/ceo-access-utils.js";
 import {
-  parseCoordNumberCore,
-  uniqueStringListCore,
+  parseCoordNumberCore as parseCoordNumber,
+  uniqueStringListCore as uniqueStringList,
   normalizeCeoCountryCore,
   normalizeCeoPathCore,
-  buildCeoNameCore
+  buildCeoNameCore as buildCeoName
 } from "./core/crm/ceo-normalize-utils.js";
 import { getCurrentCeoMetaCore } from "./core/crm/ceo-meta-utils.js";
 import {
@@ -1673,22 +1673,6 @@ function scheduleCommentAvatarFetch(comment) {
   });
 }
 
-function logoFitClass(isBusiness) {
-  return logoFitClassCore(isBusiness);
-}
-
-function escapeHtml(value) {
-  return escapeHtmlCore(value);
-}
-
-function formatCount(value) {
-  return formatCountCore(value);
-}
-
-function sanitizeDisplayName(value, fallback) {
-  return sanitizeDisplayNameCore(value, fallback);
-}
-
 function isLocalBusinessProfile(profile = state.userProfile) {
   return isLocalBusinessProfileCore(profile);
 }
@@ -1705,14 +1689,6 @@ function resolveHeaderBranding() {
     logoUrl: resolveShellAvatarUrl(),
     isBusinessLogo: isLocalBusinessProfile(state.userProfile)
   };
-}
-
-function normalizeSearchQuery(value) {
-  return normalizeSearchQueryCore(value);
-}
-
-function normalizeSearchKey(value) {
-  return normalizeSearchKeyCore(value);
 }
 
 function normalizeLeadCountry(value) {
@@ -1756,14 +1732,6 @@ function getLeadCountryCenter(country = LEAD_SETTINGS_DEFAULT_COUNTRY) {
     defaultCountry: LEAD_SETTINGS_DEFAULT_COUNTRY,
     defaultCenter: PRISHTINA_COORDS
   });
-}
-
-function buildLeadAccountEmail(name = "") {
-  return buildLeadAccountEmailCore(name);
-}
-
-function buildLeadContactName(firstName = "", lastName = "", fallback = "") {
-  return buildLeadContactNameCore(firstName, lastName, fallback);
 }
 
 function getLeadMonthlyPrice(type = "", config = getLeadSettingsConfig()) {
@@ -1813,10 +1781,6 @@ function getCeoGpsOverride(profile = state.userProfile) {
   return getCeoGpsOverrideCore(profile, {
     isCeoUserFn: isCeoUser
   });
-}
-
-function normalizeLeadStatusKey(value) {
-  return normalizeLeadStatusKeyCore(value);
 }
 
 function isRestaurantMarkedDeleted(rest = {}) {
@@ -1869,10 +1833,6 @@ function isPublicBusinessRecord(rest = {}) {
   });
 }
 
-function normalizeLeadTypeKey(value) {
-  return normalizeLeadTypeKeyCore(value);
-}
-
 function leadStatusLabel(value) {
   return leadStatusLabelCore(value, {
     normalizeLeadStatusKeyFn: normalizeLeadStatusKey,
@@ -1891,14 +1851,6 @@ function resolveCustomerType(value) {
   return resolveCustomerTypeCore(value, {
     normalizeLeadTypeKeyFn: normalizeLeadTypeKey
   });
-}
-
-function hasLeadLocationCoords(location) {
-  return hasLeadLocationCoordsCore(location);
-}
-
-function toFiniteCoordNumber(value) {
-  return toFiniteCoordNumberCore(value);
 }
 
 function normalizeCoordPair(latValue, lngValue) {
@@ -1926,26 +1878,10 @@ function resolveCoordsFromEntity(entity) {
   });
 }
 
-function olcNormalizeLongitude(value) {
-  return olcNormalizeLongitudeCore(value);
-}
-
-function olcClipLatitude(value) {
-  return olcClipLatitudeCore(value);
-}
-
-function sanitizePlusCode(raw) {
-  return sanitizePlusCodeCore(raw);
-}
-
 function extractPlusCodeFromText(text) {
   return extractPlusCodeFromTextCore(text, {
     sanitizePlusCodeFn: sanitizePlusCode
   });
-}
-
-function olcDecodeValue(ch) {
-  return olcDecodeValueCore(ch);
 }
 
 function isLikelyFullPlusCode(code) {
@@ -2034,10 +1970,6 @@ function parseCoordsFromAddressInput(value, refCoords = null) {
   });
 }
 
-function createLeadLocation({ address = "", lat = null, lng = null } = {}) {
-  return createLeadLocationCore({ address, lat, lng });
-}
-
 function normalizeLeadLocations(locations, fallbackAddress = "", fallbackCoords = null) {
   return normalizeLeadLocationsCore(locations, fallbackAddress, fallbackCoords, {
     resolveCoordsFromEntityFn: resolveCoordsFromEntity,
@@ -2104,10 +2036,6 @@ function isRestaurantCafeProfile(profile = state.userProfile) {
   });
 }
 
-function normalizeOptionList(value) {
-  return normalizeOptionListCore(value);
-}
-
 function buildShopVariantKey(itemId, { size = "", color = "" } = {}) {
   return buildShopVariantKeyCore(itemId, { size, color });
 }
@@ -2140,18 +2068,6 @@ function canAddToShopCart(profile = state.profileView?.profile || state.userProf
     isShopCatalogProfileFn: isShopCatalogProfile,
     currentUserRestaurantId: state.userProfile?.restaurantId || ""
   });
-}
-
-function normalizeMenuType(value) {
-  return normalizeMenuTypeCore(value);
-}
-
-function formatPrice(value, currency = "€") {
-  return formatPriceCore(value, currency);
-}
-
-function parsePriceValue(value) {
-  return parsePriceValueCore(value);
 }
 
 function normalizeMenuItemDoc(data, id) {
@@ -2293,23 +2209,11 @@ function normalizeMenuItemDoc(data, id) {
   };
 }
 
-function foldMenuText(value) {
-  return foldMenuTextCore(value);
-}
-
-function inferMenuTypeHint(value) {
-  return inferMenuTypeHintCore(value);
-}
-
 function coerceMenuItemsFromData(data) {
   return coerceMenuItemsFromDataCore({
     data,
     normalizeMenuItemDoc
   });
-}
-
-function scoreSearchMatch(text, query) {
-  return scoreSearchMatchCore(text, query);
 }
 
 function icon(name, className = "") {
@@ -4196,10 +4100,6 @@ async function signInOrCreateAdmin(admin) {
   }
 }
 
-function normalizeHandle(name) {
-  return normalizeHandleCore(name);
-}
-
 function isGenericHandle(handle) {
   return isGenericHandleCore(handle, {
     normalizeHandleFn: normalizeHandle
@@ -4213,14 +4113,6 @@ function resolvePreferredHandle(profile, fallbackName = "") {
   });
 }
 
-function parseCoordNumber(value) {
-  return parseCoordNumberCore(value);
-}
-
-function uniqueStringList(values = []) {
-  return uniqueStringListCore(values);
-}
-
 function normalizeCeoCountry(value) {
   return normalizeCeoCountryCore(value, {
     allowedCountries: CEO_COUNTRIES
@@ -4231,10 +4123,6 @@ function normalizeCeoPath(value, fallback = []) {
   return normalizeCeoPathCore(value, fallback, {
     uniqueStringListFn: uniqueStringList
   });
-}
-
-function buildCeoName({ firstName = "", lastName = "", fallback = "", email = "" } = {}) {
-  return buildCeoNameCore({ firstName, lastName, fallback, email });
 }
 
 function getCurrentCeoMeta(profile = state.userProfile, user = state.user) {
