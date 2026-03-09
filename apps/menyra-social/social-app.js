@@ -287,6 +287,10 @@ import {
   renderMenuCommentItemCore,
   renderMenuDetailCommentsCore
 } from "./core/overlay-comment-render-utils.js";
+import {
+  updatePostModalCountsOnlyCore,
+  updatePostModalCommentsOnlyCore
+} from "./core/post-modal-update-utils.js";
 import { bindOverlayEventsCore } from "./core/overlay-bind-orchestrator-utils.js";
 import { renderOverlaysCore } from "./core/overlay-render-orchestrator-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
@@ -11412,44 +11416,33 @@ function updatePostModalMeta() {
 }
 
 function updatePostModalCountsOnly() {
-  if (!state.postModal.open || !state.postModal.post) return;
-  const post = state.postModal.post;
-  const meta = ensurePostMeta(post.id);
-  const likeCount = Number(post.likes) || 0;
-  const commentCount = Number(post.comments) || 0;
-  const userBadge = currentUserBadge();
-  const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
-
-  const postLikeBtn = document.getElementById("postLikeBtn");
-  if (postLikeBtn) {
-    postLikeBtn.classList.toggle("text-rose-500", !!isLiked);
-    postLikeBtn.classList.toggle("text-slate-700", !isLiked);
-    postLikeBtn.innerHTML = `${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}`;
-  }
-  const postLikesBtn = document.getElementById("postLikesBtn");
-  if (postLikesBtn) postLikesBtn.textContent = `${formatCount(likeCount)} Likes`;
-  const postCommentsCount = document.getElementById("postCommentsCount");
-  if (postCommentsCount) postCommentsCount.textContent = `${formatCount(commentCount)} Kommentare`;
-  if (window.lucide?.createIcons) window.lucide.createIcons();
+  return updatePostModalCountsOnlyCore({
+    state,
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    ensurePostMetaFn: ensurePostMeta,
+    currentUserBadgeFn: currentUserBadge,
+    formatCountFn: formatCount,
+    iconFn: icon
+  });
 }
 
 function updatePostModalCommentsOnly() {
-  if (!state.postModal.open || !state.postModal.post) return;
-  const post = state.postModal.post;
-  const meta = ensurePostMeta(post.id);
-  const comments = (meta.comments || []).map(ensureCommentShape);
-  const postComments = document.getElementById("postModalComments");
-  if (postComments) {
-    postComments.innerHTML = renderPostComments(comments);
-    applyCommentAvatarCache(postComments);
-    hydrateCommentAvatars(postComments, { postId: post.id });
-  }
-  if (window.lucide?.createIcons) window.lucide.createIcons();
-  if (pendingCommentHighlight) {
-    if (highlightCommentInModal(pendingCommentHighlight)) {
-      pendingCommentHighlight = "";
-    }
-  }
+  return updatePostModalCommentsOnlyCore({
+    state,
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    ensurePostMetaFn: ensurePostMeta,
+    ensureCommentShapeFn: ensureCommentShape,
+    renderPostCommentsFn: renderPostComments,
+    applyCommentAvatarCacheFn: applyCommentAvatarCache,
+    hydrateCommentAvatarsFn: hydrateCommentAvatars,
+    getPendingCommentHighlightFn: () => pendingCommentHighlight,
+    setPendingCommentHighlightFn: (value) => {
+      pendingCommentHighlight = value;
+    },
+    highlightCommentInModalFn: highlightCommentInModal
+  });
 }
 
 function updateMenuDetailMeta() {
