@@ -305,6 +305,10 @@ import {
   renderNotificationsViewCore,
   renderNotificationsListCore
 } from "./core/notifications-render-utils.js";
+import {
+  renderCrmLazyLoadingViewCore,
+  renderCeoGuardCore
+} from "./core/crm-shared-render-utils.js";
 import { bindOverlayEventsCore } from "./core/overlay-bind-orchestrator-utils.js";
 import { renderOverlaysCore } from "./core/overlay-render-orchestrator-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
@@ -11536,14 +11540,11 @@ function renderNotificationsList(items) {
 }
 
 function renderCrmLazyLoadingView(label = "CRM laden...") {
-  return `
-    <div class="p-6 text-center">
-      <div class="w-20 h-20 rounded-[2.5rem] bg-slate-100 mx-auto flex items-center justify-center text-slate-300 mb-6">
-        ${icon("loader-circle", "w-8 h-8")}
-      </div>
-      <p class="text-[11px] font-black uppercase tracking-widest text-slate-400">${escapeHtml(label)}</p>
-    </div>
-  `;
+  return renderCrmLazyLoadingViewCore({
+    label,
+    icon,
+    escapeHtml
+  });
 }
 
 function getCrmLazyRendererContext() {
@@ -11652,15 +11653,11 @@ function queueCrmLazyRenderersPrefetch() {
 }
 
 function renderCeoGuard(title = "CRM") {
-  return `
-    <div class="p-6 text-center">
-      <div class="w-20 h-20 rounded-[2.5rem] bg-slate-100 mx-auto flex items-center justify-center text-slate-300 mb-6">
-        ${icon("lock", "w-8 h-8")}
-      </div>
-      <h2 class="text-lg font-black tracking-tight text-slate-900">${escapeHtml(title)}</h2>
-      <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-2">Nur CEO Zugriff</p>
-    </div>
-  `;
+  return renderCeoGuardCore({
+    title,
+    icon,
+    escapeHtml
+  });
 }
 
 function renderLeadsView() {
