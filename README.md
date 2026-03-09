@@ -221,7 +221,7 @@ Firebase Functions:
 
 ## 13) Refactor-Status (jetzt)
 Aktueller Stand:
-- `social-app.js`: 16683 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
+- `social-app.js`: 16684 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
 - `apps/menyra-social/core/`: 124 Module (inkl. Unterordner)
 - `apps/menyra-social/core/` flache Root-Dateien: 0 (vorher >70)
 - Aktive Domain-Ordner: `app-events/`, `auth/`, `chat/`, `common/`, `crm/`, `feed/`, `follow/`, `leads/`, `map/`, `media/`, `menu/`, `notifications/`, `orders/`, `overlays/`, `profile/`, `push/`, `shop/`, `ui/`
