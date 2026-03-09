@@ -42,8 +42,13 @@ export function createFeedViewOrchestrationController({
 
   const doc = documentObj || (typeof document !== "undefined" ? document : null);
   const win = windowObj || (typeof window !== "undefined" ? window : null);
-  const shouldShowStoryUploadSlot = () => !!state.user;
-  const shouldShowFeedComposer = () => !!isLocalBusinessProfileFn(state.userProfile);
+  const hasProfileUid = () => !!String(state.userProfile?.uid || "").trim();
+  const hasBusinessProfileHint = () => !!String(state.userProfile?.restaurantId || "").trim();
+  const shouldShowStoryUploadSlot = () => !!state.user || (hasProfileUid() && hasBusinessProfileHint());
+  const shouldShowFeedComposer = () => (
+    !!isLocalBusinessProfileFn(state.userProfile)
+    || (hasBusinessProfileHint() && (!!state.user || hasProfileUid()))
+  );
 
   function renderFeedComposer() {
     if (!shouldShowFeedComposer()) return "";
@@ -260,7 +265,12 @@ export function createFeedViewOrchestrationController({
     const storiesRow = doc.getElementById("storiesRow");
     const nextSig = `${buildStoriesRowSignatureFn(stories)}|upload:${shouldShowStoryUploadSlot() ? "1" : "0"}`;
     if (storiesRow) {
-      if (getStoriesRowSignatureFn() !== nextSig) {
+      const renderedStoryCount = storiesRow.querySelectorAll("[data-story-item]").length;
+      const expectedStoryCount = Array.isArray(stories) ? stories.length : 0;
+      const hasUploadWrap = !!storiesRow.querySelector("[data-story-upload-wrap]");
+      const shouldShowUploadWrap = shouldShowStoryUploadSlot();
+      const needsStructurePatch = renderedStoryCount !== expectedStoryCount || hasUploadWrap !== shouldShowUploadWrap;
+      if (getStoriesRowSignatureFn() !== nextSig || needsStructurePatch) {
         patchStoriesRow(stories);
         setStoriesRowSignatureFn(nextSig);
       }

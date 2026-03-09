@@ -163,7 +163,9 @@ export function createSessionDataRuntimeController({
       }
 
       const feedUpdated = syncFeedPostLogosFn();
-      const storiesUpdated = refreshFeedStoriesFn({ posts: state.feedPosts, force: true });
+      const storiesUpdated = state.stories.length
+        ? false
+        : refreshFeedStoriesFn({ posts: state.feedPosts, force: true });
       preloadFeedHeroImagesFn(state.feedPosts);
 
       if (feedUpdated || storiesUpdated) {
@@ -178,7 +180,9 @@ export function createSessionDataRuntimeController({
             state.restaurants = list;
             rebuildBusinessLocationsFn();
             const feedChanged = syncFeedPostLogosFn();
-            const storiesChanged = refreshFeedStoriesFn({ posts: state.feedPosts, force: true });
+            const storiesChanged = state.stories.length
+              ? false
+              : refreshFeedStoriesFn({ posts: state.feedPosts, force: true });
             writeCacheFn(cacheKeys.restaurants, list);
             if (feedChanged || storiesChanged) {
               const inMain = getLastRenderModeFn() === "main";
@@ -421,7 +425,9 @@ export function createSessionDataRuntimeController({
         rebuildBusinessLocationsFn();
         if (getLastRenderModeFn() === "main") updateShellDomFn();
         syncFeedPostLogosFn();
-        refreshFeedStoriesFn({ force: true });
+        if (!state.stories.length) {
+          refreshFeedStoriesFn({ force: true });
+        }
         void loadStoriesForFeedFn({ force: true, refreshUi: state.activeTab === "feed" });
         cleanupLeafletFn();
         const inMain = getLastRenderModeFn() === "main";
@@ -450,7 +456,9 @@ export function createSessionDataRuntimeController({
       rebuildBusinessLocationsFn();
       if (getLastRenderModeFn() === "main") updateShellDomFn();
       syncFeedPostLogosFn();
-      refreshFeedStoriesFn({ force: true });
+      if (!state.stories.length) {
+        refreshFeedStoriesFn({ force: true });
+      }
       void loadStoriesForFeedFn({ force: true, refreshUi: state.activeTab === "feed" });
       cleanupLeafletFn();
       const inMain = getLastRenderModeFn() === "main";
