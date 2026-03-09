@@ -4,6 +4,7 @@ import { createNotificationsRuntimeFlowControllerCore } from "../notifications/n
 import { createShopViewCartOrchestrationController } from "../shop/shop-view-cart-orchestration-controller.js";
 import { createFeedViewOrchestrationController } from "../feed/feed-view-orchestration-controller.js";
 import { createOverlayOrchestrationController } from "../overlays/overlay-orchestration-controller.js";
+import { createDiscoveryRuntimeController } from "../discovery/discovery-runtime-controller.js";
 
 export function createAppControllerBridge({
   profile = {},
@@ -11,6 +12,7 @@ export function createAppControllerBridge({
   notifications = {},
   shop = {},
   feed = {},
+  discovery = {},
   overlay = {}
 } = {}) {
   const profileOpenFlowController = createProfileOpenFlowControllerCore({
@@ -282,6 +284,56 @@ export function createAppControllerBridge({
     openProfileViewFromBusinessFn: (input, options = {}) => openProfileViewFromBusiness(input, options)
   });
 
+  const discoveryRuntimeController = createDiscoveryRuntimeController({
+    state: discovery.state,
+    brandUi: discovery.brandUi,
+    documentObj: discovery.documentObj,
+    windowObj: discovery.windowObj,
+    navigatorObj: discovery.navigatorObj,
+    LEAFLET_JS_URL: discovery.leafletJsUrl,
+    LEAFLET_CSS_URL: discovery.leafletCssUrl,
+    searchLimits: discovery.searchLimits,
+    placeholderImage: discovery.placeholderImage,
+    getGeoFn: discovery.getGeo,
+    normalizeLeadLocationsFn: discovery.normalizeLeadLocations,
+    resolveCoordsFromEntityFn: discovery.resolveCoordsFromEntity,
+    normalizeCoordPairFn: discovery.normalizeCoordPair,
+    preferStableCoordsFn: discovery.preferStableCoords,
+    isPlaceholderUrlFn: discovery.isPlaceholderUrl,
+    escapeHtmlFn: discovery.escapeHtml,
+    isPublicBusinessRecordFn: discovery.isPublicBusinessRecord,
+    normalizeRestaurantTypeFn: discovery.normalizeRestaurantType,
+    openProfileViewFromBusinessFn: (input, options = {}) => openProfileViewFromBusiness(input, options),
+    renderFn: discovery.render,
+    getSelfAvatarUrlFn: discovery.getSelfAvatarUrl,
+    isCeoUserFn: discovery.isCeoUser,
+    getCeoGpsOverrideFn: discovery.getCeoGpsOverride,
+    alertFn: discovery.alert,
+    iconFn: discovery.icon,
+    getOptimizedImageUrlFn: discovery.getOptimizedImageUrl,
+    resolveRestaurantLogoFn: discovery.resolveRestaurantLogo,
+    normalizeSearchKeyFn: discovery.normalizeSearchKey,
+    normalizeSearchQueryFn: discovery.normalizeSearchQuery,
+    scoreSearchMatchFn: discovery.scoreSearchMatch,
+    sanitizeDisplayNameFn: discovery.sanitizeDisplayName,
+    normalizeHandleFn: discovery.normalizeHandle,
+    resolveSearchUserAvatarDisplayFn: discovery.resolveSearchUserAvatarDisplay,
+    isForceHiddenBusinessEntityFn: discovery.isForceHiddenBusinessEntity,
+    isForceHiddenHandleFn: discovery.isForceHiddenHandle,
+    isForceHiddenEmailFn: discovery.isForceHiddenEmail,
+    isGuestSessionFn: discovery.isGuestSession,
+    escapeSelectorFn: discovery.escapeSelector,
+    collectionFn: discovery.collection,
+    queryFn: discovery.query,
+    orderByFn: discovery.orderBy,
+    startAtFn: discovery.startAt,
+    endAtFn: discovery.endAt,
+    limitFn: discovery.limit,
+    getDocsFn: discovery.getDocs,
+    db: discovery.db,
+    getLastRenderModeFn: discovery.getLastRenderMode
+  });
+
   const overlayOrchestrationController = createOverlayOrchestrationController({
     state: overlay.state,
     getDocumentObjFn: () => overlay.getDocumentObj(),
@@ -446,7 +498,18 @@ export function createAppControllerBridge({
     updateShopCartQuantity: shopViewCartOrchestrationController.updateShopCartQuantity,
     openShopCheckout: shopViewCartOrchestrationController.openShopCheckout,
     updateShopCheckoutField: shopViewCartOrchestrationController.updateShopCheckoutField,
-    getShopCartTotal: shopViewCartOrchestrationController.getShopCartTotal
+    getShopCartTotal: shopViewCartOrchestrationController.getShopCartTotal,
+    buildRestaurantLocations: discoveryRuntimeController.buildRestaurantLocations,
+    ensureLeafletLoaded: discoveryRuntimeController.ensureLeafletLoaded,
+    cleanupLeaflet: discoveryRuntimeController.cleanupLeaflet,
+    updateMapSheet: discoveryRuntimeController.updateMapSheet,
+    initLeafletIfNeeded: discoveryRuntimeController.initLeafletIfNeeded,
+    mapLocate: discoveryRuntimeController.mapLocate,
+    renderMapView: discoveryRuntimeController.renderMapView,
+    buildLocalBusinessResults: discoveryRuntimeController.buildLocalBusinessResults,
+    handleSearchInput: discoveryRuntimeController.handleSearchInput,
+    renderSearchView: discoveryRuntimeController.renderSearchView,
+    refreshSearchView: discoveryRuntimeController.refreshSearchView
   };
 
   openPostModalBridge = bridgeApi.openPostModal;
@@ -459,6 +522,7 @@ export function createAppControllerBridge({
       notificationsRuntimeFlowController,
       shopViewCartOrchestrationController,
       feedViewOrchestrationController,
+      discoveryRuntimeController,
       overlayOrchestrationController
     },
     profileApi: {
