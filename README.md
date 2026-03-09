@@ -221,11 +221,12 @@ Firebase Functions:
 
 ## 13) Refactor-Status (jetzt)
 Aktueller Stand:
-- `social-app.js`: 16572 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
-- `apps/menyra-social/core/`: 124 Module (inkl. Unterordner)
+- `social-app.js`: 16434 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
+- `apps/menyra-social/core/`: 125 Module (inkl. Unterordner)
 - `apps/menyra-social/core/` flache Root-Dateien: 0 (vorher >70)
 - Aktive Domain-Ordner: `app-events/`, `auth/`, `chat/`, `common/`, `crm/`, `feed/`, `follow/`, `leads/`, `map/`, `media/`, `menu/`, `notifications/`, `orders/`, `overlays/`, `profile/`, `push/`, `shop/`, `ui/`
 - Letzte Refactor-Commits:
+  - `cc94e5c` `normalizeMenuItemDoc` aus `social-app.js` nach `core/menu/menu-doc-normalize-utils.js` ausgelagert
   - `721de76` Passthrough-Wrapper in `social-app.js` durch Core-Import-Aliase ersetzt
   - `4e10d58` Restliche Root-Utilities in Domain-Unterordner verschoben
   - `f5748c1` Auth/Chat/Push/Notifications/Leads/CRM/App-Events gruppiert
