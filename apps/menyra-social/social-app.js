@@ -65,7 +65,7 @@ import {
   createEmptyOrdersState,
   createEmptyFavoriteMenuItemsState,
   createEmptyMenuDetailState
-} from "./core/state-factories.js";
+} from "./core/common/state-factories.js";
 import {
   normalizeInitialTab,
   normalizeAuthMode
@@ -162,8 +162,8 @@ import {
   buildFollowRequestNotificationPayloadCore,
   buildAcceptedFollowRecordPayloadCore,
   buildFollowAcceptedNotificationPayloadCore
-} from "./core/follow-request-payload-utils.js";
-import { mapFollowingSnapshotCore } from "./core/following-listener-utils.js";
+} from "./core/follow/follow-request-payload-utils.js";
+import { mapFollowingSnapshotCore } from "./core/follow/following-listener-utils.js";
 import {
   normalizePendingChatUidCore,
   isSelfPendingChatTargetCore,
@@ -179,7 +179,7 @@ import {
   normalizePendingProfileRestaurantIdCore,
   isPendingProfileAlreadyOpenCore,
   normalizeProfileTopTabFromRouteCore
-} from "./core/profile-route-open-utils.js";
+} from "./core/profile/profile-route-open-utils.js";
 import {
   isPushOpenTargetMessageCore,
   parsePushOpenTargetPayloadCore,
@@ -193,19 +193,19 @@ import {
 import {
   normalizeUserPostDocCore,
   normalizeRestaurantPostDocCore
-} from "./core/post-doc-normalize-utils.js";
+} from "./core/feed/post-doc-normalize-utils.js";
 import {
   readNotificationPostLookupCore,
   shouldFetchUserNotificationPostCore,
   shouldFetchRestaurantNotificationPostCore
 } from "./core/notifications/post-notification-fetch-utils.js";
 import { highlightCommentInModalCore } from "./core/notifications/notification-comment-highlight-utils.js";
-import { buildFollowAcceptedFollowingStateCore } from "./core/follow-accepted-state-utils.js";
+import { buildFollowAcceptedFollowingStateCore } from "./core/follow/follow-accepted-state-utils.js";
 import {
   buildResolveUserByHandleCandidatesCore,
   deriveFollowTargetIdentityCore,
   isSelfFollowTargetCore
-} from "./core/follow-target-utils.js";
+} from "./core/follow/follow-target-utils.js";
 import {
   isGuestSessionCore,
   sanitizeTabForSessionCore,
@@ -219,34 +219,34 @@ import {
   resolveRestaurantLogoCore,
   resolveUserAvatarCore,
   resolveShellAvatarUrlCore
-} from "./core/avatar-logo-cache.js";
+} from "./core/media/avatar-logo-cache.js";
 import {
   saveMenuLayoutToStorageCore,
   getMenuLayoutThemeCore,
   getFocusCardClassCore
-} from "./core/menu-layout-utils.js";
+} from "./core/menu/menu-layout-utils.js";
 import {
   foldMenuTextCore,
   inferMenuTypeHintCore,
   coerceMenuItemsFromDataCore
-} from "./core/menu-item-coercion-utils.js";
+} from "./core/menu/menu-item-coercion-utils.js";
 import {
   scheduleIdleCore,
   enqueueMicrotaskCore
-} from "./core/task-schedule-utils.js";
-import { focusInputByIdCore } from "./core/dom-focus-utils.js";
-import { scoreSearchMatchCore } from "./core/search-score-utils.js";
+} from "./core/common/task-schedule-utils.js";
+import { focusInputByIdCore } from "./core/ui/dom-focus-utils.js";
+import { scoreSearchMatchCore } from "./core/map/search-score-utils.js";
 import {
   sanitizeDisplayNameCore,
   normalizeSearchQueryCore,
   normalizeSearchKeyCore
-} from "./core/text-normalize-utils.js";
+} from "./core/common/text-normalize-utils.js";
 import {
   normalizeHandleCore,
   isGenericHandleCore,
   resolvePreferredHandleCore,
   normalizeFollowHandleCore
-} from "./core/handle-utils.js";
+} from "./core/profile/handle-utils.js";
 import {
   createLeadScopeMapCore,
   createCustomerScopeMapCore,
@@ -259,22 +259,22 @@ import {
   normalizeRoleListCore,
   roleLabelCore,
   buildRoleSwitchUrlCore
-} from "./core/role-switch-utils.js";
-import { formatCountCore } from "./core/count-format-utils.js";
+} from "./core/profile/role-switch-utils.js";
+import { formatCountCore } from "./core/common/count-format-utils.js";
 import {
   logoFitClassCore,
   isLocalBusinessProfileCore
-} from "./core/profile-display-utils.js";
+} from "./core/profile/profile-display-utils.js";
 import {
   renderMenuItemModalCore,
   renderMenuDetailModalCore
-} from "./core/menu-modal-render-utils.js";
-import { saveMenuItemFromModalCore } from "./core/menu-save-utils.js";
-import { deleteMenuItemByIdCore } from "./core/menu-delete-utils.js";
+} from "./core/menu/menu-modal-render-utils.js";
+import { saveMenuItemFromModalCore } from "./core/menu/menu-save-utils.js";
+import { deleteMenuItemByIdCore } from "./core/menu/menu-delete-utils.js";
 import {
   renderCustomerModalCore,
   renderFocusModalCore
-} from "./core/customer-focus-modal-render-utils.js";
+} from "./core/menu/customer-focus-modal-render-utils.js";
 import {
   renderChatModalCore,
   renderProfileModalCore,
@@ -300,7 +300,7 @@ import {
   ensureModalEscapeHandlerCore,
   syncModalOpenUiStateCore
 } from "./core/overlays/overlay-root-ui-utils.js";
-import { renderMainCore } from "./core/main-shell-render-utils.js";
+import { renderMainCore } from "./core/ui/main-shell-render-utils.js";
 import {
   renderNotificationsViewCore,
   renderNotificationsListCore
@@ -314,53 +314,53 @@ import { renderOverlaysCore } from "./core/overlays/overlay-render-orchestrator-
 import { renderLeadModalCore } from "./core/leads/lead-modal-render-utils.js";
 import { saveLeadFromModalCore } from "./core/leads/lead-save-utils.js";
 import { deleteLeadFromModalCore } from "./core/leads/lead-delete-utils.js";
-import { saveCustomerFromModalCore } from "./core/customer-save-utils.js";
+import { saveCustomerFromModalCore } from "./core/crm/customer-save-utils.js";
 import { convertLeadToCustomerCore } from "./core/leads/lead-convert-utils.js";
 import { saveCeoStaffFromViewCore } from "./core/crm/staff-save-utils.js";
-import { renderSettingsViewCore } from "./core/settings-render-utils.js";
-import { escapeHtmlCore } from "./core/html-utils.js";
+import { renderSettingsViewCore } from "./core/ui/settings-render-utils.js";
+import { escapeHtmlCore } from "./core/common/html-utils.js";
 import {
   clampCropPercentCore,
   getMenuItemCropCore,
   getMenuItemObjectPositionCore,
   getFocusItemCropCore,
   getFocusItemObjectPositionCore
-} from "./core/crop-utils.js";
-import { formatPriceCore, parsePriceValueCore } from "./core/price-utils.js";
+} from "./core/media/crop-utils.js";
+import { formatPriceCore, parsePriceValueCore } from "./core/common/price-utils.js";
 import {
   normalizeOrderItemCore,
   normalizeOrderDocCore
-} from "./core/order-normalize-utils.js";
-import { normalizeRestaurantTypeCore } from "./core/restaurant-type-utils.js";
-import { buildShopVariantKeyCore } from "./core/shop-variant-utils.js";
+} from "./core/orders/order-normalize-utils.js";
+import { normalizeRestaurantTypeCore } from "./core/profile/restaurant-type-utils.js";
+import { buildShopVariantKeyCore } from "./core/shop/shop-variant-utils.js";
 import {
   normalizeOptionListCore,
   normalizeMenuTypeCore
-} from "./core/menu-input-utils.js";
+} from "./core/menu/menu-input-utils.js";
 import {
   normalizeLeadCountryCore,
   buildLeadAccountEmailCore,
   inferLeadCountryFromTextCore
 } from "./core/leads/lead-country-utils.js";
-import { normalizeShopCartStateCore } from "./core/shop-cart-state-utils.js";
+import { normalizeShopCartStateCore } from "./core/shop/shop-cart-state-utils.js";
 import {
   getShopCartProfileContextCore,
   getCartCountForRestaurantCore,
   canAddToShopCartCore,
   getShopCartTotalCore
-} from "./core/shop-cart-access-utils.js";
+} from "./core/shop/shop-cart-access-utils.js";
 import {
   getMenuRestaurantForProfileCore,
   ensureMenuDataForProfileCore,
   ensureFocusDataForProfileCore
-} from "./core/profile-menu-focus-utils.js";
+} from "./core/profile/profile-menu-focus-utils.js";
 import {
   getBusinessCatalogModeCore,
   getBusinessCatalogLabelCore,
   isShopCatalogProfileCore,
   isRestaurantCafeProfileCore
-} from "./core/catalog-mode-utils.js";
-import { getBusinessProfileTypeCore } from "./core/business-profile-type-utils.js";
+} from "./core/menu/catalog-mode-utils.js";
+import { getBusinessProfileTypeCore } from "./core/profile/business-profile-type-utils.js";
 import {
   createDefaultLeadPricingCore,
   normalizeLeadPricingCore
@@ -389,7 +389,7 @@ import {
   preferStableCoordsCore,
   resolveCoordsFromShapeCore,
   resolveCoordsFromEntityCore
-} from "./core/geo-coord-utils.js";
+} from "./core/map/geo-coord-utils.js";
 import {
   olcNormalizeLongitudeCore,
   olcClipLatitudeCore,
@@ -406,7 +406,7 @@ import {
   parsePlusCodeFromAddressInputCore,
   parseCoordsFromAddressInputCore,
   parseCoordsFromAddressInputAsyncCore
-} from "./core/plus-code-utils.js";
+} from "./core/map/plus-code-utils.js";
 import {
   createLeadLocationCore,
   normalizeLeadLocationsCore,
@@ -420,7 +420,7 @@ import {
   isForceHiddenEmailCore,
   isForceHiddenBusinessEntityCore,
   isPublicBusinessRecordCore
-} from "./core/business-visibility-utils.js";
+} from "./core/profile/business-visibility-utils.js";
 import {
   isCeoUserCore,
   isAlbertCeoUserCore,
@@ -443,11 +443,11 @@ import {
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
-} from "./core/feed-cache-utils.js";
+} from "./core/feed/feed-cache-utils.js";
 import {
   buildStoriesSignatureCore,
   refreshFeedStoriesCore
-} from "./core/feed-story-utils.js";
+} from "./core/feed/feed-story-utils.js";
 import {
   getChatThreadIdCore,
   chatThreadStorageKeyCore,
@@ -16679,5 +16679,6 @@ window.addEventListener("load", () => {
     window.lucide.createIcons();
   }
 });
+
 
 
