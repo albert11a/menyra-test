@@ -43,7 +43,7 @@ export function createFeedViewOrchestrationController({
 
   function renderStoryItem(story, index = 0) {
     const borderClass = story.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
-    const storyUrl = buildUrlFn("apps/menyra-social/index.html", { r: story.restaurantId, tab: "profile" });
+    const storyUrl = buildUrlFn("apps/menyra-restaurants/guest/story/index.html", { r: story.restaurantId });
     const restaurant = state.restaurants.find((r) => r.id === story.restaurantId) || {};
     const logoSource = restaurant.logoUrl || restaurant.logo || story.img || "";
     const imgUrl = resolveRestaurantLogoFn(story.restaurantId, logoSource, "thumb");
