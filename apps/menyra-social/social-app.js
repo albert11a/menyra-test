@@ -281,6 +281,12 @@ import {
   renderLikesModalCore,
   renderPostModalCore
 } from "./core/overlay-basic-render-utils.js";
+import {
+  renderCommentItemCore,
+  renderPostCommentsCore,
+  renderMenuCommentItemCore,
+  renderMenuDetailCommentsCore
+} from "./core/overlay-comment-render-utils.js";
 import { bindOverlayEventsCore } from "./core/overlay-bind-orchestrator-utils.js";
 import { renderOverlaysCore } from "./core/overlay-render-orchestrator-utils.js";
 import { renderLeadModalCore } from "./core/lead-modal-render-utils.js";
@@ -11235,91 +11241,51 @@ function renderProfileModal() {
 }
 
 function renderCommentItem(postId, comment, parentId = "") {
-  const likeCount = Number.isFinite(Number(comment.likesCount))
-    ? Number(comment.likesCount)
-    : (Array.isArray(comment.likes) ? comment.likes.length : 0);
-  const isReply = !!parentId;
-  const handleKey = normalizeHandle(comment.handle || comment.author || "");
-  let avatarUrl = resolveCommentAvatar(comment);
-  const selfUid = state.user?.uid || "";
-  const selfHandle = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-  const isSelf = (!!selfUid && comment.uid && String(comment.uid) === String(selfUid))
-    || (!!selfHandle && handleKey && handleKey === selfHandle);
-  if (isSelf) {
-    const selfAvatar = getSelfAvatarUrl();
-    if (selfAvatar) avatarUrl = selfAvatar;
-  }
-  if (isPlaceholderUrl(avatarUrl)) scheduleCommentAvatarFetch(comment);
-  const safeSrc = (!avatarUrl || isPlaceholderUrl(avatarUrl)) ? PLACEHOLDER_IMAGE : avatarUrl;
-  return `
-    <div class="flex gap-3 ${isReply ? "ml-10" : ""}" data-comment-id="${escapeHtml(comment.id)}" data-comment-parent="${escapeHtml(parentId || "")}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-comment-handle="${escapeHtml(handleKey)}">
-      <img src="${escapeHtml(safeSrc)}" data-img-key="comment-avatar:${escapeHtml(comment.id)}" data-comment-id="${escapeHtml(comment.id)}" data-comment-handle="${escapeHtml(handleKey)}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-uid="${escapeHtml(comment.uid || "")}" data-handle="${escapeHtml(comment.handle || "")}" class="comment-avatar w-9 h-9 rounded-2xl object-cover shadow" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.src='${PLACEHOLDER_IMAGE}'" alt="" />
-      <div class="flex-1">
-        <div class="flex items-center justify-between">
-          <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author)}</div>
-          <div class="text-[10px] font-bold text-slate-400">${escapeHtml(formatDateTimeLabel(comment.createdAt))}</div>
-        </div>
-        <div class="text-sm text-slate-600 leading-relaxed mt-1">${escapeHtml(comment.text)}</div>
-        <div class="flex items-center gap-3 mt-2 text-[10px] font-bold uppercase tracking-widest">
-          <button data-comment-like="true" data-post-id="${escapeHtml(postId)}" data-comment-id="${escapeHtml(parentId || comment.id)}" data-reply-id="${isReply ? escapeHtml(comment.id) : ""}" class="flex items-center gap-1 text-slate-400 hover:text-rose-500">
-            ${icon("heart", "w-3 h-3")} ${escapeHtml(likeCount)}
-          </button>
-          ${!isReply ? `<button data-comment-reply="true" data-post-id="${escapeHtml(postId)}" data-comment-id="${escapeHtml(comment.id)}" class="text-slate-400 hover:text-slate-900">Antworten</button>` : ""}
-        </div>
-      </div>
-    </div>
-  `;
+  return renderCommentItemCore({
+    postId,
+    comment,
+    parentId,
+    state,
+    normalizeHandle,
+    resolveCommentAvatar,
+    getSelfAvatarUrl,
+    isPlaceholderUrl,
+    scheduleCommentAvatarFetch,
+    placeholderImage: PLACEHOLDER_IMAGE,
+    escapeHtml,
+    formatDateTimeLabel,
+    icon
+  });
 }
 
 function renderPostComments(comments) {
-  if (state.postModal.loading) {
-    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
-  }
-  const hasLiveComments = typeof modalCommentsUnsub === "function";
-  const sendingRow = state.postModal.sending && hasLiveComments
-    ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Senden...</div>`
-    : "";
-  if (!comments.length) {
-    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
-  }
-  return `${sendingRow}${comments.map((comment) => `
-    <div class="space-y-3">
-      ${renderCommentItem(state.postModal.post.id, comment)}
-      ${(comment.replies || []).map((reply) => renderCommentItem(state.postModal.post.id, reply, comment.id)).join("")}
-    </div>
-  `).join("")}`;
+  return renderPostCommentsCore({
+    state,
+    comments,
+    hasLiveComments: typeof modalCommentsUnsub === "function",
+    renderCommentItemFn: renderCommentItem
+  });
 }
 
 function renderMenuCommentItem(comment) {
-  const avatarUrl = resolveCommentAvatar(comment);
-  if (isPlaceholderUrl(avatarUrl)) scheduleCommentAvatarFetch(comment);
-  const safeSrc = (!avatarUrl || isPlaceholderUrl(avatarUrl)) ? PLACEHOLDER_IMAGE : avatarUrl;
-  const handleKey = normalizeHandle(comment.handle || comment.author || "");
-  return `
-    <div class="flex gap-3" data-comment-id="${escapeHtml(comment.id || "")}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-comment-handle="${escapeHtml(handleKey)}">
-      <img src="${escapeHtml(safeSrc)}" data-img-key="comment-avatar:${escapeHtml(comment.id || "")}" data-comment-id="${escapeHtml(comment.id || "")}" data-comment-handle="${escapeHtml(handleKey)}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-uid="${escapeHtml(comment.uid || "")}" data-handle="${escapeHtml(comment.handle || "")}" class="comment-avatar w-9 h-9 rounded-2xl object-cover shadow" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.src='${PLACEHOLDER_IMAGE}'" alt="" />
-      <div class="flex-1">
-        <div class="flex items-center justify-between">
-          <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author || "User")}</div>
-          <div class="text-[10px] font-bold text-slate-400">${escapeHtml(formatDateTimeLabel(comment.createdAt))}</div>
-        </div>
-        <div class="text-sm text-slate-600 leading-relaxed mt-1">${escapeHtml(comment.text || "")}</div>
-      </div>
-    </div>
-  `;
+  return renderMenuCommentItemCore({
+    comment,
+    normalizeHandle,
+    resolveCommentAvatar,
+    isPlaceholderUrl,
+    scheduleCommentAvatarFetch,
+    placeholderImage: PLACEHOLDER_IMAGE,
+    escapeHtml,
+    formatDateTimeLabel
+  });
 }
 
 function renderMenuDetailComments(comments) {
-  if (state.menuDetail.loading) {
-    return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
-  }
-  const sendingRow = state.menuDetail.sending
-    ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Senden...</div>`
-    : "";
-  if (!comments.length) {
-    return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
-  }
-  return `${sendingRow}${comments.map((comment) => renderMenuCommentItem(comment)).join("")}`;
+  return renderMenuDetailCommentsCore({
+    state,
+    comments,
+    renderMenuCommentItemFn: renderMenuCommentItem
+  });
 }
 
 function renderPostModal() {
