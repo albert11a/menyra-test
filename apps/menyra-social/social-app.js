@@ -93,6 +93,7 @@ import {
   applyPendingRouteStateCore
 } from "./core/push/push-route-query-utils.js";
 import { createAppControllerBridge } from "./core/app-shell/app-controller-bridge.js";
+import { createAppShellRuntimeController } from "./core/app-shell/app-shell-runtime-controller.js";
 import {
   resolveNativePushActorCore,
   resolveNativePushBodyCore,
@@ -1071,6 +1072,7 @@ let dataLoaded = {
   customers: false,
   staff: false
 };
+let shellRuntimeController = null;
 let lastAppHtml = "";
 let lastRenderMode = "";
 let lastRenderedMainTab = "";
@@ -9753,6 +9755,197 @@ const {
   setMenuDetailVariant
 } = bridgeApi;
 
+shellRuntimeController = createAppShellRuntimeController({
+  state,
+  BRAND_UI,
+  FAST_MODE,
+  appEl,
+  PLACEHOLDER_IMAGE,
+  documentObj: typeof document === "undefined" ? null : document,
+  windowObj: typeof window === "undefined" ? null : window,
+  getRenderSuspended: () => renderSuspended,
+  setRenderQueued: (next) => {
+    renderQueued = !!next;
+  },
+  getLastAppHtml: () => lastAppHtml,
+  setLastAppHtml: (next) => {
+    lastAppHtml = next;
+  },
+  getLastRenderMode: () => lastRenderMode,
+  setLastRenderMode: (next) => {
+    lastRenderMode = next;
+  },
+  getLastRenderedMainTab: () => lastRenderedMainTab,
+  setLastRenderedMainTab: (next) => {
+    lastRenderedMainTab = next;
+  },
+  getCrmAutoLoadObserver: () => crmAutoLoadObserver,
+  setCrmAutoLoadObserver: (next) => {
+    crmAutoLoadObserver = next;
+  },
+  getAuthInitialized: () => authInitialized,
+  getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
+  getUserAvatarCache: () => userAvatarCache,
+  getProfileMenuBound: () => profileMenuBound,
+  setProfileMenuBound: (next) => {
+    profileMenuBound = !!next;
+  },
+  getProfileViewUnsub: () => profileViewUnsub,
+  setProfileViewUnsub: (next) => {
+    profileViewUnsub = next;
+  },
+  getOptimizedImageUrl,
+  isPlaceholderUrl,
+  escapeHtml,
+  icon,
+  isGuestSession,
+  getChatUnreadCount,
+  resolveHeaderBranding,
+  logoFitClass,
+  isRestaurantCafeProfile,
+  getBusinessCatalogLabel,
+  isShopCatalogProfile,
+  getCartCountForRestaurant,
+  renderAuthScreen,
+  sanitizeTabForSession,
+  renderMainFn: renderMain,
+  bindFeedDelegationFn: bindFeedDelegation,
+  updateFeedDomFn: updateFeedDom,
+  focusSearchInputFn: focusSearchInput,
+  focusInputByIdFn: focusInputById,
+  captureChatInputFocusStateFn: captureChatInputFocusState,
+  restoreChatInputFocusStateFn: restoreChatInputFocusState,
+  renderOverlaysFn: renderOverlays,
+  updateNotificationBadgesFn: updateNotificationBadges,
+  updateFocusRotationFn: updateFocusRotation,
+  initLeafletIfNeededFn: initLeafletIfNeeded,
+  updateMapSheetFn: updateMapSheet,
+  cleanupLeafletFn: cleanupLeaflet,
+  ensureAuthLocalPersistenceFn: ensureAuthLocalPersistence,
+  resolveAdminLoginFn: resolveAdminLogin,
+  signInOrCreateAdminFn: signInOrCreateAdmin,
+  signInWithEmailAndPasswordFn: signInWithEmailAndPassword,
+  auth,
+  ensureUserProfileFn: ensureUserProfile,
+  createUserWithEmailAndPasswordFn: createUserWithEmailAndPassword,
+  updateProfileFn: updateProfile,
+  setDocFn: setDoc,
+  docFn: doc,
+  db,
+  normalizeHandleFn: normalizeHandle,
+  serverTimestampFn: serverTimestamp,
+  normalizeLeadScopeKeyFn: normalizeLeadScopeKey,
+  loadLeadsFn: loadLeads,
+  normalizeCustomerScopeKeyFn: normalizeCustomerScopeKey,
+  loadCustomersFn: loadCustomers,
+  loadCeoStaffFn: loadCeoStaff,
+  bindAppEventsMainCoreFn: bindAppEventsMainCore,
+  bindAppShellEventsCoreFn: bindAppShellEventsCore,
+  setStateFn: setState,
+  signOutFn: signOut,
+  clearAuthBootstrapSnapshotFn: clearAuthBootstrapSnapshot,
+  safeStorageObj: safeStorage,
+  profileKeyFn: profileKey,
+  avatarKeyFn: avatarKey,
+  notificationsKeyFn: notificationsKey,
+  pushSeenKeyFn: pushSeenKey,
+  pushTokenMetaKeyFn: pushTokenMetaKey,
+  followingKeyFn: followingKey,
+  chatIndexKeyFn: chatIndexKey,
+  storageKeys: STORAGE_KEYS,
+  resetUserScopedStateFn: resetUserScopedState,
+  openGuestAuthPromptFn: openGuestAuthPrompt,
+  normalizeAuthModeFn: normalizeAuthMode,
+  ensureMenuDataForProfileFn: ensureMenuDataForProfile,
+  ensureFocusDataForProfileFn: ensureFocusDataForProfile,
+  bindAppMenuFocusEventsCoreFn: bindAppMenuFocusEventsCore,
+  saveMenuLayoutToStorageFn: saveMenuLayoutToStorage,
+  openMenuModalFn: openMenuModal,
+  deleteMenuItemByIdFn: deleteMenuItemById,
+  triggerMenuDetailOpenFromGestureFn: triggerMenuDetailOpenFromGesture,
+  updateShopCartQuantityFn: updateShopCartQuantity,
+  openShopCheckoutFn: openShopCheckout,
+  submitShopCheckoutFn: submitShopCheckout,
+  updateShopCheckoutFieldFn: updateShopCheckoutField,
+  focusCache,
+  focusCacheKeyFn: focusCacheKey,
+  saveFocusEnabledFn: saveFocusEnabled,
+  openFocusModalFn: openFocusModal,
+  deleteFocusItemByIdFn: deleteFocusItemById,
+  setFocusIndexFn: setFocusIndex,
+  toggleProfilePostMenuFn: toggleProfilePostMenu,
+  toggleProfilePostWidthFn: toggleProfilePostWidth,
+  deleteProfilePostFn: deleteProfilePost,
+  setProfileMenuOpenFn: setProfileMenuOpen,
+  mapLocateFn: mapLocate,
+  bindNotificationsDelegationFn: bindNotificationsDelegation,
+  bindAppSettingsProfileEventsCoreFn: bindAppSettingsProfileEventsCore,
+  saveAccountSettingsFn: saveAccountSettings,
+  openLocationPickerFn: openLocationPicker,
+  clearVerifiedMapLocationFn: () => {
+    verifiedMapLocation = null;
+  },
+  syncNotificationsPushRuntimeFn: syncNotificationsPushRuntime,
+  saveSettingsFn: saveSettings,
+  disablePushDeviceRegistrationFn: disablePushDeviceRegistration,
+  getPushActivationIssueMessageFn: getPushActivationIssueMessage,
+  saveUserProfileToStorageFn: saveUserProfileToStorage,
+  persistPrivateAccountSettingFn: persistPrivateAccountSetting,
+  uploadAvatarFn: uploadAvatar,
+  openProfileViewFromBusinessFn: openProfileViewFromBusiness,
+  findPostByIdFn: findPostById,
+  openPostModalFn: openPostModal,
+  toggleFollowFn: toggleFollow,
+  alertFn: (msg) => alert(msg),
+  bindAppChatUploadEventsCoreFn: bindAppChatUploadEventsCore,
+  openChatWithProfileFn: openChatWithProfile,
+  deleteChatThreadByIdFn: deleteChatThreadById,
+  setChatThreadArchivedByIdFn: setChatThreadArchivedById,
+  closeChatModalFn: closeChatModal,
+  toggleChatMessageSavedFn: toggleChatMessageSaved,
+  toggleChatMessageLikedFn: toggleChatMessageLiked,
+  removePendingChatAttachmentFn: removePendingChatAttachment,
+  addChatAttachmentsFn: addChatAttachments,
+  sendChatMessageFn: sendChatMessage,
+  scrollChatMessagesToBottomFn: scrollChatMessagesToBottom,
+  queueMicrotaskFn: (fn) => queueMicrotask(fn),
+  handleUploadPostFn: handleUploadPost,
+  bindCrmStaffEventsCoreFn: bindCrmStaffEventsCore,
+  openLeadCreatorFn: openLeadCreator,
+  openLeadSettingsViewFn: openLeadSettingsView,
+  closeLeadSubviewFn: closeLeadSubview,
+  saveLeadSettingsFn: saveLeadSettings,
+  isLeadInlineCreateViewFn: isLeadInlineCreateView,
+  bindLeadInlineCreateEventsCoreFn: bindLeadInlineCreateEventsCore,
+  deleteLeadFromModalFn: deleteLeadFromModal,
+  saveLeadFromModalFn: saveLeadFromModal,
+  syncLeadDerivedFieldsFn: syncLeadDerivedFields,
+  addLeadModalLocationRowFn: addLeadModalLocationRow,
+  removeLeadModalLocationRowFn: removeLeadModalLocationRow,
+  syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
+  normalizeLeadLocationsFn: normalizeLeadLocations,
+  createLeadLocationFn: createLeadLocation,
+  parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
+  getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
+  hasLeadLocationCoordsFn: hasLeadLocationCoords,
+  getPrimaryLeadLocationFn: getPrimaryLeadLocation,
+  hydrateLeadGeoFieldsFromCoordsFn: hydrateLeadGeoFieldsFromCoords,
+  refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex,
+  openLeadModalFn: openLeadModal,
+  openCustomerModalFn: openCustomerModal,
+  closeStaffEditorFn: closeStaffEditor,
+  openStaffEditorFn: openStaffEditor,
+  syncStaffDerivedEmailFieldFn: syncStaffDerivedEmailField,
+  normalizeCeoCountryFn: normalizeCeoCountry,
+  syncStaffFormFromDomFn: syncStaffFormFromDom,
+  saveCeoStaffFromViewFn: saveCeoStaffFromView,
+  deleteCeoStaffFromViewFn: deleteCeoStaffFromView,
+  handleSearchInputFn: handleSearchInput,
+  buildLocalBusinessResultsFn: buildLocalBusinessResults,
+  refreshSearchViewFn: refreshSearchView,
+  openProfileFromUserFn: openProfileFromUser
+});
+
 async function pushUserNotification(targetUid, payload) {
   if (!targetUid) return;
   try {
@@ -11411,170 +11604,15 @@ function renderChatView() {
 }
 
 function renderHeaderActionButton(avatarUrl, avatarFit) {
-  if (!authInitialized) {
-    const restoringRaw = authBootstrapSnapshot?.avatar || state.userProfile.avatar || userAvatarCache || "";
-    const restoringAvatar = getOptimizedImageUrl(restoringRaw, "avatar");
-    if (restoringAvatar && !isPlaceholderUrl(restoringAvatar)) {
-      return `
-        <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
-          <img src="${escapeHtml(restoringAvatar)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
-        </div>
-      `;
-    }
-    return `
-      <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
-        <div class="w-full h-full rounded-[1.4rem] bg-slate-200 animate-pulse"></div>
-      </div>
-    `;
-  }
-  if (isGuestSession()) {
-    return `
-      <button data-auth-open="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30 text-slate-900 flex flex-col items-center justify-center leading-none">
-        ${icon("log-in", "w-4 h-4")}
-        <span class="text-[8px] font-black uppercase tracking-[0.2em] mt-1">Login</span>
-      </button>
-    `;
-  }
-  return `
-    <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
-      <img id="headerAvatar" data-img-key="avatar:header" src="${escapeHtml(avatarUrl)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
-    </button>
-  `;
+  return shellRuntimeController.renderHeaderActionButton(avatarUrl, avatarFit);
 }
 
 function renderHeader() {
-  const unread = isGuestSession() ? 0 : state.notifications.filter((n) => !n.read).length;
-  const chatUnread = isGuestSession() ? 0 : getChatUnreadCount();
-  const headerUnread = unread + chatUnread;
-  const badge = headerUnread > 9 ? "9+" : String(headerUnread || "");
-  const branding = resolveHeaderBranding();
-  const avatarUrl = branding.logoUrl;
-  const avatarFit = logoFitClass(branding.isBusinessLogo);
-  const titleClass = "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
-  const subtitleClass = `text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block${branding.subtitle ? "" : " hidden"}`;
-  if (state.activeTab === "staff" && state.staff?.view === "form") {
-    return `
-      <header class="app-header-safe p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
-        <button data-staff-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
-          ${icon("arrow-left", "w-5 h-5")}
-        </button>
-        <div class="text-center">
-          <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">CEO Creation</span>
-        </div>
-        ${renderHeaderActionButton(avatarUrl, avatarFit)}
-      </header>
-    `;
-  }
-  if (state.activeTab === "leads" && (state.leads?.view === "create" || state.leads?.view === "settings")) {
-    const isSettingsView = state.leads?.view === "settings";
-    return `
-      <header class="app-header-safe p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
-        <button data-leads-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
-          ${icon("arrow-left", "w-5 h-5")}
-        </button>
-        <div class="text-center">
-          <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">${isSettingsView ? "Leads Settings" : "Leads Creation"}</span>
-        </div>
-        ${renderHeaderActionButton(avatarUrl, avatarFit)}
-      </header>
-    `;
-  }
-  if (state.activeTab === "chat" && state.chatModal.open && state.chatModal.profile) {
-    const partner = state.chatModal.profile;
-    const partnerAvatar = getOptimizedImageUrl(partner.avatar, "avatar");
-    return `
-      <header class="app-header-safe shrink-0 p-6 pb-3 flex items-center justify-between gap-3 relative z-40 bg-slate-50">
-        <button data-chat-back="true" class="w-14 h-14 rounded-3xl shadow-xl flex items-center justify-center active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30">
-          ${icon("arrow-left", "w-5 h-5")}
-        </button>
-        <div class="flex-1 min-w-0 text-center">
-          <h1 class="text-lg font-black tracking-tight text-slate-900 truncate">${escapeHtml(partner.name || "User")}</h1>
-          <span class="text-[9px] font-black text-slate-400 uppercase tracking-[0.35em] block truncate">@${escapeHtml(String(partner.handle || "user").replace(/^@/, ""))}</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <div class="w-12 h-12 rounded-2xl overflow-hidden p-1 bg-white border border-slate-100 shadow-sm">
-            <img src="${escapeHtml(partnerAvatar)}" class="w-full h-full rounded-[1rem] object-cover" />
-          </div>
-        </div>
-      </header>
-    `;
-  }
-  if (state.activeTab === "chat") {
-    return `
-      <header class="app-header-safe shrink-0 p-6 pb-3 flex justify-between items-center relative z-40 bg-slate-50">
-        <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
-          <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
-          <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
-          <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
-          ${headerUnread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
-        </button>
-        <div class="text-center">
-          <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">CHATS</h1>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">DIRECT</span>
-        </div>
-        ${renderHeaderActionButton(avatarUrl, avatarFit)}
-      </header>
-    `;
-  }
-  return `
-    <header class="app-header-safe p-6 pb-2 flex justify-between items-center relative z-40 bg-slate-50">
-      <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 active:scale-95 transition-all bg-white border border-slate-50 shadow-slate-200/30 relative">
-        <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
-        <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
-        <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
-        ${headerUnread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
-      </button>
-      <div class="text-center cursor-pointer" data-nav="feed">
-        <h1 id="headerTitle" class="${titleClass}">${escapeHtml(branding.title)}</h1>
-        <span id="headerSubtitle" class="${subtitleClass}">${escapeHtml(branding.subtitle)}</span>
-      </div>
-      ${renderHeaderActionButton(avatarUrl, avatarFit)}
-    </header>
-  `;
-}
-
-function shouldShowBusinessTopTabs() {
-  if (state.activeTab !== "profile") return false;
-  const profile = state.profileView?.profile || state.userProfile;
-  return isRestaurantCafeProfile(profile);
+  return shellRuntimeController.renderHeader();
 }
 
 function renderBusinessTopTabs() {
-  if (!shouldShowBusinessTopTabs()) return "";
-  const profile = state.profileView?.profile || state.userProfile;
-  const catalogLabel = getBusinessCatalogLabel(profile);
-  const isShop = isShopCatalogProfile(profile);
-  const base = "flex-1 py-3 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
-  const activeTop = state.profileTopTab || "profile";
-  const isProfileActive = activeTop === "profile";
-  const isMenuActive = activeTop === "menu";
-  const isCartActive = activeTop === "cart";
-  const cartCount = isShop ? getCartCountForRestaurant(profile?.restaurantId || "") : 0;
-  const spacingClass = isProfileActive ? "pb-1" : "pb-3";
-  return `
-    <div class="px-6 ${spacingClass}">
-      <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center gap-1 backdrop-blur-sm">
-        <button type="button" data-profile-top-tab="profile" class="${base} ${isProfileActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-          Profil
-        </button>
-        <button type="button" data-profile-top-tab="menu" class="${base} ${isMenuActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-          ${catalogLabel}
-        </button>
-        ${isShop ? `
-          <button type="button" data-profile-top-tab="cart" class="${base} relative ${isCartActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-            ${icon("shopping-cart", "w-4 h-4")}
-            ${cartCount ? `<span class="absolute top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${cartCount > 9 ? "9+" : cartCount}</span>` : ""}
-          </button>
-        ` : `
-          <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
-            Reviews
-          </button>
-        `}
-      </div>
-    </div>
-  `;
+  return shellRuntimeController.renderBusinessTopTabs();
 }
 
 function renderMain() {
@@ -11601,427 +11639,27 @@ function renderMain() {
 }
 
 function bindImageFallbacks(root = document) {
-  if (!root) return;
-  root.querySelectorAll("img[data-fallback-src]").forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    if (img.dataset.fallbackBound === "true") return;
-    img.dataset.fallbackBound = "true";
-    img.addEventListener("error", () => {
-      const fallback = img.dataset.fallbackSrc || "";
-      const current = img.getAttribute("src") || "";
-      if (fallback && current !== fallback) {
-        img.setAttribute("src", fallback);
-        return;
-      }
-      if (current !== PLACEHOLDER_IMAGE) {
-        img.setAttribute("src", PLACEHOLDER_IMAGE);
-      }
-    });
-  });
+  return shellRuntimeController.bindImageFallbacks(root);
 }
 
 function render() {
-  if (renderSuspended > 0) {
-    renderQueued = true;
-    return;
-  }
-  const chatInputFocusState = captureChatInputFocusState();
-  document.body.classList.toggle("fast-mode", FAST_MODE);
-  let nextHtml = "";
-  let mode = "";
-  const showGuestAuth = !state.user && !!state.auth.open;
-  if (showGuestAuth) {
-    nextHtml = renderAuthScreen();
-    mode = "auth";
-  } else {
-    state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
-    nextHtml = renderMain();
-    mode = "main";
-  }
-  const changed = nextHtml !== lastAppHtml || mode !== lastRenderMode;
-  if (changed) {
-    const isChatThreadOpen = mode === "main"
-      && state.activeTab === "chat"
-      && !!state.chatModal.open
-      && !!state.chatModal.profile;
-    const preserveMainScroll = mode === "main"
-      && lastRenderMode === "main"
-      && state.activeTab === lastRenderedMainTab
-      && !isChatThreadOpen;
-    const reuseFeed = preserveMainScroll && state.activeTab === "feed"
-      ? document.getElementById("feedView")
-      : null;
-    const prevScrollTop = preserveMainScroll ? document.querySelector("main")?.scrollTop ?? 0 : 0;
-    appEl.innerHTML = nextHtml;
-    appEl.removeAttribute("aria-busy");
-    lastAppHtml = nextHtml;
-    lastRenderMode = mode;
-    if (mode === "auth") {
-      bindAuthEvents();
-    } else if (mode === "main") {
-      bindAppEvents();
-      bindFeedDelegation();
-    }
-    if (reuseFeed) {
-      const nextFeed = document.getElementById("feedView");
-      if (nextFeed && reuseFeed !== nextFeed) {
-        nextFeed.replaceWith(reuseFeed);
-      }
-      const nextMain = document.querySelector("main");
-      if (nextMain) nextMain.scrollTop = prevScrollTop;
-      updateFeedDom();
-    } else if (preserveMainScroll) {
-      const nextMain = document.querySelector("main");
-      if (nextMain) nextMain.scrollTop = prevScrollTop;
-    }
-    if (window.lucide?.createIcons) window.lucide.createIcons();
-    if (state.activeTab === "search" && state.search.keepFocus) {
-      state.search.keepFocus = false;
-      focusSearchInput();
-    }
-    if (state.activeTab === "leads" && state.leads.keepFocus) {
-      state.leads.keepFocus = false;
-      focusInputById("leadsSearchInput");
-    }
-    if (state.activeTab === "customers" && state.customers.keepFocus) {
-      state.customers.keepFocus = false;
-      focusInputById("customersSearchInput");
-    }
-    restoreChatInputFocusState(chatInputFocusState);
-    if (mode === "main") lastRenderedMainTab = state.activeTab;
-    else lastRenderedMainTab = "";
-  }
-
-  renderOverlays();
-  if (mode === "main" || lastRenderMode === "main") {
-    updateNotificationBadges();
-  }
-  updateFocusRotation();
-
-  if (mode === "main" && state.activeTab === "map") {
-    window.setTimeout(() => {
-      initLeafletIfNeeded();
-      updateMapSheet();
-    }, 0);
-  } else {
-    cleanupLeaflet();
-  }
+  return shellRuntimeController.render();
 }
 
 function bindAuthEvents() {
-  const authForm = document.getElementById("authForm");
-  const toggleBtn = document.getElementById("authToggle");
-  const authCloseBtn = document.getElementById("authCloseBtn");
-  if (authCloseBtn) {
-    authCloseBtn.addEventListener("click", () => {
-      state.auth.open = false;
-      state.auth.error = "";
-      render();
-    });
-  }
-  if (toggleBtn) {
-    toggleBtn.addEventListener("click", () => {
-      state.auth.mode = state.auth.mode === "login" ? "register" : "login";
-      state.auth.error = "";
-      state.auth.role = "user";
-      render();
-    });
-  }
-
-  if (authForm) {
-    authForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email = document.getElementById("authEmail")?.value?.trim() || "";
-      const password = document.getElementById("authPassword")?.value || "";
-      const name = document.getElementById("authName")?.value?.trim() || "";
-
-      state.auth.loading = true;
-      state.auth.error = "";
-      render();
-
-      try {
-        await ensureAuthLocalPersistence();
-        if (state.auth.mode === "login") {
-          const admin = resolveAdminLogin(email, password);
-          const cred = admin ? await signInOrCreateAdmin(admin) : await signInWithEmailAndPassword(auth, email, password);
-          if (admin) {
-            await ensureUserProfile(cred.user, admin?.profile || {});
-          }
-        } else {
-          if (!name || !email || !password) {
-            throw new Error("Bitte alles ausfuellen.");
-          }
-          const cred = await createUserWithEmailAndPassword(auth, email, password);
-          await updateProfile(cred.user, { displayName: name });
-          await setDoc(doc(db, "users", cred.user.uid), {
-            displayName: name,
-            handle: normalizeHandle(name),
-            city: "Prishtina",
-            email,
-            role: "user",
-            bio: "",
-            score: 0,
-            followersCount: 0,
-            followingCount: 0,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp()
-          }, { merge: true });
-        }
-      } catch (err) {
-        state.auth.error = err?.message || "Login fehlgeschlagen.";
-      } finally {
-        state.auth.loading = false;
-        render();
-      }
-    });
-  }
-}
-
-function stopCrmAutoLoadObserver() {
-  if (crmAutoLoadObserver) {
-    try { crmAutoLoadObserver.disconnect(); } catch {}
-    crmAutoLoadObserver = null;
-  }
+  return shellRuntimeController.bindAuthEvents();
 }
 
 function bindCrmAutoLoadObserver() {
-  stopCrmAutoLoadObserver();
-  if (typeof IntersectionObserver !== "function") return;
-  const sentinels = [
-    document.getElementById("leadsLoadMoreSentinel"),
-    document.getElementById("customersLoadMoreSentinel"),
-    document.getElementById("staffLoadMoreSentinel")
-  ].filter(Boolean);
-  if (!sentinels.length) return;
-  crmAutoLoadObserver = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry?.isIntersecting) return;
-      const node = entry.target;
-      if (!(node instanceof HTMLElement)) return;
-      if (node.id === "leadsLoadMoreSentinel") {
-        if (!state.leads.loadingMore && !state.leads.loading && state.leads.hasMore?.[normalizeLeadScopeKey(state.leads.scope)]) {
-          void loadLeads({ scope: state.leads.scope, grow: true });
-        }
-        return;
-      }
-      if (node.id === "customersLoadMoreSentinel") {
-        if (!state.customers.loadingMore && !state.customers.loading && state.customers.hasMore?.[normalizeCustomerScopeKey(state.customers.scope)]) {
-          void loadCustomers({ scope: state.customers.scope, grow: true });
-        }
-        return;
-      }
-      if (node.id === "staffLoadMoreSentinel") {
-        if (!state.staff.loadingMore && !state.staff.loading && state.staff.hasMore) {
-          void loadCeoStaff({ grow: true });
-        }
-      }
-    });
-  }, {
-    root: null,
-    rootMargin: "0px 0px 240px 0px",
-    threshold: 0.05
-  });
-  sentinels.forEach((node) => crmAutoLoadObserver.observe(node));
+  return shellRuntimeController.bindCrmAutoLoadObserver();
 }
 
 function bindAppEvents() {
-  return bindAppEventsMainCore({
-    documentObj: typeof document === "undefined" ? null : document,
-    state,
-    bindAppShellEventsCoreFn: bindAppShellEventsCore,
-    setStateFn: setState,
-    signOutFn: signOut,
-    auth,
-    clearAuthBootstrapSnapshotFn: clearAuthBootstrapSnapshot,
-    safeStorageObj: safeStorage,
-    profileKeyFn: profileKey,
-    avatarKeyFn: avatarKey,
-    notificationsKeyFn: notificationsKey,
-    pushSeenKeyFn: pushSeenKey,
-    pushTokenMetaKeyFn: pushTokenMetaKey,
-    followingKeyFn: followingKey,
-    chatIndexKeyFn: chatIndexKey,
-    storageKeys: STORAGE_KEYS,
-    resetUserScopedStateFn: resetUserScopedState,
-    cleanupLeafletFn: cleanupLeaflet,
-    openGuestAuthPromptFn: openGuestAuthPrompt,
-    normalizeAuthModeFn: normalizeAuthMode,
-    renderFn: render,
-    ensureMenuDataForProfileFn: ensureMenuDataForProfile,
-    ensureFocusDataForProfileFn: ensureFocusDataForProfile,
-    bindAppMenuFocusEventsCoreFn: bindAppMenuFocusEventsCore,
-    saveMenuLayoutToStorageFn: saveMenuLayoutToStorage,
-    openMenuModalFn: openMenuModal,
-    deleteMenuItemByIdFn: deleteMenuItemById,
-    triggerMenuDetailOpenFromGestureFn: triggerMenuDetailOpenFromGesture,
-    updateShopCartQuantityFn: updateShopCartQuantity,
-    openShopCheckoutFn: openShopCheckout,
-    submitShopCheckoutFn: submitShopCheckout,
-    updateShopCheckoutFieldFn: updateShopCheckoutField,
-    focusCache,
-    focusCacheKeyFn: focusCacheKey,
-    saveFocusEnabledFn: saveFocusEnabled,
-    openFocusModalFn: openFocusModal,
-    deleteFocusItemByIdFn: deleteFocusItemById,
-    setFocusIndexFn: setFocusIndex,
-    toggleProfilePostMenuFn: toggleProfilePostMenu,
-    toggleProfilePostWidthFn: toggleProfilePostWidth,
-    deleteProfilePostFn: deleteProfilePost,
-    setProfileMenuOpenFn: setProfileMenuOpen,
-    profileMenuBound,
-    setProfileMenuBoundFn: (next) => {
-      profileMenuBound = !!next;
-    },
-    mapLocateFn: mapLocate,
-    bindNotificationsDelegationFn: bindNotificationsDelegation,
-    bindAppSettingsProfileEventsCoreFn: bindAppSettingsProfileEventsCore,
-    iconFn: icon,
-    saveAccountSettingsFn: saveAccountSettings,
-    openLocationPickerFn: openLocationPicker,
-    clearVerifiedMapLocationFn: () => {
-      verifiedMapLocation = null;
-    },
-    syncNotificationsPushRuntimeFn: syncNotificationsPushRuntime,
-    saveSettingsFn: saveSettings,
-    disablePushDeviceRegistrationFn: disablePushDeviceRegistration,
-    getPushActivationIssueMessageFn: getPushActivationIssueMessage,
-    saveUserProfileToStorageFn: saveUserProfileToStorage,
-    persistPrivateAccountSettingFn: persistPrivateAccountSetting,
-    uploadAvatarFn: uploadAvatar,
-    openProfileViewFromBusinessFn: openProfileViewFromBusiness,
-    findPostByIdFn: findPostById,
-    openPostModalFn: openPostModal,
-    getProfileViewUnsubFn: () => profileViewUnsub,
-    setProfileViewUnsubFn: (next) => {
-      profileViewUnsub = next;
-    },
-    toggleFollowFn: toggleFollow,
-    alertFn: (msg) => alert(msg),
-    bindAppChatUploadEventsCoreFn: bindAppChatUploadEventsCore,
-    openChatWithProfileFn: openChatWithProfile,
-    deleteChatThreadByIdFn: deleteChatThreadById,
-    setChatThreadArchivedByIdFn: setChatThreadArchivedById,
-    closeChatModalFn: closeChatModal,
-    toggleChatMessageSavedFn: toggleChatMessageSaved,
-    toggleChatMessageLikedFn: toggleChatMessageLiked,
-    removePendingChatAttachmentFn: removePendingChatAttachment,
-    addChatAttachmentsFn: addChatAttachments,
-    sendChatMessageFn: sendChatMessage,
-    scrollChatMessagesToBottomFn: scrollChatMessagesToBottom,
-    queueMicrotaskFn: (fn) => queueMicrotask(fn),
-    handleUploadPostFn: handleUploadPost,
-    bindCrmStaffEventsCoreFn: bindCrmStaffEventsCore,
-    openLeadCreatorFn: openLeadCreator,
-    openLeadSettingsViewFn: openLeadSettingsView,
-    closeLeadSubviewFn: closeLeadSubview,
-    saveLeadSettingsFn: saveLeadSettings,
-    isLeadInlineCreateViewFn: isLeadInlineCreateView,
-    bindLeadInlineCreateEventsCoreFn: bindLeadInlineCreateEventsCore,
-    deleteLeadFromModalFn: deleteLeadFromModal,
-    saveLeadFromModalFn: saveLeadFromModal,
-    syncLeadDerivedFieldsFn: syncLeadDerivedFields,
-    addLeadModalLocationRowFn: addLeadModalLocationRow,
-    removeLeadModalLocationRowFn: removeLeadModalLocationRow,
-    syncLeadModalDraftFromFormFn: syncLeadModalDraftFromForm,
-    normalizeLeadLocationsFn: normalizeLeadLocations,
-    createLeadLocationFn: createLeadLocation,
-    parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
-    getLeadPlusCodeReferenceFn: getLeadPlusCodeReference,
-    hasLeadLocationCoordsFn: hasLeadLocationCoords,
-    getPrimaryLeadLocationFn: getPrimaryLeadLocation,
-    hydrateLeadGeoFieldsFromCoordsFn: hydrateLeadGeoFieldsFromCoords,
-    refineLeadLocationAddressIndexFn: refineLeadLocationAddressIndex,
-    normalizeLeadScopeKeyFn: normalizeLeadScopeKey,
-    loadLeadsFn: loadLeads,
-    openLeadModalFn: openLeadModal,
-    normalizeCustomerScopeKeyFn: normalizeCustomerScopeKey,
-    loadCustomersFn: loadCustomers,
-    openCustomerModalFn: openCustomerModal,
-    closeStaffEditorFn: closeStaffEditor,
-    openStaffEditorFn: openStaffEditor,
-    syncStaffDerivedEmailFieldFn: syncStaffDerivedEmailField,
-    normalizeCeoCountryFn: normalizeCeoCountry,
-    syncStaffFormFromDomFn: syncStaffFormFromDom,
-    saveCeoStaffFromViewFn: saveCeoStaffFromView,
-    deleteCeoStaffFromViewFn: deleteCeoStaffFromView,
-    bindImageFallbacksFn: bindImageFallbacks,
-    bindCrmAutoLoadObserverFn: bindCrmAutoLoadObserver,
-    bindSearchEventsFn: bindSearchEvents
-  });
+  return shellRuntimeController.bindAppEvents();
 }
 
 function bindSearchEvents() {
-  const searchView = document.getElementById("searchView");
-  if (!searchView || searchView.dataset.bound === "true") return;
-
-  searchView.addEventListener("input", (e) => {
-    const target = e.target;
-    if (target instanceof HTMLInputElement && target.id === "searchInput") {
-      handleSearchInput(target.value);
-    }
-  });
-
-  searchView.addEventListener("keydown", (e) => {
-    const target = e.target;
-    if (target instanceof HTMLInputElement && target.id === "searchInput" && e.key === "Enter") {
-      e.preventDefault();
-    }
-  });
-
-  searchView.addEventListener("click", (e) => {
-    const target = e.target;
-    if (!(target instanceof Element)) return;
-
-    const clearBtn = target.closest("#searchClearBtn");
-    if (clearBtn) {
-      state.search.query = "";
-      state.search.userResults = [];
-      state.search.businessResults = buildLocalBusinessResults("");
-      state.search.loading = false;
-      state.search.error = "";
-      state.search.keepFocus = true;
-      if (!refreshSearchView()) render();
-      focusSearchInput();
-      return;
-    }
-
-    const filterBtn = target.closest("[data-search-filter]");
-    if (filterBtn) {
-      const requested = filterBtn.dataset.searchFilter || "all";
-      const filter = isGuestSession() && (requested === "all" || requested === "users")
-        ? "business"
-        : requested;
-      state.search.filter = filter;
-      if (!refreshSearchView()) render();
-      return;
-    }
-
-    const userBtn = target.closest("[data-search-user]");
-    if (userBtn) {
-      if (isGuestSession()) {
-        openGuestAuthPrompt("Bitte einloggen, um User-Profile zu sehen.");
-        return;
-      }
-      openProfileFromUser({
-        uid: userBtn.dataset.searchUser || "",
-        handle: userBtn.dataset.searchHandle || "",
-        name: userBtn.dataset.searchName || "",
-        avatar: userBtn.dataset.searchAvatar || "",
-        location: userBtn.dataset.searchLocation || ""
-      });
-      return;
-    }
-
-    const bizBtn = target.closest("[data-search-business]");
-    if (bizBtn) {
-      openProfileViewFromBusiness({
-        id: bizBtn.dataset.searchBusiness || "",
-        name: bizBtn.dataset.searchName || ""
-      }, { showBack: false });
-    }
-  });
-
-  searchView.dataset.bound = "true";
+  return shellRuntimeController.bindSearchEvents();
 }
 
 async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType }) {
