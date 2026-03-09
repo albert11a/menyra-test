@@ -115,6 +115,7 @@ export function createStoryViewerRuntimeController({
   const win = windowObj || (typeof window === "undefined" ? null : window);
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const videos = new Map();
+  let storyStandaloneTopbar = null;
 
   function getParam(name) {
     if (!win) return "";
@@ -183,10 +184,81 @@ export function createStoryViewerRuntimeController({
     return "";
   }
 
+  function createTopbarElement(meta) {
+    if (!doc) return null;
+    const topbar = doc.createElement("div");
+    topbar.className = "topbar";
+    const topbarLeft = doc.createElement("div");
+    topbarLeft.className = "topbarLeft";
+
+    const backBtn = doc.createElement("button");
+    backBtn.className = "btnIcon";
+    backBtn.textContent = "←";
+    backBtn.addEventListener("click", () => {
+      if (win?.history?.length > 1) {
+        win.history.back();
+      } else if (win) {
+        win.location.href = feedFallbackUrl;
+      }
+    });
+    topbarLeft.appendChild(backBtn);
+
+    const brandPill = doc.createElement("div");
+    brandPill.className = "brandPill";
+
+    const displayName = meta?.restaurantName || meta?.name || meta?.slug || "Unbenanntes Lokal";
+    const logoUrl = meta?.logoUrl || meta?.logo || "";
+
+    const brandLogo = doc.createElement("div");
+    brandLogo.className = "brandLogo";
+    if (logoUrl) {
+      brandLogo.style.backgroundImage = `url(${logoUrl})`;
+    } else {
+      brandLogo.style.backgroundImage = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+    }
+    brandPill.appendChild(brandLogo);
+
+    const brandName = doc.createElement("div");
+    brandName.className = "brandName";
+    brandName.textContent = displayName;
+    brandPill.appendChild(brandName);
+
+    topbarLeft.appendChild(brandPill);
+    topbar.appendChild(topbarLeft);
+    return topbar;
+  }
+
+  function hideStandaloneTopbar() {
+    if (storyStandaloneTopbar) {
+      storyStandaloneTopbar.style.display = "none";
+    }
+  }
+
+  function showStandaloneTopbar(meta, restaurantId) {
+    if (!doc) return;
+    if (!storyStandaloneTopbar) {
+      storyStandaloneTopbar = doc.createElement("div");
+      storyStandaloneTopbar.id = "storyStandaloneTopbar";
+      storyStandaloneTopbar.style.position = "fixed";
+      storyStandaloneTopbar.style.top = "0";
+      storyStandaloneTopbar.style.left = "0";
+      storyStandaloneTopbar.style.right = "0";
+      storyStandaloneTopbar.style.zIndex = "30";
+      storyStandaloneTopbar.style.pointerEvents = "none";
+      doc.body.appendChild(storyStandaloneTopbar);
+    }
+    storyStandaloneTopbar.innerHTML = "";
+    const topbar = createTopbarElement(meta);
+    if (!topbar) return;
+    storyStandaloneTopbar.appendChild(topbar);
+    storyStandaloneTopbar.style.display = "block";
+  }
+
   function renderStories(stories, container, meta, restaurantId) {
     if (!doc || !container) return;
     videos.clear();
     container.innerHTML = "";
+    hideStandaloneTopbar();
 
     stories.forEach((story, index) => {
       const reel = doc.createElement("div");
@@ -233,46 +305,10 @@ export function createStoryViewerRuntimeController({
       vignette.className = "vignette";
       reel.appendChild(vignette);
 
-      const topbar = doc.createElement("div");
-      topbar.className = "topbar";
-      const topbarLeft = doc.createElement("div");
-      topbarLeft.className = "topbarLeft";
-
-      const backBtn = doc.createElement("button");
-      backBtn.className = "btnIcon";
-      backBtn.textContent = "←";
-      backBtn.addEventListener("click", () => {
-        if (win?.history?.length > 1) {
-          win.history.back();
-        } else if (win) {
-          win.location.href = feedFallbackUrl;
-        }
-      });
-      topbarLeft.appendChild(backBtn);
-
-      const brandPill = doc.createElement("div");
-      brandPill.className = "brandPill";
-
-      const displayName = meta?.restaurantName || meta?.name || meta?.slug || "Unbenanntes Lokal";
-      const logoUrl = meta?.logoUrl || meta?.logo || "";
-
-      const brandLogo = doc.createElement("div");
-      brandLogo.className = "brandLogo";
-      if (logoUrl) {
-        brandLogo.style.backgroundImage = `url(${logoUrl})`;
-      } else {
-        brandLogo.style.backgroundImage = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+      const topbar = createTopbarElement(meta);
+      if (topbar) {
+        reel.appendChild(topbar);
       }
-      brandPill.appendChild(brandLogo);
-
-      const brandName = doc.createElement("div");
-      brandName.className = "brandName";
-      brandName.textContent = displayName;
-      brandPill.appendChild(brandName);
-
-      topbarLeft.appendChild(brandPill);
-      topbar.appendChild(topbarLeft);
-      reel.appendChild(topbar);
 
       const content = doc.createElement("div");
       content.className = "content";
@@ -312,11 +348,9 @@ export function createStoryViewerRuntimeController({
   function setupAutoplay() {
     if (!doc || typeof IntersectionObserver !== "function") return;
     let hasUserInteracted = false;
-    const tapHint = doc.getElementById("tapHint");
 
     const handleFirstInteraction = () => {
       hasUserInteracted = true;
-      if (tapHint) tapHint.style.display = "none";
       videos.forEach((mediaEl) => {
         if (mediaEl && mediaEl.tagName === "VIDEO") {
           mediaEl.muted = false;
@@ -338,10 +372,15 @@ export function createStoryViewerRuntimeController({
         const mediaEl = videos.get(index);
         if (!mediaEl) return;
 
-        if (entry.isIntersecting && hasUserInteracted) {
+        if (entry.isIntersecting) {
           if (mediaEl.tagName === "VIDEO") {
-            mediaEl.muted = false;
-            mediaEl.volume = 1;
+            if (!hasUserInteracted) {
+              mediaEl.muted = true;
+              mediaEl.volume = 0;
+            } else {
+              mediaEl.muted = false;
+              mediaEl.volume = 1;
+            }
             if (mediaEl.paused) void mediaEl.play().catch(() => {});
           }
           return;
@@ -420,11 +459,12 @@ export function createStoryViewerRuntimeController({
     const reelsContainer = doc.getElementById("reelsContainer");
     const loadingState = doc.getElementById("loadingState");
     const emptyState = doc.getElementById("emptyState");
-    const tapHint = doc.getElementById("tapHint");
+    hideStandaloneTopbar();
 
     if (!rid || !reelsContainer || !loadingState || !emptyState) {
       if (loadingState) loadingState.style.display = "none";
       if (emptyState) emptyState.style.display = "flex";
+      showStandaloneTopbar(null, rid);
       return;
     }
 
@@ -442,11 +482,11 @@ export function createStoryViewerRuntimeController({
     loadingState.style.display = "none";
     if (!Array.isArray(stories) || !stories.length) {
       emptyState.style.display = "flex";
+      showStandaloneTopbar(restaurantMeta, rid);
       return;
     }
 
     renderStories(stories, reelsContainer, restaurantMeta, rid);
-    if (tapHint) tapHint.style.display = "flex";
     setupAutoplay();
     setupKeyboardNav();
     bindMediaClickToggle();
