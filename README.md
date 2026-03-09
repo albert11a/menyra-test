@@ -221,11 +221,12 @@ Firebase Functions:
 
 ## 13) Refactor-Status (jetzt)
 Aktueller Stand:
-- `social-app.js`: 16182 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
-- `apps/menyra-social/core/`: 128 Module (inkl. Unterordner)
+- `social-app.js`: 16120 Zeilen (orchestrator + verbleibende Dom/Funktionslogik)
+- `apps/menyra-social/core/`: 129 Module (inkl. Unterordner)
 - `apps/menyra-social/core/` flache Root-Dateien: 0 (vorher >70)
 - Aktive Domain-Ordner: `app-events/`, `auth/`, `chat/`, `common/`, `crm/`, `feed/`, `follow/`, `leads/`, `map/`, `media/`, `menu/`, `notifications/`, `orders/`, `overlays/`, `profile/`, `push/`, `router/`, `shop/`, `ui/`
 - Letzte Refactor-Commits:
+  - `3a29d7d` Notifications-Runtime-Flow (Live-Listener + Native-Push-Fallback) nach `core/notifications/notifications-runtime-flow-utils.js` ausgelagert
   - `f3c66fa` Profile-Open-Flow (`own business`, `public business`, `public user`) nach `core/profile/profile-open-flow-utils.js` ausgelagert
   - `766b82b` Deeplink-/Push-Open-Flow als Controller nach `core/router/deeplink-flow-utils.js` ausgelagert
   - `f0fc67f` Restaurant-Identity Helper (`email/uid matching`) aus `social-app.js` nach `core/profile/restaurant-identity-utils.js` ausgelagert
