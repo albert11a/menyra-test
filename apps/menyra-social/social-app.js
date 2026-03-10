@@ -835,6 +835,8 @@ const CACHE_KEYS = {
 };
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
 const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
+const PUBLIC_BOOTSTRAP_PROMISE_KEY = "__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__";
+const AUTH_BOOTSTRAP_HINT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v1::${uid}` : "");
 const businessPostsKey = (rid) => (rid ? `menyra_social_business_posts_cache_v1::${rid}` : "");
 const staffCacheKey = (uid) => (uid ? `menyra_social_staff_cache_v1::${uid}` : "");
@@ -849,7 +851,7 @@ const CACHE_TTL_MS = {
   crmPages: 90 * 1000
 };
 const FEED_DELTA_MIN_MS = 15 * 60 * 1000;
-const FEED_PRELOAD_LIMIT = PERF_CONSTRAINED ? 1 : 3;
+const FEED_PRELOAD_LIMIT = 1;
 const FEED_PRELOAD_ATTR = "data-menyrasocial-feed-preload";
 const FEED_META_LISTEN_LIMIT = 20;
 const CRM_PAGE_SIZE = 20;
@@ -1213,6 +1215,20 @@ try {
 
 function isGuestSession() {
   return isGuestSessionCore(state.user);
+}
+
+function hasFreshAuthBootstrapHint() {
+  const uid = String(authBootstrapSnapshot?.uid || "").trim();
+  if (!uid) return false;
+  const ts = Number(authBootstrapSnapshot?.ts || 0) || 0;
+  if (!ts) return true;
+  const ageMs = Date.now() - ts;
+  if (!Number.isFinite(ageMs)) return false;
+  return ageMs >= 0 && ageMs <= AUTH_BOOTSTRAP_HINT_MAX_AGE_MS;
+}
+
+function isAuthWarmRestorePending() {
+  return !authInitialized && !state.user && hasFreshAuthBootstrapHint();
 }
 
 function sanitizeTabForSession(tab, { hasProfileView = !!state.profileView } = {}) {
@@ -3033,8 +3049,46 @@ function getPublicBootstrapEndpoint() {
   return DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT;
 }
 
+function getWindowBootstrapPromise() {
+  if (typeof window === "undefined") return null;
+  const pending = window[PUBLIC_BOOTSTRAP_PROMISE_KEY];
+  if (!pending || typeof pending.then !== "function") return null;
+  return pending;
+}
+
+function tryApplyWindowBootstrapPayload({ refreshUi = false } = {}) {
+  if (typeof window === "undefined") return false;
+  const payload = window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__;
+  if (!payload || typeof payload !== "object") return false;
+  return applyPublicBootstrapPayload(payload, { refreshUi });
+}
+
 function fetchPublicBootstrapPayload({ force = false, timeoutMs = 1200 } = {}) {
   if (publicBootstrapFetchPromise && !force) return publicBootstrapFetchPromise;
+  const refreshUi = state.activeTab === "feed";
+  if (!force && tryApplyWindowBootstrapPayload({ refreshUi })) {
+    return Promise.resolve(true);
+  }
+  if (!force) {
+    const windowBootstrapPromise = getWindowBootstrapPromise();
+    if (windowBootstrapPromise) {
+      const request = Promise.resolve(windowBootstrapPromise)
+        .then((data) => {
+          if (data && typeof data === "object") {
+            return applyPublicBootstrapPayload(data, { refreshUi });
+          }
+          if (tryApplyWindowBootstrapPayload({ refreshUi })) return true;
+          return fetchPublicBootstrapPayload({ force: true, timeoutMs });
+        })
+        .catch(() => fetchPublicBootstrapPayload({ force: true, timeoutMs }));
+      publicBootstrapFetchPromise = request.finally(() => {
+        if (publicBootstrapFetchPromise === request) {
+          publicBootstrapFetchPromise = null;
+        }
+      });
+      return publicBootstrapFetchPromise;
+    }
+  }
   if (typeof fetch !== "function") return Promise.resolve(false);
   const endpoint = getPublicBootstrapEndpoint();
   if (!endpoint) return Promise.resolve(false);
@@ -3055,7 +3109,7 @@ function fetchPublicBootstrapPayload({ force = false, timeoutMs = 1200 } = {}) {
       const json = await response.json().catch(() => null);
       const data = json && typeof json === "object" ? json.data : null;
       if (!data || typeof data !== "object") return false;
-      return applyPublicBootstrapPayload(data, { refreshUi: state.activeTab === "feed" });
+      return applyPublicBootstrapPayload(data, { refreshUi });
     } catch {
       return false;
     } finally {
@@ -3656,17 +3710,17 @@ function preloadFeedHeroImages(feedPosts, { limit = FEED_PRELOAD_LIMIT } = {}) {
   if (!head) return;
   const wildcard = `[${FEED_PRELOAD_ATTR}]`;
   head.querySelectorAll(wildcard).forEach((node) => node.remove());
-  feedPosts.slice(0, limit).forEach((post, index) => {
-    const imageUrl = getOptimizedImageUrl(post.image, "large");
-    if (!imageUrl) return;
-    const link = document.createElement("link");
-    link.rel = "preload";
-    link.as = "image";
-    link.href = imageUrl;
-    link.setAttribute(FEED_PRELOAD_ATTR, "hero");
-    if (index === 0) link.setAttribute("fetchpriority", "high");
-    head.appendChild(link);
-  });
+  const firstPost = feedPosts.slice(0, Math.max(1, Number(limit) || 1))[0];
+  if (!firstPost) return;
+  const imageUrl = getOptimizedImageUrl(firstPost.image, "large");
+  if (!imageUrl) return;
+  const link = document.createElement("link");
+  link.rel = "preload";
+  link.as = "image";
+  link.href = imageUrl;
+  link.setAttribute("fetchpriority", "high");
+  link.setAttribute(FEED_PRELOAD_ATTR, "hero");
+  head.appendChild(link);
 }
 
 function resolveAdminLogin(email, pass) {
@@ -5701,6 +5755,8 @@ function renderAuthScreen() {
 
 function renderDrawer() {
   const isGuest = isGuestSession();
+  const authWarmRestorePending = isAuthWarmRestorePending();
+  const showGuestCta = isGuest && !authWarmRestorePending;
   const unread = isGuest ? 0 : state.notifications.filter((n) => !n.read).length;
   const chatUnread = isGuest ? 0 : getChatUnreadCount();
   const switchLinks = isGuest ? "" : renderRoleSwitchLinks();
@@ -5748,13 +5804,17 @@ function renderDrawer() {
           <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
         </div>
         <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50">
-          ${isGuest
+          ${showGuestCta
             ? `<div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${icon("user", "w-4 h-4")}</div>`
-            : `<img id="drawerAvatar" data-img-key="avatar:drawer" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl ${avatarFit}" />`
+            : authWarmRestorePending
+              ? `<div class="w-10 h-10 rounded-xl bg-white border border-slate-200 overflow-hidden">
+                  <div class="w-full h-full bg-slate-200 animate-pulse"></div>
+                </div>`
+              : `<img id="drawerAvatar" data-img-key="avatar:drawer" src="${escapeHtml(avatarUrl)}" class="w-10 h-10 rounded-xl ${avatarFit}" />`
           }
           <div>
-            <p id="drawerName" class="text-xs font-black">${escapeHtml(isGuest ? "Gast" : (state.userProfile.name || "User"))}</p>
-            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">${isGuest ? "Gastmodus" : "Account"}</p>
+            <p id="drawerName" class="text-xs font-black">${escapeHtml(showGuestCta ? "Gast" : (state.userProfile.name || "User"))}</p>
+            <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">${authWarmRestorePending ? "Wird geladen" : (showGuestCta ? "Gastmodus" : "Account")}</p>
           </div>
         </div>
         <nav class="space-y-2 flex-1">
@@ -5779,9 +5839,11 @@ function renderDrawer() {
           }).join("")}
         </nav>
         <div id="drawerSwitchLinks">${switchLinks}</div>
-        ${isGuest
+        ${showGuestCta
           ? `<button data-auth-open="true" class="mt-auto flex items-center justify-center gap-3 p-4 text-indigo-600 font-black uppercase text-[10px] tracking-widest bg-indigo-50 hover:bg-indigo-100 rounded-2xl transition-colors">${icon("log-in", "w-4 h-4")} Login / Registrieren</button>`
-          : `<button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} Abmelden</button>`
+          : authWarmRestorePending
+            ? `<div aria-hidden="true" class="mt-auto flex items-center justify-center gap-2 p-4 text-slate-400 font-black uppercase text-[10px] tracking-widest bg-slate-100 rounded-2xl">${icon("loader-2", "w-4 h-4 animate-spin")} Session wird geladen</div>`
+            : `<button id="logoutBtn" class="mt-auto flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">${icon("log-out", "w-4 h-4")} Abmelden</button>`
         }
       </div>
     </div>
@@ -9757,6 +9819,7 @@ if (typeof window !== "undefined") {
   }
 }
 authBootstrapSnapshot = readAuthBootstrapSnapshot();
+void ensureAuthLocalPersistence();
 bindPushOpenTargetMessageHandler();
 state.user = auth.currentUser || null;
 authInitialized = false;
@@ -9776,6 +9839,17 @@ applyPendingInitialRouteState();
 render();
 schedulePerfWarmMark();
 queueMicrotask(() => {
+  const pendingBootstrap = getWindowBootstrapPromise();
+  if (pendingBootstrap) {
+    void Promise.resolve(pendingBootstrap)
+      .catch(() => null)
+      .finally(() => {
+        if (!state.feedPosts.length && !state.stories.length) {
+          void fetchPublicBootstrapPayload({ force: false, timeoutMs: 1200 });
+        }
+      });
+    return;
+  }
   void fetchPublicBootstrapPayload({ force: false, timeoutMs: 1200 });
 });
 if (!state.user) {

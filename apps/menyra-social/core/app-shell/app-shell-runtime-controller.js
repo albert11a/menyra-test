@@ -176,11 +176,37 @@ export function createAppShellRuntimeController(deps = {}) {
 
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
+  const AUTH_HINT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function hasFreshAuthBootstrapHint() {
+    const snapshot = getAuthBootstrapSnapshot?.() || null;
+    const uid = String(snapshot?.uid || "").trim();
+    if (!uid) return false;
+    const ts = Number(snapshot?.ts || 0) || 0;
+    if (!ts) return true;
+    const age = Date.now() - ts;
+    if (!Number.isFinite(age)) return false;
+    return age >= 0 && age <= AUTH_HINT_MAX_AGE_MS;
+  }
 
   function renderHeaderActionButton(avatarUrl, avatarFit) {
     if (!getAuthInitialized()) {
       const restoringRaw = getAuthBootstrapSnapshot()?.avatar || state.userProfile.avatar || getUserAvatarCache() || "";
       const restoringAvatar = getOptimizedImageUrl(restoringRaw, "avatar");
+      if (hasFreshAuthBootstrapHint()) {
+        if (restoringAvatar && !isPlaceholderUrl(restoringAvatar)) {
+          return `
+          <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30">
+            <img src="${escapeHtml(restoringAvatar)}" class="w-full h-full rounded-[1.4rem] ${avatarFit}" />
+          </button>
+        `;
+        }
+        return `
+        <button data-nav="profile" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden active:scale-95 transition-transform bg-white border border-slate-50 shadow-slate-200/30 text-slate-900 flex items-center justify-center">
+          ${icon("loader-2", "w-4 h-4 animate-spin")}
+        </button>
+      `;
+      }
       if (restoringAvatar && !isPlaceholderUrl(restoringAvatar)) {
         return `
         <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
