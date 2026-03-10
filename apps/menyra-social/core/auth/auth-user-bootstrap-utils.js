@@ -7,7 +7,8 @@ export async function bootstrapAuthenticatedSessionCore({
   ensureFollowingLoaded,
   startLiveListeners,
   ensureTabData,
-  activeTab = ""
+  activeTab = "",
+  shouldContinue = () => true
 } = {}) {
   if (!user) return false;
 
@@ -32,16 +33,30 @@ export async function bootstrapAuthenticatedSessionCore({
   const ensureTab = typeof ensureTabData === "function"
     ? ensureTabData
     : (() => {});
+  const canContinue = typeof shouldContinue === "function"
+    ? shouldContinue
+    : (() => true);
+  const runNonBlocking = (fn) => {
+    try {
+      const pending = fn();
+      if (pending && typeof pending.then === "function") {
+        pending.catch(() => {});
+      }
+    } catch {}
+  };
 
   await loadProfile(user);
+  if (!canContinue()) return false;
   const restaurantId = String(readRestaurantId(user) || "").trim();
   if (restaurantId) {
     await hydrateRestaurants([restaurantId], { max: 1 });
+    if (!canContinue()) return false;
   }
   await resolveRoles(user);
+  if (!canContinue()) return false;
 
-  ensureFollowing();
-  startLive(user);
-  ensureTab(activeTab);
+  runNonBlocking(() => ensureFollowing());
+  runNonBlocking(() => startLive(user));
+  runNonBlocking(() => ensureTab(activeTab));
   return true;
 }

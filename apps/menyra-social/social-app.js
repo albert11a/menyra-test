@@ -1121,6 +1121,7 @@ let authInitialized = false;
 let authBootstrapSnapshot = null;
 let pendingInitialTab = "";
 let pendingAuthMode = "";
+let authTransitionSeq = 0;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -9254,8 +9255,18 @@ async function deleteMenuItemById(itemId) {
   });
 }
 
-async function bootstrapUser(user) {
-  return sessionDataRuntimeController.bootstrapUser(...arguments);
+function isCurrentAuthTransition(transitionSeq, expectedUid = "") {
+  if (transitionSeq !== authTransitionSeq) return false;
+  return String(state.user?.uid || "") === String(expectedUid || "");
+}
+
+async function bootstrapUser(user, { transitionSeq = 0 } = {}) {
+  const expectedUid = String(user?.uid || "").trim();
+  if (!expectedUid) return false;
+  if (transitionSeq && !isCurrentAuthTransition(transitionSeq, expectedUid)) return false;
+  await sessionDataRuntimeController.bootstrapUser(user);
+  if (transitionSeq && !isCurrentAuthTransition(transitionSeq, expectedUid)) return false;
+  return true;
 }
 
 loadPersisted();
@@ -9283,6 +9294,7 @@ if (!state.user) {
 
 onAuthStateChanged(auth, (user) => {
   authInitialized = true;
+  const transitionSeq = ++authTransitionSeq;
   const nextUid = user?.uid || "";
   const prevUid = lastAuthUid;
   if (shouldResetUserScopedStateCore({ prevUid, nextUid })) {
@@ -9301,10 +9313,11 @@ onAuthStateChanged(auth, (user) => {
     });
     if (pendingRouteFlags.hasAny) {
       suspendRender();
-      bootstrapUser(user);
+      void bootstrapUser(user, { transitionSeq }).catch(() => {});
       queueMicrotask(() => {
         void (async () => {
           try {
+            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
             await runPostLoginPendingRouteOpenFlowCore({
               openProfileFromQuery: () => maybeOpenProfileFromQuery(),
               openNotificationFromQuery: () => maybeOpenNotificationFromQuery(),
@@ -9319,8 +9332,9 @@ onAuthStateChanged(auth, (user) => {
       });
     } else {
       render();
-      bootstrapUser(user);
+      void bootstrapUser(user, { transitionSeq }).catch(() => {});
       queueMicrotask(() => {
+        if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
         runPostLoginNonBlockingRouteOpenFlowCore({
           openProfileFromQuery: () => maybeOpenProfileFromQuery(),
           openNotificationFromQuery: () => maybeOpenNotificationFromQuery(),
