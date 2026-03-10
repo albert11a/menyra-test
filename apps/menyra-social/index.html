@@ -297,6 +297,10 @@
     body.fast-mode .feed-card { contain: content; }
     body.fast-mode .animate-pulse { animation: none !important; }
     body.fast-mode .group-hover\:scale-105 { transform: none !important; }
+    .feed-card {
+      content-visibility: auto;
+      contain-intrinsic-size: 620px;
+    }
     img { display: block; background: transparent; -webkit-backface-visibility: hidden; backface-visibility: hidden; }
     .modal-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
     @supports (-webkit-touch-callout: none) {

@@ -798,21 +798,34 @@ const restaurantOwnerCache = new Map();
 const menuCache = new Map();
 const focusCache = new Map();
 const menuItemCountsRequested = new Set();
+const PERF_WARM_KEY = "menyra_social_perf_warm_v1";
+const PERF_CONNECTION = typeof navigator !== "undefined"
+  ? (navigator.connection || navigator.mozConnection || navigator.webkitConnection || null)
+  : null;
+const PERF_EFFECTIVE_TYPE = String(PERF_CONNECTION?.effectiveType || "").trim().toLowerCase();
+const PERF_SLOW_NETWORK = ["slow-2g", "2g", "3g"].includes(PERF_EFFECTIVE_TYPE);
+const PERF_SAVE_DATA = !!PERF_CONNECTION?.saveData;
+const PERF_DEVICE_MEMORY = typeof navigator !== "undefined" ? Number(navigator.deviceMemory || 0) : 0;
+const PERF_CPU_CORES = typeof navigator !== "undefined" ? Number(navigator.hardwareConcurrency || 0) : 0;
+const PERF_LOW_MEMORY = Number.isFinite(PERF_DEVICE_MEMORY) && PERF_DEVICE_MEMORY > 0 && PERF_DEVICE_MEMORY <= 2;
+const PERF_LOW_CPU = Number.isFinite(PERF_CPU_CORES) && PERF_CPU_CORES > 0 && PERF_CPU_CORES <= 4;
+const PERF_WARM_VISIT = String(safeStorage.getItem(PERF_WARM_KEY) || "").trim() === "1";
+const PERF_CONSTRAINED = PERF_SLOW_NETWORK || PERF_SAVE_DATA || PERF_LOW_MEMORY || PERF_LOW_CPU || !PERF_WARM_VISIT;
 const FAST_LIMITS = {
-  feed: 20,
-  feedFallback: 40,
-  feedDelta: 8,
-  userPosts: 24,
-  businessPosts: 24,
-  restaurants: 80,
-  stories: 24,
-  storiesFallback: 30,
-  likes: 20,
-  comments: 40
+  feed: PERF_CONSTRAINED ? 10 : 20,
+  feedFallback: PERF_CONSTRAINED ? 14 : 40,
+  feedDelta: PERF_CONSTRAINED ? 6 : 8,
+  userPosts: PERF_CONSTRAINED ? 12 : 24,
+  businessPosts: PERF_CONSTRAINED ? 12 : 24,
+  restaurants: PERF_CONSTRAINED ? 40 : 80,
+  stories: PERF_CONSTRAINED ? 10 : 24,
+  storiesFallback: PERF_CONSTRAINED ? 12 : 30,
+  likes: PERF_CONSTRAINED ? 12 : 20,
+  comments: PERF_CONSTRAINED ? 24 : 40
 };
 const SEARCH_LIMITS = {
-  users: 10,
-  businesses: 12
+  users: PERF_CONSTRAINED ? 8 : 10,
+  businesses: PERF_CONSTRAINED ? 10 : 12
 };
 const FAST_MODE = true;
 const CACHE_KEYS = {
@@ -834,10 +847,41 @@ const CACHE_TTL_MS = {
   crmPages: 90 * 1000
 };
 const FEED_DELTA_MIN_MS = 15 * 60 * 1000;
-const FEED_PRELOAD_LIMIT = 3;
+const FEED_PRELOAD_LIMIT = PERF_CONSTRAINED ? 1 : 3;
 const FEED_PRELOAD_ATTR = "data-menyrasocial-feed-preload";
 const FEED_META_LISTEN_LIMIT = 20;
 const CRM_PAGE_SIZE = 20;
+
+function applyRuntimePerfMode() {
+  if (!FAST_MODE && !PERF_CONSTRAINED) return;
+  if (typeof document === "undefined") return;
+  document.documentElement.classList.add("fast-mode");
+  const applyBody = () => {
+    if (document.body) document.body.classList.add("fast-mode");
+  };
+  applyBody();
+  if (!document.body) {
+    document.addEventListener("DOMContentLoaded", applyBody, { once: true });
+  }
+}
+
+function schedulePerfWarmMark() {
+  if (PERF_WARM_VISIT) return;
+  const markWarm = () => {
+    safeStorage.setItem(PERF_WARM_KEY, "1");
+  };
+  if (typeof window === "undefined") {
+    markWarm();
+    return;
+  }
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(markWarm, { timeout: 3500 });
+  } else {
+    window.setTimeout(markWarm, 1200);
+  }
+}
+
+applyRuntimePerfMode();
 
 function createLeadScopeMap(factory = () => null) {
   return createLeadScopeMapCore(factory);
@@ -9511,6 +9555,7 @@ if (state.user) {
 }
 applyPendingInitialRouteState();
 render();
+schedulePerfWarmMark();
 if (!state.user) {
   queueMicrotask(() => ensureTabData(state.activeTab));
 }

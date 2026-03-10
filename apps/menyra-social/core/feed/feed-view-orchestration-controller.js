@@ -120,8 +120,10 @@ export function createFeedViewOrchestrationController({
     const storyBorderAttr = storyId ? `data-story-border="${storyId}"` : "";
     const storyNameAttr = storyId ? `data-story-name="${storyId}"` : "";
     const storyItemAttr = storyId ? `data-story-item="${storyId}"` : "";
-    const eager = index < 6;
-    const imgAttrs = eager ? `fetchpriority="high"` : `loading="lazy"`;
+    const eager = index === 0;
+    const imgAttrs = eager
+      ? `loading="eager" fetchpriority="high"`
+      : `loading="lazy" fetchpriority="low"`;
     return `
     <a href="${storyUrl}" ${storyItemAttr} class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
       <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200" ${storyBorderAttr}>
@@ -158,9 +160,13 @@ export function createFeedViewOrchestrationController({
     const logoAttr = postId ? `data-feed-logo="${escapeHtmlFn(postId)}"` : "";
     const logoKeyAttr = postId ? `data-img-key="feed-logo:${escapeHtmlFn(postId)}"` : "";
     const heroKeyAttr = postId ? `data-img-key="feed-hero:${escapeHtmlFn(postId)}"` : "";
-    const eager = index < 2;
-    const heroAttrs = eager ? `fetchpriority="high"` : `loading="lazy"`;
-    const logoAttrs = index < 2 ? `fetchpriority="high"` : `loading="lazy"`;
+    const eager = index === 0;
+    const heroAttrs = eager
+      ? `loading="eager" fetchpriority="high"`
+      : `loading="lazy" fetchpriority="low"`;
+    const logoAttrs = eager
+      ? `loading="eager"`
+      : `loading="lazy" fetchpriority="low"`;
     const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
     const logoSource = restaurant.logoUrl || restaurant.logo || post.logo || "";
     const logoUrl = resolveRestaurantLogoFn(post.restaurantId || post.ownerId, logoSource, "avatar");
