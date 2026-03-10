@@ -274,84 +274,150 @@ export async function loadAuthProfileCore({
     || hintRoles.includes("ceo")
     || hintRoles.includes("staff")
   );
+  const matchesOwnerIdentity = (restaurant = {}) => {
+    if (!restaurant || isRestaurantDeleted(restaurant)) return false;
+    const uid = String(user?.uid || "").trim();
+    const email = String(user?.email || "").trim().toLowerCase();
+    const ownerUidFields = [
+      restaurant.ownerUid,
+      restaurant.socialUid,
+      restaurant.uid,
+      restaurant.userUid,
+      restaurant.accountUid
+    ];
+    const ownerEmailFields = [
+      restaurant.ownerEmail,
+      restaurant.email,
+      restaurant.contactEmail,
+      restaurant.socialEmail,
+      restaurant.loginEmail,
+      restaurant.accountEmail
+    ];
+    const uidMatch = !!uid && ownerUidFields.some((value) => String(value || "").trim() === uid);
+    const emailMatch = !!email && ownerEmailFields.some((value) => String(value || "").trim().toLowerCase() === email);
+    return uidMatch || emailMatch;
+  };
+  const resolveBusinessRestaurant = async ({ preferCached = true, includeFallback = true } = {}) => {
+    let rest = normalizeAuthRestaurant(await resolveRestaurantForAuthUser(user, { preferCached }));
+    if (!rest && includeFallback && user?.uid) {
+      const leadByUid = await resolveLeadByUid(user.uid);
+      if (leadByUid) {
+        rest = normalizeAuthRestaurant(
+          findRestaurantByLeadId(leadByUid.id) || await ensureRestaurantForLead(leadByUid, user)
+        );
+      }
+    }
+    if (!rest && includeFallback && user?.email) {
+      const lead = await resolveLeadByEmail(user.email);
+      if (lead) {
+        rest = normalizeAuthRestaurant(
+          findRestaurantByLeadId(lead.id) || await ensureRestaurantForLead(lead, user)
+        );
+      }
+    }
+    if (!rest && includeFallback) {
+      try {
+        const legacySnap = await getDoc(doc(db, "users", user.uid));
+        if (legacySnap.exists()) {
+          const legacy = legacySnap.data() || {};
+          const roleKey = String(legacy.role || "").toLowerCase();
+          const restId = legacy.restaurantId || "";
+          if ((roleKey === "business" || restId) && restId) {
+            const restSnap = await getDoc(doc(db, "restaurants", restId));
+            if (restSnap.exists()) {
+              const restData = restSnap.data() || {};
+              const patch = {};
+              const legacyEmail = legacy.email || user.email || "";
+              if (!restData.ownerUid) patch.ownerUid = user.uid;
+              if (legacyEmail && !restData.ownerEmail) patch.ownerEmail = legacyEmail;
+              const legacyName = legacy.displayName || legacy.name || "";
+              if (legacyName && !(restData.name || restData.restaurantName)) {
+                patch.name = legacyName;
+                patch.restaurantName = legacyName;
+              }
+              const legacyAvatar = legacy.avatarUrl || legacy.avatar || "";
+              if (legacyAvatar && !(restData.logoUrl || restData.logo)) {
+                patch.logoUrl = legacyAvatar;
+                patch.logo = legacyAvatar;
+              }
+              if (legacy.city && !restData.city) patch.city = legacy.city;
+              if (legacy.address && !restData.address) patch.address = legacy.address;
+              if (legacy.phone && !restData.phone) patch.phone = legacy.phone;
+              if (legacy.instagram && !restData.instagram) {
+                patch.instagram = legacy.instagram;
+                patch.insta = legacy.instagram;
+              }
+              if (Object.keys(patch).length) {
+                patch.updatedAt = serverTimestamp();
+                await setDoc(doc(db, "restaurants", restId), patch, { merge: true });
+              }
+              const candidate = { id: restSnap.id, ...restData, ...patch };
+              rest = normalizeAuthRestaurant(candidate);
+            }
+          }
+        }
+      } catch {}
+    }
+    if (rest && user?.uid) {
+      const patch = {};
+      const email = user.email || "";
+      if (!rest.ownerUid) patch.ownerUid = user.uid;
+      if (email && !rest.ownerEmail) patch.ownerEmail = email;
+      if (Object.keys(patch).length && rest.id) {
+        patch.updatedAt = serverTimestamp();
+        await setDoc(doc(db, "restaurants", rest.id), patch, { merge: true });
+        rest = { ...rest, ...patch };
+      }
+    }
+    return rest || null;
+  };
+  const scheduleBackgroundBusinessReconcile = () => {
+    const reconcileUid = String(user?.uid || "").trim();
+    if (!reconcileUid) return;
+    if (state.__authBusinessReconcilePending && state.__authBusinessReconcileUid === reconcileUid) return;
+    state.__authBusinessReconcilePending = true;
+    state.__authBusinessReconcileUid = reconcileUid;
+    const defer = typeof queueMicrotask === "function"
+      ? queueMicrotask
+      : (fn) => Promise.resolve().then(fn);
+    defer(() => {
+      Promise.resolve(resolveBusinessRestaurant({ preferCached: false, includeFallback: true }))
+        .then(async (resolved) => {
+          if (!resolved) return;
+          if (String(state.user?.uid || "").trim() !== reconcileUid) return;
+          await loadBusinessProfile(user, { restaurant: resolved, force: true });
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (state.__authBusinessReconcileUid === reconcileUid) {
+            state.__authBusinessReconcilePending = false;
+          }
+        });
+    });
+  };
   if (hasTrustedNonBusinessHint && !force) {
     const profile = await loadUserProfile(user, { force });
     const normalizedRoles = normalizeRoles(profile?.roles || profile?.role || "");
     const normalizedRoleKey = String(profile?.role || "").toLowerCase();
     const hasBusinessProfile = !!String(profile?.restaurantId || "").trim() || normalizedRoleKey === "business" || normalizedRoles.includes("owner");
-    if (!hasBusinessProfile) return;
-  }
-  let rest = normalizeAuthRestaurant(await resolveRestaurantForAuthUser(user, { preferCached: !force }));
-  if (!rest && user?.uid) {
-    const leadByUid = await resolveLeadByUid(user.uid);
-    if (leadByUid) {
-      rest = normalizeAuthRestaurant(
-        findRestaurantByLeadId(leadByUid.id) || await ensureRestaurantForLead(leadByUid, user)
-      );
-    }
-  }
-  if (!rest && user?.email) {
-    const lead = await resolveLeadByEmail(user.email);
-    if (lead) {
-      rest = normalizeAuthRestaurant(
-        findRestaurantByLeadId(lead.id) || await ensureRestaurantForLead(lead, user)
-      );
-    }
-  }
-  if (!rest) {
-    try {
-      const legacySnap = await getDoc(doc(db, "users", user.uid));
-      if (legacySnap.exists()) {
-        const legacy = legacySnap.data() || {};
-        const roleKey = String(legacy.role || "").toLowerCase();
-        const restId = legacy.restaurantId || "";
-        if ((roleKey === "business" || restId) && restId) {
-          const restSnap = await getDoc(doc(db, "restaurants", restId));
-          if (restSnap.exists()) {
-            const restData = restSnap.data() || {};
-            const patch = {};
-            const legacyEmail = legacy.email || user.email || "";
-            if (!restData.ownerUid) patch.ownerUid = user.uid;
-            if (legacyEmail && !restData.ownerEmail) patch.ownerEmail = legacyEmail;
-            const legacyName = legacy.displayName || legacy.name || "";
-            if (legacyName && !(restData.name || restData.restaurantName)) {
-              patch.name = legacyName;
-              patch.restaurantName = legacyName;
-            }
-            const legacyAvatar = legacy.avatarUrl || legacy.avatar || "";
-            if (legacyAvatar && !(restData.logoUrl || restData.logo)) {
-              patch.logoUrl = legacyAvatar;
-              patch.logo = legacyAvatar;
-            }
-            if (legacy.city && !restData.city) patch.city = legacy.city;
-            if (legacy.address && !restData.address) patch.address = legacy.address;
-            if (legacy.phone && !restData.phone) patch.phone = legacy.phone;
-            if (legacy.instagram && !restData.instagram) {
-              patch.instagram = legacy.instagram;
-              patch.insta = legacy.instagram;
-            }
-            if (Object.keys(patch).length) {
-              patch.updatedAt = serverTimestamp();
-              await setDoc(doc(db, "restaurants", restId), patch, { merge: true });
-            }
-            const candidate = { id: restSnap.id, ...restData, ...patch };
-            rest = normalizeAuthRestaurant(candidate);
-          }
-        }
+    if (!hasBusinessProfile) {
+      const cachedOwned = Array.isArray(state.restaurants)
+        ? state.restaurants.find((row) => matchesOwnerIdentity(row))
+        : null;
+      if (cachedOwned) {
+        await loadBusinessProfile(user, { restaurant: cachedOwned, force: true });
+        return;
       }
-    } catch {}
-  }
-  if (rest && user?.uid) {
-    const patch = {};
-    const email = user.email || "";
-    if (!rest.ownerUid) patch.ownerUid = user.uid;
-    if (email && !rest.ownerEmail) patch.ownerEmail = email;
-    if (Object.keys(patch).length && rest.id) {
-      patch.updatedAt = serverTimestamp();
-      await setDoc(doc(db, "restaurants", rest.id), patch, { merge: true });
-      rest = { ...rest, ...patch };
+      const quickRest = await resolveBusinessRestaurant({ preferCached: true, includeFallback: false });
+      if (quickRest) {
+        await loadBusinessProfile(user, { restaurant: quickRest, force: true });
+        return;
+      }
+      scheduleBackgroundBusinessReconcile();
+      return;
     }
   }
+  const rest = await resolveBusinessRestaurant({ preferCached: !force, includeFallback: true });
   if (rest) {
     await loadBusinessProfile(user, { restaurant: rest, force });
     return;

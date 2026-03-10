@@ -817,9 +817,10 @@ const FAST_LIMITS = {
   feedDelta: PERF_CONSTRAINED ? 6 : 8,
   userPosts: PERF_CONSTRAINED ? 12 : 24,
   businessPosts: PERF_CONSTRAINED ? 12 : 24,
+  profilePosts: PERF_CONSTRAINED ? 24 : 36,
   restaurants: PERF_CONSTRAINED ? 40 : 80,
-  stories: PERF_CONSTRAINED ? 10 : 24,
-  storiesFallback: PERF_CONSTRAINED ? 12 : 30,
+  stories: 24,
+  storiesFallback: 30,
   storyIdentityHydration: PERF_CONSTRAINED ? 8 : 12,
   likes: PERF_CONSTRAINED ? 12 : 20,
   comments: PERF_CONSTRAINED ? 24 : 40
@@ -836,8 +837,8 @@ const CACHE_KEYS = {
 };
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
 const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
-const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v1::${uid}` : "");
-const businessPostsKey = (rid) => (rid ? `menyra_social_business_posts_cache_v1::${rid}` : "");
+const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v2::${uid}` : "");
+const businessPostsKey = (rid) => (rid ? `menyra_social_business_posts_cache_v2::${rid}` : "");
 const staffCacheKey = (uid) => (uid ? `menyra_social_staff_cache_v1::${uid}` : "");
 const leadPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_leads_cache_v1::${uid}::${scope}` : "");
 const customerPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_customers_cache_v1::${uid}::${scope}` : "");
@@ -3620,7 +3621,7 @@ async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
     }
     const docSnaps = [];
     snap.forEach((docSnap) => docSnaps.push(docSnap));
-    const nextStories = normalizeStoryItemsForDisplay(
+    let nextStories = normalizeStoryItemsForDisplay(
       storySystemController.mapStorySnapshotRowsToFeedStories({
       docSnaps,
       restaurants: state.restaurants,
@@ -3629,6 +3630,37 @@ async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
       toDateSafeFn: toDateSafe
     })
     );
+    const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+    const pendingOwnStoryRestaurantId = String(state.__pendingOwnStoryRestaurantId || "").trim();
+    const pendingOwnStoryUntil = Number(state.__pendingOwnStoryUntil || 0);
+    if (pendingOwnStoryRestaurantId) {
+      const pendingExpired = !Number.isFinite(pendingOwnStoryUntil) || pendingOwnStoryUntil <= Date.now();
+      const pendingOwnStoryMismatch = !!ownRestaurantId && pendingOwnStoryRestaurantId !== ownRestaurantId;
+      if (pendingOwnStoryMismatch) {
+        state.__pendingOwnStoryRestaurantId = "";
+        state.__pendingOwnStoryUntil = 0;
+      } else if (pendingExpired) {
+        state.__pendingOwnStoryRestaurantId = "";
+        state.__pendingOwnStoryUntil = 0;
+      } else {
+        const hasPendingOwnStory = nextStories.some(
+          (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
+        );
+        if (hasPendingOwnStory) {
+          state.__pendingOwnStoryRestaurantId = "";
+          state.__pendingOwnStoryUntil = 0;
+        } else {
+          const pendingFromState = normalizeStoryItemForDisplay(
+            (state.stories || []).find(
+              (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
+            ) || {}
+          );
+          if (pendingFromState) {
+            nextStories = [pendingFromState, ...nextStories].slice(0, FAST_LIMITS.stories);
+          }
+        }
+      }
+    }
     const shouldRefreshUi = !!refreshUi || state.activeTab === "feed";
     if (!nextStories.length) {
       if (!state.stories.length) return false;
@@ -4394,12 +4426,12 @@ function normalizeProfile(data, user) {
   return {
     name: displayName,
     handle: data?.handle || normalizeHandle(displayName),
-    bio: data?.bio || "",
+    bio: data?.bio || data?.description || "",
     avatar: data?.avatarUrl || data?.avatar || user?.photoURL || "",
     location: data?.city || "Prishtina",
     address: data?.address || "",
-    followers: data?.followersCount ?? 0,
-    following: data?.followingCount ?? 0,
+    followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans),
+    following: pickCountValue(data?.followingCount, data?.following),
     privateAccount: !!data?.privateAccount,
     karma: String(data?.score ?? "0"),
     roles,
@@ -4422,6 +4454,18 @@ function normalizeProfile(data, user) {
   };
 }
 
+function hasCountValue(...values) {
+  return values.some((value) => Number.isFinite(Number(value)));
+}
+
+function pickCountValue(...values) {
+  for (const value of values) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return Math.max(0, numeric);
+  }
+  return 0;
+}
+
 function normalizeBusinessProfile(rest = {}, user) {
   const displayName = rest?.name || rest?.restaurantName || user?.displayName || user?.email?.split("@")[0] || "Business";
   const handle = resolvePreferredHandle({ handle: rest?.handle || "", name: displayName }, displayName);
@@ -4431,12 +4475,12 @@ function normalizeBusinessProfile(rest = {}, user) {
   return {
     name: displayName,
     handle: handle || normalizeHandle(displayName),
-    bio: rest?.bio || rest?.description || "",
+    bio: rest?.bio || rest?.description || rest?.about || "",
     avatar: rest?.logoUrl || rest?.logo || "",
     location: rest?.city || "Prishtina",
     address: rest?.address || "",
-    followers: rest?.followersCount ?? rest?.followers ?? 0,
-    following: rest?.followingCount ?? rest?.following ?? 0,
+    followers: pickCountValue(rest?.followersCount, rest?.followers, rest?.fansCount, rest?.fans),
+    following: pickCountValue(rest?.followingCount, rest?.following),
     privateAccount: false,
     karma: "0",
     roles: normalizeRoleList(rest?.roles || "owner"),
@@ -8688,6 +8732,25 @@ async function handleUploadPost() {
         mediaType,
         createdByUid: state.user.uid
       });
+      const ownRestaurant = state.restaurants.find((row) => String(row?.id || "").trim() === restaurantId) || {};
+      const optimisticStory = normalizeStoryItemForDisplay({
+        id: restaurantId,
+        restaurantId,
+        name: ownRestaurant?.name || ownRestaurant?.restaurantName || state.userProfile?.name || "",
+        img: ownRestaurant?.logoUrl || ownRestaurant?.logo || state.userProfile?.avatar || "",
+        isLive: true
+      });
+      if (optimisticStory) {
+        const deduped = [optimisticStory, ...(state.stories || []).filter((item) => String(item?.restaurantId || "") !== restaurantId)];
+        state.stories = deduped.slice(0, FAST_LIMITS.stories);
+        state.__pendingOwnStoryRestaurantId = restaurantId;
+        state.__pendingOwnStoryUntil = Date.now() + (2 * 60 * 1000);
+        feedStoriesSignature = buildStoriesSignature(state.stories);
+        writeCache(CACHE_KEYS.stories, state.stories);
+        if (state.activeTab === "feed" && lastRenderMode === "main") {
+          updateFeedDom();
+        }
+      }
       await loadStoriesForFeed({ force: true, refreshUi: true });
     } else if (isBusiness) {
       await createBusinessPost({
@@ -8816,15 +8879,45 @@ async function loadBusinessProfile(user, { restaurant = null, force = false } = 
     await loadUserProfile(user, { force });
     return;
   }
+  let profileSeed = { ...rest };
+  try {
+    const ownerSnap = await getDoc(doc(db, "users", user.uid));
+    if (ownerSnap.exists()) {
+      const ownerData = ownerSnap.data() || {};
+      if (!String(profileSeed.bio || profileSeed.description || profileSeed.about || "").trim()) {
+        const fallbackBio = String(ownerData.bio || "").trim();
+        if (fallbackBio) {
+          profileSeed.bio = fallbackBio;
+          profileSeed.description = fallbackBio;
+        }
+      }
+      if (!hasCountValue(profileSeed.followersCount, profileSeed.followers, profileSeed.fansCount, profileSeed.fans)) {
+        const ownerFollowers = pickCountValue(ownerData.followersCount, ownerData.followers, ownerData.fansCount, ownerData.fans);
+        if (ownerFollowers > 0) profileSeed.followersCount = ownerFollowers;
+      }
+      if (!hasCountValue(profileSeed.followingCount, profileSeed.following)) {
+        const ownerFollowing = pickCountValue(ownerData.followingCount, ownerData.following);
+        if (ownerFollowing > 0) profileSeed.followingCount = ownerFollowing;
+      }
+      if (!String(profileSeed.city || "").trim()) {
+        const ownerCity = String(ownerData.city || "").trim();
+        if (ownerCity) profileSeed.city = ownerCity;
+      }
+      if (!String(profileSeed.logoUrl || profileSeed.logo || "").trim()) {
+        const ownerAvatar = String(ownerData.avatarUrl || ownerData.avatar || "").trim();
+        if (ownerAvatar) profileSeed.logoUrl = ownerAvatar;
+      }
+    }
+  } catch {}
   const prevAvatar = state.userProfile?.avatar || "";
-  const normalized = normalizeBusinessProfile(rest, user);
+  const normalized = normalizeBusinessProfile(profileSeed, user);
   normalized.uid = user.uid;
   const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
   if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
-  if (!Number.isFinite(Number(rest.followingCount ?? rest.following))) {
+  if (!hasCountValue(profileSeed.followingCount, profileSeed.following)) {
     normalized.following = state.userProfile?.following ?? normalized.following;
   }
-  if (!Number.isFinite(Number(rest.followersCount ?? rest.followers))) {
+  if (!hasCountValue(profileSeed.followersCount, profileSeed.followers, profileSeed.fansCount, profileSeed.fans)) {
     normalized.followers = state.userProfile?.followers ?? normalized.followers;
   }
   state.userProfile = normalized;
@@ -8837,7 +8930,22 @@ async function loadBusinessProfile(user, { restaurant = null, force = false } = 
     primeSelfAvatarCache(resolvedAvatar);
   }
   if (rest?.id) {
-    state.restaurants = mergeRestaurants(state.restaurants, [{ id: rest.id, ...rest }]);
+    const identityPatch = { id: rest.id, ...rest };
+    const fallbackName = String(profileSeed.name || profileSeed.restaurantName || "").trim();
+    const fallbackLogo = String(profileSeed.logoUrl || profileSeed.logo || "").trim();
+    const fallbackCity = String(profileSeed.city || "").trim();
+    if (!String(identityPatch.name || identityPatch.restaurantName || "").trim() && fallbackName) {
+      identityPatch.name = fallbackName;
+      identityPatch.restaurantName = fallbackName;
+    }
+    if (!String(identityPatch.logoUrl || identityPatch.logo || identityPatch.logoURL || "").trim() && fallbackLogo) {
+      identityPatch.logoUrl = fallbackLogo;
+      identityPatch.logo = fallbackLogo;
+    }
+    if (!String(identityPatch.city || "").trim() && fallbackCity) {
+      identityPatch.city = fallbackCity;
+    }
+    state.restaurants = mergeRestaurants(state.restaurants, [identityPatch]);
     rebuildBusinessLocations();
   }
   if (lastRenderMode === "main") {
@@ -8888,6 +8996,8 @@ async function loadRestaurants({ force = false } = {}) {
 function canShowFeedRestaurantId(restaurantId) {
   const rid = String(restaurantId || "").trim();
   if (!rid) return true;
+  const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+  if (ownRestaurantId && rid === ownRestaurantId) return true;
   if (isForceHiddenUid(rid) || isForceHiddenHandle(rid)) return false;
   const restaurant = state.restaurants.find((row) => String(row?.id || "") === rid) || null;
   if (!restaurant) return true;
@@ -8953,8 +9063,17 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
   const rest = restaurant || {};
   const displayName = data?.displayName || data?.name || rest?.name || rest?.restaurantName || fallbackName || "Business";
   const handle = resolvePreferredHandle({ handle: data?.handle || rest?.handle || "", name: displayName }, displayName);
-  const followers = data?.followersCount ?? data?.followers ?? rest?.followersCount ?? rest?.followers ?? 0;
-  const following = data?.followingCount ?? data?.following ?? rest?.followingCount ?? rest?.following ?? 0;
+  const followers = pickCountValue(
+    data?.followersCount,
+    data?.followers,
+    data?.fansCount,
+    data?.fans,
+    rest?.followersCount,
+    rest?.followers,
+    rest?.fansCount,
+    rest?.fans
+  );
+  const following = pickCountValue(data?.followingCount, data?.following, rest?.followingCount, rest?.following);
   const restaurantId = data?.restaurantId || rest?.id || "";
   const type = normalizeRestaurantType(
     data?.type
@@ -8970,7 +9089,7 @@ function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts 
     name: displayName,
     handle: handle || normalizeHandle(displayName),
     uid: data?.uid || rest?.ownerUid || profileDoc?.id || "",
-    bio: data?.bio || rest?.description || rest?.bio || `Offizieller Account auf ${BRAND_UI.social}.`,
+    bio: data?.bio || data?.description || rest?.description || rest?.bio || rest?.about || `Offizieller Account auf ${BRAND_UI.social}.`,
     avatar: data?.avatarUrl || data?.avatar || rest?.logoUrl || rest?.logo || "",
     location: data?.city || rest?.city || "Kosovo",
     followers,
@@ -8993,11 +9112,11 @@ function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
     name: displayName || fallbackName,
     handle: handle || "user",
     uid: userDoc?.id || data?.uid || fallback?.uid || "",
-    bio: data?.bio || fallback?.bio || "",
+    bio: data?.bio || data?.description || fallback?.bio || "",
     avatar: data?.avatarUrl || data?.avatar || fallback?.avatar || '',
     location: data?.city || fallback?.location || "Prishtina",
-    followers: data?.followersCount ?? data?.followers ?? fallback?.followers ?? 0,
-    following: data?.followingCount ?? data?.following ?? fallback?.following ?? 0,
+    followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans, fallback?.followers),
+    following: pickCountValue(data?.followingCount, data?.following, fallback?.following),
     privateAccount: !!data?.privateAccount,
     role: data?.role || fallback?.role || "user",
     pendingFollowRequest: false,
@@ -9030,7 +9149,7 @@ async function loadBusinessPostsForRestaurant(restaurantId) {
     const ref = collection(db, "restaurants", restaurantId, "socialPosts");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.businessPosts)));
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.profilePosts || FAST_LIMITS.businessPosts)));
     } catch (err) {
       snap = await getDocs(ref);
     }
@@ -9069,7 +9188,7 @@ async function loadUserPostsForUser(uid) {
     const ref = collection(db, "users", uid, "posts");
     let snap = null;
     try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.userPosts)));
+      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.profilePosts || FAST_LIMITS.userPosts)));
     } catch (err) {
       snap = await getDocs(ref);
     }

@@ -619,7 +619,7 @@ export function createSessionDataRuntimeController({
       const ref = collectionFn(db, "users", state.user.uid, "posts");
       let snap = null;
       try {
-        snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.userPosts)));
+        snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.userPosts)));
       } catch (err) {
         snap = await getDocsFn(ref);
       }
@@ -675,7 +675,7 @@ export function createSessionDataRuntimeController({
       const ref = collectionFn(db, "restaurants", restaurantId, "socialPosts");
       let snap = null;
       try {
-        snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.businessPosts)));
+        snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(fastLimits.profilePosts || fastLimits.businessPosts)));
       } catch (err) {
         snap = await getDocsFn(ref);
       }
