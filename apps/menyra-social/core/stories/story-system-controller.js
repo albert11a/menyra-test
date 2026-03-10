@@ -214,7 +214,7 @@ export function createStorySystemController({
         id: restaurantId,
         restaurantId,
         name: hasKnownRestaurantIdentity
-          ? (canonicalName || "")
+          ? (canonicalName || sourceName || "")
           : (sourceName || ""),
         img: logoSource,
         isLive: data.isLive !== undefined ? !!data.isLive : true

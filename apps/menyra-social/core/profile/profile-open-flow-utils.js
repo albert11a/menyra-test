@@ -172,6 +172,31 @@ export function createProfileOpenFlowControllerCore({
     }
   };
 
+  const isOwnUserTarget = ({ uid = "", handle = "" } = {}) => {
+    const targetUid = String(uid || "").trim();
+    const selfUid = String(state?.user?.uid || state?.userProfile?.uid || "").trim();
+    if (targetUid && selfUid && targetUid === selfUid) return true;
+    const normalizeHandleValue = (value = "") => String(value || "").replace(/^@/, "").trim().toLowerCase();
+    const targetHandle = normalizeHandleValue(handle);
+    if (!targetHandle) return false;
+    const selfHandle = normalizeHandleValue(state?.userProfile?.handle || state?.userProfile?.name || "");
+    return !!selfHandle && selfHandle === targetHandle;
+  };
+
+  const openOwnUserProfile = ({ showBack = true } = {}) => {
+    const prevTab = state?.activeTab || "feed";
+    state.profileView = null;
+    state.profileModal = { open: false, profile: null };
+    state.profileContentTab = "posts";
+    state.profileTopTab = "profile";
+    state.profileViewMode = "grid";
+    state.profilePostMenuId = null;
+    state.drawerOpen = false;
+    state.activeTab = "profile";
+    state.profileBackTab = showBack ? prevTab : "";
+    renderApp();
+  };
+
   const openProfileFromUser = async (input) => {
     if (!state?.user) {
       openGuestAuth("Bitte einloggen, um User-Profile zu sehen.");
@@ -181,6 +206,10 @@ export function createProfileOpenFlowControllerCore({
       const uid = typeof input === "string" ? input : (input?.uid || "");
       const handle = String(typeof input === "string" ? "" : (input?.handle || input?.name || "")).replace(/^@/, "");
       if (!uid && !handle) return;
+      if (isOwnUserTarget({ uid, handle })) {
+        openOwnUserProfile({ showBack: true });
+        return;
+      }
 
       const cacheKey = uid || handle;
       const cached = userProfileCacheMap.get(cacheKey);

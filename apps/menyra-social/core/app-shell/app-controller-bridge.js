@@ -283,6 +283,7 @@ export function createAppControllerBridge({
         : feed.buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "profile" })
     ),
     resolveRestaurantLogoFn: feed.resolveRestaurantLogo,
+    resolveStoryRenderIdentityFn: feed.resolveStoryRenderIdentity,
     getOptimizedImageUrlFn: feed.getOptimizedImageUrl,
     buildUploadStateForIntentFn: (intent = "", currentUpload = {}) => (
       typeof feed.buildUploadStateForIntent === "function"

@@ -6,6 +6,7 @@
   <meta name="color-scheme" content="light" />
   <meta name="supported-color-schemes" content="light" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <script>
     (() => {
@@ -73,10 +74,12 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="dns-prefetch" href="//unpkg.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-10-instant-4">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-10-fix-identity-5">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7">
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js" crossorigin>
@@ -347,7 +350,7 @@
       fetchBootstrap().catch(() => {});
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-10-instant-4"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-10-fix-identity-5"></script>
   <script>
     (() => {
       const loadLucide = () => {
@@ -359,7 +362,7 @@
         if (existing) return;
         const script = document.createElement("script");
         script.async = true;
-        script.src = "https://unpkg.com/lucide@latest";
+        script.src = "https://unpkg.com/lucide@latest/dist/umd/lucide.min.js";
         script.dataset.menyrasocialLucide = "1";
         script.addEventListener("load", () => {
           try {
@@ -368,11 +371,7 @@
         }, { once: true });
         (document.head || document.documentElement).appendChild(script);
       };
-      if ("requestIdleCallback" in window) {
-        window.requestIdleCallback(loadLucide, { timeout: 2200 });
-      } else {
-        window.setTimeout(loadLucide, 900);
-      }
+      loadLucide();
     })();
   </script>
   <script>

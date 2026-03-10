@@ -20,6 +20,7 @@ export function createFeedViewOrchestrationController({
   buildUrlFn = () => "",
   buildStoryViewerUrlFn = (restaurantId = "") => buildUrlFn("apps/menyra-social/index.html", { r: restaurantId, tab: "profile" }),
   resolveRestaurantLogoFn = () => "",
+  resolveStoryRenderIdentityFn = null,
   getOptimizedImageUrlFn = () => "",
   buildUploadStateForIntentFn = (_intent = "", currentUpload = {}) => currentUpload,
   setStateFn = () => {},
@@ -66,7 +67,7 @@ export function createFeedViewOrchestrationController({
     if (!label) return "";
     return label.toLowerCase() === "business" ? "" : label;
   };
-  const resolveStoryRenderIdentity = (story = {}) => {
+  const resolveStoryRenderIdentityLocal = (story = {}) => {
     const storyRestaurantId = String(story?.restaurantId || "").trim();
     if (!storyRestaurantId) {
       return {
@@ -111,9 +112,12 @@ export function createFeedViewOrchestrationController({
       borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
     };
   };
+  const resolveStoryRenderIdentity = typeof resolveStoryRenderIdentityFn === "function"
+    ? (story = {}) => resolveStoryRenderIdentityFn(story)
+    : resolveStoryRenderIdentityLocal;
   const isRenderableStory = (story = {}) => {
     const identity = resolveStoryRenderIdentity(story);
-    return !!identity.storyLabel && !!identity.logoSource;
+    return !!identity.storyRestaurantId;
   };
 
   function renderFeedComposer() {
@@ -133,9 +137,8 @@ export function createFeedViewOrchestrationController({
     if (!storyRestaurantId) return "";
     const borderClass = identity.borderClass;
     const storyUrl = buildStoryViewerUrlFn(storyRestaurantId);
-    const storyLabel = identity.storyLabel;
-    const logoSource = identity.logoSource;
-    if (!storyLabel || !logoSource) return "";
+    const storyLabel = String(identity.storyLabel || "").trim();
+    const logoSource = String(identity.logoSource || "").trim();
     const allowCacheFallback = !identity.hasCanonicalRestaurant;
     const imgUrl = resolveRestaurantLogoFn(storyRestaurantId, logoSource, "thumb", allowCacheFallback);
     const storyId = storyRestaurantId ? escapeHtmlFn(storyRestaurantId) : "";

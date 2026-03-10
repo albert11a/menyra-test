@@ -820,6 +820,7 @@ const FAST_LIMITS = {
   restaurants: PERF_CONSTRAINED ? 40 : 80,
   stories: PERF_CONSTRAINED ? 10 : 24,
   storiesFallback: PERF_CONSTRAINED ? 12 : 30,
+  storyIdentityHydration: PERF_CONSTRAINED ? 8 : 12,
   likes: PERF_CONSTRAINED ? 12 : 20,
   comments: PERF_CONSTRAINED ? 24 : 40
 };
@@ -2954,7 +2955,6 @@ function normalizePublicBootstrapStories(rows = []) {
       const nameRaw = String(row?.name || row?.businessName || row?.restaurantName || "").trim();
       const name = isGenericBusinessBootstrapLabel(nameRaw) ? "" : nameRaw;
       const img = String(row?.img || row?.logo || row?.logoUrl || row?.mediaUrl || row?.imageUrl || "").trim();
-      if (!(name && img)) return null;
       return {
         id: restaurantId,
         restaurantId,
@@ -3012,7 +3012,7 @@ function applyPublicBootstrapPayload(payload, { refreshUi = false } = {}) {
     changed = true;
   }
   if (state.stories.length) {
-    queueStoryIdentityHydration(state.stories, { max: FAST_LIMITS.stories });
+    queueStoryIdentityHydration(state.stories, { max: FAST_LIMITS.storyIdentityHydration });
   }
 
   if (changed && refreshUi) {
@@ -3135,7 +3135,7 @@ function loadPersisted() {
     const nextStories = normalizeStoryItemsForDisplay(state.stories);
     state.stories = nextStories;
     feedStoriesSignature = buildStoriesSignature(nextStories);
-    queueStoryIdentityHydration(nextStories, { max: FAST_LIMITS.stories });
+    queueStoryIdentityHydration(nextStories, { max: FAST_LIMITS.storyIdentityHydration });
   } else {
     feedStoriesSignature = "";
   }
@@ -3493,31 +3493,53 @@ function resolveStoryBusinessIdentity(restaurantId = "") {
   };
 }
 
-function normalizeStoryItemForDisplay(item = {}) {
-  const restaurantId = String(item?.restaurantId || item?.id || item?.rid || "").trim();
-  if (!restaurantId) return null;
-  const identity = resolveStoryBusinessIdentity(restaurantId);
+function resolveStoryRenderIdentity(story = {}) {
+  const storyRestaurantId = String(story?.restaurantId || story?.id || story?.rid || "").trim();
+  if (!storyRestaurantId) {
+    return {
+      storyRestaurantId: "",
+      hasCanonicalRestaurant: false,
+      storyLabel: "",
+      logoSource: "",
+      borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
+    };
+  }
+  const identity = resolveStoryBusinessIdentity(storyRestaurantId);
   const sourceName = sanitizeStoryBusinessName(
-    item?.name
-    || item?.businessName
-    || item?.restaurantName
+    story?.name
+    || story?.businessName
+    || story?.restaurantName
+    || story?.business
     || ""
   );
-  const sourceImg = String(item?.img || item?.logo || item?.logoUrl || "").trim();
-  const name = identity.hasCanonicalRestaurant
-    ? (identity.name || "")
-    : (identity.name || sourceName);
-  const img = identity.hasCanonicalRestaurant
-    ? (identity.avatar || "")
-    : (identity.avatar || sourceImg);
-  const resolvedName = sanitizeStoryBusinessName(name);
-  const resolvedImg = String(img || "").trim();
+  const sourceLogo = String(story?.img || story?.logo || story?.logoUrl || "").trim();
+  const canonicalName = sanitizeStoryBusinessName(identity.name || "");
+  const canonicalLogo = String(identity.avatar || "").trim();
+  const storyLabel = identity.hasCanonicalRestaurant
+    ? (canonicalName || sourceName || "")
+    : (sanitizeStoryBusinessName(identity.name || sourceName || ""));
+  const logoSource = identity.hasCanonicalRestaurant
+    ? canonicalLogo
+    : String(identity.avatar || sourceLogo || "").trim();
+  return {
+    storyRestaurantId,
+    hasCanonicalRestaurant: !!identity.hasCanonicalRestaurant,
+    storyLabel,
+    logoSource,
+    borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
+  };
+}
+
+function normalizeStoryItemForDisplay(item = {}) {
+  const identity = resolveStoryRenderIdentity(item);
+  const restaurantId = identity.storyRestaurantId;
+  if (!restaurantId) return null;
   return {
     ...item,
     id: restaurantId,
     restaurantId,
-    name: resolvedName,
-    img: resolvedImg,
+    name: sanitizeStoryBusinessName(identity.storyLabel || ""),
+    img: String(identity.logoSource || "").trim(),
     isLive: !!item?.isLive
   };
 }
@@ -3559,7 +3581,7 @@ function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
   feedStoriesSignature = buildStoriesSignature(normalizedStories);
   state.stories = normalizedStories;
   writeCache(CACHE_KEYS.stories, normalizedStories);
-  queueStoryIdentityHydration(normalizedStories, { max: FAST_LIMITS.stories });
+  queueStoryIdentityHydration(normalizedStories, { max: FAST_LIMITS.storyIdentityHydration });
   return true;
 }
 
@@ -3569,7 +3591,7 @@ async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
     const normalizedCachedStories = normalizeStoryItemsForDisplay(cached.data);
     state.stories = normalizedCachedStories;
     feedStoriesSignature = buildStoriesSignature(state.stories);
-    queueStoryIdentityHydration(normalizedCachedStories, { max: FAST_LIMITS.stories });
+    queueStoryIdentityHydration(normalizedCachedStories, { max: FAST_LIMITS.storyIdentityHydration });
     if (cached.fresh && !force) {
       if (!storiesFreshReconcileQueued) {
         storiesFreshReconcileQueued = true;
@@ -3633,7 +3655,7 @@ async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
     state.stories = nextStories;
     feedStoriesSignature = nextSignature;
     writeCache(CACHE_KEYS.stories, nextStories);
-    queueStoryIdentityHydration(nextStories, { max: FAST_LIMITS.stories });
+    queueStoryIdentityHydration(nextStories, { max: FAST_LIMITS.storyIdentityHydration });
 
     if (shouldRefreshUi) {
       const inMain = lastRenderMode === "main";
@@ -5471,15 +5493,16 @@ function updateFeedLogoNodes(post) {
 }
 
 function updateStoryLogoNodes(story) {
-  if (!story?.restaurantId) return;
-  const storyId = escapeSelector(story.restaurantId);
-  const identity = resolveStoryBusinessIdentity(story.restaurantId);
-  const sourceLogo = String(story.img || story.logo || story.logoUrl || "").trim();
-  const logoSource = identity.hasCanonicalRestaurant
-    ? (identity.avatar || "")
-    : (identity.avatar || sourceLogo);
-  const allowCacheFallback = !identity.hasCanonicalRestaurant;
-  const logoUrl = resolveRestaurantLogo(story.restaurantId, logoSource, "thumb", allowCacheFallback);
+  const renderIdentity = resolveStoryRenderIdentity(story);
+  if (!renderIdentity.storyRestaurantId) return;
+  const storyId = escapeSelector(renderIdentity.storyRestaurantId);
+  const allowCacheFallback = !renderIdentity.hasCanonicalRestaurant;
+  const logoUrl = resolveRestaurantLogo(
+    renderIdentity.storyRestaurantId,
+    renderIdentity.logoSource || "",
+    "thumb",
+    allowCacheFallback
+  );
   document.querySelectorAll(`[data-story-logo="${storyId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
     if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
@@ -5487,13 +5510,10 @@ function updateStoryLogoNodes(story) {
 }
 
 function updateStoryMetaNodes(story) {
-  if (!story?.restaurantId) return;
-  const storyId = escapeSelector(story.restaurantId);
-  const identity = resolveStoryBusinessIdentity(story.restaurantId);
-  const sourceName = sanitizeStoryBusinessName(story.name || "");
-  const label = identity.hasCanonicalRestaurant
-    ? (identity.name || "")
-    : (identity.name || sourceName || "");
+  const renderIdentity = resolveStoryRenderIdentity(story);
+  if (!renderIdentity.storyRestaurantId) return;
+  const storyId = escapeSelector(renderIdentity.storyRestaurantId);
+  const label = sanitizeStoryBusinessName(renderIdentity.storyLabel || "");
   const live = !!story.isLive;
   document.querySelectorAll(`[data-story-border="${storyId}"]`).forEach((el) => {
     if (!(el instanceof HTMLElement)) return;
@@ -7169,6 +7189,7 @@ const {
   buildStoriesFromFeed,
   updateStoryLogoNodes,
   updateStoryMetaNodes,
+  resolveStoryRenderIdentity,
   updateFeedLogoNodes,
   updatePostCountNodes,
   ensureFeedRestaurantMetaListeners,
@@ -8906,20 +8927,17 @@ function buildStoriesFromFeed(posts) {
   posts.forEach((post) => {
     const rid = String(post.restaurantId || post.ownerId || "").trim();
     if (!rid || map.has(rid) || !canShowFeedRestaurantId(rid)) return;
-    const identity = resolveStoryBusinessIdentity(rid);
-    const sourceName = sanitizeStoryBusinessName(post.business || post.restaurantName || "");
-    const sourceLogo = String(post.logo || "").trim();
-    const name = identity.hasCanonicalRestaurant
-      ? (identity.name || "")
-      : (identity.name || sourceName || "");
-    const logo = identity.hasCanonicalRestaurant
-      ? (identity.avatar || "")
-      : (identity.avatar || sourceLogo);
+    const renderIdentity = resolveStoryRenderIdentity({
+      restaurantId: rid,
+      name: post.business || post.restaurantName || "",
+      img: post.logo || "",
+      isLive: false
+    });
     map.set(rid, {
       id: rid,
       restaurantId: rid,
-      name,
-      img: logo,
+      name: sanitizeStoryBusinessName(renderIdentity.storyLabel || ""),
+      img: String(renderIdentity.logoSource || "").trim(),
       isLive: false
     });
   });
