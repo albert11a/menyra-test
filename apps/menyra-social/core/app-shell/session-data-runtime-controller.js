@@ -111,6 +111,9 @@ export function createSessionDataRuntimeController({
   const focusCacheMap = focusCache || new Map();
   const menuCacheMap = menuCache || new Map();
   let restaurantsFreshReconcileQueued = false;
+  let storiesRefreshQueued = false;
+  let storiesRefreshForce = false;
+  let storiesRefreshUi = false;
 
   if (!state || !dataLoaded) {
     return {
@@ -201,6 +204,24 @@ export function createSessionDataRuntimeController({
       if (cachedHydrationIds.length) {
         void hydrateRestaurantsByIdsFn(cachedHydrationIds, { max: cachedHydrationIds.length });
       }
+    });
+  }
+
+  function scheduleStoriesRefresh({ force = false, refreshUi = false } = {}) {
+    storiesRefreshForce = storiesRefreshForce || !!force;
+    storiesRefreshUi = storiesRefreshUi || !!refreshUi;
+    if (storiesRefreshQueued) return;
+    storiesRefreshQueued = true;
+    scheduleIdleFn(() => {
+      const nextForce = storiesRefreshForce;
+      const nextRefreshUi = storiesRefreshUi;
+      storiesRefreshQueued = false;
+      storiesRefreshForce = false;
+      storiesRefreshUi = false;
+      void Promise.resolve(loadStoriesForFeedFn({
+        force: nextForce,
+        refreshUi: nextRefreshUi
+      })).catch(() => null);
     });
   }
 
@@ -438,7 +459,7 @@ export function createSessionDataRuntimeController({
       if (!state.stories.length) {
         refreshFeedStoriesFn({ force: true });
       }
-      void loadStoriesForFeedFn({ force: false, refreshUi: state.activeTab === "feed" });
+      scheduleStoriesRefresh({ force: false, refreshUi: state.activeTab === "feed" });
       cleanupLeafletFn();
       const inMain = getLastRenderModeFn() === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
@@ -513,7 +534,7 @@ export function createSessionDataRuntimeController({
       }
       syncFeedPostLogosFn();
       const storiesUpdated = state.stories.length ? false : refreshFeedStoriesFn({ force: wasEmpty });
-      void loadStoriesForFeedFn({ force, refreshUi: state.activeTab === "feed" });
+      scheduleStoriesRefresh({ force, refreshUi: state.activeTab === "feed" });
       if (wasEmpty || storiesUpdated) {
         const inMain = getLastRenderModeFn() === "main";
         const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
@@ -557,7 +578,7 @@ export function createSessionDataRuntimeController({
       const nextIds = next.map((item) => String(item.id)).join("|");
       state.feedPosts = next;
       const storiesChanged = state.stories.length ? false : refreshFeedStoriesFn({ posts: next });
-      void loadStoriesForFeedFn({ force, refreshUi: state.activeTab === "feed" });
+      scheduleStoriesRefresh({ force, refreshUi: state.activeTab === "feed" });
       preloadFeedHeroImagesFn(next);
       if (prevIds === nextIds && !storiesChanged) return;
       const inMain = getLastRenderModeFn() === "main";

@@ -61,11 +61,59 @@ export function createFeedViewOrchestrationController({
     !!isLocalBusinessProfileFn(state.userProfile)
     || (hasBusinessProfileHint() && (!!state.user || hasProfileUid()))
   );
+  const sanitizeStoryBusinessName = (value = "") => {
+    const label = String(value || "").trim();
+    if (!label) return "";
+    return label.toLowerCase() === "business" ? "" : label;
+  };
+  const resolveStoryRenderIdentity = (story = {}) => {
+    const storyRestaurantId = String(story?.restaurantId || "").trim();
+    if (!storyRestaurantId) {
+      return {
+        storyRestaurantId: "",
+        hasCanonicalRestaurant: false,
+        storyLabel: "",
+        logoSource: "",
+        borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
+      };
+    }
+    const restaurant = state.restaurants.find((r) => String(r?.id || "").trim() === storyRestaurantId) || null;
+    const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+    const ownStory = ownRestaurantId && ownRestaurantId === storyRestaurantId;
+    const hasCanonicalRestaurant = !!restaurant?.id;
+    const canonicalLogo = String(
+      restaurant?.logoUrl
+      || restaurant?.logo
+      || restaurant?.logoURL
+      || ""
+    ).trim();
+    const canonicalName = sanitizeStoryBusinessName(
+      restaurant?.name
+      || restaurant?.restaurantName
+      || restaurant?.displayName
+      || restaurant?.businessName
+      || ""
+    );
+    const sourceName = sanitizeStoryBusinessName(story?.name || story?.businessName || story?.restaurantName || "");
+    const ownFallbackName = ownStory ? sanitizeStoryBusinessName(state.userProfile?.name || "") : "";
+    const ownFallbackLogo = ownStory ? String(state.userProfile?.avatar || "").trim() : "";
+    const storyLabel = hasCanonicalRestaurant
+      ? (canonicalName || "")
+      : (ownFallbackName || sourceName || "");
+    const logoSource = hasCanonicalRestaurant
+      ? (canonicalLogo || "")
+      : (ownFallbackLogo || String(story?.img || story?.logo || story?.logoUrl || "").trim());
+    return {
+      storyRestaurantId,
+      hasCanonicalRestaurant,
+      storyLabel,
+      logoSource,
+      borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
+    };
+  };
   const isRenderableStory = (story = {}) => {
-    const name = String(story?.name || story?.businessName || story?.restaurantName || "").trim();
-    if (!name || name.toLowerCase() === "business") return false;
-    const logo = String(story?.img || story?.logo || story?.logoUrl || "").trim();
-    return !!logo;
+    const identity = resolveStoryRenderIdentity(story);
+    return !!identity.storyLabel && !!identity.logoSource;
   };
 
   function renderFeedComposer() {
@@ -80,39 +128,15 @@ export function createFeedViewOrchestrationController({
   }
 
   function renderStoryItem(story, index = 0) {
-    const storyRestaurantId = String(story?.restaurantId || "").trim();
-    const borderClass = story.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
+    const identity = resolveStoryRenderIdentity(story);
+    const storyRestaurantId = identity.storyRestaurantId;
+    if (!storyRestaurantId) return "";
+    const borderClass = identity.borderClass;
     const storyUrl = buildStoryViewerUrlFn(storyRestaurantId);
-    const restaurant = state.restaurants.find((r) => String(r?.id || "").trim() === storyRestaurantId) || null;
-    const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
-    const ownStory = ownRestaurantId && ownRestaurantId === storyRestaurantId;
-    const hasCanonicalRestaurant = !!restaurant?.id;
-    const canonicalLogo = String(
-      restaurant?.logoUrl
-      || restaurant?.logo
-      || restaurant?.logoURL
-      || ""
-    ).trim();
-    const canonicalName = String(
-      restaurant?.name
-      || restaurant?.restaurantName
-      || restaurant?.displayName
-      || restaurant?.businessName
-      || ""
-    ).trim();
-    const sourceNameRaw = String(story?.name || story?.businessName || story?.restaurantName || "").trim();
-    const sourceName = sourceNameRaw.toLowerCase() === "business" ? "" : sourceNameRaw;
-    const ownFallbackNameRaw = ownStory ? String(state.userProfile?.name || "").trim() : "";
-    const ownFallbackName = ownFallbackNameRaw.toLowerCase() === "business" ? "" : ownFallbackNameRaw;
-    const ownFallbackLogo = ownStory ? String(state.userProfile?.avatar || "").trim() : "";
-    const storyLabel = hasCanonicalRestaurant
-      ? (canonicalName || sourceName || "")
-      : (ownFallbackName || sourceName || "");
-    const logoSource = hasCanonicalRestaurant
-      ? (canonicalLogo || "")
-      : (ownFallbackLogo || String(story?.img || story?.logo || story?.logoUrl || "").trim());
+    const storyLabel = identity.storyLabel;
+    const logoSource = identity.logoSource;
     if (!storyLabel || !logoSource) return "";
-    const allowCacheFallback = !(hasCanonicalRestaurant && !canonicalLogo);
+    const allowCacheFallback = !identity.hasCanonicalRestaurant;
     const imgUrl = resolveRestaurantLogoFn(storyRestaurantId, logoSource, "thumb", allowCacheFallback);
     const storyId = storyRestaurantId ? escapeHtmlFn(storyRestaurantId) : "";
     const storyAttr = storyId ? `data-story-logo="${storyId}"` : "";

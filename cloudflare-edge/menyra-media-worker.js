@@ -112,6 +112,36 @@ function publicBase(env) {
   return String(env.R2_PUBLIC_BASE || "").replace(/\/+$/, "");
 }
 
+function parsePositiveInt(value, min, max) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return null;
+  const rounded = Math.round(num);
+  if (rounded < min || rounded > max) return null;
+  return rounded;
+}
+
+function isImageKey(key = "") {
+  return /\.(avif|webp|png|jpe?g|gif)$/i.test(String(key || ""));
+}
+
+function parseMediaTransformOptions(url) {
+  if (!(url instanceof URL)) return null;
+  const width = parsePositiveInt(url.searchParams.get("w"), 32, 2000);
+  const height = parsePositiveInt(url.searchParams.get("h"), 32, 2000);
+  const quality = parsePositiveInt(url.searchParams.get("q"), 30, 95);
+  const fitRaw = String(url.searchParams.get("fit") || "").trim().toLowerCase();
+  const formatRaw = String(url.searchParams.get("fm") || "").trim().toLowerCase();
+  const fit = ["scale-down", "contain", "cover", "crop", "pad"].includes(fitRaw) ? fitRaw : "";
+  const format = ["auto", "avif", "webp", "jpeg", "png"].includes(formatRaw) ? formatRaw : "auto";
+  if (!width && !height && !quality && !fit) return null;
+  const image = { format };
+  if (width) image.width = width;
+  if (height) image.height = height;
+  if (quality) image.quality = quality;
+  if (fit) image.fit = fit;
+  return image;
+}
+
 async function handleImageUpload(request, env, cors) {
   const contentType = request.headers.get("content-type") || "";
   if (!contentType.includes("multipart/form-data")) {
@@ -220,6 +250,36 @@ async function handleMedia(request, env, ctx) {
         return cachedResponse;
     }
 
+    let cacheControl = 'public, max-age=31536000, immutable'; // Default for images
+    if (key.startsWith('stories/')) {
+        const storyTtl = (env.STORY_TTL_HOURS || 24) * 3600;
+        cacheControl = `public, max-age=${storyTtl}`;
+    }
+
+    const transform = isImageKey(key) ? parseMediaTransformOptions(url) : null;
+    if (transform) {
+        const r2Base = publicBase(env);
+        if (r2Base) {
+            try {
+                const sourceUrl = `${r2Base}/${key.replace(/^\/+/, "")}`;
+                const transformedResponse = await fetch(sourceUrl, {
+                    cf: { image: transform }
+                });
+                if (transformedResponse && transformedResponse.ok) {
+                    const transformedHeaders = new Headers(transformedResponse.headers);
+                    transformedHeaders.set('cache-control', cacheControl);
+                    transformedHeaders.set('access-control-allow-origin', '*');
+                    const transformed = new Response(transformedResponse.body, {
+                        status: transformedResponse.status,
+                        headers: transformedHeaders
+                    });
+                    ctx.waitUntil(cache.put(request, transformed.clone()));
+                    return transformed;
+                }
+            } catch {}
+        }
+    }
+
     const object = await env.MEDIA_BUCKET.get(key);
     if (object === null) {
         return new Response('Not found', { status: 404 });
@@ -229,12 +289,6 @@ async function handleMedia(request, env, ctx) {
     object.writeHttpMetadata(headers);
     headers.set('etag', object.httpEtag);
 
-    let cacheControl = 'public, max-age=31536000, immutable'; // Default for images
-    if (key.startsWith('stories/')) {
-        const storyTtl = (env.STORY_TTL_HOURS || 24) * 3600;
-        cacheControl = `public, max-age=${storyTtl}`;
-    }
-    
     headers.set('cache-control', cacheControl);
     headers.set('access-control-allow-origin', '*');
 

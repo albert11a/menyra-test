@@ -1,4 +1,4 @@
-import { auth, db, app } from "/shared/firebase-config.js?v=2026-03-08-firestore-net-1";
+import { auth, db, app } from "/shared/firebase-config.js?v=2026-03-10-startup-1";
 import { BUNNY_EDGE_BASE } from "/shared/bunny-edge.js";
 import { BRAND_UI } from "/shared/brand-ui.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
@@ -3255,21 +3255,21 @@ function resolveStoryBusinessIdentity(restaurantId = "") {
   const hasCanonicalRestaurant = !!restaurant?.id;
   const ownFallbackName = ownStory ? sanitizeStoryBusinessName(state.userProfile?.name || "") : "";
   const ownFallbackAvatar = ownStory ? String(state.userProfile?.avatar || "").trim() : "";
-  const name = String(
+  const canonicalName = sanitizeStoryBusinessName(
     restaurant?.name
     || restaurant?.restaurantName
     || restaurant?.displayName
     || restaurant?.businessName
-    || ownFallbackName
     || ""
-  ).trim();
-  const avatar = String(
+  );
+  const canonicalAvatar = String(
     restaurant?.logoUrl
     || restaurant?.logo
     || restaurant?.logoURL
-    || ownFallbackAvatar
     || ""
   ).trim();
+  const name = hasCanonicalRestaurant ? canonicalName : ownFallbackName;
+  const avatar = hasCanonicalRestaurant ? canonicalAvatar : ownFallbackAvatar;
   return {
     restaurantId: rid,
     known: !!(hasCanonicalRestaurant || ownStory),
@@ -3293,7 +3293,7 @@ function normalizeStoryItemForDisplay(item = {}) {
   );
   const sourceImg = String(item?.img || item?.logo || item?.logoUrl || "").trim();
   const name = identity.hasCanonicalRestaurant
-    ? (identity.name || sourceName || "")
+    ? (identity.name || "")
     : (identity.name || sourceName);
   const img = identity.hasCanonicalRestaurant
     ? (identity.avatar || "")
@@ -5266,7 +5266,7 @@ function updateStoryLogoNodes(story) {
   const logoSource = identity.hasCanonicalRestaurant
     ? (identity.avatar || "")
     : (identity.avatar || sourceLogo);
-  const allowCacheFallback = !(identity.hasCanonicalRestaurant && !identity.avatar);
+  const allowCacheFallback = !identity.hasCanonicalRestaurant;
   const logoUrl = resolveRestaurantLogo(story.restaurantId, logoSource, "thumb", allowCacheFallback);
   document.querySelectorAll(`[data-story-logo="${storyId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
@@ -5280,7 +5280,7 @@ function updateStoryMetaNodes(story) {
   const identity = resolveStoryBusinessIdentity(story.restaurantId);
   const sourceName = sanitizeStoryBusinessName(story.name || "");
   const label = identity.hasCanonicalRestaurant
-    ? (identity.name || sourceName || "")
+    ? (identity.name || "")
     : (identity.name || sourceName || "");
   const live = !!story.isLive;
   document.querySelectorAll(`[data-story-border="${storyId}"]`).forEach((el) => {
@@ -8698,7 +8698,7 @@ function buildStoriesFromFeed(posts) {
     const sourceName = sanitizeStoryBusinessName(post.business || post.restaurantName || "");
     const sourceLogo = String(post.logo || "").trim();
     const name = identity.hasCanonicalRestaurant
-      ? (identity.name || sourceName || "")
+      ? (identity.name || "")
       : (identity.name || sourceName || "");
     const logo = identity.hasCanonicalRestaurant
       ? (identity.avatar || "")
@@ -9557,7 +9557,15 @@ applyPendingInitialRouteState();
 render();
 schedulePerfWarmMark();
 if (!state.user) {
-  queueMicrotask(() => ensureTabData(state.activeTab));
+  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => {
+      void ensureTabData(state.activeTab);
+    });
+  } else {
+    setTimeout(() => {
+      void ensureTabData(state.activeTab);
+    }, 0);
+  }
 }
 
 onAuthStateChanged(auth, (user) => {
@@ -9619,8 +9627,10 @@ onAuthStateChanged(auth, (user) => {
     state.auth.open = false;
     loadGuestScopedPersisted();
     state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
-    ensureTabData(state.activeTab);
     render();
+    queueMicrotask(() => {
+      void ensureTabData(state.activeTab);
+    });
   }
   lastAuthUid = nextUid;
 });
