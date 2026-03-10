@@ -125,6 +125,24 @@ export function ensureTabDataCore({
     void loadFeed();
   }
 
+  const activeUid = String(state.user?.uid || "").trim();
+  const runAuthProfileLoad = () => {
+    if (!activeUid) return Promise.resolve(null);
+    const currentPromise = state.__authProfileLoadPromise;
+    if (currentPromise && state.__authProfileLoadUid === activeUid) {
+      return currentPromise;
+    }
+    const nextPromise = Promise.resolve(loadAuthProfileSafe(state.user)).finally(() => {
+      if (state.__authProfileLoadPromise === nextPromise) {
+        state.__authProfileLoadPromise = null;
+        state.__authProfileLoadUid = "";
+      }
+    });
+    state.__authProfileLoadPromise = nextPromise;
+    state.__authProfileLoadUid = activeUid;
+    return nextPromise;
+  };
+
   const needsRestaurants = tab === "map" || tab === "search" || tab === "orders" || (!FAST_MODE && tab === "feed");
   if (needsRestaurants && !dataLoaded.restaurants) {
     dataLoaded.restaurants = true;
@@ -144,11 +162,12 @@ export function ensureTabDataCore({
     }
   }
   if (hasUser && tab === "profile") {
-    void loadAuthProfileSafe(state.user);
+    void runAuthProfileLoad();
   }
 
   if (hasUser && tab === "menu") {
-    void loadAuthProfileSafe(state.user).then(() => {
+    void runAuthProfileLoad().then(() => {
+      if (activeUid !== String(state.user?.uid || "").trim()) return;
       const restaurantId = state.userProfile.restaurantId || "";
       if (restaurantId) {
         void loadMenuForRestaurantSafe(restaurantId, { source: "hybrid" });
