@@ -174,7 +174,9 @@ export function createSessionDataRuntimeController({
       const storiesUpdated = state.stories.length
         ? false
         : refreshFeedStoriesFn({ posts: state.feedPosts, force: true });
-      preloadFeedHeroImagesFn(state.feedPosts);
+      if (state.activeTab === "feed") {
+        preloadFeedHeroImagesFn(state.feedPosts);
+      }
 
       if (feedUpdated || storiesUpdated) {
         const inMain = getLastRenderModeFn() === "main";
@@ -547,7 +549,9 @@ export function createSessionDataRuntimeController({
           renderFn();
         }
       }
-      preloadFeedHeroImagesFn(state.feedPosts);
+      if (state.activeTab === "feed") {
+        preloadFeedHeroImagesFn(state.feedPosts);
+      }
       if (cached.fresh && !force) return;
     }
 
@@ -579,7 +583,9 @@ export function createSessionDataRuntimeController({
       state.feedPosts = next;
       const storiesChanged = state.stories.length ? false : refreshFeedStoriesFn({ posts: next });
       scheduleStoriesRefresh({ force, refreshUi: state.activeTab === "feed" });
-      preloadFeedHeroImagesFn(next);
+      if (state.activeTab === "feed") {
+        preloadFeedHeroImagesFn(next);
+      }
       if (prevIds === nextIds && !storiesChanged) return;
       const inMain = getLastRenderModeFn() === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
