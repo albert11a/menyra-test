@@ -101,6 +101,191 @@ function addNotificationQueryToClientLink(link, notificationId) {
   return `${safeLink}${glue}notif=${encodeURIComponent(safeNotificationId)}`;
 }
 
+function toMillis(value) {
+  try {
+    if (value && typeof value.toMillis === "function") return Number(value.toMillis()) || 0;
+    if (value && typeof value.toDate === "function") return Number(value.toDate().getTime()) || 0;
+  } catch {}
+  if (value instanceof Date) return Number(value.getTime()) || 0;
+  if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+  if (typeof value === "string") {
+    const parsed = new Date(value).getTime();
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+function normalizeStoryName(value) {
+  const text = asText(value);
+  if (!text) return "";
+  return text.toLowerCase() === "business" ? "" : text;
+}
+
+function extractStoryRestaurantId(docSnap, data = {}) {
+  const direct = asText(data.restaurantId || data.rid);
+  if (direct) return direct;
+  let current = docSnap?.ref?.parent?.parent || null;
+  while (current) {
+    const parentId = asText(current?.parent?.id).toLowerCase();
+    if (parentId === "restaurants") return asText(current.id);
+    current = current?.parent?.parent || null;
+  }
+  return "";
+}
+
+function sendCors(res, req) {
+  const origin = asText(req.get("origin"), "*");
+  res.set("Access-Control-Allow-Origin", origin === "null" ? "*" : origin);
+  res.set("Vary", "Origin");
+  res.set("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+}
+
+async function queryActiveFeed(limitCount = 14) {
+  try {
+    return await db
+      .collection("socialFeed")
+      .where("status", "==", "active")
+      .orderBy("createdAt", "desc")
+      .limit(limitCount)
+      .get();
+  } catch {
+    return db.collection("socialFeed").limit(limitCount).get();
+  }
+}
+
+async function queryActiveStories(limitCount = 12) {
+  try {
+    return await db
+      .collectionGroup("stories")
+      .where("status", "==", "active")
+      .orderBy("createdAt", "desc")
+      .limit(limitCount)
+      .get();
+  } catch {
+    return db.collectionGroup("stories").limit(limitCount).get();
+  }
+}
+
+exports.socialBootstrapFeed = functions
+  .region("us-central1")
+  .https.onRequest(async (req, res) => {
+    sendCors(res, req);
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+    if (req.method !== "GET") {
+      res.status(405).json({ ok: false, error: "Method not allowed" });
+      return;
+    }
+
+    try {
+      const [restaurantsSnap, feedSnap, storiesSnap] = await Promise.all([
+        db.collection("restaurants").limit(120).get(),
+        queryActiveFeed(16),
+        queryActiveStories(16)
+      ]);
+
+      const restaurants = [];
+      const restaurantMap = new Map();
+      restaurantsSnap.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        const id = asText(docSnap.id);
+        if (!id) return;
+        const rest = {
+          id,
+          name: asText(data.name || data.restaurantName || data.displayName),
+          restaurantName: asText(data.restaurantName || data.name),
+          logoUrl: asText(data.logoUrl || data.logo || data.logoURL),
+          city: asText(data.city),
+          type: asText(data.type || data.customerType || data.category || data.kind || data.restaurantType)
+        };
+        restaurants.push(rest);
+        restaurantMap.set(id, rest);
+      });
+
+      const feedPosts = [];
+      feedSnap.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        const rid = asText(data.rid || data.restaurantId);
+        if (!rid) return;
+        const rest = restaurantMap.get(rid) || {};
+        const mediaRow = Array.isArray(data.media) && data.media.length ? data.media[0] : null;
+        feedPosts.push({
+          id: asText(docSnap.id),
+          restaurantId: rid,
+          business: asText(data.businessName || data.restaurantName || rest.name || rest.restaurantName, "Business"),
+          logo: asText(rest.logoUrl || rest.logo || data.logoUrl || data.logo || data.logoURL),
+          location: asText(data.city || rest.city, "Prishtina"),
+          content: asText(data.caption || data.captionShort),
+          image: asText(data.thumbUrl || data.mediaUrl || mediaRow?.thumbUrl || mediaRow?.url || data.imageUrl || data.url),
+          likes: Number(data.likesCount || data.likes || 0) || 0,
+          comments: Number(data.commentsCount || data.comments || 0) || 0,
+          createdAt: toMillis(data.createdAt),
+          category: asText(data.postType, "food"),
+          isLive: !!data.isLive,
+          ownerType: "restaurant",
+          ownerId: rid
+        });
+      });
+
+      const storiesByRestaurant = new Map();
+      storiesSnap.forEach((docSnap) => {
+        const data = docSnap.data() || {};
+        const status = asText(data.status, "active").toLowerCase();
+        if (status && status !== "active" && status !== "live") return;
+        if (data.active === false || data.isActive === false) return;
+        const rid = extractStoryRestaurantId(docSnap, data);
+        if (!rid || storiesByRestaurant.has(rid)) return;
+        const rest = restaurantMap.get(rid) || {};
+        const canonicalName = normalizeStoryName(rest.name || rest.restaurantName || rest.displayName || "");
+        const sourceName = normalizeStoryName(data.businessName || data.restaurantName || "");
+        const canonicalLogo = asText(rest.logoUrl || rest.logo || rest.logoURL);
+        const sourceLogo = asText(data.logoUrl || data.logo);
+        const media = asText(data.imageUrl || data.mediaUrl || data.videoUrl || data.embedUrl || data.url);
+        const name = canonicalName || sourceName;
+        const img = canonicalLogo || sourceLogo || media;
+        if (!name || !img) return;
+        storiesByRestaurant.set(rid, {
+          id: rid,
+          restaurantId: rid,
+          name,
+          img,
+          isLive: data.isLive !== undefined ? !!data.isLive : true,
+          createdAt: toMillis(data.createdAt)
+        });
+      });
+
+      const stories = Array.from(storiesByRestaurant.values())
+        .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
+        .slice(0, 12)
+        .map((row) => ({
+          id: row.id,
+          restaurantId: row.restaurantId,
+          name: row.name,
+          img: row.img,
+          isLive: !!row.isLive
+        }));
+
+      res.set("Cache-Control", "public, max-age=30, s-maxage=90, stale-while-revalidate=180");
+      res.status(200).json({
+        ok: true,
+        ts: Date.now(),
+        data: {
+          restaurants: restaurants.slice(0, 120),
+          feedPosts: feedPosts.slice(0, 16),
+          stories
+        }
+      });
+    } catch (err) {
+      res.status(500).json({
+        ok: false,
+        error: asText(err?.message, "Bootstrap fetch failed")
+      });
+    }
+  });
+
 exports.sendWebPushOnNotificationCreate = functions
   .region("us-central1")
   .firestore.document("users/{userId}/notifications/{notificationId}")
