@@ -9,11 +9,38 @@ function log(...args) {
 }
 
 const BETA_UPDATE_CHANNEL = "beta-auto-update-v1";
-const SOCIAL_SW_URL = "/apps/menyra-social/sw.js";
+const SOCIAL_SW_URL_BASE = "/apps/menyra-social/sw.js";
 const SOCIAL_SW_SCOPE = "/apps/menyra-social/";
-const SW_UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+const SW_UPDATE_CHECK_INTERVAL_MS = 3 * 60 * 1000;
 
 let swUpdateTimer = null;
+
+function readSocialAppVersionToken() {
+  try {
+    const fromWindow = String(window.__MENYRA_SOCIAL_APP_VERSION__ || "").trim();
+    if (fromWindow) return fromWindow;
+    const moduleScript = document.querySelector('script[type="module"][src*="/apps/menyra-social/social-app.js"]');
+    const src = String(moduleScript?.getAttribute?.("src") || "").trim();
+    if (!src) return "";
+    const parsed = new URL(src, window.location.origin);
+    return String(parsed.searchParams.get("v") || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function buildSocialSwUrl() {
+  const versionToken = readSocialAppVersionToken();
+  if (!versionToken) return SOCIAL_SW_URL_BASE;
+  const separator = SOCIAL_SW_URL_BASE.includes("?") ? "&" : "?";
+  return `${SOCIAL_SW_URL_BASE}${separator}v=${encodeURIComponent(versionToken)}`;
+}
+
+function buildUpdateChannel() {
+  const versionToken = readSocialAppVersionToken();
+  if (!versionToken) return BETA_UPDATE_CHANNEL;
+  return `${BETA_UPDATE_CHANNEL}::${versionToken}`;
+}
 
 function scheduleSwUpdateChecks(reg) {
   const runUpdate = () => reg.update().catch(() => null);
@@ -26,17 +53,20 @@ function scheduleSwUpdateChecks(reg) {
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") runUpdate();
   });
+  window.addEventListener("online", runUpdate);
 }
 
 async function registerSW() {
   if (!('serviceWorker' in navigator)) return;
 
   try {
-    const reg = await navigator.serviceWorker.register(SOCIAL_SW_URL, {
+    const swUrl = buildSocialSwUrl();
+    const updateChannel = buildUpdateChannel();
+    const reg = await navigator.serviceWorker.register(swUrl, {
       scope: SOCIAL_SW_SCOPE,
       updateViaCache: "none"
     });
-    document.documentElement.dataset.pwaUpdateChannel = BETA_UPDATE_CHANNEL;
+    document.documentElement.dataset.pwaUpdateChannel = updateChannel;
     log('registered', reg);
     scheduleSwUpdateChecks(reg);
 

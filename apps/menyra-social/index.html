@@ -376,7 +376,7 @@
   </script>
   <script>
     (() => {
-      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-03-07-favorites-10").catch(() => {});
+      const loadPwa = () => import("/apps/menyra-social/pwa.js?v=2026-03-10-sw-auto-11").catch(() => {});
       if ("requestIdleCallback" in window) {
         window.requestIdleCallback(() => loadPwa(), { timeout: 3500 });
       } else {

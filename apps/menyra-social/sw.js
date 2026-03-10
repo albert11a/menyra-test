@@ -1,9 +1,8 @@
-const CACHE_NAME = "mnyra-social-cache-v5-beta-update";
+const CACHE_NAME = "mnyra-social-cache-v6-auto-update";
 const CACHE_PREFIX = "mnyra-social-cache-";
 const APP_SCOPE = "/apps/menyra-social/";
 const APP_SHELL_URL = "/apps/menyra-social/index.html";
 const BETA_UPDATE_CHANNEL = "beta-auto-update-v1";
-const CODE_ASSET_NETWORK_TIMEOUT_MS = 1100;
 const EXTERNAL_STATIC_HOSTS = new Set([
   "www.gstatic.com",
   "fonts.googleapis.com",
@@ -171,29 +170,21 @@ async function staleWhileRevalidate(request) {
   return network || cached || new Response("", { status: 504, statusText: "Fetch failed" });
 }
 
-async function networkFirstWithTimeout(request, { timeoutMs = CODE_ASSET_NETWORK_TIMEOUT_MS } = {}) {
+async function networkFirst(request, { bypassHttpCache = false } = {}) {
   const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
-  const networkPromise = (async () => {
-    try {
-      const cacheBypassReq = new Request(request, { cache: "no-cache" });
-      const response = await fetch(cacheBypassReq);
-      if (response && (response.ok || response.type === "opaque")) {
-        cache.put(request, response.clone()).catch(() => null);
-      }
-      return response;
-    } catch {
-      return null;
+  try {
+    const networkReq = bypassHttpCache
+      ? new Request(request, { cache: "no-cache" })
+      : request;
+    const response = await fetch(networkReq);
+    if (response && (response.ok || response.type === "opaque")) {
+      cache.put(request, response.clone()).catch(() => null);
     }
-  })();
-  const timeoutPromise = new Promise((resolve) => {
-    setTimeout(() => resolve(null), timeoutMs);
-  });
-  const raceResponse = await Promise.race([networkPromise, timeoutPromise]);
-  if (raceResponse) return raceResponse;
-  if (cached) return cached;
-  const eventualResponse = await networkPromise;
-  return eventualResponse || new Response("", { status: 504, statusText: "Network failed" });
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    return cached || new Response("", { status: 504, statusText: "Network failed" });
+  }
 }
 
 self.addEventListener("fetch", (event) => {
@@ -210,6 +201,7 @@ self.addEventListener("fetch", (event) => {
   const isCodeAsset = req.destination === "script"
     || req.destination === "style"
     || /\.(mjs|js|css)$/i.test(url.pathname);
+  const hasVersionToken = url.searchParams.has("v") || url.searchParams.has("version");
   const isExternalStatic = isExternalStaticRequest(url, req);
 
   if (!inScope && !isImage && !isExternalStatic) return;
@@ -231,7 +223,11 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (inScope && isCodeAsset) {
-    event.respondWith(networkFirstWithTimeout(req));
+    if (hasVersionToken) {
+      event.respondWith(staleWhileRevalidate(req));
+      return;
+    }
+    event.respondWith(networkFirst(req, { bypassHttpCache: true }));
     return;
   }
 
