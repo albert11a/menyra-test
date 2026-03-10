@@ -67,8 +67,6 @@
   <link rel="dns-prefetch" href="//menyra-media.alberthoti-vsa.workers.dev">
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="dns-prefetch" href="//www.gstatic.com">
-  <link rel="preconnect" href="https://us-central1-menyra-c0e68.cloudfunctions.net" crossorigin>
-  <link rel="dns-prefetch" href="//us-central1-menyra-c0e68.cloudfunctions.net">
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin>
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -76,7 +74,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-10-instant-2">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-10-instant-3">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-07-perf-7">
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js" crossorigin>
@@ -316,9 +314,9 @@
   <div id="app" aria-busy="true"></div>
   <script>
     (() => {
-      const ENDPOINT = "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
       const BOOTSTRAP_EVENT = "menyra-social-bootstrap";
-      window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__ = ENDPOINT;
+      const ENDPOINT = String(window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__ || "").trim();
+      if (!ENDPOINT) return;
       const fetchBootstrap = async () => {
         const controller = ("AbortController" in window) ? new AbortController() : null;
         const timer = window.setTimeout(() => controller?.abort(), 1200);
@@ -344,7 +342,7 @@
       fetchBootstrap().catch(() => {});
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-10-instant-2"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-10-instant-3"></script>
   <script>
     (() => {
       const loadLucide = () => {

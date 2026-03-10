@@ -834,7 +834,7 @@ const CACHE_KEYS = {
   stories: "menyra_social_stories_cache_v1"
 };
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
-const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
+const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = "";
 const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v1::${uid}` : "");
 const businessPostsKey = (rid) => (rid ? `menyra_social_business_posts_cache_v1::${rid}` : "");
 const staffCacheKey = (uid) => (uid ? `menyra_social_staff_cache_v1::${uid}` : "");
