@@ -110,6 +110,7 @@ export function createSessionDataRuntimeController({
   const userProfileCacheMap = userProfileCache || new Map();
   const focusCacheMap = focusCache || new Map();
   const menuCacheMap = menuCache || new Map();
+  let restaurantsFreshReconcileQueued = false;
 
   if (!state || !dataLoaded) {
     return {
@@ -142,7 +143,11 @@ export function createSessionDataRuntimeController({
     let needsRestaurantMetaHydration = false;
     if (restaurantsCache?.data?.length) {
       state.restaurants = restaurantsCache.data;
-      needsRestaurantMetaHydration = restaurantsCache.data.some((rest) => !(rest?.logoUrl || rest?.logo || rest?.logoURL));
+      needsRestaurantMetaHydration = restaurantsCache.data.some((rest) => {
+        const logo = String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
+        const name = String(rest?.name || rest?.restaurantName || rest?.displayName || "").trim().toLowerCase();
+        return !logo || !name || name === "business";
+      });
     }
 
     const feedCache = readCacheFn(cacheKeys.feed);
@@ -418,48 +423,22 @@ export function createSessionDataRuntimeController({
   }
 
   async function loadRestaurants({ force = false } = {}) {
-    const cached = readCacheFn(cacheKeys.restaurants, cacheTtl.restaurants);
-    if (cached?.data?.length) {
-      if (!state.restaurants.length) {
-        state.restaurants = await enrichRestaurantsWithPublicMetaFn(cached.data);
-        rebuildBusinessLocationsFn();
-        if (getLastRenderModeFn() === "main") updateShellDomFn();
-        syncFeedPostLogosFn();
-        if (!state.stories.length) {
-          refreshFeedStoriesFn({ force: true });
-        }
-        void loadStoriesForFeedFn({ force: true, refreshUi: state.activeTab === "feed" });
-        cleanupLeafletFn();
-        const inMain = getLastRenderModeFn() === "main";
-        const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
-        const updatedSearch = state.activeTab === "search" && inMain && refreshSearchViewFn();
-        if (!updatedFeed && !updatedSearch) {
-          if (!inMain) {
-            renderFn();
-          } else if (state.activeTab === "map") {
-            renderFn();
-          } else if (state.activeTab === "feed" || state.activeTab === "search") {
-            renderFn();
-          }
-        }
-      }
-      if (cached.fresh && !force) return;
-    }
-    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return;
-    try {
-      const snap = await getDocsFn(queryFn(collectionFn(db, "restaurants")));
-      const rawList = [];
-      snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
-      const list = await enrichRestaurantsWithPublicMetaFn(rawList);
-      writeCacheFn(cacheKeys.restaurants, list);
-      state.restaurants = list;
+    const buildRestaurantIdentitySignature = (items = []) => (Array.isArray(items) ? items : [])
+      .map((rest) => {
+        const id = String(rest?.id || "").trim();
+        const name = String(rest?.name || rest?.restaurantName || rest?.displayName || "").trim();
+        const logo = String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
+        return `${id}|${name}|${logo}`;
+      })
+      .join(",");
+    const refreshRestaurantDependentViews = () => {
       rebuildBusinessLocationsFn();
       if (getLastRenderModeFn() === "main") updateShellDomFn();
       syncFeedPostLogosFn();
       if (!state.stories.length) {
         refreshFeedStoriesFn({ force: true });
       }
-      void loadStoriesForFeedFn({ force: true, refreshUi: state.activeTab === "feed" });
+      void loadStoriesForFeedFn({ force: false, refreshUi: state.activeTab === "feed" });
       cleanupLeafletFn();
       const inMain = getLastRenderModeFn() === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
@@ -473,6 +452,53 @@ export function createSessionDataRuntimeController({
           renderFn();
         }
       }
+    };
+    const applyRestaurants = (list = [], { shouldWriteCache = false } = {}) => {
+      if (!Array.isArray(list)) return;
+      if (shouldWriteCache) writeCacheFn(cacheKeys.restaurants, list);
+      state.restaurants = list;
+      refreshRestaurantDependentViews();
+    };
+    const reconcileRestaurantMeta = (seed = [], { shouldWriteCache = false } = {}) => {
+      if (!Array.isArray(seed) || !seed.length) return;
+      const seedSignature = buildRestaurantIdentitySignature(seed);
+      void Promise.resolve(enrichRestaurantsWithPublicMetaFn(seed))
+        .then((enriched) => {
+          if (!Array.isArray(enriched) || !enriched.length) return;
+          const nextSignature = buildRestaurantIdentitySignature(enriched);
+          if (nextSignature === seedSignature) return;
+          if (nextSignature === buildRestaurantIdentitySignature(state.restaurants)) return;
+          applyRestaurants(enriched, { shouldWriteCache });
+        })
+        .catch(() => null);
+    };
+
+    const cached = readCacheFn(cacheKeys.restaurants, cacheTtl.restaurants);
+    if (cached?.data?.length) {
+      if (!state.restaurants.length) {
+        applyRestaurants(cached.data);
+        reconcileRestaurantMeta(cached.data, { shouldWriteCache: true });
+      }
+      if (cached.fresh && !force) {
+        if (!restaurantsFreshReconcileQueued) {
+          restaurantsFreshReconcileQueued = true;
+          queueMicrotask(() => {
+            void loadRestaurants({ force: true })
+              .finally(() => {
+                restaurantsFreshReconcileQueued = false;
+              });
+          });
+        }
+        return;
+      }
+    }
+    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return;
+    try {
+      const snap = await getDocsFn(queryFn(collectionFn(db, "restaurants")));
+      const rawList = [];
+      snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
+      applyRestaurants(rawList, { shouldWriteCache: true });
+      reconcileRestaurantMeta(rawList, { shouldWriteCache: true });
     } catch (err) {
       console.error(err);
     }
@@ -517,7 +543,7 @@ export function createSessionDataRuntimeController({
       snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
       const hydrationIds = collectFeedHydrationIdsFn(rows, { max: 8 });
       if (hydrationIds.length) {
-        await hydrateRestaurantsByIdsFn(hydrationIds, { max: hydrationIds.length });
+        void hydrateRestaurantsByIdsFn(hydrationIds, { max: hydrationIds.length });
       }
       const next = rows
         .filter((row) => (row.status || "active") === "active")

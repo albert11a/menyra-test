@@ -61,6 +61,12 @@ export function createFeedViewOrchestrationController({
     !!isLocalBusinessProfileFn(state.userProfile)
     || (hasBusinessProfileHint() && (!!state.user || hasProfileUid()))
   );
+  const isRenderableStory = (story = {}) => {
+    const name = String(story?.name || story?.businessName || story?.restaurantName || "").trim();
+    if (!name || name.toLowerCase() === "business") return false;
+    const logo = String(story?.img || story?.logo || story?.logoUrl || "").trim();
+    return !!logo;
+  };
 
   function renderFeedComposer() {
     if (!shouldShowFeedComposer()) return "";
@@ -74,12 +80,41 @@ export function createFeedViewOrchestrationController({
   }
 
   function renderStoryItem(story, index = 0) {
+    const storyRestaurantId = String(story?.restaurantId || "").trim();
     const borderClass = story.isLive ? "border-red-500 animate-pulse" : "border-slate-200";
-    const storyUrl = buildStoryViewerUrlFn(story.restaurantId);
-    const restaurant = state.restaurants.find((r) => r.id === story.restaurantId) || {};
-    const logoSource = restaurant.logoUrl || restaurant.logo || story.img || "";
-    const imgUrl = resolveRestaurantLogoFn(story.restaurantId, logoSource, "thumb");
-    const storyId = story.restaurantId ? escapeHtmlFn(story.restaurantId) : "";
+    const storyUrl = buildStoryViewerUrlFn(storyRestaurantId);
+    const restaurant = state.restaurants.find((r) => String(r?.id || "").trim() === storyRestaurantId) || null;
+    const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+    const ownStory = ownRestaurantId && ownRestaurantId === storyRestaurantId;
+    const hasCanonicalRestaurant = !!restaurant?.id;
+    const canonicalLogo = String(
+      restaurant?.logoUrl
+      || restaurant?.logo
+      || restaurant?.logoURL
+      || ""
+    ).trim();
+    const canonicalName = String(
+      restaurant?.name
+      || restaurant?.restaurantName
+      || restaurant?.displayName
+      || restaurant?.businessName
+      || ""
+    ).trim();
+    const sourceNameRaw = String(story?.name || story?.businessName || story?.restaurantName || "").trim();
+    const sourceName = sourceNameRaw.toLowerCase() === "business" ? "" : sourceNameRaw;
+    const ownFallbackNameRaw = ownStory ? String(state.userProfile?.name || "").trim() : "";
+    const ownFallbackName = ownFallbackNameRaw.toLowerCase() === "business" ? "" : ownFallbackNameRaw;
+    const ownFallbackLogo = ownStory ? String(state.userProfile?.avatar || "").trim() : "";
+    const storyLabel = hasCanonicalRestaurant
+      ? (canonicalName || sourceName || "")
+      : (ownFallbackName || sourceName || "");
+    const logoSource = hasCanonicalRestaurant
+      ? (canonicalLogo || "")
+      : (ownFallbackLogo || String(story?.img || story?.logo || story?.logoUrl || "").trim());
+    if (!storyLabel || !logoSource) return "";
+    const allowCacheFallback = !(hasCanonicalRestaurant && !canonicalLogo);
+    const imgUrl = resolveRestaurantLogoFn(storyRestaurantId, logoSource, "thumb", allowCacheFallback);
+    const storyId = storyRestaurantId ? escapeHtmlFn(storyRestaurantId) : "";
     const storyAttr = storyId ? `data-story-logo="${storyId}"` : "";
     const storyKeyAttr = storyId ? `data-img-key="story-logo:${storyId}"` : "";
     const storyBorderAttr = storyId ? `data-story-border="${storyId}"` : "";
@@ -92,7 +127,7 @@ export function createFeedViewOrchestrationController({
       <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200" ${storyBorderAttr}>
         <img src="${escapeHtmlFn(imgUrl)}" ${imgAttrs} decoding="async" width="80" height="80" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-[1.8rem] object-contain bg-white group-hover:scale-105 transition-transform" />
       </div>
-      <span class="text-[9px] font-bold tracking-tighter text-slate-800" ${storyNameAttr}>${escapeHtmlFn(story.name)}</span>
+      <span class="text-[9px] font-bold tracking-tighter text-slate-800" ${storyNameAttr}>${escapeHtmlFn(storyLabel)}</span>
     </a>
   `;
   }
@@ -273,7 +308,8 @@ export function createFeedViewOrchestrationController({
     const feedPosts = state.feedPosts
       .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
       .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-    const stories = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeedFn(feedPosts) : state.stories);
+    const storySeed = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeedFn(feedPosts) : state.stories);
+    const stories = (Array.isArray(storySeed) ? storySeed : []).filter((story) => isRenderableStory(story));
     const storiesRow = doc.getElementById("storiesRow");
     const nextSig = `${buildStoriesRowSignatureFn(stories)}|upload:${shouldShowStoryUploadSlot() ? "1" : "0"}`;
     if (storiesRow) {
@@ -305,7 +341,8 @@ export function createFeedViewOrchestrationController({
     const feedPosts = state.feedPosts
       .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
       .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-    const stories = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeedFn(feedPosts) : state.stories);
+    const storySeed = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeedFn(feedPosts) : state.stories);
+    const stories = (Array.isArray(storySeed) ? storySeed : []).filter((story) => isRenderableStory(story));
     return `
     <div id="feedView">
       <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pt-4 pb-8 no-scrollbar">

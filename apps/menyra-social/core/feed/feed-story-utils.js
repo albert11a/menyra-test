@@ -1,6 +1,12 @@
 export function buildStoriesSignatureCore(storyItems = []) {
   return (Array.isArray(storyItems) ? storyItems : [])
-    .map((item) => `${item?.id || ""}|${item?.img || ""}`)
+    .map((item) => {
+      const restaurantId = String(item?.restaurantId || item?.id || "").trim();
+      const img = String(item?.img || item?.logo || "").trim();
+      const name = String(item?.name || "").trim();
+      const isLive = item?.isLive ? "1" : "0";
+      return `${restaurantId}|${img}|${name}|${isLive}`;
+    })
     .join(",");
 }
 

@@ -84,6 +84,7 @@ export function resolveRestaurantLogoCore({
   restaurantId,
   raw,
   size = "avatar",
+  allowCacheFallback = true,
   getOptimizedImageUrl,
   isPlaceholderUrl,
   restaurantLogoCache,
@@ -98,8 +99,10 @@ export function resolveRestaurantLogoCore({
       }
       return url;
     }
-    const cached = restaurantLogoCache?.get?.(restaurantId);
-    if (cached) return cached;
+    if (allowCacheFallback !== false) {
+      const cached = restaurantLogoCache?.get?.(restaurantId);
+      if (cached) return cached;
+    }
   }
   return url;
 }

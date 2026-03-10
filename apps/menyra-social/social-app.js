@@ -1115,6 +1115,9 @@ let liveFeedDisabled = false;
 let liveStoriesDisabled = false;
 let feedStoriesSignature = "";
 let storiesRowSignature = "";
+let storiesFreshReconcileQueued = false;
+const pendingStoryIdentityHydrationIds = new Set();
+let storyIdentityHydrationQueued = false;
 let focusRotateTimer = null;
 let focusRotateKey = "";
 let authInitialized = false;
@@ -1366,11 +1369,12 @@ function scheduleAvatarCacheWrite(url, uid = getActiveUid()) {
   });
 }
 
-function resolveRestaurantLogo(restaurantId, raw, size = "avatar") {
+function resolveRestaurantLogo(restaurantId, raw, size = "avatar", allowCacheFallback = true) {
   return resolveRestaurantLogoCore({
     restaurantId,
     raw,
     size,
+    allowCacheFallback,
     getOptimizedImageUrl,
     isPlaceholderUrl,
     restaurantLogoCache,
@@ -2870,7 +2874,16 @@ function saveFeedPosts(posts, extraMeta = {}) {
 }
 
 function loadPersisted() {
-  return sessionDataRuntimeController.loadPersisted(...arguments);
+  const result = sessionDataRuntimeController.loadPersisted(...arguments);
+  if (state.stories.length) {
+    const nextStories = normalizeStoryItemsForDisplay(state.stories);
+    state.stories = nextStories;
+    feedStoriesSignature = buildStoriesSignature(nextStories);
+    queueStoryIdentityHydration(nextStories, { max: FAST_LIMITS.stories });
+  } else {
+    feedStoriesSignature = "";
+  }
+  return result;
 }
 function loadUserScopedPersisted(user) {
   return sessionDataRuntimeController.loadUserScopedPersisted(...arguments);
@@ -2892,14 +2905,58 @@ function collectFeedHydrationIds(feedRows = [], { max = 6 } = {}) {
     if (!rid || seen.has(rid)) continue;
     seen.add(rid);
     const cached = existing.get(rid) || null;
-    const cachedName = String(cached?.name || cached?.restaurantName || "").trim();
+    const cachedName = String(cached?.name || cached?.restaurantName || cached?.displayName || "").trim();
     const cachedLogo = String(cached?.logoUrl || cached?.logo || cached?.logoURL || "").trim();
+    const hasCachedName = !!cachedName && !isGenericStoryBusinessLabel(cachedName);
     const rowName = String(row?.businessName || row?.restaurantName || row?.business || "").trim();
+    const hasRowName = !!rowName && !isGenericStoryBusinessLabel(rowName);
     const rowLogo = String(row?.logoUrl || row?.logo || row?.logoURL || "").trim();
-    if ((cachedName && cachedLogo) || (rowName && rowLogo)) continue;
+    if ((hasCachedName && cachedLogo) || (hasRowName && rowLogo)) continue;
     ids.push(rid);
   }
   return ids;
+}
+
+function collectStoryHydrationIds(storyRows = [], { max = 12 } = {}) {
+  if (!Array.isArray(storyRows) || !storyRows.length) return [];
+  const existing = new Map((state.restaurants || []).map((rest) => [String(rest?.id || "").trim(), rest]));
+  const ids = [];
+  const seen = new Set();
+  for (const row of storyRows) {
+    if (ids.length >= max) break;
+    const rid = String(row?.restaurantId || row?.id || row?.rid || "").trim();
+    if (!rid || seen.has(rid)) continue;
+    seen.add(rid);
+    const cached = existing.get(rid) || null;
+    const cachedName = String(
+      cached?.name
+      || cached?.restaurantName
+      || cached?.displayName
+      || cached?.businessName
+      || ""
+    ).trim();
+    const cachedLogo = String(cached?.logoUrl || cached?.logo || cached?.logoURL || "").trim();
+    const hasCachedName = !!cachedName && !isGenericStoryBusinessLabel(cachedName);
+    const hasCachedLogo = !!cachedLogo;
+    if (hasCachedName && hasCachedLogo) continue;
+    ids.push(rid);
+  }
+  return ids;
+}
+
+function queueStoryIdentityHydration(storyRows = state.stories, { max = 12 } = {}) {
+  const ids = collectStoryHydrationIds(storyRows, { max });
+  if (!ids.length) return;
+  ids.forEach((id) => pendingStoryIdentityHydrationIds.add(id));
+  if (storyIdentityHydrationQueued) return;
+  storyIdentityHydrationQueued = true;
+  queueMicrotask(() => {
+    storyIdentityHydrationQueued = false;
+    const nextIds = Array.from(pendingStoryIdentityHydrationIds);
+    pendingStoryIdentityHydrationIds.clear();
+    if (!nextIds.length) return;
+    void hydrateRestaurantsByIds(nextIds, { max: nextIds.length });
+  });
 }
 
 async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
@@ -2912,13 +2969,21 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
   const missing = uniqueIds.filter((id) => {
     const stored = existing.get(id);
     if (!stored) return true;
-    return !(stored.logoUrl || stored.logo || stored.logoURL);
+    const name = String(
+      stored.name
+      || stored.restaurantName
+      || stored.displayName
+      || stored.businessName
+      || ""
+    ).trim();
+    const logo = String(stored.logoUrl || stored.logo || stored.logoURL || "").trim();
+    const hasUsableName = !!name && !isGenericStoryBusinessLabel(name);
+    const hasUsableLogo = !!logo;
+    return !(hasUsableName && hasUsableLogo);
   }).slice(0, max);
   if (missing.length === 0) return;
 
-  const loaded = [];
-
-  for (const rid of missing) {
+  const loaded = (await Promise.all(missing.map(async (rid) => {
     try {
       const stored = existing.get(rid) || {};
       let metaData = {};
@@ -2952,20 +3017,20 @@ async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
         || restData.restaurantType
         || ""
       );
-      if (name || logoUrl || city || type) {
-        loaded.push({
-          id: rid,
-          name,
-          restaurantName: restData.restaurantName || "",
-          logoUrl,
-          city,
-          ...(type ? { type, customerType: type } : {})
-        });
-      }
+      if (!(name || logoUrl || city || type)) return null;
+      return {
+        id: rid,
+        name,
+        restaurantName: restData.restaurantName || "",
+        logoUrl,
+        city,
+        ...(type ? { type, customerType: type } : {})
+      };
     } catch (e) {
       console.warn("hydrateRestaurantsByIds failed for", rid, e);
+      return null;
     }
-  }
+  }))).filter(Boolean);
 
   if (loaded.length) {
     state.restaurants = mergeRestaurants(state.restaurants, loaded);
@@ -3077,7 +3142,8 @@ async function enrichRestaurantsWithPublicMeta(restaurants) {
 }
 
 function syncFeedPostLogos() {
-  if (!state.feedPosts.length) return false;
+  const storiesChanged = syncStoryIdentityWithCanonicalBusiness();
+  if (!state.feedPosts.length) return storiesChanged;
   const restMap = new Map();
   state.restaurants.forEach((rest) => {
     if (rest?.id) restMap.set(rest.id, rest);
@@ -3104,17 +3170,125 @@ function syncFeedPostLogos() {
     changed = true;
     next.push({ ...post, logo: resolved });
   });
-  if (!changed && next.length === state.feedPosts.length) return false;
-  state.feedPosts = next;
-  return true;
+  const feedLengthChanged = next.length !== state.feedPosts.length;
+  if (!changed && !feedLengthChanged && !storiesChanged) return false;
+  if (changed || feedLengthChanged) {
+    state.feedPosts = next;
+  }
+  return changed || feedLengthChanged || storiesChanged;
 }
 
 function buildStoriesSignature(storyItems = []) {
   return buildStoriesSignatureCore(storyItems);
 }
 
+function isGenericStoryBusinessLabel(value = "") {
+  return String(value || "").trim().toLowerCase() === "business";
+}
+
+function sanitizeStoryBusinessName(value = "") {
+  const label = String(value || "").trim();
+  if (!label) return "";
+  return isGenericStoryBusinessLabel(label) ? "" : label;
+}
+
+function resolveStoryBusinessIdentity(restaurantId = "") {
+  const rid = String(restaurantId || "").trim();
+  if (!rid) {
+    return {
+      restaurantId: "",
+      known: false,
+      hasCanonicalRestaurant: false,
+      name: "",
+      avatar: "",
+      ownStory: false,
+      restaurant: null
+    };
+  }
+  const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+  const ownStory = ownRestaurantId && ownRestaurantId === rid;
+  const restaurant = state.restaurants.find((row) => String(row?.id || "").trim() === rid) || null;
+  const hasCanonicalRestaurant = !!restaurant?.id;
+  const ownFallbackName = ownStory ? sanitizeStoryBusinessName(state.userProfile?.name || "") : "";
+  const ownFallbackAvatar = ownStory ? String(state.userProfile?.avatar || "").trim() : "";
+  const name = String(
+    restaurant?.name
+    || restaurant?.restaurantName
+    || restaurant?.displayName
+    || restaurant?.businessName
+    || ownFallbackName
+    || ""
+  ).trim();
+  const avatar = String(
+    restaurant?.logoUrl
+    || restaurant?.logo
+    || restaurant?.logoURL
+    || ownFallbackAvatar
+    || ""
+  ).trim();
+  return {
+    restaurantId: rid,
+    known: !!(hasCanonicalRestaurant || ownStory),
+    hasCanonicalRestaurant,
+    name,
+    avatar,
+    ownStory,
+    restaurant
+  };
+}
+
+function normalizeStoryItemForDisplay(item = {}) {
+  const restaurantId = String(item?.restaurantId || item?.id || item?.rid || "").trim();
+  if (!restaurantId) return null;
+  const identity = resolveStoryBusinessIdentity(restaurantId);
+  const sourceName = sanitizeStoryBusinessName(
+    item?.name
+    || item?.businessName
+    || item?.restaurantName
+    || ""
+  );
+  const sourceImg = String(item?.img || item?.logo || item?.logoUrl || "").trim();
+  const name = identity.hasCanonicalRestaurant
+    ? (identity.name || sourceName || "")
+    : (identity.name || sourceName);
+  const img = identity.hasCanonicalRestaurant
+    ? (identity.avatar || "")
+    : (identity.avatar || sourceImg);
+  const resolvedName = sanitizeStoryBusinessName(name);
+  const resolvedImg = String(img || "").trim();
+  return {
+    ...item,
+    id: restaurantId,
+    restaurantId,
+    name: resolvedName,
+    img: resolvedImg,
+    isLive: !!item?.isLive
+  };
+}
+
+function normalizeStoryItemsForDisplay(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => normalizeStoryItemForDisplay(item))
+    .filter(Boolean);
+}
+
+function syncStoryIdentityWithCanonicalBusiness() {
+  if (!Array.isArray(state.stories) || !state.stories.length) return false;
+  const nextStories = normalizeStoryItemsForDisplay(state.stories);
+  const prevSignature = buildStoriesSignature(state.stories);
+  const nextSignature = buildStoriesSignature(nextStories);
+  if (prevSignature === nextSignature) return false;
+  state.stories = nextStories;
+  feedStoriesSignature = nextSignature;
+  writeCache(CACHE_KEYS.stories, nextStories);
+  return true;
+}
+
 function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
   if (Array.isArray(state.stories) && state.stories.length) {
+    if (!feedStoriesSignature) {
+      feedStoriesSignature = buildStoriesSignature(state.stories);
+    }
     return false;
   }
   const result = refreshFeedStoriesCore({
@@ -3125,18 +3299,33 @@ function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
     currentSignature: feedStoriesSignature
   });
   if (!result.updated) return false;
-  feedStoriesSignature = result.signature;
-  state.stories = result.stories;
-  writeCache(CACHE_KEYS.stories, result.stories);
+  const normalizedStories = normalizeStoryItemsForDisplay(result.stories);
+  feedStoriesSignature = buildStoriesSignature(normalizedStories);
+  state.stories = normalizedStories;
+  writeCache(CACHE_KEYS.stories, normalizedStories);
+  queueStoryIdentityHydration(normalizedStories, { max: FAST_LIMITS.stories });
   return true;
 }
 
 async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
   const cached = readCache(CACHE_KEYS.stories, CACHE_TTL_MS.stories);
   if (cached?.data?.length) {
-    state.stories = cached.data;
+    const normalizedCachedStories = normalizeStoryItemsForDisplay(cached.data);
+    state.stories = normalizedCachedStories;
     feedStoriesSignature = buildStoriesSignature(state.stories);
-    if (cached.fresh && !force) return true;
+    queueStoryIdentityHydration(normalizedCachedStories, { max: FAST_LIMITS.stories });
+    if (cached.fresh && !force) {
+      if (!storiesFreshReconcileQueued) {
+        storiesFreshReconcileQueued = true;
+        queueMicrotask(() => {
+          void loadStoriesForFeed({ force: true, refreshUi: state.activeTab === "feed" })
+            .finally(() => {
+              storiesFreshReconcileQueued = false;
+            });
+        });
+      }
+      return true;
+    }
   }
 
   try {
@@ -3153,24 +3342,44 @@ async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
     }
     const docSnaps = [];
     snap.forEach((docSnap) => docSnaps.push(docSnap));
-    const nextStories = storySystemController.mapStorySnapshotRowsToFeedStories({
+    const nextStories = normalizeStoryItemsForDisplay(
+      storySystemController.mapStorySnapshotRowsToFeedStories({
       docSnaps,
       restaurants: state.restaurants,
       canShowFeedRestaurantIdFn: canShowFeedRestaurantId,
       maxItems: FAST_LIMITS.stories,
       toDateSafeFn: toDateSafe
-    });
-    if (!nextStories.length) return false;
+    })
+    );
+    const shouldRefreshUi = !!refreshUi || state.activeTab === "feed";
+    if (!nextStories.length) {
+      if (!state.stories.length) return false;
+      state.stories = [];
+      feedStoriesSignature = "";
+      writeCache(CACHE_KEYS.stories, []);
+      if (shouldRefreshUi) {
+        const inMain = lastRenderMode === "main";
+        const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
+        if (!updatedFeed && state.activeTab === "feed") {
+          render();
+        }
+      }
+      return true;
+    }
 
     const prevSignature = buildStoriesSignature(state.stories);
     const nextSignature = buildStoriesSignature(nextStories);
-    if (prevSignature === nextSignature) return true;
+    if (prevSignature === nextSignature) {
+      feedStoriesSignature = nextSignature;
+      return true;
+    }
 
     state.stories = nextStories;
     feedStoriesSignature = nextSignature;
     writeCache(CACHE_KEYS.stories, nextStories);
+    queueStoryIdentityHydration(nextStories, { max: FAST_LIMITS.stories });
 
-    if (refreshUi) {
+    if (shouldRefreshUi) {
       const inMain = lastRenderMode === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
       if (!updatedFeed && state.activeTab === "feed") {
@@ -5008,9 +5217,13 @@ function updateFeedLogoNodes(post) {
 function updateStoryLogoNodes(story) {
   if (!story?.restaurantId) return;
   const storyId = escapeSelector(story.restaurantId);
-  const restaurant = state.restaurants.find((r) => r.id === story.restaurantId) || {};
-  const logoSource = restaurant.logoUrl || restaurant.logo || story.img || "";
-  const logoUrl = resolveRestaurantLogo(story.restaurantId, logoSource, "thumb");
+  const identity = resolveStoryBusinessIdentity(story.restaurantId);
+  const sourceLogo = String(story.img || story.logo || story.logoUrl || "").trim();
+  const logoSource = identity.hasCanonicalRestaurant
+    ? (identity.avatar || "")
+    : (identity.avatar || sourceLogo);
+  const allowCacheFallback = !(identity.hasCanonicalRestaurant && !identity.avatar);
+  const logoUrl = resolveRestaurantLogo(story.restaurantId, logoSource, "thumb", allowCacheFallback);
   document.querySelectorAll(`[data-story-logo="${storyId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
     if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
@@ -5020,7 +5233,11 @@ function updateStoryLogoNodes(story) {
 function updateStoryMetaNodes(story) {
   if (!story?.restaurantId) return;
   const storyId = escapeSelector(story.restaurantId);
-  const label = story.name || "Business";
+  const identity = resolveStoryBusinessIdentity(story.restaurantId);
+  const sourceName = sanitizeStoryBusinessName(story.name || "");
+  const label = identity.hasCanonicalRestaurant
+    ? (identity.name || sourceName || "")
+    : (identity.name || sourceName || "");
   const live = !!story.isLive;
   document.querySelectorAll(`[data-story-border="${storyId}"]`).forEach((el) => {
     if (!(el instanceof HTMLElement)) return;
@@ -8431,13 +8648,21 @@ function buildStoriesFromFeed(posts) {
   if (!Array.isArray(posts)) return [];
   const map = new Map();
   posts.forEach((post) => {
-    const rid = post.restaurantId || post.ownerId || "";
+    const rid = String(post.restaurantId || post.ownerId || "").trim();
     if (!rid || map.has(rid) || !canShowFeedRestaurantId(rid)) return;
-    const rest = state.restaurants.find(r => r.id === rid) || {};
-    const logo = rest.logoUrl || rest.logo || post.logo || "";
+    const identity = resolveStoryBusinessIdentity(rid);
+    const sourceName = sanitizeStoryBusinessName(post.business || post.restaurantName || "");
+    const sourceLogo = String(post.logo || "").trim();
+    const name = identity.hasCanonicalRestaurant
+      ? (identity.name || sourceName || "")
+      : (identity.name || sourceName || "");
+    const logo = identity.hasCanonicalRestaurant
+      ? (identity.avatar || "")
+      : (identity.avatar || sourceLogo);
     map.set(rid, {
+      id: rid,
       restaurantId: rid,
-      name: post.business || post.restaurantName || "Business",
+      name,
       img: logo,
       isLive: false
     });
@@ -8446,9 +8671,7 @@ function buildStoriesFromFeed(posts) {
 }
 
 function buildStoriesRowSignature(items) {
-  return (items || [])
-    .map((item) => item.restaurantId || "")
-    .join(";");
+  return buildStoriesSignature(items || []);
 }
 
 function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {

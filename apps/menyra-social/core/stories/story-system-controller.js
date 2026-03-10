@@ -133,8 +133,21 @@ export function createStorySystemController({
   function extractStoryRestaurantIdFromDoc(docSnap, row = {}) {
     const direct = String(row.restaurantId || row.rid || "").trim();
     if (direct) return direct;
-    const parent = docSnap?.ref?.parent?.parent;
-    return parent ? String(parent.id || "").trim() : "";
+    let currentDocRef = docSnap?.ref?.parent?.parent || null;
+    while (currentDocRef) {
+      const parentCollectionId = String(currentDocRef?.parent?.id || "").trim().toLowerCase();
+      if (parentCollectionId === "restaurants") {
+        return String(currentDocRef.id || "").trim();
+      }
+      currentDocRef = currentDocRef?.parent?.parent || null;
+    }
+    return "";
+  }
+
+  function sanitizeStoryBusinessName(value = "") {
+    const label = String(value || "").trim();
+    if (!label) return "";
+    return label.toLowerCase() === "business" ? "" : label;
   }
 
   function mapStorySnapshotRowsToFeedStories({
@@ -148,7 +161,13 @@ export function createStorySystemController({
     const restList = Array.isArray(restaurants) ? restaurants : [];
     const sortedRows = safeRows
       .map((docSnap) => ({ docSnap, data: docSnap?.data?.() || {} }))
-      .sort((a, b) => (toDateSafeFn(b.data.createdAt)?.getTime() || 0) - (toDateSafeFn(a.data.createdAt)?.getTime() || 0));
+      .sort((a, b) => {
+        const timeDiff = (toDateSafeFn(b.data.createdAt)?.getTime() || 0) - (toDateSafeFn(a.data.createdAt)?.getTime() || 0);
+        if (timeDiff !== 0) return timeDiff;
+        const aRestaurantId = extractStoryRestaurantIdFromDoc(a.docSnap, a.data);
+        const bRestaurantId = extractStoryRestaurantIdFromDoc(b.docSnap, b.data);
+        return String(aRestaurantId || "").localeCompare(String(bRestaurantId || ""));
+      });
 
     const storyMap = new Map();
     sortedRows.forEach(({ docSnap, data }) => {
@@ -167,11 +186,36 @@ export function createStorySystemController({
       ).trim();
       if (!media && !(data.libraryId && data.videoId)) return;
 
-      const restaurant = restList.find((row) => String(row?.id || "") === restaurantId) || {};
-      const logoSource = restaurant.logoUrl || restaurant.logo || data.logoUrl || data.logo || media;
+      const restaurant = restList.find((row) => String(row?.id || "").trim() === restaurantId) || {};
+      const hasKnownRestaurantIdentity = !!restaurant?.id;
+      const canonicalLogo = String(
+        restaurant.logoUrl
+        || restaurant.logo
+        || restaurant.logoURL
+        || ""
+      ).trim();
+      const sourceLogo = String(data.logoUrl || data.logo || "").trim();
+      const canonicalName = sanitizeStoryBusinessName(
+        restaurant.name
+        || restaurant.restaurantName
+        || restaurant.displayName
+        || restaurant.businessName
+        || ""
+      );
+      const sourceName = sanitizeStoryBusinessName(
+        data.businessName
+        || data.restaurantName
+        || ""
+      );
+      const logoSource = hasKnownRestaurantIdentity
+        ? (canonicalLogo || "")
+        : (sourceLogo || media);
       storyMap.set(restaurantId, {
+        id: restaurantId,
         restaurantId,
-        name: data.businessName || data.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
+        name: hasKnownRestaurantIdentity
+          ? (canonicalName || sourceName || "")
+          : (sourceName || ""),
         img: logoSource,
         isLive: data.isLive !== undefined ? !!data.isLive : true
       });
