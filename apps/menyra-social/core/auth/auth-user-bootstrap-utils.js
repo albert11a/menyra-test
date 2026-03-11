@@ -33,6 +33,9 @@ export async function bootstrapAuthenticatedSessionCore({
   const ensureTab = typeof ensureTabData === "function"
     ? ensureTabData
     : (() => {});
+  const readActiveTab = typeof activeTab === "function"
+    ? activeTab
+    : (() => activeTab);
   const canContinue = typeof shouldContinue === "function"
     ? shouldContinue
     : (() => true);
@@ -57,6 +60,6 @@ export async function bootstrapAuthenticatedSessionCore({
 
   runNonBlocking(() => ensureFollowing());
   runNonBlocking(() => startLive(user));
-  runNonBlocking(() => ensureTab(activeTab));
+  runNonBlocking(() => ensureTab(readActiveTab()));
   return true;
 }

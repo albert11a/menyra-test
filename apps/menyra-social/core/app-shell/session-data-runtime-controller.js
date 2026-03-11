@@ -790,7 +790,7 @@ export function createSessionDataRuntimeController({
       },
       startLiveListeners: (currentUser) => startLiveListenersFn(currentUser),
       ensureTabData: (tab) => ensureTabDataFn(tab),
-      activeTab: state.activeTab
+      activeTab: () => state.activeTab
     });
   }
 
