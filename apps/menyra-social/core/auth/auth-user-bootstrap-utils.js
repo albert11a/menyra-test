@@ -1,6 +1,7 @@
 export async function bootstrapAuthenticatedSessionCore({
   user = null,
   loadAuthProfile,
+  markBootstrapAuthProfileLoaded,
   getRestaurantId,
   hydrateRestaurantsByIds,
   resolveRoleSwitchTargets,
@@ -15,6 +16,9 @@ export async function bootstrapAuthenticatedSessionCore({
   const loadProfile = typeof loadAuthProfile === "function"
     ? loadAuthProfile
     : (async () => {});
+  const markBootstrapProfileLoaded = typeof markBootstrapAuthProfileLoaded === "function"
+    ? markBootstrapAuthProfileLoaded
+    : (() => {});
   const readRestaurantId = typeof getRestaurantId === "function"
     ? getRestaurantId
     : (() => "");
@@ -72,6 +76,8 @@ export async function bootstrapAuthenticatedSessionCore({
 
   runNonBlocking("auth-bootstrap.ensureFollowingLoaded", () => ensureFollowing());
   runNonBlocking("auth-bootstrap.startLiveListeners", () => startLive(user));
-  runNonBlocking("auth-bootstrap.ensureTabData", () => ensureTab(readActiveTab()));
+  const currentTab = readActiveTab();
+  markBootstrapProfileLoaded(user, { activeTab: currentTab });
+  runNonBlocking("auth-bootstrap.ensureTabData", () => ensureTab(currentTab));
   return true;
 }

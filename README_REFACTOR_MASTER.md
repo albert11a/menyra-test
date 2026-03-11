@@ -1,6 +1,6 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-11 04:30:35 +01:00
+Last updated: 2026-03-11 05:56:55 +01:00
 
 ## Current overall status
 - Batch 1: Completed (client auth shortcut backdoor removed).
@@ -11,6 +11,11 @@ Last updated: 2026-03-11 04:30:35 +01:00
 - Startup First-Click Navigation Stability Fix: Completed and pushed (remove stale bootstrap tab override race).
 - Media upload/worker compatibility hardening: Completed and pushed (`99b3df9`, Authorization header ticket path for worker CORS compatibility).
 - Tracking + function ticket-secret continuity sync: Completed and pushed (`38d6a2b`).
+- Tracking continuity docs sync: Completed and pushed (`133dc37`).
+- Batch 4: Completed and pushed (`7c1844c`, dedupe public bootstrap fetch on fresh load).
+- Startup/auth silent failure surfacing: Completed and pushed (`252645a`).
+- Batch 6: Completed and pushed (`4edc9f1`, listener lifecycle cleanup + dead/no-op removal).
+- Batch 7: Completed locally, uncommitted (startup/auth bootstrap auth-profile handoff dedupe).
 - Manual smoke validation status: passed for guest flow, normal user flow, business owner flow, lead creation, and parts of older lead/staff/CEO flow.
 
 ## Current checkpoint / commit progression (main)
@@ -20,6 +25,11 @@ Last updated: 2026-03-11 04:30:35 +01:00
 4. `c9fcd36` — startup first-click-after-refresh navigation race fix
 5. `99b3df9` — worker upload CORS compatibility (`Authorization: Bearer <ticket>`)
 6. `38d6a2b` — tracking continuity + media ticket secret fallback in function
+7. `133dc37` — docs tracking continuity sync
+8. `7c1844c` — Batch 4 startup public bootstrap fetch dedupe
+9. `252645a` — surface critical startup/auth silent failures
+10. `4edc9f1` — Batch 6 listener lifecycle cleanup
+11. Local working tree — Batch 7 startup/auth bootstrap auth-profile handoff dedupe (uncommitted)
 
 ## Architecture risks (current)
 - Critical (reduced): global-open Firestore rule removed in source; deployment validation still pending.
@@ -177,7 +187,7 @@ Last updated: 2026-03-11 04:30:35 +01:00
 
 ## Priority queue
 - Immediate: Run full emulator/staging Firestore rule validation (still part of Batch 3B completion gate).
-- Next (after Batch 3B validation sign-off): Batch 4 startup dedup/perf hardening.
+- Next after current local Batch 7 review: Batch 3B validation gate execution (emulator/staging and query-path smoke checks).
 
 ## Forgotten/missing items register (tracked)
 - Critical missing item: validated Firestore-rule execution evidence in emulator/staging for this hardened ruleset.
@@ -210,10 +220,14 @@ Last updated: 2026-03-11 04:30:35 +01:00
 - Startup First-Click Navigation Stability Fix: stale startup tab snapshot replaced with live tab resolver.
 - Upload CORS compatibility hotfix: use `Authorization` ticket header for worker write calls.
 - Tracking continuity sync: checkpoint/log alignment with pushed state.
+- Batch 4: dedupe public bootstrap fetch on fresh load by reusing inline bootstrap payload / window bootstrap promise.
+- Startup/auth silent failure surfacing: route bootstrap/auth/tab-ensure failures into explicit runtime reporting instead of silent drops.
+- Batch 6: clean stale listener-state reads, detached profile listener teardown, and dead lifecycle no-ops.
+- Batch 7 (local only): skip the first redundant auth-profile reload after bootstrap when restored tab is `profile` or `menu`.
 
 ## Pending fix groups
-- Batch 3B validation gate execution (emulator/staging and query-path smoke checks).
-- Batch 4 to Batch 9 from checkpoint plan (not started in this pass).
+- Batch 3B validation gate execution (emulator/staging and query-path smoke checks) is the exact next batch after local Batch 7 review.
+- Further technical batch selection after Batch 3B remains pending; do not reopen completed Batch 4 scope.
 
 ## Rollback notes
 - Batch 3B rollback unit:
@@ -241,8 +255,6 @@ Last updated: 2026-03-11 04:30:35 +01:00
   - `README_REFACTOR_ROLLBACK.md`
 
 ## Current recommended next step
-- Next technical batch: Batch 4 startup bootstrap dedup/perf hardening.
-- Pre-start gate (must complete first): close Batch 3B validation evidence and verify on deployed hosts that:
-  - Superadmin `staff` build/version card renders correctly,
-  - first click after refresh does not bounce back to feed,
-  - media uploads succeed with worker ticket flow.
+- Current local batch awaiting review: Batch 7 startup/auth bootstrap auth-profile handoff dedupe.
+- Current committed safe checkpoint: `4edc9f1`.
+- Exact next batch after Batch 7 review: Batch 3B emulator/staging validation evidence + query-path smoke checks.

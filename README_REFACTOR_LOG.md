@@ -248,3 +248,84 @@
   - Next technical batch set to Batch 4 (startup dedup/perf hardening), with Batch 3B validation evidence as pre-start gate.
 - Behavior intent:
   - No runtime behavior changes; documentation continuity only.
+
+## 2026-03-11 04:58:52 +01:00 — Batch 4: Startup Bootstrap Dedup/Performance Hardening
+- Fix batch title: Batch 4 — Startup Bootstrap Dedup/Performance Hardening
+- Exact files changed:
+  - `apps/menyra-social/index.html`
+  - `apps/menyra-social/social-app.js`
+- Exact purpose:
+  - Dedupe the fresh-load public bootstrap fetch path so inline bootstrap data and the window bootstrap promise are reused instead of triggering duplicate startup work.
+- Risk level: Medium
+- Regression risk: Low (startup bootstrap fetch path only)
+- What changed:
+  - Reused inline bootstrap payload when present on fresh load.
+  - Reused the existing window bootstrap promise instead of starting an extra public bootstrap fetch.
+- Validation notes:
+  - Confirmed commit in real history: `7c1844c` (`perf(startup): dedupe public bootstrap fetch on fresh load`).
+- Follow-up notes:
+  - This batch was completed and pushed before the current local Batch 7 work.
+
+## 2026-03-11 05:06:56 +01:00 — Startup/Auth Silent Failure Surfacing
+- Fix batch title: Startup/Auth Silent Failure Surfacing
+- Exact files changed:
+  - `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+  - `apps/menyra-social/core/auth/tab-auth-load-utils.js`
+  - `apps/menyra-social/social-app.js`
+- Exact purpose:
+  - Surface critical startup/auth/bootstrap failures through explicit runtime reporting instead of silently swallowing them.
+- Risk level: Medium
+- Regression risk: Low (error-reporting and failure visibility hardening only)
+- What changed:
+  - Routed bootstrap and auth-tab ensure failures into explicit reporting paths.
+  - Preserved non-blocking behavior while making silent startup/auth drops visible.
+- Validation notes:
+  - Confirmed commit in real history: `252645a` (`chore(runtime): surface critical startup/auth silent failures`).
+- Follow-up notes:
+  - This batch was completed and pushed before the current local Batch 7 work.
+
+## 2026-03-11 05:42:24 +01:00 — Batch 6: Listener Lifecycle Cleanup + Dead / No-Op Removal
+- Fix batch title: Batch 6 — Listener Lifecycle Cleanup + Dead / No-Op Removal
+- Exact files changed:
+  - `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js`
+  - `apps/menyra-social/core/auth/tab-auth-load-utils.js`
+  - `apps/menyra-social/social-app.js`
+- Exact purpose:
+  - Remove verified dead lifecycle remnants and fix stale listener-state reads / detached listener teardown on high-value runtime paths.
+- Risk level: Medium
+- Regression risk: Low (listener lifecycle only)
+- What changed:
+  - Switched notifications tab listener-state checks to a live unsubscribe getter.
+  - Added automatic teardown for detached public-profile listeners.
+  - Removed dead lifecycle remnants from `social-app.js`.
+- Validation notes:
+  - Confirmed commit in real history: `4edc9f1` (`fix(social): clean listener lifecycle dead paths`).
+- Follow-up notes:
+  - `4edc9f1` is the current committed safe checkpoint before the local Batch 7 work.
+
+## 2026-03-11 05:56:55 +01:00 — Batch 7: Startup/Auth Bootstrap Auth-Profile Handoff Dedupe (Local Only)
+- Fix batch title: Batch 7 — Startup/Auth Bootstrap Auth-Profile Handoff Dedupe
+- Exact files changed:
+  - `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+  - `apps/menyra-social/core/auth/tab-auth-load-utils.js`
+  - `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Prevent the first post-bootstrap `profile` / `menu` tab ensure from immediately re-running `loadAuthProfile` for the same signed-in user.
+- Risk level: Medium
+- Regression risk: Low (narrow startup/auth handoff fix)
+- What changed:
+  - Added a bootstrap-to-tab-ensure one-shot auth-profile dedupe handoff keyed by `uid` and restored tab.
+  - Applied the handoff at the exact `ensureTabData` tab handoff point instead of earlier in bootstrap.
+  - Cleared the one-shot dedupe state during user-scoped reset.
+  - Updated tracking docs to the real current committed checkpoint `4edc9f1` and recorded Batch 7 as local-only work.
+- Validation notes:
+  - `node --check apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+  - `node --check apps/menyra-social/core/auth/tab-auth-load-utils.js`
+  - `node --check apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+- Follow-up notes:
+  - Not committed and not pushed.
+  - Exact next batch after local Batch 7 review is Batch 3B validation gate execution.

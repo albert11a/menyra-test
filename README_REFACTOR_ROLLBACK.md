@@ -1,6 +1,6 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-11 04:30:35 +01:00
+Last updated: 2026-03-11 05:56:55 +01:00
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -16,7 +16,12 @@ Last updated: 2026-03-11 04:30:35 +01:00
 6. Post-Superadmin build-status batch checkpoint
 7. Post-startup first-click navigation stability batch checkpoint
 8. Post-upload CORS compatibility fix checkpoint (`99b3df9`)
-9. Post-tracking continuity sync + ticket-secret fallback checkpoint (`38d6a2b`) — current safe checkpoint
+9. Post-tracking continuity sync + ticket-secret fallback checkpoint (`38d6a2b`)
+10. Post-tracking docs sync checkpoint (`133dc37`)
+11. Post-Batch 4 startup public bootstrap fetch dedupe checkpoint (`7c1844c`)
+12. Post-startup/auth silent failure surfacing checkpoint (`252645a`)
+13. Post-Batch 6 listener lifecycle cleanup checkpoint (`4edc9f1`) — current committed safe checkpoint
+14. Local working tree: Batch 7 startup/auth bootstrap auth-profile handoff dedupe — not yet a safe committed checkpoint
 
 ## Completed changes and rollback coupling
 ### Batch 1 — Critical Security Lock + Tracking Scaffolding
@@ -212,5 +217,41 @@ Blast radius:
 2. Validate startup/auth bootstrap and first navigation click behavior after refresh.
 3. Append rollback record to log and update master/next docs.
 
+### Batch 4 startup public bootstrap fetch dedupe rollback
+1. Revert:
+   - `apps/menyra-social/index.html`
+   - `apps/menyra-social/social-app.js`
+2. Validate fresh-load bootstrap still completes and no duplicate public bootstrap fetch guard remains.
+3. Append rollback record to log and update master/next docs.
+
+### Startup/auth silent failure surfacing rollback
+1. Revert:
+   - `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+   - `apps/menyra-social/core/auth/tab-auth-load-utils.js`
+   - `apps/menyra-social/social-app.js`
+2. Validate startup/auth/bootstrap behavior and note that silent-failure reporting will no longer surface those failures explicitly.
+3. Append rollback record to log and update master/next docs.
+
+### Batch 6 listener lifecycle cleanup rollback
+1. Revert:
+   - `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js`
+   - `apps/menyra-social/core/auth/tab-auth-load-utils.js`
+   - `apps/menyra-social/social-app.js`
+2. Validate notifications tab hydration, public-profile exits, and listener cleanup behavior after tab/view switching.
+3. Append rollback record to log and update master/next docs.
+
+### Batch 7 startup/auth bootstrap auth-profile handoff dedupe rollback
+Status: Local only, uncommitted
+1. Revert:
+   - `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+   - `apps/menyra-social/core/auth/tab-auth-load-utils.js`
+   - `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+   - `README_REFACTOR_MASTER.md`
+   - `README_REFACTOR_LOG.md`
+   - `README_REFACTOR_NEXT.md`
+   - `README_REFACTOR_ROLLBACK.md`
+2. Validate startup/auth restore when landing directly on `profile` or `menu`.
+3. Keep `4edc9f1` as the latest committed safe checkpoint until this batch is committed.
+
 ## Planned future rollback boundaries
-- Batch 4 (startup dedup/perf) will be one coupled unit across startup HTML/app runtime/PWA files.
+- Next rollback boundary will be defined after Batch 7 review and commit.

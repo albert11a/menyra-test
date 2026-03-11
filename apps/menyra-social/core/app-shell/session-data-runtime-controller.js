@@ -373,6 +373,10 @@ export function createSessionDataRuntimeController({
     stopRestaurantMetaListenersFn();
     stopMenuItemMetaListenersFn();
     setMenuDetailCloseBoundFn(false);
+    state.__authProfileLoadPromise = null;
+    state.__authProfileLoadUid = "";
+    state.__skipNextAuthProfileEnsureUid = "";
+    state.__skipNextAuthProfileEnsureTab = "";
     commentAvatarCacheMap.clear();
     commentAvatarPendingMap.clear();
     userSearchAvatarCacheMap.clear();
@@ -782,6 +786,17 @@ export function createSessionDataRuntimeController({
     await bootstrapAuthenticatedSessionCoreFn({
       user,
       loadAuthProfile: (currentUser) => loadAuthProfileFn(currentUser),
+      markBootstrapAuthProfileLoaded: (currentUser, { activeTab = "" } = {}) => {
+        const uid = String(currentUser?.uid || "").trim();
+        const safeTab = String(activeTab || "").trim();
+        if (!uid || (safeTab !== "profile" && safeTab !== "menu")) {
+          state.__skipNextAuthProfileEnsureUid = "";
+          state.__skipNextAuthProfileEnsureTab = "";
+          return;
+        }
+        state.__skipNextAuthProfileEnsureUid = uid;
+        state.__skipNextAuthProfileEnsureTab = safeTab;
+      },
       getRestaurantId: () => state.userProfile.restaurantId || "",
       hydrateRestaurantsByIds: (ids, options) => hydrateRestaurantsByIdsFn(ids, options),
       resolveRoleSwitchTargets: (currentUser) => resolveRoleSwitchTargetsFn(currentUser),

@@ -138,8 +138,21 @@ export function ensureTabDataCore({
   }
 
   const activeUid = String(state.user?.uid || "").trim();
+  const shouldSkipBootstrapAuthProfileLoad = (requestedTab = tab) => {
+    const skipUid = String(state.__skipNextAuthProfileEnsureUid || "").trim();
+    const skipTab = String(state.__skipNextAuthProfileEnsureTab || "").trim();
+    if (!activeUid || skipUid !== activeUid || skipTab !== String(requestedTab || "").trim()) {
+      return false;
+    }
+    state.__skipNextAuthProfileEnsureUid = "";
+    state.__skipNextAuthProfileEnsureTab = "";
+    return true;
+  };
   const runAuthProfileLoad = () => {
     if (!activeUid) return Promise.resolve(null);
+    if (shouldSkipBootstrapAuthProfileLoad(tab)) {
+      return Promise.resolve(null);
+    }
     const currentPromise = state.__authProfileLoadPromise;
     if (currentPromise && state.__authProfileLoadUid === activeUid) {
       return currentPromise;
