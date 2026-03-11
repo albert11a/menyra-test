@@ -1,6 +1,6 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-11 16:15:36 +01:00
+Last updated: 2026-03-11 19:21:46 +01:00
 
 ## Current overall status
 - Batch 1: Completed (client auth shortcut backdoor removed).
@@ -21,7 +21,8 @@ Last updated: 2026-03-11 16:15:36 +01:00
 - Batch 10: Completed and pushed (`815e8fa`, social-app startup bootstrap wiring reduction).
 - Batch 11: Completed and pushed (`e79c85e`, social-app pending-route startup state extraction).
 - Batch 12: Completed and pushed (`be44f5a`, social-app post-login route-open coordination reduction).
-- Batch 13: Completed locally, uncommitted (social-app public profile runtime extraction).
+- Batch 13: Completed and pushed (`2e0e715`, social-app public profile runtime extraction).
+- Batch 14: Completed locally, uncommitted (social-app restaurant identity runtime extraction).
 - Manual smoke validation status: passed for guest flow, normal user flow, business owner flow, lead creation, and parts of older lead/staff/CEO flow.
 
 ## Current checkpoint / commit progression (main)
@@ -41,7 +42,8 @@ Last updated: 2026-03-11 16:15:36 +01:00
 14. `815e8fa` — Batch 10 social-app startup bootstrap wiring reduction
 15. `e79c85e` — Batch 11 social-app pending-route startup state extraction
 16. `be44f5a` — Batch 12 social-app post-login route-open coordination reduction
-17. Local working tree — Batch 13 social-app public profile runtime extraction (uncommitted)
+17. `2e0e715` — Batch 13 social-app public profile runtime extraction
+18. Local working tree — Batch 14 social-app restaurant identity runtime extraction (uncommitted)
 
 ## Architecture risks (current)
 - Critical (reduced): global-open Firestore rule removed in source; deployment validation still pending.
@@ -198,8 +200,8 @@ Last updated: 2026-03-11 16:15:36 +01:00
 - Unauthorized delete/write attempts fail for protected paths.
 
 ## Priority queue
-- Immediate: Review the local Batch 13 public-profile runtime extraction as one narrow rollback unit.
-- Next after current local Batch 13 review: Batch 14 social-app startup route resolution orchestration reduction.
+- Immediate: Review the local Batch 14 restaurant identity runtime extraction as one narrow rollback unit.
+- Next after current local Batch 14 review: Batch 15 social-app startup route resolution orchestration reduction.
 - Still open: Run full emulator/staging Firestore rule validation (Batch 3B evidence gate).
 
 ## Forgotten/missing items register (tracked)
@@ -242,10 +244,11 @@ Last updated: 2026-03-11 16:15:36 +01:00
 - Batch 10: extract remaining startup public-bootstrap wiring and auth-listener registration glue out of `social-app.js`.
 - Batch 11: extract pending startup/deeplink route state out of `social-app.js` and rewire startup helpers/coordinator to consume that focused state surface.
 - Batch 12: extract post-login route-open detection and blocking/non-blocking open sequencing behind a dedicated startup/auth helper instead of wiring that behavior through `social-app.js`.
-- Batch 13 (local only): extract the public-profile listener/presentation/fetch block out of `social-app.js` into a focused profile runtime helper.
+- Batch 13: extract the public-profile listener/presentation/fetch block out of `social-app.js` into a focused profile runtime helper.
+- Batch 14 (local only): extract the restaurant identity hydration/merge block out of `social-app.js` into a focused common runtime helper.
 
 ## Pending fix groups
-- Batch 14: reduce startup route resolution and auth-route seed orchestration still initiated directly in `social-app.js`.
+- Batch 15: reduce startup route resolution and auth-route seed orchestration still initiated directly in `social-app.js`.
 - Batch 3B validation gate execution (emulator/staging and query-path smoke checks) remains open after the current social-app startup/auth slice.
 - Further technical batch selection after the current social-app startup/auth sequence remains pending; do not reopen completed Batch 4 scope.
 
@@ -275,6 +278,6 @@ Last updated: 2026-03-11 16:15:36 +01:00
   - `README_REFACTOR_ROLLBACK.md`
 
 ## Current recommended next step
-- Current local batch awaiting review: Batch 13 social-app public profile runtime extraction.
-- Current committed safe checkpoint: `be44f5a`.
-- Exact next batch after Batch 13 review: Batch 14 social-app startup route resolution orchestration reduction.
+- Current local batch awaiting review: Batch 14 social-app restaurant identity runtime extraction.
+- Current committed safe checkpoint: `2e0e715`.
+- Exact next batch after Batch 14 review: Batch 15 social-app startup route resolution orchestration reduction.

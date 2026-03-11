@@ -1,32 +1,32 @@
 # MNYRA Refactor Next
 
-Last updated: 2026-03-11 16:15:36 +01:00
+Last updated: 2026-03-11 19:21:46 +01:00
 
 Current local completed batch (uncommitted):
-Batch 13 — Social-App Public Profile Runtime Extraction.
+Batch 14 — Social-App Restaurant Identity Runtime Extraction.
 
 Current committed safe checkpoint:
-`be44f5a` — `refactor(social): reduce post-login route coordination`
+`2e0e715` — `refactor(social): extract public profile runtime`
 
 Current exact next step:
-Review the local Batch 13 change set and either commit it or roll it back as one narrow unit before starting new code work.
+Review the local Batch 14 change set and either commit it or roll it back as one narrow unit before starting new code work.
 
-Current exact next batch after Batch 13 review:
-Batch 14 — Social-App Startup Route Resolution Orchestration Reduction.
+Current exact next batch after Batch 14 review:
+Batch 15 — Social-App Startup Route Resolution Orchestration Reduction.
 
 Why this is next:
-The real current code history now includes Batch 12 at `be44f5a`, and the current open local batch extracts the inline public-profile listener/presentation/fetch block that was still load-bearing inside `social-app.js`.
-The next remaining safe slice in the same broader startup/profile orchestration area is startup route resolution and auth-route seed orchestration.
+The real current code history now includes Batch 13 at `2e0e715`, and the current open local batch extracts the inline restaurant identity hydration/merge block that was still load-bearing inside `social-app.js`.
+The next remaining safe slice in the same startup/auth/route orchestration area is startup route resolution and auth-route seed orchestration.
 The Batch 3B validation evidence gate remains open, but it is not the currently selected social-app reduction slice.
 
 What must be checked now:
-- Open an external business profile and confirm the placeholder profile, resolved profile data, and posts still load correctly.
-- Open an external user profile and confirm cached/fallback/resolved profile behavior still works.
-- Leave an external profile through normal nav and confirm no stray profile listener updates keep firing afterward.
-- Menu/cart or overlay flows that call `showPublicProfile` still open the same public profile view.
+- Load or refresh the feed and confirm restaurant names and logos still hydrate onto feed cards.
+- Load or refresh stories and confirm story business identities still hydrate without duplicate or missing updates.
+- Trigger a restaurant identity patch path and confirm merged restaurant metadata still propagates into dependent views.
+- Confirm cached restaurant hydration plus later Firestore hydration still settle into the same visible feed/story state.
 
 What must not be broken:
 - Fresh login and auth state restore.
-- External business profile opens.
-- External user profile opens.
-- Detached profile listener teardown behavior shipped through `be44f5a`.
+- Feed card restaurant names/logos.
+- Story rail business identity rendering.
+- Existing restaurant merge paths used by feed/profile/settings updates.

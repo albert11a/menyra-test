@@ -466,7 +466,7 @@
   - Completed and pushed as `be44f5a` (`refactor(social): reduce post-login route coordination`).
   - Next selected social-app slice after Batch 12 is public-profile runtime extraction.
 
-## 2026-03-11 16:15:36 +01:00 — Batch 13: Social-App Public Profile Runtime Extraction (Local Only)
+## 2026-03-11 16:15:36 +01:00 — Batch 13: Social-App Public Profile Runtime Extraction
 - Fix batch title: Batch 13 — Social-App Public Profile Runtime Extraction
 - Exact files changed:
   - `apps/menyra-social/social-app.js`
@@ -487,5 +487,30 @@
   - `node --check apps/menyra-social/core/profile/public-profile-runtime-controller.js`
   - `node --check apps/menyra-social/social-app.js`
 - Follow-up notes:
+  - Completed and pushed as `2e0e715` (`refactor(social): extract public profile runtime`).
+  - Next selected social-app slice after Batch 13 is restaurant identity runtime extraction.
+
+## 2026-03-11 19:21:46 +01:00 — Batch 14: Social-App Restaurant Identity Runtime Extraction (Local Only)
+- Fix batch title: Batch 14 — Social-App Restaurant Identity Runtime Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/common/restaurant-identity-runtime-controller.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Reduce the inline restaurant identity hydration and merge orchestration burden in `social-app.js` by extracting the feed/story identity hydration queue, Firestore hydration fetches, and restaurant merge helper into one focused runtime controller.
+- Risk level: Medium
+- Regression risk: Low to Medium (feed/story identity hydration extraction only; surrounding feed, story, and restaurant merge flows preserved)
+- What changed:
+  - Added `core/common/restaurant-identity-runtime-controller.js` to own `collectFeedHydrationIds`, story identity hydration queueing, `hydrateRestaurantsByIds`, and `mergeRestaurants`.
+  - Removed the corresponding inline restaurant identity hydration/merge block from `social-app.js` and rewired existing call sites to use the controller methods.
+  - Kept the same downstream responsibilities in place for business location rebuilds, feed-logo sync, story refresh, and render/update handoff after hydration.
+  - Updated tracking docs to the real current committed checkpoint `2e0e715` and recorded Batch 14 as local-only work.
+- Validation notes:
+  - `node --check apps/menyra-social/core/common/restaurant-identity-runtime-controller.js`
+  - `node --check apps/menyra-social/social-app.js`
+- Follow-up notes:
   - Not committed and not pushed.
-  - Exact next batch after local Batch 13 review is Batch 14 social-app startup route resolution orchestration reduction.
+  - Exact next batch after local Batch 14 review is Batch 15 social-app startup route resolution orchestration reduction.
