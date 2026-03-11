@@ -654,7 +654,7 @@ const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsA
 const PUSH_SW_URL = "/apps/menyra-social/sw.js";
 const PUSH_SW_SCOPE = "/apps/menyra-social/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
-const CRM_LAZY_RENDERERS_MODULE_URL = "/apps/menyra-social/_shared/crm-lazy-renderers.js?v=2026-03-11-superadmin-buildstatus-1";
+const CRM_LAZY_RENDERERS_MODULE_URL = "/apps/menyra-social/_shared/crm-lazy-renderers.js?v=2026-03-11-superadmin-buildstatus-2";
 const BUILD_INFO_ENDPOINT_URL = "/api/build-info";
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
@@ -8387,7 +8387,7 @@ async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType
   const res = await fetch(`${BUNNY_EDGE_BASE}/image/upload`, {
     method: "POST",
     headers: {
-      "X-MNYRA-Media-Ticket": ticket
+      "Authorization": `Bearer ${ticket}`
     },
     body: form
   });
@@ -8413,7 +8413,7 @@ async function uploadRawMediaFile(file, ownerId, { maxBytes = 50 * 1024 * 1024 }
   const res = await fetch(`${BUNNY_EDGE_BASE}/story/upload`, {
     method: "POST",
     headers: {
-      "X-MNYRA-Media-Ticket": ticket
+      "Authorization": `Bearer ${ticket}`
     },
     body: form
   });

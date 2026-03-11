@@ -204,7 +204,12 @@ async function verifyMediaActionTicket({ request, env, action = "", ownerId = ""
   const secret = String(env.MEDIA_ACTION_TICKET_SECRET || "").trim();
   if (!secret) return { ok: false, status: 500, error: "ticket secret missing" };
 
-  const token = String(request.headers.get("x-mnyra-media-ticket") || "").trim();
+  let token = String(request.headers.get("x-mnyra-media-ticket") || "").trim();
+  if (!token) {
+    const authHeader = String(request.headers.get("authorization") || "").trim();
+    const authMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+    token = authMatch ? String(authMatch[1] || "").trim() : "";
+  }
   if (!token) return { ok: false, status: 401, error: "media ticket required" };
 
   const [payloadPart, signaturePart] = token.split(".");
