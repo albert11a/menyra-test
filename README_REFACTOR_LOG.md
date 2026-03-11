@@ -357,7 +357,7 @@
   - Completed and pushed as `090eff5`.
   - Exact next batch after local Batch 9 review is Batch 3B validation gate execution.
 
-## 2026-03-11 06:22:33 +01:00 — Batch 9: Social-App Auth Session Startup Coordinator Extraction (Local Only)
+## 2026-03-11 06:22:33 +01:00 — Batch 9: Social-App Auth Session Startup Coordinator Extraction
 - Fix batch title: Batch 9 — Social-App Auth Session Startup Coordinator Extraction
 - Exact files changed:
   - `apps/menyra-social/social-app.js`
@@ -378,6 +378,34 @@
 - Validation notes:
   - `node --check apps/menyra-social/social-app.js`
   - `node --check apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
+  - Confirmed commit in real history: `2c6daba` (`refactor(social): extract auth session startup coordinator`).
+- Follow-up notes:
+  - Completed and pushed as `2c6daba`.
+  - Exact next batch after local Batch 10 review is Batch 3B validation gate execution.
+
+## 2026-03-11 06:32:27 +01:00 — Batch 10: Social-App Startup Bootstrap Wiring Reduction (Local Only)
+- Fix batch title: Batch 10 — Social-App Startup Bootstrap Wiring Reduction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
+  - `apps/menyra-social/core/app-shell/public-bootstrap-startup-utils.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Reduce the remaining startup-entry wiring load in `social-app.js` by extracting public-bootstrap handoff logic and auth-listener registration glue.
+- Risk level: Low to Medium
+- Regression risk: Low (startup-entry orchestration extraction only; existing runtime flows preserved)
+- What changed:
+  - Added a focused startup helper that binds the public bootstrap listener, applies inline bootstrap payloads, and reports whether a window bootstrap promise already exists.
+  - Extended the auth-session startup coordinator with `start(...)` and internal auth-listener binding so `social-app.js` no longer wires `onAuthStateChanged` directly.
+  - Replaced the remaining inline startup bootstrap/auth-listener glue in `social-app.js` with helper/coordinator calls only.
+  - Updated tracking docs to the real current committed checkpoint `2c6daba` and recorded Batch 10 as local-only work.
+- Validation notes:
+  - `node --check apps/menyra-social/core/app-shell/public-bootstrap-startup-utils.js`
+  - `node --check apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
+  - `node --check apps/menyra-social/social-app.js`
 - Follow-up notes:
   - Not committed and not pushed.
-  - Exact next batch after local Batch 9 review is Batch 3B validation gate execution.
+  - Exact next batch after local Batch 10 review is Batch 3B validation gate execution.

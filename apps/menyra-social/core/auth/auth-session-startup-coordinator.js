@@ -10,6 +10,7 @@ import {
 export function createAuthSessionStartupCoordinator({
   state = null,
   auth = null,
+  onAuthStateChangedFn = null,
   windowObj = null,
   queueMicrotaskFn = null,
   setTimeoutFn = null,
@@ -51,6 +52,7 @@ export function createAuthSessionStartupCoordinator({
     : (() => {});
   let lastAuthUid = "";
   let authTransitionSeq = 0;
+  let authStateListenerBound = false;
 
   function isCurrentAuthTransition(transitionSeq, expectedUid = "") {
     if (transitionSeq !== authTransitionSeq) return false;
@@ -203,8 +205,30 @@ export function createAuthSessionStartupCoordinator({
     lastAuthUid = nextUid;
   }
 
+  function bindAuthStateListener() {
+    if (authStateListenerBound) return;
+    if (!auth || typeof onAuthStateChangedFn !== "function") return;
+    authStateListenerBound = true;
+    onAuthStateChangedFn(auth, (user) => {
+      handleAuthStateChanged(user);
+    });
+  }
+
+  function start({
+    hasInlineBootstrapPayload = false,
+    hasWindowBootstrapPromise = false
+  } = {}) {
+    initialize({
+      hasInlineBootstrapPayload,
+      hasWindowBootstrapPromise
+    });
+    bindAuthStateListener();
+  }
+
   return {
     initialize,
-    handleAuthStateChanged
+    handleAuthStateChanged,
+    bindAuthStateListener,
+    start
   };
 }

@@ -85,6 +85,7 @@ import {
   createBridgeShellBootstrapBundle,
   buildSessionDataRuntimeControllerDeps
 } from "./core/app-shell/controller-deps-factory.js";
+import { preparePublicBootstrapStartup } from "./core/app-shell/public-bootstrap-startup-utils.js";
 import { createSessionDataRuntimeController } from "./core/app-shell/session-data-runtime-controller.js";
 import { createProfileMenuFocusRenderController } from "./core/profile/profile-menu-focus-render-controller.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
@@ -9775,21 +9776,18 @@ async function deleteMenuItemById(itemId) {
 }
 
 loadPersisted();
-bindPublicBootstrapPayloadListener();
-let hasInlineBootstrapPayload = false;
-let hasWindowBootstrapPromise = false;
-if (typeof window !== "undefined") {
-  const inlineBootstrap = window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__;
-  if (inlineBootstrap && typeof inlineBootstrap === "object") {
-    hasInlineBootstrapPayload = true;
-    applyPublicBootstrapPayload(inlineBootstrap, { refreshUi: false });
-  }
-  hasWindowBootstrapPromise = !!window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__
-    && typeof window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__.then === "function";
-}
+const {
+  hasInlineBootstrapPayload,
+  hasWindowBootstrapPromise
+} = preparePublicBootstrapStartup({
+  windowObj: typeof window === "undefined" ? null : window,
+  bindPublicBootstrapPayloadListener,
+  applyPublicBootstrapPayload
+});
 const authSessionStartupCoordinator = createAuthSessionStartupCoordinator({
   state,
   auth,
+  onAuthStateChangedFn: onAuthStateChanged,
   windowObj: typeof window === "undefined" ? null : window,
   queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
   setTimeoutFn: typeof setTimeout === "function" ? setTimeout : null,
@@ -9824,13 +9822,9 @@ const authSessionStartupCoordinator = createAuthSessionStartupCoordinator({
   openChatFromQuery: () => maybeOpenChatFromQuery()
 });
 
-authSessionStartupCoordinator.initialize({
+authSessionStartupCoordinator.start({
   hasInlineBootstrapPayload,
   hasWindowBootstrapPromise
-});
-
-onAuthStateChanged(auth, (user) => {
-  authSessionStartupCoordinator.handleAuthStateChanged(user);
 });
 
 window.addEventListener("load", () => {

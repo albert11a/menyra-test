@@ -1,6 +1,6 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-11 06:22:33 +01:00
+Last updated: 2026-03-11 06:32:27 +01:00
 
 ## Current overall status
 - Batch 1: Completed (client auth shortcut backdoor removed).
@@ -17,7 +17,8 @@ Last updated: 2026-03-11 06:22:33 +01:00
 - Batch 6: Completed and pushed (`4edc9f1`, listener lifecycle cleanup + dead/no-op removal).
 - Batch 7: Completed and pushed (`a5ff4c9`, startup/auth bootstrap auth-profile handoff dedupe).
 - Batch 8: Completed and pushed (`090eff5`, social-app auth-startup state helper extraction).
-- Batch 9: Completed locally, uncommitted (social-app auth session startup coordinator extraction).
+- Batch 9: Completed and pushed (`2c6daba`, social-app auth session startup coordinator extraction).
+- Batch 10: Completed locally, uncommitted (social-app startup bootstrap wiring reduction).
 - Manual smoke validation status: passed for guest flow, normal user flow, business owner flow, lead creation, and parts of older lead/staff/CEO flow.
 
 ## Current checkpoint / commit progression (main)
@@ -33,7 +34,8 @@ Last updated: 2026-03-11 06:22:33 +01:00
 10. `4edc9f1` — Batch 6 listener lifecycle cleanup
 11. `a5ff4c9` — Batch 7 startup/auth bootstrap auth-profile handoff dedupe
 12. `090eff5` — Batch 8 social-app auth-startup state helper extraction
-13. Local working tree — Batch 9 social-app auth session startup coordinator extraction (uncommitted)
+13. `2c6daba` — Batch 9 social-app auth session startup coordinator extraction
+14. Local working tree — Batch 10 social-app startup bootstrap wiring reduction (uncommitted)
 
 ## Architecture risks (current)
 - Critical (reduced): global-open Firestore rule removed in source; deployment validation still pending.
@@ -191,7 +193,7 @@ Last updated: 2026-03-11 06:22:33 +01:00
 
 ## Priority queue
 - Immediate: Run full emulator/staging Firestore rule validation (still part of Batch 3B completion gate).
-- Next after current local Batch 9 review: Batch 3B validation gate execution (emulator/staging and query-path smoke checks).
+- Next after current local Batch 10 review: Batch 3B validation gate execution (emulator/staging and query-path smoke checks).
 
 ## Forgotten/missing items register (tracked)
 - Critical missing item: validated Firestore-rule execution evidence in emulator/staging for this hardened ruleset.
@@ -229,10 +231,11 @@ Last updated: 2026-03-11 06:22:33 +01:00
 - Batch 6: clean stale listener-state reads, detached profile listener teardown, and dead lifecycle no-ops.
 - Batch 7: skip the first redundant auth-profile reload after bootstrap when restored tab is `profile` or `menu`.
 - Batch 8: extract auth-startup state wrapper helpers out of `social-app.js` into a focused auth utility module.
-- Batch 9 (local only): extract initial auth restore and auth transition startup orchestration out of `social-app.js` into a focused coordinator.
+- Batch 9: extract initial auth restore and auth transition startup orchestration out of `social-app.js` into a focused coordinator.
+- Batch 10 (local only): extract remaining startup public-bootstrap wiring and auth-listener registration glue out of `social-app.js`.
 
 ## Pending fix groups
-- Batch 3B validation gate execution (emulator/staging and query-path smoke checks) is the exact next batch after local Batch 9 review.
+- Batch 3B validation gate execution (emulator/staging and query-path smoke checks) is the exact next batch after local Batch 10 review.
 - Further technical batch selection after Batch 3B remains pending; do not reopen completed Batch 4 scope.
 
 ## Rollback notes
@@ -261,6 +264,6 @@ Last updated: 2026-03-11 06:22:33 +01:00
   - `README_REFACTOR_ROLLBACK.md`
 
 ## Current recommended next step
-- Current local batch awaiting review: Batch 9 social-app auth session startup coordinator extraction.
-- Current committed safe checkpoint: `090eff5`.
-- Exact next batch after Batch 9 review: Batch 3B emulator/staging validation evidence + query-path smoke checks.
+- Current local batch awaiting review: Batch 10 social-app startup bootstrap wiring reduction.
+- Current committed safe checkpoint: `2c6daba`.
+- Exact next batch after Batch 10 review: Batch 3B emulator/staging validation evidence + query-path smoke checks.
