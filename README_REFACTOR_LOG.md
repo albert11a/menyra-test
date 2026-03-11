@@ -301,9 +301,9 @@
 - Validation notes:
   - Confirmed commit in real history: `4edc9f1` (`fix(social): clean listener lifecycle dead paths`).
 - Follow-up notes:
-  - `4edc9f1` is the current committed safe checkpoint before the local Batch 7 work.
+  - `4edc9f1` was the committed safe checkpoint before Batch 7 advanced the checkpoint to `a5ff4c9`.
 
-## 2026-03-11 05:56:55 +01:00 — Batch 7: Startup/Auth Bootstrap Auth-Profile Handoff Dedupe (Local Only)
+## 2026-03-11 05:56:55 +01:00 — Batch 7: Startup/Auth Bootstrap Auth-Profile Handoff Dedupe
 - Fix batch title: Batch 7 — Startup/Auth Bootstrap Auth-Profile Handoff Dedupe
 - Exact files changed:
   - `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
@@ -326,6 +326,32 @@
   - `node --check apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
   - `node --check apps/menyra-social/core/auth/tab-auth-load-utils.js`
   - `node --check apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  - Confirmed commit in real history: `a5ff4c9` (`fix(startup): dedupe auth-profile bootstrap handoff`).
+- Follow-up notes:
+  - Completed and pushed as `a5ff4c9`.
+  - Exact next batch after local Batch 8 review is Batch 3B validation gate execution.
+
+## 2026-03-11 06:08:02 +01:00 — Batch 8: Social-App Auth-Startup State Helper Extraction (Local Only)
+- Fix batch title: Batch 8 — Social-App Auth-Startup State Helper Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/auth/auth-startup-state-utils.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Reduce load-bearing startup/auth state wrapper responsibility inside `social-app.js` without changing the surrounding auth bootstrap flow.
+- Risk level: Low to Medium
+- Regression risk: Low (wrapper extraction only; controller-facing callbacks preserved)
+- What changed:
+  - Moved the auth-startup state helper cluster out of `social-app.js` into a focused auth utility module.
+  - Extracted pending initial route application, auth bootstrap snapshot read/write/clear, bootstrap snapshot application, persisted auth-profile hint hydration, and profile storage persistence into the new helper.
+  - Kept the existing callback names and call sites in `social-app.js`, so surrounding controller/runtime wiring did not change shape.
+  - Updated tracking docs to the real current committed checkpoint `a5ff4c9` and recorded Batch 8 as local-only work.
+- Validation notes:
+  - `node --check apps/menyra-social/social-app.js`
+  - `node --check apps/menyra-social/core/auth/auth-startup-state-utils.js`
 - Follow-up notes:
   - Not committed and not pushed.
-  - Exact next batch after local Batch 7 review is Batch 3B validation gate execution.
+  - Exact next batch after local Batch 8 review is Batch 3B validation gate execution.

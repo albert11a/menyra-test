@@ -72,12 +72,8 @@ import {
 } from "./core/auth/route-auth-utils.js";
 import { resolveInitialRouteState } from "./core/auth/initial-route-state.js";
 import {
-  readAuthBootstrapSnapshotCore,
-  buildAuthBootstrapSnapshotPayload,
-  persistAuthBootstrapSnapshot,
-  clearAuthBootstrapSnapshotStorage,
-  applyAuthBootstrapSnapshotToProfile
-} from "./core/auth/auth-bootstrap-snapshot.js";
+  createAuthStartupStateHelpers
+} from "./core/auth/auth-startup-state-utils.js";
 import {
   shouldResetUserScopedStateCore,
   resolvePendingAuthRouteFlagsCore
@@ -217,8 +213,7 @@ import {
 } from "./core/follow/follow-target-utils.js";
 import {
   isGuestSessionCore,
-  sanitizeTabForSessionCore,
-  applyPendingInitialRouteStateCore
+  sanitizeTabForSessionCore
 } from "./core/auth/session-tab-guards.js";
 import {
   loadLogoCacheCore,
@@ -1219,122 +1214,37 @@ function openGuestAuthPrompt(message = "Bitte registrieren oder einloggen, um di
   return true;
 }
 
-function applyPendingInitialRouteState() {
-  const next = applyPendingInitialRouteStateCore({
-    activeTab: state.activeTab,
-    user: state.user,
-    hasProfileView: !!state.profileView,
-    pendingInitialTab,
-    pendingAuthMode,
-    authMode: state.auth.mode,
-    authOpen: !!state.auth.open
-  });
-  state.activeTab = next.activeTab;
-  pendingInitialTab = next.pendingInitialTab;
-  pendingAuthMode = next.pendingAuthMode;
-  state.auth.mode = next.authMode;
-  state.auth.open = next.authOpen;
-}
-
 function getActiveUid() {
   return state.user?.uid || state.userProfile?.uid || "";
 }
 
-function saveUserProfileToStorage(profile = state.userProfile) {
-  const uid = profile?.uid || state.user?.uid || "";
-  if (!uid) return;
-  try {
-    safeStorage.setItem(profileKey(uid), JSON.stringify(profile));
-  } catch {}
-  writeAuthBootstrapSnapshot({
-    uid,
-    name: profile?.name || state.user?.displayName || "",
-    handle: profile?.handle || "",
-    avatar: profile?.avatar || state.user?.photoURL || userAvatarCache || ""
-  });
-}
-
-function readAuthBootstrapSnapshot() {
-  return readAuthBootstrapSnapshotCore({
-    safeStorage,
-    authSnapshotKey: STORAGE_KEYS.authSnapshot,
-    now: () => Date.now()
-  });
-}
-
-function writeAuthBootstrapSnapshot(snapshot = null) {
-  const payload = buildAuthBootstrapSnapshotPayload({
-    snapshot,
-    user: state.user,
-    userProfile: state.userProfile,
-    userAvatarCache,
-    sanitizeDisplayName,
-    getOptimizedImageUrl,
-    isPlaceholderUrl,
-    now: () => Date.now()
-  });
-  if (!payload) return;
-  authBootstrapSnapshot = payload;
-  persistAuthBootstrapSnapshot({
-    safeStorage,
-    authSnapshotKey: STORAGE_KEYS.authSnapshot,
-    payload
-  });
-}
-
-function clearAuthBootstrapSnapshot() {
-  authBootstrapSnapshot = null;
-  clearAuthBootstrapSnapshotStorage({
-    safeStorage,
-    authSnapshotKey: STORAGE_KEYS.authSnapshot
-  });
-}
-
-function applyAuthBootstrapSnapshot(snapshot = authBootstrapSnapshot) {
-  const result = applyAuthBootstrapSnapshotToProfile({
-    snapshot,
-    defaultProfile: DEFAULT_PROFILE,
-    currentProfile: state.userProfile,
-    sanitizeDisplayName,
-    getOptimizedImageUrl
-  });
-  if (!result.applied) return false;
-  state.userProfile = result.nextProfile;
-  if (result.resolvedAvatar && !isPlaceholderUrl(result.resolvedAvatar)) {
-    userAvatarCache = result.resolvedAvatar;
-    lastShellAvatarUrl = result.resolvedAvatar;
-  }
-  return true;
-}
-
-function applyPersistedAuthProfileHints(uid = "") {
-  const safeUid = String(uid || "").trim();
-  if (!safeUid) return false;
-  const raw = safeStorage.getItem(profileKey(safeUid));
-  if (!raw) return false;
-  try {
-    const parsed = JSON.parse(raw) || {};
-    const restaurantId = String(parsed.restaurantId || "").trim();
-    const role = String(parsed.role || "").trim();
-    const roles = Array.isArray(parsed.roles) ? parsed.roles.slice() : [];
-    const name = sanitizeDisplayName(parsed.name || "", "");
-    const handle = String(parsed.handle || "").replace(/^@/, "").trim();
-    const avatar = String(parsed.avatar || "").trim();
-    state.userProfile = {
-      ...state.userProfile,
-      uid: safeUid,
-      role: role || state.userProfile.role,
-      roles: roles.length ? roles : state.userProfile.roles,
-      restaurantId: restaurantId || state.userProfile.restaurantId,
-      name: name || state.userProfile.name,
-      handle: handle || state.userProfile.handle,
-      avatar: avatar || state.userProfile.avatar
-    };
-    return true;
-  } catch {
-    return false;
-  }
-}
+const {
+  applyPendingInitialRouteState,
+  saveUserProfileToStorage,
+  readAuthBootstrapSnapshot,
+  writeAuthBootstrapSnapshot,
+  clearAuthBootstrapSnapshot,
+  applyAuthBootstrapSnapshot,
+  applyPersistedAuthProfileHints
+} = createAuthStartupStateHelpers({
+  state,
+  defaultProfile: DEFAULT_PROFILE,
+  safeStorage,
+  authSnapshotKey: STORAGE_KEYS.authSnapshot,
+  profileKey,
+  sanitizeDisplayName,
+  getOptimizedImageUrl,
+  isPlaceholderUrl,
+  getUserAvatarCache: () => userAvatarCache,
+  setUserAvatarCache: (next) => { userAvatarCache = next; },
+  setLastShellAvatarUrl: (next) => { lastShellAvatarUrl = next; },
+  getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
+  setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
+  getPendingInitialTab: () => pendingInitialTab,
+  setPendingInitialTab: (next) => { pendingInitialTab = next; },
+  getPendingAuthMode: () => pendingAuthMode,
+  setPendingAuthMode: (next) => { pendingAuthMode = next; }
+});
 
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
   saveMenuLayoutToStorageCore({
