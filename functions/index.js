@@ -20,6 +20,7 @@ const MEDIA_TICKET_VERSION = 1;
 const MEDIA_ACTIONS = new Set(["image_upload", "story_upload", "story_delete"]);
 const MEDIA_TICKET_DEFAULT_TTL_SECONDS = 120;
 const MEDIA_TICKET_MAX_TTL_SECONDS = 600;
+let runtimeConfigCache = null;
 
 function asText(value, fallback = "") {
   const text = String(value || "").trim();
@@ -208,6 +209,27 @@ function resolveMediaTicketTtlSeconds() {
   return Math.min(Math.max(Math.round(configured), 30), MEDIA_TICKET_MAX_TTL_SECONDS);
 }
 
+function resolveRuntimeConfig() {
+  if (runtimeConfigCache) return runtimeConfigCache;
+  try {
+    runtimeConfigCache = functions.config() || {};
+  } catch {
+    runtimeConfigCache = {};
+  }
+  return runtimeConfigCache;
+}
+
+function resolveMediaActionTicketSecret() {
+  const fromEnv = asText(process.env.MEDIA_ACTION_TICKET_SECRET);
+  if (fromEnv) return fromEnv;
+
+  const cfg = resolveRuntimeConfig();
+  return asText(
+    cfg?.mnyra?.media_action_ticket_secret ||
+    cfg?.media?.action_ticket_secret
+  );
+}
+
 async function canUserManageOwnerId(uid, ownerId, { allowSelfOwner = false } = {}) {
   const safeUid = asText(uid);
   const safeOwnerId = normalizeMediaOwnerId(ownerId);
@@ -290,7 +312,7 @@ exports.issueMediaActionTicket = functions
       return;
     }
 
-    const secret = asText(process.env.MEDIA_ACTION_TICKET_SECRET);
+    const secret = resolveMediaActionTicketSecret();
     if (!secret) {
       res.status(500).json({ ok: false, error: "Media ticket secret missing" });
       return;

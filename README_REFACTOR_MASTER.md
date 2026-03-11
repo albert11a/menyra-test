@@ -1,12 +1,14 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-11 00:51:31 +01:00
+Last updated: 2026-03-11 03:43:03 +01:00
 
 ## Current overall status
 - Batch 1: Completed (client auth shortcut backdoor removed).
 - Batch 2: Completed (media worker action-ticket authz enforced).
 - Batch 3: Completed (Firestore rules/index baseline captured into repo).
 - Batch 3B: Completed in code, not deployed yet (deny-by-default Firestore rules with explicit path allowlist and ownership checks).
+- Superadmin Staff Build-Status Batch: Completed and pushed (runtime metadata endpoint + staff-view status card).
+- Startup First-Click Navigation Stability Fix: Completed and pushed (remove stale bootstrap tab override race).
 - Manual smoke validation status: passed for guest flow, normal user flow, business owner flow, lead creation, and parts of older lead/staff/CEO flow.
 
 ## Architecture risks (current)
@@ -83,11 +85,42 @@ Last updated: 2026-03-11 00:51:31 +01:00
 - Removed dangerous implicit restaurant-manage path tied only to `users/{uid}.restaurantId`.
 - Added counter-create allowance for menu social documents so first interaction write can create count docs safely when only counter fields are present.
 
+## Superadmin staff build-status feature batch (small scoped)
+- Scope:
+  - Superadmin staff UI only (`state.activeTab === "staff"`).
+  - No redesign, no flow rewrites, no unrelated module split.
+- Added:
+  - Runtime metadata endpoint: `GET /api/build-info` (`api/build-info.js`) returning:
+    - `commitShort`
+    - `commitSha`
+    - `buildTimestamp`
+    - `branch`
+    - `environment`
+  - CRM runtime fetch path in `apps/menyra-social/core/crm/crm-runtime-controller.js`:
+    - loads build metadata when Superadmin staff view is opened
+    - caches result in `state.staff.buildStatus`
+    - exposes loading/error state for non-blocking UI
+  - Staff UI card in `apps/menyra-social/_shared/crm-lazy-renderers.js`:
+    - displays commit, build timestamp, branch, environment
+    - shows small loading/error line without blocking settings controls
+  - Dependency wiring in `apps/menyra-social/social-app.js`:
+    - `BUILD_INFO_ENDPOINT_URL = "/api/build-info"`
+    - passed into CRM runtime controller deps
+  - Cache-bust version bump in app entry/lazy module URLs so clients pull latest build-status fix assets.
+
+## Startup first-click navigation stability fix batch
+- Scope:
+  - Startup/auth bootstrap tab handoff only.
+- Added:
+  - Runtime bootstrap now resolves `activeTab` lazily at execution time instead of using stale snapshot from bootstrap start.
+  - Prevents post-refresh first click from being overridden back to feed by delayed startup non-blocking tab ensure.
+
 ## What remains uncertain (explicit)
 - Emulator validation is blocked locally by missing Java runtime, so syntax/runtime compatibility is not fully proven on this machine.
 - Non-root CEO list queries over `superadmins`/`leads` may require precise query predicates in all call-sites; code indicates compatible filters but this must be validated on emulator/staging.
 - Legacy restaurant records missing owner/team metadata may become non-editable after hardening.
 - Cross-user counter updates are still client-driven and can be inflated by repeated valid calls; this is a known model risk not fully removed in Batch 3B.
+- Build timestamp availability depends on deploy/runtime env variables (`VERCEL_GIT_COMMIT_TIMESTAMP` / `VERCEL_DEPLOYMENT_CREATED_AT` / `BUILD_TIMESTAMP_UTC`); if missing, timestamp is surfaced as unknown.
 
 ## Must-test checklist before deploy (mandatory)
 1. Auth bootstrap
@@ -150,12 +183,19 @@ Last updated: 2026-03-11 00:51:31 +01:00
   - Risk: selective business edit failures after deployment.
   - Fix timing: soon (data audit + backfill script).
   - Blocks 10/10 quality: partially.
+- Medium missing item: deterministic build timestamp pipeline for non-Vercel environments.
+  - Why it matters: commit and env are runtime-derived, but build timestamp may be unknown if deploy platform does not expose timestamp env vars.
+  - Risk: reduced confidence when comparing deployed build age.
+  - Fix timing: soon (standardize `BUILD_TIMESTAMP_UTC` injection in deploy workflow).
+  - Blocks 10/10 quality: partially.
 
 ## Completed fix groups
 - Batch 1: Critical Security Lock + Tracking Scaffolding.
 - Batch 2: Media Upload/Delete Authorization Hardening.
 - Batch 3: Firestore Governance Baseline Capture.
 - Batch 3B: Firestore deny-by-default hardening + explicit path/ownership rules.
+- Superadmin Staff Build-Status Batch: runtime deploy metadata endpoint + compact staff-view status card.
+- Startup First-Click Navigation Stability Fix: stale startup tab snapshot replaced with live tab resolver.
 
 ## Pending fix groups
 - Batch 3B validation gate execution (emulator/staging and query-path smoke checks).
@@ -169,6 +209,22 @@ Last updated: 2026-03-11 00:51:31 +01:00
   - `README_REFACTOR_NEXT.md`
   - `README_REFACTOR_ROLLBACK.md`
 - If rule regressions appear, revert Batch 3B as one unit and re-run previous baseline smoke checks.
+- Superadmin staff build-status rollback unit:
+  - `api/build-info.js`
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/crm/crm-runtime-controller.js`
+  - `apps/menyra-social/_shared/crm-lazy-renderers.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Startup first-click navigation stability rollback unit:
+  - `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+  - `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
 
 ## Current recommended next step
-- Execute the Batch 3B validation checklist in emulator/staging and collect pass/fail evidence before any Firestore rules deploy.
+- Execute Batch 3B Firestore validation gate in emulator/staging and collect evidence, while verifying deployed Superadmin staff build-status visibility and startup first-click navigation stability on real host(s).

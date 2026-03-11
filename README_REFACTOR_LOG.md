@@ -138,3 +138,89 @@
   - Critical missing item: runtime validation evidence is still missing until emulator/staging checks complete.
   - High-value missing item: cross-user counter integrity is still client-driven and should move server-side.
   - Medium missing item: legacy rows lacking ownership/team metadata may require backfill for smooth writes.
+
+## 2026-03-11 02:35:05 +01:00 — Superadmin Staff Build-Status Card (Small Scoped Batch)
+- Fix batch title: Superadmin Staff Build-Status Card (commit/timestamp/branch/env)
+- Exact files changed:
+  - `api/build-info.js`
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/crm/crm-runtime-controller.js`
+  - `apps/menyra-social/_shared/crm-lazy-renderers.js`
+  - `apps/menyra-social/index.html`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Add a compact deploy/build identity card visible in Superadmin staff view so mobile verification of currently deployed build is immediate.
+- Risk level: Medium
+- Regression risk: Low (UI-only addition in staff view + isolated metadata endpoint)
+- What changed:
+  - Added `GET /api/build-info` endpoint returning runtime deploy metadata (`commitShort`, `commitSha`, `buildTimestamp`, `branch`, `environment`) with no-store cache headers.
+  - Wired `BUILD_INFO_ENDPOINT_URL` into CRM runtime controller deps from `social-app.js`.
+  - Added CRM runtime build-status loader:
+    - loads when staff view is opened
+    - stores into `state.staff.buildStatus`
+    - tracks `buildStatusLoading` / `buildStatusError`
+    - local 404 path guarded to avoid repeated retry loop
+  - Added small non-intrusive "Build Status" card to Superadmin staff UI (`renderStaffView`) showing:
+    - commit
+    - build timestamp
+    - branch
+    - env
+  - Added cache-bust version bumps for social app entry and lazy renderer module URL.
+- Behavior intent:
+  - Keep existing CRM behavior intact.
+  - Add transparent runtime build identity with minimal operational overhead.
+- Validation notes:
+  - `node --check apps/menyra-social/social-app.js`
+  - `node --check apps/menyra-social/core/crm/crm-runtime-controller.js`
+  - `node --check apps/menyra-social/_shared/crm-lazy-renderers.js`
+  - `node --check api/build-info.js`
+- Follow-up notes:
+  - If deploy env does not provide timestamp vars (`VERCEL_GIT_COMMIT_TIMESTAMP`, `VERCEL_DEPLOYMENT_CREATED_AT`, `BUILD_TIMESTAMP_UTC`), timestamp will appear as unknown.
+  - No Firestore/auth/media behavior was changed in this batch.
+
+## 2026-03-11 03:18:00 +01:00 — Startup First-Click Navigation Stability Fix
+- Fix batch title: Startup First-Click Navigation Stability Fix (stale bootstrap tab override)
+- Exact files changed:
+  - `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+  - `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+- Exact purpose:
+  - Prevent first manual navigation click after refresh from being overridden back to feed by delayed auth bootstrap tab ensure.
+- Risk level: Medium
+- Regression risk: Low (narrow startup bootstrap tab handoff fix)
+- What changed:
+  - Replaced static `activeTab` snapshot handoff with dynamic runtime resolver during bootstrap non-blocking tab ensure.
+  - Ensures delayed bootstrap uses current tab at execution time.
+- Behavior intent:
+  - Preserve startup/auth flow while removing first-click tab bounce.
+- Validation notes:
+  - `node --check apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+  - `node --check apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+- Follow-up notes:
+  - No auth model changes, no Firestore rule changes, no UI redesign in this batch.
+
+## 2026-03-11 03:43:03 +01:00 — Tracking Continuity Sync (Checkpoint Alignment)
+- Fix batch title: Tracking Continuity Sync (Superadmin build-status + startup navigation fix alignment)
+- Exact files changed:
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Align tracking docs with actual committed/pushed runtime state and keep batch continuity rollback-safe.
+- Risk level: Low
+- Regression risk: Very low (documentation-only batch)
+- What changed:
+  - Corrected CEO-leads references to Superadmin staff build-status placement.
+  - Added startup first-click navigation stability batch into master/log/rollback continuity.
+  - Updated next planned batch to Batch 3B validation gate execution.
+- Behavior intent:
+  - No runtime behavior changes; continuity and rollback docs only.
+- Validation notes:
+  - Cross-checked with pushed commits:
+    - `7aecd7d` (superadmin build-status batch)
+    - `c9fcd36` (startup first-click fix)
+- Follow-up notes:
+  - Next execution batch remains Batch 3B emulator/staging validation gate.

@@ -1,6 +1,6 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-11 00:51:31 +01:00
+Last updated: 2026-03-11 03:43:03 +01:00
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -13,6 +13,8 @@ Last updated: 2026-03-11 00:51:31 +01:00
 3. Post-Batch 2 checkpoint
 4. Post-Batch 3 baseline-capture checkpoint
 5. Post-Batch 3B Firestore hardening checkpoint (current)
+6. Post-Superadmin build-status batch checkpoint
+7. Post-startup first-click navigation stability batch checkpoint (current)
 
 ## Completed changes and rollback coupling
 ### Batch 1 — Critical Security Lock + Tracking Scaffolding
@@ -114,6 +116,55 @@ Blast radius:
 - Highest-risk areas: auth/session bootstrap data reads, social interactions (follow/chat/notifications), business owner writes, CRM queries.
 - Critical missing item note: no completed emulator/staging validation evidence yet; rollback should be immediate if first deployment shows rule rejections on required paths.
 
+### Superadmin Staff Build-Status Card (Small Scoped Batch)
+Status: Completed in source
+
+Coupled technical changes:
+- `api/build-info.js`
+- `apps/menyra-social/social-app.js`
+- `apps/menyra-social/core/crm/crm-runtime-controller.js`
+- `apps/menyra-social/_shared/crm-lazy-renderers.js`
+
+Documentation changes:
+- `README_REFACTOR_MASTER.md`
+- `README_REFACTOR_LOG.md`
+- `README_REFACTOR_NEXT.md`
+- `README_REFACTOR_ROLLBACK.md`
+
+Can be reverted independently:
+- Yes, as one coupled feature unit. No schema/data migration is included.
+
+Must be reverted together if something breaks:
+- All four code files above should be reverted together (endpoint + dependency wiring + runtime loader + UI surface).
+
+Blast radius:
+- Superadmin `staff` view only.
+- Added read-only metadata endpoint (`/api/build-info`) with no auth side effects.
+- No intended impact to Firestore rules, media auth, or non-staff tabs.
+
+### Startup First-Click Navigation Stability Fix
+Status: Completed in source
+
+Coupled technical changes:
+- `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+- `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+
+Documentation changes:
+- `README_REFACTOR_MASTER.md`
+- `README_REFACTOR_LOG.md`
+- `README_REFACTOR_NEXT.md`
+- `README_REFACTOR_ROLLBACK.md`
+
+Can be reverted independently:
+- Yes, as one coupled startup/auth-runtime unit.
+
+Must be reverted together if something breaks:
+- Both startup runtime files above should be reverted together (bootstrap tab handoff contract).
+
+Blast radius:
+- Initial page load / auth bootstrap tab stability.
+- Primary risk if rolled back: first manual navigation after refresh can be overridden back to feed.
+
 ## Rollback procedures
 ### Batch 1 rollback
 1. Revert the three Batch 1 JS files as one set.
@@ -141,6 +192,22 @@ Blast radius:
 2. Re-run Firestore access smoke checks against the previous known-good rules baseline.
 3. Append rollback record to log and update master/next docs.
 4. Keep Batch 3 baseline files (`firestore.indexes.json`, `firebase.json`) intact unless baseline-capture rollback is also required.
+
+### Superadmin build-status batch rollback
+1. Revert:
+   - `api/build-info.js`
+   - `apps/menyra-social/social-app.js`
+   - `apps/menyra-social/core/crm/crm-runtime-controller.js`
+   - `apps/menyra-social/_shared/crm-lazy-renderers.js`
+2. Confirm Superadmin `staff` view opens without build card and existing staff list behavior still works.
+3. Append rollback record to log and update master/next docs.
+
+### Startup first-click navigation stability rollback
+1. Revert:
+   - `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`
+   - `apps/menyra-social/core/app-shell/session-data-runtime-controller.js`
+2. Validate startup/auth bootstrap and first navigation click behavior after refresh.
+3. Append rollback record to log and update master/next docs.
 
 ## Planned future rollback boundaries
 - Batch 4 (startup dedup/perf) will be one coupled unit across startup HTML/app runtime/PWA files.
