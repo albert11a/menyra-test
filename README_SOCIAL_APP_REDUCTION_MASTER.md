@@ -1,6 +1,6 @@
 # MNYRA Social-App Reduction Master
 
-Last updated: 2026-03-11 22:45:59 +01:00
+Last updated: 2026-03-11 23:30:26 +01:00
 
 ## 1. Current real checkpoint summary
 - Current committed checkpoint:
@@ -12,7 +12,7 @@ Last updated: 2026-03-11 22:45:59 +01:00
   - active local uncommitted runtime batch: `Batch E - Upload / Post Publishing / Media Ticket Runtime Extraction`
   - nothing committed or pushed in this pass
 - Current `apps/menyra-social/social-app.js` size:
-  - `6,561` lines
+  - `7,046` lines
   - `234,140` bytes
 - Current reduction direction:
   - startup/auth/public-profile/restaurant-identity/public-bootstrap runtime is already split out in committed history
@@ -268,7 +268,7 @@ Batch E is now locally completed. Treat the first untouched candidate below as t
 ## 7. Staged roadmap from current state to the target 800-1500-line state
 
 ### Stage 0. Current state
-- `social-app.js` is now about `6.56k` lines locally after local Batch E.
+- `social-app.js` is now about `7.05k` lines locally after local Batch E.
 - Startup/auth/public bootstrap plus self-profile/account/avatar, restaurant/lead/auth resolution, menu/focus/catalog, and orders extraction are committed at `HEAD`.
 - Upload/post publishing/media ticket runtime is extracted locally and under review.
 

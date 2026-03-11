@@ -1,6 +1,6 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-11 22:45:59 +01:00
+Last updated: 2026-03-11 23:30:26 +01:00
 
 ## Current committed safe checkpoint
 - `b9b54c7` - `refactor(social): extract orders runtime and view`
@@ -14,7 +14,7 @@ Last updated: 2026-03-11 22:45:59 +01:00
 - Nothing has been committed or pushed in this pass.
 
 ## Current social-app reduction status
-- `apps/menyra-social/social-app.js` is now `6,561` lines and `234,140` bytes locally.
+- `apps/menyra-social/social-app.js` is now `7,046` lines and `234,140` bytes locally.
 - Recent committed social-app reduction checkpoints:
   - `090eff5` - auth-startup state helper extraction
   - `2c6daba` - auth session startup coordinator extraction

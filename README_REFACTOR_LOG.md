@@ -709,6 +709,24 @@
   - `node --check apps/menyra-social/core/media/media-upload-runtime-controller.js`
   - `node --check apps/menyra-social/social-app.js`
 - Follow-up notes:
-  - `apps/menyra-social/social-app.js` is now `6,561` lines and `234,140` bytes locally.
+  - `apps/menyra-social/social-app.js` is now `7,046` lines and `234,140` bytes locally.
   - Not committed and not pushed.
   - Exact next batch after review is Batch F: feed / story identity runtime extraction.
+
+## 2026-03-11 23:30:26 +01:00 — Tracking Continuity Sync (social-app line-count correction)
+- Fix batch title: Tracking Continuity Sync (social-app line-count correction)
+- Exact files changed:
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+- Exact purpose:
+  - Correct the recorded `social-app.js` line count after Batch E to match the actual current file contents.
+- Risk level: Low
+- Regression risk: None (documentation only)
+- What changed:
+  - Replaced the stale `6,561` / `6.56k` values with the correct current `7,046` / `7.05k` values.
+  - Recorded that the earlier count came from an undercounting shell method that ignored blank lines in this file.
+- Validation notes:
+  - Recounted `apps/menyra-social/social-app.js` using a line-break based file read rather than `Measure-Object -Line` on streamed content.
+- Follow-up notes:
+  - No runtime behavior changed.
