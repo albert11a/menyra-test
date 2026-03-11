@@ -685,3 +685,30 @@
   - `apps/menyra-social/social-app.js` is now `6,785` lines and `244,713` bytes locally.
   - Not committed and not pushed.
   - Exact next batch after review is Batch E: upload / post publishing / media ticket runtime extraction.
+
+## 2026-03-11 22:45:59 +01:00 — Batch E: Upload / Post Publishing / Media Ticket Runtime Extraction (Local Only)
+- Fix batch title: Batch E — Upload / Post Publishing / Media Ticket Runtime Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/media/media-upload-runtime-controller.js`
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Correct the stale roadmap/tracking checkpoint to real committed Batch D state at `b9b54c7`.
+  - Move the upload/post publishing/media ticket runtime cluster out of `social-app.js` into a dedicated media runtime controller while keeping existing call contracts stable.
+- Risk level: Medium
+- Regression risk: Medium (upload chooser rendering, media ticket issuance, story/business/user publish flows, and shared compressed-image bridge usage all moved together)
+- What changed:
+  - Added `core/media/media-upload-runtime-controller.js` to own upload view rendering, upload-mode normalization, media ticket issuance, image/story upload requests, business/user post creation, optimistic story refresh handoff, and upload state reset/tab handoff.
+  - Replaced the inline Cluster G runtime block in `social-app.js` with controller wiring plus stable root wrappers for `renderUploadView(...)`, `handleUploadPost(...)`, and the shared `uploadCompressedImage(...)` helper used by avatar/menu/focus flows.
+  - Corrected the tracking docs from stale `edf0cf4` / local-Batch-D state to real committed `HEAD` `b9b54c7`, and recorded Batch E as the active local-only batch.
+- Validation notes:
+  - `node --check apps/menyra-social/core/media/media-upload-runtime-controller.js`
+  - `node --check apps/menyra-social/social-app.js`
+- Follow-up notes:
+  - `apps/menyra-social/social-app.js` is now `6,561` lines and `234,140` bytes locally.
+  - Not committed and not pushed.
+  - Exact next batch after review is Batch F: feed / story identity runtime extraction.

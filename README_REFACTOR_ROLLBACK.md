@@ -1,14 +1,14 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-11 22:18:32 +01:00
+Last updated: 2026-03-11 22:45:59 +01:00
 
 ## Current committed safe checkpoint
-- `edf0cf4` - `refactor(social): extract menu focus public runtime`
+- `b9b54c7` - `refactor(social): extract orders runtime and view`
 
 ## Current local batch note
-- The current local work in this chat is `Batch D - Orders Runtime + Orders View Extraction`.
-- It is not committed or pushed, so the committed safe rollback point remains `edf0cf4`.
-- If this batch is rejected, revert or rework the entire local Batch D unit together.
+- The current local work in this chat is `Batch E - Upload / Post Publishing / Media Ticket Runtime Extraction`.
+- It is not committed or pushed, so the committed safe rollback point remains `b9b54c7`.
+- If this batch is rejected, revert or rework the entire local Batch E unit together.
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -31,12 +31,13 @@ Last updated: 2026-03-11 22:18:32 +01:00
 13. `69981fa` - self profile runtime extraction
 14. `8183197` - auth profile resolution runtime extraction
 15. `edf0cf4` - menu/focus public runtime extraction
+16. `b9b54c7` - orders runtime + orders view extraction
 
 ## Current rollback guidance for the next approved runtime batch
-- Review Batch D before starting Batch E.
+- Review Batch E before starting Batch F.
 - Keep the next committed batch single-domain.
-- Do not mix upload/post publishing runtime with orders, feed/story identity, or CRM runtime in the same rollback unit.
-- Do not reopen menu/focus/orders work in the next batch unless Batch D review finds a regression.
+- Do not mix feed/story identity runtime with the local upload/media batch, shell DOM, or CRM runtime in the same rollback unit.
+- Do not reopen orders or upload/media work in the next batch unless Batch E review finds a regression.
 - Do not use the old "Batch 16 startup sequencing" label unless a future approved batch actually matches that scope.
 
 ## Mandatory rollback documentation rule
