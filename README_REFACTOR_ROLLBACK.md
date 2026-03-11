@@ -1,14 +1,15 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-11 22:45:59 +01:00
+Last updated: 2026-03-12 00:20:02 +01:00
 
 ## Current committed safe checkpoint
-- `b9b54c7` - `refactor(social): extract orders runtime and view`
+- `af24d17` - `docs(refactor): correct social-app line count`
+- Latest committed code batch under that checkpoint: `ccb962a` - `refactor(social): extract media upload runtime`
 
 ## Current local batch note
-- The current local work in this chat is `Batch E - Upload / Post Publishing / Media Ticket Runtime Extraction`.
-- It is not committed or pushed, so the committed safe rollback point remains `b9b54c7`.
-- If this batch is rejected, revert or rework the entire local Batch E unit together.
+- The current local work in this chat is `Batch F - Feed / Story Identity Runtime Extraction`.
+- It is not committed or pushed, so the committed safe rollback point remains `af24d17`.
+- If this batch is rejected, revert or rework the entire local Batch F unit together.
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -32,12 +33,14 @@ Last updated: 2026-03-11 22:45:59 +01:00
 14. `8183197` - auth profile resolution runtime extraction
 15. `edf0cf4` - menu/focus public runtime extraction
 16. `b9b54c7` - orders runtime + orders view extraction
+17. `ccb962a` - media upload runtime extraction
+18. `af24d17` - docs(refactor): correct social-app line count
 
 ## Current rollback guidance for the next approved runtime batch
-- Review Batch E before starting Batch F.
+- Review Batch F before starting Batch G.
 - Keep the next committed batch single-domain.
-- Do not mix feed/story identity runtime with the local upload/media batch, shell DOM, or CRM runtime in the same rollback unit.
-- Do not reopen orders or upload/media work in the next batch unless Batch E review finds a regression.
+- Do not mix shell/auth/drawer/notifications DOM runtime with the local feed/story batch, CEO CRM runtime, or wrapper cleanup in the same rollback unit.
+- Do not reopen upload/media or feed/story work in the next batch unless Batch F review finds a regression.
 - Do not use the old "Batch 16 startup sequencing" label unless a future approved batch actually matches that scope.
 
 ## Mandatory rollback documentation rule

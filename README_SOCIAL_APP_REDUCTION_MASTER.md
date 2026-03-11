@@ -1,34 +1,36 @@
 # MNYRA Social-App Reduction Master
 
-Last updated: 2026-03-11 23:30:26 +01:00
+Last updated: 2026-03-12 00:20:02 +01:00
 
 ## 1. Current real checkpoint summary
 - Current committed checkpoint:
-  - `b9b54c7` - `refactor(social): extract orders runtime and view`
-  - Commit time: `2026-03-11 22:37:18 +01:00`
+  - `af24d17` - `docs(refactor): correct social-app line count`
+  - Commit time: `2026-03-11 23:31:13 +01:00`
+  - latest committed code batch under that checkpoint: `ccb962a` - `refactor(social): extract media upload runtime`
 - Current branch state:
   - `main` tracking `origin/main`
   - the worktree was clean before this pass
-  - active local uncommitted runtime batch: `Batch E - Upload / Post Publishing / Media Ticket Runtime Extraction`
+  - active local uncommitted runtime batch: `Batch F - Feed / Story Identity Runtime Extraction`
   - nothing committed or pushed in this pass
 - Current `apps/menyra-social/social-app.js` size:
-  - `7,046` lines
-  - `234,140` bytes
+  - `6,625` lines
+  - `218,735` bytes
 - Current reduction direction:
   - startup/auth/public-profile/restaurant-identity/public-bootstrap runtime is already split out in committed history
   - self-profile/account/avatar runtime is committed at `69981fa` into `core/profile/self-profile-runtime-controller.js`
   - restaurant/auth/lead resolution and role-switch runtime is committed at `8183197` into `core/auth/auth-profile-resolution-runtime.js`
   - menu/focus/catalog/favorites runtime is committed at `edf0cf4` into `core/menu/menu-public-runtime-controller.js` and `core/menu/focus-runtime-controller.js`
   - orders runtime and orders view are committed at `b9b54c7` into `core/orders/orders-runtime-controller.js` and `core/orders/orders-render-utils.js`
-  - upload/post publishing/media ticket runtime is now extracted locally into `core/media/media-upload-runtime-controller.js`
-  - the next untouched meaningful runtime slice is now feed / story identity and restaurant-meta runtime
+  - upload/post publishing/media ticket runtime is committed at `ccb962a` into `core/media/media-upload-runtime-controller.js`
+  - feed / story identity runtime is now extracted locally into `core/stories/story-feed-runtime-controller.js`
+  - restaurant meta / business-location rebuild runtime is now extracted locally into `core/common/restaurant-identity-runtime-controller.js`
+  - the next untouched meaningful runtime slice is now shell / auth / drawer / notifications DOM runtime
 
 ## 2. Current role of social-app.js
 Today `social-app.js` is still carrying all of these roles at once:
 - app entry and startup trigger
 - app-wide state container and runtime singleton registry
 - controller construction and bridge wiring
-- feed/story identity and restaurant-meta runtime
 - CEO CRM ownership/count support runtime
 - shell/drawer/auth/notifications DOM runtime
 - a wrapper layer around extracted feature controllers, including the shared upload bridge used by avatar/menu/focus flows
@@ -54,10 +56,10 @@ Long-term, `social-app.js` should not still contain:
 
 ## 4. Current remaining responsibility clusters inside social-app.js
 
-Clusters B, C, E, and F are now committed at `HEAD`. Cluster G is completed locally and under review. The next untouched remaining clusters now begin at Cluster D.
+Clusters B, C, E, F, and G are now committed at `HEAD`. Cluster D is completed locally and under review. The next untouched remaining clusters now begin at Clusters H and I.
 
 ### Cluster A. Composition Root, State, and Startup Entry
-- Approx lines after local Batch E:
+- Approx lines after local Batch F:
   - `1-1500`
   - lower wrapper/bootstrapping bands near the bottom of the file
 - Classification:
@@ -110,29 +112,17 @@ Clusters B, C, E, and F are now committed at `HEAD`. Cluster G is completed loca
 
 ### Cluster D. Feed / Story Identity and Restaurant Meta Runtime
 - Current status:
-  - still in `social-app.js`
-  - next untouched approved runtime slice after local Batch E review
-- What it currently does:
-  - business-location rebuilds
-  - restaurant public-meta enrichment
-  - feed logo reconciliation
-  - story identity resolution and normalization
-  - story loading and cache refresh
-  - feed-post normalization
-  - feed-derived story generation
-- Why it is still here:
-  - it still depends on `state.feedPosts`, `state.stories`, `state.restaurants`, cache writes, and direct DOM refresh paths
-- Does it belong here long-term:
-  - no
-- Where it should move:
-  - expand `core/common/restaurant-identity-runtime-controller.js`
-  - add `core/stories/story-feed-runtime-controller.js`
-  - keep feed row rendering in existing feed controllers
-- Extraction risk:
-  - medium to medium-high
-  - recent startup/public bootstrap work still feeds this area
-- Prerequisite cleanup:
-  - keep it isolated from shell DOM or CRM support work
+  - completed locally in this workspace
+  - extracted into `core/stories/story-feed-runtime-controller.js`
+  - paired restaurant-meta/business-location rebuild runtime moved into `core/common/restaurant-identity-runtime-controller.js`
+  - not committed or pushed yet
+- Local outcome:
+  - `social-app.js` no longer owns story identity resolution, normalization, or cache-signature bookkeeping
+  - `social-app.js` no longer owns story loading/reconcile refresh or fallback feed-derived story generation
+  - `social-app.js` no longer owns feed/story logo reconciliation or story-meta DOM patch helpers
+  - `social-app.js` no longer owns restaurant public-meta enrichment, business-location rebuilds, or restaurant-meta listener lifecycle
+- Review gate:
+  - validate this local batch before starting Batch G / Cluster I
 
 ### Cluster E. Menu / Focus / Public Catalog / Favorites Runtime
 - Current status:
@@ -163,16 +153,16 @@ Clusters B, C, E, and F are now committed at `HEAD`. Cluster G is completed loca
 
 ### Cluster G. Upload / Post Publishing / Media Ticket Runtime
 - Current status:
-  - completed locally in this workspace
+  - completed in committed checkpoint `ccb962a`
   - extracted into `core/media/media-upload-runtime-controller.js`
-  - not committed or pushed yet
+  - already at `HEAD` / `origin/main`
 - Local outcome:
   - `social-app.js` no longer owns upload view rendering or upload-mode selection runtime
   - `social-app.js` no longer owns media ticket issuance or direct image/story upload requests
   - `social-app.js` no longer owns business/user post creation, story publish handoff, or upload state reset/tab handoff
   - shared `uploadCompressedImage(...)` still remains available through a root wrapper for avatar/menu/focus flows
 - Review gate:
-  - validate this local batch before starting Batch F / Cluster D
+  - no open gate in this pass; this cluster is already committed at `ccb962a`
 
 ### Cluster H. CEO CRM Ownership / Count Support Runtime
 - Current status:
@@ -243,15 +233,14 @@ Clusters B, C, E, and F are now committed at `HEAD`. Cluster G is completed loca
 
 ## 5. Best next extraction candidates
 
-Batch E is now locally completed. Treat the first untouched candidate below as the next implementation target after review.
+Batch F is now locally completed. Treat the first untouched candidate below as the next implementation target after review.
 
 | Rank | Candidate | Current cluster(s) | Size | Why it is ranked here | Suggested destination |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Feed/story identity runtime | D | Larger but still safe | Biggest untouched responsibility cluster after the local upload/media move | `core/stories/story-feed-runtime-controller.js` |
-| 2 | Shell/auth/drawer/notifications DOM runtime | I | Medium | Good additional shrink after the runtime-heavy commerce/media work settles | `core/app-shell/shell-dom-runtime-controller.js` |
-| 3 | CEO CRM count/support runtime | H | Medium to larger-but-safe | Valuable, but higher business risk and should stay isolated | `core/crm/ceo-crm-count-runtime-controller.js` |
-| 4 | Late-stage controller dependency-map consolidation | A | Medium | Good final shrink step for composition-root readability after business logic is gone | `core/app-shell/controller-deps-factory.js` |
-| 5 | Wrapper layer collapse | J | Small to medium, but low value if done alone | Useful only late, after real runtime extraction | direct controller wiring / bridge cleanup |
+| 1 | Shell/auth/drawer/notifications DOM runtime | I | Medium | Biggest untouched UI/runtime cluster after the local story/feed move | `core/app-shell/shell-dom-runtime-controller.js` |
+| 2 | CEO CRM count/support runtime | H | Medium to larger-but-safe | Valuable, but higher business risk and should stay isolated | `core/crm/ceo-crm-count-runtime-controller.js` |
+| 3 | Late-stage controller dependency-map consolidation | A | Medium | Good final shrink step for composition-root readability after business logic is gone | `core/app-shell/controller-deps-factory.js` |
+| 4 | Wrapper layer collapse | J | Small to medium, but low value if done alone | Useful only late, after real runtime extraction | direct controller wiring / bridge cleanup |
 
 ## 6. Which clusters are unsafe to extract yet
 - Composition-root/controller construction as a standalone batch:
@@ -268,25 +257,25 @@ Batch E is now locally completed. Treat the first untouched candidate below as t
 ## 7. Staged roadmap from current state to the target 800-1500-line state
 
 ### Stage 0. Current state
-- `social-app.js` is now about `7.05k` lines locally after local Batch E.
-- Startup/auth/public bootstrap plus self-profile/account/avatar, restaurant/lead/auth resolution, menu/focus/catalog, and orders extraction are committed at `HEAD`.
-- Upload/post publishing/media ticket runtime is extracted locally and under review.
+- `social-app.js` is now about `6.63k` lines locally after local Batch F.
+- Startup/auth/public bootstrap plus self-profile/account/avatar, restaurant/lead/auth resolution, menu/focus/catalog, orders, and media upload extraction are committed at `HEAD`.
+- Feed/story identity plus restaurant-meta/business-location runtime is extracted locally and under review.
 
 ### Stage 1. Next meaningful reduction wave
 - Target outcome:
-  - validate the local upload/media batch
-  - remove the feed/story identity runtime
+  - validate the local feed/story batch
+  - remove the shell/auth/drawer/notifications DOM runtime
 - Expected file state:
-  - roughly `5.4k-6.3k` lines
+  - roughly `4.8k-5.8k` lines
 - Good batch choices:
-  - Cluster D
+  - Cluster I
 
 ### Stage 2. Runtime + shell reduction wave
 - Target outcome:
-  - remove shell/drawer/notification DOM runtime
   - remove CEO CRM count/support runtime
+  - remove late-stage dependency-map assembly noise
 - Expected file state:
-  - roughly `3.2k-5.0k` lines
+  - roughly `3.0k-4.8k` lines
 
 ### Stage 3. Final composition-root cleanup
 - Target outcome:
@@ -343,31 +332,45 @@ Batch E is now locally completed. Treat the first untouched candidate below as t
 
 ### Batch E. Upload / Post Publishing / Media Ticket Runtime Extraction
 - Status:
-  - completed locally in current workspace
-  - under review
-  - not committed or pushed
+  - completed in committed checkpoint `ccb962a`
+  - already at `HEAD` / `origin/main`
 - Scope:
   - upload view rendering
   - image/video upload selection and worker ticket issuance
   - avatar/post/story media upload requests
   - business/user post creation
   - upload state reset and tab handoff
-- Why it is the current batch:
-  - Batch D is already committed at `b9b54c7`
+- Why it was the batch:
+  - Batch D was already committed at `b9b54c7`
   - upload/media was the next untouched isolated runtime surface after orders
-  - rollback remains cleanly separated from feed/story identity, shell DOM, and CRM
+  - rollback stayed cleanly separated from feed/story identity, shell DOM, and CRM
 
 ### Batch F. Feed / Story Identity Runtime Extraction
+- Status:
+  - completed locally in current workspace
+  - under review
+  - not committed or pushed
 - Scope:
   - business-location rebuilds
   - restaurant public-meta enrichment
   - feed logo reconciliation
   - story normalization/loading/cache refresh
   - feed-derived story generation
-- Why it is next:
-  - Batch E is now the active local batch
-  - feed/story identity is the next untouched large-safe runtime surface after upload/media
+- Why it is the current batch:
+  - Batch E is already committed at `ccb962a`
+  - feed/story identity was the next untouched large-safe runtime surface after upload/media
   - rollback remains separate from shell DOM and CRM support
+
+### Batch G. Shell / Auth / Drawer / Notifications DOM Runtime Extraction
+- Scope:
+  - auth screen rendering
+  - drawer rendering
+  - shell DOM patching
+  - notification badge DOM updates and delegation
+- Why it is next:
+  - Batch F is now the active local batch
+  - shell/auth/drawer/notifications DOM runtime is the next untouched large-safe runtime surface after story/feed
+  - rollback remains separate from CEO CRM count/support runtime and late-stage wrapper cleanup
 
 ### Important planning note
 - The pre-blueprint "Batch 16 - startup bootstrap entry sequencing reduction" should not be resumed by default.

@@ -6,7 +6,9 @@ export function createRestaurantIdentityRuntimeController({
   normalizeRestaurantType = (value) => value,
   isGenericStoryBusinessLabel = () => false,
   queueMicrotaskFn = null,
-  rebuildBusinessLocations = () => {},
+  buildRestaurantLocationsFn = () => [],
+  resolveRestaurantLogoFn = (_restaurantId, source = "") => String(source || ""),
+  isPublicBusinessRecordFn = () => true,
   syncFeedPostLogos = () => false,
   refreshFeedStories = () => false,
   render = () => {},
@@ -18,7 +20,17 @@ export function createRestaurantIdentityRuntimeController({
     : ((fn) => fn?.());
   const getDocSafe = typeof getDocFn === "function" ? getDocFn : (async () => null);
   const makeDocRef = typeof docFn === "function" ? docFn : null;
+  const buildRestaurantLocations = typeof buildRestaurantLocationsFn === "function"
+    ? buildRestaurantLocationsFn
+    : (() => []);
+  const resolveRestaurantLogo = typeof resolveRestaurantLogoFn === "function"
+    ? resolveRestaurantLogoFn
+    : ((_restaurantId, source = "") => String(source || ""));
+  const isPublicBusinessRecord = typeof isPublicBusinessRecordFn === "function"
+    ? isPublicBusinessRecordFn
+    : (() => true);
   const pendingStoryIdentityHydrationIds = new Set();
+  const restaurantMetaUnsubs = new Map();
   let storyIdentityHydrationQueued = false;
 
   function mergeRestaurants(existing = [], additions = []) {
@@ -101,6 +113,84 @@ export function createRestaurantIdentityRuntimeController({
       pendingStoryIdentityHydrationIds.clear();
       if (!nextIds.length) return;
       void hydrateRestaurantsByIds(nextIds, { max: nextIds.length });
+    });
+  }
+
+  function rebuildBusinessLocations() {
+    state.businessLocations = (state?.restaurants || [])
+      .filter((rest) => isPublicBusinessRecord(rest))
+      .flatMap((rest, idx) => buildRestaurantLocations(rest, idx));
+    (state?.restaurants || []).forEach((rest) => {
+      if (!rest?.id) return;
+      const rawLogo = rest.logoUrl || rest.logo || rest.logoURL || "";
+      if (rawLogo) resolveRestaurantLogo(rest.id, rawLogo, "avatar");
+    });
+  }
+
+  function mergeRestaurantMeta(rest, meta) {
+    if (!rest) return rest;
+    const data = meta || {};
+    const name = data.name || data.restaurantName || rest.name || rest.restaurantName || "";
+    const logoUrl = data.logoUrl || data.logo || rest.logoUrl || rest.logo || rest.logoURL || "";
+    const type = normalizeRestaurantType(
+      data.type
+      || data.customerType
+      || rest.type
+      || rest.customerType
+      || rest.category
+      || rest.kind
+      || rest.restaurantType
+      || ""
+    );
+    return {
+      ...rest,
+      name: name || rest.name || "",
+      restaurantName: rest.restaurantName || "",
+      logoUrl,
+      city: data.city || rest.city || "",
+      ...(type ? { type, customerType: type } : {})
+    };
+  }
+
+  function stopRestaurantMetaListeners() {
+    restaurantMetaUnsubs.forEach((unsub) => {
+      try { unsub(); } catch {}
+    });
+    restaurantMetaUnsubs.clear();
+  }
+
+  function ensureFeedRestaurantMetaListeners(feedPosts = state?.feedPosts, { limit = 12 } = {}) {
+    void feedPosts;
+    void limit;
+    stopRestaurantMetaListeners();
+  }
+
+  async function enrichRestaurantsWithPublicMeta(restaurants) {
+    if (!Array.isArray(restaurants) || !restaurants.length) return restaurants || [];
+    const lookups = restaurants.map((rest) => {
+      const rid = rest?.id || "";
+      if (!rid || !makeDocRef || !db) return Promise.resolve(null);
+      const hasCoreName = !!String(rest?.name || rest?.restaurantName || "").trim();
+      const hasCoreLogo = !!String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
+      const hasCoreCity = !!String(rest?.city || "").trim();
+      const hasCoreType = !!normalizeRestaurantType(
+        rest?.type
+        || rest?.customerType
+        || rest?.category
+        || rest?.kind
+        || rest?.restaurantType
+        || ""
+      );
+      if (hasCoreName && hasCoreLogo && hasCoreCity && hasCoreType) {
+        return Promise.resolve(null);
+      }
+      return getDocSafe(makeDocRef(db, "restaurants", rid, "public", "meta")).catch(() => null);
+    });
+    const metaSnaps = await Promise.all(lookups);
+    return restaurants.map((rest, idx) => {
+      const snap = metaSnaps[idx];
+      const meta = snap && typeof snap.exists === "function" && snap.exists() ? (snap.data() || {}) : {};
+      return mergeRestaurantMeta(rest, meta);
     });
   }
 
@@ -192,6 +282,10 @@ export function createRestaurantIdentityRuntimeController({
     collectFeedHydrationIds,
     queueStoryIdentityHydration,
     hydrateRestaurantsByIds,
-    mergeRestaurants
+    mergeRestaurants,
+    rebuildBusinessLocations,
+    stopRestaurantMetaListeners,
+    ensureFeedRestaurantMetaListeners,
+    enrichRestaurantsWithPublicMeta
   };
 }

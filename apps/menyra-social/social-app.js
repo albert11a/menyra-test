@@ -67,6 +67,7 @@ import {
   createEmptyMenuDetailState
 } from "./core/common/state-factories.js";
 import { createRestaurantIdentityRuntimeController } from "./core/common/restaurant-identity-runtime-controller.js";
+import { createStoryFeedRuntimeController } from "./core/stories/story-feed-runtime-controller.js";
 import {
   normalizeInitialTab,
   normalizeAuthMode
@@ -457,10 +458,6 @@ import {
   computeLatestTimestampCore,
   saveFeedPostsCore
 } from "./core/feed/feed-cache-utils.js";
-import {
-  buildStoriesSignatureCore,
-  refreshFeedStoriesCore
-} from "./core/feed/feed-story-utils.js";
 import {
   getChatThreadIdCore,
   chatThreadStorageKeyCore,
@@ -1135,10 +1132,7 @@ let modalCommentsUnsub = null;
 let menuDetailDocUnsub = null;
 let menuDetailLikesUnsub = null;
 let menuDetailCommentsUnsub = null;
-let restaurantMetaUnsubs = new Map();
-let feedStoriesSignature = "";
 let storiesRowSignature = "";
-let storiesFreshReconcileQueued = false;
 let authInitialized = false;
 let authBootstrapSnapshot = null;
 let selfProfileRuntimeController = null;
@@ -1244,21 +1238,71 @@ const {
   collectFeedHydrationIds,
   queueStoryIdentityHydration,
   hydrateRestaurantsByIds,
-  mergeRestaurants
+  mergeRestaurants,
+  rebuildBusinessLocations,
+  stopRestaurantMetaListeners,
+  ensureFeedRestaurantMetaListeners,
+  enrichRestaurantsWithPublicMeta
 } = createRestaurantIdentityRuntimeController({
   state,
   db,
   docFn: doc,
   getDocFn: getDoc,
   normalizeRestaurantType,
-  isGenericStoryBusinessLabel,
+  isGenericStoryBusinessLabel: (...args) => isGenericStoryBusinessLabel(...args),
   queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
-  rebuildBusinessLocations,
-  syncFeedPostLogos,
-  refreshFeedStories,
+  buildRestaurantLocationsFn: (...args) => buildRestaurantLocations(...args),
+  resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args),
+  isPublicBusinessRecordFn: (...args) => isPublicBusinessRecord(...args),
+  syncFeedPostLogos: (...args) => syncFeedPostLogos(...args),
+  refreshFeedStories: (...args) => refreshFeedStories(...args),
   render,
   updateFeedDom: (...args) => updateFeedDom(...args),
   getLastRenderMode: () => lastRenderMode
+});
+const {
+  buildStoriesSignature,
+  isGenericStoryBusinessLabel,
+  sanitizeStoryBusinessName,
+  resolveStoryRenderIdentity,
+  normalizeStoryItemForDisplay,
+  normalizeStoryItemsForDisplay,
+  syncPersistedStories,
+  setFeedStoriesSignature,
+  syncFeedPostLogos,
+  refreshFeedStories,
+  loadStoriesForFeed,
+  updateFeedLogoNodes,
+  updateStoryLogoNodes,
+  updateStoryMetaNodes,
+  buildStoriesFromFeed
+} = createStoryFeedRuntimeController({
+  state,
+  db,
+  readCacheFn: readCache,
+  writeCacheFn: writeCache,
+  cacheKeys: CACHE_KEYS,
+  cacheTtlMs: CACHE_TTL_MS,
+  fastMode: FAST_MODE,
+  fastLimits: FAST_LIMITS,
+  collectionGroupFn: collectionGroup,
+  getDocsFn: getDocs,
+  queryFn: query,
+  whereFn: where,
+  orderByFn: orderBy,
+  limitFn: limit,
+  mapStorySnapshotRowsToFeedStoriesFn: (...args) => storySystemController.mapStorySnapshotRowsToFeedStories(...args),
+  canShowFeedRestaurantIdFn: (...args) => canShowFeedRestaurantId(...args),
+  queueStoryIdentityHydrationFn: (...args) => queueStoryIdentityHydration(...args),
+  queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
+  updateFeedDomFn: (...args) => updateFeedDom(...args),
+  renderFn: render,
+  getLastRenderModeFn: () => lastRenderMode,
+  resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args),
+  isPlaceholderUrlFn: (...args) => isPlaceholderUrl(...args),
+  escapeSelectorFn: (...args) => escapeSelector(...args),
+  documentObj: typeof document === "undefined" ? null : document,
+  toDateSafeFn: toDateSafe
 });
 const {
   findRestaurantByUid,
@@ -2684,14 +2728,7 @@ function saveFeedPosts(posts, extraMeta = {}) {
 
 function loadPersisted() {
   const result = sessionDataRuntimeController.loadPersisted(...arguments);
-  if (state.stories.length) {
-    const nextStories = normalizeStoryItemsForDisplay(state.stories);
-    state.stories = nextStories;
-    feedStoriesSignature = buildStoriesSignature(nextStories);
-    queueStoryIdentityHydration(nextStories, { max: FAST_LIMITS.storyIdentityHydration });
-  } else {
-    feedStoriesSignature = "";
-  }
+  syncPersistedStories();
   return result;
 }
 function loadUserScopedPersisted(user) {
@@ -2702,388 +2739,6 @@ function loadGuestScopedPersisted() {
 }
 function resetUserScopedState() {
   return sessionDataRuntimeController.resetUserScopedState(...arguments);
-}
-function rebuildBusinessLocations() {
-  state.businessLocations = state.restaurants
-    .filter((rest) => isPublicBusinessRecord(rest))
-    .flatMap((rest, idx) => buildRestaurantLocations(rest, idx));
-  state.restaurants.forEach((rest) => {
-    if (!rest?.id) return;
-    const rawLogo = rest.logoUrl || rest.logo || rest.logoURL || "";
-    if (rawLogo) resolveRestaurantLogo(rest.id, rawLogo, "avatar");
-  });
-}
-
-function mergeRestaurantMeta(rest, meta) {
-  if (!rest) return rest;
-  const data = meta || {};
-  const name = data.name || data.restaurantName || rest.name || rest.restaurantName || "";
-  const logoUrl = data.logoUrl || data.logo || rest.logoUrl || rest.logo || rest.logoURL || "";
-  const type = normalizeRestaurantType(
-    data.type
-    || data.customerType
-    || rest.type
-    || rest.customerType
-    || rest.category
-    || rest.kind
-    || rest.restaurantType
-    || ""
-  );
-  return {
-    ...rest,
-    name: name || rest.name || "",
-    restaurantName: rest.restaurantName || "",
-    logoUrl,
-    city: data.city || rest.city || "",
-    ...(type ? { type, customerType: type } : {})
-  };
-}
-
-function stopRestaurantMetaListeners() {
-  restaurantMetaUnsubs.forEach((unsub) => {
-    try { unsub(); } catch {}
-  });
-  restaurantMetaUnsubs.clear();
-}
-
-function ensureFeedRestaurantMetaListeners(feedPosts = state.feedPosts, { limit = FEED_META_LISTEN_LIMIT } = {}) {
-  void feedPosts;
-  void limit;
-  stopRestaurantMetaListeners();
-}
-
-async function enrichRestaurantsWithPublicMeta(restaurants) {
-  if (!Array.isArray(restaurants) || !restaurants.length) return restaurants || [];
-  const lookups = restaurants.map((rest) => {
-    const rid = rest?.id || "";
-    if (!rid) return Promise.resolve(null);
-    const hasCoreName = !!String(rest?.name || rest?.restaurantName || "").trim();
-    const hasCoreLogo = !!String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
-    const hasCoreCity = !!String(rest?.city || "").trim();
-    const hasCoreType = !!normalizeRestaurantType(
-      rest?.type
-      || rest?.customerType
-      || rest?.category
-      || rest?.kind
-      || rest?.restaurantType
-      || ""
-    );
-    if (hasCoreName && hasCoreLogo && hasCoreCity && hasCoreType) {
-      return Promise.resolve(null);
-    }
-    return getDoc(doc(db, "restaurants", rid, "public", "meta")).catch(() => null);
-  });
-  const metaSnaps = await Promise.all(lookups);
-  return restaurants.map((rest, idx) => {
-    const snap = metaSnaps[idx];
-    const meta = snap && typeof snap.exists === "function" && snap.exists() ? (snap.data() || {}) : {};
-    return mergeRestaurantMeta(rest, meta);
-  });
-}
-
-function syncFeedPostLogos() {
-  const storiesChanged = syncStoryIdentityWithCanonicalBusiness();
-  if (!state.feedPosts.length) return storiesChanged;
-  const restMap = new Map();
-  state.restaurants.forEach((rest) => {
-    if (rest?.id) restMap.set(rest.id, rest);
-  });
-  let changed = false;
-  const next = [];
-  state.feedPosts.forEach((post) => {
-    const rid = String(post.restaurantId || post.ownerId || "").trim();
-    if (!rid) {
-      next.push(post);
-      return;
-    }
-    const restaurant = restMap.get(rid) || {};
-    if (restaurant?.id && !isPublicBusinessRecord(restaurant)) {
-      changed = true;
-      return;
-    }
-    const bestLogo = restaurant.logoUrl || restaurant.logo || restaurant.logoURL || post.logo || "";
-    const resolved = resolveRestaurantLogo(rid, bestLogo, "avatar");
-    if (isPlaceholderUrl(resolved) || resolved === post.logo) {
-      next.push(post);
-      return;
-    }
-    changed = true;
-    next.push({ ...post, logo: resolved });
-  });
-  const feedLengthChanged = next.length !== state.feedPosts.length;
-  if (!changed && !feedLengthChanged && !storiesChanged) return false;
-  if (changed || feedLengthChanged) {
-    state.feedPosts = next;
-  }
-  return changed || feedLengthChanged || storiesChanged;
-}
-
-function buildStoriesSignature(storyItems = []) {
-  return buildStoriesSignatureCore(storyItems);
-}
-
-function isGenericStoryBusinessLabel(value = "") {
-  return String(value || "").trim().toLowerCase() === "business";
-}
-
-function sanitizeStoryBusinessName(value = "") {
-  const label = String(value || "").trim();
-  if (!label) return "";
-  return isGenericStoryBusinessLabel(label) ? "" : label;
-}
-
-function resolveStoryBusinessIdentity(restaurantId = "") {
-  const rid = String(restaurantId || "").trim();
-  if (!rid) {
-    return {
-      restaurantId: "",
-      known: false,
-      hasCanonicalRestaurant: false,
-      name: "",
-      avatar: "",
-      ownStory: false,
-      restaurant: null
-    };
-  }
-  const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
-  const ownStory = ownRestaurantId && ownRestaurantId === rid;
-  const restaurant = state.restaurants.find((row) => String(row?.id || "").trim() === rid) || null;
-  const hasCanonicalRestaurant = !!restaurant?.id;
-  const ownFallbackName = ownStory ? sanitizeStoryBusinessName(state.userProfile?.name || "") : "";
-  const ownFallbackAvatar = ownStory ? String(state.userProfile?.avatar || "").trim() : "";
-  const canonicalName = sanitizeStoryBusinessName(
-    restaurant?.name
-    || restaurant?.restaurantName
-    || restaurant?.displayName
-    || restaurant?.businessName
-    || ""
-  );
-  const canonicalAvatar = String(
-    restaurant?.logoUrl
-    || restaurant?.logo
-    || restaurant?.logoURL
-    || ""
-  ).trim();
-  const name = hasCanonicalRestaurant ? canonicalName : ownFallbackName;
-  const avatar = hasCanonicalRestaurant ? canonicalAvatar : ownFallbackAvatar;
-  return {
-    restaurantId: rid,
-    known: !!(hasCanonicalRestaurant || ownStory),
-    hasCanonicalRestaurant,
-    name,
-    avatar,
-    ownStory,
-    restaurant
-  };
-}
-
-function resolveStoryRenderIdentity(story = {}) {
-  const storyRestaurantId = String(story?.restaurantId || story?.id || story?.rid || "").trim();
-  if (!storyRestaurantId) {
-    return {
-      storyRestaurantId: "",
-      hasCanonicalRestaurant: false,
-      storyLabel: "",
-      logoSource: "",
-      borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
-    };
-  }
-  const identity = resolveStoryBusinessIdentity(storyRestaurantId);
-  const sourceName = sanitizeStoryBusinessName(
-    story?.name
-    || story?.businessName
-    || story?.restaurantName
-    || story?.business
-    || ""
-  );
-  const sourceLogo = String(story?.img || story?.logo || story?.logoUrl || "").trim();
-  const canonicalName = sanitizeStoryBusinessName(identity.name || "");
-  const canonicalLogo = String(identity.avatar || "").trim();
-  const storyLabel = identity.hasCanonicalRestaurant
-    ? (canonicalName || sourceName || "")
-    : (sanitizeStoryBusinessName(identity.name || sourceName || ""));
-  const logoSource = identity.hasCanonicalRestaurant
-    ? canonicalLogo
-    : String(identity.avatar || sourceLogo || "").trim();
-  return {
-    storyRestaurantId,
-    hasCanonicalRestaurant: !!identity.hasCanonicalRestaurant,
-    storyLabel,
-    logoSource,
-    borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
-  };
-}
-
-function normalizeStoryItemForDisplay(item = {}) {
-  const identity = resolveStoryRenderIdentity(item);
-  const restaurantId = identity.storyRestaurantId;
-  if (!restaurantId) return null;
-  return {
-    ...item,
-    id: restaurantId,
-    restaurantId,
-    name: sanitizeStoryBusinessName(identity.storyLabel || ""),
-    img: String(identity.logoSource || "").trim(),
-    isLive: !!item?.isLive
-  };
-}
-
-function normalizeStoryItemsForDisplay(items = []) {
-  return (Array.isArray(items) ? items : [])
-    .map((item) => normalizeStoryItemForDisplay(item))
-    .filter(Boolean);
-}
-
-function syncStoryIdentityWithCanonicalBusiness() {
-  if (!Array.isArray(state.stories) || !state.stories.length) return false;
-  const nextStories = normalizeStoryItemsForDisplay(state.stories);
-  const prevSignature = buildStoriesSignature(state.stories);
-  const nextSignature = buildStoriesSignature(nextStories);
-  if (prevSignature === nextSignature) return false;
-  state.stories = nextStories;
-  feedStoriesSignature = nextSignature;
-  writeCache(CACHE_KEYS.stories, nextStories);
-  return true;
-}
-
-function refreshFeedStories({ posts = state.feedPosts, force = false } = {}) {
-  if (Array.isArray(state.stories) && state.stories.length) {
-    if (!feedStoriesSignature) {
-      feedStoriesSignature = buildStoriesSignature(state.stories);
-    }
-    return false;
-  }
-  const result = refreshFeedStoriesCore({
-    posts,
-    force,
-    fastMode: FAST_MODE,
-    buildStoriesFromFeed,
-    currentSignature: feedStoriesSignature
-  });
-  if (!result.updated) return false;
-  const normalizedStories = normalizeStoryItemsForDisplay(result.stories);
-  feedStoriesSignature = buildStoriesSignature(normalizedStories);
-  state.stories = normalizedStories;
-  writeCache(CACHE_KEYS.stories, normalizedStories);
-  queueStoryIdentityHydration(normalizedStories, { max: FAST_LIMITS.storyIdentityHydration });
-  return true;
-}
-
-async function loadStoriesForFeed({ force = false, refreshUi = true } = {}) {
-  const cached = readCache(CACHE_KEYS.stories, CACHE_TTL_MS.stories);
-  if (cached?.data?.length) {
-    const normalizedCachedStories = normalizeStoryItemsForDisplay(cached.data);
-    state.stories = normalizedCachedStories;
-    feedStoriesSignature = buildStoriesSignature(state.stories);
-    queueStoryIdentityHydration(normalizedCachedStories, { max: FAST_LIMITS.storyIdentityHydration });
-    if (cached.fresh && !force) {
-      if (!storiesFreshReconcileQueued) {
-        storiesFreshReconcileQueued = true;
-        queueMicrotask(() => {
-          void loadStoriesForFeed({ force: true, refreshUi: state.activeTab === "feed" })
-            .finally(() => {
-              storiesFreshReconcileQueued = false;
-            });
-        });
-      }
-      return true;
-    }
-  }
-
-  try {
-    const storiesRef = collectionGroup(db, "stories");
-    let snap = null;
-    try {
-      snap = await getDocs(query(storiesRef, where("status", "==", "active"), orderBy("createdAt", "desc"), limit(FAST_LIMITS.storiesFallback)));
-    } catch (statusErr) {
-      try {
-        snap = await getDocs(query(storiesRef, orderBy("createdAt", "desc"), limit(FAST_LIMITS.storiesFallback)));
-      } catch (sortErr) {
-        snap = await getDocs(query(storiesRef, limit(FAST_LIMITS.storiesFallback)));
-      }
-    }
-    const docSnaps = [];
-    snap.forEach((docSnap) => docSnaps.push(docSnap));
-    let nextStories = normalizeStoryItemsForDisplay(
-      storySystemController.mapStorySnapshotRowsToFeedStories({
-      docSnaps,
-      restaurants: state.restaurants,
-      canShowFeedRestaurantIdFn: canShowFeedRestaurantId,
-      maxItems: FAST_LIMITS.stories,
-      toDateSafeFn: toDateSafe
-    })
-    );
-    const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
-    const pendingOwnStoryRestaurantId = String(state.__pendingOwnStoryRestaurantId || "").trim();
-    const pendingOwnStoryUntil = Number(state.__pendingOwnStoryUntil || 0);
-    if (pendingOwnStoryRestaurantId) {
-      const pendingExpired = !Number.isFinite(pendingOwnStoryUntil) || pendingOwnStoryUntil <= Date.now();
-      const pendingOwnStoryMismatch = !!ownRestaurantId && pendingOwnStoryRestaurantId !== ownRestaurantId;
-      if (pendingOwnStoryMismatch) {
-        state.__pendingOwnStoryRestaurantId = "";
-        state.__pendingOwnStoryUntil = 0;
-      } else if (pendingExpired) {
-        state.__pendingOwnStoryRestaurantId = "";
-        state.__pendingOwnStoryUntil = 0;
-      } else {
-        const hasPendingOwnStory = nextStories.some(
-          (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
-        );
-        if (hasPendingOwnStory) {
-          state.__pendingOwnStoryRestaurantId = "";
-          state.__pendingOwnStoryUntil = 0;
-        } else {
-          const pendingFromState = normalizeStoryItemForDisplay(
-            (state.stories || []).find(
-              (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
-            ) || {}
-          );
-          if (pendingFromState) {
-            nextStories = [pendingFromState, ...nextStories].slice(0, FAST_LIMITS.stories);
-          }
-        }
-      }
-    }
-    const shouldRefreshUi = !!refreshUi || state.activeTab === "feed";
-    if (!nextStories.length) {
-      if (!state.stories.length) return false;
-      state.stories = [];
-      feedStoriesSignature = "";
-      writeCache(CACHE_KEYS.stories, []);
-      if (shouldRefreshUi) {
-        const inMain = lastRenderMode === "main";
-        const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-        if (!updatedFeed && state.activeTab === "feed") {
-          render();
-        }
-      }
-      return true;
-    }
-
-    const prevSignature = buildStoriesSignature(state.stories);
-    const nextSignature = buildStoriesSignature(nextStories);
-    if (prevSignature === nextSignature) {
-      feedStoriesSignature = nextSignature;
-      return true;
-    }
-
-    state.stories = nextStories;
-    feedStoriesSignature = nextSignature;
-    writeCache(CACHE_KEYS.stories, nextStories);
-    queueStoryIdentityHydration(nextStories, { max: FAST_LIMITS.storyIdentityHydration });
-
-    if (shouldRefreshUi) {
-      const inMain = lastRenderMode === "main";
-      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-      if (!updatedFeed && state.activeTab === "feed") {
-        render();
-      }
-    }
-    return true;
-  } catch (err) {
-    console.error(err);
-    return false;
-  }
 }
 
 function preloadFeedHeroImages(feedPosts, { limit = FEED_PRELOAD_LIMIT } = {}) {
@@ -4116,53 +3771,6 @@ function updatePostCountNodes(post) {
   });
   document.querySelectorAll(`[data-post-comment-count="${postId}"]`).forEach((el) => {
     el.textContent = commentLabel;
-  });
-}
-
-function updateFeedLogoNodes(post) {
-  if (!post || !post.id) return;
-  const postId = escapeSelector(post.id);
-  const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
-  const logoSource = restaurant.logoUrl || restaurant.logo || restaurant.logoURL || post.logo || "";
-  const logoUrl = resolveRestaurantLogo(post.restaurantId || post.ownerId, logoSource, "avatar");
-  document.querySelectorAll(`[data-feed-logo="${postId}"]`).forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
-  });
-}
-
-function updateStoryLogoNodes(story) {
-  const renderIdentity = resolveStoryRenderIdentity(story);
-  if (!renderIdentity.storyRestaurantId) return;
-  const storyId = escapeSelector(renderIdentity.storyRestaurantId);
-  const allowCacheFallback = !renderIdentity.hasCanonicalRestaurant;
-  const logoUrl = resolveRestaurantLogo(
-    renderIdentity.storyRestaurantId,
-    renderIdentity.logoSource || "",
-    "thumb",
-    allowCacheFallback
-  );
-  document.querySelectorAll(`[data-story-logo="${storyId}"]`).forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
-  });
-}
-
-function updateStoryMetaNodes(story) {
-  const renderIdentity = resolveStoryRenderIdentity(story);
-  if (!renderIdentity.storyRestaurantId) return;
-  const storyId = escapeSelector(renderIdentity.storyRestaurantId);
-  const label = sanitizeStoryBusinessName(renderIdentity.storyLabel || "");
-  const live = !!story.isLive;
-  document.querySelectorAll(`[data-story-border="${storyId}"]`).forEach((el) => {
-    if (!(el instanceof HTMLElement)) return;
-    el.classList.toggle("border-red-500", live);
-    el.classList.toggle("animate-pulse", live);
-    el.classList.toggle("border-slate-200", !live);
-  });
-  document.querySelectorAll(`[data-story-name="${storyId}"]`).forEach((el) => {
-    if (!(el instanceof HTMLElement)) return;
-    if (el.textContent !== label) el.textContent = label;
   });
 }
 
@@ -5726,9 +5334,7 @@ const {
   saveFeedPosts,
   normalizeStoryItemsForDisplay,
   buildStoriesSignature,
-  setFeedStoriesSignature: (next) => {
-    feedStoriesSignature = next;
-  },
+  setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
   queueStoryIdentityHydration,
   syncFeedPostLogos,
   updateFeedDom,
@@ -5767,9 +5373,7 @@ mediaUploadRuntimeController = createMediaUploadRuntimeController({
   updateFeedDomFn: (...args) => updateFeedDom(...args),
   getLastRenderModeFn: () => lastRenderMode,
   setStateFn: setState,
-  setFeedStoriesSignatureFn: (next) => {
-    feedStoriesSignature = next;
-  },
+  setFeedStoriesSignatureFn: (next) => setFeedStoriesSignature(next),
   cacheKeys: CACHE_KEYS,
   fastLimits: FAST_LIMITS
 });
@@ -5970,9 +5574,7 @@ crmRuntimeController = createCrmRuntimeController({
   readCache,
   CACHE_KEYS,
   buildStoriesSignature,
-  setFeedStoriesSignature: (next) => {
-    feedStoriesSignature = next;
-  },
+  setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
   isAlbertCeoUser,
   buildCeoCreatorMeta,
   HIDDEN_LEGACY_CEO_EMAILS,
@@ -6747,29 +6349,6 @@ function normalizeFeedPost(row) {
     ownerType: "restaurant",
     ownerId: restaurantId
   };
-}
-
-function buildStoriesFromFeed(posts) {
-  if (!Array.isArray(posts)) return [];
-  const map = new Map();
-  posts.forEach((post) => {
-    const rid = String(post.restaurantId || post.ownerId || "").trim();
-    if (!rid || map.has(rid) || !canShowFeedRestaurantId(rid)) return;
-    const renderIdentity = resolveStoryRenderIdentity({
-      restaurantId: rid,
-      name: post.business || post.restaurantName || "",
-      img: post.logo || "",
-      isLive: false
-    });
-    map.set(rid, {
-      id: rid,
-      restaurantId: rid,
-      name: sanitizeStoryBusinessName(renderIdentity.storyLabel || ""),
-      img: String(renderIdentity.logoSource || "").trim(),
-      isLive: false
-    });
-  });
-  return Array.from(map.values()).slice(0, FAST_LIMITS.stories);
 }
 
 function buildStoriesRowSignature(items) {

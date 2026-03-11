@@ -730,3 +730,34 @@
   - Recounted `apps/menyra-social/social-app.js` using a line-break based file read rather than `Measure-Object -Line` on streamed content.
 - Follow-up notes:
   - No runtime behavior changed.
+
+## 2026-03-12 00:20:02 +01:00 — Batch F: Feed / Story Identity Runtime Extraction (Local Only)
+- Fix batch title: Batch F — Feed / Story Identity Runtime Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/common/restaurant-identity-runtime-controller.js`
+  - `apps/menyra-social/core/stories/story-feed-runtime-controller.js`
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Correct the stale roadmap/tracking checkpoint from local-only Batch E language to the real committed `af24d17` / `ccb962a` base.
+  - Move the feed/story identity plus restaurant-meta runtime cluster out of `social-app.js` into focused story/feed and restaurant-identity controllers while keeping existing root contracts stable.
+- Risk level: Medium
+- Regression risk: Medium (story row rendering, story cache refresh, restaurant-meta enrichment, business-location rebuilds, and feed logo reconciliation moved together)
+- What changed:
+  - Added `core/stories/story-feed-runtime-controller.js` to own story identity resolution, normalization, signature/cache bookkeeping, live-story loading/reconcile refresh, feed-derived fallback story generation, and feed/story DOM logo/meta patch helpers.
+  - Expanded `core/common/restaurant-identity-runtime-controller.js` to own business-location rebuilds, restaurant public-meta enrichment, and restaurant-meta listener lifecycle alongside the existing restaurant hydration logic.
+  - Replaced the inline Cluster D runtime block in `social-app.js` with controller wiring while preserving the existing bridge/public-bootstrap/media-upload call contracts that still depend on `buildStoriesSignature(...)`, `loadStoriesForFeed(...)`, `buildStoriesFromFeed(...)`, and related feed/story helpers.
+  - Updated the roadmap/tracking docs so Batch E is correctly recorded as already committed at `ccb962a`, `af24d17` is treated as the current committed safe checkpoint, and Batch F is recorded as the active local batch under review.
+- Validation notes:
+  - `node --check apps/menyra-social/social-app.js`
+  - `node --check apps/menyra-social/core/common/restaurant-identity-runtime-controller.js`
+  - `node --check apps/menyra-social/core/stories/story-feed-runtime-controller.js`
+  - Recounted `apps/menyra-social/social-app.js` via direct file-read newline counting to avoid the earlier streamed-count drift.
+- Follow-up notes:
+  - `apps/menyra-social/social-app.js` is now `6,625` lines and `218,735` bytes locally.
+  - Not committed and not pushed.
+  - Exact next batch after review is Batch G: shell / auth / drawer / notifications DOM runtime extraction.
