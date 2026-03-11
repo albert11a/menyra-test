@@ -2,6 +2,7 @@
 
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
+const crypto = require("crypto");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -15,6 +16,10 @@ const INVALID_TOKEN_CODES = new Set([
   "messaging/registration-token-not-registered",
   "messaging/invalid-registration-token"
 ]);
+const MEDIA_TICKET_VERSION = 1;
+const MEDIA_ACTIONS = new Set(["image_upload", "story_upload", "story_delete"]);
+const MEDIA_TICKET_DEFAULT_TTL_SECONDS = 120;
+const MEDIA_TICKET_MAX_TTL_SECONDS = 600;
 
 function asText(value, fallback = "") {
   const text = String(value || "").trim();
@@ -141,6 +146,111 @@ function sendCors(res, req) {
   res.set("Access-Control-Allow-Headers", "Content-Type");
 }
 
+function sendMediaCors(res, req) {
+  const origin = asText(req.get("origin"), "*");
+  res.set("Access-Control-Allow-Origin", origin === "null" ? "*" : origin);
+  res.set("Vary", "Origin");
+  res.set("Access-Control-Allow-Methods", "POST,OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type,Authorization");
+}
+
+function normalizeMediaOwnerId(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[^A-Za-z0-9_-]/g, "")
+    .slice(0, 80);
+}
+
+function normalizeMediaVideoId(value) {
+  return String(value || "")
+    .trim()
+    .replace(/^\/+/, "");
+}
+
+function parseBearerToken(req) {
+  const authHeader = asText(req.get("authorization"));
+  const match = authHeader.match(/^Bearer\s+(.+)$/i);
+  return match ? asText(match[1]) : "";
+}
+
+function parseRequestJson(req) {
+  if (req?.body && typeof req.body === "object") return req.body;
+  if (typeof req?.body === "string") {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+function resolveStoryOwnerIdFromVideoKey(videoId) {
+  const safeVideoId = normalizeMediaVideoId(videoId);
+  if (!safeVideoId.startsWith("stories/")) return "";
+  const parts = safeVideoId.split("/").filter(Boolean);
+  if (parts.length < 3) return "";
+  return normalizeMediaOwnerId(parts[1]);
+}
+
+function createMediaActionTicket(payload, secret) {
+  const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  const signature = crypto
+    .createHmac("sha256", secret)
+    .update(encodedPayload)
+    .digest("base64url");
+  return `${encodedPayload}.${signature}`;
+}
+
+function resolveMediaTicketTtlSeconds() {
+  const configured = Number(process.env.MEDIA_TICKET_TTL_SECONDS || MEDIA_TICKET_DEFAULT_TTL_SECONDS);
+  if (!Number.isFinite(configured) || configured <= 0) return MEDIA_TICKET_DEFAULT_TTL_SECONDS;
+  return Math.min(Math.max(Math.round(configured), 30), MEDIA_TICKET_MAX_TTL_SECONDS);
+}
+
+async function canUserManageOwnerId(uid, ownerId, { allowSelfOwner = false } = {}) {
+  const safeUid = asText(uid);
+  const safeOwnerId = normalizeMediaOwnerId(ownerId);
+  if (!safeUid || !safeOwnerId) return false;
+
+  if (allowSelfOwner && safeOwnerId === normalizeMediaOwnerId(safeUid)) {
+    return true;
+  }
+
+  try {
+    const restSnap = await db.collection("restaurants").doc(safeOwnerId).get();
+    if (restSnap.exists) {
+      const data = restSnap.data() || {};
+      const createdByUid = asText(data.createdByUid);
+      const ownerUid = asText(data.ownerUid || data.uid || data.userUid);
+      const ceoParentUid = asText(data.ceoParentUid);
+      const ceoPath = Array.isArray(data.ceoPath)
+        ? data.ceoPath.map((item) => asText(item)).filter(Boolean)
+        : [];
+      if (createdByUid === safeUid || ownerUid === safeUid || ceoParentUid === safeUid || ceoPath.includes(safeUid)) {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+
+  try {
+    const userSnap = await db.collection("users").doc(safeUid).get();
+    if (userSnap.exists) {
+      const data = userSnap.data() || {};
+      const profileRestaurantId = normalizeMediaOwnerId(data.restaurantId || "");
+      if (profileRestaurantId && profileRestaurantId === safeOwnerId) {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+
+  return false;
+}
+
 async function queryActiveFeed(limitCount = 14) {
   try {
     return await db
@@ -166,6 +276,125 @@ async function queryActiveStories(limitCount = 12) {
     return db.collectionGroup("stories").limit(limitCount).get();
   }
 }
+
+exports.issueMediaActionTicket = functions
+  .region("us-central1")
+  .https.onRequest(async (req, res) => {
+    sendMediaCors(res, req);
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+    if (req.method !== "POST") {
+      res.status(405).json({ ok: false, error: "Method not allowed" });
+      return;
+    }
+
+    const secret = asText(process.env.MEDIA_ACTION_TICKET_SECRET);
+    if (!secret) {
+      res.status(500).json({ ok: false, error: "Media ticket secret missing" });
+      return;
+    }
+
+    const bearerToken = parseBearerToken(req);
+    if (!bearerToken) {
+      res.status(401).json({ ok: false, error: "Unauthorized" });
+      return;
+    }
+
+    let decodedToken = null;
+    try {
+      decodedToken = await admin.auth().verifyIdToken(bearerToken, true);
+    } catch {
+      res.status(401).json({ ok: false, error: "Unauthorized" });
+      return;
+    }
+
+    const uid = asText(decodedToken?.uid);
+    if (!uid) {
+      res.status(401).json({ ok: false, error: "Unauthorized" });
+      return;
+    }
+
+    const body = parseRequestJson(req);
+    const action = asText(body.action).toLowerCase();
+    if (!MEDIA_ACTIONS.has(action)) {
+      res.status(400).json({ ok: false, error: "Invalid action" });
+      return;
+    }
+
+    let ownerId = normalizeMediaOwnerId(body.restaurantId || "");
+    let videoId = "";
+    const isImageUpload = action === "image_upload";
+    const isStoryUpload = action === "story_upload";
+    const isStoryDelete = action === "story_delete";
+
+    if (isImageUpload || isStoryUpload) {
+      if (!ownerId) {
+        res.status(400).json({ ok: false, error: "restaurantId required" });
+        return;
+      }
+      if (isStoryUpload && ownerId === normalizeMediaOwnerId(uid)) {
+        res.status(403).json({ ok: false, error: "Story upload requires business owner id" });
+        return;
+      }
+      const authorized = await canUserManageOwnerId(uid, ownerId, { allowSelfOwner: isImageUpload });
+      if (!authorized) {
+        res.status(403).json({ ok: false, error: "Forbidden" });
+        return;
+      }
+    }
+
+    if (isStoryDelete) {
+      videoId = normalizeMediaVideoId(body.videoId || "");
+      if (!videoId) {
+        res.status(400).json({ ok: false, error: "videoId required" });
+        return;
+      }
+      const storyOwnerId = resolveStoryOwnerIdFromVideoKey(videoId);
+      if (!storyOwnerId) {
+        res.status(400).json({ ok: false, error: "Invalid videoId" });
+        return;
+      }
+      if (ownerId && ownerId !== storyOwnerId) {
+        res.status(403).json({ ok: false, error: "Forbidden" });
+        return;
+      }
+      ownerId = storyOwnerId;
+      const authorized = await canUserManageOwnerId(uid, ownerId, { allowSelfOwner: false });
+      if (!authorized) {
+        res.status(403).json({ ok: false, error: "Forbidden" });
+        return;
+      }
+    }
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const ttlSeconds = resolveMediaTicketTtlSeconds();
+    const payload = {
+      v: MEDIA_TICKET_VERSION,
+      action,
+      uid,
+      ownerId,
+      videoId: videoId || "",
+      iat: nowSeconds,
+      exp: nowSeconds + ttlSeconds,
+      nonce: crypto.randomBytes(12).toString("base64url")
+    };
+    const ticket = createMediaActionTicket(payload, secret);
+
+    res.status(200).json({
+      ok: true,
+      ticket,
+      expiresAt: payload.exp * 1000,
+      action,
+      restaurantId: ownerId,
+      constraints: {
+        maxImageMb: Number(process.env.MAX_IMAGE_MB || 15) || 15,
+        maxStoryMb: Number(process.env.MAX_STORY_MB || 50) || 50,
+        ttlSeconds
+      }
+    });
+  });
 
 exports.socialBootstrapFeed = functions
   .region("us-central1")

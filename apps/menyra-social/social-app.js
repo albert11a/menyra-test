@@ -1,5 +1,5 @@
 import { auth, db, app } from "/shared/firebase-config.js?v=2026-03-10-startup-1";
-import { BUNNY_EDGE_BASE } from "/shared/bunny-edge.js";
+import { BUNNY_EDGE_BASE, MEDIA_TICKET_ENDPOINT } from "/shared/bunny-edge.js";
 import { BRAND_UI } from "/shared/brand-ui.js";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
@@ -602,29 +602,6 @@ const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
 const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
 const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
-
-const ADMIN_LOGINS = {
-  admin: {
-    email: "admin@menyra.local",
-    password: "admin",
-    profile: {
-      displayName: `${BRAND_UI.title} HQ`,
-      city: "Prishtina",
-      role: "business",
-      avatarUrl: ""
-    }
-  },
-  admin1: {
-    email: "admin1@menyra.local",
-    password: "admin1",
-    profile: {
-      displayName: "Max Mustermann",
-      city: "Prishtina",
-      role: "user",
-      avatarUrl: ""
-    }
-  }
-};
 
 const DEFAULT_PROFILE = {
   name: "",
@@ -3721,24 +3698,6 @@ function preloadFeedHeroImages(feedPosts, { limit = FEED_PRELOAD_LIMIT } = {}) {
     if (index === 0) link.setAttribute("fetchpriority", "high");
     head.appendChild(link);
   });
-}
-
-function resolveAdminLogin(email, pass) {
-  const key = String(email || "").trim().toLowerCase();
-  if (!key || pass !== key) return null;
-  return ADMIN_LOGINS[key] || null;
-}
-
-async function signInOrCreateAdmin(admin) {
-  try {
-    return await signInWithEmailAndPassword(auth, admin.email, admin.password);
-  } catch (err) {
-    const created = await createUserWithEmailAndPassword(auth, admin.email, admin.password);
-    if (admin.profile?.displayName) {
-      await updateProfile(created.user, { displayName: admin.profile.displayName });
-    }
-    return created;
-  }
 }
 
 function isGenericHandle(handle) {
@@ -7389,8 +7348,6 @@ const {
   updateNotificationBadges,
   updateFocusRotation,
   ensureAuthLocalPersistence,
-  resolveAdminLogin,
-  signInOrCreateAdmin,
   signInWithEmailAndPassword,
   auth,
   ensureUserProfile,
@@ -8419,6 +8376,7 @@ async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType
   if (!String(file.type || "").startsWith("image/")) throw new Error("Nur Bilder erlaubt.");
 
   const compressedFile = await compressImage(file, maxSize, quality, mimeType);
+  const ticket = await requestMediaActionTicket("image_upload", { restaurantId: ownerId });
 
   const form = new FormData();
   form.append("file", compressedFile, compressedFile.name || "image.jpg");
@@ -8426,6 +8384,9 @@ async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType
 
   const res = await fetch(`${BUNNY_EDGE_BASE}/image/upload`, {
     method: "POST",
+    headers: {
+      "X-MNYRA-Media-Ticket": ticket
+    },
     body: form
   });
   const data = await res.json().catch(() => ({}));
@@ -8443,11 +8404,15 @@ function detectUploadMediaType(file) {
 async function uploadRawMediaFile(file, ownerId, { maxBytes = 50 * 1024 * 1024 } = {}) {
   if (!file) throw new Error("Datei fehlt.");
   if (file.size > maxBytes) throw new Error("Max 50MB pro Story Video.");
+  const ticket = await requestMediaActionTicket("story_upload", { restaurantId: ownerId });
   const form = new FormData();
   form.append("file", file, file.name || "media");
   form.append("restaurantId", ownerId || "");
   const res = await fetch(`${BUNNY_EDGE_BASE}/story/upload`, {
     method: "POST",
+    headers: {
+      "X-MNYRA-Media-Ticket": ticket
+    },
     body: form
   });
   const data = await res.json().catch(() => ({}));
@@ -8455,6 +8420,36 @@ async function uploadRawMediaFile(file, ownerId, { maxBytes = 50 * 1024 * 1024 }
   const cdnUrl = String(data.cdnUrl || data.url || "").trim();
   const videoId = String(data.videoId || "").trim();
   return { url: String(data.url || "").trim(), cdnUrl, videoId };
+}
+
+async function requestMediaActionTicket(action, { restaurantId = "", videoId = "" } = {}) {
+  const safeAction = String(action || "").trim();
+  if (!safeAction) throw new Error("Media Aktion fehlt.");
+  const user = auth.currentUser || state.user || null;
+  if (!user || typeof user.getIdToken !== "function") {
+    throw new Error("Bitte zuerst anmelden.");
+  }
+  const idToken = await user.getIdToken();
+  const payload = { action: safeAction };
+  const safeRestaurantId = String(restaurantId || "").trim();
+  if (safeRestaurantId) payload.restaurantId = safeRestaurantId;
+  const safeVideoId = String(videoId || "").trim();
+  if (safeVideoId) payload.videoId = safeVideoId;
+
+  const res = await fetch(MEDIA_TICKET_ENDPOINT, {
+    method: "POST",
+    mode: "cors",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${idToken}`
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data?.ticket) {
+    throw new Error(data?.error || "Media Autorisierung fehlgeschlagen.");
+  }
+  return String(data.ticket);
 }
 
 function releaseUploadPreviewUrl(previewUrl = "") {

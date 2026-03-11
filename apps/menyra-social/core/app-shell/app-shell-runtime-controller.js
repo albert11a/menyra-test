@@ -52,11 +52,8 @@ export function createAppShellRuntimeController(deps = {}) {
     updateMapSheetFn,
     cleanupLeafletFn,
     ensureAuthLocalPersistenceFn,
-    resolveAdminLoginFn,
-    signInOrCreateAdminFn,
     signInWithEmailAndPasswordFn,
     auth,
-    ensureUserProfileFn,
     createUserWithEmailAndPasswordFn,
     updateProfileFn,
     setDocFn,
@@ -493,11 +490,7 @@ export function createAppShellRuntimeController(deps = {}) {
         try {
           await ensureAuthLocalPersistenceFn();
           if (state.auth.mode === "login") {
-            const admin = resolveAdminLoginFn(email, password);
-            const cred = admin ? await signInOrCreateAdminFn(admin) : await signInWithEmailAndPasswordFn(auth, email, password);
-            if (admin) {
-              await ensureUserProfileFn(cred.user, admin?.profile || {});
-            }
+            await signInWithEmailAndPasswordFn(auth, email, password);
           } else {
             if (!name || !email || !password) {
               throw new Error("Bitte alles ausfuellen.");
