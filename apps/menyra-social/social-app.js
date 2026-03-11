@@ -93,6 +93,7 @@ import { createPublicBootstrapRuntimeController } from "./core/app-shell/public-
 import { createSessionDataRuntimeController } from "./core/app-shell/session-data-runtime-controller.js";
 import { createProfileMenuFocusRenderController } from "./core/profile/profile-menu-focus-render-controller.js";
 import { createPublicProfileRuntimeController } from "./core/profile/public-profile-runtime-controller.js";
+import { createSelfProfileRuntimeController } from "./core/profile/self-profile-runtime-controller.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
 import { createCrmRuntimeController } from "./core/crm/crm-runtime-controller.js";
 import { createChatRuntimeController } from "./core/chat/chat-runtime-controller.js";
@@ -1115,8 +1116,6 @@ let feedDeltaTimer = null;
 let crmAutoLoadObserver = null;
 let notificationsUnsub = null;
 let followingUnsub = null;
-let userDocUnsub = null;
-let userDocLiveKey = "";
 let pushMessagingClient = null;
 let firebaseMessagingModulePromise = null;
 let pushActivationIssue = "";
@@ -1141,6 +1140,7 @@ let focusRotateTimer = null;
 let focusRotateKey = "";
 let authInitialized = false;
 let authBootstrapSnapshot = null;
+let selfProfileRuntimeController = null;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -1154,15 +1154,6 @@ function resumeRender() {
   }
 }
 
-
-const restaurantLogoCache = new Map();
-const userSearchAvatarCache = new Map();
-const commentAvatarCache = new Map();
-const commentAvatarPending = new Set();
-let userAvatarCache = "";
-let lastShellAvatarUrl = "";
-let logoCacheWriteTimer = null;
-let avatarCacheWriteTimer = null;
 try {
   const initialRouteState = resolveInitialRouteState({
     qs,
@@ -1190,10 +1181,6 @@ function openGuestAuthPrompt(message = "Bitte registrieren oder einloggen, um di
   return true;
 }
 
-function getActiveUid() {
-  return state.user?.uid || state.userProfile?.uid || "";
-}
-
 const {
   applyPendingInitialRouteState,
   saveUserProfileToStorage,
@@ -1211,9 +1198,13 @@ const {
   sanitizeDisplayName,
   getOptimizedImageUrl,
   isPlaceholderUrl,
-  getUserAvatarCache: () => userAvatarCache,
-  setUserAvatarCache: (next) => { userAvatarCache = next; },
-  setLastShellAvatarUrl: (next) => { lastShellAvatarUrl = next; },
+  getUserAvatarCache: () => selfProfileRuntimeController?.getUserAvatarCache() || "",
+  setUserAvatarCache: (next) => {
+    if (selfProfileRuntimeController) selfProfileRuntimeController.setUserAvatarCache(next);
+  },
+  setLastShellAvatarUrl: (next) => {
+    if (selfProfileRuntimeController) selfProfileRuntimeController.setLastShellAvatarUrl(next);
+  },
   getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
   setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
   pendingRouteState
@@ -1268,6 +1259,105 @@ const {
   updateFeedDom: (...args) => updateFeedDom(...args),
   getLastRenderMode: () => lastRenderMode
 });
+const {
+  commentAvatarCache,
+  commentAvatarPending,
+  userSearchAvatarCache,
+  getUserAvatarCache,
+  setUserAvatarCache,
+  getLastShellAvatarUrl,
+  setLastShellAvatarUrl,
+  stopCurrentUserProfileListener,
+  loadLogoCache,
+  loadAvatarCache,
+  resolveRestaurantLogo,
+  resolveUserAvatar,
+  resolveShellAvatarUrl,
+  getSelfAvatarUrl,
+  primeSelfAvatarCache,
+  resolveSearchUserAvatarDisplay,
+  resolveNotificationAvatar,
+  resolveLikeAvatar,
+  resolveCommentAvatar,
+  scheduleCommentAvatarDomUpdate,
+  updateCommentAvatarNodesById,
+  refreshSelfCommentAvatars,
+  hydrateCommentAvatars,
+  applyCommentAvatarCache,
+  scheduleCommentAvatarFetch,
+  attachCurrentUserProfileListener,
+  fetchUserDoc,
+  ensureSelfAvatarReady,
+  currentUserBadge,
+  uploadAvatar,
+  saveAccountSettings,
+  loadUserProfile,
+  loadBusinessProfile
+} = (selfProfileRuntimeController = createSelfProfileRuntimeController({
+  state,
+  db,
+  documentObj: typeof document === "undefined" ? null : document,
+  windowObj: typeof window === "undefined" ? null : window,
+  safeStorage,
+  logoCacheKey: STORAGE_KEYS.logoCache,
+  avatarKey,
+  commentAvatarRemoteFetchEnabled: COMMENT_AVATAR_REMOTE_FETCH_ENABLED,
+  placeholderImage: PLACEHOLDER_IMAGE,
+  getOptimizedImageUrl,
+  isPlaceholderUrl,
+  loadLogoCacheCoreFn: loadLogoCacheCore,
+  scheduleLogoCacheWriteCoreFn: scheduleLogoCacheWriteCore,
+  loadAvatarCacheCoreFn: loadAvatarCacheCore,
+  scheduleAvatarCacheWriteCoreFn: scheduleAvatarCacheWriteCore,
+  resolveRestaurantLogoCoreFn: resolveRestaurantLogoCore,
+  resolveUserAvatarCoreFn: resolveUserAvatarCore,
+  resolveShellAvatarUrlCoreFn: resolveShellAvatarUrlCore,
+  collectionFn: collection,
+  queryFn: query,
+  whereFn: where,
+  limitFn: limit,
+  docFn: doc,
+  getDocFn: getDoc,
+  getDocFromServerFn: getDocFromServer,
+  getDocsFn: getDocs,
+  onSnapshotFn: onSnapshot,
+  setDocFn: setDoc,
+  serverTimestampFn: serverTimestamp,
+  updateProfileFn: updateProfile,
+  uploadCompressedImageFn: uploadCompressedImage,
+  ensureUserProfileFn: ensureUserProfile,
+  ensurePostMetaFn: ensurePostMeta,
+  resolveUserByHandleFn: resolveUserByHandle,
+  ensureRestaurantPublicMetaFn: ensureRestaurantPublicMeta,
+  syncCeoDirectoryProfilePatchFn: syncCeoDirectoryProfilePatch,
+  resolveRestaurantForAuthUserFn: resolveRestaurantForAuthUser,
+  saveUserProfileToStorage,
+  writeAuthBootstrapSnapshot,
+  syncPrivateSettingFromProfile,
+  mergeRestaurants,
+  rebuildBusinessLocations,
+  render,
+  updateShellDom,
+  updateFeedDom: (...args) => updateFeedDom(...args),
+  refreshSearchView: (...args) => refreshSearchView(...args),
+  getLastRenderMode: () => lastRenderMode,
+  normalizeHandle,
+  normalizeRoleList,
+  resolvePreferredHandle,
+  normalizeRestaurantType,
+  normalizeLeadSettings,
+  normalizeCeoCountry,
+  normalizeCeoPath,
+  hasStoredCeoCrmCounts,
+  sanitizeCeoCrmCounts,
+  pickCountValue,
+  sanitizeDisplayName,
+  isLocalBusinessProfile,
+  isCeoUser,
+  getVerifiedMapLocation,
+  getCeoGpsOverride,
+  isRestaurantMarkedDeleted
+}));
 
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
   saveMenuLayoutToStorageCore({
@@ -1289,402 +1379,6 @@ function getFocusCardClass() {
     colorId: state.menuLayout?.cardColor,
     themes: MENU_LAYOUT_COLORS,
     fallbackClass: "bg-white border-slate-100"
-  });
-}
-
-function loadLogoCache() {
-  loadLogoCacheCore({
-    safeStorage,
-    logoCacheKey: STORAGE_KEYS.logoCache,
-    isPlaceholderUrl,
-    restaurantLogoCache
-  });
-}
-
-function scheduleLogoCacheWrite() {
-  scheduleLogoCacheWriteCore({
-    windowObj: typeof window === "undefined" ? null : window,
-    hasPendingTimer: !!logoCacheWriteTimer,
-    setPendingTimer: (timer) => { logoCacheWriteTimer = timer; },
-    safeStorage,
-    logoCacheKey: STORAGE_KEYS.logoCache,
-    restaurantLogoCache,
-    delayMs: 400
-  });
-}
-
-function loadAvatarCache(uid) {
-  const cached = loadAvatarCacheCore({
-    uid,
-    safeStorage,
-    avatarKey
-  });
-  if (!cached) return;
-  userAvatarCache = cached;
-}
-
-function scheduleAvatarCacheWrite(url, uid = getActiveUid()) {
-  scheduleAvatarCacheWriteCore({
-    windowObj: typeof window === "undefined" ? null : window,
-    url,
-    uid,
-    isPlaceholderUrl,
-    hasPendingTimer: !!avatarCacheWriteTimer,
-    setPendingTimer: (timer) => { avatarCacheWriteTimer = timer; },
-    safeStorage,
-    avatarKey,
-    onPersist: (persistedUid, persistedUrl) => {
-      writeAuthBootstrapSnapshot({ uid: persistedUid, avatar: persistedUrl });
-    },
-    delayMs: 300
-  });
-}
-
-function resolveRestaurantLogo(restaurantId, raw, size = "avatar", allowCacheFallback = true) {
-  return resolveRestaurantLogoCore({
-    restaurantId,
-    raw,
-    size,
-    allowCacheFallback,
-    getOptimizedImageUrl,
-    isPlaceholderUrl,
-    restaurantLogoCache,
-    onCacheUpdated: scheduleLogoCacheWrite
-  });
-}
-
-function resolveUserAvatar(raw) {
-  const result = resolveUserAvatarCore({
-    raw,
-    userPhotoURL: state.user?.photoURL || "",
-    userAvatarCache,
-    getOptimizedImageUrl,
-    isPlaceholderUrl
-  });
-  if (result.nextUserAvatarCache && result.nextUserAvatarCache !== userAvatarCache) {
-    userAvatarCache = result.nextUserAvatarCache;
-  }
-  if (result.shouldScheduleWrite && userAvatarCache) {
-    scheduleAvatarCacheWrite(userAvatarCache);
-  }
-  return result.url;
-}
-
-function resolveShellAvatarUrl() {
-  const result = resolveShellAvatarUrlCore({
-    profileAvatar: state.userProfile.avatar || "",
-    userPhotoURL: state.user?.photoURL || "",
-    userAvatarCache,
-    lastShellAvatarUrl,
-    getOptimizedImageUrl,
-    isPlaceholderUrl,
-    placeholderImage: PLACEHOLDER_IMAGE
-  });
-  if (result.nextUserAvatarCache && result.nextUserAvatarCache !== userAvatarCache) {
-    userAvatarCache = result.nextUserAvatarCache;
-  }
-  if (result.nextLastShellAvatarUrl && result.nextLastShellAvatarUrl !== lastShellAvatarUrl) {
-    lastShellAvatarUrl = result.nextLastShellAvatarUrl;
-  }
-  if (result.shouldScheduleWrite && result.url && !isPlaceholderUrl(result.url)) {
-    scheduleAvatarCacheWrite(result.url);
-  }
-  return result.url;
-}
-
-function getSelfAvatarUrl() {
-  const raw = state.userProfile.avatar || state.user?.photoURL || userAvatarCache || "";
-  const url = getOptimizedImageUrl(raw, "avatar");
-  return isPlaceholderUrl(url) ? "" : url;
-}
-
-function primeSelfAvatarCache(url) {
-  if (!url || isPlaceholderUrl(url)) return;
-  userAvatarCache = url;
-  scheduleAvatarCacheWrite(url);
-  const canTouchDom = typeof document !== "undefined";
-  if (state.user?.uid) {
-    commentAvatarCache.set(state.user.uid, url);
-    if (canTouchDom) updateCommentAvatarNodesByUid(state.user.uid, url);
-  }
-  const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-  if (handleKey) {
-    commentAvatarCache.set(handleKey, url);
-    if (canTouchDom) updateCommentAvatarNodes(handleKey, url);
-  }
-}
-
-function resolveUserAvatarInstant(raw) {
-  return resolveUserAvatar(raw);
-}
-
-function resolveSearchUserAvatarDisplay(user) {
-  const uid = user?.uid || "";
-  const name = user?.name || user?.displayName || "";
-  const handle = user?.handle || "";
-  const raw = user?.avatarUrl || user?.avatar || "";
-  const url = getOptimizedImageUrl(raw, "avatar");
-  if (!isPlaceholderUrl(url)) {
-    if (uid && userSearchAvatarCache.get(uid) !== url) {
-      userSearchAvatarCache.set(uid, url);
-    }
-    return url;
-  }
-  if (uid) {
-    const cached = userSearchAvatarCache.get(uid);
-    if (cached) return cached;
-  }
-  return getOptimizedImageUrl("", "avatar");
-}
-
-function resolveNotificationAvatar(notif) {
-  const raw = notif?.img || notif?.avatar || "";
-  const url = getOptimizedImageUrl(raw, "avatar");
-  if (!isPlaceholderUrl(url)) return url;
-  return getOptimizedImageUrl("", "avatar");
-}
-
-function resolveLikeAvatar(user) {
-  const raw = user?.avatarUrl || user?.avatar || "";
-  const url = getOptimizedImageUrl(raw, "avatar");
-  if (!isPlaceholderUrl(url)) return url;
-  return getOptimizedImageUrl("", "avatar");
-}
-function resolveCommentAvatar(comment) {
-  if (!comment) return getOptimizedImageUrl("", "avatar");
-  const handleKey = normalizeHandle(comment.handle || comment.author || "");
-  const selfUid = state.user?.uid || "";
-  const selfHandle = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-  const isSelf = (!!selfUid && comment.uid && String(comment.uid) === String(selfUid))
-    || (!!selfHandle && handleKey && handleKey === selfHandle);
-  const selfAvatar = getSelfAvatarUrl();
-  if (isSelf && selfAvatar) {
-    primeSelfAvatarCache(selfAvatar);
-    if (selfUid) commentAvatarCache.set(selfUid, selfAvatar);
-    if (handleKey) commentAvatarCache.set(handleKey, selfAvatar);
-    return selfAvatar;
-  }
-  const url = getOptimizedImageUrl(
-    comment.avatarUrl || comment.avatar || comment.avatarURL || comment.photoURL || "",
-    "avatar"
-  );
-  if (!isPlaceholderUrl(url)) {
-    if (handleKey && commentAvatarCache.get(handleKey) !== url) {
-      commentAvatarCache.set(handleKey, url);
-    }
-    if (comment.uid && commentAvatarCache.get(comment.uid) !== url) {
-      commentAvatarCache.set(comment.uid, url);
-    }
-    return url;
-  }
-  if (handleKey) {
-    const cached = commentAvatarCache.get(handleKey);
-    if (cached) return cached;
-  }
-  if (comment.uid) {
-    const cachedByUid = commentAvatarCache.get(comment.uid);
-    if (cachedByUid) return cachedByUid;
-    if (state.user?.uid && comment.uid === state.user.uid) {
-      const selfAvatar = resolveUserAvatarInstant(state.userProfile.avatar);
-      if (!isPlaceholderUrl(selfAvatar)) {
-        commentAvatarCache.set(comment.uid, selfAvatar);
-        if (handleKey) commentAvatarCache.set(handleKey, selfAvatar);
-        return selfAvatar;
-      }
-    }
-  } else if (handleKey) {
-    const selfKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "user");
-    if (handleKey === selfKey) {
-      const selfAvatar = resolveUserAvatar(state.userProfile.avatar);
-      if (!isPlaceholderUrl(selfAvatar)) {
-        commentAvatarCache.set(handleKey, selfAvatar);
-        return selfAvatar;
-      }
-    }
-  }
-  return getOptimizedImageUrl("", "avatar");
-}
-
-function updateCommentAvatarNodes(handleKey, url) {
-  if (!handleKey || !url || isPlaceholderUrl(url)) return;
-  const safe = escapeSelector(handleKey);
-  document.querySelectorAll(`[data-comment-handle="${safe}"]`).forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    if (img.getAttribute("src") !== url) img.setAttribute("src", url);
-  });
-}
-
-function updateCommentAvatarNodesByUid(uid, url) {
-  if (!uid || !url || isPlaceholderUrl(url)) return;
-  const safe = escapeSelector(uid);
-  document.querySelectorAll(`[data-comment-uid="${safe}"]`).forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    if (img.getAttribute("src") !== url) img.setAttribute("src", url);
-  });
-}
-
-function updateCommentAvatarNodesById(commentId, url) {
-  if (!commentId || !url || isPlaceholderUrl(url)) return;
-  const safe = escapeSelector(commentId);
-  document.querySelectorAll(`img[data-img-key="comment-avatar:${safe}"]`).forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    if (img.getAttribute("src") !== url) img.setAttribute("src", url);
-  });
-}
-
-function scheduleCommentAvatarDomUpdate(uid, handleKey, url) {
-  if (!url || isPlaceholderUrl(url)) return;
-  if (typeof window === "undefined") return;
-  window.requestAnimationFrame(() => {
-    if (uid) updateCommentAvatarNodesByUid(uid, url);
-    if (handleKey) updateCommentAvatarNodes(handleKey, url);
-  });
-}
-
-function refreshSelfCommentAvatars({ attempt = 0, maxAttempts = 6 } = {}) {
-  const url = getSelfAvatarUrl() || userAvatarCache || "";
-  if (!url || isPlaceholderUrl(url)) {
-    if (attempt < maxAttempts && typeof window !== "undefined") {
-      window.setTimeout(() => refreshSelfCommentAvatars({ attempt: attempt + 1, maxAttempts }), 250);
-    }
-    return;
-  }
-  if (state.user?.uid) updateCommentAvatarNodesByUid(state.user.uid, url);
-  const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-  if (handleKey) updateCommentAvatarNodes(handleKey, url);
-}
-
-function collectPostComments(postId) {
-  if (!postId) return [];
-  const meta = ensurePostMeta(postId);
-  const all = [];
-  (meta.comments || []).forEach((comment) => {
-    if (!comment) return;
-    all.push(comment);
-    (comment.replies || []).forEach((reply) => {
-      if (reply) all.push(reply);
-    });
-  });
-  return all;
-}
-
-function hydrateCommentAvatars(containerEl, { postId = "" } = {}) {
-  if (!containerEl) return;
-  const commentMap = new Map();
-  if (postId) {
-    collectPostComments(postId).forEach((comment) => {
-      if (comment?.id) commentMap.set(String(comment.id), comment);
-    });
-  }
-  containerEl.querySelectorAll("div[data-comment-id][data-comment-parent]").forEach((row) => {
-    if (!(row instanceof HTMLElement)) return;
-    if (row.querySelector("img.comment-avatar")) return;
-    const commentId = row.dataset.commentId || "";
-    const fromMap = commentId ? commentMap.get(String(commentId)) : null;
-    const uid = fromMap?.uid || row.dataset.commentUid || "";
-    const handle = fromMap?.handle || row.dataset.commentHandle || "";
-    const raw = fromMap?.avatarUrl || fromMap?.avatar || "";
-    const resolved = getOptimizedImageUrl(raw, "avatar");
-    const safeSrc = (!resolved || isPlaceholderUrl(resolved)) ? PLACEHOLDER_IMAGE : resolved;
-    const img = document.createElement("img");
-    img.className = "comment-avatar w-9 h-9 rounded-2xl object-cover shadow";
-    img.src = safeSrc;
-    img.loading = "lazy";
-    img.decoding = "async";
-    img.referrerPolicy = "no-referrer";
-    img.alt = "";
-    img.setAttribute("data-img-key", `comment-avatar:${commentId || ""}`);
-    img.setAttribute("data-comment-id", commentId || "");
-    img.setAttribute("data-comment-uid", uid);
-    img.setAttribute("data-comment-handle", normalizeHandle(handle));
-    img.setAttribute("data-uid", uid);
-    img.setAttribute("data-handle", handle);
-    img.onerror = () => {
-      img.src = PLACEHOLDER_IMAGE;
-    };
-    row.prepend(img);
-  });
-  const imgs = containerEl.querySelectorAll("img.comment-avatar[data-uid], img.comment-avatar[data-handle]");
-  imgs.forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    const uid = img.getAttribute("data-uid") || "";
-    const handle = img.getAttribute("data-handle") || "";
-    const handleKey = normalizeHandle(handle);
-    let cached = "";
-    if (uid && commentAvatarCache.has(uid)) cached = commentAvatarCache.get(uid);
-    else if (handleKey && commentAvatarCache.has(handleKey)) cached = commentAvatarCache.get(handleKey);
-    if (cached && !isPlaceholderUrl(cached) && img.getAttribute("src") !== cached) {
-      img.setAttribute("src", cached);
-      return;
-    }
-    if (uid) {
-      scheduleCommentAvatarFetch({
-        id: img.getAttribute("data-comment-id") || "",
-        uid,
-        handle
-      });
-    }
-  });
-}
-
-function applyCommentAvatarCache(root = document) {
-  if (!root) return;
-  const selfUid = state.user?.uid || "";
-  const selfHandle = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-  const cachedSelf = userAvatarCache && !isPlaceholderUrl(userAvatarCache) ? userAvatarCache : "";
-  root.querySelectorAll("img[data-comment-uid], img[data-comment-handle]").forEach((img) => {
-    if (!(img instanceof HTMLImageElement)) return;
-    const uid = img.dataset.commentUid || "";
-    const handleKey = img.dataset.commentHandle || "";
-    let url = "";
-    if (uid && commentAvatarCache.has(uid)) url = commentAvatarCache.get(uid);
-    if (!url && handleKey && commentAvatarCache.has(handleKey)) url = commentAvatarCache.get(handleKey);
-    if (!url && selfUid && uid === selfUid && cachedSelf) url = cachedSelf;
-    if (!url && selfHandle && handleKey === selfHandle && cachedSelf) url = cachedSelf;
-    if (url && !isPlaceholderUrl(url) && img.getAttribute("src") !== url) {
-      img.setAttribute("src", url);
-    }
-  });
-}
-
-function scheduleCommentAvatarFetch(comment) {
-  if (!COMMENT_AVATAR_REMOTE_FETCH_ENABLED) return;
-  if (!comment) return;
-  const handleKey = normalizeHandle(comment.handle || comment.author || "");
-  const commentId = comment.id ? String(comment.id) : "";
-  if (comment.uid) {
-    const uid = String(comment.uid);
-    if (commentAvatarCache.has(uid) || commentAvatarPending.has(uid)) return;
-    commentAvatarPending.add(uid);
-    fetchUserDoc(uid).then((snap) => {
-      commentAvatarPending.delete(uid);
-      if (!snap || !snap.exists()) return;
-      const data = snap.data() || {};
-      const avatar = data.avatarUrl || data.avatar || data.avatarURL || data.photoURL || "";
-      const url = getOptimizedImageUrl(avatar, "avatar");
-      if (isPlaceholderUrl(url)) return;
-      commentAvatarCache.set(uid, url);
-      if (handleKey) commentAvatarCache.set(handleKey, url);
-      scheduleCommentAvatarDomUpdate(uid, handleKey, url);
-      if (commentId) updateCommentAvatarNodesById(commentId, url);
-    }).catch(() => {
-      commentAvatarPending.delete(uid);
-    });
-    return;
-  }
-  if (!handleKey || commentAvatarCache.has(handleKey) || commentAvatarPending.has(handleKey)) return;
-  commentAvatarPending.add(handleKey);
-  resolveUserByHandle(handleKey).then((resolved) => {
-    commentAvatarPending.delete(handleKey);
-    const data = resolved?.data || {};
-    const avatar = data.avatarUrl || data.avatar || "";
-    const url = getOptimizedImageUrl(avatar, "avatar");
-    if (isPlaceholderUrl(url)) return;
-    commentAvatarCache.set(handleKey, url);
-    scheduleCommentAvatarDomUpdate("", handleKey, url);
-    if (commentId) updateCommentAvatarNodesById(commentId, url);
-  }).catch(() => {
-    commentAvatarPending.delete(handleKey);
   });
 }
 
@@ -3945,42 +3639,6 @@ async function ensureCeoCrmCountsLoaded({ force = false } = {}) {
   }
 }
 
-function normalizeProfile(data, user) {
-  const displayName = data?.displayName || user?.displayName || user?.email?.split("@")[0] || "User";
-  const roles = normalizeRoleList(data?.roles || data?.role || "");
-  const lat = data?.gpsLat ?? data?.lat ?? null;
-  const lng = data?.gpsLng ?? data?.lng ?? null;
-  return {
-    name: displayName,
-    handle: data?.handle || normalizeHandle(displayName),
-    bio: data?.bio || data?.description || "",
-    avatar: data?.avatarUrl || data?.avatar || user?.photoURL || "",
-    location: data?.city || "Prishtina",
-    address: data?.address || "",
-    followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans),
-    following: pickCountValue(data?.followingCount, data?.following),
-    privateAccount: !!data?.privateAccount,
-    karma: String(data?.score ?? "0"),
-    roles,
-    role: data?.role || "user",
-    isPremium: data?.isPremium || false,
-    restaurantId: data?.restaurantId || "",
-    leadSettings: normalizeLeadSettings(data?.leadSettings || null),
-    country: normalizeCeoCountry(data?.country),
-    ceoParentUid: data?.ceoParentUid || data?.parentCeoUid || "",
-    ceoParentName: data?.ceoParentName || data?.parentCeoName || "",
-    ceoRootUid: data?.ceoRootUid || data?.rootCeoUid || "",
-    ceoRootName: data?.ceoRootName || data?.rootCeoName || "",
-    ceoPath: normalizeCeoPath(data?.ceoPath),
-    crmCounts: hasStoredCeoCrmCounts(data?.crmCounts) ? sanitizeCeoCrmCounts(data.crmCounts) : null,
-    lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
-    lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
-    gpsLat: Number.isFinite(Number(lat)) ? Number(lat) : null,
-    gpsLng: Number.isFinite(Number(lng)) ? Number(lng) : null,
-    posts: []
-  };
-}
-
 function hasCountValue(...values) {
   return values.some((value) => Number.isFinite(Number(value)));
 }
@@ -3991,162 +3649,6 @@ function pickCountValue(...values) {
     if (Number.isFinite(numeric)) return Math.max(0, numeric);
   }
   return 0;
-}
-
-function normalizeBusinessProfile(rest = {}, user) {
-  const displayName = rest?.name || rest?.restaurantName || user?.displayName || user?.email?.split("@")[0] || "Business";
-  const handle = resolvePreferredHandle({ handle: rest?.handle || "", name: displayName }, displayName);
-  const lat = rest?.gpsLat ?? rest?.lat ?? null;
-  const lng = rest?.gpsLng ?? rest?.lng ?? null;
-  const type = normalizeRestaurantType(rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "");
-  return {
-    name: displayName,
-    handle: handle || normalizeHandle(displayName),
-    bio: rest?.bio || rest?.description || rest?.about || "",
-    avatar: rest?.logoUrl || rest?.logo || "",
-    location: rest?.city || "Prishtina",
-    address: rest?.address || "",
-    followers: pickCountValue(rest?.followersCount, rest?.followers, rest?.fansCount, rest?.fans),
-    following: pickCountValue(rest?.followingCount, rest?.following),
-    privateAccount: false,
-    karma: "0",
-    roles: normalizeRoleList(rest?.roles || "owner"),
-    role: "business",
-    isPremium: rest?.isPremium || false,
-    restaurantId: rest?.id || rest?.restaurantId || "",
-    phone: rest?.phone || "",
-    instagram: rest?.instagram || rest?.insta || "",
-    ...(type ? { type, customerType: type } : {}),
-    lat: Number.isFinite(Number(lat)) ? Number(lat) : null,
-    lng: Number.isFinite(Number(lng)) ? Number(lng) : null,
-    gpsLat: Number.isFinite(Number(lat)) ? Number(lat) : null,
-    gpsLng: Number.isFinite(Number(lng)) ? Number(lng) : null,
-    posts: []
-  };
-}
-
-function syncSelfAvatarCachesFromProfile(profile = state.userProfile) {
-  const resolvedAvatar = getOptimizedImageUrl(profile?.avatar || "", "avatar");
-  if (isPlaceholderUrl(resolvedAvatar)) return "";
-  primeSelfAvatarCache(resolvedAvatar);
-  return resolvedAvatar;
-}
-
-function commitLiveSelfProfile(normalized, { syncPrivate = true } = {}) {
-  if (!normalized || typeof normalized !== "object") return;
-  state.userProfile = normalized;
-  if (state.user?.uid) state.userProfile.uid = state.user.uid;
-  if (syncPrivate) syncPrivateSettingFromProfile(normalized.privateAccount);
-  saveUserProfileToStorage();
-  syncSelfAvatarCachesFromProfile(state.userProfile);
-  if (lastRenderMode === "main") {
-    updateShellDom();
-    if (state.activeTab === "search" && refreshSearchView()) return;
-    if (state.activeTab === "feed") {
-      const updatedFeed = updateFeedDom();
-      if (!updatedFeed) render();
-      return;
-    }
-  }
-  render();
-}
-
-function applyLiveUserProfileSnapshot(data = {}) {
-  if (!state.user) return;
-  const prevAvatar = state.userProfile?.avatar || "";
-  const seed = {
-    displayName: state.userProfile?.name || "",
-    handle: state.userProfile?.handle || "",
-    bio: state.userProfile?.bio || "",
-    avatarUrl: state.userProfile?.avatar || "",
-    city: state.userProfile?.location || "",
-    address: state.userProfile?.address || "",
-    followersCount: state.userProfile?.followers ?? 0,
-    followingCount: state.userProfile?.following ?? 0,
-    privateAccount: !!state.userProfile?.privateAccount,
-    score: Number(state.userProfile?.karma || 0),
-    roles: state.userProfile?.roles || [],
-    role: state.userProfile?.role || "user",
-    restaurantId: state.userProfile?.restaurantId || "",
-    leadSettings: state.userProfile?.leadSettings || null,
-    country: state.userProfile?.country || "",
-    ceoParentUid: state.userProfile?.ceoParentUid || "",
-    ceoParentName: state.userProfile?.ceoParentName || "",
-    ceoRootUid: state.userProfile?.ceoRootUid || "",
-    ceoRootName: state.userProfile?.ceoRootName || "",
-    ceoPath: Array.isArray(state.userProfile?.ceoPath) ? state.userProfile.ceoPath.slice() : [],
-    crmCounts: state.userProfile?.crmCounts || null,
-    gpsLat: state.userProfile?.gpsLat ?? state.userProfile?.lat ?? null,
-    gpsLng: state.userProfile?.gpsLng ?? state.userProfile?.lng ?? null,
-    ...(data || {})
-  };
-  const normalized = normalizeProfile(seed, state.user);
-  const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
-  if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
-  normalized.uid = state.user.uid;
-  commitLiveSelfProfile(normalized);
-}
-
-function applyLiveBusinessProfileSnapshot(restData = {}, restaurantId = "") {
-  if (!state.user) return;
-  const safeRestaurantId = String(restaurantId || restData?.id || restData?.restaurantId || state.userProfile?.restaurantId || "").trim();
-  if (!safeRestaurantId) return;
-  const prevAvatar = state.userProfile?.avatar || "";
-  const seed = {
-    id: safeRestaurantId,
-    restaurantId: safeRestaurantId,
-    name: state.userProfile?.name || "",
-    restaurantName: state.userProfile?.name || "",
-    handle: state.userProfile?.handle || "",
-    bio: state.userProfile?.bio || "",
-    description: state.userProfile?.bio || "",
-    logoUrl: state.userProfile?.avatar || "",
-    city: state.userProfile?.location || "",
-    address: state.userProfile?.address || "",
-    followersCount: state.userProfile?.followers ?? 0,
-    followingCount: state.userProfile?.following ?? 0,
-    phone: state.userProfile?.phone || "",
-    instagram: state.userProfile?.instagram || "",
-    roles: state.userProfile?.roles || ["owner"],
-    type: state.userProfile?.type || state.userProfile?.customerType || "",
-    customerType: state.userProfile?.customerType || state.userProfile?.type || "",
-    gpsLat: state.userProfile?.gpsLat ?? state.userProfile?.lat ?? null,
-    gpsLng: state.userProfile?.gpsLng ?? state.userProfile?.lng ?? null,
-    ...(restData || {}),
-    id: safeRestaurantId,
-    restaurantId: safeRestaurantId
-  };
-  const normalized = normalizeBusinessProfile(seed, state.user);
-  const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
-  if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
-  normalized.uid = state.user.uid;
-  state.restaurants = mergeRestaurants(state.restaurants, [{ id: safeRestaurantId, ...seed }]);
-  rebuildBusinessLocations();
-  commitLiveSelfProfile(normalized, { syncPrivate: false });
-}
-
-function attachCurrentUserProfileListener() {
-  const uid = String(state.user?.uid || "").trim();
-  if (!uid) return;
-  const restaurantId = String(state.userProfile?.restaurantId || "").trim();
-  const useRestaurantDoc = !!(restaurantId && isLocalBusinessProfile(state.userProfile));
-  const nextKey = useRestaurantDoc ? `restaurant:${restaurantId}` : `user:${uid}`;
-  if (userDocUnsub && userDocLiveKey === nextKey) return;
-  if (userDocUnsub) {
-    userDocUnsub();
-    userDocUnsub = null;
-  }
-  userDocLiveKey = nextKey;
-  const ref = useRestaurantDoc ? doc(db, "restaurants", restaurantId) : doc(db, "users", uid);
-  userDocUnsub = onSnapshot(ref, (snap) => {
-    if (!snap.exists()) return;
-    const data = snap.data() || {};
-    if (useRestaurantDoc) {
-      applyLiveBusinessProfileSnapshot({ id: restaurantId, ...data }, restaurantId);
-      return;
-    }
-    applyLiveUserProfileSnapshot(data);
-  }, () => {});
 }
 
 async function syncCeoDirectoryProfilePatch(patch = {}) {
@@ -4547,147 +4049,6 @@ async function resolveRoleSwitchTargets(user) {
     }
   }
   render();
-}
-
-async function fetchUserDoc(uid) {
-  if (!uid) return null;
-  const ref = doc(db, "users", uid);
-  let snap = null;
-  if (typeof getDocFromServer === "function") {
-    try {
-      snap = await getDocFromServer(ref);
-    } catch {
-      // Fall through to cached getDoc
-    }
-  }
-  try {
-    snap = snap || await getDoc(ref);
-  } catch {
-    snap = null;
-  }
-  if (snap && typeof snap.exists === "function" && snap.exists()) return snap;
-  try {
-    const restSnap = await getDocs(query(collection(db, "restaurants"), where("ownerUid", "==", uid), limit(1)));
-    if (!restSnap.empty) {
-      const docSnap = restSnap.docs[0];
-      const data = docSnap.data() || {};
-      const payload = { ...data };
-      if (!payload.avatarUrl && (payload.logoUrl || payload.logo)) {
-        payload.avatarUrl = payload.logoUrl || payload.logo || "";
-      }
-      return {
-        id: docSnap.id,
-        exists: () => true,
-        data: () => payload
-      };
-    }
-  } catch {}
-  return snap;
-}
-
-async function ensureSelfAvatarReady({ force = false } = {}) {
-  if (!state.user?.uid) return "";
-  const fallbackFromState = () => {
-    const existing = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
-    if (!isPlaceholderUrl(existing)) return existing;
-    if (userAvatarCache && !isPlaceholderUrl(userAvatarCache)) return userAvatarCache;
-    return "";
-  };
-
-  if (!force) {
-    const cached = fallbackFromState();
-    if (cached) return cached;
-  }
-
-  try {
-    if (isLocalBusinessProfile(state.userProfile) && state.userProfile.restaurantId) {
-      const restSnap = await getDoc(doc(db, "restaurants", state.userProfile.restaurantId));
-      if (restSnap.exists()) {
-        const restData = restSnap.data() || {};
-        const raw = restData.logoUrl || restData.logo || "";
-        const resolved = getOptimizedImageUrl(raw, "avatar");
-        if (!isPlaceholderUrl(resolved)) {
-          state.userProfile.avatar = raw;
-          userAvatarCache = resolved;
-          scheduleAvatarCacheWrite(resolved);
-          if (state.user?.uid) {
-            commentAvatarCache.set(state.user.uid, resolved);
-            updateCommentAvatarNodesByUid(state.user.uid, resolved);
-          }
-          const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-          if (handleKey) {
-            commentAvatarCache.set(handleKey, resolved);
-            updateCommentAvatarNodes(handleKey, resolved);
-          }
-          return resolved;
-        }
-      }
-      return fallbackFromState();
-    }
-    const snap = await fetchUserDoc(state.user.uid);
-    if (!snap) return fallbackFromState();
-    const data = snap.exists() ? snap.data() : {};
-    const raw = data.avatarUrl || data.avatar || data.avatarURL || data.photoURL || state.user?.photoURL || "";
-    const resolved = getOptimizedImageUrl(raw, "avatar");
-    if (!isPlaceholderUrl(resolved)) {
-      state.userProfile.avatar = raw;
-      userAvatarCache = resolved;
-      scheduleAvatarCacheWrite(resolved);
-      if (state.user?.uid) {
-        commentAvatarCache.set(state.user.uid, resolved);
-        updateCommentAvatarNodesByUid(state.user.uid, resolved);
-      }
-      const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-      if (handleKey) {
-        commentAvatarCache.set(handleKey, resolved);
-        updateCommentAvatarNodes(handleKey, resolved);
-      }
-      return resolved;
-    }
-    const authUrl = state.user?.photoURL || "";
-    if (authUrl) {
-      const authResolved = getOptimizedImageUrl(authUrl, "avatar");
-      if (!isPlaceholderUrl(authResolved)) {
-        try {
-          await setDoc(doc(db, "users", state.user.uid), {
-            avatarUrl: authUrl,
-            updatedAt: serverTimestamp()
-          }, { merge: true });
-        } catch {}
-        state.userProfile.avatar = authUrl;
-        userAvatarCache = authResolved;
-        scheduleAvatarCacheWrite(authResolved);
-        if (state.user?.uid) {
-          commentAvatarCache.set(state.user.uid, authResolved);
-          updateCommentAvatarNodesByUid(state.user.uid, authResolved);
-        }
-        const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-        if (handleKey) {
-          commentAvatarCache.set(handleKey, authResolved);
-          updateCommentAvatarNodes(handleKey, authResolved);
-        }
-        return authResolved;
-      }
-    }
-  } catch (err) {
-    console.error("ensureSelfAvatarReady failed", err);
-  }
-  const authFallback = state.user?.photoURL ? getOptimizedImageUrl(state.user.photoURL, "avatar") : "";
-  if (authFallback && !isPlaceholderUrl(authFallback)) return authFallback;
-  return fallbackFromState();
-}
-
-function currentUserBadge() {
-  const avatarRaw = state.userProfile.avatar || state.user?.photoURL || "";
-  const resolvedAvatar = resolveUserAvatarInstant(avatarRaw);
-  const finalAvatar = isPlaceholderUrl(resolvedAvatar) ? "" : resolvedAvatar;
-  if (finalAvatar) primeSelfAvatarCache(finalAvatar);
-  return {
-    uid: state.user?.uid || "",
-    name: state.userProfile.name || "User",
-    handle: state.userProfile.handle || "user",
-    avatar: finalAvatar
-  };
 }
 
 function formatDateLabel(value) {
@@ -5507,11 +4868,7 @@ function stopLiveListeners() {
     followingUnsub();
     followingUnsub = null;
   }
-  if (userDocUnsub) {
-    userDocUnsub();
-    userDocUnsub = null;
-  }
-  userDocLiveKey = "";
+  stopCurrentUserProfileListener();
   stopProfileViewListener();
   if (feedUnsub) {
     feedUnsub();
@@ -6284,14 +5641,10 @@ sessionDataRuntimeController = createSessionDataRuntimeController(buildSessionDa
   setMenuDetailCloseBound: (next) => {
     menuDetailCloseBound = !!next;
   },
-  getUserAvatarCache: () => userAvatarCache,
-  setUserAvatarCache: (next) => {
-    userAvatarCache = String(next || "");
-  },
-  getLastShellAvatarUrl: () => lastShellAvatarUrl,
-  setLastShellAvatarUrl: (next) => {
-    lastShellAvatarUrl = String(next || "");
-  },
+  getUserAvatarCache,
+  setUserAvatarCache,
+  getLastShellAvatarUrl,
+  setLastShellAvatarUrl,
   bootstrapAuthenticatedSessionCore,
   loadAuthProfile,
   resolveRoleSwitchTargets,
@@ -6797,7 +6150,7 @@ const {
   },
   getAuthInitialized: () => authInitialized,
   getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
-  getUserAvatarCache: () => userAvatarCache,
+  getUserAvatarCache,
   getProfileMenuBound: () => profileMenuBound,
   setProfileMenuBound: (next) => {
     profileMenuBound = !!next;
@@ -7969,54 +7322,6 @@ function releaseUploadPreviewUrl(previewUrl = "") {
   } catch {}
 }
 
-async function uploadAvatar(file) {
-  if (!state.user) return;
-  try {
-    const isBusiness = isLocalBusinessProfile(state.userProfile);
-    const ownerId = isBusiness ? state.userProfile.restaurantId : state.user.uid;
-    const { cdnUrl } = await uploadCompressedImage(file, ownerId, { maxSize: 512, quality: 0.80, mimeType: 'image/jpeg'});
-    if (isBusiness && state.userProfile.restaurantId) {
-      await setDoc(doc(db, "restaurants", state.userProfile.restaurantId), {
-        logoUrl: cdnUrl,
-        logo: cdnUrl,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      const rest = state.restaurants.find((r) => String(r.id) === String(state.userProfile.restaurantId)) || {};
-      await ensureRestaurantPublicMeta(state.userProfile.restaurantId, {
-        name: rest.name || rest.restaurantName || state.userProfile.name,
-        restaurantName: rest.restaurantName || rest.name || state.userProfile.name,
-        type: rest.type || rest.customerType || "cafe",
-        city: rest.city || state.userProfile.location || "",
-        logoUrl: cdnUrl,
-        logo: cdnUrl
-      });
-      state.restaurants = mergeRestaurants(state.restaurants, [{
-        id: state.userProfile.restaurantId,
-        ...rest,
-        logoUrl: cdnUrl,
-        logo: cdnUrl
-      }]);
-      rebuildBusinessLocations();
-    } else {
-      await setDoc(doc(db, "users", state.user.uid), {
-        avatarUrl: cdnUrl,
-        avatar: cdnUrl,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-      await syncCeoDirectoryProfilePatch({
-        avatarUrl: cdnUrl
-      });
-    }
-    state.userProfile.avatar = cdnUrl;
-    saveUserProfileToStorage();
-    primeSelfAvatarCache(getOptimizedImageUrl(cdnUrl, "avatar"));
-    refreshSelfCommentAvatars();
-    render();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
 function ensureLocationPickerModal() {
   return crmRuntimeController.ensureLocationPickerModal();
 }
@@ -8043,128 +7348,6 @@ function getVerifiedMapLocation() {
 
 function clearVerifiedMapLocation() {
   return crmRuntimeController.clearVerifiedMapLocation();
-}
-
-async function saveAccountSettings() {
-  if (!state.user) return;
-  const name = document.getElementById("settingsName")?.value?.trim() || state.userProfile.name || "User";
-  const handle = document.getElementById("settingsHandle")?.value?.trim() || state.userProfile.handle || normalizeHandle(name);
-  const bio = document.getElementById("settingsBio")?.value?.trim() || "";
-  const city = document.getElementById("settingsCity")?.value?.trim() || "Prishtina";
-  const address = document.getElementById("settingsAddress")?.value?.trim() || "";
-  const restaurantId = state.userProfile.restaurantId || ""; // Fix: Verlinkung wurde entfernt, bleibt also der bestehende State
-  const allowCeoOverride = isCeoUser();
-  const verifiedMapLocation = getVerifiedMapLocation();
-  const gpsCoords = verifiedMapLocation
-    ? { lat: Number(verifiedMapLocation.lat), lng: Number(verifiedMapLocation.lng) }
-    : null;
-  const fallbackCeoCoords = allowCeoOverride ? getCeoGpsOverride() : null;
-  const effectiveGps = gpsCoords
-    || (fallbackCeoCoords && Number.isFinite(Number(fallbackCeoCoords.lat)) && Number.isFinite(Number(fallbackCeoCoords.lng))
-      ? { lat: Number(fallbackCeoCoords.lat), lng: Number(fallbackCeoCoords.lng) }
-      : null);
-  
-  const statusEl = document.getElementById("settingsStatus");
-  if (statusEl) statusEl.textContent = "Speichere Profil...";
-
-  try {
-    const isBusiness = isLocalBusinessProfile(state.userProfile);
-    if (isBusiness && restaurantId) {
-      const restPayload = {
-        name,
-        restaurantName: name,
-        handle,
-        bio,
-        description: bio,
-        city,
-        address,
-        updatedAt: serverTimestamp()
-      };
-      if (effectiveGps && Number.isFinite(effectiveGps.lat) && Number.isFinite(effectiveGps.lng)) {
-        restPayload.lat = effectiveGps.lat;
-        restPayload.lng = effectiveGps.lng;
-      }
-      await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
-      const rest = state.restaurants.find((r) => String(r.id) === String(restaurantId)) || {};
-      await ensureRestaurantPublicMeta(restaurantId, {
-        name,
-        restaurantName: name,
-        type: rest.type || rest.customerType || "cafe",
-        city,
-        logoUrl: rest.logoUrl || rest.logo || "",
-        logo: rest.logo || rest.logoUrl || ""
-      });
-      state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...rest, ...restPayload }]);
-      rebuildBusinessLocations();
-    } else {
-      const payload = {
-        displayName: name,
-        handle,
-        bio,
-        city,
-        restaurantId,
-        updatedAt: serverTimestamp()
-      };
-      await setDoc(doc(db, "users", state.user.uid), payload, { merge: true });
-      await syncCeoDirectoryProfilePatch({
-        name,
-        displayName: name,
-        handle,
-        city,
-        locationLabel: city,
-        ...(effectiveGps && Number.isFinite(effectiveGps.lat) && Number.isFinite(effectiveGps.lng) ? {
-          lat: effectiveGps.lat,
-          lng: effectiveGps.lng,
-          gpsLat: effectiveGps.lat,
-          gpsLng: effectiveGps.lng
-        } : {})
-      });
-    }
-
-    if (allowCeoOverride) {
-      const userGpsPayload = {
-        handle,
-        city,
-        address,
-        updatedAt: serverTimestamp()
-      };
-      if (effectiveGps && Number.isFinite(effectiveGps.lat) && Number.isFinite(effectiveGps.lng)) {
-        userGpsPayload.lat = effectiveGps.lat;
-        userGpsPayload.lng = effectiveGps.lng;
-        userGpsPayload.gpsLat = effectiveGps.lat;
-        userGpsPayload.gpsLng = effectiveGps.lng;
-      }
-      await setDoc(doc(db, "users", state.user.uid), userGpsPayload, { merge: true });
-    }
-
-    await updateProfile(state.user, { displayName: name });
-    state.userProfile = {
-      ...state.userProfile,
-      name,
-      handle,
-      bio,
-      location: city,
-      address,
-      restaurantId
-    };
-    if (effectiveGps && Number.isFinite(effectiveGps.lat) && Number.isFinite(effectiveGps.lng)) {
-      state.userProfile.lat = effectiveGps.lat;
-      state.userProfile.lng = effectiveGps.lng;
-      if (allowCeoOverride) {
-        state.userProfile.gpsLat = effectiveGps.lat;
-        state.userProfile.gpsLng = effectiveGps.lng;
-      }
-    }
-
-    saveUserProfileToStorage();
-    attachCurrentUserProfileListener();
-    
-    if (statusEl) statusEl.textContent = "Erfolgreich gespeichert!";
-    setTimeout(() => { if (statusEl) statusEl.textContent = ""; }, 2000);
-  } catch (err) {
-    console.error(err);
-    if (statusEl) statusEl.textContent = "Fehler beim Speichern.";
-  }
 }
 
 async function persistPrivateAccountSetting(value) {
@@ -8332,135 +7515,6 @@ async function createUserPost({ uid, caption, url }) {
     commentsCount: 0,
     createdAt: serverTimestamp()
   });
-}
-
-async function loadUserProfile(user, { force = false } = {}) {
-  if (!user) return;
-  const ensured = await ensureUserProfile(user, { city: "Prishtina" });
-  void force;
-  const data = ensured && typeof ensured === "object" ? ensured : {};
-  const prevAvatar = state.userProfile?.avatar || "";
-  const normalized = normalizeProfile(data, user);
-  const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
-  if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
-  state.userProfile = normalized;
-  state.userProfile.uid = user.uid;
-  syncPrivateSettingFromProfile(normalized.privateAccount);
-  saveUserProfileToStorage();
-  attachCurrentUserProfileListener();
-  const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
-  if (!isPlaceholderUrl(resolvedAvatar)) {
-    userAvatarCache = resolvedAvatar;
-    scheduleAvatarCacheWrite(resolvedAvatar);
-    if (state.user?.uid) {
-      commentAvatarCache.set(state.user.uid, resolvedAvatar);
-      updateCommentAvatarNodesByUid(state.user.uid, resolvedAvatar);
-    }
-    const handleKey = normalizeHandle(state.userProfile.handle || state.userProfile.name || "");
-    if (handleKey) {
-      commentAvatarCache.set(handleKey, resolvedAvatar);
-      updateCommentAvatarNodes(handleKey, resolvedAvatar);
-    }
-  }
-  if (lastRenderMode === "main") {
-    updateShellDom();
-    if (state.activeTab === "search" && refreshSearchView()) return normalized;
-    if (state.activeTab === "feed") {
-      const updatedFeed = updateFeedDom();
-      if (!updatedFeed) render();
-      return normalized;
-    }
-  }
-  render();
-  return normalized;
-}
-
-async function loadBusinessProfile(user, { restaurant = null, force = false } = {}) {
-  if (!user) return;
-  const rest = restaurant || await resolveRestaurantForAuthUser(user, { preferCached: !force });
-  if (!rest || isRestaurantMarkedDeleted(rest)) {
-    await loadUserProfile(user, { force });
-    return;
-  }
-  let profileSeed = { ...rest };
-  try {
-    const ownerSnap = await getDoc(doc(db, "users", user.uid));
-    if (ownerSnap.exists()) {
-      const ownerData = ownerSnap.data() || {};
-      if (!String(profileSeed.bio || profileSeed.description || profileSeed.about || "").trim()) {
-        const fallbackBio = String(ownerData.bio || "").trim();
-        if (fallbackBio) {
-          profileSeed.bio = fallbackBio;
-          profileSeed.description = fallbackBio;
-        }
-      }
-      if (!hasCountValue(profileSeed.followersCount, profileSeed.followers, profileSeed.fansCount, profileSeed.fans)) {
-        const ownerFollowers = pickCountValue(ownerData.followersCount, ownerData.followers, ownerData.fansCount, ownerData.fans);
-        if (ownerFollowers > 0) profileSeed.followersCount = ownerFollowers;
-      }
-      if (!hasCountValue(profileSeed.followingCount, profileSeed.following)) {
-        const ownerFollowing = pickCountValue(ownerData.followingCount, ownerData.following);
-        if (ownerFollowing > 0) profileSeed.followingCount = ownerFollowing;
-      }
-      if (!String(profileSeed.city || "").trim()) {
-        const ownerCity = String(ownerData.city || "").trim();
-        if (ownerCity) profileSeed.city = ownerCity;
-      }
-      if (!String(profileSeed.logoUrl || profileSeed.logo || "").trim()) {
-        const ownerAvatar = String(ownerData.avatarUrl || ownerData.avatar || "").trim();
-        if (ownerAvatar) profileSeed.logoUrl = ownerAvatar;
-      }
-    }
-  } catch {}
-  const prevAvatar = state.userProfile?.avatar || "";
-  const normalized = normalizeBusinessProfile(profileSeed, user);
-  normalized.uid = user.uid;
-  const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
-  if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) normalized.avatar = prevAvatar;
-  if (!hasCountValue(profileSeed.followingCount, profileSeed.following)) {
-    normalized.following = state.userProfile?.following ?? normalized.following;
-  }
-  if (!hasCountValue(profileSeed.followersCount, profileSeed.followers, profileSeed.fansCount, profileSeed.fans)) {
-    normalized.followers = state.userProfile?.followers ?? normalized.followers;
-  }
-  state.userProfile = normalized;
-  state.userProfile.uid = user.uid;
-  syncPrivateSettingFromProfile(false);
-  saveUserProfileToStorage();
-  attachCurrentUserProfileListener();
-  const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
-  if (!isPlaceholderUrl(resolvedAvatar)) {
-    primeSelfAvatarCache(resolvedAvatar);
-  }
-  if (rest?.id) {
-    const identityPatch = { id: rest.id, ...rest };
-    const fallbackName = String(profileSeed.name || profileSeed.restaurantName || "").trim();
-    const fallbackLogo = String(profileSeed.logoUrl || profileSeed.logo || "").trim();
-    const fallbackCity = String(profileSeed.city || "").trim();
-    if (!String(identityPatch.name || identityPatch.restaurantName || "").trim() && fallbackName) {
-      identityPatch.name = fallbackName;
-      identityPatch.restaurantName = fallbackName;
-    }
-    if (!String(identityPatch.logoUrl || identityPatch.logo || identityPatch.logoURL || "").trim() && fallbackLogo) {
-      identityPatch.logoUrl = fallbackLogo;
-      identityPatch.logo = fallbackLogo;
-    }
-    if (!String(identityPatch.city || "").trim() && fallbackCity) {
-      identityPatch.city = fallbackCity;
-    }
-    state.restaurants = mergeRestaurants(state.restaurants, [identityPatch]);
-    rebuildBusinessLocations();
-  }
-  if (lastRenderMode === "main") {
-    updateShellDom();
-    if (state.activeTab === "search" && refreshSearchView()) return;
-    if (state.activeTab === "feed") {
-      const updatedFeed = updateFeedDom();
-      if (!updatedFeed) render();
-      return;
-    }
-  }
-  render();
 }
 
 async function loadAuthProfile(user, { force = false } = {}) {

@@ -1,33 +1,41 @@
 # MNYRA Refactor Next
 
-Last updated: 2026-03-11 20:00:47 +01:00
+Last updated: 2026-03-11 20:35:37 +01:00
 
 Current local completed batch (uncommitted):
-None.
+- Batch A - Self Profile / Account / Avatar Runtime Extraction.
+- Local runtime extraction plus tracking updates only.
+- No commit.
 
 Current committed safe checkpoint:
-Batch 15 — Social-App Public Bootstrap Runtime Extraction + initialization-order follow-up fix (current tip after this commit)
+- `4ebadb2` - `refactor(social): extract public bootstrap runtime`
 
 Current exact next step:
-Validate the freshly pushed Batch 15 checkpoint on hard refresh / guest bootstrap paths before starting the next reduction slice.
+- Review and smoke-test the local Batch A extraction.
+- If approved, execute Batch B - Restaurant / Lead / Auth Resolution + Role Switch Extraction.
 
-Current exact next batch after Batch 15 review:
-Batch 16 — Social-App Startup Bootstrap Entry Sequencing Reduction.
+Current recommended next batch:
+- Batch B - Restaurant / Lead / Auth Resolution + Role Switch Extraction
 
 Why this is next:
-The real current code history now includes the pushed Batch 15 checkpoint, which removed the inline public bootstrap payload/runtime block from `social-app.js` and folded in the one-line `updateFeedDom` initialization-order follow-up fix before commit.
-Route/deeplink/chat-open behavior is already extracted into focused helpers, so the next remaining safe slice in the same startup/bootstrap area is the entry sequencing and handoff that still initiates that runtime from `social-app.js`.
-The Batch 3B validation evidence gate remains open, but it is not the currently selected social-app reduction slice.
+- Batch A is now moved out locally into `core/profile/self-profile-runtime-controller.js`.
+- The next untouched load-bearing profile/auth cluster in the roadmap is restaurant/lead/auth resolution plus role switching.
+- It keeps the auth/profile domain moving without mixing CRM, commerce, or upload runtime.
 
-What must be checked now:
-- Load or refresh as guest and confirm feed/stories still hydrate from inline or fetched public bootstrap payloads.
-- Confirm bootstrap restaurants still merge into existing restaurant state without dropping names/logos/city/type.
-- Confirm the bootstrap event path still reapplies payloads without duplicate or missing feed/story updates.
-- Confirm startup fetch timeout/error handling still fails soft and does not block guest startup.
-- Confirm the `Cannot access 'updateFeedDom' before initialization` runtime error is gone on first load.
+Recommended follow-up order after Batch A:
+1. Batch B - Restaurant / Lead / Auth Resolution + Role Switch Extraction
+2. Batch C - Menu / Focus Public Catalog Runtime Extraction
+3. Batch D - Orders Runtime + Orders View Extraction
 
-What must not be broken:
-- Guest startup and feed render on fresh load.
-- Inline bootstrap payload and window bootstrap promise handoff.
-- Feed/story bootstrap hydration and restaurant metadata merge behavior.
-- Fresh login and auth state restore.
+Not the default next batch anymore:
+- The pre-blueprint "Batch 16 - startup bootstrap entry sequencing reduction" label is superseded.
+- The startup entry left in `social-app.js` is already relatively lean compared with the heavier runtime clusters still inside the file.
+
+Batch A must not break:
+- guest load and signed-in restore
+- user profile load
+- business profile load
+- avatar persistence and shell avatar refresh
+- settings save
+- live self-profile listener updates
+- comment avatar refresh for self-authored content

@@ -539,3 +539,61 @@
 - Follow-up notes:
   - Committed and pushed as one rollback-friendly checkpoint on `main`.
   - Exact next batch after Batch 15 validation is Batch 16 social-app startup bootstrap entry sequencing reduction.
+
+## 2026-03-11 20:07:53 +01:00 — Social-App Reduction Blueprint + Tracking Sync (Local Only)
+- Fix batch title: Social-App Reduction Blueprint + Tracking Sync
+- Exact files changed:
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Reinspect the real current repo state, `social-app.js`, git history, and existing tracking docs.
+  - Replace the stale pre-blueprint next-step assumption with a code-grounded staged reduction plan.
+- Risk level: Low
+- Regression risk: None (documentation only)
+- What changed:
+  - Added `README_SOCIAL_APP_REDUCTION_MASTER.md` as the durable source-of-truth blueprint for the remaining `social-app.js` reduction work.
+  - Synced the master/next/rollback docs to current `HEAD` `4ebadb2`.
+  - Explicitly superseded the older default-next-step note that pointed at another startup-sequencing-only slice.
+  - Reframed the next recommended runtime batches around the actual remaining load-bearing clusters:
+    - self-profile/account/avatar runtime
+    - restaurant/auth/lead resolution and role switching
+    - menu/focus public catalog runtime
+    - orders runtime
+    - upload/post publishing runtime
+- Validation notes:
+  - Verified current `HEAD` with `git show -s`.
+  - Verified current `social-app.js` line count and file size from local file contents.
+  - Cross-checked the latest committed social-app extraction sequence from `git log`.
+- Follow-up notes:
+  - Current committed safe checkpoint remains `4ebadb2`.
+  - No commit or push was performed in this pass.
+
+## 2026-03-11 20:35:37 +01:00 — Batch A: Self Profile / Account / Avatar Runtime Extraction (Local Only)
+- Fix batch title: Batch A — Self Profile / Account / Avatar Runtime Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/profile/self-profile-runtime-controller.js`
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Move the self-profile/account/avatar runtime cluster out of `social-app.js` into a dedicated profile runtime controller while keeping existing call contracts stable.
+- Risk level: Medium
+- Regression risk: Medium (live self-profile listener, avatar cache/comment-avatar refresh, account writes, and auth profile load paths all moved together)
+- What changed:
+  - Added `core/profile/self-profile-runtime-controller.js` to own avatar/logo/comment-avatar cache orchestration, live self-profile snapshot handling, current-user profile listener lifecycle, avatar readiness fallback, avatar upload flow, account settings save flow, and signed-in user/business profile load flows.
+  - Replaced the inline self-profile runtime blocks in `social-app.js` with controller wiring and reused the existing function names at call sites.
+  - Updated listener teardown and dependency-map cache accessors in `social-app.js` to use the controller-owned current-user profile listener and avatar cache accessors.
+  - Updated the roadmap/tracking docs to record Batch A as local-only and set Batch B as the next untouched execution slice after review.
+- Validation notes:
+  - `node --check apps/menyra-social/core/profile/self-profile-runtime-controller.js`
+  - `node --check apps/menyra-social/social-app.js`
+- Follow-up notes:
+  - `apps/menyra-social/social-app.js` is now `7,800` lines and `287,435` bytes locally.
+  - Not committed and not pushed.
+  - Exact next batch after review is Batch B: restaurant / lead / auth resolution + role switch extraction.
