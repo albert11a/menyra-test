@@ -74,14 +74,7 @@ import { resolveInitialRouteState } from "./core/auth/initial-route-state.js";
 import {
   createAuthStartupStateHelpers
 } from "./core/auth/auth-startup-state-utils.js";
-import {
-  shouldResetUserScopedStateCore,
-  resolvePendingAuthRouteFlagsCore
-} from "./core/auth/auth-bootstrap-flow-utils.js";
-import {
-  runPostLoginPendingRouteOpenFlowCore,
-  runPostLoginNonBlockingRouteOpenFlowCore
-} from "./core/auth/auth-post-login-route-open-utils.js";
+import { createAuthSessionStartupCoordinator } from "./core/auth/auth-session-startup-coordinator.js";
 import { bootstrapAuthenticatedSessionCore } from "./core/auth/auth-user-bootstrap-utils.js";
 import {
   clearQueryParamsFromCurrentUrlCore,
@@ -1157,7 +1150,6 @@ let authInitialized = false;
 let authBootstrapSnapshot = null;
 let pendingInitialTab = "";
 let pendingAuthMode = "";
-let authTransitionSeq = 0;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -1180,7 +1172,6 @@ let userAvatarCache = "";
 let lastShellAvatarUrl = "";
 let logoCacheWriteTimer = null;
 let avatarCacheWriteTimer = null;
-let lastAuthUid = "";
 try {
   const initialRouteState = resolveInitialRouteState({
     qs,
@@ -9783,20 +9774,6 @@ async function deleteMenuItemById(itemId) {
   });
 }
 
-function isCurrentAuthTransition(transitionSeq, expectedUid = "") {
-  if (transitionSeq !== authTransitionSeq) return false;
-  return String(state.user?.uid || "") === String(expectedUid || "");
-}
-
-async function bootstrapUser(user, { transitionSeq = 0 } = {}) {
-  const expectedUid = String(user?.uid || "").trim();
-  if (!expectedUid) return false;
-  if (transitionSeq && !isCurrentAuthTransition(transitionSeq, expectedUid)) return false;
-  await sessionDataRuntimeController.bootstrapUser(user);
-  if (transitionSeq && !isCurrentAuthTransition(transitionSeq, expectedUid)) return false;
-  return true;
-}
-
 loadPersisted();
 bindPublicBootstrapPayloadListener();
 let hasInlineBootstrapPayload = false;
@@ -9810,117 +9787,50 @@ if (typeof window !== "undefined") {
   hasWindowBootstrapPromise = !!window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__
     && typeof window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__.then === "function";
 }
-authBootstrapSnapshot = readAuthBootstrapSnapshot();
-bindPushOpenTargetMessageHandler();
-state.user = auth.currentUser || null;
-authInitialized = false;
-if (state.user) {
-  loadUserScopedPersisted(state.user);
-  writeAuthBootstrapSnapshot();
-  lastAuthUid = state.user.uid || "";
-} else {
-  const appliedSnapshot = applyAuthBootstrapSnapshot(authBootstrapSnapshot);
-  const snapshotUid = appliedSnapshot ? String(authBootstrapSnapshot?.uid || "").trim() : "";
-  if (snapshotUid) {
-    applyPersistedAuthProfileHints(snapshotUid);
-  }
-  lastAuthUid = snapshotUid;
-}
-applyPendingInitialRouteState();
-render();
-schedulePerfWarmMark();
-if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
-  queueMicrotask(() => {
-    void fetchPublicBootstrapPayload({ force: false, timeoutMs: 1200 });
-  });
-}
-if (!state.user) {
-  if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
-    window.requestAnimationFrame(() => {
-      void ensureTabData(state.activeTab).catch((err) => {
-        reportCriticalRuntimeFailure("startup.ensureTabData.guestRaf", err);
-      });
-    });
-  } else {
-    setTimeout(() => {
-      void ensureTabData(state.activeTab).catch((err) => {
-        reportCriticalRuntimeFailure("startup.ensureTabData.guestTimeout", err);
-      });
-    }, 0);
-  }
-}
+const authSessionStartupCoordinator = createAuthSessionStartupCoordinator({
+  state,
+  auth,
+  windowObj: typeof window === "undefined" ? null : window,
+  queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
+  setTimeoutFn: typeof setTimeout === "function" ? setTimeout : null,
+  setAuthInitialized: (next) => { authInitialized = !!next; },
+  setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
+  readAuthBootstrapSnapshot,
+  writeAuthBootstrapSnapshot,
+  clearAuthBootstrapSnapshot,
+  applyAuthBootstrapSnapshot,
+  applyPersistedAuthProfileHints,
+  bindPushOpenTargetMessageHandler,
+  loadUserScopedPersisted,
+  loadGuestScopedPersisted,
+  applyPendingInitialRouteState,
+  resetUserScopedState,
+  render,
+  schedulePerfWarmMark,
+  fetchPublicBootstrapPayload,
+  ensureTabData,
+  sanitizeTabForSession,
+  stopLiveListeners,
+  suspendRender,
+  resumeRender,
+  reportCriticalRuntimeFailure,
+  runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user),
+  getPendingNotificationId: () => pendingNotificationId,
+  getPendingPostId: () => pendingPostId,
+  getPendingChatUid: () => pendingChatUid,
+  openProfileFromQuery: () => maybeOpenProfileFromQuery(),
+  openNotificationFromQuery: () => maybeOpenNotificationFromQuery(),
+  openPostFromQuery: () => maybeOpenPostFromQuery(),
+  openChatFromQuery: () => maybeOpenChatFromQuery()
+});
+
+authSessionStartupCoordinator.initialize({
+  hasInlineBootstrapPayload,
+  hasWindowBootstrapPromise
+});
 
 onAuthStateChanged(auth, (user) => {
-  authInitialized = true;
-  const transitionSeq = ++authTransitionSeq;
-  const nextUid = user?.uid || "";
-  const prevUid = lastAuthUid;
-  if (shouldResetUserScopedStateCore({ prevUid, nextUid })) {
-    resetUserScopedState();
-  }
-  state.user = user;
-  applyPendingInitialRouteState();
-  if (user) {
-    state.auth.open = false;
-    loadUserScopedPersisted(user);
-    writeAuthBootstrapSnapshot();
-    const pendingRouteFlags = resolvePendingAuthRouteFlagsCore({
-      pendingNotificationId,
-      pendingPostId,
-      pendingChatUid
-    });
-    if (pendingRouteFlags.hasAny) {
-      suspendRender();
-      void bootstrapUser(user, { transitionSeq }).catch((err) => {
-        reportCriticalRuntimeFailure("auth.bootstrapUser.pendingRoutes", err);
-      });
-      queueMicrotask(() => {
-        void (async () => {
-          try {
-            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-            await runPostLoginPendingRouteOpenFlowCore({
-              openProfileFromQuery: () => maybeOpenProfileFromQuery(),
-              openNotificationFromQuery: () => maybeOpenNotificationFromQuery(),
-              openPostFromQuery: () => maybeOpenPostFromQuery(),
-              openChatFromQuery: () => maybeOpenChatFromQuery(),
-              renderFallback: () => render()
-            });
-          } finally {
-            resumeRender();
-          }
-        })();
-      });
-    } else {
-      render();
-      void bootstrapUser(user, { transitionSeq }).catch((err) => {
-        reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
-      });
-      queueMicrotask(() => {
-        if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-        runPostLoginNonBlockingRouteOpenFlowCore({
-          openProfileFromQuery: () => maybeOpenProfileFromQuery(),
-          openNotificationFromQuery: () => maybeOpenNotificationFromQuery(),
-          openPostFromQuery: () => maybeOpenPostFromQuery(),
-          openChatFromQuery: () => maybeOpenChatFromQuery()
-        });
-      });
-    }
-  } else {
-    clearAuthBootstrapSnapshot();
-    state.roleSwitchRoles = [];
-    state.roleSwitchRestaurantId = "";
-    stopLiveListeners();
-    state.auth.open = false;
-    loadGuestScopedPersisted();
-    state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
-    render();
-    queueMicrotask(() => {
-      void ensureTabData(state.activeTab).catch((err) => {
-        reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err);
-      });
-    });
-  }
-  lastAuthUid = nextUid;
+  authSessionStartupCoordinator.handleAuthStateChanged(user);
 });
 
 window.addEventListener("load", () => {

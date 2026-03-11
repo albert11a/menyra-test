@@ -331,7 +331,7 @@
   - Completed and pushed as `a5ff4c9`.
   - Exact next batch after local Batch 8 review is Batch 3B validation gate execution.
 
-## 2026-03-11 06:08:02 +01:00 — Batch 8: Social-App Auth-Startup State Helper Extraction (Local Only)
+## 2026-03-11 06:08:02 +01:00 — Batch 8: Social-App Auth-Startup State Helper Extraction
 - Fix batch title: Batch 8 — Social-App Auth-Startup State Helper Extraction
 - Exact files changed:
   - `apps/menyra-social/social-app.js`
@@ -352,6 +352,32 @@
 - Validation notes:
   - `node --check apps/menyra-social/social-app.js`
   - `node --check apps/menyra-social/core/auth/auth-startup-state-utils.js`
+  - Confirmed commit in real history: `090eff5` (`refactor(social): extract auth startup state helpers`).
+- Follow-up notes:
+  - Completed and pushed as `090eff5`.
+  - Exact next batch after local Batch 9 review is Batch 3B validation gate execution.
+
+## 2026-03-11 06:22:33 +01:00 — Batch 9: Social-App Auth Session Startup Coordinator Extraction (Local Only)
+- Fix batch title: Batch 9 — Social-App Auth Session Startup Coordinator Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Reduce load-bearing startup/auth session orchestration inside `social-app.js` by extracting the initial auth restore and auth state transition flow into a focused coordinator.
+- Risk level: Medium
+- Regression risk: Low to Medium (startup/auth orchestration extraction only; downstream runtime behavior preserved)
+- What changed:
+  - Moved the initial auth restore flow and the `onAuthStateChanged` branch orchestration out of `social-app.js` into a dedicated auth-session startup coordinator.
+  - Centralized transition sequencing, user-scoped reset gating, pending auth-route handling, sign-out cleanup flow, and guest ensure-tab scheduling in the new helper.
+  - Removed now-dead transition bookkeeping from `social-app.js` and replaced the inline block with coordinator wiring only.
+  - Updated tracking docs to the real current committed checkpoint `090eff5` and recorded Batch 9 as local-only work.
+- Validation notes:
+  - `node --check apps/menyra-social/social-app.js`
+  - `node --check apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
 - Follow-up notes:
   - Not committed and not pushed.
-  - Exact next batch after local Batch 8 review is Batch 3B validation gate execution.
+  - Exact next batch after local Batch 9 review is Batch 3B validation gate execution.
