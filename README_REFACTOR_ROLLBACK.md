@@ -1,6 +1,6 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-11 19:21:46 +01:00
+Last updated: 2026-03-11 20:00:47 +01:00
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -27,8 +27,9 @@ Last updated: 2026-03-11 19:21:46 +01:00
 17. Post-Batch 10 social-app startup bootstrap wiring reduction checkpoint (`815e8fa`)
 18. Post-Batch 11 social-app pending-route startup state extraction checkpoint (`e79c85e`)
 19. Post-Batch 12 social-app post-login route-open coordination reduction checkpoint (`be44f5a`)
-20. Post-Batch 13 social-app public profile runtime extraction checkpoint (`2e0e715`) — current committed safe checkpoint
-21. Local working tree: Batch 14 social-app restaurant identity runtime extraction — not yet a safe committed checkpoint
+20. Post-Batch 13 social-app public profile runtime extraction checkpoint (`2e0e715`)
+21. Post-Batch 14 social-app restaurant identity runtime extraction checkpoint (`4aaf0fc`)
+22. Post-Batch 15 social-app public bootstrap runtime extraction + initialization-order follow-up fix checkpoint (current tip after this commit) — current committed safe checkpoint
 
 ## Completed changes and rollback coupling
 ### Batch 1 — Critical Security Lock + Tracking Scaffolding
@@ -337,7 +338,7 @@ Status: Completed and committed (`2e0e715`)
 3. If rolled back, `be44f5a` becomes the latest committed safe checkpoint again.
 
 ### Batch 14 social-app restaurant identity runtime extraction rollback
-Status: Local only, uncommitted
+Status: Committed locally as `4aaf0fc`
 1. Revert:
    - `apps/menyra-social/social-app.js`
    - `apps/menyra-social/core/common/restaurant-identity-runtime-controller.js`
@@ -346,7 +347,19 @@ Status: Local only, uncommitted
    - `README_REFACTOR_NEXT.md`
    - `README_REFACTOR_ROLLBACK.md`
 2. Validate feed/story restaurant identity hydration, feed-logo sync, and restaurant metadata merge behavior after refresh and live updates.
-3. Keep `2e0e715` as the latest committed safe checkpoint until this batch is committed.
+3. If rolled back, `2e0e715` becomes the latest committed safe checkpoint again.
+
+### Batch 15 social-app public bootstrap runtime extraction rollback
+Status: Completed and pushed
+1. Revert:
+   - `apps/menyra-social/social-app.js`
+   - `apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js`
+   - `README_REFACTOR_MASTER.md`
+   - `README_REFACTOR_LOG.md`
+   - `README_REFACTOR_NEXT.md`
+   - `README_REFACTOR_ROLLBACK.md`
+2. Validate guest/public startup bootstrap hydration, payload event reapply behavior, feed/story cache application, non-blocking bootstrap fetch timeout handling, and the removed `updateFeedDom` initialization-order runtime error.
+3. If rolled back, `4aaf0fc` becomes the latest committed safe checkpoint again.
 
 ## Planned future rollback boundaries
-- Next rollback boundary will be defined after Batch 14 review and commit.
+- Next rollback boundary will be defined after Batch 16 review and commit.

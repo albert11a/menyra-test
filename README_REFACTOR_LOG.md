@@ -514,3 +514,28 @@
 - Follow-up notes:
   - Not committed and not pushed.
   - Exact next batch after local Batch 14 review is Batch 15 social-app startup route resolution orchestration reduction.
+
+## 2026-03-11 19:43:37 +01:00 — Batch 15: Social-App Public Bootstrap Runtime Extraction
+- Fix batch title: Batch 15 — Social-App Public Bootstrap Runtime Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Reduce the inline startup public-bootstrap runtime burden in `social-app.js` by extracting payload normalization, merge/apply behavior, fetch timeout handling, and bootstrap event rebinding into one focused app-shell runtime helper.
+- Risk level: Medium
+- Regression risk: Low to Medium (startup/public bootstrap extraction only; guest/public bootstrap behavior preserved)
+- What changed:
+  - Added `core/app-shell/public-bootstrap-runtime-controller.js` to own bootstrap restaurant/feed/story normalization, restaurant merge/cache application, startup fetch orchestration, and bootstrap event listener binding.
+  - Removed the corresponding inline public-bootstrap runtime block from `social-app.js` and rewired the existing startup bootstrap handoff to use the new helper methods.
+  - Folded in the pre-commit initialization-order follow-up fix by changing the early restaurant identity runtime handoff of `updateFeedDom` to a lazy wrapper before the Batch 15 checkpoint was committed.
+  - Updated tracking docs so Batch 15 is recorded as the pushed checkpoint and Batch 16 remains the next selected slice.
+- Validation notes:
+  - `node --check apps/menyra-social/social-app.js`
+  - `node --check apps/menyra-social/core/app-shell/public-bootstrap-runtime-controller.js`
+- Follow-up notes:
+  - Committed and pushed as one rollback-friendly checkpoint on `main`.
+  - Exact next batch after Batch 15 validation is Batch 16 social-app startup bootstrap entry sequencing reduction.

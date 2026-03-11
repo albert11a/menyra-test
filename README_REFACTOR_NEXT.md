@@ -1,32 +1,33 @@
 # MNYRA Refactor Next
 
-Last updated: 2026-03-11 19:21:46 +01:00
+Last updated: 2026-03-11 20:00:47 +01:00
 
 Current local completed batch (uncommitted):
-Batch 14 — Social-App Restaurant Identity Runtime Extraction.
+None.
 
 Current committed safe checkpoint:
-`2e0e715` — `refactor(social): extract public profile runtime`
+Batch 15 — Social-App Public Bootstrap Runtime Extraction + initialization-order follow-up fix (current tip after this commit)
 
 Current exact next step:
-Review the local Batch 14 change set and either commit it or roll it back as one narrow unit before starting new code work.
+Validate the freshly pushed Batch 15 checkpoint on hard refresh / guest bootstrap paths before starting the next reduction slice.
 
-Current exact next batch after Batch 14 review:
-Batch 15 — Social-App Startup Route Resolution Orchestration Reduction.
+Current exact next batch after Batch 15 review:
+Batch 16 — Social-App Startup Bootstrap Entry Sequencing Reduction.
 
 Why this is next:
-The real current code history now includes Batch 13 at `2e0e715`, and the current open local batch extracts the inline restaurant identity hydration/merge block that was still load-bearing inside `social-app.js`.
-The next remaining safe slice in the same startup/auth/route orchestration area is startup route resolution and auth-route seed orchestration.
+The real current code history now includes the pushed Batch 15 checkpoint, which removed the inline public bootstrap payload/runtime block from `social-app.js` and folded in the one-line `updateFeedDom` initialization-order follow-up fix before commit.
+Route/deeplink/chat-open behavior is already extracted into focused helpers, so the next remaining safe slice in the same startup/bootstrap area is the entry sequencing and handoff that still initiates that runtime from `social-app.js`.
 The Batch 3B validation evidence gate remains open, but it is not the currently selected social-app reduction slice.
 
 What must be checked now:
-- Load or refresh the feed and confirm restaurant names and logos still hydrate onto feed cards.
-- Load or refresh stories and confirm story business identities still hydrate without duplicate or missing updates.
-- Trigger a restaurant identity patch path and confirm merged restaurant metadata still propagates into dependent views.
-- Confirm cached restaurant hydration plus later Firestore hydration still settle into the same visible feed/story state.
+- Load or refresh as guest and confirm feed/stories still hydrate from inline or fetched public bootstrap payloads.
+- Confirm bootstrap restaurants still merge into existing restaurant state without dropping names/logos/city/type.
+- Confirm the bootstrap event path still reapplies payloads without duplicate or missing feed/story updates.
+- Confirm startup fetch timeout/error handling still fails soft and does not block guest startup.
+- Confirm the `Cannot access 'updateFeedDom' before initialization` runtime error is gone on first load.
 
 What must not be broken:
+- Guest startup and feed render on fresh load.
+- Inline bootstrap payload and window bootstrap promise handoff.
+- Feed/story bootstrap hydration and restaurant metadata merge behavior.
 - Fresh login and auth state restore.
-- Feed card restaurant names/logos.
-- Story rail business identity rendering.
-- Existing restaurant merge paths used by feed/profile/settings updates.
