@@ -1,6 +1,6 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-11 03:43:03 +01:00
+Last updated: 2026-03-11 04:30:35 +01:00
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -12,9 +12,11 @@ Last updated: 2026-03-11 03:43:03 +01:00
 2. Post-Batch 1 checkpoint
 3. Post-Batch 2 checkpoint
 4. Post-Batch 3 baseline-capture checkpoint
-5. Post-Batch 3B Firestore hardening checkpoint (current)
+5. Post-Batch 3B Firestore hardening checkpoint
 6. Post-Superadmin build-status batch checkpoint
-7. Post-startup first-click navigation stability batch checkpoint (current)
+7. Post-startup first-click navigation stability batch checkpoint
+8. Post-upload CORS compatibility fix checkpoint (`99b3df9`)
+9. Post-tracking continuity sync + ticket-secret fallback checkpoint (`38d6a2b`) — current safe checkpoint
 
 ## Completed changes and rollback coupling
 ### Batch 1 — Critical Security Lock + Tracking Scaffolding
@@ -94,7 +96,7 @@ Blast radius:
 - Deployment blast radius is high if open baseline rules are deployed without hardening.
 
 ### Batch 3B — Firestore Rule Hardening
-Status: Completed in source; deployment validation pending
+Status: Completed in code/commits; deployment validation evidence pending
 
 Coupled technical changes:
 - `firestore.rules`
@@ -117,7 +119,7 @@ Blast radius:
 - Critical missing item note: no completed emulator/staging validation evidence yet; rollback should be immediate if first deployment shows rule rejections on required paths.
 
 ### Superadmin Staff Build-Status Card (Small Scoped Batch)
-Status: Completed in source
+Status: Completed and pushed (`7aecd7d`)
 
 Coupled technical changes:
 - `api/build-info.js`
@@ -139,11 +141,12 @@ Must be reverted together if something breaks:
 
 Blast radius:
 - Superadmin `staff` view only.
+- Final scope is real `mnyra-social` Superadmin/staff area (not CEO lead settings).
 - Added read-only metadata endpoint (`/api/build-info`) with no auth side effects.
 - No intended impact to Firestore rules, media auth, or non-staff tabs.
 
 ### Startup First-Click Navigation Stability Fix
-Status: Completed in source
+Status: Completed and pushed (`c9fcd36`)
 
 Coupled technical changes:
 - `apps/menyra-social/core/auth/auth-user-bootstrap-utils.js`

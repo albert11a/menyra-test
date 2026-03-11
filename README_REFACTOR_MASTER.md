@@ -1,15 +1,25 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-11 03:43:03 +01:00
+Last updated: 2026-03-11 04:30:35 +01:00
 
 ## Current overall status
 - Batch 1: Completed (client auth shortcut backdoor removed).
 - Batch 2: Completed (media worker action-ticket authz enforced).
 - Batch 3: Completed (Firestore rules/index baseline captured into repo).
-- Batch 3B: Completed in code, not deployed yet (deny-by-default Firestore rules with explicit path allowlist and ownership checks).
+- Batch 3B: Completed in code and committed (deny-by-default Firestore rules with explicit path allowlist and ownership checks); deployment validation evidence still pending.
 - Superadmin Staff Build-Status Batch: Completed and pushed (runtime metadata endpoint + staff-view status card).
 - Startup First-Click Navigation Stability Fix: Completed and pushed (remove stale bootstrap tab override race).
+- Media upload/worker compatibility hardening: Completed and pushed (`99b3df9`, Authorization header ticket path for worker CORS compatibility).
+- Tracking + function ticket-secret continuity sync: Completed and pushed (`38d6a2b`).
 - Manual smoke validation status: passed for guest flow, normal user flow, business owner flow, lead creation, and parts of older lead/staff/CEO flow.
+
+## Current checkpoint / commit progression (main)
+1. `ba94ded` — Batch 2 media authorization hardening
+2. `f28d8dd` — Batch 3B Firestore hardening
+3. `7aecd7d` — Superadmin staff build/version status card
+4. `c9fcd36` — startup first-click-after-refresh navigation race fix
+5. `99b3df9` — worker upload CORS compatibility (`Authorization: Bearer <ticket>`)
+6. `38d6a2b` — tracking continuity + media ticket secret fallback in function
 
 ## Architecture risks (current)
 - Critical (reduced): global-open Firestore rule removed in source; deployment validation still pending.
@@ -87,6 +97,8 @@ Last updated: 2026-03-11 03:43:03 +01:00
 
 ## Superadmin staff build-status feature batch (small scoped)
 - Scope:
+  - Scope correction applied: final placement is the real `mnyra-social` Superadmin `staff` area only.
+  - Not in CEO lead settings or CRM lead settings.
   - Superadmin staff UI only (`state.activeTab === "staff"`).
   - No redesign, no flow rewrites, no unrelated module split.
 - Added:
@@ -196,6 +208,8 @@ Last updated: 2026-03-11 03:43:03 +01:00
 - Batch 3B: Firestore deny-by-default hardening + explicit path/ownership rules.
 - Superadmin Staff Build-Status Batch: runtime deploy metadata endpoint + compact staff-view status card.
 - Startup First-Click Navigation Stability Fix: stale startup tab snapshot replaced with live tab resolver.
+- Upload CORS compatibility hotfix: use `Authorization` ticket header for worker write calls.
+- Tracking continuity sync: checkpoint/log alignment with pushed state.
 
 ## Pending fix groups
 - Batch 3B validation gate execution (emulator/staging and query-path smoke checks).
@@ -227,4 +241,8 @@ Last updated: 2026-03-11 03:43:03 +01:00
   - `README_REFACTOR_ROLLBACK.md`
 
 ## Current recommended next step
-- Execute Batch 3B Firestore validation gate in emulator/staging and collect evidence, while verifying deployed Superadmin staff build-status visibility and startup first-click navigation stability on real host(s).
+- Next technical batch: Batch 4 startup bootstrap dedup/perf hardening.
+- Pre-start gate (must complete first): close Batch 3B validation evidence and verify on deployed hosts that:
+  - Superadmin `staff` build/version card renders correctly,
+  - first click after refresh does not bounce back to feed,
+  - media uploads succeed with worker ticket flow.

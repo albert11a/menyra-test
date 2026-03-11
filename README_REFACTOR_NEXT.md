@@ -1,18 +1,19 @@
-Current exact next step:
-Execute Batch 3B Firestore validation gate in emulator/staging and capture pass/fail evidence for all critical path groups, while also validating the deployed Superadmin Staff Build Status card (`staff` view) on real host(s).
+Current exact next technical batch:
+Batch 4 — Startup Bootstrap Dedup/Performance Hardening.
 
-Why this is the next step:
-Code for Firestore hardening, Superadmin build-status visibility, and startup first-click navigation stability is already in `main`.
-The remaining blocker is still missing runtime validation evidence for the hardened ruleset and deployed runtime behavior.
+Why this is the next batch:
+Batch 1/2/3/3B code work is complete, Superadmin build/version status is shipped in the real Superadmin staff area, and the first-click-after-refresh race fix is shipped.
+The next pending technical implementation item is startup dedup/perf hardening.
 
-What must be checked before doing it:
-- Verify `GET /api/build-info` responds `200` on deployed host with `commitShort`, `branch`, `environment`.
-- Open Superadmin `staff` view on mobile and confirm Build Status card renders (commit/build/branch/env).
-- Confirm first navigation click after refresh no longer bounces back to feed.
-- If timestamp is `unknown`, decide whether to inject `BUILD_TIMESTAMP_UTC` in deploy env.
-- Run full Batch 3B checklist (public/auth/business/chat/CRM + negative ownership test) in emulator/staging.
+What must be checked before starting:
+- Batch 3B validation evidence is recorded (emulator/staging checklist with pass/fail notes).
+- Deployed `GET /api/build-info` is healthy (`200` with commit/branch/env fields).
+- Superadmin `staff` build/version card is visible on phone in real flow.
+- First click after refresh no longer gets forced back to feed.
+- Media upload path works with worker ticket authorization flow on deployed host.
 
 What must not be broken:
-- Existing leads/staff/customers CRM behavior.
-- Startup/auth/session restore behavior (including first-click navigation stability).
-- Firestore-gated guest/user/business/CRM flows covered by Batch 3B checklist.
+- Superadmin staff settings/view behavior, including build/version card rendering.
+- Startup/auth/session restore and first-click navigation stability.
+- Existing upload flow (`/image/upload`, `/story/upload`) and ticket issuance flow.
+- Firestore-protected guest/user/business/CRM paths covered by Batch 3B rules.
