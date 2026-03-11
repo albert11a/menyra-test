@@ -626,7 +626,7 @@
   - Not committed and not pushed.
   - Exact next batch after review is Batch C: menu / focus public catalog runtime extraction.
 
-## 2026-03-11 21:40:12 +01:00 — Batch C: Menu / Focus Public Catalog Runtime Extraction (Local Only)
+## 2026-03-11 21:40:12 +01:00 — Batch C: Menu / Focus Public Catalog Runtime Extraction
 - Fix batch title: Batch C — Menu / Focus Public Catalog Runtime Extraction
 - Exact files changed:
   - `apps/menyra-social/social-app.js`
@@ -646,12 +646,42 @@
   - Added `core/menu/menu-public-runtime-controller.js` to own favorite menu local-state/load flow, menu image normalization, public/legacy/collection menu load behavior, public menu publication, and menu cache synchronization.
   - Added `core/menu/focus-runtime-controller.js` to own focus item normalization, focus load/meta/publication behavior, focus carousel rotation state, and focus save/delete runtime.
   - Replaced the inline Cluster E runtime blocks in `social-app.js` with controller wiring, keeping the existing function names at downstream call sites and preserving menu save/delete utility integration through the new controller-owned publication/cache helpers.
-  - Updated the roadmap/tracking docs so `8183197` is the committed Batch B checkpoint, Batch C is the current local uncommitted batch, and Batch D is the next untouched slice after review.
+  - Updated the roadmap/tracking docs so `8183197` is the committed Batch B checkpoint, Batch C is the extracted menu/focus slice, and Batch D is the next untouched slice after review.
 - Validation notes:
   - `node --check apps/menyra-social/core/menu/menu-public-runtime-controller.js`
   - `node --check apps/menyra-social/core/menu/focus-runtime-controller.js`
   - `node --check apps/menyra-social/social-app.js`
 - Follow-up notes:
   - `apps/menyra-social/social-app.js` is now `7,461` lines and `253,587` bytes locally.
-  - Not committed and not pushed.
+  - Completed and pushed later as `edf0cf4` (`refactor(social): extract menu focus public runtime`).
   - Exact next batch after review is Batch D: orders runtime + orders view extraction.
+
+## 2026-03-11 22:18:32 +01:00 — Batch D: Orders Runtime + Orders View Extraction (Local Only)
+- Fix batch title: Batch D — Orders Runtime + Orders View Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/orders/orders-runtime-controller.js`
+  - `apps/menyra-social/core/orders/orders-render-utils.js`
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Correct the stale roadmap/tracking checkpoint to real committed Batch C state at `edf0cf4`.
+  - Move the orders listener/checkout/runtime and orders tab rendering out of `social-app.js` into focused orders modules while keeping existing call contracts stable.
+- Risk level: Medium
+- Regression risk: Medium (orders listener lifecycle, guest checkout optimistic insertion, and user/business order rendering all moved together)
+- What changed:
+  - Added `core/orders/orders-runtime-controller.js` to own order normalization glue, order listener lifecycle, and guest/auth checkout write flow.
+  - Added `core/orders/orders-render-utils.js` to own the orders tab rendering markup for buyer and business views.
+  - Replaced the inline Cluster F runtime block in `social-app.js` with controller wiring and a render utility handoff, preserving existing `startOrdersListener`, `stopOrdersListener`, and `submitShopCheckout` call contracts.
+  - Updated the roadmap/tracking docs so `edf0cf4` is the committed Batch C checkpoint, Batch D is the current local uncommitted batch, and Batch E is the next untouched slice after review.
+- Validation notes:
+  - `node --check apps/menyra-social/core/orders/orders-runtime-controller.js`
+  - `node --check apps/menyra-social/core/orders/orders-render-utils.js`
+  - `node --check apps/menyra-social/social-app.js`
+- Follow-up notes:
+  - `apps/menyra-social/social-app.js` is now `6,785` lines and `244,713` bytes locally.
+  - Not committed and not pushed.
+  - Exact next batch after review is Batch E: upload / post publishing / media ticket runtime extraction.

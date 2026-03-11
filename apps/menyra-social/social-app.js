@@ -94,6 +94,8 @@ import { createPublicBootstrapRuntimeController } from "./core/app-shell/public-
 import { createSessionDataRuntimeController } from "./core/app-shell/session-data-runtime-controller.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createMenuPublicRuntimeController } from "./core/menu/menu-public-runtime-controller.js";
+import { createOrdersRuntimeController } from "./core/orders/orders-runtime-controller.js";
+import { renderOrdersViewCore } from "./core/orders/orders-render-utils.js";
 import { createProfileMenuFocusRenderController } from "./core/profile/profile-menu-focus-render-controller.js";
 import { createPublicProfileRuntimeController } from "./core/profile/public-profile-runtime-controller.js";
 import { createSelfProfileRuntimeController } from "./core/profile/self-profile-runtime-controller.js";
@@ -340,10 +342,6 @@ import {
   getFocusItemObjectPositionCore
 } from "./core/media/crop-utils.js";
 import { formatPriceCore as formatPrice, parsePriceValueCore as parsePriceValue } from "./core/common/price-utils.js";
-import {
-  normalizeOrderItemCore,
-  normalizeOrderDocCore
-} from "./core/orders/order-normalize-utils.js";
 import { normalizeRestaurantTypeCore } from "./core/profile/restaurant-type-utils.js";
 import { buildShopVariantKeyCore } from "./core/shop/shop-variant-utils.js";
 import {
@@ -1126,8 +1124,6 @@ let firebaseMessagingModulePromise = null;
 let pushActivationIssue = "";
 let feedUnsub = null;
 let storiesUnsub = null;
-let ordersUnsub = null;
-let ordersListenerKey = "";
 let restaurantsUnsub = null;
 let userPostsUnsub = null;
 let businessPostsUnsub = null;
@@ -1477,6 +1473,33 @@ const {
   confirmFn: typeof confirm === "function" ? confirm : () => false,
   alertFn: typeof alert === "function" ? alert : () => {}
 }));
+const {
+  stopOrdersListener,
+  startOrdersListener,
+  submitShopCheckout
+} = createOrdersRuntimeController({
+  state,
+  db,
+  collectionFn: collection,
+  docFn: doc,
+  queryFn: query,
+  orderByFn: orderBy,
+  limitFn: limit,
+  onSnapshotFn: onSnapshot,
+  writeBatchFn: writeBatch,
+  serverTimestampFn: serverTimestamp,
+  normalizeShopCartStateFn: normalizeShopCartState,
+  isLocalBusinessProfileFn: isLocalBusinessProfile,
+  getRestaurantMetaByIdFn: getRestaurantMetaById,
+  normalizeHandleFn: normalizeHandle,
+  buildShopVariantKeyFn: buildShopVariantKey,
+  clampCropPercentFn: clampCropPercent,
+  parsePriceValueFn: parsePriceValue,
+  saveShopCartToStorageFn: saveShopCartToStorage,
+  clearShopCartFn: (...args) => clearShopCart(...args),
+  renderFn: render,
+  getLastRenderModeFn: () => lastRenderMode
+});
 
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
   saveMenuLayoutToStorageCore({
@@ -6447,66 +6470,16 @@ function renderStaffView() {
 }
 
 function renderOrdersView() {
-  const isBusiness = isLocalBusinessProfile(state.userProfile) && !!state.userProfile.restaurantId;
-  const orders = Array.isArray(state.orders.items) ? state.orders.items : [];
-  return `
-    <div id="ordersView" class="p-6 animate-in slide-in-from-right-10 duration-500">
-      <div class="flex items-center justify-between mb-6">
-        <div>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Orders</span>
-          <h2 class="text-2xl font-black italic uppercase tracking-tighter">Bestellungen</h2>
-        </div>
-      </div>
-      ${state.orders.loading ? `
-        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-slate-400">Bestellungen werden geladen...</div>
-      ` : state.orders.error ? `
-        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-rose-500">${escapeHtml(state.orders.error)}</div>
-      ` : orders.length ? `
-        <div class="space-y-4">
-          ${orders.map((order) => {
-            const avatarRaw = isBusiness ? order.buyerAvatar : order.businessAvatar;
-            const avatarUrl = getOptimizedImageUrl(avatarRaw, "avatar");
-            const fallbackName = isBusiness ? (order.contact.name || order.buyerName || "Kunde") : (order.businessName || "Shop");
-            const metaLine = isBusiness
-              ? [order.contact.phone, order.contact.city].filter(Boolean).join(" / ")
-              : `${order.itemCount} Artikel`;
-            return `
-              <div class="bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm">
-                <div class="flex items-center gap-3 mb-4">
-                  <div class="w-12 h-12 rounded-2xl overflow-hidden bg-slate-100 shrink-0">
-                    <img src="${escapeHtml(avatarUrl)}" class="w-full h-full ${isBusiness ? "object-cover" : "object-contain bg-white"}" />
-                  </div>
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(fallbackName)}</p>
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">${escapeHtml(metaLine)}</p>
-                  </div>
-                  <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700">${escapeHtml(order.status || "Neu")}</span>
-                </div>
-                <div class="space-y-2">
-                  ${order.items.slice(0, 3).map((item) => `
-                    <div class="flex items-center justify-between text-sm">
-                      <span class="font-semibold text-slate-700 truncate pr-3">${escapeHtml(item.quantity)}x ${escapeHtml(item.name)}${item.selectedSize || item.selectedColor ? ` <span class="text-slate-400">(${escapeHtml([item.selectedSize, item.selectedColor].filter(Boolean).join(" / "))})</span>` : ""}</span>
-                      <span class="font-black text-slate-900">${escapeHtml(formatPrice(parsePriceValue(item.price) * item.quantity))}</span>
-                    </div>
-                  `).join("")}
-                  ${order.items.length > 3 ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-300">+${escapeHtml(order.items.length - 3)} weitere</p>` : ""}
-                </div>
-                <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
-                  <div class="min-w-0">
-                    ${isBusiness ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">${escapeHtml([order.contact.city, order.contact.address].filter(Boolean).join(" / "))}</p>` : `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">@${escapeHtml(order.buyerHandle || "user")}</p>`}
-                    <p class="text-[10px] font-bold uppercase tracking-widest text-slate-300 mt-1">${escapeHtml(formatRelative(toDateSafe(order.createdAt) || new Date()))}</p>
-                  </div>
-                  <span class="text-base font-black text-slate-900 shrink-0">${escapeHtml(formatPrice(order.total))}</span>
-                </div>
-              </div>
-            `;
-          }).join("")}
-        </div>
-      ` : `
-        <div class="text-center py-16 text-[10px] font-black uppercase tracking-widest text-slate-300">Noch keine Bestellungen</div>
-      `}
-    </div>
-  `;
+  return renderOrdersViewCore({
+    state,
+    isLocalBusinessProfileFn: isLocalBusinessProfile,
+    escapeHtmlFn: escapeHtml,
+    getOptimizedImageUrlFn: getOptimizedImageUrl,
+    formatPriceFn: formatPrice,
+    parsePriceValueFn: parsePriceValue,
+    formatRelativeFn: formatRelative,
+    toDateSafeFn: toDateSafe
+  });
 }
 
 function renderUploadView() {
@@ -7115,152 +7088,6 @@ function ensureFocusDataForProfile(profile = state.profileView?.profile || state
     getMenuRestaurantForProfileFn: getMenuRestaurantForProfile,
     loadFocusForRestaurantFn: loadFocusForRestaurant
   });
-}
-
-function normalizeOrderItem(item) {
-  return normalizeOrderItemCore(item, {
-    buildShopVariantKeyFn: buildShopVariantKey,
-    clampCropPercentFn: clampCropPercent
-  });
-}
-
-function normalizeOrderDoc(data, id) {
-  return normalizeOrderDocCore(data, id, {
-    normalizeOrderItemFn: normalizeOrderItem,
-    parsePriceValueFn: parsePriceValue
-  });
-}
-
-function stopOrdersListener() {
-  if (ordersUnsub) {
-    ordersUnsub();
-    ordersUnsub = null;
-  }
-  ordersListenerKey = "";
-}
-
-function startOrdersListener(user = state.user) {
-  const uid = String(user?.uid || "").trim();
-  if (!uid) {
-    stopOrdersListener();
-    return;
-  }
-  const isBusiness = isLocalBusinessProfile(state.userProfile) && !!state.userProfile.restaurantId;
-  const nextListenerKey = isBusiness
-    ? `restaurant:${String(state.userProfile.restaurantId || "").trim()}`
-    : `user:${uid}`;
-  if (!nextListenerKey || (ordersUnsub && ordersListenerKey === nextListenerKey)) return;
-  stopOrdersListener();
-  const pathRef = isBusiness
-    ? collection(db, "restaurants", state.userProfile.restaurantId, "orders")
-    : collection(db, "users", uid, "orders");
-  ordersListenerKey = nextListenerKey;
-  state.orders = { ...state.orders, loading: true, error: "" };
-  if (state.activeTab === "orders") render();
-  ordersUnsub = onSnapshot(query(pathRef, orderBy("createdAt", "desc"), limit(60)), (snap) => {
-    const items = snap.docs.map((docSnap) => normalizeOrderDoc(docSnap.data() || {}, docSnap.id));
-    state.orders = { ...state.orders, items, loading: false, error: "" };
-    if (state.activeTab === "orders" && lastRenderMode === "main") {
-      render();
-    }
-  }, (err) => {
-    console.error(err);
-    ordersUnsub = null;
-    ordersListenerKey = "";
-    state.orders = { ...state.orders, loading: false, error: "Bestellungen konnten nicht geladen werden." };
-    if (state.activeTab === "orders" && lastRenderMode === "main") {
-      render();
-    }
-  });
-}
-
-async function submitShopCheckout() {
-  const cart = normalizeShopCartState(state.shopCart);
-  if (cart.loading || !cart.restaurantId || !cart.items.length) return;
-  const hasUser = !!String(state.user?.uid || "").trim();
-  const contact = {
-    name: String(cart.form.name || "").trim(),
-    phone: String(cart.form.phone || "").trim(),
-    city: String(cart.form.city || "").trim(),
-    address: String(cart.form.address || "").trim()
-  };
-  if (!contact.name || !contact.phone || !contact.city || !contact.address) {
-    state.shopCart = { ...cart, status: "Bitte Name, Tel, Qyteti und Adresse eingeben." };
-    saveShopCartToStorage();
-    render();
-    return;
-  }
-  const restaurant = getRestaurantMetaById(cart.restaurantId) || {};
-  const businessAvatar = cart.businessAvatar || restaurant.logoUrl || restaurant.logo || "";
-  const orderRef = doc(collection(db, "restaurants", cart.restaurantId, "orders"));
-  const orderId = orderRef.id;
-  const nowIso = new Date().toISOString();
-  const buyerHandle = hasUser
-    ? String(state.userProfile.handle || normalizeHandle(state.userProfile.name || state.user?.displayName || "user")).replace(/^@/, "").trim()
-    : "guest";
-  const payload = {
-    id: orderId,
-    restaurantId: cart.restaurantId,
-    businessName: cart.businessName || restaurant.name || restaurant.restaurantName || "Shop",
-    businessAvatar,
-    buyerUid: hasUser ? String(state.user?.uid || "").trim() : "",
-    buyerName: hasUser ? (state.userProfile.name || state.user?.displayName || contact.name || "User") : (contact.name || "Gast"),
-    buyerHandle,
-    buyerAvatar: hasUser ? (state.userProfile.avatar || "") : "",
-    contact,
-    items: cart.items.map((item) => ({
-      id: item.id,
-      itemId: item.itemId,
-      name: item.name,
-      price: item.price,
-      quantity: item.quantity,
-      imageUrl: item.imageUrl,
-      category: item.category,
-      cartKey: item.cartKey || buildShopVariantKey(item.itemId || item.id || "", {
-        size: item.selectedSize || "",
-        color: item.selectedColor || ""
-      }),
-      selectedSize: item.selectedSize || "",
-      selectedColor: item.selectedColor || "",
-      cropX: clampCropPercent(item.cropX ?? 50, 50),
-      cropY: clampCropPercent(item.cropY ?? 50, 50)
-    })),
-    itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
-    total: getShopCartTotal(),
-    status: "Neu",
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-    createdAtClient: nowIso,
-    updatedAtClient: nowIso
-  };
-  state.shopCart = { ...cart, loading: true, status: "Bestellung wird gesendet..." };
-  render();
-  try {
-    const batch = writeBatch(db);
-    batch.set(orderRef, payload, { merge: true });
-    if (hasUser) {
-      batch.set(doc(db, "users", state.user.uid, "orders", orderId), payload, { merge: true });
-    }
-    await batch.commit();
-    if (!hasUser) {
-      const guestOrder = normalizeOrderDoc(payload, orderId);
-      state.orders = {
-        ...state.orders,
-        loading: false,
-        error: "",
-        items: [guestOrder, ...(Array.isArray(state.orders.items) ? state.orders.items : [])]
-      };
-    }
-    clearShopCart({ keepForm: true });
-    state.activeTab = "orders";
-    state.drawerOpen = false;
-    render();
-  } catch (err) {
-    console.error(err);
-    state.shopCart = { ...cart, loading: false, checkoutOpen: true, status: "Bestellung konnte nicht gesendet werden." };
-    saveShopCartToStorage();
-    render();
-  }
 }
 
 // --- CRM: Leads & Customers (CEO) ---
