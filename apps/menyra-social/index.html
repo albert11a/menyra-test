@@ -342,12 +342,19 @@
           if (!data || typeof data !== "object") return;
           window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__ = data;
           window.dispatchEvent(new CustomEvent(BOOTSTRAP_EVENT, { detail: data }));
+          return data;
         } catch {}
         finally {
           window.clearTimeout(timer);
         }
       };
-      fetchBootstrap().catch(() => {});
+      const bootstrapPromise = fetchBootstrap().catch(() => null);
+      window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ = bootstrapPromise;
+      bootstrapPromise.finally(() => {
+        if (window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ === bootstrapPromise) {
+          window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__ = null;
+        }
+      });
     })();
   </script>
   <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-11-superadmin-buildstatus-2"></script>

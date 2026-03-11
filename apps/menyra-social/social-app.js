@@ -9884,11 +9884,16 @@ async function bootstrapUser(user, { transitionSeq = 0 } = {}) {
 
 loadPersisted();
 bindPublicBootstrapPayloadListener();
+let hasInlineBootstrapPayload = false;
+let hasWindowBootstrapPromise = false;
 if (typeof window !== "undefined") {
   const inlineBootstrap = window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__;
   if (inlineBootstrap && typeof inlineBootstrap === "object") {
+    hasInlineBootstrapPayload = true;
     applyPublicBootstrapPayload(inlineBootstrap, { refreshUi: false });
   }
+  hasWindowBootstrapPromise = !!window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__
+    && typeof window.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__.then === "function";
 }
 authBootstrapSnapshot = readAuthBootstrapSnapshot();
 bindPushOpenTargetMessageHandler();
@@ -9909,9 +9914,11 @@ if (state.user) {
 applyPendingInitialRouteState();
 render();
 schedulePerfWarmMark();
-queueMicrotask(() => {
-  void fetchPublicBootstrapPayload({ force: false, timeoutMs: 1200 });
-});
+if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
+  queueMicrotask(() => {
+    void fetchPublicBootstrapPayload({ force: false, timeoutMs: 1200 });
+  });
+}
 if (!state.user) {
   if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
     window.requestAnimationFrame(() => {
