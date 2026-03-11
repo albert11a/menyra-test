@@ -361,11 +361,22 @@ export function createAppShellRuntimeController(deps = {}) {
     });
   }
 
+  function stopDetachedProfileViewListener() {
+    if (state.profileView) return;
+    const unsub = getProfileViewUnsub();
+    if (typeof unsub !== "function") return;
+    try {
+      unsub();
+    } catch {}
+    setProfileViewUnsub(null);
+  }
+
   function render() {
     if (getRenderSuspended() > 0) {
       setRenderQueued(true);
       return;
     }
+    stopDetachedProfileViewListener();
     const chatInputFocusState = captureChatInputFocusStateFn();
     if (doc?.body) {
       doc.body.classList.toggle("fast-mode", FAST_MODE);

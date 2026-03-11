@@ -1151,9 +1151,6 @@ let menuDetailDocUnsub = null;
 let menuDetailLikesUnsub = null;
 let menuDetailCommentsUnsub = null;
 let restaurantMetaUnsubs = new Map();
-let storyRefreshTimer = null;
-let liveFeedDisabled = false;
-let liveStoriesDisabled = false;
 let feedStoriesSignature = "";
 let storiesRowSignature = "";
 let storiesFreshReconcileQueued = false;
@@ -5606,7 +5603,7 @@ async function ensureTabData(tab) {
     loadAuthProfile,
     loadMenuForRestaurant,
     loadFocusForRestaurant,
-    notificationsUnsub,
+    getNotificationsUnsubFn: () => notificationsUnsub,
     updateNotificationsDom,
     loadNotificationsFromFirebase,
     normalizeLeadScopeKey,
@@ -5992,10 +5989,6 @@ function stopLiveListeners() {
     modalCommentsUnsub();
     modalCommentsUnsub = null;
   }
-  if (storyRefreshTimer) {
-    clearInterval(storyRefreshTimer);
-    storyRefreshTimer = null;
-  }
 }
 
 function updateNotificationBadges() {
@@ -6121,8 +6114,6 @@ function handleNotificationsUpdate(items) {
 function startLiveListeners(user) {
   stopLiveListeners();
   if (!user) return;
-  liveFeedDisabled = false;
-  liveStoriesDisabled = false;
   attachCurrentUserProfileListener();
   startFollowingListener(user);
   void syncNotificationsPushRuntime({ user, interactive: false, enabled: state.settings?.pushNotifs });

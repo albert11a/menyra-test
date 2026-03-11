@@ -38,7 +38,7 @@ export function ensureTabDataCore({
   loadAuthProfile,
   loadMenuForRestaurant,
   loadFocusForRestaurant,
-  notificationsUnsub,
+  getNotificationsUnsubFn,
   updateNotificationsDom,
   loadNotificationsFromFirebase,
   normalizeLeadScopeKey,
@@ -72,6 +72,9 @@ export function ensureTabDataCore({
   const loadFocusForRestaurantSafe = typeof loadFocusForRestaurant === "function"
     ? loadFocusForRestaurant
     : (() => Promise.resolve());
+  const getNotificationsUnsub = typeof getNotificationsUnsubFn === "function"
+    ? getNotificationsUnsubFn
+    : (() => null);
   const updateNotificationsDomSafe = typeof updateNotificationsDom === "function" ? updateNotificationsDom : (() => false);
   const loadNotificationsFromFirebaseSafe = typeof loadNotificationsFromFirebase === "function"
     ? loadNotificationsFromFirebase
@@ -187,7 +190,8 @@ export function ensureTabDataCore({
 
   if (hasUser && tab === "notifications" && !dataLoaded.notifications) {
     dataLoaded.notifications = true;
-    if (notificationsUnsub && Array.isArray(state.notifications) && state.notifications.length) {
+    const notificationsUnsub = getNotificationsUnsub();
+    if (typeof notificationsUnsub === "function" && Array.isArray(state.notifications) && state.notifications.length) {
       const updated = updateNotificationsDomSafe();
       if (!updated && state.activeTab === "notifications") {
         render();
