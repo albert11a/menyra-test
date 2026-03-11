@@ -463,5 +463,29 @@
   - `node --check apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
   - `node --check apps/menyra-social/social-app.js`
 - Follow-up notes:
+  - Completed and pushed as `be44f5a` (`refactor(social): reduce post-login route coordination`).
+  - Next selected social-app slice after Batch 12 is public-profile runtime extraction.
+
+## 2026-03-11 16:15:36 +01:00 — Batch 13: Social-App Public Profile Runtime Extraction (Local Only)
+- Fix batch title: Batch 13 — Social-App Public Profile Runtime Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/profile/public-profile-runtime-controller.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Reduce the inline public-profile presentation/open block in `social-app.js` by extracting external profile listener lifecycle, public profile view presentation, and external profile fetch/normalization helpers into one focused profile runtime helper.
+- Risk level: Medium
+- Regression risk: Low to Medium (profile-open/runtime extraction only; current profile flows preserved)
+- What changed:
+  - Added `core/profile/public-profile-runtime-controller.js` to own `profileView` listener state, `showPublicProfile`, external profile normalization, business profile doc fetch, and business post loading.
+  - Removed the corresponding inline public-profile block from `social-app.js` and rewired stop-listener teardown plus bridge/profile dependencies to use the new helper methods.
+  - Updated tracking docs to the real current committed checkpoint `be44f5a` and recorded Batch 13 as local-only work.
+- Validation notes:
+  - `node --check apps/menyra-social/core/profile/public-profile-runtime-controller.js`
+  - `node --check apps/menyra-social/social-app.js`
+- Follow-up notes:
   - Not committed and not pushed.
-  - Exact next batch after local Batch 12 review is Batch 13 social-app startup route resolution orchestration reduction.
+  - Exact next batch after local Batch 13 review is Batch 14 social-app startup route resolution orchestration reduction.

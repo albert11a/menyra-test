@@ -90,6 +90,7 @@ import {
 import { preparePublicBootstrapStartup } from "./core/app-shell/public-bootstrap-startup-utils.js";
 import { createSessionDataRuntimeController } from "./core/app-shell/session-data-runtime-controller.js";
 import { createProfileMenuFocusRenderController } from "./core/profile/profile-menu-focus-render-controller.js";
+import { createPublicProfileRuntimeController } from "./core/profile/public-profile-runtime-controller.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
 import { createCrmRuntimeController } from "./core/crm/crm-runtime-controller.js";
 import { createChatRuntimeController } from "./core/chat/chat-runtime-controller.js";
@@ -1119,7 +1120,6 @@ let userDocLiveKey = "";
 let pushMessagingClient = null;
 let firebaseMessagingModulePromise = null;
 let pushActivationIssue = "";
-let profileViewUnsub = null;
 let feedUnsub = null;
 let storiesUnsub = null;
 let ordersUnsub = null;
@@ -1219,6 +1219,36 @@ const {
   getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
   setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
   pendingRouteState
+});
+const {
+  getProfileViewUnsub,
+  setProfileViewUnsub,
+  stopProfileViewListener,
+  showPublicProfile,
+  normalizeExternalProfile,
+  normalizeExternalUserProfile,
+  fetchBusinessProfileDoc,
+  loadBusinessPostsForRestaurant
+} = createPublicProfileRuntimeController({
+  state,
+  db,
+  docFn: doc,
+  collectionFn: collection,
+  queryFn: query,
+  orderByFn: orderBy,
+  limitFn: limit,
+  getDocFn: getDoc,
+  getDocsFn: getDocs,
+  onSnapshotFn: onSnapshot,
+  render,
+  brandUi: BRAND_UI,
+  fastLimits: FAST_LIMITS,
+  resolvePreferredHandle,
+  pickCountValue,
+  normalizeRestaurantType,
+  normalizeHandle,
+  sanitizeDisplayName,
+  isPublicBusinessRecord
 });
 
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
@@ -5841,10 +5871,7 @@ function stopLiveListeners() {
     userDocUnsub = null;
   }
   userDocLiveKey = "";
-  if (profileViewUnsub) {
-    profileViewUnsub();
-    profileViewUnsub = null;
-  }
+  stopProfileViewListener();
   if (feedUnsub) {
     feedUnsub();
     feedUnsub = null;
@@ -6002,39 +6029,6 @@ function startLiveListeners(user) {
   attachCurrentUserProfileListener();
   startFollowingListener(user);
   void syncNotificationsPushRuntime({ user, interactive: false, enabled: state.settings?.pushNotifs });
-}
-
-function attachProfileViewListener(profile) {
-  if (profileViewUnsub) {
-    profileViewUnsub();
-    profileViewUnsub = null;
-  }
-  if (!profile) return;
-  const ref = profile.restaurantId
-    ? doc(db, "restaurants", profile.restaurantId)
-    : (profile.uid ? doc(db, "users", profile.uid) : null);
-  if (!ref) return;
-  profileViewUnsub = onSnapshot(ref, (snap) => {
-    if (!snap.exists()) return;
-    const data = snap.data() || {};
-    const viewProfile = state.profileView?.profile;
-    if (!viewProfile) return;
-    if (profile.restaurantId) {
-      viewProfile.followers = data.followersCount ?? viewProfile.followers;
-      viewProfile.following = data.followingCount ?? viewProfile.following;
-      viewProfile.avatar = data.logoUrl || data.logo || viewProfile.avatar;
-      viewProfile.name = data.name || data.restaurantName || viewProfile.name;
-      viewProfile.location = data.city || viewProfile.location;
-    } else {
-      viewProfile.followers = data.followersCount ?? viewProfile.followers;
-      viewProfile.following = data.followingCount ?? viewProfile.following;
-      viewProfile.privateAccount = !!data.privateAccount;
-      viewProfile.avatar = data.avatarUrl || data.avatar || viewProfile.avatar;
-      viewProfile.name = data.displayName || viewProfile.name;
-      viewProfile.location = data.city || viewProfile.location;
-    }
-    render();
-  });
 }
 
 function updateMenuCardCountNodes(itemId, counts = { likes: 0, comments: 0 }) {
@@ -6565,26 +6559,6 @@ function renderProfileMenuView(profile) {
 
 function renderProfileView() {
   return profileMenuFocusRenderController.renderProfileView();
-}
-
-function showPublicProfile(profile, posts, { showBack = true, backTab, topTab } = {}) {
-  state.profileView = { profile, posts: posts || profile.posts || [] };
-  state.profileModal = { open: false, profile: null };
-  state.profileContentTab = "posts";
-  state.profileTopTab = profile?.restaurantId
-    ? (topTab || "profile")
-    : "profile";
-  state.profileViewMode = "grid";
-  state.profilePostMenuId = null;
-  state.drawerOpen = false;
-  if (showBack) {
-    state.profileBackTab = backTab || state.activeTab || "feed";
-  } else {
-    state.profileBackTab = "";
-  }
-  state.activeTab = "profile";
-  render();
-  attachProfileViewListener(profile);
 }
 
 function startFollowingListener(user = state.user) {
@@ -7187,10 +7161,8 @@ const {
   setProfileMenuBound: (next) => {
     profileMenuBound = !!next;
   },
-  getProfileViewUnsub: () => profileViewUnsub,
-  setProfileViewUnsub: (next) => {
-    profileViewUnsub = next;
-  },
+  getProfileViewUnsub,
+  setProfileViewUnsub,
   getChatUnreadCount,
   resolveHeaderBranding,
   logoFitClass,
@@ -8912,126 +8884,6 @@ function buildStoriesFromFeed(posts) {
 
 function buildStoriesRowSignature(items) {
   return buildStoriesSignature(items || []);
-}
-
-function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
-  const data = profileDoc?.data || profileDoc || {};
-  const rest = restaurant || {};
-  const displayName = data?.displayName || data?.name || rest?.name || rest?.restaurantName || fallbackName || "Business";
-  const handle = resolvePreferredHandle({ handle: data?.handle || rest?.handle || "", name: displayName }, displayName);
-  const followers = pickCountValue(
-    data?.followersCount,
-    data?.followers,
-    data?.fansCount,
-    data?.fans,
-    rest?.followersCount,
-    rest?.followers,
-    rest?.fansCount,
-    rest?.fans
-  );
-  const following = pickCountValue(data?.followingCount, data?.following, rest?.followingCount, rest?.following);
-  const restaurantId = data?.restaurantId || rest?.id || "";
-  const type = normalizeRestaurantType(
-    data?.type
-    || data?.customerType
-    || rest?.type
-    || rest?.customerType
-    || rest?.category
-    || rest?.kind
-    || rest?.restaurantType
-    || ""
-  );
-  return {
-    name: displayName,
-    handle: handle || normalizeHandle(displayName),
-    uid: data?.uid || rest?.ownerUid || profileDoc?.id || "",
-    bio: data?.bio || data?.description || rest?.description || rest?.bio || rest?.about || `Offizieller Account auf ${BRAND_UI.social}.`,
-    avatar: data?.avatarUrl || data?.avatar || rest?.logoUrl || rest?.logo || "",
-    location: data?.city || rest?.city || "Kosovo",
-    followers,
-    following,
-    privateAccount: false,
-    role: "business",
-    restaurantId,
-    ...(type ? { type, customerType: type } : {}),
-    pendingFollowRequest: false,
-    posts: posts || []
-  };
-}
-
-function normalizeExternalUserProfile({ userDoc, fallback, posts }) {
-  const data = typeof userDoc?.data === "function" ? userDoc.data() : (userDoc?.data || userDoc || {});
-  const fallbackName = fallback?.name || fallback?.handle || "User";
-  const displayName = sanitizeDisplayName(data?.displayName || data?.name, fallbackName);
-  const handle = data?.handle || normalizeHandle(displayName || fallbackName);
-  return {
-    name: displayName || fallbackName,
-    handle: handle || "user",
-    uid: userDoc?.id || data?.uid || fallback?.uid || "",
-    bio: data?.bio || data?.description || fallback?.bio || "",
-    avatar: data?.avatarUrl || data?.avatar || fallback?.avatar || '',
-    location: data?.city || fallback?.location || "Prishtina",
-    followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans, fallback?.followers),
-    following: pickCountValue(data?.followingCount, data?.following, fallback?.following),
-    privateAccount: !!data?.privateAccount,
-    role: data?.role || fallback?.role || "user",
-    pendingFollowRequest: false,
-    posts: posts || []
-  };
-}
-
-async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
-  const rest = restaurant || (restaurantId ? state.restaurants.find((r) => r.id === restaurantId) : null) || null;
-  if (rest?.id) {
-    if (!isPublicBusinessRecord(rest)) return null;
-    return { id: rest.id, data: rest };
-  }
-  const restId = restaurantId || rest?.id || "";
-  if (!restId) return null;
-  try {
-    const snap = await getDoc(doc(db, "restaurants", restId));
-    if (snap.exists()) {
-      const data = snap.data() || {};
-      if (!isPublicBusinessRecord({ id: snap.id, ...data })) return null;
-      return { id: snap.id, data };
-    }
-  } catch {}
-  return null;
-}
-
-async function loadBusinessPostsForRestaurant(restaurantId) {
-  if (!restaurantId) return [];
-  try {
-    const ref = collection(db, "restaurants", restaurantId, "socialPosts");
-    let snap = null;
-    try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.profilePosts || FAST_LIMITS.businessPosts)));
-    } catch (err) {
-      snap = await getDocs(ref);
-    }
-    const rows = [];
-    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    return rows
-      .filter((row) => (row.status || "active") === "active")
-      .map((row) => ({
-        id: row.id,
-        url: row.media?.[0]?.url || row.mediaUrl || "",
-        type: row.type || "square",
-        title: "",
-        caption: row.caption || "",
-        createdAt: row.createdAt,
-        likes: row.likesCount ?? row.likes ?? 0,
-        comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: row.media?.[0]?.type === "video",
-        ownerType: "restaurant",
-        ownerId: restaurantId,
-        restaurantId
-      }))
-      .filter((row) => row.url);
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
 }
 
 async function loadFeedPosts({ force = false } = {}) {

@@ -1,6 +1,6 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-11 15:56:13 +01:00
+Last updated: 2026-03-11 16:15:36 +01:00
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -25,8 +25,9 @@ Last updated: 2026-03-11 15:56:13 +01:00
 15. Post-Batch 8 social-app auth-startup state helper extraction checkpoint (`090eff5`)
 16. Post-Batch 9 social-app auth session startup coordinator extraction checkpoint (`2c6daba`)
 17. Post-Batch 10 social-app startup bootstrap wiring reduction checkpoint (`815e8fa`)
-18. Post-Batch 11 social-app pending-route startup state extraction checkpoint (`e79c85e`) — current committed safe checkpoint
-19. Local working tree: Batch 12 social-app post-login route-open coordination reduction — not yet a safe committed checkpoint
+18. Post-Batch 11 social-app pending-route startup state extraction checkpoint (`e79c85e`)
+19. Post-Batch 12 social-app post-login route-open coordination reduction checkpoint (`be44f5a`) — current committed safe checkpoint
+20. Local working tree: Batch 13 social-app public profile runtime extraction — not yet a safe committed checkpoint
 
 ## Completed changes and rollback coupling
 ### Batch 1 — Critical Security Lock + Tracking Scaffolding
@@ -310,7 +311,7 @@ Status: Completed and committed (`e79c85e`)
 3. If rolled back, `815e8fa` becomes the latest committed safe checkpoint again.
 
 ### Batch 12 social-app post-login route-open coordination reduction rollback
-Status: Local only, uncommitted
+Status: Completed and committed (`be44f5a`)
 1. Revert:
    - `apps/menyra-social/social-app.js`
    - `apps/menyra-social/core/auth/auth-post-login-route-open-utils.js`
@@ -320,7 +321,19 @@ Status: Local only, uncommitted
    - `README_REFACTOR_NEXT.md`
    - `README_REFACTOR_ROLLBACK.md`
 2. Validate login/logout refresh flows plus pending notification/post/chat/profile route opens after auth restore.
-3. Keep `e79c85e` as the latest committed safe checkpoint until this batch is committed.
+3. If rolled back, `e79c85e` becomes the latest committed safe checkpoint again.
+
+### Batch 13 social-app public profile runtime extraction rollback
+Status: Local only, uncommitted
+1. Revert:
+   - `apps/menyra-social/social-app.js`
+   - `apps/menyra-social/core/profile/public-profile-runtime-controller.js`
+   - `README_REFACTOR_MASTER.md`
+   - `README_REFACTOR_LOG.md`
+   - `README_REFACTOR_NEXT.md`
+   - `README_REFACTOR_ROLLBACK.md`
+2. Validate external business/user profile opens, public-profile overlay entry points, and detached profile listener teardown behavior.
+3. Keep `be44f5a` as the latest committed safe checkpoint until this batch is committed.
 
 ## Planned future rollback boundaries
-- Next rollback boundary will be defined after Batch 12 review and commit.
+- Next rollback boundary will be defined after Batch 13 review and commit.
