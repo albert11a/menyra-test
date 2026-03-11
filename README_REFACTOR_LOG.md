@@ -381,7 +381,7 @@
   - Confirmed commit in real history: `2c6daba` (`refactor(social): extract auth session startup coordinator`).
 - Follow-up notes:
   - Completed and pushed as `2c6daba`.
-  - Exact next batch after local Batch 10 review is Batch 3B validation gate execution.
+  - The next executed batch after Batch 9 was Batch 10 startup bootstrap wiring reduction.
 
 ## 2026-03-11 06:32:27 +01:00 — Batch 10: Social-App Startup Bootstrap Wiring Reduction (Local Only)
 - Fix batch title: Batch 10 — Social-App Startup Bootstrap Wiring Reduction
@@ -407,5 +407,34 @@
   - `node --check apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
   - `node --check apps/menyra-social/social-app.js`
 - Follow-up notes:
+  - Completed and pushed as `815e8fa` (`refactor(social): reduce startup bootstrap wiring`).
+  - Next selected social-app slice after Batch 10 is pending-route startup state extraction.
+
+## 2026-03-11 15:23:18 +01:00 — Batch 11: Social-App Pending Route Startup State Extraction (Local Only)
+- Fix batch title: Batch 11 — Social-App Pending Route Startup State Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/auth/pending-route-startup-state.js`
+  - `apps/menyra-social/core/auth/auth-startup-state-utils.js`
+  - `apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Reduce the remaining startup/auth route-state burden in `social-app.js` by extracting the inline pending-route state holder and letting the existing startup helpers/coordinator consume that shared state surface directly.
+- Risk level: Low to Medium
+- Regression risk: Low (state-holder extraction only; route-open and startup behavior preserved)
+- What changed:
+  - Added `core/auth/pending-route-startup-state.js` to own pending startup/deeplink ids, handled flags, and pending initial tab/auth mode.
+  - Replaced the raw pending-route variable cluster and local getter/setter functions in `social-app.js` with that focused helper.
+  - Updated `auth-startup-state-utils.js` and `auth-session-startup-coordinator.js` to optionally consume the shared pending-route state helper instead of wrapper lambdas from `social-app.js`.
+  - Updated tracking docs to the real current committed checkpoint `815e8fa` and recorded Batch 11 as local-only work.
+- Validation notes:
+  - `node --check apps/menyra-social/core/auth/pending-route-startup-state.js`
+  - `node --check apps/menyra-social/core/auth/auth-startup-state-utils.js`
+  - `node --check apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
+  - `node --check apps/menyra-social/social-app.js`
+- Follow-up notes:
   - Not committed and not pushed.
-  - Exact next batch after local Batch 10 review is Batch 3B validation gate execution.
+  - Exact next batch after local Batch 11 review is Batch 12 social-app post-login route-open coordination reduction.

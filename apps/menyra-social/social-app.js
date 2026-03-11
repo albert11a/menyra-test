@@ -74,6 +74,7 @@ import { resolveInitialRouteState } from "./core/auth/initial-route-state.js";
 import {
   createAuthStartupStateHelpers
 } from "./core/auth/auth-startup-state-utils.js";
+import { createPendingRouteStartupState } from "./core/auth/pending-route-startup-state.js";
 import { createAuthSessionStartupCoordinator } from "./core/auth/auth-session-startup-coordinator.js";
 import { bootstrapAuthenticatedSessionCore } from "./core/auth/auth-user-bootstrap-utils.js";
 import {
@@ -1086,15 +1087,7 @@ let lastMenuOpenGestureKey = "";
 let lastMenuOpenGestureAt = 0;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
-let pendingProfileRestaurantId = "";
-let pendingProfileTopTab = "";
-let pendingProfileHandled = false;
-let pendingNotificationId = "";
-let pendingNotificationHandled = false;
-let pendingPostId = "";
-let pendingPostHandled = false;
-let pendingChatUid = "";
-let pendingChatHandled = false;
+const pendingRouteState = createPendingRouteStartupState();
 let pushOpenMessageBound = false;
 let dataLoaded = {
   feed: false,
@@ -1149,8 +1142,6 @@ let focusRotateTimer = null;
 let focusRotateKey = "";
 let authInitialized = false;
 let authBootstrapSnapshot = null;
-let pendingInitialTab = "";
-let pendingAuthMode = "";
 
 function suspendRender() {
   renderSuspended += 1;
@@ -1179,13 +1170,7 @@ try {
     normalizeInitialTab,
     normalizeAuthMode
   });
-  pendingProfileRestaurantId = initialRouteState.pendingProfileRestaurantId;
-  pendingProfileTopTab = initialRouteState.pendingProfileTopTab;
-  pendingNotificationId = initialRouteState.pendingNotificationId;
-  pendingPostId = initialRouteState.pendingPostId;
-  pendingChatUid = initialRouteState.pendingChatUid;
-  pendingInitialTab = initialRouteState.pendingInitialTab;
-  pendingAuthMode = initialRouteState.pendingAuthMode;
+  pendingRouteState.applyInitialRouteState(initialRouteState);
 } catch {}
 
 function isGuestSession() {
@@ -1232,10 +1217,7 @@ const {
   setLastShellAvatarUrl: (next) => { lastShellAvatarUrl = next; },
   getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
   setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
-  getPendingInitialTab: () => pendingInitialTab,
-  setPendingInitialTab: (next) => { pendingInitialTab = next; },
-  getPendingAuthMode: () => pendingAuthMode,
-  setPendingAuthMode: (next) => { pendingAuthMode = next; }
+  pendingRouteState
 });
 
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
@@ -6604,37 +6586,6 @@ function showPublicProfile(profile, posts, { showBack = true, backTab, topTab } 
   attachProfileViewListener(profile);
 }
 
-function getDeeplinkPendingState() {
-  return {
-    pendingProfileRestaurantId,
-    pendingProfileTopTab,
-    pendingProfileHandled,
-    pendingNotificationId,
-    pendingNotificationHandled,
-    pendingPostId,
-    pendingPostHandled,
-    pendingChatUid,
-    pendingChatHandled,
-    pendingInitialTab,
-    pendingAuthMode
-  };
-}
-
-function setDeeplinkPendingState(patch = {}) {
-  if (!patch || typeof patch !== "object") return;
-  if ("pendingProfileRestaurantId" in patch) pendingProfileRestaurantId = patch.pendingProfileRestaurantId;
-  if ("pendingProfileTopTab" in patch) pendingProfileTopTab = patch.pendingProfileTopTab;
-  if ("pendingProfileHandled" in patch) pendingProfileHandled = !!patch.pendingProfileHandled;
-  if ("pendingNotificationId" in patch) pendingNotificationId = patch.pendingNotificationId;
-  if ("pendingNotificationHandled" in patch) pendingNotificationHandled = !!patch.pendingNotificationHandled;
-  if ("pendingPostId" in patch) pendingPostId = patch.pendingPostId;
-  if ("pendingPostHandled" in patch) pendingPostHandled = !!patch.pendingPostHandled;
-  if ("pendingChatUid" in patch) pendingChatUid = patch.pendingChatUid;
-  if ("pendingChatHandled" in patch) pendingChatHandled = !!patch.pendingChatHandled;
-  if ("pendingInitialTab" in patch) pendingInitialTab = patch.pendingInitialTab;
-  if ("pendingAuthMode" in patch) pendingAuthMode = patch.pendingAuthMode;
-}
-
 function startFollowingListener(user = state.user) {
   if (followingUnsub) {
     followingUnsub();
@@ -6962,8 +6913,8 @@ const {
   navigatorObj: typeof navigator === "undefined" ? null : navigator,
   pushActivationIssue,
   NOTIFICATIONS_LIVE_LIMIT,
-  getPendingState: getDeeplinkPendingState,
-  setPendingState: setDeeplinkPendingState,
+  getPendingState: pendingRouteState.getPendingState,
+  setPendingState: pendingRouteState.patchPendingState,
   getPushOpenMessageBound: () => pushOpenMessageBound,
   markPushOpenMessageBound: () => {
     pushOpenMessageBound = true;
@@ -9813,9 +9764,7 @@ const authSessionStartupCoordinator = createAuthSessionStartupCoordinator({
   resumeRender,
   reportCriticalRuntimeFailure,
   runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user),
-  getPendingNotificationId: () => pendingNotificationId,
-  getPendingPostId: () => pendingPostId,
-  getPendingChatUid: () => pendingChatUid,
+  pendingRouteState,
   openProfileFromQuery: () => maybeOpenProfileFromQuery(),
   openNotificationFromQuery: () => maybeOpenNotificationFromQuery(),
   openPostFromQuery: () => maybeOpenPostFromQuery(),

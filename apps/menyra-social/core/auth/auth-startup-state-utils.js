@@ -21,6 +21,7 @@ export function createAuthStartupStateHelpers({
   setLastShellAvatarUrl = () => {},
   getAuthBootstrapSnapshot = () => null,
   setAuthBootstrapSnapshot = () => {},
+  pendingRouteState = null,
   getPendingInitialTab = () => "",
   setPendingInitialTab = () => {},
   getPendingAuthMode = () => "",
@@ -33,10 +34,18 @@ export function createAuthStartupStateHelpers({
   const writeLastShellAvatarUrl = typeof setLastShellAvatarUrl === "function" ? setLastShellAvatarUrl : (() => {});
   const readAuthSnapshot = typeof getAuthBootstrapSnapshot === "function" ? getAuthBootstrapSnapshot : (() => null);
   const writeAuthSnapshot = typeof setAuthBootstrapSnapshot === "function" ? setAuthBootstrapSnapshot : (() => {});
-  const readPendingInitialTab = typeof getPendingInitialTab === "function" ? getPendingInitialTab : (() => "");
-  const writePendingInitialTab = typeof setPendingInitialTab === "function" ? setPendingInitialTab : (() => {});
-  const readPendingAuthMode = typeof getPendingAuthMode === "function" ? getPendingAuthMode : (() => "");
-  const writePendingAuthMode = typeof setPendingAuthMode === "function" ? setPendingAuthMode : (() => {});
+  const readPendingInitialTab = typeof pendingRouteState?.getPendingInitialTab === "function"
+    ? pendingRouteState.getPendingInitialTab
+    : (typeof getPendingInitialTab === "function" ? getPendingInitialTab : (() => ""));
+  const writePendingInitialTab = typeof pendingRouteState?.setPendingInitialTab === "function"
+    ? pendingRouteState.setPendingInitialTab
+    : (typeof setPendingInitialTab === "function" ? setPendingInitialTab : (() => {}));
+  const readPendingAuthMode = typeof pendingRouteState?.getPendingAuthMode === "function"
+    ? pendingRouteState.getPendingAuthMode
+    : (typeof getPendingAuthMode === "function" ? getPendingAuthMode : (() => ""));
+  const writePendingAuthMode = typeof pendingRouteState?.setPendingAuthMode === "function"
+    ? pendingRouteState.setPendingAuthMode
+    : (typeof setPendingAuthMode === "function" ? setPendingAuthMode : (() => {}));
 
   function applyPendingInitialRouteState() {
     if (!state) return;

@@ -36,6 +36,7 @@ export function createAuthSessionStartupCoordinator({
   resumeRender = () => {},
   reportCriticalRuntimeFailure = () => {},
   runBootstrapUser = async () => false,
+  pendingRouteState = null,
   getPendingNotificationId = () => "",
   getPendingPostId = () => "",
   getPendingChatUid = () => "",
@@ -50,6 +51,15 @@ export function createAuthSessionStartupCoordinator({
   const setTimeoutSafe = typeof setTimeoutFn === "function"
     ? setTimeoutFn
     : (() => {});
+  const readPendingNotificationId = typeof pendingRouteState?.getPendingNotificationId === "function"
+    ? pendingRouteState.getPendingNotificationId
+    : (typeof getPendingNotificationId === "function" ? getPendingNotificationId : (() => ""));
+  const readPendingPostId = typeof pendingRouteState?.getPendingPostId === "function"
+    ? pendingRouteState.getPendingPostId
+    : (typeof getPendingPostId === "function" ? getPendingPostId : (() => ""));
+  const readPendingChatUid = typeof pendingRouteState?.getPendingChatUid === "function"
+    ? pendingRouteState.getPendingChatUid
+    : (typeof getPendingChatUid === "function" ? getPendingChatUid : (() => ""));
   let lastAuthUid = "";
   let authTransitionSeq = 0;
   let authStateListenerBound = false;
@@ -141,9 +151,9 @@ export function createAuthSessionStartupCoordinator({
       loadUserScopedPersisted(user);
       writeAuthBootstrapSnapshot();
       const pendingRouteFlags = resolvePendingAuthRouteFlagsCore({
-        pendingNotificationId: getPendingNotificationId(),
-        pendingPostId: getPendingPostId(),
-        pendingChatUid: getPendingChatUid()
+        pendingNotificationId: readPendingNotificationId(),
+        pendingPostId: readPendingPostId(),
+        pendingChatUid: readPendingChatUid()
       });
       if (pendingRouteFlags.hasAny) {
         suspendRender();

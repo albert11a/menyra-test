@@ -1,6 +1,6 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-11 06:32:27 +01:00
+Last updated: 2026-03-11 15:23:18 +01:00
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -23,8 +23,9 @@ Last updated: 2026-03-11 06:32:27 +01:00
 13. Post-Batch 6 listener lifecycle cleanup checkpoint (`4edc9f1`)
 14. Post-Batch 7 startup/auth bootstrap auth-profile handoff dedupe checkpoint (`a5ff4c9`)
 15. Post-Batch 8 social-app auth-startup state helper extraction checkpoint (`090eff5`)
-16. Post-Batch 9 social-app auth session startup coordinator extraction checkpoint (`2c6daba`) — current committed safe checkpoint
-17. Local working tree: Batch 10 social-app startup bootstrap wiring reduction — not yet a safe committed checkpoint
+16. Post-Batch 9 social-app auth session startup coordinator extraction checkpoint (`2c6daba`)
+17. Post-Batch 10 social-app startup bootstrap wiring reduction checkpoint (`815e8fa`) — current committed safe checkpoint
+18. Local working tree: Batch 11 social-app pending-route startup state extraction — not yet a safe committed checkpoint
 
 ## Completed changes and rollback coupling
 ### Batch 1 — Critical Security Lock + Tracking Scaffolding
@@ -281,7 +282,7 @@ Status: Completed and pushed (`2c6daba`)
 3. If rolled back, `090eff5` becomes the latest committed safe checkpoint again.
 
 ### Batch 10 social-app startup bootstrap wiring reduction rollback
-Status: Local only, uncommitted
+Status: Completed and committed (`815e8fa`)
 1. Revert:
    - `apps/menyra-social/social-app.js`
    - `apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
@@ -291,7 +292,21 @@ Status: Local only, uncommitted
    - `README_REFACTOR_NEXT.md`
    - `README_REFACTOR_ROLLBACK.md`
 2. Validate refresh/login/logout startup flows, inline bootstrap hydration, and auth-listener registration behavior.
-3. Keep `2c6daba` as the latest committed safe checkpoint until this batch is committed.
+3. If rolled back, `2c6daba` becomes the latest committed safe checkpoint again.
+
+### Batch 11 social-app pending-route startup state extraction rollback
+Status: Local only, uncommitted
+1. Revert:
+   - `apps/menyra-social/social-app.js`
+   - `apps/menyra-social/core/auth/pending-route-startup-state.js`
+   - `apps/menyra-social/core/auth/auth-startup-state-utils.js`
+   - `apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
+   - `README_REFACTOR_MASTER.md`
+   - `README_REFACTOR_LOG.md`
+   - `README_REFACTOR_NEXT.md`
+   - `README_REFACTOR_ROLLBACK.md`
+2. Validate refresh/login/logout startup flows plus pending notification/post/chat/profile deeplink opens.
+3. Keep `815e8fa` as the latest committed safe checkpoint until this batch is committed.
 
 ## Planned future rollback boundaries
-- Next rollback boundary will be defined after Batch 10 review and commit.
+- Next rollback boundary will be defined after Batch 11 review and commit.
