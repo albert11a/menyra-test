@@ -1,3 +1,5 @@
+import { resolvePendingAuthRouteFlagsCore } from "./auth-bootstrap-flow-utils.js";
+
 export async function runPostLoginPendingRouteOpenFlowCore({
   openProfileFromQuery,
   openNotificationFromQuery,
@@ -51,4 +53,72 @@ export function runPostLoginNonBlockingRouteOpenFlowCore({
   void openNotification();
   void openPost();
   openChat();
+}
+
+export function createPostLoginRouteOpenCoordinator({
+  pendingRouteState = null,
+  routeOpenApi = null,
+  renderFallback = () => {},
+  getPendingNotificationId = () => "",
+  getPendingPostId = () => "",
+  getPendingChatUid = () => "",
+  openProfileFromQuery = () => {},
+  openNotificationFromQuery = async () => false,
+  openPostFromQuery = async () => false,
+  openChatFromQuery = () => false
+} = {}) {
+  const readPendingNotificationId = typeof pendingRouteState?.getPendingNotificationId === "function"
+    ? pendingRouteState.getPendingNotificationId
+    : (typeof getPendingNotificationId === "function" ? getPendingNotificationId : (() => ""));
+  const readPendingPostId = typeof pendingRouteState?.getPendingPostId === "function"
+    ? pendingRouteState.getPendingPostId
+    : (typeof getPendingPostId === "function" ? getPendingPostId : (() => ""));
+  const readPendingChatUid = typeof pendingRouteState?.getPendingChatUid === "function"
+    ? pendingRouteState.getPendingChatUid
+    : (typeof getPendingChatUid === "function" ? getPendingChatUid : (() => ""));
+  const openProfile = typeof routeOpenApi?.openProfileFromQuery === "function"
+    ? routeOpenApi.openProfileFromQuery
+    : (typeof openProfileFromQuery === "function" ? openProfileFromQuery : (() => {}));
+  const openNotification = typeof routeOpenApi?.openNotificationFromQuery === "function"
+    ? routeOpenApi.openNotificationFromQuery
+    : (typeof openNotificationFromQuery === "function" ? openNotificationFromQuery : (async () => false));
+  const openPost = typeof routeOpenApi?.openPostFromQuery === "function"
+    ? routeOpenApi.openPostFromQuery
+    : (typeof openPostFromQuery === "function" ? openPostFromQuery : (async () => false));
+  const openChat = typeof routeOpenApi?.openChatFromQuery === "function"
+    ? routeOpenApi.openChatFromQuery
+    : (typeof openChatFromQuery === "function" ? openChatFromQuery : (() => false));
+
+  function resolvePendingRouteFlags() {
+    return resolvePendingAuthRouteFlagsCore({
+      pendingNotificationId: readPendingNotificationId(),
+      pendingPostId: readPendingPostId(),
+      pendingChatUid: readPendingChatUid()
+    });
+  }
+
+  async function openPendingRoutes() {
+    return runPostLoginPendingRouteOpenFlowCore({
+      openProfileFromQuery: openProfile,
+      openNotificationFromQuery: openNotification,
+      openPostFromQuery: openPost,
+      openChatFromQuery: openChat,
+      renderFallback
+    });
+  }
+
+  function openNonBlockingRoutes() {
+    runPostLoginNonBlockingRouteOpenFlowCore({
+      openProfileFromQuery: openProfile,
+      openNotificationFromQuery: openNotification,
+      openPostFromQuery: openPost,
+      openChatFromQuery: openChat
+    });
+  }
+
+  return {
+    resolvePendingRouteFlags,
+    openPendingRoutes,
+    openNonBlockingRoutes
+  };
 }

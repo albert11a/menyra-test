@@ -436,5 +436,32 @@
   - `node --check apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
   - `node --check apps/menyra-social/social-app.js`
 - Follow-up notes:
+  - Completed and pushed as `e79c85e` (`refactor(social): extract pending route startup state`).
+  - Next selected social-app slice after Batch 11 is post-login route-open coordination reduction.
+
+## 2026-03-11 15:56:13 +01:00 — Batch 12: Social-App Post-Login Route-Open Coordination Reduction (Local Only)
+- Fix batch title: Batch 12 — Social-App Post-Login Route-Open Coordination Reduction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/auth/auth-post-login-route-open-utils.js`
+  - `apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Reduce the remaining post-login route-open orchestration burden in `social-app.js` by extracting pending-route detection and blocking/non-blocking route-open sequencing into a dedicated startup/auth helper surface.
+- Risk level: Medium
+- Regression risk: Low to Medium (startup/auth route-open orchestration extraction only; route-open behavior preserved)
+- What changed:
+  - Added `createPostLoginRouteOpenCoordinator(...)` in `auth-post-login-route-open-utils.js` to own pending route flag resolution plus blocking and non-blocking post-login open flows.
+  - Simplified `auth-session-startup-coordinator.js` so it delegates route-open behavior through that focused helper instead of owning pending-route flag reads and route-open utility calls directly.
+  - Replaced the inline pending-route action cluster in `social-app.js` with one `postLoginRouteOpenCoordinator` dependency wired from the existing deeplink/open helpers.
+  - Updated tracking docs to the real current committed checkpoint `e79c85e` and recorded Batch 12 as local-only work.
+- Validation notes:
+  - `node --check apps/menyra-social/core/auth/auth-post-login-route-open-utils.js`
+  - `node --check apps/menyra-social/core/auth/auth-session-startup-coordinator.js`
+  - `node --check apps/menyra-social/social-app.js`
+- Follow-up notes:
   - Not committed and not pushed.
-  - Exact next batch after local Batch 11 review is Batch 12 social-app post-login route-open coordination reduction.
+  - Exact next batch after local Batch 12 review is Batch 13 social-app startup route resolution orchestration reduction.

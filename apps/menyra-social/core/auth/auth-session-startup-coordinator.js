@@ -1,11 +1,5 @@
-import {
-  shouldResetUserScopedStateCore,
-  resolvePendingAuthRouteFlagsCore
-} from "./auth-bootstrap-flow-utils.js";
-import {
-  runPostLoginPendingRouteOpenFlowCore,
-  runPostLoginNonBlockingRouteOpenFlowCore
-} from "./auth-post-login-route-open-utils.js";
+import { shouldResetUserScopedStateCore } from "./auth-bootstrap-flow-utils.js";
+import { createPostLoginRouteOpenCoordinator } from "./auth-post-login-route-open-utils.js";
 
 export function createAuthSessionStartupCoordinator({
   state = null,
@@ -36,14 +30,7 @@ export function createAuthSessionStartupCoordinator({
   resumeRender = () => {},
   reportCriticalRuntimeFailure = () => {},
   runBootstrapUser = async () => false,
-  pendingRouteState = null,
-  getPendingNotificationId = () => "",
-  getPendingPostId = () => "",
-  getPendingChatUid = () => "",
-  openProfileFromQuery = () => {},
-  openNotificationFromQuery = async () => false,
-  openPostFromQuery = async () => false,
-  openChatFromQuery = () => false
+  postLoginRouteOpenCoordinator = null
 } = {}) {
   const queueMicrotaskSafe = typeof queueMicrotaskFn === "function"
     ? queueMicrotaskFn
@@ -51,15 +38,12 @@ export function createAuthSessionStartupCoordinator({
   const setTimeoutSafe = typeof setTimeoutFn === "function"
     ? setTimeoutFn
     : (() => {});
-  const readPendingNotificationId = typeof pendingRouteState?.getPendingNotificationId === "function"
-    ? pendingRouteState.getPendingNotificationId
-    : (typeof getPendingNotificationId === "function" ? getPendingNotificationId : (() => ""));
-  const readPendingPostId = typeof pendingRouteState?.getPendingPostId === "function"
-    ? pendingRouteState.getPendingPostId
-    : (typeof getPendingPostId === "function" ? getPendingPostId : (() => ""));
-  const readPendingChatUid = typeof pendingRouteState?.getPendingChatUid === "function"
-    ? pendingRouteState.getPendingChatUid
-    : (typeof getPendingChatUid === "function" ? getPendingChatUid : (() => ""));
+  const postLoginRouteOpen = postLoginRouteOpenCoordinator
+    && typeof postLoginRouteOpenCoordinator.resolvePendingRouteFlags === "function"
+    && typeof postLoginRouteOpenCoordinator.openPendingRoutes === "function"
+    && typeof postLoginRouteOpenCoordinator.openNonBlockingRoutes === "function"
+    ? postLoginRouteOpenCoordinator
+    : createPostLoginRouteOpenCoordinator();
   let lastAuthUid = "";
   let authTransitionSeq = 0;
   let authStateListenerBound = false;
@@ -150,11 +134,7 @@ export function createAuthSessionStartupCoordinator({
       }
       loadUserScopedPersisted(user);
       writeAuthBootstrapSnapshot();
-      const pendingRouteFlags = resolvePendingAuthRouteFlagsCore({
-        pendingNotificationId: readPendingNotificationId(),
-        pendingPostId: readPendingPostId(),
-        pendingChatUid: readPendingChatUid()
-      });
+      const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
       if (pendingRouteFlags.hasAny) {
         suspendRender();
         void bootstrapUser(user, { transitionSeq }).catch((err) => {
@@ -164,13 +144,7 @@ export function createAuthSessionStartupCoordinator({
           void (async () => {
             try {
               if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-              await runPostLoginPendingRouteOpenFlowCore({
-                openProfileFromQuery,
-                openNotificationFromQuery,
-                openPostFromQuery,
-                openChatFromQuery,
-                renderFallback: render
-              });
+              await postLoginRouteOpen.openPendingRoutes();
             } finally {
               resumeRender();
             }
@@ -183,12 +157,7 @@ export function createAuthSessionStartupCoordinator({
         });
         queueMicrotaskSafe(() => {
           if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-          runPostLoginNonBlockingRouteOpenFlowCore({
-            openProfileFromQuery,
-            openNotificationFromQuery,
-            openPostFromQuery,
-            openChatFromQuery
-          });
+          postLoginRouteOpen.openNonBlockingRoutes();
         });
       }
     } else {

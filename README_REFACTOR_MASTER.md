@@ -1,6 +1,6 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-11 15:23:18 +01:00
+Last updated: 2026-03-11 15:56:13 +01:00
 
 ## Current overall status
 - Batch 1: Completed (client auth shortcut backdoor removed).
@@ -19,7 +19,8 @@ Last updated: 2026-03-11 15:23:18 +01:00
 - Batch 8: Completed and pushed (`090eff5`, social-app auth-startup state helper extraction).
 - Batch 9: Completed and pushed (`2c6daba`, social-app auth session startup coordinator extraction).
 - Batch 10: Completed and pushed (`815e8fa`, social-app startup bootstrap wiring reduction).
-- Batch 11: Completed locally, uncommitted (social-app pending-route startup state extraction).
+- Batch 11: Completed and pushed (`e79c85e`, social-app pending-route startup state extraction).
+- Batch 12: Completed locally, uncommitted (social-app post-login route-open coordination reduction).
 - Manual smoke validation status: passed for guest flow, normal user flow, business owner flow, lead creation, and parts of older lead/staff/CEO flow.
 
 ## Current checkpoint / commit progression (main)
@@ -37,7 +38,8 @@ Last updated: 2026-03-11 15:23:18 +01:00
 12. `090eff5` — Batch 8 social-app auth-startup state helper extraction
 13. `2c6daba` — Batch 9 social-app auth session startup coordinator extraction
 14. `815e8fa` — Batch 10 social-app startup bootstrap wiring reduction
-15. Local working tree — Batch 11 social-app pending-route startup state extraction (uncommitted)
+15. `e79c85e` — Batch 11 social-app pending-route startup state extraction
+16. Local working tree — Batch 12 social-app post-login route-open coordination reduction (uncommitted)
 
 ## Architecture risks (current)
 - Critical (reduced): global-open Firestore rule removed in source; deployment validation still pending.
@@ -194,8 +196,8 @@ Last updated: 2026-03-11 15:23:18 +01:00
 - Unauthorized delete/write attempts fail for protected paths.
 
 ## Priority queue
-- Immediate: Review the local Batch 11 startup/auth route-state extraction as one narrow rollback unit.
-- Next after current local Batch 11 review: Batch 12 social-app post-login route-open coordination reduction.
+- Immediate: Review the local Batch 12 post-login route-open coordination extraction as one narrow rollback unit.
+- Next after current local Batch 12 review: Batch 13 social-app startup route resolution orchestration reduction.
 - Still open: Run full emulator/staging Firestore rule validation (Batch 3B evidence gate).
 
 ## Forgotten/missing items register (tracked)
@@ -236,10 +238,11 @@ Last updated: 2026-03-11 15:23:18 +01:00
 - Batch 8: extract auth-startup state wrapper helpers out of `social-app.js` into a focused auth utility module.
 - Batch 9: extract initial auth restore and auth transition startup orchestration out of `social-app.js` into a focused coordinator.
 - Batch 10: extract remaining startup public-bootstrap wiring and auth-listener registration glue out of `social-app.js`.
-- Batch 11 (local only): extract pending startup/deeplink route state out of `social-app.js` and rewire startup helpers/coordinator to consume that focused state surface.
+- Batch 11: extract pending startup/deeplink route state out of `social-app.js` and rewire startup helpers/coordinator to consume that focused state surface.
+- Batch 12 (local only): extract post-login route-open detection and blocking/non-blocking open sequencing behind a dedicated startup/auth helper instead of wiring that behavior through `social-app.js`.
 
 ## Pending fix groups
-- Batch 12: reduce the remaining post-login route-open coordination glue still passed from `social-app.js` into the auth-session startup coordinator.
+- Batch 13: reduce startup route resolution and auth-route seed orchestration still initiated directly in `social-app.js`.
 - Batch 3B validation gate execution (emulator/staging and query-path smoke checks) remains open after the current social-app startup/auth slice.
 - Further technical batch selection after the current social-app startup/auth sequence remains pending; do not reopen completed Batch 4 scope.
 
@@ -269,6 +272,6 @@ Last updated: 2026-03-11 15:23:18 +01:00
   - `README_REFACTOR_ROLLBACK.md`
 
 ## Current recommended next step
-- Current local batch awaiting review: Batch 11 social-app pending-route startup state extraction.
-- Current committed safe checkpoint: `815e8fa`.
-- Exact next batch after Batch 11 review: Batch 12 social-app post-login route-open coordination reduction.
+- Current local batch awaiting review: Batch 12 social-app post-login route-open coordination reduction.
+- Current committed safe checkpoint: `e79c85e`.
+- Exact next batch after Batch 12 review: Batch 13 social-app startup route resolution orchestration reduction.

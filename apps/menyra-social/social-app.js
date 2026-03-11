@@ -74,6 +74,7 @@ import { resolveInitialRouteState } from "./core/auth/initial-route-state.js";
 import {
   createAuthStartupStateHelpers
 } from "./core/auth/auth-startup-state-utils.js";
+import { createPostLoginRouteOpenCoordinator } from "./core/auth/auth-post-login-route-open-utils.js";
 import { createPendingRouteStartupState } from "./core/auth/pending-route-startup-state.js";
 import { createAuthSessionStartupCoordinator } from "./core/auth/auth-session-startup-coordinator.js";
 import { bootstrapAuthenticatedSessionCore } from "./core/auth/auth-user-bootstrap-utils.js";
@@ -9735,6 +9736,16 @@ const {
   bindPublicBootstrapPayloadListener,
   applyPublicBootstrapPayload
 });
+const postLoginRouteOpenCoordinator = createPostLoginRouteOpenCoordinator({
+  pendingRouteState,
+  routeOpenApi: {
+    openProfileFromQuery: maybeOpenProfileFromQuery,
+    openNotificationFromQuery: maybeOpenNotificationFromQuery,
+    openPostFromQuery: maybeOpenPostFromQuery,
+    openChatFromQuery: maybeOpenChatFromQuery
+  },
+  renderFallback: render
+});
 const authSessionStartupCoordinator = createAuthSessionStartupCoordinator({
   state,
   auth,
@@ -9764,11 +9775,7 @@ const authSessionStartupCoordinator = createAuthSessionStartupCoordinator({
   resumeRender,
   reportCriticalRuntimeFailure,
   runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user),
-  pendingRouteState,
-  openProfileFromQuery: () => maybeOpenProfileFromQuery(),
-  openNotificationFromQuery: () => maybeOpenNotificationFromQuery(),
-  openPostFromQuery: () => maybeOpenPostFromQuery(),
-  openChatFromQuery: () => maybeOpenChatFromQuery()
+  postLoginRouteOpenCoordinator
 });
 
 authSessionStartupCoordinator.start({
