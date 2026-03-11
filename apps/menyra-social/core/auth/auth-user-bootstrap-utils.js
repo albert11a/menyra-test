@@ -39,13 +39,25 @@ export async function bootstrapAuthenticatedSessionCore({
   const canContinue = typeof shouldContinue === "function"
     ? shouldContinue
     : (() => true);
-  const runNonBlocking = (fn) => {
+  const reportBootstrapNonBlockingFailure = (scope = "", err = null) => {
+    const safeScope = String(scope || "auth-bootstrap").trim() || "auth-bootstrap";
+    if (err) {
+      console.warn(`[mnyra][${safeScope}]`, err);
+      return;
+    }
+    console.warn(`[mnyra][${safeScope}] operation failed`);
+  };
+  const runNonBlocking = (scope, fn) => {
     try {
       const pending = fn();
       if (pending && typeof pending.then === "function") {
-        pending.catch(() => {});
+        pending.catch((err) => {
+          reportBootstrapNonBlockingFailure(scope, err);
+        });
       }
-    } catch {}
+    } catch (err) {
+      reportBootstrapNonBlockingFailure(scope, err);
+    }
   };
 
   await loadProfile(user);
@@ -58,8 +70,8 @@ export async function bootstrapAuthenticatedSessionCore({
   await resolveRoles(user);
   if (!canContinue()) return false;
 
-  runNonBlocking(() => ensureFollowing());
-  runNonBlocking(() => startLive(user));
-  runNonBlocking(() => ensureTab(readActiveTab()));
+  runNonBlocking("auth-bootstrap.ensureFollowingLoaded", () => ensureFollowing());
+  runNonBlocking("auth-bootstrap.startLiveListeners", () => startLive(user));
+  runNonBlocking("auth-bootstrap.ensureTabData", () => ensureTab(readActiveTab()));
   return true;
 }

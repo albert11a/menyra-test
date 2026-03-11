@@ -1,3 +1,12 @@
+function reportAuthFlowWarning(scope = "", err = null) {
+  const safeScope = String(scope || "auth-flow").trim() || "auth-flow";
+  if (err) {
+    console.warn(`[mnyra][${safeScope}]`, err);
+    return;
+  }
+  console.warn(`[mnyra][${safeScope}] operation failed`);
+}
+
 export function ensureTabDataCore({
   tab,
   state,
@@ -209,7 +218,9 @@ export function ensureTabDataCore({
   if (hasUser && tab === "staff" && !dataLoaded.staff) {
     dataLoaded.staff = true;
     if (isCeo()) {
-      void loadCeoStaffSafe().catch(() => {});
+      void loadCeoStaffSafe().catch((err) => {
+        reportAuthFlowWarning("auth-tab.staff.loadCeoStaff", err);
+      });
     }
   }
 }
@@ -356,7 +367,9 @@ export async function loadAuthProfileCore({
             }
           }
         }
-      } catch {}
+      } catch (err) {
+        reportAuthFlowWarning("auth-profile.resolveBusinessRestaurant.legacyFallback", err);
+      }
     }
     if (rest && user?.uid) {
       const patch = {};
@@ -387,7 +400,9 @@ export async function loadAuthProfileCore({
           if (String(state.user?.uid || "").trim() !== reconcileUid) return;
           await loadBusinessProfile(user, { restaurant: resolved, force: true });
         })
-        .catch(() => {})
+        .catch((err) => {
+          reportAuthFlowWarning("auth-profile.backgroundBusinessReconcile", err);
+        })
         .finally(() => {
           if (state.__authBusinessReconcileUid === reconcileUid) {
             state.__authBusinessReconcilePending = false;

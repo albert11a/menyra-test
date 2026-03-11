@@ -836,6 +836,19 @@ const CRM_PAGE_SIZE = 20;
 let publicBootstrapListenerBound = false;
 let publicBootstrapFetchPromise = null;
 
+function reportCriticalRuntimeFailure(scope = "", err = null, { suppressAbort = false } = {}) {
+  const safeScope = String(scope || "runtime").trim() || "runtime";
+  const name = String(err?.name || "").trim();
+  const message = String(err?.message || "").trim();
+  const isAbort = name === "AbortError" || /abort/i.test(message);
+  if (suppressAbort && isAbort) return;
+  if (err) {
+    console.warn(`[mnyra][${safeScope}]`, err);
+    return;
+  }
+  console.warn(`[mnyra][${safeScope}] operation failed`);
+}
+
 function applyRuntimePerfMode() {
   if (!FAST_MODE && !PERF_CONSTRAINED) return;
   if (typeof document === "undefined") return;
@@ -3035,7 +3048,8 @@ function fetchPublicBootstrapPayload({ force = false, timeoutMs = 1200 } = {}) {
       const data = json && typeof json === "object" ? json.data : null;
       if (!data || typeof data !== "object") return false;
       return applyPublicBootstrapPayload(data, { refreshUi: state.activeTab === "feed" });
-    } catch {
+    } catch (err) {
+      reportCriticalRuntimeFailure("startup.publicBootstrapFetch", err, { suppressAbort: true });
       return false;
     } finally {
       if (timeoutId !== null && typeof window !== "undefined") {
@@ -9922,11 +9936,15 @@ if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
 if (!state.user) {
   if (typeof window !== "undefined" && typeof window.requestAnimationFrame === "function") {
     window.requestAnimationFrame(() => {
-      void ensureTabData(state.activeTab);
+      void ensureTabData(state.activeTab).catch((err) => {
+        reportCriticalRuntimeFailure("startup.ensureTabData.guestRaf", err);
+      });
     });
   } else {
     setTimeout(() => {
-      void ensureTabData(state.activeTab);
+      void ensureTabData(state.activeTab).catch((err) => {
+        reportCriticalRuntimeFailure("startup.ensureTabData.guestTimeout", err);
+      });
     }, 0);
   }
 }
@@ -9952,7 +9970,9 @@ onAuthStateChanged(auth, (user) => {
     });
     if (pendingRouteFlags.hasAny) {
       suspendRender();
-      void bootstrapUser(user, { transitionSeq }).catch(() => {});
+      void bootstrapUser(user, { transitionSeq }).catch((err) => {
+        reportCriticalRuntimeFailure("auth.bootstrapUser.pendingRoutes", err);
+      });
       queueMicrotask(() => {
         void (async () => {
           try {
@@ -9971,7 +9991,9 @@ onAuthStateChanged(auth, (user) => {
       });
     } else {
       render();
-      void bootstrapUser(user, { transitionSeq }).catch(() => {});
+      void bootstrapUser(user, { transitionSeq }).catch((err) => {
+        reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
+      });
       queueMicrotask(() => {
         if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
         runPostLoginNonBlockingRouteOpenFlowCore({
@@ -9992,7 +10014,9 @@ onAuthStateChanged(auth, (user) => {
     state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
     render();
     queueMicrotask(() => {
-      void ensureTabData(state.activeTab);
+      void ensureTabData(state.activeTab).catch((err) => {
+        reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err);
+      });
     });
   }
   lastAuthUid = nextUid;
