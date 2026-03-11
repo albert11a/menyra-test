@@ -1,19 +1,19 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-11 20:35:37 +01:00
+Last updated: 2026-03-11 21:06:33 +01:00
 
 ## Current committed safe checkpoint
-- `4ebadb2` - `refactor(social): extract public bootstrap runtime`
-- Commit time: `2026-03-11 20:01:38 +01:00`
+- `69981fa` - `refactor(social): extract self profile runtime`
+- Commit time: `2026-03-11 20:51:08 +01:00`
 - Current branch at inspection: `main` tracking `origin/main`
 
 ## Current branch state
-- Local runtime batch in progress: `Batch A - Self Profile / Account / Avatar Runtime Extraction`.
-- Runtime and documentation changes are local only.
+- Local runtime batch in progress: `Batch B - Restaurant / Lead / Auth Resolution + Role Switch Extraction`.
+- Runtime and documentation changes are local only on top of clean committed checkpoint `69981fa`.
 - Nothing has been committed or pushed in this pass.
 
 ## Current social-app reduction status
-- `apps/menyra-social/social-app.js` is now `7,800` lines and `287,435` bytes locally.
+- `apps/menyra-social/social-app.js` is now `7,521` lines and `275,341` bytes locally.
 - Recent committed social-app reduction checkpoints:
   - `090eff5` - auth-startup state helper extraction
   - `2c6daba` - auth session startup coordinator extraction
@@ -23,18 +23,21 @@ Last updated: 2026-03-11 20:35:37 +01:00
   - `2e0e715` - public profile runtime extraction
   - `4aaf0fc` - restaurant identity runtime extraction
   - `4ebadb2` - public bootstrap runtime extraction
+  - `69981fa` - self profile runtime extraction
 - Durable source of truth for the next reduction phase:
   - `README_SOCIAL_APP_REDUCTION_MASTER.md`
-- Current local extraction status:
-  - `core/profile/self-profile-runtime-controller.js` now owns the self-profile/account/avatar runtime cluster.
-  - The exact next untouched roadmap slice after review is Batch B: restaurant/lead/auth resolution + role switch extraction.
+- Current extraction status:
+  - `core/profile/self-profile-runtime-controller.js` owns the self-profile/account/avatar runtime cluster in committed checkpoint `69981fa`.
+  - `core/auth/auth-profile-resolution-runtime.js` now owns the restaurant/lead/auth resolution + role-switch target runtime locally.
+  - The exact next untouched roadmap slice after review is Batch C: menu/focus public catalog runtime extraction.
 
 ## Current reduction direction
 - Recent work already removed a meaningful amount of startup/auth/public bootstrap responsibility from `social-app.js`.
-- Batch A has now removed the self-profile/account/avatar runtime locally.
+- Batch A has already removed the self-profile/account/avatar runtime in committed checkpoint `69981fa`.
+- Batch B now removes the restaurant/auth/lead resolution and role-switch runtime locally.
 - The next reductions should target the still-live runtime clusters that remain inside the file:
-  - restaurant/auth/lead resolution and role switching
-  - menu/focus/catalog and orders runtime
+  - menu/focus/catalog runtime
+  - orders runtime
   - upload/post publishing runtime
   - feed/story identity runtime
   - CEO CRM count/support runtime

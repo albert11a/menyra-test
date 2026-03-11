@@ -1,14 +1,14 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-11 20:35:37 +01:00
+Last updated: 2026-03-11 21:06:33 +01:00
 
 ## Current committed safe checkpoint
-- `4ebadb2` - `refactor(social): extract public bootstrap runtime`
+- `69981fa` - `refactor(social): extract self profile runtime`
 
 ## Current local batch note
-- The current local work in this chat is `Batch A - Self Profile / Account / Avatar Runtime Extraction`.
-- It is not committed or pushed, so the committed safe rollback point remains `4ebadb2`.
-- If this batch is rejected, revert or rework the entire local Batch A unit together.
+- The current local work in this chat is `Batch B - Restaurant / Lead / Auth Resolution + Role Switch Extraction`.
+- It is not committed or pushed, so the committed safe rollback point remains `69981fa`.
+- If this batch is rejected, revert or rework the entire local Batch B unit together.
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -28,12 +28,13 @@ Last updated: 2026-03-11 20:35:37 +01:00
 10. `2e0e715` - public profile runtime extraction
 11. `4aaf0fc` - restaurant identity runtime extraction
 12. `4ebadb2` - public bootstrap runtime extraction
+13. `69981fa` - self profile runtime extraction
 
 ## Current rollback guidance for the next approved runtime batch
-- Review Batch A before starting Batch B.
+- Review Batch B before starting Batch C.
 - Keep the next committed batch single-domain.
-- Do not mix restaurant/auth resolution with commerce or upload runtime in the same rollback unit.
 - Do not mix menu/focus publication work with order-write flow changes in the same rollback unit.
+- Do not mix upload/post publishing runtime with commerce or CRM runtime in the same rollback unit.
 - Do not use the old "Batch 16 startup sequencing" label unless a future approved batch actually matches that scope.
 
 ## Mandatory rollback documentation rule

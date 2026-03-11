@@ -597,3 +597,31 @@
   - `apps/menyra-social/social-app.js` is now `7,800` lines and `287,435` bytes locally.
   - Not committed and not pushed.
   - Exact next batch after review is Batch B: restaurant / lead / auth resolution + role switch extraction.
+
+## 2026-03-11 21:06:33 +01:00 — Batch B: Restaurant / Lead / Auth Resolution + Role Switch Extraction (Local Only)
+- Fix batch title: Batch B — Restaurant / Lead / Auth Resolution + Role Switch Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/auth/auth-profile-resolution-runtime.js`
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Correct the stale roadmap/tracking checkpoint to real committed Batch A state at `69981fa`.
+  - Move the restaurant/lead/auth resolution plus role-switch target runtime cluster out of `social-app.js` into a dedicated auth runtime controller while keeping existing call contracts stable.
+- Risk level: Medium
+- Regression risk: Medium (auth bootstrap owner/lead resolution, legacy restaurant fallback patching, and role-switch target refresh behavior all moved together)
+- What changed:
+  - Added `core/auth/auth-profile-resolution-runtime.js` to own restaurant lookup by uid/email, lead lookup by uid/email, lead-to-restaurant materialization, auth owner-restaurant resolution, owner restaurant fallback via `staffIndex`, and role-switch target resolution with the existing shell/feed refresh behavior.
+  - Replaced the inline Cluster C runtime block in `social-app.js` with controller wiring, keeping the existing function names at downstream call sites.
+  - Kept `loadAuthProfileCore(...)`, session bootstrap, self-profile runtime, and CRM wiring stable by continuing to pass the same callable dependencies from `social-app.js`, now sourced from the new controller.
+  - Updated the roadmap/tracking docs so `69981fa` is the committed Batch A checkpoint, Batch B is the current local uncommitted batch, and Batch C is the next untouched slice after review.
+- Validation notes:
+  - `node --check apps/menyra-social/core/auth/auth-profile-resolution-runtime.js`
+  - `node --check apps/menyra-social/social-app.js`
+- Follow-up notes:
+  - `apps/menyra-social/social-app.js` is now `7,521` lines and `275,341` bytes locally.
+  - Not committed and not pushed.
+  - Exact next batch after review is Batch C: menu / focus public catalog runtime extraction.
