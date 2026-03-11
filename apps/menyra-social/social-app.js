@@ -92,6 +92,8 @@ import {
 import { preparePublicBootstrapStartup } from "./core/app-shell/public-bootstrap-startup-utils.js";
 import { createPublicBootstrapRuntimeController } from "./core/app-shell/public-bootstrap-runtime-controller.js";
 import { createSessionDataRuntimeController } from "./core/app-shell/session-data-runtime-controller.js";
+import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
+import { createMenuPublicRuntimeController } from "./core/menu/menu-public-runtime-controller.js";
 import { createProfileMenuFocusRenderController } from "./core/profile/profile-menu-focus-render-controller.js";
 import { createPublicProfileRuntimeController } from "./core/profile/public-profile-runtime-controller.js";
 import { createSelfProfileRuntimeController } from "./core/profile/self-profile-runtime-controller.js";
@@ -1110,6 +1112,8 @@ let sessionDataRuntimeController = null;
 let socialEngagementRuntimeController = null;
 let crmRuntimeController = null;
 let chatRuntimeController = null;
+let menuPublicRuntimeController = null;
+let focusRuntimeController = null;
 let lastAppHtml = "";
 let lastRenderMode = "";
 let lastRenderedMainTab = "";
@@ -1137,8 +1141,6 @@ let restaurantMetaUnsubs = new Map();
 let feedStoriesSignature = "";
 let storiesRowSignature = "";
 let storiesFreshReconcileQueued = false;
-let focusRotateTimer = null;
-let focusRotateKey = "";
 let authInitialized = false;
 let authBootstrapSnapshot = null;
 let selfProfileRuntimeController = null;
@@ -1397,6 +1399,83 @@ const {
   getVerifiedMapLocation,
   getCeoGpsOverride,
   isRestaurantMarkedDeleted
+}));
+const {
+  updateFavoriteMenuItemsLocal,
+  loadFavoriteMenuItems,
+  getMenuItemImages,
+  isDirectImageUrl,
+  resolveMenuItemHero,
+  loadPublicMenuItems,
+  loadLegacyMenuItems,
+  loadMenuItemsFromCollection,
+  hasMenuItemImages,
+  fillMenuImagesFromFallback,
+  publishMenuToPublic,
+  loadMenuHybrid,
+  menuCacheKey,
+  syncMenuCaches
+} = (menuPublicRuntimeController = createMenuPublicRuntimeController({
+  state,
+  db,
+  menuCache,
+  collectionFn: collection,
+  queryFn: query,
+  orderByFn: orderBy,
+  limitFn: limit,
+  docFn: doc,
+  getDocFn: getDoc,
+  getDocsFn: getDocs,
+  setDocFn: setDoc,
+  serverTimestampFn: serverTimestamp,
+  createEmptyFavoriteMenuItemsStateFn: createEmptyFavoriteMenuItemsState,
+  favoriteMenuItemDocIdFn: favoriteMenuItemDocId,
+  buildFavoriteMenuItemPayloadFn: buildFavoriteMenuItemPayload,
+  getMenuItemSocialIdFn: getMenuItemSocialId,
+  normalizeMenuItemDocFn: normalizeMenuItemDoc,
+  coerceMenuItemsFromDataFn: coerceMenuItemsFromData,
+  foldMenuTextFn: foldMenuText,
+  clampCropPercentFn: clampCropPercent,
+  renderFn: render,
+  getLastRenderModeFn: () => lastRenderMode
+}));
+const {
+  getActiveFocusItems,
+  getFocusStateForRestaurant,
+  getFocusIndex,
+  setFocusIndex,
+  updateFocusRotation,
+  updateFocusCarouselDom,
+  loadFocusItems,
+  loadFocusMeta,
+  saveFocusEnabled,
+  publishFocusItems,
+  focusCacheKey,
+  saveFocusItemFromModal,
+  deleteFocusItemById
+} = (focusRuntimeController = createFocusRuntimeController({
+  state,
+  db,
+  documentObj: typeof document === "undefined" ? null : document,
+  windowObj: typeof window === "undefined" ? null : window,
+  focusCache,
+  docFn: doc,
+  getDocFn: getDoc,
+  setDocFn: setDoc,
+  serverTimestampFn: serverTimestamp,
+  uploadCompressedImageFn: uploadCompressedImage,
+  getFocusItemCropFn: getFocusItemCrop,
+  getFocusModalCropFn: getFocusModalCrop,
+  clampCropPercentFn: clampCropPercent,
+  getOptimizedImageUrlFn: getOptimizedImageUrl,
+  isPlaceholderUrlFn: isPlaceholderUrl,
+  placeholderImage: PLACEHOLDER_IMAGE,
+  isRestaurantCafeProfileFn: isRestaurantCafeProfile,
+  renderFn: render,
+  renderOverlaysFn: (...args) => renderOverlays(...args),
+  closeFocusModalFn: (...args) => closeFocusModal(...args),
+  confirmFn: typeof confirm === "function" ? confirm : () => false,
+  alertFn: typeof alert === "function" ? alert : () => {}
 }));
 
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
@@ -3859,96 +3938,6 @@ function buildFavoriteMenuItemPayload(item, restaurantId, { includeServerTimesta
   };
 }
 
-function normalizeFavoriteMenuItemDoc(data, docId = "") {
-  const payload = data || {};
-  const itemId = String(payload?.itemId || "").trim();
-  const item = normalizeMenuItemDoc(payload, itemId || docId || `favorite_${Date.now()}`);
-  return {
-    ...item,
-    id: itemId || item.id,
-    favoriteId: docId || favoriteMenuItemDocId(payload?.restaurantId, itemId),
-    restaurantId: String(payload?.restaurantId || "").trim(),
-    restaurantName: String(payload?.restaurantName || "").trim(),
-    restaurantAvatar: String(payload?.restaurantAvatar || "").trim(),
-    catalogMode: String(payload?.catalogMode || "").trim(),
-    restaurantType: String(payload?.restaurantType || "").trim(),
-    customerType: String(payload?.customerType || "").trim(),
-    savedAtClient: String(payload?.savedAtClient || "").trim()
-  };
-}
-
-function updateFavoriteMenuItemsLocal(item, restaurantId, { remove = false } = {}) {
-  const safeRestaurantId = String(restaurantId || "").trim();
-  const itemId = getMenuItemSocialId(item);
-  const favoriteId = favoriteMenuItemDocId(safeRestaurantId, itemId);
-  if (!favoriteId) return;
-  const currentItems = Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [];
-  let nextItems = currentItems.slice();
-  if (remove) {
-    nextItems = nextItems.filter((entry) => String(entry.favoriteId || "") !== favoriteId);
-  } else {
-    const nextItem = normalizeFavoriteMenuItemDoc(buildFavoriteMenuItemPayload(item, safeRestaurantId), favoriteId);
-    const existingIndex = nextItems.findIndex((entry) => String(entry.favoriteId || "") === favoriteId);
-    if (existingIndex >= 0) nextItems[existingIndex] = nextItem;
-    else nextItems.unshift(nextItem);
-  }
-  state.favoriteMenuItems = {
-    ...state.favoriteMenuItems,
-    items: nextItems
-  };
-  if (state.activeTab === "profile" && state.profileTopTab === "favorites" && lastRenderMode === "main") {
-    render();
-  }
-}
-
-async function loadFavoriteMenuItems({ force = false } = {}) {
-  const uid = String(state.user?.uid || "").trim();
-  if (!uid) {
-    state.favoriteMenuItems = createEmptyFavoriteMenuItemsState();
-    return;
-  }
-  if (state.favoriteMenuItems.loading) return;
-  if (state.favoriteMenuItems.loaded && !force) return;
-  state.favoriteMenuItems = {
-    ...state.favoriteMenuItems,
-    loading: true,
-    error: ""
-  };
-  if (state.activeTab === "profile" && state.profileTopTab === "favorites" && lastRenderMode === "main") {
-    render();
-  }
-  try {
-    const ref = collection(db, "users", uid, "menuFavorites");
-    let snap = null;
-    try {
-      snap = await getDocs(query(ref, orderBy("savedAtClient", "desc"), limit(120)));
-    } catch (err) {
-      snap = await getDocs(ref);
-    }
-    const items = snap.docs
-      .map((docSnap) => normalizeFavoriteMenuItemDoc(docSnap.data() || {}, docSnap.id))
-      .filter((item) => item.id && item.restaurantId)
-      .sort((a, b) => String(b.savedAtClient || "").localeCompare(String(a.savedAtClient || "")));
-    state.favoriteMenuItems = {
-      items,
-      loading: false,
-      error: "",
-      loaded: true
-    };
-  } catch (err) {
-    console.error(err);
-    state.favoriteMenuItems = {
-      ...state.favoriteMenuItems,
-      loading: false,
-      error: "Favoriten konnten nicht geladen werden.",
-      loaded: true
-    };
-  }
-  if (state.activeTab === "profile" && state.profileTopTab === "favorites" && lastRenderMode === "main") {
-    render();
-  }
-}
-
 function ensureMenuItemMeta(key) {
   if (!key) return { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
   if (!state.menuItemMeta[key]) {
@@ -4924,131 +4913,6 @@ async function loadPostMetaFromFirebase(post, { includeLikes = false, includeCom
 async function loadPostLikesForModal(postId) {
   return socialEngagementRuntimeController.loadPostLikesForModal(...arguments);
 }
-function getMenuItemImages(item) {
-  const looksLikeImageString = (value) => {
-    const str = String(value || "").trim();
-    if (!str) return false;
-    const lower = str.toLowerCase();
-    if (lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("data:") || lower.startsWith("blob:") || lower.startsWith("gs://")) return true;
-    if (lower.startsWith("media/") || lower.startsWith("social/") || lower.startsWith("menu/")) return true;
-    return /\.(avif|webp|png|jpe?g|gif|svg|bmp|tiff?)(\?.*)?$/i.test(str);
-  };
-  const normalizeImg = (value, depth = 0, seen = new WeakSet()) => {
-    if (!value) return "";
-    if (typeof value === "string") {
-      const cleaned = value.trim();
-      if (!cleaned) return "";
-      const lower = cleaned.toLowerCase();
-      if (lower === "null" || lower === "undefined" || lower === "data") return "";
-      if ((cleaned.startsWith("{") && cleaned.endsWith("}")) || (cleaned.startsWith("[") && cleaned.endsWith("]"))) {
-        try {
-          const parsed = JSON.parse(cleaned);
-          return normalizeImg(parsed, depth + 1, seen);
-        } catch {}
-      }
-      return cleaned;
-    }
-    if (typeof value === "object") {
-      if (seen.has(value)) return "";
-      seen.add(value);
-      const candidate = value.url
-        || value.src
-        || value.imageUrl
-        || value.imageURL
-        || value.image_url
-        || value.imagePath
-        || value.image_path
-        || value.imageSrc
-        || value.image_src
-        || value.path
-        || value.cdnUrl
-        || value.cdnURL
-        || value.downloadURL
-        || value.downloadUrl
-        || value.photoUrl
-        || value.photoURL
-        || value.photo_url
-        || value.picture
-        || value.pictureUrl
-        || value.pictureURL
-        || value.photo
-        || value.img
-        || value.imgUrl
-        || value.imgURL
-        || value.img_src
-        || value.imgSrc
-        || value.thumbnail
-        || value.thumbnailUrl
-        || value.thumbnailURL
-        || value.thumb
-        || value.original
-        || value.file
-        || value.fileUrl
-        || value.fileURL
-        || value.publicUrl
-        || value.publicURL
-        || value.secure_url
-        || value.secureUrl;
-      const resolved = normalizeImg(candidate, depth + 1, seen);
-      if (resolved) return resolved;
-      if (depth < 2) {
-        for (const val of Object.values(value)) {
-          if (typeof val === "string" && looksLikeImageString(val)) {
-            const found = normalizeImg(val, depth + 1, seen);
-            if (found) return found;
-          } else if (val && typeof val === "object") {
-            const found = normalizeImg(val, depth + 1, seen);
-            if (found) return found;
-          }
-        }
-      }
-      return "";
-    }
-    return "";
-  };
-  const rawList = [];
-  [item?.imageUrls, item?.images, item?.image, item?.gallery, item?.photos, item?.media, item?.mediaUrls, item?.photoUrls, item?.pictureUrls].forEach((list) => {
-    if (Array.isArray(list)) {
-      rawList.push(...list);
-    } else if (typeof list === "string" && list.trim()) {
-      rawList.push(list);
-    }
-  });
-  const list = rawList.map(normalizeImg);
-  const primary = normalizeImg(
-    item?.imageUrl
-      || item?.imageURL
-      || item?.image_url
-      || item?.image
-      || item?.photoUrl
-      || item?.photoURL
-      || item?.photo_url
-      || item?.img
-      || item?.imgUrl
-      || item?.imgURL
-      || item?.thumbnail
-      || item?.thumb
-      || item?.cover
-      || item?.coverUrl
-      || item?.coverURL
-      || ""
-  );
-  if (primary) list.unshift(primary);
-  const unique = Array.from(new Set(list.filter(Boolean)));
-  return unique.length ? unique : [];
-}
-
-function isDirectImageUrl(value) {
-  const str = String(value || "").trim();
-  if (!str) return false;
-  const lower = str.toLowerCase();
-  return lower.startsWith("http://") || lower.startsWith("https://") || lower.startsWith("data:") || lower.startsWith("blob:") || lower.startsWith("gs://");
-}
-
-function resolveMenuItemHero(item) {
-  const images = getMenuItemImages(item);
-  return images[0] || "";
-}
 
 function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   return profileMenuFocusRenderController.renderProfilePostCardFancy(item, isGrid, allowMenu);
@@ -5100,132 +4964,6 @@ function renderMenuFoodList(items, { mode = "profile" } = {}) {
 
 function renderMenuList(items, { mode = "profile" } = {}) {
   return profileMenuFocusRenderController.renderMenuList(items, { mode });
-}
-
-function getActiveFocusItems(items = state.focus.items) {
-  const list = Array.isArray(items) ? items : [];
-  return list
-    .map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`))
-    .filter((item) => item && item.active !== false);
-}
-
-function getFocusStateForRestaurant(restaurantId, { includeInactive = false } = {}) {
-  const same = !!restaurantId && state.focus.restaurantId === restaurantId;
-  const rawItems = same ? (Array.isArray(state.focus.items) ? state.focus.items : []) : [];
-  const normalized = rawItems.map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`));
-  const items = includeInactive ? normalized : normalized.filter((item) => item && item.active !== false);
-  const enabled = same ? state.focus.enabled !== false : true;
-  const loading = !!restaurantId && (state.focus.loading || !same);
-  return { items, enabled, loading, same };
-}
-
-function getFocusIndex(items) {
-  const max = (items?.length || 0) - 1;
-  if (max < 0) return 0;
-  const raw = Number(state.focus.index || 0);
-  if (!Number.isFinite(raw) || raw < 0 || raw > max) return 0;
-  return raw;
-}
-
-function setFocusIndex(nextIndex) {
-  const items = getActiveFocusItems();
-  if (!items.length) return;
-  const max = items.length;
-  let idx = Number(nextIndex);
-  if (!Number.isFinite(idx)) idx = 0;
-  if (idx < 0) idx = max - 1;
-  if (idx >= max) idx = 0;
-  if (idx === state.focus.index) return;
-  state.focus.index = idx;
-  if (!updateFocusCarouselDom()) {
-    render();
-  }
-}
-
-function clearFocusRotation() {
-  if (!focusRotateTimer) return;
-  if (typeof window !== "undefined") {
-    window.clearInterval(focusRotateTimer);
-  }
-  focusRotateTimer = null;
-}
-
-function isFocusRotationActive() {
-  const profile = state.profileView?.profile || state.userProfile;
-  const restaurantId = profile?.restaurantId || "";
-  if (!restaurantId) return false;
-  if (state.activeTab !== "profile" || state.profileTopTab !== "menu") return false;
-  if (!isRestaurantCafeProfile(profile)) return false;
-  if (state.focus.enabled === false) return false;
-  if (state.focus.restaurantId !== restaurantId) return false;
-  const items = getActiveFocusItems();
-  return items.length > 1;
-}
-
-function updateFocusRotation() {
-  if (typeof window === "undefined") return;
-  const profile = state.profileView?.profile || state.userProfile;
-  const restaurantId = profile?.restaurantId || "";
-  const items = getActiveFocusItems();
-  const shouldRotate = isFocusRotationActive();
-  const nextKey = shouldRotate ? `${restaurantId}|${items.length}` : "";
-  if (!shouldRotate) {
-    clearFocusRotation();
-    focusRotateKey = nextKey;
-    return;
-  }
-  if (focusRotateKey !== nextKey) {
-    clearFocusRotation();
-    focusRotateKey = nextKey;
-  }
-  if (!focusRotateTimer) {
-    focusRotateTimer = window.setInterval(() => {
-      if (document.visibilityState !== "visible") return;
-      if (!isFocusRotationActive()) {
-        clearFocusRotation();
-        return;
-      }
-      setFocusIndex(state.focus.index + 1);
-    }, 5000);
-  }
-}
-
-function updateFocusCarouselDom() {
-  if (typeof document === "undefined") return false;
-  const root = document.getElementById("focusCarousel");
-  if (!root) return false;
-  const profile = state.profileView?.profile || state.userProfile;
-  const restaurantId = profile?.restaurantId || "";
-  if (!restaurantId || !isRestaurantCafeProfile(profile)) return false;
-  const { items, enabled } = getFocusStateForRestaurant(restaurantId);
-  if (!enabled || !items.length) return false;
-  const idx = getFocusIndex(items);
-  const item = items[idx] || items[0];
-  const imgUrl = getOptimizedImageUrl(item.imageUrl || "", "large");
-  const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
-
-  const imgEl = root.querySelector("[data-focus-image]");
-  if (imgEl instanceof HTMLImageElement) {
-    if (imgEl.getAttribute("src") !== safeImg) imgEl.setAttribute("src", safeImg);
-  }
-  const titleEl = root.querySelector("[data-focus-title]");
-  if (titleEl) titleEl.textContent = item.title || "Sot ne Fokus";
-  const textEl = root.querySelector("[data-focus-text]");
-  if (textEl) {
-    if (item.text) {
-      textEl.textContent = item.text;
-      textEl.classList.remove("hidden");
-    } else {
-      textEl.textContent = "";
-      textEl.classList.add("hidden");
-    }
-  }
-  root.querySelectorAll("[data-focus-dot]").forEach((btn) => {
-    const dotIdx = Number(btn.dataset.focusDot || "0");
-    btn.classList.toggle("bg-slate-900", dotIdx === idx);
-    btn.classList.toggle("bg-slate-200", dotIdx !== idx);
-  });
-  return true;
 }
 
 function renderFocusAdminSection(restaurantId) {
@@ -7353,269 +7091,12 @@ async function loadBusinessPosts({ force = false } = {}) {
   return sessionDataRuntimeController.loadBusinessPosts(...arguments);
 }
 
-async function loadPublicMenuItems(restaurantId) {
-  if (!restaurantId) return [];
-  try {
-    const snap = await getDoc(doc(db, "restaurants", restaurantId, "public", "menu"));
-    if (!snap.exists()) return [];
-    const data = snap.data() || {};
-    const items = coerceMenuItemsFromData(data);
-    return items;
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
-}
-
-async function loadLegacyMenuItems(restaurantId) {
-  if (!restaurantId) return [];
-  try {
-    const snap = await getDoc(doc(db, "restaurants", restaurantId));
-    if (!snap.exists()) return [];
-    const data = snap.data() || {};
-    return coerceMenuItemsFromData(data);
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
-}
-
-async function loadMenuItemsFromCollection(restaurantId) {
-  if (!restaurantId) return [];
-  try {
-    const ref = collection(db, "restaurants", restaurantId, "menuItems");
-    const snap = await getDocs(ref);
-    return snap.docs.map((docSnap) => normalizeMenuItemDoc(docSnap.data(), docSnap.id));
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
-}
-
-function hasMenuItemImages(item) {
-  return getMenuItemImages(item).length > 0;
-}
-
-function fillMenuImagesFromFallback(baseItems, fallbackItems) {
-  const list = Array.isArray(baseItems) ? baseItems : [];
-  const fallback = Array.isArray(fallbackItems) ? fallbackItems : [];
-  if (!list.length || !fallback.length) return list;
-  const fallbackById = new Map(fallback.map((it) => [String(it.id || ""), it]));
-  const fallbackByNameCatPrice = new Map();
-  const fallbackByNameCat = new Map();
-  const fallbackByName = new Map();
-  fallback.forEach((fb) => {
-    if (!fb) return;
-    const nameKey = foldMenuText(fb.name || "").trim();
-    const catKey = foldMenuText(fb.category || "").trim();
-    const priceKey = String(fb.price ?? "").trim();
-    if (nameKey) {
-      const byName = fallbackByName.get(nameKey) || [];
-      byName.push(fb);
-      fallbackByName.set(nameKey, byName);
-    }
-    if (nameKey || catKey) {
-      const key = `${nameKey}|${catKey}`;
-      if (!fallbackByNameCat.has(key)) fallbackByNameCat.set(key, fb);
-    }
-    if (nameKey || catKey || priceKey) {
-      const key = `${nameKey}|${catKey}|${priceKey}`;
-      if (!fallbackByNameCatPrice.has(key)) fallbackByNameCatPrice.set(key, fb);
-    }
-  });
-  return list.map((it) => {
-    if (!it || hasMenuItemImages(it)) return it;
-    const byId = it.id ? fallbackById.get(String(it.id)) : null;
-    if (byId && hasMenuItemImages(byId)) {
-      return {
-        ...it,
-        imageUrl: byId.imageUrl || "",
-        imageUrls: Array.isArray(byId.imageUrls) ? byId.imageUrls : []
-      };
-    }
-    const nameKey = foldMenuText(it.name || "").trim();
-    const catKey = foldMenuText(it.category || "").trim();
-    const priceKey = String(it.price ?? "").trim();
-    let match = null;
-    if (nameKey || catKey || priceKey) {
-      match = fallbackByNameCatPrice.get(`${nameKey}|${catKey}|${priceKey}`) || null;
-    }
-    if (!match && (nameKey || catKey)) {
-      match = fallbackByNameCat.get(`${nameKey}|${catKey}`) || null;
-    }
-    if (!match && nameKey) {
-      const listByName = fallbackByName.get(nameKey) || [];
-      if (listByName.length === 1) match = listByName[0];
-    }
-    if (match && hasMenuItemImages(match)) {
-      return {
-        ...it,
-        imageUrl: match.imageUrl || "",
-        imageUrls: Array.isArray(match.imageUrls) ? match.imageUrls : []
-      };
-    }
-    return it;
-  });
-}
-
-async function publishMenuToPublic(restaurantId, items) {
-  if (!restaurantId) return;
-  const ref = doc(db, "restaurants", restaurantId, "public", "menu");
-  const payload = {
-    items: (items || []).map((item) => ({
-      id: item.id || "",
-      type: item.type || null,
-      category: item.category || "Sonstiges",
-      name: item.name || "Produkt",
-      description: item.description || "",
-      longDescription: item.longDescription || "",
-      allergens: item.allergens || "",
-      brand: item.brand || "",
-      sku: item.sku || "",
-      stock: Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null,
-      sizes: Array.isArray(item.sizes) ? item.sizes : [],
-      colors: Array.isArray(item.colors) ? item.colors : [],
-      cropX: clampCropPercent(item.cropX ?? 50, 50),
-      cropY: clampCropPercent(item.cropY ?? 50, 50),
-      price: item.price ?? "",
-      available: item.available !== false,
-      imageUrl: item.imageUrl || null,
-      imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : []
-    })),
-    publishedAt: serverTimestamp()
-  };
-  await setDoc(ref, payload, { merge: true });
-}
-
-async function loadMenuHybrid(restaurantId) {
-  const pub = await loadPublicMenuItems(restaurantId);
-  if (pub && pub.length) {
-    const needsImages = pub.some((it) => !hasMenuItemImages(it));
-    if (!needsImages) return pub;
-    const [col, legacy] = await Promise.all([
-      loadMenuItemsFromCollection(restaurantId),
-      loadLegacyMenuItems(restaurantId)
-    ]);
-    const fallbackItems = col.length ? col : legacy;
-    if (!fallbackItems.length) return pub;
-    const merged = fillMenuImagesFromFallback(pub, fallbackItems);
-    return merged;
-  }
-  const col = await loadMenuItemsFromCollection(restaurantId);
-  if (col && col.length) {
-    try {
-      await publishMenuToPublic(restaurantId, col);
-    } catch (err) {
-      console.error(err);
-    }
-    return col;
-  }
-  const legacy = await loadLegacyMenuItems(restaurantId);
-  if (legacy && legacy.length) {
-    try {
-      await publishMenuToPublic(restaurantId, legacy);
-    } catch (err) {
-      console.error(err);
-    }
-    return legacy;
-  }
-  return [];
-}
-
-function menuCacheKey(restaurantId, source) {
-  return `${restaurantId || ""}::${source || "hybrid"}`;
-}
-
-function normalizeFocusItem(data, fallbackId) {
-  const d = data || {};
-  const id = d.id || d._id || fallbackId || (crypto.randomUUID?.() || String(Math.random()).slice(2));
-  const crop = getFocusItemCrop(d);
-  return {
-    id,
-    title: d.title || d.name || "Sot ne Fokus",
-    text: d.text || d.desc || d.description || "",
-    imageUrl: d.imageUrl || d.image || d.photoUrl || "",
-    cropX: crop.x,
-    cropY: crop.y,
-    active: d.active !== false
-  };
-}
-
-async function loadFocusItems(restaurantId) {
-  if (!restaurantId) return [];
-  try {
-    const snap = await getDoc(doc(db, "restaurants", restaurantId, "public", "offers"));
-    if (!snap.exists()) return [];
-    const data = snap.data() || {};
-    const arr = Array.isArray(data.items) ? data.items : [];
-    return arr.map((item, idx) => normalizeFocusItem(item, item?.id || `focus_${idx}`));
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
-}
-
-async function loadFocusMeta(restaurantId) {
-  if (!restaurantId) return true;
-  try {
-    const snap = await getDoc(doc(db, "restaurants", restaurantId, "public", "meta"));
-    if (!snap.exists()) return true;
-    const data = snap.data() || {};
-    if (typeof data.offersEnabled === "boolean") return data.offersEnabled;
-  } catch (err) {
-    console.error(err);
-  }
-  return true;
-}
-
-async function saveFocusEnabled(restaurantId, enabled) {
-  if (!restaurantId) return;
-  try {
-    await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), {
-      offersEnabled: !!enabled,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function publishFocusItems(restaurantId, items) {
-  if (!restaurantId) return;
-  const payload = {
-    items: (items || []).map((item) => ({
-      id: item.id || "",
-      title: item.title || "",
-      text: item.text || "",
-      imageUrl: item.imageUrl || "",
-      cropX: clampCropPercent(item.cropX ?? 50, 50),
-      cropY: clampCropPercent(item.cropY ?? 50, 50),
-      active: item.active !== false
-    })),
-    updatedAt: serverTimestamp()
-  };
-  await setDoc(doc(db, "restaurants", restaurantId, "public", "offers"), payload, { merge: true });
-}
-
-function focusCacheKey(restaurantId) {
-  return `${restaurantId || ""}`;
-}
-
 async function loadFocusForRestaurant(restaurantId, { force = false } = {}) {
   return sessionDataRuntimeController.loadFocusForRestaurant(...arguments);
 }
 
 async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
   return sessionDataRuntimeController.loadMenuForRestaurant(...arguments);
-}
-
-function syncMenuCaches(restaurantId, items) {
-  const list = Array.isArray(items) ? items : [];
-  menuCache.set(menuCacheKey(restaurantId, "collection"), { items: list, ts: Date.now() });
-  menuCache.set(menuCacheKey(restaurantId, "hybrid"), { items: list, ts: Date.now() });
-  if (state.menu.restaurantId === restaurantId) {
-    state.menu = { ...state.menu, items: list };
-  }
 }
 
 function getMenuRestaurantForProfile(profile) {
@@ -7779,90 +7260,6 @@ async function submitShopCheckout() {
     state.shopCart = { ...cart, loading: false, checkoutOpen: true, status: "Bestellung konnte nicht gesendet werden." };
     saveShopCartToStorage();
     render();
-  }
-}
-
-async function saveFocusItemFromModal() {
-  if (!state.user) return;
-  const restaurantId = state.userProfile.restaurantId || "";
-  if (!restaurantId) {
-    state.focusModal.status = "Kein Restaurant ausgewaehlt.";
-    renderOverlays({ updateFocus: true });
-    return;
-  }
-  const title = document.getElementById("focusTitle")?.value?.trim() || "";
-  const text = document.getElementById("focusText")?.value?.trim() || "";
-  const imageUrlInput = document.getElementById("focusImageUrl")?.value?.trim() || "";
-  const active = document.getElementById("focusActive")?.checked !== false;
-  const crop = getFocusModalCrop();
-  if (!title) {
-    state.focusModal.status = "Bitte Titel eingeben.";
-    renderOverlays({ updateFocus: true });
-    return;
-  }
-
-  state.focusModal.loading = true;
-  state.focusModal.status = "Speichern...";
-  renderOverlays({ updateFocus: true });
-
-  try {
-    let imageUrl = imageUrlInput || state.focusModal.item?.imageUrl || "";
-    if (state.focusModal.imageFile) {
-      const { cdnUrl } = await uploadCompressedImage(
-        state.focusModal.imageFile,
-        restaurantId,
-        { maxSize: 1080, quality: 0.8, mimeType: "image/jpeg" }
-      );
-      imageUrl = cdnUrl || imageUrl;
-    }
-
-    const id = state.focusModal.item?.id || (crypto.randomUUID?.() || String(Math.random()).slice(2));
-    const payload = {
-      id,
-      title,
-      text,
-      imageUrl,
-      cropX: crop.x,
-      cropY: crop.y,
-      active
-    };
-    const nextItems = Array.isArray(state.focus.items) ? state.focus.items.slice() : [];
-    const idx = nextItems.findIndex((it) => String(it.id) === String(id));
-    if (idx >= 0) {
-      nextItems[idx] = { ...nextItems[idx], ...payload };
-    } else {
-      nextItems.unshift(payload);
-    }
-    await publishFocusItems(restaurantId, nextItems);
-    focusCache.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, ts: Date.now() });
-    state.focus = { ...state.focus, restaurantId, items: nextItems, loading: false, error: "" };
-
-    state.focusModal.loading = false;
-    state.focusModal.status = "Gespeichert.";
-    closeFocusModal();
-    render();
-  } catch (err) {
-    console.error(err);
-    state.focusModal.status = err?.message || "Speichern fehlgeschlagen.";
-    state.focusModal.loading = false;
-    renderOverlays({ updateFocus: true });
-  }
-}
-
-async function deleteFocusItemById(itemId) {
-  if (!state.user || !itemId) return;
-  const restaurantId = state.userProfile.restaurantId || "";
-  if (!restaurantId) return;
-  if (!confirm("Fokus-Eintrag wirklich loeschen?")) return;
-  try {
-    const nextItems = (state.focus.items || []).filter((it) => String(it.id) !== String(itemId));
-    await publishFocusItems(restaurantId, nextItems);
-    focusCache.set(focusCacheKey(restaurantId), { items: nextItems, enabled: state.focus.enabled, ts: Date.now() });
-    state.focus = { ...state.focus, restaurantId, items: nextItems };
-    render();
-  } catch (err) {
-    console.error(err);
-    alert("Loeschen fehlgeschlagen.");
   }
 }
 

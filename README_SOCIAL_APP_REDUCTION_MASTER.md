@@ -1,23 +1,24 @@
 # MNYRA Social-App Reduction Master
 
-Last updated: 2026-03-11 21:06:33 +01:00
+Last updated: 2026-03-11 21:40:12 +01:00
 
 ## 1. Current real checkpoint summary
 - Current committed checkpoint:
-  - `69981fa` - `refactor(social): extract self profile runtime`
-  - Commit time: `2026-03-11 20:51:08 +01:00`
+  - `8183197` - `refactor(social): extract auth profile resolution runtime`
+  - Commit time: `2026-03-11 21:20:40 +01:00`
 - Current branch state:
   - `main` tracking `origin/main`
-  - local uncommitted runtime batch present: `Batch B - Restaurant / Lead / Auth Resolution + Role Switch Extraction`
+  - local uncommitted runtime batch present: `Batch C - Menu / Focus Public Catalog Runtime Extraction`
   - nothing committed or pushed in this pass
 - Current `apps/menyra-social/social-app.js` size:
-  - `7,521` lines
-  - `275,341` bytes
+  - `7,461` lines
+  - `253,587` bytes
 - Current reduction direction:
   - startup/auth/public-profile/restaurant-identity/public-bootstrap runtime has already been split out in recent checkpoints
-  - self-profile/account/avatar runtime is now extracted in committed checkpoint `69981fa` into `core/profile/self-profile-runtime-controller.js`
-  - restaurant/auth/lead resolution and role-switch runtime is now extracted locally into `core/auth/auth-profile-resolution-runtime.js`
-  - the next untouched meaningful runtime slice is now menu/focus public catalog runtime
+  - self-profile/account/avatar runtime is extracted in committed checkpoint `69981fa` into `core/profile/self-profile-runtime-controller.js`
+  - restaurant/auth/lead resolution and role-switch runtime is extracted in committed checkpoint `8183197` into `core/auth/auth-profile-resolution-runtime.js`
+  - menu/focus/catalog/favorites runtime is now extracted locally into `core/menu/menu-public-runtime-controller.js` and `core/menu/focus-runtime-controller.js`
+  - the next untouched meaningful runtime slice is now orders runtime + orders view
 
 ## 2. Current role of social-app.js
 Today `social-app.js` is still carrying all of these roles at once:
@@ -25,7 +26,6 @@ Today `social-app.js` is still carrying all of these roles at once:
 - app-wide state container and runtime singleton registry
 - controller construction and bridge wiring
 - feed/story identity and restaurant-meta runtime
-- menu/focus/catalog/favorites runtime
 - orders runtime and orders view rendering
 - upload/post publishing/media ticket runtime
 - CEO CRM ownership/count support runtime
@@ -51,9 +51,9 @@ Long-term, `social-app.js` should not still contain:
 - large HTML render strings for feature surfaces
 - large banks of one-line wrappers whose only job is forwarding into controllers
 
-## 4. Exact remaining responsibility clusters inside social-app.js
+## 4. Current remaining responsibility clusters inside social-app.js
 
-Clusters B and C are recorded below as completed extraction status. The next untouched remaining clusters start at Cluster D.
+Clusters B, C, and E are recorded below as completed extraction status. The next untouched remaining clusters start at Cluster F. Line spans below are approximate and should be remeasured when a cluster becomes active.
 
 ### Cluster A. Composition Root, State, and Startup Entry
 - Lines:
@@ -103,15 +103,15 @@ Clusters B and C are recorded below as completed extraction status. The next unt
 
 ### Cluster C. Restaurant / Lead / Auth Resolution and Role Switching
 - Current status:
-  - completed locally in this workspace
+  - completed in committed checkpoint `8183197`
   - extracted into `core/auth/auth-profile-resolution-runtime.js`
-  - not committed or pushed yet
+  - already at `HEAD` / `origin/main`
 - Local outcome:
   - `social-app.js` no longer owns restaurant lookup by uid/email or lead lookup by uid/email
   - `social-app.js` no longer owns lead-to-restaurant materialization or auth owner-restaurant resolution
   - `social-app.js` no longer owns role-switch target resolution and its shell/feed rerender handoff
 - Review gate:
-  - validate this local batch before starting Batch C / Cluster E
+  - no open gate in this pass; this cluster is already committed at `8183197`
 
 ### Cluster D. Feed / Story Identity and Restaurant Meta Runtime
 - Lines:
@@ -149,40 +149,18 @@ Clusters B and C are recorded below as completed extraction status. The next unt
   - larger but still safe
 
 ### Cluster E. Menu / Focus / Public Catalog / Favorites Runtime
-- Lines:
-  - `4703-5232`
-  - `8609-8891`
-  - `9219-9241`
-- Classification:
-  - safe to extract now
-- What it currently does:
-  - menu social id/meta helpers
-  - favorites payload/local-state/load flow
-  - menu detail context/profile resolution
-  - menu image normalization and fallback fill
-  - public/legacy/collection menu loading
-  - public menu publication
-  - focus offer load/save/publication
-  - menu save/delete integration
-- Why it is still here:
-  - it still bridges menu state, focus state, upload helpers, public publication, and current render/update paths
-- Does it belong here long-term:
-  - no
-- Where it should move:
-  - new `core/menu/menu-public-runtime-controller.js`
-  - new `core/menu/focus-runtime-controller.js`
-- Main dependencies:
-  - `state.menu`, `state.focus`, `state.favoriteMenuItems`
-  - `db`, `getDoc`, `getDocs`, `setDoc`, `doc`, `collection`
-  - `uploadCompressedImage`
-  - `syncMenuCaches`, `render`, `renderOverlays`
-- Extraction risk:
-  - medium
-  - menu publication, focus publication, and favorite normalization all need to stay behavior-identical
-- Prerequisite cleanup:
-  - keep orders separate unless explicitly choosing a broader commerce batch
-- Appropriate batch size:
-  - medium to larger-but-safe
+- Current status:
+  - completed locally in this workspace
+  - extracted into `core/menu/menu-public-runtime-controller.js`
+  - extracted into `core/menu/focus-runtime-controller.js`
+  - not committed or pushed yet
+- Local outcome:
+  - `social-app.js` no longer owns favorite menu load/local-state synchronization
+  - `social-app.js` no longer owns menu image normalization/fallback fill or public/legacy/collection menu load logic
+  - `social-app.js` no longer owns public menu publication or menu cache synchronization
+  - `social-app.js` no longer owns focus load/meta/publication runtime, focus carousel rotation state, or focus save/delete flows
+- Review gate:
+  - validate this local batch before starting Batch D / Cluster F
 
 ### Cluster F. Orders Runtime and Orders View
 - Lines:
@@ -340,18 +318,17 @@ Clusters B and C are recorded below as completed extraction status. The next unt
 
 ## 5. Best next 5-10 extraction candidates
 
-Batch B is now locally completed. Treat the first untouched candidate below as the next implementation target after review.
+Batch C is now locally completed. Treat the first untouched candidate below as the next implementation target after review.
 
 | Rank | Candidate | Current cluster(s) | Size | Why it is ranked here | Suggested destination |
 | --- | --- | --- | --- | --- | --- |
-| 1 | Menu/focus public catalog runtime | E | Medium to larger-but-safe | Removes a large commerce/profile block with clear domain boundaries and keeps rollback isolated from orders | `core/menu/menu-public-runtime-controller.js` + `core/menu/focus-runtime-controller.js` |
-| 2 | Orders runtime + orders view | F | Medium | Isolated listener/write/render surface with straightforward rollback | `core/orders/orders-runtime-controller.js` + `core/orders/orders-render-utils.js` |
-| 3 | Upload/post publishing/media ticket runtime | G | Medium | High real responsibility, isolated around media worker + publish flows | `core/media/media-upload-runtime-controller.js` |
-| 4 | Feed/story identity runtime | D | Larger but still safe | Big line reduction opportunity after recent startup work settles | `core/stories/story-feed-runtime-controller.js` |
-| 5 | Shell/auth/drawer/notifications DOM runtime | I | Medium | Useful size reduction, but lower business-value than the data/runtime slices above | `core/app-shell/shell-dom-runtime-controller.js` |
-| 6 | CEO CRM count/support runtime | H | Medium to larger-but-safe | Valuable, but higher business risk and should stay isolated | `core/crm/ceo-crm-count-runtime-controller.js` |
-| 7 | Late-stage controller dependency-map consolidation | A | Medium | Good final shrink step for composition-root readability after business logic is gone | `core/app-shell/controller-deps-factory.js` |
-| 8 | Wrapper layer collapse | J | Small to medium, but low value if done alone | Useful only late, after real runtime extraction | direct controller wiring / bridge cleanup |
+| 1 | Orders runtime + orders view | F | Medium | Next untouched commerce/runtime surface after Batch C, with isolated listener/write/render behavior and straightforward rollback | `core/orders/orders-runtime-controller.js` + `core/orders/orders-render-utils.js` |
+| 2 | Upload/post publishing/media ticket runtime | G | Medium | High real responsibility, isolated around media worker + publish flows | `core/media/media-upload-runtime-controller.js` |
+| 3 | Feed/story identity runtime | D | Larger but still safe | Big line reduction opportunity after recent commerce/runtime work settles | `core/stories/story-feed-runtime-controller.js` |
+| 4 | Shell/auth/drawer/notifications DOM runtime | I | Medium | Useful size reduction, but lower business-value than the data/runtime slices above | `core/app-shell/shell-dom-runtime-controller.js` |
+| 5 | CEO CRM count/support runtime | H | Medium to larger-but-safe | Valuable, but higher business risk and should stay isolated | `core/crm/ceo-crm-count-runtime-controller.js` |
+| 6 | Late-stage controller dependency-map consolidation | A | Medium | Good final shrink step for composition-root readability after business logic is gone | `core/app-shell/controller-deps-factory.js` |
+| 7 | Wrapper layer collapse | J | Small to medium, but low value if done alone | Useful only late, after real runtime extraction | direct controller wiring / bridge cleanup |
 
 ## 6. Which clusters are unsafe to extract yet
 - Composition-root/controller construction as a standalone batch:
@@ -368,19 +345,19 @@ Batch B is now locally completed. Treat the first untouched candidate below as t
 ## 7. Staged roadmap from current state to the target 800-1500-line state
 
 ### Stage 0. Current state
-- `social-app.js` is now about `7.5k` lines locally after Batch B.
-- Startup/auth/public bootstrap plus self-profile/account/avatar and restaurant/lead/auth resolution extraction is already real progress, but the file still owns too many business/runtime clusters.
+- `social-app.js` is now about `7.46k` lines locally after Batch C.
+- Startup/auth/public bootstrap plus self-profile/account/avatar, restaurant/lead/auth resolution, and menu/focus/catalog extraction is already real progress, but the file still owns too many business/runtime clusters.
 
 ### Stage 1. First meaningful reduction wave
 - Target outcome:
   - remove one more isolated commerce/runtime slice
 - Expected file state:
-  - roughly `6.7k-7.5k` lines
+  - roughly `6.7k-7.4k` lines
 - Good batch choices:
-  - Cluster E
   - Cluster F or G
 - Current local status:
-  - Clusters B and C are complete locally and under review
+  - Cluster C is committed at `HEAD`
+  - Cluster E is complete locally and under review
 
 ### Stage 2. Commerce + shell reduction wave
 - Target outcome:
@@ -434,7 +411,7 @@ Batch B is now locally completed. Treat the first untouched candidate below as t
 ### Batch A. Self Profile / Account / Avatar Runtime Extraction
 - Status:
   - completed in committed checkpoint `69981fa`
-  - already at `HEAD` / `origin/main`
+  - already in `main` history before `HEAD`
 - Scope:
   - self-profile normalization
   - live snapshot application
@@ -452,9 +429,8 @@ Batch B is now locally completed. Treat the first untouched candidate below as t
 
 ### Batch B. Restaurant / Lead / Auth Resolution + Role Switch Extraction
 - Status:
-  - completed locally in current workspace
-  - under review
-  - not committed or pushed
+  - completed in committed checkpoint `8183197`
+  - already at `HEAD` / `origin/main`
 - Scope:
   - restaurant lookup
   - lead lookup
@@ -463,12 +439,17 @@ Batch B is now locally completed. Treat the first untouched candidate below as t
   - role switch target resolution
 
 ### Batch C. Menu / Focus Public Catalog Runtime Extraction
+- Status:
+  - completed locally in current workspace
+  - under review
+  - not committed or pushed
 - Scope:
+  - favorite menu runtime helpers and local-state load flow
   - public/legacy/collection menu load
   - menu image fallback logic
   - public menu publish
   - focus offer load/save/publish
-  - favorite menu runtime helpers if still tightly coupled
+  - focus carousel runtime and focus save/delete integration
 - Why it is the best larger-safe slice after A and B:
   - large meaningful reduction
   - commerce/profile domain is cohesive
@@ -477,6 +458,19 @@ Batch B is now locally completed. Treat the first untouched candidate below as t
   - menu publication and order writes are different rollback surfaces
 - Size:
   - larger but still safe
+
+### Batch D. Orders Runtime + Orders View Extraction
+- Scope:
+  - order normalization glue
+  - order listener lifecycle
+  - guest/auth checkout write flow
+  - orders tab rendering
+- Why it is next:
+  - Batch C is already the active local batch
+  - orders is the next untouched isolated commerce surface after menu/focus
+  - rollback remains cleanly separated from upload/media and CRM
+- Size:
+  - medium
 
 ### Important planning note
 - The pre-blueprint "Batch 16 - startup bootstrap entry sequencing reduction" should not be resumed by default.
