@@ -1,0 +1,140 @@
+# MNYRA Refactor Log
+
+## 2026-03-10 23:58:49 +01:00 — Batch 1: Critical Security Lock + Tracking Scaffolding
+- Fix batch title: Batch 1 — Critical Security Lock + Tracking Scaffolding
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js`
+  - `apps/menyra-social/core/app-shell/controller-deps-factory.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Remove client-side hardcoded privileged shortcut login path and related runtime wiring.
+  - Establish mandatory continuity and rollback documentation.
+- Risk level: Critical
+- Regression risk: Low to Medium (auth behavior changed only to remove insecure shortcut path)
+- What changed:
+  - Deleted `ADMIN_LOGINS` constant from `social-app.js`.
+  - Deleted `resolveAdminLogin` and `signInOrCreateAdmin` from `social-app.js`.
+  - Removed shortcut auth branch from auth submit flow in `app-shell-runtime-controller.js`; login now always uses Firebase email/password sign-in.
+  - Removed now-dead dependency wiring for the shortcut auth functions from `controller-deps-factory.js`.
+  - Created all required refactor tracking docs.
+- Behavior intent:
+  - Keep normal login/register behavior.
+  - Intentionally remove hidden privileged login bypass.
+- Validation notes:
+  - `node --check apps/menyra-social/social-app.js`
+  - `node --check apps/menyra-social/core/app-shell/app-shell-runtime-controller.js`
+  - `node --check apps/menyra-social/core/app-shell/controller-deps-factory.js`
+  - Grep confirms no remaining references to `ADMIN_LOGINS`, `resolveAdminLogin`, `signInOrCreateAdmin`.
+- Follow-up notes:
+  - Critical risk still open: media upload/delete endpoints lacked authz enforcement (addressed in Batch 2).
+  - Critical governance gap still open: Firestore rules/index files not committed in repo.
+
+## 2026-03-11 00:07:43 +01:00 — Batch 2: Media Upload/Delete Authorization Hardening
+- Fix batch title: Batch 2 — Media Upload/Delete Authorization Hardening
+- Exact files changed:
+  - `functions/index.js`
+  - `cloudflare-edge/menyra-media-worker.js`
+  - `apps/menyra-social/social-app.js`
+  - `shared/bunny-edge.js`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Add a short-lived signed media action ticket endpoint and enforce worker-side verification for media write endpoints.
+- Risk level: Critical
+- Regression risk: Medium (media upload flow now depends on function ticket issuance and shared secret env config)
+- What changed:
+  - Added `POST /issueMediaActionTicket` in Firebase Functions (`functions/index.js`).
+  - Added ownership/action checks before issuing ticket:
+    - `image_upload` allows self-owner id or authorized business owner/team mapping.
+    - `story_upload` requires business owner id authorization.
+    - `story_delete` requires valid `stories/{ownerId}/...` key and owner authorization.
+  - Added HMAC ticket verification to worker for `/image/upload`, `/story/upload`, `/story/delete`.
+  - Worker now requires `X-MNYRA-Media-Ticket` and fails closed on invalid/missing tickets.
+  - Frontend upload callers now request ticket via function endpoint before worker upload.
+  - Added shared endpoint export `MEDIA_TICKET_ENDPOINT` in `shared/bunny-edge.js`.
+- Behavior intent:
+  - Preserve successful authorized uploads.
+  - Explicitly block unauthorized direct endpoint abuse.
+- Validation notes:
+  - `node --check functions/index.js`
+  - `node --check apps/menyra-social/social-app.js`
+  - `node --check shared/bunny-edge.js`
+  - `Get-Content cloudflare-edge/menyra-media-worker.js -Raw | node --check --input-type=module`
+  - Grep confirms media upload callers now include ticket header and ticket endpoint call.
+- Follow-up notes:
+  - Deployment dependency: `MEDIA_ACTION_TICKET_SECRET` must match in both Functions and Worker env.
+  - Frontend currently has no direct `/story/delete` caller; worker hardening still applied to that endpoint.
+
+## 2026-03-11 00:13:29 +01:00 — Batch 3: Firestore Governance Baseline Capture
+- Fix batch title: Batch 3 — Firestore Governance Baseline Capture
+- Exact files changed:
+  - `.gitignore`
+  - `firestore.rules`
+  - `firestore.indexes.json`
+  - `firebase.json`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Capture deployed Firestore rules/indexes into version control and bind config paths in `firebase.json`.
+- Risk level: Critical governance
+- Regression risk: Low for runtime (no deploy performed), High if blindly deployed without hardening.
+- What changed:
+  - Pulled live Firestore release `cloud.firestore` source into `firestore.rules`.
+  - Pulled live Firestore indexes into `firestore.indexes.json`.
+  - Added Firestore config section in `firebase.json` referencing both files.
+  - Added `firebase-debug.log` patterns to `.gitignore` to prevent generated debug-file drift in future batches.
+- Behavior intent:
+  - Preserve current behavior while removing unknown baseline drift.
+  - Make Firestore security/index state auditable and reproducible in repo.
+- Validation notes:
+  - Confirmed project default is `menyra-c0e68` from `.firebaserc`.
+  - Confirmed rules and indexes retrieval succeeded from live project.
+  - Confirmed new files exist and `firebase.json` references them.
+- Follow-up notes:
+  - Captured baseline reveals current deployed Firestore rule is globally open (`allow read, write: if true;`).
+  - Immediate next action is Batch 3B: deny-by-default rule hardening with emulator/staging validation.
+
+## 2026-03-11 00:51:31 +01:00 — Batch 3B: Firestore Rule Hardening (Deny-by-Default + Ownership Tightening)
+- Fix batch title: Batch 3B — Firestore Rule Hardening (Deny-by-Default + Ownership Tightening)
+- Exact files changed:
+  - `firestore.rules`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Harden Firestore authorization from baseline-captured open policy to explicit allow rules mapped to current app read/write paths.
+  - Remove unsafe restaurant-management authorization path based only on mutable `users/{uid}.restaurantId`.
+- Risk level: Critical
+- Regression risk: Medium (authz narrowed; path coverage depends on validation checklist execution)
+- What changed:
+  - Kept deny-by-default model with explicit match blocks for known app paths.
+  - Added restaurant staff membership check (`restaurants/{rid}/staff/{uid}`) into manage-restaurant authorization helper.
+  - Removed previous implicit manage-rights path derived from caller profile `restaurantId` alone.
+  - Added safe counter-create branch for social counters so first-write menu-social counter docs can be created only with counter keys.
+  - Maintained public-read behavior for feed/restaurant/story/menu surfaces used by guest startup and public views.
+  - Maintained auth/self and CRM/CEO path boundaries using explicit helpers and path rules.
+- Behavior intent:
+  - Preserve required app behavior while closing obvious privilege-escalation and global-open access patterns.
+- Validation notes:
+  - Manual smoke validation passed for:
+    - guest flow
+    - normal user flow
+    - business/restaurant owner flow
+    - lead creation
+    - parts of older lead/staff/CEO flow
+  - Local emulator parse/run is blocked on this machine: `java` runtime missing (`firebase emulators:exec --only firestore` fails with `java ENOENT`).
+  - Deployment intentionally not executed in this batch.
+  - Pre-deploy checklist documented in `README_REFACTOR_MASTER.md` and `README_REFACTOR_NEXT.md`.
+- Follow-up notes:
+  - Critical missing item: runtime validation evidence is still missing until emulator/staging checks complete.
+  - High-value missing item: cross-user counter integrity is still client-driven and should move server-side.
+  - Medium missing item: legacy rows lacking ownership/team metadata may require backfill for smooth writes.

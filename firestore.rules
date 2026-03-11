@@ -1,0 +1,459 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function authUid() {
+      return signedIn() ? request.auth.uid : "";
+    }
+
+    function authEmail() {
+      return signedIn() && request.auth.token.email is string ? request.auth.token.email : "";
+    }
+
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function currentUserPath() {
+      return userPath(authUid());
+    }
+
+    function currentUserExists() {
+      return signedIn() && exists(currentUserPath());
+    }
+
+    function currentUserData() {
+      return currentUserExists() ? get(currentUserPath()).data : {};
+    }
+
+    function hasRoleFromData(data, role) {
+      return data.role == role || (data.roles is list && role in data.roles);
+    }
+
+    function isGlobalCeoUid() {
+      return signedIn() && authUid() == "aklBkkIuZ7Nrpx266TJn63rrxX62";
+    }
+
+    function isCeoActor() {
+      return signedIn() && (
+        isGlobalCeoUid()
+        || (currentUserExists() && hasRoleFromData(currentUserData(), "ceo"))
+        || exists(/databases/$(database)/documents/superadmins/$(authUid()))
+      );
+    }
+
+    function isSelf(uid) {
+      return signedIn() && authUid() == uid;
+    }
+
+    function isRestaurantStaffMember(restaurantId) {
+      return signedIn()
+        && restaurantId is string
+        && restaurantId != ""
+        && exists(/databases/$(database)/documents/restaurants/$(restaurantId)/staff/$(authUid()));
+    }
+
+    function matchesAuthEmail(data) {
+      let email = authEmail();
+      return email != "" && (
+        data.ownerEmail == email
+        || data.email == email
+        || data.contactEmail == email
+        || data.socialEmail == email
+        || data.loginEmail == email
+        || data.accountEmail == email
+      );
+    }
+
+    function ceoPathContainsActor(data) {
+      return data.ceoPath is list && authUid() in data.ceoPath;
+    }
+
+    function canAccessCeoScopedData(data) {
+      return isCeoActor() && (
+        isGlobalCeoUid()
+        || data.createdByUid == authUid()
+        || data.ceoParentUid == authUid()
+        || ceoPathContainsActor(data)
+      );
+    }
+
+    function canAccessCeoRecordData(data) {
+      return isCeoActor() && (
+        isGlobalCeoUid()
+        || data.uid == authUid()
+        || data.ceoParentUid == authUid()
+        || ceoPathContainsActor(data)
+      );
+    }
+
+    function canManageRestaurantData(data, restaurantId) {
+      return signedIn() && (
+        isGlobalCeoUid()
+        || data.ownerUid == authUid()
+        || data.createdByUid == authUid()
+        || data.ceoParentUid == authUid()
+        || ceoPathContainsActor(data)
+        || isRestaurantStaffMember(restaurantId)
+        || matchesAuthEmail(data)
+      );
+    }
+
+    function canManageRestaurantDoc(restaurantId) {
+      return exists(/databases/$(database)/documents/restaurants/$(restaurantId))
+        && canManageRestaurantData(get(/databases/$(database)/documents/restaurants/$(restaurantId)).data, restaurantId);
+    }
+
+    function canCreateRestaurantDoc(restaurantId) {
+      return canManageRestaurantData(request.resource.data, restaurantId) || isCeoActor();
+    }
+
+    function counterOnlyUpdate(allowedFields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowedFields);
+    }
+
+    function counterOnlyCreate(allowedFields) {
+      return request.resource.data.keys().hasOnly(allowedFields);
+    }
+
+    function socialCounterUpdateAllowed() {
+      return signedIn() && (
+        (resource != null && counterOnlyUpdate(["likesCount", "commentsCount"]))
+        || (resource == null && counterOnlyCreate(["likesCount", "commentsCount"]))
+      );
+    }
+
+    function followerCounterUpdateAllowed() {
+      return signedIn() && counterOnlyUpdate(["followersCount", "followingCount"]);
+    }
+
+    function privilegedUserFields() {
+      return [
+        "role",
+        "roles",
+        "ceoParentUid",
+        "ceoParentName",
+        "ceoRootUid",
+        "ceoRootName",
+        "ceoPath",
+        "crmCounts",
+        "businessStatus",
+        "businessDeleted",
+        "deletedRestaurantId",
+        "createdByUid",
+        "createdByRole",
+        "createdByName",
+        "createdByHandle"
+      ];
+    }
+
+    function selfUserCreateAllowed(userId) {
+      return isSelf(userId)
+        && !request.resource.data.keys().hasAny(privilegedUserFields());
+    }
+
+    function selfUserUpdateAllowed(userId) {
+      return isSelf(userId)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(privilegedUserFields());
+    }
+
+    function ceoManagedUserWriteAllowed(userId) {
+      return isCeoActor() && (
+        isGlobalCeoUid()
+        || isSelf(userId)
+        || (resource != null && canAccessCeoScopedData(resource.data))
+        || (request.resource.data.ceoPath is list && authUid() in request.resource.data.ceoPath)
+        || (
+          request.resource.data.businessDeleted == true
+          && request.resource.data.businessStatus == "deleted"
+          && request.resource.data.deletedRestaurantId is string
+        )
+      );
+    }
+
+    function otherUserCounterWriteAllowed(userId) {
+      return signedIn() && authUid() != userId && followerCounterUpdateAllowed();
+    }
+
+    function buyerOwnsOrder() {
+      return signedIn()
+        && resource.data.buyerUid is string
+        && resource.data.buyerUid != ""
+        && resource.data.buyerUid == authUid();
+    }
+
+    function validOrderCreateForRestaurant(restaurantId) {
+      return request.resource.data.restaurantId == restaurantId
+        && (
+          (!signedIn() && (!request.resource.data.keys().hasAny(["buyerUid"]) || request.resource.data.buyerUid == ""))
+          || (signedIn() && request.resource.data.buyerUid == authUid())
+        );
+    }
+
+    function socialFeedRestaurantIdFromData(data) {
+      return data.rid is string && data.rid != ""
+        ? data.rid
+        : (data.restaurantId is string ? data.restaurantId : "");
+    }
+
+    match /users/{userId} {
+      allow get, list: if signedIn();
+      allow create: if selfUserCreateAllowed(userId) || ceoManagedUserWriteAllowed(userId);
+      allow update: if selfUserUpdateAllowed(userId) || ceoManagedUserWriteAllowed(userId) || otherUserCounterWriteAllowed(userId);
+      allow delete: if isSelf(userId) || ceoManagedUserWriteAllowed(userId);
+
+      match /devices/{deviceId} {
+        allow get, list, create, update, delete: if isSelf(userId);
+      }
+
+      match /notifications/{notificationId} {
+        allow get, list: if isSelf(userId);
+        allow create: if signedIn() && (
+          isSelf(userId)
+          || (request.resource.data.userUid is string && request.resource.data.userUid == authUid())
+        );
+        allow update, delete: if isSelf(userId);
+      }
+
+      match /followRequests/{requesterUid} {
+        allow get: if isSelf(userId) || (signedIn() && requesterUid == authUid());
+        allow list: if isSelf(userId);
+        allow create: if signedIn()
+          && requesterUid == authUid()
+          && request.resource.data.requesterUid == authUid()
+          && request.resource.data.targetUid == userId;
+        allow update, delete: if isSelf(userId) || (signedIn() && requesterUid == authUid());
+      }
+
+      match /following/{followId} {
+        allow get, list: if isSelf(userId);
+        allow create: if isSelf(userId) || (
+          signedIn()
+          && userId != authUid()
+          && request.resource.data.targetType == "user"
+          && request.resource.data.targetId == authUid()
+          && exists(/databases/$(database)/documents/users/$(authUid())/followRequests/$(userId))
+        );
+        allow update, delete: if isSelf(userId);
+      }
+
+      match /posts/{postId} {
+        allow read: if signedIn();
+        allow create: if isSelf(userId) || ceoManagedUserWriteAllowed(userId);
+        allow update: if isSelf(userId) || ceoManagedUserWriteAllowed(userId) || socialCounterUpdateAllowed();
+        allow delete: if isSelf(userId) || ceoManagedUserWriteAllowed(userId);
+
+        match /likes/{likeId} {
+          allow read: if signedIn();
+          allow create, update: if signedIn() && likeId == authUid() && request.resource.data.uid == authUid();
+          allow delete: if signedIn() && likeId == authUid();
+        }
+
+        match /comments/{commentId} {
+          allow read: if signedIn();
+          allow create: if signedIn() && request.resource.data.uid == authUid();
+          allow update: if (signedIn() && resource.data.uid == authUid())
+            || (signedIn() && counterOnlyUpdate(["likesCount"]));
+          allow delete: if signedIn() && (
+            resource.data.uid == authUid()
+            || isSelf(userId)
+            || ceoManagedUserWriteAllowed(userId)
+          );
+
+          match /likes/{likeId} {
+            allow read: if signedIn();
+            allow create: if signedIn() && likeId == authUid() && request.resource.data.uid == authUid();
+            allow update: if false;
+            allow delete: if signedIn() && likeId == authUid();
+          }
+        }
+      }
+
+      match /chatThreads/{threadId} {
+        allow get, list: if isSelf(userId);
+        allow create, update: if isSelf(userId) || (
+          signedIn()
+          && userId != authUid()
+          && threadId == authUid()
+          && request.resource.data.uid == authUid()
+        );
+        allow delete: if isSelf(userId);
+
+        match /messages/{messageId} {
+          allow get, list: if isSelf(userId);
+          allow create: if (isSelf(userId) && request.resource.data.senderUid == authUid()) || (
+            signedIn()
+            && userId != authUid()
+            && threadId == authUid()
+            && request.resource.data.senderUid == authUid()
+          );
+          allow update: if isSelf(userId) || (
+            signedIn()
+            && userId != authUid()
+            && threadId == authUid()
+            && request.resource.data.senderUid == authUid()
+          );
+          allow delete: if isSelf(userId);
+        }
+      }
+
+      match /orders/{orderId} {
+        allow get, list, create, update, delete: if isSelf(userId);
+      }
+
+      match /menuFavorites/{favoriteId} {
+        allow get, list, create, update, delete: if isSelf(userId);
+      }
+    }
+
+    match /restaurants/{restaurantId} {
+      allow read: if true;
+      allow create: if canCreateRestaurantDoc(restaurantId);
+      allow update: if canManageRestaurantDoc(restaurantId) || isCeoActor() || followerCounterUpdateAllowed();
+      allow delete: if isCeoActor();
+
+      match /public/{publicDocId} {
+        allow read: if true;
+        allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+      }
+
+      match /menuItems/{itemId} {
+        allow read: if true;
+        allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+      }
+
+      match /menuSocial/{itemId} {
+        allow read: if true;
+        allow create, update: if canManageRestaurantDoc(restaurantId) || isCeoActor() || socialCounterUpdateAllowed();
+        allow delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+
+        match /likes/{likeId} {
+          allow read: if true;
+          allow create, update: if signedIn() && likeId == authUid() && request.resource.data.uid == authUid();
+          allow delete: if signedIn() && likeId == authUid();
+        }
+
+        match /comments/{commentId} {
+          allow read: if true;
+          allow create: if signedIn() && request.resource.data.uid == authUid();
+          allow update: if (signedIn() && resource.data.uid == authUid())
+            || (signedIn() && counterOnlyUpdate(["likesCount"]));
+          allow delete: if signedIn() && (
+            resource.data.uid == authUid()
+            || canManageRestaurantDoc(restaurantId)
+            || isCeoActor()
+          );
+
+          match /likes/{likeId} {
+            allow read: if true;
+            allow create: if signedIn() && likeId == authUid() && request.resource.data.uid == authUid();
+            allow update: if false;
+            allow delete: if signedIn() && likeId == authUid();
+          }
+        }
+      }
+
+      match /socialPosts/{postId} {
+        allow read: if true;
+        allow create: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow update: if canManageRestaurantDoc(restaurantId) || isCeoActor() || socialCounterUpdateAllowed();
+        allow delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+
+        match /likes/{likeId} {
+          allow read: if true;
+          allow create, update: if signedIn() && likeId == authUid() && request.resource.data.uid == authUid();
+          allow delete: if signedIn() && likeId == authUid();
+        }
+
+        match /comments/{commentId} {
+          allow read: if true;
+          allow create: if signedIn() && request.resource.data.uid == authUid();
+          allow update: if (signedIn() && resource.data.uid == authUid())
+            || (signedIn() && counterOnlyUpdate(["likesCount"]));
+          allow delete: if signedIn() && (
+            resource.data.uid == authUid()
+            || canManageRestaurantDoc(restaurantId)
+            || isCeoActor()
+          );
+
+          match /likes/{likeId} {
+            allow read: if true;
+            allow create: if signedIn() && likeId == authUid() && request.resource.data.uid == authUid();
+            allow update: if false;
+            allow delete: if signedIn() && likeId == authUid();
+          }
+        }
+      }
+
+      match /stories/{storyId} {
+        allow read: if true;
+        allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+      }
+
+      match /orders/{orderId} {
+        allow get: if canManageRestaurantDoc(restaurantId) || isCeoActor() || buyerOwnsOrder();
+        allow list: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow create: if validOrderCreateForRestaurant(restaurantId);
+        allow update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+      }
+
+      match /staff/{staffUid} {
+        allow get: if isSelf(staffUid) || canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow list: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+      }
+    }
+
+    match /socialFeed/{postId} {
+      allow read: if true;
+      allow create: if (
+        socialFeedRestaurantIdFromData(request.resource.data) != ""
+        && (canManageRestaurantDoc(socialFeedRestaurantIdFromData(request.resource.data)) || isCeoActor())
+      );
+      allow update: if (
+        socialFeedRestaurantIdFromData(request.resource.data) != ""
+        && (canManageRestaurantDoc(socialFeedRestaurantIdFromData(request.resource.data)) || isCeoActor())
+      ) || socialCounterUpdateAllowed();
+      allow delete: if (
+        socialFeedRestaurantIdFromData(resource.data) != ""
+        && (canManageRestaurantDoc(socialFeedRestaurantIdFromData(resource.data)) || isCeoActor())
+      );
+    }
+
+    match /leads/{leadId} {
+      allow read: if canAccessCeoScopedData(resource.data);
+      allow create: if canAccessCeoScopedData(request.resource.data);
+      allow update: if canAccessCeoScopedData(resource.data) && canAccessCeoScopedData(request.resource.data);
+      allow delete: if canAccessCeoScopedData(resource.data);
+    }
+
+    match /superadmins/{uid} {
+      allow get: if (isSelf(uid) && isCeoActor()) || canAccessCeoRecordData(resource.data);
+      allow list: if canAccessCeoRecordData(resource.data);
+      allow create: if (isSelf(uid) && isCeoActor()) || canAccessCeoRecordData(request.resource.data);
+      allow update: if ((isSelf(uid) && isCeoActor()) || canAccessCeoRecordData(resource.data))
+        && ((isSelf(uid) && isCeoActor()) || canAccessCeoRecordData(request.resource.data));
+      allow delete: if (isSelf(uid) && isCeoActor()) || canAccessCeoRecordData(resource.data);
+    }
+
+    match /staffAdmins/{uid} {
+      allow get: if isSelf(uid) || isCeoActor();
+      allow list: if isCeoActor();
+      allow create, update, delete: if isCeoActor();
+    }
+
+    match /staffIndex/{uid} {
+      allow get: if isSelf(uid) || isCeoActor();
+      allow list: if isCeoActor();
+      allow create, update, delete: if isCeoActor();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
