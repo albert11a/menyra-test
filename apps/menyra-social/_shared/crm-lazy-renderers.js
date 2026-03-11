@@ -1,3 +1,14 @@
+function formatBuildTimestamp(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "unbekannt";
+  const parsed = new Date(raw);
+  if (!Number.isFinite(parsed.getTime())) return raw;
+  return parsed.toLocaleString("de-DE", {
+    dateStyle: "short",
+    timeStyle: "short"
+  });
+}
+
 export function renderLeadSettingsView(ctx = {}) {
   const {
     state,
@@ -625,10 +636,22 @@ export function renderStaffView(ctx = {}) {
     getOptimizedImageUrl,
     isPlaceholderUrl,
     PLACEHOLDER_IMAGE,
-    normalizeHandle
+    normalizeHandle,
+    staffBuildStatus,
+    staffBuildStatusLoading,
+    staffBuildStatusError
   } = ctx;
   if (!isCeoUser()) return renderCeoGuard("Staff");
   if (state.staff.view === "form") return renderStaffEditorView();
+  const buildStatus = staffBuildStatus && typeof staffBuildStatus === "object"
+    ? staffBuildStatus
+    : (state?.staff?.buildStatus || {});
+  const commitShort = String(buildStatus.commitShort || "").trim() || "unbekannt";
+  const buildTimestampLabel = formatBuildTimestamp(buildStatus.buildTimestamp || "");
+  const branchLabel = String(buildStatus.branch || "").trim() || "unbekannt";
+  const envLabel = String(buildStatus.environment || "").trim() || "unbekannt";
+  const showBuildLoading = Boolean(staffBuildStatusLoading ?? state?.staff?.buildStatusLoading);
+  const buildLoadError = String(staffBuildStatusError ?? state?.staff?.buildStatusError ?? "").trim();
   const current = getCurrentCeoMeta();
   const items = Array.isArray(state.staff.items) ? state.staff.items.slice() : [];
   const loadedLeadRows = [
@@ -704,6 +727,21 @@ export function renderStaffView(ctx = {}) {
       </div>
       ${state.staff.error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500 mb-4">${escapeHtml(state.staff.error)}</div>` : ""}
       ${state.staff.status ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-4">${escapeHtml(state.staff.status)}</div>` : ""}
+      <div class="mb-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-4">
+        <p class="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Build Status</p>
+        <div class="mt-2 grid grid-cols-[0.95fr_1.05fr] gap-y-1 text-[10px] font-bold">
+          <span class="text-slate-400 uppercase">Commit</span>
+          <span class="text-slate-700 text-right font-mono">${escapeHtml(commitShort)}</span>
+          <span class="text-slate-400 uppercase">Build</span>
+          <span class="text-slate-700 text-right">${escapeHtml(buildTimestampLabel)}</span>
+          <span class="text-slate-400 uppercase">Branch</span>
+          <span class="text-slate-700 text-right">${escapeHtml(branchLabel)}</span>
+          <span class="text-slate-400 uppercase">Env</span>
+          <span class="text-slate-700 text-right">${escapeHtml(envLabel)}</span>
+        </div>
+        ${showBuildLoading ? `<p class="mt-2 text-[9px] font-bold text-slate-400 uppercase tracking-widest">Build Info wird geladen...</p>` : ""}
+        ${buildLoadError ? `<p class="mt-2 text-[9px] font-bold text-amber-600 uppercase tracking-widest">${escapeHtml(buildLoadError)}</p>` : ""}
+      </div>
       <div class="space-y-4">${listHtml}</div>
       ${state.staff.hasMore ? `
         <div id="staffLoadMoreSentinel" class="w-full mt-4 py-4 rounded-[1.8rem] bg-white text-slate-400 text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-sm text-center">

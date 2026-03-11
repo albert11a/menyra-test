@@ -654,7 +654,8 @@ const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsA
 const PUSH_SW_URL = "/apps/menyra-social/sw.js";
 const PUSH_SW_SCOPE = "/apps/menyra-social/";
 const PUSH_SW_READY_TIMEOUT_MS = 10000;
-const CRM_LAZY_RENDERERS_MODULE_URL = "/apps/menyra-social/_shared/crm-lazy-renderers.js?v=2026-03-07-perf-9";
+const CRM_LAZY_RENDERERS_MODULE_URL = "/apps/menyra-social/_shared/crm-lazy-renderers.js?v=2026-03-11-superadmin-buildstatus-1";
+const BUILD_INFO_ENDPOINT_URL = "/api/build-info";
 const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
 const DETAIL_LIKES_LIMIT = 12;
@@ -7534,6 +7535,7 @@ crmRuntimeController = createCrmRuntimeController({
   normalizeCeoCountry,
   PLACEHOLDER_IMAGE,
   CRM_LAZY_RENDERERS_MODULE_URL,
+  BUILD_INFO_ENDPOINT_URL,
   enqueueMicrotaskCore,
   extractPlusCodeFromText,
   isLikelyShortPlusCode,

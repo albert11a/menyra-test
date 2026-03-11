@@ -47,6 +47,7 @@ export function createCrmRuntimeController(deps = {}) {
     normalizeCeoCountry,
     PLACEHOLDER_IMAGE,
     CRM_LAZY_RENDERERS_MODULE_URL,
+    BUILD_INFO_ENDPOINT_URL,
     enqueueMicrotaskCore,
     extractPlusCodeFromText,
     isLikelyShortPlusCode,
@@ -151,6 +152,91 @@ let locationPickerMap = null; // NEU: Fuer das Settings-Modal
 let locationPickerBizMarkers = [];
 let verifiedMapLocation = null; // NEU: Fuer die Koordinaten-Speicherung
 let locationPickerTarget = { addressInputId: "settingsAddress", coordsDisplayId: "coordsDisplay", context: "settings" };
+  let buildStatusFetchPromise = null;
+  let buildStatusLoaded = false;
+
+  function resolveRuntimeEnvironmentLabel() {
+    if (typeof window === "undefined") return "unknown";
+    const host = String(window.location?.hostname || "").trim().toLowerCase();
+    if (!host) return "unknown";
+    if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) return "local";
+    if (host.includes("vercel.app")) return "preview";
+    if (host.endsWith(".menyra.com") || host.endsWith(".mnyra.com")) return "production";
+    return "custom";
+  }
+
+  function normalizeBuildStatus(raw = {}) {
+    const commitRaw = String(raw.commitShort || raw.commitSha || raw.commit || "").trim();
+    const branchRaw = String(raw.branch || raw.ref || "").trim();
+    const envRaw = String(raw.environment || raw.env || "").trim();
+    const tsRaw = String(raw.buildTimestamp || raw.builtAt || raw.timestamp || "").trim();
+    let buildTimestamp = "";
+    if (tsRaw) {
+      const parsed = new Date(tsRaw);
+      buildTimestamp = Number.isFinite(parsed.getTime()) ? parsed.toISOString() : tsRaw;
+    }
+    return {
+      commitShort: commitRaw ? commitRaw.slice(0, 12) : "",
+      branch: branchRaw,
+      environment: envRaw || resolveRuntimeEnvironmentLabel(),
+      buildTimestamp
+    };
+  }
+
+  function ensureStaffBuildStatusStateInitialized() {
+    if (!state?.staff) return;
+    if (!state.staff.buildStatus || typeof state.staff.buildStatus !== "object") {
+      state.staff.buildStatus = normalizeBuildStatus({});
+    }
+    if (typeof state.staff.buildStatusLoading !== "boolean") {
+      state.staff.buildStatusLoading = false;
+    }
+    if (typeof state.staff.buildStatusError !== "string") {
+      state.staff.buildStatusError = "";
+    }
+  }
+
+  async function ensureStaffBuildStatusLoaded({ force = false } = {}) {
+    ensureStaffBuildStatusStateInitialized();
+    if (!state?.staff) return normalizeBuildStatus({});
+    if (buildStatusLoaded && !force) return state.staff.buildStatus;
+    if (buildStatusFetchPromise && !force) return buildStatusFetchPromise;
+    if (!BUILD_INFO_ENDPOINT_URL || typeof fetch !== "function") {
+      buildStatusLoaded = true;
+      return state.staff.buildStatus;
+    }
+    state.staff.buildStatusLoading = true;
+    state.staff.buildStatusError = "";
+    const endpoint = `${BUILD_INFO_ENDPOINT_URL}${BUILD_INFO_ENDPOINT_URL.includes("?") ? "&" : "?"}refresh=${Date.now()}`;
+    buildStatusFetchPromise = fetch(endpoint, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      cache: "no-store"
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`Build status request failed (${res.status})`);
+        const payload = await res.json();
+        const next = normalizeBuildStatus(payload || {});
+        state.staff.buildStatus = next;
+        buildStatusLoaded = true;
+        return next;
+      })
+      .catch((err) => {
+        buildStatusLoaded = true;
+        state.staff.buildStatusError = err?.message || "Build Status konnte nicht geladen werden.";
+        return state.staff.buildStatus;
+      })
+      .finally(() => {
+        state.staff.buildStatusLoading = false;
+        buildStatusFetchPromise = null;
+        if (state.activeTab === "staff") {
+          render();
+        }
+      });
+    return buildStatusFetchPromise;
+  }
+
+  ensureStaffBuildStatusStateInitialized();
 
   function hasCeoCrmCountsPromise() {
     return !!(typeof getCeoCrmCountsPromise === "function" ? getCeoCrmCountsPromise() : null);
@@ -351,6 +437,7 @@ function renderLocationPickerContextMarkers() {
 }
 
 function getCrmLazyRendererContext() {
+  ensureStaffBuildStatusStateInitialized();
   return {
     state,
     icon,
@@ -400,7 +487,10 @@ function getCrmLazyRendererContext() {
     getOptimizedImageUrl,
     isPlaceholderUrl,
     normalizeCeoCountry,
-    PLACEHOLDER_IMAGE
+    PLACEHOLDER_IMAGE,
+    staffBuildStatus: state.staff.buildStatus,
+    staffBuildStatusLoading: !!state.staff.buildStatusLoading,
+    staffBuildStatusError: String(state.staff.buildStatusError || "")
   };
 }
 
@@ -815,6 +905,9 @@ function renderStaffView() {
   if (!crmLazyRenderers?.renderStaffView) {
     prefetchCrmLazyRenderers();
     return renderCrmLazyLoadingView("Staff laden...");
+  }
+  if (!buildStatusLoaded && !state.staff?.buildStatusLoading) {
+    void ensureStaffBuildStatusLoaded();
   }
   return crmLazyRenderers.renderStaffView(getCrmLazyRendererContext());
 }
