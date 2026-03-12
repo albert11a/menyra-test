@@ -761,3 +761,31 @@
   - `apps/menyra-social/social-app.js` is now `6,625` lines and `218,735` bytes locally.
   - Not committed and not pushed.
   - Exact next batch after review is Batch G: shell / auth / drawer / notifications DOM runtime extraction.
+
+## 2026-03-12 01:19:42 +01:00 — Batch G: Shell / Auth / Drawer / Notifications DOM Runtime Extraction
+- Fix batch title: Batch G — Shell / Auth / Drawer / Notifications DOM Runtime Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js`
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Correct the stale roadmap/tracking checkpoint from local-Batch-F wording to the real committed `HEAD` `ba600be`.
+  - Move the shell/auth/drawer/notifications DOM runtime cluster out of `social-app.js` into one focused app-shell controller while keeping existing root contracts stable.
+- Risk level: Medium-Low
+- Regression risk: Medium-Low (auth screen rendering, drawer rendering, shell DOM patching, notification badge updates, and notifications-view delegation moved together)
+- What changed:
+  - Added `core/app-shell/shell-dom-runtime-controller.js` to own auth screen rendering, role-switch link rendering, drawer rendering, shell DOM patching, notification badge DOM updates, notifications-view delegation, and notifications DOM refresh handling.
+  - Replaced the inline Batch G shell/auth/drawer/notifications block in `social-app.js` with stable root forwards so the surrounding bridge/controller wiring still calls the same top-level functions.
+  - Updated the roadmap/tracking docs so Batch G becomes the current committed checkpoint and Batch H is the next untouched slice after review.
+- Validation notes:
+  - `node --check apps/menyra-social/social-app.js`
+  - `node --check apps/menyra-social/core/app-shell/shell-dom-runtime-controller.js`
+  - Recounted `apps/menyra-social/social-app.js` via direct file-read newline counting.
+- Follow-up notes:
+  - `apps/menyra-social/social-app.js` is now `6,321` lines and `201,322` bytes locally.
+  - This batch is the current committed checkpoint in this pass.
+  - Exact next batch after review is Batch H: CEO CRM count / support runtime extraction.

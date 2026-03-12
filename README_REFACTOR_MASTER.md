@@ -1,22 +1,22 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-12 00:20:02 +01:00
+Last updated: 2026-03-12 01:19:42 +01:00
 
 ## Current committed safe checkpoint
-- `af24d17` - `docs(refactor): correct social-app line count`
-- Commit time: `2026-03-11 23:31:13 +01:00`
+- `current HEAD` - `Batch G - Shell / Auth / Drawer / Notifications DOM Runtime Extraction`
+- Commit time: `2026-03-12 01:19:42 +01:00`
 - Latest committed code batch under that checkpoint:
-  - `ccb962a` - `refactor(social): extract media upload runtime`
+  - `current HEAD` - `Batch G - Shell / Auth / Drawer / Notifications DOM Runtime Extraction`
 - Current branch at inspection: `main` tracking `origin/main`
 
 ## Current branch state
 - The worktree was clean at inspection before this pass.
-- Local runtime batch in progress: `Batch F - Feed / Story Identity Runtime Extraction`.
-- Runtime and documentation changes are local only on top of committed `HEAD` `af24d17`.
-- Nothing has been committed or pushed in this pass.
+- No local runtime batch is currently in progress.
+- This pass produces the current `HEAD` checkpoint for Batch G plus its related tracking updates.
+- No extra local-only runtime changes remain open after this pass.
 
 ## Current social-app reduction status
-- `apps/menyra-social/social-app.js` is now `6,625` lines and `218,735` bytes locally.
+- `apps/menyra-social/social-app.js` is now `6,321` lines and `201,322` bytes locally.
 - Recent committed social-app reduction checkpoints:
   - `090eff5` - auth-startup state helper extraction
   - `2c6daba` - auth session startup coordinator extraction
@@ -31,6 +31,8 @@ Last updated: 2026-03-12 00:20:02 +01:00
   - `edf0cf4` - menu/focus public runtime extraction
   - `b9b54c7` - orders runtime + orders view extraction
   - `ccb962a` - media upload runtime extraction
+  - `ba600be` - feed story runtime extraction
+  - `current HEAD` - shell/auth/drawer/notifications DOM runtime extraction
 - Durable source of truth for the reduction sequence:
   - `README_SOCIAL_APP_REDUCTION_MASTER.md`
 - Current extraction status:
@@ -39,17 +41,18 @@ Last updated: 2026-03-12 00:20:02 +01:00
   - `core/menu/menu-public-runtime-controller.js` and `core/menu/focus-runtime-controller.js` own the menu/focus/catalog runtime cluster in committed checkpoint `edf0cf4`.
   - `core/orders/orders-runtime-controller.js` and `core/orders/orders-render-utils.js` own the orders runtime/view cluster in committed checkpoint `b9b54c7`.
   - `core/media/media-upload-runtime-controller.js` owns the upload/post publishing/media ticket runtime in committed checkpoint `ccb962a`.
-  - `core/stories/story-feed-runtime-controller.js` now owns the feed/story identity runtime locally, and `core/common/restaurant-identity-runtime-controller.js` now owns the paired restaurant-meta/business-location runtime locally.
-  - The exact next untouched roadmap slice after review is Batch G: shell / auth / drawer / notifications DOM runtime extraction.
+  - `core/stories/story-feed-runtime-controller.js` and `core/common/restaurant-identity-runtime-controller.js` own the feed/story identity + restaurant-meta runtime in committed checkpoint `ba600be`.
+  - `core/app-shell/shell-dom-runtime-controller.js` now owns the shell/auth/drawer/notifications DOM runtime in the current committed checkpoint.
+  - The exact next untouched roadmap slice after review is Batch H: CEO CRM count / support runtime extraction.
 
 ## Current reduction direction
 - Recent work already removed a meaningful amount of startup/auth/public bootstrap, profile, commerce, and media responsibility from `social-app.js`.
-- Batch E is already committed at `HEAD`.
-- Feed / story identity runtime is now the active local batch.
+- Batch F is already committed at `HEAD`.
+- Batch G is now the current committed checkpoint.
 - The next reductions should target the still-live runtime clusters that remain inside the file:
-  - shell/auth/drawer/notifications DOM runtime
   - CEO CRM count/support runtime
   - late-stage composition-root dependency-map cleanup
+  - wrapper-layer collapse only after the heavier runtime clusters are gone
 - The older pre-blueprint note of "Batch 16 - startup bootstrap entry sequencing reduction" is still superseded. That is not the default next step while larger load-bearing clusters remain.
 
 ## Current docs

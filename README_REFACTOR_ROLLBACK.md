@@ -1,15 +1,15 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-12 00:20:02 +01:00
+Last updated: 2026-03-12 01:19:42 +01:00
 
 ## Current committed safe checkpoint
-- `af24d17` - `docs(refactor): correct social-app line count`
-- Latest committed code batch under that checkpoint: `ccb962a` - `refactor(social): extract media upload runtime`
+- `current HEAD` - `Batch G - Shell / Auth / Drawer / Notifications DOM Runtime Extraction`
+- Latest committed code batch under that checkpoint: `current HEAD` - `Batch G - Shell / Auth / Drawer / Notifications DOM Runtime Extraction`
 
 ## Current local batch note
-- The current local work in this chat is `Batch F - Feed / Story Identity Runtime Extraction`.
-- It is not committed or pushed, so the committed safe rollback point remains `af24d17`.
-- If this batch is rejected, revert or rework the entire local Batch F unit together.
+- There is no active local uncommitted runtime batch at the moment.
+- The latest rollback-safe checkpoint is the current committed Batch G `HEAD`.
+- If Batch G is rejected later, revert or rework that committed batch as one unit.
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -35,12 +35,13 @@ Last updated: 2026-03-12 00:20:02 +01:00
 16. `b9b54c7` - orders runtime + orders view extraction
 17. `ccb962a` - media upload runtime extraction
 18. `af24d17` - docs(refactor): correct social-app line count
+19. `ba600be` - refactor(social): extract feed story runtime
 
 ## Current rollback guidance for the next approved runtime batch
-- Review Batch F before starting Batch G.
+- Review Batch G before starting Batch H.
 - Keep the next committed batch single-domain.
-- Do not mix shell/auth/drawer/notifications DOM runtime with the local feed/story batch, CEO CRM runtime, or wrapper cleanup in the same rollback unit.
-- Do not reopen upload/media or feed/story work in the next batch unless Batch F review finds a regression.
+- Do not mix CEO CRM count/support runtime with the local shell/auth/drawer/notifications DOM batch, dependency-map cleanup, or wrapper cleanup in the same rollback unit.
+- Do not reopen feed/story or shell/auth/drawer/notifications DOM work in the next batch unless Batch G review finds a regression.
 - Do not use the old "Batch 16 startup sequencing" label unless a future approved batch actually matches that scope.
 
 ## Mandatory rollback documentation rule
