@@ -1,6 +1,6 @@
 # MNYRA Refactor Master
 
-Last updated: 2026-03-12 01:19:42 +01:00
+Last updated: 2026-03-12 01:48:48 +01:00
 
 ## Current committed safe checkpoint
 - `current HEAD` - `Batch G - Shell / Auth / Drawer / Notifications DOM Runtime Extraction`
@@ -11,12 +11,12 @@ Last updated: 2026-03-12 01:19:42 +01:00
 
 ## Current branch state
 - The worktree was clean at inspection before this pass.
-- No local runtime batch is currently in progress.
-- This pass produces the current `HEAD` checkpoint for Batch G plus its related tracking updates.
-- No extra local-only runtime changes remain open after this pass.
+- Batch H is now the active local uncommitted runtime batch under review.
+- This pass preserves committed Batch G as the rollback-safe checkpoint while applying local Batch H extraction and tracking updates.
+- No commit or push was performed in this pass.
 
 ## Current social-app reduction status
-- `apps/menyra-social/social-app.js` is now `6,321` lines and `201,322` bytes locally.
+- `apps/menyra-social/social-app.js` is now `5,769` lines and `179,441` bytes locally.
 - Recent committed social-app reduction checkpoints:
   - `090eff5` - auth-startup state helper extraction
   - `2c6daba` - auth session startup coordinator extraction
@@ -43,14 +43,16 @@ Last updated: 2026-03-12 01:19:42 +01:00
   - `core/media/media-upload-runtime-controller.js` owns the upload/post publishing/media ticket runtime in committed checkpoint `ccb962a`.
   - `core/stories/story-feed-runtime-controller.js` and `core/common/restaurant-identity-runtime-controller.js` own the feed/story identity + restaurant-meta runtime in committed checkpoint `ba600be`.
   - `core/app-shell/shell-dom-runtime-controller.js` now owns the shell/auth/drawer/notifications DOM runtime in the current committed checkpoint.
-  - The exact next untouched roadmap slice after review is Batch H: CEO CRM count / support runtime extraction.
+  - `core/crm/ceo-crm-count-runtime-controller.js` now owns the CEO CRM ownership/count support runtime in the current local Batch H under review.
+  - `core/crm/ceo-staff-sync-utils.js` now also owns the reusable CRM count helper set used by that local Batch H extraction.
+  - The exact next untouched roadmap slice after review is Batch I: late-stage controller dependency-map consolidation.
 
 ## Current reduction direction
 - Recent work already removed a meaningful amount of startup/auth/public bootstrap, profile, commerce, and media responsibility from `social-app.js`.
 - Batch F is already committed at `HEAD`.
 - Batch G is now the current committed checkpoint.
+- Batch H is the current local-only extraction under review.
 - The next reductions should target the still-live runtime clusters that remain inside the file:
-  - CEO CRM count/support runtime
   - late-stage composition-root dependency-map cleanup
   - wrapper-layer collapse only after the heavier runtime clusters are gone
 - The older pre-blueprint note of "Batch 16 - startup bootstrap entry sequencing reduction" is still superseded. That is not the default next step while larger load-bearing clusters remain.

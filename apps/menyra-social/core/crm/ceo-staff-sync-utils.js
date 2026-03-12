@@ -167,3 +167,42 @@ export function buildCeoDirectorySyncPatchCore(record = {}, userRecord = {}, {
   });
   return patch;
 }
+
+export function createEmptyCeoCrmCountsCore() {
+  return {
+    ownLeads: 0,
+    staffLeads: 0,
+    archivedLeads: 0,
+    ownCustomers: 0,
+    staffCustomers: 0,
+    ownArchivedLeads: 0
+  };
+}
+
+export function sanitizeCeoCrmCountsCore(raw = {}) {
+  const base = createEmptyCeoCrmCountsCore();
+  Object.keys(base).forEach((key) => {
+    const num = Number(raw?.[key]);
+    base[key] = Number.isFinite(num) ? num : 0;
+  });
+  return base;
+}
+
+export function hasStoredCeoCrmCountsCore(raw = {}) {
+  if (!raw || typeof raw !== "object") return false;
+  return Object.keys(createEmptyCeoCrmCountsCore()).some((key) => Number.isFinite(Number(raw?.[key])));
+}
+
+export function resolveKnownScopeCountLabelCore(count = 0, isExact = false, isLoaded = false) {
+  if (!isLoaded) return "...";
+  const safeCount = Math.max(0, Number(count) || 0);
+  return isExact ? String(safeCount) : `${safeCount}+`;
+}
+
+export function pickCountValueCore(...values) {
+  for (const value of values) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric)) return Math.max(0, numeric);
+  }
+  return 0;
+}

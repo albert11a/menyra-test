@@ -789,3 +789,34 @@
   - `apps/menyra-social/social-app.js` is now `6,321` lines and `201,322` bytes locally.
   - This batch is the current committed checkpoint in this pass.
   - Exact next batch after review is Batch H: CEO CRM count / support runtime extraction.
+
+## 2026-03-12 01:48:48 +01:00 — Batch H: CEO CRM Count / Support Runtime Extraction (Local Only)
+- Fix batch title: Batch H — CEO CRM Count / Support Runtime Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/crm/ceo-crm-count-runtime-controller.js`
+  - `apps/menyra-social/core/crm/ceo-staff-sync-utils.js`
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Move the remaining CEO CRM ownership/count support runtime out of `social-app.js` into a dedicated CRM runtime controller while keeping existing root contracts stable.
+- Risk level: Medium
+- Regression risk: Medium (CEO ownership visibility, staff hydration, CRM count recomputation/persistence, and creator-meta support moved together)
+- What changed:
+  - Added `core/crm/ceo-crm-count-runtime-controller.js` to own CEO staff profile-overlay hydration, ownership/visibility support, scope-tab and ownership-pill helpers, CRM count delta/recount persistence, and CEO directory profile patch sync.
+  - Expanded `core/crm/ceo-staff-sync-utils.js` with reusable CRM count helper utilities so the extracted controller owns the count model instead of `social-app.js`.
+  - Replaced the inline Batch H CRM support block in `social-app.js` with stable forwards so the surrounding profile and CRM controllers continue calling the same root-level functions.
+  - Updated the roadmap/tracking docs so Batch G remains the committed rollback-safe checkpoint, Batch H is recorded as the active local batch under review, and Batch I is set as the next untouched slice after review.
+- Validation notes:
+  - `node --check apps/menyra-social/core/crm/ceo-staff-sync-utils.js`
+  - `node --check apps/menyra-social/core/crm/ceo-crm-count-runtime-controller.js`
+  - `node --check apps/menyra-social/core/crm/crm-runtime-controller.js`
+  - `node --check apps/menyra-social/social-app.js`
+  - Recounted `apps/menyra-social/social-app.js` via direct file-read newline counting.
+- Follow-up notes:
+  - `apps/menyra-social/social-app.js` is now `5,769` lines and `179,441` bytes locally.
+  - Not committed and not pushed.
+  - Exact next batch after review is Batch I: late-stage controller dependency-map consolidation.

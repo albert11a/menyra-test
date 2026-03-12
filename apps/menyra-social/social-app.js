@@ -103,6 +103,7 @@ import { createProfileMenuFocusRenderController } from "./core/profile/profile-m
 import { createPublicProfileRuntimeController } from "./core/profile/public-profile-runtime-controller.js";
 import { createSelfProfileRuntimeController } from "./core/profile/self-profile-runtime-controller.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
+import { createCeoCrmCountRuntimeController } from "./core/crm/ceo-crm-count-runtime-controller.js";
 import { createCrmRuntimeController } from "./core/crm/crm-runtime-controller.js";
 import { createChatRuntimeController } from "./core/chat/chat-runtime-controller.js";
 import {
@@ -450,11 +451,6 @@ import {
   buildCeoNameCore as buildCeoName
 } from "./core/crm/ceo-normalize-utils.js";
 import { getCurrentCeoMetaCore } from "./core/crm/ceo-meta-utils.js";
-import {
-  normalizeCeoStaffRecordCore,
-  overlayCeoStaffProfileCore,
-  buildCeoDirectorySyncPatchCore
-} from "./core/crm/ceo-staff-sync-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -1077,7 +1073,6 @@ const state = {
 };
 
 let renderSuspended = 0;
-let ceoCrmCountsPromise = null;
 let renderQueued = false;
 let modalEscapeBound = false;
 let profileMenuBound = false;
@@ -1108,6 +1103,7 @@ let shellDomRuntimeController = null;
 let profileMenuFocusRenderController = null;
 let sessionDataRuntimeController = null;
 let socialEngagementRuntimeController = null;
+let ceoCrmCountRuntimeController = null;
 let crmRuntimeController = null;
 let chatRuntimeController = null;
 let menuPublicRuntimeController = null;
@@ -1205,6 +1201,39 @@ const {
   getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
   setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
   pendingRouteState
+});
+ceoCrmCountRuntimeController = createCeoCrmCountRuntimeController({
+  state,
+  db,
+  collection,
+  query,
+  where,
+  getDocs,
+  getDoc,
+  doc,
+  setDoc,
+  increment,
+  serverTimestamp,
+  documentId,
+  uniqueStringList,
+  normalizeCeoPath,
+  normalizeHandle,
+  normalizeCeoCountry,
+  buildCeoName,
+  parseCoordNumber,
+  getCurrentCeoMeta,
+  isCeoUser,
+  hasGlobalCeoAccess,
+  saveUserProfileToStorage,
+  render,
+  toDateSafe,
+  normalizeLeadDoc,
+  normalizeLeadStatusKey,
+  isCustomerRestaurant,
+  escapeHtml,
+  dataLoaded,
+  applyKnownLeadOwnershipOverrideFn: (...args) => applyKnownLeadOwnershipOverride(...args),
+  isHiddenLegacyCeoEmailFn: (...args) => isHiddenLegacyCeoEmail(...args)
 });
 const {
   getProfileViewUnsub,
@@ -2829,172 +2858,23 @@ function getCurrentCeoMeta(profile = state.userProfile, user = state.user) {
 }
 
 function normalizeCeoStaffRecord(record = {}, userRecord = {}) {
-  return normalizeCeoStaffRecordCore(record, userRecord, {
-    buildCeoNameFn: buildCeoName,
-    normalizeCeoPathFn: normalizeCeoPath,
-    normalizeHandleFn: normalizeHandle,
-    normalizeCeoCountryFn: normalizeCeoCountry,
-    hasStoredCeoCrmCountsFn: hasStoredCeoCrmCounts,
-    sanitizeCeoCrmCountsFn: sanitizeCeoCrmCounts,
-    parseCoordNumberFn: parseCoordNumber
-  });
-}
-
-function overlayCeoStaffProfile(record = {}, userRecord = {}) {
-  return overlayCeoStaffProfileCore(record, userRecord, {
-    parseCoordNumberFn: parseCoordNumber
-  });
-}
-
-function buildCeoDirectorySyncPatch(record = {}, userRecord = {}) {
-  return buildCeoDirectorySyncPatchCore(record, userRecord, {
-    overlayCeoStaffProfileFn: overlayCeoStaffProfile,
-    parseCoordNumberFn: parseCoordNumber
-  });
+  return ceoCrmCountRuntimeController.normalizeCeoStaffRecord(record, userRecord);
 }
 
 async function hydrateStaffRecordsFromUserProfiles(items = [], { syncDirectory = false } = {}) {
-  const list = Array.isArray(items) ? items.slice() : [];
-  const uids = uniqueStringList(list.map((item) => String(item?.uid || "").trim()).filter(Boolean));
-  if (!uids.length) return list;
-  const userMap = new Map();
-  const usersRef = collection(db, "users");
-  const chunks = chunkStringList(uids, 10);
-  await Promise.all(chunks.map(async (chunk) => {
-    if (!chunk.length) return;
-    try {
-      const snap = await getDocs(query(usersRef, where(documentId(), "in", chunk)));
-      snap.forEach((docSnap) => {
-        userMap.set(docSnap.id, docSnap.data() || {});
-      });
-      return;
-    } catch {}
-    await Promise.all(chunk.map(async (uid) => {
-      try {
-        const snap = await getDoc(doc(db, "users", uid));
-        if (snap.exists()) userMap.set(uid, snap.data() || {});
-      } catch {}
-    }));
-  }));
-  const syncWrites = [];
-  const nextItems = list.map((item) => {
-    const uid = String(item?.uid || "").trim();
-    if (!uid) return item;
-    const userRecord = userMap.get(uid);
-    if (!userRecord) return item;
-    if (syncDirectory) {
-      const patch = buildCeoDirectorySyncPatch(item, userRecord);
-      if (Object.keys(patch).length) {
-        syncWrites.push(setDoc(doc(db, "superadmins", uid), {
-          ...patch,
-          updatedAt: serverTimestamp()
-        }, { merge: true }).catch(() => {}));
-      }
-    }
-    return normalizeCeoStaffRecord(overlayCeoStaffProfile(item, userRecord));
-  });
-  if (syncWrites.length) {
-    void Promise.all(syncWrites);
-  }
-  return nextItems;
+  return ceoCrmCountRuntimeController.hydrateStaffRecordsFromUserProfiles(items, { syncDirectory });
 }
 
 function canViewCeoRecord(record = {}) {
-  const current = getCurrentCeoMeta();
-  if (!current.uid) return false;
-  if (String(record.uid || "") === current.uid) return true;
-  const path = normalizeCeoPath(record.ceoPath, [record.ceoRootUid, record.ceoParentUid, record.uid]);
-  if (path.includes(current.uid)) return true;
-  if (hasGlobalCeoAccess() && !String(record.ceoParentUid || "").trim()) return true;
-  return false;
-}
-
-function getOwnerMeta(row = {}) {
-  const source = applyKnownLeadOwnershipOverride(row);
-  const creatorUid = String(
-    source.createdByUid
-    || source.ownerUid
-    || source.socialUid
-    || source.uid
-    || ""
-  ).trim();
-  const creatorName = String(
-    source.createdByName
-    || source.createdByHandle
-    || source.ownerName
-    || ""
-  ).trim();
-  let ceoPath = normalizeCeoPath(source.ceoPath);
-  if (!ceoPath.length && creatorUid) {
-    ceoPath = normalizeCeoPath([], [
-      source.ceoRootUid || source.rootCeoUid || "",
-      source.ceoParentUid || source.parentCeoUid || "",
-      creatorUid
-    ]);
-  }
-  return { creatorUid, creatorName, ceoPath };
-}
-
-function chunkStringList(values = [], size = 10) {
-  const out = [];
-  const list = uniqueStringList(values);
-  for (let i = 0; i < list.length; i += size) {
-    out.push(list.slice(i, i + size));
-  }
-  return out;
-}
-
-function getVisibleCeoTeamUids() {
-  if (!isCeoUser()) return [];
-  const current = getCurrentCeoMeta();
-  const staffUids = (Array.isArray(state.staff.items) ? state.staff.items : [])
-    .filter((item) => canViewCeoRecord(item))
-    .map((item) => String(item.uid || "").trim())
-    .filter(Boolean);
-  return uniqueStringList([current.uid, ...staffUids]);
-}
-
-function isOwnedByVisibleCeoTeam(row = {}) {
-  if (!isCeoUser()) return true;
-  const current = getCurrentCeoMeta();
-  if (!current.uid) return false;
-  const meta = getOwnerMeta(row);
-  const teamUids = getVisibleCeoTeamUids();
-  if (meta.creatorUid && meta.creatorUid === current.uid) return true;
-  if (meta.ceoPath.includes(current.uid)) return true;
-  if (meta.creatorUid && teamUids.includes(meta.creatorUid)) return true;
-  if (meta.ceoPath.some((uid) => teamUids.includes(uid))) return true;
-  return false;
+  return ceoCrmCountRuntimeController.canViewCeoRecord(record);
 }
 
 function canCurrentCeoSeeRow(row = {}) {
-  if (!isCeoUser()) return true;
-  const current = getCurrentCeoMeta();
-  if (!current.uid) return true;
-  const meta = getOwnerMeta(row);
-  if (isOwnedByVisibleCeoTeam(row)) return true;
-  if (hasGlobalCeoAccess() && !meta.ceoPath.length && !meta.creatorUid) return true;
-  return false;
-}
-
-function resolveOwnershipMeta(row = {}) {
-  if (!isCeoUser()) return null;
-  const current = getCurrentCeoMeta();
-  if (!current.uid) return null;
-  const meta = getOwnerMeta(row);
-  if (!meta.creatorUid || meta.creatorUid === current.uid) {
-    return { own: true, label: "Eigene", creatorName: "" };
-  }
-  return {
-    own: false,
-    label: "Staff",
-    creatorName: meta.creatorName || meta.creatorUid || "Unbekannt"
-  };
+  return ceoCrmCountRuntimeController.canCurrentCeoSeeRow(row);
 }
 
 function isCurrentCeoOwnRow(row = {}) {
-  const meta = resolveOwnershipMeta(row);
-  return !meta || !!meta.own;
+  return ceoCrmCountRuntimeController.isCurrentCeoOwnRow(row);
 }
 
 function normalizeLeadScopeKey(value) {
@@ -3006,9 +2886,7 @@ function normalizeCustomerScopeKey(value) {
 }
 
 function resolveKnownScopeCountLabel(count = 0, isExact = false, isLoaded = false) {
-  if (!isLoaded) return "...";
-  const safeCount = Math.max(0, Number(count) || 0);
-  return isExact ? String(safeCount) : `${safeCount}+`;
+  return ceoCrmCountRuntimeController.resolveKnownScopeCountLabel(count, isExact, isLoaded);
 }
 
 function renderCeoScopeTabs({
@@ -3020,497 +2898,67 @@ function renderCeoScopeTabs({
   staffCount = 0,
   tabs = null
 } = {}) {
-  const tabList = Array.isArray(tabs) && tabs.length
-    ? tabs
-    : [
-      {
-        key: "own",
-        label: ownLabel,
-        count: ownCount
-      },
-      {
-        key: "staff",
-        label: staffLabel,
-        count: staffCount
-      }
-    ];
-  return `
-    <div class="grid gap-2 mb-4 w-full" style="grid-template-columns: repeat(${Math.max(1, tabList.length)}, minmax(0, 1fr));">
-      ${tabList.map((tab) => {
-        const selected = tab.key === active;
-        return `
-          <button
-            type="button"
-            data-${escapeHtml(idPrefix)}="${escapeHtml(tab.key)}"
-            class="rounded-[1.5rem] px-3 py-2.5 text-left border transition-all ${selected ? "bg-slate-900 text-white border-slate-900 shadow-lg shadow-slate-200/70" : "bg-white text-slate-600 border-slate-100 shadow-sm"}"
-          >
-            <p class="text-[8px] font-black uppercase tracking-[0.16em] ${selected ? "text-white/70" : "text-slate-400"}">${escapeHtml(tab.label)}</p>
-            <p class="text-base font-black tracking-tight mt-1">${escapeHtml(String(tab.count))}</p>
-          </button>
-        `;
-      }).join("")}
-    </div>
-  `;
+  return ceoCrmCountRuntimeController.renderCeoScopeTabs({
+    idPrefix,
+    active,
+    ownLabel,
+    ownCount,
+    staffLabel,
+    staffCount,
+    tabs
+  });
 }
 
 function renderOwnershipPills(row = {}, { hideOwn = false } = {}) {
-  const meta = resolveOwnershipMeta(row);
-  if (!meta) return "";
-  if (meta.own && hideOwn) return "";
-  const chips = [
-    `<span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[9px] font-black uppercase tracking-widest">${escapeHtml(meta.label)}</span>`
-  ];
-  if (!meta.own && meta.creatorName) {
-    chips.push(`<span class="px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600 text-[9px] font-black uppercase tracking-widest">${escapeHtml(meta.creatorName)}</span>`);
-  }
-  return `<div class="flex flex-wrap gap-2 mt-3">${chips.join("")}</div>`;
+  return ceoCrmCountRuntimeController.renderOwnershipPills(row, { hideOwn });
 }
 
 function buildCeoCreatorMeta(profile = state.userProfile, user = state.user) {
-  const current = getCurrentCeoMeta(profile, user);
-  const handle = String(profile?.handle || normalizeHandle(current.name || "ceo")).trim();
-  return {
-    createdByUid: current.uid || "",
-    createdByRole: "ceo",
-    createdByName: current.name || "",
-    createdByHandle: handle,
-    ceoRootUid: current.rootUid || current.uid || "",
-    ceoRootName: current.rootName || current.name || "",
-    ceoParentUid: current.parentUid || "",
-    ceoPath: Array.isArray(current.path) ? current.path.slice() : []
-  };
+  return ceoCrmCountRuntimeController.buildCeoCreatorMeta(profile, user);
 }
 
 function resolveStoredCeoCreatorMeta(...sources) {
-  let createdByUid = "";
-  let createdByRole = "";
-  let createdByName = "";
-  let createdByHandle = "";
-  let ceoRootUid = "";
-  let ceoRootName = "";
-  let ceoParentUid = "";
-  let ceoPath = [];
-  for (const source of sources) {
-    if (!source || typeof source !== "object") continue;
-    if (!createdByUid) createdByUid = String(source.createdByUid || "").trim();
-    if (!createdByRole) createdByRole = String(source.createdByRole || "").trim();
-    if (!createdByName) createdByName = String(source.createdByName || "").trim();
-    if (!createdByHandle) createdByHandle = String(source.createdByHandle || "").trim();
-    if (!ceoRootUid) ceoRootUid = String(source.ceoRootUid || "").trim();
-    if (!ceoRootName) ceoRootName = String(source.ceoRootName || "").trim();
-    if (!ceoParentUid) ceoParentUid = String(source.ceoParentUid || "").trim();
-    if (!ceoPath.length) {
-      ceoPath = normalizeCeoPath(source.ceoPath, [ceoRootUid, ceoParentUid, createdByUid]);
-    }
-  }
-  if (!createdByUid && ceoPath.length) createdByUid = ceoPath[ceoPath.length - 1];
-  if (!ceoRootUid && ceoPath.length) ceoRootUid = ceoPath[0];
-  if (!ceoParentUid && ceoPath.length > 1) ceoParentUid = ceoPath[ceoPath.length - 2];
-  ceoPath = normalizeCeoPath(ceoPath, [ceoRootUid, ceoParentUid, createdByUid]);
-  if (!(createdByUid || createdByName || createdByHandle || ceoRootUid || ceoParentUid || ceoPath.length)) {
-    return buildCeoCreatorMeta();
-  }
-  return {
-    createdByUid,
-    createdByRole: createdByRole || "ceo",
-    createdByName,
-    createdByHandle,
-    ceoRootUid: ceoRootUid || createdByUid,
-    ceoRootName: ceoRootName || createdByName,
-    ceoParentUid,
-    ceoPath
-  };
+  return ceoCrmCountRuntimeController.resolveStoredCeoCreatorMeta(...sources);
 }
 
 function createEmptyCeoCrmCounts() {
-  return {
-    ownLeads: 0,
-    staffLeads: 0,
-    archivedLeads: 0,
-    ownCustomers: 0,
-    staffCustomers: 0,
-    ownArchivedLeads: 0
-  };
+  return ceoCrmCountRuntimeController.createEmptyCeoCrmCounts();
 }
 
 function sanitizeCeoCrmCounts(raw = {}) {
-  const base = createEmptyCeoCrmCounts();
-  Object.keys(base).forEach((key) => {
-    const num = Number(raw?.[key]);
-    base[key] = Number.isFinite(num) ? num : 0;
-  });
-  return base;
+  return ceoCrmCountRuntimeController.sanitizeCeoCrmCounts(raw);
 }
 
 function hasStoredCeoCrmCounts(raw = {}) {
-  if (!raw || typeof raw !== "object") return false;
-  return Object.keys(createEmptyCeoCrmCounts()).some((key) => Number.isFinite(Number(raw?.[key])));
-}
-
-function applyLocalCeoCrmCountDelta(uid, delta = {}) {
-  const safeUid = String(uid || "").trim();
-  if (!safeUid) return;
-  const keys = Object.keys(createEmptyCeoCrmCounts());
-  if (String(state.user?.uid || state.userProfile?.uid || "") === safeUid) {
-    const next = sanitizeCeoCrmCounts(state.userProfile?.crmCounts || {});
-    keys.forEach((key) => {
-      const amount = Number(delta?.[key]) || 0;
-      if (!amount) return;
-      next[key] = Math.max(0, next[key] + amount);
-    });
-    state.userProfile = {
-      ...state.userProfile,
-      crmCounts: next
-    };
-    saveUserProfileToStorage();
-  }
-  if (Array.isArray(state.staff.items) && state.staff.items.length) {
-    state.staff.items = state.staff.items.map((item) => {
-      if (String(item?.uid || "") !== safeUid) return item;
-      const next = sanitizeCeoCrmCounts(item?.crmCounts || {});
-      keys.forEach((key) => {
-        const amount = Number(delta?.[key]) || 0;
-        if (!amount) return;
-        next[key] = Math.max(0, next[key] + amount);
-      });
-      return {
-        ...item,
-        crmCounts: next
-      };
-    });
-  }
+  return ceoCrmCountRuntimeController.hasStoredCeoCrmCounts(raw);
 }
 
 function buildLeadCrmContribution(lead = null) {
-  if (!lead) return null;
-  const normalized = normalizeLeadDoc(lead);
-  const meta = getOwnerMeta(normalized);
-  const path = normalizeCeoPath(meta.ceoPath, [normalized.ceoRootUid, normalized.ceoParentUid, meta.creatorUid]);
-  const creatorUid = String(meta.creatorUid || path[path.length - 1] || "").trim();
-  if (!creatorUid && !path.length) return null;
-  const statusKey = normalizeLeadStatusKey(normalized.status || "");
-  if (statusKey === "kunde") return null;
-  return {
-    creatorUid,
-    path: normalizeCeoPath(path, [creatorUid]),
-    ownLeads: statusKey === "no_interest" ? 0 : 1,
-    ownArchivedLeads: statusKey === "no_interest" ? 1 : 0,
-    ownCustomers: 0
-  };
+  return ceoCrmCountRuntimeController.buildLeadCrmContribution(lead);
 }
 
 function buildCustomerCrmContribution(customer = null) {
-  if (!customer || !isCustomerRestaurant(customer)) return null;
-  const meta = getOwnerMeta(customer);
-  const path = normalizeCeoPath(meta.ceoPath, [customer.ceoRootUid, customer.ceoParentUid, meta.creatorUid]);
-  const creatorUid = String(meta.creatorUid || path[path.length - 1] || "").trim();
-  if (!creatorUid && !path.length) return null;
-  return {
-    creatorUid,
-    path: normalizeCeoPath(path, [creatorUid]),
-    ownLeads: 0,
-    ownArchivedLeads: 0,
-    ownCustomers: 1
-  };
+  return ceoCrmCountRuntimeController.buildCustomerCrmContribution(customer);
 }
 
 function accumulateCeoCrmDelta(deltaMap, contribution, sign = 1) {
-  if (!contribution || !sign) return;
-  const path = normalizeCeoPath(contribution.path, [contribution.creatorUid]);
-  const creatorUid = String(contribution.creatorUid || path[path.length - 1] || "").trim();
-  const leadDelta = (Number(contribution.ownLeads) || 0) * sign;
-  const archivedDelta = (Number(contribution.ownArchivedLeads) || 0) * sign;
-  const customerDelta = (Number(contribution.ownCustomers) || 0) * sign;
-  const ensure = (uid) => {
-    const key = String(uid || "").trim();
-    if (!key) return null;
-    if (!deltaMap.has(key)) deltaMap.set(key, createEmptyCeoCrmCounts());
-    return deltaMap.get(key);
-  };
-  const creatorCounts = ensure(creatorUid);
-  if (creatorCounts) {
-    creatorCounts.ownLeads += leadDelta;
-    creatorCounts.ownArchivedLeads += archivedDelta;
-    creatorCounts.archivedLeads += archivedDelta;
-    creatorCounts.ownCustomers += customerDelta;
-  }
-  path.forEach((uid) => {
-    const key = String(uid || "").trim();
-    if (!key || key === creatorUid) return;
-    const target = ensure(key);
-    if (!target) return;
-    target.staffLeads += leadDelta;
-    target.staffCustomers += customerDelta;
-    target.archivedLeads += archivedDelta;
-  });
+  return ceoCrmCountRuntimeController.accumulateCeoCrmDelta(deltaMap, contribution, sign);
 }
 
 async function applyCeoCrmCountDeltas(deltaMap) {
-  if (!(deltaMap instanceof Map) || !deltaMap.size) return;
-  const writes = [];
-  deltaMap.forEach((delta, uid) => {
-    const safeUid = String(uid || "").trim();
-    if (!safeUid) return;
-    const nested = {};
-    Object.entries(delta || {}).forEach(([key, value]) => {
-      const amount = Number(value) || 0;
-      if (!amount) return;
-      nested[key] = increment(amount);
-    });
-    if (!Object.keys(nested).length) return;
-    const payload = {
-      crmCounts: nested,
-      updatedAt: serverTimestamp()
-    };
-    writes.push(setDoc(doc(db, "users", safeUid), payload, { merge: true }).catch(() => {}));
-    writes.push(setDoc(doc(db, "superadmins", safeUid), payload, { merge: true }).catch(() => {}));
-    applyLocalCeoCrmCountDelta(safeUid, delta);
-  });
-  if (writes.length) {
-    await Promise.all(writes);
-  }
-}
-
-async function fetchCeoTeamEntriesForCrmCounts(currentMeta = getCurrentCeoMeta()) {
-  const currentUid = String(currentMeta?.uid || "").trim();
-  if (!currentUid) return [];
-  const staffRef = collection(db, "superadmins");
-  const queryRefs = [
-    query(staffRef, where("ceoPath", "array-contains", currentUid)),
-    query(staffRef, where("ceoParentUid", "==", currentUid))
-  ];
-  if (hasGlobalCeoAccess()) {
-    queryRefs.push(query(staffRef));
-  }
-  const snaps = await Promise.all(queryRefs.map((ref) => getDocs(ref).catch(() => null)));
-  const rowMap = new Map();
-  snaps.forEach((snap) => {
-    if (!snap?.docs?.length) return;
-    snap.docs.forEach((docSnap) => {
-      rowMap.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) });
-    });
-  });
-  return Array.from(rowMap.values())
-    .map((row) => normalizeCeoStaffRecord(row))
-    .filter((item) => canViewCeoRecord(item) && String(item.uid || "") !== currentUid)
-    .filter((item) => !isHiddenLegacyCeoEmail(item.email || ""))
-    .sort((a, b) => {
-      const ta = toDateSafe(a.createdAt)?.getTime() || 0;
-      const tb = toDateSafe(b.createdAt)?.getTime() || 0;
-      if (tb !== ta) return tb - ta;
-      return String(a.name || "").localeCompare(String(b.name || ""));
-    });
-}
-
-async function fetchNestedCeoStaffEntries(rootUids = []) {
-  const roots = uniqueStringList(rootUids);
-  if (!roots.length) return [];
-  const staffRef = collection(db, "superadmins");
-  const queryRefs = [];
-  chunkStringList(roots, 10).forEach((uids) => {
-    if (!uids.length) return;
-    queryRefs.push(query(staffRef, where("ceoPath", "array-contains-any", uids)));
-    queryRefs.push(query(staffRef, where("ceoParentUid", "in", uids)));
-  });
-  const snaps = await Promise.all(queryRefs.map((ref) => getDocs(ref).catch(() => null)));
-  const rowMap = new Map();
-  snaps.forEach((snap) => {
-    if (!snap?.docs?.length) return;
-    snap.docs.forEach((docSnap) => {
-      rowMap.set(docSnap.id, { id: docSnap.id, ...(docSnap.data() || {}) });
-    });
-  });
-  return Array.from(rowMap.values())
-    .map((row) => normalizeCeoStaffRecord(row))
-    .filter((item) => !isHiddenLegacyCeoEmail(item.email || ""))
-    .sort((a, b) => {
-      const ta = toDateSafe(a.createdAt)?.getTime() || 0;
-      const tb = toDateSafe(b.createdAt)?.getTime() || 0;
-      if (tb !== ta) return tb - ta;
-      return String(a.name || "").localeCompare(String(b.name || ""));
-    });
+  return ceoCrmCountRuntimeController.applyCeoCrmCountDeltas(deltaMap);
 }
 
 async function ensureCeoCrmCountsLoaded({ force = false } = {}) {
-  if (!isCeoUser()) return;
-  const current = getCurrentCeoMeta();
-  if (!current.uid) return;
-  const currentReady = hasStoredCeoCrmCounts(state.userProfile?.crmCounts || {});
-  const staffReady = (Array.isArray(state.staff.items) ? state.staff.items : []).every((item) => hasStoredCeoCrmCounts(item?.crmCounts || {}));
-  if (!force && currentReady && staffReady) return;
-  if (ceoCrmCountsPromise) {
-    await ceoCrmCountsPromise;
-    return;
-  }
-  ceoCrmCountsPromise = (async () => {
-    const currentMeta = getCurrentCeoMeta();
-    const visibleStaffItems = Array.isArray(state.staff.items) ? state.staff.items : [];
-    const missingVisibleStaff = visibleStaffItems.filter((item) => !hasStoredCeoCrmCounts(item?.crmCounts || {}));
-    const needsCurrentRecount = force || !currentReady;
-    let teamStaffEntries = [];
-    if (needsCurrentRecount) {
-      teamStaffEntries = (dataLoaded.staff && !state.staff.hasMore && visibleStaffItems.length)
-        ? visibleStaffItems.slice()
-        : await fetchCeoTeamEntriesForCrmCounts(currentMeta);
-    } else if (missingVisibleStaff.length) {
-      const nestedStaff = await fetchNestedCeoStaffEntries(missingVisibleStaff.map((item) => String(item?.uid || "").trim()));
-      const mergedStaff = new Map();
-      [...missingVisibleStaff, ...nestedStaff].forEach((item) => {
-        const uid = String(item?.uid || "").trim();
-        if (!uid) return;
-        mergedStaff.set(uid, item);
-      });
-      teamStaffEntries = Array.from(mergedStaff.values());
-    }
-    const teamEntries = [
-      ...(needsCurrentRecount ? [{
-        uid: currentMeta.uid,
-        ceoPath: Array.isArray(currentMeta.path) ? currentMeta.path.slice() : [currentMeta.uid]
-      }] : []),
-      ...(teamStaffEntries.map((item) => ({
-        uid: String(item?.uid || "").trim(),
-        ceoPath: normalizeCeoPath(item?.ceoPath, [item?.ceoRootUid, item?.ceoParentUid, item?.uid])
-      })))
-    ].filter((entry) => entry.uid);
-    const teamUids = uniqueStringList(teamEntries.map((entry) => entry.uid));
-    if (!teamUids.length) return;
-
-    const ownMap = new Map(teamUids.map((uid) => [uid, createEmptyCeoCrmCounts()]));
-
-    const leadSnaps = await Promise.all(chunkStringList(teamUids, 10).map((uids) => (
-      getDocs(query(collection(db, "leads"), where("createdByUid", "in", uids))).catch(() => null)
-    )));
-    leadSnaps.forEach((snap) => {
-      if (!snap?.docs?.length) return;
-      snap.docs.forEach((docSnap) => {
-        const lead = normalizeLeadDoc({ id: docSnap.id, ...(docSnap.data() || {}) });
-        const uid = String(lead.createdByUid || "").trim();
-        if (!uid || !ownMap.has(uid)) return;
-        const counts = ownMap.get(uid);
-        const statusKey = normalizeLeadStatusKey(lead.status || "");
-        if (statusKey === "kunde") return;
-        if (statusKey === "no_interest") {
-          counts.ownArchivedLeads += 1;
-        } else {
-          counts.ownLeads += 1;
-        }
-      });
-    });
-
-    const customerSnaps = await Promise.all(chunkStringList(teamUids, 10).map((uids) => (
-      getDocs(query(collection(db, "restaurants"), where("createdByUid", "in", uids))).catch(() => null)
-    )));
-    customerSnaps.forEach((snap) => {
-      if (!snap?.docs?.length) return;
-      snap.docs.forEach((docSnap) => {
-        const row = { id: docSnap.id, ...(docSnap.data() || {}) };
-        if (!isCustomerRestaurant(row)) return;
-        const uid = String(row.createdByUid || "").trim();
-        if (!uid || !ownMap.has(uid)) return;
-        ownMap.get(uid).ownCustomers += 1;
-      });
-    });
-
-    const aggregateMap = new Map();
-    teamUids.forEach((uid) => {
-      const own = sanitizeCeoCrmCounts(ownMap.get(uid) || {});
-      aggregateMap.set(uid, {
-        ...createEmptyCeoCrmCounts(),
-        ...own,
-        archivedLeads: own.ownArchivedLeads
-      });
-    });
-
-    teamEntries.forEach((entry) => {
-      const uid = String(entry.uid || "").trim();
-      if (!uid) return;
-      const own = sanitizeCeoCrmCounts(ownMap.get(uid) || {});
-      const path = normalizeCeoPath(entry.ceoPath, [uid]);
-      path.forEach((ancestorUid) => {
-        const safeAncestorUid = String(ancestorUid || "").trim();
-        if (!safeAncestorUid || safeAncestorUid === uid || !aggregateMap.has(safeAncestorUid)) return;
-        const target = aggregateMap.get(safeAncestorUid);
-        target.staffLeads += own.ownLeads;
-        target.staffCustomers += own.ownCustomers;
-        target.archivedLeads += own.ownArchivedLeads;
-      });
-    });
-
-    const persistWrites = [];
-    aggregateMap.forEach((counts, uid) => {
-      const safeUid = String(uid || "").trim();
-      if (!safeUid) return;
-      const payload = {
-        crmCounts: sanitizeCeoCrmCounts(counts),
-        updatedAt: serverTimestamp()
-      };
-      persistWrites.push(setDoc(doc(db, "users", safeUid), payload, { merge: true }).catch(() => {}));
-      persistWrites.push(setDoc(doc(db, "superadmins", safeUid), payload, { merge: true }).catch(() => {}));
-      if (safeUid === String(state.user?.uid || state.userProfile?.uid || "")) {
-        state.userProfile = {
-          ...state.userProfile,
-          crmCounts: sanitizeCeoCrmCounts(counts)
-        };
-        saveUserProfileToStorage();
-      }
-    });
-    if (persistWrites.length) {
-      await Promise.all(persistWrites);
-    }
-    if (Array.isArray(state.staff.items) && state.staff.items.length) {
-      state.staff.items = state.staff.items.map((item) => {
-        const counts = aggregateMap.get(String(item?.uid || "").trim());
-        return counts ? { ...item, crmCounts: sanitizeCeoCrmCounts(counts) } : item;
-      });
-    }
-    render();
-  })();
-  try {
-    await ceoCrmCountsPromise;
-  } finally {
-    ceoCrmCountsPromise = null;
-  }
-}
-
-function hasCountValue(...values) {
-  return values.some((value) => Number.isFinite(Number(value)));
+  return ceoCrmCountRuntimeController.ensureCeoCrmCountsLoaded({ force });
 }
 
 function pickCountValue(...values) {
-  for (const value of values) {
-    const numeric = Number(value);
-    if (Number.isFinite(numeric)) return Math.max(0, numeric);
-  }
-  return 0;
+  return ceoCrmCountRuntimeController.pickCountValue(...values);
 }
 
 async function syncCeoDirectoryProfilePatch(patch = {}) {
-  const uid = String(state.user?.uid || "").trim();
-  if (!uid || !isCeoUser()) return;
-  const payload = {};
-  const textFields = ["name", "displayName", "handle", "city", "locationLabel", "country", "firstName", "lastName", "ceoParentName", "ceoRootName"];
-  textFields.forEach((key) => {
-    if (!(key in patch)) return;
-    const value = String(patch[key] || "").trim();
-    if (!value) return;
-    payload[key] = value;
-  });
-  ["lat", "lng", "gpsLat", "gpsLng"].forEach((key) => {
-    if (!(key in patch)) return;
-    const value = Number(patch[key]);
-    if (!Number.isFinite(value)) return;
-    payload[key] = value;
-  });
-  const avatarUrl = String(patch.avatarUrl || patch.avatar || "").trim();
-  if (avatarUrl) {
-    payload.avatarUrl = avatarUrl;
-    payload.avatar = avatarUrl;
-  }
-  if (!Object.keys(payload).length) return;
-  payload.updatedAt = serverTimestamp();
-  try {
-    await setDoc(doc(db, "superadmins", uid), payload, { merge: true });
-  } catch {}
+  return ceoCrmCountRuntimeController.syncCeoDirectoryProfilePatch(patch);
 }
 
 function normalizeRoleList(value) {
@@ -5223,7 +4671,7 @@ crmRuntimeController = createCrmRuntimeController({
   canCurrentCeoSeeRow,
   isCurrentCeoOwnRow,
   ensureCeoCrmCountsLoaded,
-  getCeoCrmCountsPromise: () => ceoCrmCountsPromise,
+  getCeoCrmCountsPromise: () => ceoCrmCountRuntimeController?.getCeoCrmCountsPromise() || null,
   readLeadScopeCache,
   writeLeadScopeCache,
   readCustomerScopeCache,

@@ -1,15 +1,15 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-12 01:19:42 +01:00
+Last updated: 2026-03-12 01:48:48 +01:00
 
 ## Current committed safe checkpoint
 - `current HEAD` - `Batch G - Shell / Auth / Drawer / Notifications DOM Runtime Extraction`
 - Latest committed code batch under that checkpoint: `current HEAD` - `Batch G - Shell / Auth / Drawer / Notifications DOM Runtime Extraction`
 
 ## Current local batch note
-- There is no active local uncommitted runtime batch at the moment.
+- Batch H - CEO CRM Count / Support Runtime Extraction is the active local uncommitted runtime batch.
 - The latest rollback-safe checkpoint is the current committed Batch G `HEAD`.
-- If Batch G is rejected later, revert or rework that committed batch as one unit.
+- If Batch H is rejected later, drop or rework that local batch as one unit without reopening unrelated domains.
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -36,12 +36,13 @@ Last updated: 2026-03-12 01:19:42 +01:00
 17. `ccb962a` - media upload runtime extraction
 18. `af24d17` - docs(refactor): correct social-app line count
 19. `ba600be` - refactor(social): extract feed story runtime
+20. `6a61573` - refactor(social): extract shell dom runtime
 
 ## Current rollback guidance for the next approved runtime batch
-- Review Batch G before starting Batch H.
+- Review local Batch H before starting Batch I.
 - Keep the next committed batch single-domain.
-- Do not mix CEO CRM count/support runtime with the local shell/auth/drawer/notifications DOM batch, dependency-map cleanup, or wrapper cleanup in the same rollback unit.
-- Do not reopen feed/story or shell/auth/drawer/notifications DOM work in the next batch unless Batch G review finds a regression.
+- Do not mix the local CEO CRM count/support runtime batch with dependency-map cleanup or wrapper cleanup in the same rollback unit.
+- Do not reopen feed/story or shell/auth/drawer/notifications DOM work in the next batch unless Batch H review finds a regression outside the extracted CRM domain.
 - Do not use the old "Batch 16 startup sequencing" label unless a future approved batch actually matches that scope.
 
 ## Mandatory rollback documentation rule
