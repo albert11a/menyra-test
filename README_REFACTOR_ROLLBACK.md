@@ -1,15 +1,14 @@
 # MNYRA Refactor Rollback Guide
 
-Last updated: 2026-03-12 01:48:48 +01:00
+Last updated: 2026-03-12 03:02:22 +01:00
 
 ## Current committed safe checkpoint
-- `current HEAD` - `Batch G - Shell / Auth / Drawer / Notifications DOM Runtime Extraction`
-- Latest committed code batch under that checkpoint: `current HEAD` - `Batch G - Shell / Auth / Drawer / Notifications DOM Runtime Extraction`
+- `current HEAD` - `Batch I - Social Engagement Support Runtime Extraction`
+- Latest committed code batch under that checkpoint: `current HEAD` - `Batch I - Social Engagement Support Runtime Extraction`
 
 ## Current local batch note
-- Batch H - CEO CRM Count / Support Runtime Extraction is the active local uncommitted runtime batch.
-- The latest rollback-safe checkpoint is the current committed Batch G `HEAD`.
-- If Batch H is rejected later, drop or rework that local batch as one unit without reopening unrelated domains.
+- No active local uncommitted runtime batch.
+- The latest rollback-safe checkpoint is the committed Batch I `HEAD`.
 
 ## Rollback principle
 - Roll back by completed batch boundaries.
@@ -34,21 +33,12 @@ Last updated: 2026-03-12 01:48:48 +01:00
 15. `edf0cf4` - menu/focus public runtime extraction
 16. `b9b54c7` - orders runtime + orders view extraction
 17. `ccb962a` - media upload runtime extraction
-18. `af24d17` - docs(refactor): correct social-app line count
-19. `ba600be` - refactor(social): extract feed story runtime
-20. `6a61573` - refactor(social): extract shell dom runtime
+18. `ba600be` - feed story runtime extraction
+19. `6a61573` - shell DOM runtime extraction
+20. `844d435` - CEO CRM count/support runtime extraction
+21. `current HEAD` - social engagement support runtime extraction
 
 ## Current rollback guidance for the next approved runtime batch
-- Review local Batch H before starting Batch I.
+- Start Batch J as its own rollback unit after Batch I smoke validation.
 - Keep the next committed batch single-domain.
-- Do not mix the local CEO CRM count/support runtime batch with dependency-map cleanup or wrapper cleanup in the same rollback unit.
-- Do not reopen feed/story or shell/auth/drawer/notifications DOM work in the next batch unless Batch H review finds a regression outside the extracted CRM domain.
-- Do not use the old "Batch 16 startup sequencing" label unless a future approved batch actually matches that scope.
-
-## Mandatory rollback documentation rule
-- If a runtime batch is reverted later, update:
-  - `README_REFACTOR_MASTER.md`
-  - `README_REFACTOR_LOG.md`
-  - `README_REFACTOR_NEXT.md`
-  - `README_REFACTOR_ROLLBACK.md`
-  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+- Do not mix push/follow runtime extraction with feed/profile support or composition-root cleanup in the same rollback unit.

@@ -820,3 +820,33 @@
   - `apps/menyra-social/social-app.js` is now `5,769` lines and `179,441` bytes locally.
   - Not committed and not pushed.
   - Exact next batch after review is Batch I: late-stage controller dependency-map consolidation.
+
+## 2026-03-12 03:02:22 +01:00 — Batch I: Social Engagement Support Runtime Extraction
+- Fix batch title: Batch I — Social Engagement Support Runtime Extraction
+- Exact files changed:
+  - `apps/menyra-social/social-app.js`
+  - `apps/menyra-social/core/profile/social-engagement-support-runtime-controller.js`
+  - `README_SOCIAL_APP_REDUCTION_MASTER.md`
+  - `README_REFACTOR_MASTER.md`
+  - `README_REFACTOR_LOG.md`
+  - `README_REFACTOR_NEXT.md`
+  - `README_REFACTOR_ROLLBACK.md`
+- Exact purpose:
+  - Move the remaining social-engagement support runtime out of `social-app.js` into a dedicated support controller while keeping existing root contracts stable.
+- Risk level: Medium
+- Regression risk: Medium (post/menu social count updates, modal live refresh, comment-avatar support, and profile-post actions moved together)
+- What changed:
+  - Added `core/profile/social-engagement-support-runtime-controller.js` to own post/meta local-state helpers, menu-detail social-state helpers, modal count/comment refresh helpers, comment render/avatar support, and profile-post widen/delete/menu actions.
+  - Replaced the inline social-engagement support block in `social-app.js` with stable forwards so the surrounding controllers, renderers, and bridge wiring still call the same top-level functions.
+  - Retargeted the menu-public runtime controller, social-engagement runtime controller, and profile-menu-focus render controller to consume the extracted support controller directly instead of the old inline implementations.
+  - Updated the roadmap/tracking docs to reflect the real committed checkpoint `844d435`, record Batch I as the active local batch, and defer dependency-map cleanup behind the remaining real runtime domains.
+- Validation notes:
+  - `node --check apps/menyra-social/social-app.js`
+  - `node --check apps/menyra-social/core/profile/social-engagement-support-runtime-controller.js`
+  - `node --check apps/menyra-social/core/profile/social-engagement-runtime-controller.js`
+  - `node --check apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`
+  - Recounted `apps/menyra-social/social-app.js` via direct file-read newline counting.
+- Follow-up notes:
+  - `apps/menyra-social/social-app.js` is now `5,357` lines and `166,188` bytes locally.
+  - This batch becomes the current committed checkpoint in this pass.
+  - Exact next batch after review is Batch J: push / notifications / follow runtime extraction.

@@ -103,6 +103,7 @@ import { createProfileMenuFocusRenderController } from "./core/profile/profile-m
 import { createPublicProfileRuntimeController } from "./core/profile/public-profile-runtime-controller.js";
 import { createSelfProfileRuntimeController } from "./core/profile/self-profile-runtime-controller.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
+import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
 import { createCeoCrmCountRuntimeController } from "./core/crm/ceo-crm-count-runtime-controller.js";
 import { createCrmRuntimeController } from "./core/crm/crm-runtime-controller.js";
 import { createChatRuntimeController } from "./core/chat/chat-runtime-controller.js";
@@ -300,20 +301,6 @@ import {
   renderLikesModalCore,
   renderPostModalCore
 } from "./core/overlays/overlay-basic-render-utils.js";
-import {
-  renderCommentItemCore,
-  renderPostCommentsCore,
-  renderMenuCommentItemCore,
-  renderMenuDetailCommentsCore
-} from "./core/overlays/overlay-comment-render-utils.js";
-import {
-  updatePostModalCountsOnlyCore,
-  updatePostModalCommentsOnlyCore
-} from "./core/overlays/post-modal-update-utils.js";
-import {
-  updateMenuDetailCountsOnlyCore,
-  updateMenuDetailCommentsOnlyCore
-} from "./core/overlays/menu-detail-update-utils.js";
 import {
   ensureOverlayRootCore,
   ensureModalEscapeHandlerCore,
@@ -1103,6 +1090,7 @@ let shellDomRuntimeController = null;
 let profileMenuFocusRenderController = null;
 let sessionDataRuntimeController = null;
 let socialEngagementRuntimeController = null;
+let socialEngagementSupportRuntimeController = null;
 let ceoCrmCountRuntimeController = null;
 let crmRuntimeController = null;
 let chatRuntimeController = null;
@@ -1473,6 +1461,50 @@ const {
   getCeoGpsOverride,
   isRestaurantMarkedDeleted
 }));
+socialEngagementSupportRuntimeController = createSocialEngagementSupportRuntimeController({
+  state,
+  db,
+  documentObj: typeof document === "undefined" ? null : document,
+  windowObj: typeof window === "undefined" ? null : window,
+  docFn: doc,
+  setDocFn: setDoc,
+  deleteDocFn: deleteDoc,
+  serverTimestampFn: serverTimestamp,
+  confirmFn: typeof confirm === "function" ? confirm : () => false,
+  renderFn: render,
+  readCacheFn: readCache,
+  writeCacheFn: writeCache,
+  saveFeedPostsFn: saveFeedPosts,
+  userPostsKeyFn: userPostsKey,
+  businessPostsKeyFn: businessPostsKey,
+  cacheKeys: CACHE_KEYS,
+  getRestaurantMetaByIdFn: getRestaurantMetaById,
+  resolvePreferredHandleFn: resolvePreferredHandle,
+  normalizeRestaurantTypeFn: normalizeRestaurantType,
+  getMenuItemImagesFn: (...args) => getMenuItemImages(...args),
+  resolveMenuItemHeroFn: (...args) => resolveMenuItemHero(...args),
+  clampCropPercentFn: clampCropPercent,
+  formatCountFn: formatCount,
+  iconFn: icon,
+  escapeHtmlFn: escapeHtml,
+  toDateSafeFn: toDateSafe,
+  currentUserBadgeFn: currentUserBadge,
+  normalizeHandleFn: normalizeHandle,
+  resolveCommentAvatarFn: (...args) => resolveCommentAvatar(...args),
+  getSelfAvatarUrlFn: (...args) => getSelfAvatarUrl(...args),
+  isPlaceholderUrlFn: isPlaceholderUrl,
+  scheduleCommentAvatarFetchFn: (...args) => scheduleCommentAvatarFetch(...args),
+  applyCommentAvatarCacheFn: (...args) => applyCommentAvatarCache(...args),
+  hydrateCommentAvatarsFn: (...args) => hydrateCommentAvatars(...args),
+  highlightCommentInModalFn: (...args) => highlightCommentInModal(...args),
+  getPendingCommentHighlightFn: () => pendingCommentHighlight,
+  setPendingCommentHighlightFn: (value) => {
+    pendingCommentHighlight = value;
+  },
+  getModalCommentsUnsubFn: () => modalCommentsUnsub,
+  placeholderImage: PLACEHOLDER_IMAGE,
+  isLocalBusinessProfileFn: isLocalBusinessProfile
+});
 shellDomRuntimeController = createShellDomRuntimeController({
   state,
   brandUi: BRAND_UI,
@@ -1534,9 +1566,9 @@ const {
   setDocFn: setDoc,
   serverTimestampFn: serverTimestamp,
   createEmptyFavoriteMenuItemsStateFn: createEmptyFavoriteMenuItemsState,
-  favoriteMenuItemDocIdFn: favoriteMenuItemDocId,
-  buildFavoriteMenuItemPayloadFn: buildFavoriteMenuItemPayload,
-  getMenuItemSocialIdFn: getMenuItemSocialId,
+  favoriteMenuItemDocIdFn: socialEngagementSupportRuntimeController.favoriteMenuItemDocId,
+  buildFavoriteMenuItemPayloadFn: socialEngagementSupportRuntimeController.buildFavoriteMenuItemPayload,
+  getMenuItemSocialIdFn: socialEngagementSupportRuntimeController.getMenuItemSocialId,
   normalizeMenuItemDocFn: normalizeMenuItemDoc,
   coerceMenuItemsFromDataFn: coerceMenuItemsFromData,
   foldMenuTextFn: foldMenuText,
@@ -2986,288 +3018,79 @@ function buildRoleSwitchUrl(role, profile, restaurantIdOverride = "") {
 }
 
 function formatDateLabel(value) {
-  const date = toDateSafe(value) || new Date();
-  return date.toLocaleDateString("de-DE", { day: "2-digit", month: "short", year: "numeric" });
+  return getSocialEngagementSupportRuntimeController().formatDateLabel(...arguments);
 }
 
 function formatDateTimeLabel(value) {
-  const date = toDateSafe(value) || new Date();
-  return date.toLocaleString("de-DE", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return getSocialEngagementSupportRuntimeController().formatDateTimeLabel(...arguments);
 }
 
 function ensurePostMeta(postId) {
-  if (!postId) return { likes: [], comments: [] };
-  if (!state.postMeta[postId]) {
-    state.postMeta[postId] = { likes: [], comments: [] };
-  }
-  return state.postMeta[postId];
+  return getSocialEngagementSupportRuntimeController().ensurePostMeta(...arguments);
 }
 
 function getMenuItemSocialId(item) {
-  const raw = item?.id || item?.menuItemId || item?.menuId || "";
-  const name = String(item?.name || "").trim();
-  const category = String(item?.category || "").trim();
-  const price = String(item?.price ?? "").trim();
-  const base = raw || [name, category, price].filter(Boolean).join("|");
-  if (!base) return "";
-  return encodeURIComponent(String(base));
+  return getSocialEngagementSupportRuntimeController().getMenuItemSocialId(...arguments);
 }
 
 function menuItemMetaKey(restaurantId, itemId) {
-  if (!restaurantId || !itemId) return "";
-  return `${restaurantId}::${itemId}`;
+  return getSocialEngagementSupportRuntimeController().menuItemMetaKey(...arguments);
 }
 
 function getMenuItemSocialDocRef(item, restaurantIdOverride = "") {
-  const restaurantId = restaurantIdOverride
-    || state.menu.restaurantId
-    || state.profileView?.profile?.restaurantId
-    || state.userProfile.restaurantId
-    || "";
-  const itemId = getMenuItemSocialId(item);
-  if (!restaurantId || !itemId) return null;
-  return doc(db, "restaurants", restaurantId, "menuSocial", itemId);
+  return getSocialEngagementSupportRuntimeController().getMenuItemSocialDocRef(...arguments);
 }
 
 function favoriteMenuItemDocId(restaurantId, itemId) {
-  const safeRestaurantId = encodeURIComponent(String(restaurantId || "").trim());
-  const safeItemId = String(itemId || "").trim();
-  if (!safeRestaurantId || !safeItemId) return "";
-  return `${safeRestaurantId}__${safeItemId}`;
+  return getSocialEngagementSupportRuntimeController().favoriteMenuItemDocId(...arguments);
 }
 
 function buildFavoriteMenuItemPayload(item, restaurantId, { includeServerTimestamp = false } = {}) {
-  const safeRestaurantId = String(restaurantId || "").trim();
-  const itemId = getMenuItemSocialId(item);
-  const profileMatch = state.profileView?.profile?.restaurantId === safeRestaurantId
-    ? state.profileView.profile
-    : (state.userProfile?.restaurantId === safeRestaurantId ? state.userProfile : null);
-  const restaurantMeta = getRestaurantMetaById(safeRestaurantId) || {};
-  const images = getMenuItemImages(item);
-  const nowIso = new Date().toISOString();
-  const catalogType = normalizeRestaurantType(
-    profileMatch?.type
-    || profileMatch?.customerType
-    || profileMatch?.category
-    || profileMatch?.kind
-    || profileMatch?.restaurantType
-    || restaurantMeta?.type
-    || restaurantMeta?.customerType
-    || restaurantMeta?.category
-    || restaurantMeta?.kind
-    || restaurantMeta?.restaurantType
-    || item?.restaurantType
-    || item?.customerType
-    || "ecommerce"
-  ) || "ecommerce";
-  return {
-    restaurantId: safeRestaurantId,
-    itemId,
-    restaurantName: String(
-      profileMatch?.name
-      || restaurantMeta?.name
-      || restaurantMeta?.restaurantName
-      || "Shop"
-    ).trim() || "Shop",
-    restaurantAvatar: String(
-      profileMatch?.avatar
-      || restaurantMeta?.logoUrl
-      || restaurantMeta?.logo
-      || ""
-    ).trim(),
-    type: item?.type || "food",
-    category: String(item?.category || "").trim(),
-    name: String(item?.name || "Produkt").trim() || "Produkt",
-    description: String(item?.description || "").trim(),
-    longDescription: String(item?.longDescription || "").trim(),
-    allergens: String(item?.allergens || "").trim(),
-    brand: String(item?.brand || "").trim(),
-    sku: String(item?.sku || "").trim(),
-    stock: Number.isFinite(Number(item?.stock)) ? Math.max(0, Number(item.stock)) : null,
-    sizes: Array.isArray(item?.sizes) ? item.sizes : [],
-    colors: Array.isArray(item?.colors) ? item.colors : [],
-    cropX: clampCropPercent(item?.cropX ?? 50, 50),
-    cropY: clampCropPercent(item?.cropY ?? 50, 50),
-    price: item?.price ?? "",
-    available: item?.available !== false,
-    catalogMode: "shop",
-    restaurantType: catalogType,
-    customerType: catalogType,
-    imageUrl: images[0] || resolveMenuItemHero(item) || "",
-    imageUrls: images,
-    savedAtClient: nowIso,
-    ...(includeServerTimestamp ? { savedAt: serverTimestamp() } : {})
-  };
+  return getSocialEngagementSupportRuntimeController().buildFavoriteMenuItemPayload(...arguments);
 }
 
 function ensureMenuItemMeta(key) {
-  if (!key) return { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
-  if (!state.menuItemMeta[key]) {
-    state.menuItemMeta[key] = { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
-  } else if (!state.menuItemMeta[key].counts) {
-    state.menuItemMeta[key].counts = { likes: 0, comments: 0 };
-  }
-  return state.menuItemMeta[key];
+  return getSocialEngagementSupportRuntimeController().ensureMenuItemMeta(...arguments);
 }
 
 function resolveMenuItemCounts(meta) {
-  const rawLikes = Number.isFinite(Number(meta?.counts?.likes)) ? Number(meta.counts.likes) : null;
-  const rawComments = Number.isFinite(Number(meta?.counts?.comments)) ? Number(meta.counts.comments) : null;
-  const likeFromList = meta?.likes?.length ?? 0;
-  const commentFromList = meta?.comments?.length ?? 0;
-  const likes = Math.max(rawLikes ?? 0, likeFromList);
-  const comments = Math.max(rawComments ?? 0, commentFromList);
-  return { likes, comments };
+  return getSocialEngagementSupportRuntimeController().resolveMenuItemCounts(...arguments);
 }
 
 function primeMenuItemCounts(items, restaurantId) {
-  if (!restaurantId) return;
-  const list = Array.isArray(items) ? items : [];
-  list.forEach((item) => {
-    const itemId = getMenuItemSocialId(item);
-    if (!itemId) return;
-    const key = menuItemMetaKey(restaurantId, itemId);
-    if (!key) return;
-    const meta = ensureMenuItemMeta(key);
-    meta.counts = {
-      likes: Number(item?.likesCount ?? item?.likes ?? meta.counts?.likes ?? 0) || 0,
-      comments: Number(item?.commentsCount ?? item?.comments ?? meta.counts?.comments ?? 0) || 0
-    };
-    state.menuItemMeta[key] = meta;
-    updateMenuCardCountNodes(itemId, resolveMenuItemCounts(meta));
-  });
+  return getSocialEngagementSupportRuntimeController().primeMenuItemCounts(...arguments);
 }
 
 function getMenuDetailContext() {
-  if (!state.menuDetail?.open || !state.menuDetail?.item) return null;
-  const item = state.menuDetail.item;
-  const restaurantId = getMenuDetailRestaurantId(item);
-  const itemId = getMenuItemSocialId(item);
-  if (!restaurantId || !itemId) return null;
-  const key = menuItemMetaKey(restaurantId, itemId);
-  const ref = doc(db, "restaurants", restaurantId, "menuSocial", itemId);
-  return { item, restaurantId, itemId, key, ref };
+  return getSocialEngagementSupportRuntimeController().getMenuDetailContext(...arguments);
 }
 
 function getMenuDetailRestaurantId(item = state.menuDetail?.item) {
-  return String(
-    state.menuDetail?.restaurantId
-    || item?.restaurantId
-    || state.menu.restaurantId
-    || state.profileView?.profile?.restaurantId
-    || state.userProfile.restaurantId
-    || ""
-  ).trim();
+  return getSocialEngagementSupportRuntimeController().getMenuDetailRestaurantId(...arguments);
 }
 
 function buildCatalogProfileForRestaurant(restaurantId = "", fallback = {}) {
-  const safeRestaurantId = String(restaurantId || fallback?.restaurantId || "").trim();
-  if (!safeRestaurantId) return fallback || {};
-  if (String(state.profileView?.profile?.restaurantId || "").trim() === safeRestaurantId) {
-    return state.profileView.profile;
-  }
-  if (String(state.userProfile?.restaurantId || "").trim() === safeRestaurantId) {
-    return state.userProfile;
-  }
-  const restaurant = getRestaurantMetaById(safeRestaurantId) || {};
-  const displayName = String(
-    restaurant?.name
-    || restaurant?.restaurantName
-    || fallback?.restaurantName
-    || fallback?.name
-    || "Shop"
-  ).trim() || "Shop";
-  const explicitCatalogMode = String(
-    fallback?.catalogMode
-    || restaurant?.catalogMode
-    || restaurant?.catalog
-    || ""
-  ).trim().toLowerCase();
-  const fallbackCatalogMode = String(fallback?.catalogMode || "").trim().toLowerCase();
-  const type = explicitCatalogMode === "shop"
-    ? "ecommerce"
-    : normalizeRestaurantType(
-      restaurant?.type
-      || restaurant?.customerType
-      || restaurant?.category
-      || restaurant?.kind
-      || restaurant?.restaurantType
-      || fallback?.type
-      || fallback?.customerType
-      || fallback?.restaurantType
-      || (fallbackCatalogMode === "shop" ? "ecommerce" : "")
-    );
-  return {
-    name: displayName,
-    handle: resolvePreferredHandle({
-      handle: restaurant?.handle || fallback?.handle || "",
-      name: displayName
-    }, displayName),
-    uid: String(restaurant?.ownerUid || restaurant?.ownerId || fallback?.uid || "").trim(),
-    bio: String(restaurant?.description || restaurant?.bio || fallback?.description || "").trim(),
-    avatar: String(
-      restaurant?.logoUrl
-      || restaurant?.logo
-      || fallback?.restaurantAvatar
-      || fallback?.avatar
-      || ""
-    ).trim(),
-    location: String(restaurant?.city || restaurant?.location || fallback?.location || "").trim(),
-    followers: Number(restaurant?.followersCount ?? restaurant?.followers ?? fallback?.followers ?? 0) || 0,
-    following: Number(restaurant?.followingCount ?? restaurant?.following ?? fallback?.following ?? 0) || 0,
-    privateAccount: false,
-    role: "business",
-    catalogMode: explicitCatalogMode || (type === "ecommerce" ? "shop" : "menu"),
-    restaurantId: safeRestaurantId,
-    ...(type ? { type, customerType: type } : {})
-  };
+  return getSocialEngagementSupportRuntimeController().buildCatalogProfileForRestaurant(...arguments);
 }
 
 function getMenuDetailCatalogProfile(item = state.menuDetail?.item) {
-  const restaurantId = getMenuDetailRestaurantId(item);
-  if (!restaurantId) return state.profileView?.profile || state.userProfile;
-  return buildCatalogProfileForRestaurant(restaurantId, item || {});
+  return getSocialEngagementSupportRuntimeController().getMenuDetailCatalogProfile(...arguments);
 }
 
 function resolvePostCounts(post) {
-  const likeCount = typeof post.likes === "number" ? post.likes : Number(post.likes) || 0;
-  const commentCount = typeof post.comments === "number" ? post.comments : Number(post.comments) || 0;
-  return { likeLabel: String(likeCount), commentLabel: String(commentCount) };
+  return getSocialEngagementSupportRuntimeController().resolvePostCounts(...arguments);
 }
 
 function escapeSelector(value) {
-  const str = String(value);
-  if (typeof CSS !== "undefined" && typeof CSS.escape === "function") {
-    return CSS.escape(str);
-  }
-  return str.replace(/["\\]/g, "\\$&");
+  return getSocialEngagementSupportRuntimeController().escapeSelector(...arguments);
 }
 
 function updatePostCountNodes(post) {
-  if (!post || !post.id) return;
-  const postId = escapeSelector(post.id);
-  const likeLabel = formatCount(post.likes);
-  const commentLabel = formatCount(post.comments);
-  document.querySelectorAll(`[data-post-like-count="${postId}"]`).forEach((el) => {
-    el.textContent = likeLabel;
-  });
-  document.querySelectorAll(`[data-post-comment-count="${postId}"]`).forEach((el) => {
-    el.textContent = commentLabel;
-  });
+  return getSocialEngagementSupportRuntimeController().updatePostCountNodes(...arguments);
 }
 
 function updatePostCaches(post) {
-  if (!post?.id) return;
-  const postId = String(post.id);
-  const inUser = state.userPosts.some((item) => String(item.id) === postId);
-  const inBusiness = state.businessPosts.some((item) => String(item.id) === postId);
-  const inFeed = state.feedPosts.some((item) => String(item.id) === postId);
-  if (inUser && state.user?.uid) writeCache(userPostsKey(state.user.uid), state.userPosts);
-  if (inBusiness && state.userProfile.restaurantId) writeCache(businessPostsKey(state.userProfile.restaurantId), state.businessPosts);
-  if (inFeed) {
-    const cached = readCache(CACHE_KEYS.feed);
-    saveFeedPosts(state.feedPosts, { lastDeltaCheck: cached?.meta?.lastDeltaCheck || 0 });
-  }
+  return getSocialEngagementSupportRuntimeController().updatePostCaches(...arguments);
 }
 
 function scheduleIdle(fn) {
@@ -3329,45 +3152,11 @@ async function ensureTabData(tab) {
 }
 
 function findPostById(postId) {
-  const modalPost = state.postModal?.post;
-  if (modalPost && String(modalPost.id) === String(postId)) return modalPost;
-  const all = [...state.userPosts, ...state.businessPosts, ...state.feedPosts];
-  const found = all.find((item) => String(item.id) === String(postId));
-  if (found) return found;
-  const viewPosts = state.profileView?.posts || [];
-  const viewFound = viewPosts.find((item) => String(item.id) === String(postId));
-  if (viewFound) return viewFound;
-  const modalPosts = state.profileModal.profile?.posts || [];
-  return modalPosts.find((item) => String(item.id) === String(postId)) || null;
+  return getSocialEngagementSupportRuntimeController().findPostById(...arguments);
 }
 
 function ensureCommentShape(comment) {
-  const rawLikes = Array.isArray(comment.likes) ? comment.likes : [];
-  const likesCount = Number.isFinite(Number(comment.likesCount)) ? Number(comment.likesCount) : rawLikes.length;
-  const avatar = comment.avatar || comment.avatarUrl || comment.avatarURL || comment.photoURL || "";
-  const avatarUrl = comment.avatarUrl || comment.avatarURL || "";
-  return {
-    id: comment.id,
-    uid: comment.uid || "",
-    author: comment.author || "User",
-    handle: comment.handle || "user",
-    avatar,
-    avatarUrl,
-    text: comment.text || "",
-    createdAt: comment.createdAt || new Date().toISOString(),
-    likesCount,
-    replies: (comment.replies || []).map((reply) => ({
-      id: reply.id,
-      uid: reply.uid || "",
-      author: reply.author || "User",
-      handle: reply.handle || "user",
-      avatar: reply.avatar || reply.avatarUrl || reply.avatarURL || reply.photoURL || "",
-      avatarUrl: reply.avatarUrl || reply.avatarURL || "",
-      text: reply.text || "",
-      createdAt: reply.createdAt || new Date().toISOString(),
-      likesCount: Number.isFinite(Number(reply.likesCount)) ? Number(reply.likesCount) : (Array.isArray(reply.likes) ? reply.likes.length : 0)
-    }))
-  };
+  return getSocialEngagementSupportRuntimeController().ensureCommentShape(...arguments);
 }
 
 async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0, skipRemote = false } = {}) {
@@ -3482,16 +3271,7 @@ function startLiveListeners(user) {
 }
 
 function updateMenuCardCountNodes(itemId, counts = { likes: 0, comments: 0 }) {
-  if (!itemId) return;
-  const safeId = escapeSelector(itemId);
-  const likesLabel = formatCount(counts.likes ?? 0);
-  const commentsLabel = formatCount(counts.comments ?? 0);
-  document.querySelectorAll(`[data-menu-like-count="${safeId}"]`).forEach((el) => {
-    el.textContent = likesLabel;
-  });
-  document.querySelectorAll(`[data-menu-comment-count="${safeId}"]`).forEach((el) => {
-    el.textContent = commentsLabel;
-  });
+  return getSocialEngagementSupportRuntimeController().updateMenuCardCountNodes(...arguments);
 }
 
 function stopPostMetaListeners() {
@@ -3510,159 +3290,47 @@ async function loadMenuItemMetaFromFirebase(item, restaurantId) {
   return socialEngagementRuntimeController.loadMenuItemMetaFromFirebase(...arguments);
 }
 function findProfilePostCardNode(postId) {
-  const targetId = String(postId || "");
-  const nodes = document.querySelectorAll("[data-open-post]");
-  for (const node of nodes) {
-    if (node.dataset.openPost === targetId) return node;
-  }
-  return null;
+  return getSocialEngagementSupportRuntimeController().findProfilePostCardNode(...arguments);
 }
 
 function findProfilePostToggleButton(card, postId) {
-  if (!card) return null;
-  const targetId = String(postId || "");
-  const nodes = card.querySelectorAll("[data-profile-post-toggle]");
-  for (const node of nodes) {
-    if (node.dataset.profilePostToggle === targetId) return node;
-  }
-  return null;
+  return getSocialEngagementSupportRuntimeController().findProfilePostToggleButton(...arguments);
 }
 
 function updateProfileGridPlaceholder(container) {
-  if (!container) return false;
-  const existing = container.querySelector("[data-profile-grid-placeholder]");
-  if (state.profileViewMode !== "grid") {
-    if (existing) existing.remove();
-    return true;
-  }
-  let slotCount = 0;
-  container.querySelectorAll("[data-open-post]").forEach((node) => {
-    slotCount += node.classList.contains("col-span-2") ? 2 : 1;
-  });
-  const needsPlaceholder = slotCount % 2 === 1;
-  if (needsPlaceholder && !existing) {
-    const placeholder = document.createElement("div");
-    placeholder.dataset.profileGridPlaceholder = "true";
-    placeholder.className = "col-start-2 aspect-[4/5] rounded-[2rem] invisible pointer-events-none";
-    container.prepend(placeholder);
-  } else if (!needsPlaceholder && existing) {
-    existing.remove();
-  }
-  return true;
+  return getSocialEngagementSupportRuntimeController().updateProfileGridPlaceholder(...arguments);
 }
 
 function updateProfilePostCardDom(postId, nextType) {
-  const card = findProfilePostCardNode(postId);
-  if (!card) return false;
-  const isWide = nextType === "wide" || nextType === "hero";
-  const isGrid = state.profileViewMode === "grid";
-  card.classList.toggle("col-span-2", isGrid && isWide);
-  card.classList.remove("aspect-[1.8/1]", "aspect-[4/5]");
-  card.classList.add(isGrid ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]") : "aspect-[4/5]");
-  const img = card.querySelector("img");
-  if (img) {
-    img.width = isWide ? 800 : 400;
-    img.height = isWide ? 400 : 500;
-  }
-  const toggleBtn = findProfilePostToggleButton(card, postId);
-  if (toggleBtn) {
-    toggleBtn.innerHTML = `${icon(isWide ? "minimize-2" : "maximize-2", "w-3.5 h-3.5")} ${isWide ? "Schmaler" : "Breiter"}`;
-  }
-  updateProfileGridPlaceholder(card.parentElement);
-  if (window.lucide?.createIcons) window.lucide.createIcons();
-  return true;
+  return getSocialEngagementSupportRuntimeController().updateProfilePostCardDom(...arguments);
 }
 
 function getProfilePostList() {
-  return isLocalBusinessProfile(state.userProfile) ? state.businessPosts : state.userPosts;
+  return getSocialEngagementSupportRuntimeController().getProfilePostList(...arguments);
 }
 
 function findProfilePost(postId) {
-  const list = getProfilePostList();
-  const idx = list.findIndex((item) => String(item.id) === String(postId));
-  return { list, idx, post: idx >= 0 ? list[idx] : null };
+  return getSocialEngagementSupportRuntimeController().findProfilePost(...arguments);
 }
 
 async function updateProfilePostType(postId, nextType) {
-  if (!postId || !state.user) return;
-  const isBusiness = isLocalBusinessProfile(state.userProfile);
-  if (isBusiness) {
-    const restaurantId = state.userProfile.restaurantId;
-    if (!restaurantId) return;
-    await setDoc(doc(db, "restaurants", restaurantId, "socialPosts", postId), { type: nextType }, { merge: true });
-  } else {
-    await setDoc(doc(db, "users", state.user.uid, "posts", postId), { type: nextType }, { merge: true });
-  }
+  return getSocialEngagementSupportRuntimeController().updateProfilePostType(...arguments);
 }
 
 async function toggleProfilePostWidth(postId) {
-  if (!postId) return;
-  const { post } = findProfilePost(postId);
-  if (!post) return;
-  const isWide = post.type === "wide" || post.type === "hero";
-  const nextType = isWide ? "square" : "wide";
-  post.type = nextType;
-  state.profilePostMenuId = null;
-  setProfileMenuOpen(null);
-  const updated = updateProfilePostCardDom(postId, nextType);
-  if (!updated && state.activeTab === "profile") {
-    render();
-  }
-  updatePostCaches(post);
-  try {
-    await updateProfilePostType(postId, nextType);
-  } catch (err) {
-    console.error(err);
-  }
+  return getSocialEngagementSupportRuntimeController().toggleProfilePostWidth(...arguments);
 }
 
 async function deleteProfilePost(postId) {
-  if (!postId || !state.user) return;
-  if (!confirm("Beitrag wirklich loeschen?")) return;
-  const { list, idx } = findProfilePost(postId);
-  if (idx < 0) return;
-  list.splice(idx, 1);
-  state.profilePostMenuId = null;
-  render();
-  const isBusiness = isLocalBusinessProfile(state.userProfile);
-  if (isBusiness) {
-    if (state.userProfile.restaurantId) {
-      writeCache(businessPostsKey(state.userProfile.restaurantId), state.businessPosts);
-    }
-  } else {
-    if (state.user?.uid) {
-      writeCache(userPostsKey(state.user.uid), state.userPosts);
-    }
-  }
-  try {
-    if (isBusiness) {
-      const restaurantId = state.userProfile.restaurantId;
-      if (restaurantId) {
-        await deleteDoc(doc(db, "restaurants", restaurantId, "socialPosts", postId));
-      }
-      await deleteDoc(doc(db, "socialFeed", postId));
-    } else {
-      await deleteDoc(doc(db, "users", state.user.uid, "posts", postId));
-    }
-  } catch (err) {
-    console.error(err);
-  }
+  return getSocialEngagementSupportRuntimeController().deleteProfilePost(...arguments);
 }
 
 function toggleProfilePostMenu(postId) {
-  if (!postId) return;
-  const next = String(state.profilePostMenuId) === String(postId) ? null : String(postId);
-  state.profilePostMenuId = next;
-  setProfileMenuOpen(next);
+  return getSocialEngagementSupportRuntimeController().toggleProfilePostMenu(...arguments);
 }
 
 function setProfileMenuOpen(postId) {
-  const menus = document.querySelectorAll("[data-profile-menu]");
-  const next = postId ? String(postId) : "";
-  menus.forEach((menu) => {
-    const isOpen = next && menu.dataset.profileMenu === next;
-    menu.classList.toggle("hidden", !isOpen);
-  });
+  return getSocialEngagementSupportRuntimeController().setProfileMenuOpen(...arguments);
 }
 
 function getPostDocRef(post) {
@@ -3904,20 +3572,20 @@ socialEngagementRuntimeController = createSocialEngagementRuntimeController({
   incrementFn: increment,
   openGuestAuthPromptFn: openGuestAuthPrompt,
   currentUserBadgeFn: currentUserBadge,
-  ensurePostMetaFn: ensurePostMeta,
-  ensureMenuItemMetaFn: ensureMenuItemMeta,
-  resolveMenuItemCountsFn: resolveMenuItemCounts,
-  getMenuDetailContextFn: getMenuDetailContext,
-  ensureCommentShapeFn: ensureCommentShape,
-  updatePostCountNodesFn: updatePostCountNodes,
-  updatePostCachesFn: updatePostCaches,
-  updateMenuCardCountNodesFn: updateMenuCardCountNodes,
-  updatePostModalMetaFn: updatePostModalMeta,
-  updatePostModalCountsOnlyFn: updatePostModalCountsOnly,
-  updateMenuDetailCountsOnlyFn: updateMenuDetailCountsOnly,
-  updateMenuDetailCommentsOnlyFn: updateMenuDetailCommentsOnly,
-  updateMenuDetailMetaFn: updateMenuDetailMeta,
-  updateCommentLikeButtonFn: updateCommentLikeButton,
+  ensurePostMetaFn: socialEngagementSupportRuntimeController.ensurePostMeta,
+  ensureMenuItemMetaFn: socialEngagementSupportRuntimeController.ensureMenuItemMeta,
+  resolveMenuItemCountsFn: socialEngagementSupportRuntimeController.resolveMenuItemCounts,
+  getMenuDetailContextFn: socialEngagementSupportRuntimeController.getMenuDetailContext,
+  ensureCommentShapeFn: socialEngagementSupportRuntimeController.ensureCommentShape,
+  updatePostCountNodesFn: socialEngagementSupportRuntimeController.updatePostCountNodes,
+  updatePostCachesFn: socialEngagementSupportRuntimeController.updatePostCaches,
+  updateMenuCardCountNodesFn: socialEngagementSupportRuntimeController.updateMenuCardCountNodes,
+  updatePostModalMetaFn: socialEngagementSupportRuntimeController.updatePostModalMeta,
+  updatePostModalCountsOnlyFn: socialEngagementSupportRuntimeController.updatePostModalCountsOnly,
+  updateMenuDetailCountsOnlyFn: socialEngagementSupportRuntimeController.updateMenuDetailCountsOnly,
+  updateMenuDetailCommentsOnlyFn: socialEngagementSupportRuntimeController.updateMenuDetailCommentsOnly,
+  updateMenuDetailMetaFn: socialEngagementSupportRuntimeController.updateMenuDetailMeta,
+  updateCommentLikeButtonFn: socialEngagementSupportRuntimeController.updateCommentLikeButton,
   ensureSelfAvatarReadyFn: ensureSelfAvatarReady,
   normalizeHandleFn: normalizeHandle,
   isPlaceholderUrlFn: isPlaceholderUrl,
@@ -3932,11 +3600,11 @@ socialEngagementRuntimeController = createSocialEngagementRuntimeController({
   pushUserNotificationFn: pushUserNotification,
   updateFavoriteMenuItemsLocalFn: updateFavoriteMenuItemsLocal,
   autosizeTextareaFn: autosizeTextarea,
-  favoriteMenuItemDocIdFn: favoriteMenuItemDocId,
-  buildFavoriteMenuItemPayloadFn: buildFavoriteMenuItemPayload,
-  getMenuItemSocialDocRefFn: getMenuItemSocialDocRef,
-  getMenuItemSocialIdFn: getMenuItemSocialId,
-  menuItemMetaKeyFn: menuItemMetaKey,
+  favoriteMenuItemDocIdFn: socialEngagementSupportRuntimeController.favoriteMenuItemDocId,
+  buildFavoriteMenuItemPayloadFn: socialEngagementSupportRuntimeController.buildFavoriteMenuItemPayload,
+  getMenuItemSocialDocRefFn: socialEngagementSupportRuntimeController.getMenuItemSocialDocRef,
+  getMenuItemSocialIdFn: socialEngagementSupportRuntimeController.getMenuItemSocialId,
+  menuItemMetaKeyFn: socialEngagementSupportRuntimeController.menuItemMetaKey,
   getLastCommentKeyFn: () => lastCommentKey,
   setLastCommentKeyFn: (value) => {
     lastCommentKey = String(value || "");
@@ -4725,7 +4393,7 @@ crmRuntimeController = createCrmRuntimeController({
 
 profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   state,
-  resolvePostCountsFn: resolvePostCounts,
+  resolvePostCountsFn: socialEngagementSupportRuntimeController.resolvePostCounts,
   escapeHtmlFn: escapeHtml,
   getOptimizedImageUrlFn: getOptimizedImageUrl,
   iconFn: icon,
@@ -4751,10 +4419,10 @@ profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   isDirectImageUrlFn: isDirectImageUrl,
   formatPriceFn: formatPrice,
   getMenuItemObjectPositionFn: getMenuItemObjectPosition,
-  getMenuItemSocialIdFn: getMenuItemSocialId,
-  menuItemMetaKeyFn: menuItemMetaKey,
-  ensureMenuItemMetaFn: ensureMenuItemMeta,
-  resolveMenuItemCountsFn: resolveMenuItemCounts,
+  getMenuItemSocialIdFn: socialEngagementSupportRuntimeController.getMenuItemSocialId,
+  menuItemMetaKeyFn: socialEngagementSupportRuntimeController.menuItemMetaKey,
+  ensureMenuItemMetaFn: socialEngagementSupportRuntimeController.ensureMenuItemMeta,
+  resolveMenuItemCountsFn: socialEngagementSupportRuntimeController.resolveMenuItemCounts,
   getFocusStateForRestaurantFn: getFocusStateForRestaurant,
   getFocusItemObjectPositionFn: getFocusItemObjectPosition,
   getFocusCardClassFn: getFocusCardClass,
@@ -4886,51 +4554,19 @@ function renderProfileModal() {
 }
 
 function renderCommentItem(postId, comment, parentId = "") {
-  return renderCommentItemCore({
-    postId,
-    comment,
-    parentId,
-    state,
-    normalizeHandle,
-    resolveCommentAvatar,
-    getSelfAvatarUrl,
-    isPlaceholderUrl,
-    scheduleCommentAvatarFetch,
-    placeholderImage: PLACEHOLDER_IMAGE,
-    escapeHtml,
-    formatDateTimeLabel,
-    icon
-  });
+  return getSocialEngagementSupportRuntimeController().renderCommentItem(...arguments);
 }
 
 function renderPostComments(comments) {
-  return renderPostCommentsCore({
-    state,
-    comments,
-    hasLiveComments: typeof modalCommentsUnsub === "function",
-    renderCommentItemFn: renderCommentItem
-  });
+  return getSocialEngagementSupportRuntimeController().renderPostComments(...arguments);
 }
 
 function renderMenuCommentItem(comment) {
-  return renderMenuCommentItemCore({
-    comment,
-    normalizeHandle,
-    resolveCommentAvatar,
-    isPlaceholderUrl,
-    scheduleCommentAvatarFetch,
-    placeholderImage: PLACEHOLDER_IMAGE,
-    escapeHtml,
-    formatDateTimeLabel
-  });
+  return getSocialEngagementSupportRuntimeController().renderMenuCommentItem(...arguments);
 }
 
 function renderMenuDetailComments(comments) {
-  return renderMenuDetailCommentsCore({
-    state,
-    comments,
-    renderMenuCommentItemFn: renderMenuCommentItem
-  });
+  return getSocialEngagementSupportRuntimeController().renderMenuDetailComments(...arguments);
 }
 
 function renderPostModal() {
@@ -5051,86 +4687,31 @@ function renderFocusModal() {
 
 
 function updatePostModalMeta() {
-  if (!state.postModal.open || !state.postModal.post) return;
-  updatePostModalCountsOnly();
-  updatePostModalCommentsOnly();
+  return getSocialEngagementSupportRuntimeController().updatePostModalMeta(...arguments);
 }
 
 function updatePostModalCountsOnly() {
-  return updatePostModalCountsOnlyCore({
-    state,
-    documentObj: typeof document === "undefined" ? null : document,
-    windowObj: typeof window === "undefined" ? null : window,
-    ensurePostMetaFn: ensurePostMeta,
-    currentUserBadgeFn: currentUserBadge,
-    formatCountFn: formatCount,
-    iconFn: icon
-  });
+  return getSocialEngagementSupportRuntimeController().updatePostModalCountsOnly(...arguments);
 }
 
 function updatePostModalCommentsOnly() {
-  return updatePostModalCommentsOnlyCore({
-    state,
-    documentObj: typeof document === "undefined" ? null : document,
-    windowObj: typeof window === "undefined" ? null : window,
-    ensurePostMetaFn: ensurePostMeta,
-    ensureCommentShapeFn: ensureCommentShape,
-    renderPostCommentsFn: renderPostComments,
-    applyCommentAvatarCacheFn: applyCommentAvatarCache,
-    hydrateCommentAvatarsFn: hydrateCommentAvatars,
-    getPendingCommentHighlightFn: () => pendingCommentHighlight,
-    setPendingCommentHighlightFn: (value) => {
-      pendingCommentHighlight = value;
-    },
-    highlightCommentInModalFn: highlightCommentInModal
-  });
+  return getSocialEngagementSupportRuntimeController().updatePostModalCommentsOnly(...arguments);
 }
 
 function updateMenuDetailMeta() {
-  if (!state.menuDetail.open || !state.menuDetail.item) return;
-  updateMenuDetailCountsOnly();
-  updateMenuDetailCommentsOnly();
+  return getSocialEngagementSupportRuntimeController().updateMenuDetailMeta(...arguments);
 }
 
 function updateMenuDetailCountsOnly() {
-  return updateMenuDetailCountsOnlyCore({
-    state,
-    documentObj: typeof document === "undefined" ? null : document,
-    windowObj: typeof window === "undefined" ? null : window,
-    getMenuDetailContextFn: getMenuDetailContext,
-    ensureMenuItemMetaFn: ensureMenuItemMeta,
-    resolveMenuItemCountsFn: resolveMenuItemCounts,
-    currentUserBadgeFn: currentUserBadge,
-    formatCountFn: formatCount,
-    iconFn: icon
-  });
+  return getSocialEngagementSupportRuntimeController().updateMenuDetailCountsOnly(...arguments);
 }
 
 function updateMenuDetailCommentsOnly() {
-  return updateMenuDetailCommentsOnlyCore({
-    state,
-    documentObj: typeof document === "undefined" ? null : document,
-    windowObj: typeof window === "undefined" ? null : window,
-    getMenuDetailContextFn: getMenuDetailContext,
-    ensureMenuItemMetaFn: ensureMenuItemMeta,
-    ensureCommentShapeFn: ensureCommentShape,
-    renderMenuDetailCommentsFn: renderMenuDetailComments,
-    applyCommentAvatarCacheFn: applyCommentAvatarCache
-  });
+  return getSocialEngagementSupportRuntimeController().updateMenuDetailCommentsOnly(...arguments);
 }
 
 function updateCommentLikeButton(postId, commentId, replyId, likeCount) {
-  if (!postId || !commentId) return;
-  const safePost = escapeSelector(postId);
-  const safeComment = escapeSelector(commentId);
-  const selector = `[data-comment-like="true"][data-post-id="${safePost}"][data-comment-id="${safeComment}"]`;
-  const replyKey = replyId ? String(replyId) : "";
-  document.querySelectorAll(selector).forEach((btn) => {
-    const btnReply = btn.getAttribute("data-reply-id") || "";
-    if (replyKey !== btnReply) return;
-    btn.innerHTML = `${icon("heart", "w-3 h-3")} ${escapeHtml(String(likeCount))}`;
-  });
-  if (window.lucide?.createIcons) window.lucide.createIcons();
+  return getSocialEngagementSupportRuntimeController().updateCommentLikeButton(...arguments);
 }
 
 function renderSettingsView() {
@@ -5257,6 +4838,13 @@ function renderOrdersView() {
     formatRelativeFn: formatRelative,
     toDateSafeFn: toDateSafe
   });
+}
+
+function getSocialEngagementSupportRuntimeController() {
+  if (!socialEngagementSupportRuntimeController) {
+    throw new Error("socialEngagementSupportRuntimeController not initialized");
+  }
+  return socialEngagementSupportRuntimeController;
 }
 
 function getShellDomRuntimeController() {
