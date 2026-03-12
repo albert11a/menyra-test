@@ -6,8 +6,7 @@
     { "source": "/staff", "destination": "/staff/", "permanent": false },
     { "source": "/waiter", "destination": "/waiter/", "permanent": false },
     { "source": "/kitchen", "destination": "/kitchen/", "permanent": false },
-    { "source": "/social", "destination": "/social/", "permanent": false },
-    { "source": "/testfirst", "destination": "/testfirst/", "permanent": false }
+    { "source": "/social", "destination": "/social/", "permanent": false }
   ],
   "rewrites": [
     { "source": "/", "has": [{ "type": "host", "value": "ceo.menyra.com" }], "destination": "/apps/menyra-social/index.html?tab=leads" },
@@ -35,6 +34,8 @@
     { "source": "/apps/menyra-owner/:path*", "destination": "/apps/menyra-social/index.html?tab=profile" },
     { "source": "/apps/menyra-staff/:path*", "destination": "/apps/menyra-social/index.html?tab=staff" },
     { "source": "/apps/menyra-restaurants/:path*", "destination": "/apps/menyra-social/index.html" },
+    { "source": "/testfirst", "destination": "/testfirst.html" },
+    { "source": "/testfirst/", "destination": "/testfirst.html" },
     { "source": "/", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" },
@@ -102,13 +103,7 @@
       ]
     },
     {
-      "source": "/testfirst/",
-      "headers": [
-        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
-      ]
-    },
-    {
-      "source": "/testfirst/:path*",
+      "source": "/testfirst.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
