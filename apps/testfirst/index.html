@@ -3,7 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#f8fafc" />
   <title>MNYRA Testfirst</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -70,11 +69,11 @@
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased">
-  <div class="max-w-md mx-auto relative pb-10">
+  <div id="testfirstShell" class="max-w-md mx-auto relative">
     <div id="app"></div>
   </div>
 
-  <div id="notification" class="custom-notification">Aktion ausgeführt</div>
+  <div id="notification" class="custom-notification" hidden>Aktion ausgeführt</div>
 
   <script>
     const TESTFIRST_STORAGE_KEY = "mnyra:testfirst:public-restaurant-business-view:v2";
@@ -107,6 +106,11 @@
               imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80"
             }
           ]
+        },
+        special: {
+          badge: "Special",
+          title: "Summer\nVibes",
+          imageUrl: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=500&q=80"
         },
         menu: {
           loading: false,
@@ -166,11 +170,30 @@
 
     const state = loadState();
 
+    let notificationHideTimer = null;
+    let notificationCleanupTimer = null;
+
     function showNotification(text) {
       const el = document.getElementById("notification");
+      if (!el) return;
+
+      window.clearTimeout(notificationHideTimer);
+      window.clearTimeout(notificationCleanupTimer);
+
       el.innerText = text;
+      el.hidden = false;
+      el.classList.remove("show");
+      void el.offsetWidth;
       el.classList.add("show");
-      setTimeout(() => el.classList.remove("show"), 2000);
+
+      notificationHideTimer = window.setTimeout(() => {
+        el.classList.remove("show");
+        notificationCleanupTimer = window.setTimeout(() => {
+          if (!el.classList.contains("show")) {
+            el.hidden = true;
+          }
+        }, 300);
+      }, 2000);
     }
 
     function escapeHtml(value = "") {
@@ -304,6 +327,11 @@
             imageUrl: String(item.imageUrl || "")
           }))
         },
+        special: {
+          badge: String(state.special.badge || ""),
+          title: String(state.special.title || ""),
+          imageUrl: String(state.special.imageUrl || "")
+        },
         menu: {
           activeType: state.menu.activeType === "food" ? "food" : "drink",
           activeCategory: String(state.menu.activeCategory || ""),
@@ -366,6 +394,14 @@
       };
     }
 
+    function normalizePersistedSpecial(raw = {}, fallback = {}) {
+      return {
+        badge: String(raw.badge || fallback.badge || "Special"),
+        title: String(raw.title || fallback.title || "Summer\nVibes"),
+        imageUrl: String(raw.imageUrl || fallback.imageUrl || "")
+      };
+    }
+
     function loadState() {
       const nextState = createSeedState();
       try {
@@ -389,6 +425,9 @@
         if (parsed?.focus && Array.isArray(parsed.focus.items)) {
           nextState.focus.enabled = typeof parsed.focus.enabled === "boolean" ? parsed.focus.enabled : nextState.focus.enabled;
           nextState.focus.items = parsed.focus.items.map((item, index) => normalizePersistedFocusItem(item, nextState.focus.items[index] || {}));
+        }
+        if (parsed?.special) {
+          nextState.special = normalizePersistedSpecial(parsed.special, nextState.special);
         }
         if (parsed?.menu && Array.isArray(parsed.menu.items)) {
           nextState.menu.items = parsed.menu.items.map((item, index) => normalizePersistedMenuItem(item, nextState.menu.items[index] || {}));
@@ -499,24 +538,40 @@
       `;
     }
 
-    function renderMenuCategories(categories, menuType) {
+    function renderMenuCategoryRow(categories, menuType) {
       return `
-        <div class="menu-type-sticky sticky top-0 z-[40] bg-slate-50 border-b border-slate-200 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
+        <div class="menu-type-row" data-menu-type-row="${escapeHtml(menuType)}">
           <div class="py-3">
             <div class="flex gap-2.5 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-1">
-            ${categories.map(cat => {
-              const isActive = state.menu.activeType === menuType && state.menu.activeCategory === cat;
-              return `
-                <button data-category="${escapeHtml(cat)}" data-menu-type="${escapeHtml(menuType)}" class="category-pill snap-start whitespace-nowrap px-4 py-2.5 rounded-[1.2rem] text-[13px] font-bold transition-colors duration-300 flex items-center gap-2 border ${
-                  isActive ? "bg-slate-800 text-white border-slate-800 shadow-sm" : "bg-white text-slate-500 border-slate-200 shadow-sm hover:bg-slate-50"
-                }">
-                  ${icon(getCategoryIcon(cat), `w-4 h-4 transition-colors ${isActive ? "text-white" : "text-slate-500"}`)}
-                  ${escapeHtml(cat)}
-                </button>
-              `;
-            }).join("")}
+              ${categories.map(cat => {
+                const isActive = state.menu.activeType === menuType && state.menu.activeCategory === cat;
+                return `
+                  <button data-category="${escapeHtml(cat)}" data-menu-type="${escapeHtml(menuType)}" class="category-pill snap-start whitespace-nowrap px-4 py-2.5 rounded-[1.2rem] text-[13px] font-bold flex items-center gap-2 border ${
+                    isActive ? "bg-slate-800 text-white border-slate-800 shadow-sm" : "bg-white text-slate-500 border-slate-200 shadow-sm hover:bg-slate-50"
+                  }">
+                    ${icon(getCategoryIcon(cat), `w-4 h-4 ${isActive ? "text-white" : "text-slate-500"}`)}
+                    ${escapeHtml(cat)}
+                  </button>
+                `;
+              }).join("")}
             </div>
           </div>
+        </div>
+      `;
+    }
+
+    function renderMenuTypeStickyHeader(categories, menuType) {
+      return `
+        <div class="menu-type-sticky sticky top-0 z-[40] bg-slate-50 border-b border-slate-200" data-menu-type-sticky="${escapeHtml(menuType)}">
+          ${renderMenuCategoryRow(categories, menuType)}
+        </div>
+      `;
+    }
+
+    function renderMenuTypeBlock(categories, menuType) {
+      return `
+        <div class="bg-slate-50 border-b border-slate-200" data-menu-type-block-header="${escapeHtml(menuType)}">
+          ${renderMenuCategoryRow(categories, menuType)}
         </div>
       `;
     }
@@ -585,16 +640,20 @@
     }
 
     function renderPromoCard() {
+      const special = state.special || {};
+      const safeImg = getSafeImage(special.imageUrl);
+      const badgeLabel = String(special.badge || "Special").trim() || "Special";
+      const titleHtml = escapeHtml(String(special.title || "Summer\nVibes")).replace(/\n/g, "<br>");
       return `
         <div class="bg-slate-900 p-1.5 rounded-[1.8rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col relative overflow-hidden h-full group">
-          <img src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=500&q=80" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" />
+          <img src="${escapeHtml(safeImg)}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
           <div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
             <div>
-              <span class="bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mb-1.5 inline-block shadow-sm">Special</span>
-              <h4 class="text-white text-[14px] font-black leading-tight drop-shadow-md">Summer<br>Vibes</h4>
+              <span class="bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mb-1.5 inline-block shadow-sm">${escapeHtml(badgeLabel)}</span>
+              <h4 class="text-white text-[14px] font-black leading-tight drop-shadow-md">${titleHtml}</h4>
             </div>
-            <button data-action="notify" data-message="Promo geöffnet" class="w-8 h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-colors">
+            <button data-action="notify" data-message="Special geöffnet" class="w-8 h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-colors">
               ${icon("arrow-right", "w-4 h-4")}
             </button>
           </div>
@@ -670,8 +729,8 @@
       let foodsHtml = "";
 
       if (drinkItems.length > 0) {
-        drinksHtml += `<section class="menu-type-block relative z-20">`;
-        drinksHtml += renderMenuCategories(drinkCategories, "drink");
+        drinksHtml += `<section class="menu-type-block relative" data-menu-type-block="drink">`;
+        drinksHtml += renderMenuTypeStickyHeader(drinkCategories, "drink");
         drinkCategories.forEach(cat => {
           const catItems = drinkItems.filter(i => i.category === cat);
           if (catItems.length === 0) return;
@@ -689,8 +748,8 @@
       }
 
       if (foodItems.length > 0) {
-        foodsHtml += `<section class="menu-type-block relative z-30">`;
-        foodsHtml += renderMenuCategories(foodCategories, "food");
+        foodsHtml += `<section class="menu-type-block relative" data-menu-type-block="food">`;
+        foodsHtml += renderMenuTypeBlock(foodCategories, "food");
         foodCategories.forEach(cat => {
           const catItems = foodItems.filter(i => i.category === cat);
           if (catItems.length === 0) return;
@@ -704,7 +763,7 @@
       return `
         <div>
           ${renderFocusCarouselAppStyle(profile)}
-          <div id="menu-section" class="space-y-2">
+          <div id="menu-section">
             ${drinksHtml}
             ${foodsHtml}
           </div>
@@ -727,6 +786,33 @@
           <span class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${escapeHtml(label)}</span>
           <textarea rows="${rows}" class="w-full bg-white border border-slate-200 rounded-[1.2rem] px-4 py-3 text-[14px] font-semibold text-slate-900 outline-none focus:border-slate-400 resize-y" ${dataset}>${escapeHtml(String(value ?? ""))}</textarea>
         </label>
+      `;
+    }
+
+    function renderImageUploadEditor({ value = "", title = "Bild", text = "Lokal hochladen oder per URL ersetzen.", inputDataset = "", triggerDataset = "", emptyLabel = "Bild" } = {}) {
+      const safeImg = getSafeImage(value);
+      const showPreview = !isPlaceholderUrl(value);
+      return `
+        <input type="file" class="hidden" accept="image/*" ${inputDataset} />
+        <div class="flex items-center gap-4 p-4 bg-white rounded-[1.4rem] border border-slate-200">
+          <div class="w-20 h-20 rounded-[1.2rem] overflow-hidden bg-slate-100 shrink-0">
+            ${showPreview
+              ? `<img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover" />`
+              : `<div class="w-full h-full flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-400">${escapeHtml(emptyLabel)}</div>`
+            }
+          </div>
+          <div class="min-w-0 flex-1">
+            <p class="text-[13px] font-black uppercase tracking-widest text-slate-900">${escapeHtml(title)}</p>
+            <p class="text-[12px] text-slate-500 mt-1 leading-relaxed">${escapeHtml(text)}</p>
+            ${isDataUrl(value)
+              ? `<p class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mt-2">Lokales Bild aktiv</p>`
+              : ""
+            }
+            <button type="button" ${triggerDataset} class="mt-3 inline-flex items-center px-4 py-2.5 rounded-[1rem] bg-slate-900 text-white text-[11px] font-black uppercase tracking-widest shadow-sm hover:bg-slate-800 transition-colors">
+              Bild hochladen
+            </button>
+          </div>
+        </div>
       `;
     }
 
@@ -824,6 +910,28 @@
       `;
     }
 
+    function renderSpecialEditor() {
+      const special = state.special || {};
+      return `
+        <div class="bg-white rounded-[2rem] border border-slate-100 shadow-sm p-5">
+          ${renderSettingsHeader("Special-Karte", "Steuert die feste Special-Karte im Getraenke-Bereich. Bild und Texte bleiben lokal editierbar.")}
+          <div class="space-y-4">
+            ${renderImageUploadEditor({
+              value: special.imageUrl,
+              title: "Special-Bild",
+              text: "Lokal hochladen oder per URL ersetzen.",
+              inputDataset: 'data-special-image-input="true"',
+              triggerDataset: 'data-trigger-special-image="true"',
+              emptyLabel: "Special"
+            })}
+            ${renderEditorInput("Badge", 'data-special-field="badge"', special.badge)}
+            ${renderEditorTextarea("Titel", 'data-special-field="title"', special.title, 2)}
+            ${renderEditorInput("Bild-URL", 'data-special-field="imageUrl"', isDataUrl(special.imageUrl) ? "" : special.imageUrl, "url")}
+          </div>
+        </div>
+      `;
+    }
+
     function renderMenuTypeSelect(item) {
       return `
         <label class="block">
@@ -876,7 +984,15 @@
               ${renderEditorInput("Kategorie", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="category"`, item.category)}
             </div>
             ${renderEditorTextarea("Beschreibung", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="description"`, item.description, 3)}
-            ${renderEditorInput("Bild-URL", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="imageUrl"`, item.imageUrl, "url")}
+            ${renderImageUploadEditor({
+              value: item.imageUrl,
+              title: `${typeLabel}-Bild`,
+              text: "Lokal hochladen oder per URL ersetzen.",
+              inputDataset: `data-menu-image-input="${escapeHtml(item.id)}"`,
+              triggerDataset: `data-trigger-menu-image="${escapeHtml(item.id)}"`,
+              emptyLabel: typeLabel
+            })}
+            ${renderEditorInput("Bild-URL", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="imageUrl"`, isDataUrl(item.imageUrl) ? "" : item.imageUrl, "url")}
             ${renderMenuAvailabilityToggle(item)}
             <div class="grid grid-cols-2 gap-3">
               ${renderEditorInput("Likes", `data-menu-id="${escapeHtml(item.id)}" data-menu-field="likesCount"`, item.likesCount, "number", 'step="1" min="0"')}
@@ -938,6 +1054,7 @@
           </div>
           ${renderRestaurantBasicsEditor(profile)}
           ${renderFocusEditor()}
+          ${renderSpecialEditor()}
           ${renderMenuEditor()}
         </div>
       `;
@@ -950,7 +1067,7 @@
       const topTab = state.profileTopTab === "settings" ? "settings" : "menu";
 
       return `
-        <div class="app-main-content-safe">
+        <div>
           ${renderSocialHeader(profile)}
           ${renderBusinessTopSwitch()}
           ${topTab === "settings" ? renderSettingsView() : renderProfileMenuView(profile)}
@@ -958,67 +1075,153 @@
       `;
     }
 
+    function getPinnedMenuBlockElement() {
+      const block = document.querySelector('[data-menu-type-block-header="food"]');
+      if (!(block instanceof HTMLElement)) return null;
+      return block.dataset.pinned === "true" ? block : null;
+    }
+
+    function resetPinnedMenuTypeBlock(block, section) {
+      if (section instanceof HTMLElement) {
+        section.style.paddingTop = "";
+      }
+      if (!(block instanceof HTMLElement)) return;
+
+      block.dataset.pinned = "false";
+      block.style.position = "";
+      block.style.top = "";
+      block.style.left = "";
+      block.style.width = "";
+      block.style.zIndex = "";
+    }
+
+    function syncPinnedMenuTypeBlock() {
+      const block = document.querySelector('[data-menu-type-block-header="food"]');
+      const section = block?.closest('.menu-type-block');
+      const shell = document.getElementById("testfirstShell");
+
+      if (!(block instanceof HTMLElement) || !(section instanceof HTMLElement) || !(shell instanceof HTMLElement)) {
+        resetPinnedMenuTypeBlock(block, section);
+        return;
+      }
+
+      const blockRect = block.getBoundingClientRect();
+      const sectionRect = section.getBoundingClientRect();
+      const blockHeight = Math.ceil(blockRect.height || block.offsetHeight || 0);
+      const shouldPin = sectionRect.top <= 0 && sectionRect.bottom > blockHeight;
+
+      if (shouldPin) {
+        const shellRect = shell.getBoundingClientRect();
+        section.style.paddingTop = `${blockHeight}px`;
+        block.dataset.pinned = "true";
+        block.style.position = "fixed";
+        block.style.top = "0";
+        block.style.left = `${shellRect.left}px`;
+        block.style.width = `${shellRect.width}px`;
+        block.style.zIndex = "40";
+        return;
+      }
+
+      resetPinnedMenuTypeBlock(block, section);
+    }
+
     function getCurrentStickyHeaderBottom() {
-      const headers = [...document.querySelectorAll(".menu-type-sticky")];
-      let activeHeader = null;
-      headers.forEach((header) => {
+      let currentBottom = 0;
+
+      document.querySelectorAll(".menu-type-sticky").forEach((header) => {
         const rect = header.getBoundingClientRect();
         if (rect.top <= 1 && rect.bottom > 0) {
-          activeHeader = header;
+          currentBottom = Math.max(currentBottom, rect.bottom);
         }
       });
-      return activeHeader ? Math.max(0, activeHeader.getBoundingClientRect().bottom) : 0;
+
+      const pinnedBlock = getPinnedMenuBlockElement();
+      if (pinnedBlock instanceof HTMLElement) {
+        const rect = pinnedBlock.getBoundingClientRect();
+        if (rect.bottom > 0) {
+          currentBottom = Math.max(currentBottom, rect.bottom);
+        }
+      }
+
+      return currentBottom;
+    }
+
+    function getStickyHeaderForSection(section) {
+      if (section?.dataset.menuType === "food") {
+        return getPinnedMenuBlockElement() || document.querySelector('[data-menu-type-sticky="drink"]');
+      }
+
+      return document.querySelector('[data-menu-type-sticky="drink"]');
     }
 
     function getCategoryScrollOffset(section) {
-      const header = section?.closest(".menu-type-block")?.querySelector(".menu-type-sticky");
+      const header = getStickyHeaderForSection(section);
       return Math.ceil(header?.offsetHeight || 0) + 8;
     }
 
-    function updateActivePillDOM(currentCategory, currentType = state.menu.activeType) {
+    function scrollCategoryPillIntoRow(pill, behavior = "auto") {
+      const row = pill?.parentElement;
+      if (!(row instanceof HTMLElement)) return;
+
+      const rowRect = row.getBoundingClientRect();
+      const pillRect = pill.getBoundingClientRect();
+      const safePadding = 20;
+      const visibleLeft = rowRect.left + safePadding;
+      const visibleRight = rowRect.right - safePadding;
+      const isFullyVisible = pillRect.left >= visibleLeft && pillRect.right <= visibleRight;
+      if (isFullyVisible) return;
+
+      const desiredLeft = row.scrollLeft + (pillRect.left - rowRect.left) - ((row.clientWidth - pillRect.width) / 2);
+      const maxScrollLeft = Math.max(0, row.scrollWidth - row.clientWidth);
+      const nextLeft = Math.max(0, Math.min(maxScrollLeft, desiredLeft));
+      row.scrollTo({ left: nextLeft, behavior });
+    }
+
+    function updateActivePillDOM(currentCategory, currentType = state.menu.activeType, pillScrollBehavior = "auto") {
       if (!currentCategory) return;
       const normalizedType = currentType === "food" ? "food" : "drink";
-      if (state.menu.activeCategory === currentCategory && state.menu.activeType === normalizedType) return;
+      const isAlreadyActive = state.menu.activeCategory === currentCategory && state.menu.activeType === normalizedType;
       state.menu.activeType = normalizedType;
       state.menu.activeCategory = currentCategory;
 
-      document.querySelectorAll(".category-pill").forEach((pill) => {
-        const cat = pill.dataset.category;
-        const pillType = pill.dataset.menuType === "food" ? "food" : "drink";
-        const isActive = cat === currentCategory && pillType === normalizedType;
-        const svgEl = pill.querySelector(".lucide");
+      if (!isAlreadyActive) {
+        document.querySelectorAll(".category-pill").forEach((pill) => {
+          const cat = pill.dataset.category;
+          const pillType = pill.dataset.menuType === "food" ? "food" : "drink";
+          const isActive = cat === currentCategory && pillType === normalizedType;
+          const svgEl = pill.querySelector(".lucide");
 
-        if (isActive) {
-          pill.className = "category-pill snap-start whitespace-nowrap px-4 py-2.5 rounded-[1.2rem] text-[13px] font-bold transition-colors duration-300 flex items-center gap-2 border bg-slate-800 text-white border-slate-800 shadow-sm";
-          if (svgEl) {
-            svgEl.classList.remove("text-slate-500");
-            svgEl.classList.add("text-white");
+          if (isActive) {
+            pill.className = "category-pill snap-start whitespace-nowrap px-4 py-2.5 rounded-[1.2rem] text-[13px] font-bold flex items-center gap-2 border bg-slate-800 text-white border-slate-800 shadow-sm";
+            if (svgEl) {
+              svgEl.classList.remove("text-slate-500");
+              svgEl.classList.add("text-white");
+            }
+          } else {
+            pill.className = "category-pill snap-start whitespace-nowrap px-4 py-2.5 rounded-[1.2rem] text-[13px] font-bold flex items-center gap-2 border bg-white text-slate-500 border-slate-200 shadow-sm hover:bg-slate-50";
+            if (svgEl) {
+              svgEl.classList.remove("text-white");
+              svgEl.classList.add("text-slate-500");
+            }
           }
-        } else {
-          pill.className = "category-pill snap-start whitespace-nowrap px-4 py-2.5 rounded-[1.2rem] text-[13px] font-bold transition-colors duration-300 flex items-center gap-2 border bg-white text-slate-500 border-slate-200 shadow-sm hover:bg-slate-50";
-          if (svgEl) {
-            svgEl.classList.remove("text-white");
-            svgEl.classList.add("text-slate-500");
-          }
-        }
-      });
+        });
+      }
 
       const selectorValue = window.CSS?.escape ? window.CSS.escape(currentCategory) : currentCategory.replace(/"/g, '\\"');
-      const activePill = document.querySelector(`.category-pill[data-menu-type="${normalizedType}"][data-category="${selectorValue}"]`);
-      if (activePill) {
-        activePill.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-      }
+      document.querySelectorAll(`.category-pill[data-menu-type="${normalizedType}"][data-category="${selectorValue}"]`).forEach((pill) => {
+        scrollCategoryPillIntoRow(pill, pillScrollBehavior);
+      });
     }
 
     let isScrolling = false;
     function handleScroll() {
       if (state.profileTopTab !== "menu" || state.isProgrammaticScroll) return;
-
       if (!isScrolling) {
         window.requestAnimationFrame(() => {
+          syncPinnedMenuTypeBlock();
           const sections = document.querySelectorAll(".menu-category-section");
           let currentCategory = state.menu.activeCategory;
-          let currentType = state.menu.activeType;
+          let currentType = getPinnedMenuBlockElement() ? "food" : state.menu.activeType;
           const scanLine = getCurrentStickyHeaderBottom() + CATEGORY_SCAN_PADDING;
 
           sections.forEach(sec => {
@@ -1084,6 +1287,34 @@
       }
     }
 
+    async function handleSpecialImageUpload(file) {
+      if (!file) return;
+      try {
+        const nextImage = await optimizeImageForStorage(file);
+        state.special.imageUrl = nextImage;
+        const saved = persistState();
+        render();
+        showNotification(saved ? "Special-Bild aktualisiert" : "Special-Bild gesetzt, aber localStorage ist voll");
+      } catch {
+        showNotification("Special-Bild konnte nicht geladen werden");
+      }
+    }
+
+    async function handleMenuImageUpload(id, file) {
+      if (!id || !file) return;
+      const item = state.menu.items.find((entry) => entry.id === id);
+      if (!item) return;
+      try {
+        const nextImage = await optimizeImageForStorage(file);
+        item.imageUrl = nextImage;
+        const saved = persistState();
+        render();
+        showNotification(saved ? "Menübild aktualisiert" : "Menübild gesetzt, aber localStorage ist voll");
+      } catch {
+        showNotification("Menübild konnte nicht geladen werden");
+      }
+    }
+
     function createFocusItem() {
       return {
         id: createId("focus"),
@@ -1129,6 +1360,11 @@
       item[field] = String(value || "");
     }
 
+    function updateSpecialField(field, value) {
+      if (!state.special) return;
+      state.special[field] = String(value || "");
+    }
+
     function updateMenuField(id, field, value) {
       const item = state.menu.items.find((entry) => entry.id === id);
       if (!item) return;
@@ -1165,6 +1401,12 @@
         persistState();
         return;
       }
+      const specialField = target.dataset.specialField;
+      if (specialField) {
+        updateSpecialField(specialField, readFieldValue(target));
+        persistState();
+        return;
+      }
       const menuId = target.dataset.menuId;
       const menuField = target.dataset.menuField;
       if (menuId && menuField) {
@@ -1176,6 +1418,10 @@
 
     function setupGlobalEvents() {
       window.addEventListener("scroll", handleScroll, { passive: true });
+      window.addEventListener("resize", () => {
+        if (state.profileTopTab !== "menu") return;
+        handleScroll();
+      });
 
       const app = document.getElementById("app");
       app.addEventListener("click", (e) => {
@@ -1193,6 +1439,19 @@
           return;
         }
 
+        const specialImageTrigger = e.target.closest("[data-trigger-special-image]");
+        if (specialImageTrigger) {
+          app.querySelector('[data-special-image-input="true"]')?.click();
+          return;
+        }
+
+        const menuImageTrigger = e.target.closest("[data-trigger-menu-image]");
+        if (menuImageTrigger) {
+          const itemId = menuImageTrigger.dataset.triggerMenuImage;
+          app.querySelector(`[data-menu-image-input="${itemId}"]`)?.click();
+          return;
+        }
+
         const catBtn = e.target.closest("[data-category]");
         if (catBtn) {
           const cat = catBtn.dataset.category;
@@ -1200,11 +1459,14 @@
           const section = document.getElementById(getSectionId(menuType, cat));
           if (section) {
             state.isProgrammaticScroll = true;
-            updateActivePillDOM(cat, menuType);
+            updateActivePillDOM(cat, menuType, "smooth");
             persistState();
             const y = section.getBoundingClientRect().top + window.scrollY - getCategoryScrollOffset(section);
             window.scrollTo({ top: y, behavior: "smooth" });
-            setTimeout(() => { state.isProgrammaticScroll = false; }, 800);
+            setTimeout(() => {
+              state.isProgrammaticScroll = false;
+              handleScroll();
+            }, 800);
           }
           return;
         }
@@ -1269,6 +1531,16 @@
           target.value = "";
           return;
         }
+        if (target instanceof HTMLInputElement && target.dataset.specialImageInput) {
+          await handleSpecialImageUpload(target.files?.[0]);
+          target.value = "";
+          return;
+        }
+        if (target instanceof HTMLInputElement && target.dataset.menuImageInput) {
+          await handleMenuImageUpload(target.dataset.menuImageInput, target.files?.[0]);
+          target.value = "";
+          return;
+        }
         bindEditorUpdates(target);
       });
     }
@@ -1280,6 +1552,7 @@
 
       if (state.profileTopTab === "menu") {
         setTimeout(() => {
+          syncPinnedMenuTypeBlock();
           updateActivePillDOM(state.menu.activeCategory, state.menu.activeType);
           handleScroll();
         }, 50);
