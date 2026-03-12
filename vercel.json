@@ -6,7 +6,8 @@
     { "source": "/staff", "destination": "/staff/", "permanent": false },
     { "source": "/waiter", "destination": "/waiter/", "permanent": false },
     { "source": "/kitchen", "destination": "/kitchen/", "permanent": false },
-    { "source": "/social", "destination": "/social/", "permanent": false }
+    { "source": "/social", "destination": "/social/", "permanent": false },
+    { "source": "/testfirst", "destination": "/testfirst/", "permanent": false }
   ],
   "rewrites": [
     { "source": "/", "has": [{ "type": "host", "value": "ceo.menyra.com" }], "destination": "/apps/menyra-social/index.html?tab=leads" },
@@ -96,6 +97,18 @@
     },
     {
       "source": "/hub/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/testfirst/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/testfirst/:path*",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
