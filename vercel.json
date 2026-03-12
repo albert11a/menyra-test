@@ -34,8 +34,8 @@
     { "source": "/apps/menyra-owner/:path*", "destination": "/apps/menyra-social/index.html?tab=profile" },
     { "source": "/apps/menyra-staff/:path*", "destination": "/apps/menyra-social/index.html?tab=staff" },
     { "source": "/apps/menyra-restaurants/:path*", "destination": "/apps/menyra-social/index.html" },
-    { "source": "/testfirst", "destination": "/testfirst.html" },
-    { "source": "/testfirst/", "destination": "/testfirst.html" },
+    { "source": "/testfirst", "destination": "/apps/testfirst/index.html" },
+    { "source": "/testfirst/", "destination": "/apps/testfirst/index.html" },
     { "source": "/", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/", "destination": "/apps/menyra-social/index.html" },
     { "source": "/social/:path*", "destination": "/apps/menyra-social/:path*" },
@@ -103,7 +103,7 @@
       ]
     },
     {
-      "source": "/testfirst.html",
+      "source": "/apps/testfirst/index.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
