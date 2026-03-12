@@ -502,10 +502,7 @@
     function renderMenuCategories(categories, menuType) {
       return `
         <div class="menu-type-sticky sticky top-0 z-[40] bg-slate-50/95 border-b border-slate-200/70 backdrop-blur-md shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
-          <div class="pt-4 pb-3">
-            <div class="px-5 mb-3">
-              <h2 class="text-[22px] font-black italic tracking-tighter leading-none text-slate-900">${getMenuTypeLabel(menuType)}</h2>
-            </div>
+          <div class="py-3">
             <div class="flex gap-2.5 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-1">
             ${categories.map(cat => {
               const isActive = state.menu.activeType === menuType && state.menu.activeCategory === cat;
