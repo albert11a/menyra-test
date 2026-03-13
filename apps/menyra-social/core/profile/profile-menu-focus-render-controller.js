@@ -1,3 +1,5 @@
+import { normalizeMenuCardStyleCore } from "../menu/menu-card-style-utils.js";
+
 export function createProfileMenuFocusRenderController(deps = {}) {
   const state = deps.state;
   const resolvePostCounts = deps.resolvePostCountsFn;
@@ -25,6 +27,7 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const getFirebaseStorageUrl = deps.getFirebaseStorageUrlFn;
   const isDirectImageUrl = deps.isDirectImageUrlFn;
   const formatPrice = deps.formatPriceFn;
+  const getMenuItemImages = deps.getMenuItemImagesFn;
   const getMenuItemObjectPosition = deps.getMenuItemObjectPositionFn;
   const getMenuItemSocialId = deps.getMenuItemSocialIdFn;
   const menuItemMetaKey = deps.menuItemMetaKeyFn;
@@ -35,6 +38,9 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const getFocusCardClass = deps.getFocusCardClassFn;
   const getFocusIndex = deps.getFocusIndexFn;
   const isRestaurantCafeProfile = deps.isRestaurantCafeProfileFn;
+  const getBusinessProfileType = typeof deps.getBusinessProfileTypeFn === "function"
+    ? deps.getBusinessProfileTypeFn
+    : (() => "");
   const getRestaurantMetaById = deps.getRestaurantMetaByIdFn;
   const buildUrl = deps.buildUrlFn;
   const normalizeSearchKey = deps.normalizeSearchKeyFn;
@@ -330,6 +336,62 @@ function getFilteredMenuItems(items, { filter = "all", query = "" } = {}) {
   });
 }
 
+function normalizeMenuOrderIndex(value, fallback = 0) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return Math.max(0, Number(fallback) || 0);
+  return Math.max(0, Math.floor(numeric));
+}
+
+function sortMenuItemsByOrder(items = []) {
+  const list = Array.isArray(items) ? items.slice() : [];
+  return list
+    .map((item, idx) => ({
+      item,
+      idx,
+      order: normalizeMenuOrderIndex(item?.orderIndex, idx)
+    }))
+    .sort((a, b) => (a.order - b.order) || (a.idx - b.idx))
+    .map((wrapped, idx) => ({
+      ...wrapped.item,
+      orderIndex: normalizeMenuOrderIndex(wrapped.item?.orderIndex, idx)
+    }));
+}
+
+function isMenuItemHidden(item = {}) {
+  return item?.hidden === true
+    || item?.visible === false
+    || String(item?.visibility || "").trim().toLowerCase() === "hidden";
+}
+
+function resolveMenuDisplaySection(item = {}) {
+  const raw = String(item?.menuSection || item?.displaySection || item?.menuPlacement || "").trim().toLowerCase();
+  if (raw === "drink") return "drink";
+  if (raw === "food") return "food";
+  return normalizeMenuType(item?.type || "food") === "drink" ? "drink" : "food";
+}
+
+function resolveSpecialCardSize(item = {}) {
+  return String(item?.specialSize || item?.specialCardSize || "").trim().toLowerCase() === "food"
+    ? "food"
+    : "default";
+}
+
+function normalizeSpecialLinkUrl(value = "") {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+  return `https://${raw.replace(/^\/+/, "")}`;
+}
+
+function resolveSpecialCardAction(item = {}) {
+  const typeRaw = String(item?.specialActionType || item?.actionType || "").trim().toLowerCase();
+  const url = normalizeSpecialLinkUrl(item?.specialActionUrl || item?.linkUrl || item?.actionUrl || "");
+  const productId = String(item?.specialActionProductId || item?.targetProductId || "").trim();
+  if (typeRaw === "link" && url) return { type: "link", url, productId: "" };
+  if (typeRaw === "product" && productId) return { type: "product", url: "", productId };
+  return { type: "self", url: "", productId: "" };
+}
+
 function renderMenuFilterRow() {
   const filter = state.menu.filter || "all";
   const isShop = isShopCatalogProfile(state.userProfile);
@@ -395,9 +457,11 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
     : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.description || "";
-  const availability = item.available === false
-    ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
-    : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`;
+  const availability = isMenuItemHidden(item)
+    ? `<span class="text-[9px] font-black uppercase tracking-widest text-rose-500">Ausgeblendet</span>`
+    : (item.available === false
+      ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
+      : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`);
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -442,9 +506,11 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
     : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.description || "";
-  const availability = item.available === false
-    ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
-    : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`;
+  const availability = isMenuItemHidden(item)
+    ? `<span class="text-[9px] font-black uppercase tracking-widest text-rose-500">Ausgeblendet</span>`
+    : (item.available === false
+      ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
+      : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`);
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -497,8 +563,405 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
   `;
 }
 
-function renderMenuDrinkGrid(items, { mode = "profile" } = {}) {
+function isTestfirstMenuProfile(profile = {}) {
+  if (!profile?.restaurantId) return false;
+  if (isShopCatalogProfile(profile)) return false;
+  const businessType = String(getBusinessProfileType(profile) || "").trim().toLowerCase();
+  return businessType === "restaurant" || businessType === "cafe" || businessType === "fastfood";
+}
+
+function getMenuCardSocialMeta(item) {
+  const restaurantId = state.menu.restaurantId
+    || state.profileView?.profile?.restaurantId
+    || state.userProfile.restaurantId
+    || "";
+  const itemId = getMenuItemSocialId(item);
+  const metaKey = menuItemMetaKey(restaurantId, itemId);
+  const meta = metaKey ? ensureMenuItemMeta(metaKey) : { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+  return {
+    itemId,
+    meta,
+    counts: resolveMenuItemCounts(meta)
+  };
+}
+
+function getMenuCardGalleryImages(item) {
+  const list = typeof getMenuItemImages === "function" ? getMenuItemImages(item) : [];
+  const gallery = Array.isArray(list) ? list.filter(Boolean) : [];
+  if (gallery.length) return gallery;
+  const hero = resolveMenuItemHero(item);
+  return hero ? [hero] : [];
+}
+
+function resolveMenuCardStyle(item) {
+  return normalizeMenuCardStyleCore(item?.cardStyle || "", normalizeMenuType(item?.type || "food"));
+}
+
+function buildFocusCardItem(item, { menuItemId = "" } = {}) {
+  if (!item) return null;
+  return {
+    id: item.id || "",
+    title: item.name || item.title || "Sot ne Fokus",
+    text: item.description || item.text || "",
+    imageUrl: resolveMenuItemHero(item) || item.imageUrl || "",
+    objectPosition: item.objectPosition || getMenuItemObjectPosition(item),
+    menuItemId: String(menuItemId || "").trim()
+  };
+}
+
+function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile" } = {}) {
+  const restaurantId = profile?.restaurantId || "";
+  if (!restaurantId || !isTestfirstMenuProfile(profile) || !focusItems.length) return "";
+  return `
+    <div class="pt-2 pb-4">
+      <div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x horizontal-safe-scroll pb-4">
+        ${focusItems.map((item) => {
+          const rawImg = item.imageUrl || "";
+          const imgUrl = getOptimizedImageUrl(rawImg, "large");
+          const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
+          const firebaseFallback = getFirebaseStorageUrl(rawImg);
+          const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+          const menuItemId = String(item.menuItemId || "").trim();
+          const wrapperAttrs = mode === "profile" && menuItemId
+            ? `data-menu-open="${escapeHtml(menuItemId)}" role="button"`
+            : "";
+          return `
+            <div ${wrapperAttrs} class="min-w-[85%] sm:min-w-[300px] snap-center bg-white rounded-[2rem] p-2.5 border border-slate-100 flex flex-col group relative mb-2 ${wrapperAttrs ? "cursor-pointer" : ""}" style="box-shadow:0 4px 14px rgba(0,0,0,0.03);">
+              <div class="w-full aspect-[16/9] rounded-[1.5rem] overflow-hidden bg-slate-100 relative" style="aspect-ratio:16 / 9;">
+                <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${item.objectPosition || "50% 50%"};" />
+                <div class="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5 border border-white/50">
+                  ${icon("sparkles", "w-3 h-3 text-amber-500")}
+                  <span class="text-[10px] font-black text-slate-900 uppercase tracking-widest pt-[1px]">Tipp</span>
+                </div>
+              </div>
+              <div class="px-2 py-4">
+                <h3 class="text-[17px] font-black text-slate-900 leading-tight">${escapeHtml(item.title || "")}</h3>
+                <p class="text-[13px] text-slate-500 mt-2 line-clamp-2 leading-relaxed">${escapeHtml(item.text || "")}</p>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderTestfirstDrinkGridCard(item, { mode = "profile" } = {}) {
+  const rawImg = resolveMenuItemHero(item);
+  const imgSrc = getOptimizedImageUrl(rawImg, "thumb");
+  const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+  const firebaseFallback = getFirebaseStorageUrl(rawImg);
+  const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+  const priceLabel = formatPrice(item.price);
+  const isAvailable = item.available !== false;
+  const wrapperAttrs = mode === "profile"
+    ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
+    : "";
+  const { itemId, counts } = getMenuCardSocialMeta(item);
+  return `
+    <div ${wrapperAttrs} class="bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative ${mode === "profile" ? "cursor-pointer" : ""}">
+      <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
+        <button
+          type="button"
+          data-menu-card-like="${escapeHtml(item.id)}"
+          class="absolute top-2 right-2 w-7 h-7 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:scale-110 transition-all shadow-sm z-10"
+          aria-label="Like"
+        >
+          ${icon("heart", "w-3.5 h-3.5 fill-current opacity-80")}
+        </button>
+      </div>
+      <div class="px-1.5 pb-1 flex flex-col flex-1">
+        <div class="flex items-start justify-between gap-2 mb-1">
+          <h4 class="text-[14px] font-black text-slate-900 leading-tight">${escapeHtml(item.name || "")}</h4>
+          ${isAvailable
+            ? `<span class="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">Verfuegbar</span>`
+            : `<span class="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-1 rounded-full">Aus</span>`
+          }
+        </div>
+        <p class="text-[12px] text-slate-500 leading-relaxed mb-3">${escapeHtml(item.description || "")}</p>
+        <div class="mt-auto pt-2 flex items-center justify-between">
+          <span class="text-[14px] font-black text-slate-900">${escapeHtml(priceLabel)}</span>
+          <button type="button" class="w-8 h-8 bg-slate-900 text-white rounded-full flex items-center justify-center shadow-md hover:bg-indigo-600 transition-colors active:scale-95">
+            ${icon("plus", "w-4 h-4")}
+          </button>
+        </div>
+        <div class="hidden">
+          <span data-menu-like-count="${escapeHtml(itemId)}">${escapeHtml(formatCount(counts.likes))}</span>
+          <span data-menu-comment-count="${escapeHtml(itemId)}">${escapeHtml(formatCount(counts.comments))}</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function buildSpecialCardWrapperAttrs(item, mode = "profile") {
+  if (mode !== "profile") return "";
+  const action = resolveSpecialCardAction(item);
+  if (action.type === "link" && action.url) {
+    return `data-menu-special-link="${escapeHtml(action.url)}" role="button" tabindex="0"`;
+  }
+  if (action.type === "product" && action.productId) {
+    return `data-menu-open="${escapeHtml(action.productId)}" role="button"`;
+  }
+  return `data-menu-open="${escapeHtml(item.id)}" role="button"`;
+}
+
+function renderTestfirstSpecialCard(item, { mode = "profile", size = "default" } = {}) {
+  const rawImg = resolveMenuItemHero(item);
+  const imgSrc = getOptimizedImageUrl(rawImg, "large");
+  const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+  const firebaseFallback = getFirebaseStorageUrl(rawImg);
+  const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+  const wrapperAttrs = buildSpecialCardWrapperAttrs(item, mode);
+  const badgeLabel = String(item.category || "Special").trim() || "Special";
+  const titleHtml = escapeHtml(String(item.name || "Special")).replace(/\n/g, "<br>");
+  if (size === "food") {
+    return `
+      <div ${wrapperAttrs} class="rounded-[2.2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden mb-5 group aspect-[16/9] ${mode === "profile" ? "cursor-pointer" : ""}" style="border-radius:2.2rem;aspect-ratio:16 / 9;margin-bottom:20px;">
+        <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
+        <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
+        <div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+          <div>
+            <span class="bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mb-1.5 inline-block shadow-sm">${escapeHtml(badgeLabel)}</span>
+            <h4 class="text-white text-[14px] font-black leading-tight drop-shadow-md">${titleHtml}</h4>
+          </div>
+          <div class="w-8 h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white">
+            ${icon("arrow-right", "w-4 h-4")}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <div ${wrapperAttrs} class="bg-slate-900 p-1.5 rounded-[1.8rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col relative overflow-hidden h-full group ${mode === "profile" ? "cursor-pointer" : ""}">
+      <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
+      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
+      <div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+        <div>
+          <span class="bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mb-1.5 inline-block shadow-sm">${escapeHtml(badgeLabel)}</span>
+          <h4 class="text-white text-[14px] font-black leading-tight drop-shadow-md">${titleHtml}</h4>
+        </div>
+        <button type="button" class="w-8 h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-colors">
+          ${icon("arrow-right", "w-4 h-4")}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
+  const priceLabel = formatPrice(item.price);
+  const wrapperAttrs = mode === "profile"
+    ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
+    : "";
+  const galleryImages = getMenuCardGalleryImages(item);
+  const rawSlides = galleryImages.length ? galleryImages : [resolveMenuItemHero(item) || ""];
+  const slides = rawSlides.filter(Boolean);
+  const displaySlides = slides.length ? slides.slice(0, 12) : [""];
+  const hasSlider = displaySlides.length > 1;
+  const { itemId, counts } = getMenuCardSocialMeta(item);
+  const likesValue = Math.max(
+    Number.isFinite(Number(counts.likes)) ? Number(counts.likes) : 0,
+    Number(item.likesCount || item.likes || 0)
+  );
+  const commentsValue = Math.max(
+    Number.isFinite(Number(counts.comments)) ? Number(counts.comments) : 0,
+    Number(item.commentsCount || item.comments || 0)
+  );
+  const likesLabel = formatCount(Math.max(0, likesValue || 0));
+  const commentsLabel = formatCount(Math.max(0, commentsValue || 0));
+  const showSocialChip = (likesValue || commentsValue) > 0 || mode === "profile";
+  return `
+    <div ${wrapperAttrs} class="bg-white p-3.5 rounded-[2.2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 group relative ${mode === "profile" ? "cursor-pointer" : ""}" style="padding:14px;border-radius:2.2rem;margin-bottom:20px;box-sizing:border-box;">
+      <div class="w-full aspect-[16/9] rounded-[1.8rem] overflow-hidden bg-slate-100 mb-4 relative" style="aspect-ratio:16 / 9;border-radius:1.8rem;margin-bottom:16px;">
+        ${hasSlider ? `
+          <div
+            data-menu-card-gallery-track="${escapeHtml(item.id)}"
+            class="w-full h-full flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory hide-scrollbar"
+            style="scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;overscroll-behavior-y:auto;"
+          >
+            ${displaySlides.map((image, index) => {
+              const imgSrc = getOptimizedImageUrl(image || "", "large");
+              const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+              const firebaseFallback = getFirebaseStorageUrl(image || "");
+              const fallbackImg = isDirectImageUrl(image || "") && image !== safeImg ? image : firebaseFallback;
+              return `
+                <div class="min-w-full h-full snap-center relative" data-menu-card-gallery-slide="${index}" style="min-width:100%;width:100%;height:100%;scroll-snap-align:center;">
+                  <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
+                </div>
+              `;
+            }).join("")}
+          </div>
+        ` : `
+          ${displaySlides.map((image) => {
+            const imgSrc = getOptimizedImageUrl(image || "", "large");
+            const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+            const firebaseFallback = getFirebaseStorageUrl(image || "");
+            const fallbackImg = isDirectImageUrl(image || "") && image !== safeImg ? image : firebaseFallback;
+            return `
+              <div class="w-full h-full">
+                <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover select-none pointer-events-none" draggable="false" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
+              </div>
+            `;
+          }).join("")}
+        `}
+        <button
+          type="button"
+          data-menu-card-like="${escapeHtml(item.id)}"
+          class="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:scale-110 transition-all shadow-sm z-10"
+          aria-label="Like"
+        >
+          ${icon("heart", "w-4 h-4 fill-current opacity-80")}
+        </button>
+        ${hasSlider ? `
+          <div class="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5 z-10 pointer-events-none">
+            ${displaySlides.map((_, index) => `
+              <div
+                data-menu-card-gallery-dot="${escapeHtml(item.id)}"
+                data-menu-card-gallery-index="${index}"
+                class="${index === 0 ? "w-4 h-1.5 bg-white rounded-full shadow-sm" : "w-1.5 h-1.5 bg-white/60 rounded-full shadow-sm"}"
+              ></div>
+            `).join("")}
+          </div>
+        ` : ""}
+      </div>
+      <div class="px-2" style="padding-left:8px;padding-right:8px;">
+        <div class="flex items-start justify-between gap-3 mb-1.5" style="gap:12px;margin-bottom:6px;">
+          <div>
+            <h4 class="text-[18px] font-black text-slate-900 leading-snug">${escapeHtml(item.name || "")}</h4>
+            <span class="inline-flex mt-2 text-[10px] font-black uppercase tracking-widest ${item.available !== false ? "text-emerald-600" : "text-rose-600"}">${item.available !== false ? "Verfuegbar" : "Nicht verfuegbar"}</span>
+          </div>
+          <span class="text-[17px] font-black text-slate-900 whitespace-nowrap">${escapeHtml(priceLabel)}</span>
+        </div>
+        <p class="text-[14px] text-slate-500 line-clamp-2 leading-relaxed mb-4" style="margin-bottom:16px;">${escapeHtml(item.description || "")}</p>
+        <div class="flex items-center justify-between border-t border-slate-50 pt-4 pb-1" style="padding-top:16px;padding-bottom:4px;">
+          <div class="flex items-center gap-2">
+            ${showSocialChip ? `
+              <div class="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl text-[12px] font-bold">
+                ${icon("heart", "w-3.5 h-3.5 fill-rose-500")}
+                <span data-menu-like-count="${escapeHtml(itemId)}">${escapeHtml(likesLabel)}</span>
+                <span class="text-slate-300">/</span>
+                <span data-menu-comment-count="${escapeHtml(itemId)}">${escapeHtml(commentsLabel)}</span>
+              </div>
+            ` : `
+              <div class="hidden">
+                <span data-menu-like-count="${escapeHtml(itemId)}">${escapeHtml(likesLabel)}</span>
+                <span data-menu-comment-count="${escapeHtml(itemId)}">${escapeHtml(commentsLabel)}</span>
+              </div>
+            `}
+          </div>
+          <button type="button" class="bg-slate-900 text-white pl-4 pr-2 py-2 rounded-2xl text-[13px] font-bold shadow-md hover:bg-indigo-600 transition-colors flex items-center gap-2 active:scale-95" style="padding-left:16px;padding-right:8px;padding-top:8px;padding-bottom:8px;">
+            <span>Hinzufuegen</span>
+            <div class="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center pointer-events-none">
+              ${icon("plus", "w-4 h-4 text-white")}
+            </div>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTestfirstMenuContent(profile, items, { mode = "profile" } = {}) {
+  const allItems = sortMenuItemsByOrder(Array.isArray(items) ? items : []);
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  const focusState = restaurantId
+    ? getFocusStateForRestaurant(restaurantId)
+    : { items: [], enabled: false };
+  const focusItemsFromState = focusState.enabled
+    ? (Array.isArray(focusState.items) ? focusState.items : []).map((item) => buildFocusCardItem({
+      ...item,
+      objectPosition: getFocusItemObjectPosition(item)
+    }))
+    : [];
+  const focusItemsFromMenu = allItems
+    .filter((item) => resolveMenuCardStyle(item) === "testfirst_focus" && !isMenuItemHidden(item))
+    .map((item) => buildFocusCardItem(item, { menuItemId: item.id || "" }))
+    .filter(Boolean);
+  const focusSeen = new Set();
+  const focusItems = [...focusItemsFromState, ...focusItemsFromMenu].filter((item) => {
+    const dedupeKey = String(item.menuItemId || item.id || `${item.title}|${item.text}|${item.imageUrl}`);
+    if (!dedupeKey) return false;
+    if (focusSeen.has(dedupeKey)) return false;
+    focusSeen.add(dedupeKey);
+    return true;
+  });
+
+  const contentItems = allItems.filter((item) => resolveMenuCardStyle(item) !== "testfirst_focus" && !isMenuItemHidden(item));
+  const drinkTypeItems = contentItems.filter((item) => resolveMenuDisplaySection(item) === "drink");
+  const foodTypeItems = contentItems.filter((item) => resolveMenuDisplaySection(item) !== "drink");
+
+  const splitTypeBuckets = (typeItems = []) => {
+    const gridItems = [];
+    const foodItems = [];
+    typeItems.forEach((item) => {
+      const style = resolveMenuCardStyle(item);
+      if (style === "testfirst_food" || (style === "testfirst_special" && resolveSpecialCardSize(item) === "food")) {
+        foodItems.push(item);
+      } else {
+        gridItems.push(item);
+      }
+    });
+    return { gridItems, foodItems };
+  };
+
+  const renderGridCard = (item) => {
+    const style = resolveMenuCardStyle(item);
+    return style === "testfirst_special"
+      ? renderTestfirstSpecialCard(item, { mode })
+      : renderTestfirstDrinkGridCard(item, { mode });
+  };
+
+  const renderTypeBlock = (menuType, bucket) => {
+    if (!bucket.gridItems.length && !bucket.foodItems.length) return "";
+    return `
+      <section class="menu-type-block relative" data-menu-type-block="${escapeHtml(menuType)}">
+        ${bucket.gridItems.length ? `
+          <div class="menu-category-section pb-6 pt-4" data-menu-type="${escapeHtml(menuType)}">
+            <div class="grid grid-cols-2 gap-3 px-5">
+              ${bucket.gridItems.map((item) => renderGridCard(item)).join("")}
+            </div>
+          </div>
+        ` : ""}
+        ${bucket.foodItems.length ? `
+          <div class="menu-category-section pb-6 pt-4" data-menu-type="${escapeHtml(menuType)}">
+            <div class="px-5">
+              ${bucket.foodItems.map((item) => {
+                const style = resolveMenuCardStyle(item);
+                if (style === "testfirst_special") return renderTestfirstSpecialCard(item, { mode, size: "food" });
+                return renderTestfirstFoodCard(item, { mode });
+              }).join("")}
+            </div>
+          </div>
+        ` : ""}
+      </section>
+    `;
+  };
+
+  const drinkBucket = splitTypeBuckets(drinkTypeItems);
+  const foodBucket = splitTypeBuckets(foodTypeItems);
+
+  return `
+    <div>
+      ${renderTestfirstFocusSection(profile, focusItems, { mode })}
+      <div id="menu-section" class="mt-5">
+        ${renderTypeBlock("drink", drinkBucket)}
+        ${renderTypeBlock("food", foodBucket)}
+      </div>
+    </div>
+  `;
+}
+
+function renderMenuDrinkGrid(items, { mode = "profile", useTestfirstCardUi = false } = {}) {
   if (!items.length) return "";
+  if (useTestfirstCardUi) {
+    return `
+      <div class="grid grid-cols-2 gap-3">
+        ${items.map((item) => renderTestfirstDrinkGridCard(item, { mode })).join("")}
+      </div>
+    `;
+  }
   return `
     <div class="grid grid-cols-2 gap-4">
       ${items.map((item) => renderMenuItemCardStacked(item, { mode, variant: "drink" })).join("")}
@@ -506,8 +969,20 @@ function renderMenuDrinkGrid(items, { mode = "profile" } = {}) {
   `;
 }
 
-function renderMenuFoodList(items, { mode = "profile" } = {}) {
+function renderMenuFoodList(items, { mode = "profile", useTestfirstCardUi = false } = {}) {
   if (!items.length) return "";
+  if (useTestfirstCardUi) {
+    return `
+      <div>
+        ${items.map((item) => {
+          if (resolveMenuCardStyle(item) === "testfirst_special" && resolveSpecialCardSize(item) === "food") {
+            return renderTestfirstSpecialCard(item, { mode, size: "food" });
+          }
+          return renderTestfirstFoodCard(item, { mode });
+        }).join("")}
+      </div>
+    `;
+  }
   return `
     <div class="space-y-4">
       ${items.map((item) => renderMenuItemCardStacked(item, { mode, variant: "food" })).join("")}
@@ -585,6 +1060,105 @@ function renderFocusAdminSection(restaurantId) {
       ` : `
         <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Noch keine Fokus-Eintraege</div>
       `}
+    </div>
+  `;
+}
+
+function renderSpecialAdminSection(profile) {
+  const isTestfirst = isTestfirstMenuProfile(profile);
+  if (!isTestfirst) return "";
+  const specialItems = sortMenuItemsByOrder(
+    (state.menu.items || []).filter((item) => resolveMenuCardStyle(item) === "testfirst_special")
+  );
+  return `
+    <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Special Cards</span>
+          <h3 class="text-xl font-black italic tracking-tighter">Special</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(formatCount(specialItems.length))} Karten</p>
+        </div>
+        <button type="button" data-menu-add-special class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow active:scale-95">
+          ${icon("plus", "w-4 h-4")}
+        </button>
+      </div>
+      ${specialItems.length ? `
+        <div class="space-y-3">
+          ${specialItems.map((item) => {
+            const imgUrl = getOptimizedImageUrl(resolveMenuItemHero(item), "thumb");
+            const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
+            const action = resolveSpecialCardAction(item);
+            const actionLabel = action.type === "link"
+              ? "Link"
+              : (action.type === "product" ? "Produkt-Modal" : "Diese Karte");
+            const sizeLabel = resolveSpecialCardSize(item) === "food" ? "Food-Size" : "Normal";
+            const sectionLabel = resolveMenuDisplaySection(item) === "drink" ? "Getraenke" : "Speisen";
+            const visibilityLabel = isMenuItemHidden(item) ? "Ausgeblendet" : (item.available === false ? "Ausverkauft" : "Verfuegbar");
+            const visibilityClass = isMenuItemHidden(item)
+              ? "text-rose-500"
+              : (item.available === false ? "text-slate-400" : "text-emerald-600");
+            return `
+              <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
+                <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
+                  <img src="${escapeHtml(safeImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name || "Special")}</p>
+                  <div class="flex flex-wrap items-center gap-2 mt-1 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    <span>${escapeHtml(sectionLabel)}</span>
+                    <span>${escapeHtml(sizeLabel)}</span>
+                    <span>${escapeHtml(actionLabel)}</span>
+                  </div>
+                  <p class="text-[9px] font-black uppercase tracking-widest mt-2 ${visibilityClass}">${visibilityLabel}</p>
+                </div>
+                <div class="flex flex-col gap-2">
+                  <button data-menu-edit="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-white text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100 border border-slate-200">Edit</button>
+                  <button data-menu-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Loeschen</button>
+                </div>
+              </div>
+            `;
+          }).join("")}
+        </div>
+      ` : `
+        <div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Noch keine Special-Karten</div>
+      `}
+    </div>
+  `;
+}
+
+function renderMenuOrderSection(items = []) {
+  const list = sortMenuItemsByOrder(items).filter((item) => !isMenuItemHidden(item));
+  const specialCount = list.filter((item) => resolveMenuCardStyle(item) === "testfirst_special").length;
+  if (!list.length || !specialCount) return "";
+  return `
+    <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="mb-4">
+        <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Special Position</span>
+        <h3 class="text-xl font-black italic tracking-tighter">Drag &amp; Drop</h3>
+        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Nur Special-Karten sind ziehbar. Andere Karten sind Ziel-Positionen.</p>
+      </div>
+      <div class="space-y-2" data-menu-order-board="true">
+        ${list.map((item) => {
+          const id = String(item?.id || "").trim();
+          const sectionLabel = resolveMenuDisplaySection(item) === "drink" ? "Getraenke" : "Speisen";
+          const style = resolveMenuCardStyle(item);
+          const isSpecial = style === "testfirst_special";
+          const styleLabel = style === "testfirst_focus"
+            ? "Focus"
+            : (style === "testfirst_special" ? "Special" : (style === "testfirst_food" ? "Food" : "Drink"));
+          return `
+            <div draggable="${isSpecial ? "true" : "false"}" data-menu-order-item="${escapeHtml(id)}" data-menu-order-draggable="${isSpecial ? "true" : "false"}" class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 flex items-center gap-3 ${isSpecial ? "" : "opacity-70"}">
+              <div class="w-8 h-8 rounded-xl bg-white border border-slate-200 ${isSpecial ? "text-slate-500" : "text-slate-300"} flex items-center justify-center shrink-0">
+                ${icon("grip-vertical", "w-4 h-4")}
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-[12px] font-black text-slate-900 truncate">${escapeHtml(item.name || "Produkt")}</p>
+                <p class="text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">${escapeHtml(sectionLabel)} · ${escapeHtml(styleLabel)}${isSpecial ? " · Drag" : ""}</p>
+              </div>
+            </div>
+          `;
+        }).join("")}
+      </div>
     </div>
   `;
 }
@@ -677,9 +1251,10 @@ function renderMenuAdminView() {
   const restaurantName = restaurant?.name || restaurant?.restaurantName || profile.name || "Business";
   const sameRestaurant = restaurantId && state.menu.restaurantId === restaurantId;
   const isLoading = restaurantId && (state.menu.loading || !sameRestaurant);
-  const items = sameRestaurant
+  const rawItems = sameRestaurant
     ? getFilteredMenuItems(state.menu.items, { filter: state.menu.filter, query: state.menu.query })
     : [];
+  const items = sortMenuItemsByOrder(rawItems);
   const countLabel = formatCount(items.length);
   const profileUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId }) : "";
   const menuUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "menu" }) : "";
@@ -731,6 +1306,7 @@ function renderMenuAdminView() {
       `}
 
       ${restaurantId ? renderFocusAdminSection(restaurantId) : ""}
+      ${restaurantId ? renderSpecialAdminSection(profile) : ""}
       ${restaurantId ? renderMenuLayoutSection() : ""}
 
       ${restaurantId ? `
@@ -785,16 +1361,33 @@ function renderProfileMenuView(profile) {
   const isSameRestaurant = state.menu.restaurantId === restaurantId;
   const isLoading = state.menu.loading || !isSameRestaurant;
   const items = isSameRestaurant
-    ? getFilteredMenuItems(state.menu.items, { filter: "all", query: "" })
+    ? sortMenuItemsByOrder(getFilteredMenuItems(state.menu.items, { filter: "all", query: "" }))
+      .filter((item) => !isMenuItemHidden(item))
     : [];
   const isShop = isShopCatalogProfile(profile);
   const catalogLabel = getBusinessCatalogLabel(profile);
   const error = isSameRestaurant ? state.menu.error : "";
-  const drinkItems = items.filter((item) => normalizeMenuType(item.type) === "drink");
-  const foodItems = items.filter((item) => normalizeMenuType(item.type) !== "drink");
+  const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
+  const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
+  const useTestfirstCardUi = isTestfirstMenuProfile(profile);
   const hasItems = items.length > 0;
   if (hasItems && restaurantId) {
     primeMenuItemCounts(items, restaurantId);
+  }
+  if (useTestfirstCardUi) {
+    return `
+      <div class="app-main-content-safe">
+        ${isLoading ? `
+          <div class="px-5 pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
+        ` : `
+          ${hasItems
+            ? renderTestfirstMenuContent(profile, items, { mode: "profile" })
+            : `<div class="px-5 pt-6 text-center text-[10px] font-bold uppercase tracking-[0.3em] text-slate-300">Keine Produkte</div>`
+          }
+          ${error ? `<div class="px-5 pt-4 text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
+        `}
+      </div>
+    `;
   }
   return `
     <div class="px-5 app-main-content-safe space-y-5">
@@ -819,7 +1412,7 @@ function renderProfileMenuView(profile) {
                 <div class="flex items-center justify-between mb-4">
                   <h3 class="text-lg font-black italic tracking-tighter">Getraenke</h3>
                 </div>
-                ${renderMenuDrinkGrid(drinkItems, { mode: "profile" })}
+                ${renderMenuDrinkGrid(drinkItems, { mode: "profile", useTestfirstCardUi })}
               </div>
             ` : ""}
             ${foodItems.length ? `
@@ -827,7 +1420,7 @@ function renderProfileMenuView(profile) {
                 <div class="flex items-center justify-between mb-4">
                   <h3 class="text-lg font-black italic tracking-tighter">Speisen</h3>
                 </div>
-                ${renderMenuFoodList(foodItems, { mode: "profile" })}
+                ${renderMenuFoodList(foodItems, { mode: "profile", useTestfirstCardUi })}
               </div>
             ` : ""}
           `}

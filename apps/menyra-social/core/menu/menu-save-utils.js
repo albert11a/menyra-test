@@ -1,7 +1,10 @@
+import { isTestfirstMenuProfileTypeCore, normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
+
 export async function saveMenuItemFromModalCore({
   state,
   documentObj,
   isShopCatalogProfile,
+  getBusinessProfileType,
   renderOverlays,
   normalizeOptionList,
   getMenuModalCrop,
@@ -23,6 +26,7 @@ export async function saveMenuItemFromModalCore({
     || !state.user
     || !documentObj
     || typeof isShopCatalogProfile !== "function"
+    || typeof getBusinessProfileType !== "function"
     || typeof renderOverlays !== "function"
     || typeof normalizeOptionList !== "function"
     || typeof getMenuModalCrop !== "function"
@@ -44,6 +48,8 @@ export async function saveMenuItemFromModalCore({
 
   const restaurantId = state.userProfile.restaurantId || "";
   const isShop = isShopCatalogProfile(state.userProfile);
+  const businessType = String(getBusinessProfileType(state.userProfile) || "").trim().toLowerCase();
+  const canPersistCardStyle = !isShop && isTestfirstMenuProfileTypeCore(businessType);
   if (!restaurantId) {
     state.menuModal.status = "Kein Restaurant ausgewaehlt.";
     renderOverlays({ updateMenu: true });
@@ -53,6 +59,7 @@ export async function saveMenuItemFromModalCore({
   const price = documentObj.getElementById("menuItemPrice")?.value?.trim() || "";
   const category = documentObj.getElementById("menuItemCategory")?.value?.trim() || "";
   const type = documentObj.getElementById("menuItemType")?.value || "food";
+  const normalizedType = normalizeMenuType(type);
   const description = documentObj.getElementById("menuItemDesc")?.value?.trim() || "";
   const longDescription = documentObj.getElementById("menuItemLongDesc")?.value?.trim() || "";
   const allergens = documentObj.getElementById("menuItemAllergens")?.value?.trim() || "";
@@ -61,7 +68,61 @@ export async function saveMenuItemFromModalCore({
   const stockRaw = documentObj.getElementById("menuItemStock")?.value?.trim() || "";
   const sizes = normalizeOptionList(documentObj.getElementById("menuItemSizes")?.value || "");
   const colors = normalizeOptionList(documentObj.getElementById("menuItemColors")?.value || "");
-  const available = documentObj.getElementById("menuItemAvailable")?.checked !== false;
+  const visibilityInput = String(documentObj.getElementById("menuItemVisibility")?.value || "").trim().toLowerCase();
+  let available = state.menuModal.item?.available !== false;
+  const availableToggle = documentObj.getElementById("menuItemAvailable");
+  if (availableToggle) {
+    available = availableToggle.checked !== false;
+  }
+  let hidden = state.menuModal.item?.hidden === true;
+  if (visibilityInput === "available") {
+    available = true;
+    hidden = false;
+  } else if (visibilityInput === "unavailable") {
+    available = false;
+    hidden = false;
+  } else if (visibilityInput === "hidden") {
+    hidden = true;
+  }
+  const menuSectionRaw = String(
+    documentObj.getElementById("menuItemMenuSection")?.value
+      || state.menuModal.item?.menuSection
+      || normalizedType
+  ).trim().toLowerCase();
+  const menuSection = menuSectionRaw === "drink" ? "drink" : "food";
+  const specialSizeRaw = String(
+    documentObj.getElementById("menuItemSpecialSize")?.value
+      || state.menuModal.item?.specialSize
+      || state.menuModal.item?.specialCardSize
+      || ""
+  ).trim().toLowerCase();
+  const specialSize = specialSizeRaw === "food" ? "food" : "default";
+  const specialActionTypeRaw = String(
+    documentObj.getElementById("menuItemSpecialActionType")?.value
+      || state.menuModal.item?.specialActionType
+      || state.menuModal.item?.actionType
+      || "self"
+  ).trim().toLowerCase();
+  const specialActionType = specialActionTypeRaw === "link" || specialActionTypeRaw === "product"
+    ? specialActionTypeRaw
+    : "self";
+  const specialActionUrl = String(
+    documentObj.getElementById("menuItemSpecialActionUrl")?.value
+      || state.menuModal.item?.specialActionUrl
+      || state.menuModal.item?.linkUrl
+      || state.menuModal.item?.actionUrl
+      || ""
+  ).trim();
+  const specialActionProductId = String(
+    documentObj.getElementById("menuItemSpecialActionProductId")?.value
+      || state.menuModal.item?.specialActionProductId
+      || state.menuModal.item?.targetProductId
+      || ""
+  ).trim();
+  const orderPositionRaw = String(documentObj.getElementById("menuItemOrderPosition")?.value || "").trim();
+  const orderPositionInput = Number(orderPositionRaw);
+  const hasOrderPositionInput = Number.isFinite(orderPositionInput) && orderPositionInput > 0;
+  const cardStyleInput = documentObj.getElementById("menuItemCardStyle")?.value || state.menuModal.item?.cardStyle || "";
   const imageUrlInput = String(state.menuModal.imageUrlDraft || "").trim()
     || documentObj.getElementById("menuItemImageUrl")?.value?.trim()
     || "";
@@ -69,6 +130,25 @@ export async function saveMenuItemFromModalCore({
     ? null
     : Math.max(0, Math.round(Number(stockRaw) || 0));
   const crop = getMenuModalCrop();
+  const normalizeOrderIndex = (value, fallback = 0) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return Math.max(0, Number(fallback) || 0);
+    return Math.max(0, Math.floor(numeric));
+  };
+  const sortMenuItemsByOrder = (list = []) => {
+    const safe = Array.isArray(list) ? list.slice() : [];
+    return safe
+      .map((entry, idx) => ({
+        entry,
+        idx,
+        order: normalizeOrderIndex(entry?.orderIndex, idx)
+      }))
+      .sort((a, b) => (a.order - b.order) || (a.idx - b.idx))
+      .map((wrapped, idx) => ({
+        ...wrapped.entry,
+        orderIndex: normalizeOrderIndex(wrapped.entry?.orderIndex, idx)
+      }));
+  };
 
   if (!name) {
     state.menuModal.status = "Bitte Namen eingeben.";
@@ -109,10 +189,20 @@ export async function saveMenuItemFromModalCore({
       ? doc(db, "restaurants", restaurantId, "menuItems", state.menuModal.item.id)
       : doc(collection(db, "restaurants", restaurantId, "menuItems"));
     const id = state.menuModal.item?.id || ref.id;
+    const existingIndexInList = (state.menu.items || []).findIndex((it) => String(it?.id || "") === String(id));
+    const defaultOrderIndex = normalizeOrderIndex(
+      state.menuModal.item?.orderIndex,
+      existingIndexInList >= 0 ? existingIndexInList : (state.menu.items || []).length
+    );
+    const orderIndex = hasOrderPositionInput
+      ? normalizeOrderIndex(orderPositionInput - 1, defaultOrderIndex)
+      : defaultOrderIndex;
+    const normalizedSpecialActionUrl = specialActionType === "link" ? specialActionUrl : "";
+    const normalizedSpecialActionProductId = specialActionType === "product" ? specialActionProductId : "";
 
     const payload = {
       id,
-      type: normalizeMenuType(type),
+      type: normalizedType,
       category: category || "Sonstiges",
       name,
       description,
@@ -127,6 +217,20 @@ export async function saveMenuItemFromModalCore({
       cropY: crop.y,
       price: price ?? "",
       available,
+      hidden: hidden === true,
+      menuSection,
+      orderIndex,
+      ...(canPersistCardStyle
+        ? {
+          specialSize,
+          specialActionType,
+          specialActionUrl: normalizedSpecialActionUrl,
+          specialActionProductId: normalizedSpecialActionProductId
+        }
+        : {}),
+      ...(canPersistCardStyle
+        ? { cardStyle: normalizeMenuCardStyleCore(cardStyleInput, normalizedType) }
+        : {}),
       imageUrl: imageUrl || "",
       imageUrls,
       updatedAt: serverTimestamp()
@@ -141,10 +245,39 @@ export async function saveMenuItemFromModalCore({
     if (idx >= 0) {
       nextItems[idx] = { ...nextItems[idx], ...normalized };
     } else {
-      nextItems.unshift(normalized);
+      nextItems.push(normalized);
     }
-    syncMenuCaches(restaurantId, nextItems);
-    await publishMenuToPublic(restaurantId, nextItems);
+    const currentItem = nextItems.find((entry) => String(entry?.id || "") === String(id));
+    const withoutCurrent = sortMenuItemsByOrder(nextItems).filter((entry) => String(entry?.id || "") !== String(id));
+    const insertAt = Math.max(
+      0,
+      Math.min(
+        withoutCurrent.length,
+        hasOrderPositionInput
+          ? normalizeOrderIndex(orderPositionInput - 1, withoutCurrent.length)
+          : normalizeOrderIndex(currentItem?.orderIndex, withoutCurrent.length)
+      )
+    );
+    if (currentItem) {
+      withoutCurrent.splice(insertAt, 0, currentItem);
+    }
+    const orderedItems = withoutCurrent.map((entry, idxOrder) => ({
+      ...entry,
+      orderIndex: idxOrder
+    }));
+    await Promise.all(
+      orderedItems.map((entry, idxOrder) => {
+        const entryId = String(entry?.id || "").trim();
+        if (!entryId) return Promise.resolve();
+        return setDoc(
+          doc(db, "restaurants", restaurantId, "menuItems", entryId),
+          { orderIndex: idxOrder },
+          { merge: true }
+        );
+      })
+    );
+    syncMenuCaches(restaurantId, orderedItems);
+    await publishMenuToPublic(restaurantId, orderedItems);
 
     state.menuModal.status = "Gespeichert.";
     state.menuModal.loading = false;

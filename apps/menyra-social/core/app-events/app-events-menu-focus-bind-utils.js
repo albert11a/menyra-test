@@ -89,6 +89,25 @@ export function bindAppMenuFocusEventsCore({
     });
   });
 
+  doc.querySelectorAll("[data-menu-add-special]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openMenuModal("create", {
+        type: "drink",
+        category: "Special",
+        name: "Special",
+        description: "",
+        available: true,
+        hidden: false,
+        menuSection: "drink",
+        cardStyle: "testfirst_special",
+        specialSize: "default",
+        specialActionType: "self",
+        specialActionUrl: "",
+        specialActionProductId: ""
+      });
+    });
+  });
+
   doc.querySelectorAll("[data-menu-edit]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const itemId = btn.dataset.menuEdit || "";
@@ -106,8 +125,278 @@ export function bindAppMenuFocusEventsCore({
     });
   });
 
+  function shouldSkipMenuOpenFromGalleryDrag(target) {
+    if (!(target instanceof Element)) return false;
+    const track = target.closest("[data-menu-card-gallery-track]");
+    if (!track) return false;
+    const draggedAt = Number(track.dataset.menuCardGalleryDragAt || "0");
+    return draggedAt > 0 && Date.now() - draggedAt < 550;
+  }
+
+  function updateMenuGalleryDots(track) {
+    const galleryId = track.dataset.menuCardGalleryTrack || "";
+    if (!galleryId) return;
+    const width = track.clientWidth || 1;
+    const slides = track.querySelectorAll("[data-menu-card-gallery-slide]");
+    const index = Math.max(0, Math.min(Math.max(slides.length - 1, 0), Math.round(track.scrollLeft / width)));
+    doc.querySelectorAll(`[data-menu-card-gallery-dot="${galleryId}"]`).forEach((dot, dotIndex) => {
+      dot.className = dotIndex === index
+        ? "w-4 h-1.5 bg-white rounded-full shadow-sm"
+        : "w-1.5 h-1.5 bg-white/60 rounded-full shadow-sm";
+    });
+  }
+
+  doc.querySelectorAll("[data-menu-card-gallery-track]").forEach((track) => {
+    let startX = 0;
+    let startY = 0;
+    let moved = false;
+    let dragging = false;
+    let lastScrollLeft = Number(track.scrollLeft || 0);
+    const begin = (x, y) => {
+      startX = Number(x) || 0;
+      startY = Number(y) || 0;
+      moved = false;
+      dragging = false;
+      track.dataset.menuCardGalleryDragAt = "0";
+    };
+    const move = (x, y) => {
+      const dx = Math.abs((Number(x) || 0) - startX);
+      const dy = Math.abs((Number(y) || 0) - startY);
+      if (dx > 8 || dy > 8) moved = true;
+      if (dx > 10 && dx > dy) dragging = true;
+    };
+    const end = () => {
+      if (moved || dragging) {
+        track.dataset.menuCardGalleryDragAt = String(Date.now());
+      }
+      moved = false;
+      dragging = false;
+    };
+    track.addEventListener("pointerdown", (evt) => begin(evt.clientX, evt.clientY));
+    track.addEventListener("pointermove", (evt) => move(evt.clientX, evt.clientY));
+    track.addEventListener("pointerup", end);
+    track.addEventListener("pointercancel", end);
+    track.addEventListener("touchstart", (evt) => {
+      const touch = evt.touches?.[0];
+      if (!touch) return;
+      begin(touch.clientX, touch.clientY);
+    }, { passive: true });
+    track.addEventListener("touchmove", (evt) => {
+      const touch = evt.touches?.[0];
+      if (!touch) return;
+      move(touch.clientX, touch.clientY);
+    }, { passive: true });
+    track.addEventListener("touchend", end, { passive: true });
+    track.addEventListener("touchcancel", end, { passive: true });
+    track.addEventListener("scroll", () => {
+      const currentScrollLeft = Number(track.scrollLeft || 0);
+      if (Math.abs(currentScrollLeft - lastScrollLeft) > 0.5) {
+        track.dataset.menuCardGalleryDragAt = String(Date.now());
+        lastScrollLeft = currentScrollLeft;
+      }
+      updateMenuGalleryDots(track);
+    }, { passive: true });
+    updateMenuGalleryDots(track);
+  });
+
+  function toggleMenuItemLikeFromCard(btn) {
+    const handler = doc.defaultView?.__MENYRA_TOGGLE_MENU_ITEM_LIKE_FROM_CARD__;
+    if (typeof handler !== "function") return;
+    const itemId = btn.dataset.menuCardLike || btn.closest("[data-menu-open]")?.dataset.menuOpen || "";
+    if (!itemId) return;
+    const restaurantId = btn.closest("[data-menu-open]")?.dataset.menuOpenRestaurant
+      || state.menu.restaurantId
+      || state.profileView?.profile?.restaurantId
+      || state.userProfile.restaurantId
+      || "";
+    void handler(itemId, restaurantId);
+  }
+
+  doc.querySelectorAll("[data-menu-card-like]").forEach((btn) => {
+    btn.addEventListener("click", (evt) => {
+      evt.preventDefault();
+      evt.stopPropagation();
+      toggleMenuItemLikeFromCard(btn);
+    });
+  });
+
+  function openSpecialCardLink(linkValue) {
+    const win = doc.defaultView;
+    if (!win) return;
+    const raw = String(linkValue || "").trim();
+    if (!raw) return;
+    const url = /^(https?:\/\/|mailto:|tel:)/i.test(raw) ? raw : `https://${raw.replace(/^\/+/, "")}`;
+    try {
+      win.open(url, "_blank", "noopener,noreferrer");
+    } catch {
+      try {
+        win.location.assign(url);
+      } catch {}
+    }
+  }
+
+  doc.querySelectorAll("[data-menu-special-link]").forEach((btn) => {
+    btn.addEventListener("click", (evt) => {
+      if (shouldSkipMenuOpenFromGalleryDrag(evt.target)) return;
+      evt.preventDefault();
+      evt.stopPropagation();
+      openSpecialCardLink(btn.dataset.menuSpecialLink || "");
+    });
+    btn.addEventListener("keydown", (evt) => {
+      if (evt.key !== "Enter" && evt.key !== " ") return;
+      evt.preventDefault();
+      openSpecialCardLink(btn.dataset.menuSpecialLink || "");
+    });
+  });
+
+  async function reorderMenuItemsFromAdmin(sourceId, targetId) {
+    const handler = doc.defaultView?.__MENYRA_REORDER_MENU_ITEM_FROM_ADMIN__;
+    if (typeof handler !== "function") return;
+    const from = String(sourceId || "").trim();
+    const to = String(targetId || "").trim();
+    if (!from || !to || from === to) return;
+    await handler(from, to);
+  }
+
+  const orderRows = Array.from(doc.querySelectorAll("[data-menu-order-item]"));
+  if (orderRows.length) {
+    let draggingId = "";
+    let touchDraggingId = "";
+    let touchHoverId = "";
+    let touchDragActive = false;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchDragTimer = 0;
+    const activeDragClass = ["ring-2", "ring-indigo-300", "bg-indigo-50/50"];
+    const clearTouchDragTimer = () => {
+      if (!touchDragTimer) return;
+      try {
+        const win = doc.defaultView;
+        if (win && typeof win.clearTimeout === "function") {
+          win.clearTimeout(touchDragTimer);
+        } else {
+          clearTimeout(touchDragTimer);
+        }
+      } catch {}
+      touchDragTimer = 0;
+    };
+    const clearDragMarkers = () => {
+      orderRows.forEach((row) => row.classList.remove(...activeDragClass));
+    };
+    const clearTouchDragState = () => {
+      clearTouchDragTimer();
+      orderRows.forEach((row) => row.classList.remove("opacity-60"));
+      touchDraggingId = "";
+      touchHoverId = "";
+      touchDragActive = false;
+      touchStartX = 0;
+      touchStartY = 0;
+      clearDragMarkers();
+    };
+    const findOrderRowAtPoint = (x, y) => {
+      if (typeof doc.elementFromPoint !== "function") return null;
+      const node = doc.elementFromPoint(Number(x) || 0, Number(y) || 0);
+      if (!(node instanceof Element)) return null;
+      return node.closest("[data-menu-order-item]");
+    };
+    orderRows.forEach((row) => {
+      const rowId = String(row.dataset.menuOrderItem || "").trim();
+      const rowDraggable = String(row.dataset.menuOrderDraggable || "").trim().toLowerCase() === "true";
+      if (!rowId) return;
+      row.addEventListener("dragstart", (evt) => {
+        if (!rowDraggable) {
+          evt.preventDefault();
+          return;
+        }
+        draggingId = rowId;
+        row.classList.add("opacity-60");
+        if (evt.dataTransfer) {
+          evt.dataTransfer.effectAllowed = "move";
+          evt.dataTransfer.setData("text/plain", rowId);
+        }
+      });
+      row.addEventListener("dragend", () => {
+        draggingId = "";
+        row.classList.remove("opacity-60");
+        clearDragMarkers();
+      });
+      row.addEventListener("dragover", (evt) => {
+        evt.preventDefault();
+        if (!draggingId || draggingId === rowId) return;
+        clearDragMarkers();
+        row.classList.add(...activeDragClass);
+      });
+      row.addEventListener("dragleave", () => {
+        row.classList.remove(...activeDragClass);
+      });
+      row.addEventListener("drop", (evt) => {
+        evt.preventDefault();
+        const from = String(draggingId || evt.dataTransfer?.getData("text/plain") || "").trim();
+        const to = rowId;
+        clearDragMarkers();
+        if (!from || !to || from === to) return;
+        void reorderMenuItemsFromAdmin(from, to);
+      });
+      row.addEventListener("touchstart", (evt) => {
+        if (!rowDraggable) return;
+        const touch = evt.touches?.[0];
+        if (!touch) return;
+        clearTouchDragState();
+        touchDraggingId = rowId;
+        touchStartX = Number(touch.clientX) || 0;
+        touchStartY = Number(touch.clientY) || 0;
+        const win = doc.defaultView;
+        const setTimer = win && typeof win.setTimeout === "function" ? win.setTimeout.bind(win) : setTimeout;
+        touchDragTimer = setTimer(() => {
+          touchDragActive = true;
+          row.classList.add("opacity-60");
+        }, 220);
+      }, { passive: true });
+      row.addEventListener("touchmove", (evt) => {
+        const touch = evt.touches?.[0];
+        if (!touch || !touchDraggingId) return;
+        const dx = Math.abs((Number(touch.clientX) || 0) - touchStartX);
+        const dy = Math.abs((Number(touch.clientY) || 0) - touchStartY);
+        if (!touchDragActive) {
+          if (dx > 10 || dy > 10) {
+            clearTouchDragState();
+          }
+          return;
+        }
+        evt.preventDefault();
+        const hoverRow = findOrderRowAtPoint(touch.clientX, touch.clientY);
+        const hoverId = String(hoverRow?.dataset?.menuOrderItem || "").trim();
+        clearDragMarkers();
+        if (!hoverId || hoverId === touchDraggingId) {
+          touchHoverId = "";
+          return;
+        }
+        touchHoverId = hoverId;
+        hoverRow.classList.add(...activeDragClass);
+      }, { passive: false });
+      row.addEventListener("touchend", (evt) => {
+        if (!touchDraggingId) return;
+        const touch = evt.changedTouches?.[0];
+        const from = String(touchDraggingId || "").trim();
+        let to = String(touchHoverId || "").trim();
+        if (!to && touch) {
+          const hoverRow = findOrderRowAtPoint(touch.clientX, touch.clientY);
+          to = String(hoverRow?.dataset?.menuOrderItem || "").trim();
+        }
+        const canReorder = touchDragActive && from && to && from !== to;
+        clearTouchDragState();
+        if (!canReorder) return;
+        void reorderMenuItemsFromAdmin(from, to);
+      }, { passive: true });
+      row.addEventListener("touchcancel", () => {
+        clearTouchDragState();
+      }, { passive: true });
+    });
+  }
+
   doc.querySelectorAll("[data-menu-open]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", (evt) => {
+      if (shouldSkipMenuOpenFromGalleryDrag(evt.target)) return;
       triggerMenuDetailOpenFromGesture(btn);
     });
     btn.addEventListener("keydown", (evt) => {

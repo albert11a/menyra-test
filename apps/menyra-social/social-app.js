@@ -3171,6 +3171,92 @@ async function togglePostLike(postId) {
 async function toggleMenuItemLike() {
   return socialEngagementRuntimeController.toggleMenuItemLike(...arguments);
 }
+async function toggleMenuItemLikeFromCard(itemId, restaurantId = "") {
+  const safeItemId = String(itemId || "").trim();
+  if (!safeItemId) return;
+  const item = (state.menu.items || []).find((entry) => String(entry?.id || "") === safeItemId);
+  if (!item) return;
+  const previousDetail = state.menuDetail;
+  state.menuDetail = {
+    open: true,
+    item,
+    index: 0,
+    restaurantId: String(
+      restaurantId
+      || item.restaurantId
+      || state.menu.restaurantId
+      || state.profileView?.profile?.restaurantId
+      || state.userProfile.restaurantId
+      || ""
+    ).trim(),
+    selectedSize: Array.isArray(item?.sizes) && item.sizes.length ? String(item.sizes[0]) : "",
+    selectedColor: Array.isArray(item?.colors) && item.colors.length ? String(item.colors[0]) : "",
+    commentText: "",
+    loading: false,
+    sending: false
+  };
+  try {
+    await toggleMenuItemLike();
+  } finally {
+    state.menuDetail = previousDetail;
+  }
+}
+if (typeof window !== "undefined") {
+  window.__MENYRA_TOGGLE_MENU_ITEM_LIKE_FROM_CARD__ = toggleMenuItemLikeFromCard;
+}
+async function reorderMenuItemFromAdmin(sourceItemId, targetItemId) {
+  const sourceId = String(sourceItemId || "").trim();
+  const targetId = String(targetItemId || "").trim();
+  if (!sourceId || !targetId || sourceId === targetId) return;
+  const restaurantId = String(
+    state.userProfile.restaurantId
+    || state.menu.restaurantId
+    || ""
+  ).trim();
+  if (!restaurantId) return;
+
+  const currentItems = Array.isArray(state.menu.items) ? state.menu.items.slice() : [];
+  const fromIndex = currentItems.findIndex((item) => String(item?.id || "") === sourceId);
+  const toIndex = currentItems.findIndex((item) => String(item?.id || "") === targetId);
+  if (fromIndex < 0 || toIndex < 0) return;
+  const sourceItem = currentItems[fromIndex] || null;
+  const sourceStyle = String(sourceItem?.cardStyle || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  const sourceCategory = String(sourceItem?.category || "").trim().toLowerCase();
+  const sourceIsSpecial = sourceStyle === "testfirst_special" || sourceStyle === "special" || sourceCategory === "special";
+  if (!sourceIsSpecial) return;
+
+  const [moved] = currentItems.splice(fromIndex, 1);
+  currentItems.splice(toIndex, 0, moved);
+  const orderedItems = currentItems.map((item, idx) => ({
+    ...item,
+    orderIndex: idx
+  }));
+
+  syncMenuCaches(restaurantId, orderedItems);
+  render();
+
+  try {
+    if (typeof writeBatch === "function" && typeof doc === "function" && db) {
+      const batch = writeBatch(db);
+      orderedItems.forEach((item, idx) => {
+        const id = String(item?.id || "").trim();
+        if (!id) return;
+        batch.set(
+          doc(db, "restaurants", restaurantId, "menuItems", id),
+          { orderIndex: idx, updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+      });
+      await batch.commit();
+    }
+    await publishMenuToPublic(restaurantId, orderedItems);
+  } catch (err) {
+    console.error(err);
+  }
+}
+if (typeof window !== "undefined") {
+  window.__MENYRA_REORDER_MENU_ITEM_FROM_ADMIN__ = reorderMenuItemFromAdmin;
+}
 async function addMenuItemComment(text) {
   return socialEngagementRuntimeController.addMenuItemComment(...arguments);
 }
@@ -4418,6 +4504,7 @@ profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   getFirebaseStorageUrlFn: getFirebaseStorageUrl,
   isDirectImageUrlFn: isDirectImageUrl,
   formatPriceFn: formatPrice,
+  getMenuItemImagesFn: getMenuItemImages,
   getMenuItemObjectPositionFn: getMenuItemObjectPosition,
   getMenuItemSocialIdFn: socialEngagementSupportRuntimeController.getMenuItemSocialId,
   menuItemMetaKeyFn: socialEngagementSupportRuntimeController.menuItemMetaKey,
@@ -4428,6 +4515,7 @@ profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   getFocusCardClassFn: getFocusCardClass,
   getFocusIndexFn: getFocusIndex,
   isRestaurantCafeProfileFn: isRestaurantCafeProfile,
+  getBusinessProfileTypeFn: getBusinessProfileType,
   getRestaurantMetaByIdFn: getRestaurantMetaById,
   buildUrlFn: buildUrl,
   normalizeSearchKeyFn: normalizeSearchKey,
@@ -4633,6 +4721,7 @@ function renderMenuItemModal() {
   return renderMenuItemModalCore({
     state,
     isShopCatalogProfile,
+    getBusinessProfileType,
     getOptimizedImageUrl,
     PLACEHOLDER_IMAGE,
     isPlaceholderUrl,
@@ -5260,6 +5349,7 @@ async function saveMenuItemFromModal() {
     state,
     documentObj: typeof document !== "undefined" ? document : null,
     isShopCatalogProfile,
+    getBusinessProfileType,
     renderOverlays,
     normalizeOptionList,
     getMenuModalCrop,

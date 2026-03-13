@@ -1,5 +1,6 @@
 import { getMenuItemCropCore } from "../media/crop-utils.js";
 import { normalizeOptionListCore, normalizeMenuTypeCore } from "./menu-input-utils.js";
+import { normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
 
 export function normalizeMenuItemDocCore(data, id, {
   normalizeMenuTypeFn,
@@ -132,9 +133,48 @@ export function normalizeMenuItemDocCore(data, id, {
   const stockRaw = d.stock ?? d.stockCount ?? d.inventory ?? d.quantity ?? "";
   const stockNumber = Number(stockRaw);
   const crop = getMenuItemCrop(d);
+  const normalizedType = normalizeMenuType(d.type || d.menuType || d.kind || d.group || d.section);
+  const orderRaw = d.orderIndex ?? d.sortOrder ?? d.position ?? d.rank ?? null;
+  const orderNumber = Number(orderRaw);
+  const menuSectionRaw = String(d.menuSection || d.displaySection || d.menuPlacement || "").trim().toLowerCase();
+  const menuSection = menuSectionRaw === "drink" || menuSectionRaw === "food"
+    ? menuSectionRaw
+    : (normalizedType === "drink" ? "drink" : "food");
+  const visibilityRaw = String(d.visibility || d.status || "").trim().toLowerCase();
+  const hidden = d.hidden === true
+    || d.visible === false
+    || visibilityRaw === "hidden";
+  const specialSizeRaw = String(d.specialSize || d.specialCardSize || "").trim().toLowerCase();
+  const specialSize = specialSizeRaw === "food" ? "food" : "default";
+  const specialActionPayload = d.specialAction && typeof d.specialAction === "object" ? d.specialAction : {};
+  const specialActionTypeRaw = String(
+    d.specialActionType
+      || d.actionType
+      || specialActionPayload.type
+      || ""
+  ).trim().toLowerCase();
+  const specialActionType = specialActionTypeRaw === "link" || specialActionTypeRaw === "product"
+    ? specialActionTypeRaw
+    : "self";
+  const specialActionUrl = String(
+    d.specialActionUrl
+      || d.linkUrl
+      || d.actionUrl
+      || specialActionPayload.url
+      || ""
+  ).trim();
+  const specialActionProductId = String(
+    d.specialActionProductId
+      || d.targetProductId
+      || d.productId
+      || specialActionPayload.productId
+      || ""
+  ).trim();
   return {
     id: d.id || id || "",
-    type: normalizeMenuType(d.type || d.menuType || d.kind || d.group || d.section),
+    type: normalizedType,
+    menuSection,
+    orderIndex: Number.isFinite(orderNumber) ? Math.max(0, Math.floor(orderNumber)) : null,
     category: d.category || "Sonstiges",
     name: d.name || d.title || "Produkt",
     description: d.description || d.desc || "",
@@ -151,6 +191,15 @@ export function normalizeMenuItemDocCore(data, id, {
     cropY: crop.y,
     price: d.price ?? "",
     available: d.available !== false,
+    hidden,
+    cardStyle: normalizeMenuCardStyleCore(
+      d.cardStyle || d.menuCardStyle || d.cardLayout || d.layoutStyle || "",
+      normalizedType
+    ),
+    specialSize,
+    specialActionType,
+    specialActionUrl: specialActionType === "link" ? specialActionUrl : "",
+    specialActionProductId: specialActionType === "product" ? specialActionProductId : "",
     imageUrl: mergedImages[0] || "",
     imageUrls: mergedImages
   };

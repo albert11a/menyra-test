@@ -233,6 +233,7 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
       cropY: clampCropPercent(item?.cropY ?? 50, 50),
       price: item?.price ?? "",
       available: item?.available !== false,
+      cardStyle: String(item?.cardStyle || "").trim(),
       catalogMode: "shop",
       restaurantType: catalogType,
       customerType: catalogType,
