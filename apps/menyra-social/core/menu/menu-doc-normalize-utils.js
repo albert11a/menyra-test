@@ -141,9 +141,14 @@ export function normalizeMenuItemDocCore(data, id, {
     ? menuSectionRaw
     : (normalizedType === "drink" ? "drink" : "food");
   const visibilityRaw = String(d.visibility || d.status || "").trim().toLowerCase();
-  const hidden = d.hidden === true
+  const statusVisibilityRaw = String(d.statusVisibility || "").trim().toLowerCase();
+  const statusHidden = d.statusHidden === true
+    || statusVisibilityRaw === "hidden"
+    || d.hidden === true
     || d.visible === false
     || visibilityRaw === "hidden";
+  const menuVisibilityRaw = String(d.menuVisibility || "").trim().toLowerCase();
+  const hidden = d.menuHidden === true || menuVisibilityRaw === "hidden";
   const specialSizeRaw = String(d.specialSize || d.specialCardSize || "").trim().toLowerCase();
   const specialSize = specialSizeRaw === "food" ? "food" : "default";
   const specialActionPayload = d.specialAction && typeof d.specialAction === "object" ? d.specialAction : {};
@@ -192,6 +197,8 @@ export function normalizeMenuItemDocCore(data, id, {
     price: d.price ?? "",
     available: d.available !== false,
     hidden,
+    statusHidden,
+    statusVisibility: statusHidden ? "hidden" : "auto",
     cardStyle: normalizeMenuCardStyleCore(
       d.cardStyle || d.menuCardStyle || d.cardLayout || d.layoutStyle || "",
       normalizedType

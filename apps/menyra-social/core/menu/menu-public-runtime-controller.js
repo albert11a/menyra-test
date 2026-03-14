@@ -448,7 +448,10 @@ export function createMenuPublicRuntimeController({
         cropY: clampCropPercent(item.cropY ?? 50, 50),
         price: item.price ?? "",
         available: item.available !== false,
-        hidden: item.hidden === true,
+        hidden: item.menuHidden === true,
+        menuHidden: item.menuHidden === true,
+        statusHidden: item.statusHidden === true || item.hidden === true,
+        statusVisibility: (item.statusHidden === true || item.hidden === true) ? "hidden" : "auto",
         cardStyle: normalizeMenuCardStyleCore(item.cardStyle || "", item.type || "food"),
         specialSize: String(item.specialSize || "").trim().toLowerCase() === "food" ? "food" : "default",
         specialActionType: String(item.specialActionType || "").trim().toLowerCase() === "link"

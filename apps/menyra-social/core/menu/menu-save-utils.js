@@ -70,26 +70,21 @@ export async function saveMenuItemFromModalCore({
   const colors = normalizeOptionList(documentObj.getElementById("menuItemColors")?.value || "");
   const visibilityInput = String(documentObj.getElementById("menuItemVisibility")?.value || "").trim().toLowerCase();
   let available = state.menuModal.item?.available !== false;
-  const availableToggle = documentObj.getElementById("menuItemAvailable");
-  if (availableToggle) {
-    available = availableToggle.checked !== false;
-  }
-  let hidden = state.menuModal.item?.hidden === true;
+  let statusHidden = state.menuModal.item?.statusHidden === true
+    || String(state.menuModal.item?.statusVisibility || "").trim().toLowerCase() === "hidden"
+    || state.menuModal.item?.hidden === true
+    || state.menuModal.item?.visible === false
+    || String(state.menuModal.item?.visibility || "").trim().toLowerCase() === "hidden";
   if (visibilityInput === "available") {
     available = true;
-    hidden = false;
+    statusHidden = false;
   } else if (visibilityInput === "unavailable") {
     available = false;
-    hidden = false;
+    statusHidden = false;
   } else if (visibilityInput === "hidden") {
-    hidden = true;
+    statusHidden = true;
   }
-  const menuSectionRaw = String(
-    documentObj.getElementById("menuItemMenuSection")?.value
-      || state.menuModal.item?.menuSection
-      || normalizedType
-  ).trim().toLowerCase();
-  const menuSection = menuSectionRaw === "drink" ? "drink" : "food";
+  const menuSection = normalizedType === "drink" ? "drink" : "food";
   const specialSizeRaw = String(
     documentObj.getElementById("menuItemSpecialSize")?.value
       || state.menuModal.item?.specialSize
@@ -101,11 +96,9 @@ export async function saveMenuItemFromModalCore({
     documentObj.getElementById("menuItemSpecialActionType")?.value
       || state.menuModal.item?.specialActionType
       || state.menuModal.item?.actionType
-      || "self"
+      || "product"
   ).trim().toLowerCase();
-  const specialActionType = specialActionTypeRaw === "link" || specialActionTypeRaw === "product"
-    ? specialActionTypeRaw
-    : "self";
+  const specialActionType = specialActionTypeRaw === "link" ? "link" : "product";
   const specialActionUrl = String(
     documentObj.getElementById("menuItemSpecialActionUrl")?.value
       || state.menuModal.item?.specialActionUrl
@@ -123,9 +116,11 @@ export async function saveMenuItemFromModalCore({
   const orderPositionInput = Number(orderPositionRaw);
   const hasOrderPositionInput = Number.isFinite(orderPositionInput) && orderPositionInput > 0;
   const cardStyleInput = documentObj.getElementById("menuItemCardStyle")?.value || state.menuModal.item?.cardStyle || "";
-  const imageUrlInput = String(state.menuModal.imageUrlDraft || "").trim()
-    || documentObj.getElementById("menuItemImageUrl")?.value?.trim()
-    || "";
+  const normalizedCardStyle = canPersistCardStyle
+    ? normalizeMenuCardStyleCore(cardStyleInput, normalizedType)
+    : "";
+  const isSpecialCardStyle = normalizedCardStyle === "testfirst_special";
+  const imageUrlInput = String(state.menuModal.imageUrlDraft || "").trim() || "";
   const stock = stockRaw === ""
     ? null
     : Math.max(0, Math.round(Number(stockRaw) || 0));
@@ -197,8 +192,10 @@ export async function saveMenuItemFromModalCore({
     const orderIndex = hasOrderPositionInput
       ? normalizeOrderIndex(orderPositionInput - 1, defaultOrderIndex)
       : defaultOrderIndex;
-    const normalizedSpecialActionUrl = specialActionType === "link" ? specialActionUrl : "";
-    const normalizedSpecialActionProductId = specialActionType === "product" ? specialActionProductId : "";
+    const normalizedSpecialActionUrl = isSpecialCardStyle && specialActionType === "link" ? specialActionUrl : "";
+    const normalizedSpecialActionProductId = isSpecialCardStyle && specialActionType === "product" ? specialActionProductId : "";
+    const normalizedSpecialSize = isSpecialCardStyle && specialSize === "food" ? "food" : "default";
+    const normalizedSpecialActionType = isSpecialCardStyle ? specialActionType : "self";
 
     const payload = {
       id,
@@ -217,19 +214,21 @@ export async function saveMenuItemFromModalCore({
       cropY: crop.y,
       price: price ?? "",
       available,
-      hidden: hidden === true,
+      hidden: false,
+      statusHidden: statusHidden === true,
+      statusVisibility: statusHidden ? "hidden" : "auto",
       menuSection,
       orderIndex,
       ...(canPersistCardStyle
         ? {
-          specialSize,
-          specialActionType,
+          specialSize: normalizedSpecialSize,
+          specialActionType: normalizedSpecialActionType,
           specialActionUrl: normalizedSpecialActionUrl,
           specialActionProductId: normalizedSpecialActionProductId
         }
         : {}),
       ...(canPersistCardStyle
-        ? { cardStyle: normalizeMenuCardStyleCore(cardStyleInput, normalizedType) }
+        ? { cardStyle: normalizedCardStyle }
         : {}),
       imageUrl: imageUrl || "",
       imageUrls,

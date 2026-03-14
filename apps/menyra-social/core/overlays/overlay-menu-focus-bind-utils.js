@@ -39,9 +39,11 @@ export function bindMenuOverlayEventsCore({
   const menuModalSave = doc.getElementById("menuModalSave");
   const menuImageTrigger = doc.getElementById("menuItemImageTrigger");
   const menuImageInput = doc.getElementById("menuItemImageInput");
-  const menuImageUrl = doc.getElementById("menuItemImageUrl");
   const menuCropX = doc.getElementById("menuItemCropX");
   const menuCropY = doc.getElementById("menuItemCropY");
+  const menuSpecialActionType = doc.getElementById("menuItemSpecialActionType");
+  const menuSpecialActionProductField = doc.getElementById("menuItemSpecialActionProductField");
+  const menuSpecialActionLinkField = doc.getElementById("menuItemSpecialActionLinkField");
 
   bindModalDismiss(menuModalOverlay, closeMenuModal, { selfOnly: true });
   bindModalDismiss(menuModalClose, closeMenuModal);
@@ -80,16 +82,18 @@ export function bindMenuOverlayEventsCore({
       });
     });
   }
-  if (menuImageUrl) {
-    menuImageUrl.addEventListener("input", () => {
-      state.menuModal.imageUrlDraft = menuImageUrl.value || "";
-      const preview = doc.getElementById("menuItemHeroPreview");
-      const hasGallery = !!(state.menuModal.existingImages || []).length || !!(state.menuModal.imagePreviews || []).length;
-      if (preview && !hasGallery) {
-        preview.setAttribute("src", menuImageUrl.value.trim() || placeholderImage);
-        syncMenuModalCropPreview();
-      }
-    });
+  const syncSpecialActionFields = () => {
+    const action = String(menuSpecialActionType?.value || "").trim().toLowerCase();
+    if (menuSpecialActionProductField) {
+      menuSpecialActionProductField.classList.toggle("hidden", action !== "product");
+    }
+    if (menuSpecialActionLinkField) {
+      menuSpecialActionLinkField.classList.toggle("hidden", action !== "link");
+    }
+  };
+  if (menuSpecialActionType) {
+    menuSpecialActionType.addEventListener("change", syncSpecialActionFields);
+    syncSpecialActionFields();
   }
   if (menuCropX) {
     menuCropX.addEventListener("input", () => {

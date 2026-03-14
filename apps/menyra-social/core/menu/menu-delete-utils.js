@@ -13,7 +13,7 @@ export async function deleteMenuItemByIdCore({
   if (!state || !state.user || !itemId) return;
   const restaurantId = state.userProfile.restaurantId || "";
   if (!restaurantId) return;
-  if (!confirmFn("Produkt wirklich loeschen?")) return;
+  if (!confirmFn("Möchten Sie wirklich löschen?")) return;
   try {
     await deleteDoc(doc(db, "restaurants", restaurantId, "menuItems", itemId));
     const nextItems = (state.menu.items || []).filter((it) => String(it.id) !== String(itemId));

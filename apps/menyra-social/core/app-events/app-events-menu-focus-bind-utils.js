@@ -89,6 +89,34 @@ export function bindAppMenuFocusEventsCore({
     });
   });
 
+  doc.querySelectorAll("[data-menu-add-food]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openMenuModal("create", {
+        type: "food",
+        category: "Speisen",
+        name: "",
+        description: "",
+        available: true,
+        hidden: false,
+        cardStyle: "testfirst_food"
+      });
+    });
+  });
+
+  doc.querySelectorAll("[data-menu-add-drink]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openMenuModal("create", {
+        type: "drink",
+        category: "Getraenke",
+        name: "",
+        description: "",
+        available: true,
+        hidden: false,
+        cardStyle: "testfirst_drink"
+      });
+    });
+  });
+
   doc.querySelectorAll("[data-menu-add-special]").forEach((btn) => {
     btn.addEventListener("click", () => {
       openMenuModal("create", {

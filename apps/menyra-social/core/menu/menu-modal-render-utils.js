@@ -48,12 +48,12 @@ export function renderMenuItemModalCore({
   const safeImage = isPlaceholder(heroUrl) ? PLACEHOLDER_IMAGE : heroUrl;
   const typeValue = normalizeType(item.type || "food");
   const available = item.available !== false;
-  const hidden = item.hidden === true
+  const statusHidden = item.statusHidden === true
+    || String(item.statusVisibility || "").trim().toLowerCase() === "hidden"
+    || item.hidden === true
     || item.visible === false
     || String(item.visibility || "").trim().toLowerCase() === "hidden";
-  const visibilityValue = hidden ? "hidden" : (available ? "available" : "unavailable");
-  const sectionRaw = String(item.menuSection || item.displaySection || item.menuPlacement || typeValue).trim().toLowerCase();
-  const menuSectionValue = sectionRaw === "drink" ? "drink" : "food";
+  const visibilityValue = statusHidden ? "hidden" : (available ? "available" : "unavailable");
   const status = state.menuModal.status || "";
   const sizesValue = Array.isArray(item.sizes) ? item.sizes.join(", ") : "";
   const colorsValue = Array.isArray(item.colors) ? item.colors.join(", ") : "";
@@ -62,13 +62,34 @@ export function renderMenuItemModalCore({
   const businessType = String(getBusinessType(state.userProfile) || "").trim().toLowerCase();
   const showCardStyleSelector = !isShop && isTestfirstMenuProfileTypeCore(businessType);
   const cardStyleValue = normalizeMenuCardStyleCore(item.cardStyle || "", typeValue);
+  const isSpecialCard = cardStyleValue === "testfirst_special"
+    || String(item.category || "").trim().toLowerCase() === "special";
+  const categoryValue = String(item.category || "Sonstiges").trim() || "Sonstiges";
+  const defaultCategories = [
+    "Fruehstueck",
+    "Lunch",
+    "Dinner",
+    "Vorspeise",
+    "Hauptgericht",
+    "Dessert",
+    "Getraenk",
+    "Kaffee",
+    "Cocktail",
+    "Special",
+    "Sonstiges"
+  ];
+  const categoryOptions = Array.from(
+    new Set([
+      categoryValue,
+      ...(Array.isArray(state.menu?.items) ? state.menu.items.map((entry) => String(entry?.category || "").trim()) : []),
+      ...defaultCategories
+    ].filter(Boolean))
+  );
   const specialSizeValue = String(item.specialSize || item.specialCardSize || "").trim().toLowerCase() === "food"
     ? "food"
     : "default";
   const specialActionTypeRaw = String(item.specialActionType || item.actionType || "").trim().toLowerCase();
-  const specialActionType = specialActionTypeRaw === "link" || specialActionTypeRaw === "product"
-    ? specialActionTypeRaw
-    : "self";
+  const specialActionType = specialActionTypeRaw === "link" ? "link" : "product";
   const specialActionUrl = String(item.specialActionUrl || item.linkUrl || item.actionUrl || "").trim();
   const specialActionProductId = String(item.specialActionProductId || item.targetProductId || "").trim();
   const currentItemId = String(item.id || "").trim();
@@ -166,7 +187,11 @@ export function renderMenuItemModalCore({
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Kategorie</label>
-            <input id="menuItemCategory" type="text" value="${esc(item.category || "")}" placeholder="z.B. Pizza" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <select id="menuItemCategory" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
+              ${categoryOptions.map((category) => `
+                <option value="${esc(category)}" ${categoryValue === category ? "selected" : ""}>${esc(category)}</option>
+              `).join("")}
+            </select>
           </div>
         </div>
         <div>
@@ -181,18 +206,10 @@ export function renderMenuItemModalCore({
           <select id="menuItemVisibility" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
             <option value="available" ${visibilityValue === "available" ? "selected" : ""}>Verfuegbar (anzeigen)</option>
             <option value="unavailable" ${visibilityValue === "unavailable" ? "selected" : ""}>Ausverkauft (anzeigen)</option>
-            <option value="hidden" ${visibilityValue === "hidden" ? "selected" : ""}>Deaktiviert (nicht anzeigen)</option>
+            <option value="hidden" ${visibilityValue === "hidden" ? "selected" : ""}>Status nicht anzeigen</option>
           </select>
         </div>
-        <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Menue-Bereich</label>
-          <select id="menuItemMenuSection" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            <option value="drink" ${menuSectionValue === "drink" ? "selected" : ""}>Getraenke-Bereich</option>
-            <option value="food" ${menuSectionValue === "food" ? "selected" : ""}>Speisen-Bereich</option>
-          </select>
-          <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Unabhaengig von Kategorie oder Card-Style.</p>
-        </div>
-        ${showCardStyleSelector ? `
+        ${showCardStyleSelector && isSpecialCard ? `
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Position im aktiven Menue</label>
             <select id="menuItemOrderPosition" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
@@ -214,16 +231,17 @@ export function renderMenuItemModalCore({
             <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Einfach auswaehlen statt Drag and Drop.</p>
           </div>
         ` : ""}
-        ${showCardStyleSelector ? `
+        ${showCardStyleSelector && !isSpecialCard ? `
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Card Style</label>
             <select id="menuItemCardStyle" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-              <option value="testfirst_focus" ${cardStyleValue === "testfirst_focus" ? "selected" : ""}>Testfirst Focus Card</option>
-              <option value="testfirst_drink" ${cardStyleValue === "testfirst_drink" ? "selected" : ""}>Testfirst Drink Card</option>
-              <option value="testfirst_food" ${cardStyleValue === "testfirst_food" ? "selected" : ""}>Testfirst Food Card</option>
-              <option value="testfirst_special" ${cardStyleValue === "testfirst_special" ? "selected" : ""}>Testfirst Special Card</option>
+              <option value="testfirst_drink" ${cardStyleValue === "testfirst_drink" ? "selected" : ""}>Small = Drink Card</option>
+              <option value="testfirst_food" ${cardStyleValue === "testfirst_food" ? "selected" : ""}>Big = Food Card</option>
             </select>
           </div>
+        ` : ""}
+        ${showCardStyleSelector && isSpecialCard ? `
+          <input id="menuItemCardStyle" type="hidden" value="testfirst_special" />
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Groesse</label>
             <select id="menuItemSpecialSize" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
@@ -235,12 +253,11 @@ export function renderMenuItemModalCore({
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Klick-Aktion</label>
             <select id="menuItemSpecialActionType" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-              <option value="self" ${specialActionType === "self" ? "selected" : ""}>Diese Karte oeffnen</option>
               <option value="product" ${specialActionType === "product" ? "selected" : ""}>Produkt-Modal oeffnen</option>
-              <option value="link" ${specialActionType === "link" ? "selected" : ""}>Link oeffnen</option>
+              <option value="link" ${specialActionType === "link" ? "selected" : ""}>Weiterleitung / Link oeffnen</option>
             </select>
           </div>
-          <div>
+          <div id="menuItemSpecialActionProductField" class="${specialActionType === "product" ? "" : "hidden"}">
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Ziel-Produkt</label>
             <select id="menuItemSpecialActionProductId" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
               <option value="">Kein Produkt</option>
@@ -252,7 +269,7 @@ export function renderMenuItemModalCore({
             </select>
             <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Wird genutzt, wenn Klick-Aktion = Produkt-Modal.</p>
           </div>
-          <div>
+          <div id="menuItemSpecialActionLinkField" class="${specialActionType === "link" ? "" : "hidden"}">
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Special Link</label>
             <input id="menuItemSpecialActionUrl" type="text" value="${esc(specialActionUrl)}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Wird genutzt, wenn Klick-Aktion = Link.</p>
@@ -295,10 +312,6 @@ export function renderMenuItemModalCore({
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">${isShop ? "Hinweise" : "Allergene"}</label>
           <input id="menuItemAllergens" type="text" value="${esc(item.allergens || "")}" placeholder="${isShop ? "z.B. limitierte Edition, ohne Rueckgabe" : "z.B. Milch, Gluten"}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-        </div>
-        <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Bild URL (optional)</label>
-          <input id="menuItemImageUrl" type="text" value="${esc(imageUrlDraft)}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
       </div>
     </div>
@@ -428,6 +441,11 @@ export function renderMenuDetailModalCore({
   const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
   const isShop = isShopCatalog(catalogProfile);
   const soldOut = item.available === false || stock === 0;
+  const statusHidden = item.statusHidden === true
+    || String(item.statusVisibility || "").trim().toLowerCase() === "hidden"
+    || item.hidden === true
+    || item.visible === false
+    || String(item.visibility || "").trim().toLowerCase() === "hidden";
   const availability = soldOut ? "Nicht verfuegbar" : "Verfuegbar";
   const availabilityClass = soldOut ? "text-rose-500" : "text-emerald-600";
   const selectedSize = sizes.length ? (String(state.menuDetail.selectedSize || sizes[0]).trim() || String(sizes[0])) : "";
@@ -498,7 +516,7 @@ export function renderMenuDetailModalCore({
       ` : ""}
       <div class="flex items-center justify-between">
         <span class="text-lg font-black text-slate-900">${esc(priceLabel)}</span>
-        <span class="text-[10px] font-black uppercase tracking-widest ${availabilityClass}">${availability}</span>
+        ${statusHidden ? "" : `<span class="text-[10px] font-black uppercase tracking-widest ${availabilityClass}">${availability}</span>`}
       </div>
       <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
         ${category ? `<span>${esc(category)}</span>` : ""}

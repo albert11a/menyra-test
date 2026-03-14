@@ -357,10 +357,17 @@ function sortMenuItemsByOrder(items = []) {
     }));
 }
 
+function isMenuItemStatusHidden(item = {}) {
+  const visibilityRaw = String(item?.statusVisibility || item?.visibility || "").trim().toLowerCase();
+  return item?.statusHidden === true
+    || visibilityRaw === "hidden"
+    || item?.hidden === true
+    || item?.visible === false;
+}
+
 function isMenuItemHidden(item = {}) {
-  return item?.hidden === true
-    || item?.visible === false
-    || String(item?.visibility || "").trim().toLowerCase() === "hidden";
+  const menuVisibilityRaw = String(item?.menuVisibility || "").trim().toLowerCase();
+  return item?.menuHidden === true || menuVisibilityRaw === "hidden";
 }
 
 function resolveMenuDisplaySection(item = {}) {
@@ -457,11 +464,41 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
     : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.description || "";
-  const availability = isMenuItemHidden(item)
-    ? `<span class="text-[9px] font-black uppercase tracking-widest text-rose-500">Ausgeblendet</span>`
+  const statusHidden = isMenuItemStatusHidden(item);
+  const availability = statusHidden
+    ? ""
     : (item.available === false
       ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
       : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`);
+  if (mode === "admin") {
+    return `
+      <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
+        <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
+          <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-sm font-black text-slate-900 truncate">${escapeHtml(item.name || "Produkt")}</p>
+            <span class="text-[12px] font-black text-slate-900 whitespace-nowrap">${escapeHtml(priceLabel)}</span>
+          </div>
+          <div class="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-slate-400 mt-1">
+            ${category ? `<span>${escapeHtml(category)}</span>` : ""}
+            <span>${escapeHtml(typeLabel)}</span>
+          </div>
+          <p class="text-[9px] font-black uppercase tracking-widest mt-2 ${statusHidden ? "text-slate-400" : (item.available === false ? "text-slate-400" : "text-emerald-600")}">${statusHidden ? "Status ausgeblendet" : (item.available === false ? "Ausverkauft" : "Verfuegbar")}</p>
+        </div>
+        <details class="relative shrink-0">
+          <summary class="w-10 h-10 rounded-full bg-white border border-slate-200 text-slate-500 flex items-center justify-center cursor-pointer" style="list-style:none;">
+            ${icon("more-horizontal", "w-4 h-4")}
+          </summary>
+          <div class="absolute right-0 top-12 w-40 bg-white border border-slate-100 rounded-2xl shadow-lg p-2 z-20">
+            <button data-menu-edit="${escapeHtml(item.id)}" class="w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-100">Bearbeiten</button>
+            <button data-menu-delete="${escapeHtml(item.id)}" class="w-full text-left px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-50">Loeschen</button>
+          </div>
+        </details>
+      </div>
+    `;
+  }
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -480,14 +517,8 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
           <span>${escapeHtml(typeLabel)}</span>
         </div>
         ${desc ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${escapeHtml(desc)}</p>` : ""}
-        <div class="mt-2">${availability}</div>
+        ${availability ? `<div class="mt-2">${availability}</div>` : ""}
       </div>
-      ${mode === "admin" ? `
-        <div class="flex flex-col gap-2">
-          <button data-menu-edit="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-200">Edit</button>
-          <button data-menu-delete="${escapeHtml(item.id)}" class="px-3 py-1.5 rounded-xl bg-rose-50 text-[10px] font-black uppercase tracking-widest text-rose-600 hover:bg-rose-100">Loeschen</button>
-        </div>
-      ` : ""}
     </div>
   `;
 }
@@ -506,8 +537,9 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
     : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.description || "";
-  const availability = isMenuItemHidden(item)
-    ? `<span class="text-[9px] font-black uppercase tracking-widest text-rose-500">Ausgeblendet</span>`
+  const statusHidden = isMenuItemStatusHidden(item);
+  const availability = statusHidden
+    ? ""
     : (item.available === false
       ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
       : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`);
@@ -555,7 +587,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
             <span>${escapeHtml(typeLabel)}</span>
           </div>
           ${desc ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${escapeHtml(desc)}</p>` : ""}
-          <div class="mt-2">${availability}</div>
+          ${availability ? `<div class="mt-2">${availability}</div>` : ""}
           ${countsRow}
         </div>
       `}
@@ -654,6 +686,7 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile" } = {}) {
   const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPrice(item.price);
   const isAvailable = item.available !== false;
+  const statusHidden = isMenuItemStatusHidden(item);
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -674,9 +707,11 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile" } = {}) {
       <div class="px-1.5 pb-1 flex flex-col flex-1">
         <div class="flex items-start justify-between gap-2 mb-1">
           <h4 class="text-[14px] font-black text-slate-900 leading-tight">${escapeHtml(item.name || "")}</h4>
-          ${isAvailable
-            ? `<span class="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">Verfuegbar</span>`
-            : `<span class="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-1 rounded-full">Aus</span>`
+          ${statusHidden
+            ? ""
+            : (isAvailable
+              ? `<span class="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">Verfuegbar</span>`
+              : `<span class="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-1 rounded-full">Aus</span>`)
           }
         </div>
         <p class="text-[12px] text-slate-500 leading-relaxed mb-3">${escapeHtml(item.description || "")}</p>
@@ -752,6 +787,7 @@ function renderTestfirstSpecialCard(item, { mode = "profile", size = "default" }
 
 function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
   const priceLabel = formatPrice(item.price);
+  const statusHidden = isMenuItemStatusHidden(item);
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -830,7 +866,10 @@ function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
         <div class="flex items-start justify-between gap-3 mb-1.5" style="gap:12px;margin-bottom:6px;">
           <div>
             <h4 class="text-[18px] font-black text-slate-900 leading-snug">${escapeHtml(item.name || "")}</h4>
-            <span class="inline-flex mt-2 text-[10px] font-black uppercase tracking-widest ${item.available !== false ? "text-emerald-600" : "text-rose-600"}">${item.available !== false ? "Verfuegbar" : "Nicht verfuegbar"}</span>
+            ${statusHidden
+              ? ""
+              : `<span class="inline-flex mt-2 text-[10px] font-black uppercase tracking-widest ${item.available !== false ? "text-emerald-600" : "text-rose-600"}">${item.available !== false ? "Verfuegbar" : "Nicht verfuegbar"}</span>`
+            }
           </div>
           <span class="text-[17px] font-black text-slate-900 whitespace-nowrap">${escapeHtml(priceLabel)}</span>
         </div>
@@ -998,6 +1037,36 @@ function renderMenuList(items, { mode = "profile" } = {}) {
       </div>
     `;
   }
+  if (mode === "admin") {
+    const drinkItems = items.filter((item) => normalizeMenuType(item?.type) === "drink");
+    const foodItems = items.filter((item) => normalizeMenuType(item?.type) !== "drink");
+    const renderSection = (title, list, { addType = "" } = {}) => `
+      <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(title)}</span>
+            <h3 class="text-xl font-black italic tracking-tighter">${escapeHtml(title)}</h3>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(formatCount(list.length))} Eintraege</p>
+          </div>
+          ${addType ? `
+            <button type="button" data-menu-add-${escapeHtml(addType)} class="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow active:scale-95">
+              ${icon("plus", "w-4 h-4")}
+            </button>
+          ` : ""}
+        </div>
+        ${list.length
+          ? `<div class="space-y-3">${list.map((entry) => renderMenuItemCard(entry, { mode: "admin" })).join("")}</div>`
+          : `<div class="text-center py-10 text-[10px] font-bold uppercase tracking-widest text-slate-300">Keine Eintraege</div>`
+        }
+      </div>
+    `;
+    return `
+      <div>
+        ${renderSection("Getraenke", drinkItems, { addType: "drink" })}
+        ${renderSection("Speisen", foodItems, { addType: "food" })}
+      </div>
+    `;
+  }
   return `
     <div class="space-y-4">
       ${items.map((item) => renderMenuItemCard(item, { mode })).join("")}
@@ -1093,9 +1162,10 @@ function renderSpecialAdminSection(profile) {
               : (action.type === "product" ? "Produkt-Modal" : "Diese Karte");
             const sizeLabel = resolveSpecialCardSize(item) === "food" ? "Food-Size" : "Normal";
             const sectionLabel = resolveMenuDisplaySection(item) === "drink" ? "Getraenke" : "Speisen";
-            const visibilityLabel = isMenuItemHidden(item) ? "Ausgeblendet" : (item.available === false ? "Ausverkauft" : "Verfuegbar");
-            const visibilityClass = isMenuItemHidden(item)
-              ? "text-rose-500"
+            const statusHidden = isMenuItemStatusHidden(item);
+            const visibilityLabel = statusHidden ? "Status ausgeblendet" : (item.available === false ? "Ausverkauft" : "Verfuegbar");
+            const visibilityClass = statusHidden
+              ? "text-slate-400"
               : (item.available === false ? "text-slate-400" : "text-emerald-600");
             return `
               <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
@@ -1285,18 +1355,14 @@ function renderMenuAdminView() {
           <h2 class="text-2xl font-black italic uppercase tracking-tighter">Editor</h2>
           <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">${escapeHtml(restaurantName)}</p>
         </div>
-        <button type="button" data-menu-add class="w-12 h-12 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-xl shadow-slate-200/60 active:scale-95">
-          ${icon("plus", "w-4 h-4")}
-        </button>
       </div>
 
       ${restaurantId ? `
-        <div class="mb-5 flex items-center justify-between p-4 rounded-[2rem] bg-white border border-slate-100">
+        <div class="mb-5 p-4 rounded-[2rem] bg-white border border-slate-100">
           <div>
             <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Produkte</p>
             <p class="text-lg font-black text-slate-900">${escapeHtml(countLabel)}</p>
           </div>
-          <button type="button" data-menu-add class="px-4 py-2 rounded-xl bg-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-200">Neu</button>
         </div>
       ` : `
         <div class="mb-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 text-center">
@@ -1307,7 +1373,6 @@ function renderMenuAdminView() {
 
       ${restaurantId ? renderFocusAdminSection(restaurantId) : ""}
       ${restaurantId ? renderSpecialAdminSection(profile) : ""}
-      ${restaurantId ? renderMenuLayoutSection() : ""}
 
       ${restaurantId ? `
         <div class="mb-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-3">
