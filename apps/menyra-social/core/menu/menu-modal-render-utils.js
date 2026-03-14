@@ -446,8 +446,6 @@ export function renderMenuDetailModalCore({
   const soldOut = isShop
     ? (item.available === false || stock === 0)
     : (item.available === false);
-  const availability = soldOut ? "Nicht verfuegbar" : "Verfuegbar";
-  const availabilityClass = soldOut ? "text-rose-500" : "text-emerald-600";
   const selectedSize = sizes.length ? (String(state.menuDetail.selectedSize || sizes[0]).trim() || String(sizes[0])) : "";
   const selectedColor = colors.length ? (String(state.menuDetail.selectedColor || colors[0]).trim() || String(colors[0])) : "";
   const canAddToCartNow = isShop && canAddToCart(catalogProfile);
@@ -520,7 +518,6 @@ export function renderMenuDetailModalCore({
       ` : ""}
       <div class="flex items-center justify-between">
         <span class="text-lg font-black text-slate-900">${esc(priceLabel)}</span>
-        <span class="text-[10px] font-black uppercase tracking-widest ${availabilityClass}">${availability}</span>
       </div>
       <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
         ${category ? `<span>${esc(category)}</span>` : ""}

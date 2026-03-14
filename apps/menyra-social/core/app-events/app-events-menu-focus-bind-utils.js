@@ -10,9 +10,6 @@ export function bindAppMenuFocusEventsCore({
   openShopCheckoutFn,
   submitShopCheckoutFn,
   updateShopCheckoutFieldFn,
-  menuCache,
-  menuCacheKeyFn,
-  saveMenuStatusBadgeVisibleFn,
   focusCache,
   focusCacheKeyFn,
   saveFocusEnabledFn,
@@ -46,10 +43,6 @@ export function bindAppMenuFocusEventsCore({
   const updateShopCheckoutField = typeof updateShopCheckoutFieldFn === "function"
     ? updateShopCheckoutFieldFn
     : (() => {});
-  const menuCacheKey = typeof menuCacheKeyFn === "function" ? menuCacheKeyFn : (() => "");
-  const saveMenuStatusBadgeVisible = typeof saveMenuStatusBadgeVisibleFn === "function"
-    ? saveMenuStatusBadgeVisibleFn
-    : null;
   const focusCacheKey = typeof focusCacheKeyFn === "function" ? focusCacheKeyFn : (() => "");
   const saveFocusEnabled = typeof saveFocusEnabledFn === "function" ? saveFocusEnabledFn : null;
   const openFocusModal = typeof openFocusModalFn === "function" ? openFocusModalFn : (() => {});
@@ -468,30 +461,6 @@ export function bindAppMenuFocusEventsCore({
       updateShopCheckoutField(input.dataset.cartField || "", input.value || "");
     });
   });
-
-  const menuStatusBadgeToggle = doc.getElementById("menuStatusBadgeToggle");
-  if (menuStatusBadgeToggle) {
-    menuStatusBadgeToggle.addEventListener("change", () => {
-      const restaurantId = state.userProfile.restaurantId || state.menu.restaurantId || state.profileView?.profile?.restaurantId || "";
-      if (!restaurantId) return;
-      const visible = !!menuStatusBadgeToggle.checked;
-      state.menu.statusBadgeVisible = visible;
-      const currentItems = state.menu.restaurantId === restaurantId ? (state.menu.items || []) : [];
-      ["hybrid", "collection"].forEach((source) => {
-        const key = menuCacheKey(restaurantId, source);
-        if (!key) return;
-        const cached = menuCache?.get?.(key) || {};
-        menuCache?.set?.(key, {
-          ...cached,
-          items: Array.isArray(cached.items) ? cached.items : currentItems,
-          statusBadgeVisible: visible,
-          ts: Date.now()
-        });
-      });
-      if (saveMenuStatusBadgeVisible) void saveMenuStatusBadgeVisible(restaurantId, visible);
-      render();
-    });
-  }
 
   const focusEnabledToggle = doc.getElementById("focusEnabledToggle");
   if (focusEnabledToggle) {

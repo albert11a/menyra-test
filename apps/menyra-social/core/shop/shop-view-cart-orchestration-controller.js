@@ -78,9 +78,6 @@ export function createShopViewCartOrchestrationController({
           : Number(stockValue);
         const stock = parsedStock === null || !Number.isFinite(parsedStock) ? null : Math.max(0, parsedStock);
         const thumbImages = images.slice(1, 4);
-        const soldOut = item.available === false || stock === 0;
-        const availabilityLabel = soldOut ? "Nicht verfuegbar" : "Verfuegbar";
-        const availabilityClass = soldOut ? "text-slate-300" : "text-emerald-600";
         const restaurantAttr = source === "favorites" && item.restaurantId
           ? ` data-menu-open-restaurant="${escapeHtmlFn(item.restaurantId)}"`
           : "";
@@ -98,20 +95,17 @@ export function createShopViewCartOrchestrationController({
                 `).join("")}
               </div>
             ` : ""}
-            <div class="pt-3 flex-1 flex flex-col min-w-0">
-              ${showRestaurantName && item.restaurantName ? `<p class="text-[9px] font-black uppercase tracking-widest text-indigo-600 truncate mb-1">${escapeHtmlFn(item.restaurantName)}</p>` : ""}
-              <div class="flex items-start justify-between gap-2">
-                <div class="min-w-0">
-                  <p class="text-[13px] font-black text-slate-900 leading-tight line-clamp-2">${escapeHtmlFn(item.name || "Produkt")}</p>
+              <div class="pt-3 flex-1 flex flex-col min-w-0">
+                ${showRestaurantName && item.restaurantName ? `<p class="text-[9px] font-black uppercase tracking-widest text-indigo-600 truncate mb-1">${escapeHtmlFn(item.restaurantName)}</p>` : ""}
+                <div class="flex items-start justify-between gap-2">
+                  <div class="min-w-0">
+                    <p class="text-[13px] font-black text-slate-900 leading-tight line-clamp-2">${escapeHtmlFn(item.name || "Produkt")}</p>
+                  </div>
+                  <span class="text-[11px] font-black text-slate-900 shrink-0">${escapeHtmlFn(priceLabel)}</span>
                 </div>
-                <span class="text-[11px] font-black text-slate-900 shrink-0">${escapeHtmlFn(priceLabel)}</span>
+                ${item.description ? `<p class="text-[11px] text-slate-500 mt-2 line-clamp-2">${escapeHtmlFn(item.description)}</p>` : ""}
               </div>
-              ${item.description ? `<p class="text-[11px] text-slate-500 mt-2 line-clamp-2">${escapeHtmlFn(item.description)}</p>` : ""}
-              <div class="mt-auto pt-3">
-                <span class="block text-[9px] font-black uppercase tracking-widest ${availabilityClass}">${availabilityLabel}</span>
-              </div>
-            </div>
-          </article>
+            </article>
         `;
       }).join("")}
     </div>
