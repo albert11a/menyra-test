@@ -756,13 +756,13 @@ function renderTestfirstSpecialCard(item, { mode = "profile", size = "default" }
       <div ${wrapperAttrs} class="rounded-[2.2rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden mb-5 group aspect-[16/9] ${mode === "profile" ? "cursor-pointer" : ""}" style="border-radius:2.2rem;aspect-ratio:16 / 9;margin-bottom:20px;">
         <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
-        <div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+        <div class="absolute top-3 right-3 w-8 h-8 min-w-[2rem] min-h-[2rem] bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white pointer-events-none shrink-0" style="aspect-ratio:1 / 1;">
+          ${icon("arrow-right", "w-4 h-4")}
+        </div>
+        <div class="absolute bottom-3 left-3 right-3">
           <div>
             <span class="bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mb-1.5 inline-block shadow-sm">${escapeHtml(badgeLabel)}</span>
             <h4 class="text-white text-[14px] font-black leading-tight drop-shadow-md">${titleHtml}</h4>
-          </div>
-          <div class="w-8 h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white">
-            ${icon("arrow-right", "w-4 h-4")}
           </div>
         </div>
       </div>
@@ -772,14 +772,14 @@ function renderTestfirstSpecialCard(item, { mode = "profile", size = "default" }
     <div ${wrapperAttrs} class="bg-slate-900 p-1.5 rounded-[1.8rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] flex flex-col relative overflow-hidden h-full group ${mode === "profile" ? "cursor-pointer" : ""}">
       <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
       <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none"></div>
-      <div class="absolute bottom-3 left-3 right-3 flex justify-between items-end">
+      <div class="absolute top-3 right-3 w-8 h-8 min-w-[2rem] min-h-[2rem] bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white pointer-events-none shrink-0" style="aspect-ratio:1 / 1;">
+        ${icon("arrow-right", "w-4 h-4")}
+      </div>
+      <div class="absolute bottom-3 left-3 right-3">
         <div>
           <span class="bg-amber-500 text-white text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md mb-1.5 inline-block shadow-sm">${escapeHtml(badgeLabel)}</span>
           <h4 class="text-white text-[14px] font-black leading-tight drop-shadow-md">${titleHtml}</h4>
         </div>
-        <button type="button" class="w-8 h-8 bg-white/20 backdrop-blur-md border border-white/30 rounded-full flex items-center justify-center text-white hover:bg-white/40 transition-colors">
-          ${icon("arrow-right", "w-4 h-4")}
-        </button>
       </div>
     </div>
   `;
