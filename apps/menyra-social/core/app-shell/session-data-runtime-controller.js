@@ -71,6 +71,8 @@ export function createSessionDataRuntimeController({
   cacheTtl = {},
   fastLimits = {},
   db = null,
+  docFn = null,
+  onSnapshotFn = null,
   collectionFn = null,
   queryFn = null,
   whereFn = null,
@@ -111,6 +113,10 @@ export function createSessionDataRuntimeController({
   const userProfileCacheMap = userProfileCache || new Map();
   const focusCacheMap = focusCache || new Map();
   const menuCacheMap = menuCache || new Map();
+  const makeDocRef = typeof docFn === "function" ? docFn : null;
+  const subscribeSnapshot = typeof onSnapshotFn === "function" ? onSnapshotFn : null;
+  let menuMetaUnsub = null;
+  let menuMetaRestaurantId = "";
   let restaurantsFreshReconcileQueued = false;
   let storiesRefreshQueued = false;
   let storiesRefreshForce = false;
@@ -223,6 +229,64 @@ export function createSessionDataRuntimeController({
         force: nextForce,
         refreshUi: nextRefreshUi
       })).catch(() => null);
+    });
+  }
+
+  function resolveMenuStatusBadgeVisible(value, fallback = true) {
+    if (typeof value === "boolean") return value;
+    return !!fallback;
+  }
+
+  function updateMenuStatusBadgeState(restaurantId, visible) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return;
+    const nextVisible = resolveMenuStatusBadgeVisible(visible, true);
+    ["collection", "hybrid"].forEach((source) => {
+      const cacheKey = menuCacheKeyFn(safeRestaurantId, source);
+      if (!cacheKey) return;
+      const cached = menuCacheMap.get(cacheKey);
+      if (!cached) return;
+      menuCacheMap.set(cacheKey, {
+        ...cached,
+        statusBadgeVisible: nextVisible,
+        ts: Date.now()
+      });
+    });
+    if (String(state?.menu?.restaurantId || "").trim() !== safeRestaurantId) return;
+    if (state.menu.statusBadgeVisible === nextVisible) return;
+    state.menu = {
+      ...state.menu,
+      statusBadgeVisible: nextVisible
+    };
+    renderFn();
+  }
+
+  function stopMenuMetaListener() {
+    if (typeof menuMetaUnsub === "function") {
+      try { menuMetaUnsub(); } catch {}
+    }
+    menuMetaUnsub = null;
+    menuMetaRestaurantId = "";
+  }
+
+  function startMenuMetaListener(restaurantId) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId || !db || !makeDocRef || !subscribeSnapshot) {
+      stopMenuMetaListener();
+      return;
+    }
+    if (menuMetaRestaurantId === safeRestaurantId && typeof menuMetaUnsub === "function") return;
+    stopMenuMetaListener();
+    menuMetaRestaurantId = safeRestaurantId;
+    const ref = makeDocRef(db, "restaurants", safeRestaurantId, "public", "meta");
+    menuMetaUnsub = subscribeSnapshot(ref, (snap) => {
+      const data = snap?.exists?.() ? (snap.data() || {}) : {};
+      updateMenuStatusBadgeState(
+        safeRestaurantId,
+        resolveMenuStatusBadgeVisible(data.menuStatusBadgeVisible, data.menuAvailabilityBadgeVisible)
+      );
+    }, (err) => {
+      console.error(err);
     });
   }
 
@@ -373,6 +437,7 @@ export function createSessionDataRuntimeController({
     stopActiveChatMessagesListenerFn();
     stopRestaurantMetaListenersFn();
     stopMenuItemMetaListenersFn();
+    stopMenuMetaListener();
     setMenuDetailCloseBoundFn(false);
     state.__authProfileLoadPromise = null;
     state.__authProfileLoadUid = "";
@@ -744,6 +809,7 @@ export function createSessionDataRuntimeController({
 
   async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
     if (!restaurantId) {
+      stopMenuMetaListener();
       state.menu = {
         ...state.menu,
         restaurantId: "",
@@ -755,6 +821,7 @@ export function createSessionDataRuntimeController({
       };
       return;
     }
+    startMenuMetaListener(restaurantId);
     const cacheKey = menuCacheKeyFn(restaurantId, source);
     const cached = menuCacheMap.get(cacheKey);
     if (cached && cached.items?.length && !force) {

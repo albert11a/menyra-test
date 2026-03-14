@@ -3611,6 +3611,8 @@ sessionDataRuntimeController = createSessionDataRuntimeController(buildSessionDa
   CACHE_TTL_MS,
   FAST_LIMITS,
   db,
+  doc,
+  onSnapshot,
   collection,
   query,
   where,
