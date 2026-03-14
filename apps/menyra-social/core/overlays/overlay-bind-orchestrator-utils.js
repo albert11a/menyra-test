@@ -199,6 +199,7 @@ export function bindOverlayEventsCore({
   if (postChanged) {
     bindPostOverlayEvents({
       documentObj: doc,
+      windowObj: win,
       bindModalDismissFn: bindModalDismiss,
       closePostModalFn: closePostModal,
       togglePostLikeFn: togglePostLike,

@@ -50,7 +50,7 @@ export function renderOverlaysCore({
     : !state.likesModal.open;
   const updateMenuDetail = Object.prototype.hasOwnProperty.call(options, "updateMenuDetail")
     ? options.updateMenuDetail
-    : !state.likesModal.open;
+    : false;
   const updateFocus = Object.prototype.hasOwnProperty.call(options, "updateFocus")
     ? options.updateFocus
     : !state.likesModal.open;

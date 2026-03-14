@@ -60,6 +60,7 @@ export function bindChatOverlayEventsCore({
 
 export function bindPostOverlayEventsCore({
   documentObj,
+  windowObj,
   bindModalDismissFn,
   closePostModalFn,
   togglePostLikeFn,
@@ -70,6 +71,7 @@ export function bindPostOverlayEventsCore({
   state
 } = {}) {
   const doc = documentObj || null;
+  const win = windowObj || null;
   const bindModalDismiss = typeof bindModalDismissFn === "function"
     ? bindModalDismissFn
     : null;
@@ -92,9 +94,65 @@ export function bindPostOverlayEventsCore({
   const toggleCommentLike = typeof toggleCommentLikeFn === "function"
     ? toggleCommentLikeFn
     : (() => {});
+  let stopKeyboardGapTracking = () => {};
+  const setKeyboardGapUiActive = (active) => {
+    const next = !!active;
+    doc.documentElement.classList.toggle("menu-detail-comment-focus", next);
+    doc.body?.classList?.toggle?.("menu-detail-comment-focus", next);
+  };
+  const setKeyboardGapSize = (value) => {
+    const gap = Math.max(0, Number(value) || 0);
+    doc.documentElement.style.setProperty("--menu-detail-footer-gap", `${gap}px`);
+  };
+  const startKeyboardGapTracking = (inputEl) => {
+    stopKeyboardGapTracking();
+    const input = inputEl || doc.getElementById("postCommentInput");
+    if (!(input instanceof HTMLElement)) return;
+    const footer = input.closest(".modal-footer-safe");
+    if (!footer) return;
+    setKeyboardGapUiActive(true);
+    const updateGap = () => {
+      const viewportHeight = Number(win?.visualViewport?.height || win?.innerHeight || doc.documentElement.clientHeight || 0);
+      if (!viewportHeight) {
+        setKeyboardGapSize(0);
+        return;
+      }
+      const rect = footer.getBoundingClientRect();
+      const gap = Math.max(0, Math.round(viewportHeight - rect.bottom));
+      setKeyboardGapSize(gap);
+    };
+    updateGap();
+    const vv = win?.visualViewport;
+    const onResize = () => updateGap();
+    if (vv?.addEventListener) {
+      vv.addEventListener("resize", onResize);
+      vv.addEventListener("scroll", onResize);
+    }
+    win?.addEventListener?.("resize", onResize);
+    stopKeyboardGapTracking = () => {
+      if (vv?.removeEventListener) {
+        vv.removeEventListener("resize", onResize);
+        vv.removeEventListener("scroll", onResize);
+      }
+      win?.removeEventListener?.("resize", onResize);
+      setKeyboardGapUiActive(false);
+      setKeyboardGapSize(0);
+    };
+  };
+  const cleanupKeyboardGap = () => {
+    stopKeyboardGapTracking();
+  };
+  setKeyboardGapUiActive(false);
+  setKeyboardGapSize(0);
 
   const postModalOverlay = doc.getElementById("postModalOverlay");
   const postModalClose = doc.getElementById("postModalClose");
+  if (postModalOverlay) {
+    postModalOverlay.addEventListener("click", cleanupKeyboardGap, { capture: true });
+  }
+  if (postModalClose) {
+    postModalClose.addEventListener("click", cleanupKeyboardGap, { capture: true });
+  }
   bindModalDismiss(postModalOverlay, closePostModal, { selfOnly: true });
   bindModalDismiss(postModalClose, closePostModal);
 
@@ -159,6 +217,20 @@ export function bindPostOverlayEventsCore({
   if (postCommentInput) {
     postCommentInput.addEventListener("input", () => {
       state.postModal.commentText = postCommentInput.value;
+    });
+    postCommentInput.addEventListener("focus", () => {
+      startKeyboardGapTracking(postCommentInput);
+      win?.setTimeout?.(() => {
+        try {
+          postCommentInput.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        } catch {}
+      }, 180);
+    });
+    postCommentInput.addEventListener("blur", () => {
+      win?.setTimeout?.(() => {
+        if (doc.activeElement === postCommentInput) return;
+        stopKeyboardGapTracking();
+      }, 120);
     });
   }
 }
