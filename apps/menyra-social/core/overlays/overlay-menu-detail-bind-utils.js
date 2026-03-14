@@ -65,10 +65,20 @@ export function bindMenuDetailOverlayEventsCore({
 
   const menuDetailOverlay = doc.getElementById("menuDetailOverlay");
   const menuDetailClose = doc.getElementById("menuDetailClose");
+  const cleanupKeyboardGap = () => {
+    stopKeyboardGapTracking();
+  };
+  if (menuDetailOverlay) {
+    menuDetailOverlay.addEventListener("click", cleanupKeyboardGap, { capture: true });
+  }
+  if (menuDetailClose) {
+    menuDetailClose.addEventListener("click", cleanupKeyboardGap, { capture: true });
+  }
   bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
   bindModalDismiss(menuDetailClose, closeMenuDetail);
 
   const handleAddToCart = () => {
+    stopKeyboardGapTracking();
     const item = state.menuDetail.item;
     const profile = getMenuDetailCatalogProfile(item);
     if (!item || !canAddToShopCart(profile)) return;
@@ -124,6 +134,51 @@ export function bindMenuDetailOverlayEventsCore({
   const footerCommentView = doc.getElementById("footer-comment-view");
   const menuDetailFooterCommentToggle = doc.getElementById("menuDetailFooterCommentToggle");
   const menuDetailFooterCartToggle = doc.getElementById("menuDetailFooterCartToggle");
+  let stopKeyboardGapTracking = () => {};
+  const setKeyboardGapUiActive = (active) => {
+    const next = !!active;
+    doc.documentElement.classList.toggle("menu-detail-comment-focus", next);
+    doc.body?.classList?.toggle?.("menu-detail-comment-focus", next);
+  };
+  const setKeyboardGapSize = (value) => {
+    const gap = Math.max(0, Number(value) || 0);
+    doc.documentElement.style.setProperty("--menu-detail-footer-gap", `${gap}px`);
+  };
+  const startKeyboardGapTracking = (inputEl) => {
+    stopKeyboardGapTracking();
+    const input = inputEl instanceof Element ? inputEl : doc.getElementById("menuDetailCommentInput");
+    if (!input) return;
+    const footer = input.closest(".modal-footer-safe");
+    if (!footer) return;
+    setKeyboardGapUiActive(true);
+    const updateGap = () => {
+      const viewportHeight = Number(win?.visualViewport?.height || win?.innerHeight || doc.documentElement.clientHeight || 0);
+      if (!viewportHeight) {
+        setKeyboardGapSize(0);
+        return;
+      }
+      const rect = footer.getBoundingClientRect();
+      const gap = Math.max(0, Math.round(viewportHeight - rect.bottom));
+      setKeyboardGapSize(gap);
+    };
+    updateGap();
+    const vv = win?.visualViewport;
+    const onResize = () => updateGap();
+    if (vv?.addEventListener) {
+      vv.addEventListener("resize", onResize);
+      vv.addEventListener("scroll", onResize);
+    }
+    win?.addEventListener?.("resize", onResize);
+    stopKeyboardGapTracking = () => {
+      if (vv?.removeEventListener) {
+        vv.removeEventListener("resize", onResize);
+        vv.removeEventListener("scroll", onResize);
+      }
+      win?.removeEventListener?.("resize", onResize);
+      setKeyboardGapUiActive(false);
+      setKeyboardGapSize(0);
+    };
+  };
   const toggleFooterView = (view) => {
     if (!footerCartView || !footerCommentView) return;
     if (view === "comment") {
@@ -148,6 +203,7 @@ export function bindMenuDetailOverlayEventsCore({
       }
       return;
     }
+    stopKeyboardGapTracking();
     state.menuDetail.footerView = "cart";
     footerCommentView.classList.add("hidden", "opacity-0");
     footerCartView.classList.remove("hidden");
@@ -183,11 +239,18 @@ export function bindMenuDetailOverlayEventsCore({
       autosizeTextarea(menuDetailCommentInput, { minHeight: 52, maxHeight: 160 });
     });
     menuDetailCommentInput.addEventListener("focus", () => {
+      startKeyboardGapTracking(menuDetailCommentInput);
       win?.setTimeout?.(() => {
         try {
           menuDetailCommentInput.scrollIntoView({ block: "nearest", behavior: "smooth" });
         } catch {}
       }, 180);
+    });
+    menuDetailCommentInput.addEventListener("blur", () => {
+      win?.setTimeout?.(() => {
+        if (doc.activeElement === menuDetailCommentInput) return;
+        stopKeyboardGapTracking();
+      }, 120);
     });
     menuDetailCommentInput.addEventListener("keydown", (evt) => {
       if (evt.key === "Enter" && !evt.shiftKey) {

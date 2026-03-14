@@ -135,6 +135,7 @@
       --safe-area-right: 0px;
       --safe-area-bottom: 0px;
       --safe-area-left: 0px;
+      --menu-detail-footer-gap: 0px;
       --app-bg: #f8fafc;
       --app-surface: #ffffff;
       color-scheme: light;
@@ -189,6 +190,21 @@
     body.modal-open { background: var(--app-surface); }
     body.modal-open #app,
     body.modal-open #app > .min-h-screen { background: var(--app-surface) !important; }
+    html.menu-detail-comment-focus,
+    body.menu-detail-comment-focus {
+      background: var(--app-surface) !important;
+    }
+    body.modal-open.menu-detail-comment-focus::after {
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: max(0px, var(--menu-detail-footer-gap));
+      background: rgb(255 255 255 / 0.98);
+      pointer-events: none;
+      z-index: 74;
+    }
     body.modal-open #app { pointer-events: none; visibility: hidden; }
     body.modal-open #overlayRoot,
     body.modal-open #overlayRoot > * { pointer-events: auto; visibility: visible; }

@@ -71,5 +71,10 @@ export function syncModalOpenUiStateCore({
   if (underlay) underlay.classList.toggle("hidden", !anyModalOpen);
   doc.documentElement.classList.toggle("modal-open", anyModalOpen);
   doc.body.classList.toggle("modal-open", anyModalOpen);
+  if (!anyModalOpen) {
+    doc.documentElement.classList.remove("menu-detail-comment-focus");
+    doc.body.classList.remove("menu-detail-comment-focus");
+    doc.documentElement.style.removeProperty("--menu-detail-footer-gap");
+  }
   if (anyModalOpen) ensureModalEscapeHandler();
 }
