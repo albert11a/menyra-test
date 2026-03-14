@@ -19,6 +19,11 @@
     .app-main-content-safe {
       padding-bottom: 40px;
     }
+    .app-header-safe {
+      position: sticky;
+      top: 0;
+      z-index: 45;
+    }
     .hide-scrollbar::-webkit-scrollbar {
       display: none;
     }
@@ -69,6 +74,12 @@
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased">
+  <div
+    id="safe-area-top-fill"
+    aria-hidden="true"
+    style="position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top, 0px); background-color: #f8fafc; z-index: 39; display: none; pointer-events: none;"
+  ></div>
+
   <div id="testfirstShell" class="max-w-md mx-auto relative">
     <div id="app"></div>
   </div>
@@ -482,7 +493,7 @@
     function renderSocialHeader(profile) {
       const titleClass = "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
       return `
-        <header class="app-header-safe p-6 pb-2 flex justify-between items-center gap-3 relative z-40 bg-slate-50">
+        <header class="app-header-safe p-6 pb-2 flex justify-between items-center gap-3 relative bg-slate-50">
           <div aria-hidden="true" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 bg-white border border-slate-50 shadow-slate-200/30 pointer-events-none">
             <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
             <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
@@ -562,7 +573,7 @@
 
     function renderMenuTypeStickyHeader(categories, menuType) {
       return `
-        <div class="menu-type-sticky sticky top-0 z-[40] bg-slate-50 border-b border-slate-200" data-menu-type-sticky="${escapeHtml(menuType)}">
+        <div class="menu-type-sticky relative z-[40] bg-slate-50 border-b border-slate-200" data-menu-type-sticky="${escapeHtml(menuType)}">
           ${renderMenuCategoryRow(categories, menuType)}
         </div>
       `;
@@ -1128,12 +1139,21 @@
     function getCurrentStickyHeaderBottom() {
       let currentBottom = 0;
 
-      document.querySelectorAll(".menu-type-sticky").forEach((header) => {
-        const rect = header.getBoundingClientRect();
-        if (rect.top <= 1 && rect.bottom > 0) {
+      const appHeader = document.querySelector(".app-header-safe");
+      if (appHeader instanceof HTMLElement) {
+        const rect = appHeader.getBoundingClientRect();
+        if (rect.bottom > 0) {
           currentBottom = Math.max(currentBottom, rect.bottom);
         }
-      });
+      }
+
+      const drinksTab = document.querySelector('[data-menu-type-sticky="drink"]');
+      if (drinksTab instanceof HTMLElement && drinksTab.dataset.following === "true") {
+        const rect = drinksTab.getBoundingClientRect();
+        if (rect.bottom > 0) {
+          currentBottom = Math.max(currentBottom, rect.bottom);
+        }
+      }
 
       const pinnedBlock = getPinnedMenuBlockElement();
       if (pinnedBlock instanceof HTMLElement) {
@@ -1144,6 +1164,81 @@
       }
 
       return currentBottom;
+    }
+
+    function syncTopSafeAreaFill() {
+      const safeAreaFill = document.getElementById("safe-area-top-fill");
+      if (!(safeAreaFill instanceof HTMLElement)) return;
+
+      if (state.profileTopTab !== "menu") {
+        safeAreaFill.style.display = "none";
+        return;
+      }
+
+      const header = document.querySelector(".app-header-safe");
+      if (header instanceof HTMLElement) {
+        safeAreaFill.style.display = "block";
+        return;
+      }
+
+      safeAreaFill.style.display = "none";
+    }
+
+    function resetDrinksTabPosition(tab, section) {
+      if (section instanceof HTMLElement) {
+        section.style.paddingTop = "";
+      }
+
+      if (!(tab instanceof HTMLElement)) return;
+
+      tab.style.position = "";
+      tab.style.top = "";
+      tab.style.left = "";
+      tab.style.width = "";
+      tab.style.zIndex = "";
+      tab.style.transform = "";
+      delete tab.dataset.following;
+    }
+
+    function syncDrinksTabFollowingHeader() {
+      const tab = document.querySelector('[data-menu-type-sticky="drink"]');
+      const section = tab?.closest('[data-menu-type-block="drink"]');
+      const shell = document.getElementById("testfirstShell");
+      const header = document.querySelector(".app-header-safe");
+
+      if (!(tab instanceof HTMLElement) || !(section instanceof HTMLElement) || !(shell instanceof HTMLElement) || !(header instanceof HTMLElement)) {
+        resetDrinksTabPosition(tab, section);
+        return;
+      }
+
+      if (state.profileTopTab !== "menu") {
+        resetDrinksTabPosition(tab, section);
+        return;
+      }
+
+      const headerRect = header.getBoundingClientRect();
+      const sectionRect = section.getBoundingClientRect();
+      const shellRect = shell.getBoundingClientRect();
+      const tabHeight = Math.ceil(tab.offsetHeight || 0);
+      const headerBottom = Math.ceil(headerRect.bottom || 0);
+
+      const shouldFollow =
+        sectionRect.top <= headerBottom &&
+        sectionRect.bottom > headerBottom + tabHeight;
+
+      if (!shouldFollow) {
+        resetDrinksTabPosition(tab, section);
+        return;
+      }
+
+      section.style.paddingTop = `${tabHeight}px`;
+      tab.dataset.following = "true";
+      tab.style.position = "fixed";
+      tab.style.top = `${headerBottom}px`;
+      tab.style.left = `${shellRect.left}px`;
+      tab.style.width = `${shellRect.width}px`;
+      tab.style.zIndex = "44";
+      tab.style.transform = "translateZ(0)";
     }
 
     function getStickyHeaderForSection(section) {
@@ -1215,10 +1310,25 @@
 
     let isScrolling = false;
     function handleScroll() {
-      if (state.profileTopTab !== "menu" || state.isProgrammaticScroll) return;
+      if (state.profileTopTab !== "menu") {
+        syncTopSafeAreaFill();
+        syncDrinksTabFollowingHeader();
+        return;
+      }
+
+      if (state.isProgrammaticScroll) {
+        syncPinnedMenuTypeBlock();
+        syncDrinksTabFollowingHeader();
+        syncTopSafeAreaFill();
+        return;
+      }
+
       if (!isScrolling) {
         window.requestAnimationFrame(() => {
           syncPinnedMenuTypeBlock();
+          syncDrinksTabFollowingHeader();
+          syncTopSafeAreaFill();
+
           const sections = document.querySelectorAll(".menu-category-section");
           let currentCategory = state.menu.activeCategory;
           let currentType = getPinnedMenuBlockElement() ? "food" : state.menu.activeType;
@@ -1418,7 +1528,12 @@
 
     function setupGlobalEvents() {
       window.addEventListener("scroll", handleScroll, { passive: true });
+
       window.addEventListener("resize", () => {
+        syncPinnedMenuTypeBlock();
+        syncDrinksTabFollowingHeader();
+        syncTopSafeAreaFill();
+
         if (state.profileTopTab !== "menu") return;
         handleScroll();
       });
@@ -1463,8 +1578,12 @@
             persistState();
             const y = section.getBoundingClientRect().top + window.scrollY - getCategoryScrollOffset(section);
             window.scrollTo({ top: y, behavior: "smooth" });
+
             setTimeout(() => {
               state.isProgrammaticScroll = false;
+              syncPinnedMenuTypeBlock();
+              syncDrinksTabFollowingHeader();
+              syncTopSafeAreaFill();
               handleScroll();
             }, 800);
           }
@@ -1550,12 +1669,21 @@
       document.getElementById("app").innerHTML = renderPublicProfileView();
       window.lucide.createIcons();
 
+      syncPinnedMenuTypeBlock();
+      syncDrinksTabFollowingHeader();
+      syncTopSafeAreaFill();
+
       if (state.profileTopTab === "menu") {
         setTimeout(() => {
           syncPinnedMenuTypeBlock();
+          syncDrinksTabFollowingHeader();
+          syncTopSafeAreaFill();
           updateActivePillDOM(state.menu.activeCategory, state.menu.activeType);
           handleScroll();
         }, 50);
+      } else {
+        syncTopSafeAreaFill();
+        syncDrinksTabFollowingHeader();
       }
     }
 

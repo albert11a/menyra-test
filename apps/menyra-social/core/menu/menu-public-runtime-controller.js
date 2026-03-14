@@ -422,6 +422,53 @@ export function createMenuPublicRuntimeController({
     });
   }
 
+  function normalizeMenuStock(value) {
+    if (value === null || value === undefined) return null;
+    const raw = typeof value === "string" ? value.trim() : value;
+    if (raw === "") return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
+  }
+
+  function resolveMenuStatusBadgeVisible(value, fallback = true) {
+    if (typeof value === "boolean") return value;
+    return !!fallback;
+  }
+
+  async function loadMenuMeta(restaurantId) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId || !makeDocRef || !getDoc || !db) {
+      return { statusBadgeVisible: true };
+    }
+    try {
+      const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "meta"));
+      if (!snap.exists()) return { statusBadgeVisible: true };
+      const data = snap.data() || {};
+      return {
+        statusBadgeVisible: resolveMenuStatusBadgeVisible(
+          data.menuStatusBadgeVisible,
+          data.menuAvailabilityBadgeVisible
+        )
+      };
+    } catch (err) {
+      console.error(err);
+      return { statusBadgeVisible: true };
+    }
+  }
+
+  async function saveMenuStatusBadgeVisible(restaurantId, visible) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId || !makeDocRef || !setDoc || !db) return;
+    try {
+      await setDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "meta"), {
+        menuStatusBadgeVisible: !!visible,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
   async function publishMenuToPublic(restaurantId, items) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !makeDocRef || !setDoc || !db) return;
@@ -441,7 +488,7 @@ export function createMenuPublicRuntimeController({
         allergens: item.allergens || "",
         brand: item.brand || "",
         sku: item.sku || "",
-        stock: Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null,
+        stock: normalizeMenuStock(item.stock),
         sizes: Array.isArray(item.sizes) ? item.sizes : [],
         colors: Array.isArray(item.colors) ? item.colors : [],
         cropX: clampCropPercent(item.cropX ?? 50, 50),
@@ -450,8 +497,8 @@ export function createMenuPublicRuntimeController({
         available: item.available !== false,
         hidden: item.menuHidden === true,
         menuHidden: item.menuHidden === true,
-        statusHidden: item.statusHidden === true || item.hidden === true,
-        statusVisibility: (item.statusHidden === true || item.hidden === true) ? "hidden" : "auto",
+        statusHidden: false,
+        statusVisibility: "auto",
         cardStyle: normalizeMenuCardStyleCore(item.cardStyle || "", item.type || "food"),
         specialSize: String(item.specialSize || "").trim().toLowerCase() === "food" ? "food" : "default",
         specialActionType: String(item.specialActionType || "").trim().toLowerCase() === "link"
@@ -511,14 +558,24 @@ export function createMenuPublicRuntimeController({
     return `${restaurantId || ""}::${source || "hybrid"}`;
   }
 
-  function syncMenuCaches(restaurantId, items) {
+  function syncMenuCaches(restaurantId, items, { statusBadgeVisible = state?.menu?.statusBadgeVisible } = {}) {
     const list = sortMenuItemsByOrder(items);
-    menuCacheMap.set(menuCacheKey(restaurantId, "collection"), { items: list, ts: Date.now() });
-    menuCacheMap.set(menuCacheKey(restaurantId, "hybrid"), { items: list, ts: Date.now() });
+    const nextStatusBadgeVisible = resolveMenuStatusBadgeVisible(statusBadgeVisible);
+    menuCacheMap.set(menuCacheKey(restaurantId, "collection"), {
+      items: list,
+      statusBadgeVisible: nextStatusBadgeVisible,
+      ts: Date.now()
+    });
+    menuCacheMap.set(menuCacheKey(restaurantId, "hybrid"), {
+      items: list,
+      statusBadgeVisible: nextStatusBadgeVisible,
+      ts: Date.now()
+    });
     if (state?.menu?.restaurantId === restaurantId) {
       state.menu = {
         ...state.menu,
         items: list,
+        statusBadgeVisible: nextStatusBadgeVisible,
         loading: false,
         error: ""
       };
@@ -534,6 +591,8 @@ export function createMenuPublicRuntimeController({
     loadPublicMenuItems,
     loadLegacyMenuItems,
     loadMenuItemsFromCollection,
+    loadMenuMeta,
+    saveMenuStatusBadgeVisible,
     hasMenuItemImages,
     fillMenuImagesFromFallback,
     publishMenuToPublic,

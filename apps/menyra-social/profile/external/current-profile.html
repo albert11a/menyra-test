@@ -1,20 +1,819 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MNYRA Social</title>
-  <script>
-    const target = new URL("/apps/menyra-social/index.html", window.location.origin);
-    target.searchParams.set("tab", "profile");
-    const incoming = new URLSearchParams(window.location.search);
-    incoming.forEach((value, key) => {
-      if (!target.searchParams.has(key)) target.searchParams.set(key, value);
-    });
-    window.location.replace(`${target.pathname}${target.search}${window.location.hash || ""}`);
-  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Public Restaurant Business View</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      background:
+        radial-gradient(circle at top left, rgba(99,102,241,0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(168,85,247,0.08), transparent 24%),
+        linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+      min-height: 100vh;
+      font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+    }
+    .app-main-content-safe {
+      padding-bottom: 32px;
+    }
+    .app-shell {
+      min-height: calc(100vh - 4rem);
+    }
+    .app-header-safe {
+      padding-top: max(1rem, env(safe-area-inset-top));
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
 </head>
-<body>
-  <p>Weiterleitung zu MNYRA Social...</p>
+<body class="text-slate-900 antialiased">
+  <div class="max-w-md mx-auto py-6 md:py-8">
+    <div id="app"></div>
+  </div>
+
+  <script>
+    const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=800&q=80";
+
+    const state = {
+      activeTab: "profile",
+      drawerOpen: false,
+      notificationsUnread: 6,
+      chatUnread: 2,
+      user: { uid: "viewer-1" },
+      profileTopTab: "profile",
+      profileContentTab: "posts",
+      profileViewMode: "grid",
+      focus: {
+        loading: false,
+        restaurantId: "rest-1",
+        index: 0,
+        enabled: true,
+        items: [
+          {
+            id: "focus-1",
+            title: "Sot ne Fokus",
+            text: "Signature brunch with seasonal toppings and fresh house coffee.",
+            imageUrl: "https://images.unsplash.com/photo-1481833761820-0509d3217039?auto=format&fit=crop&w=1200&q=80"
+          },
+          {
+            id: "focus-2",
+            title: "Weekend Dessert Drop",
+            text: "Fresh tiramisu jars and berry pancakes served until late afternoon.",
+            imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80"
+          }
+        ]
+      },
+      menu: {
+        loading: false,
+        restaurantId: "rest-1",
+        error: "",
+        items: [
+          {
+            id: "m1",
+            type: "food",
+            name: "Truffle Eggs Royale",
+            price: 12.5,
+            category: "Brunch",
+            description: "Poached eggs, brioche, parmesan cream and greens.",
+            imageUrl: "https://images.unsplash.com/photo-1494859802809-d069c3b71a8a?auto=format&fit=crop&w=900&q=80",
+            available: true,
+            likesCount: 224,
+            commentsCount: 18
+          },
+          {
+            id: "m2",
+            type: "food",
+            name: "Pistachio French Toast",
+            price: 10.9,
+            category: "Dessert",
+            description: "Mascarpone, pistachio crumbs and warm maple syrup.",
+            imageUrl: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?auto=format&fit=crop&w=900&q=80",
+            available: true,
+            likesCount: 182,
+            commentsCount: 11
+          },
+          {
+            id: "m3",
+            type: "drink",
+            name: "Iced Matcha",
+            price: 4.8,
+            category: "Drinks",
+            description: "",
+            imageUrl: "https://images.unsplash.com/photo-1517701604599-bb29b565090c?auto=format&fit=crop&w=900&q=80",
+            available: true,
+            likesCount: 91,
+            commentsCount: 5
+          },
+          {
+            id: "m4",
+            type: "drink",
+            name: "Cold Brew",
+            price: 3.9,
+            category: "Coffee",
+            description: "",
+            imageUrl: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=900&q=80",
+            available: true,
+            likesCount: 64,
+            commentsCount: 3
+          }
+        ]
+      },
+      profileView: {
+        profile: {
+          uid: "owner-restaurant-1",
+          restaurantId: "rest-1",
+          name: "Menyra House",
+          handle: "menyra.house",
+          bio: "Modern brunch, coffee & desserts.\nSignature plates all day.",
+          avatar: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=700&q=80",
+          followers: 15420,
+          following: 218,
+          location: "Prishtina",
+          isPremium: true,
+          privateAccount: false,
+          pendingFollowRequest: false
+        },
+        posts: [
+          {
+            id: "p1",
+            url: "https://images.unsplash.com/photo-1559339352-11d035aa65de?auto=format&fit=crop&w=900&q=80",
+            likesCount: 1842,
+            commentsCount: 132,
+            type: "wide",
+            isVideo: false
+          },
+          {
+            id: "p2",
+            url: "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=900&q=80",
+            likesCount: 986,
+            commentsCount: 61,
+            type: "square",
+            isVideo: false
+          },
+          {
+            id: "p3",
+            url: "https://images.unsplash.com/photo-1498654896293-37aacf113fd9?auto=format&fit=crop&w=900&q=80",
+            likesCount: 1211,
+            commentsCount: 48,
+            type: "square",
+            isVideo: false
+          },
+          {
+            id: "p4",
+            url: "https://images.unsplash.com/photo-1541544741938-0af808871cc0?auto=format&fit=crop&w=900&q=80",
+            likesCount: 2204,
+            commentsCount: 205,
+            type: "hero",
+            isVideo: true
+          }
+        ],
+        checkins: [
+          {
+            name: "Menyra Rooftop",
+            city: "Prishtina",
+            image: "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=500&q=80"
+          },
+          {
+            name: "Brunch Corner",
+            city: "Prizren",
+            image: "https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=500&q=80"
+          }
+        ]
+      },
+      followingHandles: [],
+      followingTargetIds: [],
+      menuMeta: new Map()
+    };
+
+    function escapeHtml(value = "") {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+
+    function normalizeHandle(value = "") {
+      return String(value || "").trim().toLowerCase().replace(/^@/, "").replace(/\s+/g, ".");
+    }
+
+    function getOptimizedImageUrl(value = "") {
+      return String(value || "").trim();
+    }
+
+    function isPlaceholderUrl(value = "") {
+      return !String(value || "").trim();
+    }
+
+    function getFirebaseStorageUrl(value = "") {
+      return String(value || "").trim();
+    }
+
+    function isDirectImageUrl(value = "") {
+      return /^https?:\/\//i.test(String(value || "").trim());
+    }
+
+    function logoFitClass() {
+      return "object-cover";
+    }
+
+    function formatCount(value) {
+      const num = Number(value || 0);
+      if (num >= 1000000) return `${(num / 1000000).toFixed(num >= 10000000 ? 0 : 1)}M`;
+      if (num >= 1000) return `${(num / 1000).toFixed(num >= 10000 ? 0 : 1)}K`;
+      return String(num);
+    }
+
+    function formatPrice(value) {
+      return `€${Number(value || 0).toFixed(2)}`;
+    }
+
+    function icon(name, classes = "") {
+      return `<i data-lucide="${escapeHtml(name)}" class="${escapeHtml(classes)}"></i>`;
+    }
+
+    function getMenuItemObjectPosition() {
+      return "center center";
+    }
+
+    function getFocusItemObjectPosition() {
+      return "center center";
+    }
+
+    function getMenuItemSocialId(item = {}) {
+      return String(item.id || "");
+    }
+
+    function menuItemMetaKey(restaurantId = "", itemId = "") {
+      return `${restaurantId}:${itemId}`;
+    }
+
+    function ensureMenuItemMeta(key = "", item = null) {
+      if (!state.menuMeta.has(key)) {
+        state.menuMeta.set(key, {
+          likes: [],
+          comments: [],
+          counts: {
+            likes: Number(item?.likesCount || 0),
+            comments: Number(item?.commentsCount || 0)
+          }
+        });
+      }
+      return state.menuMeta.get(key);
+    }
+
+    function resolveMenuItemCounts(meta = {}) {
+      return {
+        likes: Number(meta?.counts?.likes || 0),
+        comments: Number(meta?.counts?.comments || 0)
+      };
+    }
+
+    function resolveMenuItemHero(item = {}) {
+      return item.imageUrl || item.url || "";
+    }
+
+    function normalizeMenuType(value = "") {
+      return String(value || "").trim().toLowerCase() === "drink" ? "drink" : "food";
+    }
+
+    function isRestaurantCafeProfile(profile = {}) {
+      return !!String(profile?.restaurantId || "").trim();
+    }
+
+    function isFollowingProfile(profile = {}) {
+      const uid = String(profile?.uid || "").trim();
+      if (uid && state.followingTargetIds.includes(uid)) return true;
+      const followKey = normalizeHandle(profile?.handle || "");
+      return !!(followKey && state.followingHandles.includes(followKey));
+    }
+
+    function resolvePostCounts(item = {}) {
+      return {
+        likeLabel: formatCount(item.likesCount || 0),
+        commentLabel: formatCount(item.commentsCount || 0)
+      };
+    }
+    function getFocusStateForRestaurant(restaurantId = "") {
+      if (state.focus.restaurantId !== restaurantId) {
+        return { items: [], enabled: false, loading: false };
+      }
+      return {
+        items: state.focus.items || [],
+        enabled: !!state.focus.enabled,
+        loading: !!state.focus.loading
+      };
+    }
+
+    function getFocusIndex(items = []) {
+      if (!items.length) return 0;
+      return Math.max(0, Math.min(state.focus.index || 0, items.length - 1));
+    }
+
+    function getFocusCardClass() {
+      return "bg-white border border-slate-100 shadow-sm";
+    }
+
+    function renderDrawer() {
+      const navItems = [
+        { id: "feed", label: "Feed", icon: "home" },
+        { id: "chat", label: "Chats", icon: "messages-square", badge: state.chatUnread },
+        { id: "search", label: "Suche", icon: "search" },
+        { id: "map", label: "Karte", icon: "map" },
+        { id: "profile", label: "Profil", icon: "user" },
+        { id: "restaurant", label: "Restaurant", icon: "utensils-crossed" },
+        { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
+        { id: "notifications", label: "Updates", icon: "bell", badge: state.notificationsUnread },
+        { id: "settings", label: "Optionen", icon: "settings" }
+      ];
+      return `
+        <div id="drawerRoot" class="fixed inset-0 z-[2000] transition-all duration-500 ${state.drawerOpen ? "visible" : "invisible"}">
+          <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state.drawerOpen ? "opacity-100" : "opacity-0"}"></div>
+          <aside class="absolute left-0 top-0 bottom-0 w-80 max-w-[86vw] bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col overflow-y-auto no-scrollbar ${state.drawerOpen ? "translate-x-0" : "-translate-x-full"}">
+            <div class="flex justify-between items-center mb-10">
+              <div>
+                <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">MNYRA</span>
+                <h3 class="text-2xl font-black italic">NAVIGATE</h3>
+              </div>
+              <button id="drawerClose" class="p-2.5 rounded-xl bg-slate-50">${icon("x", "w-4 h-4")}</button>
+            </div>
+            <div class="p-4 rounded-3xl mb-6 flex items-center gap-3 bg-slate-50 border border-slate-100">
+              <img src="${escapeHtml(state.profileView.profile.avatar)}" class="w-10 h-10 rounded-xl object-cover" />
+              <div>
+                <p class="text-xs font-black">${escapeHtml(state.profileView.profile.name)}</p>
+                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Business Account</p>
+              </div>
+            </div>
+            <nav class="space-y-2 flex-1">
+              ${navItems.map((item) => {
+                const isActive = (item.id === "profile" && state.profileTopTab === "profile") || (item.id === "restaurant" && state.profileTopTab === "menu");
+                return `
+                  <button data-drawer-nav="${item.id}" class="w-full flex items-center justify-between p-4 rounded-2xl font-black text-xs transition-all ${isActive ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20" : "text-slate-400 hover:bg-slate-50"}">
+                    <span class="flex items-center gap-4">${icon(item.icon, "w-4 h-4")} ${item.label}</span>
+                    ${item.badge ? `<span class="${isActive ? "bg-white/15 text-white" : "bg-red-500 text-white"} text-[9px] font-bold px-1.5 py-0.5 rounded-md">${item.badge > 9 ? "9+" : item.badge}</span>` : ""}
+                  </button>
+                `;
+              }).join("")}
+            </nav>
+            <button class="mt-6 flex items-center gap-3 p-4 text-rose-500 font-black uppercase text-[10px] tracking-widest hover:bg-rose-500/10 rounded-2xl transition-colors">
+              ${icon("log-out", "w-4 h-4")} Abmelden
+            </button>
+          </aside>
+        </div>
+      `;
+    }
+
+    function renderHeader() {
+      const unread = Number(state.notificationsUnread || 0) + Number(state.chatUnread || 0);
+      return `
+        <header class="app-header-safe px-6 pb-3 pt-4 flex justify-between items-center relative z-40 bg-slate-50/90 backdrop-blur-sm rounded-t-[2rem]">
+          <button id="drawerToggle" class="w-14 h-14 rounded-3xl shadow-xl flex flex-col gap-1.5 items-start justify-center p-4 bg-white border border-slate-50 shadow-slate-200/30 relative">
+            <div class="w-6 h-0.5 rounded-full bg-slate-900"></div>
+            <div class="w-4 h-0.5 rounded-full bg-slate-900"></div>
+            <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
+            ${unread ? `<span class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${unread > 9 ? "9+" : unread}</span>` : ""}
+          </button>
+          <div class="text-center">
+            <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
+            <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.4em] block">BUSINESS</span>
+          </div>
+          <button class="w-14 h-14 rounded-3xl shadow-xl overflow-hidden p-1 bg-white border border-slate-50 shadow-slate-200/30">
+            <img src="${escapeHtml(state.profileView.profile.avatar)}" class="w-full h-full rounded-[1.4rem] object-cover" />
+          </button>
+        </header>
+      `;
+    }
+
+    function renderBusinessTopSwitch() {
+      return `
+        <div class="px-5 mb-4">
+          <div class="bg-white/70 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center backdrop-blur-sm">
+            ${[
+              { id: "profile", label: "Profil" },
+              { id: "menu", label: "Restaurant" }
+            ].map((tab) => `
+              <button data-business-top-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${state.profileTopTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400"}">
+                ${tab.label}
+              </button>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProfileTabs() {
+      return `
+        <div class="px-6 mb-6 mt-4">
+          <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm">
+            ${[
+              { id: "posts", label: "Beitraege" },
+              { id: "media", label: "Medien" },
+              { id: "checkins", label: "Check-ins" }
+            ].map((tab) => `
+              <button data-profile-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 ${state.profileContentTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400"}">
+                ${tab.label}
+              </button>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProfileViewControls() {
+      if (state.profileContentTab === "checkins") return "";
+      return `
+        <div class="flex items-center justify-between px-8 mb-6">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Ansicht</span>
+          <div class="flex gap-1 bg-white p-1 rounded-2xl border border-slate-100 shadow-sm">
+            <button data-profile-view="grid" class="p-2.5 rounded-xl transition-all ${state.profileViewMode === "grid" ? "bg-slate-900 text-white shadow-md" : "text-slate-300"}">
+              ${icon("layout-grid", "w-4 h-4")}
+            </button>
+            <button data-profile-view="feed" class="p-2.5 rounded-xl transition-all ${state.profileViewMode === "feed" ? "bg-slate-900 text-white shadow-md" : "text-slate-300"}">
+              ${icon("square", "w-4 h-4")}
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProfilePostCardFancy(item, isGrid) {
+      const counts = resolvePostCounts(item);
+      const isWide = item.type === "wide" || item.type === "hero";
+      const colClass = isGrid && isWide ? "col-span-2" : "";
+      const aspectClass = isGrid ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]") : "aspect-[4/5]";
+      const imageUrl = getOptimizedImageUrl(item.url);
+      return `
+        <div class="${colClass} relative ${aspectClass} rounded-[2rem] overflow-hidden bg-white shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)]">
+          <div class="absolute inset-0 rounded-[2rem] overflow-hidden">
+            <img src="${escapeHtml(imageUrl)}" class="w-full h-full object-cover" />
+            ${item.isVideo ? `<div class="absolute top-3 left-3 text-white drop-shadow-md bg-black/20 backdrop-blur-sm rounded-full p-1">${icon("play", "w-3 h-3")}</div>` : ""}
+            <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent flex flex-col justify-end p-3 pb-4 pointer-events-none">
+              <div class="w-full flex items-end justify-center">
+                <div class="flex items-center gap-2.5 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-3 py-1.5 text-white shadow-[0_4px_12px_rgba(0,0,0,0.08)]">
+                  <div class="flex items-center gap-1">
+                    ${icon("heart", "w-3 h-3 text-rose-500")}
+                    <span class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.likeLabel)}</span>
+                  </div>
+                  <div class="w-px h-3 bg-white/20"></div>
+                  <div class="flex items-center gap-1">
+                    ${icon("message-circle", "w-3 h-3 text-indigo-200")}
+                    <span class="text-[10px] font-bold tracking-wide">${escapeHtml(counts.commentLabel)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderProfilePostsFancy(posts, viewMode) {
+      const isGrid = viewMode === "grid";
+      if (!posts.length) {
+        return `
+          <div class="col-span-2 py-24 text-center">
+            <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
+              ${icon("image", "w-9 h-9")}
+            </div>
+            <p class="text-slate-400 text-sm font-bold tracking-wide">Keine Inhalte gefunden</p>
+          </div>
+        `;
+      }
+      return posts.map((post) => renderProfilePostCardFancy(post, isGrid)).join("");
+    }
+
+    function renderProfileCheckins() {
+      const checkins = state.profileView.checkins || [];
+      if (!checkins.length) {
+        return `
+          <div class="px-6 app-main-content-safe text-center">
+            <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
+              ${icon("map-pin", "w-9 h-9")}
+            </div>
+            <p class="text-slate-400 text-sm font-bold tracking-wide">Keine Check-ins gefunden</p>
+          </div>
+        `;
+      }
+      return `
+        <div class="px-6 flex flex-col gap-4 app-main-content-safe">
+          ${checkins.map((place) => `
+            <div class="flex items-center gap-4 bg-white p-4 rounded-[2rem] border border-slate-50 shadow-[0_30px_60px_-12px_rgba(50,50,93,0.15),0_18px_36px_-18px_rgba(0,0,0,0.15)]">
+              <div class="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden shrink-0 shadow-inner">
+                <img src="${escapeHtml(place.image)}" class="w-full h-full object-cover" />
+              </div>
+              <div class="flex-1">
+                <h4 class="font-black text-slate-900 text-sm mb-1">${escapeHtml(place.name || "Ort")}</h4>
+                <div class="flex items-center gap-1.5 text-xs text-slate-500 font-bold">
+                  ${icon("map-pin", "w-3 h-3 text-indigo-500")} ${escapeHtml(place.city || "Stadt")}
+                </div>
+              </div>
+              <button class="w-10 h-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-300">
+                ${icon("arrow-right", "w-4 h-4")}
+              </button>
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+    function renderMenuItemCardStacked(item, { variant = "food" } = {}) {
+      const rawImg = resolveMenuItemHero(item);
+      const imgSrc = getOptimizedImageUrl(rawImg);
+      const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+      const firebaseFallback = getFirebaseStorageUrl(rawImg);
+      const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+      const priceLabel = formatPrice(item.price);
+      const typeLabel = normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise";
+      const category = item.category || "";
+      const desc = item.description || "";
+      const availability = item.available === false
+        ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
+        : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`;
+      const restaurantId = state.profileView?.profile?.restaurantId || "";
+      const itemId = getMenuItemSocialId(item);
+      const metaKey = menuItemMetaKey(restaurantId, itemId);
+      const meta = ensureMenuItemMeta(metaKey, item);
+      const counts = resolveMenuItemCounts(meta);
+      const countsRow = `
+        <div class="mt-2 flex items-center gap-3 text-[10px] font-bold text-slate-400">
+          <span class="inline-flex items-center gap-1">${icon("heart", "w-3 h-3 text-rose-400")} ${escapeHtml(formatCount(counts.likes))}</span>
+          <span class="inline-flex items-center gap-1">${icon("message-circle", "w-3 h-3 text-indigo-400")} ${escapeHtml(formatCount(counts.comments))}</span>
+        </div>
+      `;
+      const isDrink = variant === "drink";
+      return `
+        <div class="w-full ${isDrink ? "p-3 rounded-[1.6rem]" : "p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all">
+          <div class="w-full ${isDrink ? "h-28 rounded-[1.4rem]" : "h-44 rounded-[1.8rem]"} overflow-hidden bg-slate-100">
+            <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" />
+          </div>
+          ${isDrink ? `
+            <div class="mt-3">
+              <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(item.name || "Produkt")}</p>
+              <p class="text-xs font-black text-slate-700 mt-1">${escapeHtml(priceLabel)}</p>
+              ${countsRow}
+            </div>
+          ` : `
+            <div class="mt-4">
+              <div class="flex items-start justify-between gap-4">
+                <p class="text-sm font-black text-slate-900">${escapeHtml(item.name || "Produkt")}</p>
+                <span class="text-xs font-black text-slate-900">${escapeHtml(priceLabel)}</span>
+              </div>
+              <div class="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-slate-400 mt-1">
+                ${category ? `<span>${escapeHtml(category)}</span>` : ""}
+                <span>${escapeHtml(typeLabel)}</span>
+              </div>
+              ${desc ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${escapeHtml(desc)}</p>` : ""}
+              <div class="mt-2">${availability}</div>
+              ${countsRow}
+            </div>
+          `}
+        </div>
+      `;
+    }
+
+    function renderMenuDrinkGrid(items) {
+      if (!items.length) return "";
+      return `<div class="grid grid-cols-2 gap-4">${items.map((item) => renderMenuItemCardStacked(item, { variant: "drink" })).join("")}</div>`;
+    }
+
+    function renderMenuFoodList(items) {
+      if (!items.length) return "";
+      return `<div class="space-y-4">${items.map((item) => renderMenuItemCardStacked(item, { variant: "food" })).join("")}</div>`;
+    }
+
+    function renderFocusCarousel(profile) {
+      const restaurantId = profile?.restaurantId || "";
+      if (!restaurantId) return "";
+      if (!isRestaurantCafeProfile(profile)) return "";
+      const { items, enabled, loading } = getFocusStateForRestaurant(restaurantId);
+      if (!enabled) return "";
+      if (!items.length && !loading) return "";
+      if (loading && !items.length) {
+        return `<div class="${getFocusCardClass()} rounded-[2.5rem] p-6 border shadow-sm"><div class="text-center py-8 text-[10px] font-bold uppercase tracking-widest text-slate-400">Fokus wird geladen...</div></div>`;
+      }
+
+      const idx = getFocusIndex(items);
+      const item = items[idx] || items[0];
+      const imgUrl = getOptimizedImageUrl(item.imageUrl || "");
+      const safeImg = isPlaceholderUrl(imgUrl) ? PLACEHOLDER_IMAGE : imgUrl;
+      const text = item.text || "";
+      return `
+        <div id="focusCarousel" class="${getFocusCardClass()} rounded-[2.5rem] p-6 border shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <span class="text-[9px] font-black text-amber-500 uppercase tracking-widest">Sot ne Fokus</span>
+            ${items.length > 1 ? `
+              <div class="flex items-center gap-2">
+                <button type="button" data-focus-nav="prev" class="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center">${icon("chevron-left", "w-4 h-4")}</button>
+                <button type="button" data-focus-nav="next" class="w-9 h-9 rounded-full bg-slate-50 border border-slate-100 text-slate-600 flex items-center justify-center">${icon("chevron-right", "w-4 h-4")}</button>
+              </div>
+            ` : ""}
+          </div>
+          <div class="relative rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
+            <img src="${escapeHtml(safeImg)}" class="w-full h-56 object-cover" style="object-position:${getFocusItemObjectPosition(item)};" />
+          </div>
+          <div class="mt-4">
+            <p class="text-lg font-black text-slate-900">${escapeHtml(item.title || "Sot ne Fokus")}</p>
+            <p class="text-sm text-slate-500 mt-2 leading-relaxed ${text ? "" : "hidden"}">${escapeHtml(text)}</p>
+          </div>
+          ${items.length > 1 ? `<div class="flex items-center justify-center gap-2 mt-4">${items.map((_, dotIdx) => `<button type="button" data-focus-dot="${dotIdx}" class="w-2.5 h-2.5 rounded-full ${dotIdx === idx ? "bg-slate-900" : "bg-slate-200"}"></button>`).join("")}</div>` : ""}
+        </div>
+      `;
+    }
+
+    function renderProfileMenuView(profile) {
+      const restaurantId = profile?.restaurantId || "";
+      if (!restaurantId) {
+        return `<div class="p-10 text-center text-slate-400 text-sm font-bold uppercase tracking-widest">Keine Restaurant-ID gefunden</div>`;
+      }
+
+      const items = state.menu.items || [];
+      const drinkItems = items.filter((item) => normalizeMenuType(item.type) === "drink");
+      const foodItems = items.filter((item) => normalizeMenuType(item.type) !== "drink");
+      const hasItems = items.length > 0;
+      const error = state.menu.error || "";
+
+      return `
+        <div class="px-5 app-main-content-safe space-y-5">
+          ${renderFocusCarousel(profile)}
+          ${!hasItems ? `
+            <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+              <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">Keine Produkte</div>
+            </div>
+          ` : `
+            ${drinkItems.length ? `<div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-black italic tracking-tighter">Getraenke</h3></div>${renderMenuDrinkGrid(drinkItems)}</div>` : ""}
+            ${foodItems.length ? `<div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm"><div class="flex items-center justify-between mb-4"><h3 class="text-lg font-black italic tracking-tighter">Speisen</h3></div>${renderMenuFoodList(foodItems)}</div>` : ""}
+          `}
+          ${error ? `<div class="text-center text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(error)}</div>` : ""}
+        </div>
+      `;
+    }
+
+    function renderPublicProfileView() {
+      const view = state.profileView;
+      if (!view || !view.profile) return "";
+      const profile = view.profile;
+      const posts = view.posts || profile.posts || [];
+      const isFollowing = isFollowingProfile(profile);
+      const isLocked = !!profile.privateAccount && profile.uid && String(profile.uid) !== String(state.user?.uid || "") && !isFollowing;
+      const hasPendingFollowRequest = !!profile.pendingFollowRequest && !isFollowing;
+      const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
+      const bioHtml = escapeHtml(profile.bio || "").replace(/\n/g, "<br>") || "Noch keine Bio.";
+      const isMediaTab = state.profileContentTab === "media";
+      const isCheckinTab = state.profileContentTab === "checkins";
+      const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
+      const avatarUrl = getOptimizedImageUrl(profile.avatar);
+      const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
+      const followTone = isFollowing ? "bg-slate-100 text-slate-600 border border-slate-200" : (hasPendingFollowRequest ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent");
+
+      return `
+        <div class="app-main-content-safe">
+          ${renderBusinessTopSwitch()}
+          ${state.profileTopTab === "profile" ? `
+            <div class="px-5 pb-2 pt-2">
+              <div class="bg-white rounded-[2.5rem] p-8 relative overflow-hidden z-10 border border-slate-100">
+                <div class="relative z-10">
+                  <div class="flex justify-between items-start mb-8">
+                    <div class="relative">
+                      <div class="relative w-[100px] h-[100px] rounded-[2rem] p-[3px] bg-gradient-to-br from-indigo-500 to-purple-500">
+                        <img src="${escapeHtml(avatarUrl)}" width="100" height="100" class="w-full h-full rounded-[1.8rem] object-cover border-2 border-white" />
+                      </div>
+                      ${profile.isPremium ? `<div class="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-lg text-blue-500 border-2 border-slate-50">${icon("badge-check", "w-4 h-4 text-blue-500")}</div>` : ""}
+                    </div>
+                    <div class="flex items-center gap-6 pt-3 pr-2">
+                      <div class="flex flex-col items-center"><span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.followers))}</span><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Fans</span></div>
+                      <div class="w-px h-8 bg-slate-100"></div>
+                      <div class="flex flex-col items-center"><span class="font-black text-2xl text-slate-900 leading-none mb-1">${escapeHtml(formatCount(profile.following))}</span><span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest opacity-80">Folgt</span></div>
+                    </div>
+                  </div>
+                  <div class="mb-8">
+                    <h1 class="font-black text-[28px] bg-gradient-to-br from-slate-900 to-indigo-600 text-transparent bg-clip-text tracking-tight leading-none mb-3">${escapeHtml(profile.name || "User")}</h1>
+                    <p class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.3em] mb-2">@${escapeHtml(handle)}</p>
+                    <p class="text-[15px] text-slate-500 font-medium leading-relaxed max-w-[300px]">${bioHtml}</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">${escapeHtml(profile.location || "-")} / Business</p>
+                  </div>
+                  <div class="flex gap-4">
+                    <button id="followBtn" class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${followTone}"><span class="relative z-10 flex items-center gap-2">${isFollowing ? icon("check", "w-4 h-4") : ""}${followLabel}</span></button>
+                    <button id="chatBtn" class="w-[56px] h-[56px] flex items-center justify-center rounded-[1.2rem] border border-slate-200 ${isLocked ? "bg-slate-100 text-slate-300" : "bg-white text-slate-900"} transition-all duration-300 shadow-sm">${icon("message-circle", "w-5 h-5")}</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            ${!isLocked ? `${renderProfileTabs()}${renderProfileViewControls()}${isCheckinTab ? renderProfileCheckins() : `<div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}</div>`}` : `<div class="px-6 pt-4"><div class="bg-white rounded-[2.2rem] border border-slate-100 p-8 text-center"><div class="w-16 h-16 rounded-[1.6rem] bg-slate-100 text-slate-500 mx-auto flex items-center justify-center mb-4">${icon("lock", "w-7 h-7")}</div><h3 class="text-sm font-black text-slate-900 uppercase tracking-widest">Privates Profil</h3><p class="text-[11px] font-bold text-slate-400 mt-3 uppercase tracking-wider">Folgen muss zuerst akzeptiert werden</p></div></div>`}
+          ` : `${renderProfileMenuView(profile)}`}
+        </div>
+      `;
+    }
+    function renderShell() {
+      return `
+        <div class="app-shell relative bg-slate-50 text-slate-900 md:shadow-2xl rounded-[2rem] overflow-hidden border border-white/60">
+          ${renderDrawer()}
+          <main class="relative">
+            ${renderHeader()}
+            ${renderPublicProfileView()}
+          </main>
+        </div>
+      `;
+    }
+
+    function bindEvents() {
+      document.getElementById("drawerToggle")?.addEventListener("click", () => {
+        state.drawerOpen = true;
+        render();
+      });
+
+      document.getElementById("drawerOverlay")?.addEventListener("click", () => {
+        state.drawerOpen = false;
+        render();
+      });
+
+      document.getElementById("drawerClose")?.addEventListener("click", () => {
+        state.drawerOpen = false;
+        render();
+      });
+
+      document.querySelectorAll("[data-drawer-nav]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const key = btn.dataset.drawerNav;
+          if (key === "profile") state.profileTopTab = "profile";
+          if (key === "restaurant") state.profileTopTab = "menu";
+          state.drawerOpen = false;
+          render();
+        });
+      });
+
+      document.querySelectorAll("[data-business-top-tab]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.profileTopTab = btn.dataset.businessTopTab;
+          render();
+        });
+      });
+
+      document.querySelectorAll("[data-profile-tab]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.profileContentTab = btn.dataset.profileTab;
+          render();
+        });
+      });
+
+      document.querySelectorAll("[data-profile-view]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.profileViewMode = btn.dataset.profileView;
+          render();
+        });
+      });
+
+      document.getElementById("followBtn")?.addEventListener("click", () => {
+        const profile = state.profileView.profile;
+        const id = String(profile.uid || "").trim();
+        const handle = normalizeHandle(profile.handle || "");
+        const idxId = state.followingTargetIds.indexOf(id);
+        const idxHandle = state.followingHandles.indexOf(handle);
+
+        if (idxId >= 0) state.followingTargetIds.splice(idxId, 1);
+        else if (id) state.followingTargetIds.push(id);
+
+        if (idxHandle >= 0) state.followingHandles.splice(idxHandle, 1);
+        else if (handle) state.followingHandles.push(handle);
+
+        render();
+      });
+
+      document.getElementById("chatBtn")?.addEventListener("click", () => {
+        alert("Chat-Action");
+      });
+
+      document.querySelectorAll("[data-focus-nav]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const items = state.focus.items || [];
+          if (!items.length) return;
+          const dir = btn.dataset.focusNav === "prev" ? -1 : 1;
+          state.focus.index = (state.focus.index + dir + items.length) % items.length;
+          render();
+        });
+      });
+
+      document.querySelectorAll("[data-focus-dot]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          state.focus.index = Number(btn.dataset.focusDot || 0);
+          render();
+        });
+      });
+    }
+
+    function render() {
+      document.getElementById("app").innerHTML = renderShell();
+      if (window.lucide?.createIcons) window.lucide.createIcons();
+      bindEvents();
+    }
+
+    render();
+  </script>
 </body>
 </html>

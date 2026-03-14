@@ -226,7 +226,13 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
       allergens: String(item?.allergens || "").trim(),
       brand: String(item?.brand || "").trim(),
       sku: String(item?.sku || "").trim(),
-      stock: Number.isFinite(Number(item?.stock)) ? Math.max(0, Number(item.stock)) : null,
+      stock: (() => {
+        const stockRaw = item?.stock;
+        const stockValue = typeof stockRaw === "string" ? stockRaw.trim() : stockRaw;
+        if (stockValue === "" || stockValue === null || stockValue === undefined) return null;
+        const parsedStock = Number(stockValue);
+        return Number.isFinite(parsedStock) ? Math.max(0, parsedStock) : null;
+      })(),
       sizes: Array.isArray(item?.sizes) ? item.sizes : [],
       colors: Array.isArray(item?.colors) ? item.colors : [],
       cropX: clampCropPercent(item?.cropX ?? 50, 50),

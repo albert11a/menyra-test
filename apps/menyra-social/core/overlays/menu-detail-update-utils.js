@@ -57,6 +57,23 @@ export function updateMenuDetailCountsOnlyCore({
   if (likesCount) likesCount.textContent = `${formatCount(counts.likes)} Likes`;
   const commentsCount = doc.getElementById("menuDetailCommentsCount");
   if (commentsCount) commentsCount.textContent = `${formatCount(counts.comments)} Kommentare`;
+  const footerCommentsToggle = doc.getElementById("menuDetailFooterCommentToggle");
+  const footerCommentsBadge = doc.getElementById("menuDetailFooterCommentsBadge");
+  if (footerCommentsToggle) {
+    if (counts.comments > 0) {
+      if (footerCommentsBadge) {
+        footerCommentsBadge.textContent = String(counts.comments);
+      } else {
+        const badge = doc.createElement("span");
+        badge.id = "menuDetailFooterCommentsBadge";
+        badge.className = "absolute top-0 right-0 -mt-1 -mr-1 w-5 h-5 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-white";
+        badge.textContent = String(counts.comments);
+        footerCommentsToggle.appendChild(badge);
+      }
+    } else if (footerCommentsBadge) {
+      footerCommentsBadge.remove();
+    }
+  }
   if (win?.lucide?.createIcons) win.lucide.createIcons();
 }
 

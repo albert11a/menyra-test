@@ -131,7 +131,8 @@ export function normalizeMenuItemDocCore(data, id, {
   const sizes = normalizeOptionList(d.sizes || d.sizeOptions || d.availableSizes || d.variants || d.size);
   const colors = normalizeOptionList(d.colors || d.colours || d.colorOptions || d.availableColors || d.color);
   const stockRaw = d.stock ?? d.stockCount ?? d.inventory ?? d.quantity ?? "";
-  const stockNumber = Number(stockRaw);
+  const stockValue = typeof stockRaw === "string" ? stockRaw.trim() : stockRaw;
+  const stockNumber = Number(stockValue);
   const crop = getMenuItemCrop(d);
   const normalizedType = normalizeMenuType(d.type || d.menuType || d.kind || d.group || d.section);
   const orderRaw = d.orderIndex ?? d.sortOrder ?? d.position ?? d.rank ?? null;
@@ -187,7 +188,7 @@ export function normalizeMenuItemDocCore(data, id, {
     allergens: d.allergens || d.allergen || "",
     brand: String(d.brand || d.manufacturer || "").trim(),
     sku: String(d.sku || d.articleNumber || d.articleNo || d.code || "").trim(),
-    stock: stockRaw === "" || stockRaw === null || stockRaw === undefined
+    stock: stockValue === "" || stockValue === null || stockValue === undefined
       ? null
       : (Number.isFinite(stockNumber) ? Math.max(0, Math.round(stockNumber)) : null),
     sizes,

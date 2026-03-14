@@ -670,7 +670,7 @@ export function createSocialEngagementRuntimeController({
     const input = docObj?.getElementById("menuDetailCommentInput");
     if (input) {
       input.value = "";
-      autosizeTextarea(input, { minHeight: 56, maxHeight: 160 });
+      autosizeTextarea(input, { minHeight: 52, maxHeight: 160 });
     }
     state.menuDetail.sending = false;
     updateMenuDetailMeta();

@@ -69,21 +69,7 @@ export async function saveMenuItemFromModalCore({
   const sizes = normalizeOptionList(documentObj.getElementById("menuItemSizes")?.value || "");
   const colors = normalizeOptionList(documentObj.getElementById("menuItemColors")?.value || "");
   const visibilityInput = String(documentObj.getElementById("menuItemVisibility")?.value || "").trim().toLowerCase();
-  let available = state.menuModal.item?.available !== false;
-  let statusHidden = state.menuModal.item?.statusHidden === true
-    || String(state.menuModal.item?.statusVisibility || "").trim().toLowerCase() === "hidden"
-    || state.menuModal.item?.hidden === true
-    || state.menuModal.item?.visible === false
-    || String(state.menuModal.item?.visibility || "").trim().toLowerCase() === "hidden";
-  if (visibilityInput === "available") {
-    available = true;
-    statusHidden = false;
-  } else if (visibilityInput === "unavailable") {
-    available = false;
-    statusHidden = false;
-  } else if (visibilityInput === "hidden") {
-    statusHidden = true;
-  }
+  const available = visibilityInput === "unavailable" ? false : true;
   const menuSection = normalizedType === "drink" ? "drink" : "food";
   const specialSizeRaw = String(
     documentObj.getElementById("menuItemSpecialSize")?.value
@@ -121,9 +107,11 @@ export async function saveMenuItemFromModalCore({
     : "";
   const isSpecialCardStyle = normalizedCardStyle === "testfirst_special";
   const imageUrlInput = String(state.menuModal.imageUrlDraft || "").trim() || "";
-  const stock = stockRaw === ""
+  const stockInput = stockRaw === null || stockRaw === undefined ? "" : String(stockRaw).trim();
+  const parsedStock = stockInput === "" ? null : Number(stockInput);
+  const stock = parsedStock === null || !Number.isFinite(parsedStock)
     ? null
-    : Math.max(0, Math.round(Number(stockRaw) || 0));
+    : Math.max(0, Math.round(parsedStock));
   const crop = getMenuModalCrop();
   const normalizeOrderIndex = (value, fallback = 0) => {
     const numeric = Number(value);
@@ -215,8 +203,8 @@ export async function saveMenuItemFromModalCore({
       price: price ?? "",
       available,
       hidden: false,
-      statusHidden: statusHidden === true,
-      statusVisibility: statusHidden ? "hidden" : "auto",
+      statusHidden: false,
+      statusVisibility: "auto",
       menuSection,
       orderIndex,
       ...(canPersistCardStyle

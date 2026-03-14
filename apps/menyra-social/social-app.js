@@ -929,7 +929,8 @@ const state = {
     error: "",
     filter: "all",
     query: "",
-    source: "hybrid"
+    source: "hybrid",
+    statusBadgeVisible: true
   },
   menuModal: {
     open: false,
@@ -1546,6 +1547,8 @@ const {
   loadPublicMenuItems,
   loadLegacyMenuItems,
   loadMenuItemsFromCollection,
+  loadMenuMeta,
+  saveMenuStatusBadgeVisible,
   hasMenuItemImages,
   fillMenuImagesFromFallback,
   publishMenuToPublic,
@@ -3627,6 +3630,7 @@ sessionDataRuntimeController = createSessionDataRuntimeController(buildSessionDa
   menuCacheKey,
   loadFocusItems,
   loadFocusMeta,
+  loadMenuMeta,
   hasMenuItemImages,
   loadMenuItemsFromCollection,
   loadPublicMenuItems,
@@ -4157,8 +4161,11 @@ const {
   saveMenuLayoutToStorage,
   deleteMenuItemById,
   submitShopCheckout,
+  menuCache,
+  menuCacheKey,
   focusCache,
   focusCacheKey,
+  saveMenuStatusBadgeVisible,
   saveFocusEnabled,
   deleteFocusItemById,
   setFocusIndex,

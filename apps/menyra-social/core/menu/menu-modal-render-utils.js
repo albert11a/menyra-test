@@ -1,5 +1,13 @@
 import { isTestfirstMenuProfileTypeCore, normalizeMenuCardStyleCore } from "./menu-card-style-utils.js";
 
+function parseMenuStockValue(value) {
+  if (value === null || value === undefined) return null;
+  const raw = typeof value === "string" ? value.trim() : value;
+  if (raw === "") return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
+}
+
 export function renderMenuItemModalCore({
   state,
   isShopCatalogProfile,
@@ -48,16 +56,12 @@ export function renderMenuItemModalCore({
   const safeImage = isPlaceholder(heroUrl) ? PLACEHOLDER_IMAGE : heroUrl;
   const typeValue = normalizeType(item.type || "food");
   const available = item.available !== false;
-  const statusHidden = item.statusHidden === true
-    || String(item.statusVisibility || "").trim().toLowerCase() === "hidden"
-    || item.hidden === true
-    || item.visible === false
-    || String(item.visibility || "").trim().toLowerCase() === "hidden";
-  const visibilityValue = statusHidden ? "hidden" : (available ? "available" : "unavailable");
+  const visibilityValue = available ? "available" : "unavailable";
   const status = state.menuModal.status || "";
   const sizesValue = Array.isArray(item.sizes) ? item.sizes.join(", ") : "";
   const colorsValue = Array.isArray(item.colors) ? item.colors.join(", ") : "";
-  const stockValue = Number.isFinite(Number(item.stock)) ? String(Math.max(0, Number(item.stock))) : "";
+  const stockParsed = parseMenuStockValue(item.stock);
+  const stockValue = stockParsed === null ? "" : String(stockParsed);
   const crop = getCrop();
   const businessType = String(getBusinessType(state.userProfile) || "").trim().toLowerCase();
   const showCardStyleSelector = !isShop && isTestfirstMenuProfileTypeCore(businessType);
@@ -204,9 +208,8 @@ export function renderMenuItemModalCore({
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
           <select id="menuItemVisibility" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100">
-            <option value="available" ${visibilityValue === "available" ? "selected" : ""}>Verfuegbar (anzeigen)</option>
-            <option value="unavailable" ${visibilityValue === "unavailable" ? "selected" : ""}>Ausverkauft (anzeigen)</option>
-            <option value="hidden" ${visibilityValue === "hidden" ? "selected" : ""}>Status nicht anzeigen</option>
+            <option value="available" ${visibilityValue === "available" ? "selected" : ""}>Verfuegbar</option>
+            <option value="unavailable" ${visibilityValue === "unavailable" ? "selected" : ""}>Ausverkauft</option>
           </select>
         </div>
         ${showCardStyleSelector && isSpecialCard ? `
@@ -438,14 +441,11 @@ export function renderMenuDetailModalCore({
   const sku = String(item.sku || "").trim();
   const sizes = Array.isArray(item.sizes) ? item.sizes : [];
   const colors = Array.isArray(item.colors) ? item.colors : [];
-  const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
+  const stock = parseMenuStockValue(item.stock);
   const isShop = isShopCatalog(catalogProfile);
-  const soldOut = item.available === false || stock === 0;
-  const statusHidden = item.statusHidden === true
-    || String(item.statusVisibility || "").trim().toLowerCase() === "hidden"
-    || item.hidden === true
-    || item.visible === false
-    || String(item.visibility || "").trim().toLowerCase() === "hidden";
+  const soldOut = isShop
+    ? (item.available === false || stock === 0)
+    : (item.available === false);
   const availability = soldOut ? "Nicht verfuegbar" : "Verfuegbar";
   const availabilityClass = soldOut ? "text-rose-500" : "text-emerald-600";
   const selectedSize = sizes.length ? (String(state.menuDetail.selectedSize || sizes[0]).trim() || String(sizes[0])) : "";
@@ -516,7 +516,7 @@ export function renderMenuDetailModalCore({
       ` : ""}
       <div class="flex items-center justify-between">
         <span class="text-lg font-black text-slate-900">${esc(priceLabel)}</span>
-        ${statusHidden ? "" : `<span class="text-[10px] font-black uppercase tracking-widest ${availabilityClass}">${availability}</span>`}
+        <span class="text-[10px] font-black uppercase tracking-widest ${availabilityClass}">${availability}</span>
       </div>
       <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
         ${category ? `<span>${esc(category)}</span>` : ""}
@@ -567,12 +567,30 @@ export function renderMenuDetailModalCore({
     </div>
   `;
   const footerHtml = `
-    <div class="px-7 pb-5 pt-6 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe">
-      <div class="flex gap-3">
-        <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen, um zu kommentieren."}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${esc(state.menuDetail.commentText || "")}</textarea>
-        <button id="menuDetailCommentSend" class="w-[52px] h-[52px] rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20 ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
-          ${iconFn("send", "w-4 h-4")}
+    <div class="px-7 pb-6 pt-4 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe relative z-10">
+      <div id="footer-cart-view" class="flex gap-3 items-center w-full transition-all duration-300">
+        <button type="button" id="menuDetailFooterCommentToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-all active:scale-95 relative" title="Kommentare verfassen">
+          ${iconFn("message-square", "w-5 h-5")}
+          ${counts.comments > 0 ? `<span id="menuDetailFooterCommentsBadge" class="absolute top-0 right-0 -mt-1 -mr-1 w-5 h-5 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-white">${counts.comments}</span>` : ""}
         </button>
+
+        <button id="menuDetailAddToCartBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
+          <span class="font-bold text-sm">${soldOut ? "Ausverkauft" : "In den Warenkorb"}</span>
+          ${iconFn("shopping-bag", "w-4 h-4")}
+        </button>
+      </div>
+
+      <div id="footer-comment-view" class="flex gap-3 items-center w-full hidden opacity-0 transition-all duration-300">
+        <button type="button" id="menuDetailFooterCartToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-all active:scale-95" title="Zurueck zum Warenkorb">
+          ${iconFn("shopping-bag", "w-5 h-5")}
+        </button>
+
+        <div class="flex-1 flex gap-2">
+          <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen"}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${esc(state.menuDetail.commentText || "")}</textarea>
+          <button id="menuDetailCommentSend" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
+            ${iconFn("send", "w-4 h-4")}
+          </button>
+        </div>
       </div>
     </div>
   `;

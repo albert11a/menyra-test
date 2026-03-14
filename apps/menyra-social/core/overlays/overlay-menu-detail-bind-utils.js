@@ -68,31 +68,38 @@ export function bindMenuDetailOverlayEventsCore({
   bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
   bindModalDismiss(menuDetailClose, closeMenuDetail);
 
-  const menuDetailHeaderCartBtn = doc.getElementById("menuDetailHeaderCartBtn");
-  if (menuDetailHeaderCartBtn) {
-    menuDetailHeaderCartBtn.addEventListener("click", () => {
-      const item = state.menuDetail.item;
-      const profile = getMenuDetailCatalogProfile(item);
-      if (!item || !canAddToShopCart(profile)) return;
-      const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
-      if (item.available === false || stock === 0) return;
-      addMenuItemToShopCart(item, profile, {
-        size: state.menuDetail.selectedSize || "",
-        color: state.menuDetail.selectedColor || ""
-      });
-      const targetRestaurantId = String(profile?.restaurantId || "").trim();
-      closeMenuDetail({
-        afterClose: () => {
-          if (targetRestaurantId && String(state.profileView?.profile?.restaurantId || "").trim() !== targetRestaurantId) {
-            showPublicProfile(profile, [], { showBack: false, topTab: "cart" });
-            return;
-          }
-          if (targetRestaurantId) state.profileTopTab = "cart";
-          setState({ activeTab: "profile" });
-        }
-      });
+  const handleAddToCart = () => {
+    const item = state.menuDetail.item;
+    const profile = getMenuDetailCatalogProfile(item);
+    if (!item || !canAddToShopCart(profile)) return;
+    const stockRaw = item.stock;
+    const stockValue = typeof stockRaw === "string" ? stockRaw.trim() : stockRaw;
+    const parsedStock = stockValue === "" || stockValue === null || stockValue === undefined
+      ? null
+      : Number(stockValue);
+    const stock = parsedStock === null || !Number.isFinite(parsedStock) ? null : Math.max(0, parsedStock);
+    if (item.available === false || stock === 0) return;
+    addMenuItemToShopCart(item, profile, {
+      size: state.menuDetail.selectedSize || "",
+      color: state.menuDetail.selectedColor || ""
     });
-  }
+    const targetRestaurantId = String(profile?.restaurantId || "").trim();
+    closeMenuDetail({
+      afterClose: () => {
+        if (targetRestaurantId && String(state.profileView?.profile?.restaurantId || "").trim() !== targetRestaurantId) {
+          showPublicProfile(profile, [], { showBack: false, topTab: "cart" });
+          return;
+        }
+        if (targetRestaurantId) state.profileTopTab = "cart";
+        setState({ activeTab: "profile" });
+      }
+    });
+  };
+
+  const menuDetailHeaderCartBtn = doc.getElementById("menuDetailHeaderCartBtn");
+  const menuDetailAddToCartBtn = doc.getElementById("menuDetailAddToCartBtn");
+  if (menuDetailHeaderCartBtn) menuDetailHeaderCartBtn.addEventListener("click", handleAddToCart);
+  if (menuDetailAddToCartBtn) menuDetailAddToCartBtn.addEventListener("click", handleAddToCart);
 
   const menuDetailHeaderFavoritesBtn = doc.getElementById("menuDetailHeaderFavoritesBtn");
   if (menuDetailHeaderFavoritesBtn) {
@@ -112,6 +119,51 @@ export function bindMenuDetailOverlayEventsCore({
       setMenuDetailVariant(field, input.value || "");
     });
   });
+
+  const footerCartView = doc.getElementById("footer-cart-view");
+  const footerCommentView = doc.getElementById("footer-comment-view");
+  const menuDetailFooterCommentToggle = doc.getElementById("menuDetailFooterCommentToggle");
+  const menuDetailFooterCartToggle = doc.getElementById("menuDetailFooterCartToggle");
+  const toggleFooterView = (view) => {
+    if (!footerCartView || !footerCommentView) return;
+    if (view === "comment") {
+      footerCartView.classList.add("hidden", "opacity-0");
+      footerCommentView.classList.remove("hidden");
+      win?.setTimeout?.(() => {
+        footerCommentView.classList.remove("opacity-0");
+        if (win?.lucide?.createIcons) win.lucide.createIcons();
+      }, 10);
+      const commentsSection = doc.getElementById("menuDetailComments");
+      if (commentsSection) {
+        try {
+          commentsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        } catch {}
+      }
+      const commentInput = doc.getElementById("menuDetailCommentInput");
+      if (commentInput && !commentInput.disabled) {
+        win?.setTimeout?.(() => {
+          try { commentInput.focus({ preventScroll: true }); } catch {}
+        }, 140);
+      }
+      return;
+    }
+    footerCommentView.classList.add("hidden", "opacity-0");
+    footerCartView.classList.remove("hidden");
+    win?.setTimeout?.(() => {
+      footerCartView.classList.remove("opacity-0");
+      if (win?.lucide?.createIcons) win.lucide.createIcons();
+    }, 10);
+  };
+  if (menuDetailFooterCommentToggle) {
+    menuDetailFooterCommentToggle.addEventListener("click", () => {
+      toggleFooterView("comment");
+    });
+  }
+  if (menuDetailFooterCartToggle) {
+    menuDetailFooterCartToggle.addEventListener("click", () => {
+      toggleFooterView("cart");
+    });
+  }
 
   const menuDetailLikeBtn = doc.getElementById("menuDetailLikeBtn");
   if (menuDetailLikeBtn) {

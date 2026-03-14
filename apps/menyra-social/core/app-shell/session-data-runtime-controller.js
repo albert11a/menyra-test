@@ -90,6 +90,7 @@ export function createSessionDataRuntimeController({
   menuCacheKeyFn = () => "",
   loadFocusItemsFn = async () => [],
   loadFocusMetaFn = async () => true,
+  loadMenuMetaFn = async () => ({ statusBadgeVisible: true }),
   hasMenuItemImagesFn = () => false,
   loadMenuItemsFromCollectionFn = async () => [],
   loadPublicMenuItemsFn = async () => [],
@@ -743,7 +744,15 @@ export function createSessionDataRuntimeController({
 
   async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
     if (!restaurantId) {
-      state.menu = { ...state.menu, restaurantId: "", items: [], loading: false, error: "", source };
+      state.menu = {
+        ...state.menu,
+        restaurantId: "",
+        items: [],
+        loading: false,
+        error: "",
+        source,
+        statusBadgeVisible: true
+      };
       return;
     }
     const cacheKey = menuCacheKeyFn(restaurantId, source);
@@ -751,7 +760,15 @@ export function createSessionDataRuntimeController({
     if (cached && cached.items?.length && !force) {
       const cachedNeedsImages = cached.items.some((it) => !hasMenuItemImagesFn(it));
       if (!cachedNeedsImages) {
-        state.menu = { ...state.menu, restaurantId, items: cached.items, loading: false, error: "", source };
+        state.menu = {
+          ...state.menu,
+          restaurantId,
+          items: cached.items,
+          loading: false,
+          error: "",
+          source,
+          statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
+        };
         return;
       }
     }
@@ -759,6 +776,7 @@ export function createSessionDataRuntimeController({
     renderFn();
     try {
       let items = [];
+      let statusBadgeVisible = true;
       if (source === "collection") {
         items = await loadMenuItemsFromCollectionFn(restaurantId);
         const needsImages = items.some((it) => !hasMenuItemImagesFn(it));
@@ -772,12 +790,28 @@ export function createSessionDataRuntimeController({
       } else {
         items = await loadMenuHybridFn(restaurantId);
       }
-      menuCacheMap.set(cacheKey, { items, ts: Date.now() });
-      state.menu = { ...state.menu, restaurantId, items, loading: false, error: "", source };
+      try {
+        const meta = await loadMenuMetaFn(restaurantId);
+        if (typeof meta?.statusBadgeVisible === "boolean") {
+          statusBadgeVisible = meta.statusBadgeVisible;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      menuCacheMap.set(cacheKey, { items, statusBadgeVisible, ts: Date.now() });
+      state.menu = { ...state.menu, restaurantId, items, loading: false, error: "", source, statusBadgeVisible };
       renderFn();
     } catch (err) {
       console.error(err);
-      state.menu = { ...state.menu, restaurantId, items: [], loading: false, error: "Menu laden fehlgeschlagen.", source };
+      state.menu = {
+        ...state.menu,
+        restaurantId,
+        items: [],
+        loading: false,
+        error: "Menu laden fehlgeschlagen.",
+        source,
+        statusBadgeVisible: true
+      };
       renderFn();
     }
   }

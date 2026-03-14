@@ -365,6 +365,10 @@ function isMenuItemStatusHidden(item = {}) {
     || item?.visible === false;
 }
 
+function isMenuStatusBadgeVisible() {
+  return state?.menu?.statusBadgeVisible !== false;
+}
+
 function isMenuItemHidden(item = {}) {
   const menuVisibilityRaw = String(item?.menuVisibility || "").trim().toLowerCase();
   return item?.menuHidden === true || menuVisibilityRaw === "hidden";
@@ -464,12 +468,10 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
     : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.description || "";
-  const statusHidden = isMenuItemStatusHidden(item);
-  const availability = statusHidden
-    ? ""
-    : (item.available === false
-      ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
-      : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`);
+  const showStatusBadge = mode === "admin" || isMenuStatusBadgeVisible();
+  const availability = item.available === false
+    ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
+    : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`;
   if (mode === "admin") {
     return `
       <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
@@ -485,7 +487,7 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
             ${category ? `<span>${escapeHtml(category)}</span>` : ""}
             <span>${escapeHtml(typeLabel)}</span>
           </div>
-          <p class="text-[9px] font-black uppercase tracking-widest mt-2 ${statusHidden ? "text-slate-400" : (item.available === false ? "text-slate-400" : "text-emerald-600")}">${statusHidden ? "Status ausgeblendet" : (item.available === false ? "Ausverkauft" : "Verfuegbar")}</p>
+          <p class="text-[9px] font-black uppercase tracking-widest mt-2 ${item.available === false ? "text-slate-400" : "text-emerald-600"}">${item.available === false ? "Ausverkauft" : "Verfuegbar"}</p>
         </div>
         <details class="relative shrink-0">
           <summary class="w-10 h-10 rounded-full bg-white border border-slate-200 text-slate-500 flex items-center justify-center cursor-pointer" style="list-style:none;">
@@ -517,7 +519,7 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
           <span>${escapeHtml(typeLabel)}</span>
         </div>
         ${desc ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${escapeHtml(desc)}</p>` : ""}
-        ${availability ? `<div class="mt-2">${availability}</div>` : ""}
+        ${showStatusBadge ? `<div class="mt-2">${availability}</div>` : ""}
       </div>
     </div>
   `;
@@ -537,12 +539,10 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
     : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.description || "";
-  const statusHidden = isMenuItemStatusHidden(item);
-  const availability = statusHidden
-    ? ""
-    : (item.available === false
-      ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
-      : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`);
+  const showStatusBadge = mode === "admin" || isMenuStatusBadgeVisible();
+  const availability = item.available === false
+    ? `<span class="text-[9px] font-black uppercase tracking-widest text-slate-400">Nicht verfuegbar</span>`
+    : `<span class="text-[9px] font-black uppercase tracking-widest text-emerald-600">Verfuegbar</span>`;
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -587,7 +587,7 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
             <span>${escapeHtml(typeLabel)}</span>
           </div>
           ${desc ? `<p class="text-xs text-slate-500 mt-2 line-clamp-2">${escapeHtml(desc)}</p>` : ""}
-          ${availability ? `<div class="mt-2">${availability}</div>` : ""}
+          ${showStatusBadge ? `<div class="mt-2">${availability}</div>` : ""}
           ${countsRow}
         </div>
       `}
@@ -686,7 +686,7 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile" } = {}) {
   const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPrice(item.price);
   const isAvailable = item.available !== false;
-  const statusHidden = isMenuItemStatusHidden(item);
+  const showStatusBadge = isMenuStatusBadgeVisible();
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -707,11 +707,11 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile" } = {}) {
       <div class="px-1.5 pb-1 flex flex-col flex-1">
         <div class="flex items-start justify-between gap-2 mb-1">
           <h4 class="text-[14px] font-black text-slate-900 leading-tight">${escapeHtml(item.name || "")}</h4>
-          ${statusHidden
-            ? ""
-            : (isAvailable
+          ${showStatusBadge
+            ? (isAvailable
               ? `<span class="text-[10px] font-black uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">Verfuegbar</span>`
               : `<span class="text-[10px] font-black uppercase tracking-widest text-rose-600 bg-rose-50 px-2 py-1 rounded-full">Aus</span>`)
+            : ""
           }
         </div>
         <p class="text-[12px] text-slate-500 leading-relaxed mb-3">${escapeHtml(item.description || "")}</p>
@@ -787,7 +787,7 @@ function renderTestfirstSpecialCard(item, { mode = "profile", size = "default" }
 
 function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
   const priceLabel = formatPrice(item.price);
-  const statusHidden = isMenuItemStatusHidden(item);
+  const showStatusBadge = isMenuStatusBadgeVisible();
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
@@ -866,9 +866,9 @@ function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
         <div class="flex items-start justify-between gap-3 mb-1.5" style="gap:12px;margin-bottom:6px;">
           <div>
             <h4 class="text-[18px] font-black text-slate-900 leading-snug">${escapeHtml(item.name || "")}</h4>
-            ${statusHidden
-              ? ""
-              : `<span class="inline-flex mt-2 text-[10px] font-black uppercase tracking-widest ${item.available !== false ? "text-emerald-600" : "text-rose-600"}">${item.available !== false ? "Verfuegbar" : "Nicht verfuegbar"}</span>`
+            ${showStatusBadge
+              ? `<span class="inline-flex mt-2 text-[10px] font-black uppercase tracking-widest ${item.available !== false ? "text-emerald-600" : "text-rose-600"}">${item.available !== false ? "Verfuegbar" : "Nicht verfuegbar"}</span>`
+              : ""
             }
           </div>
           <span class="text-[17px] font-black text-slate-900 whitespace-nowrap">${escapeHtml(priceLabel)}</span>
@@ -1162,11 +1162,8 @@ function renderSpecialAdminSection(profile) {
               : (action.type === "product" ? "Produkt-Modal" : "Diese Karte");
             const sizeLabel = resolveSpecialCardSize(item) === "food" ? "Food-Size" : "Normal";
             const sectionLabel = resolveMenuDisplaySection(item) === "drink" ? "Getraenke" : "Speisen";
-            const statusHidden = isMenuItemStatusHidden(item);
-            const visibilityLabel = statusHidden ? "Status ausgeblendet" : (item.available === false ? "Ausverkauft" : "Verfuegbar");
-            const visibilityClass = statusHidden
-              ? "text-slate-400"
-              : (item.available === false ? "text-slate-400" : "text-emerald-600");
+            const visibilityLabel = item.available === false ? "Ausverkauft" : "Verfuegbar";
+            const visibilityClass = item.available === false ? "text-slate-400" : "text-emerald-600";
             return `
               <div class="flex items-start gap-4 p-4 rounded-[1.6rem] bg-slate-50 border border-slate-100">
                 <div class="w-16 h-16 rounded-2xl overflow-hidden bg-white shrink-0">
@@ -1370,6 +1367,16 @@ function renderMenuAdminView() {
           <button data-nav="settings" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Zu den Einstellungen</button>
         </div>
       `}
+
+      ${restaurantId && !isShopCatalogProfile(profile) ? `
+        <label class="mb-5 flex items-center justify-between p-4 rounded-[2rem] bg-white border border-slate-100">
+          <div>
+            <p class="text-xs font-black text-slate-800">Badge Verfuegbar/Aus sichtbar</p>
+            <p class="text-[10px] font-bold text-slate-400">Global fuer alle Speisen/Getraenke Karten</p>
+          </div>
+          <input id="menuStatusBadgeToggle" type="checkbox" class="w-5 h-5 accent-indigo-600" ${isMenuStatusBadgeVisible() ? "checked" : ""} />
+        </label>
+      ` : ""}
 
       ${restaurantId ? renderFocusAdminSection(restaurantId) : ""}
       ${restaurantId ? renderSpecialAdminSection(profile) : ""}

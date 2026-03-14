@@ -71,7 +71,12 @@ export function createShopViewCartOrchestrationController({
         const firebaseFallback = getFirebaseStorageUrlFn(rawImg);
         const fallbackImg = isDirectImageUrlFn(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
         const priceLabel = formatPriceFn(item.price);
-        const stock = Number.isFinite(Number(item.stock)) ? Math.max(0, Number(item.stock)) : null;
+        const stockRaw = item.stock;
+        const stockValue = typeof stockRaw === "string" ? stockRaw.trim() : stockRaw;
+        const parsedStock = stockValue === "" || stockValue === null || stockValue === undefined
+          ? null
+          : Number(stockValue);
+        const stock = parsedStock === null || !Number.isFinite(parsedStock) ? null : Math.max(0, parsedStock);
         const thumbImages = images.slice(1, 4);
         const soldOut = item.available === false || stock === 0;
         const availabilityLabel = soldOut ? "Nicht verfuegbar" : "Verfuegbar";
