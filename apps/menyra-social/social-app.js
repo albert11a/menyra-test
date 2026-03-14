@@ -3194,6 +3194,7 @@ async function toggleMenuItemLikeFromCard(itemId, restaurantId = "") {
     ).trim(),
     selectedSize: Array.isArray(item?.sizes) && item.sizes.length ? String(item.sizes[0]) : "",
     selectedColor: Array.isArray(item?.colors) && item.colors.length ? String(item.colors[0]) : "",
+    footerView: "cart",
     commentText: "",
     loading: false,
     sending: false

@@ -463,6 +463,10 @@ export function renderMenuDetailModalCore({
   const canUseFavorites = !!String(state.user?.uid || "").trim();
   const titleId = "menuDetailTitle";
   const shopCartCount = isShop ? getCartCount(restaurantId || catalogProfile?.restaurantId || "") : 0;
+  const footerView = String(state.menuDetail.footerView || "cart").trim().toLowerCase() === "comment"
+    ? "comment"
+    : "cart";
+  const isCommentFooter = footerView === "comment";
   const headerHtml = isShop
     ? `
       <div class="flex items-center justify-between gap-3 px-7 pt-7 pb-4 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
@@ -568,7 +572,7 @@ export function renderMenuDetailModalCore({
   `;
   const footerHtml = `
     <div class="px-7 pb-6 pt-4 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe relative z-10">
-      <div id="footer-cart-view" class="flex gap-3 items-center w-full transition-all duration-300">
+      <div id="footer-cart-view" class="flex gap-3 items-center w-full transition-all duration-300 ${isCommentFooter ? "hidden opacity-0" : ""}">
         <button type="button" id="menuDetailFooterCommentToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-all active:scale-95 relative" title="Kommentare verfassen">
           ${iconFn("message-square", "w-5 h-5")}
           ${counts.comments > 0 ? `<span id="menuDetailFooterCommentsBadge" class="absolute top-0 right-0 -mt-1 -mr-1 w-5 h-5 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-white">${counts.comments}</span>` : ""}
@@ -580,7 +584,7 @@ export function renderMenuDetailModalCore({
         </button>
       </div>
 
-      <div id="footer-comment-view" class="flex gap-3 items-center w-full hidden opacity-0 transition-all duration-300">
+      <div id="footer-comment-view" class="flex gap-3 items-center w-full transition-all duration-300 ${isCommentFooter ? "" : "hidden opacity-0"}">
         <button type="button" id="menuDetailFooterCartToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-all active:scale-95" title="Zurueck zum Warenkorb">
           ${iconFn("shopping-bag", "w-5 h-5")}
         </button>

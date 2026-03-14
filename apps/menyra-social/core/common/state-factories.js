@@ -41,6 +41,7 @@ export function createEmptyMenuDetailState() {
     restaurantId: "",
     selectedSize: "",
     selectedColor: "",
+    footerView: "cart",
     commentText: "",
     loading: false,
     sending: false

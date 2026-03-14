@@ -127,6 +127,7 @@ export function bindMenuDetailOverlayEventsCore({
   const toggleFooterView = (view) => {
     if (!footerCartView || !footerCommentView) return;
     if (view === "comment") {
+      state.menuDetail.footerView = "comment";
       footerCartView.classList.add("hidden", "opacity-0");
       footerCommentView.classList.remove("hidden");
       win?.setTimeout?.(() => {
@@ -147,6 +148,7 @@ export function bindMenuDetailOverlayEventsCore({
       }
       return;
     }
+    state.menuDetail.footerView = "cart";
     footerCommentView.classList.add("hidden", "opacity-0");
     footerCartView.classList.remove("hidden");
     win?.setTimeout?.(() => {
