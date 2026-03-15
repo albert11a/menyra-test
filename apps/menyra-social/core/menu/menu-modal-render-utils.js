@@ -577,13 +577,9 @@ export function renderMenuDetailModalCore({
     const entryCategory = String(entry.category || "Passt dazu").trim() || "Passt dazu";
     const entryPrice = formatPriceLabel(entry.price);
     return `
-      <div class="group min-w-[128px] w-[128px] rounded-[1.8rem] border border-slate-100 bg-white p-2.5 text-left transition-all">
+      <div class="group shrink-0 min-w-[148px] w-[148px] rounded-[1.8rem] border border-slate-100 bg-white p-2.5 text-left transition-all">
         <div class="relative overflow-hidden rounded-[1.4rem] bg-slate-100 aspect-square">
           <img src="${esc(entrySafeImg)}" alt="${esc(entryName)}" class="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]" />
-          <div class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/92 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-            ${iconFn("sparkles", "w-3 h-3")}
-            <span>Passt dazu</span>
-          </div>
         </div>
         <div class="pt-3 px-1">
           <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">${esc(entryCategory)}</div>
