@@ -620,7 +620,7 @@ export function renderMenuDetailModalCore({
   const footerBackToggleIcon = showWoltAction
     ? `
       <span class="w-5 h-5 inline-flex items-center justify-center text-white leading-none select-none" aria-hidden="true">
-        <span class="block" style="font-family:'Segoe Script','Brush Script MT','Snell Roundhand',cursive;font-size:24px;font-weight:700;line-height:1;transform:translateY(-1px);">
+        <span class="block" style="font-family:'Omnes','Plus Jakarta Sans','Segoe UI',sans-serif;font-size:20px;font-weight:800;font-style:italic;line-height:1;transform:translateY(-1px);">
           w
         </span>
       </span>
