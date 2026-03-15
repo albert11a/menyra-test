@@ -79,8 +79,13 @@ export function createPublicProfileRuntimeController({
     });
   }
 
-  function showPublicProfile(profile, posts, { showBack = true, backTab, topTab } = {}) {
-    state.profileView = { profile, posts: posts || profile.posts || [] };
+  function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, menuAccessSource = "" } = {}) {
+    const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
+    state.profileView = {
+      profile,
+      posts: posts || profile.posts || [],
+      menuAccessSource: safeMenuAccessSource === "qr" ? "qr" : ""
+    };
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = "posts";
     state.profileTopTab = profile?.restaurantId

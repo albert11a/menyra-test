@@ -1285,7 +1285,9 @@ function renderMenuAdminView() {
   const items = sortMenuItemsByOrder(rawItems);
   const countLabel = formatCount(items.length);
   const profileUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId }) : "";
-  const menuUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "menu" }) : "";
+  const menuUrl = restaurantId
+    ? buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "menu", src: "qr" })
+    : "";
 
   if (restaurantId && isEligible && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
     ensureFocusDataForProfile(profile);

@@ -327,7 +327,7 @@ export function createStoryViewerRuntimeController({
       if (story.menuItemId) {
         const linkBtn = doc.createElement("a");
         linkBtn.className = "contentBtn";
-        linkBtn.href = `/apps/menyra-social/index.html?r=${encodeURIComponent(restaurantId)}&tab=menu`;
+        linkBtn.href = `/apps/menyra-social/index.html?r=${encodeURIComponent(restaurantId)}&tab=menu&src=story`;
         linkBtn.innerHTML = "<span>👀</span><span>Produkt ansehen</span>";
         content.appendChild(linkBtn);
       }

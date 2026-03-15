@@ -313,12 +313,16 @@ export function createAppShellRuntimeController(deps = {}) {
     const profile = state.profileView?.profile || state.userProfile;
     const catalogLabel = getBusinessCatalogLabel(profile);
     const isShop = isShopCatalogProfile(profile);
+    const profileRestaurantId = String(profile?.restaurantId || "").trim();
+    const menuAccessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
+    const isQrMenuAccess = !isShop && menuAccessSource === "qr";
+    const canUseCartTab = isShop || isQrMenuAccess;
     const base = "flex-1 py-3 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
     const activeTop = state.profileTopTab || "profile";
     const isProfileActive = activeTop === "profile";
     const isMenuActive = activeTop === "menu";
     const isCartActive = activeTop === "cart";
-    const cartCount = isShop ? getCartCountForRestaurant(profile?.restaurantId || "") : 0;
+    const cartCount = canUseCartTab ? getCartCountForRestaurant(profileRestaurantId || "") : 0;
     const spacingClass = isProfileActive ? "pb-1" : "pb-3";
     return `
     <div class="px-6 ${spacingClass}">
@@ -329,7 +333,7 @@ export function createAppShellRuntimeController(deps = {}) {
         <button type="button" data-profile-top-tab="menu" class="${base} ${isMenuActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
           ${catalogLabel}
         </button>
-        ${isShop ? `
+        ${canUseCartTab ? `
           <button type="button" data-profile-top-tab="cart" class="${base} relative ${isCartActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
             ${icon("shopping-cart", "w-4 h-4")}
             ${cartCount ? `<span class="absolute top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${cartCount > 9 ? "9+" : cartCount}</span>` : ""}

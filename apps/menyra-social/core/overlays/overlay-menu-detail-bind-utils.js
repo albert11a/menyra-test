@@ -65,6 +65,21 @@ export function bindMenuDetailOverlayEventsCore({
 
   const menuDetailOverlay = doc.getElementById("menuDetailOverlay");
   const menuDetailClose = doc.getElementById("menuDetailClose");
+  const normalizeExternalUrl = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+    return `https://${raw.replace(/^\/+/, "")}`;
+  };
+  const hasQrMenuAccessForItem = (item, profile) => {
+    const safeItem = item || state.menuDetail?.item || null;
+    if (!safeItem) return false;
+    const type = String(safeItem.type || "").trim().toLowerCase();
+    if (type && type !== "food" && type !== "drink") return false;
+    const accessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
+    if (accessSource !== "qr") return false;
+    return true;
+  };
   const cleanupKeyboardGap = () => {
     stopKeyboardGapTracking();
   };
@@ -81,7 +96,9 @@ export function bindMenuDetailOverlayEventsCore({
     stopKeyboardGapTracking();
     const item = state.menuDetail.item;
     const profile = getMenuDetailCatalogProfile(item);
-    if (!item || !canAddToShopCart(profile)) return;
+    const allowShopCart = canAddToShopCart(profile);
+    const allowQrMenuCart = hasQrMenuAccessForItem(item, profile);
+    if (!item || (!allowShopCart && !allowQrMenuCart)) return;
     const stockRaw = item.stock;
     const stockValue = typeof stockRaw === "string" ? stockRaw.trim() : stockRaw;
     const parsedStock = stockValue === "" || stockValue === null || stockValue === undefined
@@ -91,7 +108,8 @@ export function bindMenuDetailOverlayEventsCore({
     if (item.available === false || stock === 0) return;
     addMenuItemToShopCart(item, profile, {
       size: state.menuDetail.selectedSize || "",
-      color: state.menuDetail.selectedColor || ""
+      color: state.menuDetail.selectedColor || "",
+      forceAdd: !!allowQrMenuCart && !allowShopCart
     });
     const targetRestaurantId = String(profile?.restaurantId || "").trim();
     closeMenuDetail({
@@ -110,6 +128,31 @@ export function bindMenuDetailOverlayEventsCore({
   const menuDetailAddToCartBtn = doc.getElementById("menuDetailAddToCartBtn");
   if (menuDetailHeaderCartBtn) menuDetailHeaderCartBtn.addEventListener("click", handleAddToCart);
   if (menuDetailAddToCartBtn) menuDetailAddToCartBtn.addEventListener("click", handleAddToCart);
+  const menuDetailWoltBtn = doc.getElementById("menuDetailWoltBtn");
+  if (menuDetailWoltBtn) {
+    menuDetailWoltBtn.addEventListener("click", () => {
+      stopKeyboardGapTracking();
+      const href = normalizeExternalUrl(menuDetailWoltBtn.dataset.woltUrl || state.menuDetail.item?.woltUrl || "");
+      if (!href) return;
+      try {
+        const popup = win?.open?.(href, "_blank", "noopener,noreferrer");
+        if (!popup && win?.location) win.location.href = href;
+      } catch {
+        if (win?.location) win.location.href = href;
+      }
+    });
+  }
+  const menuDetailFavoriteCtaBtn = doc.getElementById("menuDetailFavoriteCtaBtn");
+  if (menuDetailFavoriteCtaBtn) {
+    menuDetailFavoriteCtaBtn.addEventListener("click", () => {
+      if (!String(state.user?.uid || "").trim()) {
+        openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+        return;
+      }
+      if (!toggleMenuItemLike) return;
+      void toggleMenuItemLike();
+    });
+  }
 
   const menuDetailHeaderFavoritesBtn = doc.getElementById("menuDetailHeaderFavoritesBtn");
   if (menuDetailHeaderFavoritesBtn) {

@@ -84,35 +84,46 @@ export function createAuthSessionStartupCoordinator({
     hasInlineBootstrapPayload = false,
     hasWindowBootstrapPromise = false
   } = {}) {
-    const snapshot = readAuthBootstrapSnapshot();
-    setAuthBootstrapSnapshot(snapshot);
-    bindPushOpenTargetMessageHandler();
-    if (state) {
-      state.user = auth?.currentUser || null;
-    }
-    setAuthInitialized(false);
-    if (state?.user) {
-      loadUserScopedPersisted(state.user);
-      writeAuthBootstrapSnapshot();
-      lastAuthUid = state.user.uid || "";
-    } else {
-      const appliedSnapshot = applyAuthBootstrapSnapshot(snapshot);
-      const snapshotUid = appliedSnapshot ? String(snapshot?.uid || "").trim() : "";
-      if (snapshotUid) {
-        applyPersistedAuthProfileHints(snapshotUid);
+    suspendRender();
+    try {
+      const snapshot = readAuthBootstrapSnapshot();
+      setAuthBootstrapSnapshot(snapshot);
+      bindPushOpenTargetMessageHandler();
+      if (state) {
+        state.user = auth?.currentUser || null;
       }
-      lastAuthUid = snapshotUid;
-    }
-    applyPendingInitialRouteState();
-    render();
-    schedulePerfWarmMark();
-    if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
-      queueMicrotaskSafe(() => {
-        void fetchPublicBootstrapPayload({ force: false, timeoutMs: 1200 });
-      });
-    }
-    if (!state?.user) {
-      scheduleGuestTabEnsure();
+      setAuthInitialized(false);
+      if (state?.user) {
+        loadUserScopedPersisted(state.user);
+        writeAuthBootstrapSnapshot();
+        lastAuthUid = state.user.uid || "";
+      } else {
+        const appliedSnapshot = applyAuthBootstrapSnapshot(snapshot);
+        const snapshotUid = appliedSnapshot ? String(snapshot?.uid || "").trim() : "";
+        if (snapshotUid) {
+          applyPersistedAuthProfileHints(snapshotUid);
+        }
+        lastAuthUid = snapshotUid;
+      }
+      applyPendingInitialRouteState();
+      // Open pending deep-link profile routes immediately (also for guest sessions),
+      // so QR menu links do not flash feed before routing to the restaurant menu.
+      const routeOpenResult = postLoginRouteOpen.openNonBlockingRoutes();
+      const openedProfileRoute = !!routeOpenResult?.openedProfile;
+      if (!openedProfileRoute || !state?.profileView?.profile) {
+        render();
+      }
+      schedulePerfWarmMark();
+      if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
+        queueMicrotaskSafe(() => {
+          void fetchPublicBootstrapPayload({ force: false, timeoutMs: 1200 });
+        });
+      }
+      if (!state?.user) {
+        scheduleGuestTabEnsure();
+      }
+    } finally {
+      resumeRender();
     }
   }
 

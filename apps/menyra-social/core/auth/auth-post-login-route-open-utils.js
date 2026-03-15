@@ -49,10 +49,11 @@ export function runPostLoginNonBlockingRouteOpenFlowCore({
     ? openChatFromQuery
     : (() => false);
 
-  openProfile();
+  const openedProfile = !!openProfile();
   void openNotification();
   void openPost();
   openChat();
+  return { openedProfile };
 }
 
 export function createPostLoginRouteOpenCoordinator({
@@ -108,7 +109,7 @@ export function createPostLoginRouteOpenCoordinator({
   }
 
   function openNonBlockingRoutes() {
-    runPostLoginNonBlockingRouteOpenFlowCore({
+    return runPostLoginNonBlockingRouteOpenFlowCore({
       openProfileFromQuery: openProfile,
       openNotificationFromQuery: openNotification,
       openPostFromQuery: openPost,

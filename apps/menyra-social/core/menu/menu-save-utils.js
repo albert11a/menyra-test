@@ -50,6 +50,12 @@ export async function saveMenuItemFromModalCore({
   const isShop = isShopCatalogProfile(state.userProfile);
   const businessType = String(getBusinessProfileType(state.userProfile) || "").trim().toLowerCase();
   const canPersistCardStyle = !isShop && isTestfirstMenuProfileTypeCore(businessType);
+  const normalizeExternalUrl = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+    return `https://${raw.replace(/^\/+/, "")}`;
+  };
   if (!restaurantId) {
     state.menuModal.status = "Kein Restaurant ausgewaehlt.";
     renderOverlays({ updateMenu: true });
@@ -63,6 +69,13 @@ export async function saveMenuItemFromModalCore({
   const description = documentObj.getElementById("menuItemDesc")?.value?.trim() || "";
   const longDescription = documentObj.getElementById("menuItemLongDesc")?.value?.trim() || "";
   const allergens = documentObj.getElementById("menuItemAllergens")?.value?.trim() || "";
+  const woltInputEl = documentObj.getElementById("menuItemWoltUrl");
+  const woltUrlRaw = String(
+    woltInputEl
+      ? (woltInputEl.value || "")
+      : (state.menuModal.item?.woltUrl || state.menuModal.item?.woltLink || "")
+  ).trim();
+  const woltUrl = isShop ? "" : normalizeExternalUrl(woltUrlRaw);
   const brand = documentObj.getElementById("menuItemBrand")?.value?.trim() || "";
   const sku = documentObj.getElementById("menuItemSku")?.value?.trim() || "";
   const stockRaw = documentObj.getElementById("menuItemStock")?.value?.trim() || "";
@@ -193,6 +206,7 @@ export async function saveMenuItemFromModalCore({
       description,
       longDescription,
       allergens,
+      woltUrl,
       brand: isShop ? brand : "",
       sku: isShop ? sku : "",
       stock: isShop ? stock : null,

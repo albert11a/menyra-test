@@ -267,28 +267,42 @@ export function createDeeplinkFlowControllerCore({
 
   const maybeOpenProfileFromQuery = () => {
     const pending = readPendingState();
-    if (pending.pendingProfileHandled) return;
-    if (!pending.pendingProfileRestaurantId) return;
-    if (!state?.user) return;
+    if (pending.pendingProfileHandled) return false;
+    if (!pending.pendingProfileRestaurantId) return false;
 
     const safeRestaurantId = normalizeProfileRestaurantId(pending.pendingProfileRestaurantId);
     if (isProfileAlreadyOpen({ pendingProfileRestaurantId: safeRestaurantId })) {
       patchPendingState({
         pendingProfileHandled: true,
         pendingProfileRestaurantId: "",
-        pendingProfileTopTab: ""
+        pendingProfileTopTab: "",
+        pendingProfileAccessSource: ""
       });
-      return;
+      return true;
     }
 
     const nextTabRaw = pending.pendingProfileTopTab;
+    const nextAccessSourceRaw = pending.pendingProfileAccessSource;
     patchPendingState({
       pendingProfileHandled: true,
       pendingProfileRestaurantId: "",
-      pendingProfileTopTab: ""
+      pendingProfileTopTab: "",
+      pendingProfileAccessSource: ""
     });
     const nextTab = normalizeProfileTopTab(nextTabRaw);
-    openBusinessProfile({ id: safeRestaurantId }, { showBack: false, topTab: nextTab });
+    const safeAccessSource = String(nextAccessSourceRaw || "").trim().toLowerCase();
+    const nextAccessSource = nextTab === "menu" && (safeAccessSource === "qr" || !safeAccessSource)
+      ? "qr"
+      : "";
+    openBusinessProfile(
+      { id: safeRestaurantId },
+      {
+        showBack: false,
+        topTab: nextTab,
+        menuAccessSource: nextAccessSource
+      }
+    );
+    return true;
   };
 
   const handlePushOpenTargetMessage = (payload = {}) => {

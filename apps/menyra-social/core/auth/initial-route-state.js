@@ -10,6 +10,11 @@ export function resolveInitialRouteState({
   const pendingProfileRestaurantId = readQuery("r") || readQuery("restaurant") || "";
   const queryTab = readQuery("tab") || readQuery("top") || "";
   const pendingProfileTopTab = pendingProfileRestaurantId ? queryTab : "";
+  const profileAccessSourceRaw = readQuery("src") || readQuery("source") || readQuery("menuSource") || "";
+  const profileAccessSource = String(profileAccessSourceRaw || "").trim().toLowerCase();
+  const pendingProfileAccessSource = pendingProfileRestaurantId
+    ? profileAccessSource
+    : "";
   const pendingNotificationId = readQuery("notif") || readQuery("notification") || readQuery("nid") || "";
   const pendingPostId = readQuery("post") || readQuery("postId") || "";
   const pendingChatUid = readQuery("chat") || readQuery("thread") || "";
@@ -21,6 +26,7 @@ export function resolveInitialRouteState({
   return {
     pendingProfileRestaurantId,
     pendingProfileTopTab,
+    pendingProfileAccessSource,
     pendingNotificationId,
     pendingPostId,
     pendingChatUid,

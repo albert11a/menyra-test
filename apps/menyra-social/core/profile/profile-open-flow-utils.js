@@ -110,13 +110,15 @@ export function createProfileOpenFlowControllerCore({
     }
   };
 
-  const openProfileViewFromBusiness = async (input, { showBack = true, topTab } = {}) => {
+  const openProfileViewFromBusiness = async (input, { showBack = true, topTab, menuAccessSource = "" } = {}) => {
     try {
       const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
       const restaurantId = typeof input === "string" ? "" : (input?.id || "");
       if (!safeName && !restaurantId) return;
+      const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
+      const isQrMenuOpen = topTab === "menu" && safeMenuAccessSource === "qr";
 
-      if (isOwnBusinessTarget({ restaurantId, name: safeName })) {
+      if (!isQrMenuOpen && isOwnBusinessTarget({ restaurantId, name: safeName })) {
         openOwnBusinessProfile({ showBack, topTab });
         return;
       }
@@ -150,7 +152,7 @@ export function createProfileOpenFlowControllerCore({
         posts: fallbackPosts
       });
 
-      showPublicProfileView(placeholderProfile, placeholderProfile.posts, { showBack, topTab });
+      showPublicProfileView(placeholderProfile, placeholderProfile.posts, { showBack, topTab, menuAccessSource: safeMenuAccessSource });
 
       const [profileSnap, posts] = await Promise.all([
         fetchBusinessProfile({ restaurantId, restaurant: rest }),
@@ -166,7 +168,7 @@ export function createProfileOpenFlowControllerCore({
 
       if (state.activeTab !== "profile") return;
       if (restaurantId && state.profileView?.profile?.restaurantId !== restaurantId) return;
-      showPublicProfileView(resolved, resolved.posts, { showBack, topTab });
+      showPublicProfileView(resolved, resolved.posts, { showBack, topTab, menuAccessSource: safeMenuAccessSource });
     } catch (err) {
       console.error(err);
     }

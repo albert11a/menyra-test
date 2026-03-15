@@ -275,7 +275,8 @@ export function createShopViewCartOrchestrationController({
   }
 
   function addMenuItemToShopCart(item, profile = getCurrentShopProfile(), options = {}) {
-    if (!item || !canAddToShopCartFn(profile)) return;
+    const forceAdd = options?.forceAdd === true;
+    if (!item || (!forceAdd && !canAddToShopCartFn(profile))) return;
     const context = getShopCartProfileContext(profile);
     if (!context.restaurantId) return;
     const currentRestaurantId = String(state.shopCart?.restaurantId || "").trim();

@@ -8,6 +8,8 @@ function parseMenuStockValue(value) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
 }
 
+const WOLT_LOGO_DISC_URL = "https://d21buns5ku92am.cloudfront.net/69274/images/448557-Square%20Web%20Wolt_CMYK_logo_Disc-e9d0c9-original-1666679673.jpg";
+
 export function renderMenuItemModalCore({
   state,
   isShopCatalogProfile,
@@ -96,6 +98,7 @@ export function renderMenuItemModalCore({
   const specialActionType = specialActionTypeRaw === "link" ? "link" : "product";
   const specialActionUrl = String(item.specialActionUrl || item.linkUrl || item.actionUrl || "").trim();
   const specialActionProductId = String(item.specialActionProductId || item.targetProductId || "").trim();
+  const woltUrl = String(item.woltUrl || item.woltLink || "").trim();
   const currentItemId = String(item.id || "").trim();
   const normalizeOrderIndex = (value, fallback = 0) => {
     const numeric = Number(value);
@@ -282,6 +285,13 @@ export function renderMenuItemModalCore({
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Beschreibung</label>
           <textarea id="menuItemDesc" rows="3" placeholder="Beschreibung..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(item.description || "")}</textarea>
         </div>
+        ${!isShop ? `
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Wolt Link</label>
+            <input id="menuItemWoltUrl" type="url" value="${esc(woltUrl)}" placeholder="https://wolt.com/..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Optional: wird im Produkt-Drawer angezeigt, wenn kein QR-Menuezugang aktiv ist.</p>
+          </div>
+        ` : ""}
         ${isShop ? `
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Details</label>
@@ -416,6 +426,12 @@ export function renderMenuDetailModalCore({
   const getObjectPosition = typeof getMenuItemObjectPosition === "function"
     ? getMenuItemObjectPosition
     : (() => "50% 50%");
+  const normalizeExternalUrl = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+    return `https://${raw.replace(/^\/+/, "")}`;
+  };
   const esc = typeof escapeHtml === "function" ? escapeHtml : ((value) => String(value || ""));
   const iconFn = typeof icon === "function" ? icon : (() => "");
 
@@ -443,12 +459,21 @@ export function renderMenuDetailModalCore({
   const colors = Array.isArray(item.colors) ? item.colors : [];
   const stock = parseMenuStockValue(item.stock);
   const isShop = isShopCatalog(catalogProfile);
+  const menuType = String(normalizeType(item.type || "") || "").trim().toLowerCase();
+  const isFoodOrDrink = menuType === "food" || menuType === "drink";
   const soldOut = isShop
     ? (item.available === false || stock === 0)
     : (item.available === false);
   const selectedSize = sizes.length ? (String(state.menuDetail.selectedSize || sizes[0]).trim() || String(sizes[0])) : "";
   const selectedColor = colors.length ? (String(state.menuDetail.selectedColor || colors[0]).trim() || String(colors[0])) : "";
-  const canAddToCartNow = isShop && canAddToCart(catalogProfile);
+  const menuAccessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
+  const hasQrMenuAccess = !isShop
+    && isFoodOrDrink
+    && menuAccessSource === "qr";
+  const canAddToCartNow = isShop ? canAddToCart(catalogProfile) : hasQrMenuAccess;
+  const woltUrl = normalizeExternalUrl(item.woltUrl || item.woltLink || "");
+  const showWoltAction = !isShop && isFoodOrDrink && !hasQrMenuAccess && !!woltUrl;
+  const showFavoriteOnlyAction = !isShop && isFoodOrDrink && !hasQrMenuAccess && !showWoltAction;
   const itemId = getSocialId(item);
   const metaKey = getMetaKey(restaurantId, itemId);
   const meta = metaKey ? ensureMeta(metaKey) : { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
@@ -567,6 +592,38 @@ export function renderMenuDetailModalCore({
       </div>
     </div>
   `;
+  const footerPrimaryActionHtml = showWoltAction
+    ? `
+      <button id="menuDetailWoltBtn" data-wolt-url="${esc(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;">
+        <img src="${esc(WOLT_LOGO_DISC_URL)}" alt="Wolt" class="w-5 h-5 rounded-full bg-white/10" loading="lazy" decoding="async" />
+        <span class="font-bold text-sm">Wolt</span>
+        ${iconFn("external-link", "w-4 h-4")}
+      </button>
+    `
+    : (showFavoriteOnlyAction
+      ? `
+        <button id="menuDetailFavoriteCtaBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all">
+          <span class="font-bold text-sm">Zu Favoriten</span>
+          ${iconFn("bookmark", "w-4 h-4")}
+        </button>
+      `
+      : `
+        <button id="menuDetailAddToCartBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
+          <span class="font-bold text-sm">${soldOut ? "Ausverkauft" : "In den Warenkorb"}</span>
+          ${iconFn("shopping-bag", "w-4 h-4")}
+        </button>
+      `);
+  const footerBackToggleTitle = showWoltAction
+    ? "Zurueck zu Wolt"
+    : (showFavoriteOnlyAction ? "Zurueck zu Favoriten" : "Zurueck zum Warenkorb");
+  const footerBackToggleClass = showWoltAction
+    ? "bg-[#18b9df] text-white hover:bg-[#12a8cc]"
+    : "bg-slate-100 text-slate-600 hover:bg-slate-200";
+  const footerBackToggleIcon = showWoltAction
+    ? `<img src="${esc(WOLT_LOGO_DISC_URL)}" alt="Wolt" class="w-5 h-5 rounded-full bg-white/10" loading="lazy" decoding="async" />`
+    : (showFavoriteOnlyAction
+      ? iconFn("bookmark", "w-5 h-5")
+      : iconFn("shopping-bag", "w-5 h-5"));
   const footerHtml = `
     <div class="px-7 pb-6 pt-4 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe relative z-10">
       <div id="footer-cart-view" class="flex gap-3 items-center w-full transition-all duration-300 ${isCommentFooter ? "hidden opacity-0" : ""}">
@@ -574,16 +631,12 @@ export function renderMenuDetailModalCore({
           ${iconFn("message-square", "w-5 h-5")}
           ${counts.comments > 0 ? `<span id="menuDetailFooterCommentsBadge" class="absolute top-0 right-0 -mt-1 -mr-1 w-5 h-5 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-white">${counts.comments}</span>` : ""}
         </button>
-
-        <button id="menuDetailAddToCartBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
-          <span class="font-bold text-sm">${soldOut ? "Ausverkauft" : "In den Warenkorb"}</span>
-          ${iconFn("shopping-bag", "w-4 h-4")}
-        </button>
+        ${footerPrimaryActionHtml}
       </div>
 
       <div id="footer-comment-view" class="flex gap-3 items-center w-full transition-all duration-300 ${isCommentFooter ? "" : "hidden opacity-0"}">
-        <button type="button" id="menuDetailFooterCartToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-all active:scale-95" title="Zurueck zum Warenkorb">
-          ${iconFn("shopping-bag", "w-5 h-5")}
+        <button type="button" id="menuDetailFooterCartToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] ${footerBackToggleClass} flex items-center justify-center transition-all active:scale-95" title="${footerBackToggleTitle}">
+          ${footerBackToggleIcon}
         </button>
 
         <div class="flex-1 flex gap-2">

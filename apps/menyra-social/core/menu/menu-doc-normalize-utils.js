@@ -176,6 +176,20 @@ export function normalizeMenuItemDocCore(data, id, {
       || specialActionPayload.productId
       || ""
   ).trim();
+  const normalizeExternalUrl = (value = "") => {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+    return `https://${raw.replace(/^\/+/, "")}`;
+  };
+  const woltUrl = normalizeExternalUrl(
+    d.woltUrl
+      || d.woltLink
+      || d.woltURL
+      || d.deliveryUrl
+      || d.deliveryURL
+      || ""
+  );
   return {
     id: d.id || id || "",
     type: normalizedType,
@@ -186,6 +200,7 @@ export function normalizeMenuItemDocCore(data, id, {
     description: d.description || d.desc || "",
     longDescription: d.longDescription || "",
     allergens: d.allergens || d.allergen || "",
+    woltUrl,
     brand: String(d.brand || d.manufacturer || "").trim(),
     sku: String(d.sku || d.articleNumber || d.articleNo || d.code || "").trim(),
     stock: stockValue === "" || stockValue === null || stockValue === undefined

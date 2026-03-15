@@ -360,6 +360,17 @@ export function createMenuPublicRuntimeController({
     return getMenuItemImages(item).length > 0;
   }
 
+  function hasMenuItemWoltUrl(item) {
+    return !!String(item?.woltUrl || item?.woltLink || "").trim();
+  }
+
+  function isFoodOrDrinkMenuItem(item) {
+    const type = String(item?.type || "").trim().toLowerCase();
+    if (type === "food" || type === "drink") return true;
+    const section = String(item?.menuSection || "").trim().toLowerCase();
+    return section === "food" || section === "drink";
+  }
+
   function fillMenuImagesFromFallback(baseItems, fallbackItems) {
     const list = Array.isArray(baseItems) ? baseItems : [];
     const fallback = Array.isArray(fallbackItems) ? fallbackItems : [];
@@ -388,14 +399,27 @@ export function createMenuPublicRuntimeController({
       }
     });
     return list.map((item) => {
-      if (!item || hasMenuItemImages(item)) return item;
+      if (!item) return item;
+      const needsImageData = !hasMenuItemImages(item);
+      const needsWoltData = isFoodOrDrinkMenuItem(item) && !hasMenuItemWoltUrl(item);
+      if (!needsImageData && !needsWoltData) return item;
+
       const byId = item.id ? fallbackById.get(String(item.id)) : null;
-      if (byId && hasMenuItemImages(byId)) {
-        return {
-          ...item,
-          imageUrl: byId.imageUrl || "",
-          imageUrls: Array.isArray(byId.imageUrls) ? byId.imageUrls : []
-        };
+      if (byId) {
+        const next = { ...item };
+        if (needsImageData && hasMenuItemImages(byId)) {
+          next.imageUrl = byId.imageUrl || "";
+          next.imageUrls = Array.isArray(byId.imageUrls) ? byId.imageUrls : [];
+        }
+        if (needsWoltData && hasMenuItemWoltUrl(byId)) {
+          next.woltUrl = normalizeExternalUrl(byId.woltUrl || byId.woltLink || "");
+        }
+        if (
+          (!needsImageData || hasMenuItemImages(next))
+          && (!needsWoltData || hasMenuItemWoltUrl(next))
+        ) {
+          return next;
+        }
       }
       const nameKey = foldMenuText(item.name || "").trim();
       const catKey = foldMenuText(item.category || "").trim();
@@ -411,12 +435,16 @@ export function createMenuPublicRuntimeController({
         const listByName = fallbackByName.get(nameKey) || [];
         if (listByName.length === 1) match = listByName[0];
       }
-      if (match && hasMenuItemImages(match)) {
-        return {
-          ...item,
-          imageUrl: match.imageUrl || "",
-          imageUrls: Array.isArray(match.imageUrls) ? match.imageUrls : []
-        };
+      if (match) {
+        const next = { ...item };
+        if (needsImageData && hasMenuItemImages(match)) {
+          next.imageUrl = match.imageUrl || "";
+          next.imageUrls = Array.isArray(match.imageUrls) ? match.imageUrls : [];
+        }
+        if (needsWoltData && hasMenuItemWoltUrl(match)) {
+          next.woltUrl = normalizeExternalUrl(match.woltUrl || match.woltLink || "");
+        }
+        return next;
       }
       return item;
     });
@@ -428,6 +456,13 @@ export function createMenuPublicRuntimeController({
     if (raw === "") return null;
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
+  }
+
+  function normalizeExternalUrl(value = "") {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+    return `https://${raw.replace(/^\/+/, "")}`;
   }
 
   function resolveMenuStatusBadgeVisible(value, fallback = true) {
@@ -510,6 +545,7 @@ export function createMenuPublicRuntimeController({
         specialActionProductId: String(item.specialActionType || "").trim().toLowerCase() === "product"
           ? String(item.specialActionProductId || "").trim()
           : "",
+        woltUrl: normalizeExternalUrl(item.woltUrl || item.woltLink || ""),
         imageUrl: item.imageUrl || null,
         imageUrls: Array.isArray(item.imageUrls) ? item.imageUrls : []
       })),
@@ -524,7 +560,8 @@ export function createMenuPublicRuntimeController({
     const publicItems = await loadPublicMenuItems(safeRestaurantId);
     if (publicItems.length) {
       const needsImages = publicItems.some((item) => !hasMenuItemImages(item));
-      if (!needsImages) return publicItems;
+      const needsWoltData = publicItems.some((item) => isFoodOrDrinkMenuItem(item) && !hasMenuItemWoltUrl(item));
+      if (!needsImages && !needsWoltData) return publicItems;
       const [collectionItems, legacyItems] = await Promise.all([
         loadMenuItemsFromCollection(safeRestaurantId),
         loadLegacyMenuItems(safeRestaurantId)
