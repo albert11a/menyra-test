@@ -577,17 +577,21 @@ export function renderMenuDetailModalCore({
     const entryCategory = String(entry.category || "Passt dazu").trim() || "Passt dazu";
     const entryPrice = formatPriceLabel(entry.price);
     return `
-      <div class="group min-w-[148px] w-[148px] rounded-[1.5rem] border border-slate-100 bg-white p-1.5 text-left transition-all">
-        <div class="relative overflow-hidden rounded-[1.2rem] bg-slate-100 w-[116px] h-[116px] mx-auto">
-          <img src="${esc(entrySafeImg)}" alt="${esc(entryName)}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+      <div class="group min-w-[128px] w-[128px] rounded-[1.8rem] border border-slate-100 bg-white p-2.5 text-left transition-all">
+        <div class="relative overflow-hidden rounded-[1.4rem] bg-slate-100 aspect-square">
+          <img src="${esc(entrySafeImg)}" alt="${esc(entryName)}" class="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-[1.03]" />
+          <div class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/92 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+            ${iconFn("sparkles", "w-3 h-3")}
+            <span>Passt dazu</span>
+          </div>
         </div>
-        <div class="pt-2.5 px-1">
+        <div class="pt-3 px-1">
           <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">${esc(entryCategory)}</div>
           <div class="mt-1 text-sm font-black tracking-tight text-slate-900 line-clamp-2">${esc(entryName)}</div>
-          <div class="mt-2.5 flex items-center justify-between gap-3">
+          <div class="mt-3 flex items-center justify-between gap-3">
             <span class="text-sm font-black text-slate-900">${esc(entryPrice)}</span>
-            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900 text-white">
-              ${iconFn("plus", "w-3.5 h-3.5")}
+            <span class="inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-slate-900 text-white">
+              ${iconFn("plus", "w-4 h-4")}
             </span>
           </div>
         </div>
@@ -597,15 +601,15 @@ export function renderMenuDetailModalCore({
   const renderCrossSellSection = (items = []) => {
     if (!items.length) return "";
     return `
-      <section class="space-y-4 py-1">
-        <div class="flex items-end justify-between gap-4">
+      <section class="space-y-3">
+        <div class="flex items-end justify-between gap-3">
           <div>
             <h4 class="text-base font-black tracking-tight text-slate-900">Passt perfekt dazu</h4>
           </div>
           <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">${items.length} Vorschlaege</div>
         </div>
         <div class="-mx-1 overflow-x-auto no-scrollbar">
-          <div class="flex gap-4 px-2 pb-2">
+          <div class="flex gap-3 px-1 pb-1">
             ${items.map((entry, index) => renderCrossSellCard(entry, index)).join("")}
           </div>
         </div>
