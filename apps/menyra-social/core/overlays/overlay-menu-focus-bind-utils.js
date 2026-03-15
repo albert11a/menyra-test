@@ -41,9 +41,44 @@ export function bindMenuOverlayEventsCore({
   const menuImageInput = doc.getElementById("menuItemImageInput");
   const menuCropX = doc.getElementById("menuItemCropX");
   const menuCropY = doc.getElementById("menuItemCropY");
+  const menuCardStyle = doc.getElementById("menuItemCardStyle");
+  const menuSmallCardCropControl = doc.getElementById("menuSmallCardCropControl");
+  const menuSmallCropButtons = Array.from(doc.querySelectorAll("[data-menu-small-crop]"));
   const menuSpecialActionType = doc.getElementById("menuItemSpecialActionType");
   const menuSpecialActionProductField = doc.getElementById("menuItemSpecialActionProductField");
   const menuSpecialActionLinkField = doc.getElementById("menuItemSpecialActionLinkField");
+
+  const resolveSmallCropPreset = (value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return "center";
+    if (numeric <= 33) return "left";
+    if (numeric >= 67) return "right";
+    return "center";
+  };
+  const syncSmallCropButtonState = () => {
+    if (!menuSmallCropButtons.length) return;
+    const activePreset = resolveSmallCropPreset(state.menuModal?.cropX ?? 50);
+    menuSmallCropButtons.forEach((btn) => {
+      const preset = String(btn.dataset.menuSmallCrop || "center").trim().toLowerCase();
+      const active = preset === activePreset;
+      btn.classList.toggle("bg-slate-900", active);
+      btn.classList.toggle("text-white", active);
+      btn.classList.toggle("border-slate-900", active);
+      btn.classList.toggle("bg-white", !active);
+      btn.classList.toggle("text-slate-500", !active);
+      btn.classList.toggle("border-slate-200", !active);
+    });
+  };
+  const syncSmallCropControlVisibility = () => {
+    if (!menuSmallCardCropControl) return;
+    const styleValue = String(
+      menuCardStyle?.value
+      || state.menuModal?.item?.cardStyle
+      || ""
+    ).trim().toLowerCase();
+    menuSmallCardCropControl.classList.toggle("hidden", styleValue !== "testfirst_drink");
+    syncSmallCropButtonState();
+  };
 
   bindModalDismiss(menuModalOverlay, closeMenuModal, { selfOnly: true });
   bindModalDismiss(menuModalClose, closeMenuModal);
@@ -75,6 +110,7 @@ export function bindMenuOverlayEventsCore({
               ...(state.menuModal.imagePreviews || []),
               ...previews
             ];
+            if (menuImageInput) menuImageInput.value = "";
             renderOverlays({ updateMenu: true });
           }
         };
@@ -99,6 +135,7 @@ export function bindMenuOverlayEventsCore({
     menuCropX.addEventListener("input", () => {
       state.menuModal.cropX = clampCropPercent(menuCropX.value, 50);
       syncMenuModalCropPreview();
+      syncSmallCropButtonState();
     });
   }
   if (menuCropY) {
@@ -107,7 +144,25 @@ export function bindMenuOverlayEventsCore({
       syncMenuModalCropPreview();
     });
   }
+  if (menuCardStyle) {
+    menuCardStyle.addEventListener("change", syncSmallCropControlVisibility);
+  }
+  if (menuSmallCropButtons.length) {
+    menuSmallCropButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const preset = String(btn.dataset.menuSmallCrop || "center").trim().toLowerCase();
+        const nextCropX = preset === "left" ? 0 : (preset === "right" ? 100 : 50);
+        state.menuModal.cropX = clampCropPercent(nextCropX, 50);
+        if (menuCropX) {
+          menuCropX.value = String(state.menuModal.cropX);
+        }
+        syncMenuModalCropPreview();
+        syncSmallCropButtonState();
+      });
+    });
+  }
   syncMenuModalCropPreview();
+  syncSmallCropControlVisibility();
 
   doc.querySelectorAll("[data-menu-image-remove]").forEach((btn) => {
     btn.addEventListener("click", () => {

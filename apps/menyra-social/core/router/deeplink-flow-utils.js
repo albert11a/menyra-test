@@ -291,7 +291,14 @@ export function createDeeplinkFlowControllerCore({
     });
     const nextTab = normalizeProfileTopTab(nextTabRaw);
     const safeAccessSource = String(nextAccessSourceRaw || "").trim().toLowerCase();
-    const nextAccessSource = nextTab === "menu" && (safeAccessSource === "qr" || !safeAccessSource)
+    const isQrLikeAccessSource = safeAccessSource === "qr"
+      || safeAccessSource === "qrcode"
+      || safeAccessSource === "qr-code"
+      || safeAccessSource === "menuqr"
+      || safeAccessSource === "menu-qr"
+      || safeAccessSource === "scanqr"
+      || safeAccessSource === "scan-qr";
+    const nextAccessSource = nextTab === "menu" && (isQrLikeAccessSource || !safeAccessSource)
       ? "qr"
       : "";
     openBusinessProfile(

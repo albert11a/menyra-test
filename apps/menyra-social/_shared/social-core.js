@@ -29,7 +29,20 @@ export function buildUrl(pathFromRoot, params = {}) {
 }
 
 export function qs(name) {
-  return new URLSearchParams(window.location.search).get(name);
+  const key = String(name || "").trim();
+  if (!key) return null;
+  const searchValue = new URLSearchParams(window.location.search || "").get(key);
+  if (searchValue !== null && searchValue !== "") return searchValue;
+
+  const hash = String(window.location.hash || "");
+  if (!hash) return searchValue;
+  const queryIndex = hash.indexOf("?");
+  const hashQuery = queryIndex >= 0
+    ? hash.slice(queryIndex + 1)
+    : hash.replace(/^#\/?/, "");
+  if (!hashQuery) return searchValue;
+  const hashValue = new URLSearchParams(hashQuery).get(key);
+  return hashValue ?? searchValue;
 }
 
 export function toDateSafe(value) {

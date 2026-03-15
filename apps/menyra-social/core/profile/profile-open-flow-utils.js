@@ -116,9 +116,13 @@ export function createProfileOpenFlowControllerCore({
       const restaurantId = typeof input === "string" ? "" : (input?.id || "");
       if (!safeName && !restaurantId) return;
       const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
-      const isQrMenuOpen = topTab === "menu" && safeMenuAccessSource === "qr";
+      const isMenuTopTab = String(topTab || "").trim().toLowerCase() === "menu";
+      const isQrMenuOpen = isMenuTopTab && safeMenuAccessSource === "qr";
+      // For deeplinks like ?r=...&tab=menu we always want the public profile menu view,
+      // never the owner editor tab, even when the target is the own business account.
+      const isDeeplinkMenuOpen = isMenuTopTab && !showBack;
 
-      if (!isQrMenuOpen && isOwnBusinessTarget({ restaurantId, name: safeName })) {
+      if (!isDeeplinkMenuOpen && !isQrMenuOpen && isOwnBusinessTarget({ restaurantId, name: safeName })) {
         openOwnBusinessProfile({ showBack, topTab });
         return;
       }

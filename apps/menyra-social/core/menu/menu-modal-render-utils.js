@@ -98,6 +98,15 @@ export function renderMenuItemModalCore({
   const cardStyleValue = normalizeMenuCardStyleCore(item.cardStyle || "", typeValue);
   const isSpecialCard = cardStyleValue === "testfirst_special"
     || String(item.category || "").trim().toLowerCase() === "special";
+  const showSmallCardCropControl = showCardStyleSelector && !isSpecialCard && cardStyleValue === "testfirst_drink";
+  const resolveCropPreset = (value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return "center";
+    if (numeric <= 33) return "left";
+    if (numeric >= 67) return "right";
+    return "center";
+  };
+  const cropPreset = resolveCropPreset(crop.x);
   const categoryValue = String(item.category || "Sonstiges").trim() || "Sonstiges";
   const defaultCategories = [
     "Fruehstueck",
@@ -194,36 +203,61 @@ export function renderMenuItemModalCore({
   const bodyHtml = `
     <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
       <input type="file" id="menuItemImageInput" class="hidden" accept="image/*" multiple />
-      <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
+      <div class="relative rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
         <img id="menuItemHeroPreview" src="${esc(safeImage)}" class="w-full h-52 object-cover" style="object-position:${crop.x}% ${crop.y}%;" />
+        <button type="button" id="menuItemImageTrigger" aria-label="Fotos hochladen" class="absolute top-3 right-3 w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform">
+          ${iconFn("camera", "w-5 h-5")}
+          <span class="absolute -right-1 -bottom-1 w-4 h-4 rounded-full bg-indigo-500 text-white flex items-center justify-center border border-white">
+            ${iconFn("plus", "w-2.5 h-2.5")}
+          </span>
+        </button>
       </div>
-      <button id="menuItemImageTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
-        Fotos hochladen
-      </button>
       <div class="p-4 rounded-[1.8rem] border border-slate-100 bg-white space-y-3">
         <div class="flex items-center justify-between">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Crop Horizontal</p>
           <span id="menuCropXValue" class="text-[10px] font-black uppercase tracking-widest text-slate-500">${crop.x}%</span>
         </div>
         <input id="menuItemCropX" type="range" min="0" max="100" step="1" value="${crop.x}" class="w-full accent-indigo-600" />
+        <div id="menuSmallCardCropControl" class="${showSmallCardCropControl ? "" : "hidden"} space-y-2">
+          <div class="flex items-center justify-between">
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Small Card Crop</p>
+            <span class="text-[10px] font-bold text-slate-400">1:1</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" data-menu-small-crop="left" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${cropPreset === "left" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"}">Links</button>
+            <button type="button" data-menu-small-crop="center" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${cropPreset === "center" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"}">Mitte</button>
+            <button type="button" data-menu-small-crop="right" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all ${cropPreset === "right" ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-500 border-slate-200"}">Rechts</button>
+          </div>
+          <p class="text-[10px] font-bold text-slate-400 px-1">Nur fuer Small Drink Card (Public Menue).</p>
+        </div>
         <div class="flex items-center justify-between">
           <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Crop Vertikal</p>
           <span id="menuCropYValue" class="text-[10px] font-black uppercase tracking-widest text-slate-500">${crop.y}%</span>
         </div>
         <input id="menuItemCropY" type="range" min="0" max="100" step="1" value="${crop.y}" class="w-full accent-indigo-600" />
       </div>
-      ${gallery.length ? `
-        <div class="grid grid-cols-4 gap-2">
-          ${gallery.map((img) => `
-            <div class="relative rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
-              <img src="${esc(getOptimizedImage(img.src, "thumb"))}" class="w-full h-16 object-cover" />
-              <button type="button" data-menu-image-remove="${img.idx}" data-menu-image-source="${img.kind}" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 text-slate-600 text-[10px] flex items-center justify-center shadow">
-                ${iconFn("x", "w-3 h-3")}
-              </button>
-            </div>
-          `).join("")}
+      <div class="p-4 rounded-[1.8rem] border border-slate-100 bg-white space-y-3">
+        <div class="flex items-center justify-between">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400">Fotos</p>
+          <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">${gallery.length}</span>
         </div>
-      ` : ""}
+        ${gallery.length ? `
+          <div class="grid grid-cols-3 gap-2">
+            ${gallery.map((img) => `
+              <div class="relative rounded-xl overflow-hidden border border-slate-100 bg-slate-50 aspect-square">
+                <img src="${esc(getOptimizedImage(img.src, "thumb"))}" class="w-full h-full object-cover" />
+                <button type="button" data-menu-image-remove="${img.idx}" data-menu-image-source="${img.kind}" class="absolute top-1 right-1 w-6 h-6 rounded-full bg-white/90 text-slate-600 text-[10px] flex items-center justify-center shadow">
+                  ${iconFn("x", "w-3 h-3")}
+                </button>
+              </div>
+            `).join("")}
+          </div>
+        ` : `
+          <div class="h-20 rounded-2xl border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center text-[10px] font-black uppercase tracking-widest text-slate-300">
+            Noch keine Fotos
+          </div>
+        `}
+      </div>
 
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
         <div>
@@ -543,21 +577,17 @@ export function renderMenuDetailModalCore({
     const entryCategory = String(entry.category || "Passt dazu").trim() || "Passt dazu";
     const entryPrice = formatPriceLabel(entry.price);
     return `
-      <div class="group min-w-[220px] w-[220px] rounded-[1.8rem] border border-slate-100 bg-white p-2.5 text-left transition-all">
-        <div class="relative overflow-hidden rounded-[1.4rem] bg-slate-100 aspect-[1.2/1]">
+      <div class="group min-w-[148px] w-[148px] rounded-[1.5rem] border border-slate-100 bg-white p-1.5 text-left transition-all">
+        <div class="relative overflow-hidden rounded-[1.2rem] bg-slate-100 w-[116px] h-[116px] mx-auto">
           <img src="${esc(entrySafeImg)}" alt="${esc(entryName)}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
-          <div class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/92 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-            ${iconFn("sparkles", "w-3 h-3")}
-            <span>Passt dazu</span>
-          </div>
         </div>
-        <div class="pt-3 px-1">
+        <div class="pt-2.5 px-1">
           <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">${esc(entryCategory)}</div>
           <div class="mt-1 text-sm font-black tracking-tight text-slate-900 line-clamp-2">${esc(entryName)}</div>
-          <div class="mt-3 flex items-center justify-between gap-3">
+          <div class="mt-2.5 flex items-center justify-between gap-3">
             <span class="text-sm font-black text-slate-900">${esc(entryPrice)}</span>
-            <span class="inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-slate-900 text-white">
-              ${iconFn("plus", "w-4 h-4")}
+            <span class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-900 text-white">
+              ${iconFn("plus", "w-3.5 h-3.5")}
             </span>
           </div>
         </div>
@@ -567,15 +597,15 @@ export function renderMenuDetailModalCore({
   const renderCrossSellSection = (items = []) => {
     if (!items.length) return "";
     return `
-      <section class="space-y-3">
-        <div class="flex items-end justify-between gap-3">
+      <section class="space-y-4 py-1">
+        <div class="flex items-end justify-between gap-4">
           <div>
             <h4 class="text-base font-black tracking-tight text-slate-900">Passt perfekt dazu</h4>
           </div>
           <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">${items.length} Vorschlaege</div>
         </div>
         <div class="-mx-1 overflow-x-auto no-scrollbar">
-          <div class="flex gap-3 px-1 pb-1">
+          <div class="flex gap-4 px-2 pb-2">
             ${items.map((entry, index) => renderCrossSellCard(entry, index)).join("")}
           </div>
         </div>
@@ -605,6 +635,7 @@ export function renderMenuDetailModalCore({
   const allergens = item.allergens || "";
   const brand = String(item.brand || "").trim();
   const sku = String(item.sku || "").trim();
+  const hasDetailInfo = !!(brand || sku || desc || allergens);
   const sizes = Array.isArray(item.sizes) ? item.sizes : [];
   const colors = Array.isArray(item.colors) ? item.colors : [];
   const stock = parseMenuStockValue(item.stock);
@@ -752,13 +783,13 @@ export function renderMenuDetailModalCore({
             <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
           </div>
         </div>
-        <div id="menuDetailComments" class="space-y-4">
+        <div id="menuDetailComments" class="mt-5 space-y-4">
           ${renderComments(comments)}
         </div>
       </div>
     `
     : `
-      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-white/98">
+      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-6 bg-white/98">
         <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
           <img src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="w-full h-56 object-cover" style="object-position:${getObjectPosition(item)};" />
           ${images.length > 1 ? `
@@ -780,20 +811,24 @@ export function renderMenuDetailModalCore({
         <div class="flex items-center justify-between">
           <span class="text-lg font-black text-slate-900">${esc(priceLabel)}</span>
         </div>
-        ${brand || sku ? `
-          <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
-            ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(brand)}</p></div>` : ""}
-            ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(sku)}</p></div>` : ""}
+        ${hasDetailInfo ? `
+          <div class="mt-2 space-y-4">
+            ${brand || sku ? `
+              <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
+                ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(brand)}</p></div>` : ""}
+                ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(sku)}</p></div>` : ""}
+              </div>
+            ` : ""}
+            ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${esc(desc)}</p>` : ""}
+            ${allergens ? `
+              <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Allergene</p>
+                <p class="text-sm text-slate-600">${esc(allergens)}</p>
+              </div>
+            ` : ""}
           </div>
         ` : ""}
-        ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${esc(desc)}</p>` : ""}
-        ${allergens ? `
-          <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Allergene</p>
-            <p class="text-sm text-slate-600">${esc(allergens)}</p>
-          </div>
-        ` : ""}
-        ${renderCrossSellSection(crossSellItems)}
+        ${crossSellItems.length ? `<div class="${hasDetailInfo ? "mt-2" : ""}">${renderCrossSellSection(crossSellItems)}</div>` : ""}
         <div class="flex items-center justify-between">
           <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
             ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
@@ -803,7 +838,7 @@ export function renderMenuDetailModalCore({
             <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
           </div>
         </div>
-        <div id="menuDetailComments" class="space-y-4">
+        <div id="menuDetailComments" class="mt-5 space-y-4">
           ${renderComments(comments)}
         </div>
       </div>
@@ -876,7 +911,7 @@ export function renderMenuDetailModalCore({
     <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame">
-        <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet">
+        <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border-x border-b border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}

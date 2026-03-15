@@ -25,7 +25,14 @@ export function resolveInitialRouteState({
     || readQuery("access")
     || ""
   );
-  const profileAccessSource = String(profileAccessSourceRaw || "").trim().toLowerCase();
+  const qrFlagRaw = String(
+    readQuery("qr")
+    || readQuery("isQr")
+    || readQuery("menuQr")
+    || ""
+  ).trim().toLowerCase();
+  const qrFlagEnabled = qrFlagRaw === "1" || qrFlagRaw === "true" || qrFlagRaw === "yes" || qrFlagRaw === "qr";
+  const profileAccessSource = String(profileAccessSourceRaw || "").trim().toLowerCase() || (qrFlagEnabled ? "qr" : "");
   const pendingProfileAccessSource = pendingProfileRestaurantId
     ? profileAccessSource
     : "";
