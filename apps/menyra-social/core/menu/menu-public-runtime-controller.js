@@ -364,6 +364,40 @@ export function createMenuPublicRuntimeController({
     return !!String(item?.woltUrl || item?.woltLink || "").trim();
   }
 
+  function normalizeCrossSellItemIds(value, { excludeId = "" } = {}) {
+    const blockedId = String(excludeId || "").trim();
+    const seen = new Set();
+    const pushId = (entry) => {
+      if (entry === null || entry === undefined) return;
+      if (Array.isArray(entry)) {
+        entry.forEach(pushId);
+        return;
+      }
+      const raw = typeof entry === "object"
+        ? (entry.id || entry.itemId || entry.productId || entry.menuItemId || "")
+        : entry;
+      const str = String(raw || "").trim();
+      if (!str) return;
+      str.split(",").forEach((part) => {
+        const next = String(part || "").trim();
+        if (!next || next === blockedId || seen.has(next)) return;
+        seen.add(next);
+      });
+    };
+    pushId(value);
+    return Array.from(seen);
+  }
+
+  function hasMenuItemCrossSell(item) {
+    const ids = normalizeCrossSellItemIds(
+      item?.crossSellItemIds
+        || item?.crossSellIds
+        || item?.crossSell
+        || item?.crossSelling
+    );
+    return ids.length > 0;
+  }
+
   function isFoodOrDrinkMenuItem(item) {
     const type = String(item?.type || "").trim().toLowerCase();
     if (type === "food" || type === "drink") return true;
@@ -402,7 +436,8 @@ export function createMenuPublicRuntimeController({
       if (!item) return item;
       const needsImageData = !hasMenuItemImages(item);
       const needsWoltData = isFoodOrDrinkMenuItem(item) && !hasMenuItemWoltUrl(item);
-      if (!needsImageData && !needsWoltData) return item;
+      const needsCrossSellData = isFoodOrDrinkMenuItem(item) && !hasMenuItemCrossSell(item);
+      if (!needsImageData && !needsWoltData && !needsCrossSellData) return item;
 
       const byId = item.id ? fallbackById.get(String(item.id)) : null;
       if (byId) {
@@ -414,9 +449,16 @@ export function createMenuPublicRuntimeController({
         if (needsWoltData && hasMenuItemWoltUrl(byId)) {
           next.woltUrl = normalizeExternalUrl(byId.woltUrl || byId.woltLink || "");
         }
+        if (needsCrossSellData && hasMenuItemCrossSell(byId)) {
+          next.crossSellItemIds = normalizeCrossSellItemIds(
+            byId.crossSellItemIds || byId.crossSellIds || byId.crossSell || byId.crossSelling,
+            { excludeId: item.id }
+          );
+        }
         if (
           (!needsImageData || hasMenuItemImages(next))
           && (!needsWoltData || hasMenuItemWoltUrl(next))
+          && (!needsCrossSellData || hasMenuItemCrossSell(next))
         ) {
           return next;
         }
@@ -443,6 +485,12 @@ export function createMenuPublicRuntimeController({
         }
         if (needsWoltData && hasMenuItemWoltUrl(match)) {
           next.woltUrl = normalizeExternalUrl(match.woltUrl || match.woltLink || "");
+        }
+        if (needsCrossSellData && hasMenuItemCrossSell(match)) {
+          next.crossSellItemIds = normalizeCrossSellItemIds(
+            match.crossSellItemIds || match.crossSellIds || match.crossSell || match.crossSelling,
+            { excludeId: item.id }
+          );
         }
         return next;
       }
@@ -536,6 +584,10 @@ export function createMenuPublicRuntimeController({
         statusVisibility: "auto",
         cardStyle: normalizeMenuCardStyleCore(item.cardStyle || "", item.type || "food"),
         specialSize: String(item.specialSize || "").trim().toLowerCase() === "food" ? "food" : "default",
+        crossSellItemIds: normalizeCrossSellItemIds(
+          item.crossSellItemIds || item.crossSellIds || item.crossSell || item.crossSelling,
+          { excludeId: item.id }
+        ),
         specialActionType: String(item.specialActionType || "").trim().toLowerCase() === "link"
           ? "link"
           : (String(item.specialActionType || "").trim().toLowerCase() === "product" ? "product" : "self"),
@@ -561,7 +613,8 @@ export function createMenuPublicRuntimeController({
     if (publicItems.length) {
       const needsImages = publicItems.some((item) => !hasMenuItemImages(item));
       const needsWoltData = publicItems.some((item) => isFoodOrDrinkMenuItem(item) && !hasMenuItemWoltUrl(item));
-      if (!needsImages && !needsWoltData) return publicItems;
+      const needsCrossSellData = publicItems.some((item) => isFoodOrDrinkMenuItem(item) && !hasMenuItemCrossSell(item));
+      if (!needsImages && !needsWoltData && !needsCrossSellData) return publicItems;
       const [collectionItems, legacyItems] = await Promise.all([
         loadMenuItemsFromCollection(safeRestaurantId),
         loadLegacyMenuItems(safeRestaurantId)

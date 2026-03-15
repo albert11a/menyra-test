@@ -39,6 +39,35 @@ export function renderMenuItemModalCore({
     : (() => ({ x: 50, y: 50 }));
   const esc = typeof escapeHtml === "function" ? escapeHtml : ((value) => String(value || ""));
   const iconFn = typeof icon === "function" ? icon : (() => "");
+  const formatEditorPrice = (value) => {
+    const num = Number(value);
+    if (Number.isFinite(num)) return `${num.toFixed(2).replace(".", ",")} EUR`;
+    const raw = String(value || "").trim();
+    return raw || "0,00 EUR";
+  };
+  const normalizeCrossSellItemIds = (value, { excludeId = "" } = {}) => {
+    const blockedId = String(excludeId || "").trim();
+    const seen = new Set();
+    const pushId = (entry) => {
+      if (entry === null || entry === undefined) return;
+      if (Array.isArray(entry)) {
+        entry.forEach(pushId);
+        return;
+      }
+      const raw = typeof entry === "object"
+        ? (entry.id || entry.itemId || entry.productId || entry.menuItemId || "")
+        : entry;
+      const str = String(raw || "").trim();
+      if (!str) return;
+      str.split(",").forEach((part) => {
+        const next = String(part || "").trim();
+        if (!next || next === blockedId || seen.has(next)) return;
+        seen.add(next);
+      });
+    };
+    pushId(value);
+    return Array.from(seen);
+  };
 
   const item = state.menuModal.item || {};
   const isEdit = state.menuModal.mode === "edit";
@@ -55,6 +84,7 @@ export function renderMenuItemModalCore({
   const heroUrl = heroRaw ? getOptimizedImage(heroRaw, "large") : PLACEHOLDER_IMAGE;
   const safeImage = isPlaceholder(heroUrl) ? PLACEHOLDER_IMAGE : heroUrl;
   const typeValue = normalizeType(item.type || "food");
+  const isFoodOrDrinkEditor = typeValue === "food" || typeValue === "drink";
   const available = item.available !== false;
   const visibilityValue = available ? "available" : "unavailable";
   const status = state.menuModal.status || "";
@@ -133,6 +163,21 @@ export function renderMenuItemModalCore({
       return true;
     })
     : [];
+  const crossSellItemIds = normalizeCrossSellItemIds(
+    item.crossSellItemIds
+      || item.crossSellIds
+      || item.crossSell
+      || item.crossSelling,
+    { excludeId: currentItemId }
+  );
+  const crossSellCandidates = sortedMenuItems.filter((entry) => {
+    const id = String(entry?.id || "").trim();
+    if (!id) return false;
+    if (id === currentItemId) return false;
+    const entryType = String(entry?.type || "").trim().toLowerCase();
+    const entrySection = String(entry?.menuSection || "").trim().toLowerCase();
+    return entryType === "food" || entryType === "drink" || entrySection === "food" || entrySection === "drink";
+  });
 
   const titleId = "menuModalTitle";
   const headerHtml = `
@@ -290,6 +335,29 @@ export function renderMenuItemModalCore({
             <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Optional: wird im Produkt-Drawer angezeigt, wenn kein QR-Menuezugang aktiv ist.</p>
           </div>
         ` : ""}
+        ${!isShop && isFoodOrDrinkEditor ? `
+          <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Cross Selling (QR)</label>
+            <div class="mt-2 p-3 rounded-2xl border border-slate-200 bg-slate-50 max-h-48 overflow-y-auto no-scrollbar space-y-2">
+              ${crossSellCandidates.length ? crossSellCandidates.map((entry) => {
+                const entryId = String(entry?.id || "").trim();
+                const entryName = String(entry?.name || "Produkt").trim() || "Produkt";
+                const entryCategory = String(entry?.category || "").trim();
+                const entryPrice = formatEditorPrice(entry?.price);
+                return `
+                  <label class="flex items-start gap-3 p-2.5 rounded-xl bg-white border border-slate-200">
+                    <input type="checkbox" data-menu-cross-sell-option value="${esc(entryId)}" ${crossSellItemIds.includes(entryId) ? "checked" : ""} class="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" />
+                    <span class="min-w-0 flex-1">
+                      <span class="block text-xs font-black text-slate-800 truncate">${esc(entryName)}</span>
+                      <span class="block text-[10px] font-bold uppercase tracking-wide text-slate-400">${esc(entryCategory || "Produkt")} · ${esc(entryPrice)}</span>
+                    </span>
+                  </label>
+                `;
+              }).join("") : `<p class="text-[10px] font-bold uppercase tracking-wide text-slate-400 px-2 py-1">Keine weiteren Speisen/Getraenke verfuegbar</p>`}
+            </div>
+            <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Wird nur im Produkt-Drawer gezeigt, wenn das Menue per QR-Code geoeffnet wurde.</p>
+          </div>
+        ` : ""}
         ${isShop ? `
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Details</label>
@@ -430,6 +498,90 @@ export function renderMenuDetailModalCore({
     if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
     return `https://${raw.replace(/^\/+/, "")}`;
   };
+  const normalizeCrossSellItemIds = (value, { excludeId = "" } = {}) => {
+    const blockedId = String(excludeId || "").trim();
+    const seen = new Set();
+    const pushId = (entry) => {
+      if (entry === null || entry === undefined) return;
+      if (Array.isArray(entry)) {
+        entry.forEach(pushId);
+        return;
+      }
+      const raw = typeof entry === "object"
+        ? (entry.id || entry.itemId || entry.productId || entry.menuItemId || "")
+        : entry;
+      const str = String(raw || "").trim();
+      if (!str) return;
+      str.split(",").forEach((part) => {
+        const next = String(part || "").trim();
+        if (!next || next === blockedId || seen.has(next)) return;
+        seen.add(next);
+      });
+    };
+    pushId(value);
+    return Array.from(seen);
+  };
+  const resolveCrossSellItemById = (itemId, fallbackList = []) => {
+    const id = String(itemId || "").trim();
+    if (!id) return null;
+    const fromMenu = Array.isArray(state?.menu?.items)
+      ? state.menu.items.find((entry) => String(entry?.id || "").trim() === id)
+      : null;
+    if (fromMenu) return fromMenu;
+    if (!Array.isArray(fallbackList)) return null;
+    return fallbackList.find((entry) => {
+      const entryId = String(entry?.id || entry?.itemId || entry?.productId || entry?.menuItemId || "").trim();
+      return entryId === id;
+    }) || null;
+  };
+  const renderCrossSellCard = (entry = {}, index = 0) => {
+    const imageCandidates = Array.isArray(getImages(entry)) ? getImages(entry) : [];
+    const rawEntryImage = imageCandidates[0] || entry.imageUrl || entry.image || "";
+    const entryImgSrc = getOptimizedImage(rawEntryImage, "thumb");
+    const entrySafeImg = isPlaceholder(entryImgSrc) ? PLACEHOLDER_IMAGE : entryImgSrc;
+    const entryName = String(entry.name || `Empfehlung ${index + 1}`).trim() || `Empfehlung ${index + 1}`;
+    const entryCategory = String(entry.category || "Passt dazu").trim() || "Passt dazu";
+    const entryPrice = formatPriceLabel(entry.price);
+    return `
+      <div class="group min-w-[220px] w-[220px] rounded-[1.8rem] border border-slate-100 bg-white p-2.5 text-left transition-all">
+        <div class="relative overflow-hidden rounded-[1.4rem] bg-slate-100 aspect-[1.2/1]">
+          <img src="${esc(entrySafeImg)}" alt="${esc(entryName)}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+          <div class="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-white/92 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+            ${iconFn("sparkles", "w-3 h-3")}
+            <span>Passt dazu</span>
+          </div>
+        </div>
+        <div class="pt-3 px-1">
+          <div class="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">${esc(entryCategory)}</div>
+          <div class="mt-1 text-sm font-black tracking-tight text-slate-900 line-clamp-2">${esc(entryName)}</div>
+          <div class="mt-3 flex items-center justify-between gap-3">
+            <span class="text-sm font-black text-slate-900">${esc(entryPrice)}</span>
+            <span class="inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-slate-900 text-white">
+              ${iconFn("plus", "w-4 h-4")}
+            </span>
+          </div>
+        </div>
+      </div>
+    `;
+  };
+  const renderCrossSellSection = (items = []) => {
+    if (!items.length) return "";
+    return `
+      <section class="space-y-3">
+        <div class="flex items-end justify-between gap-3">
+          <div>
+            <h4 class="text-base font-black tracking-tight text-slate-900">Passt perfekt dazu</h4>
+          </div>
+          <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">${items.length} Vorschlaege</div>
+        </div>
+        <div class="-mx-1 overflow-x-auto no-scrollbar">
+          <div class="flex gap-3 px-1 pb-1">
+            ${items.map((entry, index) => renderCrossSellCard(entry, index)).join("")}
+          </div>
+        </div>
+      </section>
+    `;
+  };
   const esc = typeof escapeHtml === "function" ? escapeHtml : ((value) => String(value || ""));
   const iconFn = typeof icon === "function" ? icon : (() => "");
 
@@ -472,6 +624,19 @@ export function renderMenuDetailModalCore({
   const woltUrl = normalizeExternalUrl(item.woltUrl || item.woltLink || "");
   const showWoltAction = !isShop && isFoodOrDrink && !hasQrMenuAccess && !!woltUrl;
   const showFavoriteOnlyAction = !isShop && isFoodOrDrink && !hasQrMenuAccess && !showWoltAction;
+  const crossSellIds = normalizeCrossSellItemIds(
+    item.crossSellItemIds
+      || item.crossSellIds
+      || item.crossSell
+      || item.crossSelling,
+    { excludeId: item.id }
+  );
+  const crossSellFallbackItems = Array.isArray(item.crossSell) ? item.crossSell : [];
+  const crossSellItems = hasQrMenuAccess
+    ? crossSellIds
+      .map((entryId) => resolveCrossSellItemById(entryId, crossSellFallbackItems))
+      .filter(Boolean)
+    : [];
   const itemId = getSocialId(item);
   const metaKey = getMetaKey(restaurantId, itemId);
   const meta = metaKey ? ensureMeta(metaKey) : { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
@@ -509,87 +674,140 @@ export function renderMenuDetailModalCore({
       </div>
     `
     : `
-      <div class="flex items-start justify-between px-7 pt-7 pb-5 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
-        <div>
-          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${esc(category || typeLabel)}</span>
-          <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${esc(item.name || "Produkt")}</h3>
+      <div class="flex items-center justify-between gap-4 px-7 pt-7 pb-5 border-b border-slate-100 bg-white/98 backdrop-blur-sm">
+        <div class="min-w-0 flex items-center flex-1">
+          <div class="min-w-0">
+            <h3 id="${titleId}" class="text-[1.05rem] leading-tight font-black tracking-tight text-slate-900 truncate">${esc(item.name || "Produkt")}</h3>
+            ${category ? `<div class="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">${esc(category)}</div>` : ""}
+          </div>
         </div>
-        <button id="menuDetailClose" data-menu-detail-close="true" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+        <button id="menuDetailClose" data-menu-detail-close="true" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 shrink-0">
           ${iconFn("x", "w-4 h-4")}
         </button>
       </div>
     `;
-  const bodyHtml = `
-    <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
-      <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;${isShop ? " aspect-ratio:4 / 5;" : ""}">
-        <img src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="w-full ${isShop ? "h-full" : "h-56"} object-cover" style="object-position:${getObjectPosition(item)};" />
+  const bodyHtml = isShop
+    ? `
+      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
+        <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y; aspect-ratio:4 / 5;">
+          <img src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getObjectPosition(item)};" />
+          ${images.length > 1 ? `
+            <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+              ${iconFn("chevron-left", "w-4 h-4")}
+            </button>
+            <button type="button" data-menu-gallery-nav="next" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+              ${iconFn("chevron-right", "w-4 h-4")}
+            </button>
+          ` : ""}
+        </div>
         ${images.length > 1 ? `
-          <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
-            ${iconFn("chevron-left", "w-4 h-4")}
-          </button>
-          <button type="button" data-menu-gallery-nav="next" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
-            ${iconFn("chevron-right", "w-4 h-4")}
-          </button>
+          <div class="flex items-center justify-center gap-2">
+            ${images.map((_, idx) => `
+              <button type="button" data-menu-gallery-dot="${idx}" class="w-2.5 h-2.5 rounded-full ${idx === safeIndex ? "bg-slate-900" : "bg-slate-200"}"></button>
+            `).join("")}
+          </div>
         ` : ""}
-      </div>
-      ${images.length > 1 ? `
-        <div class="flex items-center justify-center gap-2">
-          ${images.map((_, idx) => `
-            <button type="button" data-menu-gallery-dot="${idx}" class="w-2.5 h-2.5 rounded-full ${idx === safeIndex ? "bg-slate-900" : "bg-slate-200"}"></button>
-          `).join("")}
+        <div class="flex items-center justify-between">
+          <span class="text-lg font-black text-slate-900">${esc(priceLabel)}</span>
         </div>
-      ` : ""}
-      <div class="flex items-center justify-between">
-        <span class="text-lg font-black text-slate-900">${esc(priceLabel)}</span>
-      </div>
-      <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-        ${category ? `<span>${esc(category)}</span>` : ""}
-        <span>${esc(typeLabel)}</span>
-      </div>
-      ${brand || sku ? `
-        <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
-          ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(brand)}</p></div>` : ""}
-          ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(sku)}</p></div>` : ""}
+        <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+          ${category ? `<span>${esc(category)}</span>` : ""}
+          <span>${esc(typeLabel)}</span>
         </div>
-      ` : ""}
-      ${isShop && sizes.length ? `
-        <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Groessen</p>
-          <select data-menu-detail-variant="size" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
-            ${sizes.map((size) => `<option value="${esc(size)}" ${selectedSize === String(size) ? "selected" : ""}>${esc(size)}</option>`).join("")}
-          </select>
+        ${brand || sku ? `
+          <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
+            ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(brand)}</p></div>` : ""}
+            ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(sku)}</p></div>` : ""}
+          </div>
+        ` : ""}
+        ${sizes.length ? `
+          <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Groessen</p>
+            <select data-menu-detail-variant="size" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
+              ${sizes.map((size) => `<option value="${esc(size)}" ${selectedSize === String(size) ? "selected" : ""}>${esc(size)}</option>`).join("")}
+            </select>
+          </div>
+        ` : ""}
+        ${colors.length ? `
+          <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Farben</p>
+            <select data-menu-detail-variant="color" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
+              ${colors.map((color) => `<option value="${esc(color)}" ${selectedColor === String(color) ? "selected" : ""}>${esc(color)}</option>`).join("")}
+            </select>
+          </div>
+        ` : ""}
+        ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${esc(desc)}</p>` : ""}
+        ${allergens ? `
+          <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Hinweise</p>
+            <p class="text-sm text-slate-600">${esc(allergens)}</p>
+          </div>
+        ` : ""}
+        <div class="flex items-center justify-between">
+          <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
+            ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+          </button>
+          <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} Likes</span>
+            <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
+          </div>
         </div>
-      ` : ""}
-      ${isShop && colors.length ? `
-        <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Farben</p>
-          <select data-menu-detail-variant="color" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
-            ${colors.map((color) => `<option value="${esc(color)}" ${selectedColor === String(color) ? "selected" : ""}>${esc(color)}</option>`).join("")}
-          </select>
-        </div>
-      ` : ""}
-      ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${esc(desc)}</p>` : ""}
-      ${allergens ? `
-        <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-          <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${isShop ? "Hinweise" : "Allergene"}</p>
-          <p class="text-sm text-slate-600">${esc(allergens)}</p>
-        </div>
-      ` : ""}
-      <div class="flex items-center justify-between">
-        <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
-          ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
-        </button>
-        <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-          <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} Likes</span>
-          <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
+        <div id="menuDetailComments" class="space-y-4">
+          ${renderComments(comments)}
         </div>
       </div>
-
-      <div id="menuDetailComments" class="space-y-4">
-        ${renderComments(comments)}
+    `
+    : `
+      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-white/98">
+        <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
+          <img src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="w-full h-56 object-cover" style="object-position:${getObjectPosition(item)};" />
+          ${images.length > 1 ? `
+            <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+              ${iconFn("chevron-left", "w-4 h-4")}
+            </button>
+            <button type="button" data-menu-gallery-nav="next" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+              ${iconFn("chevron-right", "w-4 h-4")}
+            </button>
+          ` : ""}
+        </div>
+        ${images.length > 1 ? `
+          <div class="flex items-center justify-center gap-2">
+            ${images.map((_, idx) => `
+              <button type="button" data-menu-gallery-dot="${idx}" class="w-2.5 h-2.5 rounded-full ${idx === safeIndex ? "bg-slate-900" : "bg-slate-200"}"></button>
+            `).join("")}
+          </div>
+        ` : ""}
+        <div class="flex items-center justify-between">
+          <span class="text-lg font-black text-slate-900">${esc(priceLabel)}</span>
+        </div>
+        ${brand || sku ? `
+          <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
+            ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(brand)}</p></div>` : ""}
+            ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(sku)}</p></div>` : ""}
+          </div>
+        ` : ""}
+        ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${esc(desc)}</p>` : ""}
+        ${allergens ? `
+          <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
+            <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Allergene</p>
+            <p class="text-sm text-slate-600">${esc(allergens)}</p>
+          </div>
+        ` : ""}
+        ${renderCrossSellSection(crossSellItems)}
+        <div class="flex items-center justify-between">
+          <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
+            ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+          </button>
+          <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+            <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} Likes</span>
+            <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
+          </div>
+        </div>
+        <div id="menuDetailComments" class="space-y-4">
+          ${renderComments(comments)}
+        </div>
       </div>
-    </div>
-  `;
+    `;
   const footerPrimaryActionHtml = showWoltAction
     ? `
       <button type="button" id="menuDetailWoltBtn" data-wolt-url="${esc(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;" title="Bei Wolt oeffnen">

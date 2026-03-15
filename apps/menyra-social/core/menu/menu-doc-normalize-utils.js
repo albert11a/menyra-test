@@ -182,6 +182,28 @@ export function normalizeMenuItemDocCore(data, id, {
     if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
     return `https://${raw.replace(/^\/+/, "")}`;
   };
+  const normalizeCrossSellItemIds = (value) => {
+    const seen = new Set();
+    const pushId = (entry) => {
+      if (entry === null || entry === undefined) return;
+      if (Array.isArray(entry)) {
+        entry.forEach(pushId);
+        return;
+      }
+      const raw = typeof entry === "object"
+        ? (entry.id || entry.itemId || entry.productId || entry.menuItemId || "")
+        : entry;
+      const str = String(raw || "").trim();
+      if (!str) return;
+      str.split(",").forEach((part) => {
+        const next = String(part || "").trim();
+        if (!next || seen.has(next)) return;
+        seen.add(next);
+      });
+    };
+    pushId(value);
+    return Array.from(seen);
+  };
   const woltUrl = normalizeExternalUrl(
     d.woltUrl
       || d.woltLink
@@ -190,8 +212,16 @@ export function normalizeMenuItemDocCore(data, id, {
       || d.deliveryURL
       || ""
   );
+  const normalizedId = String(d.id || id || "").trim();
+  const crossSellItemIds = normalizeCrossSellItemIds(
+    d.crossSellItemIds
+      || d.crossSellIds
+      || d.crossSellProducts
+      || d.crossSelling
+      || d.crossSell
+  ).filter((entryId) => entryId && entryId !== normalizedId);
   return {
-    id: d.id || id || "",
+    id: normalizedId,
     type: normalizedType,
     menuSection,
     orderIndex: Number.isFinite(orderNumber) ? Math.max(0, Math.floor(orderNumber)) : null,
@@ -223,6 +253,7 @@ export function normalizeMenuItemDocCore(data, id, {
     specialActionType,
     specialActionUrl: specialActionType === "link" ? specialActionUrl : "",
     specialActionProductId: specialActionType === "product" ? specialActionProductId : "",
+    crossSellItemIds,
     imageUrl: mergedImages[0] || "",
     imageUrls: mergedImages
   };

@@ -56,6 +56,28 @@ export async function saveMenuItemFromModalCore({
     if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
     return `https://${raw.replace(/^\/+/, "")}`;
   };
+  const normalizeCrossSellItemIds = (value) => {
+    const seen = new Set();
+    const pushId = (entry) => {
+      if (entry === null || entry === undefined) return;
+      if (Array.isArray(entry)) {
+        entry.forEach(pushId);
+        return;
+      }
+      const raw = typeof entry === "object"
+        ? (entry.id || entry.itemId || entry.productId || entry.menuItemId || "")
+        : entry;
+      const str = String(raw || "").trim();
+      if (!str) return;
+      str.split(",").forEach((part) => {
+        const next = String(part || "").trim();
+        if (!next || seen.has(next)) return;
+        seen.add(next);
+      });
+    };
+    pushId(value);
+    return Array.from(seen);
+  };
   if (!restaurantId) {
     state.menuModal.status = "Kein Restaurant ausgewaehlt.";
     renderOverlays({ updateMenu: true });
@@ -84,6 +106,19 @@ export async function saveMenuItemFromModalCore({
   const visibilityInput = String(documentObj.getElementById("menuItemVisibility")?.value || "").trim().toLowerCase();
   const available = visibilityInput === "unavailable" ? false : true;
   const menuSection = normalizedType === "drink" ? "drink" : "food";
+  const crossSellInputEls = Array.from(documentObj.querySelectorAll("[data-menu-cross-sell-option]"));
+  const selectedCrossSellItemIds = normalizeCrossSellItemIds(
+    crossSellInputEls
+      .filter((input) => input?.checked)
+      .map((input) => input?.value || input?.dataset?.menuCrossSellOption || "")
+  );
+  const fallbackCrossSellItemIds = normalizeCrossSellItemIds(
+    state.menuModal.item?.crossSellItemIds
+      || state.menuModal.item?.crossSellIds
+      || state.menuModal.item?.crossSell
+      || state.menuModal.item?.crossSelling
+  );
+  const rawCrossSellItemIds = crossSellInputEls.length ? selectedCrossSellItemIds : fallbackCrossSellItemIds;
   const specialSizeRaw = String(
     documentObj.getElementById("menuItemSpecialSize")?.value
       || state.menuModal.item?.specialSize
@@ -185,6 +220,11 @@ export async function saveMenuItemFromModalCore({
       ? doc(db, "restaurants", restaurantId, "menuItems", state.menuModal.item.id)
       : doc(collection(db, "restaurants", restaurantId, "menuItems"));
     const id = state.menuModal.item?.id || ref.id;
+    const normalizedCrossSellItemIds = (!isShop && (normalizedType === "food" || normalizedType === "drink"))
+      ? rawCrossSellItemIds
+        .map((entryId) => String(entryId || "").trim())
+        .filter((entryId, idx, list) => entryId && entryId !== String(id || "").trim() && list.indexOf(entryId) === idx)
+      : [];
     const existingIndexInList = (state.menu.items || []).findIndex((it) => String(it?.id || "") === String(id));
     const defaultOrderIndex = normalizeOrderIndex(
       state.menuModal.item?.orderIndex,
@@ -220,6 +260,7 @@ export async function saveMenuItemFromModalCore({
       statusHidden: false,
       statusVisibility: "auto",
       menuSection,
+      crossSellItemIds: normalizedCrossSellItemIds,
       orderIndex,
       ...(canPersistCardStyle
         ? {

@@ -96,6 +96,7 @@ export function bindAppMenuFocusEventsCore({
         category: "Speisen",
         name: "",
         description: "",
+        crossSellItemIds: [],
         available: true,
         hidden: false,
         cardStyle: "testfirst_food"
@@ -110,6 +111,7 @@ export function bindAppMenuFocusEventsCore({
         category: "Getraenke",
         name: "",
         description: "",
+        crossSellItemIds: [],
         available: true,
         hidden: false,
         cardStyle: "testfirst_drink"
@@ -124,6 +126,7 @@ export function bindAppMenuFocusEventsCore({
         category: "Special",
         name: "Special",
         description: "",
+        crossSellItemIds: [],
         available: true,
         hidden: false,
         menuSection: "drink",
