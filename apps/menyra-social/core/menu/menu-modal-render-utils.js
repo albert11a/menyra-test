@@ -8,8 +8,6 @@ function parseMenuStockValue(value) {
   return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
 }
 
-const WOLT_LOGO_DISC_URL = "https://d21buns5ku92am.cloudfront.net/69274/images/448557-Square%20Web%20Wolt_CMYK_logo_Disc-e9d0c9-original-1666679673.jpg";
-
 export function renderMenuItemModalCore({
   state,
   isShopCatalogProfile,
@@ -594,10 +592,8 @@ export function renderMenuDetailModalCore({
   `;
   const footerPrimaryActionHtml = showWoltAction
     ? `
-      <button id="menuDetailWoltBtn" data-wolt-url="${esc(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;">
-        <img src="${esc(WOLT_LOGO_DISC_URL)}" alt="Wolt" class="w-5 h-5 rounded-full bg-white/10" loading="lazy" decoding="async" />
+      <button id="menuDetailWoltBtn" data-wolt-url="${esc(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;">
         <span class="font-bold text-sm">Wolt</span>
-        ${iconFn("external-link", "w-4 h-4")}
       </button>
     `
     : (showFavoriteOnlyAction
@@ -617,10 +613,17 @@ export function renderMenuDetailModalCore({
     ? "Zurueck zu Wolt"
     : (showFavoriteOnlyAction ? "Zurueck zu Favoriten" : "Zurueck zum Warenkorb");
   const footerBackToggleClass = showWoltAction
-    ? "bg-[#18b9df] text-white hover:bg-[#12a8cc]"
+    ? "text-white"
     : "bg-slate-100 text-slate-600 hover:bg-slate-200";
+  const footerBackToggleStyle = showWoltAction ? `style="background-color:#18b9df;"` : "";
   const footerBackToggleIcon = showWoltAction
-    ? `<img src="${esc(WOLT_LOGO_DISC_URL)}" alt="Wolt" class="w-5 h-5 rounded-full bg-white/10" loading="lazy" decoding="async" />`
+    ? `
+      <span class="w-5 h-5 inline-flex items-center justify-center text-white leading-none select-none" aria-hidden="true">
+        <span class="block" style="font-family:'Snell Roundhand','Apple Chancery','Segoe Script','Brush Script MT',cursive;font-size:24px;font-weight:700;line-height:1;transform:translateY(-1px);">
+          w
+        </span>
+      </span>
+    `
     : (showFavoriteOnlyAction
       ? iconFn("bookmark", "w-5 h-5")
       : iconFn("shopping-bag", "w-5 h-5"));
@@ -635,7 +638,7 @@ export function renderMenuDetailModalCore({
       </div>
 
       <div id="footer-comment-view" class="flex gap-3 items-center w-full transition-all duration-300 ${isCommentFooter ? "" : "hidden opacity-0"}">
-        <button type="button" id="menuDetailFooterCartToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] ${footerBackToggleClass} flex items-center justify-center transition-all active:scale-95" title="${footerBackToggleTitle}">
+        <button type="button" id="menuDetailFooterCartToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] ${footerBackToggleClass} flex items-center justify-center transition-all active:scale-95" ${footerBackToggleStyle} title="${footerBackToggleTitle}">
           ${footerBackToggleIcon}
         </button>
 
