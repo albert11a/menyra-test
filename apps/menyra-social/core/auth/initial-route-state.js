@@ -7,10 +7,24 @@ export function resolveInitialRouteState({
   const toInitialTab = typeof normalizeInitialTab === "function" ? normalizeInitialTab : ((value) => String(value || "").trim());
   const toAuthMode = typeof normalizeAuthMode === "function" ? normalizeAuthMode : ((value) => String(value || "").trim());
 
-  const pendingProfileRestaurantId = readQuery("r") || readQuery("restaurant") || "";
-  const queryTab = readQuery("tab") || readQuery("top") || "";
+  const pendingProfileRestaurantId = (
+    readQuery("r")
+    || readQuery("restaurant")
+    || readQuery("restaurantId")
+    || readQuery("rid")
+    || readQuery("businessId")
+    || ""
+  );
+  const queryTab = readQuery("tab") || readQuery("top") || readQuery("view") || "";
   const pendingProfileTopTab = pendingProfileRestaurantId ? queryTab : "";
-  const profileAccessSourceRaw = readQuery("src") || readQuery("source") || readQuery("menuSource") || "";
+  const profileAccessSourceRaw = (
+    readQuery("src")
+    || readQuery("source")
+    || readQuery("menuSource")
+    || readQuery("menuAccessSource")
+    || readQuery("access")
+    || ""
+  );
   const profileAccessSource = String(profileAccessSourceRaw || "").trim().toLowerCase();
   const pendingProfileAccessSource = pendingProfileRestaurantId
     ? profileAccessSource
