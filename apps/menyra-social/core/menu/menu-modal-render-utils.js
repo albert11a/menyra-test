@@ -592,8 +592,9 @@ export function renderMenuDetailModalCore({
   `;
   const footerPrimaryActionHtml = showWoltAction
     ? `
-      <button id="menuDetailWoltBtn" data-wolt-url="${esc(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;">
+      <button type="button" id="menuDetailWoltBtn" data-wolt-url="${esc(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;" title="Bei Wolt oeffnen">
         <span class="font-bold text-sm">Wolt</span>
+        ${iconFn("external-link", "w-4 h-4")}
       </button>
     `
     : (showFavoriteOnlyAction
@@ -619,7 +620,7 @@ export function renderMenuDetailModalCore({
   const footerBackToggleIcon = showWoltAction
     ? `
       <span class="w-5 h-5 inline-flex items-center justify-center text-white leading-none select-none" aria-hidden="true">
-        <span class="block" style="font-family:'Snell Roundhand','Apple Chancery','Segoe Script','Brush Script MT',cursive;font-size:24px;font-weight:700;line-height:1;transform:translateY(-1px);">
+        <span class="block" style="font-family:'Segoe Script','Brush Script MT','Snell Roundhand',cursive;font-size:24px;font-weight:700;line-height:1;transform:translateY(-1px);">
           w
         </span>
       </span>

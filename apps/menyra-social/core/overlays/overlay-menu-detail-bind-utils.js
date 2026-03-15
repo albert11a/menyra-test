@@ -135,10 +135,16 @@ export function bindMenuDetailOverlayEventsCore({
       const href = normalizeExternalUrl(menuDetailWoltBtn.dataset.woltUrl || state.menuDetail.item?.woltUrl || "");
       if (!href) return;
       try {
-        const popup = win?.open?.(href, "_blank", "noopener,noreferrer");
-        if (!popup && win?.location) win.location.href = href;
+        const link = doc.createElement("a");
+        link.href = href;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.style.display = "none";
+        doc.body.appendChild(link);
+        link.click();
+        link.remove();
       } catch {
-        if (win?.location) win.location.href = href;
+        win?.open?.(href, "_blank", "noopener,noreferrer");
       }
     });
   }
