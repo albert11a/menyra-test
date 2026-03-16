@@ -228,6 +228,7 @@ export function normalizeMenuItemDocCore(data, id, {
     category: d.category || "Sonstiges",
     name: d.name || d.title || "Produkt",
     description: d.description || d.desc || "",
+    ingredients: d.ingredients || d.ingredient || d.inhaltsstoffe || "",
     longDescription: d.longDescription || "",
     allergens: d.allergens || d.allergen || "",
     woltUrl,

@@ -416,6 +416,7 @@ export function createOverlayOrchestrationController({
       restaurantId,
       selectedSize: Array.isArray(item?.sizes) && item.sizes.length ? String(item.sizes[0]) : "",
       selectedColor: Array.isArray(item?.colors) && item.colors.length ? String(item.colors[0]) : "",
+      infoTab: "info",
       footerView: "cart",
       commentText: "",
       loading: true,

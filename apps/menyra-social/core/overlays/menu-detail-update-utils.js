@@ -42,7 +42,7 @@ export function updateMenuDetailCountsOnlyCore({
   if (likeBtn) {
     likeBtn.classList.toggle("text-rose-500", !!isLiked);
     likeBtn.classList.toggle("text-slate-700", !isLiked);
-    likeBtn.innerHTML = `${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}`;
+    likeBtn.innerHTML = `${icon("heart", "w-3.5 h-3.5")} ${isLiked ? "Gefaellt" : "Like"}`;
   }
   const headerFavBtn = doc.getElementById("menuDetailHeaderFavoritesBtn");
   if (headerFavBtn) {

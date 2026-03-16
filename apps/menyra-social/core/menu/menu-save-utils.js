@@ -89,6 +89,13 @@ export async function saveMenuItemFromModalCore({
   const type = documentObj.getElementById("menuItemType")?.value || "food";
   const normalizedType = normalizeMenuType(type);
   const description = documentObj.getElementById("menuItemDesc")?.value?.trim() || "";
+  const ingredients = String(
+    documentObj.getElementById("menuItemIngredients")?.value
+      || state.menuModal.item?.ingredients
+      || state.menuModal.item?.ingredient
+      || state.menuModal.item?.inhaltsstoffe
+      || ""
+  ).trim();
   const longDescription = documentObj.getElementById("menuItemLongDesc")?.value?.trim() || "";
   const allergens = documentObj.getElementById("menuItemAllergens")?.value?.trim() || "";
   const woltInputEl = documentObj.getElementById("menuItemWoltUrl");
@@ -244,6 +251,7 @@ export async function saveMenuItemFromModalCore({
       category: category || "Sonstiges",
       name,
       description,
+      ingredients,
       longDescription,
       allergens,
       woltUrl,

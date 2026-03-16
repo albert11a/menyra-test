@@ -135,6 +135,7 @@ export function renderMenuItemModalCore({
   const specialActionType = specialActionTypeRaw === "link" ? "link" : "product";
   const specialActionUrl = String(item.specialActionUrl || item.linkUrl || item.actionUrl || "").trim();
   const specialActionProductId = String(item.specialActionProductId || item.targetProductId || "").trim();
+  const ingredientsValue = String(item.ingredients || item.ingredient || item.inhaltsstoffe || "").trim();
   const woltUrl = String(item.woltUrl || item.woltLink || "").trim();
   const currentItemId = String(item.id || "").trim();
   const normalizeOrderIndex = (value, fallback = 0) => {
@@ -364,6 +365,12 @@ export function renderMenuItemModalCore({
         </div>
         ${!isShop ? `
           <div>
+            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Inhaltsstoffe</label>
+            <textarea id="menuItemIngredients" rows="3" placeholder="z.B. Wasser, Zucker, Salz..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${esc(ingredientsValue)}</textarea>
+          </div>
+        ` : ""}
+        ${!isShop ? `
+          <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Wolt Link</label>
             <input id="menuItemWoltUrl" type="url" value="${esc(woltUrl)}" placeholder="https://wolt.com/..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
             <p class="text-[10px] font-bold text-slate-400 mt-2 px-2">Optional: wird im Produkt-Drawer angezeigt, wenn kein QR-Menuezugang aktiv ist.</p>
@@ -568,7 +575,7 @@ export function renderMenuDetailModalCore({
       return entryId === id;
     }) || null;
   };
-  const renderCrossSellCard = (entry = {}, index = 0) => {
+  const renderCrossSellCard = (entry = {}, index = 0, { showAdd = false } = {}) => {
     const imageCandidates = Array.isArray(getImages(entry)) ? getImages(entry) : [];
     const rawEntryImage = imageCandidates[0] || entry.imageUrl || entry.image || "";
     const entryImgSrc = getOptimizedImage(rawEntryImage, "thumb");
@@ -586,15 +593,17 @@ export function renderMenuDetailModalCore({
           <div class="mt-1 text-sm font-black tracking-tight text-slate-900 line-clamp-2">${esc(entryName)}</div>
           <div class="mt-3 flex items-center justify-between gap-3">
             <span class="text-sm font-black text-slate-900">${esc(entryPrice)}</span>
-            <span class="inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-slate-900 text-white">
-              ${iconFn("plus", "w-4 h-4")}
-            </span>
+            ${showAdd ? `
+              <span class="inline-flex items-center justify-center w-9 h-9 rounded-2xl bg-slate-900 text-white">
+                ${iconFn("plus", "w-4 h-4")}
+              </span>
+            ` : ""}
           </div>
         </div>
       </div>
     `;
   };
-  const renderCrossSellSection = (items = []) => {
+  const renderCrossSellSection = (items = [], { showAdd = false } = {}) => {
     if (!items.length) return "";
     return `
       <section class="space-y-3">
@@ -604,9 +613,9 @@ export function renderMenuDetailModalCore({
           </div>
           <div class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-300">${items.length} Vorschlaege</div>
         </div>
-        <div class="-mx-1 overflow-x-auto no-scrollbar">
-          <div class="flex gap-3 px-1 pb-1">
-            ${items.map((entry, index) => renderCrossSellCard(entry, index)).join("")}
+        <div class="overflow-x-auto no-scrollbar">
+          <div class="flex gap-3 pb-1">
+            ${items.map((entry, index) => renderCrossSellCard(entry, index, { showAdd })).join("")}
           </div>
         </div>
       </section>
@@ -632,10 +641,10 @@ export function renderMenuDetailModalCore({
     : (normalizeType(item.type) === "drink" ? "Getraenk" : "Speise");
   const category = item.category || "";
   const desc = item.longDescription || item.description || "";
+  const ingredients = String(item.ingredients || item.ingredient || item.inhaltsstoffe || "").trim();
   const allergens = item.allergens || "";
   const brand = String(item.brand || "").trim();
   const sku = String(item.sku || "").trim();
-  const hasDetailInfo = !!(brand || sku || desc || allergens);
   const sizes = Array.isArray(item.sizes) ? item.sizes : [];
   const colors = Array.isArray(item.colors) ? item.colors : [];
   const stock = parseMenuStockValue(item.stock);
@@ -655,6 +664,7 @@ export function renderMenuDetailModalCore({
   const woltUrl = normalizeExternalUrl(item.woltUrl || item.woltLink || "");
   const showWoltAction = !isShop && isFoodOrDrink && !hasQrMenuAccess && !!woltUrl;
   const showFavoriteOnlyAction = !isShop && isFoodOrDrink && !hasQrMenuAccess && !showWoltAction;
+  const showCrossSellAddAction = !!canAddToCartNow;
   const crossSellIds = normalizeCrossSellItemIds(
     item.crossSellItemIds
       || item.crossSellIds
@@ -663,11 +673,12 @@ export function renderMenuDetailModalCore({
     { excludeId: item.id }
   );
   const crossSellFallbackItems = Array.isArray(item.crossSell) ? item.crossSell : [];
-  const crossSellItems = hasQrMenuAccess
-    ? crossSellIds
-      .map((entryId) => resolveCrossSellItemById(entryId, crossSellFallbackItems))
-      .filter(Boolean)
-    : [];
+  const resolvedCrossSellItems = crossSellIds
+    .map((entryId) => resolveCrossSellItemById(entryId, crossSellFallbackItems))
+    .filter(Boolean);
+  const crossSellItems = resolvedCrossSellItems.length
+    ? resolvedCrossSellItems
+    : crossSellFallbackItems.filter(Boolean);
   const itemId = getSocialId(item);
   const metaKey = getMetaKey(restaurantId, itemId);
   const meta = metaKey ? ensureMeta(metaKey) : { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
@@ -684,6 +695,20 @@ export function renderMenuDetailModalCore({
     ? "comment"
     : "cart";
   const isCommentFooter = footerView === "comment";
+  const noInfoFallbackLabel = "Keine Informationen wenden sie sich an das Lokal / Kellner";
+  const infoTabInfoText = String(desc || "").trim() || noInfoFallbackLabel;
+  const infoTabIngredientsText = ingredients || noInfoFallbackLabel;
+  const infoTabAllergensText = String(allergens || "").trim() || noInfoFallbackLabel;
+  const currentInfoTab = String(state.menuDetail?.infoTab || "info").trim().toLowerCase();
+  const activeInfoTab = currentInfoTab === "ingredients" || currentInfoTab === "allergens"
+    ? currentInfoTab
+    : "info";
+  const infoTabButtonClass = (tabKey) => [
+    "h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center cursor-pointer select-none",
+    activeInfoTab === tabKey
+      ? "bg-slate-900 text-white border-slate-900"
+      : "bg-white text-slate-500 border-slate-200"
+  ].join(" ");
   const headerHtml = isShop
     ? `
       <div class="flex items-center justify-between gap-3 px-7 pt-7 pb-4 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
@@ -774,22 +799,22 @@ export function renderMenuDetailModalCore({
             <p class="text-sm text-slate-600">${esc(allergens)}</p>
           </div>
         ` : ""}
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between" style="padding-top:1.25rem;">
           <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
-            ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+            ${iconFn("heart", "w-3.5 h-3.5")} ${isLiked ? "Gefaellt" : "Like"}
           </button>
           <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
             <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} Likes</span>
             <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
           </div>
         </div>
-        <div id="menuDetailComments" class="mt-5 space-y-4">
+        <div id="menuDetailComments" class="space-y-4" style="margin-top:3rem;">
           ${renderComments(comments)}
         </div>
       </div>
     `
     : `
-      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-6 bg-white/98">
+      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 bg-white/98">
         <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
           <img src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="w-full h-56 object-cover" style="object-position:${getObjectPosition(item)};" />
           ${images.length > 1 ? `
@@ -808,37 +833,45 @@ export function renderMenuDetailModalCore({
             `).join("")}
           </div>
         ` : ""}
-        <div class="flex items-center justify-between">
-          <span class="text-lg font-black text-slate-900">${esc(priceLabel)}</span>
-        </div>
-        ${hasDetailInfo ? `
-          <div class="mt-2 space-y-4">
-            ${brand || sku ? `
-              <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
-                ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(brand)}</p></div>` : ""}
-                ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${esc(sku)}</p></div>` : ""}
-              </div>
-            ` : ""}
-            ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${esc(desc)}</p>` : ""}
-            ${allergens ? `
-              <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
-                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Allergene</p>
-                <p class="text-sm text-slate-600">${esc(allergens)}</p>
-              </div>
-            ` : ""}
+        <div class="mt-6 space-y-5">
+          <div class="p-4 rounded-[1.3rem] border border-slate-100 bg-slate-50">
+            <div class="flex items-center justify-between">
+              <span class="text-[12px] font-black uppercase tracking-[0.2em] text-slate-400">Preis</span>
+              <span class="font-black text-slate-900" style="font-size:13px;">${esc(priceLabel)}</span>
+            </div>
           </div>
-        ` : ""}
-        ${crossSellItems.length ? `<div class="${hasDetailInfo ? "mt-2" : ""}">${renderCrossSellSection(crossSellItems)}</div>` : ""}
-        <div class="flex items-center justify-between">
-          <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
-            ${iconFn("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
-          </button>
-          <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-            <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} Likes</span>
-            <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
+          <div class="border-t border-slate-100"></div>
+
+          <div class="space-y-3">
+            <div class="menu-detail-info-tabs space-y-4">
+              <div class="grid grid-cols-3 gap-2 menu-detail-info-controls">
+                <button type="button" data-menu-detail-info-tab="info" class="${infoTabButtonClass("info")}">Info</button>
+                <button type="button" data-menu-detail-info-tab="ingredients" class="${infoTabButtonClass("ingredients")}">Inhaltsstoffe</button>
+                <button type="button" data-menu-detail-info-tab="allergens" class="${infoTabButtonClass("allergens")}">Allergene</button>
+              </div>
+              <div class="menu-detail-info-panels rounded-[1.3rem] border border-slate-100 bg-slate-50 px-4 py-3.5">
+                <p data-menu-detail-info-panel="info" class="menu-detail-info-panel text-sm text-slate-600 leading-relaxed whitespace-pre-line h-full overflow-y-auto no-scrollbar ${activeInfoTab === "info" ? "" : "hidden"}">${esc(infoTabInfoText)}</p>
+                <p data-menu-detail-info-panel="ingredients" class="menu-detail-info-panel text-sm text-slate-600 leading-relaxed whitespace-pre-line h-full overflow-y-auto no-scrollbar ${activeInfoTab === "ingredients" ? "" : "hidden"}">${esc(infoTabIngredientsText)}</p>
+                <p data-menu-detail-info-panel="allergens" class="menu-detail-info-panel text-sm text-slate-600 leading-relaxed whitespace-pre-line h-full overflow-y-auto no-scrollbar ${activeInfoTab === "allergens" ? "" : "hidden"}">${esc(infoTabAllergensText)}</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-100"></div>
+          ${crossSellItems.length ? `<div class="pt-1">${renderCrossSellSection(crossSellItems, { showAdd: showCrossSellAddAction })}</div><div class="border-t border-slate-100"></div>` : ""}
+
+          <div class="flex items-center justify-between" style="padding-top:1.25rem;">
+            <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
+              ${iconFn("heart", "w-3.5 h-3.5")} ${isLiked ? "Gefaellt" : "Like"}
+            </button>
+            <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <span id="menuDetailLikesCount">${esc(formatCounter(counts.likes))} Likes</span>
+              <span id="menuDetailCommentsCount">${esc(formatCounter(counts.comments))} Kommentare</span>
+            </div>
           </div>
         </div>
-        <div id="menuDetailComments" class="mt-5 space-y-4">
+
+        <div id="menuDetailComments" class="space-y-4" style="margin-top:3rem;">
           ${renderComments(comments)}
         </div>
       </div>

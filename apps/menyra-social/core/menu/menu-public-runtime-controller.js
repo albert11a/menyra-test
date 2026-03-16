@@ -567,6 +567,7 @@ export function createMenuPublicRuntimeController({
         category: item.category || "Sonstiges",
         name: item.name || "Produkt",
         description: item.description || "",
+        ingredients: item.ingredients || "",
         longDescription: item.longDescription || "",
         allergens: item.allergens || "",
         brand: item.brand || "",

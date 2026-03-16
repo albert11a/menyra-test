@@ -179,6 +179,69 @@ export function bindMenuDetailOverlayEventsCore({
     });
   });
 
+  const normalizeInfoTab = (value) => {
+    const normalized = String(value || "").trim().toLowerCase();
+    if (normalized === "ingredients" || normalized === "allergens") return normalized;
+    return "info";
+  };
+  const lockMenuDetailInfoPanelsHeightFromInfo = () => {
+    const panelsRoot = doc.querySelector(".menu-detail-info-panels");
+    const infoPanel = panelsRoot?.querySelector?.('[data-menu-detail-info-panel="info"]') || null;
+    if (!panelsRoot || !infoPanel) return;
+    const activeTab = normalizeInfoTab(state.menuDetail?.infoTab || "info");
+    if (activeTab !== "info") {
+      doc.querySelectorAll("[data-menu-detail-info-panel]").forEach((panel) => {
+        const panelTab = normalizeInfoTab(panel.dataset.menuDetailInfoPanel || "");
+        panel.classList.toggle("hidden", panelTab !== "info");
+      });
+    }
+    panelsRoot.style.height = "";
+    const measured = Math.max(0, Math.ceil(panelsRoot.getBoundingClientRect().height || 0));
+    const fallback = Math.max(0, Math.ceil(infoPanel.getBoundingClientRect().height || infoPanel.scrollHeight || 0));
+    const targetHeight = Math.max(measured, fallback, 96);
+    panelsRoot.style.height = `${targetHeight}px`;
+    panelsRoot.classList.add("overflow-hidden");
+    if (activeTab !== "info") {
+      doc.querySelectorAll("[data-menu-detail-info-panel]").forEach((panel) => {
+        const panelTab = normalizeInfoTab(panel.dataset.menuDetailInfoPanel || "");
+        panel.classList.toggle("hidden", panelTab !== activeTab);
+      });
+    }
+  };
+  const setMenuDetailInfoTab = (value) => {
+    const nextTab = normalizeInfoTab(value);
+    state.menuDetail.infoTab = nextTab;
+    doc.querySelectorAll("[data-menu-detail-info-tab]").forEach((button) => {
+      const buttonTab = normalizeInfoTab(button.dataset.menuDetailInfoTab || "");
+      const isActive = buttonTab === nextTab;
+      button.classList.toggle("bg-slate-900", isActive);
+      button.classList.toggle("text-white", isActive);
+      button.classList.toggle("border-slate-900", isActive);
+      button.classList.toggle("bg-white", !isActive);
+      button.classList.toggle("text-slate-500", !isActive);
+      button.classList.toggle("border-slate-200", !isActive);
+    });
+    doc.querySelectorAll("[data-menu-detail-info-panel]").forEach((panel) => {
+      const panelTab = normalizeInfoTab(panel.dataset.menuDetailInfoPanel || "");
+      panel.classList.toggle("hidden", panelTab !== nextTab);
+    });
+  };
+  const bindInfoTabButton = (button) => {
+    if (!button) return;
+    if (button.dataset.menuDetailInfoTabBound === "1") return;
+    button.dataset.menuDetailInfoTabBound = "1";
+    const activate = (event) => {
+      event.stopPropagation();
+      setMenuDetailInfoTab(button.dataset.menuDetailInfoTab || "info");
+    };
+    button.addEventListener("click", activate);
+  };
+  doc.querySelectorAll("[data-menu-detail-info-tab]").forEach((button) => {
+    bindInfoTabButton(button);
+  });
+  setMenuDetailInfoTab(state.menuDetail?.infoTab || "info");
+  lockMenuDetailInfoPanelsHeightFromInfo();
+
   const footerCartView = doc.getElementById("footer-cart-view");
   const footerCommentView = doc.getElementById("footer-comment-view");
   const menuDetailFooterCommentToggle = doc.getElementById("menuDetailFooterCommentToggle");

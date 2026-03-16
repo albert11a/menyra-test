@@ -222,6 +222,7 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
       category: String(item?.category || "").trim(),
       name: String(item?.name || "Produkt").trim() || "Produkt",
       description: String(item?.description || "").trim(),
+      ingredients: String(item?.ingredients || item?.ingredient || item?.inhaltsstoffe || "").trim(),
       longDescription: String(item?.longDescription || "").trim(),
       allergens: String(item?.allergens || "").trim(),
       brand: String(item?.brand || "").trim(),

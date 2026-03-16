@@ -239,6 +239,7 @@ export function bindOverlayEventsCore({
       windowObj: win,
       bindModalDismissFn: bindModalDismiss,
       closeMenuDetailFn: closeMenuDetail,
+      renderOverlaysFn: renderOverlays,
       getMenuDetailCatalogProfileFn: getMenuDetailCatalogProfile,
       canAddToShopCartFn: canAddToShopCart,
       addMenuItemToShopCartFn: addMenuItemToShopCart,

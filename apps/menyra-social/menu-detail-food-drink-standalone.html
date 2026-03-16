@@ -1,0 +1,908 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
+  <title>Menyra Menu Modal Standalone</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    :root {
+      --safe-area-top: 0px;
+      --safe-area-right: 0px;
+      --safe-area-bottom: 0px;
+      --safe-area-left: 0px;
+      --menu-detail-footer-gap: 0px;
+      --app-bg: #f8fafc;
+      --app-surface: #ffffff;
+      color-scheme: light;
+    }
+    @supports (color-scheme: only light) {
+      :root { color-scheme: only light; }
+    }
+    @media (prefers-color-scheme: dark) {
+      :root,
+      html,
+      body {
+        background: #f8fafc !important;
+        color: #0f172a !important;
+      }
+    }
+    @supports (padding: env(safe-area-inset-top)) {
+      :root {
+        --safe-area-top: env(safe-area-inset-top);
+        --safe-area-right: env(safe-area-inset-right);
+        --safe-area-bottom: env(safe-area-inset-bottom);
+        --safe-area-left: env(safe-area-inset-left);
+      }
+    }
+    @supports (padding: constant(safe-area-inset-top)) {
+      :root {
+        --safe-area-top: constant(safe-area-inset-top);
+        --safe-area-right: constant(safe-area-inset-right);
+        --safe-area-bottom: constant(safe-area-inset-bottom);
+        --safe-area-left: constant(safe-area-inset-left);
+      }
+    }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: #f1f5f9;
+      color: #0f172a;
+      font-family: "Plus Jakarta Sans", sans-serif;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+      display: none;
+    }
+    html.modal-open,
+    body.modal-open {
+      overflow: hidden;
+      height: 100%;
+      overscroll-behavior: none;
+    }
+    html.menu-detail-comment-focus,
+    body.menu-detail-comment-focus {
+      background: var(--app-surface) !important;
+    }
+    body.modal-open.menu-detail-comment-focus::after {
+      content: "";
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: max(0px, var(--menu-detail-footer-gap));
+      background: rgb(255 255 255 / 0.98);
+      pointer-events: none;
+      z-index: 74;
+    }
+    .modal-overlay { position: fixed; inset: 0; }
+    .modal-sheet {
+      height: 100% !important;
+      max-height: 100% !important;
+      box-sizing: border-box;
+      padding-top: var(--safe-area-top);
+      border-radius: 0 !important;
+      border-bottom-width: 0 !important;
+    }
+    .modal-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      padding-left: var(--safe-area-left);
+      padding-right: var(--safe-area-right);
+      box-sizing: border-box;
+    }
+    .modal-sheet-88 { height: 100% !important; }
+    .modal-footer-safe { padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important; }
+    .modal-scroll { -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .text-\[9px\] { font-size: 9px; }
+    .text-\[10px\] { font-size: 10px; }
+    .rounded-\[1\.65rem\] { border-radius: 1.65rem; }
+    .bg-white\/98 { background-color: rgb(255 255 255 / 0.98); }
+    .select-none { user-select: none; -webkit-user-select: none; }
+  </style>
+</head>
+<body class="bg-slate-100">
+  <div class="min-h-screen w-full flex items-center justify-center">
+    <button id="openDemoModal" class="px-5 py-3 rounded-2xl bg-slate-900 text-white text-xs font-black uppercase tracking-widest">Open Menu Modal</button>
+  </div>
+  <div id="menuDetailOverlayRoot"></div>
+  <script>
+    (() => {
+      const PLACEHOLDER_IMAGE = "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=900&q=80";
+      const PLACEHOLDER_AVATAR = "https://i.pravatar.cc/120";
+
+      const state = {
+        user: { uid: "demo-user", handle: "demo" },
+        profileView: { menuAccessSource: "" },
+        menuDetail: {
+          open: false,
+          index: 0,
+          selectedSize: "",
+          selectedColor: "",
+          commentText: "",
+          loading: false,
+          sending: false,
+          footerView: "cart",
+          item: null,
+          meta: { likes: [], comments: [], counts: { likes: 0, comments: 0 } }
+        }
+      };
+
+      const events = { onAddToCart: null, onFavorite: null, onComment: null, onOpenWolt: null };
+
+      function parseMenuStockValue(value) {
+        if (value === null || value === undefined) return null;
+        const raw = typeof value === "string" ? value.trim() : value;
+        if (raw === "") return null;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
+      }
+      function escapeHtml(v) {
+        return String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+      }
+      function icon(name, cls = "") { return `<i data-lucide="${name}" class="${cls}"></i>`; }
+      function normalizeMenuType(v) { return String(v || "food").trim().toLowerCase(); }
+      function formatPrice(v) {
+        const n = Number(v);
+        if (!Number.isFinite(n)) return "0,00 EUR";
+        return `${n.toFixed(2).replace(".", ",")} EUR`;
+      }
+      function formatCount(v) { return String(Number(v) || 0); }
+      function isPlaceholderUrl(v) { return !String(v || "").trim(); }
+      function getOptimizedImageUrl(v) { return String(v || "").trim(); }
+      function getFirebaseStorageUrl(v) { return String(v || "").trim(); }
+      function isDirectImageUrl(v) { return /^https?:\/\//i.test(String(v || "").trim()); }
+      function normalizeExternalUrl(value = "") {
+        const raw = String(value || "").trim();
+        if (!raw) return "";
+        if (/^(https?:\/\/|mailto:|tel:)/i.test(raw)) return raw;
+        return `https://${raw.replace(/^\/+/, "")}`;
+      }
+      function getMenuItemImages(item) {
+        const images = Array.isArray(item?.images) ? item.images.slice() : [];
+        const first = String(item?.image || item?.imageUrl || "").trim();
+        if (first && !images.includes(first)) images.unshift(first);
+        return images.filter(Boolean);
+      }
+      function getMenuDetailRestaurantId(item = state.menuDetail.item) { return String(item?.restaurantId || "demo-rest").trim(); }
+      function getMenuDetailCatalogProfile(item = state.menuDetail.item) {
+        const safeItem = item || {};
+        const explicitShop = safeItem.isShop === true || safeItem.catalogType === "shop" || safeItem.profileType === "shop";
+        const nestedShop = safeItem.catalogProfile?.isShop === true || safeItem.profile?.isShop === true;
+        return {
+          restaurantId: getMenuDetailRestaurantId(safeItem),
+          isShop: !!(explicitShop || nestedShop),
+          ...(safeItem.catalogProfile || {})
+        };
+      }
+      function isShopCatalogProfile(catalogProfile) { return !!catalogProfile?.isShop; }
+      function canAddToShopCart() { return true; }
+      function getMenuItemSocialId(item = state.menuDetail.item) { return String(item?.id || "item-demo").trim(); }
+      function menuItemMetaKey(restaurantId, itemId) { return `${restaurantId}:${itemId}`; }
+      function currentUserBadge() { return { uid: String(state.user?.uid || ""), handle: String(state.user?.handle || "").toLowerCase() }; }
+      function ensureCommentShape(comment = {}) {
+        return {
+          id: String(comment.id || `c_${Math.random().toString(36).slice(2, 10)}`),
+          uid: String(comment.uid || ""),
+          handle: String(comment.handle || ""),
+          author: String(comment.author || "User"),
+          text: String(comment.text || ""),
+          createdAt: comment.createdAt || new Date().toISOString(),
+          avatar: String(comment.avatar || "")
+        };
+      }
+      function ensureMenuItemMeta() {
+        const meta = state.menuDetail.meta || { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+        if (!Array.isArray(meta.likes)) meta.likes = [];
+        if (!Array.isArray(meta.comments)) meta.comments = [];
+        meta.counts = { likes: meta.likes.length, comments: meta.comments.length };
+        state.menuDetail.meta = meta;
+        return meta;
+      }
+      function resolveMenuItemCounts(meta) {
+        return {
+          likes: Array.isArray(meta?.likes) ? meta.likes.length : Number(meta?.counts?.likes || 0),
+          comments: Array.isArray(meta?.comments) ? meta.comments.length : Number(meta?.counts?.comments || 0)
+        };
+      }
+      function getMenuItemObjectPosition() { return "50% 50%"; }
+      function normalizeHandle(value = "") { return String(value || "").replace(/^@/, "").trim().toLowerCase(); }
+      function resolveCommentAvatar(comment = {}) { return String(comment.avatar || comment.photoURL || "").trim(); }
+      function scheduleCommentAvatarFetch() {}
+      function formatDateTimeLabel(value) {
+        const d = new Date(value || Date.now());
+        if (Number.isNaN(d.getTime())) return "Jetzt";
+        const delta = Math.floor((Date.now() - d.getTime()) / 1000);
+        if (delta < 60) return "Jetzt";
+        if (delta < 3600) return `Vor ${Math.floor(delta / 60)} Min`;
+        if (delta < 86400) return `Vor ${Math.floor(delta / 3600)} Std`;
+        return d.toLocaleDateString("de-DE");
+      }
+      function renderMenuCommentItem(comment) {
+        const avatarUrl = resolveCommentAvatar(comment);
+        if (isPlaceholderUrl(avatarUrl)) scheduleCommentAvatarFetch(comment);
+        const safeSrc = (!avatarUrl || isPlaceholderUrl(avatarUrl)) ? PLACEHOLDER_AVATAR : avatarUrl;
+        const handleKey = normalizeHandle(comment.handle || comment.author || "");
+        return `
+          <div class="flex gap-3" data-comment-id="${escapeHtml(comment.id || "")}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-comment-handle="${escapeHtml(handleKey)}">
+            <img src="${escapeHtml(safeSrc)}" data-img-key="comment-avatar:${escapeHtml(comment.id || "")}" data-comment-id="${escapeHtml(comment.id || "")}" data-comment-handle="${escapeHtml(handleKey)}" data-comment-uid="${escapeHtml(comment.uid || "")}" data-uid="${escapeHtml(comment.uid || "")}" data-handle="${escapeHtml(comment.handle || "")}" class="comment-avatar w-9 h-9 rounded-2xl object-cover shadow" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.src='${PLACEHOLDER_AVATAR}'" alt="" />
+            <div class="flex-1">
+              <div class="flex items-center justify-between">
+                <div class="text-xs font-black text-slate-900">${escapeHtml(comment.author || "User")}</div>
+                <div class="text-[10px] font-bold text-slate-400">${escapeHtml(formatDateTimeLabel(comment.createdAt))}</div>
+              </div>
+              <div class="text-sm text-slate-600 leading-relaxed mt-1">${escapeHtml(comment.text || "")}</div>
+            </div>
+          </div>
+        `;
+      }
+      function renderMenuDetailComments(comments = []) {
+        if (state.menuDetail.loading) return `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Kommentare laden...</div>`;
+        const sendingRow = state.menuDetail.sending ? `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Senden...</div>` : "";
+        if (!comments.length) return sendingRow || `<div class="text-center text-[10px] font-bold uppercase text-slate-400">Noch keine Kommentare</div>`;
+        return `${sendingRow}${comments.map((comment) => renderMenuCommentItem(comment)).join("")}`;
+      }
+
+      function renderMenuDetailModal() {
+        if (!state.menuDetail.open || !state.menuDetail.item) return "";
+        const item = state.menuDetail.item;
+        const images = getMenuItemImages(item);
+        const maxIndex = images.length ? images.length - 1 : 0;
+        const safeIndex = Math.max(0, Math.min(state.menuDetail.index || 0, maxIndex));
+        const rawImg = images[safeIndex] || "";
+        const imgSrc = getOptimizedImageUrl(rawImg, "large");
+        const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
+        const firebaseFallback = getFirebaseStorageUrl(rawImg);
+        const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
+        const priceLabel = formatPrice(item.price);
+        const restaurantId = getMenuDetailRestaurantId(item);
+        const catalogProfile = getMenuDetailCatalogProfile(item);
+        const typeLabel = isShopCatalogProfile(catalogProfile)
+          ? (normalizeMenuType(item.type) === "drink" ? "Variante" : "Produkt")
+          : (normalizeMenuType(item.type) === "drink" ? "Getraenk" : "Speise");
+        const category = item.category || "";
+        const desc = item.longDescription || item.description || "";
+        const allergens = item.allergens || "";
+        const brand = String(item.brand || "").trim();
+        const sku = String(item.sku || "").trim();
+        const sizes = Array.isArray(item.sizes) ? item.sizes : [];
+        const colors = Array.isArray(item.colors) ? item.colors : [];
+        const stock = parseMenuStockValue(item.stock);
+        const isShop = isShopCatalogProfile(catalogProfile);
+        const menuType = String(normalizeMenuType(item.type || "") || "").trim().toLowerCase();
+        const isFoodOrDrink = menuType === "food" || menuType === "drink";
+        const soldOut = isShop
+          ? (item.available === false || stock === 0)
+          : (item.available === false);
+        const selectedSize = sizes.length ? (String(state.menuDetail.selectedSize || sizes[0]).trim() || String(sizes[0])) : "";
+        const selectedColor = colors.length ? (String(state.menuDetail.selectedColor || colors[0]).trim() || String(colors[0])) : "";
+        const menuAccessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
+        const hasQrMenuAccess = !isShop && isFoodOrDrink && menuAccessSource === "qr";
+        const canAddToCartNow = isShop ? canAddToShopCart(catalogProfile) : hasQrMenuAccess;
+        const woltUrl = normalizeExternalUrl(item.woltUrl || item.woltLink || "");
+        const showWoltAction = !isShop && isFoodOrDrink && !hasQrMenuAccess && !!woltUrl;
+        const showFavoriteOnlyAction = !isShop && isFoodOrDrink && !hasQrMenuAccess && !showWoltAction;
+        const itemId = getMenuItemSocialId(item);
+        const metaKey = menuItemMetaKey(restaurantId, itemId);
+        const meta = metaKey ? ensureMenuItemMeta(metaKey) : { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+        const counts = resolveMenuItemCounts(meta);
+        const userBadge = currentUserBadge();
+        const isLiked = meta.likes?.some((row) => row.uid === userBadge.uid || row.handle === userBadge.handle);
+        const comments = (meta.comments || []).map(ensureCommentShape);
+        const canSocial = !!restaurantId && !!itemId;
+        const canInteract = canSocial && !!state.user;
+        const canUseFavorites = !!String(state.user?.uid || "").trim();
+        const titleId = "menuDetailTitle";
+        const shopCartCount = isShop ? getCartCountForRestaurant(restaurantId || catalogProfile?.restaurantId || "") : 0;
+        const footerView = String(state.menuDetail.footerView || "cart").trim().toLowerCase() === "comment"
+          ? "comment"
+          : "cart";
+        const isCommentFooter = footerView === "comment";
+
+        const headerHtml = isShop
+          ? `
+            <div class="flex items-center justify-between gap-3 px-7 pt-7 pb-4 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+              <div class="flex items-center gap-2 min-w-0">
+                <button type="button" id="menuDetailHeaderCartBtn" class="inline-flex items-center gap-2 px-4 h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black shadow-sm active:scale-95 ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
+                  ${icon("shopping-cart", "w-4 h-4")}
+                  <span>In den Warenkorb</span>
+                  ${shopCartCount ? `<span class="inline-flex min-w-[20px] h-5 px-1.5 rounded-full bg-white/14 border border-white/20 text-white text-[9px] font-black items-center justify-center leading-none">${shopCartCount > 99 ? "99+" : shopCartCount}</span>` : ""}
+                </button>
+                ${canUseFavorites ? `
+                  <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="Favoriten" title="Favoriten" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isLiked ? "bg-slate-900 text-white border-slate-900" : "bg-slate-100 text-slate-700 border-slate-200"}">
+                    ${icon("bookmark", "w-4 h-4")}
+                  </button>
+                ` : ""}
+              </div>
+              <button id="menuDetailClose" data-menu-detail-close="true" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500 shrink-0">
+                ${icon("x", "w-4 h-4")}
+              </button>
+            </div>
+          `
+          : `
+            <div class="flex items-start justify-between px-7 pt-7 pb-5 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+              <div>
+                <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${escapeHtml(category || typeLabel)}</span>
+                <h3 id="${titleId}" class="text-xl font-black italic tracking-tighter">${escapeHtml(item.name || "Produkt")}</h3>
+              </div>
+              <button id="menuDetailClose" data-menu-detail-close="true" class="w-11 h-11 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">
+                ${icon("x", "w-4 h-4")}
+              </button>
+            </div>
+          `;
+        const bodyHtml = `
+          <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
+            <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;${isShop ? " aspect-ratio:4 / 5;" : ""}">
+              <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full ${isShop ? "h-full" : "h-56"} object-cover" style="object-position:${getMenuItemObjectPosition(item)};" />
+              ${images.length > 1 ? `
+                <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+                  ${icon("chevron-left", "w-4 h-4")}
+                </button>
+                <button type="button" data-menu-gallery-nav="next" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+                  ${icon("chevron-right", "w-4 h-4")}
+                </button>
+              ` : ""}
+            </div>
+            ${images.length > 1 ? `
+              <div class="flex items-center justify-center gap-2">
+                ${images.map((_, idx) => `
+                  <button type="button" data-menu-gallery-dot="${idx}" class="w-2.5 h-2.5 rounded-full ${idx === safeIndex ? "bg-slate-900" : "bg-slate-200"}"></button>
+                `).join("")}
+              </div>
+            ` : ""}
+            <div class="flex items-center justify-between">
+              <span class="text-lg font-black text-slate-900">${escapeHtml(priceLabel)}</span>
+            </div>
+            <div class="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              ${category ? `<span>${escapeHtml(category)}</span>` : ""}
+              <span>${escapeHtml(typeLabel)}</span>
+            </div>
+            ${brand || sku ? `
+              <div class="grid ${brand && sku ? "grid-cols-2" : "grid-cols-1"} gap-3">
+                ${brand ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">Marke</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(brand)}</p></div>` : ""}
+                ${sku ? `<div class="p-4 rounded-[1.6rem] bg-white border border-slate-100 shadow-sm"><p class="text-[9px] font-black uppercase tracking-widest text-slate-300">SKU</p><p class="text-xs font-bold text-slate-700 mt-1 truncate">${escapeHtml(sku)}</p></div>` : ""}
+              </div>
+            ` : ""}
+            ${isShop && sizes.length ? `
+              <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Groessen</p>
+                <select data-menu-detail-variant="size" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
+                  ${sizes.map((size) => `<option value="${escapeHtml(size)}" ${selectedSize === String(size) ? "selected" : ""}>${escapeHtml(size)}</option>`).join("")}
+                </select>
+              </div>
+            ` : ""}
+            ${isShop && colors.length ? `
+              <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Farben</p>
+                <select data-menu-detail-variant="color" class="w-full h-12 px-4 rounded-2xl bg-white text-sm font-bold text-slate-700 border border-slate-200 outline-none">
+                  ${colors.map((color) => `<option value="${escapeHtml(color)}" ${selectedColor === String(color) ? "selected" : ""}>${escapeHtml(color)}</option>`).join("")}
+                </select>
+              </div>
+            ` : ""}
+            ${desc ? `<p class="text-sm text-slate-600 leading-relaxed">${escapeHtml(desc)}</p>` : ""}
+            ${allergens ? `
+              <div class="p-4 rounded-[1.8rem] bg-white border border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">${isShop ? "Hinweise" : "Allergene"}</p>
+                <p class="text-sm text-slate-600">${escapeHtml(allergens)}</p>
+              </div>
+            ` : ""}
+            <div class="flex items-center justify-between">
+              <button id="menuDetailLikeBtn" class="flex items-center gap-2 text-sm font-black ${isLiked ? "text-rose-500" : "text-slate-700"} ${canInteract ? "" : "opacity-50 pointer-events-none"}">
+                ${icon("heart", "w-5 h-5")} ${isLiked ? "Gefaellt" : "Like"}
+              </button>
+              <div class="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                <span id="menuDetailLikesCount">${escapeHtml(formatCount(counts.likes))} Likes</span>
+                <span id="menuDetailCommentsCount">${escapeHtml(formatCount(counts.comments))} Kommentare</span>
+              </div>
+            </div>
+
+            <div id="menuDetailComments" class="space-y-4">
+              ${renderMenuDetailComments(comments)}
+            </div>
+          </div>
+        `;
+        const footerPrimaryActionHtml = showWoltAction
+          ? `
+            <button type="button" id="menuDetailWoltBtn" data-wolt-url="${escapeHtml(woltUrl)}" class="flex-1 h-[52px] rounded-[1.65rem] text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-sm" style="background-color:#18b9df;" title="Bei Wolt oeffnen">
+              <span class="font-bold text-sm">Wolt</span>
+              ${icon("external-link", "w-4 h-4")}
+            </button>
+          `
+          : (showFavoriteOnlyAction
+            ? `
+              <button id="menuDetailFavoriteCtaBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all">
+                <span class="font-bold text-sm">Zu Favoriten</span>
+                ${icon("bookmark", "w-4 h-4")}
+              </button>
+            `
+            : `
+              <button id="menuDetailAddToCartBtn" class="flex-1 h-[52px] rounded-[1.65rem] bg-slate-900 text-white flex items-center justify-center gap-2 active:scale-95 transition-all ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
+                <span class="font-bold text-sm">${soldOut ? "Ausverkauft" : "In den Warenkorb"}</span>
+                ${icon("shopping-bag", "w-4 h-4")}
+              </button>
+            `);
+        const footerBackToggleTitle = showWoltAction
+          ? "Zurueck zu Wolt"
+          : (showFavoriteOnlyAction ? "Zurueck zu Favoriten" : "Zurueck zum Warenkorb");
+        const footerBackToggleClass = showWoltAction
+          ? "text-white"
+          : "bg-slate-100 text-slate-600 hover:bg-slate-200";
+        const footerBackToggleStyle = showWoltAction ? `style="background-color:#18b9df;"` : "";
+        const footerBackToggleIcon = showWoltAction
+          ? `
+            <span class="w-5 h-5 inline-flex items-center justify-center text-white leading-none select-none" aria-hidden="true">
+              <span class="block" style="font-family:'Omnes','Plus Jakarta Sans','Segoe UI',sans-serif;font-size:20px;font-weight:800;font-style:italic;line-height:1;transform:translateY(-1px);">
+                w
+              </span>
+            </span>
+          `
+          : (showFavoriteOnlyAction
+            ? icon("bookmark", "w-5 h-5")
+            : icon("shopping-bag", "w-5 h-5"));
+        const footerHtml = `
+          <div class="px-7 pb-6 pt-4 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe relative z-10">
+            <div id="footer-cart-view" class="flex gap-3 items-center w-full transition-all duration-300 ${isCommentFooter ? "hidden opacity-0" : ""}">
+              <button type="button" id="menuDetailFooterCommentToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-all active:scale-95 relative" title="Kommentare verfassen">
+                ${icon("message-square", "w-5 h-5")}
+                ${counts.comments > 0 ? `<span id="menuDetailFooterCommentsBadge" class="absolute top-0 right-0 -mt-1 -mr-1 w-5 h-5 rounded-full bg-indigo-600 text-white text-[9px] font-black flex items-center justify-center border-2 border-white">${counts.comments}</span>` : ""}
+              </button>
+              ${footerPrimaryActionHtml}
+            </div>
+
+            <div id="footer-comment-view" class="flex gap-3 items-center w-full transition-all duration-300 ${isCommentFooter ? "" : "hidden opacity-0"}">
+              <button type="button" id="menuDetailFooterCartToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] ${footerBackToggleClass} flex items-center justify-center transition-all active:scale-95" ${footerBackToggleStyle} title="${footerBackToggleTitle}">
+                ${footerBackToggleIcon}
+              </button>
+
+              <div class="flex-1 flex gap-2">
+                <textarea id="menuDetailCommentInput" placeholder="${canInteract ? "Schreib einen Kommentar..." : "Bitte einloggen"}" class="flex-1 px-5 py-3.5 rounded-[1.65rem] border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none leading-relaxed ${canInteract ? "" : "opacity-60"}" rows="1" ${canInteract ? "" : "disabled"}>${escapeHtml(state.menuDetail.commentText || "")}</textarea>
+                <button id="menuDetailCommentSend" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-indigo-600 text-white flex items-center justify-center ${canInteract ? "" : "opacity-60 cursor-not-allowed"}" ${canInteract ? "" : "disabled"}>
+                  ${icon("send", "w-4 h-4")}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+        const animClass = "";
+
+        return `
+          <div class="fixed inset-0 z-[75] modal-overlay">
+            <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
+            <div class="modal-frame">
+              <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet">
+                ${headerHtml}
+                ${bodyHtml}
+                ${footerHtml}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function autosizeTextarea(input, { minHeight = 52, maxHeight = 160 } = {}) {
+        if (!input) return;
+        input.style.height = `${minHeight}px`;
+        const next = Math.max(minHeight, Math.min(maxHeight, input.scrollHeight || minHeight));
+        input.style.height = `${next}px`;
+      }
+      function bindModalDismiss(node, closeFn, { selfOnly = false } = {}) {
+        if (!node) return;
+        node.addEventListener("click", (evt) => {
+          if (selfOnly && evt.target !== node) return;
+          closeFn();
+        });
+      }
+      function closeMenuDetail() {
+        state.menuDetail.open = false;
+        document.documentElement.classList.remove("modal-open", "menu-detail-comment-focus");
+        document.body.classList.remove("modal-open", "menu-detail-comment-focus");
+        document.documentElement.style.setProperty("--menu-detail-footer-gap", "0px");
+        render();
+      }
+      function setMenuDetailIndex(nextIndex) {
+        const images = getMenuItemImages(state.menuDetail.item);
+        const max = images.length ? images.length - 1 : 0;
+        const idx = Math.max(0, Math.min(Number(nextIndex) || 0, max));
+        if (idx === state.menuDetail.index) return;
+        state.menuDetail.index = idx;
+        render();
+      }
+      function toggleMenuItemLike() {
+        const meta = ensureMenuItemMeta();
+        const me = currentUserBadge();
+        const idx = meta.likes.findIndex((row) => row.uid === me.uid);
+        if (idx >= 0) meta.likes.splice(idx, 1);
+        else meta.likes.push({ uid: me.uid, handle: me.handle });
+        meta.counts.likes = meta.likes.length;
+        state.menuDetail.meta = meta;
+        render();
+      }
+      async function addMenuItemComment(text) {
+        const clean = String(text || "").trim();
+        if (!clean) return;
+        state.menuDetail.sending = true;
+        render();
+        const meta = ensureMenuItemMeta();
+        meta.comments.unshift(ensureCommentShape({ id: `c_${Date.now()}`, uid: state.user.uid, handle: state.user.handle, author: "Du", text: clean, avatar: PLACEHOLDER_AVATAR, createdAt: new Date().toISOString() }));
+        meta.counts.comments = meta.comments.length;
+        state.menuDetail.commentText = "";
+        state.menuDetail.sending = false;
+        state.menuDetail.meta = meta;
+        if (typeof events.onComment === "function") events.onComment(clean, state.menuDetail.item);
+        render();
+      }
+      function bindMenuDetailOverlayEvents() {
+        const doc = document;
+        const win = window;
+        const menuDetailOverlay = doc.getElementById("menuDetailOverlay");
+        const menuDetailClose = doc.getElementById("menuDetailClose");
+        const menuDetailLikeBtn = doc.getElementById("menuDetailLikeBtn");
+        const menuDetailFavoriteCtaBtn = doc.getElementById("menuDetailFavoriteCtaBtn");
+        const menuDetailHeaderFavoritesBtn = doc.getElementById("menuDetailHeaderFavoritesBtn");
+        const menuDetailHeaderCartBtn = doc.getElementById("menuDetailHeaderCartBtn");
+        const menuDetailAddToCartBtn = doc.getElementById("menuDetailAddToCartBtn");
+        const menuDetailWoltBtn = doc.getElementById("menuDetailWoltBtn");
+        const footerCartView = doc.getElementById("footer-cart-view");
+        const footerCommentView = doc.getElementById("footer-comment-view");
+        const menuDetailFooterCommentToggle = doc.getElementById("menuDetailFooterCommentToggle");
+        const menuDetailFooterCartToggle = doc.getElementById("menuDetailFooterCartToggle");
+        const menuDetailCommentInput = doc.getElementById("menuDetailCommentInput");
+        const menuDetailCommentSend = doc.getElementById("menuDetailCommentSend");
+        let stopKeyboardGapTracking = () => {};
+        const hasQrMenuAccessForItem = (item) => {
+          const safeItem = item || state.menuDetail?.item || null;
+          if (!safeItem) return false;
+          const type = String(safeItem.type || "").trim().toLowerCase();
+          if (type && type !== "food" && type !== "drink") return false;
+          const accessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
+          if (accessSource !== "qr") return false;
+          return true;
+        };
+        const cleanupKeyboardGap = () => {
+          stopKeyboardGapTracking();
+        };
+        if (menuDetailOverlay) {
+          menuDetailOverlay.addEventListener("click", cleanupKeyboardGap, { capture: true });
+        }
+        if (menuDetailClose) {
+          menuDetailClose.addEventListener("click", cleanupKeyboardGap, { capture: true });
+        }
+        const setKeyboardGapUiActive = (active) => {
+          const next = !!active;
+          doc.documentElement.classList.toggle("menu-detail-comment-focus", next);
+          doc.body?.classList?.toggle?.("menu-detail-comment-focus", next);
+        };
+        const setKeyboardGapSize = (value) => {
+          const gap = Math.max(0, Number(value) || 0);
+          doc.documentElement.style.setProperty("--menu-detail-footer-gap", `${gap}px`);
+        };
+        const startKeyboardGapTracking = (inputEl) => {
+          stopKeyboardGapTracking();
+          const input = inputEl instanceof Element ? inputEl : doc.getElementById("menuDetailCommentInput");
+          if (!input) return;
+          const footer = input.closest(".modal-footer-safe");
+          if (!footer) return;
+          setKeyboardGapUiActive(true);
+          const updateGap = () => {
+            const viewportHeight = Number(win?.visualViewport?.height || win?.innerHeight || doc.documentElement.clientHeight || 0);
+            if (!viewportHeight) {
+              setKeyboardGapSize(0);
+              return;
+            }
+            const rect = footer.getBoundingClientRect();
+            const gap = Math.max(0, Math.round(viewportHeight - rect.bottom));
+            setKeyboardGapSize(gap);
+          };
+          updateGap();
+          const vv = win?.visualViewport;
+          const onResize = () => updateGap();
+          if (vv?.addEventListener) {
+            vv.addEventListener("resize", onResize);
+            vv.addEventListener("scroll", onResize);
+          }
+          win?.addEventListener?.("resize", onResize);
+          stopKeyboardGapTracking = () => {
+            if (vv?.removeEventListener) {
+              vv.removeEventListener("resize", onResize);
+              vv.removeEventListener("scroll", onResize);
+            }
+            win?.removeEventListener?.("resize", onResize);
+            setKeyboardGapUiActive(false);
+            setKeyboardGapSize(0);
+          };
+        };
+
+        bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
+        bindModalDismiss(menuDetailClose, closeMenuDetail);
+
+        const handleAddToCart = () => {
+          stopKeyboardGapTracking();
+          const item = state.menuDetail.item;
+          const profile = getMenuDetailCatalogProfile(item);
+          const allowShopCart = canAddToShopCart(profile);
+          const allowQrMenuCart = hasQrMenuAccessForItem(item);
+          if (!item || (!allowShopCart && !allowQrMenuCart)) return;
+          const stockRaw = item.stock;
+          const stockValue = typeof stockRaw === "string" ? stockRaw.trim() : stockRaw;
+          const parsedStock = stockValue === "" || stockValue === null || stockValue === undefined
+            ? null
+            : Number(stockValue);
+          const stock = parsedStock === null || !Number.isFinite(parsedStock) ? null : Math.max(0, parsedStock);
+          if (item.available === false || stock === 0) return;
+          if (typeof events.onAddToCart === "function") {
+            events.onAddToCart(item, profile, {
+              size: state.menuDetail.selectedSize || "",
+              color: state.menuDetail.selectedColor || "",
+              forceAdd: !!allowQrMenuCart && !allowShopCart
+            });
+          }
+          closeMenuDetail();
+        };
+        if (menuDetailHeaderCartBtn) menuDetailHeaderCartBtn.addEventListener("click", handleAddToCart);
+        if (menuDetailAddToCartBtn) menuDetailAddToCartBtn.addEventListener("click", handleAddToCart);
+        if (menuDetailWoltBtn) {
+          menuDetailWoltBtn.addEventListener("click", () => {
+            stopKeyboardGapTracking();
+            const href = normalizeExternalUrl(menuDetailWoltBtn.dataset.woltUrl || state.menuDetail.item?.woltUrl || "");
+            if (!href) return;
+            if (typeof events.onOpenWolt === "function") events.onOpenWolt(href);
+            try {
+              const link = doc.createElement("a");
+              link.href = href;
+              link.target = "_blank";
+              link.rel = "noopener noreferrer";
+              link.style.display = "none";
+              doc.body.appendChild(link);
+              link.click();
+              link.remove();
+            } catch {
+              win?.open?.(href, "_blank", "noopener,noreferrer");
+            }
+          });
+        }
+        if (menuDetailFavoriteCtaBtn) {
+          menuDetailFavoriteCtaBtn.addEventListener("click", () => {
+            if (!String(state.user?.uid || "").trim()) return;
+            if (typeof events.onFavorite === "function") events.onFavorite(state.menuDetail.item);
+            toggleMenuItemLike();
+          });
+        }
+        if (menuDetailHeaderFavoritesBtn) {
+          menuDetailHeaderFavoritesBtn.addEventListener("click", () => {
+            if (!String(state.user?.uid || "").trim()) return;
+            toggleMenuItemLike();
+          });
+        }
+        doc.querySelectorAll("[data-menu-detail-variant]").forEach((input) => {
+          input.addEventListener("change", () => {
+            const field = input.dataset.menuDetailVariant || "";
+            if (field === "size") state.menuDetail.selectedSize = input.value || "";
+            if (field === "color") state.menuDetail.selectedColor = input.value || "";
+          });
+        });
+        const toggleFooterView = (view) => {
+          if (!footerCartView || !footerCommentView) return;
+          if (view === "comment") {
+            state.menuDetail.footerView = "comment";
+            footerCartView.classList.add("hidden", "opacity-0");
+            footerCommentView.classList.remove("hidden");
+            win?.setTimeout?.(() => {
+              footerCommentView.classList.remove("opacity-0");
+              if (win?.lucide?.createIcons) win.lucide.createIcons();
+            }, 10);
+            const commentsSection = doc.getElementById("menuDetailComments");
+            if (commentsSection) {
+              try {
+                commentsSection.scrollIntoView({ behavior: "smooth", block: "start" });
+              } catch {}
+            }
+            const commentInput = doc.getElementById("menuDetailCommentInput");
+            if (commentInput && !commentInput.disabled) {
+              win?.setTimeout?.(() => {
+                try { commentInput.focus({ preventScroll: true }); } catch {}
+              }, 140);
+            }
+            return;
+          }
+          stopKeyboardGapTracking();
+          state.menuDetail.footerView = "cart";
+          footerCommentView.classList.add("hidden", "opacity-0");
+          footerCartView.classList.remove("hidden");
+          win?.setTimeout?.(() => {
+            footerCartView.classList.remove("opacity-0");
+            if (win?.lucide?.createIcons) win.lucide.createIcons();
+          }, 10);
+        };
+        if (menuDetailFooterCommentToggle) {
+          menuDetailFooterCommentToggle.addEventListener("click", () => {
+            toggleFooterView("comment");
+          });
+        }
+        if (menuDetailFooterCartToggle) {
+          menuDetailFooterCartToggle.addEventListener("click", () => {
+            toggleFooterView("cart");
+          });
+        }
+        if (menuDetailLikeBtn) {
+          menuDetailLikeBtn.addEventListener("click", () => {
+            toggleMenuItemLike();
+          });
+        }
+        if (menuDetailCommentInput) {
+          autosizeTextarea(menuDetailCommentInput, { minHeight: 52, maxHeight: 160 });
+          menuDetailCommentInput.addEventListener("input", () => {
+            state.menuDetail.commentText = menuDetailCommentInput.value;
+            autosizeTextarea(menuDetailCommentInput, { minHeight: 52, maxHeight: 160 });
+          });
+          menuDetailCommentInput.addEventListener("focus", () => {
+            startKeyboardGapTracking(menuDetailCommentInput);
+            win?.setTimeout?.(() => {
+              try {
+                menuDetailCommentInput.scrollIntoView({ block: "nearest", behavior: "smooth" });
+              } catch {}
+            }, 180);
+          });
+          menuDetailCommentInput.addEventListener("blur", () => {
+            win?.setTimeout?.(() => {
+              if (doc.activeElement === menuDetailCommentInput) return;
+              stopKeyboardGapTracking();
+            }, 120);
+          });
+          menuDetailCommentInput.addEventListener("keydown", (evt) => {
+            if (evt.key === "Enter" && !evt.shiftKey) {
+              evt.preventDefault();
+              const text = menuDetailCommentInput.value || state.menuDetail.commentText;
+              if (!String(text || "").trim() || state.menuDetail.sending) return;
+              state.menuDetail.commentText = text;
+              void addMenuItemComment(text);
+            }
+          });
+        }
+        if (menuDetailCommentSend) {
+          menuDetailCommentSend.addEventListener("click", () => {
+            const inputEl = doc.getElementById("menuDetailCommentInput");
+            const text = inputEl ? inputEl.value : state.menuDetail.commentText;
+            if (!String(text || "").trim() || state.menuDetail.sending) return;
+            state.menuDetail.commentText = text;
+            void addMenuItemComment(text);
+          });
+        }
+        doc.querySelectorAll("[data-menu-gallery-nav]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const dir = btn.dataset.menuGalleryNav || "next";
+            const delta = dir === "prev" ? -1 : 1;
+            setMenuDetailIndex(state.menuDetail.index + delta);
+          });
+        });
+        doc.querySelectorAll("[data-menu-gallery-dot]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const idx = Number(btn.dataset.menuGalleryDot || "0");
+            setMenuDetailIndex(idx);
+          });
+        });
+        const gallery = doc.querySelector("[data-menu-gallery]");
+        if (gallery) {
+          let startX = 0;
+          let startY = 0;
+          let tracking = false;
+          gallery.addEventListener("pointerdown", (evt) => {
+            tracking = true;
+            startX = evt.clientX;
+            startY = evt.clientY;
+            try { gallery.setPointerCapture(evt.pointerId); } catch {}
+          });
+          gallery.addEventListener("pointerup", (evt) => {
+            if (!tracking) return;
+            tracking = false;
+            try { gallery.releasePointerCapture(evt.pointerId); } catch {}
+            const dx = evt.clientX - startX;
+            const dy = evt.clientY - startY;
+            if (Math.abs(dx) < 30 || Math.abs(dx) < Math.abs(dy)) return;
+            if (dx < 0) setMenuDetailIndex(state.menuDetail.index + 1);
+            else setMenuDetailIndex(state.menuDetail.index - 1);
+          });
+          gallery.addEventListener("pointercancel", () => { tracking = false; });
+        }
+      }
+
+      function render() {
+        const root = document.getElementById("menuDetailOverlayRoot");
+        root.innerHTML = renderMenuDetailModal();
+        if (state.menuDetail.open) {
+          document.documentElement.classList.add("modal-open");
+          document.body.classList.add("modal-open");
+          bindMenuDetailOverlayEvents();
+        } else {
+          document.documentElement.classList.remove("modal-open", "menu-detail-comment-focus");
+          document.body.classList.remove("modal-open", "menu-detail-comment-focus");
+          document.documentElement.style.setProperty("--menu-detail-footer-gap", "0px");
+        }
+        window.lucide?.createIcons?.();
+      }
+      function open(input = {}, opts = {}) {
+        const item = {
+          id: String(input.id || `item_${Date.now()}`),
+          restaurantId: String(input.restaurantId || "demo-rest"),
+          name: String(input.name || "Produkt"),
+          price: Number.isFinite(Number(input.price)) ? Number(input.price) : 0,
+          category: String(input.category || "Sonstiges"),
+          type: normalizeMenuType(input.type || "food"),
+          description: String(input.description || ""),
+          longDescription: String(input.longDescription || ""),
+          allergens: String(input.allergens || ""),
+          brand: String(input.brand || ""),
+          sku: String(input.sku || ""),
+          sizes: Array.isArray(input.sizes) ? input.sizes.filter(Boolean) : [],
+          colors: Array.isArray(input.colors) ? input.colors.filter(Boolean) : [],
+          available: input.available !== false,
+          stock: input.stock ?? null,
+          isShop: input.isShop === true || input.catalogType === "shop" || input.profileType === "shop",
+          catalogType: String(input.catalogType || ""),
+          profileType: String(input.profileType || ""),
+          catalogProfile: input.catalogProfile && typeof input.catalogProfile === "object" ? { ...input.catalogProfile } : null,
+          image: String(input.image || ""),
+          imageUrl: String(input.image || input.imageUrl || ""),
+          images: Array.isArray(input.images) ? input.images.filter(Boolean) : [],
+          woltUrl: String(input.woltUrl || input.woltLink || ""),
+          woltLink: String(input.woltLink || input.woltUrl || "")
+        };
+        if (!item.images.length && item.imageUrl) item.images = [item.imageUrl];
+        if (!item.images.length) item.images = [PLACEHOLDER_IMAGE];
+        state.profileView.menuAccessSource = String(opts.menuAccessSource || input.menuAccessSource || "").trim().toLowerCase();
+        state.menuDetail.open = true;
+        state.menuDetail.item = item;
+        state.menuDetail.index = 0;
+        state.menuDetail.commentText = "";
+        state.menuDetail.loading = false;
+        state.menuDetail.sending = false;
+        state.menuDetail.footerView = "cart";
+        state.menuDetail.meta = {
+          likes: Array.isArray(input.likes) ? input.likes.slice() : [],
+          comments: Array.isArray(input.comments) ? input.comments.map(ensureCommentShape) : [],
+          counts: { likes: 0, comments: 0 }
+        };
+        state.menuDetail.meta.counts = resolveMenuItemCounts(state.menuDetail.meta);
+        events.onAddToCart = typeof opts.onAddToCart === "function" ? opts.onAddToCart : null;
+        events.onFavorite = typeof opts.onFavorite === "function" ? opts.onFavorite : null;
+        events.onComment = typeof opts.onComment === "function" ? opts.onComment : null;
+        events.onOpenWolt = typeof opts.onOpenWolt === "function" ? opts.onOpenWolt : null;
+        render();
+      }
+      function close() { closeMenuDetail(); }
+      window.MenyraFoodDrinkModalStandalone = { open, close, state };
+
+      document.getElementById("openDemoModal").addEventListener("click", () => {
+        open(
+          {
+            id: "drink-01",
+            restaurantId: "rest-demo",
+            name: "Coca Cola",
+            price: 1.5,
+            category: "Getraenke",
+            type: "drink",
+            description: "Shije fantastike",
+            available: true,
+            image: "https://images.unsplash.com/photo-1624552184280-9e9631bbeee9?auto=format&fit=crop&w=900&q=80",
+            woltUrl: "https://wolt.com",
+            comments: [{ id: "c1", uid: "u2", author: "Albert Hoti", text: "Hallo", createdAt: new Date(Date.now() - 3600 * 1000).toISOString(), avatar: "https://i.pravatar.cc/120?u=albert" }]
+          },
+          { menuAccessSource: "" }
+        );
+      });
+    })();
+    </script>
+</body>
+</html>
