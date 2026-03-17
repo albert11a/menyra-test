@@ -150,7 +150,8 @@ export function bindAppEventsCore({
     normalizeAuthModeFn,
     renderFn,
     ensureMenuDataForProfileFn,
-    ensureFocusDataForProfileFn
+    ensureFocusDataForProfileFn,
+    openProfileViewFromBusinessFn
   });
 
   const menuFocusBinding = bindAppMenuFocusEvents({

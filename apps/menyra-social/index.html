@@ -11,6 +11,14 @@
   <script>
     (() => {
       const LIGHT_UI_COLOR = "#f8fafc";
+      const resolveUiChromeColor = () => {
+        try {
+          const raw = window.getComputedStyle?.(document.documentElement)?.getPropertyValue("--smart-header-theme-color")?.trim();
+          return raw || LIGHT_UI_COLOR;
+        } catch {
+          return LIGHT_UI_COLOR;
+        }
+      };
       const ensureMeta = (name, content) => {
         let meta = document.querySelector(`meta[name="${name}"]`);
         if (!meta) {
@@ -21,13 +29,14 @@
         meta.setAttribute("content", content);
       };
       const forceLightUiChrome = () => {
+        const uiChromeColor = standalone ? LIGHT_UI_COLOR : resolveUiChromeColor();
         const themeMetas = Array.from(document.querySelectorAll('meta[name="theme-color"]'));
         if (themeMetas.length) {
-          themeMetas[0].setAttribute("content", LIGHT_UI_COLOR);
+          themeMetas[0].setAttribute("content", uiChromeColor);
           themeMetas[0].removeAttribute("media");
           for (let i = 1; i < themeMetas.length; i += 1) themeMetas[i].remove();
         } else {
-          ensureMeta("theme-color", LIGHT_UI_COLOR);
+          ensureMeta("theme-color", uiChromeColor);
         }
         ensureMeta("apple-mobile-web-app-status-bar-style", "black-translucent");
         ensureMeta("color-scheme", "light");
@@ -59,7 +68,7 @@
       }
     })();
   </script>
-  <meta name="theme-color" content="#f8fafc" />
+  <meta name="theme-color" content="rgb(248 250 252 / 0.86)" />
   <title>MNYRA Social</title>
   <link rel="manifest" href="/apps/menyra-social/manifest.webmanifest" />
   <link rel="preconnect" href="https://menyra-media.alberthoti-vsa.workers.dev" crossorigin>
@@ -134,6 +143,8 @@
       --menu-detail-footer-gap: 0px;
       --app-bg: #f8fafc;
       --app-surface: #ffffff;
+      --smart-header-theme-color: rgb(248 250 252 / 0.9);
+      --smart-header-content-gap: 1.2rem;
       color-scheme: light;
     }
     @supports (color-scheme: only light) {
@@ -226,9 +237,104 @@
     }
     .app-header-safe { padding-top: 1rem !important; }
     .app-main-scroll { padding-bottom: 1rem !important; }
+    .app-main-scroll--with-smart-header { padding-top: calc(var(--smart-header-top-height, calc(var(--safe-area-top) + 5rem)) + var(--smart-header-content-gap)) !important; }
+    .app-main-scroll--with-smart-header-tabs { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 8rem)) + var(--smart-header-content-gap)) !important; }
     .app-main-content-safe { padding-bottom: 6rem !important; }
+    .smart-header-shell {
+      --smart-header-surface: var(--smart-header-theme-color);
+      --smart-header-surface-top: rgb(248 250 252 / 0.995);
+      --smart-header-surface-mid: rgb(248 250 252 / 0.965);
+      --smart-header-surface-dense: rgb(248 250 252 / 0.9);
+      --smart-header-border: rgb(226 232 240 / 0.62);
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      max-width: 28rem;
+      margin-left: auto;
+      margin-right: auto;
+      z-index: 100;
+      pointer-events: none;
+      transform: translate3d(0, 0, 0);
+      isolation: isolate;
+    }
+    .smart-header-top {
+      position: relative;
+      z-index: 2;
+      pointer-events: auto;
+      padding-top: max(0.5rem, var(--safe-area-top));
+      background:
+        linear-gradient(
+          to bottom,
+          var(--smart-header-surface-top) 0%,
+          var(--smart-header-surface-mid) calc(max(0.5rem, var(--safe-area-top)) + 1.6rem),
+          var(--smart-header-surface-dense) calc(100% - 0.35rem),
+          var(--smart-header-surface-dense) 100%
+        );
+      -webkit-backdrop-filter: blur(30px) saturate(1.08);
+      backdrop-filter: blur(30px) saturate(1.08);
+      border-bottom: 1px solid var(--smart-header-border);
+    }
+    .smart-header-tabs {
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: var(--smart-header-top-height, calc(var(--safe-area-top) + 4rem));
+      z-index: 1;
+      pointer-events: auto;
+      background: var(--smart-header-surface);
+      -webkit-backdrop-filter: blur(28px) saturate(1.1);
+      backdrop-filter: blur(28px) saturate(1.1);
+      border-bottom: 1px solid var(--smart-header-border);
+      box-shadow: 0 4px 15px -10px rgba(0, 0, 0, 0.05);
+      transition: transform 300ms ease-in-out;
+      will-change: transform;
+    }
+    .smart-header-tabs--hidden {
+      transform: translateY(-100%);
+    }
+    .smart-header-tab,
+    .smart-header-action {
+      flex: 1 1 0;
+      position: relative;
+      padding-top: 1.25rem;
+      padding-bottom: 1rem;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 12px;
+      font-weight: 700;
+      transition: color 300ms ease, opacity 300ms ease, transform 120ms ease;
+    }
+    .smart-header-tab::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      height: 2px;
+      width: 0;
+      border-radius: 999px 999px 0 0;
+      transform: translateX(-50%);
+      transition: width 300ms ease, background-color 300ms ease;
+      background: transparent;
+    }
+    .smart-header-tab--active {
+      color: #0f172a;
+      font-weight: 900;
+    }
+    .smart-header-tab--active::after {
+      width: 100%;
+      background: #0f172a;
+    }
+    .smart-header-tab--inactive,
+    .smart-header-action {
+      color: #94a3b8;
+    }
     html.is-standalone .app-header-safe { padding-top: calc(var(--safe-area-top) + 1.25rem) !important; }
     html.is-standalone .app-main-scroll { padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important; }
+    html.is-standalone .app-main-scroll--with-smart-header { padding-top: calc(var(--smart-header-top-height, calc(var(--safe-area-top) + 5rem)) + var(--smart-header-content-gap)) !important; }
+    html.is-standalone .app-main-scroll--with-smart-header-tabs { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 8rem)) + var(--smart-header-content-gap)) !important; }
     html.is-standalone .app-main-content-safe { padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important; }
     .business-top-tabs-sticky {
       display: block;

@@ -20,7 +20,8 @@ export function bindAppShellEventsCore({
   normalizeAuthModeFn,
   renderFn,
   ensureMenuDataForProfileFn,
-  ensureFocusDataForProfileFn
+  ensureFocusDataForProfileFn,
+  openProfileViewFromBusinessFn
 } = {}) {
   const doc = documentObj || null;
   if (!doc || !state) return;
@@ -56,6 +57,9 @@ export function bindAppShellEventsCore({
   const ensureFocusDataForProfile = typeof ensureFocusDataForProfileFn === "function"
     ? ensureFocusDataForProfileFn
     : (() => {});
+  const openProfileViewFromBusiness = typeof openProfileViewFromBusinessFn === "function"
+    ? openProfileViewFromBusinessFn
+    : null;
 
   const drawerToggle = doc.getElementById("drawerToggle");
   const drawerOverlay = doc.getElementById("drawerOverlay");
@@ -158,22 +162,80 @@ export function bindAppShellEventsCore({
     });
   });
 
-  doc.querySelectorAll("[data-profile-top-tab]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const tab = btn.dataset.profileTopTab;
-      if (!tab) return;
-      if (tab === "favorites" && !String(state.user?.uid || "").trim()) {
-        openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+  const handleProfileTopTabChange = (tab = "", { smoothTop = false, forceProfile = false } = {}) => {
+    const nextTab = String(tab || "").trim();
+    if (!nextTab) return;
+    if (nextTab === "favorites" && !String(state.user?.uid || "").trim()) {
+      openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
+      return;
+    }
+    if (forceProfile) state.activeTab = "profile";
+    state.profileTopTab = nextTab;
+    state.drawerOpen = false;
+    if (nextTab === "menu" || nextTab === "favorites" || nextTab === "cart") {
+      ensureMenuDataForProfile();
+    }
+    if (nextTab === "menu") {
+      ensureFocusDataForProfile();
+    }
+    if (smoothTop && doc?.defaultView?.scrollTo) {
+      try {
+        doc.defaultView.scrollTo({ top: 0, behavior: "smooth" });
+      } catch {
+        doc.defaultView.scrollTo(0, 0);
+      }
+    }
+    render();
+  };
+
+  const openSmartHeaderCart = () => {
+    const cartRestaurantId = String(state.shopCart?.restaurantId || "").trim();
+    const cartItems = Array.isArray(state.shopCart?.items) ? state.shopCart.items : [];
+    const currentProfile = state.profileView?.profile || state.userProfile || {};
+    const currentRestaurantId = String(currentProfile?.restaurantId || "").trim();
+
+    if (cartRestaurantId && cartItems.length) {
+      if (currentRestaurantId === cartRestaurantId) {
+        handleProfileTopTabChange("cart", { smoothTop: true, forceProfile: true });
         return;
       }
-      state.profileTopTab = tab;
-      if (tab === "menu" || tab === "favorites") {
-        ensureMenuDataForProfile();
+      if (openProfileViewFromBusiness) {
+        void openProfileViewFromBusiness({ id: cartRestaurantId }, { showBack: true, topTab: "cart" });
+        return;
       }
-      if (tab === "menu") {
-        ensureFocusDataForProfile();
+    }
+
+    if (currentRestaurantId) {
+      handleProfileTopTabChange("cart", { smoothTop: true, forceProfile: true });
+      return;
+    }
+
+    console.log("Warenkorb geklickt");
+  };
+
+  doc.querySelectorAll("[data-profile-top-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      handleProfileTopTabChange(btn.dataset.profileTopTab || "");
+    });
+  });
+
+  doc.querySelectorAll("[data-business-top-tab]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      handleProfileTopTabChange(btn.dataset.businessTopTab || "", { smoothTop: true, forceProfile: true });
+    });
+  });
+
+  doc.querySelectorAll("[data-action]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const action = String(btn.dataset.action || "").trim().toLowerCase();
+      if (!action) return;
+      if (action === "cart") {
+        openSmartHeaderCart();
+        return;
       }
-      render();
+      if (action === "kellner") {
+        console.log("Kellner gerufen");
+      }
     });
   });
 

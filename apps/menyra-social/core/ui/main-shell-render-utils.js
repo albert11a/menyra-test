@@ -52,19 +52,44 @@ export function renderMainCore({
   if (state?.activeTab === "upload") view = renderUploadView();
   const businessTopTabsHtml = renderBusinessTopTabs();
   const hasBusinessTopTabs = !!String(businessTopTabsHtml || "").trim();
+  const profile = state?.profileView?.profile || state?.userProfile || null;
+  const smartHeaderOverlayIsolationActive = !!state?.profileModal?.open
+    || !!state?.postModal?.open
+    || !!state?.likesModal?.open
+    || !!state?.menuModal?.open
+    || !!state?.menuDetail?.open
+    || !!state?.focusModal?.open
+    || !!state?.leadModal?.open
+    || !!state?.customerModal?.open
+    || !!state?.chatModal?.open;
+  const smartHeaderBlockedState = (state?.activeTab === "staff" && state?.staff?.view === "form")
+    || (state?.activeTab === "leads" && (state?.leads?.view === "create" || state?.leads?.view === "settings"))
+    || (state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile);
+  const isBusinessProfile = !!String(profile?.restaurantId || "").trim()
+    || String(profile?.role || "").trim().toLowerCase() === "business";
+  const hasSmartHeader = !!String(state?.activeTab || "").trim()
+    && !smartHeaderBlockedState;
+  const hasSmartHeaderTabs = hasSmartHeader
+    && state?.activeTab === "profile"
+    && isBusinessProfile
+    && !smartHeaderOverlayIsolationActive;
   const isChatThreadOpen = state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile;
   const shellClass = isChatThreadOpen
     ? "app-shell app-shell--chat-open bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative flex flex-col font-sans"
     : "app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans";
   const mainClass = isChatThreadOpen
     ? "flex-1 min-h-0 flex flex-col overflow-hidden"
-    : `app-main-scroll${hasBusinessTopTabs ? " app-main-scroll--with-business-tabs" : ""}`;
+    : `app-main-scroll${hasBusinessTopTabs ? " app-main-scroll--with-business-tabs" : ""}${hasSmartHeader ? " app-main-scroll--with-smart-header" : ""}${hasSmartHeaderTabs ? " app-main-scroll--with-smart-header-tabs" : ""}`;
+  const headerHtml = renderHeader();
+  const shellHeaderHtml = hasSmartHeader ? headerHtml : "";
+  const mainHeaderHtml = hasSmartHeader ? "" : headerHtml;
 
   return `
     <div class="${shellClass}">
       ${renderDrawer()}
+      ${shellHeaderHtml}
       <main class="${mainClass}">
-        ${renderHeader()}
+        ${mainHeaderHtml}
         ${businessTopTabsHtml}
         ${view}
       </main>

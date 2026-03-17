@@ -174,6 +174,10 @@ export function createAppShellRuntimeController(deps = {}) {
     openProfileFromUserFn
   } = deps;
   let businessTopTabsPinSyncCleanup = null;
+  let smartHeaderLastScrollY = 0;
+  let smartHeaderVisible = true;
+  let smartHeaderScrollListener = null;
+  let smartHeaderResizeListener = null;
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
 
@@ -209,7 +213,90 @@ export function createAppShellRuntimeController(deps = {}) {
   `;
   }
 
+  function shouldUseSmartHeader() {
+    const isStaffFormView = state.activeTab === "staff" && state.staff?.view === "form";
+    const isLeadsSubView = state.activeTab === "leads" && (state.leads?.view === "create" || state.leads?.view === "settings");
+    const isChatThreadOpen = state.activeTab === "chat" && !!state.chatModal?.open && !!state.chatModal?.profile;
+    return !!String(state.activeTab || "").trim() && !isStaffFormView && !isLeadsSubView && !isChatThreadOpen;
+  }
+
+  function shouldShowSmartHeaderTabs() {
+    const overlayIsolationActive = !!state.profileModal?.open
+      || !!state.postModal?.open
+      || !!state.likesModal?.open
+      || !!state.menuModal?.open
+      || !!state.menuDetail?.open
+      || !!state.focusModal?.open
+      || !!state.leadModal?.open
+      || !!state.customerModal?.open
+      || !!state.chatModal?.open;
+    if (overlayIsolationActive) return false;
+    if (state.activeTab !== "profile") return false;
+    const profile = state.profileView?.profile || state.userProfile;
+    const restaurantId = String(profile?.restaurantId || "").trim();
+    if (restaurantId) return true;
+    return String(profile?.role || "").trim().toLowerCase() === "business";
+  }
+
+  function renderSmartHeader() {
+    const showTabs = shouldShowSmartHeaderTabs();
+    const cartCount = Array.isArray(state.shopCart?.items)
+      ? state.shopCart.items.reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0)
+      : 0;
+    const activeTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+    const isMenu = activeTopTab === "menu";
+    const isProfile = activeTopTab === "profile";
+    const guestSession = isGuestSession();
+    const tabBase = "smart-header-tab";
+    const activeTab = "smart-header-tab--active";
+    const inactiveTab = "smart-header-tab--inactive";
+
+    return `
+      <div class="smart-header-shell">
+        <div id="smart-header-top" class="smart-header-top">
+          <div class="px-5 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="text-slate-700 hover:bg-slate-100 p-2 -ml-2 rounded-full transition-colors active:scale-95 flex items-center justify-center">
+                ${icon("menu", "w-6 h-6")}
+              </button>
+              <div class="flex items-baseline gap-1.5 cursor-pointer" data-nav="feed">
+                <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
+                <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">Social</span>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5 text-slate-600">
+              <button type="button" class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95">
+                ${icon("globe", "w-5 h-5")}
+              </button>
+              <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95">
+                ${icon("user", "w-5 h-5")}
+              </button>
+              <button type="button" data-action="cart" class="relative w-10 h-10 flex items-center justify-center text-slate-900 hover:bg-slate-100 rounded-full transition-colors active:scale-95">
+                ${icon("shopping-bag", "w-5 h-5")}
+                ${cartCount > 0 ? `<span class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black flex items-center justify-center rounded-full border-[1.5px] border-white shadow-sm">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+        ${showTabs ? `
+          <div id="smart-tabs" class="smart-header-tabs">
+            <div class="px-5 flex items-center justify-between">
+              <button type="button" data-business-top-tab="profile" class="${tabBase} ${isProfile ? activeTab : inactiveTab}">Profil</button>
+              <button type="button" data-business-top-tab="menu" class="${tabBase} ${isMenu ? activeTab : inactiveTab}">Menue</button>
+              <button type="button" data-action="kellner" class="smart-header-action active:scale-95">
+                Call Waiter
+              </button>
+            </div>
+          </div>
+        ` : ""}
+      </div>
+    `;
+  }
+
   function renderHeader() {
+    if (shouldUseSmartHeader()) {
+      return renderSmartHeader();
+    }
     const unread = isGuestSession() ? 0 : state.notifications.filter((n) => !n.read).length;
     const chatUnread = isGuestSession() ? 0 : getChatUnreadCount();
     const headerUnread = unread + chatUnread;
@@ -322,6 +409,7 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function renderBusinessTopTabs() {
+    if (shouldUseSmartHeader()) return "";
     if (!shouldShowBusinessTopTabs()) return "";
     const profile = state.profileView?.profile || state.userProfile;
     const catalogLabel = getBusinessCatalogLabel(profile);
@@ -394,6 +482,86 @@ export function createAppShellRuntimeController(deps = {}) {
       unsub();
     } catch {}
     setProfileViewUnsub(null);
+  }
+
+  function resetSmartHeaderMetrics() {
+    const rootStyle = doc?.documentElement?.style;
+    rootStyle?.removeProperty("--smart-header-top-height");
+    rootStyle?.removeProperty("--smart-header-tabs-height");
+    rootStyle?.removeProperty("--smart-header-total-height");
+  }
+
+  function syncSmartHeaderMetrics() {
+    if (!doc) return;
+    const rootStyle = doc.documentElement?.style;
+    if (!rootStyle) return;
+    const topEl = doc.getElementById("smart-header-top");
+    const tabsEl = doc.getElementById("smart-tabs");
+    const topHeight = topEl ? Math.max(0, Math.round(topEl.getBoundingClientRect().height)) : 0;
+    const tabsHeight = tabsEl ? Math.max(0, Math.round(tabsEl.getBoundingClientRect().height)) : 0;
+    rootStyle.setProperty("--smart-header-top-height", `${topHeight}px`);
+    rootStyle.setProperty("--smart-header-tabs-height", `${tabsHeight}px`);
+    rootStyle.setProperty("--smart-header-total-height", `${topHeight + tabsHeight}px`);
+  }
+
+  function stopSmartHeaderVisibilitySync() {
+    if (win && typeof smartHeaderScrollListener === "function") {
+      win.removeEventListener("scroll", smartHeaderScrollListener);
+    }
+    if (win && typeof smartHeaderResizeListener === "function") {
+      win.removeEventListener("resize", smartHeaderResizeListener);
+      win.visualViewport?.removeEventListener?.("resize", smartHeaderResizeListener);
+    }
+    smartHeaderScrollListener = null;
+    smartHeaderResizeListener = null;
+    smartHeaderLastScrollY = 0;
+    smartHeaderVisible = true;
+    resetSmartHeaderMetrics();
+  }
+
+  function initSmartHeaderVisibilitySync() {
+    if (!win || !doc) return;
+    const topEl = doc.getElementById("smart-header-top");
+    const tabs = doc.getElementById("smart-tabs");
+    if (!topEl) {
+      stopSmartHeaderVisibilitySync();
+      return;
+    }
+
+    stopSmartHeaderVisibilitySync();
+    syncSmartHeaderMetrics();
+    smartHeaderLastScrollY = Math.max(0, Number(win.scrollY || 0));
+    smartHeaderVisible = true;
+    smartHeaderResizeListener = () => {
+      syncSmartHeaderMetrics();
+    };
+    win.addEventListener("resize", smartHeaderResizeListener, { passive: true });
+    win.visualViewport?.addEventListener?.("resize", smartHeaderResizeListener, { passive: true });
+    if (!tabs) return;
+    tabs.classList.remove("smart-header-tabs--hidden");
+
+    const handleScroll = () => {
+      const currentScrollY = Math.max(0, Number(win.scrollY || 0));
+      if (currentScrollY <= 50) {
+        tabs.classList.remove("smart-header-tabs--hidden");
+        smartHeaderVisible = true;
+        smartHeaderLastScrollY = currentScrollY;
+        return;
+      }
+
+      if (currentScrollY > smartHeaderLastScrollY && smartHeaderVisible) {
+        tabs.classList.add("smart-header-tabs--hidden");
+        smartHeaderVisible = false;
+      } else if (currentScrollY < smartHeaderLastScrollY && !smartHeaderVisible) {
+        tabs.classList.remove("smart-header-tabs--hidden");
+        smartHeaderVisible = true;
+      }
+
+      smartHeaderLastScrollY = currentScrollY;
+    };
+
+    smartHeaderScrollListener = handleScroll;
+    win.addEventListener("scroll", smartHeaderScrollListener, { passive: true });
   }
 
   function setBusinessTopTabsPinned(active) {
@@ -527,7 +695,13 @@ export function createAppShellRuntimeController(deps = {}) {
       else setLastRenderedMainTab("");
     }
 
-    bindBusinessTopTabsPinSync();
+    if (shouldUseSmartHeader()) {
+      stopBusinessTopTabsPinSync();
+      initSmartHeaderVisibilitySync();
+    } else {
+      stopSmartHeaderVisibilitySync();
+      bindBusinessTopTabsPinSync();
+    }
 
     renderOverlaysFn();
     if (mode === "main" || getLastRenderMode() === "main") {

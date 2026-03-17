@@ -344,15 +344,17 @@ export function createShellDomRuntimeController({
     const headerBadgeText = getBadgeText(headerUnread);
     const notifBadgeText = getBadgeText(unread);
     const chatBadgeText = getBadgeText(chatUnread);
-    const drawerToggle = doc?.getElementById("drawerToggle");
-    if (drawerToggle) {
-      let badge = drawerToggle.querySelector('[data-unread-badge="header"]');
+    const headerBadgeAnchor = doc?.querySelector?.('[data-header-badge-anchor="true"]')
+      || doc?.getElementById("drawerToggle");
+    if (headerBadgeAnchor) {
+      headerBadgeAnchor.style.position = "relative";
+      let badge = headerBadgeAnchor.querySelector('[data-unread-badge="header"]');
       if (headerUnread > 0) {
         if (!badge) {
           badge = doc.createElement("span");
           badge.dataset.unreadBadge = "header";
           badge.className = "absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg";
-          drawerToggle.appendChild(badge);
+          headerBadgeAnchor.appendChild(badge);
         }
         if (badge.textContent !== headerBadgeText) badge.textContent = headerBadgeText;
       } else if (badge) {
