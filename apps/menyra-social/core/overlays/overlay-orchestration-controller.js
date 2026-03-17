@@ -422,6 +422,7 @@ export function createOverlayOrchestrationController({
       loading: true,
       sending: false
     };
+    renderFn();
     renderOverlays({ updateMenuDetail: true });
     if (!restaurantId) {
       state.menuDetail.loading = false;
@@ -441,6 +442,7 @@ export function createOverlayOrchestrationController({
   function closeMenuDetail({ afterClose = null } = {}) {
     stopMenuItemMetaListenersFn();
     state.menuDetail = createEmptyMenuDetailStateFn();
+    renderFn();
     renderOverlays({ updateMenuDetail: true });
     if (typeof afterClose === "function") afterClose();
   }

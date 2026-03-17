@@ -173,7 +173,7 @@ export function createAppShellRuntimeController(deps = {}) {
     refreshSearchViewFn,
     openProfileFromUserFn
   } = deps;
-
+  let businessTopTabsPinSyncCleanup = null;
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
 
@@ -303,9 +303,22 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function shouldShowBusinessTopTabs() {
+    const overlayIsolationActive = !!state.drawerOpen
+      || !!state.profileModal?.open
+      || !!state.postModal?.open
+      || !!state.likesModal?.open
+      || !!state.menuModal?.open
+      || !!state.menuDetail?.open
+      || !!state.focusModal?.open
+      || !!state.leadModal?.open
+      || !!state.customerModal?.open
+      || !!state.chatModal?.open;
+    if (overlayIsolationActive) return false;
     if (state.activeTab !== "profile") return false;
     const profile = state.profileView?.profile || state.userProfile;
-    return isRestaurantCafeProfile(profile);
+    const restaurantId = String(profile?.restaurantId || "").trim();
+    if (restaurantId) return true;
+    return String(profile?.role || "").trim().toLowerCase() === "business";
   }
 
   function renderBusinessTopTabs() {
@@ -323,27 +336,32 @@ export function createAppShellRuntimeController(deps = {}) {
     const isMenuActive = activeTop === "menu";
     const isCartActive = activeTop === "cart";
     const cartCount = canUseCartTab ? getCartCountForRestaurant(profileRestaurantId || "") : 0;
-    const spacingClass = isProfileActive ? "pb-1" : "pb-3";
-    return `
-    <div class="px-6 ${spacingClass}">
-      <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center gap-1 backdrop-blur-sm">
-        <button type="button" data-profile-top-tab="profile" class="${base} ${isProfileActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-          Profil
-        </button>
-        <button type="button" data-profile-top-tab="menu" class="${base} ${isMenuActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-          ${catalogLabel}
-        </button>
-        ${canUseCartTab ? `
-          <button type="button" data-profile-top-tab="cart" class="${base} relative ${isCartActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-            ${icon("shopping-cart", "w-4 h-4")}
-            ${cartCount ? `<span class="absolute top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${cartCount > 9 ? "9+" : cartCount}</span>` : ""}
+    const spacingClass = "pb-3";
+    const tabsInnerHtml = `
+      <div data-business-top-tabs="true" class="px-6 pt-1 ${spacingClass}">
+        <div class="bg-white p-1.5 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-1">
+          <button type="button" data-profile-top-tab="profile" class="${base} ${isProfileActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
+            Profil
           </button>
-        ` : `
-          <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
-            Reviews
+          <button type="button" data-profile-top-tab="menu" class="${base} ${isMenuActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
+            ${catalogLabel}
           </button>
-        `}
+          ${canUseCartTab ? `
+            <button type="button" data-profile-top-tab="cart" class="${base} relative ${isCartActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
+              ${icon("shopping-cart", "w-4 h-4")}
+              ${cartCount ? `<span class="absolute top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${cartCount > 9 ? "9+" : cartCount}</span>` : ""}
+            </button>
+          ` : `
+            <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
+              Reviews
+            </button>
+          `}
+        </div>
       </div>
+    `;
+    return `
+    <div data-business-top-tabs-wrap="true" class="business-top-tabs-sticky">
+      ${tabsInnerHtml}
     </div>
   `;
   }
@@ -378,10 +396,61 @@ export function createAppShellRuntimeController(deps = {}) {
     setProfileViewUnsub(null);
   }
 
+  function setBusinessTopTabsPinned(active) {
+    const next = !!active;
+    const stickyWrapEl = doc?.querySelector?.("[data-business-top-tabs-wrap='true']");
+    stickyWrapEl?.classList?.toggle?.("business-top-tabs-sticky--pinned", next);
+  }
+
+  function stopBusinessTopTabsPinSync() {
+    if (typeof businessTopTabsPinSyncCleanup === "function") {
+      try {
+        businessTopTabsPinSyncCleanup();
+      } catch {}
+    }
+    businessTopTabsPinSyncCleanup = null;
+    setBusinessTopTabsPinned(false);
+  }
+
+  function bindBusinessTopTabsPinSync() {
+    stopBusinessTopTabsPinSync();
+    const stickyWrapEl = doc?.querySelector?.("[data-business-top-tabs-wrap='true']");
+    if (!stickyWrapEl || !win) return;
+
+    const syncPinnedState = () => {
+      const style = win.getComputedStyle?.(stickyWrapEl);
+      const stickyTop = Math.max(0, Math.ceil(parseFloat(style?.top || "0") || 0));
+      const rect = stickyWrapEl.getBoundingClientRect();
+      setBusinessTopTabsPinned(rect.top <= (stickyTop + 1));
+    };
+
+    const onScroll = () => syncPinnedState();
+    const onResize = () => syncPinnedState();
+
+    win.addEventListener("scroll", onScroll, { passive: true });
+    win.addEventListener("resize", onResize);
+    win.visualViewport?.addEventListener?.("resize", onResize);
+    win.visualViewport?.addEventListener?.("scroll", onScroll);
+
+    syncPinnedState();
+
+    businessTopTabsPinSyncCleanup = () => {
+      win.removeEventListener("scroll", onScroll);
+      win.removeEventListener("resize", onResize);
+      win.visualViewport?.removeEventListener?.("resize", onResize);
+      win.visualViewport?.removeEventListener?.("scroll", onScroll);
+    };
+  }
+
   function render() {
     if (getRenderSuspended() > 0) {
       setRenderQueued(true);
       return;
+    }
+    if (doc) {
+      const isDrawerOpen = !!state?.drawerOpen;
+      doc.documentElement.classList.toggle("drawer-open", isDrawerOpen);
+      doc.body.classList.toggle("drawer-open", isDrawerOpen);
     }
     stopDetachedProfileViewListener();
     const chatInputFocusState = captureChatInputFocusStateFn();
@@ -457,6 +526,8 @@ export function createAppShellRuntimeController(deps = {}) {
       if (mode === "main") setLastRenderedMainTab(state.activeTab);
       else setLastRenderedMainTab("");
     }
+
+    bindBusinessTopTabsPinSync();
 
     renderOverlaysFn();
     if (mode === "main" || getLastRenderMode() === "main") {

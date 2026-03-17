@@ -50,17 +50,22 @@ export function renderMainCore({
   if (state?.activeTab === "settings") view = renderSettingsView();
   if (state?.activeTab === "notifications") view = renderNotificationsView();
   if (state?.activeTab === "upload") view = renderUploadView();
+  const businessTopTabsHtml = renderBusinessTopTabs();
+  const hasBusinessTopTabs = !!String(businessTopTabsHtml || "").trim();
   const isChatThreadOpen = state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile;
+  const shellClass = isChatThreadOpen
+    ? "app-shell app-shell--chat-open bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative flex flex-col font-sans"
+    : "app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans";
   const mainClass = isChatThreadOpen
     ? "flex-1 min-h-0 flex flex-col overflow-hidden"
-    : "flex-1 min-h-0 app-main-scroll";
+    : `app-main-scroll${hasBusinessTopTabs ? " app-main-scroll--with-business-tabs" : ""}`;
 
   return `
-    <div class="app-shell ${isChatThreadOpen ? "app-shell--chat-open" : ""} bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative flex flex-col font-sans">
+    <div class="${shellClass}">
       ${renderDrawer()}
       <main class="${mainClass}">
         ${renderHeader()}
-        ${renderBusinessTopTabs()}
+        ${businessTopTabsHtml}
         ${view}
       </main>
     </div>

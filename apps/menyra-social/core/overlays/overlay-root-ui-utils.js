@@ -9,6 +9,30 @@ function ensureChildNode(parent, documentObj, id, className = "") {
   return node;
 }
 
+const OVERLAY_CHROME_COLOR = "#ffffff";
+const APP_CHROME_COLOR = "#f8fafc";
+
+function syncThemeColorMeta(doc, nextColor) {
+  if (!doc?.head) return null;
+  let meta = doc.head.querySelector('meta[name="theme-color"]');
+  if (!meta) {
+    meta = doc.createElement("meta");
+    meta.setAttribute("name", "theme-color");
+    doc.head.appendChild(meta);
+  }
+  meta.setAttribute("content", nextColor);
+  return meta;
+}
+
+function syncThemeColor(documentObj) {
+  const doc = documentObj || null;
+  if (!doc) return;
+  const useSurface = doc.documentElement.classList.contains("modal-open")
+    || doc.documentElement.classList.contains("drawer-open");
+  const nextColor = useSurface ? OVERLAY_CHROME_COLOR : APP_CHROME_COLOR;
+  syncThemeColorMeta(doc, nextColor);
+}
+
 export function ensureOverlayRootCore({ documentObj } = {}) {
   const doc = documentObj || null;
   if (!doc) return null;
@@ -18,7 +42,7 @@ export function ensureOverlayRootCore({ documentObj } = {}) {
     root.id = "overlayRoot";
     doc.body.appendChild(root);
   }
-  ensureChildNode(root, doc, "modalUnderlay", "fixed inset-0 bg-white z-[50] hidden pointer-events-none");
+  ensureChildNode(root, doc, "modalUnderlay", "fixed inset-0 bg-white z-[60] hidden pointer-events-none");
   ensureChildNode(root, doc, "profileOverlayRoot");
   ensureChildNode(root, doc, "chatOverlayRoot");
   ensureChildNode(root, doc, "postOverlayRoot");
@@ -76,5 +100,6 @@ export function syncModalOpenUiStateCore({
     doc.body.classList.remove("menu-detail-comment-focus");
     doc.documentElement.style.removeProperty("--menu-detail-footer-gap");
   }
+  syncThemeColor(doc);
   if (anyModalOpen) ensureModalEscapeHandler();
 }

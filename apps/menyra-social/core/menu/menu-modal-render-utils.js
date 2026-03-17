@@ -711,7 +711,7 @@ export function renderMenuDetailModalCore({
   ].join(" ");
   const headerHtml = isShop
     ? `
-      <div class="flex items-center justify-between gap-3 px-7 pt-7 pb-4 border-b border-slate-100 bg-white/95 backdrop-blur-sm">
+      <div class="menu-detail-modal-header flex items-center justify-between gap-3 px-7 pt-7 pb-4 border-b border-slate-100 bg-white">
         <div class="flex items-center gap-2 min-w-0">
           <button type="button" id="menuDetailHeaderCartBtn" class="inline-flex items-center gap-2 px-4 h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black shadow-sm active:scale-95 ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
             ${iconFn("shopping-cart", "w-4 h-4")}
@@ -730,7 +730,7 @@ export function renderMenuDetailModalCore({
       </div>
     `
     : `
-      <div class="flex items-center justify-between gap-4 px-7 pt-7 pb-5 border-b border-slate-100 bg-white/98 backdrop-blur-sm">
+      <div class="menu-detail-modal-header flex items-center justify-between gap-4 px-7 pt-7 pb-5 border-b border-slate-100 bg-white">
         <div class="min-w-0 flex items-center flex-1">
           <div class="min-w-0">
             <h3 id="${titleId}" class="text-[1.05rem] leading-tight font-black tracking-tight text-slate-900 truncate">${esc(item.name || "Produkt")}</h3>
@@ -943,8 +943,8 @@ export function renderMenuDetailModalCore({
   return `
     <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
-      <div class="modal-frame">
-        <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border-x border-b border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet">
+      <div class="modal-frame menu-detail-modal-frame">
+        <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border-x border-b border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet menu-detail-modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}

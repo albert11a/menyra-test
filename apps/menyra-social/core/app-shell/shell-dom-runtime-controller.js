@@ -51,6 +51,36 @@ export function createShellDomRuntimeController({
   const win = windowObj || (typeof window === "undefined" ? null : window);
   const deleteDoc = typeof deleteDocFn === "function" ? deleteDocFn : (async () => {});
   const makeDocRef = typeof docFn === "function" ? docFn : null;
+  const OVERLAY_CHROME_COLOR = "#ffffff";
+  const APP_CHROME_COLOR = "#f8fafc";
+
+  function syncThemeColorMeta(nextColor) {
+    if (!doc?.head) return null;
+    let meta = doc.head.querySelector('meta[name="theme-color"]');
+    if (!meta) {
+      meta = doc.createElement("meta");
+      meta.setAttribute("name", "theme-color");
+      doc.head.appendChild(meta);
+    }
+    meta.setAttribute("content", nextColor);
+    return meta;
+  }
+
+  function syncThemeColor() {
+    if (!doc) return;
+    const useSurface = doc.documentElement.classList.contains("modal-open")
+      || doc.documentElement.classList.contains("drawer-open");
+    const nextColor = useSurface ? OVERLAY_CHROME_COLOR : APP_CHROME_COLOR;
+    syncThemeColorMeta(nextColor);
+  }
+
+  function syncDrawerOpenUiState() {
+    if (!doc) return;
+    const isOpen = !!state?.drawerOpen;
+    doc.documentElement.classList.toggle("drawer-open", isOpen);
+    doc.body.classList.toggle("drawer-open", isOpen);
+    syncThemeColor();
+  }
 
   function renderAuthScreen() {
     const isRegister = state?.auth?.mode === "register";
@@ -220,6 +250,7 @@ export function createShellDomRuntimeController({
   }
 
   function updateShellDom() {
+    syncDrawerOpenUiState();
     const avatarUrl = resolveShellAvatarUrl();
     const isBusiness = isLocalBusinessProfile(state?.userProfile);
     const branding = resolveHeaderBranding();
@@ -293,6 +324,7 @@ export function createShellDomRuntimeController({
   }
 
   function updateDrawerDom() {
+    syncDrawerOpenUiState();
     const root = doc?.getElementById("drawerRoot");
     const overlay = doc?.getElementById("drawerOverlay");
     const panel = doc?.getElementById("drawerPanel");
