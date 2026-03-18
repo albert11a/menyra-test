@@ -53,6 +53,33 @@ export function createShellDomRuntimeController({
   const makeDocRef = typeof docFn === "function" ? docFn : null;
   const OVERLAY_CHROME_COLOR = "#ffffff";
   const APP_CHROME_COLOR = "#f8fafc";
+  let drawerScrollLockY = null;
+
+  function lockBackgroundScrollForDrawer() {
+    if (!doc?.body || !win) return;
+    if (drawerScrollLockY !== null) return;
+    drawerScrollLockY = Math.max(0, Number(win.scrollY || doc.documentElement?.scrollTop || 0));
+    doc.body.style.position = "fixed";
+    doc.body.style.top = `-${drawerScrollLockY}px`;
+    doc.body.style.left = "0";
+    doc.body.style.right = "0";
+    doc.body.style.width = "100%";
+    doc.body.style.overflow = "hidden";
+  }
+
+  function unlockBackgroundScrollForDrawer() {
+    if (!doc?.body || !win) return;
+    if (drawerScrollLockY === null) return;
+    const restoreY = drawerScrollLockY;
+    drawerScrollLockY = null;
+    doc.body.style.position = "";
+    doc.body.style.top = "";
+    doc.body.style.left = "";
+    doc.body.style.right = "";
+    doc.body.style.width = "";
+    doc.body.style.overflow = "";
+    win.scrollTo(0, restoreY);
+  }
 
   function syncThemeColorMeta(nextColor) {
     if (!doc?.head) return null;
@@ -79,6 +106,8 @@ export function createShellDomRuntimeController({
     const isOpen = !!state?.drawerOpen;
     doc.documentElement.classList.toggle("drawer-open", isOpen);
     doc.body.classList.toggle("drawer-open", isOpen);
+    if (isOpen) lockBackgroundScrollForDrawer();
+    else unlockBackgroundScrollForDrawer();
     syncThemeColor();
   }
 
