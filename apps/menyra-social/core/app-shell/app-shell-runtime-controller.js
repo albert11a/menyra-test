@@ -271,9 +271,9 @@ export function createAppShellRuntimeController(deps = {}) {
               <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="w-10 h-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors active:scale-95">
                 ${icon("user", "w-5 h-5")}
               </button>
-              <button type="button" data-action="cart" class="relative w-10 h-10 flex items-center justify-center text-slate-900 hover:bg-slate-100 rounded-full transition-colors active:scale-95">
+              <button type="button" data-action="cart" class="smart-header-cart-btn w-10 h-10 flex items-center justify-center text-slate-900 hover:bg-slate-100 rounded-full transition-colors active:scale-95">
                 ${icon("shopping-bag", "w-5 h-5")}
-                ${cartCount > 0 ? `<span class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-black flex items-center justify-center rounded-full border-[1.5px] border-white shadow-sm">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
+                ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
               </button>
             </div>
           </div>

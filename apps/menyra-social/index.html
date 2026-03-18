@@ -331,6 +331,29 @@
     .smart-header-action {
       color: #94a3b8;
     }
+    .smart-header-cart-btn {
+      position: relative;
+    }
+    .smart-header-cart-badge {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 2px;
+      border-radius: 999px;
+      border: 1.5px solid #fff;
+      background: #f43f5e;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 900;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.2);
+      pointer-events: none;
+    }
     html.is-standalone .app-header-safe { padding-top: calc(var(--safe-area-top) + 1.25rem) !important; }
     html.is-standalone .app-main-scroll { padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important; }
     html.is-standalone .app-main-scroll--with-smart-header { padding-top: calc(var(--smart-header-top-height, calc(var(--safe-area-top) + 5rem)) + var(--smart-header-content-gap)) !important; }
