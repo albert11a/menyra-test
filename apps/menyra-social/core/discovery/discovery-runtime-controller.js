@@ -59,8 +59,6 @@ export function createDiscoveryRuntimeController(deps = {}) {
   let leafletUserMarker = null;
   let mapNotice = "";
   let mapNoticeTimer = null;
-  let mapGeoPermissionState = "prompt";
-  let mapGeoPermissionStatus = null;
 
 function ensureLeafletStylesheet() {
   if (typeof document === "undefined") return;
@@ -237,36 +235,6 @@ function renderMapNotice() {
   `;
 }
 
-function renderMapPermissionPrompt() {
-  const stateKey = String(mapGeoPermissionState || "prompt").trim().toLowerCase();
-  if (stateKey === "granted") return "";
-  if (stateKey === "unsupported") {
-    return `
-      <div class="rounded-[1.75rem] bg-white/92 backdrop-blur-xl border border-white/40 shadow-lg px-4 py-4 text-slate-700">
-        <p class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Standort</p>
-        <p class="mt-2 text-sm font-black text-slate-900">Standort ist auf diesem Geraet nicht verfuegbar.</p>
-      </div>
-    `;
-  }
-  const isDenied = stateKey === "denied";
-  const title = isDenied ? "Standort ist blockiert" : "Standort fuer die Karte aktivieren";
-  const body = isDenied
-    ? "Wenn kein Systemdialog mehr erscheint, erlaube Standort bitte in Safari- oder iPhone-Einstellungen."
-    : "Aktiviere Standort direkt in der Karte, damit wir dich zentrieren koennen.";
-  const buttonLabel = isDenied ? "Erneut versuchen" : "Standort aktivieren";
-  return `
-    <div class="rounded-[1.75rem] bg-white/92 backdrop-blur-xl border border-white/40 shadow-lg px-4 py-4 text-slate-700">
-      <p class="text-[10px] font-black uppercase tracking-[0.24em] text-slate-500">Standort</p>
-      <p class="mt-2 text-sm font-black text-slate-900">${escapeHtml(title)}</p>
-      <p class="mt-2 text-[11px] font-medium leading-relaxed text-slate-600">${escapeHtml(body)}</p>
-      <button id="mapEnableLocationBtn" class="mt-4 inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white shadow-md active:scale-95 transition-all">
-        ${icon("navigation", "w-4 h-4")}
-        ${escapeHtml(buttonLabel)}
-      </button>
-    </div>
-  `;
-}
-
 function updateMapNoticeDom() {
   const slot = document.getElementById("mapNoticeSlot");
   if (!slot) return false;
@@ -302,66 +270,6 @@ function setMapNotice(message = "", { durationMs = 4200 } = {}) {
       mapNoticeTimer = null;
       clearMapNotice();
     }, durationMs);
-  }
-}
-
-function normalizeMapGeoPermissionState(value = "") {
-  const stateKey = String(value || "").trim().toLowerCase();
-  if (stateKey === "granted" || stateKey === "denied" || stateKey === "prompt") return stateKey;
-  if (stateKey === "unsupported") return "unsupported";
-  return "prompt";
-}
-
-function updateMapPermissionPromptDom() {
-  const slot = document.getElementById("mapPermissionPromptSlot");
-  if (!slot) return false;
-  slot.innerHTML = renderMapPermissionPrompt();
-  if (window.lucide?.createIcons) window.lucide.createIcons();
-  return true;
-}
-
-function setMapGeoPermissionState(nextState = "prompt", { refresh = true } = {}) {
-  const normalized = normalizeMapGeoPermissionState(nextState);
-  if (mapGeoPermissionState === normalized && !refresh) return;
-  mapGeoPermissionState = normalized;
-  if (!refresh) return;
-  const updated = updateMapPermissionPromptDom();
-  if (!updated && state.activeTab === "map") render();
-}
-
-async function syncMapGeoPermissionState({ refresh = true, autoLocateOnGrant = false } = {}) {
-  if (!navigator?.geolocation) {
-    setMapGeoPermissionState("unsupported", { refresh });
-    return "unsupported";
-  }
-  if (!navigator?.permissions?.query) {
-    setMapGeoPermissionState("prompt", { refresh });
-    return "prompt";
-  }
-  try {
-    const status = await navigator.permissions.query({ name: "geolocation" });
-    mapGeoPermissionStatus = status;
-    if (status && typeof status.onchange !== "function") {
-      // no-op: some browsers expose onchange as null/object only
-    }
-    if (status && mapGeoPermissionStatus === status) {
-      status.onchange = () => {
-        const nextState = normalizeMapGeoPermissionState(status.state);
-        setMapGeoPermissionState(nextState, { refresh: true });
-        if (nextState === "granted" && state.activeTab === "map") {
-          mapLocate({ userInitiated: false, source: "permission-change" });
-        }
-      };
-    }
-    const nextState = normalizeMapGeoPermissionState(status?.state);
-    setMapGeoPermissionState(nextState, { refresh });
-    if (nextState === "granted" && autoLocateOnGrant && state.activeTab === "map") {
-      mapLocate({ userInitiated: false, source: "permission-sync" });
-    }
-    return nextState;
-  } catch {
-    setMapGeoPermissionState("prompt", { refresh });
-    return "prompt";
   }
 }
 
@@ -452,7 +360,7 @@ function initLeafletIfNeeded() {
   renderLeafletMarkers(getDiscoverableMapLocations(state.businessLocations));
   updateMapSheet();
   if (window.lucide?.createIcons) window.lucide.createIcons();
-  void syncMapGeoPermissionState({ refresh: true, autoLocateOnGrant: true });
+  mapLocate();
   bindMapSearchInput();
   scheduleLeafletRefresh(3);
 }
@@ -534,10 +442,9 @@ function setUserMarker(lat, lng, label = "Deine Position") {
   }
 }
 
-function mapLocate({ userInitiated = false, source = "button" } = {}) {
+function mapLocate() {
   const override = getCeoGpsOverride();
   if (isCeoUser() && override) {
-    setMapGeoPermissionState("granted", { refresh: true });
     clearMapNotice({ refresh: true });
     if (leafletMap) {
       try { leafletMap.setView([override.lat, override.lng], 15, { animate: true }); } catch {}
@@ -546,29 +453,20 @@ function mapLocate({ userInitiated = false, source = "button" } = {}) {
     return;
   }
   if (!navigator.geolocation) {
-    setMapGeoPermissionState("unsupported", { refresh: true });
     setMapNotice("Standort ist auf diesem Geraet nicht verfuegbar.");
-    return;
-  }
-  if (!userInitiated && normalizeMapGeoPermissionState(mapGeoPermissionState) === "denied" && source !== "permission-change") {
-    setMapNotice("Standort ist blockiert. Bitte in Safari- oder iPhone-Einstellungen erlauben.", { durationMs: 5200 });
     return;
   }
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
-      setMapGeoPermissionState("granted", { refresh: true });
       clearMapNotice({ refresh: true });
       if (leafletMap) {
         try { leafletMap.setView([lat, lng], 15, { animate: true }); } catch {}
         setUserMarker(lat, lng, "Deine Position");
       }
     },
-    () => {
-      setMapGeoPermissionState("denied", { refresh: true });
-      setMapNotice("Standort konnte nicht abgerufen werden. Bitte Berechtigung pruefen.");
-    },
+    () => setMapNotice("Standort konnte nicht abgerufen werden. Bitte Berechtigung pruefen."),
     { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
   );
 }
@@ -962,7 +860,6 @@ function renderMapView() {
         ${hasLeaflet ? "" : `<div class="absolute inset-0 z-20 flex items-center justify-center opacity-40 text-slate-500 text-xs font-black uppercase tracking-widest">${escapeHtml(mapInfoLabel)}</div>`}
         
         <div class="absolute top-5 left-4 right-4 z-30">
-          <div id="mapPermissionPromptSlot" class="mb-3">${renderMapPermissionPrompt()}</div>
           <div id="mapNoticeSlot" class="mb-3">${renderMapNotice()}</div>
           <div class="relative group shadow-lg rounded-2xl">
             ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}

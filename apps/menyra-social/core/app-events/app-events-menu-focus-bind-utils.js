@@ -565,12 +565,7 @@ export function bindAppMenuFocusEventsCore({
 
   const mapLocateBtn = doc.getElementById("mapLocateBtn");
   if (mapLocateBtn) {
-    mapLocateBtn.addEventListener("click", () => mapLocate({ userInitiated: true, source: "floating-button" }));
-  }
-
-  const mapEnableLocationBtn = doc.getElementById("mapEnableLocationBtn");
-  if (mapEnableLocationBtn) {
-    mapEnableLocationBtn.addEventListener("click", () => mapLocate({ userInitiated: true, source: "prompt-card" }));
+    mapLocateBtn.addEventListener("click", () => mapLocate());
   }
 
   bindNotificationsDelegation();
