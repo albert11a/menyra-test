@@ -59,6 +59,27 @@ export function createDiscoveryRuntimeController(deps = {}) {
   let leafletUserMarker = null;
   let mapNotice = "";
   let mapNoticeTimer = null;
+  const DISCOVERY_MAP_DEFAULT_CENTER = [42.6629, 21.1655];
+  const DISCOVERY_MAP_MAX_ZOOM = 19;
+
+function getLeafletFocusZoom() {
+  if (leafletMap && typeof leafletMap.getMaxZoom === "function") {
+    const maxZoom = Number(leafletMap.getMaxZoom());
+    if (Number.isFinite(maxZoom) && maxZoom > 0) return maxZoom;
+  }
+  return DISCOVERY_MAP_MAX_ZOOM;
+}
+
+function focusLeafletMap(lat, lng, options = {}) {
+  if (!leafletMap) return;
+  const coords = normalizeCoordPair(lat, lng);
+  if (!coords) return;
+  const zoom = Number.isFinite(options.zoom) ? options.zoom : getLeafletFocusZoom();
+  const duration = Number.isFinite(options.duration) ? options.duration : 0.5;
+  try {
+    leafletMap.setView([coords.lat, coords.lng], zoom, { animate: true, duration });
+  } catch {}
+}
 
 function ensureLeafletStylesheet() {
   if (typeof document === "undefined") return;
@@ -348,9 +369,8 @@ function initLeafletIfNeeded() {
     return;
   }
 
-  // Zoom Level 15 = ca 2km Radius
-  leafletMap = window.L.map(el, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView([42.6629, 21.1655], 15);
-  window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: 19 }).addTo(leafletMap);
+  leafletMap = window.L.map(el, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_MAX_ZOOM);
+  window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: DISCOVERY_MAP_MAX_ZOOM }).addTo(leafletMap);
   try {
     leafletMap.whenReady(() => {
       scheduleLeafletRefresh(3);
@@ -383,7 +403,7 @@ function renderLeafletMarkers(locations) {
         state.selectedBusiness = b;
         renderLeafletMarkers(visibleLocations);
         updateMapSheet();
-        try { leafletMap.panTo([b.lat - 0.003, b.lng], { animate: true, duration: 0.5 }); } catch {}
+        focusLeafletMap(b.lat, b.lng);
       });
       nextMarkers.push(marker);
     } catch (err) {
@@ -447,7 +467,7 @@ function mapLocate() {
   if (isCeoUser() && override) {
     clearMapNotice({ refresh: true });
     if (leafletMap) {
-      try { leafletMap.setView([override.lat, override.lng], 15, { animate: true }); } catch {}
+      focusLeafletMap(override.lat, override.lng);
       setUserMarker(override.lat, override.lng, "Deine Position");
     }
     return;
@@ -462,7 +482,7 @@ function mapLocate() {
       const lng = pos.coords.longitude;
       clearMapNotice({ refresh: true });
       if (leafletMap) {
-        try { leafletMap.setView([lat, lng], 15, { animate: true }); } catch {}
+        focusLeafletMap(lat, lng);
         setUserMarker(lat, lng, "Deine Position");
       }
     },
