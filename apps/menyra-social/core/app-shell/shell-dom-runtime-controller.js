@@ -51,63 +51,22 @@ export function createShellDomRuntimeController({
   const win = windowObj || (typeof window === "undefined" ? null : window);
   const deleteDoc = typeof deleteDocFn === "function" ? deleteDocFn : (async () => {});
   const makeDocRef = typeof docFn === "function" ? docFn : null;
-  const OVERLAY_CHROME_COLOR = "#ffffff";
-  const APP_CHROME_COLOR = "#f8fafc";
-  let drawerScrollLockY = null;
 
-  function lockBackgroundScrollForDrawer() {
-    if (!doc?.body || !win) return;
-    if (drawerScrollLockY !== null) return;
-    drawerScrollLockY = Math.max(0, Number(win.scrollY || doc.documentElement?.scrollTop || 0));
-    doc.body.style.position = "fixed";
-    doc.body.style.top = `-${drawerScrollLockY}px`;
-    doc.body.style.left = "0";
-    doc.body.style.right = "0";
-    doc.body.style.width = "100%";
-    doc.body.style.overflow = "hidden";
-  }
-
-  function unlockBackgroundScrollForDrawer() {
-    if (!doc?.body || !win) return;
-    if (drawerScrollLockY === null) return;
-    const restoreY = drawerScrollLockY;
-    drawerScrollLockY = null;
+  function cleanupLegacyDrawerDocumentState() {
+    if (!doc) return;
+    doc.documentElement.classList.remove("drawer-open");
+    doc.body?.classList?.remove?.("drawer-open");
+    if (!doc.body) return;
     doc.body.style.position = "";
     doc.body.style.top = "";
     doc.body.style.left = "";
     doc.body.style.right = "";
     doc.body.style.width = "";
     doc.body.style.overflow = "";
-    win.scrollTo(0, restoreY);
-  }
-
-  function syncThemeColorMeta(nextColor) {
-    if (!doc?.head) return null;
-    let meta = doc.head.querySelector('meta[name="theme-color"]');
-    if (!meta) {
-      meta = doc.createElement("meta");
-      meta.setAttribute("name", "theme-color");
-      doc.head.appendChild(meta);
-    }
-    meta.setAttribute("content", nextColor);
-    return meta;
-  }
-
-  function syncThemeColor() {
-    if (!doc) return;
-    const useSurface = doc.documentElement.classList.contains("modal-open");
-    const nextColor = useSurface ? OVERLAY_CHROME_COLOR : APP_CHROME_COLOR;
-    syncThemeColorMeta(nextColor);
   }
 
   function syncDrawerOpenUiState() {
-    if (!doc) return;
-    const isOpen = !!state?.drawerOpen;
-    doc.documentElement.classList.toggle("drawer-open", isOpen);
-    doc.body.classList.toggle("drawer-open", isOpen);
-    if (isOpen) lockBackgroundScrollForDrawer();
-    else unlockBackgroundScrollForDrawer();
-    syncThemeColor();
+    cleanupLegacyDrawerDocumentState();
   }
 
   function renderAuthScreen() {
@@ -226,9 +185,9 @@ export function createShellDomRuntimeController({
         { id: "settings", label: "Optionen", icon: "settings" }
       ];
     return `
-    <div id="drawerRoot" aria-hidden="${state?.drawerOpen ? "false" : "true"}" class="fixed inset-0 z-[2000] overflow-hidden transition-all duration-500 ${state?.drawerOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"}" style="overscroll-behavior:none;">
+    <div id="drawerRoot" aria-hidden="${state?.drawerOpen ? "false" : "true"}" class="fixed inset-0 z-[2000] overflow-hidden transition-all duration-500 ${state?.drawerOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"}" style="overscroll-behavior:none; touch-action:none;">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state?.drawerOpen ? "opacity-100" : "opacity-0"}" style="touch-action:none; overscroll-behavior:none;"></div>
-      <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 max-w-[86vw] bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col overflow-y-auto ${state?.drawerOpen ? "translate-x-0" : "-translate-x-full"}" style="overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-top:calc(var(--safe-area-top) + 2rem); padding-bottom:calc(var(--safe-area-bottom) + 2rem);">
+      <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 max-w-[86vw] bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col overflow-y-auto ${state?.drawerOpen ? "translate-x-0" : "-translate-x-full"}" style="touch-action:pan-y; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-top:calc(var(--safe-area-top) + 2rem); padding-bottom:calc(var(--safe-area-bottom) + 2rem);">
         <div class="flex justify-between items-center mb-10">
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">${brandUi.title || ""}</span>

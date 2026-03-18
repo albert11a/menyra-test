@@ -74,16 +74,23 @@ export function renderMainCore({
     && state?.activeTab === "profile"
     && isBusinessProfile
     && !smartHeaderOverlayIsolationActive;
+  const isMapView = state?.activeTab === "map";
   const isChatThreadOpen = state?.activeTab === "chat" && state?.chatModal?.open && state?.chatModal?.profile;
   const shellClass = isChatThreadOpen
     ? "app-shell app-shell--chat-open bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative flex flex-col font-sans"
     : "app-shell bg-slate-50 text-slate-900 max-w-md mx-auto md:shadow-2xl relative font-sans";
   const mainClass = isChatThreadOpen
     ? "flex-1 min-h-0 flex flex-col overflow-hidden"
-    : `app-main-scroll${hasBusinessTopTabs ? " app-main-scroll--with-business-tabs" : ""}${hasSmartHeader ? " app-main-scroll--with-smart-header" : ""}${hasSmartHeaderTabs ? " app-main-scroll--with-smart-header-tabs" : ""}`;
+    : `app-main-scroll${isMapView ? " app-main-scroll--with-map-fixed-header" : ""}${hasBusinessTopTabs ? " app-main-scroll--with-business-tabs" : ""}${hasSmartHeader ? " app-main-scroll--with-smart-header" : ""}${hasSmartHeaderTabs ? " app-main-scroll--with-smart-header-tabs" : ""}`;
   const headerHtml = renderHeader();
-  const shellHeaderHtml = hasSmartHeader ? headerHtml : "";
-  const mainHeaderHtml = hasSmartHeader ? "" : headerHtml;
+  const shellHeaderHtml = isMapView
+    ? `<div class="map-fixed-page-header">${headerHtml}</div>`
+    : (hasSmartHeader ? headerHtml : "");
+  const mainHeaderHtml = isMapView
+    ? ""
+    : (hasSmartHeader
+    ? ""
+    : headerHtml);
 
   return `
     <div class="${shellClass}">

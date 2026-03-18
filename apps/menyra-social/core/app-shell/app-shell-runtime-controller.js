@@ -182,6 +182,40 @@ export function createAppShellRuntimeController(deps = {}) {
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
 
+  function cleanupLegacyDrawerDocumentState() {
+    if (!doc) return;
+    doc.documentElement.classList.remove("drawer-open");
+    doc.body?.classList?.remove?.("drawer-open");
+    if (!doc.body) return;
+    doc.body.style.position = "";
+    doc.body.style.top = "";
+    doc.body.style.left = "";
+    doc.body.style.right = "";
+    doc.body.style.width = "";
+    doc.body.style.overflow = "";
+  }
+
+  function hasBlockingOverlayOpen() {
+    return !!state.profileModal?.open
+      || !!state.postModal?.open
+      || !!state.likesModal?.open
+      || !!state.menuModal?.open
+      || !!state.menuDetail?.open
+      || !!state.focusModal?.open
+      || !!state.leadModal?.open
+      || !!state.customerModal?.open
+      || !!state.chatModal?.open;
+  }
+
+  function shouldResetDrawerStateBeforeRender() {
+    if (!state?.drawerOpen) return false;
+    if (!state?.user && !!state?.auth?.open) return true;
+    if (hasBlockingOverlayOpen()) return true;
+    const previousMainTab = String(getLastRenderedMainTab() || "").trim();
+    const nextTab = String(state?.activeTab || "").trim();
+    return !!previousMainTab && !!nextTab && previousMainTab !== nextTab;
+  }
+
   function renderHeaderActionButton(avatarUrl, avatarFit) {
     if (!getAuthInitialized()) {
       const restoringRaw = getAuthBootstrapSnapshot()?.avatar || state.userProfile.avatar || getUserAvatarCache() || "";
@@ -616,11 +650,12 @@ export function createAppShellRuntimeController(deps = {}) {
       setRenderQueued(true);
       return;
     }
+    if (shouldResetDrawerStateBeforeRender()) {
+      state.drawerOpen = false;
+    }
     if (typeof updateShellDomFn === "function") updateShellDomFn();
     else if (doc) {
-      const isDrawerOpen = !!state?.drawerOpen;
-      doc.documentElement.classList.toggle("drawer-open", isDrawerOpen);
-      doc.body.classList.toggle("drawer-open", isDrawerOpen);
+      cleanupLegacyDrawerDocumentState();
     }
     stopDetachedProfileViewListener();
     const chatInputFocusState = captureChatInputFocusStateFn();

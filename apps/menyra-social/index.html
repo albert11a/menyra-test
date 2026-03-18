@@ -179,10 +179,6 @@
       overflow: hidden;
       overscroll-behavior: none;
     }
-    html.drawer-open,
-    body.drawer-open {
-      background: var(--app-bg) !important;
-    }
     html.modal-open,
     body.modal-open,
     html.menu-detail-comment-focus,
@@ -239,6 +235,19 @@
     }
     .app-header-safe { padding-top: 1rem !important; }
     .app-main-scroll { padding-bottom: 1rem !important; }
+    .map-fixed-page-header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+      max-width: 28rem;
+      margin-left: auto;
+      margin-right: auto;
+      z-index: 95;
+      background: var(--app-bg);
+    }
+    .app-main-scroll--with-map-fixed-header { padding-top: calc(var(--safe-area-top) + 5.5rem) !important; }
     .app-main-scroll--with-smart-header { padding-top: calc(var(--smart-header-top-height, calc(var(--safe-area-top) + 5rem)) + var(--smart-header-content-gap)) !important; }
     .app-main-scroll--with-smart-header-tabs { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 8rem)) + var(--smart-header-content-gap)) !important; }
     .app-main-content-safe { padding-bottom: 6rem !important; }
@@ -358,6 +367,7 @@
     }
     html.is-standalone .app-header-safe { padding-top: calc(var(--safe-area-top) + 1.25rem) !important; }
     html.is-standalone .app-main-scroll { padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important; }
+    html.is-standalone .app-main-scroll--with-map-fixed-header { padding-top: calc(var(--safe-area-top) + 5.75rem) !important; }
     html.is-standalone .app-main-scroll--with-smart-header { padding-top: calc(var(--smart-header-top-height, calc(var(--safe-area-top) + 5rem)) + var(--smart-header-content-gap)) !important; }
     html.is-standalone .app-main-scroll--with-smart-header-tabs { padding-top: calc(var(--smart-header-total-height, calc(var(--safe-area-top) + 8rem)) + var(--smart-header-content-gap)) !important; }
     html.is-standalone .app-main-content-safe { padding-bottom: calc(var(--safe-area-bottom) + 6rem) !important; }
