@@ -68,6 +68,7 @@ export function renderMainCore({
   const isBusinessProfile = !!String(profile?.restaurantId || "").trim()
     || String(profile?.role || "").trim().toLowerCase() === "business";
   const hasSmartHeader = !!String(state?.activeTab || "").trim()
+    && state?.activeTab !== "map"
     && !smartHeaderBlockedState;
   const hasSmartHeaderTabs = hasSmartHeader
     && state?.activeTab === "profile"

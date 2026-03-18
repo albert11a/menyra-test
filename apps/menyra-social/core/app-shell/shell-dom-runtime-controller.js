@@ -95,8 +95,7 @@ export function createShellDomRuntimeController({
 
   function syncThemeColor() {
     if (!doc) return;
-    const useSurface = doc.documentElement.classList.contains("modal-open")
-      || doc.documentElement.classList.contains("drawer-open");
+    const useSurface = doc.documentElement.classList.contains("modal-open");
     const nextColor = useSurface ? OVERLAY_CHROME_COLOR : APP_CHROME_COLOR;
     syncThemeColorMeta(nextColor);
   }
@@ -227,7 +226,7 @@ export function createShellDomRuntimeController({
         { id: "settings", label: "Optionen", icon: "settings" }
       ];
     return `
-    <div id="drawerRoot" class="fixed inset-0 z-[2000] overflow-hidden transition-all duration-500 ${state?.drawerOpen ? "visible" : "invisible"}" style="overscroll-behavior:none;">
+    <div id="drawerRoot" aria-hidden="${state?.drawerOpen ? "false" : "true"}" class="fixed inset-0 z-[2000] overflow-hidden transition-all duration-500 ${state?.drawerOpen ? "visible pointer-events-auto" : "invisible pointer-events-none"}" style="overscroll-behavior:none;">
       <div id="drawerOverlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity ${state?.drawerOpen ? "opacity-100" : "opacity-0"}" style="touch-action:none; overscroll-behavior:none;"></div>
       <div id="drawerPanel" class="absolute left-0 top-0 bottom-0 w-80 max-w-[86vw] bg-white shadow-2xl transition-transform duration-500 p-8 flex flex-col overflow-y-auto ${state?.drawerOpen ? "translate-x-0" : "-translate-x-full"}" style="overscroll-behavior:contain; -webkit-overflow-scrolling:touch; padding-top:calc(var(--safe-area-top) + 2rem); padding-bottom:calc(var(--safe-area-bottom) + 2rem);">
         <div class="flex justify-between items-center mb-10">
@@ -360,6 +359,9 @@ export function createShellDomRuntimeController({
     if (!root || !overlay || !panel) return;
     root.classList.toggle("visible", !!state?.drawerOpen);
     root.classList.toggle("invisible", !state?.drawerOpen);
+    root.classList.toggle("pointer-events-auto", !!state?.drawerOpen);
+    root.classList.toggle("pointer-events-none", !state?.drawerOpen);
+    root.setAttribute("aria-hidden", state?.drawerOpen ? "false" : "true");
     overlay.classList.toggle("opacity-100", !!state?.drawerOpen);
     overlay.classList.toggle("opacity-0", !state?.drawerOpen);
     panel.classList.toggle("translate-x-0", !!state?.drawerOpen);

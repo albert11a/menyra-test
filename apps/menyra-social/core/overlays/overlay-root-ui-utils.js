@@ -27,8 +27,7 @@ function syncThemeColorMeta(doc, nextColor) {
 function syncThemeColor(documentObj) {
   const doc = documentObj || null;
   if (!doc) return;
-  const useSurface = doc.documentElement.classList.contains("modal-open")
-    || doc.documentElement.classList.contains("drawer-open");
+  const useSurface = doc.documentElement.classList.contains("modal-open");
   const nextColor = useSurface ? OVERLAY_CHROME_COLOR : APP_CHROME_COLOR;
   syncThemeColorMeta(doc, nextColor);
 }

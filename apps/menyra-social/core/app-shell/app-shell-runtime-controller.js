@@ -46,6 +46,7 @@ export function createAppShellRuntimeController(deps = {}) {
     captureChatInputFocusStateFn,
     restoreChatInputFocusStateFn,
     renderOverlaysFn,
+    updateShellDomFn,
     updateNotificationBadgesFn,
     updateFocusRotationFn,
     initLeafletIfNeededFn,
@@ -615,7 +616,8 @@ export function createAppShellRuntimeController(deps = {}) {
       setRenderQueued(true);
       return;
     }
-    if (doc) {
+    if (typeof updateShellDomFn === "function") updateShellDomFn();
+    else if (doc) {
       const isDrawerOpen = !!state?.drawerOpen;
       doc.documentElement.classList.toggle("drawer-open", isDrawerOpen);
       doc.body.classList.toggle("drawer-open", isDrawerOpen);
