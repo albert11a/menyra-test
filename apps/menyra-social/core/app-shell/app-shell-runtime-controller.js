@@ -198,6 +198,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function hasBlockingOverlayOpen() {
     return !!state.profileModal?.open
+      || !!state.storyModal?.open
       || !!state.postModal?.open
       || !!state.likesModal?.open
       || !!state.menuModal?.open
@@ -258,6 +259,7 @@ export function createAppShellRuntimeController(deps = {}) {
 
   function shouldShowSmartHeaderTabs() {
     const overlayIsolationActive = !!state.profileModal?.open
+      || !!state.storyModal?.open
       || !!state.postModal?.open
       || !!state.likesModal?.open
       || !!state.menuModal?.open
@@ -428,6 +430,7 @@ export function createAppShellRuntimeController(deps = {}) {
   function shouldShowBusinessTopTabs() {
     const overlayIsolationActive = !!state.drawerOpen
       || !!state.profileModal?.open
+      || !!state.storyModal?.open
       || !!state.postModal?.open
       || !!state.likesModal?.open
       || !!state.menuModal?.open
@@ -683,10 +686,12 @@ export function createAppShellRuntimeController(deps = {}) {
         && state.activeTab === "chat"
         && !!state.chatModal.open
         && !!state.chatModal.profile;
+      const isStoryOverlayOpen = mode === "main" && state.activeTab === "feed" && !!state.storyModal?.open;
       const preserveMainScroll = mode === "main"
         && prevLastRenderMode === "main"
         && state.activeTab === prevLastRenderedMainTab
-        && !isChatThreadOpen;
+        && !isChatThreadOpen
+        && !isStoryOverlayOpen;
       const reuseFeed = preserveMainScroll && state.activeTab === "feed"
         ? doc?.getElementById("feedView")
         : null;

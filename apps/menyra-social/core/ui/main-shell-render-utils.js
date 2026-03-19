@@ -88,6 +88,7 @@ export function renderMainCore({
   const hasBusinessTopTabs = !!String(businessTopTabsHtml || "").trim();
   const profile = state?.profileView?.profile || state?.userProfile || null;
   const smartHeaderOverlayIsolationActive = !!state?.profileModal?.open
+    || !!state?.storyModal?.open
     || !!state?.postModal?.open
     || !!state?.likesModal?.open
     || !!state?.menuModal?.open
