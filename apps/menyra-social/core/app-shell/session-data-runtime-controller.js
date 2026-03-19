@@ -515,7 +515,6 @@ export function createSessionDataRuntimeController({
     state.businessPosts = [];
     state.profileView = null;
     state.profileModal = { open: false, profile: null };
-    state.storyModal = { open: false, restaurantId: "", name: "", logoUrl: "", stories: [], loading: false };
     state.chatSettingsOpen = false;
     state.chatListScope = "inbox";
     state.chatThreadMenuId = "";

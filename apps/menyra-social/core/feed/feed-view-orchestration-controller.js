@@ -22,7 +22,6 @@ export function createFeedViewOrchestrationController({
   resolveRestaurantLogoFn = () => "",
   resolveStoryRenderIdentityFn = null,
   getOptimizedImageUrlFn = () => "",
-  loadStoryItemsForRestaurantFn = async () => [],
   buildUploadStateForIntentFn = (_intent = "", currentUpload = {}) => currentUpload,
   setStateFn = () => {},
   openGuestAuthPromptFn = () => false,
@@ -48,9 +47,6 @@ export function createFeedViewOrchestrationController({
   const doc = documentObj || (typeof document !== "undefined" ? document : null);
   const win = windowObj || (typeof window !== "undefined" ? window : null);
   const storyViewerHintPrefix = "mnyra_story_viewer_hint_v1:";
-  let storyOverlayCleanup = null;
-  let storyOverlayNode = null;
-  let storyOverlayRequestToken = 0;
   const hasProfileUid = () => !!String(state.userProfile?.uid || "").trim();
   const hasBusinessProfileHint = () => !!String(state.userProfile?.restaurantId || "").trim();
   const hasCeoOwnerProfileHint = () => {
@@ -126,14 +122,6 @@ export function createFeedViewOrchestrationController({
   const isRenderableStory = (story = {}) => {
     const identity = resolveStoryRenderIdentity(story);
     return !!identity.storyRestaurantId;
-  };
-  const findStoryByRestaurantId = (restaurantId = "") => {
-    const rid = String(restaurantId || "").trim();
-    if (!rid) return null;
-    return (Array.isArray(state.stories) ? state.stories : []).find((story) => {
-      const identity = resolveStoryRenderIdentity(story);
-      return identity.storyRestaurantId === rid;
-    }) || null;
   };
   const findFeedPostById = (postId = "") => {
     const safePostId = String(postId || "").trim();
@@ -275,441 +263,6 @@ export function createFeedViewOrchestrationController({
         } catch {}
       }
     }, 90);
-  };
-  const buildStoryIframeSrc = (story = {}, { muted = true } = {}) => {
-    const rawEmbedUrl = String(story?.embedUrl || "").trim();
-    const libraryId = String(story?.libraryId || "").trim();
-    const videoId = String(story?.videoId || "").trim();
-    const base = rawEmbedUrl || ((libraryId && videoId)
-      ? `https://iframe.mediadelivery.net/embed/${encodeURIComponent(libraryId)}/${encodeURIComponent(videoId)}`
-      : "");
-    if (!base) return "";
-    try {
-      const url = new URL(base, win?.location?.origin || "https://example.com");
-      url.searchParams.set("autoplay", "true");
-      url.searchParams.set("loop", "true");
-      url.searchParams.set("muted", muted ? "true" : "false");
-      url.searchParams.set("preload", "true");
-      url.searchParams.set("controls", "0");
-      return url.toString();
-    } catch {
-      const separator = base.includes("?") ? "&" : "?";
-      return `${base}${separator}autoplay=true&loop=true&muted=${muted ? "true" : "false"}&preload=true&controls=0`;
-    }
-  };
-  const normalizeStoryModalItems = (story = {}) => {
-    const items = Array.isArray(story?.storyItems) ? story.storyItems : [];
-    return items
-      .map((item = {}, index = 0) => {
-        const embedUrl = String(item.embedUrl || "").trim();
-        const libraryId = String(item.libraryId || "").trim();
-        const videoId = String(item.videoId || "").trim();
-        const videoUrl = String(item.videoUrl || "").trim();
-        const imageUrl = String(item.imageUrl || "").trim();
-        const mediaType = String(item.mediaType || (videoUrl || embedUrl || (libraryId && videoId) ? "video" : "image")).trim().toLowerCase() === "video"
-          ? "video"
-          : "image";
-        const hasMedia = !!videoUrl || !!imageUrl || !!embedUrl || (!!libraryId && !!videoId);
-        if (!hasMedia) return null;
-        return {
-          id: String(item.id || `${story?.restaurantId || "story"}-${index}`).trim(),
-          restaurantId: String(item.restaurantId || story?.restaurantId || "").trim(),
-          title: String(item.title || "").trim(),
-          description: String(item.description || "").trim(),
-          menuItemId: String(item.menuItemId || "").trim(),
-          mediaType,
-          videoUrl,
-          imageUrl,
-          embedUrl,
-          libraryId,
-          videoId,
-          createdAt: toDateSafeFn(item.createdAt) || new Date(0)
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-  };
-  const loadStoryItemsForRestaurant = typeof loadStoryItemsForRestaurantFn === "function"
-    ? loadStoryItemsForRestaurantFn
-    : (async () => []);
-  const openStoryOverlay = async (story = {}) => {
-    const requestToken = ++storyOverlayRequestToken;
-    const identity = resolveStoryRenderIdentity(story);
-    if (!identity.storyRestaurantId) return false;
-    let stories = normalizeStoryModalItems(story);
-    if (!stories.length) {
-      setStateFn({
-        storyModal: {
-          open: true,
-          restaurantId: identity.storyRestaurantId,
-          name: String(identity.storyLabel || "").trim(),
-          logoUrl: String(identity.logoSource || "").trim(),
-          stories: [],
-          loading: true
-        }
-      });
-      try {
-        const loaded = await loadStoryItemsForRestaurant(identity.storyRestaurantId, 20);
-        stories = normalizeStoryModalItems({ ...story, storyItems: loaded });
-        if (stories.length && Array.isArray(state.stories)) {
-          state.stories = state.stories.map((item) => {
-            const itemIdentity = resolveStoryRenderIdentity(item);
-            if (itemIdentity.storyRestaurantId !== identity.storyRestaurantId) return item;
-            return {
-              ...item,
-              storyItems: stories
-            };
-          });
-        }
-      } catch {
-        stories = [];
-      }
-      if (requestToken !== storyOverlayRequestToken) return false;
-      if (!stories.length) {
-        setStateFn({
-          storyModal: {
-            open: false,
-            restaurantId: "",
-            name: "",
-            logoUrl: "",
-            stories: [],
-            loading: false
-          }
-        });
-        return false;
-      }
-    }
-    setStateFn({
-      storyModal: {
-        open: true,
-        restaurantId: identity.storyRestaurantId,
-        name: String(identity.storyLabel || "").trim(),
-        logoUrl: String(identity.logoSource || "").trim(),
-        stories,
-        loading: false
-      }
-    });
-    return true;
-  };
-  const closeStoryOverlay = () => {
-    if (!state.storyModal?.open) return;
-    storyOverlayRequestToken += 1;
-    setStateFn({
-      storyModal: {
-        open: false,
-        restaurantId: "",
-        name: "",
-        logoUrl: "",
-        stories: [],
-        loading: false
-      }
-    });
-  };
-  const renderStoryOverlay = () => {
-    if (!state.storyModal?.open) return "";
-    const storyItems = Array.isArray(state.storyModal?.stories) ? state.storyModal.stories : [];
-    const title = String(state.storyModal?.name || "Story").trim() || "Story";
-    const logoUrl = String(state.storyModal?.logoUrl || "").trim();
-    const restaurantId = String(state.storyModal?.restaurantId || "").trim();
-    const loading = !!state.storyModal?.loading;
-    return `
-      <div id="storyOverlay" class="fixed inset-0 z-[95] bg-black text-white">
-        <style>
-          #storyOverlayReels { height: 100vh; height: 100svh; height: 100dvh; overflow-y: auto; scroll-snap-type: y mandatory; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; scroll-behavior: auto; }
-          #storyOverlayReels::-webkit-scrollbar { display: none; }
-          #storyOverlayReels { scrollbar-width: none; }
-          .story-overlay-reel { position: relative; height: 100vh; height: 100svh; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; background: #000; overflow: hidden; }
-          .story-overlay-media, .story-overlay-image, .story-overlay-iframe { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; border: 0; }
-          .story-overlay-vignette { position: absolute; inset: 0; pointer-events: none; background:
-            radial-gradient(120% 70% at 50% 10%, rgba(0,0,0,0.12) 0%, rgba(0,0,0,0.55) 70%, rgba(0,0,0,0.82) 100%),
-            linear-gradient(to top, rgba(0,0,0,0.58), rgba(0,0,0,0.00) 45%); z-index: 2; }
-        </style>
-        <div id="storyOverlayBackdrop" class="absolute inset-0 bg-black"></div>
-        <div class="absolute top-0 left-0 right-0 z-[2] px-3 pt-[calc(env(safe-area-inset-top)+10px)] pb-3 pointer-events-none">
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-3 min-w-0 pointer-events-auto">
-              <button id="storyOverlayClose" type="button" class="w-11 h-11 rounded-2xl bg-black/45 border border-white/10 backdrop-blur-md flex items-center justify-center text-white text-xl font-black active:scale-95 transition-transform">×</button>
-              <div class="flex items-center gap-3 px-3 py-2 rounded-[1.2rem] bg-black/35 border border-white/10 backdrop-blur-md min-w-0">
-                <div class="w-8 h-8 rounded-xl overflow-hidden border border-white/10 bg-white/10 shrink-0">
-                  ${logoUrl ? `<img src="${escapeHtmlFn(logoUrl)}" class="w-full h-full object-contain bg-white" />` : `<div class="w-full h-full bg-white/10"></div>`}
-                </div>
-                <div class="min-w-0">
-                  <div class="text-[12px] font-black tracking-tight truncate">${escapeHtmlFn(title)}</div>
-                  <div class="text-[9px] font-black uppercase tracking-[0.24em] text-white/60">Stories</div>
-                </div>
-              </div>
-            </div>
-            <div id="storyOverlayCounter" class="pointer-events-none px-3 py-2 rounded-[1.2rem] bg-black/35 border border-white/10 backdrop-blur-md text-[11px] font-black tracking-widest uppercase">${storyItems.length ? `1 / ${storyItems.length}` : ""}</div>
-          </div>
-        </div>
-        ${loading && !storyItems.length ? `
-          <div class="absolute inset-0 z-[1] flex items-center justify-center">
-            <div class="w-10 h-10 rounded-full border-2 border-white/15 border-t-white animate-spin"></div>
-          </div>
-        ` : `
-          <div id="storyOverlayReels" class="relative z-[1]">
-            ${(storyItems.length ? storyItems : []).map((item, index) => {
-              const hasIframe = !!String(item.embedUrl || "").trim() || (!!String(item.libraryId || "").trim() && !!String(item.videoId || "").trim());
-              const menuHref = item.menuItemId
-                ? buildUrlFn("apps/menyra-social/index.html", { r: restaurantId, tab: "menu", src: "story" })
-                : "";
-              return `
-                <section class="story-overlay-reel" data-story-overlay-reel="${index}" data-story-overlay-index="${index}">
-                  ${hasIframe ? `
-                    <div
-                      class="absolute inset-0"
-                      data-story-overlay-kind="iframe"
-                      data-story-overlay-slot="${index}"
-                      data-story-overlay-iframe-muted="${escapeHtmlFn(buildStoryIframeSrc(item, { muted: true }))}"
-                      data-story-overlay-iframe-unmuted="${escapeHtmlFn(buildStoryIframeSrc(item, { muted: false }))}"
-                    ></div>
-                  ` : item.mediaType === "video" ? `
-                    <video
-                      class="story-overlay-media"
-                      data-story-overlay-kind="video"
-                      data-story-overlay-video="${index}"
-                      src="${escapeHtmlFn(item.videoUrl)}"
-                      ${item.imageUrl ? `poster="${escapeHtmlFn(item.imageUrl)}"` : ""}
-                      playsinline
-                      webkit-playsinline
-                      loop
-                      preload="${index === 0 ? "auto" : "metadata"}"
-                    ></video>
-                  ` : `
-                    <img
-                      class="story-overlay-image"
-                      data-story-overlay-kind="image"
-                      src="${escapeHtmlFn(item.imageUrl)}"
-                      loading="${index < 2 ? "eager" : "lazy"}"
-                      decoding="async"
-                    />
-                  `}
-                  <div class="story-overlay-vignette"></div>
-                  <div class="absolute right-3 bottom-[calc(env(safe-area-inset-bottom)+6.5rem)] z-[3]">
-                    <div class="w-[60px] h-[46px] rounded-[18px] bg-black/45 border border-white/10 backdrop-blur-md flex items-center justify-center text-[13px] font-bold">
-                      ${index + 1}/${storyItems.length}
-                    </div>
-                  </div>
-                  <div class="absolute left-3 right-[5rem] bottom-[calc(env(safe-area-inset-bottom)+1.75rem)] z-[3] flex flex-col gap-3">
-                    ${item.title ? `<div class="text-[18px] font-black leading-tight tracking-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">${escapeHtmlFn(item.title)}</div>` : ""}
-                    ${item.description ? `<div class="text-[14px] leading-[1.45] text-white/90 max-w-[92%] whitespace-pre-wrap drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">${escapeHtmlFn(item.description)}</div>` : ""}
-                    ${menuHref ? `<a href="${escapeHtmlFn(menuHref)}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/15 border border-white/20 backdrop-blur-md text-white text-[13px] font-semibold w-fit">Produkt ansehen</a>` : ""}
-                  </div>
-                </section>
-              `;
-            }).join("")}
-          </div>
-        `}
-      </div>
-    `;
-  };
-  const syncStoryOverlayRuntime = () => {
-    const overlay = doc?.getElementById("storyOverlay");
-    if (overlay && overlay === storyOverlayNode) return;
-    if (typeof storyOverlayCleanup === "function") {
-      storyOverlayCleanup();
-      storyOverlayCleanup = null;
-    }
-    storyOverlayNode = null;
-    if (!overlay) return;
-    storyOverlayNode = overlay;
-    const reelsContainer = doc.getElementById("storyOverlayReels");
-    const closeBtn = doc.getElementById("storyOverlayClose");
-    const backdrop = doc.getElementById("storyOverlayBackdrop");
-    const counter = doc.getElementById("storyOverlayCounter");
-    const reels = Array.from(doc.querySelectorAll("[data-story-overlay-reel]"));
-    if (!reelsContainer || !reels.length) {
-      if (closeBtn) closeBtn.addEventListener("click", closeStoryOverlay, { once: true });
-      return;
-    }
-
-    const entries = reels.map((reel, index) => {
-      const video = reel.querySelector(`[data-story-overlay-video="${index}"]`);
-      const iframeSlot = reel.querySelector(`[data-story-overlay-slot="${index}"]`);
-      return {
-        index,
-        reel,
-        video: video instanceof HTMLVideoElement ? video : null,
-        iframeSlot: iframeSlot instanceof HTMLElement ? iframeSlot : null,
-        iframeEl: null
-      };
-    });
-
-    let activeIndex = 0;
-    let hasUnlockedMedia = false;
-    let autoplayProbeState = "idle";
-    let syncFrame = 0;
-    const cleanups = [];
-    const getAutoplayPolicyCapability = (mediaEl = null) => {
-      try {
-        const policy = win?.navigator?.getAutoplayPolicy?.(mediaEl || "mediaelement");
-        if (policy === "allowed") return "allowed";
-        if (policy === "allowed-muted") return "allowed-muted";
-        if (policy === "disallowed") return "disallowed";
-      } catch {}
-      return "";
-    };
-    const policy = getAutoplayPolicyCapability();
-    if (policy === "allowed") {
-      autoplayProbeState = "allowed";
-      hasUnlockedMedia = true;
-    } else if (policy === "allowed-muted" || policy === "disallowed") {
-      autoplayProbeState = "blocked";
-    }
-
-    const mountIframe = (entry, { muted = true } = {}) => {
-      if (!entry?.iframeSlot) return null;
-      const nextSrc = String(
-        muted
-          ? entry.iframeSlot.dataset.storyOverlayIframeMuted || ""
-          : entry.iframeSlot.dataset.storyOverlayIframeUnmuted || ""
-      ).trim();
-      if (!nextSrc) return null;
-      if (entry.iframeEl && entry.iframeEl.getAttribute("src") === nextSrc) return entry.iframeEl;
-      if (entry.iframeEl) {
-        entry.iframeEl.remove();
-        entry.iframeEl = null;
-      }
-      const iframe = doc.createElement("iframe");
-      iframe.className = "story-overlay-iframe";
-      iframe.allow = "autoplay; fullscreen; picture-in-picture";
-      iframe.setAttribute("allowfullscreen", "");
-      iframe.src = nextSrc;
-      entry.iframeSlot.appendChild(iframe);
-      entry.iframeEl = iframe;
-      return iframe;
-    };
-    const unmountIframe = (entry) => {
-      if (!entry?.iframeEl) return;
-      entry.iframeEl.remove();
-      entry.iframeEl = null;
-    };
-    const updateCounter = () => {
-      if (!counter) return;
-      counter.textContent = `${activeIndex + 1} / ${entries.length}`;
-    };
-    const syncMediaPlayback = ({ fromUserGesture = false } = {}) => {
-      entries.forEach((entry) => {
-        const isActive = entry.index === activeIndex;
-        if (entry.iframeSlot) {
-          if (isActive) {
-            mountIframe(entry, { muted: !(hasUnlockedMedia || autoplayProbeState === "allowed") });
-          } else {
-            unmountIframe(entry);
-          }
-        }
-        if (!entry.video) return;
-        entry.video.preload = isActive ? "auto" : "metadata";
-        if (!isActive) {
-          entry.video.defaultMuted = true;
-          entry.video.muted = true;
-          entry.video.volume = 0;
-          entry.video.pause();
-          return;
-        }
-        if (!fromUserGesture && !hasUnlockedMedia && autoplayProbeState === "idle") {
-          autoplayProbeState = "pending";
-          entry.video.defaultMuted = false;
-          entry.video.muted = false;
-          entry.video.volume = 1;
-          const playAttempt = entry.video.play();
-          if (playAttempt && typeof playAttempt.then === "function") {
-            playAttempt.then(() => {
-              autoplayProbeState = "allowed";
-              hasUnlockedMedia = true;
-              syncMediaPlayback();
-            }).catch(() => {
-              autoplayProbeState = "blocked";
-              entry.video.defaultMuted = true;
-              entry.video.muted = true;
-              entry.video.volume = 0;
-              void entry.video.play().catch(() => {});
-            });
-          } else {
-            autoplayProbeState = "allowed";
-            hasUnlockedMedia = true;
-          }
-          return;
-        }
-        const withSound = hasUnlockedMedia || autoplayProbeState === "allowed";
-        entry.video.defaultMuted = !withSound;
-        entry.video.muted = !withSound;
-        entry.video.volume = withSound ? 1 : 0;
-        if (entry.video.paused || fromUserGesture) {
-          void entry.video.play().catch(() => {});
-        }
-      });
-      updateCounter();
-    };
-    const setActiveIndex = (nextIndex, { fromUserGesture = false } = {}) => {
-      const normalized = Math.max(0, Math.min(entries.length - 1, Number(nextIndex) || 0));
-      if (normalized === activeIndex && !fromUserGesture) return;
-      activeIndex = normalized;
-      syncMediaPlayback({ fromUserGesture });
-    };
-    const scheduleSync = () => {
-      if (!win || syncFrame) return;
-      syncFrame = win.requestAnimationFrame(() => {
-        syncFrame = 0;
-        const viewportHeight = Math.max(1, reelsContainer.clientHeight || win.innerHeight || 1);
-        const nextIndex = Math.round((reelsContainer.scrollTop || 0) / viewportHeight);
-        setActiveIndex(nextIndex);
-      });
-    };
-    const handleUnlock = () => {
-      if (hasUnlockedMedia) return;
-      hasUnlockedMedia = true;
-      syncMediaPlayback({ fromUserGesture: true });
-      reelsContainer.removeEventListener("touchstart", handleUnlock, true);
-      reelsContainer.removeEventListener("pointerdown", handleUnlock, true);
-      doc.removeEventListener("keydown", handleUnlock, true);
-    };
-    const handleEscape = (event) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      closeStoryOverlay();
-    };
-
-    closeBtn?.addEventListener("click", closeStoryOverlay);
-    backdrop?.addEventListener("click", closeStoryOverlay);
-    reelsContainer.addEventListener("scroll", scheduleSync, { passive: true });
-    reelsContainer.addEventListener("touchstart", handleUnlock, { capture: true, passive: true });
-    reelsContainer.addEventListener("pointerdown", handleUnlock, { capture: true, passive: true });
-    doc.addEventListener("keydown", handleEscape);
-    doc.addEventListener("keydown", handleUnlock, true);
-
-    cleanups.push(() => closeBtn?.removeEventListener("click", closeStoryOverlay));
-    cleanups.push(() => backdrop?.removeEventListener("click", closeStoryOverlay));
-    cleanups.push(() => reelsContainer.removeEventListener("scroll", scheduleSync));
-    cleanups.push(() => reelsContainer.removeEventListener("touchstart", handleUnlock, true));
-    cleanups.push(() => reelsContainer.removeEventListener("pointerdown", handleUnlock, true));
-    cleanups.push(() => doc.removeEventListener("keydown", handleEscape));
-    cleanups.push(() => doc.removeEventListener("keydown", handleUnlock, true));
-    cleanups.push(() => {
-      if (syncFrame && win?.cancelAnimationFrame) win.cancelAnimationFrame(syncFrame);
-      entries.forEach((entry) => {
-        if (entry.video) {
-          entry.video.pause();
-          entry.video.muted = true;
-          entry.video.volume = 0;
-        }
-        unmountIframe(entry);
-      });
-    });
-
-    storyOverlayCleanup = () => {
-      cleanups.forEach((cleanup) => {
-        try {
-          cleanup();
-        } catch {}
-      });
-      if (storyOverlayNode === overlay) {
-        storyOverlayNode = null;
-      }
-    };
-
-    reelsContainer.scrollTop = 0;
-    setActiveIndex(0);
   };
 
   function renderFeedComposer() {
@@ -979,16 +532,13 @@ export function createFeedViewOrchestrationController({
       <div id="feedList" class="px-8 py-4 space-y-12">
         ${renderFeedList(feedPosts)}
       </div>
-      ${renderStoryOverlay()}
     </div>
   `;
   }
 
   function bindFeedDelegation() {
     const feedView = doc?.getElementById("feedView");
-    if (!feedView) return;
-    syncStoryOverlayRuntime();
-    if (feedView.dataset.bound === "true") return;
+    if (!feedView || feedView.dataset.bound === "true") return;
     const handleStoryWarmup = (target) => {
       if (!(target instanceof Element)) return;
       const storyLink = target.closest("[data-story-item]");
@@ -1010,15 +560,6 @@ export function createFeedViewOrchestrationController({
       const storyLink = target.closest("[data-story-item]");
       if (storyLink) {
         handleStoryWarmup(storyLink);
-        const restaurantId = storyLink.getAttribute("data-story-item") || "";
-        const story = findStoryByRestaurantId(restaurantId);
-        event.preventDefault();
-        if (story) {
-          void openStoryOverlay(story);
-        } else {
-          const href = storyLink.getAttribute("href") || "";
-          if (href && win?.location) win.location.href = href;
-        }
         return;
       }
       const likeBtn = target.closest("[data-feed-post-like]");
@@ -1091,7 +632,6 @@ export function createFeedViewOrchestrationController({
             selectedBusiness: null,
             profileView: null,
             profileModal: { open: false, profile: null },
-            storyModal: { open: false, restaurantId: "", name: "", logoUrl: "", stories: [], loading: false },
             postModal: { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false },
             likesModal: { open: false, postId: "", animate: false },
             leadModal: { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] },
