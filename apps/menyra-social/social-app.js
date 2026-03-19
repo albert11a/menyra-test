@@ -107,6 +107,7 @@ import { createPublicProfileRuntimeController } from "./core/profile/public-prof
 import { createSelfProfileRuntimeController } from "./core/profile/self-profile-runtime-controller.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
 import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
+import { projectPostCollectionThroughEntityMap } from "./core/profile/post-entity-registry-utils.js";
 import { createCeoCrmCountRuntimeController } from "./core/crm/ceo-crm-count-runtime-controller.js";
 import { createCrmRuntimeController } from "./core/crm/crm-runtime-controller.js";
 import { createBusinessAccountsRuntimeController } from "./core/business-accounts/business-accounts-runtime-controller.js";
@@ -907,6 +908,7 @@ const state = {
   selectedBusiness: null,
   isLoading: false,
   feedPosts: [],
+  postEntityMap: new Map(),
   restaurants: [],
   restaurantMap: new Map(),
   businessLocations: [],
@@ -4736,6 +4738,8 @@ function renderChatModal() {
 function isFollowingProfile(profile = {}) {
   const uid = String(profile?.uid || "").trim();
   if (uid && state.followingTargetIds.includes(uid)) return true;
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  if (restaurantId && state.followingTargetIds.includes(restaurantId)) return true;
   const followKey = normalizeFollowHandle(profile?.handle || "");
   return !!(followKey && state.followingHandles.includes(followKey));
 }
@@ -5320,7 +5324,7 @@ async function loadUserPostsForUser(uid) {
     }
     const rows = [];
     snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    return rows
+    return projectPostCollectionThroughEntityMap(state, rows
       .map((row) => ({
         id: row.id,
         url: row.url || row.mediaUrl || row.media?.[0]?.url || "",
@@ -5334,7 +5338,7 @@ async function loadUserPostsForUser(uid) {
         ownerType: "user",
         ownerId: uid
       }))
-      .filter((row) => row.url);
+      .filter((row) => row.url));
   } catch (err) {
     console.error(err);
     return [];

@@ -1,3 +1,5 @@
+import { clearPostEntityMap, projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
+
 export function createSessionDataRuntimeController({
   state = null,
   dataLoaded = null,
@@ -121,6 +123,7 @@ export function createSessionDataRuntimeController({
   let storiesRefreshQueued = false;
   let storiesRefreshForce = false;
   let storiesRefreshUi = false;
+  let renderRequested = false;
 
   if (!state || !dataLoaded) {
     return {
@@ -163,8 +166,8 @@ export function createSessionDataRuntimeController({
     const feedCache = readCacheFn(cacheKeys.feed);
     let cachedHydrationIds = [];
     if (feedCache?.data?.length) {
-      state.feedPosts = feedCache.data;
-      cachedHydrationIds = collectFeedHydrationIdsFn(feedCache.data, { max: 6 });
+      state.feedPosts = projectPostCollectionThroughEntityMap(state, feedCache.data);
+      cachedHydrationIds = collectFeedHydrationIdsFn(state.feedPosts, { max: 6 });
     }
 
     const storiesCache = readCacheFn(cacheKeys.stories);
@@ -186,7 +189,7 @@ export function createSessionDataRuntimeController({
       if (feedUpdated || storiesUpdated) {
         const inMain = getLastRenderModeFn() === "main";
         const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
-        if (!updatedFeed) renderFn();
+        if (!updatedFeed) requestRender();
       }
 
       if (needsRestaurantMetaHydration) {
@@ -202,7 +205,7 @@ export function createSessionDataRuntimeController({
             if (feedChanged || storiesChanged) {
               const inMain = getLastRenderModeFn() === "main";
               const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
-              if (!updatedFeed) renderFn();
+              if (!updatedFeed) requestRender();
             }
           })
           .catch(() => null);
@@ -232,6 +235,59 @@ export function createSessionDataRuntimeController({
     });
   }
 
+  function serializePostSignatureValue(value) {
+    if (value === null || value === undefined) return "";
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      return String(value);
+    }
+    if (value instanceof Date) return String(value.getTime());
+    if (typeof value?.seconds === "number") {
+      return `${value.seconds}:${Number(value?.nanoseconds) || 0}`;
+    }
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+
+  function buildPostCollectionSignature(items = []) {
+    if (!Array.isArray(items) || !items.length) return "";
+    return items.map((item = {}) => ([
+      item.id,
+      item.ownerType,
+      item.ownerId,
+      item.restaurantId,
+      item.url,
+      item.image,
+      item.caption,
+      item.content,
+      item.title,
+      item.logo,
+      item.business,
+      item.location,
+      item.type,
+      item.category,
+      Number(item.likes ?? 0) || 0,
+      Number(item.comments ?? 0) || 0,
+      !!item.isVideo,
+      item.createdAt
+    ].map(serializePostSignatureValue).join("::"))).join("|");
+  }
+
+  function havePostCollectionsChanged(prev = [], next = []) {
+    return buildPostCollectionSignature(prev) !== buildPostCollectionSignature(next);
+  }
+
+  function requestRender() {
+    if (renderRequested) return;
+    renderRequested = true;
+    Promise.resolve().then(() => {
+      renderRequested = false;
+      renderFn();
+    });
+  }
+
   function resolveMenuStatusBadgeVisible(value, fallback = true) {
     if (typeof value === "boolean") return value;
     return !!fallback;
@@ -258,7 +314,7 @@ export function createSessionDataRuntimeController({
       ...state.menu,
       statusBadgeVisible: nextVisible
     };
-    renderFn();
+    requestRender();
   }
 
   function stopMenuMetaListener() {
@@ -321,12 +377,16 @@ export function createSessionDataRuntimeController({
     } catch {}
 
     const userPostsCache = readCacheFn(userPostsKeyFn(uid));
-    state.userPosts = userPostsCache?.data?.length ? userPostsCache.data : [];
+    state.userPosts = userPostsCache?.data?.length
+      ? projectPostCollectionThroughEntityMap(state, userPostsCache.data)
+      : [];
 
     const rid = state.userProfile.restaurantId || "";
     if (rid) {
       const businessCache = readCacheFn(businessPostsKeyFn(rid));
-      state.businessPosts = businessCache?.data?.length ? businessCache.data : [];
+      state.businessPosts = businessCache?.data?.length
+        ? projectPostCollectionThroughEntityMap(state, businessCache.data)
+        : [];
     } else {
       state.businessPosts = [];
     }
@@ -448,6 +508,8 @@ export function createSessionDataRuntimeController({
     userSearchAvatarCacheMap.clear();
     businessProfileCacheMap.clear();
     userProfileCacheMap.clear();
+    clearPostEntityMap(state);
+    state.feedPosts = projectPostCollectionThroughEntityMap(state, state.feedPosts);
     state.postMeta = {};
     state.userPosts = [];
     state.businessPosts = [];
@@ -569,11 +631,11 @@ export function createSessionDataRuntimeController({
       const updatedSearch = state.activeTab === "search" && inMain && refreshSearchViewFn();
       if (!updatedFeed && !updatedSearch) {
         if (!inMain) {
-          renderFn();
+          requestRender();
         } else if (state.activeTab === "map") {
-          renderFn();
+          requestRender();
         } else if (state.activeTab === "feed" || state.activeTab === "search") {
-          renderFn();
+          requestRender();
         }
       }
     };
@@ -633,7 +695,7 @@ export function createSessionDataRuntimeController({
     if (cached?.data?.length) {
       const wasEmpty = !state.feedPosts.length;
       if (wasEmpty) {
-        state.feedPosts = cached.data;
+        state.feedPosts = projectPostCollectionThroughEntityMap(state, cached.data);
       }
       syncFeedPostLogosFn();
       const storiesUpdated = state.stories.length ? false : refreshFeedStoriesFn({ force: wasEmpty });
@@ -643,11 +705,11 @@ export function createSessionDataRuntimeController({
         const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
         if (updatedFeed) return;
         if (!inMain) {
-          renderFn();
+          requestRender();
           return;
         }
         if (state.activeTab === "feed") {
-          renderFn();
+          requestRender();
         }
       }
       preloadFeedHeroImagesFn(state.feedPosts);
@@ -677,24 +739,23 @@ export function createSessionDataRuntimeController({
       const cachedFeed = readCacheFn(cacheKeys.feed);
       saveFeedPostsFn(next, { lastDeltaCheck: cachedFeed?.meta?.lastDeltaCheck || 0 });
 
-      const prevIds = state.feedPosts.map((item) => String(item.id)).join("|");
-      const nextIds = next.map((item) => String(item.id)).join("|");
-      state.feedPosts = next;
+      const feedChanged = havePostCollectionsChanged(state.feedPosts, next);
+      state.feedPosts = projectPostCollectionThroughEntityMap(state, next);
       const storiesChanged = state.stories.length ? false : refreshFeedStoriesFn({ posts: next });
       scheduleStoriesRefresh({ force, refreshUi: state.activeTab === "feed" });
       preloadFeedHeroImagesFn(next);
-      if (prevIds === nextIds && !storiesChanged) return;
+      if (!feedChanged && !storiesChanged) return;
       const inMain = getLastRenderModeFn() === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
       if (updatedFeed) return;
       const updatedSearch = state.activeTab === "search" && inMain && refreshSearchViewFn();
       if (updatedSearch) return;
       if (!inMain) {
-        renderFn();
+        requestRender();
         return;
       }
       if (state.activeTab === "feed" || state.activeTab === "search") {
-        renderFn();
+        requestRender();
       }
     } catch (err) {
       console.error(err);
@@ -706,14 +767,14 @@ export function createSessionDataRuntimeController({
     const cacheTtlPosts = cacheTtl.posts;
     const cacheKey = userPostsKeyFn(state.user.uid);
     const cached = readCacheFn(cacheKey, cacheTtlPosts);
-    if (cached?.data?.length) {
-      if (!state.userPosts.length) {
-        state.userPosts = cached.data.map((post) => ({
+      if (cached?.data?.length) {
+        if (!state.userPosts.length) {
+        state.userPosts = projectPostCollectionThroughEntityMap(state, cached.data.map((post) => ({
           ...post,
           ownerType: post.ownerType || "user",
           ownerId: post.ownerId || state.user.uid
-        }));
-        renderFn();
+        })));
+        requestRender();
       }
       if (cached.fresh && !force) return;
     }
@@ -742,11 +803,9 @@ export function createSessionDataRuntimeController({
         ownerId: state.user.uid
       }));
       writeCacheFn(cacheKey, next);
-      const prevIds = state.userPosts.map((item) => String(item.id)).join("|");
-      const nextIds = next.map((item) => String(item.id)).join("|");
-      if (prevIds === nextIds) return;
-      state.userPosts = next;
-      renderFn();
+      if (!havePostCollectionsChanged(state.userPosts, next)) return;
+      state.userPosts = projectPostCollectionThroughEntityMap(state, next);
+      requestRender();
     } catch (err) {
       console.error(err);
     }
@@ -756,20 +815,20 @@ export function createSessionDataRuntimeController({
     const restaurantId = state.userProfile.restaurantId;
     if (!restaurantId) {
       state.businessPosts = [];
-      renderFn();
+      requestRender();
       return;
     }
     const cacheKey = businessPostsKeyFn(restaurantId);
     const cached = readCacheFn(cacheKey, cacheTtl.posts);
     if (cached?.data?.length) {
       if (!state.businessPosts.length) {
-        state.businessPosts = cached.data.map((post) => ({
+        state.businessPosts = projectPostCollectionThroughEntityMap(state, cached.data.map((post) => ({
           ...post,
           ownerType: post.ownerType || "restaurant",
           ownerId: post.ownerId || restaurantId,
           restaurantId: post.restaurantId || restaurantId
-        }));
-        renderFn();
+        })));
+        requestRender();
       }
       if (cached.fresh && !force) return;
     }
@@ -802,11 +861,9 @@ export function createSessionDataRuntimeController({
         }))
         .filter((row) => row.url);
       writeCacheFn(cacheKey, next);
-      const prevIds = state.businessPosts.map((item) => String(item.id)).join("|");
-      const nextIds = next.map((item) => String(item.id)).join("|");
-      if (prevIds === nextIds) return;
-      state.businessPosts = next;
-      renderFn();
+      if (!havePostCollectionsChanged(state.businessPosts, next)) return;
+      state.businessPosts = projectPostCollectionThroughEntityMap(state, next);
+      requestRender();
     } catch (err) {
       console.error(err);
     }
@@ -824,7 +881,7 @@ export function createSessionDataRuntimeController({
       return;
     }
     state.focus = { ...state.focus, restaurantId, loading: true, error: "" };
-    renderFn();
+    requestRender();
     try {
       const [items, enabled] = await Promise.all([
         loadFocusItemsFn(restaurantId),
@@ -832,11 +889,11 @@ export function createSessionDataRuntimeController({
       ]);
       focusCacheMap.set(cacheKey, { items, enabled, ts: Date.now() });
       state.focus = { ...state.focus, restaurantId, items, enabled, loading: false, error: "", index: 0 };
-      renderFn();
+      requestRender();
     } catch (err) {
       console.error(err);
       state.focus = { ...state.focus, restaurantId, items: [], loading: false, error: "Fokus laden fehlgeschlagen." };
-      renderFn();
+      requestRender();
     }
   }
 
@@ -873,7 +930,7 @@ export function createSessionDataRuntimeController({
       }
     }
     state.menu = { ...state.menu, restaurantId, loading: true, error: "", source };
-    renderFn();
+    requestRender();
     try {
       let items = [];
       let statusBadgeVisible = true;
@@ -900,7 +957,7 @@ export function createSessionDataRuntimeController({
       }
       menuCacheMap.set(cacheKey, { items, statusBadgeVisible, ts: Date.now() });
       state.menu = { ...state.menu, restaurantId, items, loading: false, error: "", source, statusBadgeVisible };
-      renderFn();
+      requestRender();
     } catch (err) {
       console.error(err);
       state.menu = {
@@ -912,7 +969,7 @@ export function createSessionDataRuntimeController({
         source,
         statusBadgeVisible: true
       };
-      renderFn();
+      requestRender();
     }
   }
 

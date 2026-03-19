@@ -51,6 +51,8 @@ export function createProfileMenuFocusRenderController(deps = {}) {
 function isFollowingProfile(profile = {}) {
   const uid = String(profile?.uid || "").trim();
   if (uid && state.followingTargetIds.includes(uid)) return true;
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  if (restaurantId && state.followingTargetIds.includes(restaurantId)) return true;
   const followKey = normalizeFollowHandle(profile?.handle || "");
   return !!(followKey && state.followingHandles.includes(followKey));
 }

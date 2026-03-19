@@ -751,6 +751,51 @@ function stopForegroundMessaging() {
   foregroundMessageCleanup = null;
 }
 
+async function disableWaiterPushDevices(uid = "") {
+  const safeUid = asText(uid);
+  if (!safeUid) return;
+  state.push.loading = false;
+  state.push.supported = false;
+  state.push.enabled = false;
+  state.push.error = "";
+  state.push.permission = "denied";
+  render();
+  try {
+    const devicesRef = collection(db, "users", safeUid, "devices");
+    const ownDeviceId = `waiter_${getDeviceId()}`;
+    const waiterDevicesSnap = await getDocs(query(devicesRef, where("app", "==", "menyra-waiter"), limit(50))).catch(() => null);
+    const writes = [];
+    const touched = new Set();
+    if (waiterDevicesSnap && !waiterDevicesSnap.empty) {
+      waiterDevicesSnap.forEach((docSnap) => {
+        touched.add(docSnap.id);
+        writes.push(setDoc(docSnap.ref, {
+          enabled: false,
+          token: "",
+          disabledAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        }, { merge: true }));
+      });
+    }
+    if (!touched.has(ownDeviceId)) {
+      writes.push(setDoc(doc(db, "users", safeUid, "devices", ownDeviceId), {
+        enabled: false,
+        token: "",
+        platform: "web",
+        app: "menyra-waiter",
+        scope: "waiter",
+        disabledAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      }, { merge: true }));
+    }
+    if (writes.length) {
+      await Promise.allSettled(writes);
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
 function stopOrdersListener() {
   if (typeof ordersUnsub === "function") {
     try {
@@ -764,26 +809,6 @@ function handleIncomingOrderNotification(order) {
   const label = order.tableNumber ? `Tisch ${order.tableNumber}` : order.tableLabel;
   const buyer = order.buyerName ? ` fuer ${order.buyerName}` : "";
   showToast(`Neue Bestellung ${label}${buyer}`, { tone: true });
-
-  if (typeof Notification !== "undefined" && Notification.permission === "granted" && document.visibilityState !== "visible") {
-    const title = state.access.businessName || "MNYRA Waiter";
-    const body = `Neue Bestellung ${label}${buyer}`;
-    ensureServiceWorkerRegistration().then((registration) => {
-      if (registration?.showNotification) {
-        registration.showNotification(title, {
-          body,
-          icon: state.access.businessAvatar || "/apps/waiter/assets/icon-192.png",
-          badge: "/apps/waiter/assets/icon-192.png",
-          silent: false,
-          vibrate: [180, 90, 180],
-          tag: `waiter_order_${order.id}`,
-          data: {
-            url: `/waiter/?restaurant=${encodeURIComponent(state.access.restaurantId)}&order=${encodeURIComponent(order.id)}`
-          }
-        }).catch(() => {});
-      }
-    }).catch(() => {});
-  }
 }
 
 function startOrdersListener() {
@@ -1028,13 +1053,13 @@ async function handleAuthChanged(user) {
     syncDocumentTitle();
     render();
     if (!access.allowed) {
+      await disableWaiterPushDevices(user.uid);
       state.sessionError = "Dieser Account hat keinen Zugriff auf die Waiter App.";
       render();
       return;
     }
     startOrdersListener();
-    void bindForegroundMessaging();
-    void syncPushDeviceToken({ requestPermission: false });
+    await disableWaiterPushDevices(user.uid);
   } catch (err) {
     console.error(err);
     state.sessionLoading = false;
@@ -1247,21 +1272,7 @@ function renderToast() {
 }
 
 function renderNotificationBanner() {
-  const showEnable = state.push.supported && state.push.permission !== "granted";
-  const showActive = state.push.enabled;
-  const message = state.push.error ? state.push.error : (showActive ? "Push aktiv" : (showEnable ? "Push deaktiviert" : ""));
-  if (!message && !showEnable) return "";
-  return `
-    <div class="px-6 pb-4">
-      <div class="rounded-[1.6rem] border ${state.push.error ? "border-rose-500/20 bg-rose-500/10" : "border-zinc-800 bg-zinc-950/70"} px-4 py-3 flex items-center justify-between gap-4">
-        <div>
-          <p class="text-[10px] font-black uppercase tracking-widest ${state.push.error ? "text-rose-400" : "text-zinc-500"}">Benachrichtigungen</p>
-          <p class="text-sm font-semibold text-zinc-100">${escapeHtml(message)}</p>
-        </div>
-        ${showEnable ? `<button id="enableNotificationsBtn" type="button" class="shrink-0 px-4 py-2 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest disabled:opacity-60" ${state.push.loading ? "disabled" : ""}>${state.push.loading ? "Aktiviert..." : "Aktivieren"}</button>` : ""}
-      </div>
-    </div>
-  `;
+  return "";
 }
 
 function renderLoginView() {
@@ -1494,10 +1505,6 @@ APP_ROOT.addEventListener("click", (event) => {
   const orderBtn = target.closest("[data-order-action]");
   if (orderBtn) {
     void updateOrderStatus(asText(orderBtn.getAttribute("data-order-id")), asText(orderBtn.getAttribute("data-order-action")));
-    return;
-  }
-  if (target.closest("#enableNotificationsBtn")) {
-    void syncPushDeviceToken({ requestPermission: true });
     return;
   }
   if (target.closest("[data-close-toast]")) {

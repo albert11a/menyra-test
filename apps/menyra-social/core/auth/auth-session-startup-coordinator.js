@@ -47,6 +47,16 @@ export function createAuthSessionStartupCoordinator({
   let lastAuthUid = "";
   let authTransitionSeq = 0;
   let authStateListenerBound = false;
+  let renderRequested = false;
+
+  function requestRender() {
+    if (renderRequested) return;
+    renderRequested = true;
+    queueMicrotaskSafe(() => {
+      renderRequested = false;
+      render();
+    });
+  }
 
   function isCurrentAuthTransition(transitionSeq, expectedUid = "") {
     if (transitionSeq !== authTransitionSeq) return false;
@@ -111,7 +121,7 @@ export function createAuthSessionStartupCoordinator({
       const routeOpenResult = postLoginRouteOpen.openNonBlockingRoutes();
       const openedProfileRoute = !!routeOpenResult?.openedProfile;
       if (!openedProfileRoute || !state?.profileView?.profile) {
-        render();
+        requestRender();
       }
       schedulePerfWarmMark();
       if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
@@ -157,14 +167,14 @@ export function createAuthSessionStartupCoordinator({
             if (state?.auth) {
               state.auth.loading = false;
             }
-            render();
+            requestRender();
           } catch (err) {
             reportCriticalRuntimeFailure("auth.bootstrapUser.pendingRoutes", err);
             if (isCurrentAuthTransition(transitionSeq, nextUid)) {
               if (state?.auth) {
                 state.auth.loading = false;
               }
-              render();
+              requestRender();
             }
           } finally {
             resumeRender();
@@ -174,17 +184,17 @@ export function createAuthSessionStartupCoordinator({
         if (state?.auth) {
           state.auth.loading = false;
         }
-        render();
+        requestRender();
         void bootstrapUser(user, { transitionSeq })
           .then(() => {
             if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
             postLoginRouteOpen.openNonBlockingRoutes();
-            render();
+            requestRender();
           })
           .catch((err) => {
             reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
             if (isCurrentAuthTransition(transitionSeq, nextUid)) {
-              render();
+              requestRender();
             }
           });
       }
@@ -203,7 +213,7 @@ export function createAuthSessionStartupCoordinator({
       if (state) {
         state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
       }
-      render();
+      requestRender();
       queueMicrotaskSafe(() => {
         void ensureTabData(state?.activeTab || "").catch((err) => {
           reportCriticalRuntimeFailure("auth.ensureTabData.afterSignOut", err);

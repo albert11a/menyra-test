@@ -1,3 +1,5 @@
+import { projectPostCollectionThroughEntityMap } from "./post-entity-registry-utils.js";
+
 export function createPublicProfileRuntimeController({
   state = null,
   db = null,
@@ -82,9 +84,11 @@ export function createPublicProfileRuntimeController({
   function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, menuAccessSource = "", tableNumber = 0 } = {}) {
     const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
+    const projectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile.posts || []);
+    const nextProfile = profile ? { ...profile, posts: projectedPosts } : profile;
     state.profileView = {
-      profile,
-      posts: posts || profile.posts || [],
+      profile: nextProfile,
+      posts: projectedPosts,
       menuAccessSource: safeMenuAccessSource === "qr" ? "qr" : "",
       tableNumber: safeTableNumber
     };
@@ -103,7 +107,7 @@ export function createPublicProfileRuntimeController({
     }
     state.activeTab = "profile";
     renderApp();
-    attachProfileViewListener(profile);
+    attachProfileViewListener(nextProfile);
   }
 
   function normalizeExternalProfile({ profileDoc, restaurant, fallbackName, posts }) {
@@ -207,7 +211,7 @@ export function createPublicProfileRuntimeController({
       }
       const rows = [];
       snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-      return rows
+      return projectPostCollectionThroughEntityMap(state, rows
         .filter((row) => (row.status || "active") === "active")
         .map((row) => ({
           id: row.id,
@@ -223,7 +227,7 @@ export function createPublicProfileRuntimeController({
           ownerId: restaurantId,
           restaurantId
         }))
-        .filter((row) => row.url);
+        .filter((row) => row.url));
     } catch (err) {
       console.error(err);
       return [];

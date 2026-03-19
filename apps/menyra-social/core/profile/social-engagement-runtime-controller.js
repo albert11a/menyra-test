@@ -156,6 +156,8 @@ export function createSocialEngagementRuntimeController({
   const pushUserNotification = pushUserNotificationFn;
   const updateFavoriteMenuItemsLocal = updateFavoriteMenuItemsLocalFn;
   const autosizeTextarea = autosizeTextareaFn;
+  const pendingPostLikeIds = new Set();
+  const pendingCommentLikeKeys = new Set();
 
   const favoriteMenuItemDocId = favoriteMenuItemDocIdFn;
   const buildFavoriteMenuItemPayload = buildFavoriteMenuItemPayloadFn;
@@ -302,17 +304,78 @@ export function createSocialEngagementRuntimeController({
     return meta.likes || [];
   }
 
-  async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0, skipRemote = false } = {}) {
+  function collectPostCountTargets(post) {
+    const postId = String(post?.id || "").trim();
+    if (!postId) return [];
+    const unique = new Set();
+    const targets = [];
+    const pushTarget = (candidate) => {
+      if (!candidate || String(candidate?.id || "").trim() !== postId || unique.has(candidate)) return;
+      unique.add(candidate);
+      targets.push(candidate);
+    };
+    pushTarget(post);
+    pushTarget(state.postModal?.post);
+    [
+      state.userPosts,
+      state.businessPosts,
+      state.feedPosts,
+      state.profileView?.posts,
+      state.profileModal?.profile?.posts
+    ].forEach((list) => {
+      if (!Array.isArray(list)) return;
+      list.forEach((candidate) => pushTarget(candidate));
+    });
+    return targets;
+  }
+
+  function applyPostCounts(post, { likes = null, comments = null } = {}) {
+    const targets = collectPostCountTargets(post);
+    if (!targets.length) return;
+    targets.forEach((target) => {
+      if (likes !== null) target.likes = Math.max(0, Number(likes) || 0);
+      if (comments !== null) target.comments = Math.max(0, Number(comments) || 0);
+    });
+  }
+
+  async function reconcilePostCountsFromRemote(post, { fallbackLikes = null, fallbackComments = null } = {}) {
     if (!post) return;
-    const likeBase = Number(post.likes) || 0;
-    const commentBase = Number(post.comments) || 0;
-    if (likesDelta) post.likes = Math.max(0, likeBase + likesDelta);
-    if (commentsDelta) post.comments = Math.max(0, commentBase + commentsDelta);
-    const feedMatch = state.feedPosts.find((item) => String(item.id) === String(post.id));
-    if (feedMatch) {
-      if (likesDelta) feedMatch.likes = Math.max(0, (Number(feedMatch.likes) || 0) + likesDelta);
-      if (commentsDelta) feedMatch.comments = Math.max(0, (Number(feedMatch.comments) || 0) + commentsDelta);
+    const applyCounts = (likes = null, comments = null) => {
+      applyPostCounts(post, { likes, comments });
+      updatePostCountNodes(post);
+      updatePostCaches(post);
+      if (state.postModal.open && String(state.postModal.post?.id || "") === String(post.id || "")) {
+        updatePostModalCountsOnly();
+      }
+    };
+    if (fallbackLikes !== null || fallbackComments !== null) {
+      applyCounts(fallbackLikes, fallbackComments);
     }
+    const postRef = getPostDocRef(post);
+    let nextLikes = fallbackLikes;
+    let nextComments = fallbackComments;
+    if (postRef) {
+      try {
+        const snap = await getDoc(postRef);
+        if (snap.exists()) {
+          const data = snap.data() || {};
+          nextLikes = Number(data.likesCount ?? data.likes ?? nextLikes ?? post.likes ?? 0) || 0;
+          nextComments = Number(data.commentsCount ?? data.comments ?? nextComments ?? post.comments ?? 0) || 0;
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    applyCounts(nextLikes, nextComments);
+  }
+
+  async function updatePostCounts(post, { likesDelta = 0, commentsDelta = 0, skipRemote = false, baseLikes = null, baseComments = null } = {}) {
+    if (!post) return;
+    const likeBase = baseLikes === null ? (Number(post.likes) || 0) : (Number(baseLikes) || 0);
+    const commentBase = baseComments === null ? (Number(post.comments) || 0) : (Number(baseComments) || 0);
+    const nextLikes = likesDelta ? Math.max(0, likeBase + likesDelta) : likeBase;
+    const nextComments = commentsDelta ? Math.max(0, commentBase + commentsDelta) : commentBase;
+    applyPostCounts(post, { likes: nextLikes, comments: nextComments });
     const updates = {};
     if (likesDelta) updates.likesCount = increment(likesDelta);
     if (commentsDelta) updates.commentsCount = increment(commentsDelta);
@@ -358,6 +421,7 @@ export function createSocialEngagementRuntimeController({
     if (state.postModal.sending) return;
     state.postModal.sending = true;
     const meta = ensurePostMeta(postId);
+    const commentBaseBeforeWrite = Number(post.comments) || 0;
     const ensuredAvatar = await ensureSelfAvatarReady({ force: true });
     const user = currentUserBadge();
     const handleKey = normalizeHandle(user.handle || user.name || "");
@@ -416,12 +480,11 @@ export function createSocialEngagementRuntimeController({
         });
       }
     } catch {}
-    try {
-      await updatePostCounts(post, { commentsDelta: 1, skipRemote: true });
-    } catch (err) {
+    void reconcilePostCountsFromRemote(post, {
+      fallbackComments: commentBaseBeforeWrite + 1
+    }).catch((err) => {
       console.error(err);
-    }
-    updatePostCountNodes(post);
+    });
     const hasLiveComments = typeof getModalCommentsUnsubFn() === "function";
     if (!hasLiveComments) {
       const newComment = ensureCommentShape({
@@ -480,12 +543,16 @@ export function createSocialEngagementRuntimeController({
       openGuestAuthPrompt("Bitte registrieren oder einloggen, um Beitrage zu liken.");
       return;
     }
+    const safePostId = String(postId || "").trim();
+    if (!safePostId || pendingPostLikeIds.has(safePostId)) return;
     const meta = ensurePostMeta(postId);
     const user = currentUserBadge();
     if (!user.uid) return;
     const post = findPostById(postId);
     const postRef = getPostDocRef(post);
     if (!post || !postRef) return;
+    const likeBaseBeforeWrite = Number(post.likes) || 0;
+    pendingPostLikeIds.add(safePostId);
     const likeId = user.uid;
     const likeRef = doc(collection(postRef, "likes"), likeId);
     const feedRef = getFeedDocRef(post);
@@ -520,7 +587,11 @@ export function createSocialEngagementRuntimeController({
         meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
       }
       state.postMeta[postId] = meta;
-      await updatePostCounts(post, { likesDelta: delta, skipRemote: true });
+      void reconcilePostCountsFromRemote(post, {
+        fallbackLikes: likeBaseBeforeWrite + delta
+      }).catch((err) => {
+        console.error(err);
+      });
       if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
         updatePostModalCountsOnly();
       } else {
@@ -546,6 +617,8 @@ export function createSocialEngagementRuntimeController({
       updateShellDom();
     } catch (err) {
       console.error(err);
+    } finally {
+      pendingPostLikeIds.delete(safePostId);
     }
   }
 
@@ -684,6 +757,8 @@ export function createSocialEngagementRuntimeController({
       openGuestAuthPrompt("Bitte registrieren oder einloggen, um Kommentare zu liken.");
       return;
     }
+    const pendingKey = `${String(postId || "").trim()}::${String(commentId || "").trim()}::${String(replyId || "").trim()}`;
+    if (!String(postId || "").trim() || !String(commentId || "").trim() || pendingCommentLikeKeys.has(pendingKey)) return;
     const meta = ensurePostMeta(postId);
     const user = currentUserBadge();
     if (!user.uid) return;
@@ -695,6 +770,7 @@ export function createSocialEngagementRuntimeController({
     const post = findPostById(postId);
     const postRef = getPostDocRef(post);
     if (!post || !postRef) return;
+    pendingCommentLikeKeys.add(pendingKey);
     const commentDocId = replyId || commentId;
     const commentRef = doc(collection(postRef, "comments"), String(commentDocId));
     try {
@@ -730,6 +806,8 @@ export function createSocialEngagementRuntimeController({
       updateShellDom();
     } catch (err) {
       console.error(err);
+    } finally {
+      pendingCommentLikeKeys.delete(pendingKey);
     }
   }
 
@@ -761,12 +839,7 @@ export function createSocialEngagementRuntimeController({
       const data = docSnap.data() || {};
       const nextLikes = Number(data.likesCount ?? data.likes ?? post.likes ?? 0) || 0;
       const nextComments = Number(data.commentsCount ?? data.comments ?? post.comments ?? 0) || 0;
-      post.likes = nextLikes;
-      post.comments = nextComments;
-      if (state.postModal.post && String(state.postModal.post.id) === postId) {
-        state.postModal.post.likes = nextLikes;
-        state.postModal.post.comments = nextComments;
-      }
+      applyPostCounts(post, { likes: nextLikes, comments: nextComments });
       updatePostCountNodes(post);
       updatePostModalCountsOnly();
     }));

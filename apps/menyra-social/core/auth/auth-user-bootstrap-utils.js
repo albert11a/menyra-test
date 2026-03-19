@@ -67,11 +67,14 @@ export async function bootstrapAuthenticatedSessionCore({
   await loadProfile(user);
   if (!canContinue()) return false;
   const restaurantId = String(readRestaurantId(user) || "").trim();
+  const blockingTasks = [];
   if (restaurantId) {
-    await hydrateRestaurants([restaurantId], { max: 1 });
-    if (!canContinue()) return false;
+    blockingTasks.push(hydrateRestaurants([restaurantId], { max: 1 }));
   }
-  await resolveRoles(user);
+  blockingTasks.push(resolveRoles(user));
+  if (blockingTasks.length) {
+    await Promise.all(blockingTasks);
+  }
   if (!canContinue()) return false;
 
   runNonBlocking("auth-bootstrap.ensureFollowingLoaded", () => ensureFollowing());

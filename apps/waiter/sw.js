@@ -36,35 +36,7 @@ function buildNotificationTargetUrl(rawUrl) {
 }
 
 self.addEventListener("push", (event) => {
-  const payload = (() => {
-    try {
-      return event.data ? event.data.json() : {};
-    } catch {
-      return {};
-    }
-  })();
-  const notif = payload.notification || payload.webpush?.notification || {};
-  const title = notif.title || payload.title || "Neue Bestellung";
-  const body = notif.body || payload.body || "Neue Bestellung eingegangen";
-  const icon = notif.icon || payload.icon || "/apps/waiter/assets/icon-192.png";
-  const link = buildNotificationTargetUrl(payload.data?.link || payload.fcmOptions?.link || APP_SCOPE);
-  const tag = notif.tag || `mnyra_waiter_${payload.data?.notificationId || Date.now()}`;
-
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon,
-      badge: "/apps/waiter/assets/icon-192.png",
-      silent: false,
-      vibrate: [180, 90, 180],
-      renotify: true,
-      tag,
-      data: {
-        ...(payload.data || {}),
-        url: link
-      }
-    })
-  );
+  event.waitUntil(Promise.resolve());
 });
 
 self.addEventListener("notificationclick", (event) => {

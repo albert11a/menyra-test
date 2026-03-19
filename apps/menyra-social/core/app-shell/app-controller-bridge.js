@@ -292,7 +292,10 @@ export function createAppControllerBridge({
     ),
     setStateFn: feed.setState,
     openGuestAuthPromptFn: feed.openGuestAuthPrompt,
-    openProfileViewFromBusinessFn: (input, options = {}) => openProfileViewFromBusiness(input, options)
+    openProfileViewFromBusinessFn: (input, options = {}) => openProfileViewFromBusiness(input, options),
+    openPostModalFn: async (post) => openPostModalBridge(post),
+    togglePostLikeFn: async (postId) => overlay.togglePostLike(postId),
+    setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
   });
 
   const discoveryRuntimeController = createDiscoveryRuntimeController({

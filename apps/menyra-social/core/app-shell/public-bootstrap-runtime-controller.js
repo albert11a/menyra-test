@@ -1,3 +1,5 @@
+import { projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
+
 function isGenericBusinessBootstrapLabel(value = "") {
   return String(value || "").trim().toLowerCase() === "business";
 }
@@ -133,6 +135,16 @@ export function createPublicBootstrapRuntimeController({
     : (typeof AbortController === "function" ? AbortController : null);
   let publicBootstrapListenerBound = false;
   let publicBootstrapFetchPromise = null;
+  let renderRequested = false;
+
+  function requestRender() {
+    if (renderRequested) return;
+    renderRequested = true;
+    Promise.resolve().then(() => {
+      renderRequested = false;
+      render();
+    });
+  }
 
   function applyPublicBootstrapPayload(payload, { refreshUi = false } = {}) {
     if (!payload || typeof payload !== "object" || !state) return false;
@@ -159,7 +171,7 @@ export function createPublicBootstrapRuntimeController({
     }
 
     if (incomingFeedPosts.length && !state.feedPosts.length) {
-      state.feedPosts = incomingFeedPosts;
+      state.feedPosts = projectPostCollectionThroughEntityMap(state, incomingFeedPosts);
       const existingFeedMeta = readCache(cacheKeys.feed)?.meta || {};
       saveFeedPosts(state.feedPosts, {
         lastDeltaCheck: Number(existingFeedMeta?.lastDeltaCheck || 0) || 0
@@ -188,7 +200,7 @@ export function createPublicBootstrapRuntimeController({
       const inMain = getLastRenderMode() === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
       if (!updatedFeed && (state.activeTab === "feed" || !inMain)) {
-        render();
+        requestRender();
       }
     }
     return changed;

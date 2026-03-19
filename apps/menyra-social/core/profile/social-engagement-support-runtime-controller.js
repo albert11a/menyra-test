@@ -401,11 +401,19 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
     const postId = escapeSelector(post.id);
     const likeLabel = formatCount(post.likes);
     const commentLabel = formatCount(post.comments);
+    const meta = ensurePostMeta(post.id);
+    const userBadge = currentUserBadge();
+    const isLiked = !!meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
     docObj.querySelectorAll(`[data-post-like-count="${postId}"]`).forEach((el) => {
       el.textContent = likeLabel;
     });
     docObj.querySelectorAll(`[data-post-comment-count="${postId}"]`).forEach((el) => {
       el.textContent = commentLabel;
+    });
+    docObj.querySelectorAll(`[data-post-like-btn="${postId}"]`).forEach((btn) => {
+      btn.classList.toggle("text-rose-400", isLiked);
+      btn.classList.toggle("text-white/80", !isLiked);
+      btn.setAttribute("aria-pressed", isLiked ? "true" : "false");
     });
   }
 

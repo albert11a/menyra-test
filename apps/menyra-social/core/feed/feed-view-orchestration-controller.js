@@ -25,7 +25,10 @@ export function createFeedViewOrchestrationController({
   buildUploadStateForIntentFn = (_intent = "", currentUpload = {}) => currentUpload,
   setStateFn = () => {},
   openGuestAuthPromptFn = () => false,
-  openProfileViewFromBusinessFn = () => {}
+  openProfileViewFromBusinessFn = () => {},
+  openPostModalFn = async () => {},
+  togglePostLikeFn = async () => {},
+  setTimeoutFn = (fn, ms) => setTimeout(fn, ms)
 } = {}) {
   if (!state) {
     return {
@@ -43,6 +46,7 @@ export function createFeedViewOrchestrationController({
 
   const doc = documentObj || (typeof document !== "undefined" ? document : null);
   const win = windowObj || (typeof window !== "undefined" ? window : null);
+  const storyViewerHintPrefix = "mnyra_story_viewer_hint_v1:";
   const hasProfileUid = () => !!String(state.userProfile?.uid || "").trim();
   const hasBusinessProfileHint = () => !!String(state.userProfile?.restaurantId || "").trim();
   const hasCeoOwnerProfileHint = () => {
@@ -119,6 +123,147 @@ export function createFeedViewOrchestrationController({
     const identity = resolveStoryRenderIdentity(story);
     return !!identity.storyRestaurantId;
   };
+  const findFeedPostById = (postId = "") => {
+    const safePostId = String(postId || "").trim();
+    if (!safePostId) return null;
+    return state.feedPosts.find((item) => String(item?.id || "").trim() === safePostId) || null;
+  };
+  const copyTextToClipboard = async (value = "") => {
+    const safeValue = String(value || "");
+    if (!safeValue) return false;
+    try {
+      if (win?.navigator?.clipboard?.writeText) {
+        await win.navigator.clipboard.writeText(safeValue);
+        return true;
+      }
+    } catch {}
+    if (!doc?.body) return false;
+    const textarea = doc.createElement("textarea");
+    textarea.value = safeValue;
+    textarea.setAttribute("readonly", "readonly");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    doc.body.appendChild(textarea);
+    textarea.select();
+    let copied = false;
+    try {
+      copied = !!doc.execCommand?.("copy");
+    } catch {}
+    textarea.remove();
+    return copied;
+  };
+  const setShareButtonFeedback = (button, label = "Link kopiert") => {
+    if (!(button instanceof HTMLElement)) return;
+    const labelNode = button.querySelector("[data-feed-share-label]");
+    if (!labelNode) return;
+    const original = button.dataset.shareDefaultLabel || labelNode.textContent || "Share";
+    button.dataset.shareDefaultLabel = original;
+    labelNode.textContent = label;
+    button.classList.add("text-white");
+    button.classList.remove("text-white/70");
+    if (button._shareFeedbackTimer) {
+      clearTimeout(button._shareFeedbackTimer);
+    }
+    button._shareFeedbackTimer = setTimeoutFn(() => {
+      labelNode.textContent = original;
+      button.classList.add("text-white/70");
+      button.classList.remove("text-white");
+      button._shareFeedbackTimer = null;
+    }, 1800);
+  };
+  const buildFeedShareUrl = (post = {}) => {
+    const params = { post: post?.id || "" };
+    const restaurantId = String(
+      post?.restaurantId
+      || (String(post?.ownerType || "").trim() === "restaurant" ? post?.ownerId : "")
+      || ""
+    ).trim();
+    if (restaurantId) {
+      params.r = restaurantId;
+      params.tab = "profile";
+    } else {
+      params.tab = "feed";
+    }
+    return buildUrlFn("apps/menyra-social/index.html", params);
+  };
+  const resolveStoryWarmMeta = (restaurantId = "") => {
+    const rid = String(restaurantId || "").trim();
+    if (!rid) return null;
+    const restaurant = state.restaurants.find((row) => String(row?.id || "").trim() === rid) || null;
+    const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
+    const ownRestaurant = ownRestaurantId && ownRestaurantId === rid;
+    const name = String(
+      restaurant?.name
+      || restaurant?.restaurantName
+      || restaurant?.displayName
+      || restaurant?.businessName
+      || (ownRestaurant ? state.userProfile?.name : "")
+      || ""
+    ).trim();
+    const logoUrl = String(
+      restaurant?.logoUrl
+      || restaurant?.logo
+      || restaurant?.logoURL
+      || (ownRestaurant ? state.userProfile?.avatar : "")
+      || ""
+    ).trim();
+    return {
+      id: rid,
+      restaurantName: name,
+      name,
+      logoUrl,
+      logo: logoUrl
+    };
+  };
+  const warmStoryViewer = (restaurantId = "", href = "") => {
+    const rid = String(restaurantId || "").trim();
+    if (!rid || !win || !doc) return;
+    const meta = resolveStoryWarmMeta(rid);
+    if (meta && win.sessionStorage) {
+      try {
+        win.sessionStorage.setItem(`${storyViewerHintPrefix}${rid}`, JSON.stringify({
+          restaurantId: rid,
+          meta,
+          savedAt: Date.now()
+        }));
+      } catch {}
+    }
+    const url = String(href || buildStoryViewerUrlFn(rid) || "").trim();
+    if (!url || !doc.head) return;
+    const existing = Array.from(doc.head.querySelectorAll("link[data-story-prefetch]"))
+      .find((node) => String(node?.getAttribute?.("href") || "").trim() === url);
+    if (existing) return;
+    const link = doc.createElement("link");
+    link.rel = "prefetch";
+    link.href = url;
+    link.as = "document";
+    link.crossOrigin = "anonymous";
+    link.dataset.storyPrefetch = "1";
+    doc.head.appendChild(link);
+  };
+  const focusPostCommentComposer = () => {
+    setTimeoutFn(() => {
+      const input = doc?.getElementById("postCommentInput");
+      if (!(input instanceof HTMLElement)) return;
+      try {
+        input.focus({ preventScroll: false });
+      } catch {
+        try {
+          input.focus();
+        } catch {}
+      }
+      try {
+        input.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } catch {}
+      if (typeof input.setSelectionRange === "function") {
+        const end = String(input.value || "").length;
+        try {
+          input.setSelectionRange(end, end);
+        } catch {}
+      }
+    }, 90);
+  };
 
   function renderFeedComposer() {
     if (!shouldShowFeedComposer()) return "";
@@ -152,7 +297,7 @@ export function createFeedViewOrchestrationController({
       ? `loading="eager" fetchpriority="high"`
       : `loading="lazy" fetchpriority="low"`;
     return `
-    <a href="${storyUrl}" ${storyItemAttr} class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
+    <a href="${storyUrl}" ${storyItemAttr} data-story-url="${escapeHtmlFn(storyUrl)}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
       <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200" ${storyBorderAttr}>
         <img src="${escapeHtmlFn(imgUrl)}" ${imgAttrs} decoding="async" width="80" height="80" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-[1.8rem] object-contain bg-white group-hover:scale-105 transition-transform" />
       </div>
@@ -224,14 +369,16 @@ export function createFeedViewOrchestrationController({
             <p class="text-sm font-medium mb-4 line-clamp-2 leading-relaxed">${escapeHtmlFn(post.content)}</p>
             <div class="flex items-center justify-between">
               <div class="flex gap-4">
-                <button class="flex items-center gap-2 hover:text-red-400 transition-colors">
+                <button type="button" data-feed-post-like="${escapeHtmlFn(postId)}" data-post-like-btn="${escapeHtmlFn(postId)}" class="flex items-center gap-2 text-white/80 hover:text-rose-400 transition-colors">
                   ${iconFn("heart", "w-5 h-5")} <span ${likeAttr} class="text-[10px] font-black">${escapeHtmlFn(post.likes)}</span>
                 </button>
-                <button class="flex items-center gap-2 text-white/70 hover:text-white">
+                <button type="button" data-feed-post-comment="${escapeHtmlFn(postId)}" class="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
                   ${iconFn("message-circle", "w-5 h-5")} <span ${commentAttr} class="text-[10px] font-black">${escapeHtmlFn(post.comments)}</span>
                 </button>
               </div>
-              <button class="text-white/70 hover:text-white">${iconFn("share-2", "w-4 h-4")}</button>
+              <button type="button" data-feed-post-share="${escapeHtmlFn(postId)}" class="flex items-center gap-2 text-white/70 hover:text-white transition-colors">
+                ${iconFn("share-2", "w-4 h-4")} <span data-feed-share-label class="text-[10px] font-black uppercase tracking-widest">Share</span>
+              </button>
             </div>
           </div>
         </div>
@@ -392,9 +539,73 @@ export function createFeedViewOrchestrationController({
   function bindFeedDelegation() {
     const feedView = doc?.getElementById("feedView");
     if (!feedView || feedView.dataset.bound === "true") return;
+    const handleStoryWarmup = (target) => {
+      if (!(target instanceof Element)) return;
+      const storyLink = target.closest("[data-story-item]");
+      if (!(storyLink instanceof Element)) return;
+      warmStoryViewer(
+        storyLink.getAttribute("data-story-item") || "",
+        storyLink.getAttribute("data-story-url") || storyLink.getAttribute("href") || ""
+      );
+    };
+    feedView.addEventListener("pointerdown", (event) => {
+      handleStoryWarmup(event.target);
+    }, { passive: true });
+    feedView.addEventListener("touchstart", (event) => {
+      handleStoryWarmup(event.target);
+    }, { passive: true });
     feedView.addEventListener("click", (event) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
+      const storyLink = target.closest("[data-story-item]");
+      if (storyLink) {
+        handleStoryWarmup(storyLink);
+        return;
+      }
+      const likeBtn = target.closest("[data-feed-post-like]");
+      if (likeBtn) {
+        const postId = likeBtn.dataset.feedPostLike || "";
+        if (postId) {
+          void togglePostLikeFn(postId);
+        }
+        return;
+      }
+      const commentBtn = target.closest("[data-feed-post-comment]");
+      if (commentBtn) {
+        const postId = commentBtn.dataset.feedPostComment || "";
+        const post = findFeedPostById(postId);
+        if (post) {
+          void Promise.resolve(openPostModalFn(post)).then(() => {
+            focusPostCommentComposer();
+          });
+        }
+        return;
+      }
+      const shareBtn = target.closest("[data-feed-post-share]");
+      if (shareBtn) {
+        const postId = shareBtn.dataset.feedPostShare || "";
+        const post = findFeedPostById(postId);
+        if (!post) return;
+        const url = buildFeedShareUrl(post);
+        const title = String(post.business || "Menyra").trim() || "Menyra";
+        const text = [title, String(post.content || post.caption || "").trim()].filter(Boolean).join("\n");
+        if (win?.navigator?.share) {
+          void win.navigator.share({ title, text, url })
+            .then(() => {
+              setShareButtonFeedback(shareBtn, "Geteilt");
+            })
+            .catch(async (err) => {
+              if (String(err?.name || "").trim() === "AbortError") return;
+              const copied = await copyTextToClipboard(url);
+              setShareButtonFeedback(shareBtn, copied ? "Kopiert" : "Link");
+            });
+        } else {
+          void copyTextToClipboard(url).then((copied) => {
+            setShareButtonFeedback(shareBtn, copied ? "Kopiert" : "Link");
+          });
+        }
+        return;
+      }
       const navBtn = target.closest("[data-nav]");
       if (navBtn) {
         const tab = navBtn.dataset.nav;

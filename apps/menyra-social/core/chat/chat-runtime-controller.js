@@ -279,6 +279,7 @@ export function createChatRuntimeController(deps = {}) {
   let chatSendDispatchLock = false;
   let chatThreadsUnsub = null;
   let chatMessagesUnsub = null;
+  const pendingFollowTargetKeys = new Set();
 
   function saveChatThreadIndex(threads) {
     saveChatThreadIndexCore({
@@ -1283,9 +1284,13 @@ export function createChatRuntimeController(deps = {}) {
       ownHandle
     })) return;
 
-    const idx = state.followingHandles.indexOf(safeHandle);
     const safeTargetId = String(targetId || "").trim();
-    const isUnfollow = idx >= 0 || (targetType === "user" && safeTargetId && state.followingTargetIds.includes(safeTargetId));
+    const idx = safeHandle ? state.followingHandles.indexOf(safeHandle) : -1;
+    const isTargetIdFollowed = !!safeTargetId && state.followingTargetIds.includes(safeTargetId);
+    const isUnfollow = idx >= 0 || isTargetIdFollowed;
+    const followTargetKey = `${String(targetType || "handle").trim()}:${safeTargetId || safeHandle}`;
+    if (pendingFollowTargetKeys.has(followTargetKey)) return;
+    pendingFollowTargetKeys.add(followTargetKey);
     let targetIsPrivate = false;
     if (!isUnfollow && targetType === "user" && targetId) {
       if (state.profileView?.profile?.uid === targetId) {
@@ -1304,8 +1309,12 @@ export function createChatRuntimeController(deps = {}) {
       }
     }
     if (!isUnfollow && targetIsPrivate) {
-      await sendFollowRequest(safeHandle, { ...target, id: targetId, uid: targetId, type: "user" });
-      return;
+      try {
+        await sendFollowRequest(safeHandle, { ...target, id: targetId, uid: targetId, type: "user" });
+        return;
+      } finally {
+        pendingFollowTargetKeys.delete(followTargetKey);
+      }
     }
 
     const followRef = doc(db, "users", state.user.uid, "following", getFollowDocId(targetType, targetId, safeHandle));
@@ -1315,12 +1324,18 @@ export function createChatRuntimeController(deps = {}) {
       return Number.isFinite(n) ? n : 0;
     };
     const isBusiness = isLocalBusinessProfile(state.userProfile);
-
+    const applyFollowerDelta = (profileLike = null) => {
+      if (!profileLike) return;
+      profileLike.followers = Math.max(0, toNum(profileLike.followers) + delta);
+      if (delta > 0 && "pendingFollowRequest" in profileLike) {
+        profileLike.pendingFollowRequest = false;
+      }
+    };
     try {
       if (isUnfollow) {
         await deleteDoc(followRef);
         if (idx >= 0) state.followingHandles.splice(idx, 1);
-        if (targetType === "user" && safeTargetId) {
+        if (safeTargetId) {
           state.followingTargetIds = state.followingTargetIds.filter((id) => id !== safeTargetId);
         }
       } else {
@@ -1332,8 +1347,10 @@ export function createChatRuntimeController(deps = {}) {
           avatar: target.avatar || "",
           createdAt: serverTimestamp()
         });
-        state.followingHandles.unshift(safeHandle);
-        if (targetType === "user" && safeTargetId) {
+        if (safeHandle) {
+          state.followingHandles.unshift(safeHandle);
+        }
+        if (safeTargetId) {
           state.followingTargetIds = Array.from(new Set([safeTargetId, ...state.followingTargetIds]));
         }
       }
@@ -1378,20 +1395,35 @@ export function createChatRuntimeController(deps = {}) {
 
       const profileModal = state.profileModal.profile;
       const profileView = state.profileView?.profile || null;
-      if (profileModal && profileModal.handle === safeHandle) {
-        profileModal.followers = Math.max(0, toNum(profileModal.followers) + delta);
+      const matchesTargetProfile = (profileLike = null) => {
+        if (!profileLike) return false;
+        const profileRestaurantId = String(profileLike.restaurantId || "").trim();
+        const profileUid = String(profileLike.uid || "").trim();
+        const profileHandle = normalizeFollowHandle(profileLike.handle || "");
+        if (safeTargetId && (profileRestaurantId === safeTargetId || profileUid === safeTargetId)) return true;
+        return !!(safeHandle && profileHandle === safeHandle);
+      };
+      const updatedProfiles = new Set();
+      const updateUniqueProfile = (profileLike = null) => {
+        if (!profileLike || updatedProfiles.has(profileLike)) return;
+        updatedProfiles.add(profileLike);
+        applyFollowerDelta(profileLike);
+      };
+      if (matchesTargetProfile(profileModal)) {
+        updateUniqueProfile(profileModal);
       }
-      if (profileView && profileView.handle === safeHandle) {
-        profileView.followers = Math.max(0, toNum(profileView.followers) + delta);
-        if (delta > 0) profileView.pendingFollowRequest = false;
+      if (matchesTargetProfile(profileView)) {
+        updateUniqueProfile(profileView);
       }
 
       businessProfileCache.forEach((cached) => {
-        if (cached?.handle !== safeHandle) return;
-        cached.followers = Math.max(0, toNum(cached.followers) + delta);
+        if (!matchesTargetProfile(cached)) return;
+        updateUniqueProfile(cached);
       });
     } catch (err) {
       console.error(err);
+    } finally {
+      pendingFollowTargetKeys.delete(followTargetKey);
     }
 
     if (state.profileModal.open && !state.profileView) {
