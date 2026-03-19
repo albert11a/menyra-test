@@ -123,7 +123,6 @@ export function createStoryViewerRuntimeController({
   let activeIndexSyncFrame = 0;
   let hasUnlockedMedia = false;
   let suppressNextMediaToggle = false;
-  let autoplayProbeState = "idle";
 
   function getParam(name) {
     if (!win) return "";
@@ -319,6 +318,22 @@ export function createStoryViewerRuntimeController({
     }
   }
 
+  function applySoundToggleState(button) {
+    if (!button) return;
+    const soundEnabled = hasUnlockedMedia;
+    button.dataset.storySoundState = soundEnabled ? "on" : "off";
+    button.setAttribute("aria-pressed", soundEnabled ? "true" : "false");
+    button.setAttribute("aria-label", soundEnabled ? "Ton ausschalten" : "Ton einschalten");
+    button.textContent = soundEnabled ? "🔊" : "🔇";
+  }
+
+  function updateRenderedSoundToggleButtons() {
+    if (!doc) return;
+    doc.querySelectorAll("[data-story-sound-toggle]").forEach((button) => {
+      applySoundToggleState(button);
+    });
+  }
+
   function createTopbarElement(meta) {
     if (!doc) return null;
     const topbar = doc.createElement("div");
@@ -354,6 +369,17 @@ export function createStoryViewerRuntimeController({
 
     topbarLeft.appendChild(brandPill);
     topbar.appendChild(topbarLeft);
+
+    const topbarRight = doc.createElement("div");
+    topbarRight.className = "topbarRight";
+
+    const soundBtn = doc.createElement("button");
+    soundBtn.className = "btnIcon";
+    soundBtn.dataset.storySoundToggle = "1";
+    applySoundToggleState(soundBtn);
+    topbarRight.appendChild(soundBtn);
+
+    topbar.appendChild(topbarRight);
     return topbar;
   }
 
@@ -400,9 +426,7 @@ export function createStoryViewerRuntimeController({
       iframe.setAttribute("allowfullscreen", "");
       iframe.frameBorder = "0";
       iframe.loading = active ? "eager" : "lazy";
-      iframe.src = buildIframeSrc(story, {
-        muted: !(hasUnlockedMedia || autoplayProbeState === "allowed")
-      });
+      iframe.src = buildIframeSrc(story, { muted: !hasUnlockedMedia });
       entry.mediaSrc = iframe.src;
       return iframe;
     }
@@ -493,54 +517,6 @@ export function createStoryViewerRuntimeController({
     });
   }
 
-  function getAutoplayPolicyCapability(mediaEl = null) {
-    try {
-      const policy = win?.navigator?.getAutoplayPolicy?.(mediaEl || "mediaelement");
-      if (policy === "allowed") return "allowed";
-      if (policy === "allowed-muted") return "allowed-muted";
-      if (policy === "disallowed") return "disallowed";
-    } catch {}
-    return "";
-  }
-
-  function ensureAutoplayProbe(mediaEl) {
-    if (!mediaEl || mediaEl.tagName !== "VIDEO") return;
-    if (hasUnlockedMedia || autoplayProbeState === "pending" || autoplayProbeState === "allowed") return;
-    const capability = getAutoplayPolicyCapability(mediaEl);
-    if (capability === "allowed") {
-      autoplayProbeState = "allowed";
-      hasUnlockedMedia = true;
-      return;
-    }
-    if (capability === "allowed-muted" || capability === "disallowed") {
-      autoplayProbeState = "blocked";
-      return;
-    }
-    autoplayProbeState = "pending";
-    mediaEl.defaultMuted = false;
-    mediaEl.muted = false;
-    mediaEl.volume = 1;
-    const playAttempt = mediaEl.play();
-    if (!playAttempt || typeof playAttempt.then !== "function") {
-      autoplayProbeState = "allowed";
-      hasUnlockedMedia = true;
-      return;
-    }
-    playAttempt
-      .then(() => {
-        autoplayProbeState = "allowed";
-        hasUnlockedMedia = true;
-        syncMediaPlayback();
-      })
-      .catch(() => {
-        autoplayProbeState = "blocked";
-        mediaEl.defaultMuted = true;
-        mediaEl.muted = true;
-        mediaEl.volume = 0;
-        void mediaEl.play().catch(() => {});
-      });
-  }
-
   function syncMediaPlayback({ fromUserGesture = false } = {}) {
     primeNearbyMedia(activeIndex);
     reelEntries.forEach((entry) => {
@@ -566,10 +542,7 @@ export function createStoryViewerRuntimeController({
         } catch {}
         return;
       }
-      if (!fromUserGesture && !hasUnlockedMedia && autoplayProbeState === "idle") {
-        ensureAutoplayProbe(mediaEl);
-      }
-      const shouldPlayWithSound = hasUnlockedMedia || autoplayProbeState === "allowed";
+      const shouldPlayWithSound = hasUnlockedMedia;
       mediaEl.defaultMuted = !shouldPlayWithSound;
       mediaEl.muted = !shouldPlayWithSound;
       mediaEl.volume = shouldPlayWithSound ? 1 : 0;
@@ -691,13 +664,19 @@ export function createStoryViewerRuntimeController({
     setActiveIndex(0, { force: true });
   }
 
-  function bindMediaUnlock() {
+  function bindSoundToggle() {
     if (!doc) return;
-    const handleFirstInteraction = () => {
-      if (hasUnlockedMedia) return;
-      hasUnlockedMedia = true;
+    doc.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const soundToggle = target.closest("[data-story-sound-toggle]");
+      if (!soundToggle) return;
+      event.preventDefault();
+      event.stopPropagation();
+      hasUnlockedMedia = !hasUnlockedMedia;
       suppressNextMediaToggle = true;
       syncMediaPlayback({ fromUserGesture: true });
+      updateRenderedSoundToggleButtons();
       if (win?.setTimeout) {
         win.setTimeout(() => {
           suppressNextMediaToggle = false;
@@ -705,14 +684,7 @@ export function createStoryViewerRuntimeController({
       } else {
         suppressNextMediaToggle = false;
       }
-      doc.removeEventListener("pointerdown", handleFirstInteraction, true);
-      doc.removeEventListener("touchstart", handleFirstInteraction, true);
-      doc.removeEventListener("keydown", handleFirstInteraction, true);
-    };
-
-    doc.addEventListener("pointerdown", handleFirstInteraction, { passive: true, capture: true });
-    doc.addEventListener("touchstart", handleFirstInteraction, { passive: true, capture: true });
-    doc.addEventListener("keydown", handleFirstInteraction, true);
+    });
   }
 
   function bindActiveStoryTracking(container) {
@@ -805,14 +777,6 @@ export function createStoryViewerRuntimeController({
       return;
     }
 
-    const initialAutoplayCapability = getAutoplayPolicyCapability();
-    if (initialAutoplayCapability === "allowed") {
-      autoplayProbeState = "allowed";
-      hasUnlockedMedia = true;
-    } else if (initialAutoplayCapability === "allowed-muted" || initialAutoplayCapability === "disallowed") {
-      autoplayProbeState = "blocked";
-    }
-
     let restaurantMeta = null;
     let stories = [];
     let didRenderFromCache = false;
@@ -830,7 +794,7 @@ export function createStoryViewerRuntimeController({
       renderStories(storyCache.stories, reelsContainer, restaurantMeta, rid);
       loadingState.style.display = "none";
       didRenderFromCache = true;
-      bindMediaUnlock();
+      bindSoundToggle();
       bindActiveStoryTracking(reelsContainer);
       setupKeyboardNav();
       bindMediaClickToggle();
@@ -861,7 +825,7 @@ export function createStoryViewerRuntimeController({
       renderStories(stories, reelsContainer, warmHint?.meta || null, rid);
       loadingState.style.display = "none";
       if (!didRenderFromCache) {
-        bindMediaUnlock();
+        bindSoundToggle();
         bindActiveStoryTracking(reelsContainer);
         setupKeyboardNav();
         bindMediaClickToggle();

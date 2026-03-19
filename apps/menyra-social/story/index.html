@@ -10,7 +10,7 @@
   <meta http-equiv="Expires" content="0" />
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
-  <link rel="modulepreload" href="./story.js?v=2026-03-19-story-perf-1" />
+  <link rel="modulepreload" href="./story.js?v=2026-03-19-story-sound-toggle-1" />
 
   <style>
     :root {
@@ -119,6 +119,13 @@
       pointer-events: auto;
     }
 
+    .topbarRight {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
     .btnIcon {
       border: 0;
       background: rgba(0,0,0,0.45);
@@ -135,6 +142,10 @@
       font-weight: 800;
     }
     .btnIcon:active { transform: scale(0.98); }
+    .btnIcon[data-story-sound-state="on"] {
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.16);
+    }
 
     .brandPill {
       display: flex;
@@ -333,6 +344,6 @@
     <div class="emptyDesc">Aktive Stories werden hier angezeigt.</div>
   </div>
 
-  <script type="module" src="./story.js?v=2026-03-19-story-perf-1"></script>
+  <script type="module" src="./story.js?v=2026-03-19-story-sound-toggle-1"></script>
 </body>
 </html>
