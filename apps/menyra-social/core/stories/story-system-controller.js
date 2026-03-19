@@ -14,12 +14,30 @@ function toDateSafeValue(value) {
   return null;
 }
 
+function isLikelyVideoMediaUrl(value = "") {
+  const url = String(value || "").trim().toLowerCase();
+  if (!url) return false;
+  return [
+    ".m3u8",
+    ".mpd",
+    ".mp4",
+    ".webm",
+    ".mov",
+    ".m4v",
+    ".ogv"
+  ].some((suffix) => url.includes(`${suffix}?`) || url.endsWith(suffix));
+}
+
 export function createStorySystemController({
   buildUrlFn = () => "",
   iconFn = () => "",
   escapeHtmlFn = (value) => String(value || ""),
   isLocalBusinessProfileFn = () => false,
   collectionFn = null,
+  queryFn = null,
+  orderByFn = null,
+  limitFn = null,
+  getDocsFn = null,
   docFn = null,
   setDocFn = null,
   serverTimestampFn = null,
@@ -150,6 +168,94 @@ export function createStorySystemController({
     return label.toLowerCase() === "business" ? "" : label;
   }
 
+  function mapStoryDocToViewerItem(docSnap, data = {}, { restaurantId = "", toDateSafeFn = toDateSafeValue } = {}) {
+    const explicitVideoUrl = String(data.videoUrl || data.playbackUrl || "").trim();
+    const explicitImageUrl = String(data.imageUrl || data.thumbUrl || data.mediaImage || "").trim();
+    const genericMediaUrl = String(data.mediaUrl || data.url || "").trim();
+    const embedUrl = String(data.embedUrl || "").trim();
+    const rawMediaType = String(data.mediaType || data.type || "").trim().toLowerCase();
+    let mediaType = "";
+    let videoUrl = "";
+    let imageUrl = "";
+
+    if (rawMediaType === "video") {
+      mediaType = "video";
+      videoUrl = explicitVideoUrl || genericMediaUrl;
+      imageUrl = explicitImageUrl;
+    } else if (rawMediaType === "image") {
+      mediaType = "image";
+      imageUrl = explicitImageUrl || genericMediaUrl;
+      videoUrl = explicitVideoUrl;
+    } else if (explicitVideoUrl) {
+      mediaType = "video";
+      videoUrl = explicitVideoUrl;
+      imageUrl = explicitImageUrl;
+    } else if (explicitImageUrl) {
+      mediaType = "image";
+      imageUrl = explicitImageUrl;
+    } else if (genericMediaUrl) {
+      if (isLikelyVideoMediaUrl(genericMediaUrl)) {
+        mediaType = "video";
+        videoUrl = genericMediaUrl;
+      } else {
+        mediaType = "image";
+        imageUrl = genericMediaUrl;
+      }
+    }
+
+    const hasMedia = !!embedUrl || !!videoUrl || !!imageUrl || (!!data.libraryId && !!data.videoId);
+    if (!hasMedia) return null;
+    return {
+      id: String(docSnap?.id || "").trim(),
+      restaurantId: String(restaurantId || "").trim(),
+      title: String(data.title || data.captionTitle || "").trim(),
+      description: String(data.description || data.caption || data.text || "").trim(),
+      menuItemId: String(data.menuItemId || data.itemId || "").trim(),
+      mediaType: mediaType === "video" ? "video" : "image",
+      embedUrl,
+      videoUrl,
+      imageUrl,
+      libraryId: String(data.libraryId || "").trim(),
+      videoId: String(data.videoId || "").trim(),
+      createdAt: toDateSafeFn(data.createdAt) || toDateSafeFn(data.updatedAt) || new Date(0)
+    };
+  }
+
+  async function loadStoriesForRestaurant(restaurantId = "", maxItems = 20) {
+    const rid = String(restaurantId || "").trim();
+    if (!rid || !db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") {
+      return [];
+    }
+    const ref = collectionFn(db, "restaurants", rid, "stories");
+    let snap = null;
+    try {
+      if (typeof orderByFn === "function" && typeof limitFn === "function") {
+        snap = await getDocsFn(queryFn(ref, orderByFn("createdAt", "desc"), limitFn(Math.max(1, Number(maxItems) || 20))));
+      } else {
+        snap = await getDocsFn(queryFn(ref));
+      }
+    } catch {
+      try {
+        if (typeof limitFn === "function") {
+          snap = await getDocsFn(queryFn(ref, limitFn(Math.max(1, Number(maxItems) || 20))));
+        } else {
+          snap = await getDocsFn(queryFn(ref));
+        }
+      } catch {
+        return [];
+      }
+    }
+    const items = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap?.data?.() || {};
+      if (!isStoryDocActive(data)) return;
+      const mapped = mapStoryDocToViewerItem(docSnap, data, { restaurantId: rid, toDateSafeFn: toDateSafeValue });
+      if (mapped) items.push(mapped);
+    });
+    return items.sort((a, b) => (toDateSafeValue(b.createdAt)?.getTime() || 0) - (toDateSafeValue(a.createdAt)?.getTime() || 0))
+      .slice(0, Math.max(1, Number(maxItems) || 20));
+  }
+
   function mapStorySnapshotRowsToFeedStories({
     docSnaps = [],
     restaurants = [],
@@ -173,8 +279,9 @@ export function createStorySystemController({
     sortedRows.forEach(({ docSnap, data }) => {
       if (!isStoryDocActive(data)) return;
       const restaurantId = extractStoryRestaurantIdFromDoc(docSnap, data);
-      if (!restaurantId || storyMap.has(restaurantId)) return;
+      if (!restaurantId) return;
       if (!canShowFeedRestaurantIdFn(restaurantId)) return;
+      const viewerStory = mapStoryDocToViewerItem(docSnap, data, { restaurantId, toDateSafeFn });
       const media = String(
         data.imageUrl
         || data.mediaUrl
@@ -184,7 +291,7 @@ export function createStorySystemController({
         || data.media?.[0]?.url
         || ""
       ).trim();
-      if (!media && !(data.libraryId && data.videoId)) return;
+      if (!media && !(data.libraryId && data.videoId) && !viewerStory) return;
 
       const restaurant = restList.find((row) => String(row?.id || "").trim() === restaurantId) || {};
       const hasKnownRestaurantIdentity = !!restaurant?.id;
@@ -210,24 +317,44 @@ export function createStorySystemController({
       const logoSource = hasKnownRestaurantIdentity
         ? (canonicalLogo || "")
         : (sourceLogo || media);
-      storyMap.set(restaurantId, {
+      const existing = storyMap.get(restaurantId) || {
         id: restaurantId,
         restaurantId,
         name: hasKnownRestaurantIdentity
           ? (canonicalName || sourceName || "")
           : (sourceName || ""),
         img: logoSource,
-        isLive: data.isLive !== undefined ? !!data.isLive : true
-      });
+        isLive: data.isLive !== undefined ? !!data.isLive : true,
+        storyItems: []
+      };
+      if (!existing.name) {
+        existing.name = hasKnownRestaurantIdentity
+          ? (canonicalName || sourceName || "")
+          : (sourceName || "");
+      }
+      if (!existing.img) {
+        existing.img = logoSource;
+      }
+      if (viewerStory) {
+        existing.storyItems.push(viewerStory);
+      }
+      storyMap.set(restaurantId, existing);
     });
 
-    return Array.from(storyMap.values()).slice(0, Math.max(1, Number(maxItems) || 24));
+    return Array.from(storyMap.values())
+      .map((entry) => ({
+        ...entry,
+        storyItems: (Array.isArray(entry.storyItems) ? entry.storyItems : [])
+          .sort((a, b) => (toDateSafeFn(b?.createdAt)?.getTime?.() || 0) - (toDateSafeFn(a?.createdAt)?.getTime?.() || 0))
+      }))
+      .slice(0, Math.max(1, Number(maxItems) || 24));
   }
 
   return {
     normalizeUploadIntent,
     buildUploadStateForIntent,
     buildStoryViewerUrl,
+    loadStoriesForRestaurant,
     isBusinessStoryPostEligible,
     renderUploadChooserView,
     createBusinessStory,

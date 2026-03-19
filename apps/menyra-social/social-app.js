@@ -936,6 +936,14 @@ const state = {
     open: false,
     profile: null
   },
+  storyModal: {
+    open: false,
+    restaurantId: "",
+    name: "",
+    logoUrl: "",
+    stories: [],
+    loading: false
+  },
   chatModal: {
     open: false,
     profile: null,
@@ -2267,6 +2275,22 @@ function setState(patch) {
   const prevTab = state.activeTab;
   const keys = Object.keys(patch || {});
   const drawerOnly = keys.length === 1 && keys[0] === "drawerOpen";
+  if (
+    patch
+    && Object.prototype.hasOwnProperty.call(patch, "activeTab")
+    && patch.activeTab !== prevTab
+    && !Object.prototype.hasOwnProperty.call(patch, "storyModal")
+    && state.storyModal?.open
+  ) {
+    patch.storyModal = {
+      open: false,
+      restaurantId: "",
+      name: "",
+      logoUrl: "",
+      stories: [],
+      loading: false
+    };
+  }
   if (patch && Object.prototype.hasOwnProperty.call(patch, "activeTab")) {
     patch.activeTab = sanitizeTabForSession(patch.activeTab, {
       hasProfileView: !!state.profileView

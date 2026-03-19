@@ -285,6 +285,11 @@ export function createAppControllerBridge({
     resolveRestaurantLogoFn: feed.resolveRestaurantLogo,
     resolveStoryRenderIdentityFn: feed.resolveStoryRenderIdentity,
     getOptimizedImageUrlFn: feed.getOptimizedImageUrl,
+    loadStoryItemsForRestaurantFn: async (restaurantId, maxItems = 20) => (
+      typeof feed.loadStoriesForRestaurant === "function"
+        ? feed.loadStoriesForRestaurant(restaurantId, maxItems)
+        : []
+    ),
     buildUploadStateForIntentFn: (intent = "", currentUpload = {}) => (
       typeof feed.buildUploadStateForIntent === "function"
         ? feed.buildUploadStateForIntent(intent, currentUpload)
