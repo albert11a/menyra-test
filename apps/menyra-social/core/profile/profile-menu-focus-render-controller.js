@@ -14,6 +14,7 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const renderProfileShopFavoritesView = deps.renderProfileShopFavoritesViewFn;
   const ensureMenuDataForProfile = deps.ensureMenuDataForProfileFn;
   const ensureFocusDataForProfile = deps.ensureFocusDataForProfileFn;
+  const ensureTableQrStateForProfile = deps.ensureTableQrStateForProfileFn;
   const isShopCatalogProfile = deps.isShopCatalogProfileFn;
   const getBusinessCatalogLabel = deps.getBusinessCatalogLabelFn;
   const normalizeMenuType = deps.normalizeMenuTypeFn;
@@ -34,6 +35,7 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const ensureMenuItemMeta = deps.ensureMenuItemMetaFn;
   const resolveMenuItemCounts = deps.resolveMenuItemCountsFn;
   const getFocusStateForRestaurant = deps.getFocusStateForRestaurantFn;
+  const getTableQrStateForRestaurant = deps.getTableQrStateForRestaurantFn;
   const getFocusItemObjectPosition = deps.getFocusItemObjectPositionFn;
   const getFocusCardClass = deps.getFocusCardClassFn;
   const getFocusIndex = deps.getFocusIndexFn;
@@ -1258,14 +1260,81 @@ function renderMenuQrCard({ label, url, caption }) {
   if (!url) return "";
   const qrUrl = buildQrImageUrl(url, 240);
   return `
-    <div class="p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm flex flex-col items-center gap-3">
+    <button type="button" data-copy-url="${escapeHtml(url)}" data-copy-label="${escapeHtml(label)}" class="p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm flex flex-col items-center gap-3 text-left active:scale-[0.98] transition-transform">
       <div class="w-full aspect-square rounded-2xl bg-slate-50 overflow-hidden flex items-center justify-center">
         <img src="${escapeHtml(qrUrl)}" class="w-full h-full object-cover" loading="lazy" decoding="async" />
       </div>
       <div class="text-center">
         <p class="text-[11px] font-black uppercase tracking-widest text-slate-700">${escapeHtml(label)}</p>
         ${caption ? `<p class="text-[10px] font-bold text-slate-400 mt-1">${escapeHtml(caption)}</p>` : ""}
+        <p class="text-[9px] font-black uppercase tracking-widest text-slate-300 mt-2">Tippen zum Kopieren</p>
       </div>
+    </button>
+  `;
+}
+
+function renderTableQrAdminSection({
+  profile,
+  restaurantId,
+  catalogLabel
+}) {
+  if (!restaurantId || !isRestaurantCafeProfile(profile)) return "";
+  if (typeof ensureTableQrStateForProfile === "function") {
+    const current = getTableQrStateForRestaurant ? getTableQrStateForRestaurant(restaurantId) : null;
+    if (!current || current.sameRestaurant !== true || (!current.loading && !current.loaded && !current.error)) {
+      ensureTableQrStateForProfile(profile);
+    }
+  }
+  const tableQrState = typeof getTableQrStateForRestaurant === "function"
+    ? getTableQrStateForRestaurant(restaurantId)
+    : { enabled: true, count: 0, tables: [], loading: false, saving: false, error: "" };
+  const tableCards = (tableQrState.tables || []).map((tableNumber) => {
+    const url = buildUrl("apps/menyra-social/index.html", {
+      r: restaurantId,
+      tab: "menu",
+      src: "qr",
+      table: tableNumber
+    });
+    return renderMenuQrCard({
+      label: `Tisch ${tableNumber}`,
+      url,
+      caption: `${catalogLabel} fuer Tisch ${tableNumber}`
+    });
+  }).join("");
+  return `
+    <div class="mt-6 bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+      <div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Tisch QR</span>
+          <h3 class="text-xl font-black italic tracking-tighter">Tische</h3>
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Gib an, wie viele Tische du hast. Bereits erzeugte Tisch-QR bleiben dauerhaft unter denselben Links.</p>
+        </div>
+        <label class="inline-flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-50 border border-slate-100">
+          <input id="tableQrEnabledToggle" type="checkbox" class="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-200" ${tableQrState.enabled !== false ? "checked" : ""} />
+          <span class="text-[10px] font-black uppercase tracking-widest text-slate-500">Aktiv</span>
+        </label>
+      </div>
+      <div class="mt-5 flex flex-col gap-3 md:flex-row md:items-end">
+        <div class="flex-1">
+          <label for="tableQrCountInput" class="block text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Anzahl Tische</label>
+          <input id="tableQrCountInput" type="number" min="0" max="200" step="1" inputmode="numeric" value="${escapeHtml(String(tableQrState.count || 0))}" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <button type="button" data-table-qr-save="true" class="h-14 px-6 rounded-[1.6rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.18em] shadow-xl shadow-slate-200/60 active:scale-95" ${tableQrState.saving ? "disabled" : ""}>
+          ${tableQrState.saving ? "Speichern..." : "Tische speichern"}
+        </button>
+      </div>
+      ${tableQrState.loading ? `<p class="mt-4 text-[10px] font-bold uppercase tracking-widest text-slate-400">Tisch-QR wird geladen...</p>` : ""}
+      ${tableQrState.status ? `<p class="mt-4 text-[10px] font-bold uppercase tracking-widest text-emerald-500">${escapeHtml(tableQrState.status)}</p>` : ""}
+      ${tableQrState.error ? `<p class="mt-4 text-[10px] font-bold uppercase tracking-widest text-rose-500">${escapeHtml(tableQrState.error)}</p>` : ""}
+      ${tableCards ? `
+        <div class="grid grid-cols-2 gap-4 mt-6">
+          ${tableCards}
+        </div>
+      ` : `
+        <div class="mt-6 rounded-[2rem] border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+          <p class="text-[10px] font-black uppercase tracking-widest text-slate-300">Noch keine Tisch-QR-Codes</p>
+        </div>
+      `}
     </div>
   `;
 }
@@ -1362,6 +1431,7 @@ function renderMenuAdminView() {
             ${renderMenuQrCard({ label: "Profil", url: profileUrl, caption: "Social Profil" })}
             ${renderMenuQrCard({ label: catalogLabel, url: menuUrl, caption: `${catalogLabel} & Preise` })}
           </div>
+          ${renderTableQrAdminSection({ profile, restaurantId, catalogLabel })}
         </div>
       ` : ""}
     </div>

@@ -57,6 +57,8 @@ export function normalizeOrderDocCore(data, id, {
     restaurantId: String(source.restaurantId || "").trim(),
     businessName: String(source.businessName || "").trim(),
     businessAvatar: String(source.businessAvatar || "").trim(),
+    tableNumber: Math.max(0, Number(source.tableNumber || source.contact?.tableNumber || 0) || 0),
+    tableLabel: String(source.tableLabel || source.contact?.tableLabel || "").trim(),
     buyerUid: String(source.buyerUid || "").trim(),
     buyerName: String(source.buyerName || "").trim(),
     buyerHandle: String(source.buyerHandle || "").trim(),
@@ -65,7 +67,9 @@ export function normalizeOrderDocCore(data, id, {
       name: String(source.contact?.name || "").trim(),
       phone: String(source.contact?.phone || "").trim(),
       city: String(source.contact?.city || "").trim(),
-      address: String(source.contact?.address || "").trim()
+      address: String(source.contact?.address || "").trim(),
+      tableNumber: Math.max(0, Number(source.contact?.tableNumber || source.tableNumber || 0) || 0),
+      tableLabel: String(source.contact?.tableLabel || source.tableLabel || "").trim()
     },
     items,
     itemCount: Math.max(1, Number(source.itemCount || items.reduce((sum, item) => sum + item.quantity, 0) || 1) || 1),

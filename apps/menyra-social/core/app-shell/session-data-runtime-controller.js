@@ -489,9 +489,41 @@ export function createSessionDataRuntimeController({
         avatarFile: null
       }
     };
+    state.businessAccounts = {
+      items: [],
+      view: "list",
+      editorUid: "",
+      loading: false,
+      saving: false,
+      deleting: false,
+      loaded: false,
+      error: "",
+      status: "",
+      form: {
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+        role: "waiter",
+        businessAccess: false,
+        waiterAccess: true,
+        active: true
+      }
+    };
     state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] };
     state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
     state.selectedBusiness = null;
+    state.tableQr = {
+      restaurantId: "",
+      enabled: true,
+      count: 0,
+      loaded: false,
+      loading: false,
+      saving: false,
+      error: "",
+      status: "",
+      verifiedAt: 0
+    };
     state.followingHandles = [];
     state.followingTargetIds = [];
     state.pendingFollowRequests = [];
@@ -511,6 +543,7 @@ export function createSessionDataRuntimeController({
     dataLoaded.leads = false;
     dataLoaded.customers = false;
     dataLoaded.staff = false;
+    dataLoaded.businessAccounts = false;
   }
 
   async function loadRestaurants({ force = false } = {}) {

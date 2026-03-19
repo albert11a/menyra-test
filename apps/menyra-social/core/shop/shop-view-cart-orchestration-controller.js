@@ -1,3 +1,5 @@
+import { normalizeRestaurantTypeCore } from "../profile/restaurant-type-utils.js";
+
 export function createShopViewCartOrchestrationController({
   state = null,
   getMenuItemImagesFn = () => [],
@@ -25,9 +27,12 @@ export function createShopViewCartOrchestrationController({
     restaurantId: "",
     businessName: "",
     businessAvatar: "",
+    tableNumber: 0,
+    tableLabel: "",
+    serviceMode: "",
     items: [],
     checkoutOpen: false,
-    form: { name: "", phone: "", city: "", address: "" },
+    form: { name: "", phone: "", city: "", address: "", tableNumber: 0, tableLabel: "" },
     status: "",
     loading: false
   }),
@@ -171,10 +176,37 @@ export function createShopViewCartOrchestrationController({
     return state.profileView?.profile || state.userProfile;
   }
 
+  function resolveCheckoutBusinessType(profile = getCurrentShopProfile()) {
+    const context = getShopCartProfileContext(profile);
+    const restaurantId = String(context.restaurantId || state.shopCart?.restaurantId || profile?.restaurantId || "").trim();
+    const restaurant = restaurantId ? (getRestaurantMetaByIdFn(restaurantId) || {}) : {};
+    return normalizeRestaurantTypeCore(
+      restaurant?.type
+      || restaurant?.customerType
+      || profile?.type
+      || profile?.customerType
+      || state.userProfile?.type
+      || state.userProfile?.customerType
+      || ""
+    );
+  }
+
+  function isHospitalityCheckout(profile = getCurrentShopProfile()) {
+    return ["restaurant", "cafe", "fastfood"].includes(resolveCheckoutBusinessType(profile));
+  }
+
   function getShopCartProfileContext(profile = getCurrentShopProfile()) {
-    return getShopCartProfileContextCoreFn(profile, {
+    const base = getShopCartProfileContextCoreFn(profile, {
       getRestaurantMetaByIdFn
     });
+    const menuAccessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
+    const routeTableNumber = Math.max(0, Number(state.profileView?.tableNumber || 0) || 0);
+    return {
+      ...base,
+      tableNumber: menuAccessSource === "qr" ? routeTableNumber : 0,
+      tableLabel: menuAccessSource === "qr" && routeTableNumber ? `Tisch ${routeTableNumber}` : "",
+      serviceMode: menuAccessSource === "qr" && routeTableNumber ? "table" : ""
+    };
   }
 
   function getShopCartTotal() {
@@ -189,6 +221,13 @@ export function createShopViewCartOrchestrationController({
     const items = cartMatches ? (state.shopCart.items || []) : [];
     const total = cartMatches ? getShopCartTotal() : 0;
     const hasOtherCart = !!state.shopCart.restaurantId && !cartMatches && (state.shopCart.items || []).length;
+    const tableNumber = cartMatches ? Math.max(0, Number(state.shopCart.tableNumber || state.shopCart.form?.tableNumber || 0) || 0) : 0;
+    const isTableService = cartMatches && String(state.shopCart.serviceMode || "") === "table" && tableNumber > 0;
+    const hospitalityCheckout = isHospitalityCheckout(profile);
+    const directOrderFlow = isTableService || hospitalityCheckout;
+    const confirmation = cartMatches && !items.length && String(state.shopCart?.confirmation?.restaurantId || "") === context.restaurantId
+      ? state.shopCart.confirmation
+      : null;
     return `
     <div class="px-5 app-main-content-safe space-y-5">
       <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
@@ -196,6 +235,7 @@ export function createShopViewCartOrchestrationController({
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Warenkorb</span>
             <h3 class="text-xl font-black italic tracking-tighter">${escapeHtmlFn(context.businessName || "Shop")}</h3>
+            ${isTableService ? `<p class="text-[10px] font-black uppercase tracking-widest text-emerald-600 mt-2">Tisch ${escapeHtmlFn(tableNumber)}</p>` : ""}
           </div>
           <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-600">
             ${iconFn("shopping-cart", "w-5 h-5")}
@@ -203,6 +243,20 @@ export function createShopViewCartOrchestrationController({
         </div>
         ${hasOtherCart ? `
           <p class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Dein aktueller Warenkorb gehoert zu einem anderen Shop.</p>
+        ` : confirmation ? `
+          <div class="text-center py-10">
+            <div class="relative w-24 h-24 mx-auto mb-6">
+              <div class="absolute inset-0 rounded-full bg-emerald-100 animate-ping opacity-60"></div>
+              <div class="absolute inset-[10px] rounded-full bg-emerald-200/80 animate-pulse"></div>
+              <div class="absolute inset-[22px] rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xl shadow-emerald-300/40">
+                ${iconFn("check", "w-8 h-8")}
+              </div>
+            </div>
+            <p class="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-600">Bestellung gesendet</p>
+            <h4 class="text-[22px] font-black italic tracking-tight text-slate-900 mt-3">${escapeHtmlFn(confirmation.title || "Bestellung")}</h4>
+            <p class="text-sm font-medium text-slate-500 mt-3">${escapeHtmlFn(confirmation.message || "Ihre Bestellung wird zubereitet und in Kuerze serviert.")}</p>
+            ${confirmation.tableNumber ? `<p class="text-[10px] font-black uppercase tracking-widest text-emerald-700 mt-4">Tisch ${escapeHtmlFn(confirmation.tableNumber)}</p>` : ""}
+          </div>
         ` : items.length ? `
           <div class="space-y-3">
             ${items.map((item) => `
@@ -226,9 +280,10 @@ export function createShopViewCartOrchestrationController({
               <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Gesamt</span>
               <span class="text-lg font-black text-slate-900">${escapeHtmlFn(formatPriceFn(total))}</span>
             </div>
-            <button data-cart-checkout="open" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200/60 active:scale-95">
-              Checkout starten
+            <button data-cart-checkout="${directOrderFlow ? "submit" : "open"}" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200/60 active:scale-95 ${state.shopCart.loading ? "opacity-70 pointer-events-none" : ""}">
+              ${state.shopCart.loading ? "Bestellung wird gesendet..." : (directOrderFlow ? (isTableService ? "Tischbestellung absenden" : "Bestellung absenden") : "Checkout starten")}
             </button>
+            ${directOrderFlow ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${isTableService ? "Direkt fuer deinen Tisch" : "Direkt ohne weitere Angaben"}</p>` : ""}
             ${state.shopCart.status && !state.shopCart.checkoutOpen ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtmlFn(state.shopCart.status)}</p>` : ""}
           </div>
         ` : `
@@ -241,20 +296,33 @@ export function createShopViewCartOrchestrationController({
           </div>
         `}
       </div>
-      ${cartMatches && items.length && state.shopCart.checkoutOpen ? `
+      ${cartMatches && items.length && state.shopCart.checkoutOpen && !directOrderFlow ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm space-y-4">
           <div>
             <span class="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Checkout</span>
-            <h3 class="text-xl font-black italic tracking-tighter">Lieferdaten</h3>
+            <h3 class="text-xl font-black italic tracking-tighter">${isTableService ? "Tischbestellung" : (hospitalityCheckout ? "Direkt bestellen" : "Lieferdaten")}</h3>
+            ${isTableService ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-2">Bestellung fuer Tisch ${escapeHtmlFn(tableNumber)}</p>` : ""}
           </div>
           <div class="grid grid-cols-1 gap-3">
-            <input data-cart-field="name" type="text" value="${escapeHtmlFn(state.shopCart.form.name || "")}" placeholder="Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-            <input data-cart-field="phone" type="text" value="${escapeHtmlFn(state.shopCart.form.phone || "")}" placeholder="Tel Nummer" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-            <input data-cart-field="city" type="text" value="${escapeHtmlFn(state.shopCart.form.city || "")}" placeholder="Qyteti" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-            <textarea data-cart-field="address" rows="3" placeholder="Adresa" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtmlFn(state.shopCart.form.address || "")}</textarea>
+            ${isTableService ? `
+              <div class="rounded-[1.8rem] border border-emerald-100 bg-emerald-50 px-5 py-4">
+                <p class="text-[10px] font-black uppercase tracking-widest text-emerald-700">Direkt am Tisch</p>
+                <p class="text-sm font-bold text-slate-700 mt-2">Keine Namen oder Telefonnummern noetig. Die Bestellung geht direkt an Tisch ${escapeHtmlFn(tableNumber)}.</p>
+              </div>
+            ` : hospitalityCheckout ? `
+              <div class="rounded-[1.8rem] border border-indigo-100 bg-indigo-50 px-5 py-4">
+                <p class="text-[10px] font-black uppercase tracking-widest text-indigo-700">Schneller Checkout</p>
+                <p class="text-sm font-bold text-slate-700 mt-2">Fuer ${escapeHtmlFn(context.businessName || "dieses Lokal")} sind keine Namen oder Telefonnummern noetig. Bestellung direkt absenden.</p>
+              </div>
+            ` : `
+              <input data-cart-field="name" type="text" value="${escapeHtmlFn(state.shopCart.form.name || "")}" placeholder="Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input data-cart-field="phone" type="text" value="${escapeHtmlFn(state.shopCart.form.phone || "")}" placeholder="Tel Nummer" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              <input data-cart-field="city" type="text" value="${escapeHtmlFn(state.shopCart.form.city || "")}" placeholder="Qyteti" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+              <textarea data-cart-field="address" rows="3" placeholder="Adresa" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtmlFn(state.shopCart.form.address || "")}</textarea>
+            `}
           </div>
           <button data-cart-checkout="submit" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-95" ${state.shopCart.loading ? "disabled" : ""}>
-            ${state.shopCart.loading ? "Senden..." : "Bestellung absenden"}
+            ${state.shopCart.loading ? "Senden..." : (isTableService ? "Tischbestellung absenden" : "Bestellung absenden")}
           </button>
           ${state.shopCart.status ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest ${state.shopCart.loading ? "text-slate-400" : "text-slate-500"}">${escapeHtmlFn(state.shopCart.status)}</p>` : ""}
         </div>
@@ -267,9 +335,21 @@ export function createShopViewCartOrchestrationController({
     const form = keepForm
       ? { ...(state.shopCart?.form || createEmptyShopCartFn().form) }
       : { ...createEmptyShopCartFn().form };
+    const tableNumber = keepForm ? Math.max(0, Number(state.shopCart?.tableNumber || state.shopCart?.form?.tableNumber || 0) || 0) : 0;
+    const tableLabel = keepForm
+      ? String(state.shopCart?.tableLabel || state.shopCart?.form?.tableLabel || "").trim()
+      : "";
+    const serviceMode = keepForm ? String(state.shopCart?.serviceMode || "").trim().toLowerCase() : "";
     state.shopCart = {
       ...createEmptyShopCartFn(),
-      form
+      form: {
+        ...form,
+        tableNumber,
+        tableLabel
+      },
+      tableNumber,
+      tableLabel,
+      serviceMode
     };
     saveShopCartToStorageFn();
   }
@@ -315,6 +395,14 @@ export function createShopViewCartOrchestrationController({
     nextCart.restaurantId = context.restaurantId;
     nextCart.businessName = context.businessName;
     nextCart.businessAvatar = context.businessAvatar;
+    nextCart.tableNumber = context.tableNumber || nextCart.tableNumber || 0;
+    nextCart.tableLabel = context.tableLabel || nextCart.tableLabel || "";
+    nextCart.serviceMode = context.serviceMode || nextCart.serviceMode || "";
+    nextCart.form = {
+      ...(nextCart.form || createEmptyShopCartFn().form),
+      tableNumber: nextCart.tableNumber,
+      tableLabel: nextCart.tableLabel
+    };
     nextCart.status = `${entry.name} wurde zum Warenkorb hinzugefuegt.`;
     state.shopCart = nextCart;
     saveShopCartToStorageFn();
@@ -345,12 +433,17 @@ export function createShopViewCartOrchestrationController({
   function openShopCheckout() {
     const nextCart = normalizeShopCartStateFn(state.shopCart);
     if (!nextCart.items.length) return;
+    const isTableService = String(nextCart.serviceMode || "").trim().toLowerCase() === "table" && Number(nextCart.tableNumber || 0) > 0;
     nextCart.checkoutOpen = true;
     nextCart.status = "";
     if (!nextCart.form.name) nextCart.form.name = String(state.userProfile?.name || state.user?.displayName || "").trim();
     if (!nextCart.form.phone) nextCart.form.phone = String(state.userProfile?.phone || state.user?.phoneNumber || "").trim();
-    if (!nextCart.form.city) nextCart.form.city = String(state.userProfile?.location || "").trim();
-    if (!nextCart.form.address) nextCart.form.address = String(state.userProfile?.address || "").trim();
+    if (!isTableService) {
+      if (!nextCart.form.city) nextCart.form.city = String(state.userProfile?.location || "").trim();
+      if (!nextCart.form.address) nextCart.form.address = String(state.userProfile?.address || "").trim();
+    }
+    nextCart.form.tableNumber = Math.max(0, Number(nextCart.tableNumber || nextCart.form.tableNumber || 0) || 0);
+    nextCart.form.tableLabel = String(nextCart.tableLabel || nextCart.form.tableLabel || "").trim();
     state.shopCart = nextCart;
     saveShopCartToStorageFn();
     renderFn();

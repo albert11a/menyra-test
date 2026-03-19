@@ -61,6 +61,7 @@ export function applyPendingRouteStateCore({
     next.pendingProfileRestaurantId = routeState.pendingProfileRestaurantId;
     next.pendingProfileTopTab = routeState.pendingProfileTopTab || "";
     next.pendingProfileAccessSource = routeState.pendingProfileAccessSource || "";
+    next.pendingProfileTableNumber = Number(routeState.pendingProfileTableNumber || 0) || 0;
     next.pendingProfileHandled = false;
     changed = true;
   }

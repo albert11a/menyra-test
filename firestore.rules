@@ -56,6 +56,72 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/restaurants/$(restaurantId)/staff/$(authUid()));
     }
 
+    function restaurantPath(restaurantId) {
+      return /databases/$(database)/documents/restaurants/$(restaurantId);
+    }
+
+    function currentRestaurantStaffPath(restaurantId) {
+      return /databases/$(database)/documents/restaurants/$(restaurantId)/staff/$(authUid());
+    }
+
+    function restaurantExists(restaurantId) {
+      return restaurantId is string
+        && restaurantId != ""
+        && exists(restaurantPath(restaurantId));
+    }
+
+    function restaurantData(restaurantId) {
+      return restaurantExists(restaurantId) ? get(restaurantPath(restaurantId)).data : {};
+    }
+
+    function currentRestaurantStaffExists(restaurantId) {
+      return signedIn()
+        && restaurantId is string
+        && restaurantId != ""
+        && exists(currentRestaurantStaffPath(restaurantId));
+    }
+
+    function currentRestaurantStaffData(restaurantId) {
+      return currentRestaurantStaffExists(restaurantId) ? get(currentRestaurantStaffPath(restaurantId)).data : {};
+    }
+
+    function isRestaurantOwner(restaurantId) {
+      let data = restaurantData(restaurantId);
+      return signedIn() && restaurantExists(restaurantId) && (
+        data.ownerUid == authUid()
+        || matchesAuthEmail(data)
+      );
+    }
+
+    function isActiveRestaurantStaffMember(restaurantId) {
+      let data = currentRestaurantStaffData(restaurantId);
+      return currentRestaurantStaffExists(restaurantId)
+        && data.active != false
+        && data.status != "disabled";
+    }
+
+    function hasRestaurantBusinessAccess(restaurantId) {
+      let data = currentRestaurantStaffData(restaurantId);
+      return isRestaurantOwner(restaurantId) || (
+        isActiveRestaurantStaffMember(restaurantId)
+        && (
+          data.businessAccess == true
+          || (data.permissions is map && data.permissions.businessAccess == true)
+        )
+      );
+    }
+
+    function hasRestaurantWaiterAccess(restaurantId) {
+      let data = currentRestaurantStaffData(restaurantId);
+      return isRestaurantOwner(restaurantId) || (
+        isActiveRestaurantStaffMember(restaurantId)
+        && (
+          data.waiterAccess == true
+          || (data.permissions is map && data.permissions.waiterAccess == true)
+        )
+      );
+    }
+
     function matchesAuthEmail(data) {
       let email = authEmail();
       return email != "" && (
@@ -97,18 +163,166 @@ service cloud.firestore {
         || data.createdByUid == authUid()
         || data.ceoParentUid == authUid()
         || ceoPathContainsActor(data)
-        || isRestaurantStaffMember(restaurantId)
         || matchesAuthEmail(data)
       );
     }
 
     function canManageRestaurantDoc(restaurantId) {
-      return exists(/databases/$(database)/documents/restaurants/$(restaurantId))
-        && canManageRestaurantData(get(/databases/$(database)/documents/restaurants/$(restaurantId)).data, restaurantId);
+      return hasRestaurantBusinessAccess(restaurantId) || isCeoActor();
     }
 
     function canCreateRestaurantDoc(restaurantId) {
       return canManageRestaurantData(request.resource.data, restaurantId) || isCeoActor();
+    }
+
+    function canAccessRestaurantOrdersDoc(restaurantId) {
+      return hasRestaurantWaiterAccess(restaurantId) || isCeoActor();
+    }
+
+    function canManageRestaurantStaffDoc(restaurantId) {
+      return isRestaurantOwner(restaurantId) || isCeoActor();
+    }
+
+    function staffRestaurantIdFromData(data) {
+      return data.staffRestaurantId is string && data.staffRestaurantId != ""
+        ? data.staffRestaurantId
+        : (
+          data.waiterRestaurantId is string && data.waiterRestaurantId != ""
+            ? data.waiterRestaurantId
+            : (data.restaurantId is string ? data.restaurantId : "")
+        );
+    }
+
+    function isStaffUserPayload(data) {
+      return data.role == "staff"
+        || (data.roles is list && "staff" in data.roles)
+        || staffRestaurantIdFromData(data) != "";
+    }
+
+    function ownerManagedStaffUserAllowedFields() {
+      return [
+        "uid",
+        "displayName",
+        "name",
+        "firstName",
+        "lastName",
+        "email",
+        "role",
+        "roles",
+        "staffRole",
+        "permissions",
+        "businessAccess",
+        "waiterAccess",
+        "staffActive",
+        "staffStatus",
+        "staffRestaurantId",
+        "waiterRestaurantId",
+        "restaurantId",
+        "businessOwnerUid",
+        "createdAt",
+        "updatedAt"
+      ];
+    }
+
+    function ownerManagedStaffUserMutableFields() {
+      return [
+        "displayName",
+        "name",
+        "firstName",
+        "lastName",
+        "role",
+        "roles",
+        "staffRole",
+        "permissions",
+        "businessAccess",
+        "waiterAccess",
+        "staffActive",
+        "staffStatus",
+        "staffRestaurantId",
+        "waiterRestaurantId",
+        "restaurantId",
+        "businessOwnerUid",
+        "updatedAt"
+      ];
+    }
+
+    function validOwnerManagedStaffRole(role) {
+      return role == "manager" || role == "waiter";
+    }
+
+    function validOwnerManagedStaffPermissions(data) {
+      return data.permissions is map
+        && data.permissions.keys().hasOnly(["businessAccess", "waiterAccess"])
+        && data.businessAccess is bool
+        && data.waiterAccess is bool
+        && data.permissions.businessAccess == data.businessAccess
+        && data.permissions.waiterAccess == data.waiterAccess;
+    }
+
+    function validOwnerManagedStaffStatus(data) {
+      return data.staffActive is bool
+        && (
+          (data.staffActive == true && data.staffStatus == "active")
+          || (data.staffActive == false && data.staffStatus == "disabled")
+        );
+    }
+
+    function validOwnerManagedStaffIdentity(data, userId, restaurantId) {
+      return data.uid == userId
+        && data.email is string
+        && data.email != ""
+        && data.role == "staff"
+        && data.roles is list
+        && data.roles.size() == 1
+        && data.roles[0] == "staff"
+        && validOwnerManagedStaffRole(data.staffRole)
+        && validOwnerManagedStaffPermissions(data)
+        && validOwnerManagedStaffStatus(data)
+        && data.staffRestaurantId == restaurantId
+        && data.waiterRestaurantId == restaurantId
+        && data.businessOwnerUid == authUid()
+        && data.restaurantId is string
+        && (
+          (data.businessAccess == true && data.restaurantId == restaurantId)
+          || (data.businessAccess == false && data.restaurantId == "")
+        );
+    }
+
+    function ownerManagedStaffUserCreateAllowed(userId) {
+      let requestedRestaurantId = staffRestaurantIdFromData(request.resource.data);
+      return signedIn()
+        && authUid() != userId
+        && requestedRestaurantId != ""
+        && isRestaurantOwner(requestedRestaurantId)
+        && request.resource.data.keys().hasOnly(ownerManagedStaffUserAllowedFields())
+        && validOwnerManagedStaffIdentity(request.resource.data, userId, requestedRestaurantId);
+    }
+
+    function ownerManagedStaffUserUpdateAllowed(userId) {
+      let existingRestaurantId = resource != null ? staffRestaurantIdFromData(resource.data) : "";
+      return signedIn()
+        && resource != null
+        && authUid() != userId
+        && existingRestaurantId != ""
+        && isRestaurantOwner(existingRestaurantId)
+        && isStaffUserPayload(resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(ownerManagedStaffUserMutableFields())
+        && validOwnerManagedStaffIdentity(request.resource.data, userId, existingRestaurantId)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.email == resource.data.email
+        && (
+          !resource.data.keys().hasAny(["createdAt"])
+          || request.resource.data.createdAt == resource.data.createdAt
+        );
+    }
+
+    function ownerManagedStaffUserDeleteAllowed(userId) {
+      let existingRestaurantId = resource != null ? staffRestaurantIdFromData(resource.data) : "";
+      return signedIn()
+        && authUid() != userId
+        && existingRestaurantId != ""
+        && isRestaurantOwner(existingRestaurantId)
+        && isStaffUserPayload(resource.data);
     }
 
     function counterOnlyUpdate(allowedFields) {
@@ -201,9 +415,9 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow get, list: if signedIn();
-      allow create: if selfUserCreateAllowed(userId) || ceoManagedUserWriteAllowed(userId);
-      allow update: if selfUserUpdateAllowed(userId) || ceoManagedUserWriteAllowed(userId) || otherUserCounterWriteAllowed(userId);
-      allow delete: if isSelf(userId) || ceoManagedUserWriteAllowed(userId);
+      allow create: if selfUserCreateAllowed(userId) || ceoManagedUserWriteAllowed(userId) || ownerManagedStaffUserCreateAllowed(userId);
+      allow update: if selfUserUpdateAllowed(userId) || ceoManagedUserWriteAllowed(userId) || ownerManagedStaffUserUpdateAllowed(userId) || otherUserCounterWriteAllowed(userId);
+      allow delete: if isSelf(userId) || ceoManagedUserWriteAllowed(userId) || ownerManagedStaffUserDeleteAllowed(userId);
 
       match /devices/{deviceId} {
         allow get, list, create, update, delete: if isSelf(userId);
@@ -394,16 +608,16 @@ service cloud.firestore {
       }
 
       match /orders/{orderId} {
-        allow get: if canManageRestaurantDoc(restaurantId) || isCeoActor() || buyerOwnsOrder();
-        allow list: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow get: if canAccessRestaurantOrdersDoc(restaurantId) || buyerOwnsOrder();
+        allow list: if canAccessRestaurantOrdersDoc(restaurantId);
         allow create: if validOrderCreateForRestaurant(restaurantId);
-        allow update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow update, delete: if canAccessRestaurantOrdersDoc(restaurantId);
       }
 
       match /staff/{staffUid} {
-        allow get: if isSelf(staffUid) || canManageRestaurantDoc(restaurantId) || isCeoActor();
-        allow list: if canManageRestaurantDoc(restaurantId) || isCeoActor();
-        allow create, update, delete: if canManageRestaurantDoc(restaurantId) || isCeoActor();
+        allow get: if isSelf(staffUid) || canManageRestaurantStaffDoc(restaurantId);
+        allow list: if canManageRestaurantStaffDoc(restaurantId);
+        allow create, update, delete: if canManageRestaurantStaffDoc(restaurantId);
       }
     }
 

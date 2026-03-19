@@ -564,6 +564,10 @@ export function createSelfProfileRuntimeController({
     const roles = normalizeRoleList(data?.roles || data?.role || "");
     const lat = data?.gpsLat ?? data?.lat ?? null;
     const lng = data?.gpsLng ?? data?.lng ?? null;
+    const permissions = data?.permissions && typeof data.permissions === "object" ? data.permissions : {};
+    const businessAccess = data?.businessAccess === true || permissions.businessAccess === true;
+    const waiterAccess = data?.waiterAccess === true || permissions.waiterAccess === true;
+    const sourceUserRole = String(data?.sourceUserRole || data?.role || "user").trim().toLowerCase() || "user";
     return {
       name: displayName,
       handle: data?.handle || normalizeHandle(displayName),
@@ -577,8 +581,21 @@ export function createSelfProfileRuntimeController({
       karma: String(data?.score ?? "0"),
       roles,
       role: data?.role || "user",
+      sourceUserRole,
       isPremium: data?.isPremium || false,
       restaurantId: data?.restaurantId || "",
+      staffRestaurantId: data?.staffRestaurantId || "",
+      waiterRestaurantId: data?.waiterRestaurantId || "",
+      businessAccess,
+      waiterAccess,
+      permissions: {
+        businessAccess,
+        waiterAccess
+      },
+      staffRole: data?.staffRole || "",
+      businessOwnerUid: data?.businessOwnerUid || "",
+      staffActive: data?.staffActive === false ? false : String(data?.staffStatus || "").trim().toLowerCase() !== "disabled",
+      staffStatus: data?.staffStatus || "",
       leadSettings: normalizeLeadSettings(data?.leadSettings || null),
       country: normalizeCeoCountry(data?.country),
       ceoParentUid: data?.ceoParentUid || data?.parentCeoUid || "",
@@ -597,6 +614,42 @@ export function createSelfProfileRuntimeController({
 
   function hasCountValue(...values) {
     return values.some((value) => Number.isFinite(Number(value)));
+  }
+
+  function applyWorkspaceAccessContext(profile = {}, source = {}) {
+    const base = profile && typeof profile === "object" ? profile : {};
+    const context = source && typeof source === "object" ? source : {};
+    const permissions = context?.permissions && typeof context.permissions === "object" ? context.permissions : {};
+    const sourceUserRole = String(context?.sourceUserRole || context?.role || "").trim().toLowerCase();
+    const isStaffContext = sourceUserRole === "staff";
+    const businessAccess = isStaffContext
+      ? (context?.businessAccess === true || permissions.businessAccess === true)
+      : true;
+    const waiterAccess = isStaffContext
+      ? (context?.waiterAccess === true || permissions.waiterAccess === true)
+      : true;
+    return {
+      ...base,
+      sourceUserRole: isStaffContext
+        ? "staff"
+        : (sourceUserRole || String(base?.sourceUserRole || base?.role || "").trim().toLowerCase() || "business"),
+      businessAccess,
+      waiterAccess,
+      permissions: {
+        businessAccess,
+        waiterAccess
+      },
+      staffRole: isStaffContext ? String(context?.staffRole || "").trim() : "",
+      businessOwnerUid: isStaffContext ? String(context?.businessOwnerUid || "").trim() : "",
+      staffRestaurantId: isStaffContext ? String(context?.staffRestaurantId || "").trim() : "",
+      waiterRestaurantId: isStaffContext
+        ? String(context?.waiterRestaurantId || context?.staffRestaurantId || base?.restaurantId || "").trim()
+        : String(base?.restaurantId || "").trim(),
+      staffActive: isStaffContext
+        ? (context?.staffActive === false ? false : String(context?.staffStatus || "").trim().toLowerCase() !== "disabled")
+        : true,
+      staffStatus: isStaffContext ? String(context?.staffStatus || "").trim() : ""
+    };
   }
 
   function normalizeBusinessProfile(rest = {}, user) {
@@ -721,7 +774,13 @@ export function createSelfProfileRuntimeController({
       id: safeRestaurantId,
       restaurantId: safeRestaurantId
     };
-    const normalized = normalizeBusinessProfile(seed, state.user);
+    const isStaffWorkspace = String(state?.userProfile?.sourceUserRole || "").trim().toLowerCase() === "staff";
+    const normalized = isStaffWorkspace
+      ? applyWorkspaceAccessContext(
+        normalizeBusinessProfile(seed, state.user),
+        state.userProfile
+      )
+      : normalizeBusinessProfile(seed, state.user);
     const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
     if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) {
       normalized.avatar = prevAvatar;
@@ -1151,6 +1210,64 @@ export function createSelfProfileRuntimeController({
     refreshProfileUi();
   }
 
+  async function loadBusinessStaffProfile(user, { restaurant = null, staffData = null, force = false } = {}) {
+    if (!user || !makeDocRef || !db) return;
+    const context = staffData && typeof staffData === "object" ? staffData : {};
+    const restaurantId = String(
+      restaurant?.id
+      || restaurant?.restaurantId
+      || context?.staffRestaurantId
+      || context?.waiterRestaurantId
+      || context?.restaurantId
+      || ""
+    ).trim();
+    if (!restaurantId) {
+      await loadUserProfile(user, { force });
+      return;
+    }
+    let rest = restaurant;
+    if (!rest) {
+      try {
+        const restSnap = await getDoc(makeDocRef(db, "restaurants", restaurantId));
+        if (restSnap.exists()) {
+          rest = { id: restSnap.id, ...(restSnap.data() || {}) };
+        }
+      } catch {}
+    }
+    if (!rest || isRestaurantMarkedDeleted(rest)) {
+      await loadUserProfile(user, { force });
+      return;
+    }
+    const prevAvatar = state.userProfile?.avatar || "";
+    const normalized = applyWorkspaceAccessContext(
+      normalizeBusinessProfile({ ...rest, id: restaurantId, restaurantId }, user),
+      {
+        ...context,
+        sourceUserRole: "staff",
+        role: "staff",
+        staffRestaurantId: restaurantId,
+        waiterRestaurantId: context?.waiterRestaurantId || restaurantId
+      }
+    );
+    normalized.uid = user.uid;
+    const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
+    if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) {
+      normalized.avatar = prevAvatar;
+    }
+    state.userProfile = normalized;
+    state.userProfile.uid = user.uid;
+    syncPrivateSettingFromProfile(false);
+    saveUserProfileToStorage();
+    attachCurrentUserProfileListener();
+    const resolvedAvatar = getOptimizedImageUrl(state.userProfile.avatar || "", "avatar");
+    if (!isPlaceholderUrl(resolvedAvatar)) {
+      primeSelfAvatarCache(resolvedAvatar);
+    }
+    state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...rest }]);
+    rebuildBusinessLocations();
+    refreshProfileUi();
+  }
+
   return {
     commentAvatarCache,
     commentAvatarPending,
@@ -1184,6 +1301,7 @@ export function createSelfProfileRuntimeController({
     uploadAvatar,
     saveAccountSettings,
     loadUserProfile,
-    loadBusinessProfile
+    loadBusinessProfile,
+    loadBusinessStaffProfile
   };
 }

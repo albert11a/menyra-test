@@ -1,49 +1,189 @@
-const CACHE_NAME = "mnyra-waiter-shell-v1";
-const APP_SCOPE = "/apps/waiter/";
-const APP_SHELL = [
-  "/apps/waiter/",
-  "/apps/waiter/index.html",
-  "/apps/waiter/manifest.webmanifest",
-  "/apps/waiter/assets/icon-192.png",
-  "/apps/waiter/assets/icon-512.png",
-  "/apps/waiter/assets/apple-touch-icon.png",
-  "/apps/waiter/assets/logo.png",
-  "/apps/waiter/assets/logo-square.png"
-];
+const CACHE_NAME = "mnyra-waiter-cache-v2";
+const CACHE_PREFIX = "mnyra-waiter-cache-";
+const APP_SCOPE = "/waiter/";
+const APP_ASSET_SCOPE = "/apps/waiter/";
+const APP_SHELL_URL = "/waiter/";
+const EXTERNAL_STATIC_HOSTS = new Set([
+  "www.gstatic.com",
+  "unpkg.com"
+]);
 
-self.addEventListener("install", (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE_NAME);
-    await cache.addAll(APP_SHELL);
-    await self.skipWaiting();
-  })());
+self.addEventListener("install", () => {
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)));
     await self.clients.claim();
+    const keys = await caches.keys();
+    await Promise.all(keys.filter((key) => key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME).map((key) => caches.delete(key)));
   })());
 });
 
-self.addEventListener("fetch", (event) => {
-  const requestUrl = new URL(event.request.url);
-  if (requestUrl.origin !== self.location.origin) return;
-  if (!requestUrl.pathname.startsWith(APP_SCOPE)) return;
+self.addEventListener("message", (event) => {
+  if (String(event?.data?.type || "") === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
-  event.respondWith((async () => {
-    const cached = await caches.match(event.request);
-    if (cached) return cached;
+function buildNotificationTargetUrl(rawUrl) {
+  const fallback = APP_SCOPE;
+  try {
+    return new URL(rawUrl || fallback, self.location.origin).href;
+  } catch {
+    return fallback;
+  }
+}
+
+self.addEventListener("push", (event) => {
+  const payload = (() => {
     try {
-      const response = await fetch(event.request);
-      if (response && response.status === 200 && event.request.method === "GET") {
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(event.request, response.clone());
-      }
-      return response;
+      return event.data ? event.data.json() : {};
     } catch {
-      return caches.match("/apps/waiter/index.html");
+      return {};
+    }
+  })();
+  const notif = payload.notification || payload.webpush?.notification || {};
+  const title = notif.title || payload.title || "Neue Bestellung";
+  const body = notif.body || payload.body || "Neue Bestellung eingegangen";
+  const icon = notif.icon || payload.icon || "/apps/waiter/assets/icon-192.png";
+  const link = buildNotificationTargetUrl(payload.data?.link || payload.fcmOptions?.link || APP_SCOPE);
+  const tag = notif.tag || `mnyra_waiter_${payload.data?.notificationId || Date.now()}`;
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon,
+      badge: "/apps/waiter/assets/icon-192.png",
+      silent: false,
+      vibrate: [180, 90, 180],
+      renotify: true,
+      tag,
+      data: {
+        ...(payload.data || {}),
+        url: link
+      }
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification?.close();
+  const targetUrl = buildNotificationTargetUrl(event.notification?.data?.url || APP_SCOPE);
+  event.waitUntil((async () => {
+    const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    const waiterClient = clientsList.find((client) => {
+      try {
+        const parsed = new URL(client.url);
+        return parsed.origin === self.location.origin && parsed.pathname.startsWith(APP_SCOPE);
+      } catch {
+        return false;
+      }
+    });
+    if (waiterClient && "focus" in waiterClient) {
+      try {
+        await waiterClient.focus();
+      } catch {}
+      if ("navigate" in waiterClient) {
+        try {
+          await waiterClient.navigate(targetUrl);
+          return;
+        } catch {}
+      }
+    }
+    if (self.clients.openWindow) {
+      await self.clients.openWindow(targetUrl);
     }
   })());
+});
+
+function isInWaiterScope(url) {
+  return url.origin === self.location.origin && (
+    url.pathname.startsWith(APP_SCOPE)
+    || url.pathname.startsWith(APP_ASSET_SCOPE)
+    || url.pathname.startsWith("/shared/")
+  );
+}
+
+function isExternalStaticRequest(url, request) {
+  if (!EXTERNAL_STATIC_HOSTS.has(url.hostname)) return false;
+  return ["script", "style", "font", "image"].includes(request.destination);
+}
+
+async function staleWhileRevalidate(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  const networkPromise = fetch(request)
+    .then(async (response) => {
+      if (response && (response.ok || response.type === "opaque")) {
+        try {
+          await cache.put(request, response.clone());
+        } catch {}
+      }
+      return response;
+    })
+    .catch(() => null);
+
+  if (cached) {
+    networkPromise.catch(() => null);
+    return cached;
+  }
+  const network = await networkPromise;
+  return network || cached || new Response("", { status: 504, statusText: "Fetch failed" });
+}
+
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const response = await fetch(new Request(request, { cache: "no-cache" }));
+    if (response && (response.ok || response.type === "opaque")) {
+      cache.put(request, response.clone()).catch(() => null);
+    }
+    return response;
+  } catch {
+    const cached = await cache.match(request);
+    return cached || new Response("Offline", { status: 503, statusText: "Offline" });
+  }
+}
+
+self.addEventListener("fetch", (event) => {
+  const req = event.request;
+  if (req.method !== "GET") return;
+
+  const url = new URL(req.url);
+  if (url.protocol !== "https:" && url.protocol !== "http:") return;
+
+  const inScope = isInWaiterScope(url);
+  const isNavigation = req.mode === "navigate";
+  const isImage = req.destination === "image" || /\.(png|jpg|jpeg|webp|svg|gif)$/i.test(url.pathname);
+  const isCodeAsset = req.destination === "script"
+    || req.destination === "style"
+    || /\.(mjs|js|css)$/i.test(url.pathname);
+  const isExternalStatic = isExternalStaticRequest(url, req);
+
+  if (!inScope && !isImage && !isExternalStatic) return;
+
+  if (isNavigation && inScope) {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(new Request(req, { cache: "no-cache" }));
+        const cache = await caches.open(CACHE_NAME);
+        cache.put(APP_SHELL_URL, response.clone()).catch(() => null);
+        return response;
+      } catch {
+        const cachedShell = await caches.match(APP_SHELL_URL);
+        return cachedShell || new Response("Offline", { status: 503, statusText: "Offline" });
+      }
+    })());
+    return;
+  }
+
+  if ((inScope && isCodeAsset) || isImage || isExternalStatic) {
+    event.respondWith(staleWhileRevalidate(req));
+    return;
+  }
+
+  if (inScope) {
+    event.respondWith(networkFirst(req));
+  }
 });

@@ -82,6 +82,98 @@ function resolveNotificationClientLink(data = {}) {
   return `${DEFAULT_SOCIAL_PATH}${deepLink.replace(/^\.?\//, "")}`;
 }
 
+function hasActiveWaiterAccess(data = {}) {
+  const permissions = data.permissions && typeof data.permissions === "object" ? data.permissions : {};
+  const disabled = data.active === false || asText(data.status).toLowerCase() === "disabled";
+  if (disabled) return false;
+  return data.waiterAccess === true || permissions.waiterAccess === true;
+}
+
+async function loadWaiterStaffRecipients(restaurantId = "") {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return [];
+  const staffRef = db.collection("restaurants").doc(safeRestaurantId).collection("staff");
+  const settled = await Promise.allSettled([
+    staffRef.where("waiterAccess", "==", true).get(),
+    staffRef.where("permissions.waiterAccess", "==", true).get()
+  ]);
+  const docsById = new Map();
+  let optimizedQueryWorked = false;
+  settled.forEach((result) => {
+    if (result.status !== "fulfilled") return;
+    optimizedQueryWorked = true;
+    result.value.forEach((docSnap) => {
+      docsById.set(docSnap.id, docSnap);
+    });
+  });
+  if (!optimizedQueryWorked) {
+    const fullSnap = await staffRef.get();
+    fullSnap.forEach((docSnap) => {
+      docsById.set(docSnap.id, docSnap);
+    });
+  }
+  return Array.from(docsById.values());
+}
+
+function buildRestaurantOrderWaiterLink(restaurantId, orderId) {
+  const safeRestaurantId = encodeURIComponent(asText(restaurantId));
+  const safeOrderId = encodeURIComponent(asText(orderId));
+  return `/waiter/?restaurant=${safeRestaurantId}&order=${safeOrderId}`;
+}
+
+function buildRestaurantOrderNotificationPayload({
+  restaurantId = "",
+  orderId = "",
+  orderData = {},
+  restaurantData = {}
+} = {}) {
+  const businessName = asText(
+    orderData.businessName
+    || restaurantData.name
+    || restaurantData.restaurantName,
+    "Business"
+  );
+  const buyerName = asText(orderData.buyerName || orderData.contact?.name);
+  const itemCount = Math.max(
+    0,
+    Number(
+      orderData.itemCount
+      || (Array.isArray(orderData.items) ? orderData.items.length : 0)
+      || 0
+    ) || 0
+  );
+  const body = buyerName
+    ? `Neue Bestellung von ${buyerName}`
+    : `Neue Bestellung mit ${itemCount || 1} Positionen`;
+  return {
+    type: "restaurant_order",
+    user: businessName,
+    text: body,
+    body,
+    avatar: asText(
+      restaurantData.logoUrl
+      || restaurantData.logo
+      || orderData.businessAvatar,
+      DEFAULT_ICON
+    ),
+    img: asText(
+      restaurantData.logoUrl
+      || restaurantData.logo
+      || orderData.businessAvatar,
+      DEFAULT_ICON
+    ),
+    ownerType: "restaurant",
+    ownerId: asText(restaurantId),
+    restaurantId: asText(restaurantId),
+    orderId: asText(orderId),
+    itemCount,
+    read: false,
+    link: buildRestaurantOrderWaiterLink(restaurantId, orderId),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+}
+
 function addNotificationQuery(link, notificationId) {
   const safeNotificationId = asText(notificationId);
   if (!safeNotificationId) return asText(link, DEFAULT_SOCIAL_URL);
@@ -600,6 +692,9 @@ exports.sendWebPushOnNotificationCreate = functions
           body,
           icon,
           badge: icon,
+          silent: false,
+          vibrate: [180, 90, 180],
+          renotify: true,
           tag: `menyra_notif_${notificationId}`
         }
       }
@@ -632,6 +727,63 @@ exports.sendWebPushOnNotificationCreate = functions
       tokens: tokens.length,
       success: response.successCount,
       failed: response.failureCount
+    });
+  });
+
+exports.notifyWaiterOnRestaurantOrderCreate = functions
+  .region("us-central1")
+  .firestore.document("restaurants/{restaurantId}/orders/{orderId}")
+  .onCreate(async (snap, context) => {
+    if (!snap?.exists) return;
+
+    const restaurantId = asText(context.params?.restaurantId);
+    const orderId = asText(context.params?.orderId || snap.id);
+    if (!restaurantId || !orderId) return;
+
+    const orderData = snap.data() || {};
+    const [restaurantSnap, staffDocs] = await Promise.all([
+      db.collection("restaurants").doc(restaurantId).get(),
+      loadWaiterStaffRecipients(restaurantId)
+    ]);
+
+    const restaurantData = restaurantSnap.exists ? (restaurantSnap.data() || {}) : {};
+    const recipients = new Set();
+    const ownerUid = asText(restaurantData.ownerUid);
+    if (ownerUid) recipients.add(ownerUid);
+
+    staffDocs.forEach((docSnap) => {
+      if (!hasActiveWaiterAccess(docSnap.data() || {})) return;
+      const uid = asText(docSnap.id);
+      if (uid) recipients.add(uid);
+    });
+
+    if (!recipients.size) return;
+
+    const payload = buildRestaurantOrderNotificationPayload({
+      restaurantId,
+      orderId,
+      orderData,
+      restaurantData
+    });
+
+    const writes = Array.from(recipients).map((uid) => (
+      db
+        .collection("users")
+        .doc(uid)
+        .collection("notifications")
+        .doc(`restaurant_order_${orderId}`)
+        .set({
+          ...payload,
+          userUid: uid
+        }, { merge: true })
+    ));
+
+    await Promise.allSettled(writes);
+
+    console.log("notifyWaiterOnRestaurantOrderCreate", {
+      restaurantId,
+      orderId,
+      recipients: recipients.size
     });
   });
 

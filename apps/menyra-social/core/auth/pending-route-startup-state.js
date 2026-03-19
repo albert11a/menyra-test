@@ -3,6 +3,7 @@ export function createPendingRouteStartupState() {
     pendingProfileRestaurantId: "",
     pendingProfileTopTab: "",
     pendingProfileAccessSource: "",
+    pendingProfileTableNumber: 0,
     pendingProfileHandled: false,
     pendingNotificationId: "",
     pendingNotificationHandled: false,
@@ -25,6 +26,7 @@ export function createPendingRouteStartupState() {
     if ("pendingProfileRestaurantId" in patch) pendingState.pendingProfileRestaurantId = patch.pendingProfileRestaurantId;
     if ("pendingProfileTopTab" in patch) pendingState.pendingProfileTopTab = patch.pendingProfileTopTab;
     if ("pendingProfileAccessSource" in patch) pendingState.pendingProfileAccessSource = patch.pendingProfileAccessSource;
+    if ("pendingProfileTableNumber" in patch) pendingState.pendingProfileTableNumber = Number(patch.pendingProfileTableNumber || 0) || 0;
     if ("pendingProfileHandled" in patch) pendingState.pendingProfileHandled = !!patch.pendingProfileHandled;
     if ("pendingNotificationId" in patch) pendingState.pendingNotificationId = patch.pendingNotificationId;
     if ("pendingNotificationHandled" in patch) pendingState.pendingNotificationHandled = !!patch.pendingNotificationHandled;
@@ -41,6 +43,7 @@ export function createPendingRouteStartupState() {
       pendingProfileRestaurantId: initialRouteState.pendingProfileRestaurantId || "",
       pendingProfileTopTab: initialRouteState.pendingProfileTopTab || "",
       pendingProfileAccessSource: initialRouteState.pendingProfileAccessSource || "",
+      pendingProfileTableNumber: initialRouteState.pendingProfileTableNumber || 0,
       pendingNotificationId: initialRouteState.pendingNotificationId || "",
       pendingPostId: initialRouteState.pendingPostId || "",
       pendingChatUid: initialRouteState.pendingChatUid || "",

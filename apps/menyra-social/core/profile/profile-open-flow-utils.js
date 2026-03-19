@@ -110,12 +110,13 @@ export function createProfileOpenFlowControllerCore({
     }
   };
 
-  const openProfileViewFromBusiness = async (input, { showBack = true, topTab, menuAccessSource = "" } = {}) => {
+  const openProfileViewFromBusiness = async (input, { showBack = true, topTab, menuAccessSource = "", tableNumber = 0 } = {}) => {
     try {
       const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
       const restaurantId = typeof input === "string" ? "" : (input?.id || "");
       if (!safeName && !restaurantId) return;
       const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
+      const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
       const isMenuTopTab = String(topTab || "").trim().toLowerCase() === "menu";
       const isQrMenuOpen = isMenuTopTab && safeMenuAccessSource === "qr";
       // For deeplinks like ?r=...&tab=menu we always want the public profile menu view,
@@ -156,7 +157,12 @@ export function createProfileOpenFlowControllerCore({
         posts: fallbackPosts
       });
 
-      showPublicProfileView(placeholderProfile, placeholderProfile.posts, { showBack, topTab, menuAccessSource: safeMenuAccessSource });
+      showPublicProfileView(placeholderProfile, placeholderProfile.posts, {
+        showBack,
+        topTab,
+        menuAccessSource: safeMenuAccessSource,
+        tableNumber: safeTableNumber
+      });
 
       const [profileSnap, posts] = await Promise.all([
         fetchBusinessProfile({ restaurantId, restaurant: rest }),
@@ -172,7 +178,12 @@ export function createProfileOpenFlowControllerCore({
 
       if (state.activeTab !== "profile") return;
       if (restaurantId && state.profileView?.profile?.restaurantId !== restaurantId) return;
-      showPublicProfileView(resolved, resolved.posts, { showBack, topTab, menuAccessSource: safeMenuAccessSource });
+      showPublicProfileView(resolved, resolved.posts, {
+        showBack,
+        topTab,
+        menuAccessSource: safeMenuAccessSource,
+        tableNumber: safeTableNumber
+      });
     } catch (err) {
       console.error(err);
     }

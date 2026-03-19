@@ -1,3 +1,5 @@
+import { normalizeTableNumberCore } from "../menu/table-qr-utils.js";
+
 export function resolveInitialRouteState({
   qs,
   normalizeInitialTab,
@@ -36,6 +38,14 @@ export function resolveInitialRouteState({
   const pendingProfileAccessSource = pendingProfileRestaurantId
     ? profileAccessSource
     : "";
+  const pendingProfileTableNumber = pendingProfileRestaurantId
+    ? normalizeTableNumberCore(
+      readQuery("table")
+      || readQuery("tableNumber")
+      || readQuery("t")
+      || ""
+    )
+    : 0;
   const pendingNotificationId = readQuery("notif") || readQuery("notification") || readQuery("nid") || "";
   const pendingPostId = readQuery("post") || readQuery("postId") || "";
   const pendingChatUid = readQuery("chat") || readQuery("thread") || "";
@@ -48,6 +58,7 @@ export function resolveInitialRouteState({
     pendingProfileRestaurantId,
     pendingProfileTopTab,
     pendingProfileAccessSource,
+    pendingProfileTableNumber,
     pendingNotificationId,
     pendingPostId,
     pendingChatUid,

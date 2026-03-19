@@ -95,6 +95,7 @@ export function createAppShellRuntimeController(deps = {}) {
     openShopCheckoutFn,
     submitShopCheckoutFn,
     updateShopCheckoutFieldFn,
+    saveTableQrConfigFn,
     menuCache,
     menuCacheKeyFn,
     saveMenuStatusBadgeVisibleFn,
@@ -814,7 +815,9 @@ export function createAppShellRuntimeController(deps = {}) {
         } catch (err) {
           state.auth.error = err?.message || "Login fehlgeschlagen.";
         } finally {
-          state.auth.loading = false;
+          if (!auth?.currentUser) {
+            state.auth.loading = false;
+          }
           render();
         }
       });
@@ -904,6 +907,7 @@ export function createAppShellRuntimeController(deps = {}) {
       openShopCheckoutFn,
       submitShopCheckoutFn,
       updateShopCheckoutFieldFn,
+      saveTableQrConfigFn,
       menuCache,
       menuCacheKeyFn,
       saveMenuStatusBadgeVisibleFn,

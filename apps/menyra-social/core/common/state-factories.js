@@ -3,6 +3,9 @@ export function createEmptyShopCart() {
     restaurantId: "",
     businessName: "",
     businessAvatar: "",
+    tableNumber: 0,
+    tableLabel: "",
+    serviceMode: "",
     items: [],
     checkoutOpen: false,
     form: {
@@ -13,6 +16,20 @@ export function createEmptyShopCart() {
     },
     status: "",
     loading: false
+  };
+}
+
+export function createEmptyTableQrState() {
+  return {
+    restaurantId: "",
+    enabled: true,
+    count: 0,
+    loaded: false,
+    loading: false,
+    saving: false,
+    error: "",
+    status: "",
+    verifiedAt: 0
   };
 }
 

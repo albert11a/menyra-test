@@ -79,12 +79,14 @@ export function createPublicProfileRuntimeController({
     });
   }
 
-  function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, menuAccessSource = "" } = {}) {
+  function showPublicProfile(profile, posts, { showBack = true, backTab, topTab, menuAccessSource = "", tableNumber = 0 } = {}) {
     const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
+    const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
     state.profileView = {
       profile,
       posts: posts || profile.posts || [],
-      menuAccessSource: safeMenuAccessSource === "qr" ? "qr" : ""
+      menuAccessSource: safeMenuAccessSource === "qr" ? "qr" : "",
+      tableNumber: safeTableNumber
     };
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = "posts";

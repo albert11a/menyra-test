@@ -148,28 +148,45 @@ export function createAuthSessionStartupCoordinator({
       const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
       if (pendingRouteFlags.hasAny) {
         suspendRender();
-        void bootstrapUser(user, { transitionSeq }).catch((err) => {
-          reportCriticalRuntimeFailure("auth.bootstrapUser.pendingRoutes", err);
-        });
-        queueMicrotaskSafe(() => {
-          void (async () => {
-            try {
-              if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-              await postLoginRouteOpen.openPendingRoutes();
-            } finally {
-              resumeRender();
+        void (async () => {
+          try {
+            await bootstrapUser(user, { transitionSeq });
+            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+            await postLoginRouteOpen.openPendingRoutes();
+            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+            if (state?.auth) {
+              state.auth.loading = false;
             }
-          })();
-        });
+            render();
+          } catch (err) {
+            reportCriticalRuntimeFailure("auth.bootstrapUser.pendingRoutes", err);
+            if (isCurrentAuthTransition(transitionSeq, nextUid)) {
+              if (state?.auth) {
+                state.auth.loading = false;
+              }
+              render();
+            }
+          } finally {
+            resumeRender();
+          }
+        })();
       } else {
+        if (state?.auth) {
+          state.auth.loading = false;
+        }
         render();
-        void bootstrapUser(user, { transitionSeq }).catch((err) => {
-          reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
-        });
-        queueMicrotaskSafe(() => {
-          if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-          postLoginRouteOpen.openNonBlockingRoutes();
-        });
+        void bootstrapUser(user, { transitionSeq })
+          .then(() => {
+            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+            postLoginRouteOpen.openNonBlockingRoutes();
+            render();
+          })
+          .catch((err) => {
+            reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
+            if (isCurrentAuthTransition(transitionSeq, nextUid)) {
+              render();
+            }
+          });
       }
     } else {
       clearAuthBootstrapSnapshot();
@@ -180,6 +197,7 @@ export function createAuthSessionStartupCoordinator({
       stopLiveListeners();
       if (state?.auth) {
         state.auth.open = false;
+        state.auth.loading = false;
       }
       loadGuestScopedPersisted();
       if (state) {

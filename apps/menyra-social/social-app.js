@@ -34,7 +34,8 @@ import {
   writeBatch,
   runTransaction,
   serverTimestamp,
-  Timestamp
+  Timestamp,
+  waitForPendingWrites
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
   ensureUserProfile,
@@ -64,7 +65,8 @@ import {
   createEmptyShopCart,
   createEmptyOrdersState,
   createEmptyFavoriteMenuItemsState,
-  createEmptyMenuDetailState
+  createEmptyMenuDetailState,
+  createEmptyTableQrState
 } from "./core/common/state-factories.js";
 import { createRestaurantIdentityRuntimeController } from "./core/common/restaurant-identity-runtime-controller.js";
 import { createStoryFeedRuntimeController } from "./core/stories/story-feed-runtime-controller.js";
@@ -96,6 +98,7 @@ import { createPublicBootstrapRuntimeController } from "./core/app-shell/public-
 import { createSessionDataRuntimeController } from "./core/app-shell/session-data-runtime-controller.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createMenuPublicRuntimeController } from "./core/menu/menu-public-runtime-controller.js";
+import { createTableQrRuntimeController } from "./core/menu/table-qr-runtime-controller.js";
 import { createMediaUploadRuntimeController } from "./core/media/media-upload-runtime-controller.js";
 import { createOrdersRuntimeController } from "./core/orders/orders-runtime-controller.js";
 import { renderOrdersViewCore } from "./core/orders/orders-render-utils.js";
@@ -106,6 +109,7 @@ import { createSocialEngagementRuntimeController } from "./core/profile/social-e
 import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
 import { createCeoCrmCountRuntimeController } from "./core/crm/ceo-crm-count-runtime-controller.js";
 import { createCrmRuntimeController } from "./core/crm/crm-runtime-controller.js";
+import { createBusinessAccountsRuntimeController } from "./core/business-accounts/business-accounts-runtime-controller.js";
 import { createChatRuntimeController } from "./core/chat/chat-runtime-controller.js";
 import {
   resolveNativePushActorCore,
@@ -283,7 +287,10 @@ import {
 import { formatCountCore as formatCount } from "./core/common/count-format-utils.js";
 import {
   logoFitClassCore as logoFitClass,
-  isLocalBusinessProfileCore
+  isLocalBusinessProfileCore,
+  isBusinessOwnerProfileCore,
+  resolveProfileRestaurantIdCore,
+  canAccessRestaurantOrdersCore
 } from "./core/profile/profile-display-utils.js";
 import {
   renderMenuItemModalCore,
@@ -594,8 +601,23 @@ const DEFAULT_PROFILE = {
   karma: "0",
   roles: [],
   role: "user",
+  sourceUserRole: "user",
   isPremium: false,
   restaurantId: "",
+  staffRestaurantId: "",
+  waiterRestaurantId: "",
+  businessAccess: false,
+  waiterAccess: false,
+  permissions: {
+    businessAccess: false,
+    waiterAccess: false
+  },
+  staffRole: "",
+  businessOwnerUid: "",
+  staffActive: true,
+  staffStatus: "",
+  socialAccessMode: "",
+  socialAccessMessage: "",
   leadSettings: null,
   posts: []
 };
@@ -948,6 +970,7 @@ const state = {
   menuDetail: {
     ...createEmptyMenuDetailState()
   },
+  tableQr: createEmptyTableQrState(),
   focus: {
     restaurantId: "",
     items: [],
@@ -992,6 +1015,27 @@ const state = {
       avatarUrl: "",
       avatarPreview: "",
       avatarFile: null
+    }
+  },
+  businessAccounts: {
+    items: [],
+    view: "list",
+    editorUid: "",
+    loading: false,
+    saving: false,
+    deleting: false,
+    loaded: false,
+    error: "",
+    status: "",
+    form: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      role: "waiter",
+      businessAccess: false,
+      waiterAccess: true,
+      active: true
     }
   },
   leadModal: {
@@ -1084,7 +1128,8 @@ let dataLoaded = {
   notifications: false,
   leads: false,
   customers: false,
-  staff: false
+  staff: false,
+  businessAccounts: false
 };
 let shellRuntimeController = null;
 let shellDomRuntimeController = null;
@@ -1094,9 +1139,11 @@ let socialEngagementRuntimeController = null;
 let socialEngagementSupportRuntimeController = null;
 let ceoCrmCountRuntimeController = null;
 let crmRuntimeController = null;
+let businessAccountsRuntimeController = null;
 let chatRuntimeController = null;
 let menuPublicRuntimeController = null;
 let focusRuntimeController = null;
+let tableQrRuntimeController = null;
 let mediaUploadRuntimeController = null;
 let lastAppHtml = "";
 let lastRenderMode = "";
@@ -1396,7 +1443,8 @@ const {
   uploadAvatar,
   saveAccountSettings,
   loadUserProfile,
-  loadBusinessProfile
+  loadBusinessProfile,
+  loadBusinessStaffProfile
 } = (selfProfileRuntimeController = createSelfProfileRuntimeController({
   state,
   db,
@@ -1515,6 +1563,7 @@ shellDomRuntimeController = createShellDomRuntimeController({
   getChatUnreadCount,
   isGuestSession,
   isCeoUser,
+  isBusinessOwnerProfile,
   isLocalBusinessProfile,
   isRestaurantCafeProfile,
   getBusinessCatalogLabel,
@@ -1618,6 +1667,23 @@ const {
   alertFn: typeof alert === "function" ? alert : () => {}
 }));
 const {
+  getTableQrStateForRestaurant,
+  ensureTableQrStateForProfile,
+  saveTableQrConfig
+} = (tableQrRuntimeController = createTableQrRuntimeController({
+  state,
+  db,
+  docFn: doc,
+  getDocFn: getDoc,
+  getDocFromServerFn: getDocFromServer,
+  setDocFn: setDoc,
+  serverTimestampFn: serverTimestamp,
+  waitForPendingWritesFn: waitForPendingWrites,
+  isRestaurantCafeProfileFn: isRestaurantCafeProfile,
+  renderFn: render,
+  storageObj: safeStorage
+}));
+const {
   stopOrdersListener,
   startOrdersListener,
   submitShopCheckout
@@ -1634,6 +1700,8 @@ const {
   serverTimestampFn: serverTimestamp,
   normalizeShopCartStateFn: normalizeShopCartState,
   isLocalBusinessProfileFn: isLocalBusinessProfile,
+  canAccessRestaurantOrdersFn: canAccessRestaurantOrders,
+  resolveProfileRestaurantIdFn: resolveProfileRestaurantId,
   getRestaurantMetaByIdFn: getRestaurantMetaById,
   normalizeHandleFn: normalizeHandle,
   buildShopVariantKeyFn: buildShopVariantKey,
@@ -1670,6 +1738,18 @@ function getFocusCardClass() {
 
 function isLocalBusinessProfile(profile = state.userProfile) {
   return isLocalBusinessProfileCore(profile);
+}
+
+function isBusinessOwnerProfile(profile = state.userProfile) {
+  return isBusinessOwnerProfileCore(profile);
+}
+
+function resolveProfileRestaurantId(profile = state.userProfile) {
+  return resolveProfileRestaurantIdCore(profile);
+}
+
+function canAccessRestaurantOrders(profile = state.userProfile) {
+  return canAccessRestaurantOrdersCore(profile);
 }
 
 function getRestaurantMetaById(restaurantId) {
@@ -3150,7 +3230,8 @@ async function ensureTabData(tab) {
     loadLeads,
     normalizeCustomerScopeKey,
     loadCustomers,
-    loadCeoStaff
+    loadCeoStaff,
+    loadBusinessAccounts
   });
 }
 
@@ -4164,6 +4245,7 @@ const {
   saveMenuLayoutToStorage,
   deleteMenuItemById,
   submitShopCheckout,
+  saveTableQrConfig,
   menuCache,
   menuCacheKey,
   focusCache,
@@ -4487,6 +4569,29 @@ crmRuntimeController = createCrmRuntimeController({
   deleteDoc
 });
 
+businessAccountsRuntimeController = createBusinessAccountsRuntimeController({
+  state,
+  icon,
+  escapeHtml,
+  db,
+  auth,
+  collection,
+  getDocs,
+  getDoc,
+  doc,
+  setDoc,
+  serverTimestamp,
+  createAuthUser,
+  signOut,
+  saveUserProfileToStorage,
+  render,
+  getRestaurantMetaById,
+  isBusinessOwnerProfile,
+  isPlaceholderUrl,
+  getOptimizedImageUrl,
+  PLACEHOLDER_IMAGE
+});
+
 profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   state,
   resolvePostCountsFn: socialEngagementSupportRuntimeController.resolvePostCounts,
@@ -4501,6 +4606,7 @@ profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   renderProfileShopFavoritesViewFn: renderProfileShopFavoritesView,
   ensureMenuDataForProfileFn: ensureMenuDataForProfile,
   ensureFocusDataForProfileFn: ensureFocusDataForProfile,
+  ensureTableQrStateForProfileFn: ensureTableQrStateForProfile,
   isShopCatalogProfileFn: isShopCatalogProfile,
   getBusinessCatalogLabelFn: getBusinessCatalogLabel,
   normalizeMenuTypeFn: normalizeMenuType,
@@ -4521,6 +4627,7 @@ profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   ensureMenuItemMetaFn: socialEngagementSupportRuntimeController.ensureMenuItemMeta,
   resolveMenuItemCountsFn: socialEngagementSupportRuntimeController.resolveMenuItemCounts,
   getFocusStateForRestaurantFn: getFocusStateForRestaurant,
+  getTableQrStateForRestaurantFn: getTableQrStateForRestaurant,
   getFocusItemObjectPositionFn: getFocusItemObjectPosition,
   getFocusCardClassFn: getFocusCardClass,
   getFocusIndexFn: getFocusIndex,
@@ -4926,10 +5033,15 @@ function renderStaffView() {
   return crmRuntimeController.renderStaffView();
 }
 
+function renderBusinessAccountsView() {
+  return businessAccountsRuntimeController.renderBusinessAccountsView();
+}
+
 function renderOrdersView() {
   return renderOrdersViewCore({
     state,
     isLocalBusinessProfileFn: isLocalBusinessProfile,
+    canAccessRestaurantOrdersFn: canAccessRestaurantOrders,
     escapeHtmlFn: escapeHtml,
     getOptimizedImageUrlFn: getOptimizedImageUrl,
     formatPriceFn: formatPrice,
@@ -5030,6 +5142,7 @@ function renderMain() {
     renderLeadsViewFn: renderLeadsView,
     renderStaffViewFn: renderStaffView,
     renderCustomersViewFn: renderCustomersView,
+    renderBusinessAccountsViewFn: renderBusinessAccountsView,
     renderSettingsViewFn: renderSettingsView,
     renderNotificationsViewFn: renderNotificationsView,
     renderUploadViewFn: renderUploadView,
@@ -5044,7 +5157,11 @@ function bindImageFallbacks(root = document) {
 }
 
 function render() {
-  return shellRuntimeController.render();
+  const result = shellRuntimeController.render();
+  if (businessAccountsRuntimeController) {
+    businessAccountsRuntimeController.bindBusinessAccountsEvents(typeof document === "undefined" ? null : document);
+  }
+  return result;
 }
 
 function bindAuthEvents() {
@@ -5129,6 +5246,7 @@ async function loadAuthProfile(user, { force = false } = {}) {
     serverTimestamp,
     setDoc,
     loadBusinessProfile,
+    loadBusinessStaffProfile,
     loadUserProfile
   });
 }
@@ -5316,6 +5434,10 @@ function syncStaffFormFromDom() {
 
 async function loadCeoStaff({ grow = false } = {}) {
   return crmRuntimeController.loadCeoStaff({ grow });
+}
+
+async function loadBusinessAccounts({ force = false } = {}) {
+  return businessAccountsRuntimeController.loadBusinessAccounts({ force });
 }
 
 async function saveCeoStaffFromView() {

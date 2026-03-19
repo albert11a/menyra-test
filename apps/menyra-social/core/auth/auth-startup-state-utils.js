@@ -127,18 +127,43 @@ export function createAuthStartupStateHelpers({
     if (!raw) return false;
     try {
       const parsed = JSON.parse(raw) || {};
+      const hasOwn = (key) => Object.prototype.hasOwnProperty.call(parsed || {}, key);
       const restaurantId = String(parsed.restaurantId || "").trim();
       const role = String(parsed.role || "").trim();
       const roles = Array.isArray(parsed.roles) ? parsed.roles.slice() : [];
+      const sourceUserRole = String(parsed.sourceUserRole || "").trim();
+      const staffRestaurantId = String(parsed.staffRestaurantId || "").trim();
+      const waiterRestaurantId = String(parsed.waiterRestaurantId || "").trim();
+      const staffRole = String(parsed.staffRole || "").trim();
+      const businessOwnerUid = String(parsed.businessOwnerUid || "").trim();
+      const staffStatus = String(parsed.staffStatus || "").trim();
+      const socialAccessMode = String(parsed.socialAccessMode || "").trim();
       const name = sanitizeDisplayName(parsed.name || "", "");
       const handle = String(parsed.handle || "").replace(/^@/, "").trim();
       const avatar = String(parsed.avatar || "").trim();
+      const businessAccess = parsed.businessAccess === true;
+      const waiterAccess = parsed.waiterAccess === true;
+      const staffActive = parsed.staffActive === false ? false : true;
       state.userProfile = {
         ...state.userProfile,
         uid: safeUid,
-        role: role || state.userProfile.role,
-        roles: roles.length ? roles : state.userProfile.roles,
-        restaurantId: restaurantId || state.userProfile.restaurantId,
+        role: hasOwn("role") ? role : state.userProfile.role,
+        roles: Array.isArray(parsed.roles) ? roles : state.userProfile.roles,
+        restaurantId: hasOwn("restaurantId") ? restaurantId : state.userProfile.restaurantId,
+        sourceUserRole: hasOwn("sourceUserRole") ? sourceUserRole : state.userProfile.sourceUserRole,
+        staffRestaurantId: hasOwn("staffRestaurantId") ? staffRestaurantId : state.userProfile.staffRestaurantId,
+        waiterRestaurantId: hasOwn("waiterRestaurantId") ? waiterRestaurantId : state.userProfile.waiterRestaurantId,
+        businessAccess: hasOwn("businessAccess") ? businessAccess : state.userProfile.businessAccess === true,
+        waiterAccess: hasOwn("waiterAccess") ? waiterAccess : state.userProfile.waiterAccess === true,
+        permissions: {
+          businessAccess: hasOwn("businessAccess") ? businessAccess : state.userProfile.businessAccess === true,
+          waiterAccess: hasOwn("waiterAccess") ? waiterAccess : state.userProfile.waiterAccess === true
+        },
+        staffRole: hasOwn("staffRole") ? staffRole : state.userProfile.staffRole,
+        businessOwnerUid: hasOwn("businessOwnerUid") ? businessOwnerUid : state.userProfile.businessOwnerUid,
+        staffActive: hasOwn("staffActive") ? staffActive : state.userProfile.staffActive,
+        staffStatus: hasOwn("staffStatus") ? staffStatus : state.userProfile.staffStatus,
+        socialAccessMode: hasOwn("socialAccessMode") ? socialAccessMode : state.userProfile.socialAccessMode,
         name: name || state.userProfile.name,
         handle: handle || state.userProfile.handle,
         avatar: avatar || state.userProfile.avatar

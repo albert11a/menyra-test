@@ -1144,21 +1144,40 @@ function getSecondaryAuth() {
   return __secondaryAuth;
 }
 
+function buildCreateAuthUserError(err) {
+  const code = String(err?.code || "").trim().toLowerCase();
+  if (code === "auth/email-already-in-use") {
+    return new Error("Diese Email hat bereits ein Login. Bitte nutze eine andere Email.");
+  }
+  if (code === "auth/invalid-email") {
+    return new Error("Bitte eine gueltige Email eingeben.");
+  }
+  if (code === "auth/weak-password") {
+    return new Error("Das Passwort ist zu schwach. Bitte mindestens 6 Zeichen verwenden.");
+  }
+  if (code === "auth/operation-not-allowed") {
+    return new Error("Email/Passwort-Login ist in Firebase nicht aktiviert.");
+  }
+  if (code === "auth/network-request-failed") {
+    return new Error("Netzwerkfehler beim Erstellen des Logins.");
+  }
+  return err instanceof Error
+    ? err
+    : new Error("Login konnte nicht erstellt werden.");
+}
+
 async function createAuthUser(email, password) {
   if (!email || !password) throw new Error("Email/Passwort fehlt.");
   const auth2 = getSecondaryAuth();
-  let cred = null;
   try {
-    cred = await createUserWithEmailAndPassword(auth2, email, password);
+    await signOut(auth2).catch(() => {});
+    const cred = await createUserWithEmailAndPassword(auth2, email, password);
+    return cred?.user || null;
   } catch (err) {
-    if (err?.code === "auth/email-already-in-use") {
-      cred = await signInWithEmailAndPassword(auth2, email, password);
-    } else {
-      throw err;
-    }
+    throw buildCreateAuthUserError(err);
+  } finally {
+    try { await signOut(auth2); } catch {}
   }
-  try { await signOut(auth2); } catch {}
-  return cred?.user || null;
 }
 
 async function ensureRestaurantPublicMeta(restaurantId, base) {

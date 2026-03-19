@@ -4,7 +4,9 @@ export function normalizeInitialTab(value) {
   const aliases = {
     discover: "search",
     login: "feed",
-    register: "feed"
+    register: "feed",
+    "business-accounts": "businessAccounts",
+    businessaccounts: "businessAccounts"
   };
   const resolved = aliases[key] || key;
   const allowed = new Set([
@@ -18,6 +20,7 @@ export function normalizeInitialTab(value) {
     "leads",
     "staff",
     "customers",
+    "businessAccounts",
     "settings"
   ]);
   return allowed.has(resolved) ? resolved : "";

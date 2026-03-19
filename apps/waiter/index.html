@@ -1,230 +1,57 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="color-scheme" content="light" />
-  <meta name="supported-color-schemes" content="light" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#f8fafc" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
   <title>MNYRA Waiter</title>
-  <link rel="manifest" href="/apps/waiter/manifest.webmanifest" />
-  <link rel="icon" type="image/png" sizes="512x512" href="/apps/waiter/assets/icon-512.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apps/waiter/assets/apple-touch-icon.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet" />
+  <link rel="manifest" href="/waiter/manifest.webmanifest?v=2026-03-19-waiter-fast-7">
+  <link rel="icon" type="image/png" sizes="192x192" href="/apps/waiter/assets/icon-192.png?v=2026-03-19-waiter-fast-7">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apps/waiter/assets/apple-touch-icon.png?v=2026-03-19-waiter-fast-7">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    :root {
-      --safe-area-top: 0px;
-      --safe-area-right: 0px;
-      --safe-area-bottom: 0px;
-      --safe-area-left: 0px;
-      --app-bg: #f8fafc;
-      --app-surface: rgba(255, 255, 255, 0.88);
-      --app-border: rgba(15, 23, 42, 0.08);
-      --accent: #c99200;
-      --accent-soft: #f7d669;
-      --text-strong: #0f172a;
-      --text-soft: #64748b;
-      color-scheme: light;
-      font-family: "Plus Jakarta Sans", sans-serif;
-    }
-
-    @supports (padding: env(safe-area-inset-top)) {
-      :root {
-        --safe-area-top: env(safe-area-inset-top);
-        --safe-area-right: env(safe-area-inset-right);
-        --safe-area-bottom: env(safe-area-inset-bottom);
-        --safe-area-left: env(safe-area-inset-left);
-      }
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html,
-    body {
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    html, body {
       margin: 0;
       min-height: 100%;
-      background:
-        radial-gradient(circle at top, rgba(255, 231, 163, 0.45), transparent 40%),
-        linear-gradient(180deg, #fffdf7 0%, var(--app-bg) 34%, #f8fafc 100%);
-      color: var(--text-strong);
+      overflow-x: hidden;
+      overflow-y: auto;
+      color: #fff;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+      background: #000;
     }
-
     body {
-      min-height: 100svh;
-      padding-left: var(--safe-area-left);
-      padding-right: var(--safe-area-right);
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
+      min-height: 100%;
+      overscroll-behavior-y: auto;
+      background: #000;
+      color: #fff;
     }
-
-    .waiter-shell {
-      max-width: 28rem;
-      min-height: 100svh;
-      margin: 0 auto;
-      padding-top: var(--safe-area-top);
-      padding-bottom: calc(var(--safe-area-bottom) + 2rem);
-      display: flex;
-      flex-direction: column;
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
     }
-
-    .waiter-header {
-      height: 5.5rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 1.5rem;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-      backdrop-filter: blur(20px);
-      background: rgba(248, 250, 252, 0.72);
-      position: sticky;
-      top: 0;
-      z-index: 10;
+    #app {
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      -ms-overflow-style: none;
+      scrollbar-width: none;
     }
-
-    .waiter-menu-btn,
-    .waiter-header-spacer {
-      width: 2.75rem;
-      height: 2.75rem;
-      flex: 0 0 2.75rem;
+    #app::-webkit-scrollbar {
+      display: none;
+      width: 0;
+      height: 0;
     }
-
-    .waiter-menu-btn {
-      border: 0;
-      background: transparent;
-      padding: 0;
-      display: grid;
-      place-items: center;
-      cursor: default;
-    }
-
-    .waiter-menu-icon {
-      width: 1.4rem;
-      display: grid;
-      gap: 0.24rem;
-    }
-
-    .waiter-menu-icon span {
-      display: block;
-      height: 2px;
-      border-radius: 999px;
-      background: #1e293b;
-    }
-
-    .waiter-brand {
-      display: inline-flex;
-      align-items: baseline;
-      gap: 0.45rem;
-      text-decoration: none;
-      color: inherit;
-      user-select: none;
-    }
-
-    .waiter-brand-word {
-      font-size: 2rem;
-      line-height: 1;
-      font-weight: 800;
-      font-style: italic;
-      letter-spacing: -0.08em;
-    }
-
-    .waiter-brand-label {
-      font-size: 0.58rem;
-      line-height: 1;
-      text-transform: uppercase;
-      letter-spacing: 0.28em;
-      font-weight: 800;
-      color: var(--accent);
-      transform: translateY(-0.05rem);
-    }
-
-    .waiter-main {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem 1.5rem 3rem;
-    }
-
-    .waiter-panel {
-      width: 100%;
-      padding: 1.5rem;
-      border-radius: 2rem;
-      background: var(--app-surface);
-      border: 1px solid var(--app-border);
-      box-shadow:
-        0 24px 60px rgba(201, 146, 0, 0.12),
-        0 10px 30px rgba(15, 23, 42, 0.06);
-      text-align: center;
-    }
-
-    .waiter-logo-wrap {
-      width: min(18rem, 100%);
-      margin: 0 auto 1.5rem;
-      border-radius: 1.75rem;
-      overflow: hidden;
-      box-shadow: 0 18px 40px rgba(201, 146, 0, 0.22);
-      background: #c99200;
-    }
-
-    .waiter-logo {
-      display: block;
-      width: 100%;
-      height: auto;
-    }
-
-    .waiter-title {
-      margin: 0;
-      font-size: clamp(2rem, 8vw, 2.7rem);
-      line-height: 1;
-      font-weight: 800;
-      font-style: italic;
-      letter-spacing: -0.07em;
-    }
-
   </style>
 </head>
-<body>
-  <div class="waiter-shell">
-    <header class="waiter-header">
-      <button type="button" class="waiter-menu-btn" aria-label="Menue">
-        <span class="waiter-menu-icon" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-        </span>
-      </button>
-
-      <div class="waiter-brand" aria-label="MNYRA Waiter">
-        <span class="waiter-brand-word">MNYRA</span>
-        <span class="waiter-brand-label">Waiter</span>
-      </div>
-
-      <div class="waiter-header-spacer" aria-hidden="true"></div>
-    </header>
-
-    <main class="waiter-main">
-      <section class="waiter-panel" aria-label="Waiter Startseite">
-        <div class="waiter-logo-wrap">
-          <img class="waiter-logo" src="/apps/waiter/assets/logo.png" alt="MNYRA Waiter Logo" />
-        </div>
-        <h1 class="waiter-title">Waiter</h1>
-      </section>
-    </main>
-  </div>
-
-  <script>
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("/apps/waiter/sw.js", { scope: "/apps/waiter/" }).catch(() => {});
-      }, { once: true });
-    }
-  </script>
+<body class="bg-black text-white antialiased">
+  <div id="app"></div>
+  <script type="module" src="/apps/waiter/waiter-app.js?v=2026-03-19-waiter-fast-7"></script>
 </body>
 </html>

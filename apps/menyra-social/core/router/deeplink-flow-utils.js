@@ -1,3 +1,5 @@
+import { normalizeTableNumberCore } from "../menu/table-qr-utils.js";
+
 const NOTIFICATION_QUERY_KEYS = ["notif", "notification", "nid"];
 const POST_QUERY_KEYS = ["post", "postId"];
 const CHAT_QUERY_KEYS = ["chat", "thread"];
@@ -276,18 +278,21 @@ export function createDeeplinkFlowControllerCore({
         pendingProfileHandled: true,
         pendingProfileRestaurantId: "",
         pendingProfileTopTab: "",
-        pendingProfileAccessSource: ""
+        pendingProfileAccessSource: "",
+        pendingProfileTableNumber: 0
       });
       return true;
     }
 
     const nextTabRaw = pending.pendingProfileTopTab;
     const nextAccessSourceRaw = pending.pendingProfileAccessSource;
+    const nextTableNumber = normalizeTableNumberCore(pending.pendingProfileTableNumber || 0);
     patchPendingState({
       pendingProfileHandled: true,
       pendingProfileRestaurantId: "",
       pendingProfileTopTab: "",
-      pendingProfileAccessSource: ""
+      pendingProfileAccessSource: "",
+      pendingProfileTableNumber: 0
     });
     const nextTab = normalizeProfileTopTab(nextTabRaw);
     const safeAccessSource = String(nextAccessSourceRaw || "").trim().toLowerCase();
@@ -306,7 +311,8 @@ export function createDeeplinkFlowControllerCore({
       {
         showBack: false,
         topTab: nextTab,
-        menuAccessSource: nextAccessSource
+        menuAccessSource: nextAccessSource,
+        tableNumber: nextTableNumber
       }
     );
     return true;

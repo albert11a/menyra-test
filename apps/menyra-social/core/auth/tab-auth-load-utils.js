@@ -45,7 +45,8 @@ export function ensureTabDataCore({
   loadLeads,
   normalizeCustomerScopeKey,
   loadCustomers,
-  loadCeoStaff
+  loadCeoStaff,
+  loadBusinessAccounts
 } = {}) {
   if (!state || !dataLoaded || typeof sanitizeTabForSession !== "function" || typeof render !== "function") return;
   const getFeedUnsub = typeof getFeedUnsubFn === "function" ? getFeedUnsubFn : (() => null);
@@ -84,6 +85,7 @@ export function ensureTabDataCore({
   const normalizeCustomerScope = typeof normalizeCustomerScopeKey === "function" ? normalizeCustomerScopeKey : ((value) => value);
   const loadCustomersSafe = typeof loadCustomers === "function" ? loadCustomers : (() => Promise.resolve());
   const loadCeoStaffSafe = typeof loadCeoStaff === "function" ? loadCeoStaff : (() => Promise.resolve());
+  const loadBusinessAccountsSafe = typeof loadBusinessAccounts === "function" ? loadBusinessAccounts : (() => Promise.resolve());
   const stopRestaurants = typeof stopRestaurantsListener === "function" ? stopRestaurantsListener : (() => {});
   const startChatThreads = typeof startChatThreadsListener === "function" ? startChatThreadsListener : (() => {});
   const stopChatThreads = typeof stopChatThreadsListener === "function" ? stopChatThreadsListener : (() => {});
@@ -240,6 +242,15 @@ export function ensureTabDataCore({
       });
     }
   }
+
+  if (hasUser && tab === "businessAccounts" && !dataLoaded.businessAccounts) {
+    dataLoaded.businessAccounts = true;
+    void runAuthProfileLoad()
+      .then(() => loadBusinessAccountsSafe())
+      .catch((err) => {
+        reportAuthFlowWarning("auth-tab.businessAccounts.load", err);
+      });
+  }
 }
 
 export async function loadAuthProfileCore({
@@ -259,6 +270,7 @@ export async function loadAuthProfileCore({
   serverTimestamp,
   setDoc,
   loadBusinessProfile,
+  loadBusinessStaffProfile,
   loadUserProfile
 } = {}) {
   if (!user || !state) return;
@@ -276,6 +288,7 @@ export async function loadAuthProfileCore({
     || typeof serverTimestamp !== "function"
     || typeof setDoc !== "function"
     || typeof loadBusinessProfile !== "function"
+    || typeof loadBusinessStaffProfile !== "function"
     || typeof loadUserProfile !== "function"
   ) {
     return;
@@ -283,6 +296,155 @@ export async function loadAuthProfileCore({
   const normalizeAuthRestaurant = (candidate) => (
     candidate && !isRestaurantDeleted(candidate) ? candidate : null
   );
+  let authUserData = {};
+  try {
+    const userSnap = await getDoc(doc(db, "users", user.uid));
+    if (userSnap.exists()) {
+      authUserData = userSnap.data() || {};
+    }
+  } catch {}
+  const authUserRole = String(authUserData?.role || "").trim().toLowerCase();
+  const authPermissions = authUserData?.permissions && typeof authUserData.permissions === "object"
+    ? authUserData.permissions
+    : {};
+  const isStaffAccount = authUserRole === "staff"
+    || !!String(
+      authUserData?.staffRestaurantId
+      || authUserData?.waiterRestaurantId
+      || authUserData?.businessOwnerUid
+      || ""
+    ).trim();
+  const getRestaurantById = async (restaurantId = "") => {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return null;
+    try {
+      const restSnap = await getDoc(doc(db, "restaurants", safeRestaurantId));
+      if (restSnap.exists()) {
+        return normalizeAuthRestaurant({ id: restSnap.id, ...(restSnap.data() || {}) });
+      }
+    } catch {}
+    return null;
+  };
+  const explicitRestaurantId = String(authUserData?.restaurantId || "").trim();
+  if (!isStaffAccount && (authUserRole === "business" || explicitRestaurantId)) {
+    let explicitRestaurant = await getRestaurantById(explicitRestaurantId);
+    if (!explicitRestaurant) {
+      explicitRestaurant = normalizeAuthRestaurant(await resolveRestaurantForAuthUser(user, { preferCached: !force }));
+    }
+    if (explicitRestaurant) {
+      const ownerPatch = {};
+      if (!String(explicitRestaurant.ownerUid || "").trim() && user?.uid) ownerPatch.ownerUid = user.uid;
+      if (!String(explicitRestaurant.ownerEmail || "").trim() && user?.email) ownerPatch.ownerEmail = user.email;
+      if (Object.keys(ownerPatch).length && explicitRestaurant.id) {
+        ownerPatch.updatedAt = serverTimestamp();
+        try {
+          await setDoc(doc(db, "restaurants", explicitRestaurant.id), ownerPatch, { merge: true });
+          explicitRestaurant = { ...explicitRestaurant, ...ownerPatch };
+        } catch (err) {
+          reportAuthFlowWarning("auth-profile.ownerRestaurant.patch", err);
+        }
+      }
+      await loadBusinessProfile(user, { restaurant: explicitRestaurant, force });
+      return;
+    }
+  }
+  if (isStaffAccount) {
+    const staffRestaurantId = String(
+      authUserData?.staffRestaurantId
+      || authUserData?.waiterRestaurantId
+      || authUserData?.restaurantId
+      || ""
+    ).trim();
+    let mergedStaffData = {
+      ...authUserData,
+      sourceUserRole: "staff",
+      role: "staff",
+      staffRestaurantId,
+      waiterRestaurantId: String(authUserData?.waiterRestaurantId || staffRestaurantId).trim()
+    };
+    if (staffRestaurantId) {
+      try {
+        const staffSnap = await getDoc(doc(db, "restaurants", staffRestaurantId, "staff", user.uid));
+        if (staffSnap.exists()) {
+          const staffData = staffSnap.data() || {};
+          const mergedPermissions = {
+            ...(authPermissions || {}),
+            ...((staffData?.permissions && typeof staffData.permissions === "object") ? staffData.permissions : {})
+          };
+          mergedStaffData = {
+            ...mergedStaffData,
+            ...staffData,
+            permissions: mergedPermissions,
+            sourceUserRole: "staff",
+            role: "staff",
+            staffRestaurantId,
+            waiterRestaurantId: String(
+              staffData?.waiterRestaurantId
+              || authUserData?.waiterRestaurantId
+              || staffRestaurantId
+            ).trim()
+          };
+        }
+      } catch {}
+    }
+    const staffPermissions = mergedStaffData?.permissions && typeof mergedStaffData.permissions === "object"
+      ? mergedStaffData.permissions
+      : {};
+    const staffBusinessAccess = mergedStaffData?.businessAccess === true || staffPermissions.businessAccess === true;
+    const staffWaiterAccess = mergedStaffData?.waiterAccess === true || staffPermissions.waiterAccess === true;
+    const staffStatusKey = String(mergedStaffData?.staffStatus || mergedStaffData?.status || "").trim().toLowerCase();
+    const staffActive = mergedStaffData?.staffActive === false
+      ? false
+      : (mergedStaffData?.active === false ? false : staffStatusKey !== "disabled");
+
+    if (staffActive && staffBusinessAccess && staffRestaurantId) {
+      const staffRestaurant = await getRestaurantById(staffRestaurantId);
+      if (staffRestaurant) {
+        await loadBusinessStaffProfile(user, {
+          restaurant: staffRestaurant,
+          staffData: {
+            ...mergedStaffData,
+            businessAccess: staffBusinessAccess,
+            waiterAccess: staffWaiterAccess,
+            staffActive,
+            staffStatus: staffStatusKey || "active"
+          },
+          force
+        });
+        return;
+      }
+    }
+
+    const profile = await loadUserProfile(user, { force });
+    if (profile && state?.userProfile) {
+      if (!staffActive) {
+        state.userProfile.socialAccessMode = "blocked";
+        state.userProfile.socialAccessMessage = "Dieser Staff-Account ist deaktiviert.";
+        return;
+      }
+      if (staffBusinessAccess && !staffRestaurantId) {
+        state.userProfile.socialAccessMode = "blocked";
+        state.userProfile.socialAccessMessage = "Diesem Staff-Account fehlt die Restaurant-Zuordnung fuer Menyra Social.";
+        return;
+      }
+      if (staffBusinessAccess) {
+        state.userProfile.socialAccessMode = "blocked";
+        state.userProfile.socialAccessMessage = "Der Business-Zugang dieses Staff-Accounts konnte nicht geladen werden.";
+        return;
+      }
+      if (staffWaiterAccess && !staffBusinessAccess) {
+        state.userProfile.socialAccessMode = "waiterOnly";
+        state.userProfile.socialAccessMessage = "Dieser Staff-Account ist nur fuer die Waiter-App freigegeben.";
+        return;
+      }
+      if (!staffBusinessAccess) {
+        state.userProfile.socialAccessMode = "blocked";
+        state.userProfile.socialAccessMessage = "Dieser Staff-Account hat keinen Menyra-Social-Zugriff.";
+        return;
+      }
+    }
+    return;
+  }
   const profileHint = state.userProfile || {};
   const hintRoles = normalizeRoles(profileHint.roles || profileHint.role || "");
   const hintRoleKey = String(profileHint.role || "").toLowerCase();

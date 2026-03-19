@@ -24,6 +24,7 @@ export function createShellDomRuntimeController({
   getChatUnreadCount = () => 0,
   isGuestSession = () => true,
   isCeoUser = () => false,
+  isBusinessOwnerProfile = () => false,
   isLocalBusinessProfile = () => false,
   isRestaurantCafeProfile = () => false,
   getBusinessCatalogLabel = () => "Menu",
@@ -153,6 +154,7 @@ export function createShellDomRuntimeController({
     const chatUnread = isGuest ? 0 : getChatUnreadCount();
     const switchLinks = isGuest ? "" : renderRoleSwitchLinks();
     const isCeo = isCeoUser();
+    const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
     const catalogLabel = getBusinessCatalogLabel(state?.userProfile);
     const catalogIcon = catalogLabel === "Shop" ? "shopping-bag" : "utensils";
     const showMenuTab = isLocalBusinessProfile(state?.userProfile)
@@ -179,6 +181,7 @@ export function createShellDomRuntimeController({
         { id: "favorites", label: "Favoriten", icon: "bookmark", hidden: !isRegisteredUser },
         { id: "orders", label: "Bestellungen", icon: "shopping-cart" },
         { id: "notifications", label: "Updates", icon: "bell", badge: unread, badgeType: "notifications" },
+        { id: "businessAccounts", label: "Staff", icon: "users-round", hidden: !isBusinessOwner },
         { id: "leads", label: "Leads", icon: "clipboard-list", hidden: !isCeo },
         { id: "staff", label: "Staff", icon: "users-round", hidden: !isCeo },
         { id: "customers", label: "Kunden", icon: "users", hidden: !isCeo },
@@ -240,6 +243,7 @@ export function createShellDomRuntimeController({
     syncDrawerOpenUiState();
     const avatarUrl = resolveShellAvatarUrl();
     const isBusiness = isLocalBusinessProfile(state?.userProfile);
+    const isBusinessOwner = isBusinessOwnerProfile(state?.userProfile);
     const branding = resolveHeaderBranding();
     const catalogLabel = getBusinessCatalogLabel(state?.userProfile);
     const catalogIcon = catalogLabel === "Shop" ? "shopping-bag" : "utensils";
@@ -302,6 +306,10 @@ export function createShellDomRuntimeController({
     const favoritesNavBtn = doc?.querySelector('[data-nav="favorites"]');
     if (favoritesNavBtn) {
       favoritesNavBtn.classList.toggle("hidden", !isRegisteredUser);
+    }
+    const businessAccountsNavBtn = doc?.querySelector('[data-nav="businessAccounts"]');
+    if (businessAccountsNavBtn) {
+      businessAccountsNavBtn.classList.toggle("hidden", !isBusinessOwner);
     }
     doc?.querySelectorAll?.('[data-nav="leads"], [data-nav="customers"]')?.forEach((btn) => {
       btn.classList.toggle("hidden", !showCeoTabs);

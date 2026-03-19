@@ -1,6 +1,7 @@
 export function renderOrdersViewCore({
   state = null,
   isLocalBusinessProfileFn = () => false,
+  canAccessRestaurantOrdersFn = () => false,
   escapeHtmlFn = (value) => String(value ?? ""),
   getOptimizedImageUrlFn = (value) => String(value || ""),
   formatPriceFn = (value) => String(value ?? ""),
@@ -10,6 +11,9 @@ export function renderOrdersViewCore({
 } = {}) {
   const isLocalBusinessProfile = typeof isLocalBusinessProfileFn === "function"
     ? isLocalBusinessProfileFn
+    : (() => false);
+  const canAccessRestaurantOrders = typeof canAccessRestaurantOrdersFn === "function"
+    ? canAccessRestaurantOrdersFn
     : (() => false);
   const escapeHtml = typeof escapeHtmlFn === "function"
     ? escapeHtmlFn
@@ -29,7 +33,7 @@ export function renderOrdersViewCore({
   const toDateSafe = typeof toDateSafeFn === "function"
     ? toDateSafeFn
     : ((value) => value);
-  const isBusiness = isLocalBusinessProfile(state?.userProfile) && !!state?.userProfile?.restaurantId;
+  const isBusiness = canAccessRestaurantOrders(state?.userProfile);
   const orders = Array.isArray(state?.orders?.items) ? state.orders.items : [];
 
   return `
@@ -53,8 +57,11 @@ export function renderOrdersViewCore({
             const fallbackName = isBusiness
               ? (order?.contact?.name || order?.buyerName || "Kunde")
               : (order?.businessName || "Shop");
+            const tableLabel = order?.tableNumber
+              ? `Tisch ${order.tableNumber}`
+              : (order?.tableLabel || order?.contact?.tableLabel || "");
             const metaLine = isBusiness
-              ? [order?.contact?.phone, order?.contact?.city].filter(Boolean).join(" / ")
+              ? [tableLabel, order?.contact?.phone, order?.contact?.city].filter(Boolean).join(" / ")
               : `${order?.itemCount || 0} Artikel`;
             return `
               <div class="bg-white rounded-[2rem] p-4 border border-slate-100 shadow-sm">
@@ -79,7 +86,7 @@ export function renderOrdersViewCore({
                 </div>
                 <div class="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
                   <div class="min-w-0">
-                    ${isBusiness ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">${escapeHtml([order?.contact?.city, order?.contact?.address].filter(Boolean).join(" / "))}</p>` : `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">@${escapeHtml(order?.buyerHandle || "user")}</p>`}
+                    ${isBusiness ? `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">${escapeHtml([tableLabel, order?.contact?.city, order?.contact?.address].filter(Boolean).join(" / "))}</p>` : `<p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 truncate">@${escapeHtml(order?.buyerHandle || "user")}</p>`}
                     <p class="text-[10px] font-bold uppercase tracking-widest text-slate-300 mt-1">${escapeHtml(formatRelative(toDateSafe(order?.createdAt) || new Date()))}</p>
                   </div>
                   <span class="text-base font-black text-slate-900 shrink-0">${escapeHtml(formatPrice(order?.total || 0))}</span>

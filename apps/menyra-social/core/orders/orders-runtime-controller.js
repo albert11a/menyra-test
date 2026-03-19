@@ -2,6 +2,7 @@ import {
   normalizeOrderItemCore,
   normalizeOrderDocCore
 } from "./order-normalize-utils.js";
+import { normalizeRestaurantTypeCore } from "../profile/restaurant-type-utils.js";
 
 export function createOrdersRuntimeController({
   state = null,
@@ -16,6 +17,8 @@ export function createOrdersRuntimeController({
   serverTimestampFn = () => null,
   normalizeShopCartStateFn = (raw) => raw || {},
   isLocalBusinessProfileFn = () => false,
+  canAccessRestaurantOrdersFn = () => false,
+  resolveProfileRestaurantIdFn = () => "",
   getRestaurantMetaByIdFn = () => null,
   normalizeHandleFn = (value = "") => String(value || ""),
   buildShopVariantKeyFn = () => "",
@@ -40,6 +43,12 @@ export function createOrdersRuntimeController({
   const isLocalBusinessProfile = typeof isLocalBusinessProfileFn === "function"
     ? isLocalBusinessProfileFn
     : (() => false);
+  const canAccessRestaurantOrders = typeof canAccessRestaurantOrdersFn === "function"
+    ? canAccessRestaurantOrdersFn
+    : (() => false);
+  const resolveProfileRestaurantId = typeof resolveProfileRestaurantIdFn === "function"
+    ? resolveProfileRestaurantIdFn
+    : ((profile = null) => String(profile?.restaurantId || "").trim());
   const getRestaurantMetaById = typeof getRestaurantMetaByIdFn === "function"
     ? getRestaurantMetaByIdFn
     : (() => null);
@@ -81,6 +90,19 @@ export function createOrdersRuntimeController({
     });
   }
 
+  function resolveCartBusinessType(cart = {}) {
+    const restaurantId = String(cart?.restaurantId || "").trim();
+    const restaurant = restaurantId ? (getRestaurantMetaById(restaurantId) || {}) : {};
+    return normalizeRestaurantTypeCore(
+      restaurant?.type
+      || restaurant?.customerType
+      || cart?.businessType
+      || state?.profileView?.profile?.type
+      || state?.profileView?.profile?.customerType
+      || ""
+    );
+  }
+
   function renderOrdersTabIfActive() {
     if (state?.activeTab === "orders") {
       renderFn();
@@ -108,8 +130,8 @@ export function createOrdersRuntimeController({
       return;
     }
     if (!collection || !query || !orderBy || !limit || !onSnapshot || !db) return;
-    const restaurantId = String(state?.userProfile?.restaurantId || "").trim();
-    const isBusiness = isLocalBusinessProfile(state?.userProfile) && !!restaurantId;
+    const restaurantId = resolveProfileRestaurantId(state?.userProfile);
+    const isBusiness = canAccessRestaurantOrders(state?.userProfile) && !!restaurantId;
     const nextListenerKey = isBusiness ? `restaurant:${restaurantId}` : `user:${uid}`;
     if (!nextListenerKey || (ordersUnsub && ordersListenerKey === nextListenerKey)) return;
 
@@ -155,15 +177,28 @@ export function createOrdersRuntimeController({
     if (!collection || !makeDocRef || !writeBatch || !db) return;
 
     const hasUser = !!String(state?.user?.uid || "").trim();
+    const tableNumber = Math.max(0, Number(cart.tableNumber || cart.form?.tableNumber || 0) || 0);
+    const isTableService = String(cart.serviceMode || "").trim().toLowerCase() === "table" && tableNumber > 0;
+    const isHospitalityOrder = ["restaurant", "cafe", "fastfood"].includes(resolveCartBusinessType(cart));
     const contact = {
       name: String(cart.form?.name || "").trim(),
       phone: String(cart.form?.phone || "").trim(),
       city: String(cart.form?.city || "").trim(),
-      address: String(cart.form?.address || "").trim()
+      address: String(cart.form?.address || "").trim(),
+      tableNumber,
+      tableLabel: tableNumber ? `Tisch ${tableNumber}` : ""
     };
-    if (!contact.name || !contact.phone || !contact.city || !contact.address) {
+    const missingRequired = isTableService
+      ? false
+      : (isHospitalityOrder ? false : (!contact.name || !contact.phone || !contact.city || !contact.address));
+    if (missingRequired) {
       if (state) {
-        state.shopCart = { ...cart, status: "Bitte Name, Tel, Qyteti und Adresse eingeben." };
+        state.shopCart = {
+          ...cart,
+          status: isTableService
+            ? "Bestellung wird vorbereitet."
+            : "Bitte Name, Tel, Qyteti und Adresse eingeben."
+        };
       }
       saveShopCartToStorage();
       renderFn();
@@ -193,6 +228,8 @@ export function createOrdersRuntimeController({
       buyerHandle,
       buyerAvatar: hasUser ? (state?.userProfile?.avatar || "") : "",
       contact,
+      tableNumber,
+      tableLabel: tableNumber ? `Tisch ${tableNumber}` : "",
       items: cart.items.map((item) => ({
         id: item.id,
         itemId: item.itemId,
@@ -239,10 +276,30 @@ export function createOrdersRuntimeController({
           items: [guestOrder, ...(Array.isArray(state.orders?.items) ? state.orders.items : [])]
         };
       }
+      const showHospitalityConfirmation = isTableService || isHospitalityOrder;
       clearShopCart({ keepForm: true });
       if (state) {
-        state.activeTab = "orders";
-        state.drawerOpen = false;
+        if (showHospitalityConfirmation) {
+          state.shopCart = {
+            ...state.shopCart,
+            restaurantId: cart.restaurantId,
+            businessName: cart.businessName || restaurant.name || restaurant.restaurantName || "Shop",
+            businessAvatar,
+            status: "",
+            loading: false,
+            checkoutOpen: false,
+            confirmation: {
+              restaurantId: cart.restaurantId,
+              title: tableNumber ? `Tisch ${tableNumber}` : (cart.businessName || restaurant.name || restaurant.restaurantName || "Bestellung"),
+              message: "Ihre Bestellung wird zubereitet und in Kuerze serviert.",
+              tableNumber,
+              createdAt: Date.now()
+            }
+          };
+        } else {
+          state.activeTab = "orders";
+          state.drawerOpen = false;
+        }
       }
       renderFn();
     } catch (err) {

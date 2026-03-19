@@ -53,13 +53,18 @@ export function normalizeShopCartStateCore(raw, {
     restaurantId: String(source.restaurantId || "").trim(),
     businessName: String(source.businessName || "").trim(),
     businessAvatar: String(source.businessAvatar || "").trim(),
+    tableNumber: Math.max(0, Number(source.tableNumber || source.form?.tableNumber || 0) || 0),
+    tableLabel: String(source.tableLabel || source.form?.tableLabel || "").trim(),
+    serviceMode: String(source.serviceMode || "").trim().toLowerCase(),
     items,
     checkoutOpen: !!source.checkoutOpen,
     form: {
       name: String(source.form?.name || "").trim(),
       phone: String(source.form?.phone || "").trim(),
       city: String(source.form?.city || "").trim(),
-      address: String(source.form?.address || "").trim()
+      address: String(source.form?.address || "").trim(),
+      tableNumber: Math.max(0, Number(source.form?.tableNumber || source.tableNumber || 0) || 0),
+      tableLabel: String(source.form?.tableLabel || source.tableLabel || "").trim()
     },
     status: String(source.status || "").trim(),
     loading: !!source.loading

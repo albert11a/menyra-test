@@ -10,6 +10,7 @@ export function bindAppMenuFocusEventsCore({
   openShopCheckoutFn,
   submitShopCheckoutFn,
   updateShopCheckoutFieldFn,
+  saveTableQrConfigFn,
   focusCache,
   focusCacheKeyFn,
   saveFocusEnabledFn,
@@ -43,6 +44,9 @@ export function bindAppMenuFocusEventsCore({
   const updateShopCheckoutField = typeof updateShopCheckoutFieldFn === "function"
     ? updateShopCheckoutFieldFn
     : (() => {});
+  const saveTableQrConfig = typeof saveTableQrConfigFn === "function"
+    ? saveTableQrConfigFn
+    : null;
   const focusCacheKey = typeof focusCacheKeyFn === "function" ? focusCacheKeyFn : (() => "");
   const saveFocusEnabled = typeof saveFocusEnabledFn === "function" ? saveFocusEnabledFn : null;
   const openFocusModal = typeof openFocusModalFn === "function" ? openFocusModalFn : (() => {});
@@ -56,6 +60,62 @@ export function bindAppMenuFocusEventsCore({
   const bindNotificationsDelegation = typeof bindNotificationsDelegationFn === "function"
     ? bindNotificationsDelegationFn
     : (() => {});
+  let copyStatusTimer = 0;
+
+  function scheduleCopyStatusReset() {
+    const win = doc.defaultView;
+    try {
+      if (copyStatusTimer) {
+        if (win && typeof win.clearTimeout === "function") win.clearTimeout(copyStatusTimer);
+        else clearTimeout(copyStatusTimer);
+      }
+    } catch {}
+    const clearStatus = () => {
+      if (!state?.tableQr || typeof state.tableQr !== "object") return;
+      if (String(state.tableQr.status || "").trim() !== "Link kopiert.") return;
+      state.tableQr = {
+        ...state.tableQr,
+        status: ""
+      };
+      render();
+    };
+    try {
+      if (win && typeof win.setTimeout === "function") {
+        copyStatusTimer = win.setTimeout(clearStatus, 2200);
+      } else {
+        copyStatusTimer = setTimeout(clearStatus, 2200);
+      }
+    } catch {}
+  }
+
+  async function copyTextToClipboard(text = "") {
+    const value = String(text || "").trim();
+    if (!value) return false;
+    const win = doc.defaultView;
+    try {
+      if (win?.navigator?.clipboard?.writeText) {
+        await win.navigator.clipboard.writeText(value);
+        return true;
+      }
+    } catch {}
+    try {
+      const textarea = doc.createElement("textarea");
+      textarea.value = value;
+      textarea.setAttribute("readonly", "true");
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      textarea.style.pointerEvents = "none";
+      doc.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      textarea.setSelectionRange(0, textarea.value.length);
+      const copied = typeof doc.execCommand === "function" ? doc.execCommand("copy") : false;
+      textarea.remove();
+      return !!copied;
+    } catch {
+      return false;
+    }
+  }
 
   const menuSearchInput = doc.getElementById("menuSearchInput");
   if (menuSearchInput) {
@@ -464,6 +524,53 @@ export function bindAppMenuFocusEventsCore({
   doc.querySelectorAll("[data-cart-field]").forEach((input) => {
     input.addEventListener("input", () => {
       updateShopCheckoutField(input.dataset.cartField || "", input.value || "");
+    });
+  });
+
+  const tableQrCountInput = doc.getElementById("tableQrCountInput");
+  const tableQrEnabledToggle = doc.getElementById("tableQrEnabledToggle");
+  const submitTableQrConfig = () => {
+    const restaurantId = String(state.userProfile?.restaurantId || state.profileView?.profile?.restaurantId || "").trim();
+    if (!restaurantId || !saveTableQrConfig) return;
+    const count = Number(tableQrCountInput?.value || "0");
+    const enabled = !!tableQrEnabledToggle?.checked;
+    void saveTableQrConfig(restaurantId, { count, enabled });
+  };
+  if (tableQrCountInput) {
+    tableQrCountInput.addEventListener("keydown", (evt) => {
+      if (evt.key !== "Enter") return;
+      evt.preventDefault();
+      submitTableQrConfig();
+    });
+  }
+  if (tableQrEnabledToggle) {
+    tableQrEnabledToggle.addEventListener("change", () => {
+      submitTableQrConfig();
+    });
+  }
+  doc.querySelectorAll("[data-table-qr-save]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      submitTableQrConfig();
+    });
+  });
+
+  doc.querySelectorAll("[data-copy-url]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const url = btn.dataset.copyUrl || "";
+      const label = String(btn.dataset.copyLabel || "Link").trim();
+      const copied = await copyTextToClipboard(url);
+      if (!state.tableQr || typeof state.tableQr !== "object") {
+        state.tableQr = { status: "", error: "" };
+      }
+      state.tableQr = {
+        ...state.tableQr,
+        error: copied ? "" : `Link fuer ${label} konnte nicht kopiert werden.`,
+        status: copied ? "Link kopiert." : ""
+      };
+      render();
+      if (copied) {
+        scheduleCopyStatusReset();
+      }
     });
   });
 
