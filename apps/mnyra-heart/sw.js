@@ -1,4 +1,4 @@
-const HEART_CACHE = "mnyra-heart-shell-v1";
+const HEART_CACHE = "mnyra-heart-shell-v6";
 const SHELL_ASSETS = [
   "/heart/",
   "/heart/index.html",
@@ -19,6 +19,9 @@ const SHELL_ASSETS = [
   "/heart/heart-test-runner-adapter.js",
   "/heart/heart-test-report-normalizer.js",
   "/heart/manifest.json",
+  "/apps/mnyra-heart/assets/apple-touch-icon.png?v=2026-03-20-heart-icon-normal-2",
+  "/apps/mnyra-heart/assets/icon-192.png?v=2026-03-20-heart-icon-normal-2",
+  "/apps/mnyra-heart/assets/icon-512.png?v=2026-03-20-heart-icon-normal-2",
   "/apps/mnyra-heart/",
   "/apps/mnyra-heart/index.html",
   "/apps/mnyra-heart/heart.css",

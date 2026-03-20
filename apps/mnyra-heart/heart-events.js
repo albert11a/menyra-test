@@ -28,6 +28,10 @@ export function bindHeartEvents({
       operations.toggleNav?.();
       return;
     }
+    if (action === "toggle-quick-actions") {
+      operations.toggleQuickActions?.();
+      return;
+    }
     if (action === "refresh-heart") {
       await operations.refresh?.();
       return;

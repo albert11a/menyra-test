@@ -5,7 +5,7 @@ export const HEART_NAV_ITEMS = Object.freeze([
   { key: "runs", label: "Laeufe" },
   { key: "incidents", label: "Meldungen" },
   { key: "modules", label: "Bereiche" },
-  { key: "connections", label: "Setup" }
+  { key: "connections", label: "Einrichtung" }
 ]);
 
 export function createHeartInitialState() {
@@ -28,6 +28,9 @@ export function createHeartInitialState() {
     shell: {
       activeView: "dashboard",
       navOpen: false,
+      quickActionsOpen: false,
+      standalone: false,
+      mobileNavHidden: false,
       toast: null
     },
     dashboard: {
@@ -152,12 +155,40 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.shell.activeView = String(viewKey || "dashboard");
       draft.shell.navOpen = false;
+      draft.shell.quickActionsOpen = false;
     });
   }
 
   function setNavOpen(open) {
     patch((draft) => {
       draft.shell.navOpen = !!open;
+      if (draft.shell.navOpen) draft.shell.quickActionsOpen = false;
+    });
+  }
+
+  function setQuickActionsOpen(open) {
+    const nextValue = !!open;
+    if (state.shell.quickActionsOpen === nextValue) return;
+    patch((draft) => {
+      draft.shell.quickActionsOpen = nextValue;
+      if (nextValue) draft.shell.navOpen = false;
+    });
+  }
+
+  function setStandaloneMode(enabled) {
+    const nextValue = !!enabled;
+    if (state.shell.standalone === nextValue) return;
+    patch((draft) => {
+      draft.shell.standalone = nextValue;
+      if (!nextValue) draft.shell.mobileNavHidden = false;
+    });
+  }
+
+  function setMobileNavHidden(hidden) {
+    const nextValue = !!hidden;
+    if (state.shell.mobileNavHidden === nextValue) return;
+    patch((draft) => {
+      draft.shell.mobileNavHidden = nextValue;
     });
   }
 
@@ -205,7 +236,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.auth.status = "denied";
       draft.auth.user = sanitizeAuthUser(user);
       draft.auth.profile = sanitizeAuthProfile(profile);
-      draft.auth.access = { allowed: false, reason: String(reason || "").trim() || "CEO access required." };
+      draft.auth.access = { allowed: false, reason: String(reason || "").trim() || "CEO-Zugang erforderlich." };
       draft.auth.error = "";
     });
   }
@@ -223,7 +254,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setAuthError(message) {
     patch((draft) => {
       draft.auth.status = "error";
-      draft.auth.error = String(message || "").trim() || "Authentication failed.";
+      draft.auth.error = String(message || "").trim() || "Anmeldung fehlgeschlagen.";
     });
   }
 
@@ -246,7 +277,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setDashboardError(message) {
     patch((draft) => {
       draft.dashboard.status = "error";
-      draft.dashboard.error = String(message || "").trim() || "Dashboard loading failed.";
+      draft.dashboard.error = String(message || "").trim() || "Startansicht konnte nicht geladen werden.";
     });
   }
 
@@ -272,7 +303,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setRunsError(message) {
     patch((draft) => {
       draft.runs.status = "error";
-      draft.runs.error = String(message || "").trim() || "Run list loading failed.";
+      draft.runs.error = String(message || "").trim() || "Laufliste konnte nicht geladen werden.";
     });
   }
 
@@ -302,7 +333,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setRunDetailError(message) {
     patch((draft) => {
       draft.runs.detailStatus = "error";
-      draft.runs.detailError = String(message || "").trim() || "Run detail loading failed.";
+      draft.runs.detailError = String(message || "").trim() || "Laufdetails konnten nicht geladen werden.";
     });
   }
 
@@ -330,7 +361,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setIncidentsError(message) {
     patch((draft) => {
       draft.incidents.status = "error";
-      draft.incidents.error = String(message || "").trim() || "Incident loading failed.";
+      draft.incidents.error = String(message || "").trim() || "Meldungen konnten nicht geladen werden.";
     });
   }
 
@@ -358,7 +389,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setConnectionsError(message) {
     patch((draft) => {
       draft.connections.status = "error";
-      draft.connections.error = String(message || "").trim() || "Connection loading failed.";
+      draft.connections.error = String(message || "").trim() || "Einrichtung konnte nicht geladen werden.";
     });
   }
 
@@ -371,6 +402,9 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setToast,
       setActiveView,
       setNavOpen,
+      setQuickActionsOpen,
+      setStandaloneMode,
+      setMobileNavHidden,
       setBootReady,
       setBootError,
       setAuthChecking,

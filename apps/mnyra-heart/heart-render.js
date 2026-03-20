@@ -22,15 +22,176 @@ import {
   renderSettingsView
 } from "./heart-settings-render.js";
 
-function renderLoadingGate(message = "CEO-Sitzung wird geladen...") {
+const NAV_HINTS = Object.freeze({
+  dashboard: "Status, Schnellstarts und Uebersicht",
+  runs: "Verlauf, Beweise und Berichte",
+  incidents: "Warnungen und Stoerungen",
+  modules: "Bereiche und Gesundheitsstatus",
+  connections: "Einrichtung, Konten und Links"
+});
+
+const HEADER_QUICK_ACTIONS = Object.freeze([
+  { kind: "nav", key: "runs", label: "Laeufe", icon: "list" },
+  { kind: "nav", key: "connections", label: "Einrichtung", icon: "settings" },
+  { kind: "action", action: "start-pack", packKey: "smoke", label: "Test", icon: "play", primary: true }
+]);
+
+const ICONS = Object.freeze({
+  menu: `
+    <path d="M4 6h16"></path>
+    <path d="M4 12h16"></path>
+    <path d="M4 18h16"></path>
+  `,
+  x: `
+    <path d="M18 6 6 18"></path>
+    <path d="m6 6 12 12"></path>
+  `,
+  refresh: `
+    <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
+    <path d="M21 3v6h-6"></path>
+  `,
+  logout: `
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+    <path d="m16 17 5-5-5-5"></path>
+    <path d="M21 12H9"></path>
+  `,
+  home: `
+    <path d="M3 10.5 12 3l9 7.5"></path>
+    <path d="M5 9.5V21h14V9.5"></path>
+  `,
+  list: `
+    <path d="M8 6h13"></path>
+    <path d="M8 12h13"></path>
+    <path d="M8 18h13"></path>
+    <path d="M3 6h.01"></path>
+    <path d="M3 12h.01"></path>
+    <path d="M3 18h.01"></path>
+  `,
+  bell: `
+    <path d="M10.27 21a2 2 0 0 0 3.46 0"></path>
+    <path d="M3.26 15.33A2 2 0 0 0 5 18h14a2 2 0 0 0 1.74-2.67L18 8a6 6 0 1 0-12 0z"></path>
+  `,
+  grid: `
+    <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
+    <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
+    <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
+    <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
+  `,
+  settings: `
+    <path d="M12 3v2.25"></path>
+    <path d="M12 18.75V21"></path>
+    <path d="m4.93 4.93 1.59 1.59"></path>
+    <path d="m17.48 17.48 1.59 1.59"></path>
+    <path d="M3 12h2.25"></path>
+    <path d="M18.75 12H21"></path>
+    <path d="m4.93 19.07 1.59-1.59"></path>
+    <path d="m17.48 6.52 1.59-1.59"></path>
+    <circle cx="12" cy="12" r="3.25"></circle>
+  `,
+  play: `
+    <polygon points="8 5 19 12 8 19 8 5"></polygon>
+  `,
+  plus: `
+    <path d="M12 5v14"></path>
+    <path d="M5 12h14"></path>
+  `
+});
+
+function renderIcon(name = "home") {
+  const body = ICONS[name] || ICONS.home;
   return `
-    <div class="heart-auth-shell">
-      <section class="heart-auth-card heart-auth-card--loading">
-        <p class="heart-eyebrow">MENYRA Heart</p>
-        <h1>Kontrollzentrum</h1>
-        <p>${escapeHtml(message)}</p>
-        <div class="heart-spinner"></div>
-      </section>
+    <svg class="heart-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      ${body}
+    </svg>
+  `;
+}
+
+function getNavIcon(key = "") {
+  const icons = {
+    dashboard: "home",
+    runs: "list",
+    incidents: "bell",
+    modules: "grid",
+    connections: "settings"
+  };
+  return icons[String(key || "").trim()] || "home";
+}
+
+function renderLoginMark() {
+  return `
+    <div class="heart-login-mark">
+      <span class="heart-login-mark__word">Mnyra</span>
+      <span class="heart-login-mark__sub">heart login</span>
+    </div>
+  `;
+}
+
+function renderHeaderBrand(extraClass = "") {
+  return `
+    <div class="heart-brand-lockup ${escapeHtml(extraClass)}">
+      <span class="heart-brand-lockup__eyebrow">heart</span>
+      <span class="heart-brand-lockup__wordmark">mnyra</span>
+    </div>
+  `;
+}
+
+function getProfilePhotoUrl(state) {
+  const candidates = [
+    state?.auth?.user?.photoURL,
+    state?.auth?.profile?.photoURL,
+    state?.auth?.profile?.avatar,
+    state?.auth?.profile?.avatarUrl,
+    state?.auth?.profile?.image,
+    state?.auth?.profile?.imageUrl,
+    state?.auth?.profile?.profileImage,
+    state?.auth?.profile?.profileImageUrl
+  ];
+  return candidates.find((value) => String(value || "").trim()) || "";
+}
+
+function getProfileInitials(name = "", email = "") {
+  const source = String(name || "").trim() || String(email || "").trim();
+  if (!source) return "M";
+  const parts = source
+    .replace(/@.*/, "")
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  return parts.map((part) => part[0]?.toUpperCase() || "").join("") || "M";
+}
+
+function renderDrawerProfile(state, userName) {
+  const email = String(state.auth.user?.email || "").trim();
+  const photoUrl = getProfilePhotoUrl(state);
+  const initials = getProfileInitials(userName, email);
+  return `
+    <div class="heart-sidebar__footer">
+      <div class="heart-sidebar__profile">
+        <div class="heart-sidebar__avatar" aria-hidden="true">
+          ${photoUrl
+            ? `<img src="${escapeHtml(photoUrl)}" alt="" loading="lazy" />`
+            : `<span>${escapeHtml(initials)}</span>`}
+        </div>
+        <div class="heart-sidebar__identity">
+          <strong>${escapeHtml(userName)}</strong>
+          <p>${escapeHtml(email)}</p>
+        </div>
+      </div>
+      <button class="heart-drawer-action heart-drawer-action--logout" data-action="logout">
+        <span class="heart-drawer-action__icon">${renderIcon("logout")}</span>
+        <span>Abmelden</span>
+      </button>
+    </div>
+  `;
+}
+
+function renderLoadingGate(message = "Session wird geladen") {
+  return `
+    <div class="heart-loader-view">
+      <div class="heart-loader-view__inner">
+        <div class="heart-loader-spinner" aria-hidden="true"></div>
+        <p class="heart-loader-label">${escapeHtml(message)}</p>
+      </div>
     </div>
   `;
 }
@@ -38,10 +199,11 @@ function renderLoadingGate(message = "CEO-Sitzung wird geladen...") {
 function renderGuestScreen(auth = {}) {
   return `
     <div class="heart-auth-shell">
-      <section class="heart-auth-card">
-        <p class="heart-eyebrow">MENYRA Heart</p>
-        <h1>Tests klar starten</h1>
-        <p>Heart ist dein deutsches Kontrollzentrum fuer MENYRA. Hier startest du Tests, siehst Nachweise und erkennst sofort, was noch eingerichtet werden muss.</p>
+      <section class="heart-auth-card heart-auth-card--login">
+        <div class="heart-login-heading">
+          <h1 class="heart-login-heading__word">Mnyra</h1>
+          <p class="heart-login-heading__sub">Heart Login</p>
+        </div>
         <form class="heart-login-form" data-heart-login>
           <label class="heart-input-field">
             <span>Email</span>
@@ -49,10 +211,10 @@ function renderGuestScreen(auth = {}) {
           </label>
           <label class="heart-input-field">
             <span>Passwort</span>
-            <input type="password" name="password" autocomplete="current-password" placeholder="Passwort eingeben" required />
+            <input type="password" name="password" autocomplete="current-password" placeholder="Passwort" required />
           </label>
-          ${auth.error ? `<div class="heart-error-block">${escapeHtml(auth.error)}</div>` : ""}
-          <button class="heart-button heart-button--primary heart-button--wide" type="submit" ${auth.status === "signing-in" ? "disabled" : ""}>${auth.status === "signing-in" ? "Anmeldung laeuft..." : "Als CEO anmelden"}</button>
+          ${auth.error ? `<div class="heart-login-error">${escapeHtml(auth.error)}</div>` : ""}
+          <button class="heart-button heart-button--primary heart-button--wide" type="submit" ${auth.status === "signing-in" ? "disabled" : ""}>${auth.status === "signing-in" ? "Einloggen..." : "Einloggen"}</button>
         </form>
       </section>
     </div>
@@ -63,16 +225,13 @@ function renderDeniedScreen(auth = {}) {
   return `
     <div class="heart-auth-shell">
       <section class="heart-auth-card heart-auth-card--denied">
-        <p class="heart-eyebrow">MENYRA Heart</p>
-        <h1>Kein Zugriff</h1>
-        <p>${escapeHtml(auth.access?.reason || "Hier ist ein CEO-Zugang noetig.")}</p>
-        <div class="heart-detail-grid">
-          <div><span>User</span><strong>${escapeHtml(auth.user?.email || auth.profile?.email || "-")}</strong></div>
+        ${renderLoginMark()}
+        <p class="heart-auth-help">${escapeHtml(auth.access?.reason || "Hier ist ein CEO-Zugang noetig.")}</p>
+        <div class="heart-detail-grid heart-detail-grid--auth">
+          <div><span>Email</span><strong>${escapeHtml(auth.user?.email || auth.profile?.email || "-")}</strong></div>
           <div><span>UID</span><strong>${escapeHtml(auth.user?.uid || "-")}</strong></div>
         </div>
-        <div class="heart-header-actions">
-          <button class="heart-button heart-button--secondary" data-action="logout">Abmelden</button>
-        </div>
+        <button class="heart-button heart-button--secondary heart-button--wide" data-action="logout">Abmelden</button>
       </section>
     </div>
   `;
@@ -91,8 +250,8 @@ function renderViewBody(state) {
     return renderModulesView(state.dashboard.data?.moduleHealth || []);
   }
   if (state.shell.activeView === "connections") {
-    if (state.connections.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Setup wird geladen...</div></section>`;
-    if (state.connections.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.connections.error || "Setup konnte nicht geladen werden.")}</div></section>`;
+    if (state.connections.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Einrichtung wird geladen...</div></section>`;
+    if (state.connections.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.connections.error || "Einrichtung konnte nicht geladen werden.")}</div></section>`;
     return renderSettingsView(state.connections.items || []);
   }
   if (state.dashboard.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Startansicht wird geladen...</div></section>`;
@@ -100,54 +259,120 @@ function renderViewBody(state) {
   return renderDashboardView(state.dashboard.data);
 }
 
-function renderNav(state) {
-  return HEART_NAV_ITEMS.map((item) => `
-    <button class="heart-nav-link ${state.shell.activeView === item.key ? "heart-nav-link--active" : ""}" data-nav-key="${escapeHtml(item.key)}">
-      <span>${escapeHtml(item.label)}</span>
-    </button>
-  `).join("");
+function renderDrawerNav(state) {
+  return HEART_NAV_ITEMS.map((item) => {
+    const isActive = state.shell.activeView === item.key;
+    return `
+      <button class="heart-nav-link ${isActive ? "heart-nav-link--active" : ""}" data-nav-key="${escapeHtml(item.key)}">
+        <span class="heart-nav-link__icon">${renderIcon(getNavIcon(item.key))}</span>
+        <span class="heart-nav-link__body">
+          <span class="heart-nav-link__label">${escapeHtml(item.label)}</span>
+          <span class="heart-nav-link__hint">${escapeHtml(NAV_HINTS[item.key] || "")}</span>
+        </span>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderHeaderQuickActions(state) {
+  const isOpen = !!state.shell.quickActionsOpen;
+  return `
+    <div class="heart-header-quick ${isOpen ? "heart-header-quick--open" : ""}" aria-label="Schnellaktionen">
+      ${HEADER_QUICK_ACTIONS.map((item) => {
+        const isNav = item.kind === "nav";
+        const isActive = isNav && state.shell.activeView === item.key;
+        const extraClass = item.primary ? "heart-header-quick__item--primary" : "";
+        const attrs = isNav
+          ? `data-nav-key="${escapeHtml(item.key)}"`
+          : `data-action="${escapeHtml(item.action)}"${item.packKey ? ` data-pack-key="${escapeHtml(item.packKey)}"` : ""}`;
+        const label = escapeHtml(item.label);
+        return `
+          <button class="heart-header-quick__item ${isActive ? "heart-header-quick__item--active" : ""} ${extraClass}" ${attrs} aria-label="${label}" title="${label}" ${isOpen ? "" : 'tabindex="-1"'}>
+            <span class="heart-header-quick__icon">${renderIcon(item.icon)}</span>
+          </button>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderDrawer(state, userName) {
+  return `
+    <aside class="heart-sidebar">
+      <div class="heart-sidebar__header">
+        ${renderHeaderBrand("heart-brand-lockup--drawer")}
+        <button class="heart-icon-button" data-action="toggle-nav" aria-label="Menue schliessen">${renderIcon("x")}</button>
+      </div>
+      <div class="heart-sidebar__content">
+        <section class="heart-sidebar__panel">
+          <p class="heart-sidebar__label">Navigation</p>
+          <nav class="heart-nav">${renderDrawerNav(state)}</nav>
+        </section>
+        <section class="heart-sidebar__panel">
+          <p class="heart-sidebar__label">Schnellaktionen</p>
+          <div class="heart-sidebar__actions">
+            <button class="heart-drawer-action" data-action="refresh-heart">
+              <span class="heart-drawer-action__icon">${renderIcon("refresh")}</span>
+              <span>Jetzt aktualisieren</span>
+            </button>
+            <button class="heart-drawer-action heart-drawer-action--primary" data-action="start-pack" data-pack-key="smoke">
+              <span class="heart-drawer-action__icon">${renderIcon("play")}</span>
+              <span>Schnelltest starten</span>
+            </button>
+            </div>
+          </section>
+          ${renderDrawerProfile(state, userName)}
+        </div>
+      </aside>
+    `;
 }
 
 function renderShell(state) {
   const userName = state.auth.profile?.name || state.auth.user?.email || "CEO";
   const overallStatus = state.dashboard.data?.overallStatus || "idle";
+  const activeLabel = HEART_NAV_ITEMS.find((item) => item.key === state.shell.activeView)?.label || "Start";
+  const timestamp = state.boot.lastUpdatedAt
+    ? `Aktualisiert ${formatRelative(state.boot.lastUpdatedAt)}`
+    : "Warte auf erste Synchronisation";
+  const shellClasses = [
+    "heart-shell",
+    state.shell.navOpen ? "heart-shell--nav-open" : "",
+    state.shell.quickActionsOpen ? "heart-shell--quick-open" : "",
+    state.shell.standalone ? "heart-shell--standalone" : ""
+  ].filter(Boolean).join(" ");
+  const quickActionsOpen = !!state.shell.quickActionsOpen;
+
   return `
-    <div class="heart-shell ${state.shell.navOpen ? "heart-shell--nav-open" : ""}">
-      <aside class="heart-sidebar">
-        <div class="heart-brand-block">
-          <p class="heart-eyebrow">MENYRA Heart</p>
-          <h1>System im Blick</h1>
-          <p>Tests starten, Beweise sehen, Probleme verstehen.</p>
-        </div>
-        <nav class="heart-nav">${renderNav(state)}</nav>
-        <div class="heart-sidebar__footer">
-          <strong>${escapeHtml(userName)}</strong>
-          <p>${escapeHtml(state.auth.user?.email || "")}</p>
-        </div>
-      </aside>
+    <div class="${shellClasses}">
+      ${renderDrawer(state, userName)}
       <div class="heart-shell__overlay" data-action="toggle-nav"></div>
       <div class="heart-main-shell">
-        <header class="heart-topbar">
+        <header class="heart-topbar ${quickActionsOpen ? "heart-topbar--quick-open" : ""}">
           <div class="heart-topbar__left">
-            <button class="heart-menu-toggle" data-action="toggle-nav" aria-label="Navigation umschalten">Menue</button>
-            <div>
-              <p class="heart-eyebrow">Kontrollzentrum</p>
-              <h2>${escapeHtml(HEART_NAV_ITEMS.find((item) => item.key === state.shell.activeView)?.label || "Start")}</h2>
+            <div class="heart-topbar__menu-slot">
+              <button class="heart-icon-button heart-icon-button--menu" data-action="toggle-nav" aria-label="Menue oeffnen">${renderIcon("menu")}</button>
             </div>
+            ${renderHeaderBrand()}
           </div>
           <div class="heart-topbar__right">
-            ${renderStatusBadge(overallStatus)}
-            <span class="heart-topbar__timestamp">${escapeHtml(state.boot.lastUpdatedAt ? `Aktualisiert ${formatRelative(state.boot.lastUpdatedAt)}` : "Warte auf erste Synchronisation")}</span>
-            <button class="heart-button heart-button--secondary" data-action="refresh-heart">Aktualisieren</button>
-            <button class="heart-button heart-button--secondary" data-action="logout">Abmelden</button>
+            ${renderHeaderQuickActions(state)}
+            <button class="heart-icon-button" data-action="refresh-heart" aria-label="Aktualisieren">${renderIcon("refresh")}</button>
+            <button class="heart-icon-button heart-icon-button--quick-toggle ${quickActionsOpen ? "heart-icon-button--quick-toggle-open" : ""}" data-action="toggle-quick-actions" aria-label="${quickActionsOpen ? "Schnellaktionen schliessen" : "Schnellaktionen oeffnen"}" aria-expanded="${quickActionsOpen ? "true" : "false"}">${renderIcon("plus")}</button>
           </div>
         </header>
         <main class="heart-main-content">
+          <section class="heart-page-header">
+            <div>
+              <p class="heart-page-header__eyebrow">Aktiver Bereich</p>
+              <h1 class="heart-page-header__title">${escapeHtml(activeLabel)}</h1>
+            </div>
+            <div class="heart-page-header__meta">
+              ${renderStatusBadge(overallStatus)}
+              <span class="heart-topbar__timestamp">${escapeHtml(timestamp)}</span>
+            </div>
+          </section>
           ${renderViewBody(state)}
         </main>
-        <nav class="heart-mobile-nav">
-          ${renderNav(state)}
-        </nav>
       </div>
       ${state.shell.toast ? `
         <div class="heart-toast heart-toast--${escapeHtml(state.shell.toast.tone || "neutral")}">
@@ -163,7 +388,7 @@ export function renderHeartApp(rootNode, state) {
   if (!rootNode) return;
   let markup = "";
   if (state.auth.status === "checking" || (state.auth.status === "signing-in" && !state.auth.user)) {
-    markup = renderLoadingGate(state.auth.status === "signing-in" ? "Anmeldung laeuft..." : "CEO-Sitzung wird geladen...");
+    markup = renderLoadingGate(state.auth.status === "signing-in" ? "Login..." : "Session wird geladen");
   } else if (state.auth.status === "guest" || state.auth.status === "error" || state.auth.status === "signing-in") {
     markup = renderGuestScreen(state.auth);
   } else if (state.auth.status === "denied") {

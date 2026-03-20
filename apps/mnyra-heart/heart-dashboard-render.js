@@ -125,7 +125,7 @@ function renderRunControls(connections = [], quickActions = []) {
       <div class="heart-section__head">
         <div>
           <p class="heart-eyebrow">Schnell starten</p>
-          <h2>Command Center</h2>
+          <h2>Schnellzugriff</h2>
         </div>
       </div>
       <div class="heart-control-grid">

@@ -41,6 +41,60 @@ let toastTimer = null;
 let previousState = store.getState();
 let authBootstrapSessionKey = "";
 let refreshAllPromise = null;
+let displayModeQuery = null;
+let displayModeCleanup = null;
+
+function isStandaloneDisplayMode() {
+  try {
+    if (window.matchMedia?.("(display-mode: standalone)").matches) return true;
+  } catch {}
+  return window.navigator?.standalone === true;
+}
+
+function syncViewportSurface(state = store.getState()) {
+  const lockDocument = !!state.shell?.navOpen;
+  document.documentElement.style.background = "#000000";
+  document.body.style.background = "#000000";
+  document.documentElement.style.overscrollBehaviorY = lockDocument ? "none" : "auto";
+  document.body.style.overscrollBehaviorY = lockDocument ? "none" : "auto";
+  document.documentElement.style.overflowX = "clip";
+  document.body.style.overflowX = "clip";
+  document.documentElement.style.overflow = lockDocument ? "hidden" : "";
+  document.body.style.overflow = lockDocument ? "hidden" : "";
+}
+
+function syncStandaloneMode() {
+  actions.setStandaloneMode(isStandaloneDisplayMode());
+  actions.setMobileNavHidden(false);
+}
+
+function installViewportObservers() {
+  syncStandaloneMode();
+
+  if (window.matchMedia) {
+    displayModeQuery = window.matchMedia("(display-mode: standalone)");
+    const handleDisplayModeChange = () => {
+      syncStandaloneMode();
+    };
+    if (typeof displayModeQuery.addEventListener === "function") {
+      displayModeQuery.addEventListener("change", handleDisplayModeChange);
+      displayModeCleanup = () => displayModeQuery?.removeEventListener?.("change", handleDisplayModeChange);
+    } else if (typeof displayModeQuery.addListener === "function") {
+      displayModeQuery.addListener(handleDisplayModeChange);
+      displayModeCleanup = () => displayModeQuery?.removeListener?.(handleDisplayModeChange);
+    }
+  }
+
+  window.addEventListener("resize", syncStandaloneMode);
+}
+
+function destroyViewportObservers() {
+  window.removeEventListener("resize", syncStandaloneMode);
+  if (displayModeCleanup) {
+    displayModeCleanup();
+    displayModeCleanup = null;
+  }
+}
 
 function setToast(title, message = "", tone = "neutral") {
   actions.setToast({ title, message, tone });
@@ -207,6 +261,9 @@ const operations = {
   toggleNav() {
     actions.setNavOpen(!store.getState().shell.navOpen);
   },
+  toggleQuickActions() {
+    actions.setQuickActionsOpen(!store.getState().shell.quickActionsOpen);
+  },
   setIncidentFilter(key, value) {
     actions.setIncidentFilter(key, value);
   }
@@ -216,6 +273,7 @@ bindHeartEvents({ root, operations });
 
 store.subscribe((state) => {
   renderHeartApp(root, state);
+  syncViewportSurface(state);
 
   const authChanged = previousState.auth.status !== state.auth.status
     || previousState.auth.user?.uid !== state.auth.user?.uid
@@ -239,9 +297,11 @@ store.subscribe((state) => {
 });
 
 renderHeartApp(root, store.getState());
+syncViewportSurface(store.getState());
 authController.initialize().catch((error) => {
   actions.setAuthError(error?.message || "Anmeldung konnte nicht vorbereitet werden.");
 });
+installViewportObservers();
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -252,4 +312,5 @@ if ("serviceWorker" in navigator) {
 
 window.addEventListener("beforeunload", () => {
   authController.destroy();
+  destroyViewportObservers();
 });

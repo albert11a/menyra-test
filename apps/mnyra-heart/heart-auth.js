@@ -68,7 +68,7 @@ export function createHeartAuthController({ store }) {
     const authState = buildAuthState(user, profile);
     const allowed = canAccessHeartAsCeo(authState);
     if (!allowed) {
-      actions.setAuthDenied(user, profile, "CEO access required.");
+      actions.setAuthDenied(user, profile, "CEO-Zugang erforderlich.");
       return;
     }
     actions.setAuthReady(user, profile, user.uid === ALBERT_CEO_UID ? "global-ceo" : "role-ceo");
@@ -83,7 +83,7 @@ export function createHeartAuthController({ store }) {
         await evaluateAccess(user);
       } catch (error) {
         console.error("[mnyra-heart] auth init failed", error);
-      actions.setAuthError(error?.message || "Anmeldung konnte nicht geprueft werden.");
+        actions.setAuthError(error?.message || "Anmeldung konnte nicht geprueft werden.");
       }
     }, (error) => {
       actions.setAuthError(error?.message || "Anmelde-Listener ist fehlgeschlagen.");
