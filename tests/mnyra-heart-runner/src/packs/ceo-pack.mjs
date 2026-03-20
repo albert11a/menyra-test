@@ -7,14 +7,14 @@ export async function runCeoPack({ page, env, heart, personas, emitStatus = asyn
   const ceo = personas.ceo;
   const auth = await ensurePersonaSession({ page, heart, persona: ceo, moduleKey: "auth" });
   if (!auth.ok) {
-    heart.setSummary("CEO pack could not start because CEO credentials are not configured.");
+    heart.setSummary("CEO-Test konnte nicht starten, weil die CEO-Zugangsdaten fehlen.");
     return;
   }
 
-  await emitStatus("CEO / Surface checks", "running", "Running CEO pack surfaces.");
+  await emitStatus("CEO / Oberflaechen", "running", "Heart prueft die CEO-Oberflaechen.");
   await runSocialSurfaceChecks({ page, env, heart, persona: ceo });
   await runCrmChecks({ page, env, heart, persona: ceo });
   await runJourneyChecks({ page, env, heart, persona: ceo });
   await runPwaChecks({ page, heart, persona: ceo });
-  heart.setSummary("CEO pack completed. Control surfaces, CRM and navigation journeys were exercised.");
+  heart.setSummary("CEO-Test beendet. Steuerflaechen, CRM und Navigation wurden geprueft.");
 }

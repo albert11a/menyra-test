@@ -20,6 +20,9 @@ import {
 import {
   createHeartTestRunnerAdapter
 } from "./heart-test-runner-adapter.js";
+import {
+  getPackLabel
+} from "./heart-ui-utils.js";
 
 const root = document.getElementById("heartApp");
 const store = createHeartStore(createHeartInitialState());
@@ -51,8 +54,8 @@ async function refreshDashboard() {
     const data = await monitoringAdapter.loadDashboard();
     actions.setDashboardData(data);
   } catch (error) {
-    actions.setDashboardError(error?.message || "Dashboard loading failed.");
-    setToast("Dashboard error", error?.message || "Dashboard loading failed.", "danger");
+    actions.setDashboardError(error?.message || "Startansicht konnte nicht geladen werden.");
+    setToast("Startansicht", error?.message || "Startansicht konnte nicht geladen werden.", "danger");
   }
 }
 
@@ -62,7 +65,7 @@ async function refreshIncidents() {
     const payload = await monitoringAdapter.loadIncidents();
     actions.setIncidentsData(payload.items);
   } catch (error) {
-    actions.setIncidentsError(error?.message || "Incident loading failed.");
+    actions.setIncidentsError(error?.message || "Meldungen konnten nicht geladen werden.");
   }
 }
 
@@ -72,7 +75,7 @@ async function refreshConnections() {
     const payload = await monitoringAdapter.loadConnections();
     actions.setConnectionsData(payload.items);
   } catch (error) {
-    actions.setConnectionsError(error?.message || "Connection loading failed.");
+    actions.setConnectionsError(error?.message || "Setup konnte nicht geladen werden.");
   }
 }
 
@@ -85,7 +88,7 @@ async function ensureRunDetail(runId = "") {
     const detail = await testRunnerAdapter.loadRunDetail(safeRunId);
     actions.setRunDetailData(detail);
   } catch (error) {
-    actions.setRunDetailError(error?.message || "Run detail loading failed.");
+    actions.setRunDetailError(error?.message || "Laufdetails konnten nicht geladen werden.");
   }
 }
 
@@ -100,7 +103,7 @@ async function refreshRuns({ focusRunId = "" } = {}) {
       await ensureRunDetail(selected);
     }
   } catch (error) {
-    actions.setRunsError(error?.message || "Run history loading failed.");
+    actions.setRunsError(error?.message || "Verlauf konnte nicht geladen werden.");
   }
 }
 
@@ -125,12 +128,7 @@ async function refreshAll({ focusRunId = "" } = {}) {
 function findPackLabel(packKey = "") {
   const quickActions = store.getState().dashboard.data?.quickActions || [];
   const match = quickActions.find((item) => String(item.packKey || item.id) === String(packKey));
-  if (!match) {
-    if (packKey === "smoke") return "Smoke Test";
-    if (packKey === "full-platform-pack") return "Full Platform Test";
-    return String(packKey || "Run");
-  }
-  return String(match.label || match.id || "Run").replace(/^Start\s+/i, "");
+  return getPackLabel(packKey, String(match?.label || match?.id || packKey || "Testlauf").replace(/^Start\s+/i, ""), match?.mode);
 }
 
 async function startRun(packKey = "smoke") {
@@ -138,14 +136,14 @@ async function startRun(packKey = "smoke") {
   actions.setPendingRunAction(packKey);
   try {
     const payload = await testRunnerAdapter.startPackRun(packKey);
-    setToast(`${label} queued`, `${label} was queued through the secure runner adapter.`, "success");
+    setToast(`${label}`, `${label} wurde an den sicheren Runner uebergeben.`, "success");
     actions.setActiveView("runs");
     await refreshAll({ focusRunId: payload?.run?.id || "" });
   } catch (error) {
     if (String(error?.message || "").includes("GitHub Actions integration is not configured")) {
       actions.setActiveView("connections");
     }
-    setToast("Run trigger failed", error?.message || "Unable to queue the run.", "danger");
+    setToast("Teststart fehlgeschlagen", error?.message || "Der Lauf konnte nicht gestartet werden.", "danger");
   } finally {
     actions.setPendingRunAction("");
   }
@@ -157,10 +155,10 @@ async function cancelRun(runId = "") {
   actions.setPendingRunAction("cancel");
   try {
     await testRunnerAdapter.cancelRun(safeRunId);
-    setToast("Cancellation requested", "Heart asked the secure runner provider to cancel the run.", "warning");
+    setToast("Abbruch angefragt", "Heart hat den Runner gebeten, den Lauf zu stoppen.", "warning");
     await refreshAll({ focusRunId: safeRunId });
   } catch (error) {
-    setToast("Cancel failed", error?.message || "Unable to cancel the run.", "danger");
+    setToast("Abbruch fehlgeschlagen", error?.message || "Der Lauf konnte nicht gestoppt werden.", "danger");
   } finally {
     actions.setPendingRunAction("");
   }
@@ -171,15 +169,15 @@ const operations = {
     try {
       await authController.login(email, password);
     } catch (error) {
-      actions.setAuthError(error?.message || "Login failed.");
-      setToast("Login failed", error?.message || "Authentication failed.", "danger");
+      actions.setAuthError(error?.message || "Anmeldung fehlgeschlagen.");
+      setToast("Anmeldung", error?.message || "Anmeldung fehlgeschlagen.", "danger");
     }
   },
   async logout() {
     try {
       await authController.logout();
     } catch (error) {
-      setToast("Logout failed", error?.message || "Unable to sign out.", "danger");
+      setToast("Abmeldung", error?.message || "Abmeldung fehlgeschlagen.", "danger");
     }
   },
   async refresh() {
@@ -235,14 +233,14 @@ store.subscribe((state) => {
   if (authChanged && authSessionKey !== authBootstrapSessionKey) {
     authBootstrapSessionKey = authSessionKey;
     queueMicrotask(() => refreshAll().catch((error) => {
-      setToast("Initial sync failed", error?.message || "Heart failed to load the initial control snapshot.", "danger");
+      setToast("Erster Abruf", error?.message || "Heart konnte den ersten Status nicht laden.", "danger");
     }));
   }
 });
 
 renderHeartApp(root, store.getState());
 authController.initialize().catch((error) => {
-  actions.setAuthError(error?.message || "Auth startup failed.");
+  actions.setAuthError(error?.message || "Anmeldung konnte nicht vorbereitet werden.");
 });
 
 if ("serviceWorker" in navigator) {

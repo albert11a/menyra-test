@@ -84,7 +84,7 @@ function normalizeRunRecord(record = {}) {
     source: asText(data.source, "heart"),
     environment: asText(data.environment, "production"),
     status: normalizeStatus(data.status, "idle"),
-    summary: asText(data.summary || data.title || "No summary available."),
+    summary: asText(data.summary || data.title || "Keine Zusammenfassung vorhanden."),
     triggerSource: asText(data.triggerSource || data.source || "heart"),
     startedBy: asText(data.startedBy || data.actorName || data.startedByEmail),
     startedByUid: asText(data.startedByUid),
@@ -103,7 +103,7 @@ function normalizeRunRecord(record = {}) {
     modules: ensureArray(data.modules).map(normalizeModuleStatus),
     timeline: ensureArray(data.timeline),
     createdEntities: ensureArray(data.createdEntities),
-    cleanup: data.cleanup && typeof data.cleanup === "object" ? data.cleanup : { status: "idle", summary: "No cleanup information.", items: [] },
+    cleanup: data.cleanup && typeof data.cleanup === "object" ? data.cleanup : { status: "idle", summary: "Keine Aufraeuminformation vorhanden.", items: [] },
     artifacts: ensureArray(data.artifacts),
     failureDetails: ensureArray(data.failureDetails),
     github: data.github && typeof data.github === "object" ? data.github : {},
@@ -185,7 +185,7 @@ function createHeartProviders({ db }) {
       source: "heart",
       environment,
       status: "queued",
-      summary: asText(summary, `${mode === "synthetic" ? "Synthetic" : "Smoke"} run queued.`),
+      summary: asText(summary, `${mode === "synthetic" ? "Komplett" : "Schnell"}test wurde in die Warteschlange gestellt.`),
       triggerSource,
       startedBy,
       startedByUid,
@@ -197,20 +197,20 @@ function createHeartProviders({ db }) {
       passedChecks: 0,
       failedChecks: 0,
       warningCount: 0,
-      currentStep: "Queued for secure runner dispatch.",
+      currentStep: "Wartet auf sicheren Runner-Start.",
       modules: [],
       timeline: [{
         id: "queued",
-        title: "Run queued",
+        title: "Lauf wartet",
         status: "queued",
-        note: "Heart created the run and is waiting for the runner provider.",
+        note: "Heart hat den Lauf angelegt und wartet auf den Runner.",
         startedAt: now,
         endedAt: ""
       }],
       createdEntities: [],
       cleanup: {
         status: "idle",
-        summary: "No cleanup activity recorded yet.",
+        summary: "Noch kein Aufraeumen protokolliert.",
         items: []
       },
       artifacts: [],
@@ -282,7 +282,7 @@ function createHeartProviders({ db }) {
       source: asText(report.source || existing?.source || "heart"),
       environment: asText(report.environment || existing?.environment || "production"),
       status: normalizeStatus(report.status || existing?.status, "idle"),
-      summary: asText(report.summary || existing?.summary || "No summary available."),
+      summary: asText(report.summary || existing?.summary || "Keine Zusammenfassung vorhanden."),
       triggerSource: asText(report.triggerSource || existing?.triggerSource || "heart"),
       startedBy: asText(report.startedBy || existing?.startedBy),
       startedByUid: asText(report.startedByUid || existing?.startedByUid),
@@ -313,10 +313,10 @@ function createHeartProviders({ db }) {
       cleanup: report.cleanup && typeof report.cleanup === "object"
         ? {
             status: normalizeStatus(report.cleanup.status, "idle"),
-            summary: asText(report.cleanup.summary || "No cleanup information."),
+            summary: asText(report.cleanup.summary || "Keine Aufraeuminformation vorhanden."),
             items: ensureArray(report.cleanup.items)
           }
-        : { status: "idle", summary: "No cleanup information.", items: [] },
+        : { status: "idle", summary: "Keine Aufraeuminformation vorhanden.", items: [] },
       artifacts: ensureArray(report.artifacts),
       failureDetails: ensureArray(report.failureDetails),
       runFlags: report.runFlags && typeof report.runFlags === "object"
@@ -385,7 +385,7 @@ function createHeartProviders({ db }) {
         module: moduleKey,
         label: moduleKey.toUpperCase(),
         status: existing.status || (incidentsByModule.get(moduleKey) ? "warning" : "idle"),
-        note: existing.note || (incidentsByModule.get(moduleKey) ? "Incidents recorded for this module." : "No checks recorded yet."),
+        note: existing.note || (incidentsByModule.get(moduleKey) ? "Zu diesem Bereich gibt es Meldungen." : "Noch keine Pruefung vorhanden."),
         latestFailure: existing.latestFailure || "",
         incidentCount: incidentsByModule.get(moduleKey) || 0,
         lastCheckAt: existing.lastCheckAt || ""
@@ -409,10 +409,10 @@ function createHeartProviders({ db }) {
     return {
       overallStatus,
       overallNote: criticalIncidents.length
-        ? `${criticalIncidents.length} critical incident(s) need attention.`
+        ? `${criticalIncidents.length} kritische Meldung(en) brauchen Aufmerksamkeit.`
         : activeIncidents.length
-          ? `${activeIncidents.length} open incident(s) are being tracked.`
-          : "System stable. No open incidents recorded.",
+          ? `${activeIncidents.length} offene Meldung(en) werden beobachtet.`
+          : "System stabil. Keine offenen Meldungen.",
       updatedAt: new Date().toISOString(),
       latestSmokeRun,
       latestSyntheticRun,
@@ -428,7 +428,7 @@ function createHeartProviders({ db }) {
       connectionsPreview: connections.slice(0, 4),
       quickActions: [
         ...listHeartPackQuickActions(),
-        { id: "refresh-heart", label: "Refresh", action: "refresh-heart", note: "Reload monitoring, incidents, runs and connections." }
+        { id: "refresh-heart", label: "Status neu laden", action: "refresh-heart", note: "Laedt Monitoring, Meldungen, Laeufe und Verbindungen neu." }
       ]
     };
   }
@@ -438,8 +438,8 @@ function createHeartProviders({ db }) {
     const latestIncident = incidents[0] || null;
     const rateLimitedRun = runs.find((run) => isGithubRateLimited(run)) || null;
     const githubRateLimitDetail = rateLimitedRun?.github?.rateLimitedUntil
-      ? `Cached until ${rateLimitedRun.github.rateLimitedUntil}`
-      : "GitHub API rate limited. Heart is using cached workflow data temporarily.";
+      ? `Zwischengespeichert bis ${rateLimitedRun.github.rateLimitedUntil}`
+      : "GitHub-API ist begrenzt. Heart zeigt voruebergehend zwischengespeicherte Daten.";
     return [
       {
         id: "github-actions",
@@ -447,47 +447,47 @@ function createHeartProviders({ db }) {
         kind: "github",
         status: !githubConfig?.configured ? "not_configured" : rateLimitedRun ? "warning" : "success",
         note: !githubConfig?.configured
-          ? "Configure HEART_GITHUB_* env values to enable secure workflow dispatch."
+          ? "Richte HEART_GITHUB_* ein, damit Heart Testlaeufe sicher starten kann."
           : rateLimitedRun
-            ? "GitHub API rate limited. Heart is showing cached workflow state until the cooldown expires."
-            : "Secure workflow dispatch is configured.",
+            ? "GitHub-API ist begrenzt. Heart zeigt bis zum Ende der Abkuehlzeit den letzten sicheren Stand."
+            : "Sicherer Workflow-Start ist eingerichtet.",
         lastCheckedAt: new Date().toISOString(),
         mode: githubConfig?.configured ? "real" : "not-configured",
         detail: !githubConfig?.configured
-          ? "No secure runner provider configured yet."
+          ? "Noch kein sicherer Runner eingerichtet."
           : rateLimitedRun
             ? githubRateLimitDetail
             : `${githubConfig.owner}/${githubConfig.repo}`
       },
       {
         id: "firebase-heart-store",
-        name: "Firebase Heart Store",
+        name: "Firebase Heart Speicher",
         kind: "firebase",
         status: "success",
-        note: "Firestore-backed run history and incidents are available.",
+        note: "Laufhistorie und Meldungen werden in Firestore gespeichert.",
         lastCheckedAt: new Date().toISOString(),
         mode: "real",
-        detail: latestRun ? `Latest run ${latestRun.id}` : "No runs recorded yet."
+        detail: latestRun ? `Letzter Lauf ${latestRun.id}` : "Noch keine Laeufe vorhanden."
       },
       {
         id: "runtime-monitoring",
-        name: "Runtime Monitoring Feed",
+        name: "Live-Monitoring",
         kind: "runtime",
         status: latestIncident && latestIncident.severity === "critical" ? "critical" : latestIncident ? "warning" : "success",
-        note: latestIncident ? latestIncident.title : "No incidents recorded.",
+        note: latestIncident ? latestIncident.title : "Noch keine Meldungen vorhanden.",
         lastCheckedAt: latestIncident?.updatedAt || new Date().toISOString(),
         mode: "real",
-        detail: latestIncident ? `${latestIncident.source}/${latestIncident.module}` : "Waiting for incidents or monitoring ingest."
+        detail: latestIncident ? `${latestIncident.source}/${latestIncident.module}` : "Wartet auf Meldungen oder Monitoring-Daten."
       },
       {
         id: "sentry-adapter",
         name: "Sentry Adapter",
         kind: "sentry",
         status: "not_configured",
-        note: "Architecture reserved. No Sentry credentials configured.",
+        note: "Platzhalter: Noch keine Sentry-Zugangsdaten hinterlegt.",
         lastCheckedAt: "",
         mode: "placeholder",
-        detail: "Safe placeholder connection only. No client secret exposure."
+        detail: "Sicherer Platzhalter ohne freigegebene Secrets."
       }
     ];
   }

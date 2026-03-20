@@ -31,7 +31,7 @@ async function runBusinessMutation({
   perform
 } = {}) {
   if (!isMutationEnabled(env)) {
-    markGuarded(heart, moduleKey, `${actionLabel} is guarded until isolated mutation mode is enabled.`, {
+    markGuarded(heart, moduleKey, `${actionLabel} ist im Moment geschuetzt. Aktiviere erst den isolierten Schreibmodus.`, {
       action: actionLabel,
       persona: persona.key,
       area: moduleKey
@@ -39,7 +39,7 @@ async function runBusinessMutation({
     return { ok: false, reason: "guarded" };
   }
   if (!hasRequiredConfig(config, requiredKeys)) {
-    markNotConfigured(heart, moduleKey, `${actionLabel} needs setup before it can run safely.`, {
+    markNotConfigured(heart, moduleKey, `${actionLabel} braucht erst eine saubere Einrichtung.`, {
       action: actionLabel,
       persona: persona.key,
       area: moduleKey
@@ -55,13 +55,13 @@ export async function runBusinessSurfaceChecks({ page, env, heart, persona } = {
   if (businessConfig.menu?.url) {
     await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
       moduleKey: "menu",
-      note: "Business menu surface opened through configured URL.",
+      note: "Business-Menue wurde ueber die konfigurierte URL geoeffnet.",
       absolute: businessConfig.menu.url
     });
   } else {
     await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
       moduleKey: "menu",
-      note: "Business menu tab opened."
+      note: "Business-Menue wurde geoeffnet."
     });
   }
 
@@ -72,13 +72,13 @@ export async function runBusinessSurfaceChecks({ page, env, heart, persona } = {
       area: "business",
       persona: persona.key
     });
-    heart.passModule("business", "Business focus route opened.", {
+    heart.passModule("business", "Business-Fokus wurde geoeffnet.", {
       action: "focus tab open",
       persona: persona.key,
       area: "business"
     });
   } else {
-    heart.notConfiguredModule("business", "Business focus URL is not configured.", {
+    heart.notConfiguredModule("business", "Business-Fokus-URL fehlt.", {
       action: "focus tab open",
       persona: persona.key,
       area: "business"
@@ -122,12 +122,12 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
         type: "product",
         label: productName,
         status: "success",
-        summary: "Synthetic product created.",
+        summary: "Testprodukt wurde erstellt.",
         cleanupStatus: "pending",
         module: "menu",
         persona: persona.key
       });
-      heart.passModule("menu", "Product create action completed.", {
+      heart.passModule("menu", "Produkt wurde erstellt.", {
         action: "product create",
         persona: persona.key,
         area: "menu"
@@ -157,7 +157,7 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
       if (businessConfig.productEdit.verifyText) {
         await waitForText(page, replaceRunTokens(businessConfig.productEdit.verifyText, env));
       }
-      heart.passModule("menu", "Product edit action completed.", {
+      heart.passModule("menu", "Produkt wurde bearbeitet.", {
         action: "product edit",
         persona: persona.key,
         area: "menu"
@@ -188,7 +188,7 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
       } else if (businessConfig.productDelete.removedText) {
         await waitForText(page, replaceRunTokens(businessConfig.productDelete.removedText, env));
       }
-      heart.passModule("menu", "Product delete action completed.", {
+      heart.passModule("menu", "Produkt wurde geloescht.", {
         action: "product delete",
         persona: persona.key,
         area: "menu"
@@ -196,12 +196,12 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
     }
   });
 
-  heart.notConfiguredModule("business", "Focus or special create automation still needs explicit selectors.", {
+  heart.notConfiguredModule("business", "Fokus- oder Spezial-Erstellung braucht noch genaue Selektoren.", {
     action: "focus create",
     persona: persona.key,
     area: "business"
   });
-  heart.notConfiguredModule("business", "Media upload automation still needs isolated upload selectors and verification.", {
+  heart.notConfiguredModule("business", "Medien-Upload braucht noch sichere Selektoren und einen Erfolgsnachweis.", {
     action: "media upload",
     persona: persona.key,
     area: "business"

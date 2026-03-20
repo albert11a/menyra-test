@@ -1,16 +1,16 @@
 const STATUS_LABELS = {
-  idle: "Idle",
-  queued: "Queued",
-  running: "Running",
-  success: "Success",
-  warning: "Warning",
-  skipped: "Skipped",
-  not_configured: "Needs setup",
-  guarded: "Guarded",
-  failed: "Failed",
-  critical: "Critical",
-  cancelled: "Cancelled",
-  unknown: "Unknown"
+  idle: "Bereit",
+  queued: "Wartet",
+  running: "Laeuft",
+  success: "Erfolgreich",
+  warning: "Hinweis",
+  skipped: "Uebersprungen",
+  not_configured: "Einrichtung fehlt",
+  guarded: "Geschuetzt",
+  failed: "Fehlgeschlagen",
+  critical: "Kritisch",
+  cancelled: "Abgebrochen",
+  unknown: "Unbekannt"
 };
 
 const STATUS_TONES = {
@@ -33,6 +33,50 @@ const SEVERITY_TONES = {
   warning: "warning",
   critical: "danger"
 };
+
+const MODULE_LABELS = Object.freeze({
+  auth: "Anmeldung",
+  feed: "Feed",
+  profile: "Profil",
+  business: "Business",
+  menu: "Menue",
+  cart: "Warenkorb",
+  orders: "Bestellungen",
+  chat: "Chat",
+  crm: "CRM",
+  pwa: "App / PWA"
+});
+
+const PERSONA_LABELS = Object.freeze({
+  ceo: "CEO",
+  business: "Business",
+  staff: "Service",
+  user: "Nutzer",
+  guest: "Gast / QR"
+});
+
+const PACK_LABELS = Object.freeze({
+  smoke: "Schnelltest",
+  "ceo-pack": "CEO-Test",
+  "business-pack": "Business-Test",
+  "staff-pack": "Service-Test",
+  "user-pack": "Nutzer-Test",
+  "guest-pack": "Gast- / QR-Test",
+  "mutation-pack": "Schreibtest",
+  "journey-pack": "Journey-Test",
+  "full-platform-pack": "Kompletttest",
+  persona: "Rollentest",
+  synthetic: "Kompletttest",
+  mutation: "Schreibtest",
+  journey: "Journey-Test"
+});
+
+const ARTIFACT_KIND_LABELS = Object.freeze({
+  screenshot: "Beweisbild",
+  trace: "Ablaufspur",
+  json: "Bericht",
+  artifact: "Datei"
+});
 
 export function escapeHtml(value = "") {
   return String(value || "")
@@ -59,7 +103,7 @@ export function formatRelative(value) {
   if (!Number.isFinite(date.getTime())) return "-";
   const diffMs = date.getTime() - Date.now();
   const absSeconds = Math.round(Math.abs(diffMs) / 1000);
-  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  const rtf = new Intl.RelativeTimeFormat("de-AT", { numeric: "auto" });
   if (absSeconds < 60) return rtf.format(Math.round(diffMs / 1000), "second");
   if (absSeconds < 3600) return rtf.format(Math.round(diffMs / 60000), "minute");
   if (absSeconds < 86400) return rtf.format(Math.round(diffMs / 3600000), "hour");
@@ -74,10 +118,10 @@ export function formatDuration(durationMs = 0) {
   if (minutes >= 60) {
     const hours = Math.floor(minutes / 60);
     const remainMinutes = minutes % 60;
-    return `${hours}h ${remainMinutes}m`;
+    return `${hours} Std ${remainMinutes} Min`;
   }
-  if (minutes > 0) return `${minutes}m ${remainSeconds}s`;
-  return `${remainSeconds}s`;
+  if (minutes > 0) return `${minutes} Min ${remainSeconds} Sek`;
+  return `${remainSeconds} Sek`;
 }
 
 export function getStatusLabel(status = "") {
@@ -95,6 +139,33 @@ export function getSeverityTone(severity = "") {
   return SEVERITY_TONES[key] || "neutral";
 }
 
+export function getModuleLabel(moduleKey = "", fallback = "") {
+  const key = String(moduleKey || "").trim().toLowerCase();
+  return MODULE_LABELS[key] || String(fallback || moduleKey || "Bereich");
+}
+
+export function getPersonaLabel(personaKey = "", fallback = "") {
+  const key = String(personaKey || "").trim().toLowerCase();
+  return PERSONA_LABELS[key] || String(fallback || personaKey || "Rolle");
+}
+
+export function getPackLabel(packKey = "", fallback = "", mode = "") {
+  const safePackKey = String(packKey || "").trim().toLowerCase();
+  const safeMode = String(mode || "").trim().toLowerCase();
+  return PACK_LABELS[safePackKey]
+    || PACK_LABELS[safeMode]
+    || String(fallback || packKey || mode || "Testlauf");
+}
+
+export function getArtifactKindLabel(kind = "", fallback = "") {
+  const key = String(kind || "").trim().toLowerCase();
+  return ARTIFACT_KIND_LABELS[key] || String(fallback || kind || "Datei");
+}
+
+export function formatStatusCount(status = "", value = 0) {
+  return `${Math.max(0, Number(value) || 0)} ${getStatusLabel(status).toLowerCase()}`;
+}
+
 export function renderBadge(label = "", tone = "neutral", extraClass = "") {
   return `<span class="heart-badge heart-badge--${escapeHtml(tone)} ${escapeHtml(extraClass)}">${escapeHtml(label)}</span>`;
 }
@@ -109,7 +180,7 @@ export function renderSeverityBadge(severity = "", extraClass = "") {
 }
 
 export function renderEmptyState({
-  title = "Nothing here yet.",
+  title = "Noch nichts vorhanden.",
   message = "",
   actionLabel = "",
   action = ""
@@ -148,5 +219,5 @@ export function isGithubRunnerConfigured(items = []) {
 
 export function getGithubRunnerNote(items = []) {
   const connection = findGithubRunnerConnection(items);
-  return String(connection?.note || "Configure HEART_GITHUB_* values to enable secure workflow dispatch.").trim();
+  return String(connection?.note || "Richte HEART_GITHUB_* ein, damit Heart Testlaeufe sicher starten kann.").trim();
 }

@@ -24,8 +24,8 @@ function buildPersona(key, label, config = {}, defaults = {}) {
     reason: configured
       ? ""
       : key === "guest"
-        ? "Guest route URL is not configured."
-        : `${label} credentials or base URL are not configured.`
+        ? "Gast- / QR-Link ist nicht eingerichtet."
+        : `${label}: Zugangsdaten oder Basis-URL fehlen.`
   };
 }
 

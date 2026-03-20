@@ -83,10 +83,10 @@ export function createHeartAuthController({ store }) {
         await evaluateAccess(user);
       } catch (error) {
         console.error("[mnyra-heart] auth init failed", error);
-        actions.setAuthError(error?.message || "Authentication check failed.");
+      actions.setAuthError(error?.message || "Anmeldung konnte nicht geprueft werden.");
       }
     }, (error) => {
-      actions.setAuthError(error?.message || "Authentication listener failed.");
+      actions.setAuthError(error?.message || "Anmelde-Listener ist fehlgeschlagen.");
     });
   }
 

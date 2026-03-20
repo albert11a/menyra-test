@@ -22,7 +22,7 @@ async function runCommerceMutation({
   perform
 } = {}) {
   if (!mutationReady(env)) {
-    markGuarded(heart, moduleKey, `${actionLabel} is guarded until isolated mutation mode is enabled.`, {
+    markGuarded(heart, moduleKey, `${actionLabel} ist im Moment geschuetzt. Aktiviere erst den isolierten Schreibmodus.`, {
       action: actionLabel,
       persona: persona.key,
       area: moduleKey
@@ -30,7 +30,7 @@ async function runCommerceMutation({
     return { ok: false, reason: "guarded" };
   }
   if (!hasRequiredConfig(config, requiredKeys)) {
-    markNotConfigured(heart, moduleKey, `${actionLabel} needs setup before it can run safely.`, {
+    markNotConfigured(heart, moduleKey, `${actionLabel} braucht erst eine saubere Einrichtung.`, {
       action: actionLabel,
       persona: persona.key,
       area: moduleKey
@@ -71,7 +71,7 @@ export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) 
       if (cartConfig.removalSelector) {
         await clickIfPresent(page, cartConfig.removalSelector);
       }
-      heart.passModule("cart", "Cart add/remove action completed.", {
+      heart.passModule("cart", "Warenkorb wurde erfolgreich geprueft.", {
         action: "cart add/remove",
         persona: persona.key,
         area: "cart"
@@ -101,7 +101,7 @@ export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) 
       } else if (orderConfig.successText) {
         await waitForText(page, orderConfig.successText);
       }
-      heart.passModule("orders", "Order send action completed.", {
+      heart.passModule("orders", "Bestellung wurde erfolgreich angestossen.", {
         action: "order send",
         persona: persona.key,
         area: "orders"
@@ -109,7 +109,7 @@ export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) 
     }
   });
 
-  heart.notConfiguredModule("cart", "Cart quantity update automation still needs explicit selectors and verification.", {
+  heart.notConfiguredModule("cart", "Mengen-Aenderung im Warenkorb braucht noch Selektoren und einen Erfolgsnachweis.", {
     action: "cart quantity update",
     persona: persona.key,
     area: "cart"

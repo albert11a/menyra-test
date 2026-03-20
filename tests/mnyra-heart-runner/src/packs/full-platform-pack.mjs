@@ -23,41 +23,41 @@ export async function runFullPlatformPack({
   emitStatus = async () => {},
   createScopedPage
 } = {}) {
-  await emitStatus("Full platform / Smoke", "running", "Running smoke baseline inside isolated session.");
+  await emitStatus("Kompletttest / Schnelltest", "running", "Heart startet den Schnelltest in einer isolierten Sitzung.");
   await runScoped("smoke", createScopedPage, async (page) => {
     await runSmokePack({ page, env, heart, personas, emitStatus });
   });
 
-  await emitStatus("Full platform / CEO", "running", "Running CEO persona pack.");
+  await emitStatus("Kompletttest / CEO", "running", "Heart prueft die CEO-Rolle.");
   await runScoped("ceo", createScopedPage, async (page) => {
     await runCeoPack({ page, env, heart, personas, emitStatus });
   });
 
-  await emitStatus("Full platform / Business", "running", "Running business persona pack.");
+  await emitStatus("Kompletttest / Business", "running", "Heart prueft die Business-Rolle.");
   await runScoped("business", createScopedPage, async (page) => {
     await runBusinessPack({ page, env, heart, personas, emitStatus });
   });
 
-  await emitStatus("Full platform / Staff", "running", "Running staff persona pack.");
+  await emitStatus("Kompletttest / Service", "running", "Heart prueft die Service-Rolle.");
   await runScoped("staff", createScopedPage, async (page) => {
     await runStaffPack({ page, env, heart, personas, emitStatus });
   });
 
-  await emitStatus("Full platform / User", "running", "Running user persona pack.");
+  await emitStatus("Kompletttest / Nutzer", "running", "Heart prueft die Nutzer-Rolle.");
   await runScoped("user", createScopedPage, async (page) => {
     await runUserPack({ page, env, heart, personas, emitStatus });
   });
 
-  await emitStatus("Full platform / Guest", "running", "Running guest persona pack.");
+  await emitStatus("Kompletttest / Gast", "running", "Heart prueft die Gast- und QR-Rolle.");
   await runScoped("guest", createScopedPage, async (page) => {
     await runGuestPack({ page, env, heart, personas, emitStatus });
   });
 
-  await emitStatus("Full platform / Journey", "running", "Running journey pack.");
+  await emitStatus("Kompletttest / Journey", "running", "Heart prueft Navigation und Journeys.");
   await runJourneyPack({ page: null, env, heart, personas, emitStatus, createScopedPage });
 
-  await emitStatus("Full platform / Mutations", "running", "Running mutation pack.");
+  await emitStatus("Kompletttest / Schreiben", "running", "Heart prueft die Schreibpfade.");
   await runMutationPack({ env, heart, personas, emitStatus, createScopedPage });
 
-  heart.setSummary("Full platform pack completed. Multi-role checks ran with isolated sessions and truthful guarded/not-configured reporting.");
+  heart.setSummary("Kompletttest beendet. Alle Rollen wurden in getrennten Sitzungen geprueft, und Heart hat ehrlich zwischen Erfolg, Einrichtung fehlt und geschuetzt unterschieden.");
 }

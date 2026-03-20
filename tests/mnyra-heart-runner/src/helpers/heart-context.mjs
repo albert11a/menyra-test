@@ -66,7 +66,23 @@ function summarizeCheckCounts(counts = {}) {
     const value = Math.max(0, Number(counts[status]) || 0);
     if (!value) return;
     if (status === "not_configured") {
-      parts.push(`${value} need setup`);
+      parts.push(`${value} Einrichtung fehlt`);
+      return;
+    }
+    if (status === "guarded") {
+      parts.push(`${value} geschuetzt`);
+      return;
+    }
+    if (status === "warning") {
+      parts.push(`${value} Hinweise`);
+      return;
+    }
+    if (status === "success") {
+      parts.push(`${value} erfolgreich`);
+      return;
+    }
+    if (status === "failed" || status === "critical") {
+      parts.push(`${value} Probleme`);
       return;
     }
     parts.push(`${value} ${status.replaceAll("_", " ")}`);
@@ -83,7 +99,7 @@ export function createHeartContext({
   mode,
   pack = null,
   environment = "production",
-  startedBy = "automation"
+  startedBy = "Automatik"
 } = {}) {
   const startedAt = nowIso();
   const safePack = pack && typeof pack === "object" ? pack : null;
@@ -92,14 +108,14 @@ export function createHeartContext({
     runId: asText(runId),
     mode: asText(safePack?.mode || mode, "smoke"),
     packKey: asText(safePack?.key || mode, "smoke"),
-    packLabel: asText(safePack?.title || safePack?.label || mode, "Smoke Test"),
+    packLabel: asText(safePack?.title || safePack?.label || mode, "Schnelltest"),
     packLevel: asText(safePack?.level),
     packSummary: asText(safePack?.summary),
     personas: Array.isArray(safePack?.personas) ? safePack.personas.slice() : [],
     source: "playwright",
     environment,
     status: "running",
-    summary: "Run started.",
+    summary: "Lauf gestartet.",
     triggerSource: "github-actions",
     startedBy,
     startedAt,
@@ -110,13 +126,13 @@ export function createHeartContext({
     passedChecks: 0,
     failedChecks: 0,
     warningCount: 0,
-    currentStep: "Bootstrapping runner.",
+    currentStep: "Runner startet.",
     modules: [],
     timeline: [],
     createdEntities: [],
     cleanup: {
       status: "idle",
-      summary: "No cleanup recorded yet.",
+      summary: "Noch kein Aufraeumen protokolliert.",
       items: []
     },
     artifacts: [],
@@ -197,7 +213,7 @@ export function createHeartContext({
     });
     nextEntry.counts = counts;
     nextEntry.status = getWorstStatus(checks, "idle");
-    nextEntry.note = summarizeCheckCounts(counts) || asText(nextEntry.note, "No checks recorded.");
+    nextEntry.note = summarizeCheckCounts(counts) || asText(nextEntry.note, "Noch keine Pruefung protokolliert.");
     const latestFailure = checks
       .filter((check) => ["failed", "critical"].includes(normalizeStatus(check?.status, "idle")))
       .map((check) => asText(check.note || check.action))
@@ -243,7 +259,7 @@ export function createHeartContext({
     return recordModuleCheck(module, {
       ...extras,
       status: "success",
-      note: asText(note, extras.note || "Check passed.")
+      note: asText(note, extras.note || "Pruefung erfolgreich.")
     });
   }
 
@@ -251,7 +267,7 @@ export function createHeartContext({
     return recordModuleCheck(module, {
       ...extras,
       status: "warning",
-      note: asText(note, extras.note || "Check reported a warning.")
+      note: asText(note, extras.note || "Pruefung hat einen Hinweis geliefert.")
     });
   }
 
@@ -259,7 +275,7 @@ export function createHeartContext({
     return recordModuleCheck(module, {
       ...extras,
       status: "skipped",
-      note: asText(note, extras.note || "Check was skipped.")
+      note: asText(note, extras.note || "Pruefung wurde uebersprungen.")
     });
   }
 
@@ -267,7 +283,7 @@ export function createHeartContext({
     return recordModuleCheck(module, {
       ...extras,
       status: "not_configured",
-      note: asText(note, extras.note || "Check needs setup.")
+      note: asText(note, extras.note || "Einrichtung fehlt.")
     });
   }
 
@@ -275,19 +291,19 @@ export function createHeartContext({
     return recordModuleCheck(module, {
       ...extras,
       status: "guarded",
-      note: asText(note, extras.note || "Check is guarded and was not executed.")
+      note: asText(note, extras.note || "Schritt ist geschuetzt und wurde nicht live ausgefuehrt.")
     });
   }
 
   function failModule(module, error, extras = {}) {
     const safeStatus = extras.severity === "critical" ? "critical" : "failed";
-    const message = error instanceof Error ? error.message : asText(error, "Check failed.");
+    const message = error instanceof Error ? error.message : asText(error, "Pruefung fehlgeschlagen.");
     report.failureDetails.push({
       id: `failure_${report.failureDetails.length + 1}`,
       module,
       area: asText(extras.area || module),
       action: asText(extras.action || extras.title),
-      title: asText(extras.title || `${module} check failed`),
+      title: asText(extras.title || `${module} Pruefung fehlgeschlagen`),
       message,
       severity: extras.severity || "critical",
       persona: asText(extras.persona)
@@ -311,7 +327,7 @@ export function createHeartContext({
     report.createdEntities.push({
       id: asText(entity.id, `entity_${report.createdEntities.length + 1}`),
       type: asText(entity.type, "entity"),
-      label: asText(entity.label, `Entity ${report.createdEntities.length + 1}`),
+      label: asText(entity.label, `Element ${report.createdEntities.length + 1}`),
       status: asText(entity.status, "success"),
       summary: asText(entity.summary),
       cleanupStatus: asText(entity.cleanupStatus, "idle"),
@@ -323,14 +339,14 @@ export function createHeartContext({
   function setCleanup(status = "idle", summary = "", items = []) {
     report.cleanup = {
       status: normalizeStatus(status, "idle"),
-      summary: asText(summary, "Cleanup updated."),
+      summary: asText(summary, "Aufraeumen aktualisiert."),
       items: Array.isArray(items) ? clone(items) : []
     };
   }
 
   function addArtifact(artifact = {}) {
     report.artifacts.push({
-      label: asText(artifact.label, `Artifact ${report.artifacts.length + 1}`),
+      label: asText(artifact.label, `Datei ${report.artifacts.length + 1}`),
       kind: asText(artifact.kind, "artifact"),
       url: asText(artifact.url || artifact.path),
       sizeLabel: asText(artifact.sizeLabel)
@@ -366,15 +382,15 @@ export function createHeartContext({
       report.status = "success";
     }
 
-    if (report.summary === "Run started.") {
+    if (report.summary === "Lauf gestartet.") {
       const parts = [];
-      if (report.passedChecks) parts.push(`${report.passedChecks} worked`);
-      if (report.failedChecks) parts.push(`${report.failedChecks} failed`);
-      if (report.statusBreakdown.warning) parts.push(`${report.statusBreakdown.warning} warned`);
-      if (report.statusBreakdown.skipped) parts.push(`${report.statusBreakdown.skipped} skipped`);
-      if (report.statusBreakdown.not_configured) parts.push(`${report.statusBreakdown.not_configured} need setup`);
-      if (report.statusBreakdown.guarded) parts.push(`${report.statusBreakdown.guarded} guarded`);
-      report.summary = parts.length ? parts.join(", ") : "No checks were recorded.";
+      if (report.passedChecks) parts.push(`${report.passedChecks} erfolgreich`);
+      if (report.failedChecks) parts.push(`${report.failedChecks} problematisch`);
+      if (report.statusBreakdown.warning) parts.push(`${report.statusBreakdown.warning} Hinweise`);
+      if (report.statusBreakdown.skipped) parts.push(`${report.statusBreakdown.skipped} uebersprungen`);
+      if (report.statusBreakdown.not_configured) parts.push(`${report.statusBreakdown.not_configured} Einrichtung fehlt`);
+      if (report.statusBreakdown.guarded) parts.push(`${report.statusBreakdown.guarded} geschuetzt`);
+      report.summary = parts.length ? parts.join(", ") : "Keine Pruefungen protokolliert.";
     }
     return report;
   }

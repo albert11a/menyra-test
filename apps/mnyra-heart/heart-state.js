@@ -1,11 +1,11 @@
 const DEFAULT_STATUS = "idle";
 
 export const HEART_NAV_ITEMS = Object.freeze([
-  { key: "dashboard", label: "Overview" },
-  { key: "runs", label: "Runs" },
-  { key: "incidents", label: "Incidents" },
-  { key: "modules", label: "Modules" },
-  { key: "connections", label: "Connections" }
+  { key: "dashboard", label: "Start" },
+  { key: "runs", label: "Laeufe" },
+  { key: "incidents", label: "Meldungen" },
+  { key: "modules", label: "Bereiche" },
+  { key: "connections", label: "Setup" }
 ]);
 
 export function createHeartInitialState() {

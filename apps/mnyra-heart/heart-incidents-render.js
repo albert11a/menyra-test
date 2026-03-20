@@ -37,37 +37,37 @@ export function renderIncidentsView(items = [], filters = {}) {
     <div class="heart-view-stack">
       <section class="heart-hero-grid heart-hero-grid--small">
         <article class="heart-kpi-card">
-          <p class="heart-eyebrow">Open incidents</p>
+          <p class="heart-eyebrow">Offene Meldungen</p>
           <h2>${escapeHtml(String(summary.active.length))}</h2>
-          <p class="heart-kpi-card__summary">Incidents not resolved yet.</p>
+          <p class="heart-kpi-card__summary">Noch nicht geloeste Meldungen.</p>
         </article>
         <article class="heart-kpi-card heart-kpi-card--critical">
-          <p class="heart-eyebrow">Critical</p>
+          <p class="heart-eyebrow">Kritisch</p>
           <h2>${escapeHtml(String(summary.critical.length))}</h2>
-          <p class="heart-kpi-card__summary">Immediate attention required.</p>
+          <p class="heart-kpi-card__summary">Braucht sofortige Aufmerksamkeit.</p>
         </article>
         <article class="heart-kpi-card heart-kpi-card--warning">
-          <p class="heart-eyebrow">Warnings</p>
+          <p class="heart-eyebrow">Hinweise</p>
           <h2>${escapeHtml(String(summary.warning.length))}</h2>
-          <p class="heart-kpi-card__summary">Degraded but not critical.</p>
+          <p class="heart-kpi-card__summary">Eingeschraenkt, aber nicht total blockiert.</p>
         </article>
       </section>
       <section class="heart-section">
         <div class="heart-section__head">
           <div>
-            <p class="heart-eyebrow">Filters</p>
-            <h2>Incident stream</h2>
+            <p class="heart-eyebrow">Filter</p>
+            <h2>Meldungsstrom</h2>
           </div>
         </div>
         <div class="heart-filter-row">
           <label class="heart-filter-field">
-            <span>Severity</span>
+            <span>Schwere</span>
             <select data-incident-filter="severity">
               ${severityOptions.map((value) => `<option value="${escapeHtml(value)}" ${filters.severity === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
             </select>
           </label>
           <label class="heart-filter-field">
-            <span>Source</span>
+            <span>Quelle</span>
             <select data-incident-filter="source">
               ${sourceOptions.map((value) => `<option value="${escapeHtml(value)}" ${filters.source === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
             </select>
@@ -83,8 +83,8 @@ export function renderIncidentsView(items = [], filters = {}) {
       <section class="heart-section">
         <div class="heart-section__head">
           <div>
-            <p class="heart-eyebrow">Recent issues</p>
-            <h2>${escapeHtml(String(filtered.length))} incidents shown</h2>
+            <p class="heart-eyebrow">Treffer</p>
+            <h2>${escapeHtml(String(filtered.length))} Meldungen sichtbar</h2>
           </div>
         </div>
         ${filtered.length ? `
@@ -93,8 +93,8 @@ export function renderIncidentsView(items = [], filters = {}) {
               <details class="heart-incident-card">
                 <summary>
                   <div>
-                    <strong>${escapeHtml(item.title || "Incident")}</strong>
-                    <p>${escapeHtml(item.message || "No detail provided.")}</p>
+                    <strong>${escapeHtml(item.title || "Meldung")}</strong>
+                    <p>${escapeHtml(item.message || "Keine Details vorhanden.")}</p>
                   </div>
                   <div class="heart-list-card__badges">
                     ${renderSeverityBadge(item.severity || "info")}
@@ -103,16 +103,16 @@ export function renderIncidentsView(items = [], filters = {}) {
                 </summary>
                 <div class="heart-incident-card__body">
                   <div class="heart-detail-grid">
-                    <div><span>Source</span><strong>${escapeHtml(item.source || "runtime")}</strong></div>
-                    <div><span>Module</span><strong>${escapeHtml(item.module || "unknown")}</strong></div>
-                    <div><span>Created</span><strong>${escapeHtml(item.createdAt ? formatDateTime(item.createdAt) : "-")}</strong></div>
-                    <div><span>Updated</span><strong>${escapeHtml(item.updatedAt ? formatDateTime(item.updatedAt) : "-")}</strong></div>
-                    <div><span>Environment</span><strong>${escapeHtml(item.environment || "production")}</strong></div>
+                    <div><span>Quelle</span><strong>${escapeHtml(item.source || "runtime")}</strong></div>
+                    <div><span>Bereich</span><strong>${escapeHtml(item.module || "unbekannt")}</strong></div>
+                    <div><span>Erstellt</span><strong>${escapeHtml(item.createdAt ? formatDateTime(item.createdAt) : "-")}</strong></div>
+                    <div><span>Aktualisiert</span><strong>${escapeHtml(item.updatedAt ? formatDateTime(item.updatedAt) : "-")}</strong></div>
+                    <div><span>Umgebung</span><strong>${escapeHtml(item.environment || "production")}</strong></div>
                     <div><span>Build</span><strong>${escapeHtml(item.build || "-")}</strong></div>
                   </div>
                   ${item.artifactLinks?.length ? `
                     <div class="heart-artifact-list">
-                      ${item.artifactLinks.map((artifact) => `<a class="heart-artifact-link" href="${escapeHtml(artifact.url || "#")}" target="_blank" rel="noreferrer">${escapeHtml(artifact.label || "Artifact")}</a>`).join("")}
+                      ${item.artifactLinks.map((artifact) => `<a class="heart-artifact-link" href="${escapeHtml(artifact.url || "#")}" target="_blank" rel="noreferrer"><span><strong>${escapeHtml(artifact.label || "Datei")}</strong><small>Nachweis</small></span></a>`).join("")}
                     </div>
                   ` : ""}
                 </div>
@@ -120,8 +120,8 @@ export function renderIncidentsView(items = [], filters = {}) {
             `).join("")}
           </div>
         ` : renderEmptyState({
-          title: "No incidents match the current filters.",
-          message: "Adjust severity, source or status to inspect a wider incident stream."
+          title: "Keine Meldung passt zum Filter.",
+          message: "Passe Schwere, Quelle oder Status an, um mehr oder weniger Meldungen zu sehen."
         })}
       </section>
     </div>

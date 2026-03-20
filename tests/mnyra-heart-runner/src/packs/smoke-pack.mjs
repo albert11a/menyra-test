@@ -9,15 +9,15 @@ export async function runSmokePack({ page, env, heart, personas, emitStatus = as
   const ceo = personas.ceo;
   const auth = await ensurePersonaSession({ page, heart, persona: ceo, moduleKey: "auth" });
   if (!auth.ok) {
-    heart.setSummary("Smoke pack could not start because CEO credentials are not configured.");
+    heart.setSummary("Schnelltest konnte nicht starten, weil die CEO-Zugangsdaten fehlen.");
     return;
   }
 
-  await emitStatus("Smoke / Read surfaces", "running", "Running critical-path smoke surfaces.");
+  await emitStatus("Schnelltest / Lesepfade", "running", "Heart prueft die wichtigsten Lesepfade.");
   await runSocialSurfaceChecks({ page, env, heart, persona: ceo });
   await runCartAndOrderChecks({ page, env, heart, persona: ceo });
   await runChatChecks({ page, env, heart, persona: ceo });
   await runCrmChecks({ page, env, heart, persona: ceo });
   await runPwaChecks({ page, heart, persona: ceo });
-  heart.setSummary("Smoke pack completed. Critical-path reads ran, and guarded writes were reported truthfully.");
+  heart.setSummary("Schnelltest beendet. Die wichtigsten Lesepfade wurden geprueft, und geschuetzte Schreibpfade wurden klar als solche markiert.");
 }

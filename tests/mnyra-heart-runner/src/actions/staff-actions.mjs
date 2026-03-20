@@ -11,18 +11,18 @@ export async function runStaffChecks({ page, env, heart, persona } = {}) {
   await openWaiterSurface(page, persona, heart, {
     absolute: waiterConfig.url || persona.baseUrl,
     moduleKey: "orders",
-    note: "Waiter surface loaded."
+    note: "Waiter-Oberflaeche wurde geladen."
   });
 
   if (waiterConfig.orderVisibleSelector) {
     await ensureElementVisible(page, waiterConfig.orderVisibleSelector);
-    heart.passModule("orders", "Staff order visibility check passed.", {
+    heart.passModule("orders", "Bestellungen waren fuer den Service sichtbar.", {
       action: "order visible",
       persona: persona.key,
       area: "orders"
     });
   } else {
-    heart.notConfiguredModule("orders", "Staff order visibility selector is not configured.", {
+    heart.notConfiguredModule("orders", "Selector fuer sichtbare Bestellungen fehlt.", {
       action: "order visible",
       persona: persona.key,
       area: "orders"
@@ -30,7 +30,7 @@ export async function runStaffChecks({ page, env, heart, persona } = {}) {
   }
 
   if (!env.allowLiveMutations || !env.syntheticIsolationKey) {
-    markGuarded(heart, "orders", "Staff status action is guarded until isolated mutation mode is enabled.", {
+    markGuarded(heart, "orders", "Status-Aenderungen im Service sind im Moment geschuetzt. Aktiviere erst den isolierten Schreibmodus.", {
       action: "order status action",
       persona: persona.key,
       area: "orders"
@@ -39,7 +39,7 @@ export async function runStaffChecks({ page, env, heart, persona } = {}) {
   }
 
   if (!hasRequiredConfig(waiterConfig, ["statusActionSelector"])) {
-    markNotConfigured(heart, "orders", "Staff status action selectors are not configured.", {
+    markNotConfigured(heart, "orders", "Selektoren fuer Status-Aenderungen fehlen.", {
       action: "order status action",
       persona: persona.key,
       area: "orders"
@@ -53,7 +53,7 @@ export async function runStaffChecks({ page, env, heart, persona } = {}) {
   } else if (waiterConfig.verifyText) {
     await waitForText(page, waiterConfig.verifyText);
   }
-  heart.passModule("orders", "Staff status action completed.", {
+  heart.passModule("orders", "Status-Aktion im Service wurde ausgefuehrt.", {
     action: "order status action",
     persona: persona.key,
     area: "orders"

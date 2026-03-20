@@ -9,7 +9,7 @@ export async function runJourneyPack({ page, env, heart, personas, emitStatus = 
   try {
     const auth = await ensurePersonaSession({ page: activePage, heart, persona: ceo, moduleKey: "auth" });
     if (auth.ok) {
-      await emitStatus("Journey / CEO", "running", "Running CEO journey checks.");
+      await emitStatus("Journey / CEO", "running", "Heart prueft CEO-Journeys.");
       await runJourneyChecks({ page: activePage, env, heart, persona: ceo });
       await runPwaChecks({ page: activePage, heart, persona: ceo });
     }
@@ -19,7 +19,7 @@ export async function runJourneyPack({ page, env, heart, personas, emitStatus = 
     }
   }
 
-  await emitStatus("Journey / Guest", "running", "Running guest journey checks.");
+  await emitStatus("Journey / Gast", "running", "Heart prueft Gast-Journeys.");
   if (createScopedPage) {
     const guestScope = await createScopedPage("journey-guest");
     try {
@@ -30,5 +30,5 @@ export async function runJourneyPack({ page, env, heart, personas, emitStatus = 
   } else {
     await runGuestChecks({ page, env, heart, persona: personas.guest });
   }
-  heart.setSummary("Journey pack completed. Navigation, repeated interactions and guest movement paths were exercised where configured.");
+  heart.setSummary("Journey-Test beendet. Navigation, wiederholte Interaktionen und Gast-Wege wurden dort geprueft, wo eine Einrichtung vorhanden ist.");
 }

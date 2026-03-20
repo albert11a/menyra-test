@@ -19,7 +19,7 @@ export async function runMutationPack({ page, env, heart, personas, emitStatus =
     await runner(page);
   }
 
-  await emitStatus("Mutation / User", "running", "Running guarded user mutation checks.");
+  await emitStatus("Schreibtest / Nutzer", "running", "Heart prueft geschuetzte Nutzer-Schreibpfade.");
   await withPage("mutation-user", async (activePage) => {
     const userAuth = await ensurePersonaSession({ page: activePage, heart, persona: personas.user, moduleKey: "auth" });
     if (userAuth.ok) {
@@ -29,7 +29,7 @@ export async function runMutationPack({ page, env, heart, personas, emitStatus =
     }
   });
 
-  await emitStatus("Mutation / Business", "running", "Running guarded business mutation checks.");
+  await emitStatus("Schreibtest / Business", "running", "Heart prueft geschuetzte Business-Schreibpfade.");
   await withPage("mutation-business", async (activePage) => {
     const businessAuth = await ensurePersonaSession({ page: activePage, heart, persona: personas.business, moduleKey: "auth" });
     if (businessAuth.ok) {
@@ -37,7 +37,7 @@ export async function runMutationPack({ page, env, heart, personas, emitStatus =
     }
   });
 
-  await emitStatus("Mutation / CRM", "running", "Running guarded CRM mutations.");
+  await emitStatus("Schreibtest / CRM", "running", "Heart prueft geschuetzte CRM-Schreibpfade.");
   await withPage("mutation-ceo", async (activePage) => {
     const ceoAuth = await ensurePersonaSession({ page: activePage, heart, persona: personas.ceo, moduleKey: "auth" });
     if (ceoAuth.ok) {
@@ -45,5 +45,5 @@ export async function runMutationPack({ page, env, heart, personas, emitStatus =
     }
   });
 
-  heart.setSummary("Mutation pack completed. Every write path was either executed safely, guarded, or marked as not configured.");
+  heart.setSummary("Schreibtest beendet. Jeder Schreibpfad wurde entweder sicher ausgefuehrt, bewusst geschuetzt oder als nicht eingerichtet markiert.");
 }

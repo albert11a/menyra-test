@@ -6,7 +6,7 @@ import {
 
 export async function ensurePersonaSession({ page, heart, persona, moduleKey = "auth" } = {}) {
   if (!persona?.configured) {
-    heart.notConfiguredModule(moduleKey, persona?.reason || `${persona?.label || "Persona"} is not configured.`, {
+    heart.notConfiguredModule(moduleKey, persona?.reason || `${persona?.label || "Rolle"} ist nicht eingerichtet.`, {
       action: `${moduleKey} login`,
       persona: persona?.key,
       area: moduleKey
@@ -25,7 +25,7 @@ export async function ensurePersonaSession({ page, heart, persona, moduleKey = "
 
 export async function openGuestRoute({ page, heart, persona, moduleKey = "menu" } = {}) {
   if (!persona?.configured || !persona?.guestRouteUrl) {
-    heart.notConfiguredModule(moduleKey, "Guest route URL is not configured.", {
+    heart.notConfiguredModule(moduleKey, "Gast- / QR-Link ist nicht eingerichtet.", {
       action: "guest route open",
       persona: persona?.key,
       area: moduleKey
@@ -38,9 +38,9 @@ export async function openGuestRoute({ page, heart, persona, moduleKey = "menu" 
     moduleKey,
     area: moduleKey,
     persona: persona.key,
-    note: `Opening guest route ${persona.guestRouteUrl}`
+    note: `Gast- / QR-Link wird geoeffnet: ${persona.guestRouteUrl}`
   });
-  heart.passModule(moduleKey, "Guest route loaded.", {
+  heart.passModule(moduleKey, "Gast- / QR-Link wurde geladen.", {
     action: "guest route open",
     persona: persona.key,
     area: moduleKey

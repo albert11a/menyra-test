@@ -7,14 +7,14 @@ export async function runBusinessPack({ page, env, heart, personas, emitStatus =
   const business = personas.business;
   const auth = await ensurePersonaSession({ page, heart, persona: business, moduleKey: "auth" });
   if (!auth.ok) {
-    heart.setSummary("Business pack could not start because business credentials are not configured.");
+    heart.setSummary("Business-Test konnte nicht starten, weil die Business-Zugangsdaten fehlen.");
     return;
   }
 
-  await emitStatus("Business / Surface checks", "running", "Running business-owner pack.");
+  await emitStatus("Business / Oberflaechen", "running", "Heart prueft die Business-Oberflaechen.");
   await runBusinessSurfaceChecks({ page, env, heart, persona: business });
   await runBusinessMutationChecks({ page, env, heart, persona: business });
   await runCrmChecks({ page, env, heart, persona: business });
   await runPwaChecks({ page, heart, persona: business });
-  heart.setSummary("Business pack completed. Business surfaces ran and mutation checks were guarded or executed based on safe config.");
+  heart.setSummary("Business-Test beendet. Business-Oberflaechen wurden geprueft, und Schreibpfade wurden je nach Einrichtung ausgefuehrt oder geschuetzt markiert.");
 }

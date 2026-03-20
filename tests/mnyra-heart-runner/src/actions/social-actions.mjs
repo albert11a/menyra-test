@@ -33,7 +33,7 @@ async function runConfiguredSocialMutation({
     markGuarded(
       heart,
       moduleKey,
-      `${actionLabel} is guarded. Enable isolated mutation mode first.`,
+      `${actionLabel} ist im Moment geschuetzt. Aktiviere erst den isolierten Schreibmodus.`,
       { action: actionLabel, persona: persona?.key, area: moduleKey }
     );
     return { ok: false, reason: "guarded" };
@@ -42,7 +42,7 @@ async function runConfiguredSocialMutation({
     markNotConfigured(
       heart,
       moduleKey,
-      `${actionLabel} needs setup before it can run safely.`,
+      `${actionLabel} braucht erst eine saubere Einrichtung.`,
       { action: actionLabel, persona: persona?.key, area: moduleKey }
     );
     return { ok: false, reason: "not_configured" };
@@ -54,22 +54,22 @@ async function runConfiguredSocialMutation({
 export async function runSocialSurfaceChecks({ page, env, heart, persona } = {}) {
   await openSocialTab(page, persona, heart, SOCIAL_TABS.feed, {
     moduleKey: "feed",
-    note: "Feed surface opened."
+    note: "Feed wurde geoeffnet."
   });
   await openSocialTab(page, persona, heart, SOCIAL_TABS.profile, {
     moduleKey: "profile",
-    note: "Profile surface opened."
+    note: "Profil wurde geoeffnet."
   });
 
   const businessProfileUrl = env.packConfig?.actions?.social?.businessProfile?.url;
   if (businessProfileUrl) {
     await openSocialTab(page, persona, heart, SOCIAL_TABS.profile, {
       moduleKey: "business",
-      note: "Business profile opened through configured URL.",
+      note: "Business-Profil wurde ueber die konfigurierte URL geoeffnet.",
       absolute: businessProfileUrl
     });
   } else {
-    heart.notConfiguredModule("business", "Business profile URL is not configured.", {
+    heart.notConfiguredModule("business", "Business-Profil-URL fehlt.", {
       action: "business profile open",
       persona: persona.key,
       area: "business"
@@ -78,12 +78,12 @@ export async function runSocialSurfaceChecks({ page, env, heart, persona } = {})
 
   await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
     moduleKey: "menu",
-    note: "Menu surface opened."
+    note: "Menue wurde geoeffnet."
   });
 
   await openSocialTab(page, persona, heart, SOCIAL_TABS.chat, {
     moduleKey: "chat",
-    note: "Chat surface opened."
+    note: "Chat wurde geoeffnet."
   });
 }
 
@@ -112,7 +112,7 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
       } else if (socialConfig.follow.verifyText) {
         await waitForText(page, socialConfig.follow.verifyText);
       }
-      heart.passModule("profile", "Follow action completed.", {
+      heart.passModule("profile", "Follow wurde erfolgreich ausgefuehrt.", {
         action: "follow",
         persona: persona.key,
         area: "profile"
@@ -143,7 +143,7 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
       if (socialConfig.like.countSelector && before !== null) {
         await waitForCountChange(page, socialConfig.like.countSelector, before);
       }
-      heart.passModule("feed", "Like action completed.", {
+      heart.passModule("feed", "Like wurde erfolgreich ausgefuehrt.", {
         action: "like",
         persona: persona.key,
         area: "feed"
@@ -184,12 +184,12 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
         type: "comment",
         label: commentText,
         status: "success",
-        summary: "Synthetic comment created.",
+        summary: "Test-Kommentar wurde erstellt.",
         cleanupStatus: "pending",
         module: "profile",
         persona: persona.key
       });
-      heart.passModule("profile", "Comment create action completed.", {
+      heart.passModule("profile", "Kommentar wurde erstellt.", {
         action: "comment create",
         persona: persona.key,
         area: "profile"
@@ -230,12 +230,12 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
         type: "post",
         label: postText,
         status: "success",
-        summary: "Synthetic post created.",
+        summary: "Test-Beitrag wurde erstellt.",
         cleanupStatus: "pending",
         module: "feed",
         persona: persona.key
       });
-      heart.passModule("feed", "Post create action completed.", {
+      heart.passModule("feed", "Beitrag wurde erstellt.", {
         action: "post create",
         persona: persona.key,
         area: "feed"
@@ -243,22 +243,22 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
     }
   });
 
-  heart.notConfiguredModule("profile", "Unfollow automation still needs explicit selectors and verification rules.", {
+  heart.notConfiguredModule("profile", "Unfollow braucht noch eigene Selektoren und einen Erfolgsnachweis.", {
     action: "unfollow",
     persona: persona.key,
     area: "profile"
   });
-  heart.notConfiguredModule("feed", "Unlike automation still needs explicit selectors and count verification rules.", {
+  heart.notConfiguredModule("feed", "Unlike braucht noch eigene Selektoren und eine saubere Zaehler-Pruefung.", {
     action: "unlike",
     persona: persona.key,
     area: "feed"
   });
-  heart.notConfiguredModule("profile", "Comment delete automation still needs explicit selectors and cleanup rules.", {
+  heart.notConfiguredModule("profile", "Kommentar-Loeschung braucht noch sichere Loeschregeln.", {
     action: "comment delete",
     persona: persona.key,
     area: "profile"
   });
-  heart.notConfiguredModule("feed", "Post delete automation still needs explicit selectors and cleanup rules.", {
+  heart.notConfiguredModule("feed", "Beitrags-Loeschung braucht noch sichere Loeschregeln.", {
     action: "post delete",
     persona: persona.key,
     area: "feed"

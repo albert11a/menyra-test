@@ -102,7 +102,7 @@ async function markRunGithubRateLimited(run, scope = "summary") {
   const rateLimitedUntil = new Date(Date.now() + GITHUB_RATE_LIMIT_COOLDOWN_MS).toISOString();
   try {
     return await providers.mergeRun(run.id, {
-      currentStep: "GitHub API rate limited. Using cached workflow data.",
+      currentStep: "GitHub-API ist begrenzt. Heart nutzt voruebergehend zwischengespeicherte Workflow-Daten.",
       github: {
         ...(run.github || {}),
         rateLimitedAt: nowIso,
@@ -113,7 +113,7 @@ async function markRunGithubRateLimited(run, scope = "summary") {
   } catch {
     return {
       ...run,
-      currentStep: "GitHub API rate limited. Using cached workflow data.",
+      currentStep: "GitHub-API ist begrenzt. Heart nutzt voruebergehend zwischengespeicherte Workflow-Daten.",
       github: {
         ...(run.github || {}),
         rateLimitedAt: nowIso,
@@ -233,7 +233,7 @@ async function hydrateRunWithGithub(run, {
         status: await normalizeGithubExecutionState(githubRun?.status, githubRun?.conclusion, run.status),
         summary: asText(run.summary || githubRun?.display_title || githubRun?.name),
         currentStep: isRunActive(run)
-          ? asText(run.currentStep || "GitHub workflow running.")
+          ? asText(run.currentStep || "GitHub-Workflow laeuft.")
           : run.currentStep,
         branch: asText(githubRun?.head_branch || run.branch),
         build: asText(githubRun?.head_sha || run.build),
@@ -375,7 +375,7 @@ async function startRun(req, res, requestedPackKey) {
     startedByUid: asText(authResult.user?.uid),
     startedByEmail: asText(authResult.user?.email),
     triggerSource: "heart-ui",
-    summary: `${pack.title} queued by CEO.`
+      summary: `${pack.title} wurde vom CEO in die Warteschlange gestellt.`
   });
   try {
     const dispatchResult = await dispatchWorkflow(githubConfig, pack.key, buildDispatchInputs(req, body, pack.mode, queuedRun.id, authResult));
@@ -402,7 +402,7 @@ async function startRun(req, res, requestedPackKey) {
       personas: pack.personas,
       branch: asText(githubRun?.head_branch || dispatchResult.ref),
       build: asText(githubRun?.head_sha),
-      currentStep: asText(githubRun?.id ? "GitHub workflow queued." : "GitHub workflow dispatch accepted.")
+    currentStep: asText(githubRun?.id ? "GitHub-Workflow wartet." : "GitHub-Workflow wurde angenommen.")
     });
     sendJson(res, 200, {
       run: updatedRun,
@@ -411,18 +411,18 @@ async function startRun(req, res, requestedPackKey) {
   } catch (error) {
     await providers.mergeRun(queuedRun.id, {
       status: "failed",
-      currentStep: "Dispatch failed.",
-      summary: asText(error?.message, "GitHub workflow dispatch failed."),
+      currentStep: "Start an GitHub fehlgeschlagen.",
+      summary: asText(error?.message, "GitHub-Workflow konnte nicht gestartet werden."),
       endedAt: new Date().toISOString(),
       failureDetails: [{
         id: "dispatch_failure",
         module: "github",
-        title: "Workflow dispatch failed",
+      title: "GitHub-Workflow konnte nicht gestartet werden",
         message: asText(error?.message),
         severity: "critical"
       }]
     });
-    sendJson(res, 500, { error: asText(error?.message, "GitHub workflow dispatch failed.") });
+    sendJson(res, 500, { error: asText(error?.message, "GitHub-Workflow konnte nicht gestartet werden.") });
   }
 }
 
@@ -453,7 +453,7 @@ async function heartCancelRun(req, res) {
   const updated = await providers.mergeRun(runId, {
     status: "cancelled",
     currentStep: "Cancellation requested by CEO.",
-    summary: "Run cancellation requested.",
+      summary: "Abbruch wurde angefragt.",
     endedAt: new Date().toISOString()
   });
   sendJson(res, 200, { run: updated });

@@ -72,7 +72,7 @@ export function createHeartApiClient({
       ({ response, parsed } = await requestAgainstBase(fallbackApiBase, true));
     }
     if (!response.ok || parsed.ok === false) {
-      throw new Error(String(parsed.error || `${functionName} failed with ${response.status}`));
+      throw new Error(String(parsed.error || `${functionName} ist mit Status ${response.status} fehlgeschlagen.`));
     }
     return parsed;
   }

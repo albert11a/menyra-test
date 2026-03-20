@@ -1,5 +1,7 @@
 import {
   formatDateTime,
+  getModuleLabel,
+  getPackLabel,
   normalizeList
 } from "./heart-ui-utils.js";
 import {
@@ -57,7 +59,7 @@ function normalizeModuleStatus(item = {}) {
     latestFailure: asText(item.latestFailure || item.failureSummary),
     incidentCount: Math.max(0, Number(item.incidentCount) || 0),
     lastCheckAt: toIso(item.lastCheckAt || item.updatedAt || item.completedAt),
-    label: asText(item.label || item.module || item.key || "Unknown"),
+    label: getModuleLabel(item.module || item.key, asText(item.label || item.module || item.key || "Bereich")),
     personas: normalizeList(item.personas),
     checks: normalizeList(item.checks).map((check, index) => ({
       id: asText(check.id || `check-${index + 1}`),
@@ -94,9 +96,9 @@ function buildModuleHealthFromRuns(runs = [], incidents = []) {
     const existing = latestByModule.get(moduleKey) || {};
     return normalizeModuleStatus({
       module: moduleKey,
-      label: moduleKey.toUpperCase(),
-      status: existing.status || "idle",
-      note: existing.note || "No check recorded yet.",
+        label: moduleKey.toUpperCase(),
+        status: existing.status || "idle",
+      note: existing.note || "Noch keine Pruefung vorhanden.",
       latestFailure: existing.latestFailure || "",
       lastCheckAt: existing.lastCheckAt || "",
       incidentCount: incidentsByModule.get(moduleKey) || 0
@@ -111,14 +113,14 @@ export function normalizeRunSummary(item = {}) {
     id: asText(item.id || item.runId || item.githubRunId),
     mode: asText(item.mode, "smoke"),
     packKey: asText(item.packKey || item.mode, "smoke"),
-    packLabel: asText(item.packLabel || item.title || item.name || "Run"),
+    packLabel: getPackLabel(item.packKey || item.mode, asText(item.packLabel || item.title || item.name || "Testlauf"), item.mode),
     packLevel: asText(item.packLevel),
     packSummary: asText(item.packSummary || item.summary),
     personas: normalizeList(item.personas),
     source: asText(item.source, "heart"),
     environment: asText(item.environment, "production"),
     status: normalizeGithubExecutionState(item.status || item.runStatus, item.conclusion, normalizeStatus(item.status || item.runStatus, "idle")),
-    summary: asText(item.summary || item.title || item.name || "No summary available."),
+    summary: asText(item.summary || item.title || item.name || "Noch keine Zusammenfassung vorhanden."),
     triggerSource: asText(item.triggerSource || item.event || item.actor),
     startedBy: asText(item.startedBy || item.actor || item.triggeredBy),
     startedAt,
@@ -134,7 +136,7 @@ export function normalizeRunSummary(item = {}) {
     runFlags: item.runFlags && typeof item.runFlags === "object" ? item.runFlags : {},
     modules: normalizeList(item.modules).map(normalizeModuleStatus),
     artifacts: normalizeList(item.artifacts).map((artifact) => ({
-      label: asText(artifact.label || artifact.name || "Artifact"),
+      label: asText(artifact.label || artifact.name || "Datei"),
       kind: asText(artifact.kind || artifact.type || "artifact"),
       url: asText(artifact.url || artifact.downloadUrl),
       sizeLabel: asText(artifact.sizeLabel)
@@ -148,7 +150,7 @@ export function normalizeRunDetail(detail = {}) {
     ...run,
     timeline: normalizeList(detail.timeline || detail.steps || detail.actionLog).map((step, index) => ({
       id: asText(step.id || `step-${index + 1}`),
-      title: asText(step.title || step.name || `Step ${index + 1}`),
+      title: asText(step.title || step.name || `Schritt ${index + 1}`),
       status: normalizeGithubExecutionState(step.status, step.conclusion, normalizeStatus(step.status, "idle")),
       note: asText(step.note || step.message || step.summary),
       startedAt: toIso(step.startedAt || step.started_at),
@@ -157,17 +159,17 @@ export function normalizeRunDetail(detail = {}) {
     createdEntities: normalizeList(detail.createdEntities).map((entity, index) => ({
       id: asText(entity.id || `entity-${index + 1}`),
       type: asText(entity.type || "entity"),
-      label: asText(entity.label || entity.name || entity.id || `Entity ${index + 1}`),
+      label: asText(entity.label || entity.name || entity.id || `Element ${index + 1}`),
       status: normalizeStatus(entity.status, "success"),
       summary: asText(entity.summary || entity.note),
       cleanupStatus: normalizeStatus(entity.cleanupStatus, "idle")
     })),
     cleanup: {
       status: normalizeStatus(detail.cleanup?.status, "idle"),
-      summary: asText(detail.cleanup?.summary || "No cleanup information."),
+      summary: asText(detail.cleanup?.summary || "Keine Aufraeuminformation vorhanden."),
       items: normalizeList(detail.cleanup?.items).map((item, index) => ({
         id: asText(item.id || `cleanup-${index + 1}`),
-        label: asText(item.label || item.name || `Cleanup ${index + 1}`),
+        label: asText(item.label || item.name || `Aufraeumen ${index + 1}`),
         status: normalizeStatus(item.status, "idle"),
         note: asText(item.note)
       }))
@@ -178,13 +180,13 @@ export function normalizeRunDetail(detail = {}) {
       area: asText(item.area || item.module || item.source || "unknown"),
       action: asText(item.action),
       persona: asText(item.persona),
-      title: asText(item.title || item.message || `Failure ${index + 1}`),
+      title: asText(item.title || item.message || `Problem ${index + 1}`),
       message: asText(item.message || item.note),
       severity: normalizeSeverity(item.severity, "warning")
     })),
     reportMeta: {
       reportGeneratedAt: toIso(detail.reportGeneratedAt || detail.updatedAt || run.endedAt || run.startedAt),
-      reportLabel: asText(detail.reportLabel || `${run.packLabel || run.mode.toUpperCase()} report`),
+      reportLabel: asText(detail.reportLabel || `${run.packLabel || run.mode.toUpperCase()} Bericht`),
       formattedStartedAt: formatDateTime(run.startedAt),
       formattedEndedAt: formatDateTime(run.endedAt)
     }
@@ -198,7 +200,7 @@ export function normalizeIncident(item = {}) {
     source: asText(item.source || item.provider || "runtime"),
     module: asText(item.module || item.source || "unknown"),
     severity: normalizeSeverity(item.severity),
-    title: asText(item.title || item.summary || "Incident"),
+    title: asText(item.title || item.summary || "Meldung"),
     message: asText(item.message || item.note),
     status: asText(item.status || "open"),
     createdAt: toIso(item.createdAt || item.created_at),
@@ -219,7 +221,7 @@ export function normalizeIncident(item = {}) {
 export function normalizeConnection(item = {}) {
   return {
     id: asText(item.id || item.key || item.source),
-    name: asText(item.name || item.label || item.source || "Connection"),
+    name: asText(item.name || item.label || item.source || "Verbindung"),
     kind: asText(item.kind || item.source || "internal"),
     status: normalizeStatus(item.status, "idle"),
     note: asText(item.note || item.summary),
@@ -240,7 +242,7 @@ export function normalizeDashboardData(payload = {}) {
     : buildModuleHealthFromRuns([latestSmokeRun, latestSyntheticRun, latestPersonaRun, ...runs].filter(Boolean), incidents);
   return {
     overallStatus: normalizeStatus(payload.overallStatus, "idle"),
-    overallNote: asText(payload.overallNote || "No status note available."),
+    overallNote: asText(payload.overallNote || "Noch keine Statusnotiz vorhanden."),
     updatedAt: toIso(payload.updatedAt || new Date().toISOString()),
     liveMonitoringSummary: {
       activeIncidents: Math.max(0, Number(payload.liveMonitoringSummary?.activeIncidents) || incidents.filter((incident) => incident.status !== "resolved").length),

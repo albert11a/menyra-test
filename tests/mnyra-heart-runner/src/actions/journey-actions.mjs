@@ -13,7 +13,7 @@ export async function runJourneyChecks({ page, env, heart, persona } = {}) {
   for (const tabKey of tabs) {
     await openSocialTab(page, persona, heart, tabKey, {
       moduleKey: tabKey === SOCIAL_TABS.profile ? "profile" : tabKey,
-      note: `Journey opened ${tabKey}.`
+      note: `Journey hat ${tabKey} geoeffnet.`
     });
     await page.mouse.wheel(0, 900).catch(() => undefined);
     await page.waitForTimeout(350);
@@ -22,7 +22,7 @@ export async function runJourneyChecks({ page, env, heart, persona } = {}) {
   await page.goBack({ waitUntil: "domcontentloaded" }).catch(() => undefined);
   await page.waitForTimeout(300);
   await page.goForward({ waitUntil: "domcontentloaded" }).catch(() => undefined);
-  heart.passModule("feed", "Journey back/forward navigation stayed stable.", {
+  heart.passModule("feed", "Vor und zurueck blieb stabil.", {
     action: "journey navigation",
     persona: persona.key,
     area: "feed"
@@ -33,14 +33,14 @@ export async function runJourneyChecks({ page, env, heart, persona } = {}) {
     if (opened) {
       await page.waitForTimeout(300);
       await clickIfPresent(page, journeyConfig.modalCloseSelector);
-      heart.passModule("profile", "Journey modal open/close completed.", {
+      heart.passModule("profile", "Modal wurde sauber geoeffnet und geschlossen.", {
         action: "modal open/close",
         persona: persona.key,
         area: "profile"
       });
     }
   } else {
-    heart.notConfiguredModule("profile", "Journey modal selectors are not configured.", {
+    heart.notConfiguredModule("profile", "Fuer das Journey-Modal fehlen noch Selektoren.", {
       action: "modal open/close",
       persona: persona.key,
       area: "profile"
@@ -51,14 +51,14 @@ export async function runJourneyChecks({ page, env, heart, persona } = {}) {
 export async function runPwaChecks({ page, heart, persona, manifestSelector } = {}) {
   const pwa = await assertPwaPresence(page, manifestSelector);
   if (pwa.manifestLink && pwa.serviceWorkerSupport) {
-    heart.passModule("pwa", "Manifest is present and service workers are supported.", {
+    heart.passModule("pwa", "Manifest ist vorhanden und Service Worker werden unterstuetzt.", {
       action: "pwa presence",
       persona: persona?.key,
       area: "pwa"
     });
     return;
   }
-  heart.warnModule("pwa", "PWA shell check returned partial capability only.", {
+  heart.warnModule("pwa", "PWA-Pruefung war nur teilweise erfolgreich.", {
     action: "pwa presence",
     persona: persona?.key,
     area: "pwa"

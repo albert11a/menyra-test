@@ -22,7 +22,7 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
   const leadEdit = crm.leadEdit || {};
 
   if (!leadCreate.url) {
-    heart.notConfiguredModule("crm", "CRM lead URL is not configured.", {
+    heart.notConfiguredModule("crm", "CRM-Lead-URL fehlt.", {
       action: "lead open",
       persona: persona.key,
       area: "crm"
@@ -36,14 +36,14 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
     area: "crm",
     persona: persona.key
   });
-  heart.passModule("crm", "CRM surface opened.", {
+  heart.passModule("crm", "CRM wurde geoeffnet.", {
     action: "crm open",
     persona: persona.key,
     area: "crm"
   });
 
   if (!mutationReady(env)) {
-    markGuarded(heart, "crm", "CRM mutation checks are guarded until isolated mutation mode is enabled.", {
+    markGuarded(heart, "crm", "CRM-Schreibtests sind im Moment geschuetzt. Aktiviere erst den isolierten Schreibmodus.", {
       action: "lead create",
       persona: persona.key,
       area: "crm"
@@ -52,7 +52,7 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
   }
 
   if (!hasRequiredConfig(leadCreate, ["url", "saveSelector"])) {
-    markNotConfigured(heart, "crm", "CRM lead create selectors need setup.", {
+    markNotConfigured(heart, "crm", "Fuer das Erstellen eines Leads fehlen noch Selektoren.", {
       action: "lead create",
       persona: persona.key,
       area: "crm"
@@ -85,12 +85,12 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
     type: "lead",
     label: leadName,
     status: "success",
-    summary: "Synthetic CRM lead created.",
+    summary: "Test-Lead wurde erstellt.",
     cleanupStatus: "pending",
     module: "crm",
     persona: persona.key
   });
-  heart.passModule("crm", "Lead create action completed.", {
+  heart.passModule("crm", "Lead wurde erstellt.", {
     action: "lead create",
     persona: persona.key,
     area: "crm"
@@ -109,13 +109,13 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
     if (leadEdit.verifyText) {
       await waitForText(page, replaceRunTokens(leadEdit.verifyText, env));
     }
-    heart.passModule("crm", "Lead edit action completed.", {
+    heart.passModule("crm", "Lead wurde bearbeitet.", {
       action: "lead edit",
       persona: persona.key,
       area: "crm"
     });
   } else {
-    heart.notConfiguredModule("crm", "Lead edit selectors are not configured.", {
+    heart.notConfiguredModule("crm", "Selektoren fuer Lead-Bearbeitung fehlen.", {
       action: "lead edit",
       persona: persona.key,
       area: "crm"
@@ -123,29 +123,29 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
   }
 
   const cleanupItems = [];
-  heart.notConfiguredModule("crm", "Lead delete automation still needs explicit delete selectors and safe cleanup rules.", {
+  heart.notConfiguredModule("crm", "Lead-Loeschung braucht noch sichere Loesch-Selektoren.", {
     action: "lead delete",
     persona: persona.key,
     area: "crm"
   });
-  heart.notConfiguredModule("crm", "Lead convert automation still needs explicit conversion selectors.", {
+  heart.notConfiguredModule("crm", "Lead-Umwandlung braucht noch eigene Selektoren.", {
     action: "lead convert",
     persona: persona.key,
     area: "crm"
   });
-  heart.notConfiguredModule("crm", "Customer create/edit automation still needs explicit selectors.", {
+  heart.notConfiguredModule("crm", "Kunden-Erstellung und -Bearbeitung brauchen noch eigene Selektoren.", {
     action: "customer create/edit",
     persona: persona.key,
     area: "crm"
   });
   if (leadCreate.deleteSelector && leadCreate.confirmDeleteSelector) {
-    cleanupItems.push(createCleanupItem("CRM lead cleanup", "pending", "Delete selectors are configured for future cleanup automation."));
+    cleanupItems.push(createCleanupItem("CRM-Lead aufraeumen", "pending", "Loesch-Selektoren sind vorbereitet, aber noch nicht live aktiviert."));
   }
   heart.setCleanup(
     cleanupItems.length ? "warning" : "warning",
     cleanupItems.length
-      ? "Synthetic CRM data was created. Cleanup selectors exist but live deletion is not yet executed automatically in this baseline."
-      : "Synthetic CRM data was created. Cleanup still needs explicit delete selectors.",
+      ? "Heart hat CRM-Testdaten erstellt. Die Loesch-Selektoren sind vorbereitet, aber das automatische Entfernen laeuft noch nicht live."
+      : "Heart hat CRM-Testdaten erstellt. Fuer automatisches Aufraeumen fehlen noch Loesch-Selektoren.",
     cleanupItems
   );
 }

@@ -2,18 +2,20 @@ import {
   escapeHtml,
   formatDateTime,
   formatRelative,
+  formatStatusCount,
+  getModuleLabel,
   renderEmptyState,
   renderStatusBadge
 } from "./heart-ui-utils.js";
 
 export function renderModuleHealthGrid(modules = [], {
-  title = "Module health",
+  title = "Bereiche",
   compact = false
 } = {}) {
   if (!Array.isArray(modules) || !modules.length) {
     return renderEmptyState({
-      title: "No module checks yet.",
-      message: "Heart will show per-module health as soon as smoke, synthetic or monitoring data arrives."
+      title: "Noch keine Bereichspruefungen.",
+      message: "Sobald Heart Tests oder Monitoringdaten hat, erscheinen hier die einzelnen Bereiche."
     });
   }
 
@@ -21,7 +23,7 @@ export function renderModuleHealthGrid(modules = [], {
     <section class="heart-section">
       <div class="heart-section__head">
         <div>
-          <p class="heart-eyebrow">Modules</p>
+          <p class="heart-eyebrow">Bereiche</p>
           <h2>${escapeHtml(title)}</h2>
         </div>
       </div>
@@ -29,19 +31,22 @@ export function renderModuleHealthGrid(modules = [], {
         ${modules.map((item) => `
           <article class="heart-module-card heart-module-card--${escapeHtml(item.status || "idle")}">
             <div class="heart-module-card__head">
-              <strong>${escapeHtml(item.label || item.module || "Unknown")}</strong>
+              <strong>${escapeHtml(getModuleLabel(item.module, item.label || item.module || "Bereich"))}</strong>
               ${renderStatusBadge(item.status || "idle")}
             </div>
-            <p class="heart-module-card__note">${escapeHtml(item.note || "No note recorded.")}</p>
+            <p class="heart-module-card__note">${escapeHtml(item.note || "Keine Notiz vorhanden.")}</p>
             <div class="heart-module-card__meta">
-              <span>${escapeHtml(String(item.incidentCount || 0))} incidents</span>
-              <span>${escapeHtml(item.lastCheckAt ? formatRelative(item.lastCheckAt) : "No check")}</span>
+              <span>${escapeHtml(String(item.incidentCount || 0))} Meldungen</span>
+              <span>${escapeHtml(item.lastCheckAt ? formatRelative(item.lastCheckAt) : "Noch keine Pruefung")}</span>
             </div>
             ${item.counts && Object.keys(item.counts).length ? `<div class="heart-list-card__meta">
-              ${Object.entries(item.counts).filter(([, value]) => Number(value) > 0).map(([status, value]) => `${escapeHtml(String(value))} ${escapeHtml(status.replaceAll("_", " "))}`).join(" • ")}
+              ${Object.entries(item.counts)
+                .filter(([, value]) => Number(value) > 0)
+                .map(([status, value]) => escapeHtml(formatStatusCount(status, value)))
+                .join(" | ")}
             </div>` : ""}
             ${item.latestFailure ? `<p class="heart-module-card__failure">${escapeHtml(item.latestFailure)}</p>` : ""}
-            ${!compact ? `<p class="heart-module-card__timestamp">Last check: ${escapeHtml(item.lastCheckAt ? formatDateTime(item.lastCheckAt) : "-")}</p>` : ""}
+            ${!compact ? `<p class="heart-module-card__timestamp">Letzte Pruefung: ${escapeHtml(item.lastCheckAt ? formatDateTime(item.lastCheckAt) : "-")}</p>` : ""}
           </article>
         `).join("")}
       </div>
@@ -52,7 +57,7 @@ export function renderModuleHealthGrid(modules = [], {
 export function renderModulesView(modules = []) {
   return `
     <div class="heart-view-stack">
-      ${renderModuleHealthGrid(modules, { title: "Full module health" })}
+      ${renderModuleHealthGrid(modules, { title: "Alle Bereiche im Detail" })}
     </div>
   `;
 }

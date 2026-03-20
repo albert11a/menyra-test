@@ -22,12 +22,12 @@ import {
   renderSettingsView
 } from "./heart-settings-render.js";
 
-function renderLoadingGate(message = "Loading CEO session...") {
+function renderLoadingGate(message = "CEO-Sitzung wird geladen...") {
   return `
     <div class="heart-auth-shell">
       <section class="heart-auth-card heart-auth-card--loading">
-        <p class="heart-eyebrow">mnyra heart</p>
-        <h1>Internal control center</h1>
+        <p class="heart-eyebrow">MENYRA Heart</p>
+        <h1>Kontrollzentrum</h1>
         <p>${escapeHtml(message)}</p>
         <div class="heart-spinner"></div>
       </section>
@@ -39,20 +39,20 @@ function renderGuestScreen(auth = {}) {
   return `
     <div class="heart-auth-shell">
       <section class="heart-auth-card">
-        <p class="heart-eyebrow">mnyra heart</p>
-        <h1>CEO command center</h1>
-        <p>Secure MENYRA control app for smoke tests, synthetic bot runs, incidents, monitoring and system health.</p>
+        <p class="heart-eyebrow">MENYRA Heart</p>
+        <h1>Tests klar starten</h1>
+        <p>Heart ist dein deutsches Kontrollzentrum fuer MENYRA. Hier startest du Tests, siehst Nachweise und erkennst sofort, was noch eingerichtet werden muss.</p>
         <form class="heart-login-form" data-heart-login>
           <label class="heart-input-field">
             <span>Email</span>
             <input type="email" name="email" autocomplete="username" placeholder="ceo@menyra.com" required />
           </label>
           <label class="heart-input-field">
-            <span>Password</span>
-            <input type="password" name="password" autocomplete="current-password" placeholder="Enter password" required />
+            <span>Passwort</span>
+            <input type="password" name="password" autocomplete="current-password" placeholder="Passwort eingeben" required />
           </label>
           ${auth.error ? `<div class="heart-error-block">${escapeHtml(auth.error)}</div>` : ""}
-          <button class="heart-button heart-button--primary heart-button--wide" type="submit" ${auth.status === "signing-in" ? "disabled" : ""}>${auth.status === "signing-in" ? "Signing in..." : "Sign in as CEO"}</button>
+          <button class="heart-button heart-button--primary heart-button--wide" type="submit" ${auth.status === "signing-in" ? "disabled" : ""}>${auth.status === "signing-in" ? "Anmeldung laeuft..." : "Als CEO anmelden"}</button>
         </form>
       </section>
     </div>
@@ -63,15 +63,15 @@ function renderDeniedScreen(auth = {}) {
   return `
     <div class="heart-auth-shell">
       <section class="heart-auth-card heart-auth-card--denied">
-        <p class="heart-eyebrow">mnyra heart</p>
-        <h1>Access denied</h1>
-        <p>${escapeHtml(auth.access?.reason || "CEO access required.")}</p>
+        <p class="heart-eyebrow">MENYRA Heart</p>
+        <h1>Kein Zugriff</h1>
+        <p>${escapeHtml(auth.access?.reason || "Hier ist ein CEO-Zugang noetig.")}</p>
         <div class="heart-detail-grid">
           <div><span>User</span><strong>${escapeHtml(auth.user?.email || auth.profile?.email || "-")}</strong></div>
           <div><span>UID</span><strong>${escapeHtml(auth.user?.uid || "-")}</strong></div>
         </div>
         <div class="heart-header-actions">
-          <button class="heart-button heart-button--secondary" data-action="logout">Sign out</button>
+          <button class="heart-button heart-button--secondary" data-action="logout">Abmelden</button>
         </div>
       </section>
     </div>
@@ -81,22 +81,22 @@ function renderDeniedScreen(auth = {}) {
 function renderViewBody(state) {
   if (state.shell.activeView === "runs") return renderRunsView(state.runs, state.connections.items || [], state.dashboard.data?.quickActions || []);
   if (state.shell.activeView === "incidents") {
-    if (state.incidents.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Loading incidents...</div></section>`;
-    if (state.incidents.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.incidents.error || "Incident loading failed.")}</div></section>`;
+    if (state.incidents.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Meldungen werden geladen...</div></section>`;
+    if (state.incidents.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.incidents.error || "Meldungen konnten nicht geladen werden.")}</div></section>`;
     return renderIncidentsView(state.incidents.items, state.incidents.filters);
   }
   if (state.shell.activeView === "modules") {
-    if (state.dashboard.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Loading module health...</div></section>`;
-    if (state.dashboard.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.dashboard.error || "Module health loading failed.")}</div></section>`;
+    if (state.dashboard.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Bereiche werden geladen...</div></section>`;
+    if (state.dashboard.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.dashboard.error || "Bereiche konnten nicht geladen werden.")}</div></section>`;
     return renderModulesView(state.dashboard.data?.moduleHealth || []);
   }
   if (state.shell.activeView === "connections") {
-    if (state.connections.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Loading connections...</div></section>`;
-    if (state.connections.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.connections.error || "Connection loading failed.")}</div></section>`;
+    if (state.connections.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Setup wird geladen...</div></section>`;
+    if (state.connections.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.connections.error || "Setup konnte nicht geladen werden.")}</div></section>`;
     return renderSettingsView(state.connections.items || []);
   }
-  if (state.dashboard.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Loading dashboard...</div></section>`;
-  if (state.dashboard.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.dashboard.error || "Dashboard loading failed.")}</div></section>`;
+  if (state.dashboard.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Startansicht wird geladen...</div></section>`;
+  if (state.dashboard.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.dashboard.error || "Startansicht konnte nicht geladen werden.")}</div></section>`;
   return renderDashboardView(state.dashboard.data);
 }
 
@@ -115,9 +115,9 @@ function renderShell(state) {
     <div class="heart-shell ${state.shell.navOpen ? "heart-shell--nav-open" : ""}">
       <aside class="heart-sidebar">
         <div class="heart-brand-block">
-          <p class="heart-eyebrow">mnyra heart</p>
-          <h1>System control</h1>
-          <p>CEO-only monitoring, test orchestration and incident control.</p>
+          <p class="heart-eyebrow">MENYRA Heart</p>
+          <h1>System im Blick</h1>
+          <p>Tests starten, Beweise sehen, Probleme verstehen.</p>
         </div>
         <nav class="heart-nav">${renderNav(state)}</nav>
         <div class="heart-sidebar__footer">
@@ -129,17 +129,17 @@ function renderShell(state) {
       <div class="heart-main-shell">
         <header class="heart-topbar">
           <div class="heart-topbar__left">
-            <button class="heart-menu-toggle" data-action="toggle-nav" aria-label="Toggle navigation">Menu</button>
+            <button class="heart-menu-toggle" data-action="toggle-nav" aria-label="Navigation umschalten">Menue</button>
             <div>
-              <p class="heart-eyebrow">Control center</p>
-              <h2>${escapeHtml(HEART_NAV_ITEMS.find((item) => item.key === state.shell.activeView)?.label || "Overview")}</h2>
+              <p class="heart-eyebrow">Kontrollzentrum</p>
+              <h2>${escapeHtml(HEART_NAV_ITEMS.find((item) => item.key === state.shell.activeView)?.label || "Start")}</h2>
             </div>
           </div>
           <div class="heart-topbar__right">
             ${renderStatusBadge(overallStatus)}
-            <span class="heart-topbar__timestamp">${escapeHtml(state.boot.lastUpdatedAt ? `Updated ${formatRelative(state.boot.lastUpdatedAt)}` : "Waiting for first sync")}</span>
-            <button class="heart-button heart-button--secondary" data-action="refresh-heart">Refresh</button>
-            <button class="heart-button heart-button--secondary" data-action="logout">Logout</button>
+            <span class="heart-topbar__timestamp">${escapeHtml(state.boot.lastUpdatedAt ? `Aktualisiert ${formatRelative(state.boot.lastUpdatedAt)}` : "Warte auf erste Synchronisation")}</span>
+            <button class="heart-button heart-button--secondary" data-action="refresh-heart">Aktualisieren</button>
+            <button class="heart-button heart-button--secondary" data-action="logout">Abmelden</button>
           </div>
         </header>
         <main class="heart-main-content">
@@ -151,7 +151,7 @@ function renderShell(state) {
       </div>
       ${state.shell.toast ? `
         <div class="heart-toast heart-toast--${escapeHtml(state.shell.toast.tone || "neutral")}">
-          <strong>${escapeHtml(state.shell.toast.title || "Notice")}</strong>
+          <strong>${escapeHtml(state.shell.toast.title || "Hinweis")}</strong>
           <p>${escapeHtml(state.shell.toast.message || "")}</p>
         </div>
       ` : ""}
@@ -163,7 +163,7 @@ export function renderHeartApp(rootNode, state) {
   if (!rootNode) return;
   let markup = "";
   if (state.auth.status === "checking" || (state.auth.status === "signing-in" && !state.auth.user)) {
-    markup = renderLoadingGate(state.auth.status === "signing-in" ? "Signing in..." : "Loading CEO session...");
+    markup = renderLoadingGate(state.auth.status === "signing-in" ? "Anmeldung laeuft..." : "CEO-Sitzung wird geladen...");
   } else if (state.auth.status === "guest" || state.auth.status === "error" || state.auth.status === "signing-in") {
     markup = renderGuestScreen(state.auth);
   } else if (state.auth.status === "denied") {

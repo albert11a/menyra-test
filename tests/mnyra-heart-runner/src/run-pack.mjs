@@ -95,17 +95,21 @@ async function main() {
     return {
       page: scopedPage,
       async dispose() {
+        const proofPath = await captureArtifact(scopedPage, env, `${label}-proof`).catch(() => "");
+        if (proofPath) {
+          heart.addArtifact({ label: `${label} Beweisbild`, kind: "screenshot", path: proofPath });
+        }
         const tracePath = path.resolve(env.artifactDir, `${label}-trace.zip`);
         await scopedContext.tracing.stop({ path: tracePath }).catch(() => undefined);
-        heart.addArtifact({ label: `${label} trace`, kind: "trace", path: tracePath });
+        heart.addArtifact({ label: `${label} Ablaufspur`, kind: "trace", path: tracePath });
         await scopedContext.close().catch(() => undefined);
       }
     };
   }
 
   try {
-    heart.setSummary(`${pack.title} booting.`);
-    await emitStatus("Runner booting", "running", `Initializing ${pack.title}.`);
+    heart.setSummary(`${pack.title} startet.`);
+    await emitStatus("Runner startet", "running", `${pack.title} wird vorbereitet.`);
 
     browser = await chromium.launch({ headless: env.headless });
     browserContext = await browser.newContext({ viewport: config.viewport });
@@ -117,7 +121,7 @@ async function main() {
     });
     page = await browserContext.newPage();
 
-    await emitStatus(`${pack.title} running`, "running", pack.summary);
+    await emitStatus(`${pack.title} laeuft`, "running", pack.summary);
     await runPack({
       page,
       browser,
@@ -131,7 +135,7 @@ async function main() {
 
     heart.finalize();
     await emitStatus(
-      heart.report.status === "success" ? "Run completed" : "Run completed with issues",
+      heart.report.status === "success" ? "Lauf beendet" : "Lauf beendet mit Hinweisen",
       heart.report.status,
       heart.report.summary
     );
@@ -147,7 +151,7 @@ async function main() {
     if (page) {
       const failureScreenshot = await captureArtifact(page, env, `${pack.key}-failure-state`).catch(() => "");
       if (failureScreenshot) {
-        heart.addArtifact({ label: `${pack.title} failure screenshot`, kind: "screenshot", path: failureScreenshot });
+        heart.addArtifact({ label: `${pack.title} Fehlerbild`, kind: "screenshot", path: failureScreenshot });
       }
     }
     await postHeartIncident(env, {
@@ -162,19 +166,25 @@ async function main() {
       build: env.githubSha,
       actor: env.ceoEmail
     }).catch(() => undefined);
-    await emitStatus("Run failed", "failed", asText(error?.message, `${pack.title} failed.`)).catch(() => undefined);
+    await emitStatus("Lauf fehlgeschlagen", "failed", asText(error?.message, `${pack.title} ist fehlgeschlagen.`)).catch(() => undefined);
   } finally {
+    if (page) {
+      const finalScreenshot = await captureArtifact(page, env, `${pack.key}-final-state`).catch(() => "");
+      if (finalScreenshot) {
+        heart.addArtifact({ label: `${pack.title} Beweisbild`, kind: "screenshot", path: finalScreenshot });
+      }
+    }
     if (browserContext) {
       const tracePath = path.resolve(env.artifactDir, `${pack.key}-trace.zip`);
       await browserContext.tracing.stop({ path: tracePath }).catch(() => undefined);
-      heart.addArtifact({ label: `${pack.title} trace`, kind: "trace", path: tracePath });
+      heart.addArtifact({ label: `${pack.title} Ablaufspur`, kind: "trace", path: tracePath });
     }
     if (browser) {
       await browser.close().catch(() => undefined);
     }
     const report = heart.getReport();
     const reportPath = await writeHeartReport({ report, outputFile: env.outputFile });
-    heart.addArtifact({ label: `${pack.title} report`, kind: "json", path: reportPath });
+    heart.addArtifact({ label: `${pack.title} Bericht`, kind: "json", path: reportPath });
     await postHeartReport(env, {
       runId: env.runId,
       report: heart.getReport()

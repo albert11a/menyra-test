@@ -9,7 +9,7 @@ import { hasRequiredConfig, markGuarded, markNotConfigured, replaceRunTokens } f
 export async function runChatChecks({ page, env, heart, persona } = {}) {
   const sendConfig = env.packConfig?.actions?.chat?.send || {};
   if (!sendConfig.url) {
-    heart.notConfiguredModule("chat", "Chat target URL is not configured. Only generic chat tab checks can run.", {
+    heart.notConfiguredModule("chat", "Chat-Ziel-URL fehlt. Deshalb kann Heart nur den allgemeinen Chat-Bereich pruefen.", {
       action: "chat send",
       persona: persona.key,
       area: "chat"
@@ -18,7 +18,7 @@ export async function runChatChecks({ page, env, heart, persona } = {}) {
   }
 
   if (!env.allowLiveMutations || !env.syntheticIsolationKey) {
-    markGuarded(heart, "chat", "Chat send is guarded until isolated mutation mode is enabled.", {
+    markGuarded(heart, "chat", "Chat-Nachrichten sind im Moment geschuetzt. Aktiviere erst den isolierten Schreibmodus.", {
       action: "chat send",
       persona: persona.key,
       area: "chat"
@@ -27,7 +27,7 @@ export async function runChatChecks({ page, env, heart, persona } = {}) {
   }
 
   if (!hasRequiredConfig(sendConfig, ["url", "composerSelector", "sendSelector"])) {
-    markNotConfigured(heart, "chat", "Chat send selectors need setup before live chat tests can run.", {
+    markNotConfigured(heart, "chat", "Fuer Live-Chat fehlen noch Selektoren.", {
       action: "chat send",
       persona: persona.key,
       area: "chat"
@@ -47,7 +47,7 @@ export async function runChatChecks({ page, env, heart, persona } = {}) {
   if (sendConfig.verifyText) {
     await waitForText(page, replaceRunTokens(sendConfig.verifyText, env));
   }
-  heart.passModule("chat", "Chat send action completed.", {
+  heart.passModule("chat", "Chat-Nachricht wurde erfolgreich gesendet.", {
     action: "chat send",
     persona: persona.key,
     area: "chat"

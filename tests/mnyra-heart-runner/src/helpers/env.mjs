@@ -209,6 +209,9 @@ function buildLegacyPackConfig(envMap = {}) {
           url: asText(envMap.MNYRA_GUEST_QR_URL || envMap.MNYRA_GUEST_MENU_URL),
           menuVisibleSelector: asText(envMap.MNYRA_GUEST_MENU_VISIBLE_SELECTOR),
           cartVisibleSelector: asText(envMap.MNYRA_GUEST_CART_VISIBLE_SELECTOR),
+          orderTriggerSelector: asText(envMap.MNYRA_GUEST_ORDER_TRIGGER_SELECTOR || envMap.MNYRA_SMOKE_ORDER_TRIGGER_SELECTOR),
+          orderVerifySelector: asText(envMap.MNYRA_GUEST_ORDER_VERIFY_SELECTOR || envMap.MNYRA_SMOKE_ORDER_VERIFY_SELECTOR),
+          orderSuccessText: asText(envMap.MNYRA_GUEST_ORDER_SUCCESS_TEXT || envMap.MNYRA_SMOKE_ORDER_SUCCESS_TEXT),
           privilegedSelectors: splitCsv(envMap.MNYRA_GUEST_PRIVILEGED_SELECTORS)
         }
       },
