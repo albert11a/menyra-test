@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f5f3ef" />
+  <meta name="heart-api-base" content="/api/heart/" />
+  <meta name="heart-api-fallback-base" content="https://us-central1-menyra-c0e68.cloudfunctions.net/" />
+  <title>mnyra heart</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
+  <link rel="apple-touch-icon" href="/apps/menyra-social/assets/icon-192.png" />
+  <link rel="stylesheet" href="./heart.css" />
+</head>
+<body>
+  <div id="heartApp"></div>
+  <noscript>
+    <section style="padding:24px;font-family:Segoe UI,sans-serif;">
+      <h1>mnyra heart requires JavaScript</h1>
+      <p>This internal control center needs JavaScript enabled for CEO authentication and secure runtime state.</p>
+    </section>
+  </noscript>
+  <script>
+    const heartLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
+    const heartCloudFunctionsBase = "https://us-central1-menyra-c0e68.cloudfunctions.net/";
+    window.__MNYRA_HEART_CONFIG__ = Object.freeze({
+      apiBase: heartLocalHost ? heartCloudFunctionsBase : "/api/heart/",
+      fallbackApiBase: heartLocalHost ? "" : heartCloudFunctionsBase
+    });
+  </script>
+  <script type="module" src="./heart.js"></script>
+</body>
+</html>

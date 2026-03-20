@@ -789,3 +789,5 @@ exports.notifyWaiterOnRestaurantOrderCreate = functions
 
 const { migrateEmailsToMnyra } = require("./email-domain-migration");
 exports.migrateEmailsToMnyra = migrateEmailsToMnyra;
+
+Object.assign(exports, require("./heart"));

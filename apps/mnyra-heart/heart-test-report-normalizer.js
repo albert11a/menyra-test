@@ -1,0 +1,238 @@
+import {
+  formatDateTime,
+  normalizeList
+} from "./heart-ui-utils.js";
+import {
+  normalizeGithubExecutionState
+} from "/shared/github-execution-state.js";
+
+const MODULE_ORDER = Object.freeze([
+  "auth",
+  "feed",
+  "profile",
+  "business",
+  "menu",
+  "cart",
+  "orders",
+  "chat",
+  "crm",
+  "pwa"
+]);
+
+function asText(value = "", fallback = "") {
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+
+function toIso(value = "") {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : "";
+}
+
+function normalizeStatus(value = "", fallback = "idle") {
+  const status = String(value || "").trim().toLowerCase();
+  if (!status) return fallback;
+  if (status === "in_progress") return "running";
+  if (status === "failure") return "failed";
+  if (status === "timed_out") return "failed";
+  if (status === "action_required") return "warning";
+  return status;
+}
+
+function normalizeSeverity(value = "", fallback = "info") {
+  const severity = String(value || "").trim().toLowerCase();
+  if (!severity) return fallback;
+  if (severity === "error") return "critical";
+  return severity;
+}
+
+function normalizeModuleStatus(item = {}) {
+  return {
+    module: asText(item.module || item.key || "unknown"),
+    status: normalizeStatus(item.status, "idle"),
+    note: asText(item.note || item.summary),
+    latestFailure: asText(item.latestFailure || item.failureSummary),
+    incidentCount: Math.max(0, Number(item.incidentCount) || 0),
+    lastCheckAt: toIso(item.lastCheckAt || item.updatedAt || item.completedAt),
+    label: asText(item.label || item.module || item.key || "Unknown")
+  };
+}
+
+function buildModuleHealthFromRuns(runs = [], incidents = []) {
+  const latestByModule = new Map();
+  normalizeList(runs).forEach((run) => {
+    normalizeList(run.modules).forEach((moduleStatus) => {
+      const current = latestByModule.get(moduleStatus.module);
+      if (!current || String(moduleStatus.lastCheckAt || "") > String(current.lastCheckAt || "")) {
+        latestByModule.set(moduleStatus.module, moduleStatus);
+      }
+    });
+  });
+
+  const incidentsByModule = new Map();
+  normalizeList(incidents).forEach((incident) => {
+    const key = asText(incident.module || incident.source || "unknown");
+    incidentsByModule.set(key, (incidentsByModule.get(key) || 0) + 1);
+  });
+
+  return MODULE_ORDER.map((moduleKey) => {
+    const existing = latestByModule.get(moduleKey) || {};
+    return normalizeModuleStatus({
+      module: moduleKey,
+      label: moduleKey.toUpperCase(),
+      status: existing.status || "idle",
+      note: existing.note || "No check recorded yet.",
+      latestFailure: existing.latestFailure || "",
+      lastCheckAt: existing.lastCheckAt || "",
+      incidentCount: incidentsByModule.get(moduleKey) || 0
+    });
+  });
+}
+
+export function normalizeRunSummary(item = {}) {
+  const startedAt = toIso(item.startedAt || item.runStartedAt || item.createdAt);
+  const endedAt = toIso(item.endedAt || item.updatedAt || item.completedAt);
+  return {
+    id: asText(item.id || item.runId || item.githubRunId),
+    mode: asText(item.mode, "smoke"),
+    source: asText(item.source, "heart"),
+    environment: asText(item.environment, "production"),
+    status: normalizeGithubExecutionState(item.status || item.runStatus, item.conclusion, normalizeStatus(item.status || item.runStatus, "idle")),
+    summary: asText(item.summary || item.title || item.name || "No summary available."),
+    triggerSource: asText(item.triggerSource || item.event || item.actor),
+    startedBy: asText(item.startedBy || item.actor || item.triggeredBy),
+    startedAt,
+    endedAt,
+    durationMs: Math.max(0, Number(item.durationMs) || (startedAt && endedAt ? new Date(endedAt).getTime() - new Date(startedAt).getTime() : 0)),
+    branch: asText(item.branch || item.headBranch),
+    build: asText(item.build || item.commitShort || item.commitSha),
+    passedChecks: Math.max(0, Number(item.passedChecks) || 0),
+    failedChecks: Math.max(0, Number(item.failedChecks) || 0),
+    warningCount: Math.max(0, Number(item.warningCount) || 0),
+    currentStep: asText(item.currentStep),
+    modules: normalizeList(item.modules).map(normalizeModuleStatus),
+    artifacts: normalizeList(item.artifacts).map((artifact) => ({
+      label: asText(artifact.label || artifact.name || "Artifact"),
+      kind: asText(artifact.kind || artifact.type || "artifact"),
+      url: asText(artifact.url || artifact.downloadUrl),
+      sizeLabel: asText(artifact.sizeLabel)
+    }))
+  };
+}
+
+export function normalizeRunDetail(detail = {}) {
+  const run = normalizeRunSummary(detail);
+  return {
+    ...run,
+    timeline: normalizeList(detail.timeline || detail.steps || detail.actionLog).map((step, index) => ({
+      id: asText(step.id || `step-${index + 1}`),
+      title: asText(step.title || step.name || `Step ${index + 1}`),
+      status: normalizeGithubExecutionState(step.status, step.conclusion, normalizeStatus(step.status, "idle")),
+      note: asText(step.note || step.message || step.summary),
+      startedAt: toIso(step.startedAt || step.started_at),
+      endedAt: toIso(step.endedAt || step.completedAt || step.completed_at)
+    })),
+    createdEntities: normalizeList(detail.createdEntities).map((entity, index) => ({
+      id: asText(entity.id || `entity-${index + 1}`),
+      type: asText(entity.type || "entity"),
+      label: asText(entity.label || entity.name || entity.id || `Entity ${index + 1}`),
+      status: normalizeStatus(entity.status, "success"),
+      summary: asText(entity.summary || entity.note),
+      cleanupStatus: normalizeStatus(entity.cleanupStatus, "idle")
+    })),
+    cleanup: {
+      status: normalizeStatus(detail.cleanup?.status, "idle"),
+      summary: asText(detail.cleanup?.summary || "No cleanup information."),
+      items: normalizeList(detail.cleanup?.items).map((item, index) => ({
+        id: asText(item.id || `cleanup-${index + 1}`),
+        label: asText(item.label || item.name || `Cleanup ${index + 1}`),
+        status: normalizeStatus(item.status, "idle"),
+        note: asText(item.note)
+      }))
+    },
+    failureDetails: normalizeList(detail.failureDetails).map((item, index) => ({
+      id: asText(item.id || `failure-${index + 1}`),
+      module: asText(item.module || item.source || "unknown"),
+      title: asText(item.title || item.message || `Failure ${index + 1}`),
+      message: asText(item.message || item.note),
+      severity: normalizeSeverity(item.severity, "warning")
+    })),
+    reportMeta: {
+      reportGeneratedAt: toIso(detail.reportGeneratedAt || detail.updatedAt || run.endedAt || run.startedAt),
+      reportLabel: asText(detail.reportLabel || `${run.mode.toUpperCase()} report`),
+      formattedStartedAt: formatDateTime(run.startedAt),
+      formattedEndedAt: formatDateTime(run.endedAt)
+    }
+  };
+}
+
+export function normalizeIncident(item = {}) {
+  return {
+    id: asText(item.id),
+    runId: asText(item.runId),
+    source: asText(item.source || item.provider || "runtime"),
+    module: asText(item.module || item.source || "unknown"),
+    severity: normalizeSeverity(item.severity),
+    title: asText(item.title || item.summary || "Incident"),
+    message: asText(item.message || item.note),
+    status: asText(item.status || "open"),
+    createdAt: toIso(item.createdAt || item.created_at),
+    updatedAt: toIso(item.updatedAt || item.updated_at),
+    environment: asText(item.environment, "production"),
+    build: asText(item.build || item.commitShort || item.commitSha),
+    actor: asText(item.actor || item.startedBy),
+    device: asText(item.device || item.browser),
+    artifactLinks: normalizeList(item.artifactLinks).map((link, index) => ({
+      id: asText(link.id || `artifact-${index + 1}`),
+      label: asText(link.label || link.name || `Artifact ${index + 1}`),
+      url: asText(link.url)
+    })),
+    meta: item.meta && typeof item.meta === "object" ? item.meta : {}
+  };
+}
+
+export function normalizeConnection(item = {}) {
+  return {
+    id: asText(item.id || item.key || item.source),
+    name: asText(item.name || item.label || item.source || "Connection"),
+    kind: asText(item.kind || item.source || "internal"),
+    status: normalizeStatus(item.status, "idle"),
+    note: asText(item.note || item.summary),
+    lastCheckedAt: toIso(item.lastCheckedAt || item.updatedAt),
+    mode: asText(item.mode || item.integrationMode),
+    detail: asText(item.detail)
+  };
+}
+
+export function normalizeDashboardData(payload = {}) {
+  const latestSmokeRun = payload.latestSmokeRun ? normalizeRunSummary(payload.latestSmokeRun) : null;
+  const latestSyntheticRun = payload.latestSyntheticRun ? normalizeRunSummary(payload.latestSyntheticRun) : null;
+  const incidents = normalizeList(payload.latestIncidents).map(normalizeIncident);
+  const runs = normalizeList(payload.recentRuns).map(normalizeRunSummary);
+  const moduleHealth = normalizeList(payload.moduleHealth).length
+    ? payload.moduleHealth.map(normalizeModuleStatus)
+    : buildModuleHealthFromRuns([latestSmokeRun, latestSyntheticRun, ...runs].filter(Boolean), incidents);
+  return {
+    overallStatus: normalizeStatus(payload.overallStatus, "idle"),
+    overallNote: asText(payload.overallNote || "No status note available."),
+    updatedAt: toIso(payload.updatedAt || new Date().toISOString()),
+    liveMonitoringSummary: {
+      activeIncidents: Math.max(0, Number(payload.liveMonitoringSummary?.activeIncidents) || incidents.filter((incident) => incident.status !== "resolved").length),
+      criticalIncidents: Math.max(0, Number(payload.liveMonitoringSummary?.criticalIncidents) || incidents.filter((incident) => incident.severity === "critical").length),
+      latestFailure: asText(payload.liveMonitoringSummary?.latestFailure || incidents[0]?.title)
+    },
+    smokeStatus: latestSmokeRun,
+    syntheticStatus: latestSyntheticRun,
+    moduleHealth,
+    latestIncidents: incidents,
+    recentRuns: runs,
+    connectionsPreview: normalizeList(payload.connectionsPreview).map(normalizeConnection),
+    quickActions: normalizeList(payload.quickActions).map((action, index) => ({
+      id: asText(action.id || `action-${index + 1}`),
+      label: asText(action.label || action.title),
+      action: asText(action.action || action.id),
+      note: asText(action.note)
+    }))
+  };
+}

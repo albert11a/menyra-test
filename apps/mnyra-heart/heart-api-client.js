@@ -1,0 +1,68 @@
+function safeJsonParse(text = "") {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+export function createHeartApiClient({
+  authController,
+  apiBase = "/api/heart/",
+  fallbackApiBase = ""
+} = {}) {
+  function buildFunctionUrl(functionName = "", base = apiBase) {
+    const safeBase = String(base || "/api/heart/").trim() || "/api/heart/";
+    const normalizedBase = safeBase.endsWith("/") ? safeBase : `${safeBase}/`;
+    return `${normalizedBase}${String(functionName || "").trim()}`;
+  }
+
+  async function performRequest(functionName, token, {
+    method = "GET",
+    body = null,
+    base = apiBase
+  } = {}) {
+    const response = await fetch(buildFunctionUrl(functionName, base), {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json"
+      },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const text = await response.text();
+    const parsed = safeJsonParse(text) || {};
+    return {
+      response,
+      parsed
+    };
+  }
+
+  async function request(functionName, {
+    method = "GET",
+    body = null
+  } = {}) {
+    const token = await authController.getIdToken();
+    if (!token) throw new Error("Missing authenticated CEO token.");
+    let response;
+    let parsed;
+    try {
+      ({ response, parsed } = await performRequest(functionName, token, { method, body, base: apiBase }));
+      const shouldRetryWithFallback = response.status === 404 && fallbackApiBase;
+      if (shouldRetryWithFallback) {
+        ({ response, parsed } = await performRequest(functionName, token, { method, body, base: fallbackApiBase }));
+      }
+    } catch (error) {
+      if (!fallbackApiBase) throw error;
+      ({ response, parsed } = await performRequest(functionName, token, { method, body, base: fallbackApiBase }));
+    }
+    if (!response.ok || parsed.ok === false) {
+      throw new Error(String(parsed.error || `${functionName} failed with ${response.status}`));
+    }
+    return parsed;
+  }
+
+  return {
+    request
+  };
+}
