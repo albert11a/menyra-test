@@ -382,6 +382,13 @@ a {
   margin-bottom: 16px;
 }
 
+.heart-section__note {
+  margin: 14px 0 0;
+  color: var(--heart-text-muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
 .heart-eyebrow {
   margin: 0 0 6px;
   color: var(--heart-text-muted);

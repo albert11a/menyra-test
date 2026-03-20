@@ -3,6 +3,8 @@ import {
   formatDateTime,
   formatDuration,
   formatRelative,
+  getGithubRunnerNote,
+  isGithubRunnerConfigured,
   renderEmptyState,
   renderSeverityBadge,
   renderStatusBadge
@@ -170,8 +172,13 @@ function renderDetailPanel(detail = null, detailStatus = "idle", detailError = "
   `;
 }
 
-export function renderRunsView(runsState = {}) {
+export function renderRunsView(runsState = {}, connections = []) {
   const items = Array.isArray(runsState.items) ? runsState.items : [];
+  const runnerConfigured = isGithubRunnerConfigured(connections);
+  const disabledAttr = runsState.pendingAction || !runnerConfigured ? "disabled" : "";
+  const runnerNote = runnerConfigured
+    ? "Secure GitHub Actions runner is ready."
+    : getGithubRunnerNote(connections);
   return `
     <div class="heart-view-stack">
       <section class="heart-section">
@@ -181,8 +188,8 @@ export function renderRunsView(runsState = {}) {
             <h2>Smoke and full synthetic runs</h2>
           </div>
           <div class="heart-header-actions">
-            <button class="heart-button heart-button--primary" data-action="start-smoke" ${runsState.pendingAction ? "disabled" : ""}>Start Smoke</button>
-            <button class="heart-button heart-button--dark" data-action="start-synthetic" ${runsState.pendingAction ? "disabled" : ""}>Start Full Synthetic</button>
+            <button class="heart-button heart-button--primary" data-action="start-smoke" ${disabledAttr}>Start Smoke</button>
+            <button class="heart-button heart-button--dark" data-action="start-synthetic" ${disabledAttr}>Start Full Synthetic</button>
             <button class="heart-button heart-button--secondary" data-action="refresh-heart">Refresh</button>
           </div>
         </div>
@@ -190,6 +197,7 @@ export function renderRunsView(runsState = {}) {
           <span>${escapeHtml(runsState.pendingAction ? `Pending action: ${runsState.pendingAction}` : "No run action pending.")}</span>
           <span>${escapeHtml(runsState.lastRefreshAt ? `Last refresh ${formatRelative(runsState.lastRefreshAt)}` : "No refresh yet.")}</span>
         </div>
+        <p class="heart-section__note">${escapeHtml(runnerNote)}</p>
       </section>
       <div class="heart-runs-layout">
         <section class="heart-section">

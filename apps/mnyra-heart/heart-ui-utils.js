@@ -130,3 +130,17 @@ export function renderStatValue(value = "", detail = "") {
 export function normalizeList(value) {
   return Array.isArray(value) ? value : [];
 }
+
+export function findGithubRunnerConnection(items = []) {
+  return normalizeList(items).find((item) => String(item?.kind || "").trim().toLowerCase() === "github") || null;
+}
+
+export function isGithubRunnerConfigured(items = []) {
+  const connection = findGithubRunnerConnection(items);
+  return !!connection && String(connection.mode || "").trim().toLowerCase() === "real" && String(connection.status || "").trim().toLowerCase() === "success";
+}
+
+export function getGithubRunnerNote(items = []) {
+  const connection = findGithubRunnerConnection(items);
+  return String(connection?.note || "Configure HEART_GITHUB_* values to enable secure workflow dispatch.").trim();
+}

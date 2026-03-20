@@ -135,6 +135,9 @@ async function startRun(mode = "smoke") {
     actions.setActiveView("runs");
     await refreshAll();
   } catch (error) {
+    if (String(error?.message || "").includes("GitHub Actions integration is not configured")) {
+      actions.setActiveView("connections");
+    }
     setToast("Run trigger failed", error?.message || "Unable to queue the run.", "danger");
   } finally {
     actions.setPendingRunAction("");

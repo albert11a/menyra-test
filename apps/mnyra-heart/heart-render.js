@@ -79,7 +79,7 @@ function renderDeniedScreen(auth = {}) {
 }
 
 function renderViewBody(state) {
-  if (state.shell.activeView === "runs") return renderRunsView(state.runs);
+  if (state.shell.activeView === "runs") return renderRunsView(state.runs, state.connections.items || []);
   if (state.shell.activeView === "incidents") {
     if (state.incidents.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Loading incidents...</div></section>`;
     if (state.incidents.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.incidents.error || "Incident loading failed.")}</div></section>`;

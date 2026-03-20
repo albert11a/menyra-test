@@ -3,6 +3,8 @@ import {
   formatDateTime,
   formatDuration,
   formatRelative,
+  getGithubRunnerNote,
+  isGithubRunnerConfigured,
   renderEmptyState,
   renderSeverityBadge,
   renderStatValue,
@@ -75,7 +77,12 @@ function renderTopStatusCards(data = {}) {
   `;
 }
 
-function renderRunControls() {
+function renderRunControls(connections = []) {
+  const runnerConfigured = isGithubRunnerConfigured(connections);
+  const disabledAttr = runnerConfigured ? "" : "disabled";
+  const note = runnerConfigured
+    ? "Secure GitHub Actions runner is ready."
+    : getGithubRunnerNote(connections);
   return `
     <section class="heart-section">
       <div class="heart-section__head">
@@ -85,10 +92,11 @@ function renderRunControls() {
         </div>
       </div>
       <div class="heart-control-grid">
-        <button class="heart-button heart-button--primary" data-action="start-smoke">Start Smoke Test</button>
-        <button class="heart-button heart-button--dark" data-action="start-synthetic">Start Full Synthetic</button>
+        <button class="heart-button heart-button--primary" data-action="start-smoke" ${disabledAttr}>Start Smoke Test</button>
+        <button class="heart-button heart-button--dark" data-action="start-synthetic" ${disabledAttr}>Start Full Synthetic</button>
         <button class="heart-button heart-button--secondary" data-action="refresh-heart">Refresh Status</button>
       </div>
+      <p class="heart-section__note">${escapeHtml(note)}</p>
     </section>
   `;
 }
@@ -212,7 +220,7 @@ export function renderDashboardView(data = null) {
       ${renderTopStatusCards(data)}
       <div class="heart-two-column-grid">
         <div class="heart-view-stack">
-          ${renderRunControls()}
+          ${renderRunControls(data.connectionsPreview || [])}
           ${renderIncidentPreview(data.latestIncidents || [])}
         </div>
         <div class="heart-view-stack">
