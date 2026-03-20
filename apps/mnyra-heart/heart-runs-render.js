@@ -14,7 +14,7 @@ function renderRunSummaryList(items = [], selectedRunId = "") {
   if (!items.length) {
     return renderEmptyState({
       title: "No runs recorded.",
-      message: "Start a smoke or full synthetic run to populate the execution history.",
+      message: "Start any Heart pack to populate the execution history.",
       actionLabel: "Start smoke",
       action: "start-smoke"
     });
@@ -26,7 +26,7 @@ function renderRunSummaryList(items = [], selectedRunId = "") {
         return `
           <button class="heart-run-row ${selected ? "heart-run-row--active" : ""}" data-action="open-run" data-run-id="${escapeHtml(item.id)}">
             <div>
-              <strong>${escapeHtml(item.mode === "synthetic" ? "Full synthetic" : "Smoke test")}</strong>
+              <strong>${escapeHtml(item.packLabel || item.mode || "Run")}</strong>
               <p>${escapeHtml(item.summary || "No summary available.")}</p>
             </div>
             <div class="heart-run-row__meta">
@@ -66,6 +66,72 @@ function renderTimeline(detail = {}) {
   `;
 }
 
+function renderStatusBreakdown(detail = {}) {
+  const breakdown = detail.statusBreakdown || {};
+  const rows = [
+    ["Worked", breakdown.success || 0, "success"],
+    ["Problems", (breakdown.failed || 0) + (breakdown.critical || 0), breakdown.critical ? "critical" : "failed"],
+    ["Warnings", breakdown.warning || 0, "warning"],
+    ["Skipped", breakdown.skipped || 0, "skipped"],
+    ["Needs setup", breakdown.not_configured || 0, "not_configured"],
+    ["Guarded", breakdown.guarded || 0, "guarded"]
+  ];
+  return `
+    <div class="heart-detail-grid">
+      ${rows.map(([label, value, status]) => `
+        <div>
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(String(value))}</strong>
+          ${renderStatusBadge(status)}
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderAreaResults(detail = {}) {
+  if (!detail.modules?.length) {
+    return renderEmptyState({
+      title: "No area results yet.",
+      message: "Area-level outcomes appear here once a pack reports them."
+    });
+  }
+  return `
+    <div class="heart-list-stack">
+      ${detail.modules.map((module) => `
+        <article class="heart-list-card">
+          <div class="heart-list-card__head">
+            <div>
+              <strong>${escapeHtml(module.label || module.module || "Area")}</strong>
+              <p>${escapeHtml(module.note || "No note")}</p>
+            </div>
+            ${renderStatusBadge(module.status || "idle")}
+          </div>
+          <div class="heart-list-card__meta">
+            <span>${escapeHtml(module.personas?.join(", ") || "-")}</span>
+            <span>${escapeHtml(module.lastCheckAt ? formatRelative(module.lastCheckAt) : "No check")}</span>
+          </div>
+          ${module.checks?.length ? `<div class="heart-list-stack">${module.checks.slice(-4).map((check) => `
+            <article class="heart-list-card">
+              <div class="heart-list-card__head">
+                <div>
+                  <strong>${escapeHtml(check.action || "Check")}</strong>
+                  <p>${escapeHtml(check.note || "No detail")}</p>
+                </div>
+                ${renderStatusBadge(check.status || "idle")}
+              </div>
+              <div class="heart-list-card__meta">
+                <span>${escapeHtml(check.area || module.module || "-")}</span>
+                <span>${escapeHtml(check.persona || "-")}</span>
+              </div>
+            </article>
+          `).join("")}</div>` : ""}
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderDetailPanel(detail = null, detailStatus = "idle", detailError = "") {
   if (detailStatus === "loading") {
     return `<section class="heart-section"><div class="heart-loading-block">Loading run detail...</div></section>`;
@@ -85,7 +151,7 @@ function renderDetailPanel(detail = null, detailStatus = "idle", detailError = "
         <div class="heart-section__head">
           <div>
             <p class="heart-eyebrow">Run detail</p>
-            <h2>${escapeHtml(detail.mode === "synthetic" ? "Full synthetic report" : "Smoke report")}</h2>
+            <h2>${escapeHtml(detail.packLabel || "Run report")}</h2>
           </div>
           <div class="heart-header-actions">
             ${renderStatusBadge(detail.status || "idle")}
@@ -94,14 +160,24 @@ function renderDetailPanel(detail = null, detailStatus = "idle", detailError = "
           </div>
         </div>
         <div class="heart-detail-grid">
+          <div><span>Pack</span><strong>${escapeHtml(detail.packLabel || detail.mode || "-")}</strong></div>
+          <div><span>Level</span><strong>${escapeHtml(detail.packLevel || "-")}</strong></div>
           <div><span>Status</span><strong>${escapeHtml(String(detail.status || "idle").toUpperCase())}</strong></div>
           <div><span>Started</span><strong>${escapeHtml(detail.startedAt ? formatDateTime(detail.startedAt) : "-")}</strong></div>
           <div><span>Ended</span><strong>${escapeHtml(detail.endedAt ? formatDateTime(detail.endedAt) : "-")}</strong></div>
           <div><span>Duration</span><strong>${escapeHtml(formatDuration(detail.durationMs || 0))}</strong></div>
           <div><span>Checks</span><strong>${escapeHtml(`${detail.passedChecks || 0} pass / ${detail.failedChecks || 0} fail`)}</strong></div>
           <div><span>Build</span><strong>${escapeHtml(detail.build || detail.branch || "-")}</strong></div>
+          <div><span>Current step</span><strong>${escapeHtml(detail.currentStep || "-")}</strong></div>
         </div>
+        ${renderStatusBreakdown(detail)}
         <p class="heart-detail-summary">${escapeHtml(detail.summary || "No summary available.")}</p>
+        ${detail.personas?.length ? `<p class="heart-section__note">Personas: ${escapeHtml(detail.personas.join(", "))}</p>` : ""}
+        ${detail.runFlags ? `<p class="heart-section__note">Mutation mode: ${escapeHtml(detail.runFlags.allowLiveMutations ? "enabled" : "guarded")} | Isolation key: ${escapeHtml(detail.runFlags.syntheticIsolationConfigured ? "configured" : "missing")}</p>` : ""}
+      </section>
+      <section class="heart-section">
+        <div class="heart-section__head"><div><p class="heart-eyebrow">Areas</p><h2>What worked and what broke</h2></div></div>
+        ${renderAreaResults(detail)}
       </section>
       <section class="heart-section">
         <div class="heart-section__head"><div><p class="heart-eyebrow">Timeline</p><h2>Execution flow</h2></div></div>
@@ -162,6 +238,11 @@ function renderDetailPanel(detail = null, detailStatus = "idle", detailError = "
                     </div>
                     ${renderSeverityBadge(item.severity || "warning")}
                   </div>
+                  <div class="heart-list-card__meta">
+                    <span>${escapeHtml(item.area || item.module || "-")}</span>
+                    <span>${escapeHtml(item.action || "-")}</span>
+                    <span>${escapeHtml(item.persona || "-")}</span>
+                  </div>
                 </article>
               `).join("")}
             </div>
@@ -172,13 +253,14 @@ function renderDetailPanel(detail = null, detailStatus = "idle", detailError = "
   `;
 }
 
-export function renderRunsView(runsState = {}, connections = []) {
+export function renderRunsView(runsState = {}, connections = [], quickActions = []) {
   const items = Array.isArray(runsState.items) ? runsState.items : [];
   const runnerConfigured = isGithubRunnerConfigured(connections);
   const disabledAttr = runsState.pendingAction || !runnerConfigured ? "disabled" : "";
   const runnerNote = runnerConfigured
     ? "Secure GitHub Actions runner is ready."
     : getGithubRunnerNote(connections);
+  const packActions = quickActions.filter((item) => item.action === "start-pack");
   return `
     <div class="heart-view-stack">
       <section class="heart-section">
@@ -188,8 +270,7 @@ export function renderRunsView(runsState = {}, connections = []) {
             <h2>Smoke and full synthetic runs</h2>
           </div>
           <div class="heart-header-actions">
-            <button class="heart-button heart-button--primary" data-action="start-smoke" ${disabledAttr}>Start Smoke</button>
-            <button class="heart-button heart-button--dark" data-action="start-synthetic" ${disabledAttr}>Start Full Synthetic</button>
+            ${packActions.map((item, index) => `<button class="heart-button ${index === 0 ? "heart-button--primary" : item.packKey === "full-platform-pack" ? "heart-button--dark" : "heart-button--secondary"}" data-action="start-pack" data-pack-key="${escapeHtml(item.packKey || item.id)}" ${disabledAttr}>${escapeHtml(item.label)}</button>`).join("")}
             <button class="heart-button heart-button--secondary" data-action="refresh-heart">Refresh</button>
           </div>
         </div>

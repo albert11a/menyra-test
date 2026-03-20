@@ -122,18 +122,25 @@ async function refreshAll({ focusRunId = "" } = {}) {
   return refreshAllPromise;
 }
 
-async function startRun(mode = "smoke") {
-  actions.setPendingRunAction(mode);
+function findPackLabel(packKey = "") {
+  const quickActions = store.getState().dashboard.data?.quickActions || [];
+  const match = quickActions.find((item) => String(item.packKey || item.id) === String(packKey));
+  if (!match) {
+    if (packKey === "smoke") return "Smoke Test";
+    if (packKey === "full-platform-pack") return "Full Platform Test";
+    return String(packKey || "Run");
+  }
+  return String(match.label || match.id || "Run").replace(/^Start\s+/i, "");
+}
+
+async function startRun(packKey = "smoke") {
+  const label = findPackLabel(packKey);
+  actions.setPendingRunAction(packKey);
   try {
-    if (mode === "synthetic") {
-      await testRunnerAdapter.startSyntheticRun();
-      setToast("Synthetic queued", "Full synthetic run was queued through the secure runner adapter.", "success");
-    } else {
-      await testRunnerAdapter.startSmokeRun();
-      setToast("Smoke queued", "Smoke run was queued through the secure runner adapter.", "success");
-    }
+    const payload = await testRunnerAdapter.startPackRun(packKey);
+    setToast(`${label} queued`, `${label} was queued through the secure runner adapter.`, "success");
     actions.setActiveView("runs");
-    await refreshAll();
+    await refreshAll({ focusRunId: payload?.run?.id || "" });
   } catch (error) {
     if (String(error?.message || "").includes("GitHub Actions integration is not configured")) {
       actions.setActiveView("connections");
@@ -184,7 +191,10 @@ const operations = {
     await startRun("smoke");
   },
   async startSynthetic() {
-    await startRun("synthetic");
+    await startRun("full-platform-pack");
+  },
+  async startPack(packKey) {
+    await startRun(packKey);
   },
   async openRun(runId) {
     actions.setActiveView("runs");
@@ -237,9 +247,7 @@ authController.initialize().catch((error) => {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    const serviceWorkerUrl = window.location.pathname.startsWith("/apps/mnyra-heart/")
-      ? "/apps/mnyra-heart/sw.js"
-      : "/heart/sw.js";
+    const serviceWorkerUrl = new URL("./sw.js", import.meta.url);
     navigator.serviceWorker.register(serviceWorkerUrl).catch(() => {});
   });
 }

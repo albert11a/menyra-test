@@ -53,12 +53,12 @@ export function renderSettingsView(items = []) {
             <p>UI -> Heart secure backend -> GitHub Actions workflow dispatch. No workflow token exists in browser code.</p>
           </article>
           <article class="heart-note-card">
-            <strong>Monitoring path</strong>
-            <p>Functions normalize Firestore incidents and secure workflow ingest events before the UI renders them.</p>
+            <strong>Pack model</strong>
+            <p>Smoke, persona, mutation and journey packs are started from Heart, normalized in Functions and rendered without pack-specific UI hacks.</p>
           </article>
           <article class="heart-note-card">
-            <strong>Sentry placeholder</strong>
-            <p>Sentry is intentionally isolated as an adapter slot. It is not coupled into current render code or auth flow.</p>
+            <strong>Guardrails</strong>
+            <p>Write actions stay guarded by default. Unconfigured or dangerous paths are shown as needs setup, skipped or guarded instead of fake success.</p>
           </article>
         </div>
       </section>

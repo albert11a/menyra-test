@@ -9,7 +9,7 @@
   <title>mnyra heart</title>
   <link rel="icon" type="image/png" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
   <link rel="apple-touch-icon" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="stylesheet" href="./heart.css" />
+  <link rel="stylesheet" href="/apps/mnyra-heart/heart.css" />
 </head>
 <body>
   <div id="heartApp"></div>
@@ -26,7 +26,7 @@
     if (!heartPreviewHost) {
       const manifestLink = document.createElement("link");
       manifestLink.rel = "manifest";
-      manifestLink.href = "./manifest.json";
+      manifestLink.href = "/apps/mnyra-heart/manifest.json";
       manifestLink.crossOrigin = "use-credentials";
       document.head.appendChild(manifestLink);
     }
@@ -35,6 +35,6 @@
       fallbackApiBase: heartLocalHost ? "" : ""
     });
   </script>
-  <script type="module" src="./heart.js"></script>
+  <script type="module" src="/apps/mnyra-heart/heart.js"></script>
 </body>
 </html>

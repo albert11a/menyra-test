@@ -1,8 +1,8 @@
 {
   "name": "mnyra heart",
   "short_name": "heart",
-  "start_url": "/heart/",
-  "scope": "/heart/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#f5f3ef",
   "theme_color": "#f5f3ef",

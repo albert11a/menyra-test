@@ -37,6 +37,8 @@ function normalizeStatus(value = "", fallback = "idle") {
   if (status === "failure") return "failed";
   if (status === "timed_out") return "failed";
   if (status === "action_required") return "warning";
+  if (status === "not-configured") return "not_configured";
+  if (status === "needs-setup") return "not_configured";
   return status;
 }
 
@@ -55,7 +57,19 @@ function normalizeModuleStatus(item = {}) {
     latestFailure: asText(item.latestFailure || item.failureSummary),
     incidentCount: Math.max(0, Number(item.incidentCount) || 0),
     lastCheckAt: toIso(item.lastCheckAt || item.updatedAt || item.completedAt),
-    label: asText(item.label || item.module || item.key || "Unknown")
+    label: asText(item.label || item.module || item.key || "Unknown"),
+    personas: normalizeList(item.personas),
+    checks: normalizeList(item.checks).map((check, index) => ({
+      id: asText(check.id || `check-${index + 1}`),
+      action: asText(check.action || check.title || `Check ${index + 1}`),
+      status: normalizeStatus(check.status, "idle"),
+      note: asText(check.note || check.message),
+      area: asText(check.area || item.module || "unknown"),
+      persona: asText(check.persona),
+      startedAt: toIso(check.startedAt),
+      endedAt: toIso(check.endedAt)
+    })),
+    counts: item.counts && typeof item.counts === "object" ? item.counts : {}
   };
 }
 
@@ -96,6 +110,11 @@ export function normalizeRunSummary(item = {}) {
   return {
     id: asText(item.id || item.runId || item.githubRunId),
     mode: asText(item.mode, "smoke"),
+    packKey: asText(item.packKey || item.mode, "smoke"),
+    packLabel: asText(item.packLabel || item.title || item.name || "Run"),
+    packLevel: asText(item.packLevel),
+    packSummary: asText(item.packSummary || item.summary),
+    personas: normalizeList(item.personas),
     source: asText(item.source, "heart"),
     environment: asText(item.environment, "production"),
     status: normalizeGithubExecutionState(item.status || item.runStatus, item.conclusion, normalizeStatus(item.status || item.runStatus, "idle")),
@@ -110,7 +129,9 @@ export function normalizeRunSummary(item = {}) {
     passedChecks: Math.max(0, Number(item.passedChecks) || 0),
     failedChecks: Math.max(0, Number(item.failedChecks) || 0),
     warningCount: Math.max(0, Number(item.warningCount) || 0),
+    statusBreakdown: item.statusBreakdown && typeof item.statusBreakdown === "object" ? item.statusBreakdown : {},
     currentStep: asText(item.currentStep),
+    runFlags: item.runFlags && typeof item.runFlags === "object" ? item.runFlags : {},
     modules: normalizeList(item.modules).map(normalizeModuleStatus),
     artifacts: normalizeList(item.artifacts).map((artifact) => ({
       label: asText(artifact.label || artifact.name || "Artifact"),
@@ -154,13 +175,16 @@ export function normalizeRunDetail(detail = {}) {
     failureDetails: normalizeList(detail.failureDetails).map((item, index) => ({
       id: asText(item.id || `failure-${index + 1}`),
       module: asText(item.module || item.source || "unknown"),
+      area: asText(item.area || item.module || item.source || "unknown"),
+      action: asText(item.action),
+      persona: asText(item.persona),
       title: asText(item.title || item.message || `Failure ${index + 1}`),
       message: asText(item.message || item.note),
       severity: normalizeSeverity(item.severity, "warning")
     })),
     reportMeta: {
       reportGeneratedAt: toIso(detail.reportGeneratedAt || detail.updatedAt || run.endedAt || run.startedAt),
-      reportLabel: asText(detail.reportLabel || `${run.mode.toUpperCase()} report`),
+      reportLabel: asText(detail.reportLabel || `${run.packLabel || run.mode.toUpperCase()} report`),
       formattedStartedAt: formatDateTime(run.startedAt),
       formattedEndedAt: formatDateTime(run.endedAt)
     }
@@ -208,11 +232,12 @@ export function normalizeConnection(item = {}) {
 export function normalizeDashboardData(payload = {}) {
   const latestSmokeRun = payload.latestSmokeRun ? normalizeRunSummary(payload.latestSmokeRun) : null;
   const latestSyntheticRun = payload.latestSyntheticRun ? normalizeRunSummary(payload.latestSyntheticRun) : null;
+  const latestPersonaRun = payload.latestPersonaRun ? normalizeRunSummary(payload.latestPersonaRun) : null;
   const incidents = normalizeList(payload.latestIncidents).map(normalizeIncident);
   const runs = normalizeList(payload.recentRuns).map(normalizeRunSummary);
   const moduleHealth = normalizeList(payload.moduleHealth).length
     ? payload.moduleHealth.map(normalizeModuleStatus)
-    : buildModuleHealthFromRuns([latestSmokeRun, latestSyntheticRun, ...runs].filter(Boolean), incidents);
+    : buildModuleHealthFromRuns([latestSmokeRun, latestSyntheticRun, latestPersonaRun, ...runs].filter(Boolean), incidents);
   return {
     overallStatus: normalizeStatus(payload.overallStatus, "idle"),
     overallNote: asText(payload.overallNote || "No status note available."),
@@ -224,6 +249,7 @@ export function normalizeDashboardData(payload = {}) {
     },
     smokeStatus: latestSmokeRun,
     syntheticStatus: latestSyntheticRun,
+    personaStatus: latestPersonaRun,
     moduleHealth,
     latestIncidents: incidents,
     recentRuns: runs,
@@ -232,7 +258,10 @@ export function normalizeDashboardData(payload = {}) {
       id: asText(action.id || `action-${index + 1}`),
       label: asText(action.label || action.title),
       action: asText(action.action || action.id),
-      note: asText(action.note)
+      note: asText(action.note),
+      packKey: asText(action.packKey || action.id),
+      mode: asText(action.mode),
+      workflowMode: asText(action.workflowMode)
     }))
   };
 }

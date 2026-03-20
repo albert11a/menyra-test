@@ -9,6 +9,15 @@ export const SOCIAL_SELECTORS = Object.freeze({
   manifestLink: 'link[rel="manifest"]'
 });
 
+export const WAITER_SELECTORS = Object.freeze({
+  loginForm: "#loginForm",
+  loginEmail: "#loginEmail",
+  loginPassword: "#loginPassword",
+  logoutButton: "#logoutBtn",
+  mainShell: "main, [data-tab], [data-order-action], #logoutBtn",
+  manifestLink: 'link[rel="manifest"]'
+});
+
 export const SOCIAL_TABS = Object.freeze({
   feed: "feed",
   profile: "profile",

@@ -4,7 +4,15 @@
   "type": "module",
   "scripts": {
     "smoke": "node ./src/run-pack.mjs smoke",
-    "synthetic": "node ./src/run-pack.mjs synthetic"
+    "synthetic": "node ./src/run-pack.mjs full-platform-pack",
+    "ceo-pack": "node ./src/run-pack.mjs ceo-pack",
+    "business-pack": "node ./src/run-pack.mjs business-pack",
+    "staff-pack": "node ./src/run-pack.mjs staff-pack",
+    "user-pack": "node ./src/run-pack.mjs user-pack",
+    "guest-pack": "node ./src/run-pack.mjs guest-pack",
+    "mutation-pack": "node ./src/run-pack.mjs mutation-pack",
+    "journey-pack": "node ./src/run-pack.mjs journey-pack",
+    "full-platform-pack": "node ./src/run-pack.mjs full-platform-pack"
   },
   "dependencies": {
     "playwright": "^1.54.0"

@@ -40,6 +40,10 @@ export function bindHeartEvents({
       await operations.startSynthetic?.();
       return;
     }
+    if (action === "start-pack") {
+      await operations.startPack?.(target.getAttribute("data-pack-key"));
+      return;
+    }
     if (action === "logout") {
       await operations.logout?.();
       return;

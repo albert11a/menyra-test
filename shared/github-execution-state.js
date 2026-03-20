@@ -13,7 +13,7 @@ export function normalizeGithubExecutionState(status = "", conclusion = "", fall
     if (safeConclusion === "cancelled") return "cancelled";
     if (safeConclusion === "action_required") return "warning";
     if (safeConclusion === "neutral") return "warning";
-    if (safeConclusion === "skipped") return "warning";
+    if (safeConclusion === "skipped") return "skipped";
     if (safeConclusion === "stale") return "warning";
     return safeConclusion;
   }

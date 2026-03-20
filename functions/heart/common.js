@@ -44,6 +44,8 @@ function normalizeStatus(value = "", fallback = "idle") {
   if (status === "failure") return "failed";
   if (status === "timed_out") return "failed";
   if (status === "action_required") return "warning";
+  if (status === "not-configured") return "not_configured";
+  if (status === "needs-setup") return "not_configured";
   return status;
 }
 

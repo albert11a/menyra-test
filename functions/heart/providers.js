@@ -10,6 +10,10 @@ const {
   serializeFirestoreValue,
   toIso
 } = require("./common");
+const {
+  getHeartPack,
+  listHeartPackQuickActions
+} = require("./generated/heart-pack-catalog.cjs");
 
 const MODULE_ORDER = Object.freeze([
   "auth",
@@ -36,7 +40,22 @@ function sortByNewest(items = [], key = "updatedAt") {
   return items.slice().sort((left, right) => String(right?.[key] || "").localeCompare(String(left?.[key] || "")));
 }
 
+function isGithubRateLimited(run = {}) {
+  const until = Date.parse(asText(run?.github?.rateLimitedUntil));
+  return Number.isFinite(until) && until > Date.now();
+}
+
 function normalizeModuleStatus(item = {}) {
+  const checks = ensureArray(item.checks).map((check, index) => ({
+    id: asText(check.id, `check_${index + 1}`),
+    action: asText(check.action || check.title || `Check ${index + 1}`),
+    status: normalizeStatus(check.status, "idle"),
+    note: asText(check.note || check.message),
+    area: asText(check.area || item.module || item.key || "unknown"),
+    persona: asText(check.persona),
+    startedAt: asText(check.startedAt),
+    endedAt: asText(check.endedAt)
+  }));
   return {
     module: asText(item.module || item.key || "unknown"),
     label: asText(item.label || item.module || item.key || "Unknown"),
@@ -44,15 +63,24 @@ function normalizeModuleStatus(item = {}) {
     note: asText(item.note || item.summary),
     latestFailure: asText(item.latestFailure || item.failureSummary),
     incidentCount: Math.max(0, Number(item.incidentCount) || 0),
-    lastCheckAt: asText(item.lastCheckAt || item.updatedAt || item.completedAt)
+    lastCheckAt: asText(item.lastCheckAt || item.updatedAt || item.completedAt),
+    personas: ensureArray(item.personas),
+    checks,
+    counts: item.counts && typeof item.counts === "object" ? item.counts : {}
   };
 }
 
 function normalizeRunRecord(record = {}) {
   const data = serializeFirestoreValue(record);
+  const pack = getHeartPack(data.packKey || data.mode);
   return {
     id: asText(data.id),
-    mode: asText(data.mode, "smoke"),
+    mode: asText(data.mode, pack.mode || "smoke"),
+    packKey: asText(data.packKey, pack.key),
+    packLabel: asText(data.packLabel, pack.title),
+    packLevel: asText(data.packLevel, pack.level),
+    packSummary: asText(data.packSummary, pack.summary),
+    personas: ensureArray(data.personas || pack.personas),
     source: asText(data.source, "heart"),
     environment: asText(data.environment, "production"),
     status: normalizeStatus(data.status, "idle"),
@@ -70,6 +98,7 @@ function normalizeRunRecord(record = {}) {
     passedChecks: Math.max(0, Number(data.passedChecks) || 0),
     failedChecks: Math.max(0, Number(data.failedChecks) || 0),
     warningCount: Math.max(0, Number(data.warningCount) || 0),
+    statusBreakdown: data.statusBreakdown && typeof data.statusBreakdown === "object" ? data.statusBreakdown : {},
     currentStep: asText(data.currentStep),
     modules: ensureArray(data.modules).map(normalizeModuleStatus),
     timeline: ensureArray(data.timeline),
@@ -77,7 +106,8 @@ function normalizeRunRecord(record = {}) {
     cleanup: data.cleanup && typeof data.cleanup === "object" ? data.cleanup : { status: "idle", summary: "No cleanup information.", items: [] },
     artifacts: ensureArray(data.artifacts),
     failureDetails: ensureArray(data.failureDetails),
-    github: data.github && typeof data.github === "object" ? data.github : {}
+    github: data.github && typeof data.github === "object" ? data.github : {},
+    runFlags: data.runFlags && typeof data.runFlags === "object" ? data.runFlags : {}
   };
 }
 
@@ -135,6 +165,11 @@ function createHeartProviders({ db }) {
 
   async function createQueuedRun({
     mode = "smoke",
+    packKey = "",
+    packLabel = "",
+    packLevel = "",
+    packSummary = "",
+    personas = [],
     environment = "production",
     startedBy = "",
     startedByUid = "",
@@ -142,7 +177,7 @@ function createHeartProviders({ db }) {
     triggerSource = "heart-ui",
     summary = ""
   } = {}) {
-    const runId = createRunId(mode);
+    const runId = createRunId(packKey || mode);
     const now = new Date().toISOString();
     const payload = {
       id: runId,
@@ -180,7 +215,21 @@ function createHeartProviders({ db }) {
       },
       artifacts: [],
       failureDetails: [],
-      github: {}
+      github: {},
+      packKey: asText(packKey, getHeartPack(mode).key),
+      packLabel: asText(packLabel, getHeartPack(mode).title),
+      packLevel: asText(packLevel, getHeartPack(mode).level),
+      packSummary: asText(packSummary, getHeartPack(mode).summary),
+      personas: ensureArray(personas).length ? ensureArray(personas) : getHeartPack(mode).personas,
+      statusBreakdown: {
+        success: 0,
+        warning: 0,
+        failed: 0,
+        critical: 0,
+        skipped: 0,
+        not_configured: 0,
+        guarded: 0
+      }
     };
     await runsCollection.doc(runId).set(payload, { merge: true });
     return normalizeRunRecord(payload);
@@ -247,6 +296,9 @@ function createHeartProviders({ db }) {
       passedChecks: Math.max(0, Number(report.passedChecks) || 0),
       failedChecks: Math.max(0, Number(report.failedChecks) || 0),
       warningCount: Math.max(0, Number(report.warningCount) || 0),
+      statusBreakdown: report.statusBreakdown && typeof report.statusBreakdown === "object"
+        ? report.statusBreakdown
+        : (existing?.statusBreakdown || {}),
       currentStep: asText(report.currentStep || existing?.currentStep),
       modules: ensureArray(report.modules).map(normalizeModuleStatus),
       timeline: ensureArray(report.timeline).map((item, index) => ({
@@ -267,6 +319,9 @@ function createHeartProviders({ db }) {
         : { status: "idle", summary: "No cleanup information.", items: [] },
       artifacts: ensureArray(report.artifacts),
       failureDetails: ensureArray(report.failureDetails),
+      runFlags: report.runFlags && typeof report.runFlags === "object"
+        ? report.runFlags
+        : (existing?.runFlags || {}),
       github: report.github && typeof report.github === "object"
         ? { ...(existing?.github || {}), ...report.github }
         : (existing?.github || {})
@@ -340,14 +395,15 @@ function createHeartProviders({ db }) {
 
   function buildDashboardSummary({ runs = [], incidents = [], connections = [] } = {}) {
     const latestSmokeRun = runs.find((run) => run.mode === "smoke") || null;
-    const latestSyntheticRun = runs.find((run) => run.mode === "synthetic") || null;
+    const latestSyntheticRun = runs.find((run) => run.packKey === "full-platform-pack" || run.mode === "synthetic") || null;
+    const latestPersonaRun = runs.find((run) => run.mode === "persona") || null;
     const activeIncidents = incidents.filter((incident) => incident.status !== "resolved");
     const criticalIncidents = activeIncidents.filter((incident) => incident.severity === "critical");
     const overallStatus = criticalIncidents.length
       ? "critical"
       : activeIncidents.length
         ? "warning"
-        : [latestSmokeRun, latestSyntheticRun].some((run) => run && ["failed", "critical"].includes(run.status))
+        : [latestSmokeRun, latestSyntheticRun, latestPersonaRun].some((run) => run && ["failed", "critical"].includes(run.status))
           ? "warning"
           : "success";
     return {
@@ -360,6 +416,7 @@ function createHeartProviders({ db }) {
       updatedAt: new Date().toISOString(),
       latestSmokeRun,
       latestSyntheticRun,
+      latestPersonaRun,
       latestIncidents: incidents.slice(0, 8),
       recentRuns: runs.slice(0, 12),
       moduleHealth: buildModuleHealth(runs, incidents),
@@ -370,8 +427,7 @@ function createHeartProviders({ db }) {
       },
       connectionsPreview: connections.slice(0, 4),
       quickActions: [
-        { id: "start-smoke", label: "Start Smoke", action: "start-smoke", note: "Critical-path health verification." },
-        { id: "start-synthetic", label: "Start Full Synthetic", action: "start-synthetic", note: "Isolated synthetic system exercise." },
+        ...listHeartPackQuickActions(),
         { id: "refresh-heart", label: "Refresh", action: "refresh-heart", note: "Reload monitoring, incidents, runs and connections." }
       ]
     };
@@ -380,16 +436,28 @@ function createHeartProviders({ db }) {
   function buildConnections({ githubConfig = null, runs = [], incidents = [] } = {}) {
     const latestRun = runs[0] || null;
     const latestIncident = incidents[0] || null;
+    const rateLimitedRun = runs.find((run) => isGithubRateLimited(run)) || null;
+    const githubRateLimitDetail = rateLimitedRun?.github?.rateLimitedUntil
+      ? `Cached until ${rateLimitedRun.github.rateLimitedUntil}`
+      : "GitHub API rate limited. Heart is using cached workflow data temporarily.";
     return [
       {
         id: "github-actions",
         name: "GitHub Actions Runner",
         kind: "github",
-        status: githubConfig?.configured ? "success" : "warning",
-        note: githubConfig?.configured ? "Secure workflow dispatch is configured." : "Configure HEART_GITHUB_* env values to enable secure workflow dispatch.",
+        status: !githubConfig?.configured ? "not_configured" : rateLimitedRun ? "warning" : "success",
+        note: !githubConfig?.configured
+          ? "Configure HEART_GITHUB_* env values to enable secure workflow dispatch."
+          : rateLimitedRun
+            ? "GitHub API rate limited. Heart is showing cached workflow state until the cooldown expires."
+            : "Secure workflow dispatch is configured.",
         lastCheckedAt: new Date().toISOString(),
         mode: githubConfig?.configured ? "real" : "not-configured",
-        detail: githubConfig?.configured ? `${githubConfig.owner}/${githubConfig.repo}` : "No secure runner provider configured yet."
+        detail: !githubConfig?.configured
+          ? "No secure runner provider configured yet."
+          : rateLimitedRun
+            ? githubRateLimitDetail
+            : `${githubConfig.owner}/${githubConfig.repo}`
       },
       {
         id: "firebase-heart-store",
@@ -415,7 +483,7 @@ function createHeartProviders({ db }) {
         id: "sentry-adapter",
         name: "Sentry Adapter",
         kind: "sentry",
-        status: "idle",
+        status: "not_configured",
         note: "Architecture reserved. No Sentry credentials configured.",
         lastCheckedAt: "",
         mode: "placeholder",

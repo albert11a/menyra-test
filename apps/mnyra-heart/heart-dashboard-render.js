@@ -17,6 +17,7 @@ import {
 function renderTopStatusCards(data = {}) {
   const smoke = data.smokeStatus;
   const synthetic = data.syntheticStatus;
+  const persona = data.personaStatus;
   const monitoring = data.liveMonitoringSummary || {};
   return `
     <section class="heart-hero-grid">
@@ -48,7 +49,7 @@ function renderTopStatusCards(data = {}) {
       <article class="heart-kpi-card">
         <div class="heart-kpi-card__head">
           <div>
-            <p class="heart-eyebrow">Full synthetic</p>
+            <p class="heart-eyebrow">Full platform</p>
             <h2>${escapeHtml(synthetic?.status ? String(synthetic.status).toUpperCase() : "IDLE")}</h2>
           </div>
           ${renderStatusBadge(synthetic?.status || "idle")}
@@ -57,6 +58,20 @@ function renderTopStatusCards(data = {}) {
         <div class="heart-meta-row">
           <span>${escapeHtml(synthetic?.summary || "No synthetic run recorded.")}</span>
           <span>${escapeHtml(synthetic?.startedAt ? formatDateTime(synthetic.startedAt) : "-")}</span>
+        </div>
+      </article>
+      <article class="heart-kpi-card">
+        <div class="heart-kpi-card__head">
+          <div>
+            <p class="heart-eyebrow">Latest persona</p>
+            <h2>${escapeHtml(persona?.packLabel || "No persona run")}</h2>
+          </div>
+          ${renderStatusBadge(persona?.status || "idle")}
+        </div>
+        ${renderStatValue(persona?.summary || "No persona pack recorded.", persona?.startedAt ? formatDateTime(persona.startedAt) : "No run")}
+        <div class="heart-meta-row">
+          <span>${escapeHtml(persona?.personas?.join(", ") || "No personas")}</span>
+          <span>${escapeHtml(formatRelative(data.updatedAt))}</span>
         </div>
       </article>
       <article class="heart-kpi-card">
@@ -77,12 +92,13 @@ function renderTopStatusCards(data = {}) {
   `;
 }
 
-function renderRunControls(connections = []) {
+function renderRunControls(connections = [], quickActions = []) {
   const runnerConfigured = isGithubRunnerConfigured(connections);
   const disabledAttr = runnerConfigured ? "" : "disabled";
   const note = runnerConfigured
     ? "Secure GitHub Actions runner is ready."
     : getGithubRunnerNote(connections);
+  const packActions = quickActions.filter((item) => item.action === "start-pack");
   return `
     <section class="heart-section">
       <div class="heart-section__head">
@@ -92,8 +108,7 @@ function renderRunControls(connections = []) {
         </div>
       </div>
       <div class="heart-control-grid">
-        <button class="heart-button heart-button--primary" data-action="start-smoke" ${disabledAttr}>Start Smoke Test</button>
-        <button class="heart-button heart-button--dark" data-action="start-synthetic" ${disabledAttr}>Start Full Synthetic</button>
+        ${packActions.map((item, index) => `<button class="heart-button ${index === 0 ? "heart-button--primary" : item.packKey === "full-platform-pack" ? "heart-button--dark" : "heart-button--secondary"}" data-action="start-pack" data-pack-key="${escapeHtml(item.packKey || item.id)}" ${disabledAttr}>${escapeHtml(item.label)}</button>`).join("")}
         <button class="heart-button heart-button--secondary" data-action="refresh-heart">Refresh Status</button>
       </div>
       <p class="heart-section__note">${escapeHtml(note)}</p>
@@ -162,7 +177,7 @@ function renderRunHistoryPreview(items = []) {
         ${items.slice(0, 5).map((item) => `
           <button class="heart-run-preview" data-action="open-run" data-run-id="${escapeHtml(item.id)}">
             <div>
-              <strong>${escapeHtml(item.mode === "synthetic" ? "Full synthetic" : "Smoke test")}</strong>
+              <strong>${escapeHtml(item.packLabel || item.mode || "Run")}</strong>
               <p>${escapeHtml(item.summary || "No summary")}</p>
             </div>
             <div class="heart-run-preview__meta">
@@ -220,7 +235,7 @@ export function renderDashboardView(data = null) {
       ${renderTopStatusCards(data)}
       <div class="heart-two-column-grid">
         <div class="heart-view-stack">
-          ${renderRunControls(data.connectionsPreview || [])}
+          ${renderRunControls(data.connectionsPreview || [], data.quickActions || [])}
           ${renderIncidentPreview(data.latestIncidents || [])}
         </div>
         <div class="heart-view-stack">

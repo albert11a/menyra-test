@@ -1,13 +1,13 @@
 import path from "node:path";
 import { chromium } from "playwright";
 import config from "../playwright.config.js";
-import { getRunnerEnv, requireCredentials } from "./helpers/env.mjs";
+import { getRunnerEnv } from "./helpers/env.mjs";
 import { createHeartContext } from "./helpers/heart-context.mjs";
 import { captureArtifact } from "./helpers/social-app.mjs";
+import { createPersonaRegistry } from "./personas/persona-registry.mjs";
+import { resolvePackRunner } from "./packs/pack-registry.mjs";
 import { writeHeartReport } from "./reporters/heart-json-reporter.mjs";
 import { postHeartIncident, postHeartReport, postHeartStatus } from "./reporters/heart-webhook-client.mjs";
-import { runSmokeScenario } from "./scenarios/smoke.spec.mjs";
-import { runSyntheticScenario } from "./scenarios/full-synthetic.spec.mjs";
 
 function asText(value, fallback = "") {
   const text = String(value || "").trim();
@@ -15,15 +15,20 @@ function asText(value, fallback = "") {
 }
 
 async function main() {
-  const mode = asText(process.argv[2], "smoke");
-  const env = await getRunnerEnv(mode);
-  requireCredentials(env);
+  const requestedPackKey = asText(process.argv[2], process.env.HEART_PACK_KEY || "smoke");
+  const env = await getRunnerEnv(requestedPackKey);
+  const personas = createPersonaRegistry(env);
+  const {
+    pack,
+    runPack
+  } = resolvePackRunner(requestedPackKey);
 
   const heart = createHeartContext({
     runId: env.runId,
-    mode,
+    mode: pack.mode,
+    pack,
     environment: "production",
-    startedBy: env.ceoEmail
+    startedBy: env.ceoEmail || "automation"
   });
   heart.attachGithub({
     runId: env.githubRunId,
@@ -35,12 +40,28 @@ async function main() {
     headBranch: env.githubRefName,
     headSha: env.githubSha
   });
+  heart.setRunFlags({
+    allowLiveMutations: !!env.allowLiveMutations,
+    syntheticIsolationConfigured: !!env.syntheticIsolationKey,
+    requestedPackKey,
+    resolvedPackKey: pack.key,
+    personas: Object.fromEntries(
+      Object.entries(personas).map(([key, persona]) => [key, {
+        configured: !!persona.configured,
+        app: persona.app,
+        baseUrl: persona.baseUrl,
+        guestRouteUrl: persona.guestRouteUrl || ""
+      }])
+    )
+  });
 
   async function emitStatus(currentStep, status = "running", note = "") {
     heart.setCurrentStep(currentStep);
     await postHeartStatus(env, {
       runId: env.runId,
-      mode,
+      mode: pack.mode,
+      packKey: pack.key,
+      packLabel: pack.title,
       status,
       currentStep,
       summary: heart.getReport().summary,
@@ -51,7 +72,9 @@ async function main() {
         status,
         note,
         startedAt: new Date().toISOString(),
-        endedAt: ["success", "warning", "failed", "critical", "cancelled"].includes(status) ? new Date().toISOString() : ""
+        endedAt: ["success", "warning", "failed", "critical", "cancelled", "skipped", "not_configured", "guarded"].includes(status)
+          ? new Date().toISOString()
+          : ""
       } : null
     });
   }
@@ -60,9 +83,29 @@ async function main() {
   let browserContext;
   let page;
 
+  async function createScopedPage(label = "scope") {
+    const scopedContext = await browser.newContext({ viewport: config.viewport });
+    scopedContext.setDefaultNavigationTimeout(config.navigationTimeoutMs);
+    scopedContext.setDefaultTimeout(config.actionTimeoutMs);
+    await scopedContext.tracing.start({
+      screenshots: !!config.traceScreenshots,
+      snapshots: !!config.traceSnapshots
+    });
+    const scopedPage = await scopedContext.newPage();
+    return {
+      page: scopedPage,
+      async dispose() {
+        const tracePath = path.resolve(env.artifactDir, `${label}-trace.zip`);
+        await scopedContext.tracing.stop({ path: tracePath }).catch(() => undefined);
+        heart.addArtifact({ label: `${label} trace`, kind: "trace", path: tracePath });
+        await scopedContext.close().catch(() => undefined);
+      }
+    };
+  }
+
   try {
-    heart.setSummary(`${mode === "synthetic" ? "Full synthetic" : "Smoke"} runner booting.`);
-    await emitStatus("Runner booting", "running", "Initializing Playwright browser context.");
+    heart.setSummary(`${pack.title} booting.`);
+    await emitStatus("Runner booting", "running", `Initializing ${pack.title}.`);
 
     browser = await chromium.launch({ headless: env.headless });
     browserContext = await browser.newContext({ viewport: config.viewport });
@@ -74,58 +117,64 @@ async function main() {
     });
     page = await browserContext.newPage();
 
-    if (mode === "synthetic") {
-      await emitStatus("Synthetic scenario running", "running", "Executing full synthetic scenario pack.");
-      await runSyntheticScenario({ page, env, heart, emitStatus });
-    } else {
-      await emitStatus("Smoke scenario running", "running", "Executing smoke scenario pack.");
-      await runSmokeScenario({ page, env, heart, emitStatus });
-    }
+    await emitStatus(`${pack.title} running`, "running", pack.summary);
+    await runPack({
+      page,
+      browser,
+      env,
+      heart,
+      personas,
+      pack,
+      emitStatus,
+      createScopedPage
+    });
 
     heart.finalize();
     await emitStatus(
-      heart.report.status === "success" ? "Run completed" : "Run completed with warnings",
+      heart.report.status === "success" ? "Run completed" : "Run completed with issues",
       heart.report.status,
       heart.report.summary
     );
   } catch (error) {
-    heart.failModule(mode === "synthetic" ? "synthetic" : "smoke", error, {
-      title: `${mode} runner execution failed`,
-      severity: "critical"
+    heart.failModule("runner", error, {
+      title: `${pack.title} execution failed`,
+      severity: "critical",
+      area: "runner",
+      action: pack.key
     });
-    heart.setSummary(asText(error?.message, `${mode} runner failed.`));
+    heart.setSummary(asText(error?.message, `${pack.title} failed.`));
     heart.finalize();
     if (page) {
-      const failureScreenshot = await captureArtifact(page, env, `${mode}-failure-state`).catch(() => "");
+      const failureScreenshot = await captureArtifact(page, env, `${pack.key}-failure-state`).catch(() => "");
       if (failureScreenshot) {
-        heart.addArtifact({ label: `${mode} failure screenshot`, kind: "screenshot", path: failureScreenshot });
+        heart.addArtifact({ label: `${pack.title} failure screenshot`, kind: "screenshot", path: failureScreenshot });
       }
     }
     await postHeartIncident(env, {
       runId: env.runId,
-      source: mode,
-      module: mode,
+      source: pack.key,
+      module: "runner",
       severity: "critical",
-      title: `${mode} runner failed`,
-      message: asText(error?.stack || error?.message, `${mode} runner failed.`),
+      title: `${pack.title} failed`,
+      message: asText(error?.stack || error?.message, `${pack.title} failed.`),
       status: "open",
       environment: "production",
       build: env.githubSha,
       actor: env.ceoEmail
     }).catch(() => undefined);
-    await emitStatus("Run failed", "failed", asText(error?.message, `${mode} runner failed.`)).catch(() => undefined);
+    await emitStatus("Run failed", "failed", asText(error?.message, `${pack.title} failed.`)).catch(() => undefined);
   } finally {
     if (browserContext) {
-      const tracePath = path.resolve(env.artifactDir, `${mode}-trace.zip`);
+      const tracePath = path.resolve(env.artifactDir, `${pack.key}-trace.zip`);
       await browserContext.tracing.stop({ path: tracePath }).catch(() => undefined);
-      heart.addArtifact({ label: `${mode} trace`, kind: "trace", path: tracePath });
+      heart.addArtifact({ label: `${pack.title} trace`, kind: "trace", path: tracePath });
     }
     if (browser) {
       await browser.close().catch(() => undefined);
     }
     const report = heart.getReport();
     const reportPath = await writeHeartReport({ report, outputFile: env.outputFile });
-    heart.addArtifact({ label: `${mode} report`, kind: "json", path: reportPath });
+    heart.addArtifact({ label: `${pack.title} report`, kind: "json", path: reportPath });
     await postHeartReport(env, {
       runId: env.runId,
       report: heart.getReport()
@@ -133,7 +182,7 @@ async function main() {
   }
 
   const finalStatus = heart.getReport().status;
-  process.exit(finalStatus === "failed" || finalStatus === "critical" ? 1 : 0);
+  process.exit(["failed", "critical"].includes(finalStatus) ? 1 : 0);
 }
 
 main().catch((error) => {

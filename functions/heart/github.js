@@ -7,6 +7,9 @@ const {
 const {
   normalizeGithubExecutionState
 } = require("./shared-github-execution-state");
+const {
+  getHeartPack
+} = require("./generated/heart-pack-catalog.cjs");
 
 function buildApiHeaders(token) {
   return {
@@ -74,12 +77,14 @@ async function githubRequest(config, path, {
   return parsed;
 }
 
-function resolveWorkflowId(config, mode = "smoke") {
-  return mode === "synthetic" ? config.syntheticWorkflow : config.smokeWorkflow;
+function resolveWorkflowId(config, modeOrPack = "smoke") {
+  const pack = getHeartPack(modeOrPack);
+  return pack.workflowMode === "synthetic" ? config.syntheticWorkflow : config.smokeWorkflow;
 }
 
-async function dispatchWorkflow(config, mode, inputs = {}) {
-  const workflowId = resolveWorkflowId(config, mode);
+async function dispatchWorkflow(config, modeOrPack, inputs = {}) {
+  const pack = getHeartPack(modeOrPack);
+  const workflowId = resolveWorkflowId(config, pack.key);
   await githubRequest(
     config,
     `/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}/actions/workflows/${encodeURIComponent(workflowId)}/dispatches`,
@@ -94,7 +99,9 @@ async function dispatchWorkflow(config, mode, inputs = {}) {
   return {
     workflowId,
     ref: config.ref,
-    mode
+    mode: pack.mode,
+    workflowMode: pack.workflowMode,
+    packKey: pack.key
   };
 }
 

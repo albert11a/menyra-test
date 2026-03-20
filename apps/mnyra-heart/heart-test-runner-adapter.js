@@ -21,14 +21,22 @@ export function createHeartTestRunnerAdapter({ apiClient }) {
   }
 
   async function startSmokeRun() {
-    const payload = await apiClient.request("heartStartSmokeRun", {
+    return startPackRun("smoke");
+  }
+
+  async function startSyntheticRun() {
+    return startPackRun("full-platform-pack");
+  }
+
+  async function startPackRun(packKey) {
+    const payload = await apiClient.request("heartStartPackRun", {
       method: "POST",
-      body: {}
+      body: { packKey }
     });
     return payload;
   }
 
-  async function startSyntheticRun() {
+  async function startLegacySyntheticRun() {
     const payload = await apiClient.request("heartStartSyntheticRun", {
       method: "POST",
       body: {}
@@ -49,6 +57,8 @@ export function createHeartTestRunnerAdapter({ apiClient }) {
     loadRunDetail,
     startSmokeRun,
     startSyntheticRun,
+    startPackRun,
+    startLegacySyntheticRun,
     cancelRun
   };
 }

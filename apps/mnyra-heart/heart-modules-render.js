@@ -37,6 +37,9 @@ export function renderModuleHealthGrid(modules = [], {
               <span>${escapeHtml(String(item.incidentCount || 0))} incidents</span>
               <span>${escapeHtml(item.lastCheckAt ? formatRelative(item.lastCheckAt) : "No check")}</span>
             </div>
+            ${item.counts && Object.keys(item.counts).length ? `<div class="heart-list-card__meta">
+              ${Object.entries(item.counts).filter(([, value]) => Number(value) > 0).map(([status, value]) => `${escapeHtml(String(value))} ${escapeHtml(status.replaceAll("_", " "))}`).join(" • ")}
+            </div>` : ""}
             ${item.latestFailure ? `<p class="heart-module-card__failure">${escapeHtml(item.latestFailure)}</p>` : ""}
             ${!compact ? `<p class="heart-module-card__timestamp">Last check: ${escapeHtml(item.lastCheckAt ? formatDateTime(item.lastCheckAt) : "-")}</p>` : ""}
           </article>
