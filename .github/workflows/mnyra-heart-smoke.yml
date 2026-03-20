@@ -1,0 +1,101 @@
+name: mnyra-heart-smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      heart_run_id:
+        description: Heart run id
+        required: true
+        type: string
+      heart_mode:
+        description: Run mode label
+        required: false
+        default: smoke
+        type: string
+      heart_environment:
+        description: Target environment label
+        required: false
+        default: production
+        type: string
+      heart_actor_uid:
+        description: Triggering CEO uid
+        required: false
+        type: string
+      heart_actor_email:
+        description: Triggering CEO email
+        required: false
+        type: string
+      heart_actor_name:
+        description: Triggering CEO name
+        required: false
+        type: string
+      heart_base_url:
+        description: Heart app base url
+        required: false
+        default: https://menyra.com/heart/
+        type: string
+      social_base_url:
+        description: Menyra Social base url
+        required: false
+        default: https://menyra.com/apps/menyra-social/
+        type: string
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: tests/mnyra-heart-runner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install runner dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke pack
+        run: npm run smoke
+        env:
+          HEART_RUN_ID: ${{ inputs.heart_run_id }}
+          MNYRA_SOCIAL_BASE_URL: ${{ inputs.social_base_url }}
+          MNYRA_CEO_EMAIL: ${{ secrets.MNYRA_CEO_EMAIL }}
+          MNYRA_CEO_PASSWORD: ${{ secrets.MNYRA_CEO_PASSWORD }}
+          HEART_STATUS_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartIngestRunStatus
+          HEART_REPORT_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartIngestRunReport
+          HEART_INCIDENT_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartIngestIncident
+          HEART_WEBHOOK_SECRET: ${{ secrets.HEART_WEBHOOK_SECRET }}
+          MNYRA_HEART_HEADLESS: true
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          MNYRA_ALLOW_LIVE_MUTATIONS: ${{ vars.MNYRA_ALLOW_LIVE_MUTATIONS }}
+          MNYRA_SMOKE_BUSINESS_PROFILE_URL: ${{ vars.MNYRA_SMOKE_BUSINESS_PROFILE_URL }}
+          MNYRA_SMOKE_CHAT_TARGET_URL: ${{ vars.MNYRA_SMOKE_CHAT_TARGET_URL }}
+          MNYRA_SMOKE_CHAT_COMPOSER_SELECTOR: ${{ vars.MNYRA_SMOKE_CHAT_COMPOSER_SELECTOR }}
+          MNYRA_SMOKE_CHAT_SEND_SELECTOR: ${{ vars.MNYRA_SMOKE_CHAT_SEND_SELECTOR }}
+          MNYRA_SMOKE_CHAT_MESSAGE: ${{ vars.MNYRA_SMOKE_CHAT_MESSAGE }}
+          MNYRA_SMOKE_CART_URL: ${{ vars.MNYRA_SMOKE_CART_URL }}
+          MNYRA_SMOKE_CART_TRIGGER_SELECTOR: ${{ vars.MNYRA_SMOKE_CART_TRIGGER_SELECTOR }}
+          MNYRA_SMOKE_CART_REMOVAL_SELECTOR: ${{ vars.MNYRA_SMOKE_CART_REMOVAL_SELECTOR }}
+          MNYRA_SMOKE_ORDER_TRIGGER_SELECTOR: ${{ vars.MNYRA_SMOKE_ORDER_TRIGGER_SELECTOR }}
+          MNYRA_SMOKE_ORDER_SUCCESS_TEXT: ${{ vars.MNYRA_SMOKE_ORDER_SUCCESS_TEXT }}
+
+      - name: Upload smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mnyra-heart-smoke-${{ inputs.heart_run_id }}
+          path: tests/mnyra-heart-runner/artifacts/
+          if-no-files-found: warn

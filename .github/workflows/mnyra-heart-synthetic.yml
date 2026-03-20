@@ -1,0 +1,93 @@
+name: mnyra-heart-synthetic
+
+on:
+  workflow_dispatch:
+    inputs:
+      heart_run_id:
+        description: Heart run id
+        required: true
+        type: string
+      heart_mode:
+        description: Run mode label
+        required: false
+        default: synthetic
+        type: string
+      heart_environment:
+        description: Target environment label
+        required: false
+        default: production
+        type: string
+      heart_actor_uid:
+        description: Triggering CEO uid
+        required: false
+        type: string
+      heart_actor_email:
+        description: Triggering CEO email
+        required: false
+        type: string
+      heart_actor_name:
+        description: Triggering CEO name
+        required: false
+        type: string
+      heart_base_url:
+        description: Heart app base url
+        required: false
+        default: https://menyra.com/heart/
+        type: string
+      social_base_url:
+        description: Menyra Social base url
+        required: false
+        default: https://menyra.com/apps/menyra-social/
+        type: string
+
+jobs:
+  synthetic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: tests/mnyra-heart-runner
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install runner dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run full synthetic pack
+        run: npm run synthetic
+        env:
+          HEART_RUN_ID: ${{ inputs.heart_run_id }}
+          MNYRA_SOCIAL_BASE_URL: ${{ inputs.social_base_url }}
+          MNYRA_CEO_EMAIL: ${{ secrets.MNYRA_CEO_EMAIL }}
+          MNYRA_CEO_PASSWORD: ${{ secrets.MNYRA_CEO_PASSWORD }}
+          HEART_STATUS_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartIngestRunStatus
+          HEART_REPORT_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartIngestRunReport
+          HEART_INCIDENT_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartIngestIncident
+          HEART_WEBHOOK_SECRET: ${{ secrets.HEART_WEBHOOK_SECRET }}
+          MNYRA_HEART_HEADLESS: true
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_NUMBER: ${{ github.run_number }}
+          GITHUB_SERVER_URL: ${{ github.server_url }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          MNYRA_ALLOW_LIVE_MUTATIONS: ${{ vars.MNYRA_ALLOW_LIVE_MUTATIONS }}
+          MNYRA_SYNTHETIC_ISOLATION_KEY: ${{ secrets.MNYRA_SYNTHETIC_ISOLATION_KEY }}
+          MNYRA_SYNTHETIC_PREFIX: mnyra-heart-synth-${{ github.run_id }}
+
+      - name: Upload synthetic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mnyra-heart-synthetic-${{ inputs.heart_run_id }}
+          path: tests/mnyra-heart-runner/artifacts/
+          if-no-files-found: warn
