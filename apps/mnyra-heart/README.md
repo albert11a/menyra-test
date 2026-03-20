@@ -105,3 +105,4 @@ Safety model:
 - Heart Functions load that same shared module asynchronously.
 - Protected `*.vercel.app` previews intentionally skip manifest injection to avoid preview-auth `401` noise; the PWA manifest remains active on real routes/domains.
 - GitHub `workflow_dispatch` must exist on the repository default branch for Heart to trigger runner workflows reliably.
+- Heart preview URLs can be protected by Vercel authentication; configure `HEART_SOCIAL_BASE_URL` to a public social deployment so GitHub-hosted runners do not hit the preview auth wall.

@@ -6,6 +6,7 @@ const {
   HEART_DEFAULT_REGION,
   asText,
   getHeartBaseUrl,
+  readConfigValue,
   normalizeStatus,
   parseRequestJson,
   verifyCeoRequest
@@ -36,7 +37,70 @@ function sendJson(res, status, payload) {
   res.status(status).json({ ok: status < 400, ...payload });
 }
 
-function buildDispatchInputs(mode, runId, identity = {}) {
+function isRemoteHttpsUrl(value = "") {
+  try {
+    const url = new URL(asText(value));
+    if (url.protocol !== "https:") return false;
+    return !/^(localhost|127(?:\.\d{1,3}){3})$/i.test(url.hostname);
+  } catch {
+    return false;
+  }
+}
+
+function deriveAppBaseUrls(req, body = {}) {
+  const preferredHeartBase = asText(body.heartBaseUrl);
+  const preferredSocialBase = asText(body.socialBaseUrl);
+  const requestOrigin = asText(req.get("origin"));
+  const configuredHeartBaseUrl = getHeartBaseUrl();
+  const configuredSocialBaseUrl = asText(process.env.HEART_SOCIAL_BASE_URL)
+    || readConfigValue("heart.social_base_url", "mnyra.heart_social_base_url");
+
+  const heartBaseUrl = isRemoteHttpsUrl(preferredHeartBase)
+    ? preferredHeartBase
+    : isRemoteHttpsUrl(requestOrigin)
+      ? new URL("/heart/", new URL(requestOrigin)).toString()
+      : configuredHeartBaseUrl;
+
+  if (isRemoteHttpsUrl(preferredSocialBase)) {
+    return {
+      heartBaseUrl,
+      socialBaseUrl: preferredSocialBase
+    };
+  }
+
+  if (isRemoteHttpsUrl(configuredSocialBaseUrl)) {
+    return {
+      heartBaseUrl,
+      socialBaseUrl: configuredSocialBaseUrl
+    };
+  }
+
+  // Preview deployments can sit behind Vercel auth; only derive social from the request
+  // origin if no explicit public social base is configured.
+  if (isRemoteHttpsUrl(requestOrigin)) {
+    const origin = new URL(requestOrigin);
+    return {
+      heartBaseUrl,
+      socialBaseUrl: new URL("/social/", origin).toString()
+    };
+  }
+
+  if (isRemoteHttpsUrl(heartBaseUrl)) {
+    const heartOrigin = new URL(heartBaseUrl);
+    return {
+      heartBaseUrl,
+      socialBaseUrl: new URL("/social/", heartOrigin).toString()
+    };
+  }
+
+  return {
+    heartBaseUrl,
+    socialBaseUrl: "https://menyra-test.vercel.app/social/"
+  };
+}
+
+function buildDispatchInputs(req, body, mode, runId, identity = {}) {
+  const appBaseUrls = deriveAppBaseUrls(req, body);
   return {
     heart_run_id: asText(runId),
     heart_mode: mode,
@@ -44,8 +108,8 @@ function buildDispatchInputs(mode, runId, identity = {}) {
     heart_actor_uid: asText(identity.user?.uid),
     heart_actor_email: asText(identity.user?.email),
     heart_actor_name: asText(identity.profile?.name || identity.user?.displayName || identity.user?.email),
-    heart_base_url: getHeartBaseUrl(),
-    social_base_url: asText(process.env.HEART_SOCIAL_BASE_URL) || "https://menyra.com/apps/menyra-social/"
+    heart_base_url: appBaseUrls.heartBaseUrl,
+    social_base_url: appBaseUrls.socialBaseUrl
   };
 }
 
@@ -164,6 +228,7 @@ async function heartGetConnections(req, res) {
 async function startRun(req, res, mode) {
   const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
   if (!authResult.ok) return;
+  const body = parseRequestJson(req);
   if (!githubConfig.configured) {
     sendJson(res, 503, { error: "GitHub Actions integration is not configured." });
     return;
@@ -178,7 +243,7 @@ async function startRun(req, res, mode) {
     summary: `${mode === "synthetic" ? "Full synthetic" : "Smoke"} run queued by CEO.`
   });
   try {
-    const dispatchResult = await dispatchWorkflow(githubConfig, mode, buildDispatchInputs(mode, queuedRun.id, authResult));
+    const dispatchResult = await dispatchWorkflow(githubConfig, mode, buildDispatchInputs(req, body, mode, queuedRun.id, authResult));
     const githubRun = await resolveDispatchedWorkflowRun(githubConfig, dispatchResult.workflowId, {
       branch: dispatchResult.ref,
       dispatchedAfter: queuedRun.startedAt

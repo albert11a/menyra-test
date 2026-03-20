@@ -37,7 +37,7 @@ on:
       social_base_url:
         description: Menyra Social base url
         required: false
-        default: https://menyra.com/apps/menyra-social/
+        default: https://menyra-test.vercel.app/social/
         type: string
 
 jobs:

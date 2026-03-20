@@ -27,7 +27,7 @@ export async function getRunnerEnv(mode = "smoke") {
     artifactDir,
     outputFile,
     runId: asText(process.env.HEART_RUN_ID, `heart_${mode}_${createRunStamp()}`),
-    socialBaseUrl: asText(process.env.MNYRA_SOCIAL_BASE_URL, "https://menyra.com/apps/menyra-social/"),
+    socialBaseUrl: asText(process.env.MNYRA_SOCIAL_BASE_URL, "https://menyra-test.vercel.app/social/"),
     ceoEmail: asText(process.env.MNYRA_CEO_EMAIL),
     ceoPassword: asText(process.env.MNYRA_CEO_PASSWORD),
     headless: asBoolean(process.env.MNYRA_HEART_HEADLESS, true),

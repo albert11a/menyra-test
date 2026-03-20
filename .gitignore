@@ -9,3 +9,7 @@ Thumbs.db
 # Firebase CLI debug artifacts
 firebase-debug.log
 firebase-debug.*.log
+
+# Runner artifacts
+tests/mnyra-heart-runner/artifacts/
+tests/mnyra-heart-runner/tmp-*.png
