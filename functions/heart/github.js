@@ -98,6 +98,52 @@ async function dispatchWorkflow(config, mode, inputs = {}) {
   };
 }
 
+async function listWorkflowRuns(config, workflowId, {
+  branch = "",
+  event = "",
+  perPage = 10
+} = {}) {
+  const params = new URLSearchParams();
+  if (branch) params.set("branch", branch);
+  if (event) params.set("event", event);
+  params.set("per_page", String(Math.max(1, Number(perPage) || 10)));
+  const payload = await githubRequest(
+    config,
+    `/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}/actions/workflows/${encodeURIComponent(workflowId)}/runs?${params.toString()}`
+  );
+  return Array.isArray(payload?.workflow_runs) ? payload.workflow_runs : [];
+}
+
+function toTime(value = "") {
+  const stamp = Date.parse(asText(value));
+  return Number.isFinite(stamp) ? stamp : 0;
+}
+
+async function resolveDispatchedWorkflowRun(config, workflowId, {
+  branch = "",
+  dispatchedAfter = "",
+  event = "workflow_dispatch",
+  attempts = 6,
+  delayMs = 1500
+} = {}) {
+  const minStamp = toTime(dispatchedAfter);
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    const runs = await listWorkflowRuns(config, workflowId, {
+      branch,
+      event,
+      perPage: 10
+    });
+    const match = runs
+      .filter((run) => !minStamp || toTime(run?.created_at) >= minStamp - 5000)
+      .sort((left, right) => toTime(right?.created_at) - toTime(left?.created_at))[0];
+    if (match) return match;
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  return null;
+}
+
 async function getWorkflowRun(config, githubRunId) {
   return githubRequest(
     config,
@@ -180,6 +226,8 @@ async function summarizeCurrentStep(jobs = []) {
 module.exports = {
   resolveGithubConfig,
   dispatchWorkflow,
+  listWorkflowRuns,
+  resolveDispatchedWorkflowRun,
   getWorkflowRun,
   listWorkflowJobs,
   listWorkflowArtifacts,

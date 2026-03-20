@@ -7,7 +7,6 @@
   <meta name="heart-api-base" content="/api/heart/" />
   <meta name="heart-api-fallback-base" content="" />
   <title>mnyra heart</title>
-  <link rel="manifest" href="/heart/manifest.json" crossorigin="use-credentials" />
   <link rel="icon" type="image/png" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
   <link rel="apple-touch-icon" href="/apps/menyra-social/assets/icon-192.png" />
   <link rel="stylesheet" href="/heart/heart.css" />
@@ -23,6 +22,14 @@
   <script>
     const heartLocalHost = /^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname);
     const heartCloudFunctionsBase = "https://us-central1-menyra-c0e68.cloudfunctions.net/";
+    const heartPreviewHost = /\.vercel\.app$/i.test(window.location.hostname);
+    if (!heartPreviewHost) {
+      const manifestLink = document.createElement("link");
+      manifestLink.rel = "manifest";
+      manifestLink.href = "/heart/manifest.json";
+      manifestLink.crossOrigin = "use-credentials";
+      document.head.appendChild(manifestLink);
+    }
     window.__MNYRA_HEART_CONFIG__ = Object.freeze({
       apiBase: heartLocalHost ? heartCloudFunctionsBase : "/api/heart/",
       fallbackApiBase: heartLocalHost ? "" : ""

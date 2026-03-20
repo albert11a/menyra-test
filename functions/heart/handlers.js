@@ -16,6 +16,7 @@ const {
   getWorkflowRun,
   listWorkflowArtifacts,
   listWorkflowJobs,
+  resolveDispatchedWorkflowRun,
   normalizeJobsToTimeline,
   resolveGithubConfig,
   summarizeCurrentStep
@@ -178,12 +179,25 @@ async function startRun(req, res, mode) {
   });
   try {
     const dispatchResult = await dispatchWorkflow(githubConfig, mode, buildDispatchInputs(mode, queuedRun.id, authResult));
+    const githubRun = await resolveDispatchedWorkflowRun(githubConfig, dispatchResult.workflowId, {
+      branch: dispatchResult.ref,
+      dispatchedAfter: queuedRun.startedAt
+    }).catch(() => null);
     const updatedRun = await providers.mergeRun(queuedRun.id, {
-      currentStep: "GitHub workflow dispatch accepted.",
       github: {
         workflowId: dispatchResult.workflowId,
-        ref: dispatchResult.ref
-      }
+        ref: dispatchResult.ref,
+        runId: asText(githubRun?.id),
+        runNumber: githubRun?.run_number,
+        htmlUrl: asText(githubRun?.html_url),
+        status: asText(githubRun?.status),
+        conclusion: asText(githubRun?.conclusion),
+        headBranch: asText(githubRun?.head_branch),
+        headSha: asText(githubRun?.head_sha)
+      },
+      branch: asText(githubRun?.head_branch || dispatchResult.ref),
+      build: asText(githubRun?.head_sha),
+      currentStep: asText(githubRun?.id ? "GitHub workflow queued." : "GitHub workflow dispatch accepted.")
     });
     sendJson(res, 200, {
       run: updatedRun,

@@ -103,3 +103,5 @@ Safety model:
 - `shared/github-execution-state.js` is the single source of truth for GitHub execution-state normalization.
 - Heart frontend imports that module directly.
 - Heart Functions load that same shared module asynchronously.
+- Protected `*.vercel.app` previews intentionally skip manifest injection to avoid preview-auth `401` noise; the PWA manifest remains active on real routes/domains.
+- GitHub `workflow_dispatch` must exist on the repository default branch for Heart to trigger runner workflows reliably.
