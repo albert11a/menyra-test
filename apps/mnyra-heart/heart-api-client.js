@@ -26,6 +26,7 @@ export function createHeartApiClient({
       method,
       headers: {
         Authorization: `Bearer ${token}`,
+        "X-Heart-Authorization": `Bearer ${token}`,
         "Content-Type": "application/json"
       },
       body: body ? JSON.stringify(body) : undefined
@@ -42,19 +43,31 @@ export function createHeartApiClient({
     method = "GET",
     body = null
   } = {}) {
-    const token = await authController.getIdToken();
-    if (!token) throw new Error("Missing authenticated CEO token.");
+    async function requestAgainstBase(base, forceRefreshToken = false) {
+      const token = await authController.getIdToken(forceRefreshToken);
+      if (!token) throw new Error("Missing authenticated CEO token.");
+      return performRequest(functionName, token, { method, body, base });
+    }
+
     let response;
     let parsed;
     try {
-      ({ response, parsed } = await performRequest(functionName, token, { method, body, base: apiBase }));
+      ({ response, parsed } = await requestAgainstBase(apiBase, false));
+
+      if (response.status === 401) {
+        ({ response, parsed } = await requestAgainstBase(apiBase, true));
+      }
+
       const shouldRetryWithFallback = response.status === 404 && fallbackApiBase;
       if (shouldRetryWithFallback) {
-        ({ response, parsed } = await performRequest(functionName, token, { method, body, base: fallbackApiBase }));
+        ({ response, parsed } = await requestAgainstBase(fallbackApiBase, false));
+        if (response.status === 401) {
+          ({ response, parsed } = await requestAgainstBase(fallbackApiBase, true));
+        }
       }
     } catch (error) {
       if (!fallbackApiBase) throw error;
-      ({ response, parsed } = await performRequest(functionName, token, { method, body, base: fallbackApiBase }));
+      ({ response, parsed } = await requestAgainstBase(fallbackApiBase, true));
     }
     if (!response.ok || parsed.ok === false) {
       throw new Error(String(parsed.error || `${functionName} failed with ${response.status}`));

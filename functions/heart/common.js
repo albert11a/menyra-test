@@ -151,11 +151,11 @@ function sendCors(res, req, methods = "GET,OPTIONS") {
   res.set("Access-Control-Allow-Origin", origin === "null" ? "*" : origin);
   res.set("Vary", "Origin");
   res.set("Access-Control-Allow-Methods", methods);
-  res.set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Heart-Webhook-Secret,X-Heart-Signature");
+  res.set("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Heart-Authorization,X-Heart-Webhook-Secret,X-Heart-Signature");
 }
 
 function parseBearerToken(req) {
-  const authHeader = asText(req.get("authorization"));
+  const authHeader = asText(req.get("authorization") || req.get("x-heart-authorization"));
   const match = authHeader.match(/^Bearer\s+(.+)$/i);
   return match ? asText(match[1]) : "";
 }
@@ -243,6 +243,12 @@ async function verifyCeoRequest(req, res, db, {
 
   const bearerToken = parseBearerToken(req);
   if (!bearerToken) {
+    console.warn("[heart-auth] missing bearer token", {
+      path: asText(req.path || req.originalUrl || req.url),
+      method: asText(req.method),
+      hasAuthorizationHeader: !!asText(req.get("authorization")),
+      hasHeartAuthorizationHeader: !!asText(req.get("x-heart-authorization"))
+    });
     res.status(401).json({ ok: false, error: "Unauthorized" });
     return { ok: false, handled: true };
   }
@@ -251,6 +257,10 @@ async function verifyCeoRequest(req, res, db, {
   try {
     decodedToken = await admin.auth().verifyIdToken(bearerToken, true);
   } catch {
+    console.warn("[heart-auth] invalid bearer token", {
+      path: asText(req.path || req.originalUrl || req.url),
+      method: asText(req.method)
+    });
     res.status(401).json({ ok: false, error: "Unauthorized" });
     return { ok: false, handled: true };
   }
@@ -268,6 +278,13 @@ async function verifyCeoRequest(req, res, db, {
     displayName: asText(decodedToken?.name || decodedToken?.displayName)
   };
   if (!canAccessHeartAsCeo(user, profile || {})) {
+    console.warn("[heart-auth] ceo access denied", {
+      path: asText(req.path || req.originalUrl || req.url),
+      method: asText(req.method),
+      uid,
+      email: asText(user.email),
+      roles: normalizeRoleList(profile?.roles || profile?.role || "")
+    });
     res.status(403).json({ ok: false, error: "CEO access required" });
     return { ok: false, handled: true };
   }
