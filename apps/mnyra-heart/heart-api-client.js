@@ -22,13 +22,15 @@ export function createHeartApiClient({
     body = null,
     base = apiBase
   } = {}) {
+    const headers = {
+      "X-Heart-Authorization": `Bearer ${token}`
+    };
+    if (body) {
+      headers["Content-Type"] = "application/json";
+    }
     const response = await fetch(buildFunctionUrl(functionName, base), {
       method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "X-Heart-Authorization": `Bearer ${token}`,
-        "Content-Type": "application/json"
-      },
+      headers,
       body: body ? JSON.stringify(body) : undefined
     });
     const text = await response.text();
