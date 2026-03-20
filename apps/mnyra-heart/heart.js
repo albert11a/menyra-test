@@ -234,7 +234,10 @@ authController.initialize().catch((error) => {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {});
+    const serviceWorkerUrl = window.location.pathname.startsWith("/apps/mnyra-heart/")
+      ? "/apps/mnyra-heart/sw.js"
+      : "/heart/sw.js";
+    navigator.serviceWorker.register(serviceWorkerUrl).catch(() => {});
   });
 }
 

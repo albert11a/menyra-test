@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#f5f3ef" />
   <meta name="heart-api-base" content="/api/heart/" />
-  <meta name="heart-api-fallback-base" content="https://us-central1-menyra-c0e68.cloudfunctions.net/" />
+  <meta name="heart-api-fallback-base" content="" />
   <title>mnyra heart</title>
-  <link rel="manifest" href="./manifest.json" />
+  <link rel="manifest" href="/heart/manifest.json" />
   <link rel="icon" type="image/png" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
   <link rel="apple-touch-icon" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="stylesheet" href="./heart.css" />
+  <link rel="stylesheet" href="/heart/heart.css" />
 </head>
 <body>
   <div id="heartApp"></div>
@@ -25,9 +25,9 @@
     const heartCloudFunctionsBase = "https://us-central1-menyra-c0e68.cloudfunctions.net/";
     window.__MNYRA_HEART_CONFIG__ = Object.freeze({
       apiBase: heartLocalHost ? heartCloudFunctionsBase : "/api/heart/",
-      fallbackApiBase: heartLocalHost ? "" : heartCloudFunctionsBase
+      fallbackApiBase: heartLocalHost ? "" : ""
     });
   </script>
-  <script type="module" src="./heart.js"></script>
+  <script type="module" src="/heart/heart.js"></script>
 </body>
 </html>

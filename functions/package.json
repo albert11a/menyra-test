@@ -5,6 +5,9 @@
   "engines": {
     "node": "20"
   },
+  "scripts": {
+    "sync-heart-shared": "node ./scripts/sync-heart-shared.cjs"
+  },
   "dependencies": {
     "firebase-admin": "^12.7.0",
     "firebase-functions": "^5.1.1"
