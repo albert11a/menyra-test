@@ -7,6 +7,7 @@
     { "source": "/waiter", "destination": "/waiter/", "permanent": false },
     { "source": "/kitchen", "destination": "/kitchen/", "permanent": false },
     { "source": "/social", "destination": "/social/", "permanent": false },
+    { "source": "/heart", "destination": "/heart/", "permanent": false },
     { "source": "/", "has": [{ "type": "host", "value": "waiter.menyra.com" }], "destination": "/waiter/", "permanent": false },
     { "source": "/", "has": [{ "type": "host", "value": "waiter.mnyra.com" }], "destination": "/waiter/", "permanent": false }
   ],
@@ -22,6 +23,9 @@
     { "source": "/", "has": [{ "type": "host", "value": "kitchen.menyra.com" }], "destination": "/apps/menyra-social/index.html?tab=menu" },
     { "source": "/", "has": [{ "type": "host", "value": "kitchen.mnyra.com" }], "destination": "/apps/menyra-social/index.html?tab=menu" },
     { "source": "/hub/", "destination": "/hub/index.html" },
+    { "source": "/heart/", "destination": "/apps/mnyra-heart/index.html" },
+    { "source": "/heart/:path*", "destination": "/apps/mnyra-heart/:path*" },
+    { "source": "/api/heart/:path*", "destination": "https://us-central1-menyra-c0e68.cloudfunctions.net/:path*" },
     { "source": "/ceo/", "destination": "/apps/menyra-social/index.html?tab=leads" },
     { "source": "/ceo/:path*", "destination": "/apps/menyra-social/index.html?tab=leads" },
     { "source": "/owner/", "destination": "/apps/menyra-social/index.html?tab=profile" },
@@ -60,6 +64,66 @@
       "source": "/apps/menyra-social/index.html",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/mnyra-heart/index.html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/heart/",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/heart/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/heart/manifest.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/heart/heart.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/heart/heart.css",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/mnyra-heart/sw.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/mnyra-heart/manifest.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/mnyra-heart/heart.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/apps/mnyra-heart/heart.css",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
       ]
     },
     {

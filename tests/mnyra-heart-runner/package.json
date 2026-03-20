@@ -1,0 +1,12 @@
+{
+  "name": "mnyra-heart-runner",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "node ./src/run-pack.mjs smoke",
+    "synthetic": "node ./src/run-pack.mjs synthetic"
+  },
+  "dependencies": {
+    "playwright": "^1.54.0"
+  }
+}

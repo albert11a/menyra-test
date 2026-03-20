@@ -1,0 +1,22 @@
+{
+  "name": "mnyra heart",
+  "short_name": "heart",
+  "start_url": "/heart/",
+  "scope": "/heart/",
+  "display": "standalone",
+  "background_color": "#f5f3ef",
+  "theme_color": "#f5f3ef",
+  "description": "MENYRA internal CEO-only control center for smoke tests, synthetic runs, incidents and monitoring.",
+  "icons": [
+    {
+      "src": "/apps/menyra-social/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/apps/menyra-social/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

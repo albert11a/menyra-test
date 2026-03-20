@@ -29,6 +29,273 @@ Der groesste Performance-Blocker ist aktuell:
 - ein sequentieller Bootstrap-Waterfall
 - zu viele Laufzeit-Abhaengigkeiten und Cache-/Hydrate-Pfade fuer den Erstbesuch
 
+## Vollprojekt-Audit fuer SaaS-Betrieb
+
+Diese Zusatzsektion bewertet das Projekt als zahlungspflichtige Plattform fuer laufende Monatsabos.
+
+Zielbild:
+
+- hoher Vertrauensgrad fuer bezahlende Kunden
+- schneller Erstbesuch und schnelle Folgeinteraktionen
+- moeglichst wenige Betriebsstoerungen
+- kontrollierte Releases ohne "geht ploetzlich nicht mehr"
+
+### Was bereits gut ist
+
+1. Firestore-Regeln sind nicht offen
+
+- `firestore.rules` hat einen klaren Default-Deny-Abschluss:
+  - `match /{document=**} { allow read, write: if false; }`
+- es gibt fuer viele Kernsammlungen bereits rollen- und restaurantbezogene Guards
+- das ist deutlich besser als ein typischer frueher Firebase-Stand
+
+2. Es gibt schon echte Domain-Dateien
+
+- `core/chat/*`
+- `core/profile/*`
+- `core/crm/*`
+- `core/menu/*`
+- `core/orders/*`
+- `core/discovery/*`
+
+Das heisst: das Projekt ist nicht "alles in einer Datei". Die falsche Zentralisierung passiert vor allem noch im Root und in den grossen Koordinationsdateien.
+
+3. Service Worker und App-Versionierung sind schon da
+
+- `apps/menyra-social/sw.js`
+- `apps/menyra-social/pwa.js`
+- `apps/menyra-social/index.html` nutzt versionierte Query-Token fuer `social-app.js` und CSS
+
+Das ist eine gute Basis fuer kontrollierte Updates.
+
+4. Lokaler Firebase-Cache ist aktiviert
+
+- `shared/firebase-config.js` nutzt `persistentLocalCache(...)`
+- Auth-Persistence ist ebenfalls konfiguriert
+
+Das ist positiv fuer Wiederbesuche und Offline-/Schwachnetz-Verhalten.
+
+### Was fuer ein Abo-SaaS aktuell nicht passt
+
+1. Kein sichtbarer automatisierter Frontend-Regressionsschutz
+
+Im Repo ist aktuell kein echter Browser-Testpfad sichtbar fuer:
+
+- Social Hauptflows
+- Waiter Hauptflows
+- Role-basierte Flows
+- Chat
+- Leads
+- Orders
+- Upload
+
+Es gibt zwar `functions/package.json`, aber kein Root-Testsetup fuer die Web-Apps.
+
+Business-Folge:
+
+- jede Aenderung bleibt riskant
+- Bugs werden erst beim echten Kundenkontakt sichtbar
+
+2. Produktions-Frontend haengt an externen Laufzeit-CDNs
+
+Belegt durch:
+
+- `apps/menyra-social/index.html`
+  - Google Fonts
+  - Firebase ESM von `www.gstatic.com`
+  - `lucide@latest` von `unpkg`
+- `apps/waiter/index.html`
+  - `https://cdn.tailwindcss.com`
+- `apps/menyra-social/core/discovery/discovery-runtime-controller.js`
+  - Leaflet von `unpkg`
+
+Business-Folge:
+
+- Erstbesuch ist abhaengig von Dritt-CDNs
+- mehr Varianz bei Ladezeit
+- `@latest` ist nicht deterministisch und fuer Produktion unprofessionell
+
+3. Harte Default-Passwoerter im CRM-/Lead-Pfad
+
+Belegt durch:
+
+- `apps/menyra-social/social-app.js`
+- `apps/menyra-social/core/lead*/...`
+- `apps/menyra-social/core/crm/crm-runtime-controller.js`
+
+Auffaellig:
+
+- `LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992"`
+
+Business-Folge:
+
+- massiver Security- und Vertrauensschaden, falls dieser Pfad produktiv genutzt wird
+- nicht akzeptabel fuer zahlende Kunden
+
+4. Monolithische Root-/Coordinator-Dateien bleiben zentrale Ausfallpunkte
+
+Die groessten Produktionsrisiken sitzen aktuell in:
+
+- `apps/menyra-social/social-app.js` (`5582` Zeilen)
+- `apps/menyra-social/core/crm/crm-runtime-controller.js` (`2588` Zeilen)
+- `apps/menyra-social/core/app-shell/controller-deps-factory.js` (`2083` Zeilen)
+- `apps/menyra-social/core/profile/profile-menu-focus-render-controller.js` (`1655` Zeilen)
+- `apps/menyra-social/core/chat/chat-runtime-controller.js` (`1608` Zeilen)
+
+Business-Folge:
+
+- hohe Aenderungsangst
+- kleine Bugs koennen grosse Seiteneffekte haben
+- Onboarding neuer Entwickler wird langsam und teuer
+
+5. Fehlerbehandlung ist breit verteilt, aber Monitoring nicht sichtbar
+
+Es gibt viele `console.error(...)`-Stellen und lokale Fehlerabfaenge, aber kein sichtbares produktives Fehler-Monitoring wie:
+
+- Sentry
+- Bugsnag
+- Datadog RUM
+- vergleichbare Frontend-Fehlererfassung
+
+Business-Folge:
+
+- du erfaehrst von echten Kundenbugs zu spaet
+- Fehler werden nicht systematisch gruppiert oder priorisiert
+
+6. Externe Geocoder/Map-Services sind zur Laufzeit kritisch
+
+Belegt durch:
+
+- `apps/menyra-social/core/crm/crm-runtime-controller.js`
+- `apps/menyra-social/core/map/plus-code-utils.js`
+- `apps/menyra-social/core/discovery/discovery-runtime-controller.js`
+
+Auffaellig:
+
+- Nominatim-Requests direkt aus dem Client
+- Leaflet/Carto extern
+
+Business-Folge:
+
+- schwankende Antwortzeiten
+- moegliche Rate-Limits
+- discovery / lead edit / location picker sind dadurch stoeranfaellig
+
+### Was architektonisch der groesste Business-Hebel ist
+
+1. `social-app.js` ist kein Kernel
+
+Das ist der wichtigste strukturelle Hebel. Solange dort zu viel Ownership lebt, bleiben:
+
+- Speed schwer optimierbar
+- Fehler schwer isolierbar
+- Releases riskant
+
+2. `socialEngagementSupportRuntimeController` ist zu breit
+
+Hier haengen mehrere Themen zusammen, die fuer stabile Counts und Modal-Konsistenz sauber getrennt werden muessen.
+
+3. Chat haengt noch zu direkt im Startup
+
+Das verletzt dein Ziel `Auth + Feed` only strict core path und kostet Startup-Zeit.
+
+4. CRM ist funktional stark, aber operativ riskant
+
+Die CRM-Flaeche ist gross und direkt umsatzrelevant. Genau dort duerfen keine halben Refactors oder impliziten Legacy-Pfade bleiben.
+
+## Was fuer dein Ziel "extrem schnell" realistisch ist
+
+Du willst ein Verhalten wie grosse Commerce-Plattformen: sehr schneller First Meaningful View, schnelle Folgeinteraktionen, stabile Navigation.
+
+Das ist erreichbar, aber nicht durch "einfach nur Server schneller".
+
+Dafuer brauchst du in dieser Codebasis konkret:
+
+1. sehr kleinen Strict-Startup
+- nur Auth + Feed
+
+2. keine Nicht-Core-Runtimes im Start
+- kein Chat
+- kein schweres Profile/Menu/Focus
+- kein CRM
+- kein Discovery
+
+3. deterministische statische Assets
+- kein `lucide@latest`
+- kein Tailwind-CDN im Produktionspfad
+- Leaflet nicht dynamisch von `unpkg`
+
+4. kontrollierte Render-Wellen
+- weniger direkte `render()`-Streuung
+- mehr Scheduler-/Batching-Regeln
+
+5. klare Domain-Ownership
+- damit Features schneller geladen und sicherer geaendert werden koennen
+
+## Was ich fuer dein Business als Prioritaet setze
+
+### Prioritaet 0: Security und Betriebsvertrauen
+
+Sofort angehen:
+
+- hartcodiertes Lead-Default-Passwort entfernen
+- Passwort-Erzeugung / Invite-Flow sauber machen
+- echtes Fehler-Monitoring einfuehren
+- Smoke-Test-Matrix fuer kritische Kundenpfade aufbauen
+
+### Prioritaet 1: Release-Sicherheit
+
+Vor jedem groesseren Refactor:
+
+- Browser-Smoke-Tests fuer:
+  - Login
+  - Feed
+  - Profile
+  - Chat
+  - Leads edit
+  - Orders
+  - Upload
+  - Search/Map
+
+Ohne das ist jede Architekturverbesserung weiter betriebsriskant.
+
+### Prioritaet 2: Startup-Speed
+
+Dann:
+
+- Chat aus Strict-Startup entfernen
+- Profile/Menu/Focus aus Root-Komposition ziehen
+- runtime-CDN-Abhaengigkeiten reduzieren
+
+### Prioritaet 3: Root-Demotion
+
+Dann:
+
+- `social-app.js` -> echter Kernel
+- `controller-deps-factory.js` splitten
+- `app-controller-bridge.js` splitten
+
+### Prioritaet 4: Datenkonsistenz
+
+Dann:
+
+- Post-Counts und Comment-Counts auf Single Source Of Truth bringen
+- loader reconciliation verbessern
+- Modal-/Feed-/Profile-Kopien reduzieren
+
+## Was ich dir nicht behaupte
+
+Ich habe in diesem Schritt:
+
+- keine Lighthouse-Messung gefahren
+- keine synthetischen Web-Vitals gemessen
+- keinen echten Browser-Loadtest ausgefuehrt
+- keine Lasttests gegen Firebase/Functions gefahren
+
+Deshalb behaupte ich keine erfundenen Millisekundenwerte.
+
+Diese Audit ist codebasiert und dateibasiert, nicht geraten.
+
 ## Bestaetigte Findings
 
 ### 1. Post-Counts haben keine echte Single Source Of Truth
