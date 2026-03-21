@@ -30,17 +30,27 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
     return;
   }
 
-  await openPageAndWait(page, leadCreate.url, "body", heart, {
-    title: `${persona.label} / Open CRM`,
-    moduleKey: "crm",
-    area: "crm",
-    persona: persona.key
-  });
-  heart.passModule("crm", "CRM wurde geoeffnet.", {
-    action: "crm open",
-    persona: persona.key,
-    area: "crm"
-  });
+  try {
+    await openPageAndWait(page, leadCreate.url, "body", heart, {
+      title: `${persona.label} / Open CRM`,
+      moduleKey: "crm",
+      area: "crm",
+      persona: persona.key
+    });
+    heart.passModule("crm", "CRM wurde geoeffnet.", {
+      action: "crm open",
+      persona: persona.key,
+      area: "crm"
+    });
+  } catch (error) {
+    heart.failModule("crm", error, {
+      action: "crm open",
+      title: "CRM konnte nicht geoeffnet werden",
+      persona: persona.key,
+      area: "crm"
+    });
+    return;
+  }
 
   if (!mutationReady(env)) {
     markGuarded(heart, "crm", "CRM-Schreibtests sind im Moment geschuetzt. Aktiviere erst den isolierten Schreibmodus.", {
@@ -61,59 +71,77 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
   }
 
   const leadName = replaceRunTokens("TEST_RUN_<runId>_LEAD_1", env);
-  await openPageAndWait(page, leadCreate.url, "body", heart, {
-    title: `${persona.label} / Open lead create flow`,
-    moduleKey: "crm",
-    area: "crm",
-    persona: persona.key
-  });
-  if (leadCreate.openSelector) {
-    await clickIfPresent(page, leadCreate.openSelector);
-  }
-  if (leadCreate.nameSelector) {
-    await fillIfPresent(page, leadCreate.nameSelector, leadName);
-  }
-  if (leadCreate.emailSelector) {
-    await fillIfPresent(page, leadCreate.emailSelector, `${leadName.toLowerCase()}@mnyra-test.local`);
-  }
-  await clickIfPresent(page, leadCreate.saveSelector);
-  if (leadCreate.verifyText) {
-    await waitForText(page, replaceRunTokens(leadCreate.verifyText, env));
-  }
-  heart.addCreatedEntity({
-    id: leadName,
-    type: "lead",
-    label: leadName,
-    status: "success",
-    summary: "Test-Lead wurde erstellt.",
-    cleanupStatus: "pending",
-    module: "crm",
-    persona: persona.key
-  });
-  heart.passModule("crm", "Lead wurde erstellt.", {
-    action: "lead create",
-    persona: persona.key,
-    area: "crm"
-  });
-
-  if (hasRequiredConfig(leadEdit, ["url", "openSelector", "inputSelector", "saveSelector"])) {
-    await openPageAndWait(page, leadEdit.url, "body", heart, {
-      title: `${persona.label} / Open lead edit flow`,
+  try {
+    await openPageAndWait(page, leadCreate.url, "body", heart, {
+      title: `${persona.label} / Open lead create flow`,
       moduleKey: "crm",
       area: "crm",
       persona: persona.key
     });
-    await clickIfPresent(page, leadEdit.openSelector);
-    await fillIfPresent(page, leadEdit.inputSelector, replaceRunTokens("TEST_RUN_<runId>_LEAD_EDIT", env));
-    await clickIfPresent(page, leadEdit.saveSelector);
-    if (leadEdit.verifyText) {
-      await waitForText(page, replaceRunTokens(leadEdit.verifyText, env));
+    if (leadCreate.openSelector) {
+      await clickIfPresent(page, leadCreate.openSelector);
     }
-    heart.passModule("crm", "Lead wurde bearbeitet.", {
-      action: "lead edit",
+    if (leadCreate.nameSelector) {
+      await fillIfPresent(page, leadCreate.nameSelector, leadName);
+    }
+    if (leadCreate.emailSelector) {
+      await fillIfPresent(page, leadCreate.emailSelector, `${leadName.toLowerCase()}@mnyra-test.local`);
+    }
+    await clickIfPresent(page, leadCreate.saveSelector);
+    if (leadCreate.verifyText) {
+      await waitForText(page, replaceRunTokens(leadCreate.verifyText, env));
+    }
+    heart.addCreatedEntity({
+      id: leadName,
+      type: "lead",
+      label: leadName,
+      status: "success",
+      summary: "Test-Lead wurde erstellt.",
+      cleanupStatus: "pending",
+      module: "crm",
+      persona: persona.key
+    });
+    heart.passModule("crm", "Lead wurde erstellt.", {
+      action: "lead create",
       persona: persona.key,
       area: "crm"
     });
+  } catch (error) {
+    heart.failModule("crm", error, {
+      action: "lead create",
+      title: "Lead konnte nicht erstellt werden",
+      persona: persona.key,
+      area: "crm"
+    });
+  }
+
+  if (hasRequiredConfig(leadEdit, ["url", "openSelector", "inputSelector", "saveSelector"])) {
+    try {
+      await openPageAndWait(page, leadEdit.url, "body", heart, {
+        title: `${persona.label} / Open lead edit flow`,
+        moduleKey: "crm",
+        area: "crm",
+        persona: persona.key
+      });
+      await clickIfPresent(page, leadEdit.openSelector);
+      await fillIfPresent(page, leadEdit.inputSelector, replaceRunTokens("TEST_RUN_<runId>_LEAD_EDIT", env));
+      await clickIfPresent(page, leadEdit.saveSelector);
+      if (leadEdit.verifyText) {
+        await waitForText(page, replaceRunTokens(leadEdit.verifyText, env));
+      }
+      heart.passModule("crm", "Lead wurde bearbeitet.", {
+        action: "lead edit",
+        persona: persona.key,
+        area: "crm"
+      });
+    } catch (error) {
+      heart.failModule("crm", error, {
+        action: "lead edit",
+        title: "Lead konnte nicht bearbeitet werden",
+        persona: persona.key,
+        area: "crm"
+      });
+    }
   } else {
     heart.notConfiguredModule("crm", "Selektoren fuer Lead-Bearbeitung fehlen.", {
       action: "lead edit",

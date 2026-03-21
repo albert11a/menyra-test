@@ -47,27 +47,57 @@ async function runConfiguredSocialMutation({
     );
     return { ok: false, reason: "not_configured" };
   }
-  await perform();
-  return { ok: true };
+  try {
+    await perform();
+    return { ok: true };
+  } catch (error) {
+    heart.failModule(moduleKey, error, {
+      action: actionLabel,
+      title: `${actionLabel} ist fehlgeschlagen`,
+      persona: persona?.key,
+      area: moduleKey
+    });
+    return { ok: false, reason: "failed" };
+  }
 }
 
 export async function runSocialSurfaceChecks({ page, env, heart, persona } = {}) {
-  await openSocialTab(page, persona, heart, SOCIAL_TABS.feed, {
-    moduleKey: "feed",
-    note: "Feed wurde geoeffnet."
-  });
-  await openSocialTab(page, persona, heart, SOCIAL_TABS.profile, {
-    moduleKey: "profile",
-    note: "Profil wurde geoeffnet."
-  });
+  async function runSurface(moduleKey, action, runner, title) {
+    try {
+      await runner();
+    } catch (error) {
+      heart.failModule(moduleKey, error, {
+        action,
+        title,
+        persona: persona.key,
+        area: moduleKey
+      });
+    }
+  }
+
+  await runSurface("feed", "feed open", async () => {
+    await openSocialTab(page, persona, heart, SOCIAL_TABS.feed, {
+      moduleKey: "feed",
+      note: "Feed wurde geoeffnet."
+    });
+  }, "Feed konnte nicht geoeffnet werden");
+
+  await runSurface("profile", "profile open", async () => {
+    await openSocialTab(page, persona, heart, SOCIAL_TABS.profile, {
+      moduleKey: "profile",
+      note: "Profil wurde geoeffnet."
+    });
+  }, "Profil konnte nicht geoeffnet werden");
 
   const businessProfileUrl = env.packConfig?.actions?.social?.businessProfile?.url;
   if (businessProfileUrl) {
-    await openSocialTab(page, persona, heart, SOCIAL_TABS.profile, {
-      moduleKey: "business",
-      note: "Business-Profil wurde ueber die konfigurierte URL geoeffnet.",
-      absolute: businessProfileUrl
-    });
+    await runSurface("business", "business profile open", async () => {
+      await openSocialTab(page, persona, heart, SOCIAL_TABS.profile, {
+        moduleKey: "business",
+        note: "Business-Profil wurde ueber die konfigurierte URL geoeffnet.",
+        absolute: businessProfileUrl
+      });
+    }, "Business-Profil konnte nicht geoeffnet werden");
   } else {
     heart.notConfiguredModule("business", "Business-Profil-URL fehlt.", {
       action: "business profile open",
@@ -76,15 +106,19 @@ export async function runSocialSurfaceChecks({ page, env, heart, persona } = {})
     });
   }
 
-  await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
-    moduleKey: "menu",
-    note: "Menue wurde geoeffnet."
-  });
+  await runSurface("menu", "menu open", async () => {
+    await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
+      moduleKey: "menu",
+      note: "Menue wurde geoeffnet."
+    });
+  }, "Menue konnte nicht geoeffnet werden");
 
-  await openSocialTab(page, persona, heart, SOCIAL_TABS.chat, {
-    moduleKey: "chat",
-    note: "Chat wurde geoeffnet."
-  });
+  await runSurface("chat", "chat open", async () => {
+    await openSocialTab(page, persona, heart, SOCIAL_TABS.chat, {
+      moduleKey: "chat",
+      note: "Chat wurde geoeffnet."
+    });
+  }, "Chat konnte nicht geoeffnet werden");
 }
 
 export async function runUserSocialMutationChecks({ page, env, heart, persona } = {}) {

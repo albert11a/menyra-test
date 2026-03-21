@@ -149,8 +149,8 @@ function buildDefaultPackConfig({
         },
         follow: {
           url: userHandle ? buildProfileUrl(socialBaseUrl, userHandle) : "",
-          triggerSelector: "[data-follow-toggle]",
-          verifySelector: "[data-following='true']"
+          triggerSelector: "[data-public-profile-follow]",
+          verifySelector: "[data-public-profile-follow] svg"
         },
         like: {
           url: buildUrl(socialBaseUrl, { tab: "feed" }),
@@ -181,23 +181,23 @@ function buildDefaultPackConfig({
         },
         productCreate: {
           url: buildUrl(socialBaseUrl, { tab: "menu" }),
-          openSelector: "[data-product-create-open]",
-          nameSelector: "[data-product-name-input]",
-          saveSelector: "[data-product-save]",
+          openSelector: "[data-menu-add], [data-menu-add-food]",
+          nameSelector: "#menuItemName",
+          saveSelector: "#menuModalSave",
           verifyText: "TEST_RUN_<runId>_PRODUCT_1"
         },
         productEdit: {
           url: buildUrl(socialBaseUrl, { tab: "menu" }),
-          openSelector: "[data-product-edit-open]",
-          inputSelector: "[data-product-name-input]",
-          saveSelector: "[data-product-save]",
+          openSelector: "[data-menu-edit]",
+          inputSelector: "#menuItemName",
+          saveSelector: "#menuModalSave",
           verifyText: "TEST_RUN_<runId>_PRODUCT_EDIT"
         },
         productDelete: {
           url: buildUrl(socialBaseUrl, { tab: "menu" }),
-          openSelector: "[data-product-delete-open]",
-          confirmSelector: "[data-product-delete-confirm]",
-          removedSelector: "[data-product-row]",
+          openSelector: "[data-menu-delete]",
+          confirmSelector: "",
+          removedSelector: "",
           removedText: "TEST_RUN_<runId>_PRODUCT_1"
         }
       },
@@ -226,25 +226,31 @@ function buildDefaultPackConfig({
       chat: {
         send: {
           url: buildUrl(socialBaseUrl, { tab: "chat" }),
-          composerSelector: "textarea",
-          sendSelector: "[data-chat-send]",
+          targetProfileUrl: userHandle ? buildProfileUrl(socialBaseUrl, userHandle) : "",
+          composerSelector: "#chatMessageInput",
+          sendSelector: "#chatSendBtn",
+          threadViewSelector: "#chatThreadView",
+          messagesSelector: "#chatMessages",
+          threadListSelector: "#chatListView",
+          openThreadSelector: "[data-chat-open-thread]",
+          openTargetSelector: "[data-open-chat], #profileChatBtn, #chatBtn",
           verifyText: "TEST_RUN_<runId>_CHAT_1"
         }
       },
       crm: {
         leadCreate: {
           url: buildUrl(socialBaseUrl, { tab: "leads" }),
-          openSelector: "[data-lead-create-open]",
-          nameSelector: "[data-lead-name]",
-          emailSelector: "[data-lead-email]",
-          saveSelector: "[data-lead-save]",
+          openSelector: "#newLeadBtn",
+          nameSelector: "#leadBusinessName",
+          emailSelector: "#leadEmail",
+          saveSelector: "#leadModalSave",
           verifyText: "TEST_RUN_<runId>_LEAD_1"
         },
         leadEdit: {
           url: buildUrl(socialBaseUrl, { tab: "leads" }),
-          openSelector: "[data-lead-edit-open]",
-          inputSelector: "[data-lead-name]",
-          saveSelector: "[data-lead-save]",
+          openSelector: "[data-lead-edit]",
+          inputSelector: "#leadBusinessName",
+          saveSelector: "#leadModalSave",
           verifyText: "TEST_RUN_<runId>_LEAD_EDIT"
         }
       },
@@ -303,11 +309,29 @@ function normalizeHeartPackConfig(packConfig = {}, {
   next.actions.commerce = ensureObject(next.actions.commerce);
   next.actions.commerce.cart = ensureObject(next.actions.commerce.cart);
   next.actions.commerce.order = ensureObject(next.actions.commerce.order);
+  next.actions.chat = ensureObject(next.actions.chat);
+  next.actions.chat.send = ensureObject(next.actions.chat.send);
+  next.actions.crm = ensureObject(next.actions.crm);
+  next.actions.crm.leadCreate = ensureObject(next.actions.crm.leadCreate);
+  next.actions.crm.leadEdit = ensureObject(next.actions.crm.leadEdit);
+  next.actions.business = ensureObject(next.actions.business);
+  next.actions.business.productCreate = ensureObject(next.actions.business.productCreate);
+  next.actions.business.productEdit = ensureObject(next.actions.business.productEdit);
+  next.actions.business.productDelete = ensureObject(next.actions.business.productDelete);
+  next.actions.social = ensureObject(next.actions.social);
+  next.actions.social.follow = ensureObject(next.actions.social.follow);
   next.actions.guest = ensureObject(next.actions.guest);
   next.actions.guest.qrMenu = ensureObject(next.actions.guest.qrMenu);
 
   const commerceCart = next.actions.commerce.cart;
   const commerceOrder = next.actions.commerce.order;
+  const chatSend = next.actions.chat.send;
+  const crmLeadCreate = next.actions.crm.leadCreate;
+  const crmLeadEdit = next.actions.crm.leadEdit;
+  const productCreate = next.actions.business.productCreate;
+  const productEdit = next.actions.business.productEdit;
+  const productDelete = next.actions.business.productDelete;
+  const socialFollow = next.actions.social.follow;
   const guestQrMenu = next.actions.guest.qrMenu;
 
   if (guestRouteUrl) {
@@ -341,6 +365,84 @@ function normalizeHeartPackConfig(packConfig = {}, {
     commerceOrder.failureText,
     "Bestellung konnte nicht gesendet werden."
   );
+
+  if (!asText(socialFollow.triggerSelector) || asText(socialFollow.triggerSelector) === "[data-follow-toggle]") {
+    socialFollow.triggerSelector = "[data-public-profile-follow]";
+  }
+  if (!asText(socialFollow.verifySelector) || asText(socialFollow.verifySelector) === "[data-following='true']") {
+    socialFollow.verifySelector = "[data-public-profile-follow] svg";
+  }
+
+  if (!asText(chatSend.url)) {
+    chatSend.url = buildUrl(socialBaseUrl, { tab: "chat" });
+  }
+  if (!asText(chatSend.targetProfileUrl)) {
+    chatSend.targetProfileUrl = asText(next.actions.social?.userTargetProfile?.url || next.actions.social?.businessProfile?.url);
+  }
+  if (!asText(chatSend.composerSelector) || asText(chatSend.composerSelector) === "textarea") {
+    chatSend.composerSelector = "#chatMessageInput";
+  }
+  if (!asText(chatSend.sendSelector) || asText(chatSend.sendSelector) === "[data-chat-send]") {
+    chatSend.sendSelector = "#chatSendBtn";
+  }
+  chatSend.threadViewSelector = asText(chatSend.threadViewSelector, "#chatThreadView");
+  chatSend.messagesSelector = asText(chatSend.messagesSelector, "#chatMessages");
+  chatSend.threadListSelector = asText(chatSend.threadListSelector, "#chatListView");
+  chatSend.openThreadSelector = asText(chatSend.openThreadSelector, "[data-chat-open-thread]");
+  chatSend.openTargetSelector = asText(chatSend.openTargetSelector, "[data-open-chat], #profileChatBtn, #chatBtn");
+
+  if (!asText(crmLeadCreate.openSelector) || asText(crmLeadCreate.openSelector) === "[data-lead-create-open]") {
+    crmLeadCreate.openSelector = "#newLeadBtn";
+  }
+  if (!asText(crmLeadCreate.nameSelector) || asText(crmLeadCreate.nameSelector) === "[data-lead-name]") {
+    crmLeadCreate.nameSelector = "#leadBusinessName";
+  }
+  if (!asText(crmLeadCreate.emailSelector) || asText(crmLeadCreate.emailSelector) === "[data-lead-email]") {
+    crmLeadCreate.emailSelector = "#leadEmail";
+  }
+  if (!asText(crmLeadCreate.saveSelector) || asText(crmLeadCreate.saveSelector) === "[data-lead-save]") {
+    crmLeadCreate.saveSelector = "#leadModalSave";
+  }
+
+  if (!asText(crmLeadEdit.openSelector) || asText(crmLeadEdit.openSelector) === "[data-lead-edit-open]") {
+    crmLeadEdit.openSelector = "[data-lead-edit]";
+  }
+  if (!asText(crmLeadEdit.inputSelector) || asText(crmLeadEdit.inputSelector) === "[data-lead-name]") {
+    crmLeadEdit.inputSelector = "#leadBusinessName";
+  }
+  if (!asText(crmLeadEdit.saveSelector) || asText(crmLeadEdit.saveSelector) === "[data-lead-save]") {
+    crmLeadEdit.saveSelector = "#leadModalSave";
+  }
+
+  if (!asText(productCreate.openSelector) || asText(productCreate.openSelector) === "[data-product-create-open]") {
+    productCreate.openSelector = "[data-menu-add], [data-menu-add-food]";
+  }
+  if (!asText(productCreate.nameSelector) || asText(productCreate.nameSelector) === "[data-product-name-input]") {
+    productCreate.nameSelector = "#menuItemName";
+  }
+  if (!asText(productCreate.saveSelector) || asText(productCreate.saveSelector) === "[data-product-save]") {
+    productCreate.saveSelector = "#menuModalSave";
+  }
+
+  if (!asText(productEdit.openSelector) || asText(productEdit.openSelector) === "[data-product-edit-open]") {
+    productEdit.openSelector = "[data-menu-edit]";
+  }
+  if (!asText(productEdit.inputSelector) || asText(productEdit.inputSelector) === "[data-product-name-input]") {
+    productEdit.inputSelector = "#menuItemName";
+  }
+  if (!asText(productEdit.saveSelector) || asText(productEdit.saveSelector) === "[data-product-save]") {
+    productEdit.saveSelector = "#menuModalSave";
+  }
+
+  if (!asText(productDelete.openSelector) || asText(productDelete.openSelector) === "[data-product-delete-open]") {
+    productDelete.openSelector = "[data-menu-delete]";
+  }
+  if (!asText(productDelete.confirmSelector) || asText(productDelete.confirmSelector) === "[data-product-delete-confirm]") {
+    productDelete.confirmSelector = "";
+  }
+  if (!asText(productDelete.removedSelector) || asText(productDelete.removedSelector) === "[data-product-row]") {
+    productDelete.removedSelector = "";
+  }
 
   guestQrMenu.menuVisibleSelector = asText(guestQrMenu.menuVisibleSelector, "[data-menu-open]");
   guestQrMenu.productOpenSelector = asText(guestQrMenu.productOpenSelector || guestQrMenu.openSelector, "[data-menu-open]");

@@ -31,8 +31,8 @@
       },
       "follow": {
         "url": "https://menyra-test.vercel.app/social/?tab=profile&handle=testuser",
-        "triggerSelector": "[data-follow-toggle]",
-        "verifySelector": "[data-following='true']"
+        "triggerSelector": "[data-public-profile-follow]",
+        "verifySelector": "[data-public-profile-follow] svg"
       },
       "like": {
         "url": "https://menyra-test.vercel.app/social/?tab=feed",
@@ -63,9 +63,9 @@
       },
       "productCreate": {
         "url": "https://menyra-test.vercel.app/social/?tab=menu",
-        "openSelector": "[data-product-create-open]",
-        "nameSelector": "[data-product-name-input]",
-        "saveSelector": "[data-product-save]",
+        "openSelector": "[data-menu-add], [data-menu-add-food]",
+        "nameSelector": "#menuItemName",
+        "saveSelector": "#menuModalSave",
         "verifyText": "TEST_RUN_<runId>_PRODUCT_1"
       }
     },
@@ -94,18 +94,24 @@
     "chat": {
       "send": {
         "url": "https://menyra-test.vercel.app/social/?tab=chat",
-        "composerSelector": "textarea",
-        "sendSelector": "[data-chat-send]",
+        "targetProfileUrl": "https://menyra-test.vercel.app/social/?tab=profile&handle=testuser",
+        "composerSelector": "#chatMessageInput",
+        "sendSelector": "#chatSendBtn",
+        "threadViewSelector": "#chatThreadView",
+        "messagesSelector": "#chatMessages",
+        "threadListSelector": "#chatListView",
+        "openThreadSelector": "[data-chat-open-thread]",
+        "openTargetSelector": "[data-open-chat], #profileChatBtn, #chatBtn",
         "verifyText": "TEST_RUN_<runId>_CHAT_1"
       }
     },
     "crm": {
       "leadCreate": {
         "url": "https://menyra-test.vercel.app/social/?tab=leads",
-        "openSelector": "[data-lead-create-open]",
-        "nameSelector": "[data-lead-name]",
-        "emailSelector": "[data-lead-email]",
-        "saveSelector": "[data-lead-save]",
+        "openSelector": "#newLeadBtn",
+        "nameSelector": "#leadBusinessName",
+        "emailSelector": "#leadEmail",
+        "saveSelector": "#leadModalSave",
         "verifyText": "TEST_RUN_<runId>_LEAD_1"
       }
     },

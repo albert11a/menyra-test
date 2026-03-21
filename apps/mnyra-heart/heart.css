@@ -2442,6 +2442,81 @@ body {
   margin-top: auto;
 }
 
+#heartApp,
+.heart-main-shell,
+.heart-main-content,
+.heart-view-stack,
+.heart-page-header,
+.heart-section,
+.heart-list-card,
+.heart-connection-panel,
+.heart-incident-card,
+.heart-run-option-card,
+.heart-run-result-card,
+.heart-active-run-card,
+.heart-artifact-card,
+.heart-modal__surface,
+.heart-modal__body,
+.heart-detail-grid div,
+.heart-timeline__body,
+.heart-sidebar__identity,
+.heart-run-start-card__title,
+.heart-run-option-card__body,
+.heart-run-result-card__summary,
+.heart-setup-inline-note,
+.heart-setup-tool-card__body {
+  min-width: 0;
+}
+
+.heart-page-header__title,
+.heart-list-card__head > div,
+.heart-list-card__meta,
+.heart-list-card__meta span,
+.heart-run-option-card__body p,
+.heart-run-option-card__body strong,
+.heart-run-option-card__meta,
+.heart-run-result-card__summary,
+.heart-run-result-card__meta,
+.heart-artifact-card__head span,
+.heart-artifact-card__head small,
+.heart-artifact-card__size,
+.heart-artifact-card__actions,
+.heart-timeline__head,
+.heart-timeline__head strong,
+.heart-timeline__body p,
+.heart-timeline__body span,
+.heart-timeline__body strong,
+.heart-detail-grid strong,
+.heart-detail-grid span,
+.heart-incident-card summary > div,
+.heart-connection-panel__note,
+.heart-connection-panel__detail,
+.heart-setup-inline-note,
+.heart-setup-tool-card__body p,
+.heart-setup-tool-card__body strong,
+.heart-sidebar__identity strong,
+.heart-sidebar__identity span {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.heart-list-card__head,
+.heart-list-card__meta,
+.heart-run-start-card__bar,
+.heart-run-option-card__top,
+.heart-run-result-card__head,
+.heart-run-result-card__meta,
+.heart-active-run-card__head,
+.heart-modal__header,
+.heart-modal__header-actions,
+.heart-artifact-card__head,
+.heart-artifact-card__actions,
+.heart-timeline__head,
+.heart-run-history__card-actions,
+.heart-setup-tool-card__actions {
+  flex-wrap: wrap;
+}
+
 @media (max-width: 779px) {
   .heart-page-header__meta--stacked {
     min-width: 0;

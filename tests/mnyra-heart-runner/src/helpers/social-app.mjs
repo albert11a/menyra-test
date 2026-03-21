@@ -215,6 +215,20 @@ export async function waitForText(page, text, timeout = 10000) {
   return true;
 }
 
+export async function waitForTextToDisappear(page, text, timeout = 10000) {
+  const safeText = asText(text);
+  if (!safeText) return false;
+  await page.waitForFunction(
+    (expectedText) => {
+      const bodyText = String(document.body?.innerText || "");
+      return !bodyText.includes(expectedText);
+    },
+    safeText,
+    { timeout }
+  );
+  return true;
+}
+
 export async function waitForAnyText(page, texts = [], timeout = 10000) {
   const safeTexts = uniqueList(texts);
   if (!safeTexts.length) return false;

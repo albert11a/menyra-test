@@ -8,19 +8,38 @@ import { hasRequiredConfig, markGuarded, markNotConfigured } from "./common-acti
 
 export async function runStaffChecks({ page, env, heart, persona } = {}) {
   const waiterConfig = env.packConfig?.actions?.staff?.waiter || {};
-  await openWaiterSurface(page, persona, heart, {
-    absolute: waiterConfig.url || persona.baseUrl,
-    moduleKey: "orders",
-    note: "Waiter-Oberflaeche wurde geladen."
-  });
-
-  if (waiterConfig.orderVisibleSelector) {
-    await ensureElementVisible(page, waiterConfig.orderVisibleSelector);
-    heart.passModule("orders", "Bestellungen waren fuer den Service sichtbar.", {
-      action: "order visible",
+  try {
+    await openWaiterSurface(page, persona, heart, {
+      absolute: waiterConfig.url || persona.baseUrl,
+      moduleKey: "orders",
+      note: "Waiter-Oberflaeche wurde geladen."
+    });
+  } catch (error) {
+    heart.failModule("orders", error, {
+      action: "waiter open",
+      title: "Waiter-Oberflaeche konnte nicht geladen werden",
       persona: persona.key,
       area: "orders"
     });
+    return;
+  }
+
+  if (waiterConfig.orderVisibleSelector) {
+    try {
+      await ensureElementVisible(page, waiterConfig.orderVisibleSelector);
+      heart.passModule("orders", "Bestellungen waren fuer den Service sichtbar.", {
+        action: "order visible",
+        persona: persona.key,
+        area: "orders"
+      });
+    } catch (error) {
+      heart.failModule("orders", error, {
+        action: "order visible",
+        title: "Bestellungen waren im Service nicht sichtbar",
+        persona: persona.key,
+        area: "orders"
+      });
+    }
   } else {
     heart.notConfiguredModule("orders", "Selector fuer sichtbare Bestellungen fehlt.", {
       action: "order visible",
@@ -47,15 +66,24 @@ export async function runStaffChecks({ page, env, heart, persona } = {}) {
     return;
   }
 
-  await clickIfPresent(page, waiterConfig.statusActionSelector);
-  if (waiterConfig.verifySelector) {
-    await ensureElementVisible(page, waiterConfig.verifySelector);
-  } else if (waiterConfig.verifyText) {
-    await waitForText(page, waiterConfig.verifyText);
+  try {
+    await clickIfPresent(page, waiterConfig.statusActionSelector);
+    if (waiterConfig.verifySelector) {
+      await ensureElementVisible(page, waiterConfig.verifySelector);
+    } else if (waiterConfig.verifyText) {
+      await waitForText(page, waiterConfig.verifyText);
+    }
+    heart.passModule("orders", "Status-Aktion im Service wurde ausgefuehrt.", {
+      action: "order status action",
+      persona: persona.key,
+      area: "orders"
+    });
+  } catch (error) {
+    heart.failModule("orders", error, {
+      action: "order status action",
+      title: "Status-Aktion im Service konnte nicht bestaetigt werden",
+      persona: persona.key,
+      area: "orders"
+    });
   }
-  heart.passModule("orders", "Status-Aktion im Service wurde ausgefuehrt.", {
-    action: "order status action",
-    persona: persona.key,
-    area: "orders"
-  });
 }

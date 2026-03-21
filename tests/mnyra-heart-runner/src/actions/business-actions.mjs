@@ -3,7 +3,8 @@ import {
   fillIfPresent,
   openPageAndWait,
   openSocialTab,
-  waitForText
+  waitForText,
+  waitForTextToDisappear
 } from "../helpers/social-app.mjs";
 import { getSocialDefaultTabs } from "../helpers/social-app.mjs";
 import {
@@ -46,37 +47,65 @@ async function runBusinessMutation({
     });
     return { ok: false, reason: "not_configured" };
   }
-  await perform();
-  return { ok: true };
+  try {
+    await perform();
+    return { ok: true };
+  } catch (error) {
+    heart.failModule(moduleKey, error, {
+      action: actionLabel,
+      title: `${actionLabel} ist fehlgeschlagen`,
+      persona: persona.key,
+      area: moduleKey
+    });
+    return { ok: false, reason: "failed" };
+  }
 }
 
 export async function runBusinessSurfaceChecks({ page, env, heart, persona } = {}) {
   const businessConfig = env.packConfig?.actions?.business || {};
+  async function runSurface(moduleKey, action, runner, title) {
+    try {
+      await runner();
+    } catch (error) {
+      heart.failModule(moduleKey, error, {
+        action,
+        title,
+        persona: persona.key,
+        area: moduleKey
+      });
+    }
+  }
   if (businessConfig.menu?.url) {
-    await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
-      moduleKey: "menu",
-      note: "Business-Menue wurde ueber die konfigurierte URL geoeffnet.",
-      absolute: businessConfig.menu.url
-    });
+    await runSurface("menu", "menu tab open", async () => {
+      await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
+        moduleKey: "menu",
+        note: "Business-Menue wurde ueber die konfigurierte URL geoeffnet.",
+        absolute: businessConfig.menu.url
+      });
+    }, "Business-Menue konnte nicht geoeffnet werden");
   } else {
-    await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
-      moduleKey: "menu",
-      note: "Business-Menue wurde geoeffnet."
-    });
+    await runSurface("menu", "menu tab open", async () => {
+      await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
+        moduleKey: "menu",
+        note: "Business-Menue wurde geoeffnet."
+      });
+    }, "Business-Menue konnte nicht geoeffnet werden");
   }
 
   if (businessConfig.focus?.url) {
-    await openPageAndWait(page, businessConfig.focus.url, "body", heart, {
-      title: "Business / Open focus tab",
-      moduleKey: "business",
-      area: "business",
-      persona: persona.key
-    });
-    heart.passModule("business", "Business-Fokus wurde geoeffnet.", {
-      action: "focus tab open",
-      persona: persona.key,
-      area: "business"
-    });
+    await runSurface("business", "focus tab open", async () => {
+      await openPageAndWait(page, businessConfig.focus.url, "body", heart, {
+        title: "Business / Open focus tab",
+        moduleKey: "business",
+        area: "business",
+        persona: persona.key
+      });
+      heart.passModule("business", "Business-Fokus wurde geoeffnet.", {
+        action: "focus tab open",
+        persona: persona.key,
+        area: "business"
+      });
+    }, "Business-Fokus konnte nicht geoeffnet werden");
   } else {
     heart.notConfiguredModule("business", "Business-Fokus-URL fehlt.", {
       action: "focus tab open",
@@ -173,7 +202,7 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
     moduleKey: "menu",
     actionLabel: "Product delete",
     config: businessConfig.productDelete,
-    requiredKeys: ["url", "openSelector", "confirmSelector"],
+    requiredKeys: ["url", "openSelector"],
     perform: async () => {
       await openPageAndWait(page, businessConfig.productDelete.url, "body", heart, {
         title: "Business / Open product delete flow",
@@ -182,11 +211,13 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
         persona: persona.key
       });
       await clickIfPresent(page, businessConfig.productDelete.openSelector);
-      await clickIfPresent(page, businessConfig.productDelete.confirmSelector);
+      if (businessConfig.productDelete.confirmSelector) {
+        await clickIfPresent(page, businessConfig.productDelete.confirmSelector);
+      }
       if (businessConfig.productDelete.removedSelector) {
         await page.locator(businessConfig.productDelete.removedSelector).first().waitFor({ state: "hidden", timeout: 15000 });
       } else if (businessConfig.productDelete.removedText) {
-        await waitForText(page, replaceRunTokens(businessConfig.productDelete.removedText, env));
+        await waitForTextToDisappear(page, replaceRunTokens(businessConfig.productDelete.removedText, env), 15000);
       }
       heart.passModule("menu", "Produkt wurde geloescht.", {
         action: "product delete",
