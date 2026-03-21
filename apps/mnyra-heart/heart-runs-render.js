@@ -21,15 +21,17 @@ import {
 } from "./heart-ui-utils.js";
 
 const FALLBACK_PACK_ACTIONS = Object.freeze([
-  { id: "business-pack", packKey: "business-pack", action: "start-pack", label: "Business-Volltest starten" },
-  { id: "user-pack", packKey: "user-pack", action: "start-pack", label: "User-Volltest starten" },
-  { id: "guest-pack", packKey: "guest-pack", action: "start-pack", label: "Gast- / QR-Volltest starten" },
-  { id: "smoke", packKey: "smoke", action: "start-pack", label: "CEO-Kontrolllauf starten" }
+  { id: "guard-pack", packKey: "guard-pack", action: "start-pack", label: "Aenderungs-Guard starten" },
+  { id: "release-pack", packKey: "release-pack", action: "start-pack", label: "Release-Gate starten" },
+  { id: "health-pack", packKey: "health-pack", action: "start-pack", label: "Tageslauf starten" }
 ]);
 
 const ACTIVE_STATUSES = new Set(["queued", "running"]);
 const TERMINAL_STATUSES = new Set(["success", "warning", "failed", "critical", "cancelled", "skipped", "not_configured", "guarded"]);
 const START_CARD_ICON_BY_PACK = Object.freeze({
+  "guard-pack": "shield",
+  "release-pack": "play",
+  "health-pack": "clock",
   smoke: "shield",
   "business-pack": "chart",
   "user-pack": "user",
@@ -37,13 +39,93 @@ const START_CARD_ICON_BY_PACK = Object.freeze({
 });
 
 const VISIBLE_PACK_ORDER = Object.freeze({
-  "business-pack": 1,
-  "user-pack": 2,
-  "guest-pack": 3,
-  smoke: 4
+  "guard-pack": 1,
+  "release-pack": 2,
+  "health-pack": 3
 });
 
 const GUIDE_CONTENT = Object.freeze({
+  "guard-pack": {
+    eyebrow: "Vor Commit",
+    title: "Aenderungs-Guard",
+    summary: "Der schnelle Heart-Lauf fuer Code-Aenderungen. Er prueft CEO, Business, User und Gast auf Kernpfade, Discovery und mobile UI, ohne sich in tiefe Nebenpfade zu verlieren.",
+    sections: [
+      {
+        icon: "shield",
+        title: "Schnell und guenstig",
+        body: "Der Guard ist fuer den Entwickler-Innerloop gedacht. Er soll dir schnell zeigen, ob Navigation, Kernseiten, QR-Weg, Karte, Suche und mobile Layouts noch leben."
+      },
+      {
+        icon: "users",
+        title: "Alle vier Sichten sind drin",
+        body: "CEO, Business, User und Gast werden in getrennten Sitzungen geprueft, damit ein kaputter Shell- oder Routing-Fehler sofort auffaellt."
+      },
+      {
+        icon: "scan",
+        title: "Discovery und QR sind Pflicht",
+        body: "Suche, Karte und der oeffentliche Gast- / QR-Weg werden mitgeprueft, weil genau dort regressionsanfällige Oeffnungsfehler schnell sichtbar werden."
+      },
+      {
+        icon: "image",
+        title: "Perfekt fuer vor dem Commit",
+        body: "Der Guard ist der erste Lauf, den du nach einer Aenderung starten solltest. Wenn der schon rot wird, brauchst du keinen teuren Volltest mehr."
+      }
+    ]
+  },
+  "release-pack": {
+    eyebrow: "Vor Push",
+    title: "Release-Gate",
+    summary: "Der breite Freigabelauf vor Push oder Deploy. Heart prueft CEO, Business, User und Gast mit den wichtigsten echten Kern- und Schreibpfaden.",
+    sections: [
+      {
+        icon: "play",
+        title: "Der eigentliche Freigabelauf",
+        body: "Dieser Lauf ist dafuer da, vor einem Push oder Deploy zu bestaetigen, dass Social, Menue, Discovery, Bestellung, Chat und die mobilen Hauptpfade noch intakt sind."
+      },
+      {
+        icon: "chart",
+        title: "Business und User mit echten Aktionen",
+        body: "Business prueft Menue und Produktpfade, User prueft Social und Bestellung. Gast prueft den QR-Weg, CEO die Kontroll- und Navigationssicht."
+      },
+      {
+        icon: "scan",
+        title: "Bestellung und Discovery in einem Lauf",
+        body: "Map, Suche, Business-Oeffnen, Menue, Warenkorb und Bestellung sind Teil des Release-Gates, damit du keine separaten Einzelpruefungen zusammensuchen musst."
+      },
+      {
+        icon: "image",
+        title: "Nachweise fuer echte Entscheidungen",
+        body: "Der Lauf liefert dir Screenshots, Ablaufspuren und Problemstellen, so dass du vor dem Push nicht raten musst."
+      }
+    ]
+  },
+  "health-pack": {
+    eyebrow: "3x taeglich",
+    title: "Tageslauf",
+    summary: "Der wiederkehrende Heart-Gesundheitscheck fuer Business, User, Gast und CEO. Genau dieser Lauf ist fuer regelmaessige automatische Pruefungen gedacht.",
+    sections: [
+      {
+        icon: "clock",
+        title: "Der feste Routine-Lauf",
+        body: "Diesen Lauf kannst du mehrmals taeglich ausfuehren lassen, damit Heart regelmaessig bestaetigt, dass die Plattform fuer alle wichtigen Rollen noch sauber funktioniert."
+      },
+      {
+        icon: "users",
+        title: "Gesamtsicht statt Einzelsplitter",
+        body: "Business, User, Gast und CEO werden nacheinander geprueft, damit du eine ehrliche Gesamtgesundheit der Plattform siehst und nicht nur einen Teilbereich."
+      },
+      {
+        icon: "scan",
+        title: "Kritische Kundenwege bleiben drin",
+        body: "Discovery, Menue, Warenkorb, Bestellung, Social-Interaktion, Chat und die mobile Huelle bleiben Teil des Tageslaufs."
+      },
+      {
+        icon: "triangle",
+        title: "Nicht fuer den Innerloop",
+        body: "Der Tageslauf ist bewusst groesser als der Aenderungs-Guard. Er ist fuer wiederkehrende Kontrolle gedacht, nicht fuer jeden kleinen lokalen Zwischenschritt."
+      }
+    ]
+  },
   smoke: {
     eyebrow: "CEO Kontrolle",
     title: "CEO-Kontrolllauf",

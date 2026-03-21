@@ -1,5 +1,38 @@
 const HEART_PACKS = Object.freeze([
   {
+    key: "guard-pack",
+    label: "Aenderungs-Guard starten",
+    title: "Aenderungs-Guard",
+    mode: "guard",
+    workflowMode: "smoke",
+    level: "level_1",
+    personas: ["ceo", "business", "user", "guest"],
+    areas: ["auth", "feed", "profile", "business", "menu", "chat", "search", "map", "pwa", "ui"],
+    summary: "Schneller Vor-Commit-Lauf fuer CEO, Business, User und Gast. Prueft Kernpfade, Discovery und mobiles Layout ohne unnötige Tiefe."
+  },
+  {
+    key: "release-pack",
+    label: "Release-Gate starten",
+    title: "Release-Gate",
+    mode: "release",
+    workflowMode: "synthetic",
+    level: "level_2",
+    personas: ["ceo", "business", "user", "guest"],
+    areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "search", "map", "pwa", "ui"],
+    summary: "Breiter Vor-Push-Lauf fuer CEO, Business, User und Gast mit Kernpfaden, Schreibaktionen, Discovery und Bestellung."
+  },
+  {
+    key: "health-pack",
+    label: "Tageslauf starten",
+    title: "Tageslauf",
+    mode: "health",
+    workflowMode: "synthetic",
+    level: "level_3",
+    personas: ["business", "user", "guest", "ceo"],
+    areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "search", "map", "pwa", "ui"],
+    summary: "Regelmaessiger Gesundheitscheck fuer Business, User, Gast und CEO. Gedacht fuer wiederkehrende pruefende Laeufe pro Tag."
+  },
+  {
     key: "smoke",
     label: "CEO-Kontrolllauf starten",
     title: "CEO-Kontrolllauf",
@@ -106,6 +139,12 @@ const HEART_PACKS = Object.freeze([
 ]);
 
 const HEART_PACK_ALIASES = Object.freeze({
+  guard: "guard-pack",
+  "change-guard": "guard-pack",
+  release: "release-pack",
+  gate: "release-pack",
+  health: "health-pack",
+  daily: "health-pack",
   synthetic: "full-platform-pack",
   full: "full-platform-pack",
   "full-platform": "full-platform-pack",
@@ -120,10 +159,9 @@ const HEART_PACK_ALIASES = Object.freeze({
 });
 
 const HEART_VISIBLE_PACK_ORDER = Object.freeze([
-  "business-pack",
-  "user-pack",
-  "guest-pack",
-  "smoke"
+  "guard-pack",
+  "release-pack",
+  "health-pack"
 ]);
 
 function asText(value, fallback = "") {

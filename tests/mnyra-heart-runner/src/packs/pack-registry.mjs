@@ -4,15 +4,21 @@ import {
 } from "../../../../shared/heart-pack-catalog.js";
 import { runBusinessPack } from "./business-pack.mjs";
 import { runCeoPack } from "./ceo-pack.mjs";
+import { runGuardPack } from "./guard-pack.mjs";
+import { runHealthPack } from "./health-pack.mjs";
 import { runFullPlatformPack } from "./full-platform-pack.mjs";
 import { runGuestPack } from "./guest-pack.mjs";
 import { runJourneyPack } from "./journey-pack.mjs";
 import { runMutationPack } from "./mutation-pack.mjs";
+import { runReleasePack } from "./release-pack.mjs";
 import { runSmokePack } from "./smoke-pack.mjs";
 import { runStaffPack } from "./staff-pack.mjs";
 import { runUserPack } from "./user-pack.mjs";
 
 const RUNNERS = Object.freeze({
+  "guard-pack": runGuardPack,
+  "release-pack": runReleasePack,
+  "health-pack": runHealthPack,
   smoke: runSmokePack,
   "ceo-pack": runCeoPack,
   "business-pack": runBusinessPack,
