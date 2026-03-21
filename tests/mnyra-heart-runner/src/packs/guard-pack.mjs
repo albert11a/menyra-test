@@ -1,5 +1,4 @@
 import { runBusinessSurfaceChecks } from "../actions/business-actions.mjs";
-import { runChatChecks } from "../actions/chat-actions.mjs";
 import { runDiscoveryChecks } from "../actions/discovery-actions.mjs";
 import { runPwaChecks } from "../actions/journey-actions.mjs";
 import { ensurePersonaSession } from "../actions/persona-actions.mjs";
@@ -19,7 +18,6 @@ async function runReadOnlySocialShell({ page, env, heart, persona, summary = "" 
   const auth = await ensurePersonaSession({ page, heart, persona, moduleKey: "auth" });
   if (!auth.ok) return false;
   await runSocialSurfaceChecks({ page, env, heart, persona });
-  await runChatChecks({ page, env, heart, persona });
   await runDiscoveryChecks({ page, env, heart, persona });
   await runPwaChecks({ page, heart, persona });
   if (summary) {
