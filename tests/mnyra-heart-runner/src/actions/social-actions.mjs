@@ -1,5 +1,6 @@
 import path from "node:path";
 import {
+  buildUrl,
   clickIfPresent,
   ensureElementVisible,
   fillIfPresent,
@@ -7,7 +8,7 @@ import {
   openPageAndWait,
   readCountValue,
   setInputFilesIfPresent,
-  waitForCountChange,
+  waitForAnySelector,
   waitForSelectorToDisappear,
   waitForText
 } from "../helpers/social-app.mjs";
@@ -16,16 +17,41 @@ import { runUiLayoutCheck } from "./ui-actions.mjs";
 import {
   hasRequiredConfig,
   markGuarded,
-  markSkipped,
   markNotConfigured,
   replaceRunTokens
 } from "./common-actions.mjs";
 
 const SOCIAL_TABS = getSocialDefaultTabs();
+const PUBLIC_PROFILE_READY_SELECTORS = [
+  "[data-public-profile-follow]",
+  "[data-open-chat=\"profile\"]",
+  "[data-business-top-tab]",
+  "[data-profile-top-tab]"
+];
+const PUBLIC_PROFILE_RESULT_SELECTORS = Object.freeze({
+  business: "[data-search-user]",
+  default: "[data-search-business]"
+});
 
 function asText(value, fallback = "") {
   const text = String(value || "").trim();
   return text || fallback;
+}
+
+function uniqueSelectors(...values) {
+  const seen = new Set();
+  return values.flatMap((value) => {
+    if (Array.isArray(value)) {
+      return value.map((entry) => asText(entry)).filter(Boolean);
+    }
+    const safeValue = asText(value);
+    return safeValue ? [safeValue] : [];
+  }).filter((item) => {
+    const key = item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 function resolveSocialTargetProfileUrl(env = {}, persona = {}, preferredUrl = "") {
@@ -41,6 +67,187 @@ function resolveSocialTargetProfileUrl(env = {}, persona = {}, preferredUrl = ""
     socialConfig.businessProfile?.url,
     preferredUrl,
     socialConfig.userTargetProfile?.url
+  );
+}
+
+function parseHandleFromUrl(url = "") {
+  const safeUrl = asText(url);
+  if (!safeUrl) return "";
+  try {
+    return asText(new URL(safeUrl).searchParams.get("handle"));
+  } catch {
+    return "";
+  }
+}
+
+function resolveSocialTargetProfileContext(env = {}, persona = {}, preferredUrl = "") {
+  const configPersonas = env.packConfig?.personas || {};
+  const socialConfig = env.packConfig?.actions?.social || {};
+  const directUrl = resolveSocialTargetProfileUrl(env, persona, preferredUrl);
+  if (persona?.key === "business") {
+    const userPersona = configPersonas.user || {};
+    return {
+      url: directUrl,
+      query: asText(userPersona.displayName, userPersona.handle, parseHandleFromUrl(directUrl)),
+      resultSelectors: uniqueSelectors(
+        socialConfig.userTargetProfile?.resultSelector,
+        PUBLIC_PROFILE_RESULT_SELECTORS.business
+      )
+    };
+  }
+
+  const businessPersona = configPersonas.business || {};
+  return {
+    url: directUrl,
+    query: asText(
+      env.packConfig?.restaurantName,
+      businessPersona.displayName,
+      businessPersona.handle,
+      parseHandleFromUrl(directUrl)
+    ),
+    resultSelectors: uniqueSelectors(
+      socialConfig.businessProfile?.resultSelector,
+      PUBLIC_PROFILE_RESULT_SELECTORS.default
+    )
+  };
+}
+
+async function waitForPublicProfileReady(page, timeout = 20000) {
+  await waitForAnySelector(page, PUBLIC_PROFILE_READY_SELECTORS, timeout);
+}
+
+async function openSocialTargetProfile(page, env, heart, persona, {
+  moduleKey = "profile",
+  area = "profile",
+  title = "",
+  preferredUrl = ""
+} = {}) {
+  const targetContext = resolveSocialTargetProfileContext(env, persona, preferredUrl);
+  const directUrl = asText(targetContext.url);
+  if (directUrl) {
+    await openPageAndWait(page, directUrl, "body", heart, {
+      title: title || `${persona.label} / Open profile target`,
+      moduleKey,
+      area,
+      persona: persona.key
+    });
+    try {
+      await waitForPublicProfileReady(page, 7000);
+      return targetContext;
+    } catch {
+      // fall through to discovery search
+    }
+  }
+
+  const searchConfig = env.packConfig?.actions?.discovery?.search || {};
+  const searchUrl = asText(searchConfig.url, buildUrl(persona.baseUrl, { tab: "search" }));
+  const searchInputSelector = asText(searchConfig.inputSelector, "#searchInput");
+  const queryText = asText(
+    targetContext.query,
+    env.packConfig?.restaurantName,
+    env.packConfig?.personas?.business?.displayName,
+    env.packConfig?.personas?.business?.handle
+  );
+  if (!queryText) {
+    throw new Error("Heart konnte kein stabiles Zielprofil fuer diese Pruefung finden.");
+  }
+
+  await openPageAndWait(page, searchUrl, searchInputSelector, heart, {
+    title: title || `${persona.label} / Search profile target`,
+    moduleKey,
+    area,
+    persona: persona.key
+  });
+  await fillIfPresent(page, searchInputSelector, queryText, 12000);
+  await page.waitForTimeout(900);
+
+  const resultSelectors = uniqueSelectors(
+    targetContext.resultSelectors,
+    PUBLIC_PROFILE_RESULT_SELECTORS.business,
+    PUBLIC_PROFILE_RESULT_SELECTORS.default
+  );
+  await waitForAnySelector(page, resultSelectors, 20000);
+  const clicked = await page.evaluate((selectors) => {
+    const list = Array.isArray(selectors) ? selectors : [];
+    for (const selector of list) {
+      const node = document.querySelector(selector);
+      if (node instanceof HTMLElement) {
+        node.click();
+        return true;
+      }
+    }
+    return false;
+  }, resultSelectors);
+  if (!clicked) {
+    throw new Error("Heart konnte das Zielprofil in der Suche nicht oeffnen.");
+  }
+
+  await waitForPublicProfileReady(page, 20000);
+  return targetContext;
+}
+
+async function readFollowState(page, selector) {
+  return page.locator(selector).first().evaluate((button) => {
+    const text = String(button?.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+    return {
+      text,
+      following: text.includes("following"),
+      requested: text.includes("request")
+    };
+  });
+}
+
+async function waitForFollowState(page, selector, expectedState, timeout = 15000) {
+  await page.waitForFunction(
+    ({ followSelector, nextState }) => {
+      const button = document.querySelector(followSelector);
+      if (!button) return false;
+      const text = String(button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+      const isFollowing = text.includes("following");
+      const isRequested = text.includes("request");
+      if (nextState === "following") return isFollowing || isRequested;
+      if (nextState === "not_following") return !isFollowing && !isRequested;
+      return false;
+    },
+    { followSelector: selector, nextState: expectedState },
+    { timeout }
+  );
+}
+
+async function clickLikeButtonToState(page, {
+  selector = "",
+  targetState = "liked",
+  timeout = 15000
+} = {}) {
+  const safeSelector = asText(selector);
+  if (!safeSelector) throw new Error("Heart konnte keinen Like-Button auswaehlen.");
+  const button = page.locator(safeSelector).first();
+  const postKey = asText(
+    await button.getAttribute("data-post-like-btn").catch(() => ""),
+    await button.getAttribute("data-feed-post-like").catch(() => "")
+  );
+  const countSelector = postKey ? `[data-post-like-count="${postKey}"]` : "";
+  const beforeCount = countSelector ? await readCountValue(page, countSelector) : null;
+  await button.click({ timeout: 8000 });
+  await page.waitForFunction(
+    ({ likeSelector, desiredState, likeCountSelector, previousCount }) => {
+      const buttonNode = document.querySelector(likeSelector);
+      if (!buttonNode) return false;
+      const pressed = buttonNode.getAttribute("aria-pressed") === "true"
+        || buttonNode.classList.contains("text-rose-400");
+      const countNode = likeCountSelector ? document.querySelector(likeCountSelector) : null;
+      const countMatch = String(countNode?.textContent || "").match(/-?\d+/);
+      const countChanged = countMatch ? Number(countMatch[0]) !== Number(previousCount) : false;
+      if (desiredState === "liked") return pressed || countChanged;
+      return !pressed || countChanged;
+    },
+    {
+      likeSelector: safeSelector,
+      desiredState: targetState,
+      likeCountSelector: countSelector,
+      previousCount: beforeCount
+    },
+    { timeout }
   );
 }
 
@@ -139,12 +346,6 @@ export async function runSocialSurfaceChecks({ page, env, heart, persona } = {})
         action: "ui business profile layout"
       });
     }, "Business-Profil konnte nicht geoeffnet werden");
-  } else {
-    markSkipped(heart, "business", "Business-Profil wurde in diesem Lauf nicht separat geoeffnet, weil kein stabiler Deeplink hinterlegt war.", {
-      action: "business profile open",
-      persona: persona.key,
-      area: "business"
-    });
   }
 
   await runSurface("menu", "menu open", async () => {
@@ -187,20 +388,22 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
       ...socialConfig.follow,
       url: followTargetUrl
     },
-    requiredKeys: ["url", "triggerSelector"],
+    requiredKeys: ["triggerSelector"],
     perform: async () => {
-      await openPageAndWait(page, followTargetUrl, "body", heart, {
-        title: "User / Open follow target",
+      await openSocialTargetProfile(page, env, heart, persona, {
         moduleKey: "profile",
         area: "profile",
-        persona: persona.key
+        title: `${persona.label} / Open follow target`,
+        preferredUrl: followTargetUrl
       });
-      await page.locator(socialConfig.follow.triggerSelector).first().click({ timeout: 8000 });
-      if (socialConfig.follow.verifySelector) {
-        await ensureElementVisible(page, socialConfig.follow.verifySelector);
-      } else if (socialConfig.follow.verifyText) {
-        await waitForText(page, socialConfig.follow.verifyText);
+      await ensureElementVisible(page, socialConfig.follow.triggerSelector, 15000);
+      const beforeState = await readFollowState(page, socialConfig.follow.triggerSelector);
+      if (beforeState.following || beforeState.requested) {
+        await page.locator(socialConfig.follow.triggerSelector).first().click({ timeout: 8000 });
+        await waitForFollowState(page, socialConfig.follow.triggerSelector, "not_following", 15000);
       }
+      await page.locator(socialConfig.follow.triggerSelector).first().click({ timeout: 8000 });
+      await waitForFollowState(page, socialConfig.follow.triggerSelector, "following", 15000);
       heart.passModule("profile", "Follow wurde erfolgreich ausgefuehrt.", {
         action: "follow",
         persona: persona.key,
@@ -220,31 +423,39 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
     requiredKeys: ["url", "triggerSelector"],
     perform: async () => {
       await openPageAndWait(page, socialConfig.like.url, "body", heart, {
-        title: "User / Open like target",
+        title: `${persona.label} / Open like target`,
         moduleKey: "feed",
         area: "feed",
         persona: persona.key
       });
-      const before = socialConfig.like.countSelector
-        ? await readCountValue(page, socialConfig.like.countSelector)
-        : null;
-      await page.locator(socialConfig.like.triggerSelector).first().click({ timeout: 8000 });
-      if (socialConfig.like.countSelector && before !== null) {
-        await waitForCountChange(page, socialConfig.like.countSelector, before, 15000);
-      } else {
-        await page.waitForFunction(
-          (selector) => {
-            const button = document.querySelector(selector);
-            if (!button) return false;
-            const text = String(button.textContent || "").toLowerCase();
-            return text.includes("gefaellt")
-              || button.classList.contains("text-rose-500")
-              || button.getAttribute("aria-pressed") === "true";
-          },
-          socialConfig.like.triggerSelector,
-          { timeout: 15000 }
-        );
+      await ensureElementVisible(page, socialConfig.like.triggerSelector, 15000);
+      const stableLikeSelector = await page.locator(socialConfig.like.triggerSelector).first().evaluate((button) => {
+        const postId = button?.getAttribute("data-post-like-btn") || button?.getAttribute("data-feed-post-like") || "";
+        return postId ? `[data-post-like-btn="${postId}"], [data-feed-post-like="${postId}"]` : "";
+      });
+      const resolvedLikeSelector = asText(stableLikeSelector, socialConfig.like.triggerSelector);
+      const alreadyLiked = await page.waitForFunction(
+        (selector) => {
+          const button = document.querySelector(selector);
+          if (!button) return false;
+          return button.getAttribute("aria-pressed") === "true"
+            || button.classList.contains("text-rose-400");
+        },
+        resolvedLikeSelector,
+        { timeout: 600 }
+      ).then(() => true).catch(() => false);
+      if (alreadyLiked) {
+        await clickLikeButtonToState(page, {
+          selector: resolvedLikeSelector,
+          targetState: "unliked",
+          timeout: 15000
+        });
       }
+      await clickLikeButtonToState(page, {
+        selector: resolvedLikeSelector,
+        targetState: "liked",
+        timeout: 15000
+      });
       heart.passModule("feed", "Like wurde erfolgreich ausgefuehrt.", {
         action: "like",
         persona: persona.key,
@@ -363,34 +574,7 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
         });
       }
     });
-  } else {
-    markSkipped(heart, "feed", "Foto-Post wird in diesem Lauf nicht separat angelegt.", {
-      action: "post create",
-      persona: persona.key,
-      area: "feed"
-    });
   }
-
-  markSkipped(heart, "profile", "Unfollow wird im Heart-Runner noch nicht separat gefahren.", {
-    action: "unfollow",
-    persona: persona.key,
-    area: "profile"
-  });
-  markSkipped(heart, "feed", "Unlike wird im Heart-Runner noch nicht separat gefahren.", {
-    action: "unlike",
-    persona: persona.key,
-    area: "feed"
-  });
-  markSkipped(heart, "profile", "Kommentar-Loeschung wird aktuell nicht automatisiert, damit Heart keine echten Inhalte versehentlich entfernt.", {
-    action: "comment delete",
-    persona: persona.key,
-    area: "profile"
-  });
-  markSkipped(heart, "feed", "Beitrags-Loeschung wird aktuell nicht automatisiert, damit Heart keine echten Inhalte versehentlich entfernt.", {
-    action: "post delete",
-    persona: persona.key,
-    area: "feed"
-  });
 }
 
 export async function runUserSocialMutationChecks({ page, env, heart, persona } = {}) {

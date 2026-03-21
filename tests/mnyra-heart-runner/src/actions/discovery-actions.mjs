@@ -22,6 +22,19 @@ function resolveBusinessSearchQuery(env = {}) {
   );
 }
 
+function uniqueSelectors(...values) {
+  const seen = new Set();
+  return values.flatMap((value) => {
+    if (Array.isArray(value)) return value;
+    return [value];
+  }).map((item) => asText(item)).filter((item) => {
+    const key = item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function openBusinessTargetFromDiscovery(page, heart, persona, {
   viewLabel = "Suche",
   pageUrl = "",
@@ -65,6 +78,60 @@ async function openBusinessTargetFromDiscovery(page, heart, persona, {
   });
 }
 
+async function openBusinessTargetFromMap(page, heart, persona, {
+  pageUrl = "",
+  inputSelector = "",
+  markerSelector = ".leaflet-marker-icon, .custom-div-icon",
+  profileOpenSelector = "#mapVisitProfileBtn, #mapVisitProfileImgBtn",
+  profileReadySelector = "",
+  queryText = ""
+} = {}) {
+  await openPageAndWait(page, pageUrl, "body", heart, {
+    title: `${persona.label} / Open Karte`,
+    moduleKey: "map",
+    area: "map",
+    persona: persona.key
+  });
+
+  const safeQueryText = asText(queryText);
+  if (safeQueryText && asText(inputSelector)) {
+    await fillIfPresent(page, inputSelector, safeQueryText, 12000);
+    await page.waitForTimeout(1400);
+  }
+
+  await waitForAnySelector(page, uniqueSelectors(markerSelector), 20000);
+  const clickedMarker = await clickFirstVisible(page, uniqueSelectors(markerSelector), 10000);
+  if (!clickedMarker) {
+    throw new Error("Heart konnte auf der Karte keinen anklickbaren Marker finden.");
+  }
+
+  await waitForAnySelector(page, uniqueSelectors(profileOpenSelector), 15000);
+  const openedProfile = await clickFirstVisible(page, uniqueSelectors(profileOpenSelector), 10000);
+  if (!openedProfile) {
+    throw new Error("Heart konnte im Karten-Sheet keinen Profil-Button finden.");
+  }
+
+  await waitForAnySelector(page, uniqueSelectors(
+    profileReadySelector,
+    "[data-public-profile-follow]",
+    "[data-business-top-tab]",
+    "[data-profile-top-tab]"
+  ), 20000);
+
+  heart.passModule("map", "Karte hat ein Business erfolgreich geoeffnet.", {
+    action: "map business open",
+    persona: persona.key,
+    area: "map"
+  });
+  await runUiLayoutCheck(page, heart, {
+    persona,
+    viewLabel: "Karte-Businessprofil",
+    moduleKey: "ui",
+    action: "map profile ui",
+    area: "ui"
+  });
+}
+
 export async function runDiscoveryChecks({ page, env, heart, persona } = {}) {
   const discovery = env.packConfig?.actions?.discovery || {};
   const queryText = resolveBusinessSearchQuery(env);
@@ -95,13 +162,13 @@ export async function runDiscoveryChecks({ page, env, heart, persona } = {}) {
     });
   }
 
-  if (hasRequiredConfig(discovery.map, ["url", "inputSelector", "businessResultSelector"])) {
+  if (hasRequiredConfig(discovery.map, ["url", "inputSelector"])) {
     try {
-      await openBusinessTargetFromDiscovery(page, heart, persona, {
-        viewLabel: "Karte",
+      await openBusinessTargetFromMap(page, heart, persona, {
         pageUrl: discovery.map.url,
         inputSelector: discovery.map.inputSelector,
-        resultSelector: discovery.map.businessResultSelector,
+        markerSelector: discovery.map.markerSelector,
+        profileOpenSelector: discovery.map.profileOpenSelector,
         profileReadySelector: discovery.map.profileReadySelector,
         queryText
       });

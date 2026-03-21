@@ -1,9 +1,11 @@
 import {
+  buildUrl,
   clickFirstVisible,
   ensureElementVisible,
   fillIfPresent,
   findVisibleSelector,
-  openPageAndWait
+  openPageAndWait,
+  waitForAnySelector
 } from "../helpers/social-app.mjs";
 import { hasRequiredConfig, markGuarded, markNotConfigured, replaceRunTokens } from "./common-actions.mjs";
 
@@ -46,6 +48,16 @@ function buildChatRouteUrl(baseUrl = "", targetUid = "") {
   }
 }
 
+function parseHandleFromUrl(url = "") {
+  const safeUrl = asText(url);
+  if (!safeUrl) return "";
+  try {
+    return asText(new URL(safeUrl).searchParams.get("handle"));
+  } catch {
+    return "";
+  }
+}
+
 function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
   const configPersonas = env.packConfig?.personas || {};
   const socialConfig = env.packConfig?.actions?.social || {};
@@ -53,14 +65,55 @@ function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
     const userPersona = configPersonas.user || {};
     return {
       targetUid: asText(sendConfig.userTargetUid, userPersona.uid, sendConfig.targetUid),
-      targetProfileUrl: asText(sendConfig.userTargetProfileUrl, socialConfig.userTargetProfile?.url, sendConfig.targetProfileUrl)
+      targetProfileUrl: asText(sendConfig.userTargetProfileUrl, socialConfig.userTargetProfile?.url, sendConfig.targetProfileUrl),
+      searchQuery: asText(userPersona.displayName, userPersona.handle, parseHandleFromUrl(sendConfig.userTargetProfileUrl || socialConfig.userTargetProfile?.url || sendConfig.targetProfileUrl))
     };
   }
   const businessPersona = configPersonas.business || {};
   return {
     targetUid: asText(sendConfig.targetUid, businessPersona.uid),
-    targetProfileUrl: asText(sendConfig.targetProfileUrl, socialConfig.businessProfile?.url, socialConfig.userTargetProfile?.url)
+    targetProfileUrl: asText(sendConfig.targetProfileUrl, socialConfig.businessProfile?.url, socialConfig.userTargetProfile?.url),
+    searchQuery: asText(
+      env.packConfig?.restaurantName,
+      businessPersona.displayName,
+      businessPersona.handle,
+      parseHandleFromUrl(sendConfig.targetProfileUrl || socialConfig.businessProfile?.url || socialConfig.userTargetProfile?.url)
+    )
   };
+}
+
+async function openChatTargetViaSearch(page, env, heart, persona, targetContext = {}, openTargetSelectors = []) {
+  const searchConfig = env.packConfig?.actions?.discovery?.search || {};
+  const searchUrl = asText(searchConfig.url, buildUrl(persona.baseUrl, { tab: "search" }));
+  const searchInputSelector = asText(searchConfig.inputSelector, "#searchInput");
+  const searchQuery = asText(targetContext.searchQuery);
+  if (!searchQuery) return false;
+  const resultSelectors = persona?.key === "business"
+    ? ["[data-search-user]", "[data-search-business]"]
+    : ["[data-search-business]", "[data-search-user]"];
+
+  await openPageAndWait(page, searchUrl, searchInputSelector, heart, {
+    title: `${persona.label} / Search chat target`,
+    moduleKey: "chat",
+    area: "chat",
+    persona: persona.key
+  });
+  await fillIfPresent(page, searchInputSelector, searchQuery, 12000);
+  await page.waitForTimeout(900);
+  await waitForAnySelector(page, resultSelectors, 20000);
+  const openedResult = await page.evaluate((selectors) => {
+    for (const selector of selectors || []) {
+      const node = document.querySelector(selector);
+      if (node instanceof HTMLElement) {
+        node.click();
+        return true;
+      }
+    }
+    return false;
+  }, resultSelectors);
+  if (!openedResult) return false;
+  const openedTargetThread = await clickFirstVisible(page, openTargetSelectors, 15000);
+  return !!openedTargetThread;
 }
 
 async function ensureChatComposerReady(page, env, sendConfig = {}, heart, persona) {
@@ -129,6 +182,16 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
     });
     const openedTargetThread = await clickFirstVisible(page, openTargetSelectors, 15000);
     if (!openedTargetThread) continue;
+    await Promise.race([
+      page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 15000 }),
+      page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 })
+    ]);
+    await ensureElementVisible(page, composerSelector, 15000);
+    return composerSelector;
+  }
+
+  const openedViaSearch = await openChatTargetViaSearch(page, env, heart, persona, targetContext, openTargetSelectors);
+  if (openedViaSearch) {
     await Promise.race([
       page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 15000 }),
       page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 })

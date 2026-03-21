@@ -3,7 +3,6 @@ import {
   fillIfPresent,
   openPageAndWait,
   openSocialTab,
-  waitForText,
   waitForSelectorToDisappear,
   waitForTextToDisappear
 } from "../helpers/social-app.mjs";
@@ -12,7 +11,6 @@ import { runUiLayoutCheck } from "./ui-actions.mjs";
 import {
   hasRequiredConfig,
   markGuarded,
-  markSkipped,
   markNotConfigured,
   replaceRunTokens
 } from "./common-actions.mjs";
@@ -21,6 +19,117 @@ const SOCIAL_TABS = getSocialDefaultTabs();
 
 function isMutationEnabled(env) {
   return !!env.allowLiveMutations && !!env.syntheticIsolationKey;
+}
+
+function asText(value, fallback = "") {
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+
+function getBusinessProductNames(env = {}) {
+  return {
+    original: replaceRunTokens("TEST_RUN_<runId>_PRODUCT_1", env),
+    edited: replaceRunTokens("TEST_RUN_<runId>_PRODUCT_EDIT", env)
+  };
+}
+
+async function openBusinessMenuAdmin(page, heart, persona, url, title) {
+  await openPageAndWait(page, url, "body", heart, {
+    title,
+    moduleKey: "menu",
+    area: "menu",
+    persona: persona.key
+  });
+  await page.locator("#menuSearchInput, [data-menu-add], [data-menu-add-food]").first().waitFor({
+    state: "visible",
+    timeout: 20000
+  });
+}
+
+async function searchBusinessMenu(page, queryText = "") {
+  const safeQueryText = asText(queryText);
+  const menuSearchInput = page.locator("#menuSearchInput").first();
+  if (!await menuSearchInput.count()) return;
+  await menuSearchInput.fill("");
+  if (safeQueryText) {
+    await menuSearchInput.fill(safeQueryText);
+  }
+  await page.waitForTimeout(600);
+}
+
+async function resolveMenuActionItemId(page, itemText = "", actionAttribute = "") {
+  const safeItemText = asText(itemText);
+  const safeActionAttribute = asText(actionAttribute);
+  if (!safeItemText || !safeActionAttribute) return "";
+  return page.evaluate((payload) => {
+    const itemLabel = String(payload?.itemText || "").trim();
+    const attr = String(payload?.actionAttribute || "").trim();
+    if (!itemLabel || !attr) return "";
+    const buttons = Array.from(document.querySelectorAll(`[${attr}]`));
+    for (const button of buttons) {
+      let node = button;
+      while (node && node !== document.body) {
+        const text = String(node.textContent || "").replace(/\s+/g, " ").trim();
+        if (text.includes(itemLabel)) {
+          return button.getAttribute(attr) || "";
+        }
+        node = node.parentElement;
+      }
+    }
+    return "";
+  }, {
+    itemText: safeItemText,
+    actionAttribute: safeActionAttribute
+  });
+}
+
+async function clickMenuActionByItemId(page, actionAttribute = "", itemId = "") {
+  const safeItemId = asText(itemId);
+  const safeActionAttribute = asText(actionAttribute);
+  if (!safeActionAttribute || !safeItemId) return false;
+  return page.evaluate((payload) => {
+    const attr = String(payload?.actionAttribute || "").trim();
+    const id = String(payload?.itemId || "").trim();
+    if (!attr || !id) return false;
+    const selector = `[${attr}="${globalThis.CSS?.escape ? globalThis.CSS.escape(id) : id.replace(/"/g, '\\"')}"]`;
+    const button = document.querySelector(selector);
+    if (!(button instanceof HTMLElement)) return false;
+    const details = button.closest("details");
+    if (details instanceof HTMLDetailsElement) {
+      details.open = true;
+    }
+    button.click();
+    return true;
+  }, {
+    actionAttribute: safeActionAttribute,
+    itemId: safeItemId
+  });
+}
+
+async function waitForMenuItemByText(page, itemText = "", timeout = 20000) {
+  const safeItemText = asText(itemText);
+  if (!safeItemText) return;
+  await page.waitForFunction(
+    (expectedText) => {
+      const bodyText = String(document.body?.innerText || "");
+      return bodyText.includes(expectedText);
+    },
+    safeItemText,
+    { timeout }
+  );
+}
+
+async function waitForMenuItemToDisappear(page, itemText = "", timeout = 20000) {
+  const safeItemText = asText(itemText);
+  if (!safeItemText) return;
+  await page.waitForFunction(
+    (expectedText) => {
+      const bodyText = String(document.body?.innerText || "");
+      return !bodyText.includes(expectedText);
+    },
+    safeItemText,
+    { timeout }
+  );
 }
 
 async function runBusinessMutation({
@@ -135,8 +244,9 @@ export async function runBusinessSurfaceChecks({ page, env, heart, persona } = {
 
 export async function runBusinessMutationChecks({ page, env, heart, persona } = {}) {
   const businessConfig = env.packConfig?.actions?.business || {};
+  const productNames = getBusinessProductNames(env);
 
-  await runBusinessMutation({
+  const createResult = await runBusinessMutation({
     page,
     env,
     heart,
@@ -146,25 +256,19 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
     config: businessConfig.productCreate,
     requiredKeys: ["url", "openSelector", "nameSelector", "saveSelector"],
     perform: async () => {
-      await openPageAndWait(page, businessConfig.productCreate.url, "body", heart, {
-        title: "Business / Open product create flow",
-        moduleKey: "menu",
-        area: "menu",
-        persona: persona.key
-      });
       const productName = replaceRunTokens(
-        businessConfig.productCreate.nameTemplate || "TEST_RUN_<runId>_PRODUCT_1",
+        businessConfig.productCreate.nameTemplate || productNames.original,
         env
       );
+      await openBusinessMenuAdmin(page, heart, persona, businessConfig.productCreate.url, "Business / Open product create flow");
       await clickIfPresent(page, businessConfig.productCreate.openSelector);
       await fillIfPresent(page, businessConfig.productCreate.nameSelector, productName);
       await clickIfPresent(page, businessConfig.productCreate.saveSelector);
       await waitForSelectorToDisappear(page, "#menuModalClose", 20000).catch(() => undefined);
       await waitForSelectorToDisappear(page, businessConfig.productCreate.nameSelector || "#menuItemName", 20000).catch(() => undefined);
-      if (businessConfig.productCreate.verifySelector) {
-        await page.locator(businessConfig.productCreate.verifySelector).first().waitFor({ state: "visible", timeout: 15000 });
-      }
-      await waitForText(page, replaceRunTokens(businessConfig.productCreate.verifyText || productName, env), 20000);
+      await openBusinessMenuAdmin(page, heart, persona, businessConfig.productCreate.url, "Business / Verify product create");
+      await searchBusinessMenu(page, productName);
+      await waitForMenuItemByText(page, replaceRunTokens(businessConfig.productCreate.verifyText || productName, env), 20000);
       heart.addCreatedEntity({
         id: productName,
         type: "product",
@@ -183,78 +287,81 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
     }
   });
 
-  await runBusinessMutation({
-    page,
-    env,
-    heart,
-    persona,
-    moduleKey: "menu",
-    actionLabel: "Product edit",
-    config: businessConfig.productEdit,
-    requiredKeys: ["url", "openSelector", "inputSelector", "saveSelector"],
-    perform: async () => {
-      await openPageAndWait(page, businessConfig.productEdit.url, "body", heart, {
-        title: "Business / Open product edit flow",
-        moduleKey: "menu",
-        area: "menu",
-        persona: persona.key
-      });
-      await clickIfPresent(page, businessConfig.productEdit.openSelector);
-      const nextName = replaceRunTokens("TEST_RUN_<runId>_PRODUCT_EDIT", env);
-      await fillIfPresent(page, businessConfig.productEdit.inputSelector, nextName);
-      await clickIfPresent(page, businessConfig.productEdit.saveSelector);
-      await waitForSelectorToDisappear(page, "#menuModalClose", 20000).catch(() => undefined);
-      await waitForSelectorToDisappear(page, businessConfig.productEdit.inputSelector || "#menuItemName", 20000).catch(() => undefined);
-      await waitForText(page, replaceRunTokens(businessConfig.productEdit.verifyText || nextName, env), 20000);
-      heart.passModule("menu", "Produkt wurde bearbeitet.", {
-        action: "product edit",
-        persona: persona.key,
-        area: "menu"
-      });
-    }
-  });
-
-  await runBusinessMutation({
-    page,
-    env,
-    heart,
-    persona,
-    moduleKey: "menu",
-    actionLabel: "Product delete",
-    config: businessConfig.productDelete,
-    requiredKeys: ["url", "openSelector"],
-    perform: async () => {
-      await openPageAndWait(page, businessConfig.productDelete.url, "body", heart, {
-        title: "Business / Open product delete flow",
-        moduleKey: "menu",
-        area: "menu",
-        persona: persona.key
-      });
-      await clickIfPresent(page, businessConfig.productDelete.openSelector);
-      if (businessConfig.productDelete.confirmSelector) {
-        await clickIfPresent(page, businessConfig.productDelete.confirmSelector);
+  const editResult = createResult.ok
+    ? await runBusinessMutation({
+      page,
+      env,
+      heart,
+      persona,
+      moduleKey: "menu",
+      actionLabel: "Product edit",
+      config: businessConfig.productEdit,
+      requiredKeys: ["url", "inputSelector", "saveSelector"],
+      perform: async () => {
+        const nextName = replaceRunTokens(
+          businessConfig.productEdit.verifyText || productNames.edited,
+          env
+        );
+        await openBusinessMenuAdmin(page, heart, persona, businessConfig.productEdit.url, "Business / Open product edit flow");
+        await searchBusinessMenu(page, productNames.original);
+        const itemId = await resolveMenuActionItemId(page, productNames.original, "data-menu-edit");
+        if (!itemId) {
+          throw new Error("Heart konnte das eben erstellte Testprodukt zum Bearbeiten nicht finden.");
+        }
+        const clickedEdit = await clickMenuActionByItemId(page, "data-menu-edit", itemId);
+        if (!clickedEdit) {
+          throw new Error("Heart konnte die Bearbeiten-Aktion fuer das Testprodukt nicht ausloesen.");
+        }
+        await fillIfPresent(page, businessConfig.productEdit.inputSelector, nextName);
+        await clickIfPresent(page, businessConfig.productEdit.saveSelector);
+        await waitForSelectorToDisappear(page, "#menuModalClose", 20000).catch(() => undefined);
+        await waitForSelectorToDisappear(page, businessConfig.productEdit.inputSelector || "#menuItemName", 20000).catch(() => undefined);
+        await openBusinessMenuAdmin(page, heart, persona, businessConfig.productEdit.url, "Business / Verify product edit");
+        await searchBusinessMenu(page, nextName);
+        await waitForMenuItemByText(page, nextName, 20000);
+        heart.passModule("menu", "Produkt wurde bearbeitet.", {
+          action: "product edit",
+          persona: persona.key,
+          area: "menu"
+        });
       }
-      if (businessConfig.productDelete.removedSelector) {
-        await page.locator(businessConfig.productDelete.removedSelector).first().waitFor({ state: "hidden", timeout: 15000 });
-      } else if (businessConfig.productDelete.removedText) {
-        await waitForTextToDisappear(page, replaceRunTokens(businessConfig.productDelete.removedText, env), 15000);
-      }
-      heart.passModule("menu", "Produkt wurde geloescht.", {
-        action: "product delete",
-        persona: persona.key,
-        area: "menu"
-      });
-    }
-  });
+    })
+    : { ok: false, reason: "create_failed" };
 
-  markSkipped(heart, "business", "Fokus- oder Spezial-Erstellung wird im Heart-Runner noch nicht separat gefahren.", {
-    action: "focus create",
-    persona: persona.key,
-    area: "business"
-  });
-  markSkipped(heart, "business", "Zusaetzlicher Medien-Upload wird im Heart-Runner noch nicht separat gefahren.", {
-    action: "media upload",
-    persona: persona.key,
-    area: "business"
-  });
+  if (createResult.ok) {
+    await runBusinessMutation({
+      page,
+      env,
+      heart,
+      persona,
+      moduleKey: "menu",
+      actionLabel: "Product delete",
+      config: businessConfig.productDelete,
+      requiredKeys: ["url"],
+      perform: async () => {
+        const targetName = editResult.ok ? productNames.edited : productNames.original;
+        await openBusinessMenuAdmin(page, heart, persona, businessConfig.productDelete.url, "Business / Open product delete flow");
+        await searchBusinessMenu(page, targetName);
+        const itemId = await resolveMenuActionItemId(page, targetName, "data-menu-delete");
+        if (!itemId) {
+          throw new Error("Heart konnte das Testprodukt zum Loeschen nicht finden.");
+        }
+        const clickedDelete = await clickMenuActionByItemId(page, "data-menu-delete", itemId);
+        if (!clickedDelete) {
+          throw new Error("Heart konnte die Loeschen-Aktion fuer das Testprodukt nicht ausloesen.");
+        }
+        if (businessConfig.productDelete.confirmSelector) {
+          await clickIfPresent(page, businessConfig.productDelete.confirmSelector);
+        }
+        await waitForTextToDisappear(page, targetName, 20000).catch(async () => {
+          await waitForMenuItemToDisappear(page, targetName, 20000);
+        });
+        heart.passModule("menu", "Produkt wurde geloescht.", {
+          action: "product delete",
+          persona: persona.key,
+          area: "menu"
+        });
+      }
+    });
+  }
 }
