@@ -37,6 +37,10 @@ function ensureObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
 
+function hasOwn(value, key) {
+  return !!value && Object.prototype.hasOwnProperty.call(value, key);
+}
+
 function cloneRecord(value) {
   return value && typeof value === "object" ? JSON.parse(JSON.stringify(value)) : {};
 }
@@ -496,7 +500,41 @@ function createHeartProviders({ db }) {
     const existing = await getRun(safeRunId);
     const startedAt = asText(report.startedAt || existing?.startedAt || new Date().toISOString());
     const endedAt = asText(report.endedAt || new Date().toISOString());
-    const durationMs = Math.max(0, Number(report.durationMs) || (new Date(endedAt).getTime() - new Date(startedAt).getTime()));
+    const durationMs = hasOwn(report, "durationMs")
+      ? Math.max(0, Number(report.durationMs) || 0)
+      : Math.max(0, Number(existing?.durationMs) || (new Date(endedAt).getTime() - new Date(startedAt).getTime()));
+    const nextStatusBreakdown = hasOwn(report, "statusBreakdown") && report.statusBreakdown && typeof report.statusBreakdown === "object"
+      ? report.statusBreakdown
+      : (existing?.statusBreakdown || {});
+    const nextModules = hasOwn(report, "modules")
+      ? ensureArray(report.modules).map(normalizeModuleStatus)
+      : ensureArray(existing?.modules).map(normalizeModuleStatus);
+    const nextTimeline = hasOwn(report, "timeline")
+      ? ensureArray(report.timeline).map((item, index) => ({
+          id: asText(item.id, `timeline_${index + 1}`),
+          title: asText(item.title || item.name || `Step ${index + 1}`),
+          status: normalizeStatus(item.status, "idle"),
+          note: asText(item.note || item.message),
+          startedAt: asText(item.startedAt),
+          endedAt: asText(item.endedAt)
+        }))
+      : ensureArray(existing?.timeline);
+    const nextCreatedEntities = hasOwn(report, "createdEntities")
+      ? ensureArray(report.createdEntities)
+      : ensureArray(existing?.createdEntities);
+    const nextCleanup = hasOwn(report, "cleanup") && report.cleanup && typeof report.cleanup === "object"
+      ? {
+          status: normalizeStatus(report.cleanup.status, "idle"),
+          summary: asText(report.cleanup.summary || "Keine Aufraeuminformation vorhanden."),
+          items: ensureArray(report.cleanup.items)
+        }
+      : (existing?.cleanup || { status: "idle", summary: "Keine Aufraeuminformation vorhanden.", items: [] });
+    const nextArtifacts = hasOwn(report, "artifacts")
+      ? ensureArray(report.artifacts).map(normalizeArtifactRecord)
+      : ensureArray(existing?.artifacts).map(normalizeArtifactRecord);
+    const nextFailureDetails = hasOwn(report, "failureDetails")
+      ? ensureArray(report.failureDetails)
+      : ensureArray(existing?.failureDetails);
     const payload = {
       ...(existing || {}),
       id: safeRunId,
@@ -515,32 +553,23 @@ function createHeartProviders({ db }) {
       durationMs,
       branch: asText(report.branch || existing?.branch),
       build: asText(report.build || existing?.build),
-      passedChecks: Math.max(0, Number(report.passedChecks) || 0),
-      failedChecks: Math.max(0, Number(report.failedChecks) || 0),
-      warningCount: Math.max(0, Number(report.warningCount) || 0),
-      statusBreakdown: report.statusBreakdown && typeof report.statusBreakdown === "object"
-        ? report.statusBreakdown
-        : (existing?.statusBreakdown || {}),
+      passedChecks: hasOwn(report, "passedChecks")
+        ? Math.max(0, Number(report.passedChecks) || 0)
+        : Math.max(0, Number(existing?.passedChecks) || 0),
+      failedChecks: hasOwn(report, "failedChecks")
+        ? Math.max(0, Number(report.failedChecks) || 0)
+        : Math.max(0, Number(existing?.failedChecks) || 0),
+      warningCount: hasOwn(report, "warningCount")
+        ? Math.max(0, Number(report.warningCount) || 0)
+        : Math.max(0, Number(existing?.warningCount) || 0),
+      statusBreakdown: nextStatusBreakdown,
       currentStep: asText(report.currentStep || existing?.currentStep),
-      modules: ensureArray(report.modules).map(normalizeModuleStatus),
-      timeline: ensureArray(report.timeline).map((item, index) => ({
-        id: asText(item.id, `timeline_${index + 1}`),
-        title: asText(item.title || item.name || `Step ${index + 1}`),
-        status: normalizeStatus(item.status, "idle"),
-        note: asText(item.note || item.message),
-        startedAt: asText(item.startedAt),
-        endedAt: asText(item.endedAt)
-      })),
-      createdEntities: ensureArray(report.createdEntities),
-      cleanup: report.cleanup && typeof report.cleanup === "object"
-        ? {
-            status: normalizeStatus(report.cleanup.status, "idle"),
-            summary: asText(report.cleanup.summary || "Keine Aufraeuminformation vorhanden."),
-            items: ensureArray(report.cleanup.items)
-          }
-        : { status: "idle", summary: "Keine Aufraeuminformation vorhanden.", items: [] },
-      artifacts: ensureArray(report.artifacts).map(normalizeArtifactRecord),
-      failureDetails: ensureArray(report.failureDetails),
+      modules: nextModules,
+      timeline: nextTimeline,
+      createdEntities: nextCreatedEntities,
+      cleanup: nextCleanup,
+      artifacts: nextArtifacts,
+      failureDetails: nextFailureDetails,
       runFlags: report.runFlags && typeof report.runFlags === "object"
         ? report.runFlags
         : (existing?.runFlags || {}),

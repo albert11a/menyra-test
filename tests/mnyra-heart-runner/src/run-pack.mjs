@@ -19,6 +19,37 @@ function asText(value, fallback = "") {
   return text || fallback;
 }
 
+function buildRunSnapshotPayload(report = {}) {
+  return {
+    mode: report.mode,
+    packKey: report.packKey,
+    packLabel: report.packLabel,
+    packLevel: report.packLevel,
+    packSummary: report.packSummary,
+    personas: Array.isArray(report.personas) ? report.personas : [],
+    status: report.status,
+    summary: report.summary,
+    currentStep: report.currentStep,
+    startedAt: report.startedAt,
+    endedAt: report.endedAt,
+    durationMs: report.durationMs,
+    branch: report.branch,
+    build: report.build,
+    passedChecks: report.passedChecks,
+    failedChecks: report.failedChecks,
+    warningCount: report.warningCount,
+    statusBreakdown: report.statusBreakdown,
+    modules: report.modules,
+    timeline: report.timeline,
+    createdEntities: report.createdEntities,
+    cleanup: report.cleanup,
+    artifacts: report.artifacts,
+    failureDetails: report.failureDetails,
+    runFlags: report.runFlags,
+    github: report.github
+  };
+}
+
 async function main() {
   const requestedPackKey = asText(process.argv[2], process.env.HEART_PACK_KEY || "smoke");
   const env = await getRunnerEnv(requestedPackKey);
@@ -162,6 +193,10 @@ async function main() {
       heart.report.status,
       heart.report.summary
     );
+    await postHeartStatus(env, {
+      runId: env.runId,
+      ...buildRunSnapshotPayload(heart.getReport())
+    }).catch(() => undefined);
   } catch (error) {
     heart.failModule("runner", error, {
       title: `${pack.title} execution failed`,
@@ -190,6 +225,10 @@ async function main() {
       actor: env.ceoEmail
     }).catch(() => undefined);
     await emitStatus("Lauf fehlgeschlagen", "failed", asText(error?.message, `${pack.title} ist fehlgeschlagen.`)).catch(() => undefined);
+    await postHeartStatus(env, {
+      runId: env.runId,
+      ...buildRunSnapshotPayload(heart.getReport())
+    }).catch(() => undefined);
   } finally {
     if (page) {
       const finalScreenshot = await captureArtifact(page, env, `${pack.key}-final-state`).catch(() => "");
@@ -208,6 +247,10 @@ async function main() {
     const report = heart.getReport();
     const reportPath = await writeHeartReport({ report, outputFile: env.outputFile });
     await recordArtifact(`${pack.title} Bericht`, "json", reportPath);
+    await postHeartStatus(env, {
+      runId: env.runId,
+      ...buildRunSnapshotPayload(heart.getReport())
+    }).catch(() => undefined);
     await postHeartReport(env, {
       runId: env.runId,
       report: heart.getReport()

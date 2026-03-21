@@ -202,7 +202,7 @@ function shouldHydrateRunFromGithub(run = {}, {
   }
 
   if (hasRunDetailGaps(run)) {
-    return hydrationAgeMs >= GITHUB_ACTIVE_HYDRATION_MS;
+    return true;
   }
 
   return hydrationAgeMs >= GITHUB_DETAIL_HYDRATION_MS;
@@ -902,11 +902,26 @@ async function heartIngestRunStatus(req, res) {
     mode: asText(body.mode),
     packKey: asText(body.packKey),
     packLabel: asText(body.packLabel),
+    packLevel: asText(body.packLevel),
+    packSummary: asText(body.packSummary),
+    personas: Array.isArray(body.personas) ? body.personas : undefined,
     status: normalizeStatus(body.status, "running"),
     summary: asText(body.summary),
     currentStep: asText(body.currentStep || body.step),
     startedAt: asText(body.startedAt),
     endedAt: asText(body.endedAt),
+    durationMs: body.durationMs,
+    passedChecks: body.passedChecks,
+    failedChecks: body.failedChecks,
+    warningCount: body.warningCount,
+    statusBreakdown: body.statusBreakdown && typeof body.statusBreakdown === "object" ? body.statusBreakdown : undefined,
+    modules: Array.isArray(body.modules) ? body.modules : undefined,
+    timeline: Array.isArray(body.timeline) ? body.timeline : undefined,
+    createdEntities: Array.isArray(body.createdEntities) ? body.createdEntities : undefined,
+    cleanup: body.cleanup && typeof body.cleanup === "object" ? body.cleanup : undefined,
+    artifacts: Array.isArray(body.artifacts) ? body.artifacts : undefined,
+    failureDetails: Array.isArray(body.failureDetails) ? body.failureDetails : undefined,
+    runFlags: body.runFlags && typeof body.runFlags === "object" ? body.runFlags : undefined,
     branch: asText(body.branch),
     build: asText(body.build),
     github: body.github && typeof body.github === "object" ? body.github : {}
