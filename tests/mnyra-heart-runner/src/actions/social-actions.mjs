@@ -209,29 +209,208 @@ async function openSocialTargetProfile(page, env, heart, persona, {
 }
 
 async function readFollowState(page, selector) {
-  return page.locator(selector).first().evaluate((button) => {
+  return page.evaluate((followSelector) => {
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const nodes = Array.from(document.querySelectorAll(followSelector));
+    const button = nodes.find((entry) => isVisibleNode(entry)) || nodes[0];
     const text = String(button?.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
     return {
       text,
       following: text.includes("following"),
       requested: text.includes("request")
     };
-  });
+  }, selector);
+}
+
+async function clickVisibleFollowButton(page, selector, timeout = 8000) {
+  const deadline = Date.now() + Math.max(250, Number(timeout) || 0);
+  while (Date.now() < deadline) {
+    const clicked = await page.evaluate((followSelector) => {
+      const isVisibleNode = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+          return false;
+        }
+        const rect = node.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      const nodes = Array.from(document.querySelectorAll(followSelector));
+      const button = nodes.find((entry) => isVisibleNode(entry));
+      if (!(button instanceof HTMLElement)) return false;
+      button.click();
+      return true;
+    }, selector);
+    if (clicked) return true;
+    await page.waitForTimeout(120).catch(() => undefined);
+  }
+  return false;
 }
 
 async function waitForFollowState(page, selector, expectedState, timeout = 15000) {
   await page.waitForFunction(
     ({ followSelector, nextState }) => {
-      const button = document.querySelector(followSelector);
-      if (!button) return false;
-      const text = String(button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-      const isFollowing = text.includes("following");
-      const isRequested = text.includes("request");
-      if (nextState === "following") return isFollowing || isRequested;
-      if (nextState === "not_following") return !isFollowing && !isRequested;
+      const isVisibleNode = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+          return false;
+        }
+        const rect = node.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      const buttons = Array.from(document.querySelectorAll(followSelector));
+      const visibleButtons = buttons.filter((entry) => isVisibleNode(entry));
+      const effectiveButtons = visibleButtons.length ? visibleButtons : buttons;
+      if (!effectiveButtons.length) return false;
+      const states = effectiveButtons.map((button) => {
+        const text = String(button.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        return {
+          following: text.includes("following"),
+          requested: text.includes("request")
+        };
+      });
+      if (nextState === "following") {
+        return states.some((item) => item.following || item.requested);
+      }
+      if (nextState === "not_following") {
+        return states.some((item) => !item.following && !item.requested);
+      }
       return false;
     },
     { followSelector: selector, nextState: expectedState },
+    { timeout }
+  );
+}
+
+async function collectVisibleLikeCandidates(page, selector = "") {
+  const safeSelector = asText(selector);
+  if (!safeSelector) return [];
+  return page.evaluate((likeSelector) => {
+    const escapeSelectorValue = (value = "") => {
+      const safeValue = String(value || "");
+      if (globalThis.CSS?.escape) {
+        return globalThis.CSS.escape(safeValue);
+      }
+      return safeValue.replace(/["\\]/g, "\\$&");
+    };
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const nodes = Array.from(document.querySelectorAll(likeSelector));
+    const seen = new Set();
+    return nodes.flatMap((node) => {
+      if (!(node instanceof HTMLElement) || !isVisibleNode(node)) return [];
+      const postLikeKey = String(node.getAttribute("data-post-like-btn") || "").trim();
+      const feedLikeKey = String(node.getAttribute("data-feed-post-like") || "").trim();
+      const postKey = postLikeKey || feedLikeKey;
+      const selectors = [
+        postLikeKey ? `[data-post-like-btn="${escapeSelectorValue(postLikeKey)}"]` : "",
+        feedLikeKey ? `[data-feed-post-like="${escapeSelectorValue(feedLikeKey)}"]` : ""
+      ].filter(Boolean);
+      if (!selectors.length) return [];
+      const key = selectors.join("|");
+      if (seen.has(key)) return [];
+      seen.add(key);
+      return [{
+        key,
+        postKey,
+        selectors,
+        pressed: node.getAttribute("aria-pressed") === "true"
+          || node.classList.contains("text-rose-400")
+      }];
+    });
+  }, safeSelector);
+}
+
+async function clickVisibleLikeCandidate(page, selectors = []) {
+  return page.evaluate((selectorList) => {
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    for (const selector of Array.isArray(selectorList) ? selectorList : []) {
+      const nodes = Array.from(document.querySelectorAll(selector));
+      const button = nodes.find((entry) => isVisibleNode(entry));
+      if (button instanceof HTMLElement) {
+        button.click();
+        return true;
+      }
+    }
+    return false;
+  }, selectors);
+}
+
+async function waitForLikeCandidateState(page, {
+  selectors = [],
+  targetState = "liked",
+  countSelector = "",
+  previousCount = null,
+  timeout = 15000
+} = {}) {
+  await page.waitForFunction(
+    ({
+      likeSelectors,
+      desiredState,
+      likeCountSelector,
+      previousValue
+    }) => {
+      const isVisibleNode = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+          return false;
+        }
+        const rect = node.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      const buttons = [];
+      for (const selector of Array.isArray(likeSelectors) ? likeSelectors : []) {
+        document.querySelectorAll(selector).forEach((node) => {
+          if (node instanceof HTMLElement) buttons.push(node);
+        });
+      }
+      const visibleButtons = buttons.filter((node) => isVisibleNode(node));
+      const effectiveButtons = visibleButtons.length ? visibleButtons : buttons;
+      const pressedStates = effectiveButtons.map((button) => {
+        return button.getAttribute("aria-pressed") === "true"
+          || button.classList.contains("text-rose-400");
+      });
+      const anyPressed = pressedStates.some(Boolean);
+      const anyUnpressed = pressedStates.some((value) => !value);
+      const countNode = likeCountSelector
+        ? Array.from(document.querySelectorAll(likeCountSelector)).find((node) => isVisibleNode(node)) || document.querySelector(likeCountSelector)
+        : null;
+      const countMatch = String(countNode?.textContent || "").match(/-?\d+/);
+      const countChanged = countMatch ? Number(countMatch[0]) !== Number(previousValue) : false;
+      if (desiredState === "liked") return anyPressed || countChanged;
+      return anyUnpressed || countChanged;
+    },
+    {
+      likeSelectors: selectors,
+      desiredState: targetState,
+      likeCountSelector: countSelector,
+      previousValue: previousCount
+    },
     { timeout }
   );
 }
@@ -243,99 +422,61 @@ async function clickLikeButtonToState(page, {
 } = {}) {
   const safeSelector = asText(selector);
   if (!safeSelector) throw new Error("Heart konnte keinen Like-Button auswaehlen.");
-  const firstVisibleLike = await page.evaluate((selector) => {
-    const nodes = Array.from(document.querySelectorAll(selector));
-    const node = nodes.find((entry) => {
-      if (!(entry instanceof HTMLElement)) return false;
-      const style = window.getComputedStyle(entry);
-      const rect = entry.getBoundingClientRect();
-      return style.display !== "none"
-        && style.visibility !== "hidden"
-        && Number(style.opacity || "1") > 0
-        && rect.width > 0
-        && rect.height > 0;
-    });
-    if (!(node instanceof HTMLElement)) return null;
-    return {
-      postKey: node.getAttribute("data-post-like-btn") || node.getAttribute("data-feed-post-like") || "",
-      selectors: [
-        node.getAttribute("data-post-like-btn") ? `[data-post-like-btn="${node.getAttribute("data-post-like-btn")}"]` : "",
-        node.getAttribute("data-feed-post-like") ? `[data-feed-post-like="${node.getAttribute("data-feed-post-like")}"]` : ""
-      ].filter(Boolean)
-    };
-  }, safeSelector);
-  if (!firstVisibleLike?.selectors?.length) {
+  const candidates = await collectVisibleLikeCandidates(page, safeSelector);
+  if (!candidates.length) {
     throw new Error("Heart konnte keinen stabilen sichtbaren Like-Button finden.");
   }
-  const countSelector = firstVisibleLike.postKey ? `[data-post-like-count="${firstVisibleLike.postKey}"]` : "";
-  const beforeCount = countSelector ? await readCountValue(page, countSelector) : null;
-  const clicked = await page.evaluate((selectors) => {
-    for (const selector of selectors || []) {
-      const nodes = Array.from(document.querySelectorAll(selector));
-      const node = nodes.find((entry) => {
-        if (!(entry instanceof HTMLElement)) return false;
-        const style = window.getComputedStyle(entry);
-        const rect = entry.getBoundingClientRect();
-        return style.display !== "none"
-          && style.visibility !== "hidden"
-          && Number(style.opacity || "1") > 0
-          && rect.width > 0
-          && rect.height > 0;
-      });
-      if (node instanceof HTMLElement) {
-        node.click();
-        return true;
-      }
+  for (const candidate of candidates) {
+    const countSelector = candidate.postKey ? `[data-post-like-count="${candidate.postKey}"]` : "";
+    const beforeCount = countSelector ? await readCountValue(page, countSelector) : null;
+    const clicked = await clickVisibleLikeCandidate(page, candidate.selectors);
+    if (!clicked) continue;
+    const didReachTargetState = await waitForLikeCandidateState(page, {
+      selectors: candidate.selectors,
+      targetState,
+      countSelector,
+      previousCount: beforeCount,
+      timeout
+    }).then(() => true).catch(() => false);
+    if (didReachTargetState) {
+      return;
     }
-    return false;
-  }, firstVisibleLike.selectors);
-  if (!clicked) {
-    throw new Error("Heart konnte den gewaehlten Like-Button nicht klicken.");
   }
-  await page.waitForFunction(
-    ({ likeSelectors, desiredState, likeCountSelector, previousCount }) => {
-      const isVisibleNode = (node) => {
-        if (!(node instanceof HTMLElement)) return false;
-        const style = window.getComputedStyle(node);
-        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
-          return false;
-        }
-        const rect = node.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-      };
-      const buttonNodes = [];
-      for (const selector of Array.isArray(likeSelectors) ? likeSelectors : []) {
-        document.querySelectorAll(selector).forEach((node) => {
-          if (node instanceof HTMLElement) {
-            buttonNodes.push(node);
-          }
-        });
-      }
-      const visibleButtons = buttonNodes.filter((node) => isVisibleNode(node));
-      const effectiveButtons = visibleButtons.length ? visibleButtons : buttonNodes;
-      if (!effectiveButtons.length && !likeCountSelector) return false;
-      const pressedStates = effectiveButtons.map((buttonNode) => {
-        return buttonNode.getAttribute("aria-pressed") === "true"
-          || buttonNode.classList.contains("text-rose-400");
-      });
-      const anyPressed = pressedStates.some(Boolean);
-      const allUnpressed = pressedStates.length > 0 && pressedStates.every((value) => !value);
-      const countNode = likeCountSelector
-        ? Array.from(document.querySelectorAll(likeCountSelector)).find((node) => isVisibleNode(node)) || document.querySelector(likeCountSelector)
-        : null;
-      const countMatch = String(countNode?.textContent || "").match(/-?\d+/);
-      const countChanged = countMatch ? Number(countMatch[0]) !== Number(previousCount) : false;
-      if (desiredState === "liked") return anyPressed || countChanged;
-      return allUnpressed || countChanged;
-    },
-    {
-      likeSelectors: firstVisibleLike.selectors,
-      desiredState: targetState,
-      likeCountSelector: countSelector,
-      previousCount: beforeCount
-    },
-    { timeout }
-  );
+  throw new Error(`Heart konnte keinen sichtbaren Like-Button stabil in den Zustand "${targetState}" bringen.`);
+}
+
+async function runLikeAction(page, selector = "") {
+  const candidates = await collectVisibleLikeCandidates(page, selector);
+  if (!candidates.length) {
+    throw new Error("Heart konnte keinen sichtbaren Like-Button im Feed finden.");
+  }
+  for (const candidate of candidates) {
+    if (candidate.pressed) {
+      const countSelector = candidate.postKey ? `[data-post-like-count="${candidate.postKey}"]` : "";
+      const beforeUnlikeCount = countSelector ? await readCountValue(page, countSelector) : null;
+      const unliked = await clickVisibleLikeCandidate(page, candidate.selectors);
+      if (!unliked) continue;
+      const unlikeSucceeded = await waitForLikeCandidateState(page, {
+        selectors: candidate.selectors,
+        targetState: "unliked",
+        countSelector,
+        previousCount: beforeUnlikeCount,
+        timeout: 15000
+      }).then(() => true).catch(() => false);
+      if (!unlikeSucceeded) continue;
+    }
+    await clickLikeButtonToState(page, {
+      selector,
+      targetState: "liked",
+      timeout: 15000
+    });
+    return;
+  }
+  await clickLikeButtonToState(page, {
+    selector,
+    targetState: "liked",
+    timeout: 15000
+  });
 }
 
 async function runConfiguredSocialMutation({
@@ -486,10 +627,16 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
       await ensureElementVisible(page, socialConfig.follow.triggerSelector, 15000);
       const beforeState = await readFollowState(page, socialConfig.follow.triggerSelector);
       if (beforeState.following || beforeState.requested) {
-        await page.locator(socialConfig.follow.triggerSelector).first().click({ timeout: 8000 });
+        const cleared = await clickVisibleFollowButton(page, socialConfig.follow.triggerSelector, 8000);
+        if (!cleared) {
+          throw new Error("Heart konnte den sichtbaren Follow-Button nicht fuer den Reset klicken.");
+        }
         await waitForFollowState(page, socialConfig.follow.triggerSelector, "not_following", 15000);
       }
-      await page.locator(socialConfig.follow.triggerSelector).first().click({ timeout: 8000 });
+      const clicked = await clickVisibleFollowButton(page, socialConfig.follow.triggerSelector, 8000);
+      if (!clicked) {
+        throw new Error("Heart konnte den sichtbaren Follow-Button nicht klicken.");
+      }
       await waitForFollowState(page, socialConfig.follow.triggerSelector, "following", 15000);
       heart.passModule("profile", "Follow wurde erfolgreich ausgefuehrt.", {
         action: "follow",
@@ -516,38 +663,7 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
         persona: persona.key
       });
       await ensureElementVisible(page, socialConfig.like.triggerSelector, 15000);
-      const alreadyLiked = await page.waitForFunction(
-        (selector) => {
-          const nodes = Array.from(document.querySelectorAll(selector));
-          const button = nodes.find((entry) => {
-            if (!(entry instanceof HTMLElement)) return false;
-            const style = window.getComputedStyle(entry);
-            const rect = entry.getBoundingClientRect();
-            return style.display !== "none"
-              && style.visibility !== "hidden"
-              && Number(style.opacity || "1") > 0
-              && rect.width > 0
-              && rect.height > 0;
-          });
-          if (!(button instanceof HTMLElement)) return false;
-          return button.getAttribute("aria-pressed") === "true"
-            || button.classList.contains("text-rose-400");
-        },
-        socialConfig.like.triggerSelector,
-        { timeout: 600 }
-      ).then(() => true).catch(() => false);
-      if (alreadyLiked) {
-        await clickLikeButtonToState(page, {
-          selector: socialConfig.like.triggerSelector,
-          targetState: "unliked",
-          timeout: 15000
-        });
-      }
-      await clickLikeButtonToState(page, {
-        selector: socialConfig.like.triggerSelector,
-        targetState: "liked",
-        timeout: 15000
-      });
+      await runLikeAction(page, socialConfig.like.triggerSelector);
       heart.passModule("feed", "Like wurde erfolgreich ausgefuehrt.", {
         action: "like",
         persona: persona.key,

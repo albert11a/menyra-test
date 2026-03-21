@@ -37,6 +37,7 @@ const {
   HEART_PERSONA_KEYS,
   searchRestaurants,
   provisionHeartAccounts,
+  reconcileHeartAccounts,
   deleteProvisionedPersona,
   buildRunnerEnvPayload,
   deriveSetupPatch
@@ -350,12 +351,38 @@ async function loadRestaurantById(restaurantId = "") {
 async function buildHeartSetupState(req, patch = {}) {
   const currentSetup = await providers.getSetup();
   const baseUrls = deriveAppBaseUrls(req, patch);
-  const nextSetup = deriveSetupPatch({
+  let nextSetup = deriveSetupPatch({
     setup: currentSetup,
     patch,
     socialBaseUrl: baseUrls.socialBaseUrl,
     waiterBaseUrl: baseUrls.waiterBaseUrl
   });
+  const restaurantId = asText(nextSetup.restaurantId);
+  const managedPersonas = nextSetup.personas && typeof nextSetup.personas === "object"
+    ? Object.values(nextSetup.personas).filter((item) => item && item.managed === true)
+    : [];
+  if (restaurantId && managedPersonas.length) {
+    const restaurant = await loadRestaurantById(restaurantId);
+    if (restaurant?.id) {
+      const reconciledSetup = await reconcileHeartAccounts({
+        db,
+        setup: nextSetup,
+        restaurant
+      });
+      nextSetup = deriveSetupPatch({
+        setup: reconciledSetup,
+        socialBaseUrl: baseUrls.socialBaseUrl,
+        waiterBaseUrl: baseUrls.waiterBaseUrl
+      });
+      await providers.saveSetup({
+        ...nextSetup,
+        restaurantId: restaurant.id,
+        restaurantName: restaurant.name,
+        restaurantHandle: restaurant.handle,
+        restaurantQuery: asText(nextSetup.restaurantQuery || restaurant.name)
+      }).catch(() => undefined);
+    }
+  }
   return {
     currentSetup,
     nextSetup,

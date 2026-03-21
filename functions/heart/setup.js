@@ -663,6 +663,8 @@ function createUserProfilePayload({
   role = "user",
   roles = [],
   restaurantId = "",
+  staffRestaurantId = "",
+  waiterRestaurantId = "",
   businessAccess = false,
   waiterAccess = false
 } = {}) {
@@ -677,8 +679,8 @@ function createUserProfilePayload({
     role: asText(role),
     roles: Array.isArray(roles) ? roles.slice() : [],
     restaurantId: asText(restaurantId),
-    staffRestaurantId: asText(restaurantId),
-    waiterRestaurantId: waiterAccess ? asText(restaurantId) : "",
+    staffRestaurantId: asText(staffRestaurantId),
+    waiterRestaurantId: asText(waiterRestaurantId),
     businessAccess: businessAccess === true,
     waiterAccess: waiterAccess === true,
     permissions: {
@@ -803,7 +805,9 @@ async function provisionHeartAccounts({
           displayName: identity.displayName,
           handle: identity.handle,
           role: "ceo",
-          roles: ["ceo"]
+          roles: ["ceo"],
+          staffRestaurantId: "",
+          waiterRestaurantId: ""
         }),
         updatedAt: new Date().toISOString()
       }, { merge: true });
@@ -811,6 +815,7 @@ async function provisionHeartAccounts({
       const businessAccess = personaKey === "business";
       const waiterAccess = personaKey === "staff";
       const staffRoles = personaKey === "business" ? ["owner", "staff"] : ["staff"];
+      const userRoles = personaKey === "business" ? ["owner", "business"] : ["staff"];
       await db.collection("restaurants").doc(asText(restaurant.id)).collection("staff").doc(uid).set({
         uid,
         userId: uid,
@@ -846,8 +851,10 @@ async function provisionHeartAccounts({
           displayName: identity.displayName,
           handle: identity.handle,
           role: personaKey === "business" ? "business" : "staff",
-          roles: staffRoles,
+          roles: userRoles,
           restaurantId: asText(restaurant.id),
+          staffRestaurantId: personaKey === "staff" ? asText(restaurant.id) : "",
+          waiterRestaurantId: waiterAccess ? asText(restaurant.id) : "",
           businessAccess,
           waiterAccess
         }),
@@ -863,7 +870,9 @@ async function provisionHeartAccounts({
           displayName: identity.displayName,
           handle: identity.handle,
           role: "user",
-          roles: ["user"]
+          roles: ["user"],
+          staffRestaurantId: "",
+          waiterRestaurantId: ""
         }),
         updatedAt: new Date().toISOString()
       }, { merge: true });
@@ -877,6 +886,7 @@ async function provisionHeartAccounts({
       handle: identity.handle,
       displayName: identity.displayName,
       role: identity.role,
+      restaurantId: personaKey === "business" ? asText(restaurant.id) : "",
       managed: true,
       ready: true,
       updatedAt: new Date().toISOString()
@@ -884,6 +894,167 @@ async function provisionHeartAccounts({
     if (!nextSetup.managed.createdPersonaKeys.includes(personaKey)) {
       nextSetup.managed.createdPersonaKeys.push(personaKey);
     }
+  }
+
+  return nextSetup;
+}
+
+async function reconcileHeartAccounts({
+  db,
+  setup = {},
+  restaurant = {}
+} = {}) {
+  const nextSetup = mergeDeep(setup, {});
+  nextSetup.personas = ensureObject(nextSetup.personas);
+  const restaurantId = asText(restaurant.id || setup.restaurantId);
+  const restaurantName = asText(restaurant.name || setup.restaurantName);
+
+  for (const personaKey of HEART_PERSONA_KEYS) {
+    const persona = ensureObject(nextSetup.personas[personaKey]);
+    const uid = asText(persona.uid);
+    if (!uid) continue;
+
+    const identity = buildPersonaIdentity(personaKey, restaurant);
+    const displayName = asText(persona.displayName, identity.displayName);
+    const email = asText(persona.email, identity.email);
+    const handle = asText(persona.handle, identity.handle);
+    const updatedAt = new Date().toISOString();
+
+    if (personaKey === "ceo") {
+      await db.collection("superadmins").doc(uid).set({
+        uid,
+        userId: uid,
+        name: displayName,
+        displayName,
+        firstName: displayName,
+        lastName: "",
+        email,
+        handle,
+        role: "ceo",
+        roles: ["ceo"],
+        status: "active",
+        updatedAt
+      }, { merge: true });
+      await db.collection("users").doc(uid).set({
+        ...createUserProfilePayload({
+          uid,
+          email,
+          firstName: displayName,
+          lastName: "",
+          displayName,
+          handle,
+          role: "ceo",
+          roles: ["ceo"],
+          restaurantId: "",
+          staffRestaurantId: "",
+          waiterRestaurantId: "",
+          businessAccess: false,
+          waiterAccess: false
+        }),
+        businessOwnerUid: "",
+        updatedAt
+      }, { merge: true });
+      nextSetup.personas[personaKey] = {
+        ...persona,
+        uid,
+        email,
+        handle,
+        displayName,
+        role: "ceo",
+        managed: true,
+        ready: !!email && !!asText(persona.password),
+        updatedAt
+      };
+      continue;
+    }
+
+    if (personaKey === "business") {
+      await db.collection("restaurants").doc(restaurantId).collection("staff").doc(uid).set({
+        uid,
+        userId: uid,
+        restaurantId,
+        restaurantName,
+        firstName: displayName,
+        lastName: "",
+        name: displayName,
+        email,
+        role: "owner",
+        roles: ["owner", "staff"],
+        businessAccess: true,
+        waiterAccess: false,
+        permissions: {
+          businessAccess: true,
+          waiterAccess: false
+        },
+        active: true,
+        status: "active",
+        updatedAt
+      }, { merge: true });
+      await db.collection("users").doc(uid).set({
+        ...createUserProfilePayload({
+          uid,
+          email,
+          firstName: displayName,
+          lastName: "",
+          displayName,
+          handle,
+          role: "business",
+          roles: ["owner", "business"],
+          restaurantId,
+          staffRestaurantId: "",
+          waiterRestaurantId: "",
+          businessAccess: true,
+          waiterAccess: false
+        }),
+        businessOwnerUid: "",
+        updatedAt
+      }, { merge: true });
+      nextSetup.personas[personaKey] = {
+        ...persona,
+        uid,
+        email,
+        handle,
+        displayName,
+        role: "business",
+        restaurantId,
+        managed: true,
+        ready: !!email && !!asText(persona.password),
+        updatedAt
+      };
+      continue;
+    }
+
+    await db.collection("users").doc(uid).set({
+      ...createUserProfilePayload({
+        uid,
+        email,
+        firstName: displayName,
+        lastName: "",
+        displayName,
+        handle,
+        role: "user",
+        roles: ["user"],
+        restaurantId: "",
+        staffRestaurantId: "",
+        waiterRestaurantId: "",
+        businessAccess: false,
+        waiterAccess: false
+      }),
+      businessOwnerUid: "",
+      updatedAt
+    }, { merge: true });
+    nextSetup.personas[personaKey] = {
+      ...persona,
+      uid,
+      email,
+      handle,
+      displayName,
+      role: "user",
+      restaurantId: "",
+      managed: true,
+      ready: !!email && !!asText(persona.password),
+      updatedAt
+    };
   }
 
   return nextSetup;
@@ -990,6 +1161,7 @@ module.exports = {
   buildGuestRouteUrl,
   searchRestaurants,
   provisionHeartAccounts,
+  reconcileHeartAccounts,
   deleteProvisionedPersona,
   buildRunnerEnvPayload,
   deriveSetupPatch

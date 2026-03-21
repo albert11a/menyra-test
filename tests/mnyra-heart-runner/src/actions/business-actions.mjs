@@ -42,11 +42,60 @@ async function openBusinessMenuAdmin(page, heart, persona, url, title) {
     area: "menu",
     persona: persona.key
   });
+  const menuState = await page.waitForFunction(() => {
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const hasVisibleSelector = (selector) => {
+      return Array.from(document.querySelectorAll(selector)).some((entry) => isVisibleNode(entry));
+    };
+    if (
+      hasVisibleSelector("#menuSearchInput")
+      || hasVisibleSelector("[data-menu-add]")
+      || hasVisibleSelector("[data-menu-add-food]")
+    ) {
+      return { kind: "ready" };
+    }
+    const bodyText = String(document.body?.innerText || "");
+    if (bodyText.includes("Bitte zuerst dein Business im Account auswaehlen.")) {
+      return { kind: "missing_business" };
+    }
+    if (bodyText.includes("Diese Funktion ist nur fuer Business-Profile.")) {
+      return { kind: "not_business" };
+    }
+    if (bodyText.includes("Account gesperrt")) {
+      return { kind: "blocked" };
+    }
+    if (bodyText.includes("Nur Waiter-App freigegeben")) {
+      return { kind: "waiter_only" };
+    }
+    return false;
+  }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+
+  if (menuState?.kind === "ready") return;
+  if (menuState?.kind === "missing_business") {
+    throw new Error("Heart ist mit einem Konto eingeloggt, das in Menyra Social noch kein aktives Business im Account geladen hat.");
+  }
+  if (menuState?.kind === "not_business") {
+    throw new Error("Heart ist im Menue nicht als echtes Business-Profil gelandet.");
+  }
+  if (menuState?.kind === "blocked") {
+    throw new Error("Der Business-Account wurde von Menyra Social als gesperrt oder ohne Social-Zugriff geladen.");
+  }
+  if (menuState?.kind === "waiter_only") {
+    throw new Error("Der Business-Account wurde nur als Waiter-/Staff-Zugang geladen, nicht als Business-Owner.");
+  }
   await waitForAnySelector(page, [
     "#menuSearchInput",
     "[data-menu-add]",
     "[data-menu-add-food]"
-  ], 20000);
+  ], 5000);
 }
 
 async function searchBusinessMenu(page, queryText = "") {
