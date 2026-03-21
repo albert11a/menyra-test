@@ -3,6 +3,7 @@ import {
   fillIfPresent,
   openPageAndWait,
   openSocialTab,
+  waitForAnySelector,
   waitForSelectorToDisappear,
   waitForTextToDisappear
 } from "../helpers/social-app.mjs";
@@ -40,10 +41,11 @@ async function openBusinessMenuAdmin(page, heart, persona, url, title) {
     area: "menu",
     persona: persona.key
   });
-  await page.locator("#menuSearchInput, [data-menu-add], [data-menu-add-food]").first().waitFor({
-    state: "visible",
-    timeout: 20000
-  });
+  await waitForAnySelector(page, [
+    "#menuSearchInput",
+    "[data-menu-add]",
+    "[data-menu-add-food]"
+  ], 20000);
 }
 
 async function searchBusinessMenu(page, queryText = "") {

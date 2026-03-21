@@ -100,7 +100,27 @@ async function openBusinessTargetFromMap(page, heart, persona, {
   }
 
   await waitForAnySelector(page, uniqueSelectors(markerSelector), 20000);
-  const clickedMarker = await clickFirstVisible(page, uniqueSelectors(markerSelector), 10000);
+  const clickedMarker = await page.evaluate((selectors) => {
+    const selectorList = Array.isArray(selectors) ? selectors : [];
+    for (const selector of selectorList) {
+      const nodes = Array.from(document.querySelectorAll(selector));
+      const node = nodes.find((entry) => {
+        if (!(entry instanceof HTMLElement)) return false;
+        const style = window.getComputedStyle(entry);
+        const rect = entry.getBoundingClientRect();
+        return style.display !== "none"
+          && style.visibility !== "hidden"
+          && Number(style.opacity || "1") > 0
+          && rect.width > 0
+          && rect.height > 0;
+      });
+      if (node instanceof HTMLElement) {
+        node.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+        return selector;
+      }
+    }
+    return "";
+  }, uniqueSelectors(markerSelector));
   if (!clickedMarker) {
     throw new Error("Heart konnte auf der Karte keinen anklickbaren Marker finden.");
   }

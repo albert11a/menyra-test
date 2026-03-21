@@ -54,16 +54,24 @@ function uniqueSelectors(...values) {
   });
 }
 
+function chooseFirstText(...values) {
+  for (const value of values) {
+    const safeValue = asText(value);
+    if (safeValue) return safeValue;
+  }
+  return "";
+}
+
 function resolveSocialTargetProfileUrl(env = {}, persona = {}, preferredUrl = "") {
   const socialConfig = env.packConfig?.actions?.social || {};
   if (persona?.key === "business") {
-    return asText(
+    const preferredTargetUrl = chooseFirstText(
       socialConfig.userTargetProfile?.url,
-      preferredUrl,
-      socialConfig.businessProfile?.url
+      parseHandleFromUrl(preferredUrl) ? preferredUrl : ""
     );
+    return preferredTargetUrl;
   }
-  return asText(
+  return chooseFirstText(
     socialConfig.businessProfile?.url,
     preferredUrl,
     socialConfig.userTargetProfile?.url
@@ -124,7 +132,11 @@ async function openSocialTargetProfile(page, env, heart, persona, {
 } = {}) {
   const targetContext = resolveSocialTargetProfileContext(env, persona, preferredUrl);
   const directUrl = asText(targetContext.url);
-  if (directUrl) {
+  const allowDirectUrl = !!directUrl && (
+    persona?.key !== "business"
+      || !!parseHandleFromUrl(directUrl)
+  );
+  if (allowDirectUrl) {
     await openPageAndWait(page, directUrl, "body", heart, {
       title: title || `${persona.label} / Open profile target`,
       moduleKey,
@@ -132,7 +144,7 @@ async function openSocialTargetProfile(page, env, heart, persona, {
       persona: persona.key
     });
     try {
-      await waitForPublicProfileReady(page, 7000);
+      await ensureElementVisible(page, "[data-public-profile-follow]", 7000);
       return targetContext;
     } catch {
       // fall through to discovery search
@@ -170,7 +182,17 @@ async function openSocialTargetProfile(page, env, heart, persona, {
   const clicked = await page.evaluate((selectors) => {
     const list = Array.isArray(selectors) ? selectors : [];
     for (const selector of list) {
-      const node = document.querySelector(selector);
+      const nodes = Array.from(document.querySelectorAll(selector));
+      const node = nodes.find((entry) => {
+        if (!(entry instanceof HTMLElement)) return false;
+        const style = window.getComputedStyle(entry);
+        const rect = entry.getBoundingClientRect();
+        return style.display !== "none"
+          && style.visibility !== "hidden"
+          && Number(style.opacity || "1") > 0
+          && rect.width > 0
+          && rect.height > 0;
+      });
       if (node instanceof HTMLElement) {
         node.click();
         return true;
@@ -182,7 +204,7 @@ async function openSocialTargetProfile(page, env, heart, persona, {
     throw new Error("Heart konnte das Zielprofil in der Suche nicht oeffnen.");
   }
 
-  await waitForPublicProfileReady(page, 20000);
+  await ensureElementVisible(page, "[data-public-profile-follow]", 20000);
   return targetContext;
 }
 
@@ -221,17 +243,60 @@ async function clickLikeButtonToState(page, {
 } = {}) {
   const safeSelector = asText(selector);
   if (!safeSelector) throw new Error("Heart konnte keinen Like-Button auswaehlen.");
-  const button = page.locator(safeSelector).first();
-  const postKey = asText(
-    await button.getAttribute("data-post-like-btn").catch(() => ""),
-    await button.getAttribute("data-feed-post-like").catch(() => "")
-  );
-  const countSelector = postKey ? `[data-post-like-count="${postKey}"]` : "";
+  const firstVisibleLike = await page.evaluate((selector) => {
+    const nodes = Array.from(document.querySelectorAll(selector));
+    const node = nodes.find((entry) => {
+      if (!(entry instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(entry);
+      const rect = entry.getBoundingClientRect();
+      return style.display !== "none"
+        && style.visibility !== "hidden"
+        && Number(style.opacity || "1") > 0
+        && rect.width > 0
+        && rect.height > 0;
+    });
+    if (!(node instanceof HTMLElement)) return null;
+    return {
+      postKey: node.getAttribute("data-post-like-btn") || node.getAttribute("data-feed-post-like") || "",
+      selectors: [
+        node.getAttribute("data-post-like-btn") ? `[data-post-like-btn="${node.getAttribute("data-post-like-btn")}"]` : "",
+        node.getAttribute("data-feed-post-like") ? `[data-feed-post-like="${node.getAttribute("data-feed-post-like")}"]` : ""
+      ].filter(Boolean)
+    };
+  }, safeSelector);
+  if (!firstVisibleLike?.selectors?.length) {
+    throw new Error("Heart konnte keinen stabilen sichtbaren Like-Button finden.");
+  }
+  const countSelector = firstVisibleLike.postKey ? `[data-post-like-count="${firstVisibleLike.postKey}"]` : "";
   const beforeCount = countSelector ? await readCountValue(page, countSelector) : null;
-  await button.click({ timeout: 8000 });
+  const clicked = await page.evaluate((selectors) => {
+    for (const selector of selectors || []) {
+      const nodes = Array.from(document.querySelectorAll(selector));
+      const node = nodes.find((entry) => {
+        if (!(entry instanceof HTMLElement)) return false;
+        const style = window.getComputedStyle(entry);
+        const rect = entry.getBoundingClientRect();
+        return style.display !== "none"
+          && style.visibility !== "hidden"
+          && Number(style.opacity || "1") > 0
+          && rect.width > 0
+          && rect.height > 0;
+      });
+      if (node instanceof HTMLElement) {
+        node.click();
+        return true;
+      }
+    }
+    return false;
+  }, firstVisibleLike.selectors);
+  if (!clicked) {
+    throw new Error("Heart konnte den gewaehlten Like-Button nicht klicken.");
+  }
   await page.waitForFunction(
-    ({ likeSelector, desiredState, likeCountSelector, previousCount }) => {
-      const buttonNode = document.querySelector(likeSelector);
+    ({ likeSelectors, desiredState, likeCountSelector, previousCount }) => {
+      const buttonNode = (Array.isArray(likeSelectors) ? likeSelectors : [])
+        .map((selector) => document.querySelector(selector))
+        .find(Boolean);
       if (!buttonNode) return false;
       const pressed = buttonNode.getAttribute("aria-pressed") === "true"
         || buttonNode.classList.contains("text-rose-400");
@@ -242,7 +307,7 @@ async function clickLikeButtonToState(page, {
       return !pressed || countChanged;
     },
     {
-      likeSelector: safeSelector,
+      likeSelectors: firstVisibleLike.selectors,
       desiredState: targetState,
       likeCountSelector: countSelector,
       previousCount: beforeCount
@@ -429,30 +494,35 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
         persona: persona.key
       });
       await ensureElementVisible(page, socialConfig.like.triggerSelector, 15000);
-      const stableLikeSelector = await page.locator(socialConfig.like.triggerSelector).first().evaluate((button) => {
-        const postId = button?.getAttribute("data-post-like-btn") || button?.getAttribute("data-feed-post-like") || "";
-        return postId ? `[data-post-like-btn="${postId}"], [data-feed-post-like="${postId}"]` : "";
-      });
-      const resolvedLikeSelector = asText(stableLikeSelector, socialConfig.like.triggerSelector);
       const alreadyLiked = await page.waitForFunction(
         (selector) => {
-          const button = document.querySelector(selector);
-          if (!button) return false;
+          const nodes = Array.from(document.querySelectorAll(selector));
+          const button = nodes.find((entry) => {
+            if (!(entry instanceof HTMLElement)) return false;
+            const style = window.getComputedStyle(entry);
+            const rect = entry.getBoundingClientRect();
+            return style.display !== "none"
+              && style.visibility !== "hidden"
+              && Number(style.opacity || "1") > 0
+              && rect.width > 0
+              && rect.height > 0;
+          });
+          if (!(button instanceof HTMLElement)) return false;
           return button.getAttribute("aria-pressed") === "true"
             || button.classList.contains("text-rose-400");
         },
-        resolvedLikeSelector,
+        socialConfig.like.triggerSelector,
         { timeout: 600 }
       ).then(() => true).catch(() => false);
       if (alreadyLiked) {
         await clickLikeButtonToState(page, {
-          selector: resolvedLikeSelector,
+          selector: socialConfig.like.triggerSelector,
           targetState: "unliked",
           timeout: 15000
         });
       }
       await clickLikeButtonToState(page, {
-        selector: resolvedLikeSelector,
+        selector: socialConfig.like.triggerSelector,
         targetState: "liked",
         timeout: 15000
       });
