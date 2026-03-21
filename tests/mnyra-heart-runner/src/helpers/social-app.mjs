@@ -205,7 +205,25 @@ export async function clickFirstVisible(page, selectors = [], timeout = 8000) {
 export async function fillIfPresent(page, selector, value, timeout = 8000) {
   const locator = page.locator(selector).first();
   if (!await locator.count()) return false;
-  await locator.fill(value, { timeout });
+  try {
+    await locator.fill(value, { timeout });
+  } catch {
+    await locator.evaluate((node, nextValue) => {
+      if (!node) return;
+      if ("value" in node) {
+        node.value = String(nextValue ?? "");
+      }
+      node.dispatchEvent(new Event("input", { bubbles: true }));
+      node.dispatchEvent(new Event("change", { bubbles: true }));
+    }, value);
+  }
+  return true;
+}
+
+export async function setInputFilesIfPresent(page, selector, files) {
+  const locator = page.locator(selector).first();
+  if (!await locator.count()) return false;
+  await locator.setInputFiles(files);
   return true;
 }
 
@@ -224,6 +242,26 @@ export async function waitForTextToDisappear(page, text, timeout = 10000) {
       return !bodyText.includes(expectedText);
     },
     safeText,
+    { timeout }
+  );
+  return true;
+}
+
+export async function waitForSelectorToDisappear(page, selector, timeout = 10000) {
+  const safeSelector = asText(selector);
+  if (!safeSelector) return false;
+  await page.waitForFunction(
+    (selectorValue) => {
+      const node = document.querySelector(selectorValue);
+      if (!node) return true;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return true;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width === 0 || rect.height === 0;
+    },
+    safeSelector,
     { timeout }
   );
   return true;

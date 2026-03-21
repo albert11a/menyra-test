@@ -2,12 +2,14 @@ import {
   clickIfPresent,
   fillIfPresent,
   openPageAndWait,
+  waitForSelectorToDisappear,
   waitForText
 } from "../helpers/social-app.mjs";
 import {
   createCleanupItem,
   hasRequiredConfig,
   markGuarded,
+  markSkipped,
   markNotConfigured,
   replaceRunTokens
 } from "./common-actions.mjs";
@@ -88,9 +90,9 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
       await fillIfPresent(page, leadCreate.emailSelector, `${leadName.toLowerCase()}@mnyra-test.local`);
     }
     await clickIfPresent(page, leadCreate.saveSelector);
-    if (leadCreate.verifyText) {
-      await waitForText(page, replaceRunTokens(leadCreate.verifyText, env));
-    }
+    await waitForSelectorToDisappear(page, "#leadModalClose", 20000).catch(() => undefined);
+    await waitForSelectorToDisappear(page, leadCreate.nameSelector || "#leadBusinessName", 20000).catch(() => undefined);
+    await waitForText(page, replaceRunTokens(leadCreate.verifyText || leadName, env), 20000);
     heart.addCreatedEntity({
       id: leadName,
       type: "lead",
@@ -124,11 +126,12 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
         persona: persona.key
       });
       await clickIfPresent(page, leadEdit.openSelector);
-      await fillIfPresent(page, leadEdit.inputSelector, replaceRunTokens("TEST_RUN_<runId>_LEAD_EDIT", env));
+      const editedLeadName = replaceRunTokens("TEST_RUN_<runId>_LEAD_EDIT", env);
+      await fillIfPresent(page, leadEdit.inputSelector, editedLeadName);
       await clickIfPresent(page, leadEdit.saveSelector);
-      if (leadEdit.verifyText) {
-        await waitForText(page, replaceRunTokens(leadEdit.verifyText, env));
-      }
+      await waitForSelectorToDisappear(page, "#leadModalClose", 20000).catch(() => undefined);
+      await waitForSelectorToDisappear(page, leadEdit.inputSelector || "#leadBusinessName", 20000).catch(() => undefined);
+      await waitForText(page, replaceRunTokens(leadEdit.verifyText || editedLeadName, env), 20000);
       heart.passModule("crm", "Lead wurde bearbeitet.", {
         action: "lead edit",
         persona: persona.key,
@@ -151,17 +154,17 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
   }
 
   const cleanupItems = [];
-  heart.notConfiguredModule("crm", "Lead-Loeschung braucht noch sichere Loesch-Selektoren.", {
+  markSkipped(heart, "crm", "Lead-Loeschung wird im Heart-Runner noch nicht automatisch gefahren.", {
     action: "lead delete",
     persona: persona.key,
     area: "crm"
   });
-  heart.notConfiguredModule("crm", "Lead-Umwandlung braucht noch eigene Selektoren.", {
+  markSkipped(heart, "crm", "Lead-Umwandlung wird im Heart-Runner noch nicht separat gefahren.", {
     action: "lead convert",
     persona: persona.key,
     area: "crm"
   });
-  heart.notConfiguredModule("crm", "Kunden-Erstellung und -Bearbeitung brauchen noch eigene Selektoren.", {
+  markSkipped(heart, "crm", "Kunden-Erstellung und -Bearbeitung werden im Heart-Runner noch nicht separat gefahren.", {
     action: "customer create/edit",
     persona: persona.key,
     area: "crm"

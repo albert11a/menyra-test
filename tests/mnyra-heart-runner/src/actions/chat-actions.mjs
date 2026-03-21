@@ -57,31 +57,33 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
     return composerSelector;
   }
 
-  const fallbackTargetUrl = asText(
-    sendConfig.targetProfileUrl
-      || env.packConfig?.actions?.social?.userTargetProfile?.url
-      || env.packConfig?.actions?.social?.businessProfile?.url
+  const targetUrls = uniqueList(
+    sendConfig.targetProfileUrl,
+    env.packConfig?.actions?.social?.userTargetProfile?.url,
+    env.packConfig?.actions?.social?.businessProfile?.url
   );
-  if (!fallbackTargetUrl) {
+  if (!targetUrls.length) {
     throw new Error("Heart konnte keinen Chat-Thread oeffnen. Weder eine bestehende Unterhaltung noch eine Zielprofil-URL sind eingerichtet.");
   }
 
-  await openPageAndWait(page, fallbackTargetUrl, "body", heart, {
-    title: `${persona.label} / Open chat profile target`,
-    moduleKey: "chat",
-    area: "chat",
-    persona: persona.key
-  });
-  const openedTargetThread = await clickFirstVisible(page, openTargetSelectors, 10000);
-  if (!openedTargetThread) {
-    throw new Error("Heart konnte auf dem Zielprofil keinen Chat-Startbutton finden.");
+  for (const targetUrl of targetUrls) {
+    await openPageAndWait(page, targetUrl, "body", heart, {
+      title: `${persona.label} / Open chat profile target`,
+      moduleKey: "chat",
+      area: "chat",
+      persona: persona.key
+    });
+    const openedTargetThread = await clickFirstVisible(page, openTargetSelectors, 10000);
+    if (!openedTargetThread) continue;
+    await Promise.race([
+      page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 15000 }),
+      page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 })
+    ]);
+    await ensureElementVisible(page, composerSelector, 15000);
+    return composerSelector;
   }
-  await Promise.race([
-    page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 15000 }),
-    page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 })
-  ]);
-  await ensureElementVisible(page, composerSelector, 15000);
-  return composerSelector;
+
+  throw new Error("Heart konnte auf keinem Zielprofil einen Chat-Startbutton finden.");
 }
 
 async function waitForChatDelivery(page, {

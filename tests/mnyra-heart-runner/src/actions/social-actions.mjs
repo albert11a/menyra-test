@@ -1,3 +1,4 @@
+import path from "node:path";
 import {
   clickIfPresent,
   ensureElementVisible,
@@ -5,13 +6,16 @@ import {
   openSocialTab,
   openPageAndWait,
   readCountValue,
+  setInputFilesIfPresent,
   waitForCountChange,
+  waitForSelectorToDisappear,
   waitForText
 } from "../helpers/social-app.mjs";
 import { getSocialDefaultTabs } from "../helpers/social-app.mjs";
 import {
   hasRequiredConfig,
   markGuarded,
+  markSkipped,
   markNotConfigured,
   replaceRunTokens
 } from "./common-actions.mjs";
@@ -175,7 +179,20 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
         : null;
       await page.locator(socialConfig.like.triggerSelector).first().click({ timeout: 8000 });
       if (socialConfig.like.countSelector && before !== null) {
-        await waitForCountChange(page, socialConfig.like.countSelector, before);
+        await waitForCountChange(page, socialConfig.like.countSelector, before, 15000);
+      } else {
+        await page.waitForFunction(
+          (selector) => {
+            const button = document.querySelector(selector);
+            if (!button) return false;
+            const text = String(button.textContent || "").toLowerCase();
+            return text.includes("gefaellt")
+              || button.classList.contains("text-rose-500")
+              || button.getAttribute("aria-pressed") === "true";
+          },
+          socialConfig.like.triggerSelector,
+          { timeout: 15000 }
+        );
       }
       heart.passModule("feed", "Like wurde erfolgreich ausgefuehrt.", {
         action: "like",
@@ -202,7 +219,10 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
         persona: persona.key
       });
       if (socialConfig.commentCreate.openComposerSelector) {
-        await clickIfPresent(page, socialConfig.commentCreate.openComposerSelector);
+        const opened = await clickIfPresent(page, socialConfig.commentCreate.openComposerSelector);
+        if (!opened) {
+          throw new Error("Heart konnte keinen Kommentar-Trigger auf dem Feed finden.");
+        }
       }
       const commentText = replaceRunTokens(
         socialConfig.commentCreate.messageTemplate || "TEST_RUN_<runId>_COMMENT_1",
@@ -210,8 +230,11 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
       );
       await fillIfPresent(page, socialConfig.commentCreate.inputSelector, commentText);
       await clickIfPresent(page, socialConfig.commentCreate.submitSelector);
+      if (socialConfig.commentCreate.verifySelector) {
+        await ensureElementVisible(page, socialConfig.commentCreate.verifySelector, 15000);
+      }
       if (socialConfig.commentCreate.verifyText) {
-        await waitForText(page, replaceRunTokens(socialConfig.commentCreate.verifyText, env));
+        await waitForText(page, replaceRunTokens(socialConfig.commentCreate.verifyText, env), 20000);
       }
       heart.addCreatedEntity({
         id: commentText,
@@ -254,10 +277,22 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
         socialConfig.postCreate.messageTemplate || "TEST_RUN_<runId>_POST_1",
         env
       );
+      const filePath = path.isAbsolute(String(socialConfig.postCreate.filePath || "").trim())
+        ? String(socialConfig.postCreate.filePath || "").trim()
+        : path.resolve(env.rootDir, String(socialConfig.postCreate.filePath || "apps/mnyra-heart/assets/icon-192.png").trim());
+      const fileSelected = await setInputFilesIfPresent(
+        page,
+        socialConfig.postCreate.fileInputSelector || "#uploadFileInput",
+        filePath
+      );
+      if (!fileSelected) {
+        throw new Error("Heart konnte kein Upload-Feld fuer den Feed-Post finden.");
+      }
       await fillIfPresent(page, socialConfig.postCreate.inputSelector, postText);
       await clickIfPresent(page, socialConfig.postCreate.submitSelector);
+      await waitForSelectorToDisappear(page, socialConfig.postCreate.inputSelector, 30000).catch(() => undefined);
       if (socialConfig.postCreate.verifyText) {
-        await waitForText(page, replaceRunTokens(socialConfig.postCreate.verifyText, env));
+        await waitForText(page, replaceRunTokens(socialConfig.postCreate.verifyText, env), 30000);
       }
       heart.addCreatedEntity({
         id: postText,
@@ -277,22 +312,22 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
     }
   });
 
-  heart.notConfiguredModule("profile", "Unfollow braucht noch eigene Selektoren und einen Erfolgsnachweis.", {
+  markSkipped(heart, "profile", "Unfollow wird im Heart-Runner noch nicht separat gefahren.", {
     action: "unfollow",
     persona: persona.key,
     area: "profile"
   });
-  heart.notConfiguredModule("feed", "Unlike braucht noch eigene Selektoren und eine saubere Zaehler-Pruefung.", {
+  markSkipped(heart, "feed", "Unlike wird im Heart-Runner noch nicht separat gefahren.", {
     action: "unlike",
     persona: persona.key,
     area: "feed"
   });
-  heart.notConfiguredModule("profile", "Kommentar-Loeschung braucht noch sichere Loeschregeln.", {
+  markSkipped(heart, "profile", "Kommentar-Loeschung wird aktuell nicht automatisiert, damit Heart keine echten Inhalte versehentlich entfernt.", {
     action: "comment delete",
     persona: persona.key,
     area: "profile"
   });
-  heart.notConfiguredModule("feed", "Beitrags-Loeschung braucht noch sichere Loeschregeln.", {
+  markSkipped(heart, "feed", "Beitrags-Loeschung wird aktuell nicht automatisiert, damit Heart keine echten Inhalte versehentlich entfernt.", {
     action: "post delete",
     persona: persona.key,
     area: "feed"

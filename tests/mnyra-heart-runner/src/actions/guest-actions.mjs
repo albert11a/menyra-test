@@ -2,6 +2,7 @@ import {
   clickFirstVisible,
   ensureElementVisible,
   findVisibleSelector,
+  waitForAnySelector,
   waitForUiOutcome
 } from "../helpers/social-app.mjs";
 
@@ -155,7 +156,12 @@ export async function runGuestChecks({ page, env, heart, persona } = {}) {
   });
 
   try {
-    await ensureElementVisible(page, guestConfig.menuVisibleSelector || "[data-menu-open]");
+    await waitForAnySelector(page, uniqueList(
+      guestConfig.menuVisibleSelector,
+      "[data-menu-open]",
+      "[data-cart-checkout]",
+      "#menuDetailAddToCartBtn"
+    ), 20000);
     heart.passModule("menu", "Gast-Menue war sichtbar.", {
       action: "guest menu visible",
       persona: persona.key,

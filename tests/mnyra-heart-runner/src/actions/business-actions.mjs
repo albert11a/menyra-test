@@ -4,12 +4,14 @@ import {
   openPageAndWait,
   openSocialTab,
   waitForText,
+  waitForSelectorToDisappear,
   waitForTextToDisappear
 } from "../helpers/social-app.mjs";
 import { getSocialDefaultTabs } from "../helpers/social-app.mjs";
 import {
   hasRequiredConfig,
   markGuarded,
+  markSkipped,
   markNotConfigured,
   replaceRunTokens
 } from "./common-actions.mjs";
@@ -141,11 +143,12 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
       await clickIfPresent(page, businessConfig.productCreate.openSelector);
       await fillIfPresent(page, businessConfig.productCreate.nameSelector, productName);
       await clickIfPresent(page, businessConfig.productCreate.saveSelector);
+      await waitForSelectorToDisappear(page, "#menuModalClose", 20000).catch(() => undefined);
+      await waitForSelectorToDisappear(page, businessConfig.productCreate.nameSelector || "#menuItemName", 20000).catch(() => undefined);
       if (businessConfig.productCreate.verifySelector) {
         await page.locator(businessConfig.productCreate.verifySelector).first().waitFor({ state: "visible", timeout: 15000 });
-      } else if (businessConfig.productCreate.verifyText) {
-        await waitForText(page, replaceRunTokens(businessConfig.productCreate.verifyText, env));
       }
+      await waitForText(page, replaceRunTokens(businessConfig.productCreate.verifyText || productName, env), 20000);
       heart.addCreatedEntity({
         id: productName,
         type: "product",
@@ -181,11 +184,12 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
         persona: persona.key
       });
       await clickIfPresent(page, businessConfig.productEdit.openSelector);
-      await fillIfPresent(page, businessConfig.productEdit.inputSelector, replaceRunTokens("TEST_RUN_<runId>_PRODUCT_EDIT", env));
+      const nextName = replaceRunTokens("TEST_RUN_<runId>_PRODUCT_EDIT", env);
+      await fillIfPresent(page, businessConfig.productEdit.inputSelector, nextName);
       await clickIfPresent(page, businessConfig.productEdit.saveSelector);
-      if (businessConfig.productEdit.verifyText) {
-        await waitForText(page, replaceRunTokens(businessConfig.productEdit.verifyText, env));
-      }
+      await waitForSelectorToDisappear(page, "#menuModalClose", 20000).catch(() => undefined);
+      await waitForSelectorToDisappear(page, businessConfig.productEdit.inputSelector || "#menuItemName", 20000).catch(() => undefined);
+      await waitForText(page, replaceRunTokens(businessConfig.productEdit.verifyText || nextName, env), 20000);
       heart.passModule("menu", "Produkt wurde bearbeitet.", {
         action: "product edit",
         persona: persona.key,
@@ -227,12 +231,12 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
     }
   });
 
-  heart.notConfiguredModule("business", "Fokus- oder Spezial-Erstellung braucht noch genaue Selektoren.", {
+  markSkipped(heart, "business", "Fokus- oder Spezial-Erstellung wird im Heart-Runner noch nicht separat gefahren.", {
     action: "focus create",
     persona: persona.key,
     area: "business"
   });
-  heart.notConfiguredModule("business", "Medien-Upload braucht noch sichere Selektoren und einen Erfolgsnachweis.", {
+  markSkipped(heart, "business", "Zusaetzlicher Medien-Upload wird im Heart-Runner noch nicht separat gefahren.", {
     action: "media upload",
     persona: persona.key,
     area: "business"

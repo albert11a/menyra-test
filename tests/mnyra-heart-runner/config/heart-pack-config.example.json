@@ -36,21 +36,24 @@
       },
       "like": {
         "url": "https://menyra-test.vercel.app/social/?tab=feed",
-        "triggerSelector": "[data-like-toggle]",
-        "countSelector": "[data-like-count]"
+        "triggerSelector": "[data-feed-post-like], [data-post-like-btn], #postLikeBtn",
+        "countSelector": "[data-post-like-count], #postLikesBtn"
       },
       "commentCreate": {
         "url": "https://menyra-test.vercel.app/social/?tab=feed",
-        "openComposerSelector": "[data-comment-open]",
-        "inputSelector": "[data-comment-input]",
-        "submitSelector": "[data-comment-submit]",
+        "openComposerSelector": "[data-feed-post-comment]",
+        "inputSelector": "#postCommentInput",
+        "submitSelector": "#postCommentSend",
+        "verifySelector": "#postModalComments",
         "verifyText": "TEST_RUN_<runId>_COMMENT_1"
       },
       "postCreate": {
         "url": "https://menyra-test.vercel.app/social/?tab=feed",
-        "openSelector": "[data-post-open]",
-        "inputSelector": "[data-post-input]",
-        "submitSelector": "[data-post-submit]",
+        "openSelector": "[data-nav='upload'][data-upload-intent='feed'], [data-nav='upload'][data-upload-intent='chooser']",
+        "fileInputSelector": "#uploadFileInput",
+        "filePath": "apps/mnyra-heart/assets/icon-192.png",
+        "inputSelector": "#uploadCaption",
+        "submitSelector": "#uploadPostBtn",
         "verifyText": "TEST_RUN_<runId>_POST_1"
       }
     },
@@ -118,7 +121,7 @@
     "guest": {
       "qrMenu": {
         "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
-        "menuVisibleSelector": "[data-menu-open]",
+        "menuVisibleSelector": "[data-menu-open], [data-cart-checkout], #menuDetailAddToCartBtn",
         "productOpenSelector": "[data-menu-open]",
         "addToCartSelector": "#menuDetailAddToCartBtn",
         "cartVisibleSelector": "[data-cart-checkout], [data-cart-qty]",
@@ -140,13 +143,13 @@
     "staff": {
       "waiter": {
         "url": "https://menyra-test.vercel.app/waiter/",
-        "orderVisibleSelector": "[data-order-action]",
+        "orderVisibleSelector": "main, [data-tab], [data-order-action], #logoutBtn",
         "statusActionSelector": "[data-order-action='angenommen']"
       }
     },
     "journey": {
-      "modalOpenSelector": "[data-post-open]",
-      "modalCloseSelector": "[data-modal-close]"
+      "modalOpenSelector": "[data-feed-post-comment], [data-menu-open]",
+      "modalCloseSelector": "#postModalClose, #menuModalClose"
     }
   }
 }

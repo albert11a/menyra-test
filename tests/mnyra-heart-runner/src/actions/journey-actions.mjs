@@ -1,5 +1,6 @@
 import {
   assertPwaPresence,
+  clickFirstVisible,
   clickIfPresent,
   openSocialTab
 } from "../helpers/social-app.mjs";
@@ -47,12 +48,19 @@ export async function runJourneyChecks({ page, env, heart, persona } = {}) {
 
   if (journeyConfig.modalOpenSelector && journeyConfig.modalCloseSelector) {
     await runStep("profile", "modal open/close", async () => {
-      const opened = await clickIfPresent(page, journeyConfig.modalOpenSelector);
+      await openSocialTab(page, persona, heart, SOCIAL_TABS.feed, {
+        moduleKey: "profile",
+        note: "Journey bereitet ein pruefbares Modal auf dem Feed vor."
+      });
+      const opened = await clickFirstVisible(page, String(journeyConfig.modalOpenSelector || "").split(","));
       if (!opened) {
         throw new Error("Heart konnte fuer die Journey kein oeffenbares Modal finden.");
       }
       await page.waitForTimeout(300);
-      await clickIfPresent(page, journeyConfig.modalCloseSelector);
+      const closed = await clickFirstVisible(page, String(journeyConfig.modalCloseSelector || "").split(","));
+      if (!closed) {
+        throw new Error("Heart konnte das geoeffnete Journey-Modal nicht wieder schliessen.");
+      }
       heart.passModule("profile", "Modal wurde sauber geoeffnet und geschlossen.", {
         action: "modal open/close",
         persona: persona.key,

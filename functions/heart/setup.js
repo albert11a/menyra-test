@@ -154,21 +154,24 @@ function buildDefaultPackConfig({
         },
         like: {
           url: buildUrl(socialBaseUrl, { tab: "feed" }),
-          triggerSelector: "[data-like-toggle]",
-          countSelector: "[data-like-count]"
+          triggerSelector: "[data-feed-post-like], [data-post-like-btn], #postLikeBtn",
+          countSelector: "[data-post-like-count], #postLikesBtn"
         },
         commentCreate: {
           url: buildUrl(socialBaseUrl, { tab: "feed" }),
-          openComposerSelector: "[data-comment-open]",
-          inputSelector: "[data-comment-input]",
-          submitSelector: "[data-comment-submit]",
+          openComposerSelector: "[data-feed-post-comment]",
+          inputSelector: "#postCommentInput",
+          submitSelector: "#postCommentSend",
+          verifySelector: "#postModalComments",
           verifyText: "TEST_RUN_<runId>_COMMENT_1"
         },
         postCreate: {
           url: buildUrl(socialBaseUrl, { tab: "feed" }),
-          openSelector: "[data-post-open]",
-          inputSelector: "[data-post-input]",
-          submitSelector: "[data-post-submit]",
+          openSelector: "[data-nav='upload'][data-upload-intent='feed'], [data-nav='upload'][data-upload-intent='chooser']",
+          fileInputSelector: "#uploadFileInput",
+          filePath: "apps/mnyra-heart/assets/icon-192.png",
+          inputSelector: "#uploadCaption",
+          submitSelector: "#uploadPostBtn",
           verifyText: "TEST_RUN_<runId>_POST_1"
         }
       },
@@ -257,7 +260,7 @@ function buildDefaultPackConfig({
       guest: {
         qrMenu: {
           url: guestRouteUrl,
-          menuVisibleSelector: "[data-menu-open]",
+          menuVisibleSelector: "[data-menu-open], [data-cart-checkout], #menuDetailAddToCartBtn",
           productOpenSelector: "[data-menu-open]",
           addToCartSelector: "#menuDetailAddToCartBtn",
           cartVisibleSelector: "[data-cart-checkout], [data-cart-qty]",
@@ -280,13 +283,13 @@ function buildDefaultPackConfig({
       staff: {
         waiter: {
           url: asText(waiterBaseUrl),
-          orderVisibleSelector: "[data-order-action]",
+          orderVisibleSelector: "main, [data-tab], [data-order-action], #logoutBtn",
           statusActionSelector: "[data-order-action='angenommen']"
         }
       },
       journey: {
-        modalOpenSelector: "[data-post-open]",
-        modalCloseSelector: "[data-modal-close]"
+        modalOpenSelector: "[data-feed-post-comment], [data-menu-open]",
+        modalCloseSelector: "#postModalClose, #menuModalClose"
       }
     }
   };
@@ -320,8 +323,14 @@ function normalizeHeartPackConfig(packConfig = {}, {
   next.actions.business.productDelete = ensureObject(next.actions.business.productDelete);
   next.actions.social = ensureObject(next.actions.social);
   next.actions.social.follow = ensureObject(next.actions.social.follow);
+  next.actions.social.like = ensureObject(next.actions.social.like);
+  next.actions.social.commentCreate = ensureObject(next.actions.social.commentCreate);
+  next.actions.social.postCreate = ensureObject(next.actions.social.postCreate);
   next.actions.guest = ensureObject(next.actions.guest);
   next.actions.guest.qrMenu = ensureObject(next.actions.guest.qrMenu);
+  next.actions.staff = ensureObject(next.actions.staff);
+  next.actions.staff.waiter = ensureObject(next.actions.staff.waiter);
+  next.actions.journey = ensureObject(next.actions.journey);
 
   const commerceCart = next.actions.commerce.cart;
   const commerceOrder = next.actions.commerce.order;
@@ -332,7 +341,12 @@ function normalizeHeartPackConfig(packConfig = {}, {
   const productEdit = next.actions.business.productEdit;
   const productDelete = next.actions.business.productDelete;
   const socialFollow = next.actions.social.follow;
+  const socialLike = next.actions.social.like;
+  const socialCommentCreate = next.actions.social.commentCreate;
+  const socialPostCreate = next.actions.social.postCreate;
   const guestQrMenu = next.actions.guest.qrMenu;
+  const staffWaiter = next.actions.staff.waiter;
+  const journey = next.actions.journey;
 
   if (guestRouteUrl) {
     commerceCart.url = guestRouteUrl;
@@ -371,6 +385,49 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
   if (!asText(socialFollow.verifySelector) || asText(socialFollow.verifySelector) === "[data-following='true']") {
     socialFollow.verifySelector = "[data-public-profile-follow] svg";
+  }
+
+  if (!asText(socialLike.url)) {
+    socialLike.url = buildUrl(socialBaseUrl, { tab: "feed" });
+  }
+  if (!asText(socialLike.triggerSelector) || asText(socialLike.triggerSelector) === "[data-like-toggle]") {
+    socialLike.triggerSelector = "[data-feed-post-like], [data-post-like-btn], #postLikeBtn";
+  }
+  if (!asText(socialLike.countSelector) || asText(socialLike.countSelector) === "[data-like-count]") {
+    socialLike.countSelector = "[data-post-like-count], #postLikesBtn";
+  }
+
+  if (!asText(socialCommentCreate.url)) {
+    socialCommentCreate.url = buildUrl(socialBaseUrl, { tab: "feed" });
+  }
+  if (!asText(socialCommentCreate.openComposerSelector) || asText(socialCommentCreate.openComposerSelector) === "[data-comment-open]") {
+    socialCommentCreate.openComposerSelector = "[data-feed-post-comment]";
+  }
+  if (!asText(socialCommentCreate.inputSelector) || asText(socialCommentCreate.inputSelector) === "[data-comment-input]") {
+    socialCommentCreate.inputSelector = "#postCommentInput";
+  }
+  if (!asText(socialCommentCreate.submitSelector) || asText(socialCommentCreate.submitSelector) === "[data-comment-submit]") {
+    socialCommentCreate.submitSelector = "#postCommentSend";
+  }
+  socialCommentCreate.verifySelector = asText(socialCommentCreate.verifySelector, "#postModalComments");
+
+  if (!asText(socialPostCreate.url)) {
+    socialPostCreate.url = buildUrl(socialBaseUrl, { tab: "feed" });
+  }
+  if (!asText(socialPostCreate.openSelector) || asText(socialPostCreate.openSelector) === "[data-post-open]") {
+    socialPostCreate.openSelector = "[data-nav='upload'][data-upload-intent='feed'], [data-nav='upload'][data-upload-intent='chooser']";
+  }
+  if (!asText(socialPostCreate.fileInputSelector)) {
+    socialPostCreate.fileInputSelector = "#uploadFileInput";
+  }
+  if (!asText(socialPostCreate.filePath)) {
+    socialPostCreate.filePath = "apps/mnyra-heart/assets/icon-192.png";
+  }
+  if (!asText(socialPostCreate.inputSelector) || asText(socialPostCreate.inputSelector) === "[data-post-input]") {
+    socialPostCreate.inputSelector = "#uploadCaption";
+  }
+  if (!asText(socialPostCreate.submitSelector) || asText(socialPostCreate.submitSelector) === "[data-post-submit]") {
+    socialPostCreate.submitSelector = "#uploadPostBtn";
   }
 
   if (!asText(chatSend.url)) {
@@ -444,7 +501,9 @@ function normalizeHeartPackConfig(packConfig = {}, {
     productDelete.removedSelector = "";
   }
 
-  guestQrMenu.menuVisibleSelector = asText(guestQrMenu.menuVisibleSelector, "[data-menu-open]");
+  if (!asText(guestQrMenu.menuVisibleSelector) || asText(guestQrMenu.menuVisibleSelector) === "[data-menu-grid]") {
+    guestQrMenu.menuVisibleSelector = "[data-menu-open], [data-cart-checkout], #menuDetailAddToCartBtn";
+  }
   guestQrMenu.productOpenSelector = asText(guestQrMenu.productOpenSelector || guestQrMenu.openSelector, "[data-menu-open]");
   guestQrMenu.addToCartSelector = asText(guestQrMenu.addToCartSelector, "#menuDetailAddToCartBtn");
   if (!asText(guestQrMenu.cartVisibleSelector) || asText(guestQrMenu.cartVisibleSelector) === "[data-cart-button]") {
@@ -468,6 +527,23 @@ function normalizeHeartPackConfig(packConfig = {}, {
     guestQrMenu.orderFailureText,
     "Bestellung konnte nicht gesendet werden."
   );
+
+  if (!asText(staffWaiter.url)) {
+    staffWaiter.url = asText(waiterBaseUrl);
+  }
+  if (!asText(staffWaiter.orderVisibleSelector) || asText(staffWaiter.orderVisibleSelector) === "[data-order-action]") {
+    staffWaiter.orderVisibleSelector = "main, [data-tab], [data-order-action], #logoutBtn";
+  }
+  if (!asText(staffWaiter.statusActionSelector)) {
+    staffWaiter.statusActionSelector = "[data-order-action='angenommen']";
+  }
+
+  if (!asText(journey.modalOpenSelector) || asText(journey.modalOpenSelector) === "[data-post-open]") {
+    journey.modalOpenSelector = "[data-feed-post-comment], [data-menu-open]";
+  }
+  if (!asText(journey.modalCloseSelector) || asText(journey.modalCloseSelector) === "[data-modal-close]") {
+    journey.modalCloseSelector = "#postModalClose, #menuModalClose";
+  }
 
   return next;
 }

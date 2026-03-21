@@ -1,6 +1,7 @@
 import {
   clickIfPresent,
   ensureElementVisible,
+  ensureWaiterShell,
   openWaiterSurface,
   waitForText
 } from "../helpers/social-app.mjs";
@@ -9,11 +10,20 @@ import { hasRequiredConfig, markGuarded, markNotConfigured } from "./common-acti
 export async function runStaffChecks({ page, env, heart, persona } = {}) {
   const waiterConfig = env.packConfig?.actions?.staff?.waiter || {};
   try {
-    await openWaiterSurface(page, persona, heart, {
-      absolute: waiterConfig.url || persona.baseUrl,
-      moduleKey: "orders",
-      note: "Waiter-Oberflaeche wurde geladen."
-    });
+    try {
+      await ensureWaiterShell(page);
+      heart.passModule("orders", "Waiter-Oberflaeche war in der aktuellen Sitzung bereits geladen.", {
+        action: "waiter open",
+        persona: persona.key,
+        area: "orders"
+      });
+    } catch {
+      await openWaiterSurface(page, persona, heart, {
+        absolute: waiterConfig.url || persona.baseUrl,
+        moduleKey: "orders",
+        note: "Waiter-Oberflaeche wurde geladen."
+      });
+    }
   } catch (error) {
     heart.failModule("orders", error, {
       action: "waiter open",
