@@ -4602,6 +4602,7 @@ profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   getOptimizedImageUrlFn: getOptimizedImageUrl,
   iconFn: icon,
   isLocalBusinessProfileFn: isLocalBusinessProfile,
+  isCeoUserFn: isCeoUser,
   normalizeHandleFn: normalizeHandle,
   logoFitClassFn: logoFitClass,
   formatCountFn: formatCount,

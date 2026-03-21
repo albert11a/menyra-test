@@ -7,6 +7,9 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const getOptimizedImageUrl = deps.getOptimizedImageUrlFn;
   const icon = deps.iconFn;
   const isLocalBusinessProfile = deps.isLocalBusinessProfileFn;
+  const isCeoUser = typeof deps.isCeoUserFn === "function"
+    ? deps.isCeoUserFn
+    : (() => false);
   const normalizeHandle = deps.normalizeHandleFn;
   const logoFitClass = deps.logoFitClassFn;
   const formatCount = deps.formatCountFn;
@@ -1345,6 +1348,12 @@ function renderMenuAdminView() {
   const profile = state.userProfile;
   const restaurantId = profile.restaurantId || "";
   const isEligible = isRestaurantCafeProfile(profile);
+  const publicMenuProfile = state.profileView?.profile?.restaurantId
+    ? state.profileView.profile
+    : null;
+  const canInspectPublicMenu = isCeoUser()
+    && !!publicMenuProfile?.restaurantId
+    && isRestaurantCafeProfile(publicMenuProfile);
   const catalogLabel = getBusinessCatalogLabel(profile);
   const restaurant = restaurantId ? getRestaurantMetaById(restaurantId) : null;
   const restaurantName = restaurant?.name || restaurant?.restaurantName || profile.name || "Business";
@@ -1365,6 +1374,9 @@ function renderMenuAdminView() {
   }
 
   if (!isEligible) {
+    if (canInspectPublicMenu) {
+      return renderProfileMenuView(publicMenuProfile);
+    }
     return `
       <div class="p-6 app-main-content-safe animate-in slide-in-from-right-10 duration-500">
         <div class="bg-white rounded-[2.5rem] p-8 border border-slate-100 text-center">
