@@ -5,7 +5,6 @@ import {
   openPageAndWait,
   openSocialTab,
   waitForAnySelector,
-  waitForSelectorToDisappear,
   waitForTextToDisappear
 } from "../helpers/social-app.mjs";
 import { getSocialDefaultTabs } from "../helpers/social-app.mjs";
@@ -193,6 +192,69 @@ async function waitForMenuItemToDisappear(page, itemText = "", timeout = 20000) 
   );
 }
 
+async function waitForMenuEditorReady(page, timeout = 25000) {
+  const handle = await page.waitForFunction(() => {
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const nameInput = document.getElementById("menuItemName");
+    const saveButton = document.getElementById("menuModalSave");
+    const closeButton = document.getElementById("menuModalClose");
+    if (isVisibleNode(nameInput) && isVisibleNode(saveButton)) {
+      return { kind: "ready" };
+    }
+    if (isVisibleNode(nameInput) || isVisibleNode(saveButton) || isVisibleNode(closeButton)) {
+      return { kind: "opening" };
+    }
+    const bodyText = String(document.body?.innerText || "");
+    if (bodyText.includes("Bitte Namen eingeben.")) {
+      return { kind: "validation" };
+    }
+    if (bodyText.includes("Speichern fehlgeschlagen.")) {
+      return { kind: "save_failed" };
+    }
+    return false;
+  }, { timeout });
+  return handle.jsonValue();
+}
+
+async function waitForMenuSaveOutcome(page, timeout = 30000) {
+  const handle = await page.waitForFunction(() => {
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const nameInput = document.getElementById("menuItemName");
+    const saveButton = document.getElementById("menuModalSave");
+    const bodyText = String(document.body?.innerText || "");
+    if (bodyText.includes("Bitte Namen eingeben.")) {
+      return { kind: "validation" };
+    }
+    if (bodyText.includes("Speichern fehlgeschlagen.")) {
+      return { kind: "save_failed" };
+    }
+    if (!isVisibleNode(nameInput) && !isVisibleNode(saveButton)) {
+      return { kind: "closed" };
+    }
+    if (bodyText.includes("Gespeichert.")) {
+      return { kind: "saved" };
+    }
+    return false;
+  }, { timeout });
+  return handle.jsonValue();
+}
+
 async function runBusinessMutation({
   page,
   env,
@@ -335,11 +397,26 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
       if (!openedCreateFlow) {
         throw new Error("Heart konnte keinen sichtbaren Produkt-Hinzufuegen-Button im Menue finden.");
       }
-      await waitForAnySelector(page, [businessConfig.productCreate.nameSelector, "#menuModalSave"], 20000);
-      await fillIfPresent(page, businessConfig.productCreate.nameSelector, productName);
-      await clickIfPresent(page, businessConfig.productCreate.saveSelector);
-      await waitForSelectorToDisappear(page, "#menuModalClose", 20000).catch(() => undefined);
-      await waitForSelectorToDisappear(page, businessConfig.productCreate.nameSelector || "#menuItemName", 20000).catch(() => undefined);
+      const editorState = await waitForMenuEditorReady(page, 25000);
+      if (editorState?.kind !== "ready" && editorState?.kind !== "opening") {
+        throw new Error("Heart konnte den Produkt-Editor im Menue nicht sichtbar oeffnen.");
+      }
+      const filledName = await fillIfPresent(page, businessConfig.productCreate.nameSelector, productName);
+      if (!filledName) {
+        throw new Error("Heart konnte den Produktnamen im Menue-Editor nicht eintragen.");
+      }
+      await page.waitForTimeout(250);
+      const clickedSave = await clickIfPresent(page, businessConfig.productCreate.saveSelector);
+      if (!clickedSave) {
+        throw new Error("Heart konnte den Speichern-Button im Menue-Editor nicht klicken.");
+      }
+      const saveOutcome = await waitForMenuSaveOutcome(page, 30000).catch(() => null);
+      if (saveOutcome?.kind === "validation") {
+        throw new Error("Heart konnte das Produkt im Menue nicht speichern: Social meldet weiterhin einen ungueltigen Namen.");
+      }
+      if (saveOutcome?.kind === "save_failed") {
+        throw new Error("Heart konnte das Produkt im Menue nicht speichern: Social meldet einen Speicherehler.");
+      }
       await openBusinessMenuAdmin(page, heart, persona, businessConfig.productCreate.url, "Business / Verify product create");
       await searchBusinessMenu(page, productName);
       await waitForMenuItemByText(page, replaceRunTokens(businessConfig.productCreate.verifyText || productName, env), 20000);
@@ -386,10 +463,23 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
         if (!clickedEdit) {
           throw new Error("Heart konnte die Bearbeiten-Aktion fuer das Testprodukt nicht ausloesen.");
         }
-        await fillIfPresent(page, businessConfig.productEdit.inputSelector, nextName);
-        await clickIfPresent(page, businessConfig.productEdit.saveSelector);
-        await waitForSelectorToDisappear(page, "#menuModalClose", 20000).catch(() => undefined);
-        await waitForSelectorToDisappear(page, businessConfig.productEdit.inputSelector || "#menuItemName", 20000).catch(() => undefined);
+        await waitForMenuEditorReady(page, 25000);
+        const filledNextName = await fillIfPresent(page, businessConfig.productEdit.inputSelector, nextName);
+        if (!filledNextName) {
+          throw new Error("Heart konnte den bearbeiteten Produktnamen im Menue-Editor nicht eintragen.");
+        }
+        await page.waitForTimeout(250);
+        const clickedSave = await clickIfPresent(page, businessConfig.productEdit.saveSelector);
+        if (!clickedSave) {
+          throw new Error("Heart konnte den Speichern-Button fuer die Produktbearbeitung nicht klicken.");
+        }
+        const saveOutcome = await waitForMenuSaveOutcome(page, 30000).catch(() => null);
+        if (saveOutcome?.kind === "validation") {
+          throw new Error("Heart konnte die Produktbearbeitung nicht speichern: Social meldet einen ungueltigen Namen.");
+        }
+        if (saveOutcome?.kind === "save_failed") {
+          throw new Error("Heart konnte die Produktbearbeitung nicht speichern: Social meldet einen Speicherehler.");
+        }
         await openBusinessMenuAdmin(page, heart, persona, businessConfig.productEdit.url, "Business / Verify product edit");
         await searchBusinessMenu(page, nextName);
         await waitForMenuItemByText(page, nextName, 20000);

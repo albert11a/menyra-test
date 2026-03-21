@@ -6,6 +6,7 @@ import {
   waitForUiOutcome
 } from "../helpers/social-app.mjs";
 import { runUiLayoutCheck } from "./ui-actions.mjs";
+import { markSkipped } from "./common-actions.mjs";
 
 function mutationReady(env = {}) {
   return !!env.allowLiveMutations && !!env.syntheticIsolationKey;
@@ -204,7 +205,7 @@ export async function runGuestChecks({ page, env, heart, persona } = {}) {
   }
 
   if (!mutationReady(env)) {
-    heart.guardModule("orders", "Gast-Bestellung ist vorbereitet, aber im Moment absichtlich gesperrt. Fuer echte Bestellungen braucht Heart den isolierten Schreibmodus.", {
+    markSkipped(heart, "orders", "Gast-Bestellung wurde bis zum sicheren Vorbereitungsstand geprueft. Im Aenderungs-Guard schickt Heart bewusst keine echte Bestellung ab.", {
       action: "guest order flow",
       persona: persona.key,
       area: "orders"

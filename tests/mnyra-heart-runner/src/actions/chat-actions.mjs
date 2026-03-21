@@ -9,9 +9,15 @@ import {
 } from "../helpers/social-app.mjs";
 import { hasRequiredConfig, markGuarded, markNotConfigured, replaceRunTokens } from "./common-actions.mjs";
 
-function asText(value, fallback = "") {
+function asText(value, fallback = "", ...restFallbacks) {
   const text = String(value || "").trim();
-  return text || fallback;
+  if (text) return text;
+  if (restFallbacks.length) {
+    return [fallback, ...restFallbacks]
+      .map((entry) => String(entry || "").trim())
+      .find(Boolean) || "";
+  }
+  return String(fallback || "").trim();
 }
 
 function toList(...values) {
@@ -58,22 +64,126 @@ function parseHandleFromUrl(url = "") {
   }
 }
 
+function parseRestaurantIdFromUrl(url = "") {
+  const safeUrl = asText(url);
+  if (!safeUrl) return "";
+  try {
+    const searchParams = new URL(safeUrl).searchParams;
+    return asText(
+      searchParams.get("r"),
+      searchParams.get("restaurant"),
+      searchParams.get("restaurantId"),
+      searchParams.get("rid"),
+      searchParams.get("businessId")
+    );
+  } catch {
+    return "";
+  }
+}
+
+function buildSearchQueries(...values) {
+  const baseQueries = uniqueList(...values);
+  const expandedQueries = [];
+  for (const query of baseQueries) {
+    expandedQueries.push(query);
+    if (!query.startsWith("@")) {
+      expandedQueries.push(`@${query.replace(/^@+/, "")}`);
+    }
+  }
+  return uniqueList(expandedQueries);
+}
+
+async function clickMatchingSearchResult(page, selectors = [], queries = []) {
+  return page.evaluate(({ selectorList, queryList }) => {
+    const normalize = (value) => String(value || "").trim().toLowerCase();
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const queriesNorm = Array.isArray(queryList)
+      ? queryList.map((entry) => normalize(entry)).filter(Boolean)
+      : [];
+    const candidates = [];
+    for (const selector of Array.isArray(selectorList) ? selectorList : []) {
+      document.querySelectorAll(selector).forEach((node) => {
+        if (!(node instanceof HTMLElement) || !isVisibleNode(node)) return;
+        candidates.push(node);
+      });
+    }
+    if (!candidates.length) return false;
+
+    const scoreCandidate = (node) => {
+      const text = normalize(node.innerText || node.textContent || "");
+      const handle = normalize(node.dataset.searchHandle || "");
+      const name = normalize(node.dataset.searchName || "");
+      let score = 0;
+      for (const query of queriesNorm) {
+        const bareQuery = query.replace(/^@+/, "");
+        if (handle && bareQuery && handle === bareQuery) score = Math.max(score, 100);
+        if (name && query && name.includes(query)) score = Math.max(score, 80);
+        if (text && query && text.includes(query)) score = Math.max(score, 60);
+        if (text && bareQuery && text.includes(bareQuery)) score = Math.max(score, 50);
+      }
+      return score;
+    };
+
+    let chosen = candidates[0];
+    let bestScore = -1;
+    for (const candidate of candidates) {
+      const score = scoreCandidate(candidate);
+      if (score > bestScore) {
+        bestScore = score;
+        chosen = candidate;
+      }
+    }
+    if (!(chosen instanceof HTMLElement)) return false;
+    chosen.click();
+    return true;
+  }, {
+    selectorList: selectors,
+    queryList: queries
+  });
+}
+
 function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
   const configPersonas = env.packConfig?.personas || {};
   const socialConfig = env.packConfig?.actions?.social || {};
   if (persona?.key === "business") {
     const userPersona = configPersonas.user || {};
+    const targetUid = asText(sendConfig.userTargetUid, userPersona.uid, sendConfig.targetUid);
+    const targetProfileUrl = asText(
+      parseRestaurantIdFromUrl(sendConfig.userTargetProfileUrl) ? sendConfig.userTargetProfileUrl : "",
+      parseRestaurantIdFromUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : ""
+    );
     return {
-      targetUid: asText(sendConfig.userTargetUid, userPersona.uid, sendConfig.targetUid),
-      targetProfileUrl: asText(sendConfig.userTargetProfileUrl, socialConfig.userTargetProfile?.url, sendConfig.targetProfileUrl),
-      searchQuery: asText(userPersona.displayName, userPersona.handle, parseHandleFromUrl(sendConfig.userTargetProfileUrl || socialConfig.userTargetProfile?.url || sendConfig.targetProfileUrl))
+      targetUid,
+      targetProfileUrl,
+      threadUrl: buildChatRouteUrl(sendConfig.url, targetUid),
+      searchQueries: buildSearchQueries(
+        userPersona.displayName,
+        userPersona.handle,
+        socialConfig.userTargetProfile?.query,
+        parseHandleFromUrl(sendConfig.userTargetProfileUrl || socialConfig.userTargetProfile?.url || sendConfig.targetProfileUrl)
+      )
     };
   }
   const businessPersona = configPersonas.business || {};
+  const targetUid = asText(sendConfig.targetUid, businessPersona.uid);
+  const targetProfileUrl = asText(
+    parseRestaurantIdFromUrl(sendConfig.targetProfileUrl) ? sendConfig.targetProfileUrl : "",
+    parseRestaurantIdFromUrl(socialConfig.businessProfile?.url) ? socialConfig.businessProfile.url : "",
+    parseRestaurantIdFromUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : ""
+  );
   return {
-    targetUid: asText(sendConfig.targetUid, businessPersona.uid),
-    targetProfileUrl: asText(sendConfig.targetProfileUrl, socialConfig.businessProfile?.url, socialConfig.userTargetProfile?.url),
-    searchQuery: asText(
+    targetUid,
+    targetProfileUrl,
+    threadUrl: buildChatRouteUrl(sendConfig.url, targetUid),
+    searchQueries: buildSearchQueries(
       env.packConfig?.restaurantName,
       businessPersona.displayName,
       businessPersona.handle,
@@ -86,8 +196,8 @@ async function openChatTargetViaSearch(page, env, heart, persona, targetContext 
   const searchConfig = env.packConfig?.actions?.discovery?.search || {};
   const searchUrl = asText(searchConfig.url, buildUrl(persona.baseUrl, { tab: "search" }));
   const searchInputSelector = asText(searchConfig.inputSelector, "#searchInput");
-  const searchQuery = asText(targetContext.searchQuery);
-  if (!searchQuery) return false;
+  const searchQueries = buildSearchQueries(targetContext.searchQueries);
+  if (!searchQueries.length) return false;
   const resultSelectors = persona?.key === "business"
     ? ["[data-search-user]", "[data-search-business]"]
     : ["[data-search-business]", "[data-search-user]"];
@@ -98,22 +208,19 @@ async function openChatTargetViaSearch(page, env, heart, persona, targetContext 
     area: "chat",
     persona: persona.key
   });
-  await fillIfPresent(page, searchInputSelector, searchQuery, 12000);
-  await page.waitForTimeout(900);
-  await waitForAnySelector(page, resultSelectors, 20000);
-  const openedResult = await page.evaluate((selectors) => {
-    for (const selector of selectors || []) {
-      const node = document.querySelector(selector);
-      if (node instanceof HTMLElement) {
-        node.click();
-        return true;
-      }
-    }
-    return false;
-  }, resultSelectors);
-  if (!openedResult) return false;
-  const openedTargetThread = await clickFirstVisible(page, openTargetSelectors, 15000);
-  return !!openedTargetThread;
+  for (const searchQuery of searchQueries) {
+    await fillIfPresent(page, searchInputSelector, searchQuery, 12000);
+    await page.waitForTimeout(1200);
+    const matchedSelector = await waitForAnySelector(page, resultSelectors, 10000)
+      .then((selector) => selector)
+      .catch(() => "");
+    if (!matchedSelector) continue;
+    const openedResult = await clickMatchingSearchResult(page, resultSelectors, [searchQuery, ...searchQueries]);
+    if (!openedResult) continue;
+    const openedTargetThread = await clickFirstVisible(page, openTargetSelectors, 15000);
+    if (openedTargetThread) return true;
+  }
+  return false;
 }
 
 async function ensureChatComposerReady(page, env, sendConfig = {}, heart, persona) {
@@ -123,7 +230,8 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
   const targetContext = resolveChatTargetContext(env, persona, sendConfig);
   const threadTargetUid = asText(targetContext.targetUid);
   const threadTargetUrls = uniqueList(
-    sendConfig.threadUrl,
+    targetContext.threadUrl,
+    persona?.key === "business" ? "" : sendConfig.threadUrl,
     buildChatRouteUrl(sendConfig.url, threadTargetUid)
   );
   const openThreadSelectors = uniqueList(
@@ -148,6 +256,7 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
   }
 
   for (const threadTargetUrl of threadTargetUrls) {
+    if (!asText(threadTargetUrl)) continue;
     await openPageAndWait(page, threadTargetUrl, "body", heart, {
       title: `${persona.label} / Open direct chat thread`,
       moduleKey: "chat",
@@ -159,21 +268,24 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
       page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 20000 }).then(() => true).catch(() => false)
     ]);
     if (!directThreadReady) continue;
+    const openedThreadAfterRoute = await clickFirstVisible(page, openThreadSelectors, 4000);
+    if (openedThreadAfterRoute) {
+      await page.waitForTimeout(400).catch(() => undefined);
+    }
     await ensureElementVisible(page, composerSelector, 15000);
     return composerSelector;
   }
 
-  const targetUrls = uniqueList(
-    targetContext.targetProfileUrl,
-    sendConfig.targetProfileUrl,
-    env.packConfig?.actions?.social?.userTargetProfile?.url,
-    env.packConfig?.actions?.social?.businessProfile?.url
-  );
-  if (!targetUrls.length) {
-    throw new Error("Heart konnte keinen Chat-Thread oeffnen. Weder eine bestehende Unterhaltung noch eine Zielprofil-URL sind eingerichtet.");
-  }
+  const targetUrls = persona?.key === "business"
+    ? uniqueList(targetContext.targetProfileUrl, sendConfig.userTargetProfileUrl)
+    : uniqueList(
+      targetContext.targetProfileUrl,
+      sendConfig.targetProfileUrl,
+      env.packConfig?.actions?.social?.businessProfile?.url
+    );
 
   for (const targetUrl of targetUrls) {
+    if (!asText(targetUrl)) continue;
     await openPageAndWait(page, targetUrl, "body", heart, {
       title: `${persona.label} / Open chat profile target`,
       moduleKey: "chat",
@@ -186,6 +298,10 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
       page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 15000 }),
       page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 })
     ]);
+    const openedThreadFromList = await clickFirstVisible(page, openThreadSelectors, 4000);
+    if (openedThreadFromList) {
+      await page.waitForTimeout(400).catch(() => undefined);
+    }
     await ensureElementVisible(page, composerSelector, 15000);
     return composerSelector;
   }
@@ -196,6 +312,10 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
       page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 15000 }),
       page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 })
     ]);
+    const openedThreadFromSearch = await clickFirstVisible(page, openThreadSelectors, 4000);
+    if (openedThreadFromSearch) {
+      await page.waitForTimeout(400).catch(() => undefined);
+    }
     await ensureElementVisible(page, composerSelector, 15000);
     return composerSelector;
   }

@@ -87,6 +87,16 @@ function buildProfileUrl(socialBaseUrl = "", handle = "") {
   });
 }
 
+function parseHandleFromUrl(url = "") {
+  const safeUrl = asText(url);
+  if (!safeUrl) return "";
+  try {
+    return asText(new URL(safeUrl).searchParams.get("handle"));
+  } catch {
+    return "";
+  }
+}
+
 function buildRestaurantProfileUrl(socialBaseUrl = "", restaurantId = "", topTab = "profile") {
   return buildUrl(socialBaseUrl, {
     tab: topTab,
@@ -170,19 +180,30 @@ function buildDefaultPackConfig({
   const businessHandle = asText(personas.business?.handle);
   const businessUid = asText(personas.business?.uid);
   const userHandle = asText(personas.user?.handle);
+  const userUid = asText(personas.user?.uid);
   const businessProfileUrl = restaurantId
     ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "profile")
-    : (businessHandle ? buildProfileUrl(socialBaseUrl, businessHandle) : "");
-  const userTargetProfileUrl = userHandle ? buildProfileUrl(socialBaseUrl, userHandle) : "";
-  const stableSocialTargetUrl = businessProfileUrl || userTargetProfileUrl;
+    : "";
+  const businessMenuUrl = restaurantId
+    ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "menu")
+    : buildUrl(socialBaseUrl, { tab: "menu" });
+  const businessFocusUrl = restaurantId
+    ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "focus")
+    : buildUrl(socialBaseUrl, { tab: "focus" });
+  const uploadUrl = buildUrl(socialBaseUrl, { tab: "upload" });
+  const userTargetProfileUrl = "";
+  const stableSocialTargetUrl = businessProfileUrl;
   return {
     actions: {
       social: {
         businessProfile: {
-          url: businessProfileUrl
+          url: businessProfileUrl,
+          resultSelector: "[data-search-business]"
         },
         userTargetProfile: {
-          url: userTargetProfileUrl
+          url: userTargetProfileUrl,
+          resultSelector: "[data-search-user]",
+          query: asText(personas.user?.displayName, userHandle)
         },
         follow: {
           url: stableSocialTargetUrl,
@@ -203,8 +224,8 @@ function buildDefaultPackConfig({
           verifyText: "TEST_RUN_<runId>_COMMENT_1"
         },
         postCreate: {
-          url: buildUrl(socialBaseUrl, { tab: "feed" }),
-          openSelector: "[data-nav='upload'][data-upload-intent='feed'], [data-nav='upload'][data-upload-intent='chooser']",
+          url: uploadUrl,
+          openSelector: "",
           fileInputSelector: "#uploadFileInput",
           filePath: "apps/mnyra-heart/assets/icon-192.png",
           inputSelector: "#uploadCaption",
@@ -214,27 +235,27 @@ function buildDefaultPackConfig({
       },
       business: {
         menu: {
-          url: buildUrl(socialBaseUrl, { tab: "menu" })
+          url: businessMenuUrl
         },
         focus: {
-          url: buildUrl(socialBaseUrl, { tab: "focus" })
+          url: businessFocusUrl
         },
         productCreate: {
-          url: buildUrl(socialBaseUrl, { tab: "menu" }),
+          url: businessMenuUrl,
           openSelector: "[data-menu-add-food], [data-menu-add-drink], [data-menu-add]",
           nameSelector: "#menuItemName",
           saveSelector: "#menuModalSave",
           verifyText: "TEST_RUN_<runId>_PRODUCT_1"
         },
         productEdit: {
-          url: buildUrl(socialBaseUrl, { tab: "menu" }),
+          url: businessMenuUrl,
           openSelector: "[data-menu-edit]",
           inputSelector: "#menuItemName",
           saveSelector: "#menuModalSave",
           verifyText: "TEST_RUN_<runId>_PRODUCT_EDIT"
         },
         productDelete: {
-          url: buildUrl(socialBaseUrl, { tab: "menu" }),
+          url: businessMenuUrl,
           openSelector: "[data-menu-delete]",
           confirmSelector: "",
           removedSelector: "",
@@ -267,8 +288,11 @@ function buildDefaultPackConfig({
         send: {
           url: buildUrl(socialBaseUrl, { tab: "chat" }),
           targetUid: businessUid,
+          userTargetUid: userUid,
           threadUrl: businessUid ? buildChatRouteUrl(socialBaseUrl, businessUid) : "",
+          userThreadUrl: userUid ? buildChatRouteUrl(socialBaseUrl, userUid) : "",
           targetProfileUrl: stableSocialTargetUrl,
+          userTargetProfileUrl,
           composerSelector: "#chatMessageInput",
           sendSelector: "#chatSendBtn",
           threadViewSelector: "#chatThreadView",
@@ -408,17 +432,37 @@ function normalizeHeartPackConfig(packConfig = {}, {
   const socialLike = next.actions.social.like;
   const socialCommentCreate = next.actions.social.commentCreate;
   const socialPostCreate = next.actions.social.postCreate;
+  const socialBusinessProfile = next.actions.social.businessProfile;
+  const socialUserTargetProfile = next.actions.social.userTargetProfile;
   const guestQrMenu = next.actions.guest.qrMenu;
   const staffWaiter = next.actions.staff.waiter;
   const journey = next.actions.journey;
   const stableBusinessProfileUrl = restaurantId
     ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "profile")
     : asText(next.actions.social?.businessProfile?.url);
+  const stableBusinessMenuUrl = restaurantId
+    ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "menu")
+    : buildUrl(socialBaseUrl, { tab: "menu" });
+  const stableBusinessFocusUrl = restaurantId
+    ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "focus")
+    : buildUrl(socialBaseUrl, { tab: "focus" });
+  const stableUploadUrl = buildUrl(socialBaseUrl, { tab: "upload" });
   const stableBusinessChatUid = asText(personas.business?.uid);
+  const stableUserChatUid = asText(personas.user?.uid);
 
-  if (!asText(next.actions.social.businessProfile?.url) && stableBusinessProfileUrl) {
-    next.actions.social.businessProfile.url = stableBusinessProfileUrl;
+  if (!asText(socialBusinessProfile?.url) && stableBusinessProfileUrl) {
+    socialBusinessProfile.url = stableBusinessProfileUrl;
   }
+  socialBusinessProfile.resultSelector = asText(socialBusinessProfile.resultSelector, "[data-search-business]");
+  if (asText(socialUserTargetProfile.url) && parseHandleFromUrl(socialUserTargetProfile.url)) {
+    socialUserTargetProfile.url = "";
+  }
+  socialUserTargetProfile.resultSelector = asText(socialUserTargetProfile.resultSelector, "[data-search-user]");
+  socialUserTargetProfile.query = asText(
+    socialUserTargetProfile.query,
+    personas.user?.displayName,
+    personas.user?.handle
+  );
 
   if (guestRouteUrl) {
     commerceCart.url = guestRouteUrl;
@@ -487,10 +531,20 @@ function normalizeHeartPackConfig(packConfig = {}, {
   socialCommentCreate.verifySelector = asText(socialCommentCreate.verifySelector, "#postModalComments");
 
   if (!asText(socialPostCreate.url)) {
-    socialPostCreate.url = buildUrl(socialBaseUrl, { tab: "feed" });
+    socialPostCreate.url = stableUploadUrl;
   }
-  if (!asText(socialPostCreate.openSelector) || asText(socialPostCreate.openSelector) === "[data-post-open]") {
-    socialPostCreate.openSelector = "[data-nav='upload'][data-upload-intent='feed'], [data-nav='upload'][data-upload-intent='chooser']";
+  if (
+    !asText(socialPostCreate.url)
+    || asText(socialPostCreate.url) === buildUrl(socialBaseUrl, { tab: "feed" })
+  ) {
+    socialPostCreate.url = stableUploadUrl;
+  }
+  if (
+    !asText(socialPostCreate.openSelector)
+    || asText(socialPostCreate.openSelector) === "[data-post-open]"
+    || asText(socialPostCreate.openSelector) === "[data-nav='upload'][data-upload-intent='feed'], [data-nav='upload'][data-upload-intent='chooser']"
+  ) {
+    socialPostCreate.openSelector = "";
   }
   if (!asText(socialPostCreate.fileInputSelector)) {
     socialPostCreate.fileInputSelector = "#uploadFileInput";
@@ -511,12 +565,22 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(chatSend.targetUid) && stableBusinessChatUid) {
     chatSend.targetUid = stableBusinessChatUid;
   }
+  if (!asText(chatSend.userTargetUid) && stableUserChatUid) {
+    chatSend.userTargetUid = stableUserChatUid;
+  }
   if (!asText(chatSend.threadUrl) && asText(chatSend.targetUid)) {
     chatSend.threadUrl = buildChatRouteUrl(socialBaseUrl, chatSend.targetUid);
   }
-  if (!asText(chatSend.targetProfileUrl)) {
-    chatSend.targetProfileUrl = asText(stableBusinessProfileUrl || next.actions.social?.userTargetProfile?.url || next.actions.social?.businessProfile?.url);
+  if (!asText(chatSend.userThreadUrl) && asText(chatSend.userTargetUid)) {
+    chatSend.userThreadUrl = buildChatRouteUrl(socialBaseUrl, chatSend.userTargetUid);
   }
+  if (asText(chatSend.userTargetProfileUrl) && parseHandleFromUrl(chatSend.userTargetProfileUrl)) {
+    chatSend.userTargetProfileUrl = "";
+  }
+  if (!asText(chatSend.targetProfileUrl)) {
+    chatSend.targetProfileUrl = asText(stableBusinessProfileUrl || socialBusinessProfile.url);
+  }
+  chatSend.userTargetProfileUrl = asText(chatSend.userTargetProfileUrl, socialUserTargetProfile.url);
   if (!asText(chatSend.composerSelector) || asText(chatSend.composerSelector) === "textarea") {
     chatSend.composerSelector = "#chatMessageInput";
   }
@@ -579,6 +643,15 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(productCreate.openSelector) || asText(productCreate.openSelector) === "[data-product-create-open]") {
     productCreate.openSelector = "[data-menu-add-food], [data-menu-add-drink], [data-menu-add]";
   }
+  if (!asText(next.actions.business.menu?.url) || asText(next.actions.business.menu.url) === buildUrl(socialBaseUrl, { tab: "menu" })) {
+    next.actions.business.menu.url = stableBusinessMenuUrl;
+  }
+  if (!asText(next.actions.business.focus?.url) || asText(next.actions.business.focus.url) === buildUrl(socialBaseUrl, { tab: "focus" })) {
+    next.actions.business.focus.url = stableBusinessFocusUrl;
+  }
+  if (!asText(productCreate.url) || asText(productCreate.url) === buildUrl(socialBaseUrl, { tab: "menu" })) {
+    productCreate.url = stableBusinessMenuUrl;
+  }
   if (!asText(productCreate.nameSelector) || asText(productCreate.nameSelector) === "[data-product-name-input]") {
     productCreate.nameSelector = "#menuItemName";
   }
@@ -589,6 +662,9 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(productEdit.openSelector) || asText(productEdit.openSelector) === "[data-product-edit-open]") {
     productEdit.openSelector = "[data-menu-edit]";
   }
+  if (!asText(productEdit.url) || asText(productEdit.url) === buildUrl(socialBaseUrl, { tab: "menu" })) {
+    productEdit.url = stableBusinessMenuUrl;
+  }
   if (!asText(productEdit.inputSelector) || asText(productEdit.inputSelector) === "[data-product-name-input]") {
     productEdit.inputSelector = "#menuItemName";
   }
@@ -598,6 +674,9 @@ function normalizeHeartPackConfig(packConfig = {}, {
 
   if (!asText(productDelete.openSelector) || asText(productDelete.openSelector) === "[data-product-delete-open]") {
     productDelete.openSelector = "[data-menu-delete]";
+  }
+  if (!asText(productDelete.url) || asText(productDelete.url) === buildUrl(socialBaseUrl, { tab: "menu" })) {
+    productDelete.url = stableBusinessMenuUrl;
   }
   if (!asText(productDelete.confirmSelector) || asText(productDelete.confirmSelector) === "[data-product-delete-confirm]") {
     productDelete.confirmSelector = "";

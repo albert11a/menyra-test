@@ -4,9 +4,9 @@ import {
   clickIfPresent,
   ensureElementVisible,
   fillIfPresent,
+  findVisibleSelector,
   openSocialTab,
   openPageAndWait,
-  readCountValue,
   setInputFilesIfPresent,
   waitForAnySelector,
   waitForSelectorToDisappear,
@@ -33,9 +33,15 @@ const PUBLIC_PROFILE_RESULT_SELECTORS = Object.freeze({
   default: "[data-search-business]"
 });
 
-function asText(value, fallback = "") {
+function asText(value, fallback = "", ...restFallbacks) {
   const text = String(value || "").trim();
-  return text || fallback;
+  if (text) return text;
+  if (restFallbacks.length) {
+    return [fallback, ...restFallbacks]
+      .map((entry) => String(entry || "").trim())
+      .find(Boolean) || "";
+  }
+  return String(fallback || "").trim();
 }
 
 function uniqueSelectors(...values) {
@@ -62,22 +68,6 @@ function chooseFirstText(...values) {
   return "";
 }
 
-function resolveSocialTargetProfileUrl(env = {}, persona = {}, preferredUrl = "") {
-  const socialConfig = env.packConfig?.actions?.social || {};
-  if (persona?.key === "business") {
-    const preferredTargetUrl = chooseFirstText(
-      socialConfig.userTargetProfile?.url,
-      parseHandleFromUrl(preferredUrl) ? preferredUrl : ""
-    );
-    return preferredTargetUrl;
-  }
-  return chooseFirstText(
-    socialConfig.businessProfile?.url,
-    preferredUrl,
-    socialConfig.userTargetProfile?.url
-  );
-}
-
 function parseHandleFromUrl(url = "") {
   const safeUrl = asText(url);
   if (!safeUrl) return "";
@@ -88,6 +78,104 @@ function parseHandleFromUrl(url = "") {
   }
 }
 
+function parseRestaurantIdFromUrl(url = "") {
+  const safeUrl = asText(url);
+  if (!safeUrl) return "";
+  try {
+    const searchParams = new URL(safeUrl).searchParams;
+    return chooseFirstText(
+      searchParams.get("r"),
+      searchParams.get("restaurant"),
+      searchParams.get("restaurantId"),
+      searchParams.get("rid"),
+      searchParams.get("businessId")
+    );
+  } catch {
+    return "";
+  }
+}
+
+function buildSearchQueries(...values) {
+  const baseQueries = uniqueSelectors(...values);
+  const expandedQueries = [];
+  for (const query of baseQueries) {
+    expandedQueries.push(query);
+    if (!query.startsWith("@")) {
+      expandedQueries.push(`@${query.replace(/^@+/, "")}`);
+    }
+  }
+  return uniqueSelectors(expandedQueries);
+}
+
+async function clickMatchingSearchResult(page, selectors = [], queries = []) {
+  return page.evaluate(({ selectorList, queryList }) => {
+    const normalize = (value) => String(value || "").trim().toLowerCase();
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const queriesNorm = Array.isArray(queryList)
+      ? queryList.map((entry) => normalize(entry)).filter(Boolean)
+      : [];
+    const candidates = [];
+    for (const selector of Array.isArray(selectorList) ? selectorList : []) {
+      document.querySelectorAll(selector).forEach((node) => {
+        if (!(node instanceof HTMLElement) || !isVisibleNode(node)) return;
+        candidates.push(node);
+      });
+    }
+    if (!candidates.length) return false;
+
+    const scoreCandidate = (node) => {
+      const text = normalize(node.innerText || node.textContent || "");
+      const handle = normalize(node.dataset.searchHandle || "");
+      const name = normalize(node.dataset.searchName || "");
+      let score = 0;
+      for (const query of queriesNorm) {
+        const bareQuery = query.replace(/^@+/, "");
+        if (handle && bareQuery && handle === bareQuery) score = Math.max(score, 100);
+        if (name && query && name.includes(query)) score = Math.max(score, 80);
+        if (text && query && text.includes(query)) score = Math.max(score, 60);
+        if (text && bareQuery && text.includes(bareQuery)) score = Math.max(score, 50);
+      }
+      return score;
+    };
+
+    let chosen = candidates[0];
+    let bestScore = -1;
+    for (const candidate of candidates) {
+      const score = scoreCandidate(candidate);
+      if (score > bestScore) {
+        bestScore = score;
+        chosen = candidate;
+      }
+    }
+    if (!(chosen instanceof HTMLElement)) return false;
+    chosen.click();
+    return true;
+  }, {
+    selectorList: selectors,
+    queryList: queries
+  });
+}
+
+function resolveSocialTargetProfileUrl(env = {}, persona = {}, preferredUrl = "") {
+  const socialConfig = env.packConfig?.actions?.social || {};
+  if (persona?.key === "business") {
+    return "";
+  }
+  return chooseFirstText(
+    parseRestaurantIdFromUrl(preferredUrl) ? preferredUrl : "",
+    parseRestaurantIdFromUrl(socialConfig.businessProfile?.url) ? socialConfig.businessProfile.url : "",
+    parseRestaurantIdFromUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : ""
+  );
+}
+
 function resolveSocialTargetProfileContext(env = {}, persona = {}, preferredUrl = "") {
   const configPersonas = env.packConfig?.personas || {};
   const socialConfig = env.packConfig?.actions?.social || {};
@@ -96,7 +184,12 @@ function resolveSocialTargetProfileContext(env = {}, persona = {}, preferredUrl 
     const userPersona = configPersonas.user || {};
     return {
       url: directUrl,
-      query: asText(userPersona.displayName, userPersona.handle, parseHandleFromUrl(directUrl)),
+      queries: buildSearchQueries(
+        userPersona.displayName,
+        userPersona.handle,
+        socialConfig.userTargetProfile?.query,
+        parseHandleFromUrl(directUrl)
+      ),
       resultSelectors: uniqueSelectors(
         socialConfig.userTargetProfile?.resultSelector,
         PUBLIC_PROFILE_RESULT_SELECTORS.business
@@ -107,10 +200,11 @@ function resolveSocialTargetProfileContext(env = {}, persona = {}, preferredUrl 
   const businessPersona = configPersonas.business || {};
   return {
     url: directUrl,
-    query: asText(
+    queries: buildSearchQueries(
       env.packConfig?.restaurantName,
       businessPersona.displayName,
       businessPersona.handle,
+      socialConfig.businessProfile?.query,
       parseHandleFromUrl(directUrl)
     ),
     resultSelectors: uniqueSelectors(
@@ -132,10 +226,7 @@ async function openSocialTargetProfile(page, env, heart, persona, {
 } = {}) {
   const targetContext = resolveSocialTargetProfileContext(env, persona, preferredUrl);
   const directUrl = asText(targetContext.url);
-  const allowDirectUrl = !!directUrl && (
-    persona?.key !== "business"
-      || !!parseHandleFromUrl(directUrl)
-  );
+  const allowDirectUrl = !!parseRestaurantIdFromUrl(directUrl);
   if (allowDirectUrl) {
     await openPageAndWait(page, directUrl, "body", heart, {
       title: title || `${persona.label} / Open profile target`,
@@ -154,13 +245,13 @@ async function openSocialTargetProfile(page, env, heart, persona, {
   const searchConfig = env.packConfig?.actions?.discovery?.search || {};
   const searchUrl = asText(searchConfig.url, buildUrl(persona.baseUrl, { tab: "search" }));
   const searchInputSelector = asText(searchConfig.inputSelector, "#searchInput");
-  const queryText = asText(
-    targetContext.query,
+  const searchQueries = buildSearchQueries(
+    targetContext.queries,
     env.packConfig?.restaurantName,
     env.packConfig?.personas?.business?.displayName,
     env.packConfig?.personas?.business?.handle
   );
-  if (!queryText) {
+  if (!searchQueries.length) {
     throw new Error("Heart konnte kein stabiles Zielprofil fuer diese Pruefung finden.");
   }
 
@@ -170,41 +261,32 @@ async function openSocialTargetProfile(page, env, heart, persona, {
     area,
     persona: persona.key
   });
-  await fillIfPresent(page, searchInputSelector, queryText, 12000);
-  await page.waitForTimeout(900);
 
   const resultSelectors = uniqueSelectors(
     targetContext.resultSelectors,
     PUBLIC_PROFILE_RESULT_SELECTORS.business,
     PUBLIC_PROFILE_RESULT_SELECTORS.default
   );
-  await waitForAnySelector(page, resultSelectors, 20000);
-  const clicked = await page.evaluate((selectors) => {
-    const list = Array.isArray(selectors) ? selectors : [];
-    for (const selector of list) {
-      const nodes = Array.from(document.querySelectorAll(selector));
-      const node = nodes.find((entry) => {
-        if (!(entry instanceof HTMLElement)) return false;
-        const style = window.getComputedStyle(entry);
-        const rect = entry.getBoundingClientRect();
-        return style.display !== "none"
-          && style.visibility !== "hidden"
-          && Number(style.opacity || "1") > 0
-          && rect.width > 0
-          && rect.height > 0;
-      });
-      if (node instanceof HTMLElement) {
-        node.click();
-        return true;
-      }
+  let clicked = false;
+  for (const queryText of searchQueries) {
+    await fillIfPresent(page, searchInputSelector, queryText, 12000);
+    await page.waitForTimeout(1200);
+    const matchedSelector = await waitForAnySelector(page, resultSelectors, 10000)
+      .then((selector) => selector)
+      .catch(() => "");
+    if (!matchedSelector) {
+      continue;
     }
-    return false;
-  }, resultSelectors);
+    clicked = await clickMatchingSearchResult(page, resultSelectors, [queryText, ...searchQueries]);
+    if (clicked) {
+      break;
+    }
+  }
   if (!clicked) {
     throw new Error("Heart konnte das Zielprofil in der Suche nicht oeffnen.");
   }
 
-  await ensureElementVisible(page, "[data-public-profile-follow]", 20000);
+  await waitForPublicProfileReady(page, 20000);
   return targetContext;
 }
 
@@ -383,19 +465,14 @@ async function clickVisibleLikeCandidate(page, selectors = []) {
   }, selectors);
 }
 
-async function waitForLikeCandidateState(page, {
+async function readLikeCandidateSnapshot(page, {
   selectors = [],
-  targetState = "liked",
   countSelector = "",
-  previousCount = null,
-  timeout = 15000
 } = {}) {
-  await page.waitForFunction(
+  return page.evaluate(
     ({
       likeSelectors,
-      desiredState,
-      likeCountSelector,
-      previousValue
+      likeCountSelector
     }) => {
       const isVisibleNode = (node) => {
         if (!(node instanceof HTMLElement)) return false;
@@ -414,61 +491,73 @@ async function waitForLikeCandidateState(page, {
       }
       const visibleButtons = buttons.filter((node) => isVisibleNode(node));
       const effectiveButtons = visibleButtons.length ? visibleButtons : buttons;
-      const pressedStates = effectiveButtons.map((button) => {
-        return button.getAttribute("aria-pressed") === "true"
-          || button.classList.contains("text-rose-400");
-      });
-      const anyPressed = pressedStates.some(Boolean);
-      const anyUnpressed = pressedStates.some((value) => !value);
+      const button = effectiveButtons[0] || null;
       const countNode = likeCountSelector
         ? Array.from(document.querySelectorAll(likeCountSelector)).find((node) => isVisibleNode(node)) || document.querySelector(likeCountSelector)
         : null;
-      const countMatch = String(countNode?.textContent || "").match(/-?\d+/);
-      const countChanged = countMatch ? Number(countMatch[0]) !== Number(previousValue) : false;
-      if (desiredState === "liked") return anyPressed || countChanged;
-      return anyUnpressed || countChanged;
+      return {
+        countValue: String(countNode?.textContent || "").replace(/\s+/g, " ").trim(),
+        buttonText: String(button?.textContent || "").replace(/\s+/g, " ").trim(),
+        buttonClass: String(button?.getAttribute("class") || "").trim(),
+        pressed: button?.getAttribute("aria-pressed") === "true"
+      };
     },
     {
       likeSelectors: selectors,
-      desiredState: targetState,
-      likeCountSelector: countSelector,
-      previousValue: previousCount
-    },
-    { timeout }
+      likeCountSelector: countSelector
+    }
   );
 }
 
-async function clickLikeButtonToState(page, {
-  selector = "",
-  targetState = "liked",
+async function waitForLikeInteraction(page, {
+  selectors = [],
+  countSelector = "",
+  previousSnapshot = {},
   timeout = 15000
 } = {}) {
-  const safeSelector = asText(selector);
-  if (!safeSelector) throw new Error("Heart konnte keinen Like-Button auswaehlen.");
-  const candidates = await collectVisibleLikeCandidates(page, safeSelector);
-  if (!candidates.length) {
-    throw new Error("Heart konnte keinen stabilen sichtbaren Like-Button finden.");
-  }
-  for (const candidate of candidates) {
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      const countSelector = candidate.postKey ? `[data-post-like-count="${candidate.postKey}"]` : "";
-      const beforeCount = countSelector ? await readCountValue(page, countSelector) : null;
-      const clicked = await clickVisibleLikeCandidate(page, candidate.selectors);
-      if (!clicked) continue;
-      const didReachTargetState = await waitForLikeCandidateState(page, {
-        selectors: candidate.selectors,
-        targetState,
-        countSelector,
-        previousCount: beforeCount,
-        timeout
-      }).then(() => true).catch(() => false);
-      if (didReachTargetState) {
-        return;
+  await page.waitForFunction(
+    ({
+      likeSelectors,
+      likeCountSelector,
+      previous
+    }) => {
+      const isVisibleNode = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+          return false;
+        }
+        const rect = node.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      const buttons = [];
+      for (const selector of Array.isArray(likeSelectors) ? likeSelectors : []) {
+        document.querySelectorAll(selector).forEach((node) => {
+          if (node instanceof HTMLElement) buttons.push(node);
+        });
       }
-      await page.waitForTimeout(600).catch(() => undefined);
-    }
-  }
-  throw new Error(`Heart konnte keinen sichtbaren Like-Button stabil in den Zustand "${targetState}" bringen.`);
+      const visibleButtons = buttons.filter((node) => isVisibleNode(node));
+      const effectiveButtons = visibleButtons.length ? visibleButtons : buttons;
+      const button = effectiveButtons[0] || null;
+      const countNode = likeCountSelector
+        ? Array.from(document.querySelectorAll(likeCountSelector)).find((node) => isVisibleNode(node)) || document.querySelector(likeCountSelector)
+        : null;
+      const currentCount = String(countNode?.textContent || "").replace(/\s+/g, " ").trim();
+      const currentText = String(button?.textContent || "").replace(/\s+/g, " ").trim();
+      const currentClass = String(button?.getAttribute("class") || "").trim();
+      const currentPressed = button?.getAttribute("aria-pressed") === "true";
+      return currentCount !== String(previous?.countValue || "")
+        || currentText !== String(previous?.buttonText || "")
+        || currentClass !== String(previous?.buttonClass || "")
+        || currentPressed !== !!previous?.pressed;
+    },
+    {
+      likeSelectors: selectors,
+      likeCountSelector: countSelector,
+      previous: previousSnapshot
+    },
+    { timeout }
+  );
 }
 
 async function runLikeAction(page, selector = "") {
@@ -476,14 +565,42 @@ async function runLikeAction(page, selector = "") {
   if (!candidates.length) {
     throw new Error("Heart konnte keinen sichtbaren Like-Button im Feed finden.");
   }
-  if (candidates.some((candidate) => candidate.pressed)) {
+  const pendingCandidates = candidates.filter((candidate) => !candidate.pressed);
+  if (!pendingCandidates.length && candidates.some((candidate) => candidate.pressed)) {
     return;
   }
-  await clickLikeButtonToState(page, {
-    selector,
-    targetState: "liked",
-    timeout: 15000
-  });
+  for (const candidate of pendingCandidates.length ? pendingCandidates : candidates) {
+    const countSelector = candidate.postKey ? `[data-post-like-count="${candidate.postKey}"]` : "";
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      const previousSnapshot = await readLikeCandidateSnapshot(page, {
+        selectors: candidate.selectors,
+        countSelector
+      });
+      if (previousSnapshot?.pressed) {
+        return;
+      }
+      const clicked = await clickVisibleLikeCandidate(page, candidate.selectors);
+      if (!clicked) continue;
+      const didInteract = await waitForLikeInteraction(page, {
+        selectors: candidate.selectors,
+        countSelector,
+        previousSnapshot,
+        timeout: 20000
+      }).then(() => true).catch(() => false);
+      if (didInteract) {
+        const nextSnapshot = await readLikeCandidateSnapshot(page, {
+          selectors: candidate.selectors,
+          countSelector
+        });
+        if (nextSnapshot?.pressed) {
+          return;
+        }
+        continue;
+      }
+      await page.waitForTimeout(700).catch(() => undefined);
+    }
+  }
+  throw new Error("Heart konnte keinen sichtbaren Like-Button stabil in den Zustand \"liked\" bringen.");
 }
 
 async function runConfiguredSocialMutation({
@@ -739,6 +856,11 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
         if (socialConfig.postCreate.openSelector) {
           await clickIfPresent(page, socialConfig.postCreate.openSelector);
         }
+        await waitForAnySelector(page, [
+          socialConfig.postCreate.fileInputSelector || "#uploadFileInput",
+          "#uploadFileTrigger",
+          socialConfig.postCreate.inputSelector || "#uploadCaption"
+        ], 20000);
         const postText = replaceRunTokens(
           socialConfig.postCreate.messageTemplate || "TEST_RUN_<runId>_POST_1",
           env
@@ -752,8 +874,19 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
           filePath
         );
         if (!fileSelected) {
+          const composerVisible = await findVisibleSelector(page, [
+            socialConfig.postCreate.fileInputSelector || "#uploadFileInput",
+            "#uploadFileTrigger"
+          ]);
+          if (!composerVisible) {
+            throw new Error("Heart konnte den Feed-Post-Composer nicht sichtbar oeffnen.");
+          }
           throw new Error("Heart konnte kein Upload-Feld fuer den Feed-Post finden.");
         }
+        await waitForAnySelector(page, [
+          socialConfig.postCreate.inputSelector || "#uploadCaption",
+          socialConfig.postCreate.submitSelector || "#uploadPostBtn"
+        ], 20000);
         await fillIfPresent(page, socialConfig.postCreate.inputSelector, postText);
         await clickIfPresent(page, socialConfig.postCreate.submitSelector);
         await waitForSelectorToDisappear(page, socialConfig.postCreate.inputSelector, 30000).catch(() => undefined);

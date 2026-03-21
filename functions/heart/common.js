@@ -12,9 +12,15 @@ const HEART_DEFAULT_REGION = "us-central1";
 
 let runtimeConfigCache = null;
 
-function asText(value, fallback = "") {
+function asText(value, fallback = "", ...restFallbacks) {
   const text = String(value || "").trim();
-  return text || fallback;
+  if (text) return text;
+  if (restFallbacks.length) {
+    return [fallback, ...restFallbacks]
+      .map((entry) => String(entry || "").trim())
+      .find(Boolean) || "";
+  }
+  return String(fallback || "").trim();
 }
 
 function normalizeRoleList(value = "") {
