@@ -31,6 +31,22 @@ function mergeDeep(base = {}, patch = {}) {
   return next;
 }
 
+function uniqueTextList(...values) {
+  const seen = new Set();
+  return values.flatMap((value) => {
+    if (Array.isArray(value)) {
+      return value.map((entry) => asText(entry)).filter(Boolean);
+    }
+    const safeValue = asText(value);
+    return safeValue ? [safeValue] : [];
+  }).filter((item) => {
+    const key = item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function buildUrl(baseUrl = "", params = {}) {
   const safeBaseUrl = asText(baseUrl);
   if (!safeBaseUrl) return "";
@@ -188,13 +204,23 @@ function buildDefaultPackConfig({
       commerce: {
         cart: {
           url: guestRouteUrl,
+          openSelector: "[data-menu-open]",
           triggerSelector: "#menuDetailAddToCartBtn",
-          removalSelector: "[data-cart-remove]"
+          verifySelector: "[data-cart-checkout], [data-cart-qty]",
+          removalSelector: "[data-cart-qty][data-cart-delta='-1']"
         },
         order: {
           url: guestRouteUrl,
-          triggerSelector: "[data-submit-order]",
-          successText: "Bestellung gesendet"
+          openSelector: "[data-cart-checkout='open']",
+          triggerSelector: "[data-cart-checkout='submit']",
+          successText: "Bestellung gesendet",
+          successTexts: [
+            "Bestellung gesendet",
+            "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+          ],
+          failureTexts: [
+            "Bestellung konnte nicht gesendet werden."
+          ]
         }
       },
       chat: {
@@ -225,10 +251,20 @@ function buildDefaultPackConfig({
       guest: {
         qrMenu: {
           url: guestRouteUrl,
-          menuVisibleSelector: "[data-menu-grid]",
-          cartVisibleSelector: "[data-cart-button]",
-          orderTriggerSelector: "[data-submit-order]",
+          menuVisibleSelector: "[data-menu-open]",
+          productOpenSelector: "[data-menu-open]",
+          addToCartSelector: "#menuDetailAddToCartBtn",
+          cartVisibleSelector: "[data-cart-checkout], [data-cart-qty]",
+          orderOpenSelector: "[data-cart-checkout='open']",
+          orderTriggerSelector: "[data-cart-checkout='submit']",
           orderSuccessText: "Bestellung gesendet",
+          orderSuccessTexts: [
+            "Bestellung gesendet",
+            "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+          ],
+          orderFailureTexts: [
+            "Bestellung konnte nicht gesendet werden."
+          ],
           privilegedSelectors: [
             "[data-business-edit]",
             "[data-crm-create]"
@@ -248,6 +284,90 @@ function buildDefaultPackConfig({
       }
     }
   };
+}
+
+function normalizeHeartPackConfig(packConfig = {}, {
+  socialBaseUrl = "",
+  waiterBaseUrl = "",
+  guestRouteUrl = "",
+  personas = {}
+} = {}) {
+  const defaults = buildDefaultPackConfig({
+    socialBaseUrl,
+    waiterBaseUrl,
+    guestRouteUrl,
+    personas
+  });
+  const next = mergeDeep(defaults, packConfig);
+  next.actions = ensureObject(next.actions);
+  next.actions.commerce = ensureObject(next.actions.commerce);
+  next.actions.commerce.cart = ensureObject(next.actions.commerce.cart);
+  next.actions.commerce.order = ensureObject(next.actions.commerce.order);
+  next.actions.guest = ensureObject(next.actions.guest);
+  next.actions.guest.qrMenu = ensureObject(next.actions.guest.qrMenu);
+
+  const commerceCart = next.actions.commerce.cart;
+  const commerceOrder = next.actions.commerce.order;
+  const guestQrMenu = next.actions.guest.qrMenu;
+
+  if (guestRouteUrl) {
+    commerceCart.url = guestRouteUrl;
+    commerceOrder.url = guestRouteUrl;
+    guestQrMenu.url = guestRouteUrl;
+  }
+
+  commerceCart.openSelector = asText(commerceCart.openSelector, "[data-menu-open]");
+  commerceCart.triggerSelector = asText(commerceCart.triggerSelector, "#menuDetailAddToCartBtn");
+  commerceCart.verifySelector = asText(commerceCart.verifySelector, "[data-cart-checkout], [data-cart-qty]");
+  if (!asText(commerceCart.removalSelector) || asText(commerceCart.removalSelector) === "[data-cart-remove]") {
+    commerceCart.removalSelector = "[data-cart-qty][data-cart-delta='-1']";
+  }
+
+  if (!asText(commerceOrder.openSelector)) {
+    commerceOrder.openSelector = "[data-cart-checkout='open']";
+  }
+  if (!asText(commerceOrder.triggerSelector) || asText(commerceOrder.triggerSelector) === "[data-submit-order]") {
+    commerceOrder.triggerSelector = "[data-cart-checkout='submit']";
+  }
+  commerceOrder.successTexts = uniqueTextList(
+    commerceOrder.successTexts,
+    commerceOrder.successText,
+    "Bestellung gesendet",
+    "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+  );
+  commerceOrder.successText = asText(commerceOrder.successText, commerceOrder.successTexts[0] || "Bestellung gesendet");
+  commerceOrder.failureTexts = uniqueTextList(
+    commerceOrder.failureTexts,
+    commerceOrder.failureText,
+    "Bestellung konnte nicht gesendet werden."
+  );
+
+  guestQrMenu.menuVisibleSelector = asText(guestQrMenu.menuVisibleSelector, "[data-menu-open]");
+  guestQrMenu.productOpenSelector = asText(guestQrMenu.productOpenSelector || guestQrMenu.openSelector, "[data-menu-open]");
+  guestQrMenu.addToCartSelector = asText(guestQrMenu.addToCartSelector, "#menuDetailAddToCartBtn");
+  if (!asText(guestQrMenu.cartVisibleSelector) || asText(guestQrMenu.cartVisibleSelector) === "[data-cart-button]") {
+    guestQrMenu.cartVisibleSelector = "[data-cart-checkout], [data-cart-qty]";
+  }
+  if (!asText(guestQrMenu.orderOpenSelector)) {
+    guestQrMenu.orderOpenSelector = "[data-cart-checkout='open']";
+  }
+  if (!asText(guestQrMenu.orderTriggerSelector) || asText(guestQrMenu.orderTriggerSelector) === "[data-submit-order]") {
+    guestQrMenu.orderTriggerSelector = "[data-cart-checkout='submit']";
+  }
+  guestQrMenu.orderSuccessTexts = uniqueTextList(
+    guestQrMenu.orderSuccessTexts,
+    guestQrMenu.orderSuccessText,
+    "Bestellung gesendet",
+    "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+  );
+  guestQrMenu.orderSuccessText = asText(guestQrMenu.orderSuccessText, guestQrMenu.orderSuccessTexts[0] || "Bestellung gesendet");
+  guestQrMenu.orderFailureTexts = uniqueTextList(
+    guestQrMenu.orderFailureTexts,
+    guestQrMenu.orderFailureText,
+    "Bestellung konnte nicht gesendet werden."
+  );
+
+  return next;
 }
 
 function createUserProfilePayload({
@@ -520,15 +640,12 @@ function buildRunnerEnvPayload({
   waiterBaseUrl = ""
 } = {}) {
   const guestRouteUrl = asText(setup.guestRouteUrl);
-  const packConfig = mergeDeep(
-    buildDefaultPackConfig({
-      socialBaseUrl,
-      waiterBaseUrl,
-      guestRouteUrl,
-      personas: ensureObject(setup.personas)
-    }),
-    ensureObject(setup.packConfig)
-  );
+  const packConfig = normalizeHeartPackConfig(ensureObject(setup.packConfig), {
+    socialBaseUrl,
+    waiterBaseUrl,
+    guestRouteUrl,
+    personas: ensureObject(setup.personas)
+  });
   return {
     MNYRA_SOCIAL_BASE_URL: asText(socialBaseUrl),
     MNYRA_WAITER_BASE_URL: asText(waiterBaseUrl),
@@ -563,15 +680,12 @@ function deriveSetupPatch({
     restaurantId ? buildGuestRouteUrl(socialBaseUrl, restaurantId) : ""
   );
   const nextSyntheticIsolationKey = asText(merged.syntheticIsolationKey || createSyntheticIsolationKey());
-  const nextPackConfig = mergeDeep(
-    buildDefaultPackConfig({
-      socialBaseUrl,
-      waiterBaseUrl,
-      guestRouteUrl: nextGuestRouteUrl,
-      personas: ensureObject(merged.personas)
-    }),
-    ensureObject(merged.packConfig)
-  );
+  const nextPackConfig = normalizeHeartPackConfig(ensureObject(merged.packConfig), {
+    socialBaseUrl,
+    waiterBaseUrl,
+    guestRouteUrl: nextGuestRouteUrl,
+    personas: ensureObject(merged.personas)
+  });
   return {
     ...merged,
     allowLiveMutations: merged.allowLiveMutations !== false,

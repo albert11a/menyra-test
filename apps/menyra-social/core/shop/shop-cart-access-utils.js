@@ -21,14 +21,15 @@ export function getCartCountForRestaurantCore(restaurantId = "", shopCart = null
 
 export function canAddToShopCartCore(profile = {}, {
   isShopCatalogProfileFn,
-  currentUserRestaurantId = ""
+  currentUserRestaurantId = "",
+  allowOwnRestaurantOrdering = false
 } = {}) {
   const isShopCatalogProfile = typeof isShopCatalogProfileFn === "function"
     ? isShopCatalogProfileFn
     : (() => false);
   const restaurantId = String(profile?.restaurantId || "").trim();
   if (!restaurantId || !isShopCatalogProfile(profile)) return false;
-  if (currentUserRestaurantId && String(currentUserRestaurantId).trim() === restaurantId) return false;
+  if (!allowOwnRestaurantOrdering && currentUserRestaurantId && String(currentUserRestaurantId).trim() === restaurantId) return false;
   return true;
 }
 

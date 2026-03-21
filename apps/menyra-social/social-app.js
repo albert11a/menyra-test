@@ -2143,7 +2143,8 @@ function getCartCountForRestaurant(restaurantId = "") {
 function canAddToShopCart(profile = state.profileView?.profile || state.userProfile) {
   return canAddToShopCartCore(profile, {
     isShopCatalogProfileFn: isShopCatalogProfile,
-    currentUserRestaurantId: state.userProfile?.restaurantId || ""
+    currentUserRestaurantId: state.userProfile?.restaurantId || "",
+    allowOwnRestaurantOrdering: isCeoUser() || hasGlobalCeoAccess()
   });
 }
 

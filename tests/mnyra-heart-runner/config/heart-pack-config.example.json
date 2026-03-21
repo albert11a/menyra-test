@@ -72,13 +72,23 @@
     "commerce": {
       "cart": {
         "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
+        "openSelector": "[data-menu-open]",
         "triggerSelector": "#menuDetailAddToCartBtn",
-        "removalSelector": "[data-cart-remove]"
+        "verifySelector": "[data-cart-checkout], [data-cart-qty]",
+        "removalSelector": "[data-cart-qty][data-cart-delta='-1']"
       },
       "order": {
         "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
-        "triggerSelector": "[data-submit-order]",
-        "successText": "Bestellung gesendet"
+        "openSelector": "[data-cart-checkout='open']",
+        "triggerSelector": "[data-cart-checkout='submit']",
+        "successText": "Bestellung gesendet",
+        "successTexts": [
+          "Bestellung gesendet",
+          "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+        ],
+        "failureTexts": [
+          "Bestellung konnte nicht gesendet werden."
+        ]
       }
     },
     "chat": {
@@ -102,8 +112,19 @@
     "guest": {
       "qrMenu": {
         "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
-        "menuVisibleSelector": "[data-menu-grid]",
-        "cartVisibleSelector": "[data-cart-button]",
+        "menuVisibleSelector": "[data-menu-open]",
+        "productOpenSelector": "[data-menu-open]",
+        "addToCartSelector": "#menuDetailAddToCartBtn",
+        "cartVisibleSelector": "[data-cart-checkout], [data-cart-qty]",
+        "orderOpenSelector": "[data-cart-checkout='open']",
+        "orderTriggerSelector": "[data-cart-checkout='submit']",
+        "orderSuccessTexts": [
+          "Bestellung gesendet",
+          "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+        ],
+        "orderFailureTexts": [
+          "Bestellung konnte nicht gesendet werden."
+        ],
         "privilegedSelectors": [
           "[data-business-edit]",
           "[data-crm-create]"

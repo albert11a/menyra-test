@@ -11,6 +11,24 @@ function asText(value, fallback = "") {
   return text || fallback;
 }
 
+function toList(value = []) {
+  if (Array.isArray(value)) {
+    return value.map((item) => asText(item)).filter(Boolean);
+  }
+  const safeValue = asText(value);
+  return safeValue ? [safeValue] : [];
+}
+
+function uniqueList(values = []) {
+  const seen = new Set();
+  return toList(values).filter((item) => {
+    const key = item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function buildUrl(baseUrl, {
   tab = "",
   absolute = ""
@@ -156,6 +174,34 @@ export async function clickIfPresent(page, selector, timeout = 8000) {
   return true;
 }
 
+export async function findVisibleSelector(page, selectors = []) {
+  const safeSelectors = uniqueList(selectors);
+  for (const selector of safeSelectors) {
+    const locator = page.locator(selector).first();
+    if (!await locator.count().catch(() => 0)) continue;
+    if (!await locator.isVisible().catch(() => false)) continue;
+    return selector;
+  }
+  return "";
+}
+
+export async function clickFirstVisible(page, selectors = [], timeout = 8000) {
+  const safeSelectors = uniqueList(selectors);
+  if (!safeSelectors.length) return "";
+  const deadline = Date.now() + Math.max(250, Number(timeout) || 0);
+  while (Date.now() < deadline) {
+    const selector = await findVisibleSelector(page, safeSelectors);
+    if (selector) {
+      await page.locator(selector).first().click({
+        timeout: Math.max(250, Math.min(2000, deadline - Date.now()))
+      });
+      return selector;
+    }
+    await page.waitForTimeout(120).catch(() => undefined);
+  }
+  return "";
+}
+
 export async function fillIfPresent(page, selector, value, timeout = 8000) {
   const locator = page.locator(selector).first();
   if (!await locator.count()) return false;
@@ -169,6 +215,20 @@ export async function waitForText(page, text, timeout = 10000) {
   return true;
 }
 
+export async function waitForAnyText(page, texts = [], timeout = 10000) {
+  const safeTexts = uniqueList(texts);
+  if (!safeTexts.length) return false;
+  await page.waitForFunction(
+    (expectedTexts) => {
+      const bodyText = String(document.body?.innerText || "").toLowerCase();
+      return expectedTexts.some((item) => bodyText.includes(item));
+    },
+    safeTexts.map((item) => item.toLowerCase()),
+    { timeout }
+  );
+  return true;
+}
+
 export async function waitForAnySelector(page, selectors = [], timeout = 15000) {
   const safeSelectors = Array.isArray(selectors) ? selectors.filter(Boolean) : [];
   if (!safeSelectors.length) return false;
@@ -176,6 +236,82 @@ export async function waitForAnySelector(page, selectors = [], timeout = 15000) 
     safeSelectors.map((selector) => page.locator(selector).first().waitFor({ state: "visible", timeout }))
   );
   return true;
+}
+
+export async function waitForUiOutcome(page, {
+  successSelectors = [],
+  successTexts = [],
+  failureSelectors = [],
+  failureTexts = [],
+  timeout = 15000
+} = {}) {
+  const safeSuccessSelectors = uniqueList(successSelectors);
+  const safeFailureSelectors = uniqueList(failureSelectors);
+  const safeSuccessTexts = uniqueList(successTexts).map((item) => item.toLowerCase());
+  const safeFailureTexts = uniqueList(failureTexts).map((item) => item.toLowerCase());
+  if (
+    !safeSuccessSelectors.length
+    && !safeFailureSelectors.length
+    && !safeSuccessTexts.length
+    && !safeFailureTexts.length
+  ) {
+    return false;
+  }
+  const handle = await page.waitForFunction(
+    ({
+      successSelectorList,
+      successTextList,
+      failureSelectorList,
+      failureTextList
+    }) => {
+      function isVisible(selector) {
+        try {
+          const node = document.querySelector(selector);
+          if (!node) return false;
+          const style = window.getComputedStyle(node);
+          if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+            return false;
+          }
+          const rect = node.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        } catch {
+          return false;
+        }
+      }
+
+      for (const selector of failureSelectorList) {
+        if (isVisible(selector)) {
+          return { kind: "failure", source: "selector", match: selector };
+        }
+      }
+      for (const selector of successSelectorList) {
+        if (isVisible(selector)) {
+          return { kind: "success", source: "selector", match: selector };
+        }
+      }
+
+      const bodyText = String(document.body?.innerText || "").toLowerCase();
+      for (const text of failureTextList) {
+        if (bodyText.includes(text)) {
+          return { kind: "failure", source: "text", match: text };
+        }
+      }
+      for (const text of successTextList) {
+        if (bodyText.includes(text)) {
+          return { kind: "success", source: "text", match: text };
+        }
+      }
+      return false;
+    },
+    {
+      successSelectorList: safeSuccessSelectors,
+      successTextList: safeSuccessTexts,
+      failureSelectorList: safeFailureSelectors,
+      failureTextList: safeFailureTexts
+    },
+    { timeout }
+  );
+  return handle.jsonValue();
 }
 
 export async function readCountValue(page, selector) {

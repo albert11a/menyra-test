@@ -1,13 +1,145 @@
 import {
-  clickIfPresent,
-  ensureElementVisible,
+  clickFirstVisible,
+  findVisibleSelector,
   openPageAndWait,
-  waitForText
+  waitForUiOutcome
 } from "../helpers/social-app.mjs";
 import { hasRequiredConfig, markGuarded, markNotConfigured } from "./common-actions.mjs";
 
 function mutationReady(env) {
   return !!env.allowLiveMutations && !!env.syntheticIsolationKey;
+}
+
+function asText(value, fallback = "") {
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+
+function toList(...values) {
+  return values.flatMap((value) => {
+    if (Array.isArray(value)) {
+      return value.map((item) => asText(item)).filter(Boolean);
+    }
+    const safeValue = asText(value);
+    return safeValue ? [safeValue] : [];
+  });
+}
+
+function uniqueList(...values) {
+  const seen = new Set();
+  return toList(...values).filter((item) => {
+    const key = item.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function describeSignals(values = []) {
+  return uniqueList(values).join(" / ");
+}
+
+async function ensureCartReady(page, cartConfig = {}) {
+  const cartReadySelectors = uniqueList(
+    cartConfig.verifySelector,
+    "[data-cart-checkout]",
+    "[data-cart-qty]"
+  );
+  const cartReadyTexts = uniqueList(
+    cartConfig.verifyText,
+    "Checkout starten",
+    "Bestellung absenden",
+    "Tischbestellung absenden",
+    "wurde zum Warenkorb hinzugefuegt"
+  );
+  const existingCartSelector = await findVisibleSelector(page, cartReadySelectors);
+  const openedSelector = await clickFirstVisible(page, [
+    cartConfig.openSelector,
+    "[data-menu-open]"
+  ], 8000);
+  const addedSelector = await clickFirstVisible(page, [
+    cartConfig.triggerSelector,
+    "#menuDetailAddToCartBtn"
+  ], openedSelector ? 15000 : 5000);
+
+  if (!addedSelector) {
+    if (existingCartSelector) {
+      return {
+        usedExistingCart: true,
+        existingCartSelector
+      };
+    }
+    throw new Error("Heart konnte kein Produkt in den Warenkorb legen. Der Menue- oder Add-to-cart-Button war nicht sichtbar.");
+  }
+
+  const outcome = await waitForUiOutcome(page, {
+    successSelectors: cartReadySelectors,
+    successTexts: cartReadyTexts,
+    timeout: 15000
+  }).catch(() => null);
+
+  if (!outcome && existingCartSelector) {
+    return {
+      usedExistingCart: true,
+      existingCartSelector
+    };
+  }
+  if (!outcome) {
+    throw new Error("Heart konnte nach dem Hinzufuegen keinen sichtbaren Warenkorb bestaetigen.");
+  }
+  return {
+    usedExistingCart: false,
+    outcome
+  };
+}
+
+async function submitOrder(page, orderConfig = {}) {
+  const submitSelectors = uniqueList(
+    orderConfig.triggerSelector,
+    "[data-cart-checkout='submit']"
+  );
+  const openSelectors = uniqueList(
+    orderConfig.openSelector,
+    "[data-cart-checkout='open']"
+  );
+  const successSelectors = uniqueList(orderConfig.verifySelector);
+  const successTexts = uniqueList(
+    orderConfig.successTexts,
+    orderConfig.successText,
+    "Bestellung gesendet",
+    "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+  );
+  const failureSelectors = uniqueList(orderConfig.failureSelector);
+  const failureTexts = uniqueList(
+    orderConfig.failureTexts,
+    orderConfig.failureText,
+    "Bestellung konnte nicht gesendet werden."
+  );
+
+  if (!await findVisibleSelector(page, submitSelectors)) {
+    await clickFirstVisible(page, openSelectors, 8000);
+  }
+
+  const submittedSelector = await clickFirstVisible(page, submitSelectors, 15000);
+  if (!submittedSelector) {
+    throw new Error("Heart konnte den Button zum Absenden der Bestellung nicht finden.");
+  }
+
+  const outcome = await waitForUiOutcome(page, {
+    successSelectors,
+    successTexts,
+    failureSelectors,
+    failureTexts,
+    timeout: 20000
+  }).catch(() => null);
+
+  if (!outcome) {
+    throw new Error(`Heart hat nach dem Absenden keinen Erfolgsnachweis gefunden. Erwartet wurden ${describeSignals(successTexts) || "sichtbare Erfolgsmerkmale"}.`);
+  }
+  if (outcome.kind === "failure") {
+    throw new Error(`Die Bestellung ist sichtbar fehlgeschlagen: ${outcome.match}.`);
+  }
+  return outcome;
 }
 
 async function runCommerceMutation({
@@ -37,8 +169,18 @@ async function runCommerceMutation({
     });
     return { ok: false, reason: "not_configured" };
   }
-  await perform();
-  return { ok: true };
+  try {
+    await perform();
+    return { ok: true };
+  } catch (error) {
+    heart.failModule(moduleKey, error, {
+      action: actionLabel,
+      title: `${actionLabel} ist fehlgeschlagen`,
+      persona: persona.key,
+      area: moduleKey
+    });
+    return { ok: false, reason: "failed" };
+  }
 }
 
 export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) {
@@ -54,7 +196,7 @@ export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) 
     moduleKey: "cart",
     actionLabel: "Cart add/remove",
     config: cartConfig,
-    requiredKeys: ["url", "triggerSelector"],
+    requiredKeys: ["url"],
     perform: async () => {
       await openPageAndWait(page, cartConfig.url, "body", heart, {
         title: `${persona.label} / Open cart flow`,
@@ -62,16 +204,16 @@ export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) 
         area: "cart",
         persona: persona.key
       });
-      await clickIfPresent(page, cartConfig.triggerSelector);
-      if (cartConfig.verifySelector) {
-        await ensureElementVisible(page, cartConfig.verifySelector);
-      } else if (cartConfig.verifyText) {
-        await waitForText(page, cartConfig.verifyText);
-      }
+      const cartResult = await ensureCartReady(page, cartConfig);
       if (cartConfig.removalSelector) {
-        await clickIfPresent(page, cartConfig.removalSelector);
+        await clickFirstVisible(page, [
+          cartConfig.removalSelector,
+          "[data-cart-qty][data-cart-delta='-1']"
+        ], 5000);
       }
-      heart.passModule("cart", "Warenkorb wurde erfolgreich geprueft.", {
+      heart.passModule("cart", cartResult.usedExistingCart
+        ? "Warenkorb war bereits sichtbar und wurde erfolgreich weiterverwendet."
+        : "Warenkorb wurde erfolgreich geprueft.", {
         action: "cart add/remove",
         persona: persona.key,
         area: "cart"
@@ -87,7 +229,7 @@ export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) 
     moduleKey: "orders",
     actionLabel: "Order send",
     config: orderConfig,
-    requiredKeys: ["url", "triggerSelector"],
+    requiredKeys: ["url"],
     perform: async () => {
       await openPageAndWait(page, orderConfig.url || cartConfig.url, "body", heart, {
         title: `${persona.label} / Open order flow`,
@@ -95,16 +237,15 @@ export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) 
         area: "orders",
         persona: persona.key
       });
-      await clickIfPresent(page, orderConfig.triggerSelector);
-      if (orderConfig.verifySelector) {
-        await ensureElementVisible(page, orderConfig.verifySelector);
-      } else if (orderConfig.successText) {
-        await waitForText(page, orderConfig.successText);
-      }
+      await ensureCartReady(page, cartConfig);
+      const orderOutcome = await submitOrder(page, orderConfig);
       heart.passModule("orders", "Bestellung wurde erfolgreich angestossen.", {
         action: "order send",
         persona: persona.key,
-        area: "orders"
+        area: "orders",
+        meta: {
+          successSignal: asText(orderOutcome?.match)
+        }
       });
     }
   });
