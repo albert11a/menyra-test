@@ -2518,6 +2518,19 @@ body {
 }
 
 @media (max-width: 779px) {
+  .heart-list-card,
+  .heart-run-option-card,
+  .heart-run-result-card,
+  .heart-active-run-card,
+  .heart-artifact-card,
+  .heart-incident-card,
+  .heart-dashboard-metric,
+  .heart-dashboard-summary-card,
+  .heart-setup-tool-card {
+    width: 100%;
+    overflow: hidden;
+  }
+
   .heart-page-header__meta--stacked {
     min-width: 0;
     width: 100%;
@@ -2539,6 +2552,73 @@ body {
   .heart-run-history__card-actions {
     justify-content: stretch;
     flex-direction: column;
+  }
+
+  .heart-list-card__head,
+  .heart-list-card__meta,
+  .heart-run-start-card__bar,
+  .heart-run-option-card__top,
+  .heart-run-result-card__head,
+  .heart-run-result-card__meta,
+  .heart-active-run-card__head,
+  .heart-modal__header,
+  .heart-modal__header-actions,
+  .heart-modal-section__head,
+  .heart-run-detail-top,
+  .heart-artifact-card__head,
+  .heart-artifact-card__actions,
+  .heart-run-history__head-actions,
+  .heart-run-history__bulkbar,
+  .heart-setup-hero__head,
+  .heart-dashboard-metric__top,
+  .heart-dashboard-summary-card__head,
+  .heart-setup-tool-card__top,
+  .heart-incident-card summary {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .heart-list-card__head > div,
+  .heart-run-start-card__title,
+  .heart-run-option-card__body,
+  .heart-run-result-card__head > div,
+  .heart-active-run-card__head > div,
+  .heart-artifact-card__head > span:first-child,
+  .heart-dashboard-summary-card__head > div,
+  .heart-setup-tool-card__top > div,
+  .heart-incident-card summary > div {
+    width: 100%;
+  }
+
+  .heart-list-card__badges,
+  .heart-run-result-card__meta,
+  .heart-run-option-card__meta,
+  .heart-artifact-card__actions,
+  .heart-run-history__head-actions,
+  .heart-run-history__bulkbar,
+  .heart-dashboard-metric__top,
+  .heart-dashboard-summary-card__head,
+  .heart-setup-tool-card__actions {
+    width: 100%;
+  }
+
+  .heart-list-card__badges,
+  .heart-run-result-card__meta,
+  .heart-run-option-card__meta,
+  .heart-artifact-card__actions {
+    justify-content: flex-start;
+  }
+
+  .heart-run-history__tabs {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .heart-segmented-button,
+  .heart-run-history__card-actions .heart-button,
+  .heart-artifact-card__actions .heart-button,
+  .heart-setup-tool-card__actions .heart-button {
+    width: 100%;
   }
 
   .heart-setup-config-grid {
