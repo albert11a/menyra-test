@@ -1,41 +1,77 @@
 "use strict";
 
+// Generated from ../../shared/heart-pack-catalog.js. Do not edit manually.
 const HEART_PACKS = Object.freeze([
   {
+    key: "guard-pack",
+    label: "Aenderungs-Guard starten",
+    title: "Aenderungs-Guard",
+    mode: "guard",
+    workflowMode: "smoke",
+    level: "level_1",
+    personas: ["ceo", "business", "user", "guest"],
+    areas: ["auth", "feed", "profile", "business", "menu", "chat", "search", "map", "pwa", "ui"],
+    summary: "Schneller Vor-Commit-Lauf fuer CEO, Business, User und Gast. Prueft Kernpfade, Discovery und mobiles Layout ohne unnötige Tiefe."
+  },
+  {
+    key: "release-pack",
+    label: "Release-Gate starten",
+    title: "Release-Gate",
+    mode: "release",
+    workflowMode: "synthetic",
+    level: "level_2",
+    personas: ["ceo", "business", "user", "guest"],
+    areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "search", "map", "pwa", "ui"],
+    summary: "Breiter Vor-Push-Lauf fuer CEO, Business, User und Gast mit Kernpfaden, Schreibaktionen, Discovery und Bestellung."
+  },
+  {
+    key: "health-pack",
+    label: "Tageslauf starten",
+    title: "Tageslauf",
+    mode: "health",
+    workflowMode: "synthetic",
+    level: "level_3",
+    personas: ["business", "user", "guest", "ceo"],
+    areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "search", "map", "pwa", "ui"],
+    summary: "Regelmaessiger Gesundheitscheck fuer Business, User, Gast und CEO. Gedacht fuer wiederkehrende pruefende Laeufe pro Tag."
+  },
+  {
     key: "smoke",
-    label: "Schnelltest starten",
-    title: "Schnelltest",
+    label: "CEO-Kontrolllauf starten",
+    title: "CEO-Kontrolllauf",
     mode: "smoke",
     workflowMode: "smoke",
     level: "level_1",
     personas: ["ceo"],
-    areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "crm", "pwa"],
-    summary: "Prueft die wichtigsten Lesepfade schnell und sicher."
+    areas: ["auth", "feed", "profile", "business", "menu", "chat", "search", "map", "pwa", "ui"],
+    summary: "Prueft die CEO-Steuerflaechen, Navigation, Karte, Suche, Chat und das mobile Layout."
   },
   {
     key: "ceo-pack",
+    hidden: true,
     label: "CEO-Test starten",
     title: "CEO-Test",
     mode: "persona",
     workflowMode: "smoke",
     level: "level_2",
     personas: ["ceo"],
-    areas: ["auth", "feed", "profile", "business", "menu", "chat", "crm", "pwa"],
-    summary: "Prueft die CEO-Steuerflaechen in Social und CRM."
+    areas: ["auth", "feed", "profile", "business", "menu", "chat", "search", "map", "pwa", "ui"],
+    summary: "Prueft die CEO-Steuerflaechen in Social."
   },
   {
     key: "business-pack",
-    label: "Business-Test starten",
-    title: "Business-Test",
+    label: "Business-Volltest starten",
+    title: "Business-Volltest",
     mode: "persona",
     workflowMode: "synthetic",
     level: "level_2",
     personas: ["business"],
-    areas: ["auth", "business", "menu", "orders", "crm", "pwa"],
-    summary: "Prueft Business-Lesepfade und zeigt Schreibpfade klar als sicher oder noch fehlend an."
+    areas: ["auth", "feed", "profile", "business", "menu", "chat", "search", "map", "pwa", "ui"],
+    summary: "Prueft Business-Oberflaechen, Social-Interaktionen, Produkte, Chat, Karte und Suche."
   },
   {
     key: "staff-pack",
+    hidden: true,
     label: "Service-Test starten",
     title: "Service-Test",
     mode: "persona",
@@ -47,28 +83,29 @@ const HEART_PACKS = Object.freeze([
   },
   {
     key: "user-pack",
-    label: "Nutzer-Test starten",
-    title: "Nutzer-Test",
+    label: "User-Volltest starten",
+    title: "User-Volltest",
     mode: "persona",
     workflowMode: "synthetic",
     level: "level_2",
     personas: ["user"],
-    areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "pwa"],
-    summary: "Prueft Nutzerwege, Feed, Profil, Chat und Commerce."
+    areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "search", "map", "pwa", "ui"],
+    summary: "Prueft Feed, Profil, Foto-Posts, Likes, Kommentare, Folgen, Chat, Karte, Suche und Bestellung."
   },
   {
     key: "guest-pack",
-    label: "Gast- / QR-Test starten",
-    title: "Gast- / QR-Test",
+    label: "Gast- / QR-Volltest starten",
+    title: "Gast- / QR-Volltest",
     mode: "persona",
-    workflowMode: "smoke",
+    workflowMode: "synthetic",
     level: "level_2",
     personas: ["guest"],
-    areas: ["business", "menu", "cart", "orders", "pwa"],
-    summary: "Prueft Menue, Warenkorb und QR-Wege ohne geschuetzte Rechte."
+    areas: ["business", "menu", "cart", "orders", "search", "map", "pwa", "ui"],
+    summary: "Prueft Karte, Suche, Menue, Warenkorb, Checkout und den oeffentlichen QR-Bestellweg."
   },
   {
     key: "mutation-pack",
+    hidden: true,
     label: "Schreibtest starten",
     title: "Schreibtest",
     mode: "mutation",
@@ -80,6 +117,7 @@ const HEART_PACKS = Object.freeze([
   },
   {
     key: "journey-pack",
+    hidden: true,
     label: "Journey-Test starten",
     title: "Journey-Test",
     mode: "journey",
@@ -91,22 +129,30 @@ const HEART_PACKS = Object.freeze([
   },
   {
     key: "full-platform-pack",
+    hidden: true,
     label: "Kompletttest starten",
     title: "Kompletttest",
     mode: "synthetic",
     workflowMode: "synthetic",
     level: "level_4",
-    personas: ["ceo", "business", "staff", "user", "guest"],
-    areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "crm", "pwa"],
-    summary: "Prueft alle Rollen, sammelt Nachweise und zeigt klar, was erstellt und aufgeraeumt wurde."
+    personas: ["ceo", "business", "user", "guest"],
+    areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "search", "map", "pwa", "ui"],
+    summary: "Prueft CEO, Business, User und Gast in getrennten Sitzungen."
   }
 ]);
 
 const HEART_PACK_ALIASES = Object.freeze({
+  guard: "guard-pack",
+  "change-guard": "guard-pack",
+  release: "release-pack",
+  gate: "release-pack",
+  health: "health-pack",
+  daily: "health-pack",
   synthetic: "full-platform-pack",
   full: "full-platform-pack",
   "full-platform": "full-platform-pack",
-  ceo: "ceo-pack",
+  ceo: "smoke",
+  "ceo-pack": "smoke",
   business: "business-pack",
   staff: "staff-pack",
   user: "user-pack",
@@ -114,6 +160,12 @@ const HEART_PACK_ALIASES = Object.freeze({
   mutation: "mutation-pack",
   journey: "journey-pack"
 });
+
+const HEART_VISIBLE_PACK_ORDER = Object.freeze([
+  "guard-pack",
+  "release-pack",
+  "health-pack"
+]);
 
 function asText(value, fallback = "") {
   const text = String(value || "").trim();
@@ -125,7 +177,10 @@ function clonePack(pack) {
 }
 
 function getHeartPackCatalog() {
-  return HEART_PACKS.map((pack) => clonePack(pack));
+  return HEART_VISIBLE_PACK_ORDER
+    .map((key) => HEART_PACKS.find((pack) => pack.key === key))
+    .filter(Boolean)
+    .map((pack) => clonePack(pack));
 }
 
 function resolveHeartPackKey(input = "") {
@@ -140,15 +195,18 @@ function getHeartPack(input = "") {
 }
 
 function listHeartPackQuickActions() {
-  return HEART_PACKS.map((pack) => ({
-    id: pack.key,
-    label: pack.label,
-    action: "start-pack",
-    packKey: pack.key,
-    mode: pack.mode,
-    workflowMode: pack.workflowMode,
-    note: pack.summary
-  }));
+  return HEART_VISIBLE_PACK_ORDER
+    .map((key) => HEART_PACKS.find((pack) => pack.key === key))
+    .filter(Boolean)
+    .map((pack) => ({
+      id: pack.key,
+      label: pack.label,
+      action: "start-pack",
+      packKey: pack.key,
+      mode: pack.mode,
+      workflowMode: pack.workflowMode,
+      note: pack.summary
+    }));
 }
 
 module.exports = {
