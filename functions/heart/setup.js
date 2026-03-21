@@ -78,6 +78,20 @@ function buildProfileUrl(socialBaseUrl = "", handle = "") {
   });
 }
 
+function buildRestaurantProfileUrl(socialBaseUrl = "", restaurantId = "", topTab = "profile") {
+  return buildUrl(socialBaseUrl, {
+    tab: topTab,
+    r: restaurantId
+  });
+}
+
+function buildChatRouteUrl(socialBaseUrl = "", targetUid = "") {
+  return buildUrl(socialBaseUrl, {
+    tab: "chat",
+    chat: targetUid
+  });
+}
+
 function createSyntheticIsolationKey() {
   return `heart-isolation-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -134,21 +148,28 @@ function buildDefaultPackConfig({
   socialBaseUrl = "",
   waiterBaseUrl = "",
   guestRouteUrl = "",
+  restaurantId = "",
   personas = {}
 } = {}) {
   const businessHandle = asText(personas.business?.handle);
+  const businessUid = asText(personas.business?.uid);
   const userHandle = asText(personas.user?.handle);
+  const businessProfileUrl = restaurantId
+    ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "profile")
+    : (businessHandle ? buildProfileUrl(socialBaseUrl, businessHandle) : "");
+  const userTargetProfileUrl = userHandle ? buildProfileUrl(socialBaseUrl, userHandle) : "";
+  const stableSocialTargetUrl = businessProfileUrl || userTargetProfileUrl;
   return {
     actions: {
       social: {
         businessProfile: {
-          url: businessHandle ? buildProfileUrl(socialBaseUrl, businessHandle) : ""
+          url: businessProfileUrl
         },
         userTargetProfile: {
-          url: userHandle ? buildProfileUrl(socialBaseUrl, userHandle) : ""
+          url: userTargetProfileUrl
         },
         follow: {
-          url: userHandle ? buildProfileUrl(socialBaseUrl, userHandle) : "",
+          url: stableSocialTargetUrl,
           triggerSelector: "[data-public-profile-follow]",
           verifySelector: "[data-public-profile-follow] svg"
         },
@@ -229,7 +250,9 @@ function buildDefaultPackConfig({
       chat: {
         send: {
           url: buildUrl(socialBaseUrl, { tab: "chat" }),
-          targetProfileUrl: userHandle ? buildProfileUrl(socialBaseUrl, userHandle) : "",
+          targetUid: businessUid,
+          threadUrl: businessUid ? buildChatRouteUrl(socialBaseUrl, businessUid) : "",
+          targetProfileUrl: stableSocialTargetUrl,
           composerSelector: "#chatMessageInput",
           sendSelector: "#chatSendBtn",
           threadViewSelector: "#chatThreadView",
@@ -299,12 +322,14 @@ function normalizeHeartPackConfig(packConfig = {}, {
   socialBaseUrl = "",
   waiterBaseUrl = "",
   guestRouteUrl = "",
+  restaurantId = "",
   personas = {}
 } = {}) {
   const defaults = buildDefaultPackConfig({
     socialBaseUrl,
     waiterBaseUrl,
     guestRouteUrl,
+    restaurantId,
     personas
   });
   const next = mergeDeep(defaults, packConfig);
@@ -347,6 +372,14 @@ function normalizeHeartPackConfig(packConfig = {}, {
   const guestQrMenu = next.actions.guest.qrMenu;
   const staffWaiter = next.actions.staff.waiter;
   const journey = next.actions.journey;
+  const stableBusinessProfileUrl = restaurantId
+    ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "profile")
+    : asText(next.actions.social?.businessProfile?.url);
+  const stableBusinessChatUid = asText(personas.business?.uid);
+
+  if (!asText(next.actions.social.businessProfile?.url) && stableBusinessProfileUrl) {
+    next.actions.social.businessProfile.url = stableBusinessProfileUrl;
+  }
 
   if (guestRouteUrl) {
     commerceCart.url = guestRouteUrl;
@@ -385,6 +418,9 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
   if (!asText(socialFollow.verifySelector) || asText(socialFollow.verifySelector) === "[data-following='true']") {
     socialFollow.verifySelector = "[data-public-profile-follow] svg";
+  }
+  if (!asText(socialFollow.url)) {
+    socialFollow.url = stableBusinessProfileUrl || asText(next.actions.social?.userTargetProfile?.url);
   }
 
   if (!asText(socialLike.url)) {
@@ -433,8 +469,14 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(chatSend.url)) {
     chatSend.url = buildUrl(socialBaseUrl, { tab: "chat" });
   }
+  if (!asText(chatSend.targetUid) && stableBusinessChatUid) {
+    chatSend.targetUid = stableBusinessChatUid;
+  }
+  if (!asText(chatSend.threadUrl) && asText(chatSend.targetUid)) {
+    chatSend.threadUrl = buildChatRouteUrl(socialBaseUrl, chatSend.targetUid);
+  }
   if (!asText(chatSend.targetProfileUrl)) {
-    chatSend.targetProfileUrl = asText(next.actions.social?.userTargetProfile?.url || next.actions.social?.businessProfile?.url);
+    chatSend.targetProfileUrl = asText(stableBusinessProfileUrl || next.actions.social?.userTargetProfile?.url || next.actions.social?.businessProfile?.url);
   }
   if (!asText(chatSend.composerSelector) || asText(chatSend.composerSelector) === "textarea") {
     chatSend.composerSelector = "#chatMessageInput";
@@ -822,6 +864,7 @@ function buildRunnerEnvPayload({
     socialBaseUrl,
     waiterBaseUrl,
     guestRouteUrl,
+    restaurantId: asText(setup.restaurantId),
     personas: ensureObject(setup.personas)
   });
   return {
@@ -838,7 +881,10 @@ function buildRunnerEnvPayload({
     MNYRA_GUEST_QR_URL: guestRouteUrl,
     MNYRA_ALLOW_LIVE_MUTATIONS: setup.allowLiveMutations !== false ? "true" : "false",
     MNYRA_SYNTHETIC_ISOLATION_KEY: asText(setup.syntheticIsolationKey),
-    MNYRA_HEART_PACK_CONFIG_JSON: JSON.stringify(packConfig),
+    MNYRA_HEART_PACK_CONFIG_JSON: JSON.stringify({
+      ...ensureObject(packConfig),
+      personas: ensureObject(setup.personas)
+    }),
     MNYRA_BUSINESS_BASE_URL: asText(socialBaseUrl),
     MNYRA_USER_BASE_URL: asText(socialBaseUrl),
     MNYRA_STAFF_BASE_URL: asText(waiterBaseUrl)
@@ -862,6 +908,7 @@ function deriveSetupPatch({
     socialBaseUrl,
     waiterBaseUrl,
     guestRouteUrl: nextGuestRouteUrl,
+    restaurantId,
     personas: ensureObject(merged.personas)
   });
   return {

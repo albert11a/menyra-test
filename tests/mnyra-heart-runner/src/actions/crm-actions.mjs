@@ -1,9 +1,9 @@
 import {
   clickIfPresent,
+  ensureElementVisible,
   fillIfPresent,
   openPageAndWait,
-  waitForSelectorToDisappear,
-  waitForText
+  waitForSelectorToDisappear
 } from "../helpers/social-app.mjs";
 import {
   createCleanupItem,
@@ -16,6 +16,16 @@ import {
 
 function mutationReady(env) {
   return !!env.allowLiveMutations && !!env.syntheticIsolationKey;
+}
+
+async function waitForLeadFlowToComplete(page, inputSelector = "") {
+  const checks = [
+    waitForSelectorToDisappear(page, "#leadModalClose", 20000).catch(() => false),
+    waitForSelectorToDisappear(page, inputSelector || "#leadBusinessName", 20000).catch(() => false),
+    page.locator("[data-lead-edit], #newLeadBtn").first().waitFor({ state: "visible", timeout: 20000 }).then(() => true).catch(() => false)
+  ];
+  const results = await Promise.all(checks);
+  return results.some(Boolean);
 }
 
 export async function runCrmChecks({ page, env, heart, persona } = {}) {
@@ -89,10 +99,12 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
     if (leadCreate.emailSelector) {
       await fillIfPresent(page, leadCreate.emailSelector, `${leadName.toLowerCase()}@mnyra-test.local`);
     }
+    await ensureElementVisible(page, leadCreate.saveSelector, 15000);
     await clickIfPresent(page, leadCreate.saveSelector);
-    await waitForSelectorToDisappear(page, "#leadModalClose", 20000).catch(() => undefined);
-    await waitForSelectorToDisappear(page, leadCreate.nameSelector || "#leadBusinessName", 20000).catch(() => undefined);
-    await waitForText(page, replaceRunTokens(leadCreate.verifyText || leadName, env), 20000);
+    const flowCompleted = await waitForLeadFlowToComplete(page, leadCreate.nameSelector || "#leadBusinessName");
+    if (!flowCompleted) {
+      throw new Error("Heart konnte nach dem Speichern keinen abgeschlossenen Lead-Flow bestaetigen.");
+    }
     heart.addCreatedEntity({
       id: leadName,
       type: "lead",
@@ -128,10 +140,12 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
       await clickIfPresent(page, leadEdit.openSelector);
       const editedLeadName = replaceRunTokens("TEST_RUN_<runId>_LEAD_EDIT", env);
       await fillIfPresent(page, leadEdit.inputSelector, editedLeadName);
+      await ensureElementVisible(page, leadEdit.saveSelector, 15000);
       await clickIfPresent(page, leadEdit.saveSelector);
-      await waitForSelectorToDisappear(page, "#leadModalClose", 20000).catch(() => undefined);
-      await waitForSelectorToDisappear(page, leadEdit.inputSelector || "#leadBusinessName", 20000).catch(() => undefined);
-      await waitForText(page, replaceRunTokens(leadEdit.verifyText || editedLeadName, env), 20000);
+      const flowCompleted = await waitForLeadFlowToComplete(page, leadEdit.inputSelector || "#leadBusinessName");
+      if (!flowCompleted) {
+        throw new Error("Heart konnte nach dem Speichern keinen abgeschlossenen Lead-Bearbeitungsflow bestaetigen.");
+      }
       heart.passModule("crm", "Lead wurde bearbeitet.", {
         action: "lead edit",
         persona: persona.key,

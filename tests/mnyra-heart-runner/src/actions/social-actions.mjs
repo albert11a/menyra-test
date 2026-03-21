@@ -103,7 +103,7 @@ export async function runSocialSurfaceChecks({ page, env, heart, persona } = {})
       });
     }, "Business-Profil konnte nicht geoeffnet werden");
   } else {
-    heart.notConfiguredModule("business", "Business-Profil-URL fehlt.", {
+    markSkipped(heart, "business", "Business-Profil wurde in diesem Lauf nicht separat geoeffnet, weil kein stabiler Deeplink hinterlegt war.", {
       action: "business profile open",
       persona: persona.key,
       area: "business"

@@ -4,7 +4,7 @@ import {
   openPageAndWait,
   waitForUiOutcome
 } from "../helpers/social-app.mjs";
-import { hasRequiredConfig, markGuarded, markNotConfigured } from "./common-actions.mjs";
+import { hasRequiredConfig, markGuarded, markNotConfigured, markSkipped } from "./common-actions.mjs";
 
 function mutationReady(env) {
   return !!env.allowLiveMutations && !!env.syntheticIsolationKey;
@@ -250,7 +250,7 @@ export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) 
     }
   });
 
-  heart.notConfiguredModule("cart", "Mengen-Aenderung im Warenkorb braucht noch Selektoren und einen Erfolgsnachweis.", {
+  markSkipped(heart, "cart", "Mengen-Aenderung im Warenkorb wird im Heart-Runner noch nicht separat gefahren.", {
     action: "cart quantity update",
     persona: persona.key,
     area: "cart"

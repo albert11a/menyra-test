@@ -13,6 +13,13 @@ function buildPersona(key, label, config = {}, defaults = {}) {
     ? !!(guestRouteUrl || baseUrl)
     : !!(email && password && baseUrl);
   return {
+    uid: asText(config.uid),
+    handle: asText(config.handle),
+    displayName: asText(config.displayName),
+    role: asText(config.role),
+    restaurantId: asText(config.restaurantId),
+    managed: config.managed === true,
+    ready: config.ready !== false,
     key,
     label,
     app,

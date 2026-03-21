@@ -32,10 +32,33 @@ function uniqueList(...values) {
   });
 }
 
+function buildChatRouteUrl(baseUrl = "", targetUid = "") {
+  const safeBaseUrl = asText(baseUrl);
+  const safeTargetUid = asText(targetUid);
+  if (!safeBaseUrl || !safeTargetUid) return "";
+  try {
+    const url = new URL(safeBaseUrl);
+    url.searchParams.set("tab", "chat");
+    url.searchParams.set("chat", safeTargetUid);
+    return url.toString();
+  } catch {
+    return safeBaseUrl;
+  }
+}
+
 async function ensureChatComposerReady(page, env, sendConfig = {}, heart, persona) {
   const composerSelector = asText(sendConfig.composerSelector, "#chatMessageInput");
   const threadViewSelector = asText(sendConfig.threadViewSelector, "#chatThreadView");
   const messagesSelector = asText(sendConfig.messagesSelector, "#chatMessages");
+  const businessPersona = env.packConfig?.personas?.business || {};
+  const threadTargetUid = asText(
+    sendConfig.targetUid,
+    businessPersona.uid
+  );
+  const threadTargetUrls = uniqueList(
+    sendConfig.threadUrl,
+    buildChatRouteUrl(sendConfig.url, threadTargetUid)
+  );
   const openThreadSelectors = uniqueList(
     sendConfig.openThreadSelector,
     "[data-chat-open-thread]"
@@ -57,6 +80,22 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
     return composerSelector;
   }
 
+  for (const threadTargetUrl of threadTargetUrls) {
+    await openPageAndWait(page, threadTargetUrl, "body", heart, {
+      title: `${persona.label} / Open direct chat thread`,
+      moduleKey: "chat",
+      area: "chat",
+      persona: persona.key
+    });
+    const directThreadReady = await Promise.race([
+      page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 20000 }).then(() => true).catch(() => false),
+      page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 20000 }).then(() => true).catch(() => false)
+    ]);
+    if (!directThreadReady) continue;
+    await ensureElementVisible(page, composerSelector, 15000);
+    return composerSelector;
+  }
+
   const targetUrls = uniqueList(
     sendConfig.targetProfileUrl,
     env.packConfig?.actions?.social?.userTargetProfile?.url,
@@ -73,7 +112,7 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
       area: "chat",
       persona: persona.key
     });
-    const openedTargetThread = await clickFirstVisible(page, openTargetSelectors, 10000);
+    const openedTargetThread = await clickFirstVisible(page, openTargetSelectors, 15000);
     if (!openedTargetThread) continue;
     await Promise.race([
       page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 15000 }),
