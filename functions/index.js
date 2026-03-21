@@ -2,7 +2,9 @@
 
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
+const Busboy = require("busboy");
 const crypto = require("crypto");
+const withCors = require("cors")({ origin: true });
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -20,6 +22,8 @@ const MEDIA_TICKET_VERSION = 1;
 const MEDIA_ACTIONS = new Set(["image_upload", "story_upload", "story_delete"]);
 const MEDIA_TICKET_DEFAULT_TTL_SECONDS = 120;
 const MEDIA_TICKET_MAX_TTL_SECONDS = 600;
+const BUNNY_DEFAULT_STREAM_LIBRARY_ID = "568747";
+const BUNNY_DEFAULT_STORAGE_HOST = "storage.bunnycdn.com";
 let runtimeConfigCache = null;
 
 function asText(value, fallback = "") {
@@ -311,6 +315,78 @@ function resolveRuntimeConfig() {
   return runtimeConfigCache;
 }
 
+function requireEnvValue(name, value) {
+  if (asText(value)) return;
+  throw new functions.https.HttpsError(
+    "failed-precondition",
+    `Missing required env: ${name}`
+  );
+}
+
+function sha256Hex(value) {
+  return crypto.createHash("sha256").update(String(value || "")).digest("hex");
+}
+
+function resolveBunnyConfigValue(key, envName, fallback = "") {
+  const cfg = resolveRuntimeConfig();
+  return asText(process.env[envName] || cfg?.bunny?.[key], fallback);
+}
+
+function resolveBunnyStreamLibraryId() {
+  return resolveBunnyConfigValue("stream_library_id", "BUNNY_STREAM_LIBRARY_ID", BUNNY_DEFAULT_STREAM_LIBRARY_ID);
+}
+
+function resolveBunnyStreamApiKey() {
+  return resolveBunnyConfigValue("stream_api_key", "BUNNY_STREAM_API_KEY");
+}
+
+function resolveBunnyStreamCdnHost() {
+  return resolveBunnyConfigValue("stream_cdn_host", "BUNNY_STREAM_CDN_HOST");
+}
+
+function resolveBunnyStorageZone() {
+  return resolveBunnyConfigValue("storage_zone", "BUNNY_STORAGE_ZONE", "menyra");
+}
+
+function resolveBunnyStorageAccessKey() {
+  return resolveBunnyConfigValue("storage_access_key", "BUNNY_STORAGE_ACCESS_KEY");
+}
+
+function resolveBunnyStorageHost() {
+  return resolveBunnyConfigValue("storage_host", "BUNNY_STORAGE_HOST", BUNNY_DEFAULT_STORAGE_HOST);
+}
+
+function resolveBunnyImagesCdnHost() {
+  return resolveBunnyConfigValue("images_cdn_host", "BUNNY_IMAGES_CDN_HOST");
+}
+
+async function createBunnyStreamVideo({ title = "" } = {}) {
+  const streamApiKey = resolveBunnyStreamApiKey();
+  const streamLibraryId = resolveBunnyStreamLibraryId();
+  requireEnvValue("BUNNY_STREAM_API_KEY", streamApiKey);
+
+  const response = await fetch(`https://video.bunnycdn.com/library/${streamLibraryId}/videos`, {
+    method: "POST",
+    headers: {
+      AccessKey: streamApiKey,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ title: asText(title, "Story Video") })
+  });
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(`Bunny Stream create video failed (${response.status}): ${text}`);
+  }
+
+  const data = await response.json().catch(() => ({}));
+  const guid = asText(data?.guid || data?.Guid || data?.id);
+  if (!guid) {
+    throw new Error("Bunny Stream returned no guid");
+  }
+  return guid;
+}
+
 function resolveMediaActionTicketSecret() {
   const fromEnv = asText(process.env.MEDIA_ACTION_TICKET_SECRET);
   if (fromEnv) return fromEnv;
@@ -364,6 +440,166 @@ async function canUserManageOwnerId(uid, ownerId, { allowSelfOwner = false } = {
 
   return false;
 }
+
+exports.getStreamUploadSignature = functions.https.onCall(async (data) => {
+  const restaurantId = asText(data?.restaurantId);
+  const title = asText(data?.title);
+  if (!restaurantId) {
+    throw new functions.https.HttpsError("invalid-argument", "restaurantId is required");
+  }
+
+  const streamApiKey = resolveBunnyStreamApiKey();
+  const streamLibraryId = resolveBunnyStreamLibraryId();
+  requireEnvValue("BUNNY_STREAM_API_KEY", streamApiKey);
+
+  const videoId = await createBunnyStreamVideo({ title: title || "Story Video" });
+  const expiration = Math.floor(Date.now() / 1000) + (60 * 60);
+  const signature = sha256Hex(`${streamLibraryId}${streamApiKey}${expiration}${videoId}`);
+
+  return {
+    videoId,
+    tusEndpoint: "https://video.bunnycdn.com/tusupload",
+    tusHeaders: {
+      AuthorizationSignature: signature,
+      AuthorizationExpire: String(expiration),
+      LibraryId: String(streamLibraryId),
+      VideoId: String(videoId)
+    },
+    streamCdnHost: resolveBunnyStreamCdnHost() || null
+  };
+});
+
+exports.getStreamUploadSignatureHttp = functions.https.onRequest((req, res) => {
+  withCors(req, res, async () => {
+    try {
+      if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return;
+      }
+      if (req.method !== "POST") {
+        res.status(405).json({ error: "Method not allowed" });
+        return;
+      }
+
+      const restaurantId = asText(req.body?.restaurantId);
+      const title = asText(req.body?.title);
+      if (!restaurantId) {
+        res.status(400).json({ error: "restaurantId is required" });
+        return;
+      }
+
+      const streamApiKey = resolveBunnyStreamApiKey();
+      const streamLibraryId = resolveBunnyStreamLibraryId();
+      requireEnvValue("BUNNY_STREAM_API_KEY", streamApiKey);
+
+      const videoId = await createBunnyStreamVideo({ title: title || "Story Video" });
+      const expiration = Math.floor(Date.now() / 1000) + (60 * 60);
+      const signature = sha256Hex(`${streamLibraryId}${streamApiKey}${expiration}${videoId}`);
+
+      res.status(200).json({
+        videoId,
+        tusEndpoint: "https://video.bunnycdn.com/tusupload",
+        tusHeaders: {
+          AuthorizationSignature: signature,
+          AuthorizationExpire: String(expiration),
+          LibraryId: String(streamLibraryId),
+          VideoId: String(videoId)
+        },
+        streamCdnHost: resolveBunnyStreamCdnHost() || null
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: String(error?.message || error) });
+    }
+  });
+});
+
+exports.uploadStoryImage = functions.https.onRequest((req, res) => {
+  withCors(req, res, async () => {
+    try {
+      if (req.method !== "POST") {
+        res.status(405).send("Method not allowed");
+        return;
+      }
+
+      const storageZone = resolveBunnyStorageZone();
+      const storageAccessKey = resolveBunnyStorageAccessKey();
+      const storageHost = resolveBunnyStorageHost();
+      const imagesCdnHost = resolveBunnyImagesCdnHost();
+      requireEnvValue("BUNNY_STORAGE_ZONE", storageZone);
+      requireEnvValue("BUNNY_STORAGE_ACCESS_KEY", storageAccessKey);
+      requireEnvValue("BUNNY_IMAGES_CDN_HOST", imagesCdnHost);
+
+      const busboy = Busboy({
+        headers: req.headers,
+        limits: { files: 1, fileSize: 12 * 1024 * 1024 }
+      });
+
+      let restaurantId = "";
+      let fileName = "image";
+      let fileMime = "application/octet-stream";
+      const fileBuffers = [];
+
+      busboy.on("field", (name, value) => {
+        if (name === "restaurantId") {
+          restaurantId = asText(value);
+        }
+      });
+
+      busboy.on("file", (_name, file, info) => {
+        fileName = asText(info?.filename, "image");
+        fileMime = asText(info?.mimeType, "application/octet-stream");
+        file.on("data", (chunk) => fileBuffers.push(chunk));
+      });
+
+      busboy.on("finish", async () => {
+        if (!restaurantId) {
+          res.status(400).send("restaurantId required");
+          return;
+        }
+
+        const ext = asText(fileName.split(".").pop(), "jpg").toLowerCase();
+        const safeExt = ["jpg", "jpeg", "png", "webp", "gif", "avif"].includes(ext) ? ext : "jpg";
+        const path = `stories/${restaurantId}/${Date.now()}.${safeExt}`;
+        const body = Buffer.concat(fileBuffers);
+
+        if (!body.length) {
+          res.status(400).send("No file received");
+          return;
+        }
+
+        const uploadResponse = await fetch(`https://${storageHost}/${storageZone}/${path}`, {
+          method: "PUT",
+          headers: {
+            AccessKey: storageAccessKey,
+            "Content-Type": fileMime
+          },
+          body
+        });
+
+        if (!uploadResponse.ok) {
+          const text = await uploadResponse.text().catch(() => "");
+          res.status(502).send(`Bunny upload failed (${uploadResponse.status}): ${text}`);
+          return;
+        }
+
+        res.status(200).json({
+          url: `https://${imagesCdnHost}/${path}`,
+          path
+        });
+      });
+
+      busboy.on("error", (error) => {
+        res.status(400).send(String(error?.message || error));
+      });
+
+      req.pipe(busboy);
+    } catch (error) {
+      console.error(error);
+      res.status(500).send(String(error?.message || error));
+    }
+  });
+});
 
 async function queryActiveFeed(limitCount = 14) {
   try {

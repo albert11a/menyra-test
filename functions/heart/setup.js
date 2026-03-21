@@ -530,6 +530,8 @@ function buildRunnerEnvPayload({
     ensureObject(setup.packConfig)
   );
   return {
+    MNYRA_SOCIAL_BASE_URL: asText(socialBaseUrl),
+    MNYRA_WAITER_BASE_URL: asText(waiterBaseUrl),
     MNYRA_CEO_EMAIL: asText(setup.personas?.ceo?.email),
     MNYRA_CEO_PASSWORD: asText(setup.personas?.ceo?.password),
     MNYRA_BUSINESS_EMAIL: asText(setup.personas?.business?.email),
@@ -539,7 +541,7 @@ function buildRunnerEnvPayload({
     MNYRA_USER_EMAIL: asText(setup.personas?.user?.email),
     MNYRA_USER_PASSWORD: asText(setup.personas?.user?.password),
     MNYRA_GUEST_QR_URL: guestRouteUrl,
-    MNYRA_ALLOW_LIVE_MUTATIONS: setup.allowLiveMutations === true ? "true" : "false",
+    MNYRA_ALLOW_LIVE_MUTATIONS: setup.allowLiveMutations !== false ? "true" : "false",
     MNYRA_SYNTHETIC_ISOLATION_KEY: asText(setup.syntheticIsolationKey),
     MNYRA_HEART_PACK_CONFIG_JSON: JSON.stringify(packConfig),
     MNYRA_BUSINESS_BASE_URL: asText(socialBaseUrl),
@@ -572,6 +574,7 @@ function deriveSetupPatch({
   );
   return {
     ...merged,
+    allowLiveMutations: merged.allowLiveMutations !== false,
     guestRouteUrl: nextGuestRouteUrl,
     syntheticIsolationKey: nextSyntheticIsolationKey,
     packConfig: nextPackConfig

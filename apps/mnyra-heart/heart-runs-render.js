@@ -163,6 +163,16 @@ function formatBuildValue(value = "") {
   return text ? text.slice(0, 7) : "-";
 }
 
+function isPreviewableArtifact(artifact = {}) {
+  const url = String(artifact.url || artifact.previewUrl || "").trim();
+  if (!/^https?:\/\//i.test(url)) return false;
+  const kind = String(artifact.kind || "").trim().toLowerCase();
+  const contentType = String(artifact.contentType || "").trim().toLowerCase();
+  return kind === "screenshot"
+    || contentType.startsWith("image/")
+    || /\.(png|jpe?g|gif|webp|avif)(\?|$)/i.test(url);
+}
+
 function renderTimeline(detail = {}) {
   if (!detail.timeline?.length) {
     return renderEmptyState({
@@ -304,13 +314,36 @@ function renderArtifacts(detail = {}) {
   return `
     <div class="heart-artifact-list">
       ${detail.artifacts.map((artifact) => `
-        <a class="heart-artifact-link" href="${escapeHtml(artifact.url || "#")}" target="_blank" rel="noreferrer">
-          <span>
-            <strong>${escapeHtml(artifact.label || "Datei")}</strong>
-            <small>${escapeHtml(getArtifactKindLabel(artifact.kind, artifact.kind || "Datei"))}</small>
-          </span>
-          ${artifact.sizeLabel ? `<span>${escapeHtml(artifact.sizeLabel)}</span>` : ""}
-        </a>
+        <article class="heart-artifact-card">
+          ${isPreviewableArtifact(artifact) ? `
+            <a class="heart-artifact-card__preview" href="${escapeHtml(artifact.url || artifact.previewUrl || "#")}" target="_blank" rel="noreferrer">
+              <img src="${escapeHtml(artifact.previewUrl || artifact.url || "")}" alt="${escapeHtml(artifact.label || "Nachweis")}" loading="lazy" />
+            </a>
+          ` : `
+            <div class="heart-artifact-card__preview heart-artifact-card__preview--icon">
+              <span>${renderHeartIcon(artifact.kind === "trace" ? "clock" : artifact.kind === "json" ? "grid" : "image")}</span>
+            </div>
+          `}
+          <div class="heart-artifact-card__body">
+            <div class="heart-artifact-card__head">
+              <span>
+                <strong>${escapeHtml(artifact.label || "Datei")}</strong>
+                <small>${escapeHtml(getArtifactKindLabel(artifact.kind, artifact.kind || "Datei"))}</small>
+              </span>
+              ${artifact.sizeLabel ? `<span class="heart-artifact-card__size">${escapeHtml(artifact.sizeLabel)}</span>` : ""}
+            </div>
+            <div class="heart-artifact-card__actions">
+              <a class="heart-button heart-button--secondary" href="${escapeHtml(artifact.url || "#")}" target="_blank" rel="noreferrer">
+                Oeffnen
+              </a>
+              ${artifact.deletable ? `
+                <button class="heart-icon-square-button" data-action="delete-run-artifact" data-run-id="${escapeHtml(detail.id || "")}" data-artifact-id="${escapeHtml(artifact.id || "")}" aria-label="Nachweis loeschen">
+                  ${renderHeartIcon("trash")}
+                </button>
+              ` : ""}
+            </div>
+          </div>
+        </article>
       `).join("")}
     </div>
   `;
@@ -621,7 +654,7 @@ function renderRunGuideModal(packKey = "", runsState = {}) {
             </article>
             <article class="heart-note-card">
               <strong>Nachweise bleiben sichtbar</strong>
-              <p>Screenshots, Ablaufspuren und Berichte bleiben im Laufdetail sichtbar. Ein echtes serverseitiges Loeschen braucht spaeter eine Clear-API.</p>
+              <p>Screenshots, Ablaufspuren und Berichte bleiben im Laufdetail sichtbar. Loeschbare Nachweise kannst du spaeter direkt aus Heart entfernen.</p>
             </article>
           </div>
         `)}
@@ -679,7 +712,7 @@ function renderRunDetailModal(runsState = {}) {
             <h2 id="heartRunDetailTitle">${escapeHtml(getPackLabel(detail.packKey, detail.packLabel, detail.mode))}</h2>
           </div>
           <div class="heart-modal__header-actions">
-            <button class="heart-icon-button heart-icon-button--ghost" disabled title="Loeschen folgt erst mit einer sicheren Heart-Clear-API." aria-label="Loeschen noch nicht verfuegbar">
+            <button class="heart-icon-button heart-icon-button--ghost" data-action="delete-run-artifacts" data-run-id="${escapeHtml(detail.id || "")}" ${detail.artifacts?.some((artifact) => artifact.deletable) ? "" : "disabled"} title="Nachweise dieses Runs loeschen" aria-label="Nachweise dieses Runs loeschen">
               ${renderHeartIcon("trash")}
             </button>
             <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>

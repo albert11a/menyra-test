@@ -68,31 +68,31 @@ function buildLegacyPackConfig(envMap = {}) {
     personas: {
       ceo: {
         app: "social",
-        baseUrl: asText(envMap.MNYRA_SOCIAL_BASE_URL, "https://menyra-test.vercel.app/social/"),
+        baseUrl: asText(envMap.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
         email: asText(envMap.MNYRA_CEO_EMAIL),
         password: asText(envMap.MNYRA_CEO_PASSWORD)
       },
       business: {
         app: "social",
-        baseUrl: asText(envMap.MNYRA_BUSINESS_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://menyra-test.vercel.app/social/"),
+        baseUrl: asText(envMap.MNYRA_BUSINESS_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
         email: asText(envMap.MNYRA_BUSINESS_EMAIL),
         password: asText(envMap.MNYRA_BUSINESS_PASSWORD)
       },
       staff: {
         app: "waiter",
-        baseUrl: asText(envMap.MNYRA_STAFF_BASE_URL, "https://menyra-test.vercel.app/waiter/"),
+        baseUrl: asText(envMap.MNYRA_WAITER_BASE_URL || envMap.MNYRA_STAFF_BASE_URL, "https://www.mnyra.com/waiter/"),
         email: asText(envMap.MNYRA_STAFF_EMAIL),
         password: asText(envMap.MNYRA_STAFF_PASSWORD)
       },
       user: {
         app: "social",
-        baseUrl: asText(envMap.MNYRA_USER_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://menyra-test.vercel.app/social/"),
+        baseUrl: asText(envMap.MNYRA_USER_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
         email: asText(envMap.MNYRA_USER_EMAIL),
         password: asText(envMap.MNYRA_USER_PASSWORD)
       },
       guest: {
         app: "social",
-        baseUrl: asText(envMap.MNYRA_GUEST_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://menyra-test.vercel.app/social/"),
+        baseUrl: asText(envMap.MNYRA_GUEST_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
         guestRouteUrl: asText(envMap.MNYRA_GUEST_QR_URL || envMap.MNYRA_GUEST_MENU_URL)
       }
     },
@@ -249,8 +249,8 @@ export async function getRunnerEnv(mode = "smoke") {
     artifactDir,
     outputFile,
     runId: asText(process.env.HEART_RUN_ID, `heart_${mode}_${createRunStamp()}`),
-    socialBaseUrl: asText(process.env.MNYRA_SOCIAL_BASE_URL, "https://menyra-test.vercel.app/social/"),
-    waiterBaseUrl: asText(process.env.MNYRA_WAITER_BASE_URL || process.env.MNYRA_STAFF_BASE_URL, "https://menyra-test.vercel.app/waiter/"),
+    socialBaseUrl: asText(process.env.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
+    waiterBaseUrl: asText(process.env.MNYRA_WAITER_BASE_URL || process.env.MNYRA_STAFF_BASE_URL, "https://www.mnyra.com/waiter/"),
     ceoEmail: asText(process.env.MNYRA_CEO_EMAIL),
     ceoPassword: asText(process.env.MNYRA_CEO_PASSWORD),
     headless: asBoolean(process.env.MNYRA_HEART_HEADLESS, true),
@@ -260,6 +260,7 @@ export async function getRunnerEnv(mode = "smoke") {
     heartStatusUrl: asText(process.env.HEART_STATUS_URL),
     heartReportUrl: asText(process.env.HEART_REPORT_URL),
     heartIncidentUrl: asText(process.env.HEART_INCIDENT_URL),
+    heartArtifactUrl: asText(process.env.HEART_ARTIFACT_URL),
     heartWebhookSecret: asText(process.env.HEART_WEBHOOK_SECRET),
     githubRunId: asText(process.env.GITHUB_RUN_ID),
     githubRunNumber: asText(process.env.GITHUB_RUN_NUMBER),

@@ -142,9 +142,12 @@ function getRefreshFocusRunId(state = store.getState()) {
 function syncRunPolling(state = store.getState()) {
   const shouldPoll = state.auth.status === "authenticated" && getActiveRunIds(state).length > 0;
   if (shouldPoll && !runPollingTimer) {
+    queueMicrotask(() => {
+      refreshAll({ focusRunId: getRefreshFocusRunId(store.getState()) }).catch(() => {});
+    });
     runPollingTimer = window.setInterval(() => {
       refreshAll({ focusRunId: getRefreshFocusRunId(store.getState()) }).catch(() => {});
-    }, 6500);
+    }, 3000);
     return;
   }
   if (!shouldPoll && runPollingTimer) {
@@ -162,13 +165,13 @@ function notifyCompletedRuns(previous, current) {
       if (notifiedCompletedRunIds.has(runId)) return;
       const finishedRun = (current.runs.items || []).find((item) => String(item.id || "") === runId);
       if (!finishedRun || isActiveRunStatus(finishedRun.status)) return;
+      notifiedCompletedRunIds.add(runId);
       const tone = ["failed", "critical"].includes(String(finishedRun.status || "").toLowerCase())
         ? "danger"
         : String(finishedRun.status || "").toLowerCase() === "warning"
           ? "warning"
           : "success";
       setToast("Run ist fertig", `${findPackLabel(finishedRun.packKey || finishedRun.mode)} ist fertig.`, tone);
-      notifiedCompletedRunIds.add(runId);
     });
 }
 
@@ -324,6 +327,68 @@ async function updateRunArchive(archived = true) {
   }
 }
 
+async function deleteRunArtifact(runId = "", artifactId = "") {
+  const safeRunId = String(runId || "").trim();
+  const safeArtifactId = String(artifactId || "").trim();
+  if (!safeRunId || !safeArtifactId) return;
+  try {
+    const payload = await testRunnerAdapter.deleteRunArtifact(safeRunId, safeArtifactId);
+    if (payload?.run?.id && String(payload.run.id) === safeRunId) {
+      actions.setRunDetailData(payload.run);
+    }
+    setToast("Nachweis geloescht", "Der ausgewaehlte Nachweis wurde sauber entfernt.", "warning");
+    await Promise.all([
+      refreshRuns({ focusRunId: safeRunId }),
+      refreshIncidents()
+    ]);
+  } catch (error) {
+    setToast("Nachweis", error?.message || "Der Nachweis konnte nicht geloescht werden.", "danger");
+  }
+}
+
+async function deleteRunArtifacts(runId = "") {
+  const safeRunId = String(runId || "").trim();
+  if (!safeRunId) return;
+  try {
+    let detail = store.getState().runs.detail;
+    if (!detail || String(detail.id || "") !== safeRunId) {
+      detail = await testRunnerAdapter.loadRunDetail(safeRunId).catch(() => null);
+    }
+    const artifactIds = Array.isArray(detail?.artifacts)
+      ? detail.artifacts.filter((artifact) => artifact?.deletable).map((artifact) => String(artifact.id || "").trim()).filter(Boolean)
+      : [];
+    if (!artifactIds.length) {
+      setToast("Nachweise", "Zu diesem Run sind keine loeschbaren Nachweise vorhanden.", "neutral");
+      return;
+    }
+    for (const artifactId of artifactIds) {
+      await testRunnerAdapter.deleteRunArtifact(safeRunId, artifactId);
+    }
+    setToast("Nachweise geloescht", "Die loeschbaren Nachweise dieses Runs wurden entfernt.", "warning");
+    await Promise.all([
+      refreshRuns({ focusRunId: safeRunId }),
+      refreshIncidents()
+    ]);
+  } catch (error) {
+    setToast("Nachweise", error?.message || "Die Nachweise konnten nicht geloescht werden.", "danger");
+  }
+}
+
+async function deleteIncident(incidentId = "") {
+  const safeIncidentId = String(incidentId || "").trim();
+  if (!safeIncidentId) return;
+  try {
+    await monitoringAdapter.deleteIncident(safeIncidentId);
+    setToast("Meldung geloescht", "Die Meldung wurde entfernt.", "warning");
+    await Promise.all([
+      refreshIncidents(),
+      refreshDashboard()
+    ]);
+  } catch (error) {
+    setToast("Meldung", error?.message || "Die Meldung konnte nicht geloescht werden.", "danger");
+  }
+}
+
 async function saveSetup(values = {}) {
   actions.setSetupPendingAction("save-setup");
   try {
@@ -361,7 +426,7 @@ async function provisionSetupPersonas(value = "all") {
       restaurantName: currentSetup.restaurantName,
       restaurantHandle: currentSetup.restaurantHandle,
       guestRouteUrl: currentSetup.guestRouteUrl,
-      allowLiveMutations: currentSetup.allowLiveMutations === true
+      allowLiveMutations: currentSetup.allowLiveMutations !== false
     });
     actions.setSetupData(setup);
     setToast("Testkonten", "Heart hat die angeforderten Testkonten erstellt oder aktualisiert.", "success");
@@ -468,6 +533,12 @@ const operations = {
   async updateRunArchive(archiveState) {
     await updateRunArchive(String(archiveState || "archived") !== "current");
   },
+  async deleteRunArtifact(runId, artifactId) {
+    await deleteRunArtifact(runId, artifactId);
+  },
+  async deleteRunArtifacts(runId) {
+    await deleteRunArtifacts(runId);
+  },
   async searchSetupRestaurants(query) {
     await searchSetupRestaurants(query);
   },
@@ -477,7 +548,7 @@ const operations = {
   async selectSetupRestaurant(payload) {
     await saveSetup({
       ...payload,
-      allowLiveMutations: store.getState().setup.data?.allowLiveMutations === true
+      allowLiveMutations: store.getState().setup.data?.allowLiveMutations !== false
     });
   },
   async provisionSetupPersonas(value) {
@@ -489,6 +560,9 @@ const operations = {
   closeModal() {
     actions.closeModal();
   },
+  async deleteIncident(incidentId) {
+    await deleteIncident(incidentId);
+  },
   setIncidentFilter(key, value) {
     actions.setIncidentFilter(key, value);
   }
@@ -497,19 +571,21 @@ const operations = {
 bindHeartEvents({ root, operations });
 
 store.subscribe((state) => {
+  const priorState = previousState;
+  previousState = state;
+
   renderHeartApp(root, state);
   syncViewportSurface(state);
   syncRunPolling(state);
 
-  notifyCompletedRuns(previousState, state);
+  notifyCompletedRuns(priorState, state);
 
-  const authChanged = previousState.auth.status !== state.auth.status
-    || previousState.auth.user?.uid !== state.auth.user?.uid
-    || previousState.auth.access?.allowed !== state.auth.access?.allowed;
+  const authChanged = priorState.auth.status !== state.auth.status
+    || priorState.auth.user?.uid !== state.auth.user?.uid
+    || priorState.auth.access?.allowed !== state.auth.access?.allowed;
   const authSessionKey = state.auth.status === "authenticated" && state.auth.access?.allowed
     ? `${state.auth.user?.uid || ""}:${state.auth.access?.reason || ""}`
     : "";
-  previousState = state;
 
   if (!authSessionKey) {
     authBootstrapSessionKey = "";

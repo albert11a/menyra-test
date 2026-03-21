@@ -2,6 +2,8 @@ const STATUS_LABELS = {
   idle: "Bereit",
   queued: "Wartet",
   running: "Laeuft",
+  open: "Offen",
+  resolved: "Geloest",
   success: "Erfolgreich",
   warning: "Hinweis",
   skipped: "Uebersprungen",
@@ -17,6 +19,8 @@ const STATUS_TONES = {
   idle: "neutral",
   queued: "info",
   running: "info",
+  open: "warning",
+  resolved: "success",
   success: "success",
   warning: "warning",
   skipped: "neutral",
@@ -75,6 +79,7 @@ const ARTIFACT_KIND_LABELS = Object.freeze({
   screenshot: "Beweisbild",
   trace: "Ablaufspur",
   json: "Bericht",
+  "github-artifact": "GitHub-Datei",
   artifact: "Datei"
 });
 
@@ -214,7 +219,10 @@ export function findGithubRunnerConnection(items = []) {
 
 export function isGithubRunnerConfigured(items = []) {
   const connection = findGithubRunnerConnection(items);
-  return !!connection && String(connection.mode || "").trim().toLowerCase() === "real" && String(connection.status || "").trim().toLowerCase() === "success";
+  const status = String(connection?.status || "").trim().toLowerCase();
+  return !!connection
+    && String(connection.mode || "").trim().toLowerCase() === "real"
+    && !["not_configured", "failed", "critical"].includes(status);
 }
 
 export function getGithubRunnerNote(items = []) {

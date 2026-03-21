@@ -51,6 +51,41 @@ function normalizeSeverity(value = "", fallback = "info") {
   return severity;
 }
 
+function formatSizeLabel(sizeBytes = 0) {
+  const size = Math.max(0, Number(sizeBytes) || 0);
+  if (!size) return "";
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(1).replace(/\.0$/, "")} MB`;
+  }
+  if (size >= 1024) {
+    return `${Math.round(size / 1024)} KB`;
+  }
+  return `${size} B`;
+}
+
+function normalizeArtifact(item = {}, index = 0) {
+  const kind = asText(item.kind || item.type || "artifact");
+  const sizeBytes = Math.max(0, Number(item.sizeBytes) || 0);
+  const url = asText(item.url || item.downloadUrl);
+  return {
+    id: asText(item.id || `artifact-${index + 1}`),
+    label: asText(item.label || item.name || "Datei"),
+    kind,
+    url,
+    previewUrl: asText(item.previewUrl || (kind === "screenshot" ? url : "")),
+    sizeBytes,
+    sizeLabel: asText(item.sizeLabel || formatSizeLabel(sizeBytes)),
+    source: asText(item.source),
+    storagePath: asText(item.storagePath),
+    bucket: asText(item.bucket),
+    fileName: asText(item.fileName),
+    contentType: asText(item.contentType),
+    uploadedAt: toIso(item.uploadedAt || item.createdAt),
+    githubArtifactId: asText(item.githubArtifactId),
+    deletable: item.deletable !== false && !!(item.storagePath || item.githubArtifactId)
+  };
+}
+
 function normalizeModuleStatus(item = {}) {
   return {
     module: asText(item.module || item.key || "unknown"),
@@ -137,12 +172,7 @@ export function normalizeRunSummary(item = {}) {
     archivedAt: toIso(item.archivedAt),
     runFlags: item.runFlags && typeof item.runFlags === "object" ? item.runFlags : {},
     modules: normalizeList(item.modules).map(normalizeModuleStatus),
-    artifacts: normalizeList(item.artifacts).map((artifact) => ({
-      label: asText(artifact.label || artifact.name || "Datei"),
-      kind: asText(artifact.kind || artifact.type || "artifact"),
-      url: asText(artifact.url || artifact.downloadUrl),
-      sizeLabel: asText(artifact.sizeLabel)
-    }))
+    artifacts: normalizeList(item.artifacts).map(normalizeArtifact)
   };
 }
 
@@ -211,11 +241,7 @@ export function normalizeIncident(item = {}) {
     build: asText(item.build || item.commitShort || item.commitSha),
     actor: asText(item.actor || item.startedBy),
     device: asText(item.device || item.browser),
-    artifactLinks: normalizeList(item.artifactLinks).map((link, index) => ({
-      id: asText(link.id || `artifact-${index + 1}`),
-      label: asText(link.label || link.name || `Artifact ${index + 1}`),
-      url: asText(link.url)
-    })),
+    artifactLinks: normalizeList(item.artifactLinks).map(normalizeArtifact),
     meta: item.meta && typeof item.meta === "object" ? item.meta : {}
   };
 }
@@ -279,7 +305,7 @@ export function normalizeSetupData(item = {}) {
     restaurantHandle: asText(item.restaurantHandle),
     restaurantQuery: asText(item.restaurantQuery || item.restaurantName || item.restaurantId),
     guestRouteUrl: asText(item.guestRouteUrl),
-    allowLiveMutations: item.allowLiveMutations === true,
+    allowLiveMutations: item.allowLiveMutations !== false,
     syntheticIsolationKeyReady: !!asText(item.syntheticIsolationKey),
     packConfig: item.packConfig && typeof item.packConfig === "object" ? item.packConfig : {},
     updatedAt: toIso(item.updatedAt || item.createdAt),

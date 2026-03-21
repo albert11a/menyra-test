@@ -20,13 +20,44 @@ async function appendGithubEnv(values = {}) {
   }
 }
 
+function collectFallbackEnv() {
+  const fallbackEnv = {};
+  Object.entries(process.env || {}).forEach(([key, value]) => {
+    if (!/^MNYRA_/.test(String(key || ""))) return;
+    fallbackEnv[key] = asText(value);
+  });
+  if (!asText(fallbackEnv.MNYRA_WAITER_BASE_URL) && asText(fallbackEnv.MNYRA_STAFF_BASE_URL)) {
+    fallbackEnv.MNYRA_WAITER_BASE_URL = asText(fallbackEnv.MNYRA_STAFF_BASE_URL);
+  }
+  return fallbackEnv;
+}
+
+function mergeEnvValues(fallbackEnv = {}, fetchedEnv = {}) {
+  const mergedEnv = { ...(fallbackEnv || {}) };
+  Object.entries(fetchedEnv || {}).forEach(([key, value]) => {
+    const safeKey = asText(key);
+    if (!safeKey) return;
+    const textValue = String(value ?? "");
+    if (!String(textValue).trim()) return;
+    mergedEnv[safeKey] = textValue;
+  });
+  if (!asText(mergedEnv.MNYRA_WAITER_BASE_URL) && asText(mergedEnv.MNYRA_STAFF_BASE_URL)) {
+    mergedEnv.MNYRA_WAITER_BASE_URL = asText(mergedEnv.MNYRA_STAFF_BASE_URL);
+  }
+  return mergedEnv;
+}
+
 async function main() {
+  const fallbackEnv = collectFallbackEnv();
   const endpoint = asText(
     process.env.HEART_RUNNER_CONFIG_URL,
     "https://us-central1-menyra-c0e68.cloudfunctions.net/heartGetRunnerConfig"
   );
   const secret = asText(process.env.HEART_WEBHOOK_SECRET);
-  if (!endpoint || !secret) return;
+  if (!endpoint || !secret) {
+    await appendGithubEnv(fallbackEnv);
+    return;
+  }
 
   const response = await fetch(endpoint, {
     method: "POST",
@@ -41,13 +72,15 @@ async function main() {
   });
   if (!response.ok) {
     console.warn(`[mnyra-heart] runner config fetch skipped with status ${response.status}`);
+    await appendGithubEnv(fallbackEnv);
     return;
   }
   const payload = await response.json();
   const env = payload?.env && typeof payload.env === "object" ? payload.env : {};
-  await appendGithubEnv(env);
+  await appendGithubEnv(mergeEnvValues(fallbackEnv, env));
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
   console.warn("[mnyra-heart] runner config fetch skipped", error);
+  await appendGithubEnv(collectFallbackEnv());
 });

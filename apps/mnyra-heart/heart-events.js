@@ -52,6 +52,17 @@ export function bindHeartEvents({
       operations.toggleRunDetailMore?.();
       return;
     }
+    if (action === "delete-run-artifact") {
+      await operations.deleteRunArtifact?.(
+        target.getAttribute("data-run-id"),
+        target.getAttribute("data-artifact-id")
+      );
+      return;
+    }
+    if (action === "delete-run-artifacts") {
+      await operations.deleteRunArtifacts?.(target.getAttribute("data-run-id"));
+      return;
+    }
     if (action === "set-runs-history-tab") {
       operations.setRunsHistoryTab?.(target.getAttribute("data-history-tab"));
       return;
@@ -91,6 +102,10 @@ export function bindHeartEvents({
     }
     if (action === "refresh-heart") {
       await operations.refresh?.();
+      return;
+    }
+    if (action === "delete-incident") {
+      await operations.deleteIncident?.(target.getAttribute("data-incident-id"));
       return;
     }
     if (action === "start-smoke") {

@@ -41,6 +41,18 @@ function cloneRecord(value) {
   return value && typeof value === "object" ? JSON.parse(JSON.stringify(value)) : {};
 }
 
+function formatSizeLabel(sizeBytes = 0) {
+  const size = Math.max(0, Number(sizeBytes) || 0);
+  if (!size) return "";
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(1).replace(/\.0$/, "")} MB`;
+  }
+  if (size >= 1024) {
+    return `${Math.round(size / 1024)} KB`;
+  }
+  return `${size} B`;
+}
+
 function mergeDeep(base = {}, patch = {}) {
   const next = { ...ensureObject(base) };
   Object.entries(ensureObject(patch)).forEach(([key, value]) => {
@@ -93,6 +105,48 @@ function normalizeModuleStatus(item = {}) {
   };
 }
 
+function normalizeArtifactRecord(item = {}, index = 0) {
+  const data = ensureObject(serializeFirestoreValue(item));
+  const kind = asText(data.kind || data.type, "artifact");
+  const sizeBytes = Math.max(0, Number(data.sizeBytes) || 0);
+  const url = asText(data.url || data.downloadUrl);
+  const previewUrl = asText(data.previewUrl || (kind === "screenshot" ? url : ""));
+  const storagePath = asText(data.storagePath);
+  const githubArtifactId = asText(data.githubArtifactId || data.githubId);
+  return {
+    id: asText(data.id, `artifact_${index + 1}`),
+    label: asText(data.label || data.name, `Datei ${index + 1}`),
+    kind,
+    url,
+    previewUrl,
+    sizeBytes,
+    sizeLabel: asText(data.sizeLabel, formatSizeLabel(sizeBytes)),
+    source: asText(data.source, storagePath ? "storage" : githubArtifactId ? "github" : "external"),
+    storagePath,
+    bucket: asText(data.bucket),
+    fileName: asText(data.fileName),
+    contentType: asText(data.contentType),
+    uploadedAt: asText(data.uploadedAt || data.createdAt),
+    githubArtifactId,
+    deletable: data.deletable !== false && !!(storagePath || githubArtifactId)
+  };
+}
+
+function normalizeIncidentArtifact(item = {}, index = 0) {
+  const artifact = normalizeArtifactRecord(item, index);
+  return {
+    id: artifact.id,
+    label: artifact.label,
+    kind: artifact.kind,
+    url: artifact.url,
+    previewUrl: artifact.previewUrl,
+    sizeLabel: artifact.sizeLabel,
+    storagePath: artifact.storagePath,
+    githubArtifactId: artifact.githubArtifactId,
+    deletable: artifact.deletable
+  };
+}
+
 function normalizeRunRecord(record = {}) {
   const data = serializeFirestoreValue(record);
   const pack = getHeartPack(data.packKey || data.mode);
@@ -129,7 +183,7 @@ function normalizeRunRecord(record = {}) {
     timeline: ensureArray(data.timeline),
     createdEntities: ensureArray(data.createdEntities),
     cleanup: data.cleanup && typeof data.cleanup === "object" ? data.cleanup : { status: "idle", summary: "Keine Aufraeuminformation vorhanden.", items: [] },
-    artifacts: ensureArray(data.artifacts),
+    artifacts: ensureArray(data.artifacts).map(normalizeArtifactRecord),
     failureDetails: ensureArray(data.failureDetails),
     github: data.github && typeof data.github === "object" ? data.github : {},
     runFlags: data.runFlags && typeof data.runFlags === "object" ? data.runFlags : {}
@@ -153,7 +207,7 @@ function normalizeIncidentRecord(record = {}) {
     build: asText(data.build),
     actor: asText(data.actor),
     device: asText(data.device || data.browser),
-    artifactLinks: ensureArray(data.artifactLinks),
+    artifactLinks: ensureArray(data.artifactLinks).map(normalizeIncidentArtifact),
     meta: data.meta && typeof data.meta === "object" ? data.meta : {}
   };
 }
@@ -184,7 +238,7 @@ function normalizeSetupRecord(record = {}) {
     restaurantHandle: asText(data.restaurantHandle),
     restaurantQuery: asText(data.restaurantQuery || data.restaurantName || data.restaurantId),
     guestRouteUrl: asText(data.guestRouteUrl),
-    allowLiveMutations: data.allowLiveMutations === true,
+    allowLiveMutations: data.allowLiveMutations !== false,
     syntheticIsolationKey: asText(data.syntheticIsolationKey),
     packConfig: ensureObject(data.packConfig),
     managed: ensureObject(data.managed),
@@ -238,6 +292,14 @@ function createHeartProviders({ db }) {
       });
     }
     return normalizeSetupRecord({ id: snap.id, ...snap.data() });
+  }
+
+  async function getIncident(incidentId) {
+    const safeIncidentId = asText(incidentId);
+    if (!safeIncidentId) return null;
+    const snap = await incidentsCollection.doc(safeIncidentId).get();
+    if (!snap.exists) return null;
+    return normalizeIncidentRecord({ id: snap.id, ...snap.data() });
   }
 
   async function saveSetup(patch = {}) {
@@ -341,6 +403,59 @@ function createHeartProviders({ db }) {
     return normalizeRunRecord(next);
   }
 
+  async function appendRunArtifacts(runId, artifacts = []) {
+    const safeRunId = asText(runId);
+    if (!safeRunId) throw new Error("runId required");
+    const existing = await getRun(safeRunId);
+    if (!existing) throw new Error("Run not found");
+    const currentArtifacts = ensureArray(existing.artifacts).map(normalizeArtifactRecord);
+    const nextArtifacts = [...currentArtifacts];
+    ensureArray(artifacts).forEach((artifact, index) => {
+      const normalized = normalizeArtifactRecord(artifact, currentArtifacts.length + index);
+      const duplicateIndex = nextArtifacts.findIndex((item) => item.id === normalized.id);
+      if (duplicateIndex >= 0) {
+        nextArtifacts[duplicateIndex] = normalized;
+      } else {
+        nextArtifacts.push(normalized);
+      }
+    });
+    const next = {
+      ...(existing || {}),
+      artifacts: nextArtifacts,
+      updatedAt: new Date().toISOString()
+    };
+    await runsCollection.doc(safeRunId).set({
+      artifacts: nextArtifacts,
+      updatedAt: next.updatedAt
+    }, { merge: true });
+    return normalizeRunRecord(next);
+  }
+
+  async function removeRunArtifact(runId, artifactId) {
+    const safeRunId = asText(runId);
+    const safeArtifactId = asText(artifactId);
+    if (!safeRunId || !safeArtifactId) throw new Error("runId and artifactId required");
+    const existing = await getRun(safeRunId);
+    if (!existing) throw new Error("Run not found");
+    const currentArtifacts = ensureArray(existing.artifacts).map(normalizeArtifactRecord);
+    const removedArtifact = currentArtifacts.find((artifact) => artifact.id === safeArtifactId);
+    if (!removedArtifact) throw new Error("Artifact not found");
+    const nextArtifacts = currentArtifacts.filter((artifact) => artifact.id !== safeArtifactId);
+    const next = {
+      ...(existing || {}),
+      artifacts: nextArtifacts,
+      updatedAt: new Date().toISOString()
+    };
+    await runsCollection.doc(safeRunId).set({
+      artifacts: nextArtifacts,
+      updatedAt: next.updatedAt
+    }, { merge: true });
+    return {
+      run: normalizeRunRecord(next),
+      artifact: removedArtifact
+    };
+  }
+
   async function updateRunArchive(runIds = [], archived = false) {
     const safeIds = ensureArray(runIds).map((runId) => asText(runId)).filter(Boolean);
     if (!safeIds.length) return [];
@@ -424,7 +539,7 @@ function createHeartProviders({ db }) {
             items: ensureArray(report.cleanup.items)
           }
         : { status: "idle", summary: "Keine Aufraeuminformation vorhanden.", items: [] },
-      artifacts: ensureArray(report.artifacts),
+      artifacts: ensureArray(report.artifacts).map(normalizeArtifactRecord),
       failureDetails: ensureArray(report.failureDetails),
       runFlags: report.runFlags && typeof report.runFlags === "object"
         ? report.runFlags
@@ -462,11 +577,59 @@ function createHeartProviders({ db }) {
       build: asText(patch.build),
       actor: asText(patch.actor),
       device: asText(patch.device || patch.browser),
-      artifactLinks: ensureArray(patch.artifactLinks),
+      artifactLinks: ensureArray(patch.artifactLinks).map(normalizeIncidentArtifact),
       meta: patch.meta && typeof patch.meta === "object" ? patch.meta : {}
     };
     await incidentsCollection.doc(id).set(payload, { merge: true });
     return normalizeIncidentRecord(payload);
+  }
+
+  async function removeArtifactLinksFromIncidents(runId, artifact = {}) {
+    const safeRunId = asText(runId);
+    if (!safeRunId) return [];
+    const artifactId = asText(artifact.id);
+    const artifactUrl = asText(artifact.url);
+    const artifactStoragePath = asText(artifact.storagePath);
+    const artifactGithubId = asText(artifact.githubArtifactId);
+    const snap = await incidentsCollection.where("runId", "==", safeRunId).get().catch(() => null);
+    if (!snap || snap.empty) return [];
+    const updates = [];
+    const nextItems = [];
+    snap.forEach((docSnap) => {
+      const incident = normalizeIncidentRecord({ id: docSnap.id, ...docSnap.data() });
+      const nextArtifactLinks = ensureArray(incident.artifactLinks).filter((link) => {
+        return !(
+          (artifactId && asText(link.id) === artifactId)
+          || (artifactUrl && asText(link.url) === artifactUrl)
+          || (artifactStoragePath && asText(link.storagePath) === artifactStoragePath)
+          || (artifactGithubId && asText(link.githubArtifactId) === artifactGithubId)
+        );
+      });
+      if (nextArtifactLinks.length === incident.artifactLinks.length) return;
+      const updatedAt = new Date().toISOString();
+      updates.push(docSnap.ref.set({
+        artifactLinks: nextArtifactLinks,
+        updatedAt
+      }, { merge: true }));
+      nextItems.push(normalizeIncidentRecord({
+        ...incident,
+        artifactLinks: nextArtifactLinks,
+        updatedAt
+      }));
+    });
+    if (updates.length) {
+      await Promise.allSettled(updates);
+    }
+    return nextItems;
+  }
+
+  async function deleteIncident(incidentId) {
+    const safeIncidentId = asText(incidentId);
+    if (!safeIncidentId) throw new Error("incidentId required");
+    const incident = await getIncident(safeIncidentId);
+    if (!incident) throw new Error("Incident not found");
+    await incidentsCollection.doc(safeIncidentId).delete();
+    return incident;
   }
 
   function buildModuleHealth(runs = [], incidents = []) {
@@ -606,14 +769,19 @@ function createHeartProviders({ db }) {
     listRuns,
     getRun,
     getSetup,
+    getIncident,
     saveSetup,
     createQueuedRun,
     mergeRun,
+    appendRunArtifacts,
+    removeRunArtifact,
     updateRunArchive,
     appendTimelineEntry,
     saveRunReport,
     listIncidents,
     createIncident,
+    removeArtifactLinksFromIncidents,
+    deleteIncident,
     buildModuleHealth,
     buildDashboardSummary,
     buildConnections

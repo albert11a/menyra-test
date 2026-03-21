@@ -7,7 +7,12 @@ import { captureArtifact } from "./helpers/social-app.mjs";
 import { createPersonaRegistry } from "./personas/persona-registry.mjs";
 import { resolvePackRunner } from "./packs/pack-registry.mjs";
 import { writeHeartReport } from "./reporters/heart-json-reporter.mjs";
-import { postHeartIncident, postHeartReport, postHeartStatus } from "./reporters/heart-webhook-client.mjs";
+import {
+  postHeartIncident,
+  postHeartReport,
+  postHeartStatus,
+  uploadHeartArtifact
+} from "./reporters/heart-webhook-client.mjs";
 
 function asText(value, fallback = "") {
   const text = String(value || "").trim();
@@ -79,6 +84,24 @@ async function main() {
     });
   }
 
+  async function recordArtifact(label, kind, filePath) {
+    const safePath = asText(filePath);
+    if (!safePath) return;
+    try {
+      const uploaded = await uploadHeartArtifact(env, {
+        runId: env.runId,
+        label,
+        kind,
+        filePath: safePath
+      });
+      if (uploaded) {
+        heart.addArtifact(uploaded);
+        return;
+      }
+    } catch {}
+    heart.addArtifact({ label, kind, path: safePath });
+  }
+
   let browser;
   let browserContext;
   let page;
@@ -97,11 +120,11 @@ async function main() {
       async dispose() {
         const proofPath = await captureArtifact(scopedPage, env, `${label}-proof`).catch(() => "");
         if (proofPath) {
-          heart.addArtifact({ label: `${label} Beweisbild`, kind: "screenshot", path: proofPath });
+          await recordArtifact(`${label} Beweisbild`, "screenshot", proofPath);
         }
         const tracePath = path.resolve(env.artifactDir, `${label}-trace.zip`);
         await scopedContext.tracing.stop({ path: tracePath }).catch(() => undefined);
-        heart.addArtifact({ label: `${label} Ablaufspur`, kind: "trace", path: tracePath });
+        await recordArtifact(`${label} Ablaufspur`, "trace", tracePath);
         await scopedContext.close().catch(() => undefined);
       }
     };
@@ -151,7 +174,7 @@ async function main() {
     if (page) {
       const failureScreenshot = await captureArtifact(page, env, `${pack.key}-failure-state`).catch(() => "");
       if (failureScreenshot) {
-        heart.addArtifact({ label: `${pack.title} Fehlerbild`, kind: "screenshot", path: failureScreenshot });
+        await recordArtifact(`${pack.title} Fehlerbild`, "screenshot", failureScreenshot);
       }
     }
     await postHeartIncident(env, {
@@ -171,20 +194,20 @@ async function main() {
     if (page) {
       const finalScreenshot = await captureArtifact(page, env, `${pack.key}-final-state`).catch(() => "");
       if (finalScreenshot) {
-        heart.addArtifact({ label: `${pack.title} Beweisbild`, kind: "screenshot", path: finalScreenshot });
+        await recordArtifact(`${pack.title} Beweisbild`, "screenshot", finalScreenshot);
       }
     }
     if (browserContext) {
       const tracePath = path.resolve(env.artifactDir, `${pack.key}-trace.zip`);
       await browserContext.tracing.stop({ path: tracePath }).catch(() => undefined);
-      heart.addArtifact({ label: `${pack.title} Ablaufspur`, kind: "trace", path: tracePath });
+      await recordArtifact(`${pack.title} Ablaufspur`, "trace", tracePath);
     }
     if (browser) {
       await browser.close().catch(() => undefined);
     }
     const report = heart.getReport();
     const reportPath = await writeHeartReport({ report, outputFile: env.outputFile });
-    heart.addArtifact({ label: `${pack.title} Bericht`, kind: "json", path: reportPath });
+    await recordArtifact(`${pack.title} Bericht`, "json", reportPath);
     await postHeartReport(env, {
       runId: env.runId,
       report: heart.getReport()

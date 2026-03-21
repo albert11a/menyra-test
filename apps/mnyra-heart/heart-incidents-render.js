@@ -1,7 +1,11 @@
 import {
+  renderHeartIcon
+} from "./heart-icons.js";
+import {
   escapeHtml,
   formatDateTime,
   renderEmptyState,
+  renderBadge,
   renderSeverityBadge,
   renderStatusBadge
 } from "./heart-ui-utils.js";
@@ -26,8 +30,22 @@ function buildFilterOptions(items = [], key) {
   return ["all", ...Array.from(new Set(items.map((item) => String(item?.[key] || "").trim()).filter(Boolean)))];
 }
 
+function sortNewestFirst(items = []) {
+  return [...items].sort((left, right) => String(right?.updatedAt || right?.createdAt || "").localeCompare(String(left?.updatedAt || left?.createdAt || "")));
+}
+
+function getIncidentAgeState(item = {}) {
+  const updatedAt = Date.parse(String(item.updatedAt || item.createdAt || ""));
+  if (!Number.isFinite(updatedAt)) return { label: "Offen", tone: "neutral" };
+  const ageMs = Date.now() - updatedAt;
+  if (ageMs <= 12 * 60 * 60 * 1000) {
+    return { label: "Neu", tone: "info" };
+  }
+  return { label: "Alt", tone: "neutral" };
+}
+
 export function renderIncidentsView(items = [], filters = {}) {
-  const filtered = filterIncidents(items, filters);
+  const filtered = sortNewestFirst(filterIncidents(items, filters));
   const summary = buildSummary(items);
   const severityOptions = ["all", "info", "warning", "critical"];
   const sourceOptions = buildFilterOptions(items, "source");
@@ -97,8 +115,12 @@ export function renderIncidentsView(items = [], filters = {}) {
                     <p>${escapeHtml(item.message || "Keine Details vorhanden.")}</p>
                   </div>
                   <div class="heart-list-card__badges">
+                    ${renderBadge(getIncidentAgeState(item).label, getIncidentAgeState(item).tone, "heart-badge--age")}
                     ${renderSeverityBadge(item.severity || "info")}
                     ${renderStatusBadge(item.status || "open")}
+                    <button class="heart-icon-square-button" data-action="delete-incident" data-incident-id="${escapeHtml(item.id)}" aria-label="Meldung loeschen">
+                      ${renderHeartIcon("trash")}
+                    </button>
                   </div>
                 </summary>
                 <div class="heart-incident-card__body">
@@ -112,7 +134,7 @@ export function renderIncidentsView(items = [], filters = {}) {
                   </div>
                   ${item.artifactLinks?.length ? `
                     <div class="heart-artifact-list">
-                      ${item.artifactLinks.map((artifact) => `<a class="heart-artifact-link" href="${escapeHtml(artifact.url || "#")}" target="_blank" rel="noreferrer"><span><strong>${escapeHtml(artifact.label || "Datei")}</strong><small>Nachweis</small></span></a>`).join("")}
+                      ${item.artifactLinks.map((artifact) => `<a class="heart-artifact-link" href="${escapeHtml(artifact.url || "#")}" target="_blank" rel="noreferrer"><span><strong>${escapeHtml(artifact.label || "Datei")}</strong><small>Nachweis</small></span>${artifact.sizeLabel ? `<span>${escapeHtml(artifact.sizeLabel)}</span>` : ""}</a>`).join("")}
                     </div>
                   ` : ""}
                 </div>

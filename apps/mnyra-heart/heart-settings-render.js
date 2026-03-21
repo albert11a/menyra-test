@@ -181,7 +181,7 @@ function renderSetupNotes(setupData = {}) {
         </article>
         <article class="heart-note-card">
           <strong>Nachweise bleiben sichtbar</strong>
-          <p>Beweisbilder und Run-Berichte bleiben erhalten. Ein komplettes serverseitiges Clear fuer Testdaten und App-Inhalte braucht noch gezielte Delete-Flows pro Bereich.</p>
+          <p>Beweisbilder und Run-Berichte bleiben erhalten und koennen direkt aus dem Run geloescht werden. Fuer ein komplettes Clear von echten App-Inhalten braucht Heart weiterhin gezielte Delete-Flows pro Bereich.</p>
         </article>
         ${setupData.syntheticIsolationKeyReady ? `
           <article class="heart-note-card">

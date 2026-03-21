@@ -346,10 +346,21 @@ export function createHeartContext({
 
   function addArtifact(artifact = {}) {
     report.artifacts.push({
+      id: asText(artifact.id),
       label: asText(artifact.label, `Datei ${report.artifacts.length + 1}`),
       kind: asText(artifact.kind, "artifact"),
       url: asText(artifact.url || artifact.path),
-      sizeLabel: asText(artifact.sizeLabel)
+      previewUrl: asText(artifact.previewUrl),
+      sizeLabel: asText(artifact.sizeLabel),
+      sizeBytes: Math.max(0, Number(artifact.sizeBytes) || 0),
+      source: asText(artifact.source),
+      storagePath: asText(artifact.storagePath),
+      bucket: asText(artifact.bucket),
+      fileName: asText(artifact.fileName),
+      contentType: asText(artifact.contentType),
+      uploadedAt: asText(artifact.uploadedAt),
+      githubArtifactId: asText(artifact.githubArtifactId),
+      deletable: artifact.deletable !== false && !!(artifact.storagePath || artifact.githubArtifactId)
     });
   }
 

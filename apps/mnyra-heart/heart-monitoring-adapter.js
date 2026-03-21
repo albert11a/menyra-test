@@ -26,9 +26,18 @@ export function createHeartMonitoringAdapter({ apiClient }) {
     };
   }
 
+  async function deleteIncident(incidentId) {
+    const payload = await apiClient.request("heartDeleteIncident", {
+      method: "POST",
+      body: { incidentId }
+    });
+    return normalizeIncident(payload.incident || {});
+  }
+
   return {
     loadDashboard,
     loadIncidents,
-    loadConnections
+    loadConnections,
+    deleteIncident
   };
 }

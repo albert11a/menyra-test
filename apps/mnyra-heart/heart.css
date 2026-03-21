@@ -615,6 +615,12 @@ a {
   gap: 16px;
 }
 
+.heart-incident-card .heart-list-card__badges {
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .heart-incident-card summary::-webkit-details-marker {
   display: none;
 }
@@ -676,6 +682,83 @@ a {
   border: 1px solid var(--heart-border);
   background: rgba(255, 255, 255, 0.03);
   justify-content: space-between;
+}
+
+.heart-artifact-card {
+  display: grid;
+  gap: 14px;
+  padding: 14px;
+  border-radius: 22px;
+  border: 1px solid var(--heart-border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.heart-artifact-card__preview {
+  display: block;
+  overflow: hidden;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.heart-artifact-card__preview img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+}
+
+.heart-artifact-card__preview--icon {
+  min-height: 128px;
+  display: grid;
+  place-items: center;
+  color: var(--heart-text-muted);
+}
+
+.heart-artifact-card__preview--icon svg {
+  width: 26px;
+  height: 26px;
+}
+
+.heart-artifact-card__body,
+.heart-artifact-card__head,
+.heart-artifact-card__actions {
+  display: flex;
+  align-items: center;
+}
+
+.heart-artifact-card__body {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.heart-artifact-card__head,
+.heart-artifact-card__actions {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.heart-artifact-card__head span:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.heart-artifact-card__head small,
+.heart-artifact-card__size {
+  color: var(--heart-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.64rem;
+  font-weight: 900;
+}
+
+.heart-artifact-card__actions {
+  justify-content: flex-end;
+}
+
+.heart-badge--age {
+  min-width: 0;
 }
 
 .heart-artifact-link span {

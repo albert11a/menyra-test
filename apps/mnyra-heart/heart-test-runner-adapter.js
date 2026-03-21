@@ -65,6 +65,20 @@ export function createHeartTestRunnerAdapter({ apiClient }) {
     };
   }
 
+  async function deleteRunArtifact(runId, artifactId) {
+    const payload = await apiClient.request("heartDeleteRunArtifact", {
+      method: "POST",
+      body: {
+        runId,
+        artifactId
+      }
+    });
+    return {
+      run: normalizeRunDetail(payload.run || {}),
+      artifactId: String(payload.artifact?.id || artifactId || "").trim()
+    };
+  }
+
   return {
     loadRuns,
     loadRunDetail,
@@ -73,6 +87,7 @@ export function createHeartTestRunnerAdapter({ apiClient }) {
     startPackRun,
     startLegacySyntheticRun,
     cancelRun,
-    updateRunArchive
+    updateRunArchive,
+    deleteRunArtifact
   };
 }

@@ -183,6 +183,15 @@ async function cancelWorkflowRun(config, githubRunId) {
   return { ok: true };
 }
 
+async function deleteWorkflowArtifact(config, githubArtifactId) {
+  await githubRequest(
+    config,
+    `/repos/${encodeURIComponent(config.owner)}/${encodeURIComponent(config.repo)}/actions/artifacts/${encodeURIComponent(githubArtifactId)}`,
+    { method: "DELETE" }
+  );
+  return { ok: true };
+}
+
 async function normalizeJobsToTimeline(jobs = []) {
   const rows = [];
   for (const [jobIndex, job] of jobs.entries()) {
@@ -239,6 +248,7 @@ module.exports = {
   listWorkflowJobs,
   listWorkflowArtifacts,
   cancelWorkflowRun,
+  deleteWorkflowArtifact,
   normalizeJobsToTimeline,
   summarizeCurrentStep
 };
