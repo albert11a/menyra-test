@@ -47,8 +47,11 @@ const MODULE_LABELS = Object.freeze({
   cart: "Warenkorb",
   orders: "Bestellungen",
   chat: "Chat",
+  search: "Suche",
+  map: "Karte",
   crm: "CRM",
-  pwa: "App / PWA"
+  pwa: "App / PWA",
+  ui: "UI / Layout"
 });
 
 const PERSONA_LABELS = Object.freeze({
@@ -60,12 +63,12 @@ const PERSONA_LABELS = Object.freeze({
 });
 
 const PACK_LABELS = Object.freeze({
-  smoke: "Schnelltest",
+  smoke: "CEO-Kontrolllauf",
   "ceo-pack": "CEO-Test",
-  "business-pack": "Business-Test",
+  "business-pack": "Business-Volltest",
   "staff-pack": "Service-Test",
-  "user-pack": "Nutzer-Test",
-  "guest-pack": "Gast- / QR-Test",
+  "user-pack": "User-Volltest",
+  "guest-pack": "Gast- / QR-Volltest",
   "mutation-pack": "Schreibtest",
   "journey-pack": "Journey-Test",
   "full-platform-pack": "Kompletttest",

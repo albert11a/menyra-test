@@ -1,4 +1,4 @@
-import { runCrmChecks } from "../actions/crm-actions.mjs";
+import { runDiscoveryChecks } from "../actions/discovery-actions.mjs";
 import { runJourneyChecks, runPwaChecks } from "../actions/journey-actions.mjs";
 import { ensurePersonaSession } from "../actions/persona-actions.mjs";
 import { runSocialSurfaceChecks } from "../actions/social-actions.mjs";
@@ -13,8 +13,8 @@ export async function runCeoPack({ page, env, heart, personas, emitStatus = asyn
 
   await emitStatus("CEO / Oberflaechen", "running", "Heart prueft die CEO-Oberflaechen.");
   await runSocialSurfaceChecks({ page, env, heart, persona: ceo });
-  await runCrmChecks({ page, env, heart, persona: ceo });
+  await runDiscoveryChecks({ page, env, heart, persona: ceo });
   await runJourneyChecks({ page, env, heart, persona: ceo });
   await runPwaChecks({ page, heart, persona: ceo });
-  heart.setSummary("CEO-Test beendet. Steuerflaechen, CRM und Navigation wurden geprueft.");
+  heart.setSummary("CEO-Test beendet. Steuerflaechen, Navigation, Karte, Suche und PWA wurden geprueft.");
 }

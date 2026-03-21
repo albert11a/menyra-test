@@ -78,12 +78,6 @@ function buildLegacyPackConfig(envMap = {}) {
         email: asText(envMap.MNYRA_BUSINESS_EMAIL),
         password: asText(envMap.MNYRA_BUSINESS_PASSWORD)
       },
-      staff: {
-        app: "waiter",
-        baseUrl: asText(envMap.MNYRA_WAITER_BASE_URL || envMap.MNYRA_STAFF_BASE_URL, "https://www.mnyra.com/waiter/"),
-        email: asText(envMap.MNYRA_STAFF_EMAIL),
-        password: asText(envMap.MNYRA_STAFF_PASSWORD)
-      },
       user: {
         app: "social",
         baseUrl: asText(envMap.MNYRA_USER_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),

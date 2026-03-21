@@ -8,6 +8,7 @@ import {
   waitForTextToDisappear
 } from "../helpers/social-app.mjs";
 import { getSocialDefaultTabs } from "../helpers/social-app.mjs";
+import { runUiLayoutCheck } from "./ui-actions.mjs";
 import {
   hasRequiredConfig,
   markGuarded,
@@ -84,12 +85,22 @@ export async function runBusinessSurfaceChecks({ page, env, heart, persona } = {
         note: "Business-Menue wurde ueber die konfigurierte URL geoeffnet.",
         absolute: businessConfig.menu.url
       });
+      await runUiLayoutCheck(page, heart, {
+        persona,
+        viewLabel: "Business-Menue",
+        action: "ui business menu layout"
+      });
     }, "Business-Menue konnte nicht geoeffnet werden");
   } else {
     await runSurface("menu", "menu tab open", async () => {
       await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
         moduleKey: "menu",
         note: "Business-Menue wurde geoeffnet."
+      });
+      await runUiLayoutCheck(page, heart, {
+        persona,
+        viewLabel: "Business-Menue",
+        action: "ui business menu layout"
       });
     }, "Business-Menue konnte nicht geoeffnet werden");
   }
@@ -106,6 +117,11 @@ export async function runBusinessSurfaceChecks({ page, env, heart, persona } = {
         action: "focus tab open",
         persona: persona.key,
         area: "business"
+      });
+      await runUiLayoutCheck(page, heart, {
+        persona,
+        viewLabel: "Business-Fokus",
+        action: "ui business focus layout"
       });
     }, "Business-Fokus konnte nicht geoeffnet werden");
   } else {

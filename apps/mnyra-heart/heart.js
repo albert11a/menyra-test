@@ -110,7 +110,7 @@ function setToast(title, message = "", tone = "neutral") {
 
 function splitPersonaList(value = "") {
   if (String(value || "").trim().toLowerCase() === "all") {
-    return ["ceo", "business", "staff", "user"];
+    return ["ceo", "business", "user"];
   }
   return String(value || "")
     .split(",")

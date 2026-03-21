@@ -5,6 +5,7 @@ import {
   waitForAnySelector,
   waitForUiOutcome
 } from "../helpers/social-app.mjs";
+import { runUiLayoutCheck } from "./ui-actions.mjs";
 
 function mutationReady(env = {}) {
   return !!env.allowLiveMutations && !!env.syntheticIsolationKey;
@@ -175,6 +176,14 @@ export async function runGuestChecks({ page, env, heart, persona } = {}) {
       area: "menu"
     });
   }
+
+  await runUiLayoutCheck(page, heart, {
+    persona,
+    viewLabel: "Gast- / QR-Menue",
+    moduleKey: "ui",
+    action: "ui guest layout",
+    area: "ui"
+  });
 
   try {
     const cartResult = await ensureGuestCartReady(page, guestConfig);

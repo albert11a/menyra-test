@@ -277,7 +277,7 @@ function renderDrawer(state, userName) {
             </button>
             <button class="heart-drawer-action heart-drawer-action--primary" data-action="start-pack" data-pack-key="smoke">
               <span class="heart-drawer-action__icon">${renderHeartIcon("play")}</span>
-              <span>Schnelltest starten</span>
+              <span>CEO-Kontrolllauf starten</span>
             </button>
             </div>
           </section>

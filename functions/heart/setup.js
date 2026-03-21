@@ -7,7 +7,16 @@ const {
   serializeFirestoreValue
 } = require("./common");
 
-const HEART_PERSONA_KEYS = Object.freeze(["ceo", "business", "staff", "user"]);
+const HEART_PERSONA_KEYS = Object.freeze(["ceo", "business", "user"]);
+
+function buildStableNumericCode(seed = "", prefix = "90") {
+  const safeSeed = asText(seed, "mnyra-heart");
+  let hash = 0;
+  for (let index = 0; index < safeSeed.length; index += 1) {
+    hash = (hash * 31 + safeSeed.charCodeAt(index)) % 1000000;
+  }
+  return `${prefix}${String(Math.abs(hash)).padStart(6, "0")}`;
+}
 
 function ensureObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -103,41 +112,47 @@ function createPassword() {
 function buildPersonaIdentity(personaKey = "", restaurant = {}) {
   const suffix = asText(restaurant.id || "global").slice(-6).toLowerCase();
   const slug = normalizeHandleValue(asText(restaurant.handle || restaurant.name || "mnyra")) || "mnyra";
+  const code = {
+    ceo: buildStableNumericCode(`${personaKey}:${asText(restaurant.id || restaurant.name || "global")}`, "90"),
+    business: buildStableNumericCode(`${personaKey}:${asText(restaurant.id || restaurant.name || "global")}`, "91"),
+    staff: buildStableNumericCode(`${personaKey}:${asText(restaurant.id || restaurant.name || "global")}`, "92"),
+    user: buildStableNumericCode(`${personaKey}:${asText(restaurant.id || restaurant.name || "global")}`, "93")
+  }[personaKey] || buildStableNumericCode(`${personaKey}:${asText(restaurant.id || restaurant.name || "global")}`, "93");
   const map = {
     ceo: {
-      firstName: "Heart",
-      lastName: "CEO",
-      displayName: "Heart CEO",
+      firstName: code,
+      lastName: "",
+      displayName: code,
       role: "ceo",
       roles: ["ceo"],
-      handle: `heart_ceo_${slug}_${suffix}`,
+      handle: `u${code}`,
       email: `heart+ceo-${slug}-${suffix}@mnyra.test`
     },
     business: {
-      firstName: "Heart",
-      lastName: "Business",
-      displayName: "Heart Business",
+      firstName: code,
+      lastName: "",
+      displayName: code,
       role: "business",
       roles: ["owner", "staff"],
-      handle: `heart_business_${slug}_${suffix}`,
+      handle: `u${code}`,
       email: `heart+business-${slug}-${suffix}@mnyra.test`
     },
     staff: {
-      firstName: "Heart",
-      lastName: "Service",
-      displayName: "Heart Service",
+      firstName: code,
+      lastName: "",
+      displayName: code,
       role: "staff",
       roles: ["staff"],
-      handle: `heart_staff_${slug}_${suffix}`,
+      handle: `u${code}`,
       email: `heart+staff-${slug}-${suffix}@mnyra.test`
     },
     user: {
-      firstName: "Heart",
-      lastName: "User",
-      displayName: "Heart User",
+      firstName: code,
+      lastName: "",
+      displayName: code,
       role: "user",
       roles: ["user"],
-      handle: `heart_user_${slug}_${suffix}`,
+      handle: `u${code}`,
       email: `heart+user-${slug}-${suffix}@mnyra.test`
     }
   };
@@ -149,6 +164,7 @@ function buildDefaultPackConfig({
   waiterBaseUrl = "",
   guestRouteUrl = "",
   restaurantId = "",
+  restaurantName = "",
   personas = {}
 } = {}) {
   const businessHandle = asText(personas.business?.handle);
@@ -263,6 +279,22 @@ function buildDefaultPackConfig({
           verifyText: "TEST_RUN_<runId>_CHAT_1"
         }
       },
+      discovery: {
+        search: {
+          url: buildUrl(socialBaseUrl, { tab: "search" }),
+          inputSelector: "#searchInput",
+          businessResultSelector: "[data-search-business]",
+          profileReadySelector: "[data-public-profile-follow], [data-business-top-tab], [data-profile-top-tab]",
+          query: asText(restaurantName, personas.business?.displayName, personas.business?.handle)
+        },
+        map: {
+          url: buildUrl(socialBaseUrl, { tab: "map" }),
+          inputSelector: "#mapSearchInput",
+          businessResultSelector: "[data-search-business]",
+          profileReadySelector: "[data-public-profile-follow], [data-business-top-tab], [data-profile-top-tab]",
+          query: asText(restaurantName, personas.business?.displayName, personas.business?.handle)
+        }
+      },
       crm: {
         leadCreate: {
           url: buildUrl(socialBaseUrl, { tab: "leads" }),
@@ -323,6 +355,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   waiterBaseUrl = "",
   guestRouteUrl = "",
   restaurantId = "",
+  restaurantName = "",
   personas = {}
 } = {}) {
   const defaults = buildDefaultPackConfig({
@@ -330,6 +363,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
     waiterBaseUrl,
     guestRouteUrl,
     restaurantId,
+    restaurantName,
     personas
   });
   const next = mergeDeep(defaults, packConfig);
@@ -339,6 +373,9 @@ function normalizeHeartPackConfig(packConfig = {}, {
   next.actions.commerce.order = ensureObject(next.actions.commerce.order);
   next.actions.chat = ensureObject(next.actions.chat);
   next.actions.chat.send = ensureObject(next.actions.chat.send);
+  next.actions.discovery = ensureObject(next.actions.discovery);
+  next.actions.discovery.search = ensureObject(next.actions.discovery.search);
+  next.actions.discovery.map = ensureObject(next.actions.discovery.map);
   next.actions.crm = ensureObject(next.actions.crm);
   next.actions.crm.leadCreate = ensureObject(next.actions.crm.leadCreate);
   next.actions.crm.leadEdit = ensureObject(next.actions.crm.leadEdit);
@@ -360,6 +397,8 @@ function normalizeHeartPackConfig(packConfig = {}, {
   const commerceCart = next.actions.commerce.cart;
   const commerceOrder = next.actions.commerce.order;
   const chatSend = next.actions.chat.send;
+  const discoverySearch = next.actions.discovery.search;
+  const discoveryMap = next.actions.discovery.map;
   const crmLeadCreate = next.actions.crm.leadCreate;
   const crmLeadEdit = next.actions.crm.leadEdit;
   const productCreate = next.actions.business.productCreate;
@@ -489,6 +528,22 @@ function normalizeHeartPackConfig(packConfig = {}, {
   chatSend.threadListSelector = asText(chatSend.threadListSelector, "#chatListView");
   chatSend.openThreadSelector = asText(chatSend.openThreadSelector, "[data-chat-open-thread]");
   chatSend.openTargetSelector = asText(chatSend.openTargetSelector, "[data-open-chat], #profileChatBtn, #chatBtn");
+
+  if (!asText(discoverySearch.url)) {
+    discoverySearch.url = buildUrl(socialBaseUrl, { tab: "search" });
+  }
+  discoverySearch.inputSelector = asText(discoverySearch.inputSelector, "#searchInput");
+  discoverySearch.businessResultSelector = asText(discoverySearch.businessResultSelector, "[data-search-business]");
+  discoverySearch.profileReadySelector = asText(discoverySearch.profileReadySelector, "[data-public-profile-follow], [data-business-top-tab], [data-profile-top-tab]");
+  discoverySearch.query = asText(discoverySearch.query, restaurantName, personas.business?.displayName, personas.business?.handle);
+
+  if (!asText(discoveryMap.url)) {
+    discoveryMap.url = buildUrl(socialBaseUrl, { tab: "map" });
+  }
+  discoveryMap.inputSelector = asText(discoveryMap.inputSelector, "#mapSearchInput");
+  discoveryMap.businessResultSelector = asText(discoveryMap.businessResultSelector, "[data-search-business]");
+  discoveryMap.profileReadySelector = asText(discoveryMap.profileReadySelector, "[data-public-profile-follow], [data-business-top-tab], [data-profile-top-tab]");
+  discoveryMap.query = asText(discoveryMap.query, discoverySearch.query, restaurantName, personas.business?.displayName, personas.business?.handle);
 
   if (!asText(crmLeadCreate.openSelector) || asText(crmLeadCreate.openSelector) === "[data-lead-create-open]") {
     crmLeadCreate.openSelector = "#newLeadBtn";
@@ -873,6 +928,7 @@ function buildRunnerEnvPayload({
     waiterBaseUrl,
     guestRouteUrl,
     restaurantId: asText(setup.restaurantId),
+    restaurantName: asText(setup.restaurantName),
     personas: ensureObject(setup.personas)
   });
   return {
@@ -917,6 +973,7 @@ function deriveSetupPatch({
     waiterBaseUrl,
     guestRouteUrl: nextGuestRouteUrl,
     restaurantId,
+    restaurantName: asText(merged.restaurantName),
     personas: ensureObject(merged.personas)
   });
   return {

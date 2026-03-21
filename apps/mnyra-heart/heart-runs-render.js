@@ -21,83 +21,134 @@ import {
 } from "./heart-ui-utils.js";
 
 const FALLBACK_PACK_ACTIONS = Object.freeze([
-  { id: "smoke", packKey: "smoke", action: "start-pack", label: "Schnelltest starten" },
-  { id: "full-platform-pack", packKey: "full-platform-pack", action: "start-pack", label: "Kompletttest starten" },
-  { id: "guest-pack", packKey: "guest-pack", action: "start-pack", label: "Gast- / QR-Test starten" },
-  { id: "mutation-pack", packKey: "mutation-pack", action: "start-pack", label: "Schreibtest starten" },
-  { id: "ceo-pack", packKey: "ceo-pack", action: "start-pack", label: "CEO-Test starten" },
-  { id: "business-pack", packKey: "business-pack", action: "start-pack", label: "Business-Test starten" },
-  { id: "staff-pack", packKey: "staff-pack", action: "start-pack", label: "Service-Test starten" },
-  { id: "user-pack", packKey: "user-pack", action: "start-pack", label: "Nutzer-Test starten" },
-  { id: "journey-pack", packKey: "journey-pack", action: "start-pack", label: "Journey-Test starten" }
+  { id: "business-pack", packKey: "business-pack", action: "start-pack", label: "Business-Volltest starten" },
+  { id: "user-pack", packKey: "user-pack", action: "start-pack", label: "User-Volltest starten" },
+  { id: "guest-pack", packKey: "guest-pack", action: "start-pack", label: "Gast- / QR-Volltest starten" },
+  { id: "smoke", packKey: "smoke", action: "start-pack", label: "CEO-Kontrolllauf starten" }
 ]);
 
 const ACTIVE_STATUSES = new Set(["queued", "running"]);
 const TERMINAL_STATUSES = new Set(["success", "warning", "failed", "critical", "cancelled", "skipped", "not_configured", "guarded"]);
 const START_CARD_ICON_BY_PACK = Object.freeze({
-  smoke: "activity",
-  "full-platform-pack": "sparkle",
-  "ceo-pack": "shield",
+  smoke: "shield",
   "business-pack": "chart",
-  "staff-pack": "bell",
   "user-pack": "user",
-  "guest-pack": "scan",
-  "mutation-pack": "broom",
-  "journey-pack": "clock"
+  "guest-pack": "scan"
+});
+
+const VISIBLE_PACK_ORDER = Object.freeze({
+  "business-pack": 1,
+  "user-pack": 2,
+  "guest-pack": 3,
+  smoke: 4
 });
 
 const GUIDE_CONTENT = Object.freeze({
   smoke: {
-    eyebrow: "Schneller Sicherheitslauf",
-    title: "Schnelltest",
-    summary: "Heart prueft die wichtigsten Wege in kurzer Zeit, ohne unnoetig tief in Live-Schreibpfade zu gehen.",
+    eyebrow: "CEO Kontrolle",
+    title: "CEO-Kontrolllauf",
+    summary: "Heart prueft die wichtigsten CEO-Steuerflaechen, Navigation, Karte, Suche, Chat und das mobile Layout, ohne unnoetige Nebenpfade zu erzwingen.",
     sections: [
       {
         icon: "shield",
-        title: "CEO-Zugang und sichere Grundpfade",
-        body: "Anmeldung, Feed, Profil, Business, Menue, Warenkorb, Bestellungen, Chat, CRM und PWA werden schnell gegengeprueft."
+        title: "Nur CEO-Kernfunktionen",
+        body: "Heart prueft Anmeldung, Feed, Profil, Business-Ansichten, Menue, Karte, Suche, Chat, wichtige Modals und die PWA-Huelle aus CEO-Sicht."
       },
       {
-        icon: "clock",
-        title: "Ideal fuer den Tagesstart",
-        body: "Der Lauf ist kurz gehalten und eignet sich gut fuer den ersten Statuscheck vor Betrieb, Updates oder Support."
+        icon: "scan",
+        title: "Karte und Suche sind inbegriffen",
+        body: "Heart oeffnet das konfigurierte Business ueber die Suche und ueber die Karte, damit Discovery und Oeffnen per Map mitgeprueft werden."
       },
       {
         icon: "image",
-        title: "Nachweise und Klartext",
+        title: "Klarer Kontrollnachweis",
         body: "Wenn etwas schiefgeht, siehst du im Lauf Screenshots, Ablaufspuren und eine klare Zusammenfassung statt technischem Rauschen."
       },
       {
         icon: "triangle",
-        title: "Zeigt ehrlich, was fehlt",
-        body: "Falls Konten, Links oder Selektoren fehlen, meldet Heart offen Einrichtung fehlt, Geschuetzt oder Uebersprungen."
+        title: "Bewusst kein chaotischer Sammellauf",
+        body: "Der CEO-Kontrolllauf ist bewusst schlank gehalten, damit er nur echte CEO-Probleme zeigt und nicht an fachfremden Nebenbereichen haengen bleibt."
       }
     ]
   },
-  "full-platform-pack": {
-    eyebrow: "Groesser Gesamtlauf",
-    title: "Kompletttest",
-    summary: "Heart prueft alle wichtigen Rollen, sammelt Nachweise und zeigt klar, was erstellt, geprueft und aufgeraeumt wurde.",
+  "business-pack": {
+    eyebrow: "Business Rolle",
+    title: "Business-Volltest",
+    summary: "Heart prueft das Restaurant aus Betreiber-Sicht: Oberflaechen, Menue, Produkte, Social-Interaktionen, Chat, Karte, Suche und Layout.",
     sections: [
       {
-        icon: "users",
-        title: "Alle Rollen in einem Lauf",
-        body: "CEO, Business, Service, Nutzer und Gast / QR werden nacheinander geprueft, damit du das System als Ganzes siehst."
+        icon: "chart",
+        title: "Restaurant und Menue im Fokus",
+        body: "Heart oeffnet Menue und Focus, prueft Produktpfade und kontrolliert, ob das Restaurantprofil stabil und mobil sauber bleibt."
       },
       {
-        icon: "bot",
-        title: "Mehr Tiefe als der Schnelltest",
-        body: "Heart prueft ueber mehrere Oberflaechen hinweg und sammelt deutlich mehr Kontext zu Bereichen, Rollen und Nachweisen."
-      },
-      {
-        icon: "broom",
-        title: "Erstellte Daten und Aufraeumen",
-        body: "Wo sichere Regeln vorhanden sind, protokolliert Heart genau, was erzeugt und was wieder entfernt wurde."
+        icon: "user",
+        title: "Business testet auch Social",
+        body: "Follow, Likes, Kommentare und Chat werden gegen das feste Nutzer-Zielkonto geprueft, damit Business nicht nur seine eigenen Ansichten sieht."
       },
       {
         icon: "scan",
-        title: "Gast- und QR-Wege eingeschlossen",
-        body: "Menue, Warenkorb und Bestellfluss werden ueber echte Gast- oder QR-Einstiege validiert, wenn die Konfiguration vollstaendig ist."
+        title: "Karte und Suche sind Pflicht",
+        body: "Heart oeffnet das Business auch ueber Suche und Karte, damit der Discovery-Weg und das Oeffnen eines Lokals per Map nicht vergessen werden."
+      },
+      {
+        icon: "image",
+        title: "Nachweise pro Hauptbereich",
+        body: "Die Laufdetails zeigen spaeter klar, welche Business-, Social- und Discovery-Bereiche funktioniert haben und wo Heart etwas Auffaelliges gefunden hat."
+      }
+    ]
+  },
+  "user-pack": {
+    eyebrow: "User Rolle",
+    title: "User-Volltest",
+    summary: "Heart prueft Feed, Profil, Foto-Posts, Likes, Kommentare, Follow, Chat, Karte, Suche und Bestellung aus echter Nutzer-Sicht.",
+    sections: [
+      {
+        icon: "image",
+        title: "Fotos und Social-Interaktionen",
+        body: "Heart prueft Foto-Post, Like, Kommentar, Follow und Chat so, wie ein echter Nutzer die Social-Funktionen verwenden wuerde."
+      },
+      {
+        icon: "scan",
+        title: "Bestellung ist mit drin",
+        body: "Der User-Lauf prueft nicht nur Social, sondern auch den Weg ins Menue, den Warenkorb und die Bestellung auf dem Zielrestaurant."
+      },
+      {
+        icon: "scan",
+        title: "Business ueber Karte oeffnen",
+        body: "Auch im User-Lauf wird das Zielrestaurant ueber Suche und Karte geoeffnet, damit Discovery und Oeffnen per Map mitgeprueft werden."
+      },
+      {
+        icon: "image",
+        title: "UI bleibt mobil pruefbar",
+        body: "Heart kontrolliert auf den Hauptansichten, dass nichts rechts aus dem Viewport ragt und die mobile Darstellung stabil bleibt."
+      }
+    ]
+  },
+  "guest-pack": {
+    eyebrow: "Gast und QR",
+    title: "Gast- / QR-Volltest",
+    summary: "Heart prueft den oeffentlichen Restaurantweg ueber Karte, Suche, QR-Menue, Warenkorb, Checkout und Bestellung ohne eingeloggtes Konto.",
+    sections: [
+      {
+        icon: "scan",
+        title: "Gast findet das Lokal auch ueber Discovery",
+        body: "Heart oeffnet das Zielrestaurant zuerst ueber Suche und Karte und prueft danach den oeffentlichen QR- und Menueweg."
+      },
+      {
+        icon: "grid",
+        title: "Mehr als nur Menue sichtbar",
+        body: "Heart prueft Produktoeffnen, Hinzufuegen zum Warenkorb, Checkout und Bestellsignal, statt nur eine statische Menueansicht zu bestaetigen."
+      },
+      {
+        icon: "shield",
+        title: "Keine gesperrten Business-Elemente",
+        body: "Der Gast-Lauf prueft auch, dass geschuetzte Business-Bedienelemente im oeffentlichen Restaurantweg nicht sichtbar sind."
+      },
+      {
+        icon: "image",
+        title: "Oeffentliche UI bleibt mobil sauber",
+        body: "Heart kontrolliert auf Menue und Profil, dass der oeffentliche Gastweg ohne horizontales Ausbrechen und ohne kaputte Karten laeuft."
       }
     ]
   }
@@ -109,7 +160,13 @@ function getPackActions(quickActions = []) {
 }
 
 function getPackCards(quickActions = []) {
-  return getPackActions(quickActions).map((action) => {
+  return getPackActions(quickActions)
+    .sort((left, right) => {
+      const leftOrder = VISIBLE_PACK_ORDER[left.packKey || left.id] || 99;
+      const rightOrder = VISIBLE_PACK_ORDER[right.packKey || right.id] || 99;
+      return leftOrder - rightOrder;
+    })
+    .map((action) => {
     const pack = getHeartPack(action.packKey || action.id);
     return {
       key: pack.key,
@@ -121,7 +178,7 @@ function getPackCards(quickActions = []) {
       personas: Array.isArray(pack.personas) ? pack.personas : [],
       icon: START_CARD_ICON_BY_PACK[pack.key] || "activity"
     };
-  });
+    });
 }
 
 function getSortedRuns(items = []) {
@@ -223,9 +280,10 @@ function renderStatusBreakdown(detail = {}) {
 }
 
 function renderRunSetupSummary(detail = {}) {
-  const personaEntries = Object.entries(detail.runFlags?.personas || {});
+  const allPersonaEntries = Object.entries(detail.runFlags?.personas || {});
+  const personaEntries = allPersonaEntries.filter(([key]) => key !== "guest");
   const configuredCount = personaEntries.filter(([, value]) => value?.configured).length;
-  const guestEntry = personaEntries.find(([key]) => key === "guest");
+  const guestEntry = allPersonaEntries.find(([key]) => key === "guest");
   return `
     <div class="heart-detail-grid">
       <div>
@@ -410,7 +468,7 @@ function renderLaunchCard(runsState = {}, connections = [], quickActions = []) {
       ${runsState.launcherExpanded ? `
         <div class="heart-run-start-grid">
           ${cards.map((card) => `
-            <article class="heart-run-option-card ${card.key === "full-platform-pack" ? "heart-run-option-card--accent" : ""}">
+            <article class="heart-run-option-card ${card.key === "guest-pack" ? "heart-run-option-card--accent" : ""}">
               <div class="heart-run-option-card__top">
                 <span class="heart-run-option-card__icon">${renderHeartIcon(card.icon)}</span>
                 <button class="heart-icon-button heart-icon-button--inline" data-action="open-run-guide" data-pack-key="${escapeHtml(card.key)}" aria-label="${escapeHtml(card.title)} erklaeren">

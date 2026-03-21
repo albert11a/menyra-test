@@ -11,7 +11,6 @@ import {
 const PERSONA_LABELS = Object.freeze({
   ceo: "CEO",
   business: "Business",
-  staff: "Service",
   user: "Nutzer"
 });
 
@@ -22,7 +21,8 @@ function getPersonaStatus(persona = {}) {
 }
 
 function renderSetupHero(setupData = {}) {
-  const readyCount = Object.values(setupData.personas || {}).filter((item) => item?.ready).length;
+  const requiredCount = Object.keys(PERSONA_LABELS).length;
+  const readyCount = Object.keys(PERSONA_LABELS).filter((key) => setupData.personas?.[key]?.ready).length;
   return `
     <section class="heart-section heart-setup-hero">
       <div class="heart-setup-hero__head">
@@ -30,20 +30,20 @@ function renderSetupHero(setupData = {}) {
           <p class="heart-eyebrow">Heart Einrichtung</p>
           <h2>${escapeHtml(setupData.restaurantName || "Noch kein Restaurant gewaehlt")}</h2>
         </div>
-        ${renderStatusBadge(setupData.restaurantId && readyCount >= 4 ? "success" : setupData.restaurantId ? "warning" : "not_configured")}
+        ${renderStatusBadge(setupData.restaurantId && readyCount >= requiredCount ? "success" : setupData.restaurantId ? "warning" : "not_configured")}
       </div>
       <p class="heart-setup-hero__note">
         ${escapeHtml(
           setupData.restaurantId
-            ? `Heart ist mit ${setupData.restaurantName || setupData.restaurantId} verbunden. ${readyCount} von 4 Testkonten sind bereit.`
-            : "Waehle zuerst ein Restaurant aus. Danach kann Heart QR-Link, Testkonten und Runner-Konfiguration darauf aufbauen."
+            ? `Heart ist mit ${setupData.restaurantName || setupData.restaurantId} verbunden. ${readyCount} von ${requiredCount} dauerhaften Zielkonten sind bereit.`
+            : "Waehle zuerst ein Restaurant aus. Danach kann Heart QR-Link, Zielkonten und Runner-Konfiguration darauf aufbauen."
         )}
       </p>
       <div class="heart-detail-grid">
         <div><span>Restaurant</span><strong>${escapeHtml(setupData.restaurantId || "-")}</strong></div>
         <div><span>Gast / QR</span><strong>${escapeHtml(setupData.guestRouteUrl ? "Bereit" : "Fehlt")}</strong></div>
         <div><span>Schreibmodus</span><strong>${escapeHtml(setupData.allowLiveMutations ? "Aktiv" : "Aus")}</strong></div>
-        <div><span>Isolation</span><strong>${escapeHtml(setupData.syntheticIsolationKeyReady ? "Bereit" : "Fehlt")}</strong></div>
+        <div><span>Zielkonten</span><strong>${escapeHtml(`${readyCount} / ${requiredCount}`)}</strong></div>
       </div>
     </section>
   `;
@@ -105,6 +105,7 @@ function renderRestaurantSearch(setupState = {}) {
           <input type="checkbox" name="allowLiveMutations" ${setupData.allowLiveMutations ? "checked" : ""} />
           <span>Schreibmodus fuer echte Tests aktivieren</span>
         </label>
+        <p class="heart-setup-inline-note">Heart nutzt dieses Restaurant als dauerhaftes Business-Ziel fuer Karte, Suche, Menue, QR und Bestellungen.</p>
         <button class="heart-button heart-button--primary" type="submit" ${setupState.pendingAction === "save-setup" ? "disabled" : ""}>
           ${setupState.pendingAction === "save-setup" ? "Speichert..." : "Einrichtung speichern"}
         </button>
@@ -120,10 +121,10 @@ function renderPersonaCards(setupState = {}) {
       <div class="heart-section__head">
         <div>
           <p class="heart-eyebrow">Testkonten</p>
-          <h2>Konten fuer komplette Runs</h2>
+          <h2>Dauerhafte Zielkonten</h2>
         </div>
         <button class="heart-button heart-button--secondary" data-action="provision-setup-personas" data-personas="all" ${setupData.restaurantId ? "" : "disabled"}>
-          Alle erstellen
+          Alle erstellen / aktualisieren
         </button>
       </div>
       <div class="heart-setup-tool-grid">
@@ -131,6 +132,11 @@ function renderPersonaCards(setupState = {}) {
           const persona = setupData.personas?.[key] || {};
           const status = getPersonaStatus(persona);
           const isBusy = setupState.pendingAction === `provision:${key}` || setupState.pendingAction === "provision:all";
+          const purpose = key === "ceo"
+            ? "Kontrollkonto fuer den CEO-Lauf."
+            : key === "business"
+              ? "Restaurant-Zielkonto fuer Menue, Karte, QR und Business-Pruefung."
+              : "Social-Zielkonto fuer Follow, Likes, Kommentare, Chat und User-Runs.";
           return `
             <article class="heart-setup-tool-card">
               <div class="heart-setup-tool-card__top">
@@ -141,16 +147,14 @@ function renderPersonaCards(setupState = {}) {
                 <p class="heart-eyebrow">${escapeHtml(label)}</p>
                 <strong>${escapeHtml(persona.displayName || `Heart ${label}`)}</strong>
                 <p>${escapeHtml(persona.email || "Noch nicht angelegt.")}</p>
+                <p class="heart-setup-inline-note">${escapeHtml(purpose)}</p>
                 ${persona.handle ? `<p class="heart-setup-inline-note">Handle: ${escapeHtml(persona.handle)}</p>` : ""}
                 ${persona.password ? `<p class="heart-setup-inline-note">Passwort: ${escapeHtml(persona.password)}</p>` : ""}
                 ${persona.updatedAt ? `<p class="heart-setup-inline-note">Aktualisiert: ${escapeHtml(formatDateTime(persona.updatedAt))}</p>` : ""}
               </div>
               <div class="heart-setup-tool-card__actions">
                 <button class="heart-button heart-button--secondary" data-action="provision-setup-personas" data-personas="${escapeHtml(key)}" ${setupData.restaurantId ? "" : "disabled"} ${isBusy ? "disabled" : ""}>
-                  ${isBusy ? "Erstellt..." : "Erstellen"}
-                </button>
-                <button class="heart-icon-square-button" data-action="delete-setup-persona" data-persona-key="${escapeHtml(key)}" aria-label="${escapeHtml(label)} loeschen" ${persona.managed ? "" : "disabled"}>
-                  ${renderHeartIcon("trash")}
+                  ${isBusy ? "Aktualisiert..." : "Erstellen / aktualisieren"}
                 </button>
               </div>
             </article>
@@ -176,6 +180,10 @@ function renderSetupNotes(setupData = {}) {
           <p>Heart speichert jetzt Konten, QR-Link und Pack-Konfiguration so, dass der Runner sie ueber das Heart-Backend abrufen kann.</p>
         </article>
         <article class="heart-note-card">
+          <strong>Zielkonten bleiben bestehen</strong>
+          <p>CEO, Business und Nutzer werden als feste Heart-Zielkonten wiederverwendet. Heart aktualisiert sie bei Bedarf, statt sie jedes Mal neu zu loeschen.</p>
+        </article>
+        <article class="heart-note-card">
           <strong>Live-Zahlen brauchen weiterhin echte Quellen</strong>
           <p>Aktive Nutzer, QR-Scans und Live-Besucher erscheinen erst dann, wenn Heart dafuer eine vorhandene Analytics- oder Presence-Quelle lesen darf.</p>
         </article>
@@ -185,8 +193,8 @@ function renderSetupNotes(setupData = {}) {
         </article>
         ${setupData.syntheticIsolationKeyReady ? `
           <article class="heart-note-card">
-            <strong>Isolierter Schreibmodus ist vorbereitet</strong>
-            <p>Heart hat einen Isolationsschluessel hinterlegt. Wenn du den Schreibmodus aktivierst, koennen Mutation-Packs echte Erstellen- und Bearbeiten-Schritte fahren.</p>
+            <strong>Schreibmodus ist vorbereitet</strong>
+            <p>Heart hat einen Isolationsschluessel hinterlegt. Wenn du den Schreibmodus aktivierst, koennen Business-, User- und Gast-Runs echte Erstellen-, Bestell- und Interaktionsschritte fahren.</p>
           </article>
         ` : ""}
       </div>

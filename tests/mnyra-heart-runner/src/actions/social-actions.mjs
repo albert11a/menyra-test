@@ -12,6 +12,7 @@ import {
   waitForText
 } from "../helpers/social-app.mjs";
 import { getSocialDefaultTabs } from "../helpers/social-app.mjs";
+import { runUiLayoutCheck } from "./ui-actions.mjs";
 import {
   hasRequiredConfig,
   markGuarded,
@@ -21,6 +22,27 @@ import {
 } from "./common-actions.mjs";
 
 const SOCIAL_TABS = getSocialDefaultTabs();
+
+function asText(value, fallback = "") {
+  const text = String(value || "").trim();
+  return text || fallback;
+}
+
+function resolveSocialTargetProfileUrl(env = {}, persona = {}, preferredUrl = "") {
+  const socialConfig = env.packConfig?.actions?.social || {};
+  if (persona?.key === "business") {
+    return asText(
+      socialConfig.userTargetProfile?.url,
+      preferredUrl,
+      socialConfig.businessProfile?.url
+    );
+  }
+  return asText(
+    socialConfig.businessProfile?.url,
+    preferredUrl,
+    socialConfig.userTargetProfile?.url
+  );
+}
 
 async function runConfiguredSocialMutation({
   page,
@@ -84,12 +106,22 @@ export async function runSocialSurfaceChecks({ page, env, heart, persona } = {})
       moduleKey: "feed",
       note: "Feed wurde geoeffnet."
     });
+    await runUiLayoutCheck(page, heart, {
+      persona,
+      viewLabel: "Feed",
+      action: "ui feed layout"
+    });
   }, "Feed konnte nicht geoeffnet werden");
 
   await runSurface("profile", "profile open", async () => {
     await openSocialTab(page, persona, heart, SOCIAL_TABS.profile, {
       moduleKey: "profile",
       note: "Profil wurde geoeffnet."
+    });
+    await runUiLayoutCheck(page, heart, {
+      persona,
+      viewLabel: "Profil",
+      action: "ui profile layout"
     });
   }, "Profil konnte nicht geoeffnet werden");
 
@@ -100,6 +132,11 @@ export async function runSocialSurfaceChecks({ page, env, heart, persona } = {})
         moduleKey: "business",
         note: "Business-Profil wurde ueber die konfigurierte URL geoeffnet.",
         absolute: businessProfileUrl
+      });
+      await runUiLayoutCheck(page, heart, {
+        persona,
+        viewLabel: "Business-Profil",
+        action: "ui business profile layout"
       });
     }, "Business-Profil konnte nicht geoeffnet werden");
   } else {
@@ -115,6 +152,11 @@ export async function runSocialSurfaceChecks({ page, env, heart, persona } = {})
       moduleKey: "menu",
       note: "Menue wurde geoeffnet."
     });
+    await runUiLayoutCheck(page, heart, {
+      persona,
+      viewLabel: "Menue",
+      action: "ui menu layout"
+    });
   }, "Menue konnte nicht geoeffnet werden");
 
   await runSurface("chat", "chat open", async () => {
@@ -122,11 +164,17 @@ export async function runSocialSurfaceChecks({ page, env, heart, persona } = {})
       moduleKey: "chat",
       note: "Chat wurde geoeffnet."
     });
+    await runUiLayoutCheck(page, heart, {
+      persona,
+      viewLabel: "Chat",
+      action: "ui chat layout"
+    });
   }, "Chat konnte nicht geoeffnet werden");
 }
 
-export async function runUserSocialMutationChecks({ page, env, heart, persona } = {}) {
+export async function runSocialInteractionChecks({ page, env, heart, persona, includePostCreate = false } = {}) {
   const socialConfig = env.packConfig?.actions?.social || {};
+  const followTargetUrl = resolveSocialTargetProfileUrl(env, persona, socialConfig.follow?.url);
 
   await runConfiguredSocialMutation({
     page,
@@ -135,10 +183,13 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
     persona,
     moduleKey: "profile",
     actionLabel: "Follow action",
-    config: socialConfig.follow,
+    config: {
+      ...socialConfig.follow,
+      url: followTargetUrl
+    },
     requiredKeys: ["url", "triggerSelector"],
     perform: async () => {
-      await openPageAndWait(page, socialConfig.follow.url, "body", heart, {
+      await openPageAndWait(page, followTargetUrl, "body", heart, {
         title: "User / Open follow target",
         moduleKey: "profile",
         area: "profile",
@@ -254,63 +305,71 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
     }
   });
 
-  await runConfiguredSocialMutation({
-    page,
-    env,
-    heart,
-    persona,
-    moduleKey: "feed",
-    actionLabel: "Post create",
-    config: socialConfig.postCreate,
-    requiredKeys: ["url", "inputSelector", "submitSelector"],
-    perform: async () => {
-      await openPageAndWait(page, socialConfig.postCreate.url, "body", heart, {
-        title: "User / Open post composer target",
-        moduleKey: "feed",
-        area: "feed",
-        persona: persona.key
-      });
-      if (socialConfig.postCreate.openSelector) {
-        await clickIfPresent(page, socialConfig.postCreate.openSelector);
+  if (includePostCreate) {
+    await runConfiguredSocialMutation({
+      page,
+      env,
+      heart,
+      persona,
+      moduleKey: "feed",
+      actionLabel: "Post create",
+      config: socialConfig.postCreate,
+      requiredKeys: ["url", "inputSelector", "submitSelector"],
+      perform: async () => {
+        await openPageAndWait(page, socialConfig.postCreate.url, "body", heart, {
+          title: "User / Open post composer target",
+          moduleKey: "feed",
+          area: "feed",
+          persona: persona.key
+        });
+        if (socialConfig.postCreate.openSelector) {
+          await clickIfPresent(page, socialConfig.postCreate.openSelector);
+        }
+        const postText = replaceRunTokens(
+          socialConfig.postCreate.messageTemplate || "TEST_RUN_<runId>_POST_1",
+          env
+        );
+        const filePath = path.isAbsolute(String(socialConfig.postCreate.filePath || "").trim())
+          ? String(socialConfig.postCreate.filePath || "").trim()
+          : path.resolve(env.rootDir, String(socialConfig.postCreate.filePath || "apps/mnyra-heart/assets/icon-192.png").trim());
+        const fileSelected = await setInputFilesIfPresent(
+          page,
+          socialConfig.postCreate.fileInputSelector || "#uploadFileInput",
+          filePath
+        );
+        if (!fileSelected) {
+          throw new Error("Heart konnte kein Upload-Feld fuer den Feed-Post finden.");
+        }
+        await fillIfPresent(page, socialConfig.postCreate.inputSelector, postText);
+        await clickIfPresent(page, socialConfig.postCreate.submitSelector);
+        await waitForSelectorToDisappear(page, socialConfig.postCreate.inputSelector, 30000).catch(() => undefined);
+        if (socialConfig.postCreate.verifyText) {
+          await waitForText(page, replaceRunTokens(socialConfig.postCreate.verifyText, env), 30000);
+        }
+        heart.addCreatedEntity({
+          id: postText,
+          type: "post",
+          label: postText,
+          status: "success",
+          summary: "Test-Beitrag wurde erstellt.",
+          cleanupStatus: "pending",
+          module: "feed",
+          persona: persona.key
+        });
+        heart.passModule("feed", "Beitrag wurde erstellt.", {
+          action: "post create",
+          persona: persona.key,
+          area: "feed"
+        });
       }
-      const postText = replaceRunTokens(
-        socialConfig.postCreate.messageTemplate || "TEST_RUN_<runId>_POST_1",
-        env
-      );
-      const filePath = path.isAbsolute(String(socialConfig.postCreate.filePath || "").trim())
-        ? String(socialConfig.postCreate.filePath || "").trim()
-        : path.resolve(env.rootDir, String(socialConfig.postCreate.filePath || "apps/mnyra-heart/assets/icon-192.png").trim());
-      const fileSelected = await setInputFilesIfPresent(
-        page,
-        socialConfig.postCreate.fileInputSelector || "#uploadFileInput",
-        filePath
-      );
-      if (!fileSelected) {
-        throw new Error("Heart konnte kein Upload-Feld fuer den Feed-Post finden.");
-      }
-      await fillIfPresent(page, socialConfig.postCreate.inputSelector, postText);
-      await clickIfPresent(page, socialConfig.postCreate.submitSelector);
-      await waitForSelectorToDisappear(page, socialConfig.postCreate.inputSelector, 30000).catch(() => undefined);
-      if (socialConfig.postCreate.verifyText) {
-        await waitForText(page, replaceRunTokens(socialConfig.postCreate.verifyText, env), 30000);
-      }
-      heart.addCreatedEntity({
-        id: postText,
-        type: "post",
-        label: postText,
-        status: "success",
-        summary: "Test-Beitrag wurde erstellt.",
-        cleanupStatus: "pending",
-        module: "feed",
-        persona: persona.key
-      });
-      heart.passModule("feed", "Beitrag wurde erstellt.", {
-        action: "post create",
-        persona: persona.key,
-        area: "feed"
-      });
-    }
-  });
+    });
+  } else {
+    markSkipped(heart, "feed", "Foto-Post wird in diesem Lauf nicht separat angelegt.", {
+      action: "post create",
+      persona: persona.key,
+      area: "feed"
+    });
+  }
 
   markSkipped(heart, "profile", "Unfollow wird im Heart-Runner noch nicht separat gefahren.", {
     action: "unfollow",
@@ -331,5 +390,15 @@ export async function runUserSocialMutationChecks({ page, env, heart, persona } 
     action: "post delete",
     persona: persona.key,
     area: "feed"
+  });
+}
+
+export async function runUserSocialMutationChecks({ page, env, heart, persona } = {}) {
+  await runSocialInteractionChecks({
+    page,
+    env,
+    heart,
+    persona,
+    includePostCreate: true
   });
 }

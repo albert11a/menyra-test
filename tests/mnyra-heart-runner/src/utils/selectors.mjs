@@ -23,6 +23,8 @@ export const SOCIAL_TABS = Object.freeze({
   profile: "profile",
   menu: "menu",
   orders: "orders",
+  search: "search",
+  map: "map",
   chat: "chat",
   leads: "leads"
 });

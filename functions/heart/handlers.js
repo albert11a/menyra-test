@@ -599,21 +599,9 @@ async function heartProvisionAccounts(req, res) {
 async function heartDeleteProvisionedPersona(req, res) {
   const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
   if (!authResult.ok) return;
-  const body = parseRequestJson(req);
-  const currentSetup = await providers.getSetup();
-  const nextSetup = await deleteProvisionedPersona({
-    db,
-    setup: currentSetup,
-    personaKey: asText(body.personaKey),
-    restaurantId: asText(currentSetup.restaurantId)
+  sendJson(res, 409, {
+    error: "Heart-Zielkonten bleiben dauerhaft bestehen und koennen nicht mehr aus Heart geloescht werden."
   });
-  const baseUrls = deriveAppBaseUrls(req, currentSetup);
-  const saved = await providers.saveSetup(deriveSetupPatch({
-    setup: nextSetup,
-    socialBaseUrl: baseUrls.socialBaseUrl,
-    waiterBaseUrl: baseUrls.waiterBaseUrl
-  }));
-  sendJson(res, 200, { setup: saved });
 }
 
 async function heartUpdateRunArchive(req, res) {

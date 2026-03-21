@@ -46,15 +46,29 @@ function buildChatRouteUrl(baseUrl = "", targetUid = "") {
   }
 }
 
+function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
+  const configPersonas = env.packConfig?.personas || {};
+  const socialConfig = env.packConfig?.actions?.social || {};
+  if (persona?.key === "business") {
+    const userPersona = configPersonas.user || {};
+    return {
+      targetUid: asText(sendConfig.userTargetUid, userPersona.uid, sendConfig.targetUid),
+      targetProfileUrl: asText(sendConfig.userTargetProfileUrl, socialConfig.userTargetProfile?.url, sendConfig.targetProfileUrl)
+    };
+  }
+  const businessPersona = configPersonas.business || {};
+  return {
+    targetUid: asText(sendConfig.targetUid, businessPersona.uid),
+    targetProfileUrl: asText(sendConfig.targetProfileUrl, socialConfig.businessProfile?.url, socialConfig.userTargetProfile?.url)
+  };
+}
+
 async function ensureChatComposerReady(page, env, sendConfig = {}, heart, persona) {
   const composerSelector = asText(sendConfig.composerSelector, "#chatMessageInput");
   const threadViewSelector = asText(sendConfig.threadViewSelector, "#chatThreadView");
   const messagesSelector = asText(sendConfig.messagesSelector, "#chatMessages");
-  const businessPersona = env.packConfig?.personas?.business || {};
-  const threadTargetUid = asText(
-    sendConfig.targetUid,
-    businessPersona.uid
-  );
+  const targetContext = resolveChatTargetContext(env, persona, sendConfig);
+  const threadTargetUid = asText(targetContext.targetUid);
   const threadTargetUrls = uniqueList(
     sendConfig.threadUrl,
     buildChatRouteUrl(sendConfig.url, threadTargetUid)
@@ -97,6 +111,7 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
   }
 
   const targetUrls = uniqueList(
+    targetContext.targetProfileUrl,
     sendConfig.targetProfileUrl,
     env.packConfig?.actions?.social?.userTargetProfile?.url,
     env.packConfig?.actions?.social?.businessProfile?.url
