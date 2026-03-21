@@ -32,6 +32,30 @@ export function bindHeartEvents({
       operations.toggleQuickActions?.();
       return;
     }
+    if (action === "toggle-run-launcher") {
+      operations.toggleRunLauncher?.();
+      return;
+    }
+    if (action === "open-run-guide") {
+      operations.openRunGuide?.(target.getAttribute("data-pack-key"));
+      return;
+    }
+    if (action === "start-pack-from-guide") {
+      await operations.startPackFromGuide?.(target.getAttribute("data-pack-key"));
+      return;
+    }
+    if (action === "open-run-detail") {
+      await operations.openRunDetail?.(target.getAttribute("data-run-id"));
+      return;
+    }
+    if (action === "toggle-run-detail-more") {
+      operations.toggleRunDetailMore?.();
+      return;
+    }
+    if (action === "close-modal") {
+      operations.closeModal?.();
+      return;
+    }
     if (action === "refresh-heart") {
       await operations.refresh?.();
       return;

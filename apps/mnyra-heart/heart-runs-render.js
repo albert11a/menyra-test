@@ -1,9 +1,14 @@
 import {
+  getHeartPack
+} from "/shared/heart-pack-catalog.js";
+import {
+  renderHeartIcon
+} from "./heart-icons.js";
+import {
   escapeHtml,
   formatDateTime,
   formatDuration,
   formatRelative,
-  formatStatusCount,
   getArtifactKindLabel,
   getGithubRunnerNote,
   getModuleLabel,
@@ -27,37 +32,117 @@ const FALLBACK_PACK_ACTIONS = Object.freeze([
   { id: "journey-pack", packKey: "journey-pack", action: "start-pack", label: "Journey-Test starten" }
 ]);
 
+const PRIMARY_START_PACKS = Object.freeze(["smoke", "full-platform-pack"]);
+const ACTIVE_STATUSES = new Set(["queued", "running"]);
+const TERMINAL_STATUSES = new Set(["success", "warning", "failed", "critical", "cancelled", "skipped", "not_configured", "guarded"]);
+
+const GUIDE_CONTENT = Object.freeze({
+  smoke: {
+    eyebrow: "Schneller Sicherheitslauf",
+    title: "Schnelltest",
+    summary: "Heart prueft die wichtigsten Wege in kurzer Zeit, ohne unnoetig tief in Live-Schreibpfade zu gehen.",
+    sections: [
+      {
+        icon: "shield",
+        title: "CEO-Zugang und sichere Grundpfade",
+        body: "Anmeldung, Feed, Profil, Business, Menue, Warenkorb, Bestellungen, Chat, CRM und PWA werden schnell gegengeprueft."
+      },
+      {
+        icon: "clock",
+        title: "Ideal fuer den Tagesstart",
+        body: "Der Lauf ist kurz gehalten und eignet sich gut fuer den ersten Statuscheck vor Betrieb, Updates oder Support."
+      },
+      {
+        icon: "image",
+        title: "Nachweise und Klartext",
+        body: "Wenn etwas schiefgeht, siehst du im Lauf Screenshots, Ablaufspuren und eine klare Zusammenfassung statt technischem Rauschen."
+      },
+      {
+        icon: "triangle",
+        title: "Zeigt ehrlich, was fehlt",
+        body: "Falls Konten, Links oder Selektoren fehlen, meldet Heart offen Einrichtung fehlt, Geschuetzt oder Uebersprungen."
+      }
+    ]
+  },
+  "full-platform-pack": {
+    eyebrow: "Groesser Gesamtlauf",
+    title: "Kompletttest",
+    summary: "Heart prueft alle wichtigen Rollen, sammelt Nachweise und zeigt klar, was erstellt, geprueft und aufgeraeumt wurde.",
+    sections: [
+      {
+        icon: "users",
+        title: "Alle Rollen in einem Lauf",
+        body: "CEO, Business, Service, Nutzer und Gast / QR werden nacheinander geprueft, damit du das System als Ganzes siehst."
+      },
+      {
+        icon: "bot",
+        title: "Mehr Tiefe als der Schnelltest",
+        body: "Heart prueft ueber mehrere Oberflaechen hinweg und sammelt deutlich mehr Kontext zu Bereichen, Rollen und Nachweisen."
+      },
+      {
+        icon: "broom",
+        title: "Erstellte Daten und Aufraeumen",
+        body: "Wo sichere Regeln vorhanden sind, protokolliert Heart genau, was erzeugt und was wieder entfernt wurde."
+      },
+      {
+        icon: "scan",
+        title: "Gast- und QR-Wege eingeschlossen",
+        body: "Menue, Warenkorb und Bestellfluss werden ueber echte Gast- oder QR-Einstiege validiert, wenn die Konfiguration vollstaendig ist."
+      }
+    ]
+  }
+});
+
 function getPackActions(quickActions = []) {
   const startActions = quickActions.filter((item) => item.action === "start-pack");
   return startActions.length ? startActions : FALLBACK_PACK_ACTIONS;
 }
 
-function renderRunSummaryList(items = [], selectedRunId = "") {
-  if (!items.length) {
-    return renderEmptyState({
-      title: "Noch keine Laeufe vorhanden.",
-      message: "Sobald du einen Test startest, erscheint hier der Verlauf mit Status, Beweisen und Aufraeuminfos."
-    });
-  }
-  return `
-    <div class="heart-run-list">
-      ${items.map((item) => {
-        const selected = String(item.id || "") === String(selectedRunId || "");
-        return `
-          <button class="heart-run-row ${selected ? "heart-run-row--active" : ""}" data-action="open-run" data-run-id="${escapeHtml(item.id)}">
-            <div>
-              <strong>${escapeHtml(getPackLabel(item.packKey, item.packLabel, item.mode))}</strong>
-              <p>${escapeHtml(item.summary || "Keine Zusammenfassung vorhanden.")}</p>
-            </div>
-            <div class="heart-run-row__meta">
-              ${renderStatusBadge(item.status || "idle")}
-              <span>${escapeHtml(item.startedAt ? formatRelative(item.startedAt) : "-")}</span>
-            </div>
-          </button>
-        `;
-      }).join("")}
-    </div>
-  `;
+function getPrimaryPackCards(quickActions = []) {
+  const actionsByKey = new Map(
+    getPackActions(quickActions).map((item) => [String(item.packKey || item.id), item])
+  );
+  return PRIMARY_START_PACKS.map((packKey) => {
+    const action = actionsByKey.get(packKey) || {};
+    const pack = getHeartPack(packKey);
+    return {
+      key: pack.key,
+      title: pack.title,
+      label: action.label || pack.label,
+      summary: action.note || pack.summary,
+      level: pack.level,
+      areas: Array.isArray(pack.areas) ? pack.areas : [],
+      personas: Array.isArray(pack.personas) ? pack.personas : [],
+      icon: pack.key === "full-platform-pack" ? "sparkle" : "activity"
+    };
+  });
+}
+
+function getSortedRuns(items = []) {
+  return [...items].sort((left, right) => {
+    const leftValue = String(left.startedAt || left.endedAt || "");
+    const rightValue = String(right.startedAt || right.endedAt || "");
+    return rightValue.localeCompare(leftValue);
+  });
+}
+
+function getLatestActiveRun(items = []) {
+  return getSortedRuns(items).find((item) => ACTIVE_STATUSES.has(String(item.status || "").toLowerCase())) || null;
+}
+
+function getLatestCompletedRun(items = []) {
+  return getSortedRuns(items).find((item) => TERMINAL_STATUSES.has(String(item.status || "").toLowerCase())) || null;
+}
+
+function getRecentCompletedRuns(items = [], excludeRunId = "") {
+  return getSortedRuns(items)
+    .filter((item) => TERMINAL_STATUSES.has(String(item.status || "").toLowerCase()) && String(item.id || "") !== String(excludeRunId || ""))
+    .slice(0, 5);
+}
+
+function formatBuildValue(value = "") {
+  const text = String(value || "").trim();
+  return text ? text.slice(0, 7) : "-";
 }
 
 function renderTimeline(detail = {}) {
@@ -157,29 +242,6 @@ function renderAreaResults(detail = {}) {
             <span>${escapeHtml(module.personas?.map((persona) => getPersonaLabel(persona)).join(", ") || "-")}</span>
             <span>${escapeHtml(module.lastCheckAt ? formatRelative(module.lastCheckAt) : "Noch keine Pruefung")}</span>
           </div>
-          ${module.counts && Object.keys(module.counts).length ? `
-            <div class="heart-list-card__meta">
-              ${Object.entries(module.counts)
-                .filter(([, value]) => Number(value) > 0)
-                .map(([status, value]) => escapeHtml(formatStatusCount(status, value)))
-                .join(" | ")}
-            </div>
-          ` : ""}
-          ${module.checks?.length ? `<div class="heart-list-stack">${module.checks.slice(-4).map((check) => `
-            <article class="heart-list-card">
-              <div class="heart-list-card__head">
-                <div>
-                  <strong>${escapeHtml(check.action || "Pruefung")}</strong>
-                  <p>${escapeHtml(check.note || "Keine Details vorhanden.")}</p>
-                </div>
-                ${renderStatusBadge(check.status || "idle")}
-              </div>
-              <div class="heart-list-card__meta">
-                <span>${escapeHtml(getModuleLabel(check.area || module.module, check.area || module.module || "-"))}</span>
-                <span>${escapeHtml(getPersonaLabel(check.persona, check.persona || "-"))}</span>
-              </div>
-            </article>
-          `).join("")}</div>` : ""}
         </article>
       `).join("")}
     </div>
@@ -221,14 +283,9 @@ function renderArtifacts(detail = {}) {
       message: "Beweisbilder, Ablaufspuren und Berichte erscheinen hier, sobald der Runner sie hochlaedt oder verlinkt."
     });
   }
-  const artifacts = detail.artifacts.slice().sort((left, right) => {
-    const leftPriority = left.kind === "screenshot" ? 0 : 1;
-    const rightPriority = right.kind === "screenshot" ? 0 : 1;
-    return leftPriority - rightPriority;
-  });
   return `
     <div class="heart-artifact-list">
-      ${artifacts.map((artifact) => `
+      ${detail.artifacts.map((artifact) => `
         <a class="heart-artifact-link" href="${escapeHtml(artifact.url || "#")}" target="_blank" rel="noreferrer">
           <span>
             <strong>${escapeHtml(artifact.label || "Datei")}</strong>
@@ -241,158 +298,449 @@ function renderArtifacts(detail = {}) {
   `;
 }
 
-function renderDetailPanel(detail = null, detailStatus = "idle", detailError = "") {
-  if (detailStatus === "loading") {
-    return `<section class="heart-section"><div class="heart-loading-block">Laufdetails werden geladen...</div></section>`;
+function getRunInfoText(detail = {}) {
+  const label = getPackLabel(detail.packKey, detail.packLabel, detail.mode);
+  const passed = Math.max(0, Number(detail.passedChecks) || 0);
+  const failed = Math.max(0, Number(detail.failedChecks) || 0);
+  const artifacts = Array.isArray(detail.artifacts) ? detail.artifacts.length : 0;
+  const cleanupSummary = String(detail.cleanup?.summary || "").trim();
+
+  if (ACTIVE_STATUSES.has(String(detail.status || "").toLowerCase())) {
+    return `Run laeuft gerade. Heart prueft ${label}, sammelt Nachweise und aktualisiert diesen Stand automatisch, sobald neue Schritte eintreffen.`;
   }
-  if (detailStatus === "error") {
-    return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(detailError || "Laufdetails konnten nicht geladen werden.")}</div></section>`;
+  if (String(detail.status || "").toLowerCase() === "success") {
+    return `Run ist fertig. Heart hat ${label} abgeschlossen, ${passed} Punkte erfolgreich geprueft, ${failed} Probleme markiert und ${artifacts} Nachweise gesammelt.${cleanupSummary ? ` ${cleanupSummary}` : ""}`;
   }
-  if (!detail) {
+  if (String(detail.status || "").toLowerCase() === "warning") {
+    return `Run ist fertig. ${label} wurde abgeschlossen, aber Heart hat Hinweise gefunden. Schau in Ablauf, Nachweise und Fehlhinweise fuer den genauen Kontext.`;
+  }
+  return `Run ist fertig. ${label} wurde beendet und Heart zeigt dir hier klar, was geprueft, was gefunden und was eventuell noch eingerichtet werden muss.`;
+}
+
+function renderModalSection(icon, eyebrow, title, body) {
+  return `
+    <section class="heart-modal-section">
+      <div class="heart-modal-section__head">
+        <span class="heart-modal-section__icon">${renderHeartIcon(icon)}</span>
+        <div>
+          <p class="heart-eyebrow">${escapeHtml(eyebrow)}</p>
+          <h3>${escapeHtml(title)}</h3>
+        </div>
+      </div>
+      ${body}
+    </section>
+  `;
+}
+
+function renderLaunchCard(runsState = {}, connections = [], quickActions = []) {
+  const runnerConfigured = isGithubRunnerConfigured(connections);
+  const disabledAttr = runsState.pendingAction || !runnerConfigured ? "disabled" : "";
+  const cards = getPrimaryPackCards(quickActions);
+  const note = runnerConfigured
+    ? "Heart kann sichere Laeufe starten. Waehle den passenden Run und lies dir bei Bedarf vorher genau durch, was geprueft wird."
+    : `Runner noch nicht bereit. ${getGithubRunnerNote(connections)}`;
+
+  return `
+    <section class="heart-section heart-run-start-card">
+      <div class="heart-run-start-card__bar">
+        <div class="heart-run-start-card__title">
+          <button class="heart-icon-square-button" data-action="toggle-run-launcher" aria-label="${runsState.launcherExpanded ? "Run-Auswahl schliessen" : "Run-Auswahl oeffnen"}">
+            ${renderHeartIcon(runsState.launcherExpanded ? "x" : "plus")}
+          </button>
+          <div>
+            <strong>Run Starten</strong>
+            <p>${escapeHtml(runsState.pendingAction ? "Heart bereitet gerade einen Lauf vor." : "Waehle einen sicheren Heart-Lauf.")}</p>
+          </div>
+        </div>
+        <button class="heart-icon-square-button" data-action="refresh-heart" aria-label="Status neu laden">
+          ${renderHeartIcon("refresh")}
+        </button>
+      </div>
+      ${runsState.launcherExpanded ? `
+        <div class="heart-run-start-grid">
+          ${cards.map((card) => `
+            <article class="heart-run-option-card ${card.key === "full-platform-pack" ? "heart-run-option-card--accent" : ""}">
+              <div class="heart-run-option-card__top">
+                <span class="heart-run-option-card__icon">${renderHeartIcon(card.icon)}</span>
+                <button class="heart-icon-button heart-icon-button--inline" data-action="open-run-guide" data-pack-key="${escapeHtml(card.key)}" aria-label="${escapeHtml(card.title)} erklaeren">
+                  ${renderHeartIcon("info")}
+                </button>
+              </div>
+              <div class="heart-run-option-card__body">
+                <strong>${escapeHtml(card.title)}</strong>
+                <p>${escapeHtml(card.summary)}</p>
+              </div>
+              <div class="heart-run-option-card__meta">
+                <span>${escapeHtml(card.level.replace("level_", "Level "))}</span>
+                <span>${escapeHtml(card.personas.map((persona) => getPersonaLabel(persona)).join(", "))}</span>
+              </div>
+              <button class="heart-button heart-button--secondary heart-button--wide" data-action="open-run-guide" data-pack-key="${escapeHtml(card.key)}" ${disabledAttr}>
+                Mehr erfahren
+              </button>
+            </article>
+          `).join("")}
+        </div>
+      ` : ""}
+      <p class="heart-section__note">${escapeHtml(note)}</p>
+    </section>
+  `;
+}
+
+function renderPreparingRunCard(runsState = {}) {
+  if (!runsState.pendingAction) return "";
+  return `
+    <section class="heart-section heart-active-run-card heart-active-run-card--preparing">
+      <div class="heart-active-run-card__head">
+        <div>
+          <p class="heart-eyebrow">Aktiver Run</p>
+          <h2>Run wird vorbereitet</h2>
+        </div>
+        <span class="heart-active-run-card__time">Jetzt</span>
+      </div>
+      <div class="heart-active-run-card__center">
+        <div class="heart-run-pulse" aria-hidden="true"></div>
+        <strong>${escapeHtml(getPackLabel(runsState.pendingAction))}</strong>
+        <p>Heart uebergibt den Lauf an den sicheren Runner und laedt den ersten Status automatisch nach.</p>
+      </div>
+    </section>
+  `;
+}
+
+function renderActiveRunCard(activeRun = null) {
+  if (!activeRun) return "";
+  return `
+    <section class="heart-section heart-active-run-card">
+      <div class="heart-active-run-card__head">
+        <div>
+          <p class="heart-eyebrow">Aktiver Run</p>
+          <h2>${escapeHtml(getPackLabel(activeRun.packKey, activeRun.packLabel, activeRun.mode))}</h2>
+        </div>
+        <span class="heart-active-run-card__time">${escapeHtml(activeRun.startedAt ? formatRelative(activeRun.startedAt) : "Jetzt")}</span>
+      </div>
+      <div class="heart-active-run-card__center">
+        <div class="heart-run-pulse" aria-hidden="true"></div>
+        ${renderStatusBadge(activeRun.status || "running")}
+        <strong>${escapeHtml(activeRun.currentStep || "Heart arbeitet gerade am Lauf.")}</strong>
+        <p>${escapeHtml(activeRun.summary || "Heart sammelt Status, Nachweise und Bereichsergebnisse.")}</p>
+      </div>
+    </section>
+  `;
+}
+
+function renderLatestResultCard(resultRun = null) {
+  if (!resultRun) {
     return renderEmptyState({
-      title: "Waehle einen Lauf aus.",
-      message: "Dann siehst du hier Ablauf, Beweisbilder, Testdaten und Aufraeumstatus."
+      title: "Noch kein fertiger Run.",
+      message: "Sobald ein Lauf beendet ist, erscheint hier die kompakte Auswertung mit direktem Detailzugriff."
     });
   }
   return `
-    <div class="heart-view-stack">
-      <section class="heart-section">
-        <div class="heart-section__head">
-          <div>
-            <p class="heart-eyebrow">Laufdetails</p>
-            <h2>${escapeHtml(getPackLabel(detail.packKey, detail.packLabel, detail.mode))}</h2>
-          </div>
-          <div class="heart-header-actions">
-            ${renderStatusBadge(detail.status || "idle")}
-            ${detail.github?.htmlUrl ? `<a class="heart-button heart-button--secondary" href="${escapeHtml(detail.github.htmlUrl)}" target="_blank" rel="noreferrer">GitHub-Lauf</a>` : ""}
-            ${["queued", "running"].includes(detail.status || "") ? `<button class="heart-button heart-button--secondary" data-action="cancel-run" data-run-id="${escapeHtml(detail.id)}">Abbrechen</button>` : ""}
-          </div>
+    <section class="heart-section heart-run-result-card">
+      <div class="heart-run-result-card__head">
+        <div>
+          <p class="heart-eyebrow">Run Details</p>
+          <h2>${escapeHtml(getPackLabel(resultRun.packKey, resultRun.packLabel, resultRun.mode))}</h2>
         </div>
-        <div class="heart-detail-grid">
-          <div><span>Test</span><strong>${escapeHtml(getPackLabel(detail.packKey, detail.packLabel, detail.mode))}</strong></div>
-          <div><span>Stufe</span><strong>${escapeHtml(detail.packLevel || "-")}</strong></div>
-          <div><span>Status</span><strong>${escapeHtml(detail.status || "idle")}</strong></div>
-          <div><span>Gestartet</span><strong>${escapeHtml(detail.startedAt ? formatDateTime(detail.startedAt) : "-")}</strong></div>
-          <div><span>Beendet</span><strong>${escapeHtml(detail.endedAt ? formatDateTime(detail.endedAt) : "-")}</strong></div>
-          <div><span>Dauer</span><strong>${escapeHtml(formatDuration(detail.durationMs || 0))}</strong></div>
-          <div><span>Pruefungen</span><strong>${escapeHtml(`${detail.passedChecks || 0} ok / ${detail.failedChecks || 0} problematisch`)}</strong></div>
-          <div><span>Build</span><strong>${escapeHtml(detail.build || detail.branch || "-")}</strong></div>
-          <div><span>Gerade</span><strong>${escapeHtml(detail.currentStep || "-")}</strong></div>
-        </div>
-        ${renderStatusBreakdown(detail)}
-        <p class="heart-detail-summary">${escapeHtml(detail.summary || "Keine Zusammenfassung vorhanden.")}</p>
-        ${detail.personas?.length ? `<p class="heart-section__note">Rollen in diesem Lauf: ${escapeHtml(detail.personas.map((persona) => getPersonaLabel(persona)).join(", "))}</p>` : ""}
-        ${renderRunSetupSummary(detail)}
-        <p class="heart-section__note">Einrichtung fehlt bedeutet: Daten, Links oder Selektoren fehlen. Geschuetzt bedeutet: Heart koennte den Schritt spaeter ausfuehren, darf aber in diesem Lauf absichtlich noch nicht live schreiben.</p>
-      </section>
-      <section class="heart-section">
-        <div class="heart-section__head"><div><p class="heart-eyebrow">Bereiche</p><h2>Was geklappt hat und was fehlt</h2></div></div>
-        ${renderAreaResults(detail)}
-      </section>
-      <section class="heart-section">
-        <div class="heart-section__head"><div><p class="heart-eyebrow">Ablauf</p><h2>Schritt fuer Schritt</h2></div></div>
-        ${renderTimeline(detail)}
-      </section>
-      <div class="heart-two-column-grid">
-        <section class="heart-section">
-          <div class="heart-section__head"><div><p class="heart-eyebrow">Erstellte Daten</p><h2>Was Heart angelegt hat</h2></div></div>
-          ${renderCreatedEntities(detail)}
-        </section>
-        <section class="heart-section">
-          <div class="heart-section__head"><div><p class="heart-eyebrow">Aufraeumen</p><h2>Was Heart wieder entfernt hat</h2></div></div>
-          <div class="heart-cleanup-box">
-            <div class="heart-cleanup-box__head">
-              ${renderStatusBadge(detail.cleanup?.status || "idle")}
-              <strong>${escapeHtml(detail.cleanup?.summary || "Keine Aufraeuminformation vorhanden.")}</strong>
-            </div>
-            <p class="heart-section__note">Wenn du spaeter ein echtes "Clear" willst, braucht Heart fuer jeden erzeugten Datentyp sichere Loeschregeln oder Admin-Pfade.</p>
-            ${detail.cleanup?.items?.length ? `<div class="heart-list-stack">${detail.cleanup.items.map((item) => `
-              <article class="heart-list-card">
-                <div class="heart-list-card__head">
-                  <div>
-                    <strong>${escapeHtml(item.label || item.id || "Aufraeum-Schritt")}</strong>
-                    <p>${escapeHtml(item.note || "Keine Details vorhanden.")}</p>
-                  </div>
-                  ${renderStatusBadge(item.status || "idle")}
-                </div>
-              </article>
-            `).join("")}</div>` : ""}
-          </div>
-        </section>
+        ${renderStatusBadge(resultRun.status || "idle")}
       </div>
-      <div class="heart-two-column-grid">
-        <section class="heart-section">
-          <div class="heart-section__head"><div><p class="heart-eyebrow">Nachweise</p><h2>Beweisbilder und Dateien</h2></div></div>
-          ${renderArtifacts(detail)}
-        </section>
-        <section class="heart-section">
-          <div class="heart-section__head"><div><p class="heart-eyebrow">Probleme</p><h2>Wichtige Fehlhinweise</h2></div></div>
-          ${detail.failureDetails?.length ? `
-            <div class="heart-list-stack">
-              ${detail.failureDetails.map((item) => `
-                <article class="heart-list-card">
-                  <div class="heart-list-card__head">
-                    <div>
-                      <strong>${escapeHtml(item.title || "Problem")}</strong>
-                      <p>${escapeHtml(item.message || item.module || "Keine Details vorhanden.")}</p>
-                    </div>
-                    ${renderSeverityBadge(item.severity || "warning")}
-                  </div>
-                  <div class="heart-list-card__meta">
-                    <span>${escapeHtml(getModuleLabel(item.area || item.module, item.area || item.module || "-"))}</span>
-                    <span>${escapeHtml(item.action || "-")}</span>
-                    <span>${escapeHtml(getPersonaLabel(item.persona, item.persona || "-"))}</span>
-                  </div>
-                </article>
-              `).join("")}
+      <p class="heart-run-result-card__summary">${escapeHtml(resultRun.summary || "Keine Zusammenfassung vorhanden.")}</p>
+      <div class="heart-run-result-card__meta">
+        <span>${escapeHtml(resultRun.endedAt ? formatDateTime(resultRun.endedAt) : resultRun.startedAt ? formatDateTime(resultRun.startedAt) : "-")}</span>
+        <span>${escapeHtml(formatDuration(resultRun.durationMs || 0))}</span>
+      </div>
+      <button class="heart-button heart-button--secondary" data-action="open-run-detail" data-run-id="${escapeHtml(resultRun.id)}">
+        Details
+      </button>
+    </section>
+  `;
+}
+
+function renderHistoryCards(items = []) {
+  if (!items.length) return "";
+  return `
+    <section class="heart-section">
+      <div class="heart-section__head">
+        <div>
+          <p class="heart-eyebrow">Weitere Laeufe</p>
+          <h2>Verlauf</h2>
+        </div>
+      </div>
+      <div class="heart-list-stack">
+        ${items.map((item) => `
+          <article class="heart-list-card heart-list-card--action">
+            <div class="heart-list-card__head">
+              <div>
+                <strong>${escapeHtml(getPackLabel(item.packKey, item.packLabel, item.mode))}</strong>
+                <p>${escapeHtml(item.summary || "Keine Zusammenfassung vorhanden.")}</p>
+              </div>
+              ${renderStatusBadge(item.status || "idle")}
             </div>
-          ` : renderEmptyState({ title: "Keine Problem-Details.", message: "Wenn ein Lauf sauber durchgeht, bleibt dieser Bereich leer." })}
-        </section>
+            <div class="heart-list-card__meta">
+              <span>${escapeHtml(item.startedAt ? formatRelative(item.startedAt) : "-")}</span>
+              <span>${escapeHtml(formatDuration(item.durationMs || 0))}</span>
+            </div>
+            <button class="heart-button heart-button--secondary" data-action="open-run-detail" data-run-id="${escapeHtml(item.id)}">
+              Details
+            </button>
+          </article>
+        `).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderRunGuideModal(packKey = "", runsState = {}) {
+  const pack = getHeartPack(packKey);
+  const guide = GUIDE_CONTENT[pack.key] || GUIDE_CONTENT.smoke;
+  const loading = String(runsState.pendingAction || "") === pack.key;
+  return `
+    <div class="heart-modal">
+      <button class="heart-modal__backdrop" data-action="close-modal" aria-label="Modal schliessen"></button>
+      <div class="heart-modal__sheet heart-modal__sheet--guide" role="dialog" aria-modal="true" aria-labelledby="heartRunGuideTitle">
+        <div class="heart-modal__header">
+          <div>
+            <p class="heart-eyebrow">${escapeHtml(guide.eyebrow)}</p>
+            <h2 id="heartRunGuideTitle">${escapeHtml(guide.title)}</h2>
+          </div>
+          <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+        </div>
+        <p class="heart-modal__lead">${escapeHtml(guide.summary || pack.summary)}</p>
+        <div class="heart-run-guide-grid">
+          ${guide.sections.map((section) => `
+            <article class="heart-run-guide-card">
+              <span class="heart-run-guide-card__icon">${renderHeartIcon(section.icon)}</span>
+              <strong>${escapeHtml(section.title)}</strong>
+              <p>${escapeHtml(section.body)}</p>
+            </article>
+          `).join("")}
+        </div>
+        ${renderModalSection("users", "Rollen", "Diese Rollen sind inbegriffen", `
+          <div class="heart-chip-row">
+            ${pack.personas.map((persona) => `<span class="heart-chip">${escapeHtml(getPersonaLabel(persona))}</span>`).join("")}
+          </div>
+        `)}
+        ${renderModalSection("grid", "Bereiche", "Was Heart in diesem Run anfasst", `
+          <div class="heart-chip-row">
+            ${pack.areas.map((area) => `<span class="heart-chip">${escapeHtml(getModuleLabel(area, area))}</span>`).join("")}
+          </div>
+        `)}
+        ${renderModalSection("triangle", "Wichtig", "Bevor du startest", `
+          <div class="heart-note-grid heart-note-grid--compact">
+            <article class="heart-note-card">
+              <strong>Einrichtung muss ehrlich sein</strong>
+              <p>Fehlende Konten, QR-Links oder Selektoren werden nicht gruen gefaerbt, sondern klar als fehlend oder geschuetzt markiert.</p>
+            </article>
+            <article class="heart-note-card">
+              <strong>Nachweise bleiben sichtbar</strong>
+              <p>Screenshots, Ablaufspuren und Berichte bleiben im Laufdetail sichtbar. Ein echtes serverseitiges Loeschen braucht spaeter eine Clear-API.</p>
+            </article>
+          </div>
+        `)}
+        <div class="heart-modal__footer">
+          <button class="heart-button heart-button--primary heart-button--wide" data-action="start-pack-from-guide" data-pack-key="${escapeHtml(pack.key)}" ${loading ? "disabled" : ""}>
+            ${loading ? "Startet..." : "Run starten"}
+          </button>
+        </div>
       </div>
     </div>
   `;
 }
 
-export function renderRunsView(runsState = {}, connections = [], quickActions = []) {
-  const items = Array.isArray(runsState.items) ? runsState.items : [];
-  const runnerConfigured = isGithubRunnerConfigured(connections);
-  const disabledAttr = runsState.pendingAction || !runnerConfigured ? "disabled" : "";
-  const runnerNote = runnerConfigured
-    ? "Der GitHub-Runner ist bereit. Du kannst Heart-Tests direkt starten."
-    : `Runner noch nicht bereit. ${getGithubRunnerNote(connections)}`;
-  const packActions = getPackActions(quickActions);
+function renderRunDetailModal(runsState = {}) {
+  if (runsState.detailStatus === "loading") {
+    return `
+      <div class="heart-modal">
+        <button class="heart-modal__backdrop" data-action="close-modal" aria-label="Modal schliessen"></button>
+        <div class="heart-modal__sheet" role="dialog" aria-modal="true">
+          <div class="heart-modal__header">
+            <div><p class="heart-eyebrow">Run Details</p><h2>Laufdetails werden geladen</h2></div>
+            <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+          </div>
+          <div class="heart-loading-block">Heart laedt die kompletten Laufdetails...</div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (runsState.detailStatus === "error") {
+    return `
+      <div class="heart-modal">
+        <button class="heart-modal__backdrop" data-action="close-modal" aria-label="Modal schliessen"></button>
+        <div class="heart-modal__sheet" role="dialog" aria-modal="true">
+          <div class="heart-modal__header">
+            <div><p class="heart-eyebrow">Run Details</p><h2>Details konnten nicht geladen werden</h2></div>
+            <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
+          </div>
+          <div class="heart-error-block">${escapeHtml(runsState.detailError || "Laufdetails konnten nicht geladen werden.")}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const detail = runsState.detail;
+  if (!detail) return "";
+
   return `
-    <div class="heart-view-stack">
-      <section class="heart-section">
-        <div class="heart-section__head">
+    <div class="heart-modal">
+      <button class="heart-modal__backdrop" data-action="close-modal" aria-label="Modal schliessen"></button>
+      <div class="heart-modal__sheet heart-modal__sheet--detail" role="dialog" aria-modal="true" aria-labelledby="heartRunDetailTitle">
+        <div class="heart-modal__header">
           <div>
-            <p class="heart-eyebrow">Tests starten</p>
-            <h2>Alle Heart-Laeufe</h2>
+            <p class="heart-eyebrow">Run Details</p>
+            <h2 id="heartRunDetailTitle">${escapeHtml(getPackLabel(detail.packKey, detail.packLabel, detail.mode))}</h2>
           </div>
-          <div class="heart-header-actions">
-            <button class="heart-button heart-button--secondary" data-action="refresh-heart">Status neu laden</button>
+          <div class="heart-modal__header-actions">
+            <button class="heart-icon-button heart-icon-button--ghost" disabled title="Loeschen folgt erst mit einer sicheren Heart-Clear-API." aria-label="Loeschen noch nicht verfuegbar">
+              ${renderHeartIcon("trash")}
+            </button>
+            <button class="heart-icon-button" data-action="close-modal" aria-label="Modal schliessen">${renderHeartIcon("x")}</button>
           </div>
         </div>
-        <div class="heart-control-grid">
-          ${packActions.map((item, index) => `<button class="heart-button ${index === 0 ? "heart-button--primary" : item.packKey === "full-platform-pack" || item.packKey === "mutation-pack" ? "heart-button--dark" : "heart-button--secondary"}" data-action="start-pack" data-pack-key="${escapeHtml(item.packKey || item.id)}" ${disabledAttr}>${escapeHtml(item.label || `Starte ${getPackLabel(item.packKey || item.id)}`)}</button>`).join("")}
+        <p class="heart-modal__lead">${escapeHtml(getRunInfoText(detail))}</p>
+        <div class="heart-run-detail-top">
+          <div class="heart-run-detail-top__status">
+            ${renderStatusBadge(detail.status || "idle")}
+            <span>${escapeHtml(detail.endedAt ? formatDateTime(detail.endedAt) : detail.startedAt ? formatDateTime(detail.startedAt) : "-")}</span>
+          </div>
+          <div class="heart-run-score-grid">
+            <div class="heart-run-score-card">
+              <span>OK</span>
+              <strong class="heart-run-score-card__value heart-run-score-card__value--success">${escapeHtml(String(detail.passedChecks || 0))}</strong>
+            </div>
+            <div class="heart-run-score-card">
+              <span>Probleme</span>
+              <strong class="heart-run-score-card__value heart-run-score-card__value--danger">${escapeHtml(String(detail.failedChecks || 0))}</strong>
+            </div>
+          </div>
         </div>
-        <div class="heart-run-status-strip">
-          <span>${escapeHtml(runsState.pendingAction ? `Aktion laeuft: ${runsState.pendingAction}` : "Keine Aktion offen.")}</span>
-          <span>${escapeHtml(runsState.lastRefreshAt ? `Zuletzt aktualisiert ${formatRelative(runsState.lastRefreshAt)}` : "Noch nicht aktualisiert.")}</span>
+        <div class="heart-run-detail-facts">
+          <div><span>Run</span><strong>${escapeHtml(getPackLabel(detail.packKey, detail.packLabel, detail.mode))}</strong></div>
+          <div><span>Stufe</span><strong>${escapeHtml(detail.packLevel || "-")}</strong></div>
+          <div><span>Status</span><strong>${escapeHtml(detail.status || "idle")}</strong></div>
+          <div><span>Datum und Uhrzeit</span><strong>${escapeHtml(detail.startedAt ? formatDateTime(detail.startedAt) : "-")}</strong></div>
+          <div><span>Dauer</span><strong>${escapeHtml(formatDuration(detail.durationMs || 0))}</strong></div>
+          <div><span>Build</span><strong>${escapeHtml(formatBuildValue(detail.build || detail.branch || ""))}</strong></div>
         </div>
-        <p class="heart-section__note">${escapeHtml(runnerNote)}</p>
-      </section>
-      <div class="heart-runs-layout">
-        <section class="heart-section">
-          <div class="heart-section__head"><div><p class="heart-eyebrow">Verlauf</p><h2>Letzte Laeufe</h2></div></div>
-          ${runsState.status === "loading"
-            ? `<div class="heart-loading-block">Verlauf wird geladen...</div>`
-            : runsState.status === "error"
-              ? `<div class="heart-error-block">${escapeHtml(runsState.error || "Verlauf konnte nicht geladen werden.")}</div>`
-              : renderRunSummaryList(items, runsState.selectedRunId)}
-        </section>
-        ${renderDetailPanel(runsState.detail, runsState.detailStatus, runsState.detailError)}
+        <div class="heart-run-detail-overview">
+          <article class="heart-run-overview-card">
+            <span class="heart-run-overview-card__icon">${renderHeartIcon("grid")}</span>
+            <strong>Bereiche</strong>
+            <p>${escapeHtml(`${detail.modules?.length || 0} Bereiche mit Ergebnis`)}</p>
+          </article>
+          <article class="heart-run-overview-card">
+            <span class="heart-run-overview-card__icon">${renderHeartIcon("users")}</span>
+            <strong>Rollen</strong>
+            <p>${escapeHtml(detail.personas?.map((persona) => getPersonaLabel(persona)).join(", ") || "Keine Rolle")}</p>
+          </article>
+          <article class="heart-run-overview-card">
+            <span class="heart-run-overview-card__icon">${renderHeartIcon("image")}</span>
+            <strong>Nachweise</strong>
+            <p>${escapeHtml(`${detail.artifacts?.length || 0} Dateien`)}</p>
+          </article>
+          <article class="heart-run-overview-card">
+            <span class="heart-run-overview-card__icon">${renderHeartIcon("broom")}</span>
+            <strong>Aufraeumen</strong>
+            <p>${escapeHtml(detail.cleanup?.summary || "Keine Aufraeuminfo")}</p>
+          </article>
+        </div>
+        <button class="heart-button heart-button--secondary heart-button--wide" data-action="toggle-run-detail-more" aria-expanded="${runsState.detailExpanded ? "true" : "false"}">
+          ${runsState.detailExpanded ? "Weniger zeigen" : "Mehr laden"}
+        </button>
+        ${runsState.detailExpanded ? `
+          <div class="heart-view-stack heart-run-detail-expanded">
+            ${renderModalSection("activity", "Bereiche", "Was geprueft wurde", renderAreaResults(detail))}
+            ${renderModalSection("clock", "Ablauf", "Schritt fuer Schritt", renderTimeline(detail))}
+            ${renderModalSection("bot", "Erstellte Daten", "Was Heart angelegt hat", renderCreatedEntities(detail))}
+            ${renderModalSection("broom", "Aufgeraumt", "Was Heart wieder entfernt hat", `
+              <div class="heart-cleanup-box">
+                <div class="heart-cleanup-box__head">
+                  ${renderStatusBadge(detail.cleanup?.status || "idle")}
+                  <strong>${escapeHtml(detail.cleanup?.summary || "Keine Aufraeuminformation vorhanden.")}</strong>
+                </div>
+                ${detail.cleanup?.items?.length ? `<div class="heart-list-stack">${detail.cleanup.items.map((item) => `
+                  <article class="heart-list-card">
+                    <div class="heart-list-card__head">
+                      <div>
+                        <strong>${escapeHtml(item.label || item.id || "Aufraeum-Schritt")}</strong>
+                        <p>${escapeHtml(item.note || "Keine Details vorhanden.")}</p>
+                      </div>
+                      ${renderStatusBadge(item.status || "idle")}
+                    </div>
+                  </article>
+                `).join("")}</div>` : `<p class="heart-section__note">Noch keine einzelnen Aufraeumschritte protokolliert.</p>`}
+              </div>
+            `)}
+            ${renderModalSection("image", "Nachweise", "Beweisbilder und Dateien", renderArtifacts(detail))}
+            ${renderModalSection("triangle", "Wichtige Fehlhinweise", "Was auffaellig war", detail.failureDetails?.length ? `
+              <div class="heart-list-stack">
+                ${detail.failureDetails.map((item) => `
+                  <article class="heart-list-card">
+                    <div class="heart-list-card__head">
+                      <div>
+                        <strong>${escapeHtml(item.title || "Problem")}</strong>
+                        <p>${escapeHtml(item.message || item.module || "Keine Details vorhanden.")}</p>
+                      </div>
+                      ${renderSeverityBadge(item.severity || "warning")}
+                    </div>
+                    <div class="heart-list-card__meta">
+                      <span>${escapeHtml(getModuleLabel(item.area || item.module, item.area || item.module || "-"))}</span>
+                      <span>${escapeHtml(item.action || "-")}</span>
+                      <span>${escapeHtml(getPersonaLabel(item.persona, item.persona || "-"))}</span>
+                    </div>
+                  </article>
+                `).join("")}
+              </div>
+            ` : renderEmptyState({ title: "Keine Problem-Details.", message: "Wenn ein Lauf sauber durchgeht, bleibt dieser Bereich leer." }))}
+            ${renderModalSection("shield", "Setup", "Wie gut dieser Run vorbereitet war", `
+              ${renderRunSetupSummary(detail)}
+              <div class="heart-run-breakdown-box">${renderStatusBreakdown(detail)}</div>
+            `)}
+          </div>
+        ` : ""}
       </div>
     </div>
   `;
+}
+
+export function getRunsHeaderState(runsState = {}) {
+  const items = Array.isArray(runsState.items) ? runsState.items : [];
+  const reference = runsState.detail || getLatestActiveRun(items) || items[0] || null;
+  return {
+    title: "RUN",
+    status: reference?.status || "idle"
+  };
+}
+
+export function renderRunsView(runsState = {}, connections = [], quickActions = []) {
+  const items = Array.isArray(runsState.items) ? runsState.items : [];
+  const activeRun = getLatestActiveRun(items);
+  const latestResult = getLatestCompletedRun(items);
+  const history = getRecentCompletedRuns(items, latestResult?.id);
+
+  if (runsState.status === "loading" && !items.length) {
+    return `<div class="heart-loading-block">Laeufe werden geladen...</div>`;
+  }
+  if (runsState.status === "error" && !items.length) {
+    return `<div class="heart-error-block">${escapeHtml(runsState.error || "Laeufe konnten nicht geladen werden.")}</div>`;
+  }
+
+  return `
+    <div class="heart-view-stack heart-runs-view">
+      ${renderLaunchCard(runsState, connections, quickActions)}
+      ${activeRun ? renderActiveRunCard(activeRun) : renderPreparingRunCard(runsState)}
+      ${renderLatestResultCard(latestResult)}
+      ${renderHistoryCards(history)}
+    </div>
+  `;
+}
+
+export function renderRunsModal(runsState = {}, modal = {}) {
+  const kind = String(modal.kind || "").trim();
+  if (kind === "run-guide") {
+    return renderRunGuideModal(modal.packKey || "smoke", runsState);
+  }
+  if (kind === "run-detail") {
+    return renderRunDetailModal(runsState);
+  }
+  return "";
 }

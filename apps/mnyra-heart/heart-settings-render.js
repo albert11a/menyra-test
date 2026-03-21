@@ -1,9 +1,34 @@
 import {
+  renderHeartIcon
+} from "./heart-icons.js";
+import {
   escapeHtml,
   formatDateTime,
   renderEmptyState,
   renderStatusBadge
 } from "./heart-ui-utils.js";
+
+function renderSetupToolCard({
+  icon = "settings",
+  eyebrow = "",
+  title = "",
+  body = "",
+  status = "not_configured"
+} = {}) {
+  return `
+    <article class="heart-setup-tool-card">
+      <div class="heart-setup-tool-card__top">
+        <span class="heart-setup-tool-card__icon">${renderHeartIcon(icon)}</span>
+        ${renderStatusBadge(status)}
+      </div>
+      <div class="heart-setup-tool-card__body">
+        <p class="heart-eyebrow">${escapeHtml(eyebrow)}</p>
+        <strong>${escapeHtml(title)}</strong>
+        <p>${escapeHtml(body)}</p>
+      </div>
+    </article>
+  `;
+}
 
 export function renderSettingsView(items = []) {
   return `
@@ -11,8 +36,60 @@ export function renderSettingsView(items = []) {
       <section class="heart-section">
         <div class="heart-section__head">
           <div>
-            <p class="heart-eyebrow">Verbindungen</p>
-            <h2>System und Setup</h2>
+            <p class="heart-eyebrow">Einrichtung</p>
+            <h2>Was Heart noch braucht</h2>
+          </div>
+        </div>
+        <div class="heart-setup-tool-grid">
+          ${renderSetupToolCard({
+            icon: "users",
+            eyebrow: "Testkonten",
+            title: "CEO, Business, Service und Nutzer",
+            body: "Heart erstellt diese Konten heute noch nicht selbst. Fuer volle Runs muessen stabile Testkonten als Secrets bereitliegen.",
+            status: "not_configured"
+          })}
+          ${renderSetupToolCard({
+            icon: "scan",
+            eyebrow: "Gast / QR",
+            title: "Echter Menue- oder QR-Link",
+            body: "Fuer Gast-, Warenkorb- und Bestelltests braucht Heart einen echten QR- oder Menue-Link mit funktionierender Speisekarte.",
+            status: "not_configured"
+          })}
+          ${renderSetupToolCard({
+            icon: "shield",
+            eyebrow: "Schreibmodus",
+            title: "Sicherer Live-Mutationsmodus",
+            body: "Bestellungen, Erstellen und Loeschen laufen nur sauber, wenn der isolierte Schreibmodus bewusst freigegeben ist.",
+            status: "warning"
+          })}
+          ${renderSetupToolCard({
+            icon: "bot",
+            eyebrow: "Runner",
+            title: "GitHub Runner und Webhooks",
+            body: "Heart braucht den sicheren Runner, damit Starts, Status, Berichte und Screenshots ueber das Backend zusammenlaufen.",
+            status: items.some((item) => String(item.kind || "").toLowerCase() === "github" && String(item.mode || "").toLowerCase() === "real") ? "success" : "not_configured"
+          })}
+          ${renderSetupToolCard({
+            icon: "broom",
+            eyebrow: "Clear / Delete",
+            title: "Sichere Clear-API",
+            body: "Heart kann Nachweise und erzeugte Testdaten erst dann serverseitig loeschen, wenn pro Datentyp sichere Delete-Regeln existieren.",
+            status: "not_configured"
+          })}
+          ${renderSetupToolCard({
+            icon: "chart",
+            eyebrow: "Live Zahlen",
+            title: "Analytics fuer Nutzer, QR und Besucher",
+            body: "Aktive Nutzer, QR-Scans und Live-Besucher koennen erst erscheinen, wenn Heart eine echte Datenquelle dafuer lesen darf.",
+            status: "not_configured"
+          })}
+        </div>
+      </section>
+      <section class="heart-section">
+        <div class="heart-section__head">
+          <div>
+            <p class="heart-eyebrow">Systemstatus</p>
+            <h2>Technische Anbindungen</h2>
           </div>
         </div>
         ${items.length ? `
@@ -37,54 +114,28 @@ export function renderSettingsView(items = []) {
           </div>
         ` : renderEmptyState({
           title: "Noch kein Setup-Status vorhanden.",
-          message: "Sobald Heart die erste Systemabfrage geladen hat, siehst du hier Runner, Speicher und Monitoring."
+          message: "Sobald Heart die erste Systemabfrage geladen hat, siehst du hier Runner, Speicher und weitere Anbindungen."
         })}
       </section>
       <section class="heart-section">
         <div class="heart-section__head">
           <div>
-            <p class="heart-eyebrow">Wichtige Antworten</p>
-            <h2>Was Heart heute schon kann</h2>
+            <p class="heart-eyebrow">Klartext</p>
+            <h2>Woran Heart heute noch scheitern darf</h2>
           </div>
         </div>
         <div class="heart-note-grid">
           <article class="heart-note-card">
-            <strong>Erstellt Heart Konten selbst?</strong>
-            <p>Noch nicht automatisch. Heart nutzt vorbereitete Testkonten oder einen hinterlegten Gast- / QR-Link. Fuer vollautomatische Konto-Erstellung brauchen wir sichere Admin-Flows.</p>
+            <strong>Heart legt Konten noch nicht selbst an</strong>
+            <p>Ohne sichere Admin-Flows oder Backend-Endpoints waere automatisches Erstellen von CEO-, Business-, Service- oder Nutzerkonten nur geraten und nicht belastbar.</p>
           </article>
           <article class="heart-note-card">
-            <strong>Kann Heart alles wieder loeschen?</strong>
-            <p>Teilweise. Heart kann nur das automatisch aufraeumen, wofuer sichere Loeschregeln oder Admin-Pfade hinterlegt sind. Im Laufdetail siehst du genau, was erstellt und was schon wieder entfernt wurde.</p>
+            <strong>Heart speichert QR-Links heute noch nicht selbst</strong>
+            <p>Ein echter Gast- oder QR-Link muss momentan ausserhalb von Heart hinterlegt werden, sonst kann der Gastlauf nicht wirklich bis Bestellung pruefen.</p>
           </article>
           <article class="heart-note-card">
-            <strong>Wie laufen Gasttests?</strong>
-            <p>Immer ueber echte QR- oder Menue-Links. Deshalb muessen diese Links und die sichtbaren Menue- oder Warenkorbbereiche sauber hinterlegt sein, sonst meldet Heart "Einrichtung fehlt".</p>
-          </article>
-          <article class="heart-note-card">
-            <strong>Wo sehe ich den Beweis?</strong>
-            <p>In jedem Lauf unter Beweisbilder und Dateien. Dort liegen Screenshots, Ablaufspuren und Berichte, damit du nachvollziehen kannst, was Heart wirklich gemacht hat.</p>
-          </article>
-        </div>
-      </section>
-      <section class="heart-section">
-        <div class="heart-section__head">
-          <div>
-            <p class="heart-eyebrow">Technik in klar</p>
-            <h2>Wie Heart arbeitet</h2>
-          </div>
-        </div>
-        <div class="heart-note-grid">
-          <article class="heart-note-card">
-            <strong>Sicherer Teststart</strong>
-            <p>Browser -> Heart-Backend -> GitHub Actions. Dadurch liegt kein Runner-Token offen im Frontend.</p>
-          </article>
-          <article class="heart-note-card">
-            <strong>Lesen vor Schreiben</strong>
-            <p>Heart prueft standardmaessig zuerst sichere Lesepfade. Echte Schreibaktionen laufen nur im isolierten Modus, damit Live-Daten nicht aus Versehen veraendert werden.</p>
-          </article>
-          <article class="heart-note-card">
-            <strong>Klare Wahrheiten</strong>
-            <p>Heart zeigt bewusst "Einrichtung fehlt", "Geschuetzt" oder "Uebersprungen", statt einen falschen Erfolg vorzutaeuschen.</p>
+            <strong>Heart loescht noch nicht serverseitig auf Kommando</strong>
+            <p>Beweise und Testdaten koennen erst dann sicher per Papierkorb oder Clear geloescht werden, wenn eine echte Delete-API dafuer gebaut ist.</p>
           </article>
         </div>
       </section>

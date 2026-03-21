@@ -2,6 +2,9 @@ import {
   HEART_NAV_ITEMS
 } from "./heart-state.js";
 import {
+  renderHeartIcon
+} from "./heart-icons.js";
+import {
   escapeHtml,
   formatRelative,
   renderStatusBadge
@@ -10,6 +13,8 @@ import {
   renderDashboardView
 } from "./heart-dashboard-render.js";
 import {
+  getRunsHeaderState,
+  renderRunsModal,
   renderRunsView
 } from "./heart-runs-render.js";
 import {
@@ -35,76 +40,6 @@ const HEADER_QUICK_ACTIONS = Object.freeze([
   { kind: "nav", key: "connections", label: "Einrichtung", icon: "settings" },
   { kind: "action", action: "start-pack", packKey: "smoke", label: "Test", icon: "play", primary: true }
 ]);
-
-const ICONS = Object.freeze({
-  menu: `
-    <path d="M4 6h16"></path>
-    <path d="M4 12h16"></path>
-    <path d="M4 18h16"></path>
-  `,
-  x: `
-    <path d="M18 6 6 18"></path>
-    <path d="m6 6 12 12"></path>
-  `,
-  refresh: `
-    <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
-    <path d="M21 3v6h-6"></path>
-  `,
-  logout: `
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-    <path d="m16 17 5-5-5-5"></path>
-    <path d="M21 12H9"></path>
-  `,
-  home: `
-    <path d="M3 10.5 12 3l9 7.5"></path>
-    <path d="M5 9.5V21h14V9.5"></path>
-  `,
-  list: `
-    <path d="M8 6h13"></path>
-    <path d="M8 12h13"></path>
-    <path d="M8 18h13"></path>
-    <path d="M3 6h.01"></path>
-    <path d="M3 12h.01"></path>
-    <path d="M3 18h.01"></path>
-  `,
-  bell: `
-    <path d="M10.27 21a2 2 0 0 0 3.46 0"></path>
-    <path d="M3.26 15.33A2 2 0 0 0 5 18h14a2 2 0 0 0 1.74-2.67L18 8a6 6 0 1 0-12 0z"></path>
-  `,
-  grid: `
-    <rect x="3" y="3" width="7" height="7" rx="1.5"></rect>
-    <rect x="14" y="3" width="7" height="7" rx="1.5"></rect>
-    <rect x="14" y="14" width="7" height="7" rx="1.5"></rect>
-    <rect x="3" y="14" width="7" height="7" rx="1.5"></rect>
-  `,
-  settings: `
-    <path d="M12 3v2.25"></path>
-    <path d="M12 18.75V21"></path>
-    <path d="m4.93 4.93 1.59 1.59"></path>
-    <path d="m17.48 17.48 1.59 1.59"></path>
-    <path d="M3 12h2.25"></path>
-    <path d="M18.75 12H21"></path>
-    <path d="m4.93 19.07 1.59-1.59"></path>
-    <path d="m17.48 6.52 1.59-1.59"></path>
-    <circle cx="12" cy="12" r="3.25"></circle>
-  `,
-  play: `
-    <polygon points="8 5 19 12 8 19 8 5"></polygon>
-  `,
-  plus: `
-    <path d="M12 5v14"></path>
-    <path d="M5 12h14"></path>
-  `
-});
-
-function renderIcon(name = "home") {
-  const body = ICONS[name] || ICONS.home;
-  return `
-    <svg class="heart-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      ${body}
-    </svg>
-  `;
-}
 
 function getNavIcon(key = "") {
   const icons = {
@@ -178,7 +113,7 @@ function renderDrawerProfile(state, userName) {
         </div>
       </div>
       <button class="heart-drawer-action heart-drawer-action--logout" data-action="logout">
-        <span class="heart-drawer-action__icon">${renderIcon("logout")}</span>
+        <span class="heart-drawer-action__icon">${renderHeartIcon("logout")}</span>
         <span>Abmelden</span>
       </button>
     </div>
@@ -259,12 +194,28 @@ function renderViewBody(state) {
   return renderDashboardView(state.dashboard.data);
 }
 
+function getPageHeaderState(state) {
+  if (state.shell.activeView === "runs") {
+    const runsHeader = getRunsHeaderState(state.runs);
+    return {
+      eyebrow: "",
+      title: runsHeader.title,
+      status: runsHeader.status
+    };
+  }
+  return {
+    eyebrow: "Aktiver Bereich",
+    title: HEART_NAV_ITEMS.find((item) => item.key === state.shell.activeView)?.label || "Start",
+    status: state.dashboard.data?.overallStatus || "idle"
+  };
+}
+
 function renderDrawerNav(state) {
   return HEART_NAV_ITEMS.map((item) => {
     const isActive = state.shell.activeView === item.key;
     return `
       <button class="heart-nav-link ${isActive ? "heart-nav-link--active" : ""}" data-nav-key="${escapeHtml(item.key)}">
-        <span class="heart-nav-link__icon">${renderIcon(getNavIcon(item.key))}</span>
+        <span class="heart-nav-link__icon">${renderHeartIcon(getNavIcon(item.key))}</span>
         <span class="heart-nav-link__body">
           <span class="heart-nav-link__label">${escapeHtml(item.label)}</span>
           <span class="heart-nav-link__hint">${escapeHtml(NAV_HINTS[item.key] || "")}</span>
@@ -288,7 +239,7 @@ function renderHeaderQuickActions(state) {
         const label = escapeHtml(item.label);
         return `
           <button class="heart-header-quick__item ${isActive ? "heart-header-quick__item--active" : ""} ${extraClass}" ${attrs} aria-label="${label}" title="${label}" ${isOpen ? "" : 'tabindex="-1"'}>
-            <span class="heart-header-quick__icon">${renderIcon(item.icon)}</span>
+            <span class="heart-header-quick__icon">${renderHeartIcon(item.icon)}</span>
           </button>
         `;
       }).join("")}
@@ -301,7 +252,7 @@ function renderDrawer(state, userName) {
     <aside class="heart-sidebar">
       <div class="heart-sidebar__header">
         ${renderHeaderBrand("heart-brand-lockup--drawer")}
-        <button class="heart-icon-button" data-action="toggle-nav" aria-label="Menue schliessen">${renderIcon("x")}</button>
+        <button class="heart-icon-button" data-action="toggle-nav" aria-label="Menue schliessen">${renderHeartIcon("x")}</button>
       </div>
       <div class="heart-sidebar__content">
         <section class="heart-sidebar__panel">
@@ -312,11 +263,11 @@ function renderDrawer(state, userName) {
           <p class="heart-sidebar__label">Schnellaktionen</p>
           <div class="heart-sidebar__actions">
             <button class="heart-drawer-action" data-action="refresh-heart">
-              <span class="heart-drawer-action__icon">${renderIcon("refresh")}</span>
+              <span class="heart-drawer-action__icon">${renderHeartIcon("refresh")}</span>
               <span>Jetzt aktualisieren</span>
             </button>
             <button class="heart-drawer-action heart-drawer-action--primary" data-action="start-pack" data-pack-key="smoke">
-              <span class="heart-drawer-action__icon">${renderIcon("play")}</span>
+              <span class="heart-drawer-action__icon">${renderHeartIcon("play")}</span>
               <span>Schnelltest starten</span>
             </button>
             </div>
@@ -329,8 +280,7 @@ function renderDrawer(state, userName) {
 
 function renderShell(state) {
   const userName = state.auth.profile?.name || state.auth.user?.email || "CEO";
-  const overallStatus = state.dashboard.data?.overallStatus || "idle";
-  const activeLabel = HEART_NAV_ITEMS.find((item) => item.key === state.shell.activeView)?.label || "Start";
+  const pageHeader = getPageHeaderState(state);
   const timestamp = state.boot.lastUpdatedAt
     ? `Aktualisiert ${formatRelative(state.boot.lastUpdatedAt)}`
     : "Warte auf erste Synchronisation";
@@ -350,30 +300,31 @@ function renderShell(state) {
         <header class="heart-topbar ${quickActionsOpen ? "heart-topbar--quick-open" : ""}">
           <div class="heart-topbar__left">
             <div class="heart-topbar__menu-slot">
-              <button class="heart-icon-button heart-icon-button--menu" data-action="toggle-nav" aria-label="Menue oeffnen">${renderIcon("menu")}</button>
+              <button class="heart-icon-button heart-icon-button--menu" data-action="toggle-nav" aria-label="Menue oeffnen">${renderHeartIcon("menu")}</button>
             </div>
             ${renderHeaderBrand()}
           </div>
           <div class="heart-topbar__right">
             ${renderHeaderQuickActions(state)}
-            <button class="heart-icon-button" data-action="refresh-heart" aria-label="Aktualisieren">${renderIcon("refresh")}</button>
-            <button class="heart-icon-button heart-icon-button--quick-toggle ${quickActionsOpen ? "heart-icon-button--quick-toggle-open" : ""}" data-action="toggle-quick-actions" aria-label="${quickActionsOpen ? "Schnellaktionen schliessen" : "Schnellaktionen oeffnen"}" aria-expanded="${quickActionsOpen ? "true" : "false"}">${renderIcon("plus")}</button>
+            <button class="heart-icon-button" data-action="refresh-heart" aria-label="Aktualisieren">${renderHeartIcon("refresh")}</button>
+            <button class="heart-icon-button heart-icon-button--quick-toggle ${quickActionsOpen ? "heart-icon-button--quick-toggle-open" : ""}" data-action="toggle-quick-actions" aria-label="${quickActionsOpen ? "Schnellaktionen schliessen" : "Schnellaktionen oeffnen"}" aria-expanded="${quickActionsOpen ? "true" : "false"}">${renderHeartIcon("plus")}</button>
           </div>
         </header>
         <main class="heart-main-content">
           <section class="heart-page-header">
             <div>
-              <p class="heart-page-header__eyebrow">Aktiver Bereich</p>
-              <h1 class="heart-page-header__title">${escapeHtml(activeLabel)}</h1>
+              ${pageHeader.eyebrow ? `<p class="heart-page-header__eyebrow">${escapeHtml(pageHeader.eyebrow)}</p>` : ""}
+              <h1 class="heart-page-header__title">${escapeHtml(pageHeader.title)}</h1>
             </div>
-            <div class="heart-page-header__meta">
-              ${renderStatusBadge(overallStatus)}
+            <div class="heart-page-header__meta heart-page-header__meta--stacked">
+              ${renderStatusBadge(pageHeader.status)}
               <span class="heart-topbar__timestamp">${escapeHtml(timestamp)}</span>
             </div>
           </section>
           ${renderViewBody(state)}
         </main>
       </div>
+      ${state.shell.activeView === "runs" ? renderRunsModal(state.runs, state.shell.modal) : ""}
       ${state.shell.toast ? `
         <div class="heart-toast heart-toast--${escapeHtml(state.shell.toast.tone || "neutral")}">
           <strong>${escapeHtml(state.shell.toast.title || "Hinweis")}</strong>

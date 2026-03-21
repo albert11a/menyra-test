@@ -43,6 +43,8 @@ let authBootstrapSessionKey = "";
 let refreshAllPromise = null;
 let displayModeQuery = null;
 let displayModeCleanup = null;
+let runPollingTimer = null;
+const notifiedCompletedRunIds = new Set();
 
 function isStandaloneDisplayMode() {
   try {
@@ -52,7 +54,7 @@ function isStandaloneDisplayMode() {
 }
 
 function syncViewportSurface(state = store.getState()) {
-  const lockDocument = !!state.shell?.navOpen;
+  const lockDocument = !!state.shell?.navOpen || !!state.shell?.modal?.kind;
   document.documentElement.style.background = "#000000";
   document.body.style.background = "#000000";
   document.documentElement.style.overscrollBehaviorY = lockDocument ? "none" : "auto";
@@ -100,6 +102,60 @@ function setToast(title, message = "", tone = "neutral") {
   actions.setToast({ title, message, tone });
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => actions.setToast(null), 3600);
+}
+
+function isActiveRunStatus(status = "") {
+  return ["queued", "running"].includes(String(status || "").trim().toLowerCase());
+}
+
+function getActiveRunIds(state = store.getState()) {
+  return (state.runs.items || [])
+    .filter((item) => isActiveRunStatus(item?.status))
+    .map((item) => String(item.id || "").trim())
+    .filter(Boolean);
+}
+
+function getRefreshFocusRunId(state = store.getState()) {
+  return String(
+    state.shell.modal?.runId
+    || state.runs.selectedRunId
+    || state.runs.detail?.id
+    || state.runs.items?.[0]?.id
+    || ""
+  ).trim();
+}
+
+function syncRunPolling(state = store.getState()) {
+  const shouldPoll = state.auth.status === "authenticated" && getActiveRunIds(state).length > 0;
+  if (shouldPoll && !runPollingTimer) {
+    runPollingTimer = window.setInterval(() => {
+      refreshAll({ focusRunId: getRefreshFocusRunId(store.getState()) }).catch(() => {});
+    }, 6500);
+    return;
+  }
+  if (!shouldPoll && runPollingTimer) {
+    clearInterval(runPollingTimer);
+    runPollingTimer = null;
+  }
+}
+
+function notifyCompletedRuns(previous, current) {
+  const previousActiveIds = getActiveRunIds(previous);
+  const currentActiveIds = new Set(getActiveRunIds(current));
+  previousActiveIds
+    .filter((runId) => !currentActiveIds.has(runId))
+    .forEach((runId) => {
+      if (notifiedCompletedRunIds.has(runId)) return;
+      const finishedRun = (current.runs.items || []).find((item) => String(item.id || "") === runId);
+      if (!finishedRun || isActiveRunStatus(finishedRun.status)) return;
+      const tone = ["failed", "critical"].includes(String(finishedRun.status || "").toLowerCase())
+        ? "danger"
+        : String(finishedRun.status || "").toLowerCase() === "warning"
+          ? "warning"
+          : "success";
+      setToast("Run ist fertig", `${findPackLabel(finishedRun.packKey || finishedRun.mode)} ist fertig.`, tone);
+      notifiedCompletedRunIds.add(runId);
+    });
 }
 
 async function refreshDashboard() {
@@ -187,11 +243,14 @@ function findPackLabel(packKey = "") {
 
 async function startRun(packKey = "smoke") {
   const label = findPackLabel(packKey);
+  actions.setActiveView("runs");
+  actions.closeModal();
+  actions.setRunsLauncherExpanded(false);
+  actions.setRunDetailExpanded(false);
   actions.setPendingRunAction(packKey);
   try {
     const payload = await testRunnerAdapter.startPackRun(packKey);
     setToast(`${label}`, `${label} wurde an den sicheren Runner uebergeben.`, "success");
-    actions.setActiveView("runs");
     await refreshAll({ focusRunId: payload?.run?.id || "" });
   } catch (error) {
     if (String(error?.message || "").includes("GitHub Actions integration is not configured")) {
@@ -248,8 +307,21 @@ const operations = {
   async startPack(packKey) {
     await startRun(packKey);
   },
+  async startPackFromGuide(packKey) {
+    await startRun(packKey);
+  },
   async openRun(runId) {
     actions.setActiveView("runs");
+    actions.setSelectedRun(runId);
+    actions.setRunDetailLoading();
+    actions.setModal({ kind: "run-detail", runId });
+    await ensureRunDetail(runId);
+  },
+  async openRunDetail(runId) {
+    actions.setActiveView("runs");
+    actions.setSelectedRun(runId);
+    actions.setRunDetailLoading();
+    actions.setModal({ kind: "run-detail", runId });
     await ensureRunDetail(runId);
   },
   async cancelRun(runId) {
@@ -264,6 +336,19 @@ const operations = {
   toggleQuickActions() {
     actions.setQuickActionsOpen(!store.getState().shell.quickActionsOpen);
   },
+  toggleRunLauncher() {
+    actions.setRunsLauncherExpanded(!store.getState().runs.launcherExpanded);
+  },
+  openRunGuide(packKey) {
+    actions.setRunsLauncherExpanded(true);
+    actions.setModal({ kind: "run-guide", packKey });
+  },
+  toggleRunDetailMore() {
+    actions.setRunDetailExpanded(!store.getState().runs.detailExpanded);
+  },
+  closeModal() {
+    actions.closeModal();
+  },
   setIncidentFilter(key, value) {
     actions.setIncidentFilter(key, value);
   }
@@ -274,6 +359,9 @@ bindHeartEvents({ root, operations });
 store.subscribe((state) => {
   renderHeartApp(root, state);
   syncViewportSurface(state);
+  syncRunPolling(state);
+
+  notifyCompletedRuns(previousState, state);
 
   const authChanged = previousState.auth.status !== state.auth.status
     || previousState.auth.user?.uid !== state.auth.user?.uid
@@ -313,4 +401,8 @@ if ("serviceWorker" in navigator) {
 window.addEventListener("beforeunload", () => {
   authController.destroy();
   destroyViewportObservers();
+  if (runPollingTimer) {
+    clearInterval(runPollingTimer);
+    runPollingTimer = null;
+  }
 });

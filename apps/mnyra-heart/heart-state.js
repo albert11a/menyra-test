@@ -31,7 +31,12 @@ export function createHeartInitialState() {
       quickActionsOpen: false,
       standalone: false,
       mobileNavHidden: false,
-      toast: null
+      toast: null,
+      modal: {
+        kind: "",
+        packKey: "",
+        runId: ""
+      }
     },
     dashboard: {
       status: DEFAULT_STATUS,
@@ -47,7 +52,9 @@ export function createHeartInitialState() {
       detailError: "",
       detail: null,
       pendingAction: "",
-      lastRefreshAt: ""
+      lastRefreshAt: "",
+      launcherExpanded: false,
+      detailExpanded: false
     },
     incidents: {
       status: DEFAULT_STATUS,
@@ -156,6 +163,11 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.shell.activeView = String(viewKey || "dashboard");
       draft.shell.navOpen = false;
       draft.shell.quickActionsOpen = false;
+      draft.shell.modal = { kind: "", packKey: "", runId: "" };
+      if (draft.shell.activeView !== "runs") {
+        draft.runs.launcherExpanded = false;
+        draft.runs.detailExpanded = false;
+      }
     });
   }
 
@@ -172,6 +184,26 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.shell.quickActionsOpen = nextValue;
       if (nextValue) draft.shell.navOpen = false;
+    });
+  }
+
+  function setModal(modal = {}) {
+    patch((draft) => {
+      draft.shell.modal = {
+        kind: String(modal.kind || "").trim(),
+        packKey: String(modal.packKey || "").trim(),
+        runId: String(modal.runId || "").trim()
+      };
+      draft.shell.navOpen = false;
+      draft.shell.quickActionsOpen = false;
+      draft.runs.detailExpanded = false;
+    });
+  }
+
+  function closeModal() {
+    patch((draft) => {
+      draft.shell.modal = { kind: "", packKey: "", runId: "" };
+      draft.runs.detailExpanded = false;
     });
   }
 
@@ -311,6 +343,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     patch((draft) => {
       draft.runs.selectedRunId = String(runId || "").trim();
       draft.runs.detailError = "";
+      draft.runs.detailExpanded = false;
     });
   }
 
@@ -326,6 +359,7 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.runs.detailStatus = "ready";
       draft.runs.detailError = "";
       draft.runs.detail = detail || null;
+      draft.runs.detailExpanded = false;
       if (detail?.id) draft.runs.selectedRunId = String(detail.id);
     });
   }
@@ -340,6 +374,18 @@ export function createHeartStore(initialState = createHeartInitialState()) {
   function setPendingRunAction(actionKey) {
     patch((draft) => {
       draft.runs.pendingAction = String(actionKey || "").trim();
+    });
+  }
+
+  function setRunsLauncherExpanded(expanded) {
+    patch((draft) => {
+      draft.runs.launcherExpanded = !!expanded;
+    });
+  }
+
+  function setRunDetailExpanded(expanded) {
+    patch((draft) => {
+      draft.runs.detailExpanded = !!expanded;
     });
   }
 
@@ -403,6 +449,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setActiveView,
       setNavOpen,
       setQuickActionsOpen,
+      setModal,
+      closeModal,
       setStandaloneMode,
       setMobileNavHidden,
       setBootReady,
@@ -424,6 +472,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setRunDetailData,
       setRunDetailError,
       setPendingRunAction,
+      setRunsLauncherExpanded,
+      setRunDetailExpanded,
       setIncidentsLoading,
       setIncidentsData,
       setIncidentsError,

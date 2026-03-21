@@ -1683,3 +1683,533 @@ body {
   }
 
 }
+
+.heart-page-header__meta--stacked {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.heart-runs-view {
+  gap: 18px;
+}
+
+.heart-run-start-card,
+.heart-active-run-card,
+.heart-run-result-card {
+  display: grid;
+  gap: 16px;
+}
+
+.heart-run-start-card__bar,
+.heart-run-start-card__title,
+.heart-run-option-card__top,
+.heart-run-result-card__head,
+.heart-active-run-card__head,
+.heart-modal__header,
+.heart-modal__header-actions,
+.heart-modal-section__head,
+.heart-run-detail-top,
+.heart-run-detail-top__status,
+.heart-run-result-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.heart-run-start-card__bar,
+.heart-run-result-card__head,
+.heart-active-run-card__head,
+.heart-modal__header,
+.heart-modal-section__head,
+.heart-run-detail-top {
+  justify-content: space-between;
+}
+
+.heart-run-start-card__title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.heart-run-start-card__title strong,
+.heart-run-option-card__body strong,
+.heart-run-guide-card strong,
+.heart-run-overview-card strong,
+.heart-run-score-card span,
+.heart-modal-section h3 {
+  display: block;
+}
+
+.heart-run-start-card__title strong {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.heart-run-start-card__title p,
+.heart-run-option-card__body p,
+.heart-run-guide-card p,
+.heart-run-overview-card p,
+.heart-run-result-card__summary,
+.heart-active-run-card__center p,
+.heart-modal__lead {
+  margin: 0;
+  color: var(--heart-text-soft);
+  line-height: 1.55;
+}
+
+.heart-icon-square-button {
+  width: 52px;
+  height: 52px;
+  border: 1px solid var(--heart-border);
+  border-radius: 18px;
+  background: var(--heart-surface-soft);
+  color: var(--heart-text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  flex: 0 0 auto;
+}
+
+.heart-icon-square-button .heart-icon,
+.heart-icon-button--inline .heart-icon,
+.heart-run-guide-card__icon .heart-icon,
+.heart-modal-section__icon .heart-icon,
+.heart-run-overview-card__icon .heart-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.heart-run-start-grid,
+.heart-run-guide-grid,
+.heart-run-detail-overview,
+.heart-run-detail-facts {
+  display: grid;
+  gap: 14px;
+}
+
+.heart-run-start-grid,
+.heart-run-guide-grid,
+.heart-run-detail-overview {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.heart-run-option-card,
+.heart-run-guide-card,
+.heart-run-overview-card,
+.heart-run-score-card {
+  background: var(--heart-surface-soft);
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+}
+
+.heart-run-option-card,
+.heart-run-guide-card,
+.heart-run-overview-card {
+  padding: 16px;
+}
+
+.heart-run-option-card {
+  display: grid;
+  gap: 16px;
+}
+
+.heart-run-option-card--accent {
+  border-color: rgba(159, 18, 57, 0.48);
+}
+
+.heart-run-option-card__top {
+  justify-content: space-between;
+}
+
+.heart-run-option-card__icon,
+.heart-run-guide-card__icon,
+.heart-modal-section__icon,
+.heart-run-overview-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(159, 18, 57, 0.18);
+  color: #fda4af;
+  flex: 0 0 auto;
+}
+
+.heart-icon-button--inline {
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  border-radius: 14px;
+}
+
+.heart-run-option-card__body strong,
+.heart-run-guide-card strong,
+.heart-run-overview-card strong {
+  font-size: 1rem;
+  font-weight: 900;
+  margin-bottom: 6px;
+}
+
+.heart-run-option-card__meta,
+.heart-run-result-card__meta,
+.heart-active-run-card__time,
+.heart-run-score-card span,
+.heart-run-detail-top__status span {
+  color: var(--heart-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.heart-run-option-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.heart-active-run-card__center {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 14px;
+}
+
+.heart-run-pulse {
+  width: 70px;
+  height: 70px;
+  border-radius: 999px;
+  position: relative;
+  border: 1px solid rgba(225, 29, 72, 0.34);
+  background: rgba(159, 18, 57, 0.18);
+}
+
+.heart-run-pulse::before,
+.heart-run-pulse::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(225, 29, 72, 0.34);
+  animation: heart-run-pulse 1.7s ease-out infinite;
+}
+
+.heart-run-pulse::after {
+  animation-delay: 0.65s;
+}
+
+@keyframes heart-run-pulse {
+  0% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.95);
+  }
+}
+
+.heart-run-result-card__summary {
+  font-size: 0.96rem;
+}
+
+.heart-list-card--action {
+  display: grid;
+  gap: 14px;
+}
+
+.heart-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 20px 12px 12px;
+}
+
+.heart-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(0, 0, 0, 0.74);
+  backdrop-filter: blur(8px);
+}
+
+.heart-modal__sheet {
+  position: relative;
+  width: min(100%, 840px);
+  max-height: min(90svh, 860px);
+  overflow: auto;
+  background: #0b0b0d;
+  border: 1px solid rgba(39, 39, 42, 0.9);
+  border-radius: 30px;
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.heart-modal__sheet::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
+.heart-modal__sheet--guide {
+  max-width: 760px;
+}
+
+.heart-modal__sheet--detail {
+  max-width: 920px;
+}
+
+.heart-modal__lead {
+  font-size: 0.98rem;
+}
+
+.heart-modal__header h2,
+.heart-modal-section h3 {
+  margin: 0;
+}
+
+.heart-modal__header-actions {
+  justify-content: flex-end;
+}
+
+.heart-icon-button--ghost {
+  opacity: 0.56;
+}
+
+.heart-modal__footer {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(11, 11, 13, 0) 0%, rgba(11, 11, 13, 0.92) 24%, rgba(11, 11, 13, 1) 100%);
+  padding-top: 8px;
+}
+
+.heart-modal-section {
+  display: grid;
+  gap: 14px;
+}
+
+.heart-modal-section__icon {
+  margin-top: 2px;
+}
+
+.heart-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.heart-chip {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--heart-border);
+  background: var(--heart-surface-soft);
+  color: var(--heart-text);
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.heart-note-grid--compact {
+  grid-template-columns: 1fr;
+}
+
+.heart-run-detail-top {
+  align-items: stretch;
+  gap: 14px;
+}
+
+.heart-run-detail-top__status {
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.heart-run-score-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  width: min(100%, 230px);
+}
+
+.heart-run-score-card {
+  min-height: 108px;
+  padding: 14px;
+  display: grid;
+  align-content: space-between;
+}
+
+.heart-run-score-card__value {
+  font-size: clamp(1.7rem, 7vw, 2.5rem);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.heart-run-score-card__value--success {
+  color: #4ade80;
+}
+
+.heart-run-score-card__value--danger {
+  color: #fb7185;
+}
+
+.heart-run-detail-facts {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.heart-run-detail-facts div,
+.heart-run-breakdown-box {
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--heart-surface-soft);
+  border: 1px solid var(--heart-border);
+}
+
+.heart-run-detail-facts span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--heart-text-muted);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.heart-run-detail-facts strong {
+  display: block;
+  color: var(--heart-text);
+  font-size: 0.98rem;
+}
+
+.heart-run-overview-card {
+  display: grid;
+  gap: 12px;
+}
+
+.heart-run-detail-expanded {
+  gap: 20px;
+}
+
+@media (max-width: 779px) {
+  .heart-page-header__meta--stacked {
+    align-items: flex-start;
+  }
+
+  .heart-run-start-grid,
+  .heart-run-guide-grid,
+  .heart-run-detail-overview,
+  .heart-run-detail-facts {
+    grid-template-columns: 1fr;
+  }
+
+  .heart-run-detail-top {
+    flex-direction: column;
+  }
+
+  .heart-run-score-grid {
+    width: 100%;
+  }
+}
+
+@media (min-width: 780px) {
+  .heart-runs-view {
+    gap: 22px;
+  }
+
+  .heart-modal {
+    align-items: center;
+    padding: 28px;
+  }
+
+  .heart-modal__sheet {
+    padding: 24px;
+  }
+}
+
+.heart-dashboard-metrics,
+.heart-setup-tool-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.heart-dashboard-metric,
+.heart-dashboard-summary-card,
+.heart-setup-tool-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  background: var(--heart-surface-soft);
+  border: 1px solid var(--heart-border);
+  border-radius: 24px;
+}
+
+.heart-dashboard-metric__top,
+.heart-dashboard-summary-card__head,
+.heart-setup-tool-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.heart-dashboard-metric__icon,
+.heart-setup-tool-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(159, 18, 57, 0.18);
+  color: #fda4af;
+}
+
+.heart-dashboard-metric__icon .heart-icon,
+.heart-setup-tool-card__icon .heart-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.heart-dashboard-metric__body strong,
+.heart-dashboard-summary-card strong,
+.heart-setup-tool-card__body strong {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--heart-text);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.heart-dashboard-metric__body p,
+.heart-dashboard-summary-card p,
+.heart-setup-tool-card__body p {
+  margin: 0;
+  color: var(--heart-text-soft);
+  line-height: 1.55;
+}
+
+.heart-dashboard-metric--success {
+  border-color: rgba(34, 197, 94, 0.32);
+}
+
+.heart-dashboard-metric--warning,
+.heart-dashboard-metric--critical {
+  border-color: rgba(234, 88, 12, 0.34);
+}
+
+@media (max-width: 779px) {
+  .heart-dashboard-metrics,
+  .heart-setup-tool-grid {
+    grid-template-columns: 1fr;
+  }
+}
