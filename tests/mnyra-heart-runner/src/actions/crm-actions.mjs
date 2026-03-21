@@ -3,6 +3,7 @@ import {
   ensureElementVisible,
   fillIfPresent,
   openPageAndWait,
+  waitForAnySelector,
   waitForSelectorToDisappear
 } from "../helpers/social-app.mjs";
 import {
@@ -16,6 +17,36 @@ import {
 
 function mutationReady(env) {
   return !!env.allowLiveMutations && !!env.syntheticIsolationKey;
+}
+
+function toSelectorList(value = "") {
+  return String(value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+async function openLeadEditor(page, {
+  openSelector = "",
+  nameSelector = "",
+  saveSelector = "",
+  actionLabel = "Lead-Editor"
+} = {}) {
+  if (!openSelector) return;
+  const opened = await clickIfPresent(page, openSelector, 12000);
+  if (!opened) {
+    throw new Error(`${actionLabel} konnte nicht geoeffnet werden. Heart hat keinen passenden Startbutton gefunden.`);
+  }
+  const editorSelectors = [
+    ...toSelectorList(nameSelector),
+    ...toSelectorList(saveSelector),
+    "#leadCreateView",
+    "#leadModalClose"
+  ];
+  const editorVisible = await waitForAnySelector(page, editorSelectors, 20000).catch(() => false);
+  if (!editorVisible) {
+    throw new Error(`${actionLabel} wurde gestartet, aber der Editor ist nicht sichtbar geworden.`);
+  }
 }
 
 async function waitForLeadFlowToComplete(page, inputSelector = "") {
@@ -90,9 +121,12 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
       area: "crm",
       persona: persona.key
     });
-    if (leadCreate.openSelector) {
-      await clickIfPresent(page, leadCreate.openSelector);
-    }
+    await openLeadEditor(page, {
+      openSelector: leadCreate.openSelector,
+      nameSelector: leadCreate.nameSelector,
+      saveSelector: leadCreate.saveSelector,
+      actionLabel: "Lead-Erstellung"
+    });
     if (leadCreate.nameSelector) {
       await fillIfPresent(page, leadCreate.nameSelector, leadName);
     }
@@ -137,7 +171,12 @@ export async function runCrmChecks({ page, env, heart, persona } = {}) {
         area: "crm",
         persona: persona.key
       });
-      await clickIfPresent(page, leadEdit.openSelector);
+      await openLeadEditor(page, {
+        openSelector: leadEdit.openSelector,
+        nameSelector: leadEdit.inputSelector,
+        saveSelector: leadEdit.saveSelector,
+        actionLabel: "Lead-Bearbeitung"
+      });
       const editedLeadName = replaceRunTokens("TEST_RUN_<runId>_LEAD_EDIT", env);
       await fillIfPresent(page, leadEdit.inputSelector, editedLeadName);
       await ensureElementVisible(page, leadEdit.saveSelector, 15000);

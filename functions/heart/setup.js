@@ -269,14 +269,14 @@ function buildDefaultPackConfig({
           openSelector: "#newLeadBtn",
           nameSelector: "#leadBusinessName",
           emailSelector: "#leadEmail",
-          saveSelector: "#leadModalSave",
+          saveSelector: "#leadModalSave, #leadInlineSaveBtn",
           verifyText: "TEST_RUN_<runId>_LEAD_1"
         },
         leadEdit: {
           url: buildUrl(socialBaseUrl, { tab: "leads" }),
           openSelector: "[data-lead-edit]",
           inputSelector: "#leadBusinessName",
-          saveSelector: "#leadModalSave",
+          saveSelector: "#leadModalSave, #leadInlineSaveBtn",
           verifyText: "TEST_RUN_<runId>_LEAD_EDIT"
         }
       },
@@ -499,8 +499,12 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(crmLeadCreate.emailSelector) || asText(crmLeadCreate.emailSelector) === "[data-lead-email]") {
     crmLeadCreate.emailSelector = "#leadEmail";
   }
-  if (!asText(crmLeadCreate.saveSelector) || asText(crmLeadCreate.saveSelector) === "[data-lead-save]") {
-    crmLeadCreate.saveSelector = "#leadModalSave";
+  if (
+    !asText(crmLeadCreate.saveSelector)
+    || asText(crmLeadCreate.saveSelector) === "[data-lead-save]"
+    || asText(crmLeadCreate.saveSelector) === "#leadModalSave"
+  ) {
+    crmLeadCreate.saveSelector = "#leadModalSave, #leadInlineSaveBtn";
   }
 
   if (!asText(crmLeadEdit.openSelector) || asText(crmLeadEdit.openSelector) === "[data-lead-edit-open]") {
@@ -509,8 +513,12 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(crmLeadEdit.inputSelector) || asText(crmLeadEdit.inputSelector) === "[data-lead-name]") {
     crmLeadEdit.inputSelector = "#leadBusinessName";
   }
-  if (!asText(crmLeadEdit.saveSelector) || asText(crmLeadEdit.saveSelector) === "[data-lead-save]") {
-    crmLeadEdit.saveSelector = "#leadModalSave";
+  if (
+    !asText(crmLeadEdit.saveSelector)
+    || asText(crmLeadEdit.saveSelector) === "[data-lead-save]"
+    || asText(crmLeadEdit.saveSelector) === "#leadModalSave"
+  ) {
+    crmLeadEdit.saveSelector = "#leadModalSave, #leadInlineSaveBtn";
   }
 
   if (!asText(productCreate.openSelector) || asText(productCreate.openSelector) === "[data-product-create-open]") {
