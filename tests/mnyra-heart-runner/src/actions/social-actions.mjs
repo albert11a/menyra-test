@@ -255,6 +255,29 @@ async function clickVisibleFollowButton(page, selector, timeout = 8000) {
   return false;
 }
 
+async function ensureFollowActive(page, selector, timeout = 15000) {
+  const initial = await readFollowState(page, selector);
+  if (initial.following || initial.requested) {
+    return initial;
+  }
+  let lastState = initial;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const clicked = await clickVisibleFollowButton(page, selector, 8000);
+    if (!clicked) {
+      throw new Error("Heart konnte den sichtbaren Follow-Button nicht klicken.");
+    }
+    const reachedTarget = await waitForFollowState(page, selector, "following", timeout)
+      .then(() => true)
+      .catch(() => false);
+    lastState = await readFollowState(page, selector);
+    if (reachedTarget || lastState.following || lastState.requested) {
+      return lastState;
+    }
+    await page.waitForTimeout(600).catch(() => undefined);
+  }
+  throw new Error("Heart konnte den Follow-Zustand nicht stabil auf Following/Requested bringen.");
+}
+
 async function waitForFollowState(page, selector, expectedState, timeout = 15000) {
   await page.waitForFunction(
     ({ followSelector, nextState }) => {
@@ -427,19 +450,22 @@ async function clickLikeButtonToState(page, {
     throw new Error("Heart konnte keinen stabilen sichtbaren Like-Button finden.");
   }
   for (const candidate of candidates) {
-    const countSelector = candidate.postKey ? `[data-post-like-count="${candidate.postKey}"]` : "";
-    const beforeCount = countSelector ? await readCountValue(page, countSelector) : null;
-    const clicked = await clickVisibleLikeCandidate(page, candidate.selectors);
-    if (!clicked) continue;
-    const didReachTargetState = await waitForLikeCandidateState(page, {
-      selectors: candidate.selectors,
-      targetState,
-      countSelector,
-      previousCount: beforeCount,
-      timeout
-    }).then(() => true).catch(() => false);
-    if (didReachTargetState) {
-      return;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const countSelector = candidate.postKey ? `[data-post-like-count="${candidate.postKey}"]` : "";
+      const beforeCount = countSelector ? await readCountValue(page, countSelector) : null;
+      const clicked = await clickVisibleLikeCandidate(page, candidate.selectors);
+      if (!clicked) continue;
+      const didReachTargetState = await waitForLikeCandidateState(page, {
+        selectors: candidate.selectors,
+        targetState,
+        countSelector,
+        previousCount: beforeCount,
+        timeout
+      }).then(() => true).catch(() => false);
+      if (didReachTargetState) {
+        return;
+      }
+      await page.waitForTimeout(600).catch(() => undefined);
     }
   }
   throw new Error(`Heart konnte keinen sichtbaren Like-Button stabil in den Zustand "${targetState}" bringen.`);
@@ -450,26 +476,7 @@ async function runLikeAction(page, selector = "") {
   if (!candidates.length) {
     throw new Error("Heart konnte keinen sichtbaren Like-Button im Feed finden.");
   }
-  for (const candidate of candidates) {
-    if (candidate.pressed) {
-      const countSelector = candidate.postKey ? `[data-post-like-count="${candidate.postKey}"]` : "";
-      const beforeUnlikeCount = countSelector ? await readCountValue(page, countSelector) : null;
-      const unliked = await clickVisibleLikeCandidate(page, candidate.selectors);
-      if (!unliked) continue;
-      const unlikeSucceeded = await waitForLikeCandidateState(page, {
-        selectors: candidate.selectors,
-        targetState: "unliked",
-        countSelector,
-        previousCount: beforeUnlikeCount,
-        timeout: 15000
-      }).then(() => true).catch(() => false);
-      if (!unlikeSucceeded) continue;
-    }
-    await clickLikeButtonToState(page, {
-      selector,
-      targetState: "liked",
-      timeout: 15000
-    });
+  if (candidates.some((candidate) => candidate.pressed)) {
     return;
   }
   await clickLikeButtonToState(page, {
@@ -625,19 +632,7 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
         preferredUrl: followTargetUrl
       });
       await ensureElementVisible(page, socialConfig.follow.triggerSelector, 15000);
-      const beforeState = await readFollowState(page, socialConfig.follow.triggerSelector);
-      if (beforeState.following || beforeState.requested) {
-        const cleared = await clickVisibleFollowButton(page, socialConfig.follow.triggerSelector, 8000);
-        if (!cleared) {
-          throw new Error("Heart konnte den sichtbaren Follow-Button nicht fuer den Reset klicken.");
-        }
-        await waitForFollowState(page, socialConfig.follow.triggerSelector, "not_following", 15000);
-      }
-      const clicked = await clickVisibleFollowButton(page, socialConfig.follow.triggerSelector, 8000);
-      if (!clicked) {
-        throw new Error("Heart konnte den sichtbaren Follow-Button nicht klicken.");
-      }
-      await waitForFollowState(page, socialConfig.follow.triggerSelector, "following", 15000);
+      await ensureFollowActive(page, socialConfig.follow.triggerSelector, 15000);
       heart.passModule("profile", "Follow wurde erfolgreich ausgefuehrt.", {
         action: "follow",
         persona: persona.key,

@@ -1001,13 +1001,6 @@ function renderMenuFoodList(items, { mode = "profile", useTestfirstCardUi = fals
 }
 
 function renderMenuList(items, { mode = "profile" } = {}) {
-  if (!items.length) {
-    return `
-      <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
-        Keine Produkte
-      </div>
-    `;
-  }
   if (mode === "admin") {
     const drinkItems = items.filter((item) => normalizeMenuType(item?.type) === "drink");
     const foodItems = items.filter((item) => normalizeMenuType(item?.type) !== "drink");
@@ -1035,6 +1028,13 @@ function renderMenuList(items, { mode = "profile" } = {}) {
       <div>
         ${renderSection("Getraenke", drinkItems, { addType: "drink" })}
         ${renderSection("Speisen", foodItems, { addType: "food" })}
+      </div>
+    `;
+  }
+  if (!items.length) {
+    return `
+      <div class="text-center py-16 text-slate-300 font-black uppercase text-[10px] tracking-[0.3em]">
+        Keine Produkte
       </div>
     `;
   }

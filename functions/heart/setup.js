@@ -221,7 +221,7 @@ function buildDefaultPackConfig({
         },
         productCreate: {
           url: buildUrl(socialBaseUrl, { tab: "menu" }),
-          openSelector: "[data-menu-add], [data-menu-add-food]",
+          openSelector: "[data-menu-add-food], [data-menu-add-drink], [data-menu-add]",
           nameSelector: "#menuItemName",
           saveSelector: "#menuModalSave",
           verifyText: "TEST_RUN_<runId>_PRODUCT_1"
@@ -577,7 +577,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
 
   if (!asText(productCreate.openSelector) || asText(productCreate.openSelector) === "[data-product-create-open]") {
-    productCreate.openSelector = "[data-menu-add], [data-menu-add-food]";
+    productCreate.openSelector = "[data-menu-add-food], [data-menu-add-drink], [data-menu-add]";
   }
   if (!asText(productCreate.nameSelector) || asText(productCreate.nameSelector) === "[data-product-name-input]") {
     productCreate.nameSelector = "#menuItemName";

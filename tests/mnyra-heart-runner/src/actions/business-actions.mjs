@@ -28,6 +28,13 @@ function asText(value, fallback = "") {
   return text || fallback;
 }
 
+function splitSelectorList(value = "") {
+  return String(value || "")
+    .split(",")
+    .map((entry) => asText(entry))
+    .filter(Boolean);
+}
+
 function getBusinessProductNames(env = {}) {
   return {
     original: replaceRunTokens("TEST_RUN_<runId>_PRODUCT_1", env),
@@ -59,6 +66,7 @@ async function openBusinessMenuAdmin(page, heart, persona, url, title) {
       hasVisibleSelector("#menuSearchInput")
       || hasVisibleSelector("[data-menu-add]")
       || hasVisibleSelector("[data-menu-add-food]")
+      || hasVisibleSelector("[data-menu-add-drink]")
     ) {
       return { kind: "ready" };
     }
@@ -94,7 +102,8 @@ async function openBusinessMenuAdmin(page, heart, persona, url, title) {
   await waitForAnySelector(page, [
     "#menuSearchInput",
     "[data-menu-add]",
-    "[data-menu-add-food]"
+    "[data-menu-add-food]",
+    "[data-menu-add-drink]"
   ], 5000);
 }
 
@@ -315,7 +324,12 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
       await openBusinessMenuAdmin(page, heart, persona, businessConfig.productCreate.url, "Business / Open product create flow");
       const openedCreateFlow = await clickFirstVisible(
         page,
-        String(businessConfig.productCreate.openSelector || "").split(","),
+        [
+          ...splitSelectorList(businessConfig.productCreate.openSelector),
+          "[data-menu-add-food]",
+          "[data-menu-add-drink]",
+          "[data-menu-add]"
+        ],
         10000
       );
       if (!openedCreateFlow) {
