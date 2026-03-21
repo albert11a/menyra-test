@@ -1,4 +1,4 @@
-const HEART_CACHE = "mnyra-heart-shell-v6";
+const HEART_CACHE = "mnyra-heart-shell-v7";
 const SHELL_ASSETS = [
   "/heart/",
   "/heart/index.html",
@@ -67,6 +67,19 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api/heart/")) return;
 
+  const isHeartShellAsset = url.pathname.startsWith("/heart/")
+    || url.pathname.startsWith("/apps/mnyra-heart/")
+    || url.pathname === "/shared/ceo-access.js"
+    || url.pathname === "/shared/github-execution-state.js";
+  const isHeartDocumentOrModule = isHeartShellAsset
+    && (
+      url.pathname.endsWith("/")
+      || url.pathname.endsWith(".html")
+      || url.pathname.endsWith(".js")
+      || url.pathname.endsWith(".css")
+      || url.pathname.endsWith(".json")
+    );
+
   if (request.mode === "navigate") {
     event.respondWith((async () => {
       try {
@@ -84,7 +97,22 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/heart/") || url.pathname.startsWith("/apps/mnyra-heart/") || url.pathname === "/shared/ceo-access.js" || url.pathname === "/shared/github-execution-state.js") {
+  if (isHeartDocumentOrModule) {
+    event.respondWith((async () => {
+      try {
+        const networkResponse = await fetch(request);
+        const cache = await caches.open(HEART_CACHE);
+        cache.put(request, networkResponse.clone());
+        return networkResponse;
+      } catch {
+        const cached = await caches.match(request);
+        return cached || Response.error();
+      }
+    })());
+    return;
+  }
+
+  if (isHeartShellAsset) {
     event.respondWith((async () => {
       const cached = await caches.match(request);
       if (cached) return cached;
