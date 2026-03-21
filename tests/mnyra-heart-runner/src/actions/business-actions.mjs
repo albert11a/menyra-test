@@ -1,4 +1,5 @@
 import {
+  clickFirstVisible,
   clickIfPresent,
   fillIfPresent,
   openPageAndWait,
@@ -263,7 +264,15 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
         env
       );
       await openBusinessMenuAdmin(page, heart, persona, businessConfig.productCreate.url, "Business / Open product create flow");
-      await clickIfPresent(page, businessConfig.productCreate.openSelector);
+      const openedCreateFlow = await clickFirstVisible(
+        page,
+        String(businessConfig.productCreate.openSelector || "").split(","),
+        10000
+      );
+      if (!openedCreateFlow) {
+        throw new Error("Heart konnte keinen sichtbaren Produkt-Hinzufuegen-Button im Menue finden.");
+      }
+      await waitForAnySelector(page, [businessConfig.productCreate.nameSelector, "#menuModalSave"], 20000);
       await fillIfPresent(page, businessConfig.productCreate.nameSelector, productName);
       await clickIfPresent(page, businessConfig.productCreate.saveSelector);
       await waitForSelectorToDisappear(page, "#menuModalClose", 20000).catch(() => undefined);

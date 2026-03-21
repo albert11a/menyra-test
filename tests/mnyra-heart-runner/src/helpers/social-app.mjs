@@ -163,26 +163,67 @@ export async function openPageAndWait(page, url, selector, heart, {
   await page.waitForSelector(selector, { timeout: 30000 });
 }
 
+async function findFirstVisibleDomSelector(page, selectors = []) {
+  const safeSelectors = uniqueList(selectors);
+  if (!safeSelectors.length) return "";
+  return page.evaluate((selectorList) => {
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    for (const selector of selectorList) {
+      const nodes = Array.from(document.querySelectorAll(selector));
+      if (nodes.some((node) => isVisibleNode(node))) {
+        return selector;
+      }
+    }
+    return "";
+  }, safeSelectors);
+}
+
+async function clickFirstVisibleDomSelector(page, selectors = []) {
+  const safeSelectors = uniqueList(selectors);
+  if (!safeSelectors.length) return "";
+  return page.evaluate((selectorList) => {
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    for (const selector of selectorList) {
+      const nodes = Array.from(document.querySelectorAll(selector));
+      const node = nodes.find((entry) => isVisibleNode(entry));
+      if (node instanceof HTMLElement) {
+        node.click();
+        return selector;
+      }
+    }
+    return "";
+  }, safeSelectors);
+}
+
 export async function ensureElementVisible(page, selector, timeout = 15000) {
-  await page.locator(selector).first().waitFor({ state: "visible", timeout });
+  const matchedSelector = await waitForAnySelector(page, [selector], timeout);
+  if (!matchedSelector) {
+    throw new Error(`Heart konnte kein sichtbares Element fuer ${selector} finden.`);
+  }
 }
 
 export async function clickIfPresent(page, selector, timeout = 8000) {
-  const locator = page.locator(selector).first();
-  if (!await locator.count()) return false;
-  await locator.click({ timeout });
-  return true;
+  return !!await clickFirstVisible(page, [selector], timeout);
 }
 
 export async function findVisibleSelector(page, selectors = []) {
-  const safeSelectors = uniqueList(selectors);
-  for (const selector of safeSelectors) {
-    const locator = page.locator(selector).first();
-    if (!await locator.count().catch(() => 0)) continue;
-    if (!await locator.isVisible().catch(() => false)) continue;
-    return selector;
-  }
-  return "";
+  return findFirstVisibleDomSelector(page, selectors);
 }
 
 export async function clickFirstVisible(page, selectors = [], timeout = 8000) {
@@ -192,10 +233,8 @@ export async function clickFirstVisible(page, selectors = [], timeout = 8000) {
   while (Date.now() < deadline) {
     const selector = await findVisibleSelector(page, safeSelectors);
     if (selector) {
-      await page.locator(selector).first().click({
-        timeout: Math.max(250, Math.min(2000, deadline - Date.now()))
-      });
-      return selector;
+      const clickedSelector = await clickFirstVisibleDomSelector(page, [selector]);
+      if (clickedSelector) return clickedSelector;
     }
     await page.waitForTimeout(120).catch(() => undefined);
   }
@@ -282,12 +321,15 @@ export async function waitForAnyText(page, texts = [], timeout = 10000) {
 }
 
 export async function waitForAnySelector(page, selectors = [], timeout = 15000) {
-  const safeSelectors = Array.isArray(selectors) ? selectors.filter(Boolean) : [];
+  const safeSelectors = uniqueList(selectors);
   if (!safeSelectors.length) return false;
-  await Promise.race(
-    safeSelectors.map((selector) => page.locator(selector).first().waitFor({ state: "visible", timeout }))
-  );
-  return true;
+  const deadline = Date.now() + Math.max(250, Number(timeout) || 0);
+  while (Date.now() < deadline) {
+    const selector = await findFirstVisibleDomSelector(page, safeSelectors);
+    if (selector) return selector;
+    await page.waitForTimeout(120).catch(() => undefined);
+  }
+  throw new Error(`Heart konnte keinen sichtbaren Selector finden: ${safeSelectors.join(", ")}`);
 }
 
 export async function waitForUiOutcome(page, {

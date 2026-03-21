@@ -294,17 +294,39 @@ async function clickLikeButtonToState(page, {
   }
   await page.waitForFunction(
     ({ likeSelectors, desiredState, likeCountSelector, previousCount }) => {
-      const buttonNode = (Array.isArray(likeSelectors) ? likeSelectors : [])
-        .map((selector) => document.querySelector(selector))
-        .find(Boolean);
-      if (!buttonNode) return false;
-      const pressed = buttonNode.getAttribute("aria-pressed") === "true"
-        || buttonNode.classList.contains("text-rose-400");
-      const countNode = likeCountSelector ? document.querySelector(likeCountSelector) : null;
+      const isVisibleNode = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+          return false;
+        }
+        const rect = node.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      const buttonNodes = [];
+      for (const selector of Array.isArray(likeSelectors) ? likeSelectors : []) {
+        document.querySelectorAll(selector).forEach((node) => {
+          if (node instanceof HTMLElement) {
+            buttonNodes.push(node);
+          }
+        });
+      }
+      const visibleButtons = buttonNodes.filter((node) => isVisibleNode(node));
+      const effectiveButtons = visibleButtons.length ? visibleButtons : buttonNodes;
+      if (!effectiveButtons.length && !likeCountSelector) return false;
+      const pressedStates = effectiveButtons.map((buttonNode) => {
+        return buttonNode.getAttribute("aria-pressed") === "true"
+          || buttonNode.classList.contains("text-rose-400");
+      });
+      const anyPressed = pressedStates.some(Boolean);
+      const allUnpressed = pressedStates.length > 0 && pressedStates.every((value) => !value);
+      const countNode = likeCountSelector
+        ? Array.from(document.querySelectorAll(likeCountSelector)).find((node) => isVisibleNode(node)) || document.querySelector(likeCountSelector)
+        : null;
       const countMatch = String(countNode?.textContent || "").match(/-?\d+/);
       const countChanged = countMatch ? Number(countMatch[0]) !== Number(previousCount) : false;
-      if (desiredState === "liked") return pressed || countChanged;
-      return !pressed || countChanged;
+      if (desiredState === "liked") return anyPressed || countChanged;
+      return allUnpressed || countChanged;
     },
     {
       likeSelectors: firstVisibleLike.selectors,
