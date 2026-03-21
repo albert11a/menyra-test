@@ -54,7 +54,10 @@ export function createHeartInitialState() {
       pendingAction: "",
       lastRefreshAt: "",
       launcherExpanded: false,
-      detailExpanded: false
+      detailExpanded: false,
+      historyTab: "current",
+      historyEditMode: false,
+      historySelectedRunIds: []
     },
     incidents: {
       status: DEFAULT_STATUS,
@@ -70,6 +73,16 @@ export function createHeartInitialState() {
       status: DEFAULT_STATUS,
       error: "",
       items: []
+    },
+    setup: {
+      status: DEFAULT_STATUS,
+      error: "",
+      data: null,
+      pendingAction: "",
+      searchQuery: "",
+      searchStatus: DEFAULT_STATUS,
+      searchError: "",
+      searchResults: []
     }
   };
 }
@@ -197,6 +210,8 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.shell.navOpen = false;
       draft.shell.quickActionsOpen = false;
       draft.runs.detailExpanded = false;
+      draft.runs.historyEditMode = false;
+      draft.runs.historySelectedRunIds = [];
     });
   }
 
@@ -325,9 +340,13 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       draft.runs.status = "ready";
       draft.runs.error = "";
       draft.runs.items = Array.isArray(items) ? items.slice() : [];
-      if (!draft.runs.selectedRunId && draft.runs.items.length) {
-        draft.runs.selectedRunId = String(draft.runs.items[0].id || "");
+      const selectedExists = draft.runs.items.some((item) => String(item?.id || "") === String(draft.runs.selectedRunId || ""));
+      if (!selectedExists) {
+        draft.runs.selectedRunId = draft.runs.items.length ? String(draft.runs.items[0].id || "") : "";
       }
+      draft.runs.historySelectedRunIds = draft.runs.historySelectedRunIds.filter((runId) => (
+        draft.runs.items.some((item) => String(item?.id || "") === String(runId || ""))
+      ));
       draft.runs.lastRefreshAt = new Date().toISOString();
     });
   }
@@ -389,6 +408,40 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  function setRunsHistoryTab(tabKey) {
+    patch((draft) => {
+      draft.runs.historyTab = String(tabKey || "current").trim() || "current";
+      draft.runs.historyEditMode = false;
+      draft.runs.historySelectedRunIds = [];
+    });
+  }
+
+  function setRunsHistoryEditMode(enabled) {
+    patch((draft) => {
+      draft.runs.historyEditMode = !!enabled;
+      if (!draft.runs.historyEditMode) {
+        draft.runs.historySelectedRunIds = [];
+      }
+    });
+  }
+
+  function toggleRunsHistorySelection(runId) {
+    const safeRunId = String(runId || "").trim();
+    if (!safeRunId) return;
+    patch((draft) => {
+      const current = new Set(draft.runs.historySelectedRunIds || []);
+      if (current.has(safeRunId)) current.delete(safeRunId);
+      else current.add(safeRunId);
+      draft.runs.historySelectedRunIds = Array.from(current);
+    });
+  }
+
+  function clearRunsHistorySelection() {
+    patch((draft) => {
+      draft.runs.historySelectedRunIds = [];
+    });
+  }
+
   function setIncidentsLoading() {
     patch((draft) => {
       draft.incidents.status = "loading";
@@ -439,6 +492,60 @@ export function createHeartStore(initialState = createHeartInitialState()) {
     });
   }
 
+  function setSetupLoading() {
+    patch((draft) => {
+      draft.setup.status = "loading";
+      draft.setup.error = "";
+    });
+  }
+
+  function setSetupData(data) {
+    patch((draft) => {
+      draft.setup.status = "ready";
+      draft.setup.error = "";
+      draft.setup.data = data || null;
+      draft.setup.searchQuery = String(data?.restaurantQuery || data?.restaurantName || data?.restaurantId || "").trim();
+    });
+  }
+
+  function setSetupError(message) {
+    patch((draft) => {
+      draft.setup.status = "error";
+      draft.setup.error = String(message || "").trim() || "Heart-Einrichtung konnte nicht geladen werden.";
+    });
+  }
+
+  function setSetupPendingAction(actionKey) {
+    patch((draft) => {
+      draft.setup.pendingAction = String(actionKey || "").trim();
+    });
+  }
+
+  function setSetupSearchLoading(query = "") {
+    patch((draft) => {
+      draft.setup.searchStatus = "loading";
+      draft.setup.searchError = "";
+      draft.setup.searchQuery = String(query || "").trim();
+    });
+  }
+
+  function setSetupSearchResults(items = [], query = "") {
+    patch((draft) => {
+      draft.setup.searchStatus = "ready";
+      draft.setup.searchError = "";
+      draft.setup.searchResults = Array.isArray(items) ? items.slice() : [];
+      draft.setup.searchQuery = String(query || "").trim();
+    });
+  }
+
+  function setSetupSearchError(message, query = "") {
+    patch((draft) => {
+      draft.setup.searchStatus = "error";
+      draft.setup.searchError = String(message || "").trim() || "Restaurants konnten nicht geladen werden.";
+      draft.setup.searchQuery = String(query || "").trim();
+    });
+  }
+
   return {
     getState,
     setState,
@@ -474,13 +581,24 @@ export function createHeartStore(initialState = createHeartInitialState()) {
       setPendingRunAction,
       setRunsLauncherExpanded,
       setRunDetailExpanded,
+      setRunsHistoryTab,
+      setRunsHistoryEditMode,
+      toggleRunsHistorySelection,
+      clearRunsHistorySelection,
       setIncidentsLoading,
       setIncidentsData,
       setIncidentsError,
       setIncidentFilter,
       setConnectionsLoading,
       setConnectionsData,
-      setConnectionsError
+      setConnectionsError,
+      setSetupLoading,
+      setSetupData,
+      setSetupError,
+      setSetupPendingAction,
+      setSetupSearchLoading,
+      setSetupSearchResults,
+      setSetupSearchError
     }
   };
 }

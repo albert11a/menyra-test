@@ -32,9 +32,19 @@ const FALLBACK_PACK_ACTIONS = Object.freeze([
   { id: "journey-pack", packKey: "journey-pack", action: "start-pack", label: "Journey-Test starten" }
 ]);
 
-const PRIMARY_START_PACKS = Object.freeze(["smoke", "full-platform-pack"]);
 const ACTIVE_STATUSES = new Set(["queued", "running"]);
 const TERMINAL_STATUSES = new Set(["success", "warning", "failed", "critical", "cancelled", "skipped", "not_configured", "guarded"]);
+const START_CARD_ICON_BY_PACK = Object.freeze({
+  smoke: "activity",
+  "full-platform-pack": "sparkle",
+  "ceo-pack": "shield",
+  "business-pack": "chart",
+  "staff-pack": "bell",
+  "user-pack": "user",
+  "guest-pack": "scan",
+  "mutation-pack": "broom",
+  "journey-pack": "clock"
+});
 
 const GUIDE_CONTENT = Object.freeze({
   smoke: {
@@ -98,13 +108,9 @@ function getPackActions(quickActions = []) {
   return startActions.length ? startActions : FALLBACK_PACK_ACTIONS;
 }
 
-function getPrimaryPackCards(quickActions = []) {
-  const actionsByKey = new Map(
-    getPackActions(quickActions).map((item) => [String(item.packKey || item.id), item])
-  );
-  return PRIMARY_START_PACKS.map((packKey) => {
-    const action = actionsByKey.get(packKey) || {};
-    const pack = getHeartPack(packKey);
+function getPackCards(quickActions = []) {
+  return getPackActions(quickActions).map((action) => {
+    const pack = getHeartPack(action.packKey || action.id);
     return {
       key: pack.key,
       title: pack.title,
@@ -113,7 +119,7 @@ function getPrimaryPackCards(quickActions = []) {
       level: pack.level,
       areas: Array.isArray(pack.areas) ? pack.areas : [],
       personas: Array.isArray(pack.personas) ? pack.personas : [],
-      icon: pack.key === "full-platform-pack" ? "sparkle" : "activity"
+      icon: START_CARD_ICON_BY_PACK[pack.key] || "activity"
     };
   });
 }
@@ -138,6 +144,18 @@ function getRecentCompletedRuns(items = [], excludeRunId = "") {
   return getSortedRuns(items)
     .filter((item) => TERMINAL_STATUSES.has(String(item.status || "").toLowerCase()) && String(item.id || "") !== String(excludeRunId || ""))
     .slice(0, 5);
+}
+
+function getCurrentHistoryRuns(items = [], excludeRunId = "") {
+  return getSortedRuns(items).filter((item) => (
+    TERMINAL_STATUSES.has(String(item.status || "").toLowerCase())
+    && item.archived !== true
+    && String(item.id || "") !== String(excludeRunId || "")
+  ));
+}
+
+function getArchivedRuns(items = []) {
+  return getSortedRuns(items).filter((item) => TERMINAL_STATUSES.has(String(item.status || "").toLowerCase()) && item.archived === true);
 }
 
 function formatBuildValue(value = "") {
@@ -335,7 +353,7 @@ function renderModalSection(icon, eyebrow, title, body) {
 function renderLaunchCard(runsState = {}, connections = [], quickActions = []) {
   const runnerConfigured = isGithubRunnerConfigured(connections);
   const disabledAttr = runsState.pendingAction || !runnerConfigured ? "disabled" : "";
-  const cards = getPrimaryPackCards(quickActions);
+  const cards = getPackCards(quickActions);
   const note = runnerConfigured
     ? "Heart kann sichere Laeufe starten. Waehle den passenden Run und lies dir bei Bedarf vorher genau durch, was geprueft wird."
     : `Runner noch nicht bereit. ${getGithubRunnerNote(connections)}`;
@@ -375,7 +393,7 @@ function renderLaunchCard(runsState = {}, connections = [], quickActions = []) {
                 <span>${escapeHtml(card.personas.map((persona) => getPersonaLabel(persona)).join(", "))}</span>
               </div>
               <button class="heart-button heart-button--secondary heart-button--wide" data-action="open-run-guide" data-pack-key="${escapeHtml(card.key)}" ${disabledAttr}>
-                Mehr erfahren
+                Info und Start
               </button>
             </article>
           `).join("")}
@@ -455,8 +473,16 @@ function renderLatestResultCard(resultRun = null) {
   `;
 }
 
-function renderHistoryCards(items = []) {
-  if (!items.length) return "";
+function renderHistoryCards(runsState = {}, items = [], archivedItems = []) {
+  const tab = String(runsState.historyTab || "current");
+  const editMode = runsState.historyEditMode === true;
+  const selectedIds = new Set(Array.isArray(runsState.historySelectedRunIds) ? runsState.historySelectedRunIds : []);
+  const visibleItems = tab === "archived" ? archivedItems : items;
+  const hasSelection = selectedIds.size > 0;
+  const archiveTarget = tab === "archived" ? "current" : "archived";
+  const archiveLabel = tab === "archived" ? "Nach Aktuell verschieben" : "Archivieren";
+
+  if (!items.length && !archivedItems.length) return "";
   return `
     <section class="heart-section">
       <div class="heart-section__head">
@@ -464,10 +490,31 @@ function renderHistoryCards(items = []) {
           <p class="heart-eyebrow">Weitere Laeufe</p>
           <h2>Verlauf</h2>
         </div>
+        <div class="heart-run-history__head-actions">
+          <div class="heart-run-history__tabs">
+            <button class="heart-segmented-button ${tab === "current" ? "heart-segmented-button--active" : ""}" data-action="set-runs-history-tab" data-history-tab="current">
+              Aktuell
+            </button>
+            <button class="heart-segmented-button ${tab === "archived" ? "heart-segmented-button--active" : ""}" data-action="set-runs-history-tab" data-history-tab="archived">
+              Archiviert
+            </button>
+          </div>
+          <button class="heart-icon-square-button" data-action="toggle-runs-history-edit" aria-label="${editMode ? "Bearbeiten beenden" : "Verlauf bearbeiten"}">
+            ${renderHeartIcon(editMode ? "x" : "edit")}
+          </button>
+        </div>
       </div>
+      ${editMode ? `
+        <div class="heart-run-history__bulkbar">
+          <span>${hasSelection ? `${selectedIds.size} Lauf/Laeufe ausgewaehlt` : "Waehle Laeufe aus."}</span>
+          <button class="heart-button heart-button--secondary" data-action="update-run-archive" data-archive-state="${archiveTarget}" ${hasSelection ? "" : "disabled"}>
+            ${escapeHtml(archiveLabel)}
+          </button>
+        </div>
+      ` : ""}
       <div class="heart-list-stack">
-        ${items.map((item) => `
-          <article class="heart-list-card heart-list-card--action">
+        ${visibleItems.length ? visibleItems.map((item) => `
+          <article class="heart-list-card heart-list-card--action ${editMode && selectedIds.has(item.id) ? "heart-list-card--selected" : ""}">
             <div class="heart-list-card__head">
               <div>
                 <strong>${escapeHtml(getPackLabel(item.packKey, item.packLabel, item.mode))}</strong>
@@ -479,11 +526,23 @@ function renderHistoryCards(items = []) {
               <span>${escapeHtml(item.startedAt ? formatRelative(item.startedAt) : "-")}</span>
               <span>${escapeHtml(formatDuration(item.durationMs || 0))}</span>
             </div>
-            <button class="heart-button heart-button--secondary" data-action="open-run-detail" data-run-id="${escapeHtml(item.id)}">
-              Details
-            </button>
+            <div class="heart-run-history__card-actions">
+              ${editMode ? `
+                <button class="heart-button heart-button--secondary" data-action="toggle-runs-history-selection" data-run-id="${escapeHtml(item.id)}">
+                  ${selectedIds.has(item.id) ? "Abwaehlen" : "Auswaehlen"}
+                </button>
+              ` : ""}
+              <button class="heart-button heart-button--secondary" data-action="open-run-detail" data-run-id="${escapeHtml(item.id)}">
+                Details
+              </button>
+            </div>
           </article>
-        `).join("")}
+        `).join("") : renderEmptyState({
+          title: tab === "archived" ? "Noch nichts archiviert." : "Noch keine aktuellen Laeufe.",
+          message: tab === "archived"
+            ? "Archivierte Laeufe erscheinen hier, sobald du sie aus dem Verlauf verschiebst."
+            : "Sobald ein weiterer Run fertig ist, erscheint er hier."
+        })}
       </div>
     </section>
   `;
@@ -491,7 +550,37 @@ function renderHistoryCards(items = []) {
 
 function renderRunGuideModal(packKey = "", runsState = {}) {
   const pack = getHeartPack(packKey);
-  const guide = GUIDE_CONTENT[pack.key] || GUIDE_CONTENT.smoke;
+  const guide = GUIDE_CONTENT[pack.key] || {
+    eyebrow: "Run Info",
+    title: pack.title,
+    summary: pack.summary,
+    sections: [
+      {
+        icon: "users",
+        title: "Rollen in diesem Run",
+        body: pack.personas.length
+          ? `${pack.personas.map((persona) => getPersonaLabel(persona)).join(", ")} werden in diesem Lauf geprueft.`
+          : "Heart prueft in diesem Lauf die fuer das Paket hinterlegten Rollen."
+      },
+      {
+        icon: "grid",
+        title: "Bereiche in diesem Run",
+        body: pack.areas.length
+          ? `${pack.areas.map((area) => getModuleLabel(area, area)).join(", ")} werden Schritt fuer Schritt geprueft.`
+          : "Heart prueft die fuer dieses Paket hinterlegten Oberflaechen und Kernwege."
+      },
+      {
+        icon: "image",
+        title: "Was du danach siehst",
+        body: "Nach dem Lauf bekommst du Status, Dauer, gepruefte Punkte, Nachweise und klare Hinweise fuer noch fehlende Einrichtung."
+      },
+      {
+        icon: "triangle",
+        title: "Worauf Heart ehrlich hinweist",
+        body: "Fehlende Konten, Links oder Selektoren werden nicht verborgen, sondern offen als Einrichtung fehlt, Geschuetzt oder Uebersprungen angezeigt."
+      }
+    ]
+  };
   const loading = String(runsState.pendingAction || "") === pack.key;
   return `
     <div class="heart-modal">
@@ -715,7 +804,8 @@ export function renderRunsView(runsState = {}, connections = [], quickActions = 
   const items = Array.isArray(runsState.items) ? runsState.items : [];
   const activeRun = getLatestActiveRun(items);
   const latestResult = getLatestCompletedRun(items);
-  const history = getRecentCompletedRuns(items, latestResult?.id);
+  const history = getCurrentHistoryRuns(items, latestResult?.id);
+  const archived = getArchivedRuns(items);
 
   if (runsState.status === "loading" && !items.length) {
     return `<div class="heart-loading-block">Laeufe werden geladen...</div>`;
@@ -729,7 +819,7 @@ export function renderRunsView(runsState = {}, connections = [], quickActions = 
       ${renderLaunchCard(runsState, connections, quickActions)}
       ${activeRun ? renderActiveRunCard(activeRun) : renderPreparingRunCard(runsState)}
       ${renderLatestResultCard(latestResult)}
-      ${renderHistoryCards(history)}
+      ${renderHistoryCards(runsState, history, archived)}
     </div>
   `;
 }

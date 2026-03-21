@@ -127,6 +127,10 @@ const ICONS = Object.freeze({
     <path d="M10 11v6"></path>
     <path d="M14 11v6"></path>
   `,
+  edit: `
+    <path d="M12 20h9"></path>
+    <path d="m16.5 3.5 4 4L8 20l-4 1 1-4 11.5-13.5z"></path>
+  `,
   chevronDown: `
     <path d="m6 9 6 6 6-6"></path>
   `,

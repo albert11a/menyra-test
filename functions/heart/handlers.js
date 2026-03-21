@@ -31,6 +31,14 @@ const {
 const {
   getHeartPack
 } = require("./generated/heart-pack-catalog.cjs");
+const {
+  HEART_PERSONA_KEYS,
+  searchRestaurants,
+  provisionHeartAccounts,
+  deleteProvisionedPersona,
+  buildRunnerEnvPayload,
+  deriveSetupPatch
+} = require("./setup");
 
 const db = admin.firestore();
 const githubConfig = resolveGithubConfig();
@@ -137,10 +145,13 @@ function isRemoteHttpsUrl(value = "") {
 function deriveAppBaseUrls(req, body = {}) {
   const preferredHeartBase = asText(body.heartBaseUrl);
   const preferredSocialBase = asText(body.socialBaseUrl);
+  const preferredWaiterBase = asText(body.waiterBaseUrl);
   const requestOrigin = asText(req.get("origin"));
   const configuredHeartBaseUrl = getHeartBaseUrl();
   const configuredSocialBaseUrl = asText(process.env.HEART_SOCIAL_BASE_URL)
     || readConfigValue("heart.social_base_url", "mnyra.heart_social_base_url");
+  const configuredWaiterBaseUrl = asText(process.env.HEART_WAITER_BASE_URL)
+    || readConfigValue("heart.waiter_base_url", "mnyra.heart_waiter_base_url");
 
   const heartBaseUrl = isRemoteHttpsUrl(preferredHeartBase)
     ? preferredHeartBase
@@ -151,14 +162,18 @@ function deriveAppBaseUrls(req, body = {}) {
   if (isRemoteHttpsUrl(preferredSocialBase)) {
     return {
       heartBaseUrl,
-      socialBaseUrl: preferredSocialBase
+      socialBaseUrl: preferredSocialBase,
+      waiterBaseUrl: isRemoteHttpsUrl(preferredWaiterBase)
+        ? preferredWaiterBase
+        : (isRemoteHttpsUrl(configuredWaiterBaseUrl) ? configuredWaiterBaseUrl : "")
     };
   }
 
-  if (isRemoteHttpsUrl(configuredSocialBaseUrl)) {
+  if (isRemoteHttpsUrl(configuredSocialBaseUrl) && isRemoteHttpsUrl(configuredWaiterBaseUrl)) {
     return {
       heartBaseUrl,
-      socialBaseUrl: configuredSocialBaseUrl
+      socialBaseUrl: configuredSocialBaseUrl,
+      waiterBaseUrl: configuredWaiterBaseUrl
     };
   }
 
@@ -168,7 +183,8 @@ function deriveAppBaseUrls(req, body = {}) {
     const origin = new URL(requestOrigin);
     return {
       heartBaseUrl,
-      socialBaseUrl: new URL("/social/", origin).toString()
+      socialBaseUrl: isRemoteHttpsUrl(preferredSocialBase) ? preferredSocialBase : new URL("/social/", origin).toString(),
+      waiterBaseUrl: isRemoteHttpsUrl(preferredWaiterBase) ? preferredWaiterBase : new URL("/waiter/", origin).toString()
     };
   }
 
@@ -176,13 +192,15 @@ function deriveAppBaseUrls(req, body = {}) {
     const heartOrigin = new URL(heartBaseUrl);
     return {
       heartBaseUrl,
-      socialBaseUrl: new URL("/social/", heartOrigin).toString()
+      socialBaseUrl: isRemoteHttpsUrl(configuredSocialBaseUrl) ? configuredSocialBaseUrl : new URL("/social/", heartOrigin).toString(),
+      waiterBaseUrl: isRemoteHttpsUrl(configuredWaiterBaseUrl) ? configuredWaiterBaseUrl : new URL("/waiter/", heartOrigin).toString()
     };
   }
 
   return {
     heartBaseUrl,
-    socialBaseUrl: "https://menyra-test.vercel.app/social/"
+    socialBaseUrl: "https://menyra-test.vercel.app/social/",
+    waiterBaseUrl: "https://menyra-test.vercel.app/waiter/"
   };
 }
 
@@ -208,6 +226,37 @@ async function loadConnectionsSnapshot() {
     providers.listIncidents(12)
   ]);
   return providers.buildConnections({ githubConfig, runs, incidents });
+}
+
+async function loadRestaurantById(restaurantId = "") {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return null;
+  const snap = await db.collection("restaurants").doc(safeRestaurantId).get().catch(() => null);
+  if (!snap?.exists) return null;
+  const data = snap.data() || {};
+  return {
+    id: snap.id,
+    name: asText(data.name || data.restaurantName || snap.id),
+    handle: asText(data.handle || data.name || data.restaurantName),
+    ownerEmail: asText(data.ownerEmail),
+    city: asText(data.city)
+  };
+}
+
+async function buildHeartSetupState(req, patch = {}) {
+  const currentSetup = await providers.getSetup();
+  const baseUrls = deriveAppBaseUrls(req, patch);
+  const nextSetup = deriveSetupPatch({
+    setup: currentSetup,
+    patch,
+    socialBaseUrl: baseUrls.socialBaseUrl,
+    waiterBaseUrl: baseUrls.waiterBaseUrl
+  });
+  return {
+    currentSetup,
+    nextSetup,
+    baseUrls
+  };
 }
 
 async function hydrateRunWithGithub(run, {
@@ -351,6 +400,135 @@ async function heartGetConnections(req, res) {
   sendJson(res, 200, {
     items,
     updatedAt: new Date().toISOString()
+  });
+}
+
+async function heartGetSetup(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["GET"] });
+  if (!authResult.ok) return;
+  const { nextSetup } = await buildHeartSetupState(req);
+  sendJson(res, 200, { setup: nextSetup });
+}
+
+async function heartSaveSetup(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
+  if (!authResult.ok) return;
+  const body = parseRequestJson(req);
+  const restaurant = await loadRestaurantById(body.restaurantId);
+  const patch = {};
+  if ("restaurantId" in body) patch.restaurantId = asText(body.restaurantId);
+  if ("restaurantName" in body || restaurant?.name) patch.restaurantName = asText(body.restaurantName || restaurant?.name);
+  if ("restaurantHandle" in body || restaurant?.handle) patch.restaurantHandle = asText(body.restaurantHandle || restaurant?.handle);
+  if ("restaurantQuery" in body || "restaurantName" in body || restaurant?.name || body.restaurantId) {
+    patch.restaurantQuery = asText(body.restaurantQuery || body.restaurantName || restaurant?.name || body.restaurantId);
+  }
+  if ("guestRouteUrl" in body) patch.guestRouteUrl = asText(body.guestRouteUrl);
+  if ("allowLiveMutations" in body) {
+    patch.allowLiveMutations = body.allowLiveMutations === true || asText(body.allowLiveMutations).toLowerCase() === "true";
+  }
+  if ("syntheticIsolationKey" in body) patch.syntheticIsolationKey = asText(body.syntheticIsolationKey);
+  const { nextSetup } = await buildHeartSetupState(req, patch);
+  const saved = await providers.saveSetup(nextSetup);
+  sendJson(res, 200, { setup: saved });
+}
+
+async function heartSearchRestaurants(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
+  if (!authResult.ok) return;
+  const body = parseRequestJson(req);
+  const query = asText(body.query);
+  const baseUrls = deriveAppBaseUrls(req, body);
+  const items = await searchRestaurants(db, query, {
+    socialBaseUrl: baseUrls.socialBaseUrl
+  });
+  sendJson(res, 200, { items });
+}
+
+async function heartProvisionAccounts(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
+  if (!authResult.ok) return;
+  const body = parseRequestJson(req);
+  const requestedPersonas = Array.isArray(body.personas)
+    ? body.personas.map((item) => asText(item)).filter((item) => HEART_PERSONA_KEYS.includes(item))
+    : HEART_PERSONA_KEYS.slice();
+  const basePatch = {
+    restaurantId: asText(body.restaurantId),
+    restaurantName: asText(body.restaurantName),
+    restaurantHandle: asText(body.restaurantHandle),
+    guestRouteUrl: asText(body.guestRouteUrl),
+    allowLiveMutations: body.allowLiveMutations === true || body.allowLiveMutations === "true"
+  };
+  const { nextSetup, baseUrls } = await buildHeartSetupState(req, basePatch);
+  const restaurant = await loadRestaurantById(nextSetup.restaurantId);
+  if (!restaurant?.id) {
+    sendJson(res, 400, { error: "restaurantId required" });
+    return;
+  }
+  const provisioned = await provisionHeartAccounts({
+    db,
+    setup: nextSetup,
+    restaurant,
+    personas: requestedPersonas
+  });
+  const finalSetup = deriveSetupPatch({
+    setup: provisioned,
+    socialBaseUrl: baseUrls.socialBaseUrl,
+    waiterBaseUrl: baseUrls.waiterBaseUrl
+  });
+  const saved = await providers.saveSetup({
+    ...finalSetup,
+    restaurantId: restaurant.id,
+    restaurantName: restaurant.name,
+    restaurantHandle: restaurant.handle,
+    restaurantQuery: restaurant.name
+  });
+  sendJson(res, 200, { setup: saved });
+}
+
+async function heartDeleteProvisionedPersona(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
+  if (!authResult.ok) return;
+  const body = parseRequestJson(req);
+  const currentSetup = await providers.getSetup();
+  const nextSetup = await deleteProvisionedPersona({
+    db,
+    setup: currentSetup,
+    personaKey: asText(body.personaKey),
+    restaurantId: asText(currentSetup.restaurantId)
+  });
+  const baseUrls = deriveAppBaseUrls(req, currentSetup);
+  const saved = await providers.saveSetup(deriveSetupPatch({
+    setup: nextSetup,
+    socialBaseUrl: baseUrls.socialBaseUrl,
+    waiterBaseUrl: baseUrls.waiterBaseUrl
+  }));
+  sendJson(res, 200, { setup: saved });
+}
+
+async function heartUpdateRunArchive(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, { methods: ["POST"] });
+  if (!authResult.ok) return;
+  const body = parseRequestJson(req);
+  const runIds = Array.isArray(body.runIds) ? body.runIds : [body.runId];
+  const items = await providers.updateRunArchive(runIds, body.archived !== false);
+  sendJson(res, 200, { items });
+}
+
+async function heartGetRunnerConfig(req, res) {
+  const authResult = await verifyCeoRequest(req, res, db, {
+    methods: ["GET", "POST"],
+    allowWebhookSecret: true
+  });
+  if (!authResult.ok) return;
+  const body = req.method === "POST" ? parseRequestJson(req) : (req.query || {});
+  const { nextSetup, baseUrls } = await buildHeartSetupState(req, body);
+  sendJson(res, 200, {
+    setup: nextSetup,
+    env: buildRunnerEnvPayload({
+      setup: nextSetup,
+      socialBaseUrl: baseUrls.socialBaseUrl,
+      waiterBaseUrl: baseUrls.waiterBaseUrl
+    })
   });
 }
 
@@ -543,6 +721,13 @@ module.exports = {
   heartGetRunDetail: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetRunDetail),
   heartGetIncidents: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetIncidents),
   heartGetConnections: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetConnections),
+  heartGetSetup: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetSetup),
+  heartSaveSetup: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartSaveSetup),
+  heartSearchRestaurants: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartSearchRestaurants),
+  heartProvisionAccounts: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartProvisionAccounts),
+  heartDeleteProvisionedPersona: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartDeleteProvisionedPersona),
+  heartUpdateRunArchive: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartUpdateRunArchive),
+  heartGetRunnerConfig: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartGetRunnerConfig),
   heartStartPackRun: functions.region(HEART_DEFAULT_REGION).https.onRequest(heartStartPackRun),
   heartStartSmokeRun: functions.region(HEART_DEFAULT_REGION).https.onRequest((req, res) => startRun(req, res, "smoke")),
   heartStartSyntheticRun: functions.region(HEART_DEFAULT_REGION).https.onRequest((req, res) => startRun(req, res, "full-platform-pack")),

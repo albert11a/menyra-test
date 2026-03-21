@@ -52,6 +52,39 @@ export function bindHeartEvents({
       operations.toggleRunDetailMore?.();
       return;
     }
+    if (action === "set-runs-history-tab") {
+      operations.setRunsHistoryTab?.(target.getAttribute("data-history-tab"));
+      return;
+    }
+    if (action === "toggle-runs-history-edit") {
+      operations.toggleRunsHistoryEdit?.();
+      return;
+    }
+    if (action === "toggle-runs-history-selection") {
+      operations.toggleRunsHistorySelection?.(target.getAttribute("data-run-id"));
+      return;
+    }
+    if (action === "update-run-archive") {
+      await operations.updateRunArchive?.(target.getAttribute("data-archive-state"));
+      return;
+    }
+    if (action === "select-setup-restaurant") {
+      await operations.selectSetupRestaurant?.({
+        restaurantId: target.getAttribute("data-restaurant-id"),
+        restaurantName: target.getAttribute("data-restaurant-name"),
+        restaurantHandle: target.getAttribute("data-restaurant-handle"),
+        guestRouteUrl: target.getAttribute("data-guest-route-url")
+      });
+      return;
+    }
+    if (action === "provision-setup-personas") {
+      await operations.provisionSetupPersonas?.(target.getAttribute("data-personas"));
+      return;
+    }
+    if (action === "delete-setup-persona") {
+      await operations.deleteSetupPersona?.(target.getAttribute("data-persona-key"));
+      return;
+    }
     if (action === "close-modal") {
       operations.closeModal?.();
       return;
@@ -87,13 +120,35 @@ export function bindHeartEvents({
 
   async function handleSubmit(event) {
     const form = event.target?.closest?.("[data-heart-login]");
-    if (!form) return;
-    event.preventDefault();
-    const formData = new FormData(form);
-    await operations.login?.({
-      email: formData.get("email"),
-      password: formData.get("password")
-    });
+    if (form) {
+      event.preventDefault();
+      const formData = new FormData(form);
+      await operations.login?.({
+        email: formData.get("email"),
+        password: formData.get("password")
+      });
+      return;
+    }
+
+    const searchForm = event.target?.closest?.("[data-heart-setup-search]");
+    if (searchForm) {
+      event.preventDefault();
+      const formData = new FormData(searchForm);
+      await operations.searchSetupRestaurants?.(formData.get("query"));
+      return;
+    }
+
+    const setupForm = event.target?.closest?.("[data-heart-setup-save]");
+    if (setupForm) {
+      event.preventDefault();
+      const formData = new FormData(setupForm);
+      await operations.saveSetup?.({
+        restaurantId: formData.get("restaurantId"),
+        restaurantName: formData.get("restaurantName"),
+        guestRouteUrl: formData.get("guestRouteUrl"),
+        allowLiveMutations: formData.get("allowLiveMutations") === "on"
+      });
+    }
   }
 
   function handleChange(event) {

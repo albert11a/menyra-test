@@ -27,13 +27,36 @@ const MODULE_ORDER = Object.freeze([
   "crm",
   "pwa"
 ]);
+const HEART_SETUP_DOC_ID = "default";
 
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+function ensureObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
 function cloneRecord(value) {
   return value && typeof value === "object" ? JSON.parse(JSON.stringify(value)) : {};
+}
+
+function mergeDeep(base = {}, patch = {}) {
+  const next = { ...ensureObject(base) };
+  Object.entries(ensureObject(patch)).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      next[key] = value.slice();
+      return;
+    }
+    if (value && typeof value === "object") {
+      next[key] = mergeDeep(next[key], value);
+      return;
+    }
+    if (value !== undefined) {
+      next[key] = value;
+    }
+  });
+  return next;
 }
 
 function sortByNewest(items = [], key = "updatedAt") {
@@ -100,6 +123,8 @@ function normalizeRunRecord(record = {}) {
     warningCount: Math.max(0, Number(data.warningCount) || 0),
     statusBreakdown: data.statusBreakdown && typeof data.statusBreakdown === "object" ? data.statusBreakdown : {},
     currentStep: asText(data.currentStep),
+    archived: data.archived === true,
+    archivedAt: asText(data.archivedAt),
     modules: ensureArray(data.modules).map(normalizeModuleStatus),
     timeline: ensureArray(data.timeline),
     createdEntities: ensureArray(data.createdEntities),
@@ -133,9 +158,48 @@ function normalizeIncidentRecord(record = {}) {
   };
 }
 
+function normalizeSetupPersona(key = "", value = {}) {
+  const data = ensureObject(serializeFirestoreValue(value));
+  return {
+    key: asText(key),
+    email: asText(data.email),
+    password: asText(data.password),
+    uid: asText(data.uid),
+    handle: asText(data.handle),
+    displayName: asText(data.displayName || data.name),
+    role: asText(data.role || key),
+    managed: data.managed === true,
+    ready: data.ready !== false && !!asText(data.email) && !!asText(data.password),
+    updatedAt: asText(data.updatedAt)
+  };
+}
+
+function normalizeSetupRecord(record = {}) {
+  const data = ensureObject(serializeFirestoreValue(record));
+  const personas = ensureObject(data.personas);
+  return {
+    id: asText(data.id, HEART_SETUP_DOC_ID),
+    restaurantId: asText(data.restaurantId),
+    restaurantName: asText(data.restaurantName),
+    restaurantHandle: asText(data.restaurantHandle),
+    restaurantQuery: asText(data.restaurantQuery || data.restaurantName || data.restaurantId),
+    guestRouteUrl: asText(data.guestRouteUrl),
+    allowLiveMutations: data.allowLiveMutations === true,
+    syntheticIsolationKey: asText(data.syntheticIsolationKey),
+    packConfig: ensureObject(data.packConfig),
+    managed: ensureObject(data.managed),
+    personas: Object.fromEntries(
+      Object.entries(personas).map(([key, value]) => [key, normalizeSetupPersona(key, value)])
+    ),
+    createdAt: asText(data.createdAt),
+    updatedAt: asText(data.updatedAt)
+  };
+}
+
 function createHeartProviders({ db }) {
   const runsCollection = db.collection("heartRuns");
   const incidentsCollection = db.collection("heartIncidents");
+  const setupDocRef = db.collection("heartSetup").doc(HEART_SETUP_DOC_ID);
 
   async function listDocsOrdered(collectionRef, key = "updatedAt", limitCount = 25) {
     try {
@@ -161,6 +225,32 @@ function createHeartProviders({ db }) {
     const snap = await runsCollection.doc(safeRunId).get();
     if (!snap.exists) return null;
     return normalizeRunRecord({ id: snap.id, ...snap.data() });
+  }
+
+  async function getSetup() {
+    const snap = await setupDocRef.get();
+    if (!snap.exists) {
+      return normalizeSetupRecord({
+        id: HEART_SETUP_DOC_ID,
+        personas: {},
+        packConfig: {},
+        managed: {}
+      });
+    }
+    return normalizeSetupRecord({ id: snap.id, ...snap.data() });
+  }
+
+  async function saveSetup(patch = {}) {
+    const existing = await getSetup();
+    const now = new Date().toISOString();
+    const next = mergeDeep(existing, patch);
+    next.id = HEART_SETUP_DOC_ID;
+    next.updatedAt = now;
+    if (!existing.createdAt) {
+      next.createdAt = now;
+    }
+    await setupDocRef.set(next, { merge: true });
+    return normalizeSetupRecord(next);
   }
 
   async function createQueuedRun({
@@ -221,6 +311,8 @@ function createHeartProviders({ db }) {
       packLevel: asText(packLevel, getHeartPack(mode).level),
       packSummary: asText(packSummary, getHeartPack(mode).summary),
       personas: ensureArray(personas).length ? ensureArray(personas) : getHeartPack(mode).personas,
+      archived: false,
+      archivedAt: "",
       statusBreakdown: {
         success: 0,
         warning: 0,
@@ -247,6 +339,21 @@ function createHeartProviders({ db }) {
     };
     await runsCollection.doc(safeRunId).set(next, { merge: true });
     return normalizeRunRecord(next);
+  }
+
+  async function updateRunArchive(runIds = [], archived = false) {
+    const safeIds = ensureArray(runIds).map((runId) => asText(runId)).filter(Boolean);
+    if (!safeIds.length) return [];
+    const now = new Date().toISOString();
+    const items = [];
+    for (const runId of safeIds) {
+      const next = await mergeRun(runId, {
+        archived: !!archived,
+        archivedAt: archived ? now : ""
+      });
+      items.push(next);
+    }
+    return items;
   }
 
   async function appendTimelineEntry(runId, entry = {}) {
@@ -324,7 +431,9 @@ function createHeartProviders({ db }) {
         : (existing?.runFlags || {}),
       github: report.github && typeof report.github === "object"
         ? { ...(existing?.github || {}), ...report.github }
-        : (existing?.github || {})
+        : (existing?.github || {}),
+      archived: existing?.archived === true,
+      archivedAt: asText(existing?.archivedAt)
     };
     await runsCollection.doc(safeRunId).set(payload, { merge: true });
     return normalizeRunRecord(payload);
@@ -394,9 +503,10 @@ function createHeartProviders({ db }) {
   }
 
   function buildDashboardSummary({ runs = [], incidents = [], connections = [] } = {}) {
-    const latestSmokeRun = runs.find((run) => run.mode === "smoke") || null;
-    const latestSyntheticRun = runs.find((run) => run.packKey === "full-platform-pack" || run.mode === "synthetic") || null;
-    const latestPersonaRun = runs.find((run) => run.mode === "persona") || null;
+    const activeRuns = runs.filter((run) => run.archived !== true);
+    const latestSmokeRun = activeRuns.find((run) => run.mode === "smoke") || null;
+    const latestSyntheticRun = activeRuns.find((run) => run.packKey === "full-platform-pack" || run.mode === "synthetic") || null;
+    const latestPersonaRun = activeRuns.find((run) => run.mode === "persona") || null;
     const activeIncidents = incidents.filter((incident) => incident.status !== "resolved");
     const criticalIncidents = activeIncidents.filter((incident) => incident.severity === "critical");
     const overallStatus = criticalIncidents.length
@@ -418,8 +528,8 @@ function createHeartProviders({ db }) {
       latestSyntheticRun,
       latestPersonaRun,
       latestIncidents: incidents.slice(0, 8),
-      recentRuns: runs.slice(0, 12),
-      moduleHealth: buildModuleHealth(runs, incidents),
+      recentRuns: activeRuns.slice(0, 12),
+      moduleHealth: buildModuleHealth(activeRuns, incidents),
       liveMonitoringSummary: {
         activeIncidents: activeIncidents.length,
         criticalIncidents: criticalIncidents.length,
@@ -434,7 +544,7 @@ function createHeartProviders({ db }) {
   }
 
   function buildConnections({ githubConfig = null, runs = [], incidents = [] } = {}) {
-    const latestRun = runs[0] || null;
+    const latestRun = runs.find((run) => run.archived !== true) || null;
     const latestIncident = incidents[0] || null;
     const rateLimitedRun = runs.find((run) => isGithubRateLimited(run)) || null;
     const githubRateLimitDetail = rateLimitedRun?.github?.rateLimitedUntil
@@ -495,8 +605,11 @@ function createHeartProviders({ db }) {
   return {
     listRuns,
     getRun,
+    getSetup,
+    saveSetup,
     createQueuedRun,
     mergeRun,
+    updateRunArchive,
     appendTimelineEntry,
     saveRunReport,
     listIncidents,

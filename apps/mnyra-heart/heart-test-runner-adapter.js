@@ -52,6 +52,19 @@ export function createHeartTestRunnerAdapter({ apiClient }) {
     return payload;
   }
 
+  async function updateRunArchive(runIds = [], archived = true) {
+    const payload = await apiClient.request("heartUpdateRunArchive", {
+      method: "POST",
+      body: {
+        runIds,
+        archived
+      }
+    });
+    return {
+      items: Array.isArray(payload.items) ? payload.items.map(normalizeRunSummary) : []
+    };
+  }
+
   return {
     loadRuns,
     loadRunDetail,
@@ -59,6 +72,7 @@ export function createHeartTestRunnerAdapter({ apiClient }) {
     startSyntheticRun,
     startPackRun,
     startLegacySyntheticRun,
-    cancelRun
+    cancelRun,
+    updateRunArchive
   };
 }

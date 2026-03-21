@@ -8,137 +8,241 @@ import {
   renderStatusBadge
 } from "./heart-ui-utils.js";
 
-function renderSetupToolCard({
-  icon = "settings",
-  eyebrow = "",
-  title = "",
-  body = "",
-  status = "not_configured"
-} = {}) {
+const PERSONA_LABELS = Object.freeze({
+  ceo: "CEO",
+  business: "Business",
+  staff: "Service",
+  user: "Nutzer"
+});
+
+function getPersonaStatus(persona = {}) {
+  if (persona.ready) return "success";
+  if (persona.email || persona.uid) return "warning";
+  return "not_configured";
+}
+
+function renderSetupHero(setupData = {}) {
+  const readyCount = Object.values(setupData.personas || {}).filter((item) => item?.ready).length;
   return `
-    <article class="heart-setup-tool-card">
-      <div class="heart-setup-tool-card__top">
-        <span class="heart-setup-tool-card__icon">${renderHeartIcon(icon)}</span>
-        ${renderStatusBadge(status)}
+    <section class="heart-section heart-setup-hero">
+      <div class="heart-setup-hero__head">
+        <div>
+          <p class="heart-eyebrow">Heart Einrichtung</p>
+          <h2>${escapeHtml(setupData.restaurantName || "Noch kein Restaurant gewaehlt")}</h2>
+        </div>
+        ${renderStatusBadge(setupData.restaurantId && readyCount >= 4 ? "success" : setupData.restaurantId ? "warning" : "not_configured")}
       </div>
-      <div class="heart-setup-tool-card__body">
-        <p class="heart-eyebrow">${escapeHtml(eyebrow)}</p>
-        <strong>${escapeHtml(title)}</strong>
-        <p>${escapeHtml(body)}</p>
+      <p class="heart-setup-hero__note">
+        ${escapeHtml(
+          setupData.restaurantId
+            ? `Heart ist mit ${setupData.restaurantName || setupData.restaurantId} verbunden. ${readyCount} von 4 Testkonten sind bereit.`
+            : "Waehle zuerst ein Restaurant aus. Danach kann Heart QR-Link, Testkonten und Runner-Konfiguration darauf aufbauen."
+        )}
+      </p>
+      <div class="heart-detail-grid">
+        <div><span>Restaurant</span><strong>${escapeHtml(setupData.restaurantId || "-")}</strong></div>
+        <div><span>Gast / QR</span><strong>${escapeHtml(setupData.guestRouteUrl ? "Bereit" : "Fehlt")}</strong></div>
+        <div><span>Schreibmodus</span><strong>${escapeHtml(setupData.allowLiveMutations ? "Aktiv" : "Aus")}</strong></div>
+        <div><span>Isolation</span><strong>${escapeHtml(setupData.syntheticIsolationKeyReady ? "Bereit" : "Fehlt")}</strong></div>
       </div>
-    </article>
+    </section>
   `;
 }
 
-export function renderSettingsView(items = []) {
+function renderRestaurantSearch(setupState = {}) {
+  const setupData = setupState.data || {};
+  const query = String(setupState.searchQuery || setupData.restaurantQuery || "").trim();
+  const results = Array.isArray(setupState.searchResults) ? setupState.searchResults : [];
+  return `
+    <section class="heart-section">
+      <div class="heart-section__head">
+        <div>
+          <p class="heart-eyebrow">Restaurant</p>
+          <h2>QR und Zielsystem</h2>
+        </div>
+      </div>
+      <form class="heart-setup-search-form" data-heart-setup-search>
+        <label class="heart-input-field">
+          <span>Restaurant suchen</span>
+          <input type="text" name="query" value="${escapeHtml(query)}" placeholder="z. B. Casarita oder Restaurant-ID" />
+        </label>
+        <button class="heart-button heart-button--secondary" type="submit" ${setupState.searchStatus === "loading" ? "disabled" : ""}>
+          ${setupState.searchStatus === "loading" ? "Suche..." : "Suchen"}
+        </button>
+      </form>
+      ${setupState.searchError ? `<div class="heart-login-error">${escapeHtml(setupState.searchError)}</div>` : ""}
+      ${results.length ? `
+        <div class="heart-list-stack heart-list-stack--compact">
+          ${results.map((item) => `
+            <button class="heart-list-card heart-list-card--action heart-list-card--button" data-action="select-setup-restaurant" data-restaurant-id="${escapeHtml(item.id)}" data-restaurant-name="${escapeHtml(item.name)}" data-restaurant-handle="${escapeHtml(item.handle)}" data-guest-route-url="${escapeHtml(item.guestRouteUrl || "")}">
+              <div class="heart-list-card__head">
+                <div>
+                  <strong>${escapeHtml(item.name || item.id)}</strong>
+                  <p>${escapeHtml(item.city || item.ownerEmail || item.id)}</p>
+                </div>
+                <span class="heart-chip">${escapeHtml(item.id)}</span>
+              </div>
+            </button>
+          `).join("")}
+        </div>
+      ` : ""}
+      <form class="heart-setup-config-form" data-heart-setup-save>
+        <div class="heart-setup-config-grid">
+          <label class="heart-input-field">
+            <span>Restaurant-ID</span>
+            <input type="text" name="restaurantId" value="${escapeHtml(setupData.restaurantId || "")}" placeholder="Restaurant-ID" />
+          </label>
+          <label class="heart-input-field">
+            <span>Name</span>
+            <input type="text" name="restaurantName" value="${escapeHtml(setupData.restaurantName || "")}" placeholder="Restaurantname" />
+          </label>
+          <label class="heart-input-field heart-input-field--wide">
+            <span>Gast- / QR-Link</span>
+            <input type="url" name="guestRouteUrl" value="${escapeHtml(setupData.guestRouteUrl || "")}" placeholder="https://mnyra.com/social/?tab=menu&src=qr&r=..." />
+          </label>
+        </div>
+        <label class="heart-toggle-row">
+          <input type="checkbox" name="allowLiveMutations" ${setupData.allowLiveMutations ? "checked" : ""} />
+          <span>Schreibmodus fuer echte Tests aktivieren</span>
+        </label>
+        <button class="heart-button heart-button--primary" type="submit" ${setupState.pendingAction === "save-setup" ? "disabled" : ""}>
+          ${setupState.pendingAction === "save-setup" ? "Speichert..." : "Einrichtung speichern"}
+        </button>
+      </form>
+    </section>
+  `;
+}
+
+function renderPersonaCards(setupState = {}) {
+  const setupData = setupState.data || {};
+  return `
+    <section class="heart-section">
+      <div class="heart-section__head">
+        <div>
+          <p class="heart-eyebrow">Testkonten</p>
+          <h2>Konten fuer komplette Runs</h2>
+        </div>
+        <button class="heart-button heart-button--secondary" data-action="provision-setup-personas" data-personas="all" ${setupData.restaurantId ? "" : "disabled"}>
+          Alle erstellen
+        </button>
+      </div>
+      <div class="heart-setup-tool-grid">
+        ${Object.entries(PERSONA_LABELS).map(([key, label]) => {
+          const persona = setupData.personas?.[key] || {};
+          const status = getPersonaStatus(persona);
+          const isBusy = setupState.pendingAction === `provision:${key}` || setupState.pendingAction === "provision:all";
+          return `
+            <article class="heart-setup-tool-card">
+              <div class="heart-setup-tool-card__top">
+                <span class="heart-setup-tool-card__icon">${renderHeartIcon(key === "ceo" ? "shield" : key === "business" ? "chart" : key === "staff" ? "bell" : "user")}</span>
+                ${renderStatusBadge(status)}
+              </div>
+              <div class="heart-setup-tool-card__body">
+                <p class="heart-eyebrow">${escapeHtml(label)}</p>
+                <strong>${escapeHtml(persona.displayName || `Heart ${label}`)}</strong>
+                <p>${escapeHtml(persona.email || "Noch nicht angelegt.")}</p>
+                ${persona.handle ? `<p class="heart-setup-inline-note">Handle: ${escapeHtml(persona.handle)}</p>` : ""}
+                ${persona.password ? `<p class="heart-setup-inline-note">Passwort: ${escapeHtml(persona.password)}</p>` : ""}
+                ${persona.updatedAt ? `<p class="heart-setup-inline-note">Aktualisiert: ${escapeHtml(formatDateTime(persona.updatedAt))}</p>` : ""}
+              </div>
+              <div class="heart-setup-tool-card__actions">
+                <button class="heart-button heart-button--secondary" data-action="provision-setup-personas" data-personas="${escapeHtml(key)}" ${setupData.restaurantId ? "" : "disabled"} ${isBusy ? "disabled" : ""}>
+                  ${isBusy ? "Erstellt..." : "Erstellen"}
+                </button>
+                <button class="heart-icon-square-button" data-action="delete-setup-persona" data-persona-key="${escapeHtml(key)}" aria-label="${escapeHtml(label)} loeschen" ${persona.managed ? "" : "disabled"}>
+                  ${renderHeartIcon("trash")}
+                </button>
+              </div>
+            </article>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  `;
+}
+
+function renderSetupNotes(setupData = {}) {
+  return `
+    <section class="heart-section">
+      <div class="heart-section__head">
+        <div>
+          <p class="heart-eyebrow">Runner</p>
+          <h2>Was Heart jetzt selbst liefern kann</h2>
+        </div>
+      </div>
+      <div class="heart-note-grid">
+        <article class="heart-note-card">
+          <strong>GitHub-Runs koennen Heart-Setup direkt lesen</strong>
+          <p>Heart speichert jetzt Konten, QR-Link und Pack-Konfiguration so, dass der Runner sie ueber das Heart-Backend abrufen kann.</p>
+        </article>
+        <article class="heart-note-card">
+          <strong>Live-Zahlen brauchen weiterhin echte Quellen</strong>
+          <p>Aktive Nutzer, QR-Scans und Live-Besucher erscheinen erst dann, wenn Heart dafuer eine vorhandene Analytics- oder Presence-Quelle lesen darf.</p>
+        </article>
+        <article class="heart-note-card">
+          <strong>Nachweise bleiben sichtbar</strong>
+          <p>Beweisbilder und Run-Berichte bleiben erhalten. Ein komplettes serverseitiges Clear fuer Testdaten und App-Inhalte braucht noch gezielte Delete-Flows pro Bereich.</p>
+        </article>
+        ${setupData.syntheticIsolationKeyReady ? `
+          <article class="heart-note-card">
+            <strong>Isolierter Schreibmodus ist vorbereitet</strong>
+            <p>Heart hat einen Isolationsschluessel hinterlegt. Wenn du den Schreibmodus aktivierst, koennen Mutation-Packs echte Erstellen- und Bearbeiten-Schritte fahren.</p>
+          </article>
+        ` : ""}
+      </div>
+    </section>
+  `;
+}
+
+function renderConnections(items = []) {
+  return `
+    <section class="heart-section">
+      <div class="heart-section__head">
+        <div>
+          <p class="heart-eyebrow">Systemstatus</p>
+          <h2>Technische Anbindungen</h2>
+        </div>
+      </div>
+      ${items.length ? `
+        <div class="heart-connection-grid">
+          ${items.map((item) => `
+            <article class="heart-connection-panel heart-connection-panel--${escapeHtml(item.status || "idle")}">
+              <div class="heart-connection-panel__head">
+                <div>
+                  <strong>${escapeHtml(item.name || "Verbindung")}</strong>
+                  <p>${escapeHtml(item.kind || "intern")}</p>
+                </div>
+                ${renderStatusBadge(item.status || "idle")}
+              </div>
+              <p class="heart-connection-panel__note">${escapeHtml(item.note || "Keine Notiz vorhanden.")}</p>
+              <div class="heart-detail-grid">
+                <div><span>Modus</span><strong>${escapeHtml(item.mode || "-")}</strong></div>
+                <div><span>Geprueft</span><strong>${escapeHtml(item.lastCheckedAt ? formatDateTime(item.lastCheckedAt) : "-")}</strong></div>
+              </div>
+              <p class="heart-connection-panel__detail">${escapeHtml(item.detail || "Keine Details vorhanden.")}</p>
+            </article>
+          `).join("")}
+        </div>
+      ` : renderEmptyState({
+        title: "Noch kein Setup-Status vorhanden.",
+        message: "Sobald Heart die erste Systemabfrage geladen hat, siehst du hier Runner, Speicher und weitere Anbindungen."
+      })}
+    </section>
+  `;
+}
+
+export function renderSettingsView({ connections = [], setup = {} } = {}) {
+  const setupData = setup.data || {};
   return `
     <div class="heart-view-stack">
-      <section class="heart-section">
-        <div class="heart-section__head">
-          <div>
-            <p class="heart-eyebrow">Einrichtung</p>
-            <h2>Was Heart noch braucht</h2>
-          </div>
-        </div>
-        <div class="heart-setup-tool-grid">
-          ${renderSetupToolCard({
-            icon: "users",
-            eyebrow: "Testkonten",
-            title: "CEO, Business, Service und Nutzer",
-            body: "Heart erstellt diese Konten heute noch nicht selbst. Fuer volle Runs muessen stabile Testkonten als Secrets bereitliegen.",
-            status: "not_configured"
-          })}
-          ${renderSetupToolCard({
-            icon: "scan",
-            eyebrow: "Gast / QR",
-            title: "Echter Menue- oder QR-Link",
-            body: "Fuer Gast-, Warenkorb- und Bestelltests braucht Heart einen echten QR- oder Menue-Link mit funktionierender Speisekarte.",
-            status: "not_configured"
-          })}
-          ${renderSetupToolCard({
-            icon: "shield",
-            eyebrow: "Schreibmodus",
-            title: "Sicherer Live-Mutationsmodus",
-            body: "Bestellungen, Erstellen und Loeschen laufen nur sauber, wenn der isolierte Schreibmodus bewusst freigegeben ist.",
-            status: "warning"
-          })}
-          ${renderSetupToolCard({
-            icon: "bot",
-            eyebrow: "Runner",
-            title: "GitHub Runner und Webhooks",
-            body: "Heart braucht den sicheren Runner, damit Starts, Status, Berichte und Screenshots ueber das Backend zusammenlaufen.",
-            status: items.some((item) => String(item.kind || "").toLowerCase() === "github" && String(item.mode || "").toLowerCase() === "real") ? "success" : "not_configured"
-          })}
-          ${renderSetupToolCard({
-            icon: "broom",
-            eyebrow: "Clear / Delete",
-            title: "Sichere Clear-API",
-            body: "Heart kann Nachweise und erzeugte Testdaten erst dann serverseitig loeschen, wenn pro Datentyp sichere Delete-Regeln existieren.",
-            status: "not_configured"
-          })}
-          ${renderSetupToolCard({
-            icon: "chart",
-            eyebrow: "Live Zahlen",
-            title: "Analytics fuer Nutzer, QR und Besucher",
-            body: "Aktive Nutzer, QR-Scans und Live-Besucher koennen erst erscheinen, wenn Heart eine echte Datenquelle dafuer lesen darf.",
-            status: "not_configured"
-          })}
-        </div>
-      </section>
-      <section class="heart-section">
-        <div class="heart-section__head">
-          <div>
-            <p class="heart-eyebrow">Systemstatus</p>
-            <h2>Technische Anbindungen</h2>
-          </div>
-        </div>
-        ${items.length ? `
-          <div class="heart-connection-grid">
-            ${items.map((item) => `
-              <article class="heart-connection-panel heart-connection-panel--${escapeHtml(item.status || "idle")}">
-                <div class="heart-connection-panel__head">
-                  <div>
-                    <strong>${escapeHtml(item.name || "Verbindung")}</strong>
-                    <p>${escapeHtml(item.kind || "intern")}</p>
-                  </div>
-                  ${renderStatusBadge(item.status || "idle")}
-                </div>
-                <p class="heart-connection-panel__note">${escapeHtml(item.note || "Keine Notiz vorhanden.")}</p>
-                <div class="heart-detail-grid">
-                  <div><span>Modus</span><strong>${escapeHtml(item.mode || "-")}</strong></div>
-                  <div><span>Geprueft</span><strong>${escapeHtml(item.lastCheckedAt ? formatDateTime(item.lastCheckedAt) : "-")}</strong></div>
-                </div>
-                <p class="heart-connection-panel__detail">${escapeHtml(item.detail || "Keine Details vorhanden.")}</p>
-              </article>
-            `).join("")}
-          </div>
-        ` : renderEmptyState({
-          title: "Noch kein Setup-Status vorhanden.",
-          message: "Sobald Heart die erste Systemabfrage geladen hat, siehst du hier Runner, Speicher und weitere Anbindungen."
-        })}
-      </section>
-      <section class="heart-section">
-        <div class="heart-section__head">
-          <div>
-            <p class="heart-eyebrow">Klartext</p>
-            <h2>Woran Heart heute noch scheitern darf</h2>
-          </div>
-        </div>
-        <div class="heart-note-grid">
-          <article class="heart-note-card">
-            <strong>Heart legt Konten noch nicht selbst an</strong>
-            <p>Ohne sichere Admin-Flows oder Backend-Endpoints waere automatisches Erstellen von CEO-, Business-, Service- oder Nutzerkonten nur geraten und nicht belastbar.</p>
-          </article>
-          <article class="heart-note-card">
-            <strong>Heart speichert QR-Links heute noch nicht selbst</strong>
-            <p>Ein echter Gast- oder QR-Link muss momentan ausserhalb von Heart hinterlegt werden, sonst kann der Gastlauf nicht wirklich bis Bestellung pruefen.</p>
-          </article>
-          <article class="heart-note-card">
-            <strong>Heart loescht noch nicht serverseitig auf Kommando</strong>
-            <p>Beweise und Testdaten koennen erst dann sicher per Papierkorb oder Clear geloescht werden, wenn eine echte Delete-API dafuer gebaut ist.</p>
-          </article>
-        </div>
-      </section>
+      ${setup.error ? `<div class="heart-error-block">${escapeHtml(setup.error)}</div>` : ""}
+      ${setup.status === "loading" && !setup.data ? `<div class="heart-loading-block">Heart-Einrichtung wird geladen...</div>` : ""}
+      ${renderSetupHero(setupData)}
+      ${renderRestaurantSearch(setup)}
+      ${renderPersonaCards(setup)}
+      ${renderSetupNotes(setupData)}
+      ${setup.connectionsError ? `<div class="heart-error-block">${escapeHtml(setup.connectionsError)}</div>` : ""}
+      ${renderConnections(connections)}
     </div>
   `;
 }

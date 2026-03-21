@@ -11,6 +11,9 @@ import {
   createHeartMonitoringAdapter
 } from "./heart-monitoring-adapter.js";
 import {
+  createHeartSetupAdapter
+} from "./heart-setup-adapter.js";
+import {
   renderHeartApp
 } from "./heart-render.js";
 import {
@@ -36,6 +39,7 @@ const apiClient = createHeartApiClient({
 });
 const monitoringAdapter = createHeartMonitoringAdapter({ apiClient });
 const testRunnerAdapter = createHeartTestRunnerAdapter({ apiClient });
+const setupAdapter = createHeartSetupAdapter({ apiClient });
 
 let toastTimer = null;
 let previousState = store.getState();
@@ -102,6 +106,16 @@ function setToast(title, message = "", tone = "neutral") {
   actions.setToast({ title, message, tone });
   if (toastTimer) clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => actions.setToast(null), 3600);
+}
+
+function splitPersonaList(value = "") {
+  if (String(value || "").trim().toLowerCase() === "all") {
+    return ["ceo", "business", "staff", "user"];
+  }
+  return String(value || "")
+    .split(",")
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
 }
 
 function isActiveRunStatus(status = "") {
@@ -189,6 +203,16 @@ async function refreshConnections() {
   }
 }
 
+async function refreshSetup() {
+  actions.setSetupLoading();
+  try {
+    const setup = await setupAdapter.loadSetup();
+    actions.setSetupData(setup);
+  } catch (error) {
+    actions.setSetupError(error?.message || "Heart-Einrichtung konnte nicht geladen werden.");
+  }
+}
+
 async function ensureRunDetail(runId = "") {
   const safeRunId = String(runId || "").trim();
   if (!safeRunId) return;
@@ -225,6 +249,7 @@ async function refreshAll({ focusRunId = "" } = {}) {
         refreshDashboard(),
         refreshIncidents(),
         refreshConnections(),
+        refreshSetup(),
         refreshRuns({ focusRunId })
       ]);
       actions.setBootReady(new Date().toISOString());
@@ -274,6 +299,91 @@ async function cancelRun(runId = "") {
     setToast("Abbruch fehlgeschlagen", error?.message || "Der Lauf konnte nicht gestoppt werden.", "danger");
   } finally {
     actions.setPendingRunAction("");
+  }
+}
+
+async function updateRunArchive(archived = true) {
+  const state = store.getState();
+  const runIds = Array.isArray(state.runs.historySelectedRunIds) ? state.runs.historySelectedRunIds : [];
+  if (!runIds.length) return;
+  actions.setPendingRunAction(archived ? "archive" : "restore");
+  try {
+    await testRunnerAdapter.updateRunArchive(runIds, archived);
+    actions.setRunsHistoryEditMode(false);
+    actions.clearRunsHistorySelection();
+    setToast(
+      archived ? "Laeufe archiviert" : "Laeufe verschoben",
+      archived ? "Die ausgewaehlten Laeufe wurden archiviert." : "Die ausgewaehlten Laeufe sind wieder aktuell.",
+      "success"
+    );
+    await refreshRuns({ focusRunId: state.runs.selectedRunId });
+  } catch (error) {
+    setToast("Verlauf", error?.message || "Die Laeufe konnten nicht verschoben werden.", "danger");
+  } finally {
+    actions.setPendingRunAction("");
+  }
+}
+
+async function saveSetup(values = {}) {
+  actions.setSetupPendingAction("save-setup");
+  try {
+    const setup = await setupAdapter.saveSetup(values);
+    actions.setSetupData(setup);
+    setToast("Einrichtung", "Heart-Einrichtung wurde gespeichert.", "success");
+    await refreshConnections();
+  } catch (error) {
+    actions.setSetupError(error?.message || "Heart-Einrichtung konnte nicht gespeichert werden.");
+    setToast("Einrichtung", error?.message || "Heart-Einrichtung konnte nicht gespeichert werden.", "danger");
+  } finally {
+    actions.setSetupPendingAction("");
+  }
+}
+
+async function searchSetupRestaurants(query = "") {
+  actions.setSetupSearchLoading(query);
+  try {
+    const payload = await setupAdapter.searchRestaurants(query);
+    actions.setSetupSearchResults(payload.items, payload.query);
+  } catch (error) {
+    actions.setSetupSearchError(error?.message || "Restaurants konnten nicht geladen werden.", query);
+  }
+}
+
+async function provisionSetupPersonas(value = "all") {
+  const personas = splitPersonaList(value);
+  if (!personas.length) return;
+  const currentSetup = store.getState().setup.data || {};
+  const pendingKey = personas.length > 1 ? "all" : personas[0];
+  actions.setSetupPendingAction(`provision:${pendingKey}`);
+  try {
+    const setup = await setupAdapter.provisionPersonas(personas, {
+      restaurantId: currentSetup.restaurantId,
+      restaurantName: currentSetup.restaurantName,
+      restaurantHandle: currentSetup.restaurantHandle,
+      guestRouteUrl: currentSetup.guestRouteUrl,
+      allowLiveMutations: currentSetup.allowLiveMutations === true
+    });
+    actions.setSetupData(setup);
+    setToast("Testkonten", "Heart hat die angeforderten Testkonten erstellt oder aktualisiert.", "success");
+  } catch (error) {
+    setToast("Testkonten", error?.message || "Die Testkonten konnten nicht erstellt werden.", "danger");
+  } finally {
+    actions.setSetupPendingAction("");
+  }
+}
+
+async function deleteSetupPersona(personaKey = "") {
+  const safePersonaKey = String(personaKey || "").trim();
+  if (!safePersonaKey) return;
+  actions.setSetupPendingAction(`delete:${safePersonaKey}`);
+  try {
+    const setup = await setupAdapter.deletePersona(safePersonaKey);
+    actions.setSetupData(setup);
+    setToast("Testkonto geloescht", `${safePersonaKey.toUpperCase()} wurde entfernt.`, "warning");
+  } catch (error) {
+    setToast("Testkonto", error?.message || "Das Testkonto konnte nicht geloescht werden.", "danger");
+  } finally {
+    actions.setSetupPendingAction("");
   }
 }
 
@@ -345,6 +455,36 @@ const operations = {
   },
   toggleRunDetailMore() {
     actions.setRunDetailExpanded(!store.getState().runs.detailExpanded);
+  },
+  setRunsHistoryTab(tabKey) {
+    actions.setRunsHistoryTab(tabKey);
+  },
+  toggleRunsHistoryEdit() {
+    actions.setRunsHistoryEditMode(!store.getState().runs.historyEditMode);
+  },
+  toggleRunsHistorySelection(runId) {
+    actions.toggleRunsHistorySelection(runId);
+  },
+  async updateRunArchive(archiveState) {
+    await updateRunArchive(String(archiveState || "archived") !== "current");
+  },
+  async searchSetupRestaurants(query) {
+    await searchSetupRestaurants(query);
+  },
+  async saveSetup(values) {
+    await saveSetup(values);
+  },
+  async selectSetupRestaurant(payload) {
+    await saveSetup({
+      ...payload,
+      allowLiveMutations: store.getState().setup.data?.allowLiveMutations === true
+    });
+  },
+  async provisionSetupPersonas(value) {
+    await provisionSetupPersonas(value);
+  },
+  async deleteSetupPersona(personaKey) {
+    await deleteSetupPersona(personaKey);
   },
   closeModal() {
     actions.closeModal();

@@ -185,9 +185,16 @@ function renderViewBody(state) {
     return renderModulesView(state.dashboard.data?.moduleHealth || []);
   }
   if (state.shell.activeView === "connections") {
-    if (state.connections.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Einrichtung wird geladen...</div></section>`;
-    if (state.connections.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.connections.error || "Einrichtung konnte nicht geladen werden.")}</div></section>`;
-    return renderSettingsView(state.connections.items || []);
+    if (state.connections.status === "loading" && state.setup.status === "loading" && !state.setup.data) {
+      return `<section class="heart-section"><div class="heart-loading-block">Einrichtung wird geladen...</div></section>`;
+    }
+    return renderSettingsView({
+      connections: state.connections.items || [],
+      setup: {
+        ...(state.setup || {}),
+        connectionsError: state.connections.error || ""
+      }
+    });
   }
   if (state.dashboard.status === "loading") return `<section class="heart-section"><div class="heart-loading-block">Startansicht wird geladen...</div></section>`;
   if (state.dashboard.status === "error") return `<section class="heart-section"><div class="heart-error-block">${escapeHtml(state.dashboard.error || "Startansicht konnte nicht geladen werden.")}</div></section>`;
@@ -200,13 +207,15 @@ function getPageHeaderState(state) {
     return {
       eyebrow: "",
       title: runsHeader.title,
-      status: runsHeader.status
+      status: runsHeader.status,
+      timestamp: state.runs.lastRefreshAt
     };
   }
   return {
     eyebrow: "Aktiver Bereich",
     title: HEART_NAV_ITEMS.find((item) => item.key === state.shell.activeView)?.label || "Start",
-    status: state.dashboard.data?.overallStatus || "idle"
+    status: state.dashboard.data?.overallStatus || "idle",
+    timestamp: state.boot.lastUpdatedAt
   };
 }
 
@@ -281,8 +290,8 @@ function renderDrawer(state, userName) {
 function renderShell(state) {
   const userName = state.auth.profile?.name || state.auth.user?.email || "CEO";
   const pageHeader = getPageHeaderState(state);
-  const timestamp = state.boot.lastUpdatedAt
-    ? `Aktualisiert ${formatRelative(state.boot.lastUpdatedAt)}`
+  const timestamp = pageHeader.timestamp
+    ? `Aktualisiert ${formatRelative(pageHeader.timestamp)}`
     : "Warte auf erste Synchronisation";
   const shellClasses = [
     "heart-shell",

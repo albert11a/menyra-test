@@ -133,6 +133,8 @@ export function normalizeRunSummary(item = {}) {
     warningCount: Math.max(0, Number(item.warningCount) || 0),
     statusBreakdown: item.statusBreakdown && typeof item.statusBreakdown === "object" ? item.statusBreakdown : {},
     currentStep: asText(item.currentStep),
+    archived: item.archived === true,
+    archivedAt: toIso(item.archivedAt),
     runFlags: item.runFlags && typeof item.runFlags === "object" ? item.runFlags : {},
     modules: normalizeList(item.modules).map(normalizeModuleStatus),
     artifacts: normalizeList(item.artifacts).map((artifact) => ({
@@ -265,5 +267,35 @@ export function normalizeDashboardData(payload = {}) {
       mode: asText(action.mode),
       workflowMode: asText(action.workflowMode)
     }))
+  };
+}
+
+export function normalizeSetupData(item = {}) {
+  const personas = item.personas && typeof item.personas === "object" ? item.personas : {};
+  return {
+    id: asText(item.id || "default"),
+    restaurantId: asText(item.restaurantId),
+    restaurantName: asText(item.restaurantName),
+    restaurantHandle: asText(item.restaurantHandle),
+    restaurantQuery: asText(item.restaurantQuery || item.restaurantName || item.restaurantId),
+    guestRouteUrl: asText(item.guestRouteUrl),
+    allowLiveMutations: item.allowLiveMutations === true,
+    syntheticIsolationKeyReady: !!asText(item.syntheticIsolationKey),
+    packConfig: item.packConfig && typeof item.packConfig === "object" ? item.packConfig : {},
+    updatedAt: toIso(item.updatedAt || item.createdAt),
+    personas: Object.fromEntries(
+      Object.entries(personas).map(([key, value]) => [key, {
+        key,
+        email: asText(value?.email),
+        password: asText(value?.password),
+        uid: asText(value?.uid),
+        handle: asText(value?.handle),
+        displayName: asText(value?.displayName),
+        role: asText(value?.role || key),
+        managed: value?.managed === true,
+        ready: value?.ready !== false && !!asText(value?.email) && !!asText(value?.password),
+        updatedAt: toIso(value?.updatedAt || item.updatedAt)
+      }])
+    )
   };
 }

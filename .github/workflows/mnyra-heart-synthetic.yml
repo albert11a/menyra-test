@@ -67,6 +67,14 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Load Heart runner config
+        run: node ./scripts/fetch-heart-runner-config.mjs
+        env:
+          HEART_RUNNER_CONFIG_URL: https://us-central1-menyra-c0e68.cloudfunctions.net/heartGetRunnerConfig
+          HEART_WEBHOOK_SECRET: ${{ secrets.HEART_WEBHOOK_SECRET }}
+          MNYRA_SOCIAL_BASE_URL: ${{ inputs.social_base_url }}
+          MNYRA_STAFF_BASE_URL: ${{ vars.MNYRA_STAFF_BASE_URL }}
+
       - name: Run heart pack
         run: node ./src/run-pack.mjs "${{ inputs.heart_pack }}"
         env:

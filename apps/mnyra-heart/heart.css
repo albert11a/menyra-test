@@ -2213,3 +2213,177 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.heart-page-header__meta--stacked {
+  min-width: 132px;
+}
+
+.heart-page-header__meta--stacked .heart-topbar__timestamp {
+  display: block;
+  text-align: right;
+}
+
+.heart-sidebar__identity strong {
+  font-size: 0.9rem;
+  line-height: 1.1;
+}
+
+.heart-sidebar__identity p {
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.heart-run-start-grid {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.heart-run-history__head-actions,
+.heart-run-history__tabs,
+.heart-run-history__bulkbar,
+.heart-run-history__card-actions,
+.heart-setup-tool-card__actions,
+.heart-setup-search-form,
+.heart-setup-config-form {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.heart-run-history__head-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.heart-run-history__tabs {
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgba(63, 63, 70, 0.92);
+  background: rgba(12, 12, 14, 0.92);
+}
+
+.heart-segmented-button {
+  border: 0;
+  background: transparent;
+  color: var(--heart-text-muted);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.heart-segmented-button--active {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--heart-text);
+}
+
+.heart-run-history__bulkbar {
+  justify-content: space-between;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(63, 63, 70, 0.92);
+  background: rgba(20, 20, 24, 0.92);
+}
+
+.heart-list-card--button {
+  width: 100%;
+  text-align: left;
+}
+
+.heart-list-card--selected {
+  border-color: rgba(196, 30, 58, 0.86);
+  box-shadow: 0 0 0 1px rgba(196, 30, 58, 0.28);
+}
+
+.heart-run-history__card-actions {
+  justify-content: flex-end;
+}
+
+.heart-setup-hero {
+  gap: 16px;
+}
+
+.heart-setup-hero__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.heart-setup-hero__note,
+.heart-setup-inline-note {
+  margin: 0;
+  color: var(--heart-text-soft);
+}
+
+.heart-setup-search-form,
+.heart-setup-config-form {
+  flex-wrap: wrap;
+}
+
+.heart-setup-search-form .heart-input-field,
+.heart-setup-config-form .heart-input-field {
+  flex: 1 1 240px;
+}
+
+.heart-setup-config-grid {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.heart-input-field--wide {
+  grid-column: 1 / -1;
+}
+
+.heart-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  color: var(--heart-text);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.heart-toggle-row input {
+  width: 18px;
+  height: 18px;
+}
+
+.heart-setup-tool-card__actions {
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+@media (max-width: 779px) {
+  .heart-page-header__meta--stacked {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .heart-page-header__meta--stacked .heart-topbar__timestamp {
+    text-align: left;
+  }
+
+  .heart-run-history__bulkbar,
+  .heart-run-history__head-actions,
+  .heart-setup-search-form,
+  .heart-setup-config-form,
+  .heart-setup-tool-card__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .heart-run-history__card-actions {
+    justify-content: stretch;
+    flex-direction: column;
+  }
+
+  .heart-setup-config-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
