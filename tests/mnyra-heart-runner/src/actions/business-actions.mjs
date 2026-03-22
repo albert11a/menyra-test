@@ -4,8 +4,7 @@ import {
   fillIfPresent,
   openPageAndWait,
   openSocialTab,
-  waitForAnySelector,
-  waitForTextToDisappear
+  waitForAnySelector
 } from "../helpers/social-app.mjs";
 import { getSocialDefaultTabs } from "../helpers/social-app.mjs";
 import { runUiLayoutCheck } from "./ui-actions.mjs";
@@ -181,20 +180,38 @@ async function resolveFirstMenuActionItemId(page, actionAttribute = "") {
   }, safeActionAttribute);
 }
 
-async function waitForMenuActionItemToDisappear(page, actionAttribute = "", itemId = "", timeout = 20000) {
+async function isMenuActionItemPresent(page, itemText = "", actionAttribute = "", itemId = "") {
+  const safeItemText = asText(itemText).toLowerCase();
   const safeActionAttribute = asText(actionAttribute);
   const safeItemId = asText(itemId);
-  if (!safeActionAttribute || !safeItemId) return;
-  await page.waitForFunction((payload) => {
+  if (!safeActionAttribute) return false;
+  return page.evaluate((payload) => {
     const attr = String(payload?.actionAttribute || "").trim();
-    const id = String(payload?.itemId || "").trim();
-    if (!attr || !id) return true;
-    return !Array.from(document.querySelectorAll(`[${attr}]`))
-      .some((button) => String(button?.getAttribute?.(attr) || "").trim() === id);
+    const itemLabel = String(payload?.itemText || "").trim().toLowerCase();
+    const expectedId = String(payload?.itemId || "").trim();
+    if (!attr) return false;
+    const buttons = Array.from(document.querySelectorAll(`[${attr}]`));
+    for (const button of buttons) {
+      const currentId = String(button?.getAttribute?.(attr) || "").trim();
+      if (expectedId && currentId === expectedId) {
+        return true;
+      }
+      if (!itemLabel) continue;
+      let node = button;
+      while (node && node !== document.body) {
+        const text = String(node.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        if (text.includes(itemLabel)) {
+          return true;
+        }
+        node = node.parentElement;
+      }
+    }
+    return false;
   }, {
+    itemText: safeItemText,
     actionAttribute: safeActionAttribute,
     itemId: safeItemId
-  }, { timeout });
+  });
 }
 
 async function clickMenuActionByItemId(page, actionAttribute = "", itemId = "") {
@@ -227,19 +244,6 @@ async function waitForMenuItemByText(page, itemText = "", timeout = 20000) {
     (expectedText) => {
       const bodyText = String(document.body?.innerText || "");
       return bodyText.includes(expectedText);
-    },
-    safeItemText,
-    { timeout }
-  );
-}
-
-async function waitForMenuItemToDisappear(page, itemText = "", timeout = 20000) {
-  const safeItemText = asText(itemText);
-  if (!safeItemText) return;
-  await page.waitForFunction(
-    (expectedText) => {
-      const bodyText = String(document.body?.innerText || "");
-      return !bodyText.includes(expectedText);
     },
     safeItemText,
     { timeout }
@@ -582,11 +586,21 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
         if (businessConfig.productDelete.confirmSelector) {
           await clickIfPresent(page, businessConfig.productDelete.confirmSelector);
         }
-        await waitForMenuActionItemToDisappear(page, "data-menu-delete", fallbackItemId, 20000).catch(async () => {
-          await waitForTextToDisappear(page, targetName, 20000).catch(async () => {
-            await waitForMenuItemToDisappear(page, targetName, 20000);
-          });
-        });
+        const verificationDeadline = Date.now() + 25000;
+        let removed = false;
+        while (Date.now() < verificationDeadline) {
+          await openBusinessMenuAdmin(page, heart, persona, businessConfig.productDelete.url, "Business / Verify product delete");
+          await searchBusinessMenu(page, targetName);
+          const stillPresent = await isMenuActionItemPresent(page, targetName, "data-menu-delete", fallbackItemId);
+          if (!stillPresent) {
+            removed = true;
+            break;
+          }
+          await page.waitForTimeout(1200);
+        }
+        if (!removed) {
+          throw new Error("Heart konnte das geloeschte Testprodukt nach dem Reload weiterhin im Menue finden.");
+        }
         heart.passModule("menu", "Produkt wurde geloescht.", {
           action: "product delete",
           persona: persona.key,

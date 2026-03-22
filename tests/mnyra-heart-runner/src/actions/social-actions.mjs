@@ -725,6 +725,93 @@ async function openFeedUploadEntryPoint(page, persona, timeout = 10000) {
   return false;
 }
 
+async function waitForPostCreateConfirmation(page, {
+  postText = "",
+  uploadComposerSelectors = [],
+  timeout = 30000
+} = {}) {
+  const safePostText = asText(postText).toLowerCase();
+  const safeComposerSelectors = uniqueSelectors(uploadComposerSelectors);
+  const failureTexts = [
+    "Upload fehlgeschlagen.",
+    "Nur Bild oder Video moeglich.",
+    "Feed Upload nur mit Bild moeglich.",
+    "Bitte zuerst Story oder Feed waehlen."
+  ].map((entry) => entry.toLowerCase());
+  const deadline = Date.now() + Math.max(1000, Number(timeout) || 0);
+  let composerClosed = false;
+
+  while (Date.now() < deadline) {
+    const state = await page.evaluate((payload) => {
+      const isVisibleNode = (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        const style = window.getComputedStyle(node);
+        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+          return false;
+        }
+        const rect = node.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      };
+      const bodyText = String(document.body?.innerText || "").toLowerCase();
+      const composerVisible = Array.isArray(payload?.composerSelectors)
+        && payload.composerSelectors.some((selector) => {
+          try {
+            return Array.from(document.querySelectorAll(selector)).some((node) => isVisibleNode(node));
+          } catch {
+            return false;
+          }
+        });
+      const failureText = Array.isArray(payload?.failureTexts)
+        ? payload.failureTexts.find((entry) => entry && bodyText.includes(entry))
+        : "";
+      const hasProfileSurface = [
+        "[data-profile-view]",
+        "[data-profile-top-tab]",
+        "[data-business-top-tab]"
+      ].some((selector) => {
+        try {
+          return Array.from(document.querySelectorAll(selector)).some((node) => isVisibleNode(node));
+        } catch {
+          return false;
+        }
+      });
+      const href = String(window.location.href || "").toLowerCase();
+      return {
+        composerVisible,
+        failureText,
+        hasPostText: !!payload?.postText && bodyText.includes(payload.postText),
+        hasProfileSurface,
+        leftUploadRoute: !href.includes("tab=upload")
+      };
+    }, {
+      composerSelectors: safeComposerSelectors,
+      failureTexts,
+      postText: safePostText
+    });
+
+    if (state.failureText) {
+      throw new Error(`Heart hat beim Feed-Post einen sichtbaren Fehler gesehen: ${state.failureText}.`);
+    }
+    if (state.hasPostText) {
+      return { match: postText };
+    }
+    if (!state.composerVisible) {
+      composerClosed = true;
+    }
+    if (composerClosed && (state.hasProfileSurface || state.leftUploadRoute)) {
+      return {
+        match: state.hasProfileSurface ? "profile-surface" : "left-upload-route"
+      };
+    }
+    await page.waitForTimeout(300).catch(() => undefined);
+  }
+
+  if (composerClosed) {
+    return { match: "composer-closed" };
+  }
+  throw new Error("Heart konnte den neu erstellten Feed-Post nach dem Absenden nicht bestaetigen.");
+}
+
 async function runConfiguredSocialMutation({
   page,
   env,
@@ -1079,9 +1166,13 @@ export async function runSocialInteractionChecks({
         await fillIfPresent(page, socialConfig.postCreate.inputSelector, postText);
         await clickIfPresent(page, socialConfig.postCreate.submitSelector);
         await waitForSelectorToDisappear(page, socialConfig.postCreate.inputSelector, 30000).catch(() => undefined);
-        if (socialConfig.postCreate.verifyText) {
-          await waitForText(page, replaceRunTokens(socialConfig.postCreate.verifyText, env), 30000);
-        }
+        await waitForPostCreateConfirmation(page, {
+          postText: socialConfig.postCreate.verifyText
+            ? replaceRunTokens(socialConfig.postCreate.verifyText, env)
+            : postText,
+          uploadComposerSelectors,
+          timeout: 30000
+        });
         heart.addCreatedEntity({
           id: postText,
           type: "post",
