@@ -21,6 +21,21 @@ export async function runUserPack({
     return;
   }
 
+  async function withFreshUserPage(label, runner) {
+    if (typeof createScopedPage !== "function") {
+      await runner(page);
+      return;
+    }
+    const scope = await createScopedPage(label);
+    try {
+      const scopedAuth = await ensurePersonaSession({ page: scope.page, heart, persona: user, moduleKey: "auth" });
+      if (!scopedAuth.ok) return;
+      await runner(scope.page);
+    } finally {
+      await scope.dispose();
+    }
+  }
+
   await emitStatus("Nutzer / Oberflaechen", "running", "Heart prueft die Nutzer-Oberflaechen.");
   await runSocialSurfaceChecks({ page, env, heart, persona: user });
   await runUserSocialMutationChecks({
@@ -36,7 +51,9 @@ export async function runUserPack({
     approverPersona: personas.business,
     requesterPersona: user
   });
-  await runCartAndOrderChecks({ page, env, heart, persona: user });
+  await withFreshUserPage("user-cart-order", async (activePage) => {
+    await runCartAndOrderChecks({ page: activePage, env, heart, persona: user });
+  });
   await runChatChecks({ page, env, heart, persona: user });
   await runDiscoveryChecks({ page, env, heart, persona: user });
   await runJourneyChecks({ page, env, heart, persona: user });
