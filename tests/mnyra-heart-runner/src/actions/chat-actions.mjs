@@ -61,6 +61,34 @@ function buildChatRouteUrl(baseUrl = "", targetUid = "") {
   }
 }
 
+function rebaseUrlToBase(baseUrl = "", targetUrl = "") {
+  const safeBaseUrl = asText(baseUrl);
+  const safeTargetUrl = asText(targetUrl);
+  if (!safeTargetUrl) return "";
+  if (!safeBaseUrl) return safeTargetUrl;
+  try {
+    const base = new URL(safeBaseUrl);
+    const target = new URL(safeTargetUrl, safeBaseUrl);
+    const normalizedBasePath = String(base.pathname || "").replace(/\/+$/, "").toLowerCase();
+    const normalizedTargetPath = String(target.pathname || "").replace(/\/+$/, "").toLowerCase();
+    if (!normalizedBasePath || normalizedBasePath === normalizedTargetPath) {
+      target.protocol = base.protocol;
+      target.host = base.host;
+    }
+    return target.toString();
+  } catch {
+    return safeTargetUrl;
+  }
+}
+
+function normalizeUrlList(baseUrl = "", ...values) {
+  return uniqueList(
+    toList(...values)
+      .map((entry) => rebaseUrlToBase(baseUrl, entry))
+      .filter(Boolean)
+  );
+}
+
 function parseHandleFromUrl(url = "") {
   const safeUrl = asText(url);
   if (!safeUrl) return "";
@@ -189,14 +217,15 @@ async function clickMatchingSearchResult(page, selectors = [], queries = []) {
 function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
   const configPersonas = env.packConfig?.personas || {};
   const socialConfig = env.packConfig?.actions?.social || {};
+  const activeBaseUrl = asText(persona?.baseUrl, sendConfig.url);
   if (persona?.key === "business") {
     const userPersona = configPersonas.user || {};
     const targetUid = asText(sendConfig.userTargetUid, userPersona.uid, sendConfig.targetUid);
     const targetProfileUrl = asText(
-      isSupportedProfileUrl(sendConfig.userTargetProfileUrl) ? sendConfig.userTargetProfileUrl : "",
-      isSupportedProfileUrl(sendConfig.targetProfileUrl) ? sendConfig.targetProfileUrl : "",
-      isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : "",
-      buildProfileUrlFromIdentity(persona.baseUrl, {
+      isSupportedProfileUrl(sendConfig.userTargetProfileUrl) ? rebaseUrlToBase(activeBaseUrl, sendConfig.userTargetProfileUrl) : "",
+      isSupportedProfileUrl(sendConfig.targetProfileUrl) ? rebaseUrlToBase(activeBaseUrl, sendConfig.targetProfileUrl) : "",
+      isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? rebaseUrlToBase(activeBaseUrl, socialConfig.userTargetProfile.url) : "",
+      buildProfileUrlFromIdentity(activeBaseUrl, {
         handle: asText(
           socialConfig.userTargetProfile?.query,
           userPersona.handle,
@@ -208,7 +237,7 @@ function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
     return {
       targetUid,
       targetProfileUrl,
-      threadUrl: buildChatRouteUrl(sendConfig.url, targetUid),
+      threadUrl: buildChatRouteUrl(activeBaseUrl, targetUid),
       searchQueries: buildSearchQueries(
         userPersona.displayName,
         userPersona.handle,
@@ -220,10 +249,10 @@ function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
   const businessPersona = configPersonas.business || {};
   const targetUid = asText(sendConfig.targetUid, businessPersona.uid);
   const targetProfileUrl = asText(
-    isSupportedProfileUrl(sendConfig.targetProfileUrl) ? sendConfig.targetProfileUrl : "",
-    isSupportedProfileUrl(socialConfig.businessProfile?.url) ? socialConfig.businessProfile.url : "",
-    isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : "",
-    buildProfileUrlFromIdentity(persona.baseUrl, {
+    isSupportedProfileUrl(sendConfig.targetProfileUrl) ? rebaseUrlToBase(activeBaseUrl, sendConfig.targetProfileUrl) : "",
+    isSupportedProfileUrl(socialConfig.businessProfile?.url) ? rebaseUrlToBase(activeBaseUrl, socialConfig.businessProfile.url) : "",
+    isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? rebaseUrlToBase(activeBaseUrl, socialConfig.userTargetProfile.url) : "",
+    buildProfileUrlFromIdentity(activeBaseUrl, {
       handle: businessPersona.handle,
       restaurantId: businessPersona.restaurantId
     })
@@ -231,7 +260,7 @@ function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
   return {
     targetUid,
     targetProfileUrl,
-    threadUrl: buildChatRouteUrl(sendConfig.url, targetUid),
+    threadUrl: buildChatRouteUrl(activeBaseUrl, targetUid),
     searchQueries: buildSearchQueries(
       env.packConfig?.restaurantName,
       businessPersona.displayName,
@@ -243,7 +272,8 @@ function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
 
 async function openChatTargetViaSearch(page, env, heart, persona, targetContext = {}, openTargetSelectors = []) {
   const searchConfig = env.packConfig?.actions?.discovery?.search || {};
-  const searchUrl = asText(searchConfig.url, buildUrl(persona.baseUrl, { tab: "search" }));
+  const activeBaseUrl = asText(persona?.baseUrl, searchConfig.url);
+  const searchUrl = rebaseUrlToBase(activeBaseUrl, asText(searchConfig.url, buildUrl(activeBaseUrl, { tab: "search" })));
   const searchInputSelector = asText(searchConfig.inputSelector, "#searchInput");
   const searchQueries = buildSearchQueries(targetContext.searchQueries);
   if (!searchQueries.length) return false;
@@ -273,16 +303,21 @@ async function openChatTargetViaSearch(page, env, heart, persona, targetContext 
 }
 
 async function ensureChatComposerReady(page, env, sendConfig = {}, heart, persona) {
+  const activeBaseUrl = asText(persona?.baseUrl, sendConfig.url);
   const composerSelector = asText(sendConfig.composerSelector, "#chatMessageInput");
   const composerSelectorCandidates = uniqueList(composerSelector, "#chatMessageInput", "textarea#chatMessageInput");
   const threadViewSelector = asText(sendConfig.threadViewSelector, "#chatThreadView");
   const messagesSelector = asText(sendConfig.messagesSelector, "#chatMessages");
   const targetContext = resolveChatTargetContext(env, persona, sendConfig);
   const threadTargetUid = asText(targetContext.targetUid);
-  const threadTargetUrls = uniqueList(
+  const configuredThreadUrl = persona?.key === "business"
+    ? sendConfig.userThreadUrl
+    : sendConfig.threadUrl;
+  const threadTargetUrls = normalizeUrlList(
+    activeBaseUrl,
     targetContext.threadUrl,
-    persona?.key === "business" ? "" : sendConfig.threadUrl,
-    buildChatRouteUrl(sendConfig.url, threadTargetUid)
+    configuredThreadUrl,
+    buildChatRouteUrl(activeBaseUrl, threadTargetUid)
   );
   const openThreadSelectors = uniqueList(
     splitSelectorList(sendConfig.openThreadSelector),
@@ -332,8 +367,9 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
   }
 
   const targetUrls = persona?.key === "business"
-    ? uniqueList(targetContext.targetProfileUrl, sendConfig.userTargetProfileUrl)
-    : uniqueList(
+    ? normalizeUrlList(activeBaseUrl, targetContext.targetProfileUrl, sendConfig.userTargetProfileUrl)
+    : normalizeUrlList(
+      activeBaseUrl,
       targetContext.targetProfileUrl,
       sendConfig.targetProfileUrl,
       env.packConfig?.actions?.social?.businessProfile?.url
@@ -464,7 +500,9 @@ export async function runChatChecks({ page, env, heart, persona } = {}) {
   }
 
   try {
-    await openPageAndWait(page, sendConfig.url, "body", heart, {
+    const activeBaseUrl = asText(persona?.baseUrl, sendConfig.url);
+    const chatTargetUrl = rebaseUrlToBase(activeBaseUrl, asText(sendConfig.url, buildUrl(activeBaseUrl, { tab: "chat" })));
+    await openPageAndWait(page, chatTargetUrl, "body", heart, {
       title: `${persona.label} / Open chat target`,
       moduleKey: "chat",
       area: "chat",
