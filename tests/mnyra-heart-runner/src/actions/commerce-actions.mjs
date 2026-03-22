@@ -52,6 +52,29 @@ async function waitForCartSurfaceReady(page, cartConfig = {}, timeout = 20000) {
   ), timeout);
 }
 
+async function ensureCartMenuTabVisible(page, cartConfig = {}) {
+  const menuReadySelectors = uniqueList(
+    cartConfig.openSelector,
+    cartConfig.triggerSelector,
+    "[data-menu-open]",
+    "#menuDetailAddToCartBtn",
+    "[data-cart-checkout]"
+  );
+  if (await findVisibleSelector(page, menuReadySelectors)) {
+    return "";
+  }
+  const openedMenuTab = await clickFirstVisible(page, [
+    cartConfig.menuTabSelector,
+    "[data-profile-top-tab='menu']",
+    "[data-business-top-tab='menu']"
+  ], 8000);
+  if (!openedMenuTab) {
+    return "";
+  }
+  await waitForAnySelector(page, menuReadySelectors, 15000).catch(() => "");
+  return openedMenuTab;
+}
+
 async function ensureCartReady(page, cartConfig = {}) {
   const cartReadySelectors = uniqueList(
     cartConfig.verifySelector,
@@ -65,7 +88,11 @@ async function ensureCartReady(page, cartConfig = {}) {
     "Tischbestellung absenden",
     "wurde zum Warenkorb hinzugefuegt"
   );
-  await waitForCartSurfaceReady(page, cartConfig, 20000).catch(() => "");
+  const surfaceReadySelector = await waitForCartSurfaceReady(page, cartConfig, 12000).catch(() => "");
+  if (!surfaceReadySelector) {
+    await ensureCartMenuTabVisible(page, cartConfig);
+    await waitForCartSurfaceReady(page, cartConfig, 12000).catch(() => "");
+  }
   const existingCartSelector = await findVisibleSelector(page, cartReadySelectors);
   if (existingCartSelector) {
     return {

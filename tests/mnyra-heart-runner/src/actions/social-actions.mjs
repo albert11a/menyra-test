@@ -702,6 +702,29 @@ async function createSyntheticPostUpload(page, env, persona) {
   return filePath;
 }
 
+async function openFeedUploadEntryPoint(page, persona, timeout = 10000) {
+  const uploadEntrySelectors = [
+    "[data-nav=\"upload\"][data-upload-intent=\"feed\"]",
+    "[data-nav=\"upload\"][data-upload-intent=\"chooser\"]",
+    "[data-nav=\"upload\"]"
+  ];
+  const tryOpenOnCurrentView = async () => {
+    return !!await clickFirstVisible(page, uploadEntrySelectors, timeout);
+  };
+  if (await tryOpenOnCurrentView()) {
+    return true;
+  }
+  for (const fallbackTab of [SOCIAL_TABS.profile, SOCIAL_TABS.feed]) {
+    const fallbackUrl = buildUrl(persona.baseUrl, { tab: fallbackTab });
+    await page.goto(fallbackUrl, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("body", { timeout: 30000 });
+    if (await tryOpenOnCurrentView()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function runConfiguredSocialMutation({
   page,
   env,
@@ -965,7 +988,8 @@ export async function runSocialInteractionChecks({
       config: socialConfig.postCreate,
       requiredKeys: ["url", "inputSelector", "submitSelector"],
       perform: async () => {
-        await openPageAndWait(page, socialConfig.postCreate.url, "body", heart, {
+        const postCreateUrl = normalizeSocialAppUrl(persona.baseUrl, socialConfig.postCreate.url);
+        await openPageAndWait(page, postCreateUrl, "body", heart, {
           title: "User / Open post composer target",
           moduleKey: "feed",
           area: "feed",
@@ -986,7 +1010,8 @@ export async function runSocialInteractionChecks({
           ...uploadChooserSelectors,
           ...uploadComposerSelectors
         ]);
-        if (!initialUploadSelector && socialConfig.postCreate.openSelector) {
+        let preparedUploadSelector = initialUploadSelector;
+        if (!preparedUploadSelector && socialConfig.postCreate.openSelector) {
           const openedComposer = await clickFirstVisible(
             page,
             splitSelectorList(socialConfig.postCreate.openSelector),
@@ -995,8 +1020,22 @@ export async function runSocialInteractionChecks({
           if (!openedComposer) {
             throw new Error("Heart konnte den Feed-Post-Composer nicht sichtbar oeffnen.");
           }
+          preparedUploadSelector = await waitForAnySelector(page, [
+            ...uploadChooserSelectors,
+            ...uploadComposerSelectors
+          ], 10000).catch(() => "");
         }
-        const visibleUploadSelector = initialUploadSelector || await waitForAnySelector(page, [
+        if (!preparedUploadSelector) {
+          const openedUploadEntryPoint = await openFeedUploadEntryPoint(page, persona, 10000);
+          if (!openedUploadEntryPoint) {
+            throw new Error("Heart konnte keinen sichtbaren Upload-Einstieg fuer den Feed-Post finden.");
+          }
+          preparedUploadSelector = await waitForAnySelector(page, [
+            ...uploadChooserSelectors,
+            ...uploadComposerSelectors
+          ], 30000).catch(() => "");
+        }
+        const visibleUploadSelector = preparedUploadSelector || await waitForAnySelector(page, [
           ...uploadChooserSelectors,
           ...uploadComposerSelectors
         ], 30000);

@@ -181,6 +181,22 @@ async function resolveFirstMenuActionItemId(page, actionAttribute = "") {
   }, safeActionAttribute);
 }
 
+async function waitForMenuActionItemToDisappear(page, actionAttribute = "", itemId = "", timeout = 20000) {
+  const safeActionAttribute = asText(actionAttribute);
+  const safeItemId = asText(itemId);
+  if (!safeActionAttribute || !safeItemId) return;
+  await page.waitForFunction((payload) => {
+    const attr = String(payload?.actionAttribute || "").trim();
+    const id = String(payload?.itemId || "").trim();
+    if (!attr || !id) return true;
+    return !Array.from(document.querySelectorAll(`[${attr}]`))
+      .some((button) => String(button?.getAttribute?.(attr) || "").trim() === id);
+  }, {
+    actionAttribute: safeActionAttribute,
+    itemId: safeItemId
+  }, { timeout });
+}
+
 async function clickMenuActionByItemId(page, actionAttribute = "", itemId = "") {
   const safeItemId = asText(itemId);
   const safeActionAttribute = asText(actionAttribute);
@@ -566,8 +582,10 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
         if (businessConfig.productDelete.confirmSelector) {
           await clickIfPresent(page, businessConfig.productDelete.confirmSelector);
         }
-        await waitForTextToDisappear(page, targetName, 20000).catch(async () => {
-          await waitForMenuItemToDisappear(page, targetName, 20000);
+        await waitForMenuActionItemToDisappear(page, "data-menu-delete", fallbackItemId, 20000).catch(async () => {
+          await waitForTextToDisappear(page, targetName, 20000).catch(async () => {
+            await waitForMenuItemToDisappear(page, targetName, 20000);
+          });
         });
         heart.passModule("menu", "Produkt wurde geloescht.", {
           action: "product delete",
