@@ -665,7 +665,7 @@ export function createChatRuntimeController(deps = {}) {
       });
       syncLocalChatThreadsFromRemote(remoteThreads, ownerUid);
     }, (err) => {
-      console.error(err);
+      console.error(`[mnyra][firestore.listen.chatThreads] users/${ownerUid}/chatThreads`, err);
     });
   }
 
@@ -745,7 +745,7 @@ export function createChatRuntimeController(deps = {}) {
       state.chatModal.messages = pruneChatMessages(nextMessages);
       render();
     }, (err) => {
-      console.error(err);
+      console.error(`[mnyra][firestore.listen.chatMessages] users/${ownerUid}/chatThreads/${threadId}/messages`, err);
     });
   }
 

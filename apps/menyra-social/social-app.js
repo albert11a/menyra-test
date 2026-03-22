@@ -78,9 +78,7 @@ import { resolveInitialRouteState } from "./core/auth/initial-route-state.js";
 import {
   createAuthStartupStateHelpers
 } from "./core/auth/auth-startup-state-utils.js";
-import { createPostLoginRouteOpenCoordinator } from "./core/auth/auth-post-login-route-open-utils.js";
 import { createPendingRouteStartupState } from "./core/auth/pending-route-startup-state.js";
-import { createAuthSessionStartupCoordinator } from "./core/auth/auth-session-startup-coordinator.js";
 import { bootstrapAuthenticatedSessionCore } from "./core/auth/auth-user-bootstrap-utils.js";
 import { createAuthProfileResolutionRuntimeController } from "./core/auth/auth-profile-resolution-runtime.js";
 import {
@@ -88,18 +86,15 @@ import {
   resolveRouteStateFromTargetUrlCore,
   applyPendingRouteStateCore
 } from "./core/push/push-route-query-utils.js";
-import {
-  createBridgeShellBootstrapBundle,
-  buildSessionDataRuntimeControllerDeps
-} from "./core/app-shell/controller-deps-factory.js";
 import { createShellDomRuntimeController } from "./core/app-shell/shell-dom-runtime-controller.js";
-import { preparePublicBootstrapStartup } from "./core/app-shell/public-bootstrap-startup-utils.js";
-import { createPublicBootstrapRuntimeController } from "./core/app-shell/public-bootstrap-runtime-controller.js";
-import { createSessionDataRuntimeController } from "./core/app-shell/session-data-runtime-controller.js";
+import { createSessionRuntimeCluster } from "./core/app-shell/session-runtime-cluster.js";
+import { startAppStartupBootstrap } from "./core/app-shell/app-startup-bootstrap.js";
+import { createSessionDataRuntimeCluster } from "./core/app-shell/session-data-runtime-cluster.js";
+import { createBridgeShellRuntimeCluster } from "./core/app-shell/bridge-shell-runtime-cluster.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createMenuPublicRuntimeController } from "./core/menu/menu-public-runtime-controller.js";
 import { createTableQrRuntimeController } from "./core/menu/table-qr-runtime-controller.js";
-import { createMediaUploadRuntimeController } from "./core/media/media-upload-runtime-controller.js";
+import { createMediaUploadRuntimeCluster } from "./core/media/media-upload-runtime-cluster.js";
 import { createOrdersRuntimeController } from "./core/orders/orders-runtime-controller.js";
 import { renderOrdersViewCore } from "./core/orders/orders-render-utils.js";
 import { createProfileMenuFocusRenderController } from "./core/profile/profile-menu-focus-render-controller.js";
@@ -109,63 +104,9 @@ import { createSocialEngagementRuntimeController } from "./core/profile/social-e
 import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
 import { projectPostCollectionThroughEntityMap } from "./core/profile/post-entity-registry-utils.js";
 import { createCeoCrmCountRuntimeController } from "./core/crm/ceo-crm-count-runtime-controller.js";
-import { createCrmRuntimeController } from "./core/crm/crm-runtime-controller.js";
+import { createCrmRuntimeCluster } from "./core/crm/crm-runtime-cluster.js";
 import { createBusinessAccountsRuntimeController } from "./core/business-accounts/business-accounts-runtime-controller.js";
-import { createChatRuntimeController } from "./core/chat/chat-runtime-controller.js";
-import {
-  resolveNativePushActorCore,
-  resolveNativePushBodyCore,
-  buildNativePushAlertPayloadCore
-} from "./core/push/push-alert-utils.js";
-import {
-  canUseNativeNotificationsCore,
-  buildPushActivationIssueCore,
-  getPushActivationIssueMessageCore,
-  mapPushActivationErrorCore,
-  canEmitNativePushAlertsCore
-} from "./core/push/push-activation-utils.js";
-import { ensureNotificationPermissionCore } from "./core/push/push-permission-utils.js";
-import {
-  readPushSeenIdsCore,
-  writePushSeenIdsCore
-} from "./core/push/push-seen-storage-utils.js";
-import {
-  getOrCreatePushDeviceIdCore,
-  readPushTokenMetaCore,
-  writePushTokenMetaCore
-} from "./core/push/push-token-storage-utils.js";
-import {
-  ensurePushServiceWorkerRegistrationCore,
-  waitForPushServiceWorkerReadyCore
-} from "./core/push/push-service-worker-utils.js";
-import {
-  ensureFirebaseMessagingModuleCore,
-  ensureMessagingClientCore
-} from "./core/push/push-messaging-utils.js";
-import {
-  hasPushDeviceRegistrationPrerequisitesCore,
-  isPushTokenSyncFreshCore,
-  buildPushDeviceRegistrationPayloadCore,
-  buildPushDeviceDisablePayloadCore
-} from "./core/push/push-device-registration-utils.js";
-import {
-  normalizeNotificationItemCore,
-  mapNotificationSnapshotCore
-} from "./core/notifications/notification-item-utils.js";
-import {
-  shouldSurfaceNativePushNowCore,
-  addNotificationItemsToSeenSetCore,
-  collectUnseenUnreadNotificationItemsFromChangesCore
-} from "./core/notifications/notification-native-push-utils.js";
-import {
-  buildNotificationsLiveQueryCore,
-  buildNotificationsFetchQueryCore,
-  fetchNotificationsFromQueryCore
-} from "./core/notifications/notification-query-utils.js";
-import {
-  buildNotificationWritePayloadCore,
-  normalizeNotificationWriteIdsCore
-} from "./core/notifications/notification-write-utils.js";
+import { createChatRuntimeCluster } from "./core/chat/chat-runtime-cluster.js";
 import {
   markNotificationReadInListCore,
   markAllNotificationsReadInListCore
@@ -183,7 +124,6 @@ import {
   buildAcceptedFollowRecordPayloadCore,
   buildFollowAcceptedNotificationPayloadCore
 } from "./core/follow/follow-request-payload-utils.js";
-import { mapFollowingSnapshotCore } from "./core/follow/following-listener-utils.js";
 import {
   normalizePendingChatUidCore,
   isSelfPendingChatTargetCore,
@@ -580,7 +520,6 @@ import {
 } from "./core/app-events/app-events-crm-staff-bind-utils.js";
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
 import {
-  ensureTabDataCore,
   loadAuthProfileCore
 } from "./core/auth/tab-auth-load-utils.js";
 
@@ -1120,7 +1059,6 @@ let lastMenuOpenGestureAt = 0;
 let menuDetailCloseBound = false;
 let overlayCache = { profile: "", chat: "", post: "", likes: "", menu: "", menuDetail: "", focus: "", lead: "", customer: "" };
 const pendingRouteState = createPendingRouteStartupState();
-let pushOpenMessageBound = false;
 let dataLoaded = {
   feed: false,
   profile: false,
@@ -1150,18 +1088,7 @@ let mediaUploadRuntimeController = null;
 let lastAppHtml = "";
 let lastRenderMode = "";
 let lastRenderedMainTab = "";
-let feedDeltaTimer = null;
 let crmAutoLoadObserver = null;
-let notificationsUnsub = null;
-let followingUnsub = null;
-let pushMessagingClient = null;
-let firebaseMessagingModulePromise = null;
-let pushActivationIssue = "";
-let feedUnsub = null;
-let storiesUnsub = null;
-let restaurantsUnsub = null;
-let userPostsUnsub = null;
-let businessPostsUnsub = null;
 let modalPostDocUnsub = null;
 let modalLikesUnsub = null;
 let modalCommentsUnsub = null;
@@ -2280,7 +2207,9 @@ function setState(patch) {
   }
   render();
   if (patch.activeTab && patch.activeTab !== prevTab) {
-    queueMicrotask(() => ensureTabData(state.activeTab));
+    queueMicrotask(() => {
+      void getSessionTabLifecycleRuntimeController().ensureTabData(state.activeTab);
+    });
   }
 }
 
@@ -2289,285 +2218,11 @@ function saveSettings(settings) {
 }
 
 function saveNotifications(notifications) {
-  const uid = state.user?.uid || "";
-  if (!uid) return;
-  safeStorage.setItem(notificationsKey(uid), JSON.stringify(notifications));
-}
-
-function readPushSeenIds(uid = state.user?.uid || "") {
-  return readPushSeenIdsCore({
-    uid,
-    resolvePushSeenKey: pushSeenKey,
-    storage: safeStorage
-  });
-}
-
-function writePushSeenIds(ids = [], uid = state.user?.uid || "") {
-  writePushSeenIdsCore({
-    ids,
-    uid,
-    resolvePushSeenKey: pushSeenKey,
-    storage: safeStorage,
-    maxItems: PUSH_SEEN_NOTIFICATIONS_LIMIT
-  });
-}
-
-function canUseNativeNotifications() {
-  return canUseNativeNotificationsCore({
-    windowObj: typeof window !== "undefined" ? window : undefined
-  });
-}
-
-function clearPushActivationIssue() {
-  pushActivationIssue = "";
-}
-
-function setPushActivationIssue(reason = "", err = null) {
-  const base = String(reason || "").trim();
-  pushActivationIssue = buildPushActivationIssueCore({ reason, err });
-  if (err) {
-    console.error("[Push]", base || "Push activation failed", err);
-  } else if (base) {
-    console.warn("[Push]", base);
-  }
-}
-
-function getPushActivationIssueMessage() {
-  return getPushActivationIssueMessageCore(pushActivationIssue);
-}
-
-function mapPushActivationError(stage = "", err = null) {
-  return mapPushActivationErrorCore(stage, err);
-}
-
-function canEmitNativePushAlerts() {
-  return canEmitNativePushAlertsCore({
-    settings: state.settings,
-    canUseNativeNotifications: canUseNativeNotifications(),
-    notificationPermission: Notification.permission
-  });
-}
-
-async function ensureNotificationPermission({ interactive = false } = {}) {
-  return await ensureNotificationPermissionCore({
-    interactive,
-    canUseNativeNotifications: () => canUseNativeNotifications(),
-    notificationApi: typeof Notification !== "undefined" ? Notification : null,
-    setPushActivationIssue: (reason, err) => setPushActivationIssue(reason, err)
-  });
-}
-
-function resolveNativePushActor(notif = {}) {
-  return resolveNativePushActorCore(notif);
-}
-
-function resolveNativePushBody(notif = {}) {
-  return resolveNativePushBodyCore(notif);
-}
-
-async function showNativePushAlert(notif) {
-  if (!notif?.id || !canEmitNativePushAlerts()) return;
-  const alertPayload = buildNativePushAlertPayloadCore({
-    notif,
-    brandTitle: BRAND_UI.title,
-    resolveNotificationAvatar: (entry) => resolveNotificationAvatar(entry),
-    encodeURIComponentFn: (value) => encodeURIComponent(value)
-  });
-  try {
-    if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration(PUSH_SW_SCOPE);
-      if (reg?.showNotification) {
-        await reg.showNotification(alertPayload.title, {
-          body: alertPayload.body,
-          icon: alertPayload.icon,
-          badge: alertPayload.icon,
-          tag: alertPayload.tag,
-          data: alertPayload.data,
-          renotify: false
-        });
-        return;
-      }
-    }
-    new Notification(alertPayload.title, {
-      body: alertPayload.body,
-      icon: alertPayload.icon,
-      tag: alertPayload.tag
-    });
-  } catch {}
-}
-
-function getOrCreatePushDeviceId() {
-  return getOrCreatePushDeviceIdCore({
-    resolvePushDeviceIdKey: pushDeviceIdKey,
-    storage: safeStorage,
-    randomUUIDFn: typeof crypto !== "undefined" && crypto.randomUUID
-      ? () => crypto.randomUUID()
-      : null,
-    nowFn: () => Date.now(),
-    randomFn: () => Math.random()
-  });
-}
-
-function readPushTokenMeta(uid = state.user?.uid || "") {
-  return readPushTokenMetaCore({
-    uid,
-    resolvePushTokenMetaKey: pushTokenMetaKey,
-    storage: safeStorage
-  });
-}
-
-function writePushTokenMeta(uid = state.user?.uid || "", token = "") {
-  writePushTokenMetaCore({
-    uid,
-    token,
-    resolvePushTokenMetaKey: pushTokenMetaKey,
-    storage: safeStorage,
-    nowFn: () => Date.now()
-  });
-}
-
-async function ensureFirebaseMessagingModule() {
-  return ensureFirebaseMessagingModuleCore({
-    currentPromise: firebaseMessagingModulePromise,
-    moduleUrl: FIREBASE_MESSAGING_MODULE_URL,
-    importModule: (url) => import(url),
-    setModulePromise: (value) => { firebaseMessagingModulePromise = value; }
-  });
-}
-
-async function ensureMessagingClient() {
-  return await ensureMessagingClientCore({
-    currentClient: pushMessagingClient,
-    ensureFirebaseMessagingModule: () => ensureFirebaseMessagingModule(),
-    setPushActivationIssue: (reason, err) => setPushActivationIssue(reason, err),
-    app,
-    setMessagingClient: (client) => { pushMessagingClient = client; }
-  });
-}
-
-async function ensurePushServiceWorkerRegistration() {
-  return await ensurePushServiceWorkerRegistrationCore({
-    navigatorObj: typeof navigator !== "undefined" ? navigator : null,
-    serviceWorkerScope: PUSH_SW_SCOPE,
-    serviceWorkerUrl: PUSH_SW_URL,
-    setPushActivationIssue: (reason, err) => setPushActivationIssue(reason, err)
-  });
-}
-
-async function waitForPushServiceWorkerReady() {
-  return await waitForPushServiceWorkerReadyCore({
-    navigatorObj: typeof navigator !== "undefined" ? navigator : null,
-    timeoutMs: PUSH_SW_READY_TIMEOUT_MS,
-    setPushActivationIssue: (reason, err) => setPushActivationIssue(reason, err)
-  });
-}
-
-async function syncPushDeviceRegistration({ interactive = false, force = false, enabled = state.settings?.pushNotifs } = {}) {
-  const uid = String(state.user?.uid || "").trim();
-  const prerequisitesOk = hasPushDeviceRegistrationPrerequisitesCore({
-    uid,
-    enabled,
-    isSecureContext: !!window.isSecureContext,
-    vapidKey: FCM_WEB_PUSH_VAPID_KEY,
-    hasServiceWorker: typeof navigator !== "undefined" && ("serviceWorker" in navigator),
-    setPushActivationIssue: (reason) => setPushActivationIssue(reason)
-  });
-  if (!prerequisitesOk) return false;
-
-  const granted = await ensureNotificationPermission({ interactive });
-  if (!granted) return false;
-
-  const reg = await ensurePushServiceWorkerRegistration();
-  if (!reg) {
-    if (!pushActivationIssue) setPushActivationIssue("Service Worker konnte nicht registriert werden.");
-    return false;
-  }
-
-  const readyReg = await waitForPushServiceWorkerReady();
-  const pushReg = readyReg || reg;
-  if (!pushReg) {
-    if (!pushActivationIssue) setPushActivationIssue("Service Worker Registrierung fuer Push fehlt.");
-    return false;
-  }
-
-  const messaging = await ensureMessagingClient();
-  if (!messaging) return false;
-
-  let safeToken = "";
-  try {
-    const messagingModule = await ensureFirebaseMessagingModule();
-    const token = await messagingModule.getToken(messaging, {
-      vapidKey: FCM_WEB_PUSH_VAPID_KEY,
-      serviceWorkerRegistration: pushReg
-    });
-    safeToken = String(token || "").trim();
-  } catch (err) {
-    setPushActivationIssue(mapPushActivationError("fcm-getToken", err), err);
-    return false;
-  }
-  if (!safeToken) {
-    setPushActivationIssue("FCM hat keinen Token geliefert.");
-    return false;
-  }
-
-  const meta = readPushTokenMeta(uid);
-  const freshEnough = isPushTokenSyncFreshCore({
-    meta,
-    token: safeToken,
-    nowTs: Date.now(),
-    intervalMs: PUSH_TOKEN_SYNC_INTERVAL_MS
-  });
-  if (!force && freshEnough) {
-    clearPushActivationIssue();
-    return true;
-  }
-
-  const deviceId = getOrCreatePushDeviceId();
-  const ref = doc(db, "users", uid, "devices", deviceId);
-  try {
-    const stamp = serverTimestamp();
-    await setDoc(ref, buildPushDeviceRegistrationPayloadCore({
-      token: safeToken,
-      userAgent: String(navigator.userAgent || ""),
-      locale: String(navigator.language || ""),
-      serverTimestampValue: stamp
-    }), { merge: true });
-  } catch (err) {
-    setPushActivationIssue(mapPushActivationError("firestore-write", err), err);
-    return false;
-  }
-  writePushTokenMeta(uid, safeToken);
-  clearPushActivationIssue();
-  return true;
-}
-
-async function disablePushDeviceRegistration() {
-  const uid = String(state.user?.uid || "").trim();
-  if (!uid) return;
-  const deviceId = getOrCreatePushDeviceId();
-  try {
-    await setDoc(doc(db, "users", uid, "devices", deviceId), buildPushDeviceDisablePayloadCore({
-      serverTimestampValue: serverTimestamp()
-    }), { merge: true });
-  } catch (err) {
-    console.error(err);
-  }
+  return getNotificationSupportRuntimeController().saveNotifications(...arguments);
 }
 
 function saveFollowing(handles, targetIds = state.followingTargetIds) {
-  if (!Array.isArray(handles)) return;
-  try {
-    const uid = state.user?.uid || "";
-    if (!uid) return;
-    const payload = {
-      handles: handles.slice(0, 500),
-      targetIds: (Array.isArray(targetIds) ? targetIds : [])
-        .map((id) => String(id || "").trim())
-        .filter(Boolean)
-        .slice(0, 500)
-    };
-    safeStorage.setItem(followingKey(uid), JSON.stringify(payload));
-  } catch {}
+  return getFollowRuntimeController().saveFollowing(...arguments);
 }
 
 function normalizeFollowHandle(value) {
@@ -2584,54 +2239,11 @@ function syncPrivateSettingFromProfile(value) {
 }
 
 function getFollowDocId(targetType, targetId, handle) {
-  return `${targetType || "handle"}_${targetId || handle}`;
+  return getFollowRuntimeController().getFollowDocId(...arguments);
 }
 
 function applyFollowingHandles(handles, { shouldRender = true, targetIds = state.followingTargetIds } = {}) {
-  const nextHandles = Array.from(new Set(
-    (Array.isArray(handles) ? handles : [])
-      .map((item) => normalizeFollowHandle(item))
-      .filter(Boolean)
-  ));
-  const nextTargetIds = Array.from(new Set(
-    (Array.isArray(targetIds) ? targetIds : [])
-      .map((id) => String(id || "").trim())
-      .filter(Boolean)
-  ));
-  const prevKey = state.followingHandles.join("|");
-  const prevIdsKey = state.followingTargetIds.join("|");
-  const nextKey = nextHandles.join("|");
-  const nextIdsKey = nextTargetIds.join("|");
-  state.followingHandles = nextHandles;
-  state.followingTargetIds = nextTargetIds;
-  state.pendingFollowRequests = (Array.isArray(state.pendingFollowRequests) ? state.pendingFollowRequests : [])
-    .map((handle) => normalizeFollowHandle(handle))
-    .filter((handle) => handle && !nextHandles.includes(handle));
-  if (state.profileModal.profile) {
-    const modalHandle = normalizeFollowHandle(state.profileModal.profile.handle || "");
-    if (modalHandle && nextHandles.includes(modalHandle)) {
-      state.profileModal.profile.pendingFollowRequest = false;
-    }
-  }
-  if (state.profileView?.profile) {
-    const viewHandle = normalizeFollowHandle(state.profileView.profile.handle || "");
-    if (viewHandle && nextHandles.includes(viewHandle)) {
-      state.profileView.profile.pendingFollowRequest = false;
-    }
-  }
-  saveFollowing(nextHandles, nextTargetIds);
-  if (!shouldRender || (prevKey === nextKey && prevIdsKey === nextIdsKey)) return;
-  if (lastRenderMode === "main") {
-    render();
-    return;
-  }
-  if (state.profileModal.open && !state.profileView) {
-    renderOverlays();
-    return;
-  }
-  if (state.profileView) {
-    render();
-  }
+  return getFollowRuntimeController().applyFollowingHandles(...arguments);
 }
 
 function saveChatThreadIndex(threads) {
@@ -3188,56 +2800,6 @@ function scheduleIdle(fn) {
   });
 }
 
-async function ensureTabData(tab) {
-  return ensureTabDataCore({
-    tab,
-    state,
-    dataLoaded,
-    FAST_MODE,
-    sanitizeTabForSession,
-    render,
-    stopRestaurantsListener,
-    startChatThreadsListener,
-    stopChatThreadsListener,
-    startOrdersListener,
-    stopOrdersListener,
-    stopRestaurantMetaListeners,
-    getFeedUnsubFn: () => feedUnsub,
-    setFeedUnsubFn: (next) => {
-      feedUnsub = next;
-    },
-    getStoriesUnsubFn: () => storiesUnsub,
-    setStoriesUnsubFn: (next) => {
-      storiesUnsub = next;
-    },
-    getFeedDeltaTimerFn: () => feedDeltaTimer,
-    setFeedDeltaTimerFn: (next) => {
-      feedDeltaTimer = next;
-    },
-    clearIntervalFn: (id) => clearInterval(id),
-    isCeoUser,
-    queueCrmLazyRenderersPrefetch,
-    loadFeedPosts,
-    scheduleIdle,
-    loadRestaurants,
-    isLocalBusinessProfile,
-    loadUserPosts,
-    loadBusinessPosts,
-    loadAuthProfile,
-    loadMenuForRestaurant,
-    loadFocusForRestaurant,
-    getNotificationsUnsubFn: () => notificationsUnsub,
-    updateNotificationsDom,
-    loadNotificationsFromFirebase,
-    normalizeLeadScopeKey,
-    loadLeads,
-    normalizeCustomerScopeKey,
-    loadCustomers,
-    loadCeoStaff,
-    loadBusinessAccounts
-  });
-}
-
 function findPostById(postId) {
   return getSocialEngagementSupportRuntimeController().findPostById(...arguments);
 }
@@ -3371,55 +2933,6 @@ function updateDrawerDom() {
   return getShellDomRuntimeController().updateDrawerDom();
 }
 
-function stopLiveListeners() {
-  stopChatThreadsListener();
-  stopActiveChatMessagesListener();
-  stopOrdersListener();
-  if (feedDeltaTimer) {
-    clearInterval(feedDeltaTimer);
-    feedDeltaTimer = null;
-  }
-  if (notificationsUnsub) {
-    notificationsUnsub();
-    notificationsUnsub = null;
-  }
-  if (followingUnsub) {
-    followingUnsub();
-    followingUnsub = null;
-  }
-  stopCurrentUserProfileListener();
-  stopProfileViewListener();
-  if (feedUnsub) {
-    feedUnsub();
-    feedUnsub = null;
-  }
-  if (storiesUnsub) {
-    storiesUnsub();
-    storiesUnsub = null;
-  }
-  stopRestaurantsListener();
-  if (userPostsUnsub) {
-    userPostsUnsub();
-    userPostsUnsub = null;
-  }
-  if (businessPostsUnsub) {
-    businessPostsUnsub();
-    businessPostsUnsub = null;
-  }
-  if (modalPostDocUnsub) {
-    modalPostDocUnsub();
-    modalPostDocUnsub = null;
-  }
-  if (modalLikesUnsub) {
-    modalLikesUnsub();
-    modalLikesUnsub = null;
-  }
-  if (modalCommentsUnsub) {
-    modalCommentsUnsub();
-    modalCommentsUnsub = null;
-  }
-}
-
 function updateNotificationBadges() {
   return getShellDomRuntimeController().updateNotificationBadges();
 }
@@ -3434,14 +2947,6 @@ function bindNotificationsDelegation() {
 
 function handleNotificationsUpdate(items) {
   return getShellDomRuntimeController().handleNotificationsUpdate(items);
-}
-
-function startLiveListeners(user) {
-  stopLiveListeners();
-  if (!user) return;
-  attachCurrentUserProfileListener();
-  startFollowingListener(user);
-  void syncNotificationsPushRuntime({ user, interactive: false, enabled: state.settings?.pushNotifs });
 }
 
 function updateMenuCardCountNodes(itemId, counts = { likes: 0, comments: 0 }) {
@@ -3602,129 +3107,113 @@ function renderProfileView() {
   return profileMenuFocusRenderController.renderProfileView();
 }
 
-function startFollowingListener(user = state.user) {
-  if (followingUnsub) {
-    followingUnsub();
-    followingUnsub = null;
-  }
-  const ownerUid = String(user?.uid || "").trim();
-  if (!ownerUid) return;
-  const ref = collection(db, "users", ownerUid, "following");
-  followingUnsub = onSnapshot(ref, (snap) => {
-    const { handles, targetIds } = mapFollowingSnapshotCore({
-      snap,
-      normalizeFollowHandle: (value) => normalizeFollowHandle(value)
-    });
-    applyFollowingHandles(handles, { targetIds });
-  }, (err) => {
-    console.error(err);
-  });
-}
-
-sessionDataRuntimeController = createSessionDataRuntimeController(buildSessionDataRuntimeControllerDeps({
-  state,
-  dataLoaded,
-  DEFAULT_SETTINGS,
-  DEFAULT_MENU_LAYOUT,
-  DEFAULT_PROFILE,
-  CACHE_KEYS,
-  STORAGE_KEYS,
-  GUEST_SCOPE_UID,
-  CRM_PAGE_SIZE,
-  CEO_COUNTRIES,
-  safeStorage,
-  readCache,
-  writeCache,
-  scheduleIdle,
-  collectFeedHydrationIds,
-  hydrateRestaurantsByIds,
-  rebuildBusinessLocations,
-  syncFeedPostLogos,
-  refreshFeedStories,
-  preloadFeedHeroImages,
-  render,
-  getLastRenderMode: () => lastRenderMode,
-  updateFeedDom: (...args) => updateFeedDom(...args),
-  enrichRestaurantsWithPublicMeta,
-  loadLogoCache,
-  profileKey,
-  notificationsKey,
-  followingKey,
-  shopCartKey,
-  userPostsKey,
-  businessPostsKey,
-  normalizeShopCartState,
-  createEmptyShopCart,
-  createEmptyOrdersState,
-  createEmptyFavoriteMenuItemsState,
-  createEmptyMenuDetailState,
-  createEmptyLeadsState,
-  createEmptyCustomersState,
-  sortChatThreads,
-  loadChatThreadIndex,
-  loadChatThreadMessages,
-  buildChatPreviewText,
-  getChatMessageTimestamp,
-  saveChatThreadIndex,
-  loadAvatarCache,
-  getOptimizedImageUrl,
-  isPlaceholderUrl,
-  primeSelfAvatarCache,
-  normalizeFollowHandle,
-  saveFollowing,
-  stopActiveChatMessagesListener,
-  stopRestaurantMetaListeners,
-  stopMenuItemMetaListeners,
-  menuItemCountsRequested,
-  commentAvatarCache,
-  commentAvatarPending,
-  userSearchAvatarCache,
-  businessProfileCache,
-  userProfileCache,
-  setMenuDetailCloseBound: (next) => {
-    menuDetailCloseBound = !!next;
+sessionDataRuntimeController = createSessionDataRuntimeCluster({
+  stateDeps: { state, dataLoaded },
+  constants: {
+    DEFAULT_SETTINGS,
+    DEFAULT_MENU_LAYOUT,
+    DEFAULT_PROFILE,
+    CACHE_KEYS,
+    STORAGE_KEYS,
+    GUEST_SCOPE_UID,
+    CRM_PAGE_SIZE,
+    CEO_COUNTRIES,
+    CACHE_TTL_MS,
+    FAST_LIMITS
   },
-  getUserAvatarCache,
-  setUserAvatarCache,
-  getLastShellAvatarUrl,
-  setLastShellAvatarUrl,
-  bootstrapAuthenticatedSessionCore,
-  loadAuthProfile,
-  resolveRoleSwitchTargets,
-  startLiveListeners,
-  ensureTabData,
-  CACHE_TTL_MS,
-  FAST_LIMITS,
-  db,
-  doc,
-  onSnapshot,
-  collection,
-  query,
-  where,
-  orderBy,
-  limit,
-  getDocs,
-  toDateSafe,
-  updateShellDom,
-  refreshSearchView: (...args) => refreshSearchView(...args),
-  cleanupLeaflet: (...args) => cleanupLeaflet(...args),
-  normalizeFeedPost,
-  loadStoriesForFeed,
-  saveFeedPosts,
-  focusCache,
-  menuCache,
-  focusCacheKey,
-  menuCacheKey,
-  loadFocusItems,
-  loadFocusMeta,
-  loadMenuMeta,
-  hasMenuItemImages,
-  loadMenuItemsFromCollection,
-  loadPublicMenuItems,
-  loadLegacyMenuItems,
-  fillMenuImagesFromFallback,
-  loadMenuHybrid
-}));
+  storageApi: {
+    safeStorage,
+    readCache,
+    writeCache,
+    profileKey,
+    notificationsKey,
+    followingKey,
+    shopCartKey,
+    userPostsKey,
+    businessPostsKey,
+    normalizeShopCartState,
+    createEmptyShopCart,
+    createEmptyOrdersState,
+    createEmptyFavoriteMenuItemsState,
+    createEmptyMenuDetailState,
+    createEmptyLeadsState,
+    createEmptyCustomersState
+  },
+  renderApi: {
+    scheduleIdle,
+    render,
+    getLastRenderMode: () => lastRenderMode,
+    updateFeedDom: (...args) => updateFeedDom(...args),
+    updateShellDom,
+    refreshSearchView: (...args) => refreshSearchView(...args),
+    cleanupLeaflet: (...args) => cleanupLeaflet(...args),
+    setMenuDetailCloseBound: (next) => { menuDetailCloseBound = !!next; }
+  },
+  profileApi: {
+    loadLogoCache,
+    sortChatThreads,
+    loadChatThreadIndex,
+    loadChatThreadMessages,
+    buildChatPreviewText,
+    getChatMessageTimestamp,
+    saveChatThreadIndex,
+    loadAvatarCache,
+    getOptimizedImageUrl,
+    isPlaceholderUrl,
+    primeSelfAvatarCache,
+    normalizeFollowHandle,
+    saveFollowing,
+    menuItemCountsRequested,
+    commentAvatarCache,
+    commentAvatarPending,
+    userSearchAvatarCache,
+    businessProfileCache,
+    userProfileCache,
+    getUserAvatarCache,
+    setUserAvatarCache,
+    getLastShellAvatarUrl,
+    setLastShellAvatarUrl
+  },
+  authApi: {
+    stopActiveChatMessagesListener,
+    stopRestaurantMetaListeners,
+    stopMenuItemMetaListeners,
+    bootstrapAuthenticatedSessionCore,
+    loadAuthProfile,
+    resolveRoleSwitchTargets,
+    startLiveListeners: (...args) => getSessionTabLifecycleRuntimeController().startLiveListeners(...args),
+    ensureTabData: (...args) => getSessionTabLifecycleRuntimeController().ensureTabData(...args)
+  },
+  firebaseApi: { db, doc, onSnapshot, collection, query, where, orderBy, limit, getDocs },
+  feedApi: {
+    collectFeedHydrationIds,
+    hydrateRestaurantsByIds,
+    rebuildBusinessLocations,
+    syncFeedPostLogos,
+    refreshFeedStories,
+    preloadFeedHeroImages,
+    enrichRestaurantsWithPublicMeta,
+    toDateSafe,
+    normalizeFeedPost,
+    loadStoriesForFeed,
+    saveFeedPosts
+  },
+  menuApi: {
+    focusCache,
+    menuCache,
+    focusCacheKey,
+    menuCacheKey,
+    loadFocusItems,
+    loadFocusMeta,
+    loadMenuMeta,
+    hasMenuItemImages,
+    loadMenuItemsFromCollection,
+    loadPublicMenuItems,
+    loadLegacyMenuItems,
+    fillMenuImagesFromFallback,
+    loadMenuHybrid
+  }
+});
 
 socialEngagementRuntimeController = createSocialEngagementRuntimeController({
   state,
@@ -3824,752 +3313,447 @@ socialEngagementRuntimeController = createSocialEngagementRuntimeController({
   }
 });
 
-const {
-  storySystemController,
-  profileApi: {
-    isOwnBusinessTarget,
-    openOwnBusinessProfile,
-    openProfileViewFromBusiness,
-    openProfileFromUser
+const bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
+  state,
+  constants: { BRAND_UI, FAST_MODE, LEAFLET_JS_URL, LEAFLET_CSS_URL, SEARCH_LIMITS, PLACEHOLDER_IMAGE, NOTIFICATIONS_LIVE_LIMIT },
+  browserApi: {
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    navigatorObj: typeof navigator === "undefined" ? null : navigator,
+    appEl, confirmFn: confirm, alertFn: alert,
+    queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null
   },
-  deeplinkApi: {
-    clearNotificationQueryParams,
-    clearPostQueryParams,
-    clearChatQueryParams,
-    resolveRouteStateFromTargetUrl,
-    applyPendingRouteStateFromTargetUrl,
-    maybeOpenNotificationFromQuery,
-    maybeOpenPostFromQuery,
-    maybeOpenChatFromQuery,
-    handlePushOpenTargetMessage,
-    bindPushOpenTargetMessageHandler,
-    maybeOpenProfileFromQuery
+  stateApi: {
+    getPushActivationIssue: () => getPushRuntimeController().getPushActivationIssue(),
+    getPendingState: pendingRouteState.getPendingState, setPendingState: pendingRouteState.patchPendingState,
+    getPushOpenMessageBound: () => getPushRuntimeController().isPushOpenMessageBound(),
+    markPushOpenMessageBound: () => getPushRuntimeController().markPushOpenMessageBound(),
+    getStoriesRowSignature: () => storiesRowSignature, setStoriesRowSignature: (next) => { storiesRowSignature = next; },
+    getOverlayCache: () => overlayCache, isModalEscapeBound: () => modalEscapeBound,
+    setModalEscapeBound: (value) => { modalEscapeBound = !!value; },
+    isMenuDetailCloseBound: () => menuDetailCloseBound, setMenuDetailCloseBound: (next) => { menuDetailCloseBound = !!next; },
+    getLastMenuOpenGestureKey: () => lastMenuOpenGestureKey, setLastMenuOpenGestureKey: (next) => { lastMenuOpenGestureKey = next; },
+    getLastMenuOpenGestureAt: () => lastMenuOpenGestureAt, setLastMenuOpenGestureAt: (next) => { lastMenuOpenGestureAt = next; },
+    setPendingCommentHighlight: (value) => { pendingCommentHighlight = value; },
+    getRenderSuspended: () => renderSuspended, setRenderQueued: (next) => { renderQueued = !!next; },
+    getLastAppHtml: () => lastAppHtml, setLastAppHtml: (next) => { lastAppHtml = next; },
+    getLastRenderMode: () => lastRenderMode, setLastRenderMode: (next) => { lastRenderMode = next; },
+    getLastRenderedMainTab: () => lastRenderedMainTab,
+    setLastRenderedMainTab: (next) => { lastRenderedMainTab = next; },
+    getCrmAutoLoadObserver: () => crmAutoLoadObserver,
+    setCrmAutoLoadObserver: (next) => { crmAutoLoadObserver = next; },
+    getAuthInitialized: () => authInitialized, getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
+    getUserAvatarCache, getProfileMenuBound: () => profileMenuBound,
+    setProfileMenuBound: (next) => { profileMenuBound = !!next; },
+    getProfileViewUnsub, setProfileViewUnsub
   },
+  firebaseApi: { collection, query, orderBy, startAt, endAt, where, limit, getDoc, getDocs, onSnapshot, setDoc, doc, serverTimestamp, db },
   notificationsApi: {
-    normalizeNotificationItem,
-    mapNotificationSnapshot,
-    shouldSurfaceNativePushNow,
-    startNotificationsListener,
-    syncNotificationsPushRuntime,
-    loadNotificationsFromFirebase
+    notificationsRuntimeController: {
+      normalizeNotificationItem: (...args) => getNotificationsRuntimeController().normalizeNotificationItem(...args),
+      mapNotificationSnapshot: (...args) => getNotificationsRuntimeController().mapNotificationSnapshot(...args),
+      shouldSurfaceNativePushNow: (...args) => getNotificationsRuntimeController().shouldSurfaceNativePushNow(...args),
+      startNotificationsListener: (...args) => getNotificationsRuntimeController().startNotificationsListener(...args),
+      syncNotificationsPushRuntime: async (...args) => await getNotificationsRuntimeController().syncNotificationsPushRuntime(...args),
+      loadNotificationsFromFirebase: async (...args) => await getNotificationsRuntimeController().loadNotificationsFromFirebase(...args)
+    },
+    handleNotificationsUpdate,
+    updateNotificationsDom,
+    saveNotifications,
+    openNotificationTarget
   },
-  bridgeBindings: {
-    openChatWithProfile,
-    closeChatModal,
-    closeProfileModal,
-    closeLikesModal,
-    closeActiveModal,
-    isAnyModalOpen,
-    openPostModal,
-    closePostModal,
-    renderFeedView,
-    renderStoryItem,
-    renderStoriesRow,
-    renderFeedItem,
-    renderFeedList,
-    patchFeedList,
-    patchStoriesRow,
-    updateFeedDom,
-    bindFeedDelegation,
-    buildRestaurantLocations,
-    ensureLeafletLoaded,
-    cleanupLeaflet,
-    updateMapSheet,
-    initLeafletIfNeeded,
-    mapLocate,
-    renderMapView,
-    buildLocalBusinessResults,
-    handleSearchInput,
-    renderSearchView,
-    refreshSearchView,
-    renderShopProductList,
-    renderProfileShopFavoritesView,
-    openMenuDetailFromTrigger,
-    triggerMenuDetailOpenFromGesture,
-    renderProfileShopCartView,
-    ensureOverlayRoot,
-    ensureModalEscapeHandler,
-    syncModalOpenUiState,
-    renderOverlays,
-    bindModalDismiss,
-    bindOverlayEvents,
-    clearShopCart,
-    getCurrentShopProfile,
-    getShopCartProfileContext,
-    addMenuItemToShopCart,
-    updateShopCartQuantity,
-    openShopCheckout,
-    updateShopCheckoutField,
-    getShopCartTotal,
-    openFocusModal,
-    closeFocusModal,
-    openLeadModal,
-    closeLeadModal,
-    openCustomerModal,
-    closeCustomerModal,
-    openMenuModal,
-    closeMenuModal,
-    openMenuDetail,
-    closeMenuDetail,
-    setMenuDetailIndex,
-    setMenuDetailVariant
+  profileApi: {
+    isLocalBusinessProfile, getRestaurantMetaById, ensureMenuDataForProfile, ensureFocusDataForProfile,
+    normalizeExternalProfile, showPublicProfile, fetchBusinessProfileDoc, normalizeExternalUserProfile,
+    openGuestAuthPrompt, userProfileCache, hasPendingFollowRequest, resolveUserByHandle,
+    resolveRestaurantLogo, getChatUnreadCount, resolveHeaderBranding, isRestaurantCafeProfile, getBusinessCatalogLabel,
+    isShopCatalogProfile, getCartCountForRestaurant, saveUserProfileToStorage,
+    persistPrivateAccountSetting, uploadAvatar, resolveSearchUserAvatarDisplay,
+    getSelfAvatarUrl, isCeoUser, getCeoGpsOverride, isGuestSession
   },
-  createShellRuntimeController
-} = createBridgeShellBootstrapBundle({
-  state,
-  BRAND_UI,
-  FAST_MODE,
-  LEAFLET_JS_URL,
-  LEAFLET_CSS_URL,
-  SEARCH_LIMITS,
-  PLACEHOLDER_IMAGE,
-  documentObj: typeof document === "undefined" ? null : document,
-  windowObj: typeof window === "undefined" ? null : window,
-  navigatorObj: typeof navigator === "undefined" ? null : navigator,
-  pushActivationIssue,
-  NOTIFICATIONS_LIVE_LIMIT,
-  getPendingState: pendingRouteState.getPendingState,
-  setPendingState: pendingRouteState.patchPendingState,
-  getPushOpenMessageBound: () => pushOpenMessageBound,
-  markPushOpenMessageBound: () => {
-    pushOpenMessageBound = true;
+  routeApi: {
+    clearQueryParamsFromCurrentUrlCore, resolveRouteStateFromTargetUrlCore, resolveInitialRouteState,
+    normalizeInitialTab, normalizeAuthMode, applyPendingRouteStateCore,
+    normalizePendingNotificationIdCore, findNotificationByIdCore, prependNotificationByIdCore,
+    normalizePendingPostIdCore, findPostInLocalSourcesCore, normalizePendingChatUidCore,
+    isSelfPendingChatTargetCore, isChatThreadAlreadyOpenCore, getChatThreadId, getChatThreadById,
+    buildChatRouteTargetProfileCore, normalizePendingProfileRestaurantIdCore,
+    isPendingProfileAlreadyOpenCore, normalizeProfileTopTabFromRouteCore,
+    parsePushOpenTargetPayloadCore, shouldHandlePushOpenTargetCore,
+    applyPendingInitialRouteState, isPushOpenTargetMessageCore
   },
-  getNotificationsUnsub: () => notificationsUnsub,
-  setNotificationsUnsub: (nextUnsub) => {
-    notificationsUnsub = typeof nextUnsub === "function" ? nextUnsub : null;
+  feedApi: {
+    render, hydrateRestaurantsByIds, loadBusinessPostsForRestaurant, loadUserPostsForUser,
+    findPostById, fetchPostForNotification, getMenuItemImages, resolveMenuItemHero,
+    loadFavoriteMenuItems, buildStoriesFromFeed, updateStoryLogoNodes, updateStoryMetaNodes,
+    resolveStoryRenderIdentity, updateFeedLogoNodes, updatePostCountNodes,
+    ensureFeedRestaurantMetaListeners, preloadFeedHeroImages
   },
-  getStoriesRowSignature: () => storiesRowSignature,
-  setStoriesRowSignature: (next) => {
-    storiesRowSignature = next;
+  utilityApi: {
+    normalizeSearchKey, formatRelative, toDateSafe, getOptimizedImageUrl, isPlaceholderUrl,
+    getFirebaseStorageUrl, isDirectImageUrl, formatPrice, escapeHtml, getMenuItemObjectPosition,
+    icon, buildUrl, getGeo, normalizeRestaurantType, normalizeSearchQuery, scoreSearchMatch,
+    sanitizeDisplayName, normalizeHandle, escapeSelector, logoFitClass, renderAuthScreen,
+    sanitizeTabForSession, focusSearchInput, focusInputById, captureChatInputFocusState,
+    restoreChatInputFocusState, updateNotificationBadges, updateFocusRotation, ensureAuthLocalPersistence
   },
-  getOverlayCache: () => overlayCache,
-  isModalEscapeBound: () => modalEscapeBound,
-  setModalEscapeBound: (value) => {
-    modalEscapeBound = !!value;
+  shopApi: {
+    createEmptyFavoriteMenuItemsState, getShopCartProfileContextCore, getShopCartTotalCore,
+    parsePriceValue, canAddToShopCart, normalizeShopCartState, buildShopVariantKey,
+    clampCropPercent, createEmptyShopCart, saveShopCartToStorage
   },
-  isMenuDetailCloseBound: () => menuDetailCloseBound,
-  setMenuDetailCloseBound: (next) => {
-    menuDetailCloseBound = !!next;
+  storyApi: { buildStoriesRowSignature },
+  visibilityApi: {
+    normalizeLeadLocations, resolveCoordsFromEntity, normalizeCoordPair, preferStableCoords,
+    isPublicBusinessRecord, isForceHiddenBusinessEntity, isForceHiddenHandle, isForceHiddenEmail
   },
-  getLastMenuOpenGestureKey: () => lastMenuOpenGestureKey,
-  setLastMenuOpenGestureKey: (next) => {
-    lastMenuOpenGestureKey = next;
+  chatApi: {
+    normalizeChatOpenProfileCore, upsertChatThread, markChatThreadAsRead,
+    buildChatModalStateOnOpenCore, syncChatThreadSummary, syncRemoteChatReadState,
+    startActiveChatMessagesListener, stopActiveChatMessagesListener,
+    buildClosedChatModalStateCore, sendChatMessage, scrollChatMessagesToBottom
   },
-  getLastMenuOpenGestureAt: () => lastMenuOpenGestureAt,
-  setLastMenuOpenGestureAt: (next) => {
-    lastMenuOpenGestureAt = next;
+  socialApi: {
+    ensurePostMeta, attachPostMetaListeners, loadPostMetaFromFirebase, updatePostModalMeta,
+    stopPostMetaListeners, toggleFollow, togglePostLike, loadPostLikesForModal,
+    addComment, toggleCommentLike, autosizeTextarea, addMenuItemComment, applyCommentAvatarCache
   },
-  setPendingCommentHighlight: (value) => {
-    pendingCommentHighlight = value;
+  menuApi: {
+    getFocusItemCrop, createLeadDraftState, resetLeadDraft, getMenuItemCrop,
+    createEmptyMenuDetailState, attachMenuItemMetaListeners, loadMenuItemMetaFromFirebase,
+    updateMenuDetailMeta, stopMenuItemMetaListeners, saveMenuItemFromModal,
+    syncMenuModalCropPreview, getMenuDetailCatalogProfile, toggleMenuItemLike,
+    saveFocusItemFromModal, syncFocusModalCropPreview
   },
-  collection,
-  query,
-  orderBy,
-  startAt,
-  endAt,
-  where,
-  limit,
-  getDoc,
-  getDocs,
-  onSnapshot,
-  setDoc,
-  doc,
-  serverTimestamp,
-  db,
-  isLocalBusinessProfile,
-  getRestaurantMetaById,
-  normalizeSearchKey,
-  render,
-  ensureMenuDataForProfile,
-  ensureFocusDataForProfile,
-  hydrateRestaurantsByIds,
-  normalizeExternalProfile,
-  showPublicProfile,
-  fetchBusinessProfileDoc,
-  loadBusinessPostsForRestaurant,
-  normalizeExternalUserProfile,
-  openGuestAuthPrompt,
-  userProfileCache,
-  hasPendingFollowRequest,
-  resolveUserByHandle,
-  loadUserPostsForUser,
-  clearQueryParamsFromCurrentUrlCore,
-  resolveRouteStateFromTargetUrlCore,
-  resolveInitialRouteState,
-  normalizeInitialTab,
-  normalizeAuthMode,
-  applyPendingRouteStateCore,
-  normalizePendingNotificationIdCore,
-  findNotificationByIdCore,
-  prependNotificationByIdCore,
-  saveNotifications,
-  openNotificationTarget,
-  normalizePendingPostIdCore,
-  findPostInLocalSourcesCore,
-  findPostById,
-  fetchPostForNotification,
-  normalizePendingChatUidCore,
-  isSelfPendingChatTargetCore,
-  isChatThreadAlreadyOpenCore,
-  getChatThreadId,
-  getChatThreadById,
-  buildChatRouteTargetProfileCore,
-  normalizePendingProfileRestaurantIdCore,
-  isPendingProfileAlreadyOpenCore,
-  normalizeProfileTopTabFromRouteCore,
-  parsePushOpenTargetPayloadCore,
-  shouldHandlePushOpenTargetCore,
-  applyPendingInitialRouteState,
-  isPushOpenTargetMessageCore,
-  normalizeNotificationItemCore,
-  formatRelative,
-  toDateSafe,
-  mapNotificationSnapshotCore,
-  shouldSurfaceNativePushNowCore,
-  buildNotificationsLiveQueryCore,
-  readPushSeenIds,
-  addNotificationItemsToSeenSetCore,
-  writePushSeenIds,
-  canEmitNativePushAlerts,
-  collectUnseenUnreadNotificationItemsFromChangesCore,
-  showNativePushAlert,
-  handleNotificationsUpdate,
-  buildNotificationsFetchQueryCore,
-  fetchNotificationsFromQueryCore,
-  updateNotificationsDom,
-  setPushActivationIssue,
-  clearPushActivationIssue,
-  ensureNotificationPermission,
-  syncPushDeviceRegistration,
-  getMenuItemImages,
-  resolveMenuItemHero,
-  getOptimizedImageUrl,
-  isPlaceholderUrl,
-  getFirebaseStorageUrl,
-  isDirectImageUrl,
-  formatPrice,
-  escapeHtml,
-  getMenuItemObjectPosition,
-  icon,
-  loadFavoriteMenuItems,
-  createEmptyFavoriteMenuItemsState,
-  getShopCartProfileContextCore,
-  getShopCartTotalCore,
-  parsePriceValue,
-  canAddToShopCart,
-  normalizeShopCartState,
-  buildShopVariantKey,
-  clampCropPercent,
-  createEmptyShopCart,
-  saveShopCartToStorage,
-  confirm,
-  buildStoriesFromFeed,
-  updateStoryLogoNodes,
-  updateStoryMetaNodes,
-  resolveStoryRenderIdentity,
-  updateFeedLogoNodes,
-  updatePostCountNodes,
-  ensureFeedRestaurantMetaListeners,
-  preloadFeedHeroImages,
-  buildStoriesRowSignature,
-  buildUrl,
-  resolveRestaurantLogo,
-  getLastRenderMode: () => lastRenderMode,
-  setState,
-  getGeo,
-  normalizeLeadLocations,
-  resolveCoordsFromEntity,
-  normalizeCoordPair,
-  preferStableCoords,
-  isPublicBusinessRecord,
-  normalizeRestaurantType,
-  getSelfAvatarUrl,
-  isCeoUser,
-  getCeoGpsOverride,
-  alert,
-  normalizeSearchQuery,
-  scoreSearchMatch,
-  sanitizeDisplayName,
-  normalizeHandle,
-  resolveSearchUserAvatarDisplay,
-  isForceHiddenBusinessEntity,
-  isForceHiddenHandle,
-  isForceHiddenEmail,
-  isGuestSession,
-  escapeSelector,
-  normalizeChatOpenProfileCore,
-  upsertChatThread,
-  markChatThreadAsRead,
-  buildChatModalStateOnOpenCore,
-  syncChatThreadSummary,
-  syncRemoteChatReadState,
-  startActiveChatMessagesListener,
-  stopActiveChatMessagesListener,
-  buildClosedChatModalStateCore,
-  ensurePostMeta,
-  attachPostMetaListeners,
-  loadPostMetaFromFirebase,
-  updatePostModalMeta,
-  stopPostMetaListeners,
-  getFocusItemCrop,
-  createLeadDraftState,
-  resetLeadDraft,
-  getMenuItemCrop,
-  createEmptyMenuDetailState,
-  attachMenuItemMetaListeners,
-  loadMenuItemMetaFromFirebase,
-  updateMenuDetailMeta,
-  stopMenuItemMetaListeners,
-  ensureOverlayRootCore,
-  ensureModalEscapeHandlerCore,
-  syncModalOpenUiStateCore,
-  renderOverlaysCore,
-  renderProfileModal,
-  renderChatModal,
-  renderPostModal,
-  renderLikesModal,
-  renderMenuItemModal,
-  renderMenuDetailModal,
-  renderFocusModal,
-  renderLeadModal,
-  renderCustomerModal,
-  bindOverlayEventsCore,
-  bindProfileOverlayEventsCore,
-  bindChatOverlayEventsCore,
-  bindPostOverlayEventsCore,
-  bindLikesOverlayEventsCore,
-  bindMenuOverlayEventsCore,
-  bindMenuDetailOverlayEventsCore,
-  bindFocusOverlayEventsCore,
-  bindLeadOverlayEventsCore,
-  bindCustomerOverlayEventsCore,
-  toggleFollow,
-  sendChatMessage,
-  scrollChatMessagesToBottom,
-  queueMicrotask,
-  togglePostLike,
-  loadPostLikesForModal,
-  addComment,
-  toggleCommentLike,
-  saveMenuItemFromModal,
-  syncMenuModalCropPreview,
-  getMenuDetailCatalogProfile,
-  toggleMenuItemLike,
-  autosizeTextarea,
-  addMenuItemComment,
-  applyCommentAvatarCache,
-  saveFocusItemFromModal,
-  syncFocusModalCropPreview,
-  saveLeadFromModal,
-  convertLeadToCustomer,
-  addLeadModalLocationRow,
-  removeLeadModalLocationRow,
-  syncLeadModalDraftFromForm,
-  openLocationPicker,
-  createLeadLocation,
-  parseCoordsFromAddressInput,
-  getLeadPlusCodeReference,
-  hasLeadLocationCoords,
-  getPrimaryLeadLocation,
-  refineLeadLocationAddressIndex,
-  saveCustomerFromModal,
-  bindImageFallbacks,
-  appEl,
-  getRenderSuspended: () => renderSuspended,
-  setRenderQueued: (next) => {
-    renderQueued = !!next;
+  overlayApi: {
+    ensureOverlayRootCore, ensureModalEscapeHandlerCore, syncModalOpenUiStateCore,
+    renderOverlaysCore, renderProfileModal, renderChatModal, renderPostModal, renderLikesModal,
+    renderMenuItemModal, renderMenuDetailModal, renderFocusModal, renderLeadModal,
+    renderCustomerModal, bindOverlayEventsCore, bindProfileOverlayEventsCore,
+    bindChatOverlayEventsCore, bindPostOverlayEventsCore, bindLikesOverlayEventsCore,
+    bindMenuOverlayEventsCore, bindMenuDetailOverlayEventsCore, bindFocusOverlayEventsCore,
+    bindLeadOverlayEventsCore, bindCustomerOverlayEventsCore, bindImageFallbacks
   },
-  getLastAppHtml: () => lastAppHtml,
-  setLastAppHtml: (next) => {
-    lastAppHtml = next;
+  leadApi: {
+    saveLeadFromModal, convertLeadToCustomer, addLeadModalLocationRow, removeLeadModalLocationRow,
+    syncLeadModalDraftFromForm, openLocationPicker, createLeadLocation, parseCoordsFromAddressInput,
+    getLeadPlusCodeReference, hasLeadLocationCoords, getPrimaryLeadLocation,
+    refineLeadLocationAddressIndex, saveCustomerFromModal, hydrateLeadGeoFieldsFromCoords
   },
-  setLastRenderMode: (next) => {
-    lastRenderMode = next;
-  },
-  getLastRenderedMainTab: () => lastRenderedMainTab,
-  setLastRenderedMainTab: (next) => {
-    lastRenderedMainTab = next;
-  },
-  getCrmAutoLoadObserver: () => crmAutoLoadObserver,
-  setCrmAutoLoadObserver: (next) => {
-    crmAutoLoadObserver = next;
-  },
-  getAuthInitialized: () => authInitialized,
-  getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
-  getUserAvatarCache,
-  getProfileMenuBound: () => profileMenuBound,
-  setProfileMenuBound: (next) => {
-    profileMenuBound = !!next;
-  },
-  getProfileViewUnsub,
-  setProfileViewUnsub,
-  getChatUnreadCount,
-  resolveHeaderBranding,
-  logoFitClass,
-  isRestaurantCafeProfile,
-  getBusinessCatalogLabel,
-  isShopCatalogProfile,
-  getCartCountForRestaurant,
-  renderAuthScreen,
-  sanitizeTabForSession,
-  renderMain,
-  focusSearchInput,
-  focusInputById,
-  captureChatInputFocusState,
-  restoreChatInputFocusState,
-  updateNotificationBadges,
-  updateFocusRotation,
-  ensureAuthLocalPersistence,
-  signInWithEmailAndPassword,
-  auth,
-  ensureUserProfile,
-  createUserWithEmailAndPassword,
-  updateProfile,
-  normalizeLeadScopeKey,
-  loadLeads,
-  normalizeCustomerScopeKey,
-  loadCustomers,
-  loadCeoStaff,
-  bindAppEventsMainCore,
-  bindAppShellEventsCore,
-  signOut,
-  clearAuthBootstrapSnapshot,
-  safeStorage,
-  profileKey,
-  avatarKey,
-  notificationsKey,
-  pushSeenKey,
-  pushTokenMetaKey,
-  followingKey,
-  chatIndexKey,
-  STORAGE_KEYS,
-  resetUserScopedState,
-  bindAppMenuFocusEventsCore,
-  saveMenuLayoutToStorage,
-  deleteMenuItemById,
-  submitShopCheckout,
-  saveTableQrConfig,
-  menuCache,
-  menuCacheKey,
-  focusCache,
-  focusCacheKey,
-  saveMenuStatusBadgeVisible,
-  saveFocusEnabled,
-  deleteFocusItemById,
-  setFocusIndex,
-  toggleProfilePostMenu,
-  toggleProfilePostWidth,
-  deleteProfilePost,
-  setProfileMenuOpen,
-  bindNotificationsDelegation,
-  bindAppSettingsProfileEventsCore,
-  saveAccountSettings,
-  clearVerifiedMapLocation,
-  saveSettings,
-  disablePushDeviceRegistration,
-  getPushActivationIssueMessage,
-  saveUserProfileToStorage,
-  persistPrivateAccountSetting,
-  uploadAvatar,
-  bindAppChatUploadEventsCore,
-  deleteChatThreadById,
-  setChatThreadArchivedById,
-  toggleChatMessageSaved,
-  toggleChatMessageLiked,
-  removePendingChatAttachment,
-  addChatAttachments,
-  handleUploadPost,
-  bindCrmStaffEventsCore,
-  openLeadCreator,
-  openLeadSettingsView,
-  closeLeadSubview,
-  saveLeadSettings,
-  isLeadInlineCreateView,
-  bindLeadInlineCreateEventsCore,
-  deleteLeadFromModal,
-  syncLeadDerivedFields,
-  hydrateLeadGeoFieldsFromCoords,
-  closeStaffEditor,
-  openStaffEditor,
-  syncStaffDerivedEmailField,
-  normalizeCeoCountry,
-  syncStaffFormFromDom,
-  saveCeoStaffFromView,
-  deleteCeoStaffFromView
+  shellApi: {
+    setState, renderMain, signInWithEmailAndPassword, auth, ensureUserProfile,
+    createUserWithEmailAndPassword, updateProfile, normalizeLeadScopeKey, loadLeads,
+    normalizeCustomerScopeKey, loadCustomers, loadCeoStaff, bindAppEventsMainCore,
+    bindAppShellEventsCore, signOut, clearAuthBootstrapSnapshot, safeStorage,
+    profileKey, avatarKey, notificationsKey, pushSeenKey, pushTokenMetaKey,
+    followingKey, chatIndexKey, STORAGE_KEYS, resetUserScopedState,
+    bindAppMenuFocusEventsCore, saveMenuLayoutToStorage, deleteMenuItemById,
+    submitShopCheckout, saveTableQrConfig, menuCache, menuCacheKey,
+    focusCache, focusCacheKey, saveMenuStatusBadgeVisible, saveFocusEnabled,
+    deleteFocusItemById, setFocusIndex, toggleProfilePostMenu, toggleProfilePostWidth,
+    deleteProfilePost, setProfileMenuOpen, bindNotificationsDelegation,
+    bindAppSettingsProfileEventsCore, saveAccountSettings, clearVerifiedMapLocation,
+    syncNotificationsPushRuntime: async (...args) => await getNotificationsRuntimeController().syncNotificationsPushRuntime(...args),
+    saveSettings,
+    disablePushDeviceRegistration: async (...args) => await getPushRuntimeController().disablePushDeviceRegistration(...args),
+    getPushActivationIssueMessage: () => getPushRuntimeController().getPushActivationIssueMessage(),
+    bindAppChatUploadEventsCore, deleteChatThreadById, setChatThreadArchivedById,
+    toggleChatMessageSaved, toggleChatMessageLiked, removePendingChatAttachment,
+    addChatAttachments, handleUploadPost, bindCrmStaffEventsCore, openLeadCreator,
+    openLeadSettingsView, closeLeadSubview, saveLeadSettings, isLeadInlineCreateView,
+    bindLeadInlineCreateEventsCore, deleteLeadFromModal, syncLeadDerivedFields,
+    closeStaffEditor, openStaffEditor, syncStaffDerivedEmailField,
+    normalizeCeoCountry, syncStaffFormFromDom, saveCeoStaffFromView, deleteCeoStaffFromView
+  }
 });
 
+const storySystemController = bridgeShellRuntimeCluster.storySystemController;
+const openProfileFromUser = bridgeShellRuntimeCluster.openProfileFromUser;
 const {
-  applyPublicBootstrapPayload,
-  fetchPublicBootstrapPayload,
-  bindPublicBootstrapPayloadListener
-} = createPublicBootstrapRuntimeController({
-  state,
-  windowObj: typeof window === "undefined" ? null : window,
-  fetchFn: typeof fetch === "function" ? fetch : null,
-  abortControllerCtor: typeof AbortController === "function" ? AbortController : null,
-  defaultPublicBootstrapEndpoint: DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT,
-  publicBootstrapEvent: PUBLIC_BOOTSTRAP_EVENT,
-  normalizeRestaurantType,
-  toDateSafe,
-  formatRelative,
-  mergeRestaurants,
-  writeCache,
-  readCache,
-  cacheKeys: CACHE_KEYS,
-  rebuildBusinessLocations,
-  saveFeedPosts,
-  normalizeStoryItemsForDisplay,
-  buildStoriesSignature,
-  setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
-  queueStoryIdentityHydration,
-  syncFeedPostLogos,
-  updateFeedDom,
-  render,
-  reportCriticalRuntimeFailure,
-  getLastRenderMode: () => lastRenderMode,
-  fastLimits: FAST_LIMITS
-});
-
-mediaUploadRuntimeController = createMediaUploadRuntimeController({
-  state,
-  auth,
-  db,
-  documentObj: typeof document === "undefined" ? null : document,
-  mediaBaseUrl: BUNNY_EDGE_BASE,
-  mediaTicketEndpoint: MEDIA_TICKET_ENDPOINT,
-  fetchFn: typeof fetch === "function" ? fetch : null,
-  compressImageFn: compressImage,
-  collectionFn: collection,
-  docFn: doc,
-  setDocFn: setDoc,
-  serverTimestampFn: serverTimestamp,
-  storySystemController,
-  isLocalBusinessProfileFn: isLocalBusinessProfile,
-  getOptimizedImageUrlFn: getOptimizedImageUrl,
-  escapeHtmlFn: escapeHtml,
-  iconFn: icon,
-  normalizeStoryItemForDisplayFn: normalizeStoryItemForDisplay,
-  buildStoriesSignatureFn: buildStoriesSignature,
-  writeCacheFn: writeCache,
-  loadStoriesForFeedFn: (...args) => loadStoriesForFeed(...args),
-  loadFeedPostsFn: (...args) => loadFeedPosts(...args),
-  loadBusinessPostsFn: (...args) => loadBusinessPosts(...args),
-  loadUserPostsFn: (...args) => loadUserPosts(...args),
-  renderFn: render,
-  updateFeedDomFn: (...args) => updateFeedDom(...args),
-  getLastRenderModeFn: () => lastRenderMode,
-  setStateFn: setState,
-  setFeedStoriesSignatureFn: (next) => setFeedStoriesSignature(next),
-  cacheKeys: CACHE_KEYS,
-  fastLimits: FAST_LIMITS
-});
-
-chatRuntimeController = createChatRuntimeController({
-  state,
-  safeStorage,
-  STORAGE_KEYS,
-  chatIndexKey,
-  toDateSafe,
-  normalizeHandle,
-  normalizeFollowHandle,
-  compressImage,
-  CHAT_ATTACHMENT_INLINE_MAX_BYTES,
-  CHAT_MESSAGE_TTL_MS,
-  CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS,
-  CHAT_MESSAGE_READ_LIMIT,
-  db,
-  collection,
-  query,
-  orderBy,
-  where,
-  limit,
-  onSnapshot,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  increment,
-  serverTimestamp,
-  runTransaction,
-  currentUserBadge,
-  render,
-  renderOverlays,
-  updateNotificationBadges,
-  saveNotifications,
-  updateNotificationsDom,
-  openPostModal,
   openChatWithProfile,
-  openProfileFromUser,
-  openGuestAuthPrompt,
-  applyFollowingHandles,
-  getFollowDocId,
-  isLocalBusinessProfile,
-  saveFollowing,
-  businessProfileCache,
-  findPostById,
-  normalizeFeedPost,
-  pushUserNotification,
-  pushUserNotificationWithId,
-  getPendingCommentHighlight: () => pendingCommentHighlight,
-  setPendingCommentHighlight: (value) => {
-    pendingCommentHighlight = value;
-  },
-  getLastRenderMode: () => lastRenderMode,
-  escapeHtml,
-  icon,
-  formatRelative,
-  getOptimizedImageUrl,
-  getDocumentObj: () => (typeof document === "undefined" ? null : document),
-  getWindowObj: () => (typeof window === "undefined" ? null : window),
-  alertFn: (message) => alert(message),
-  queueMicrotaskFn: (fn) => queueMicrotask(fn),
-  setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
-});
-
-crmRuntimeController = createCrmRuntimeController({
-  state,
-  icon,
-  escapeHtml,
-  isCeoUser,
-  render,
-  renderOverlays,
-  renderCrmLazyLoadingView,
-  renderCeoGuardCore,
-  getLeadSettingsConfig,
-  LEAD_SOCIAL_DEFAULT_PASSWORD,
-  LEAD_SETTINGS_DEFAULT_COUNTRY,
-  CEO_COUNTRIES,
-  LEAD_TYPE_ORDER,
-  LEAD_TYPE_LABELS,
-  LEAD_STATUS_ORDER,
-  LEAD_STATUS_LABELS,
-  resolveCustomerType,
-  normalizeSearchKey,
-  normalizeLeadStatusKey,
-  normalizeLeadScopeKey,
-  normalizeCustomerScopeKey,
-  createLeadScopeMap,
-  createCustomerScopeMap,
-  sanitizeCeoCrmCounts,
-  hasStoredCeoCrmCounts,
-  resolveKnownScopeCountLabel,
-  leadStatusLabel,
-  renderCeoScopeTabs,
-  renderOwnershipPills,
-  leadTypeLabel,
-  customerStatusLabel,
-  isCustomerRestaurant,
-  toDateSafe,
-  normalizeLeadLocations,
-  getLeadCountryCenter,
-  getLeadMonthlyPrice,
-  buildLeadAccountEmail,
-  hasLeadLocationCoords,
-  normalizeLeadCountry,
-  buildLeadContactName,
-  getCurrentCeoMeta,
-  normalizeHandle,
-  getOptimizedImageUrl,
-  isPlaceholderUrl,
-  normalizeCeoCountry,
-  PLACEHOLDER_IMAGE,
-  CRM_LAZY_RENDERERS_MODULE_URL,
-  BUILD_INFO_ENDPOINT_URL,
-  enqueueMicrotaskCore,
-  extractPlusCodeFromText,
-  isLikelyShortPlusCode,
-  parseCoordsFromAddressInputAsync,
-  createLeadLocation,
-  getPrimaryLeadLocation,
-  resolveCoordsFromEntity,
-  preferStableCoords,
-  normalizeCoordPair,
-  inferLeadCountryFromText,
-  parseCoordsFromAddressInput,
-  getLeadPriceForCycle,
-  normalizeLeadSettings,
-  setDoc,
-  doc,
-  db,
-  serverTimestamp,
-  saveUserProfileToStorage,
+  openPostModal,
+  renderFeedView,
+  updateFeedDom,
+  buildRestaurantLocations,
   ensureLeafletLoaded,
-  getCeoGpsOverride,
-  PRISHTINA_COORDS,
-  alert: typeof alert === "function" ? alert : () => {},
-  getApps,
-  initializeApp,
-  app,
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  normalizeCeoPath,
-  normalizeRestaurantType,
-  hasGlobalCeoAccess,
-  collection,
-  query,
-  where,
-  limit,
-  getDocs,
-  getDoc,
-  mergeRestaurants,
-  rebuildBusinessLocations,
-  canCurrentCeoSeeRow,
-  isCurrentCeoOwnRow,
-  ensureCeoCrmCountsLoaded,
-  getCeoCrmCountsPromise: () => ceoCrmCountRuntimeController?.getCeoCrmCountsPromise() || null,
-  readLeadScopeCache,
-  writeLeadScopeCache,
-  readCustomerScopeCache,
-  writeCustomerScopeCache,
-  CRM_PAGE_SIZE,
-  dataLoaded,
-  uniqueStringList,
-  normalizeCeoStaffRecord,
-  canViewCeoRecord,
-  hydrateStaffRecordsFromUserProfiles,
-  saveCeoStaffFromViewCore,
-  uploadCompressedImage,
-  buildCeoName,
-  createEmptyCeoCrmCounts,
-  saveLeadFromModalCore,
-  deleteLeadFromModalCore,
-  saveCustomerFromModalCore,
-  convertLeadToCustomerCore,
-  buildLeadCrmContribution,
-  buildCustomerCrmContribution,
-  resolveStoredCeoCreatorMeta,
-  accumulateCeoCrmDelta,
-  applyCeoCrmCountDeltas,
+  cleanupLeaflet,
+  renderMapView,
+  renderSearchView,
+  refreshSearchView,
+  renderShopProductList,
+  renderProfileShopFavoritesView,
+  renderProfileShopCartView,
+  renderOverlays,
+  clearShopCart,
+  closeFocusModal,
   closeLeadModal,
   closeCustomerModal,
-  findRestaurantByUid,
-  findRestaurantByEmail,
-  normalizeEmailValue,
-  normalizeRoleList,
-  menuCache,
-  menuCacheKey,
-  focusCache,
-  focusCacheKey,
-  businessPostsKey,
-  writeCache,
-  saveFeedPosts,
-  readCache,
-  CACHE_KEYS,
-  buildStoriesSignature,
-  setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
-  isAlbertCeoUser,
-  buildCeoCreatorMeta,
-  HIDDEN_LEGACY_CEO_EMAILS,
-  MILAN_OWNED_LEAD_EMAILS,
-  MILAN_OWNED_LEAD_BUSINESSES,
-  ALBERT_OWNED_LEAD_EMAILS,
-  ALBERT_OWNED_LEAD_BUSINESSES,
-  confirm: typeof confirm === "function" ? confirm : () => false,
-  deleteDoc
+  closeMenuModal
+} = bridgeShellRuntimeCluster.bridgeBindings;
+
+mediaUploadRuntimeController = createMediaUploadRuntimeCluster({
+  stateDeps: {
+    state,
+    auth,
+    documentObj: typeof document === "undefined" ? null : document,
+    writeCacheFn: writeCache,
+    setStateFn: setState,
+    setFeedStoriesSignatureFn: (next) => setFeedStoriesSignature(next)
+  },
+  constants: { mediaBaseUrl: BUNNY_EDGE_BASE, mediaTicketEndpoint: MEDIA_TICKET_ENDPOINT, cacheKeys: CACHE_KEYS, fastLimits: FAST_LIMITS },
+  firebaseApi: { db, collectionFn: collection, docFn: doc, setDocFn: setDoc, serverTimestampFn: serverTimestamp },
+  mediaApi: { fetchFn: typeof fetch === "function" ? fetch : null, compressImageFn: compressImage },
+  storyApi: {
+    storySystemController,
+    isLocalBusinessProfileFn: isLocalBusinessProfile,
+    normalizeStoryItemForDisplayFn: normalizeStoryItemForDisplay,
+    buildStoriesSignatureFn: buildStoriesSignature,
+    loadStoriesForFeedFn: (...args) => loadStoriesForFeed(...args),
+    loadFeedPostsFn: (...args) => loadFeedPosts(...args),
+    loadBusinessPostsFn: (...args) => loadBusinessPosts(...args),
+    loadUserPostsFn: (...args) => loadUserPosts(...args)
+  },
+  renderApi: {
+    getOptimizedImageUrlFn: getOptimizedImageUrl,
+    escapeHtmlFn: escapeHtml,
+    iconFn: icon,
+    renderFn: render,
+    updateFeedDomFn: (...args) => updateFeedDom(...args),
+    getLastRenderModeFn: () => lastRenderMode
+  }
+});
+
+chatRuntimeController = createChatRuntimeCluster({
+  stateDeps: { state, safeStorage, chatIndexKey },
+  constants: {
+    STORAGE_KEYS,
+    toDateSafe,
+    normalizeHandle,
+    normalizeFollowHandle,
+    compressImage,
+    CHAT_ATTACHMENT_INLINE_MAX_BYTES,
+    CHAT_MESSAGE_TTL_MS,
+    CHAT_IMAGE_PREVIEW_COMPRESSION_STEPS,
+    CHAT_MESSAGE_READ_LIMIT
+  },
+  firebaseApi: {
+    db,
+    collection,
+    query,
+    orderBy,
+    where,
+    limit,
+    onSnapshot,
+    doc,
+    getDoc,
+    getDocs,
+    setDoc,
+    updateDoc,
+    deleteDoc,
+    increment,
+    serverTimestamp,
+    runTransaction
+  },
+  renderApi: {
+    currentUserBadge,
+    render,
+    renderOverlays,
+    updateNotificationBadges,
+    saveNotifications,
+    updateNotificationsDom,
+    openPostModal,
+    openChatWithProfile,
+    openProfileFromUser,
+    openGuestAuthPrompt
+  },
+  followApi: {
+    applyFollowingHandles,
+    getFollowDocId,
+    isLocalBusinessProfile,
+    saveFollowing,
+    businessProfileCache,
+    findPostById,
+    normalizeFeedPost,
+    pushUserNotification,
+    pushUserNotificationWithId
+  },
+  stateApi: {
+    getPendingCommentHighlight: () => pendingCommentHighlight,
+    setPendingCommentHighlight: (value) => { pendingCommentHighlight = value; },
+    getLastRenderMode: () => lastRenderMode,
+    getDocumentObj: () => (typeof document === "undefined" ? null : document),
+    getWindowObj: () => (typeof window === "undefined" ? null : window)
+  },
+  uiApi: {
+    escapeHtml,
+    icon,
+    formatRelative,
+    getOptimizedImageUrl,
+    alertFn: (message) => alert(message),
+    queueMicrotaskFn: (fn) => queueMicrotask(fn),
+    setTimeoutFn: (fn, ms) => setTimeout(fn, ms)
+  }
+});
+
+crmRuntimeController = createCrmRuntimeCluster({
+  stateDeps: { state, dataLoaded },
+  constants: {
+    LEAD_SOCIAL_DEFAULT_PASSWORD,
+    LEAD_SETTINGS_DEFAULT_COUNTRY,
+    CEO_COUNTRIES,
+    LEAD_TYPE_ORDER,
+    LEAD_TYPE_LABELS,
+    LEAD_STATUS_ORDER,
+    LEAD_STATUS_LABELS,
+    PLACEHOLDER_IMAGE,
+    CRM_LAZY_RENDERERS_MODULE_URL,
+    BUILD_INFO_ENDPOINT_URL,
+    enqueueMicrotaskCore,
+    PRISHTINA_COORDS,
+    CRM_PAGE_SIZE,
+    CACHE_KEYS,
+    HIDDEN_LEGACY_CEO_EMAILS,
+    MILAN_OWNED_LEAD_EMAILS,
+    MILAN_OWNED_LEAD_BUSINESSES,
+    ALBERT_OWNED_LEAD_EMAILS,
+    ALBERT_OWNED_LEAD_BUSINESSES
+  },
+  renderApi: {
+    icon,
+    escapeHtml,
+    render,
+    renderOverlays,
+    renderCrmLazyLoadingView,
+    renderCeoGuardCore,
+    renderCeoScopeTabs,
+    renderOwnershipPills,
+    getOptimizedImageUrl,
+    isPlaceholderUrl,
+    ensureLeafletLoaded,
+    alert: typeof alert === "function" ? alert : () => {},
+    confirm: typeof confirm === "function" ? confirm : () => false
+  },
+  leadApi: {
+    getLeadSettingsConfig,
+    resolveCustomerType,
+    normalizeSearchKey,
+    normalizeLeadStatusKey,
+    normalizeLeadScopeKey,
+    normalizeCustomerScopeKey,
+    createLeadScopeMap,
+    createCustomerScopeMap,
+    leadStatusLabel,
+    leadTypeLabel,
+    customerStatusLabel,
+    isCustomerRestaurant,
+    toDateSafe,
+    getLeadCountryCenter,
+    getLeadMonthlyPrice,
+    buildLeadAccountEmail,
+    normalizeLeadCountry,
+    buildLeadContactName,
+    normalizeHandle,
+    inferLeadCountryFromText,
+    getLeadPriceForCycle,
+    normalizeLeadSettings,
+    normalizeRestaurantType,
+    uniqueStringList,
+    findRestaurantByUid,
+    findRestaurantByEmail,
+    normalizeEmailValue
+  },
+  geoApi: {
+    normalizeLeadLocations,
+    hasLeadLocationCoords,
+    extractPlusCodeFromText,
+    isLikelyShortPlusCode,
+    parseCoordsFromAddressInputAsync,
+    createLeadLocation,
+    getPrimaryLeadLocation,
+    resolveCoordsFromEntity,
+    preferStableCoords,
+    normalizeCoordPair,
+    parseCoordsFromAddressInput
+  },
+  firebaseApi: {
+    setDoc,
+    doc,
+    db,
+    serverTimestamp,
+    collection,
+    query,
+    where,
+    limit,
+    getDocs,
+    getDoc,
+    deleteDoc
+  },
+  authApi: {
+    getApps,
+    initializeApp,
+    app,
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut
+  },
+  cacheApi: {
+    saveUserProfileToStorage,
+    mergeRestaurants,
+    rebuildBusinessLocations,
+    readLeadScopeCache,
+    writeLeadScopeCache,
+    readCustomerScopeCache,
+    writeCustomerScopeCache,
+    menuCache,
+    menuCacheKey,
+    focusCache,
+    focusCacheKey,
+    businessPostsKey,
+    writeCache,
+    saveFeedPosts,
+    readCache,
+    buildStoriesSignature,
+    setFeedStoriesSignature: (next) => setFeedStoriesSignature(next)
+  },
+  ceoApi: {
+    isCeoUser,
+    sanitizeCeoCrmCounts,
+    hasStoredCeoCrmCounts,
+    resolveKnownScopeCountLabel,
+    getCurrentCeoMeta,
+    normalizeCeoCountry,
+    getCeoGpsOverride,
+    normalizeCeoPath,
+    hasGlobalCeoAccess,
+    canCurrentCeoSeeRow,
+    isCurrentCeoOwnRow,
+    ensureCeoCrmCountsLoaded,
+    getCeoCrmCountsPromise: () => ceoCrmCountRuntimeController?.getCeoCrmCountsPromise() || null,
+    normalizeCeoStaffRecord,
+    canViewCeoRecord,
+    hydrateStaffRecordsFromUserProfiles,
+    buildCeoName,
+    createEmptyCeoCrmCounts,
+    buildLeadCrmContribution,
+    buildCustomerCrmContribution,
+    resolveStoredCeoCreatorMeta,
+    accumulateCeoCrmDelta,
+    applyCeoCrmCountDeltas,
+    normalizeRoleList,
+    isAlbertCeoUser,
+    buildCeoCreatorMeta
+  },
+  modalApi: {
+    saveCeoStaffFromViewCore,
+    uploadCompressedImage,
+    saveLeadFromModalCore,
+    deleteLeadFromModalCore,
+    saveCustomerFromModalCore,
+    convertLeadToCustomerCore,
+    closeLeadModal,
+    closeCustomerModal
+  }
 });
 
 businessAccountsRuntimeController = createBusinessAccountsRuntimeController({
@@ -4643,35 +3827,124 @@ profileMenuFocusRenderController = createProfileMenuFocusRenderController({
   normalizeFollowHandleFn: normalizeFollowHandle
 });
 
-shellRuntimeController = createShellRuntimeController();
+const {
+  getFollowRuntimeController,
+  getPushRuntimeController,
+  getNotificationsRuntimeController,
+  getNotificationSupportRuntimeController,
+  getSessionTabLifecycleRuntimeController
+} = createSessionRuntimeCluster({
+  config: {
+    app,
+    fastMode: FAST_MODE,
+    brandTitle: BRAND_UI.title,
+    firebaseMessagingModuleUrl: FIREBASE_MESSAGING_MODULE_URL,
+    pushSeenNotificationsLimit: PUSH_SEEN_NOTIFICATIONS_LIMIT,
+    pushTokenSyncIntervalMs: PUSH_TOKEN_SYNC_INTERVAL_MS,
+    fcmWebPushVapidKey: FCM_WEB_PUSH_VAPID_KEY,
+    pushServiceWorkerUrl: PUSH_SW_URL,
+    pushServiceWorkerScope: PUSH_SW_SCOPE,
+    pushServiceWorkerReadyTimeoutMs: PUSH_SW_READY_TIMEOUT_MS,
+    notificationsLiveLimit: NOTIFICATIONS_LIVE_LIMIT
+  },
+  browserContext: {
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    navigatorObj: typeof navigator === "undefined" ? null : navigator,
+    cryptoObj: typeof crypto === "undefined" ? null : crypto,
+    clearIntervalFn: (id) => clearInterval(id),
+    importModuleFn: (url) => import(url),
+    encodeURIComponentFn: (value) => encodeURIComponent(value),
+    nowFn: () => Date.now(),
+    randomFn: () => Math.random()
+  },
+  firebaseApi: {
+    db,
+    collectionFn: collection,
+    queryFn: query,
+    orderByFn: orderBy,
+    limitFn: limit,
+    getDocsFn: getDocs,
+    onSnapshotFn: onSnapshot,
+    docFn: doc,
+    setDocFn: setDoc,
+    serverTimestampFn: serverTimestamp
+  },
+  storageApi: {
+    safeStorageObj: safeStorage,
+    followingKeyFn: followingKey,
+    notificationsKeyFn: notificationsKey,
+    pushSeenKeyFn: pushSeenKey,
+    pushTokenMetaKeyFn: pushTokenMetaKey,
+    pushDeviceIdKeyFn: pushDeviceIdKey,
+    normalizeFollowHandleFn: normalizeFollowHandle
+  },
+  renderApi: {
+    renderFn: render,
+    renderOverlaysFn: (...args) => renderOverlays(...args),
+    getLastRenderModeFn: () => lastRenderMode,
+    updateNotificationsDomFn: updateNotificationsDom,
+    handleNotificationsUpdateFn: handleNotificationsUpdate,
+    saveNotificationsFn: (...args) => saveNotifications(...args),
+    resolveNotificationAvatarFn: (...args) => resolveNotificationAvatar(...args),
+    formatRelativeFn: formatRelative,
+    toDateSafeFn: toDateSafe
+  },
+  lifecycleApi: {
+    state,
+    dataLoaded,
+    sanitizeTabForSession,
+    startChatThreadsListenerFn: startChatThreadsListener,
+    stopChatThreadsListenerFn: stopChatThreadsListener,
+    stopActiveChatMessagesListenerFn: stopActiveChatMessagesListener,
+    startOrdersListenerFn: startOrdersListener,
+    stopOrdersListenerFn: stopOrdersListener,
+    stopRestaurantMetaListenersFn: stopRestaurantMetaListeners,
+    isCeoUserFn: isCeoUser,
+    queueCrmLazyRenderersPrefetchFn: queueCrmLazyRenderersPrefetch,
+    loadFeedPostsFn: (...args) => loadFeedPosts(...args),
+    scheduleIdleFn: scheduleIdle,
+    loadRestaurantsFn: (...args) => loadRestaurants(...args),
+    isLocalBusinessProfileFn: isLocalBusinessProfile,
+    loadUserPostsFn: (...args) => loadUserPosts(...args),
+    loadBusinessPostsFn: (...args) => loadBusinessPosts(...args),
+    loadAuthProfileFn: (...args) => loadAuthProfile(...args),
+    loadMenuForRestaurantFn: (...args) => loadMenuForRestaurant(...args),
+    loadFocusForRestaurantFn: (...args) => loadFocusForRestaurant(...args),
+    attachCurrentUserProfileListenerFn: attachCurrentUserProfileListener,
+    stopCurrentUserProfileListenerFn: stopCurrentUserProfileListener,
+    stopProfileViewListenerFn: stopProfileViewListener,
+    normalizeLeadScopeKeyFn: normalizeLeadScopeKey,
+    loadLeadsFn: (...args) => loadLeads(...args),
+    normalizeCustomerScopeKeyFn: normalizeCustomerScopeKey,
+    loadCustomersFn: (...args) => loadCustomers(...args),
+    loadCeoStaffFn: (...args) => loadCeoStaff(...args),
+    loadBusinessAccountsFn: (...args) => loadBusinessAccounts(...args),
+    stopExtraLiveListenersFn: () => {
+      if (modalPostDocUnsub) {
+        modalPostDocUnsub();
+        modalPostDocUnsub = null;
+      }
+      if (modalLikesUnsub) {
+        modalLikesUnsub();
+        modalLikesUnsub = null;
+      }
+      if (modalCommentsUnsub) {
+        modalCommentsUnsub();
+        modalCommentsUnsub = null;
+      }
+    }
+  }
+});
+
+shellRuntimeController = bridgeShellRuntimeCluster.createShellRuntimeController();
 
 async function pushUserNotification(targetUid, payload) {
-  if (!targetUid) return;
-  try {
-    const ref = doc(collection(db, "users", targetUid, "notifications"));
-    await setDoc(ref, buildNotificationWritePayloadCore({
-      payload,
-      serverTimestampValue: serverTimestamp()
-    }));
-  } catch (err) {
-    console.error(err);
-  }
+  return await getNotificationSupportRuntimeController().pushUserNotification(...arguments);
 }
 
 async function pushUserNotificationWithId(targetUid, notificationId, payload) {
-  const { targetUid: safeTargetUid, notificationId: safeNotificationId } = normalizeNotificationWriteIdsCore({
-    targetUid,
-    notificationId
-  });
-  if (!safeTargetUid || !safeNotificationId) return;
-  try {
-    await setDoc(doc(db, "users", safeTargetUid, "notifications", safeNotificationId), buildNotificationWritePayloadCore({
-      payload,
-      serverTimestampValue: serverTimestamp()
-    }), { merge: true });
-  } catch (err) {
-    console.error(err);
-  }
+  return await getNotificationSupportRuntimeController().pushUserNotificationWithId(...arguments);
 }
 
 async function hasPendingFollowRequest(targetUid) {
@@ -4738,12 +4011,7 @@ function renderChatModal() {
 }
 
 function isFollowingProfile(profile = {}) {
-  const uid = String(profile?.uid || "").trim();
-  if (uid && state.followingTargetIds.includes(uid)) return true;
-  const restaurantId = String(profile?.restaurantId || "").trim();
-  if (restaurantId && state.followingTargetIds.includes(restaurantId)) return true;
-  const followKey = normalizeFollowHandle(profile?.handle || "");
-  return !!(followKey && state.followingHandles.includes(followKey));
+  return getFollowRuntimeController().isFollowingProfile(...arguments);
 }
 
 let authPersistenceReady = null;
@@ -5257,13 +4525,6 @@ async function loadAuthProfile(user, { force = false } = {}) {
   });
 }
 
-function stopRestaurantsListener() {
-  if (restaurantsUnsub) {
-    restaurantsUnsub();
-    restaurantsUnsub = null;
-  }
-}
-
 async function loadRestaurants({ force = false } = {}) {
   return sessionDataRuntimeController.loadRestaurants(...arguments);
 }
@@ -5522,59 +4783,71 @@ async function deleteMenuItemById(itemId) {
 }
 
 loadPersisted();
-const {
-  hasInlineBootstrapPayload,
-  hasWindowBootstrapPromise
-} = preparePublicBootstrapStartup({
-  windowObj: typeof window === "undefined" ? null : window,
-  bindPublicBootstrapPayloadListener,
-  applyPublicBootstrapPayload
-});
-const postLoginRouteOpenCoordinator = createPostLoginRouteOpenCoordinator({
-  pendingRouteState,
-  routeOpenApi: {
-    openProfileFromQuery: maybeOpenProfileFromQuery,
-    openNotificationFromQuery: maybeOpenNotificationFromQuery,
-    openPostFromQuery: maybeOpenPostFromQuery,
-    openChatFromQuery: maybeOpenChatFromQuery
+startAppStartupBootstrap({
+  publicBootstrapDeps: {
+    state,
+    windowObj: typeof window === "undefined" ? null : window,
+    fetchFn: typeof fetch === "function" ? fetch : null,
+    abortControllerCtor: typeof AbortController === "function" ? AbortController : null,
+    defaultPublicBootstrapEndpoint: DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT,
+    publicBootstrapEvent: PUBLIC_BOOTSTRAP_EVENT,
+    normalizeRestaurantType,
+    toDateSafe,
+    formatRelative,
+    mergeRestaurants,
+    writeCache,
+    readCache,
+    cacheKeys: CACHE_KEYS,
+    rebuildBusinessLocations,
+    saveFeedPosts,
+    normalizeStoryItemsForDisplay,
+    buildStoriesSignature,
+    setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
+    queueStoryIdentityHydration,
+    syncFeedPostLogos,
+    updateFeedDom,
+    render,
+    reportCriticalRuntimeFailure,
+    getLastRenderMode: () => lastRenderMode,
+    fastLimits: FAST_LIMITS
   },
-  renderFallback: render
-});
-const authSessionStartupCoordinator = createAuthSessionStartupCoordinator({
-  state,
-  auth,
-  onAuthStateChangedFn: onAuthStateChanged,
-  windowObj: typeof window === "undefined" ? null : window,
-  queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
-  setTimeoutFn: typeof setTimeout === "function" ? setTimeout : null,
-  setAuthInitialized: (next) => { authInitialized = !!next; },
-  setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
-  readAuthBootstrapSnapshot,
-  writeAuthBootstrapSnapshot,
-  clearAuthBootstrapSnapshot,
-  applyAuthBootstrapSnapshot,
-  applyPersistedAuthProfileHints,
-  bindPushOpenTargetMessageHandler,
-  loadUserScopedPersisted,
-  loadGuestScopedPersisted,
-  applyPendingInitialRouteState,
-  resetUserScopedState,
-  render,
-  schedulePerfWarmMark,
-  fetchPublicBootstrapPayload,
-  ensureTabData,
-  sanitizeTabForSession,
-  stopLiveListeners,
-  suspendRender,
-  resumeRender,
-  reportCriticalRuntimeFailure,
-  runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user),
-  postLoginRouteOpenCoordinator
-});
-
-authSessionStartupCoordinator.start({
-  hasInlineBootstrapPayload,
-  hasWindowBootstrapPromise
+  startupPrepDeps: {
+    windowObj: typeof window === "undefined" ? null : window
+  },
+  routeOpenDeps: {
+    pendingRouteState,
+    routeOpenApi: bridgeShellRuntimeCluster.routeOpenApi,
+    renderFallback: render
+  },
+  authStartupDeps: {
+    state,
+    auth,
+    onAuthStateChangedFn: onAuthStateChanged,
+    windowObj: typeof window === "undefined" ? null : window,
+    queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
+    setTimeoutFn: typeof setTimeout === "function" ? setTimeout : null,
+    setAuthInitialized: (next) => { authInitialized = !!next; },
+    setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
+    readAuthBootstrapSnapshot,
+    writeAuthBootstrapSnapshot,
+    clearAuthBootstrapSnapshot,
+    applyAuthBootstrapSnapshot,
+    applyPersistedAuthProfileHints,
+    bindPushOpenTargetMessageHandler: bridgeShellRuntimeCluster.routeOpenApi.bindPushOpenTargetMessageHandler,
+    loadUserScopedPersisted,
+    loadGuestScopedPersisted,
+    applyPendingInitialRouteState,
+    resetUserScopedState,
+    render,
+    schedulePerfWarmMark,
+    ensureTabData: (...args) => getSessionTabLifecycleRuntimeController().ensureTabData(...args),
+    sanitizeTabForSession,
+    stopLiveListeners: (...args) => getSessionTabLifecycleRuntimeController().stopLiveListeners(...args),
+    suspendRender,
+    resumeRender,
+    reportCriticalRuntimeFailure,
+    runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user)
+  }
 });
 
 window.addEventListener("load", () => {

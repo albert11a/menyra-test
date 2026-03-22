@@ -153,7 +153,7 @@ export function createNotificationsRuntimeFlowControllerCore({
         }
       })();
     }, (err) => {
-      console.error(err);
+      console.error(`[mnyra][firestore.listen.notifications] users/${ownerUid}/notifications`, err);
     });
 
     writeNotificationsUnsub(nextUnsub);
@@ -172,15 +172,15 @@ export function createNotificationsRuntimeFlowControllerCore({
     }
     clearPushIssue();
 
-    const granted = await ensureNotificationPermissionFn({ interactive });
+    const granted = await ensureNotificationPermissionFn({ interactive, silent: !interactive });
     if (!granted) {
       startNotificationsListener(user, { enableNativePush: false });
       return false;
     }
-    const registered = await syncPushDeviceRegistrationFn({ interactive, force: interactive, enabled });
+    const registered = await syncPushDeviceRegistrationFn({ interactive, force: interactive, enabled, silent: !interactive });
     // Avoid duplicate system notifications: native snapshot alerts are fallback only.
     startNotificationsListener(user, { enableNativePush: !registered });
-    if (!registered && !readPushIssue()) {
+    if (interactive && !registered && !readPushIssue()) {
       setPushIssue("Push-Registrierung fehlgeschlagen.");
     }
     return registered;

@@ -139,6 +139,9 @@ export function createOrdersRuntimeController({
     const pathRef = isBusiness
       ? collection(db, "restaurants", restaurantId, "orders")
       : collection(db, "users", uid, "orders");
+    const listenerPath = isBusiness
+      ? `restaurants/${restaurantId}/orders`
+      : `users/${uid}/orders`;
     ordersListenerKey = nextListenerKey;
     if (state) {
       state.orders = { ...state.orders, loading: true, error: "" };
@@ -151,7 +154,7 @@ export function createOrdersRuntimeController({
       }
       renderOrdersTabIfVisible();
     }, (err) => {
-      console.error(err);
+      console.error(`[mnyra][firestore.listen.orders] ${listenerPath}`, err);
       ordersUnsub = null;
       ordersListenerKey = "";
       if (state) {

@@ -1,6 +1,5 @@
 import { createProfileOpenFlowControllerCore } from "../profile/profile-open-flow-utils.js";
 import { createDeeplinkFlowControllerCore } from "../router/deeplink-flow-utils.js";
-import { createNotificationsRuntimeFlowControllerCore } from "../notifications/notifications-runtime-flow-utils.js";
 import { createShopViewCartOrchestrationController } from "../shop/shop-view-cart-orchestration-controller.js";
 import { createFeedViewOrchestrationController } from "../feed/feed-view-orchestration-controller.js";
 import { createOverlayOrchestrationController } from "../overlays/overlay-orchestration-controller.js";
@@ -149,80 +148,24 @@ export function createAppControllerBridge({
     maybeOpenProfileFromQuery
   } = deeplinkFlowController;
 
-  const notificationsRuntimeFlowController = createNotificationsRuntimeFlowControllerCore({
-    state: notifications.state,
-    getNotificationsUnsub: () => notifications.getNotificationsUnsub(),
-    setNotificationsUnsub: (nextUnsub) => {
-      notifications.setNotificationsUnsub(nextUnsub);
-    },
-    normalizeNotificationItemFromDoc: (docSnap) => notifications.normalizeNotificationItemCore({
-      docSnap,
-      formatRelative: notifications.formatRelative,
-      toDateSafe: notifications.toDateSafe
-    }),
-    mapNotificationSnapshotFromSnap: (snap, normalizeNotificationItemFn) => notifications.mapNotificationSnapshotCore({
-      snap,
-      normalizeNotificationItem: (docSnap) => normalizeNotificationItemFn(docSnap)
-    }),
-    shouldSurfaceNativePushNowFn: () => notifications.shouldSurfaceNativePushNowCore({
-      documentObj: notifications.documentObj,
-      activeTab: notifications.state.activeTab
-    }),
-    buildNotificationsLiveQuery: (ownerUid, liveLimit) => notifications.buildNotificationsLiveQueryCore({
-      db: notifications.db,
-      ownerUid,
-      collection: notifications.collection,
-      query: notifications.query,
-      orderBy: notifications.orderBy,
-      limit: notifications.limit,
-      liveLimit
-    }),
-    readPushSeenIds: (ownerUid) => notifications.readPushSeenIds(ownerUid),
-    addNotificationItemsToSeenSet: (items, seenIds) => notifications.addNotificationItemsToSeenSetCore({ items, seenIds }),
-    writePushSeenIds: (ids = [], ownerUid = "") => notifications.writePushSeenIds(ids, ownerUid),
-    canEmitNativePushAlerts: () => notifications.canEmitNativePushAlerts(),
-    collectUnseenUnreadNotificationItemsFromChanges: (changes = [], seenIds = new Set(), normalizeNotificationItemFn) => notifications.collectUnseenUnreadNotificationItemsFromChangesCore({
-      changes,
-      normalizeNotificationItem: (docSnap) => normalizeNotificationItemFn(docSnap),
-      seenIds
-    }),
-    showNativePushAlert: async (item) => notifications.showNativePushAlert(item),
-    handleNotificationsUpdate: (items) => notifications.handleNotificationsUpdate(items),
-    subscribeNotifications: (queryRef, onNext, onError) => notifications.onSnapshot(queryRef, onNext, onError),
-    buildNotificationsFetchQuery: (ownerUid, fetchLimit) => notifications.buildNotificationsFetchQueryCore({
-      db: notifications.db,
-      ownerUid,
-      collection: notifications.collection,
-      query: notifications.query,
-      orderBy: notifications.orderBy,
-      limit: notifications.limit,
-      fetchLimit
-    }),
-    fetchNotificationsFromQuery: async (queryRef, mapNotificationSnapshotFn) => notifications.fetchNotificationsFromQueryCore({
-      queryRef,
-      getDocs: notifications.getDocs,
-      mapNotificationSnapshot: (snap) => mapNotificationSnapshotFn(snap)
-    }),
-    saveNotifications: (notificationsList) => notifications.saveNotifications(notificationsList),
-    updateNotificationsDom: () => notifications.updateNotificationsDom(),
-    render: () => notifications.render(),
-    setPushActivationIssue: (message) => notifications.setPushActivationIssue(message),
-    clearPushActivationIssue: () => notifications.clearPushActivationIssue(),
-    ensureNotificationPermission: async (options = {}) => notifications.ensureNotificationPermission(options),
-    syncPushDeviceRegistration: async (options = {}) => notifications.syncPushDeviceRegistration(options),
-    getPushActivationIssue: () => notifications.getPushActivationIssue(),
-    notificationsLiveLimit: notifications.notificationsLiveLimit,
-    fetchLimit: notifications.fetchLimit
-  });
-
-  const {
-    normalizeNotificationItem,
-    mapNotificationSnapshot,
-    shouldSurfaceNativePushNow,
-    startNotificationsListener,
-    syncNotificationsPushRuntime,
-    loadNotificationsFromFirebase
-  } = notificationsRuntimeFlowController;
+  const normalizeNotificationItem = typeof notifications.normalizeNotificationItem === "function"
+    ? (docSnap) => notifications.normalizeNotificationItem(docSnap)
+    : ((docSnap) => docSnap);
+  const mapNotificationSnapshot = typeof notifications.mapNotificationSnapshot === "function"
+    ? (snap) => notifications.mapNotificationSnapshot(snap)
+    : ((snap) => snap?.docs || []);
+  const shouldSurfaceNativePushNow = typeof notifications.shouldSurfaceNativePushNow === "function"
+    ? () => notifications.shouldSurfaceNativePushNow()
+    : (() => false);
+  const startNotificationsListener = typeof notifications.startNotificationsListener === "function"
+    ? (user, options = {}) => notifications.startNotificationsListener(user, options)
+    : (() => {});
+  const syncNotificationsPushRuntime = typeof notifications.syncNotificationsPushRuntime === "function"
+    ? async (options = {}) => await notifications.syncNotificationsPushRuntime(options)
+    : (async () => false);
+  const loadNotificationsFromFirebase = typeof notifications.loadNotificationsFromFirebase === "function"
+    ? async (options = {}) => await notifications.loadNotificationsFromFirebase(options)
+    : (async () => []);
 
   normalizeNotificationItemBridge = normalizeNotificationItem;
 
@@ -533,7 +476,7 @@ export function createAppControllerBridge({
     controllers: {
       profileOpenFlowController,
       deeplinkFlowController,
-      notificationsRuntimeFlowController,
+      notificationsRuntimeController: notifications.runtimeController || notifications,
       shopViewCartOrchestrationController,
       feedViewOrchestrationController,
       discoveryRuntimeController,

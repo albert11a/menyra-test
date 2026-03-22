@@ -800,6 +800,7 @@ export function createSelfProfileRuntimeController({
     if (userDocUnsub && userDocLiveKey === nextKey) return;
     stopCurrentUserProfileListener();
     userDocLiveKey = nextKey;
+    const listenerPath = useRestaurantDoc ? `restaurants/${restaurantId}` : `users/${uid}`;
     const ref = useRestaurantDoc ? makeDocRef(db, "restaurants", restaurantId) : makeDocRef(db, "users", uid);
     userDocUnsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) return;
@@ -809,7 +810,9 @@ export function createSelfProfileRuntimeController({
         return;
       }
       applyLiveUserProfileSnapshot(data);
-    }, () => {});
+    }, (err) => {
+      console.error(`[mnyra][firestore.listen.selfProfile] ${listenerPath}`, err);
+    });
   }
 
   async function fetchUserDoc(uid) {

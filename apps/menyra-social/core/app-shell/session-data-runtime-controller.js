@@ -342,7 +342,7 @@ export function createSessionDataRuntimeController({
         resolveMenuStatusBadgeVisible(data.menuStatusBadgeVisible, data.menuAvailabilityBadgeVisible)
       );
     }, (err) => {
-      console.error(err);
+      console.error(`[mnyra][firestore.listen.menuMeta] restaurants/${safeRestaurantId}/public/meta`, err);
     });
   }
 

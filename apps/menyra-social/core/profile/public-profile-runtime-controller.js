@@ -54,6 +54,9 @@ export function createPublicProfileRuntimeController({
   function attachProfileViewListener(profile) {
     stopProfileViewListener();
     if (!profile || !makeDocRef || !onSnapshotSafe || !db) return;
+    const listenerPath = profile.restaurantId
+      ? `restaurants/${profile.restaurantId}`
+      : (profile.uid ? `users/${profile.uid}` : "");
     const ref = profile.restaurantId
       ? makeDocRef(db, "restaurants", profile.restaurantId)
       : (profile.uid ? makeDocRef(db, "users", profile.uid) : null);
@@ -78,6 +81,8 @@ export function createPublicProfileRuntimeController({
         viewProfile.location = data.city || viewProfile.location;
       }
       renderApp();
+    }, (err) => {
+      console.error(`[mnyra][firestore.listen.publicProfile] ${listenerPath}`, err);
     });
   }
 
