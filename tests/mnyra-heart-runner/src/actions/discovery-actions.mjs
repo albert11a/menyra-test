@@ -12,6 +12,26 @@ function asText(value, fallback = "") {
   return text || fallback;
 }
 
+function rebaseUrlToBase(baseUrl = "", targetUrl = "") {
+  const safeBaseUrl = asText(baseUrl);
+  const safeTargetUrl = asText(targetUrl);
+  if (!safeTargetUrl) return "";
+  if (!safeBaseUrl) return safeTargetUrl;
+  try {
+    const base = new URL(safeBaseUrl);
+    const target = new URL(safeTargetUrl, safeBaseUrl);
+    const normalizedBasePath = String(base.pathname || "").replace(/\/+$/, "").toLowerCase();
+    const normalizedTargetPath = String(target.pathname || "").replace(/\/+$/, "").toLowerCase();
+    if (!normalizedBasePath || normalizedBasePath === normalizedTargetPath) {
+      target.protocol = base.protocol;
+      target.host = base.host;
+    }
+    return target.toString();
+  } catch {
+    return safeTargetUrl;
+  }
+}
+
 function resolveBusinessSearchQuery(env = {}) {
   const discovery = env.packConfig?.actions?.discovery || {};
   return asText(
@@ -43,7 +63,8 @@ async function openBusinessTargetFromDiscovery(page, heart, persona, {
   profileReadySelector = "",
   queryText = ""
 } = {}) {
-  await openPageAndWait(page, pageUrl, "body", heart, {
+  const targetUrl = rebaseUrlToBase(persona?.baseUrl, pageUrl);
+  await openPageAndWait(page, targetUrl, "body", heart, {
     title: `${persona.label} / Open ${viewLabel}`,
     moduleKey: "map",
     area: "map",
@@ -86,7 +107,8 @@ async function openBusinessTargetFromMap(page, heart, persona, {
   profileReadySelector = "",
   queryText = ""
 } = {}) {
-  await openPageAndWait(page, pageUrl, "body", heart, {
+  const targetUrl = rebaseUrlToBase(persona?.baseUrl, pageUrl);
+  await openPageAndWait(page, targetUrl, "body", heart, {
     title: `${persona.label} / Open Karte`,
     moduleKey: "map",
     area: "map",
