@@ -191,7 +191,7 @@ function buildDefaultPackConfig({
     ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "focus")
     : buildUrl(socialBaseUrl, { tab: "focus" });
   const uploadUrl = buildUrl(socialBaseUrl, { tab: "upload" });
-  const userTargetProfileUrl = "";
+  const userTargetProfileUrl = userHandle ? buildProfileUrl(socialBaseUrl, userHandle) : "";
   const stableSocialTargetUrl = businessProfileUrl;
   return {
     actions: {
@@ -242,7 +242,7 @@ function buildDefaultPackConfig({
         },
         productCreate: {
           url: businessMenuUrl,
-          openSelector: "[data-menu-add-food], [data-menu-add-drink], [data-menu-add]",
+          openSelector: "[data-menu-add-food], [data-menu-add-drink], [data-menu-add-special], [data-menu-add]",
           nameSelector: "#menuItemName",
           saveSelector: "#menuModalSave",
           verifyText: "TEST_RUN_<runId>_PRODUCT_1"
@@ -454,9 +454,6 @@ function normalizeHeartPackConfig(packConfig = {}, {
     socialBusinessProfile.url = stableBusinessProfileUrl;
   }
   socialBusinessProfile.resultSelector = asText(socialBusinessProfile.resultSelector, "[data-search-business]");
-  if (asText(socialUserTargetProfile.url) && parseHandleFromUrl(socialUserTargetProfile.url)) {
-    socialUserTargetProfile.url = "";
-  }
   socialUserTargetProfile.resultSelector = asText(socialUserTargetProfile.resultSelector, "[data-search-user]");
   socialUserTargetProfile.query = asText(
     socialUserTargetProfile.query,
@@ -574,9 +571,6 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(chatSend.userThreadUrl) && asText(chatSend.userTargetUid)) {
     chatSend.userThreadUrl = buildChatRouteUrl(socialBaseUrl, chatSend.userTargetUid);
   }
-  if (asText(chatSend.userTargetProfileUrl) && parseHandleFromUrl(chatSend.userTargetProfileUrl)) {
-    chatSend.userTargetProfileUrl = "";
-  }
   if (!asText(chatSend.targetProfileUrl)) {
     chatSend.targetProfileUrl = asText(stableBusinessProfileUrl || socialBusinessProfile.url);
   }
@@ -641,7 +635,7 @@ function normalizeHeartPackConfig(packConfig = {}, {
   }
 
   if (!asText(productCreate.openSelector) || asText(productCreate.openSelector) === "[data-product-create-open]") {
-    productCreate.openSelector = "[data-menu-add-food], [data-menu-add-drink], [data-menu-add]";
+    productCreate.openSelector = "[data-menu-add-food], [data-menu-add-drink], [data-menu-add-special], [data-menu-add]";
   }
   if (!asText(next.actions.business.menu?.url) || asText(next.actions.business.menu.url) === buildUrl(socialBaseUrl, { tab: "menu" })) {
     next.actions.business.menu.url = stableBusinessMenuUrl;

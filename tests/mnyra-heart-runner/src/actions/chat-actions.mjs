@@ -40,6 +40,13 @@ function uniqueList(...values) {
   });
 }
 
+function splitSelectorList(value = "") {
+  return String(value || "")
+    .split(",")
+    .map((entry) => asText(entry))
+    .filter(Boolean);
+}
+
 function buildChatRouteUrl(baseUrl = "", targetUid = "") {
   const safeBaseUrl = asText(baseUrl);
   const safeTargetUid = asText(targetUid);
@@ -78,6 +85,33 @@ function parseRestaurantIdFromUrl(url = "") {
     );
   } catch {
     return "";
+  }
+}
+
+function isSupportedProfileUrl(url = "") {
+  const safeUrl = asText(url);
+  return !!safeUrl && (!!parseRestaurantIdFromUrl(safeUrl) || !!parseHandleFromUrl(safeUrl));
+}
+
+function buildProfileUrlFromIdentity(baseUrl = "", {
+  handle = "",
+  restaurantId = ""
+} = {}) {
+  const safeBaseUrl = asText(baseUrl);
+  const safeRestaurantId = asText(restaurantId);
+  const safeHandle = asText(handle).replace(/^@+/, "");
+  if (!safeBaseUrl || (!safeRestaurantId && !safeHandle)) return "";
+  try {
+    const url = new URL(safeBaseUrl);
+    url.searchParams.set("tab", "profile");
+    if (safeRestaurantId) {
+      url.searchParams.set("r", safeRestaurantId);
+      return url.toString();
+    }
+    url.searchParams.set("handle", safeHandle);
+    return url.toString();
+  } catch {
+    return safeBaseUrl;
   }
 }
 
@@ -157,8 +191,17 @@ function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
     const userPersona = configPersonas.user || {};
     const targetUid = asText(sendConfig.userTargetUid, userPersona.uid, sendConfig.targetUid);
     const targetProfileUrl = asText(
-      parseRestaurantIdFromUrl(sendConfig.userTargetProfileUrl) ? sendConfig.userTargetProfileUrl : "",
-      parseRestaurantIdFromUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : ""
+      isSupportedProfileUrl(sendConfig.userTargetProfileUrl) ? sendConfig.userTargetProfileUrl : "",
+      isSupportedProfileUrl(sendConfig.targetProfileUrl) ? sendConfig.targetProfileUrl : "",
+      isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : "",
+      buildProfileUrlFromIdentity(persona.baseUrl, {
+        handle: asText(
+          socialConfig.userTargetProfile?.query,
+          userPersona.handle,
+          userPersona.displayName
+        ),
+        restaurantId: userPersona.restaurantId
+      })
     );
     return {
       targetUid,
@@ -175,9 +218,13 @@ function resolveChatTargetContext(env = {}, persona = {}, sendConfig = {}) {
   const businessPersona = configPersonas.business || {};
   const targetUid = asText(sendConfig.targetUid, businessPersona.uid);
   const targetProfileUrl = asText(
-    parseRestaurantIdFromUrl(sendConfig.targetProfileUrl) ? sendConfig.targetProfileUrl : "",
-    parseRestaurantIdFromUrl(socialConfig.businessProfile?.url) ? socialConfig.businessProfile.url : "",
-    parseRestaurantIdFromUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : ""
+    isSupportedProfileUrl(sendConfig.targetProfileUrl) ? sendConfig.targetProfileUrl : "",
+    isSupportedProfileUrl(socialConfig.businessProfile?.url) ? socialConfig.businessProfile.url : "",
+    isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : "",
+    buildProfileUrlFromIdentity(persona.baseUrl, {
+      handle: businessPersona.handle,
+      restaurantId: businessPersona.restaurantId
+    })
   );
   return {
     targetUid,
@@ -225,6 +272,7 @@ async function openChatTargetViaSearch(page, env, heart, persona, targetContext 
 
 async function ensureChatComposerReady(page, env, sendConfig = {}, heart, persona) {
   const composerSelector = asText(sendConfig.composerSelector, "#chatMessageInput");
+  const composerSelectorCandidates = uniqueList(composerSelector, "#chatMessageInput", "textarea#chatMessageInput");
   const threadViewSelector = asText(sendConfig.threadViewSelector, "#chatThreadView");
   const messagesSelector = asText(sendConfig.messagesSelector, "#chatMessages");
   const targetContext = resolveChatTargetContext(env, persona, sendConfig);
@@ -235,23 +283,24 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
     buildChatRouteUrl(sendConfig.url, threadTargetUid)
   );
   const openThreadSelectors = uniqueList(
-    sendConfig.openThreadSelector,
+    splitSelectorList(sendConfig.openThreadSelector),
     "[data-chat-open-thread]"
   );
   const openTargetSelectors = uniqueList(
-    sendConfig.openTargetSelector,
+    splitSelectorList(sendConfig.openTargetSelector),
     "[data-open-chat]",
+    "[data-open-chat=\"profile\"]",
     "#profileChatBtn",
     "#chatBtn"
   );
   const threadReadySelectors = uniqueList(threadViewSelector, messagesSelector, composerSelector);
 
-  const composerVisible = await findVisibleSelector(page, [composerSelector]);
-  if (composerVisible) return composerSelector;
+  const composerVisible = await findVisibleSelector(page, composerSelectorCandidates);
+  if (composerVisible) return composerVisible;
 
   const openedExistingThread = await clickFirstVisible(page, openThreadSelectors, 8000);
   if (openedExistingThread) {
-    await ensureElementVisible(page, composerSelector, 15000);
+    await ensureElementVisible(page, composerSelector, 20000);
     return composerSelector;
   }
 
@@ -264,7 +313,7 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
       persona: persona.key
     });
     const directThreadReady = await Promise.race([
-      page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 20000 }).then(() => true).catch(() => false),
+      page.locator(composerSelectorCandidates.join(", ")).first().waitFor({ state: "visible", timeout: 25000 }).then(() => true).catch(() => false),
       page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 20000 }).then(() => true).catch(() => false)
     ]);
     if (!directThreadReady) continue;
@@ -272,7 +321,7 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
     if (openedThreadAfterRoute) {
       await page.waitForTimeout(400).catch(() => undefined);
     }
-    await ensureElementVisible(page, composerSelector, 15000);
+    await ensureElementVisible(page, composerSelector, 20000);
     return composerSelector;
   }
 
@@ -294,29 +343,33 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
     });
     const openedTargetThread = await clickFirstVisible(page, openTargetSelectors, 15000);
     if (!openedTargetThread) continue;
-    await Promise.race([
-      page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 15000 }),
-      page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 })
+    const threadReady = await Promise.race([
+      page.locator(composerSelectorCandidates.join(", ")).first().waitFor({ state: "visible", timeout: 20000 }).then(() => true).catch(() => false),
+      page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false)
     ]);
+    if (!threadReady) continue;
     const openedThreadFromList = await clickFirstVisible(page, openThreadSelectors, 4000);
     if (openedThreadFromList) {
       await page.waitForTimeout(400).catch(() => undefined);
     }
-    await ensureElementVisible(page, composerSelector, 15000);
+    await ensureElementVisible(page, composerSelector, 20000);
     return composerSelector;
   }
 
   const openedViaSearch = await openChatTargetViaSearch(page, env, heart, persona, targetContext, openTargetSelectors);
   if (openedViaSearch) {
-    await Promise.race([
-      page.locator(composerSelector).first().waitFor({ state: "visible", timeout: 15000 }),
-      page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 })
+    const threadReady = await Promise.race([
+      page.locator(composerSelectorCandidates.join(", ")).first().waitFor({ state: "visible", timeout: 20000 }).then(() => true).catch(() => false),
+      page.locator(threadReadySelectors.join(", ")).first().waitFor({ state: "visible", timeout: 15000 }).then(() => true).catch(() => false)
     ]);
+    if (!threadReady) {
+      throw new Error("Heart konnte den geoeffneten Chat-Thread nicht stabil laden.");
+    }
     const openedThreadFromSearch = await clickFirstVisible(page, openThreadSelectors, 4000);
     if (openedThreadFromSearch) {
       await page.waitForTimeout(400).catch(() => undefined);
     }
-    await ensureElementVisible(page, composerSelector, 15000);
+    await ensureElementVisible(page, composerSelector, 20000);
     return composerSelector;
   }
 

@@ -26,12 +26,12 @@ export async function runFullPlatformPack({
 
   await emitStatus("Kompletttest / Business", "running", "Heart prueft die Business-Rolle.");
   await runScoped("business", createScopedPage, async (page) => {
-    await runBusinessPack({ page, env, heart, personas, emitStatus });
+    await runBusinessPack({ page, env, heart, personas, emitStatus, createScopedPage });
   });
 
   await emitStatus("Kompletttest / Nutzer", "running", "Heart prueft die Nutzer-Rolle.");
   await runScoped("user", createScopedPage, async (page) => {
-    await runUserPack({ page, env, heart, personas, emitStatus });
+    await runUserPack({ page, env, heart, personas, emitStatus, createScopedPage });
   });
 
   await emitStatus("Kompletttest / Gast", "running", "Heart prueft die Gast- und QR-Rolle.");

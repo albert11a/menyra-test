@@ -66,6 +66,7 @@ async function openBusinessMenuAdmin(page, heart, persona, url, title) {
       || hasVisibleSelector("[data-menu-add]")
       || hasVisibleSelector("[data-menu-add-food]")
       || hasVisibleSelector("[data-menu-add-drink]")
+      || hasVisibleSelector("[data-menu-add-special]")
     ) {
       return { kind: "ready" };
     }
@@ -102,8 +103,9 @@ async function openBusinessMenuAdmin(page, heart, persona, url, title) {
     "#menuSearchInput",
     "[data-menu-add]",
     "[data-menu-add-food]",
-    "[data-menu-add-drink]"
-  ], 5000);
+    "[data-menu-add-drink]",
+    "[data-menu-add-special]"
+  ], 10000);
 }
 
 async function searchBusinessMenu(page, queryText = "") {
@@ -390,14 +392,15 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
           ...splitSelectorList(businessConfig.productCreate.openSelector),
           "[data-menu-add-food]",
           "[data-menu-add-drink]",
+          "[data-menu-add-special]",
           "[data-menu-add]"
         ],
-        10000
+        15000
       );
       if (!openedCreateFlow) {
         throw new Error("Heart konnte keinen sichtbaren Produkt-Hinzufuegen-Button im Menue finden.");
       }
-      const editorState = await waitForMenuEditorReady(page, 25000);
+      const editorState = await waitForMenuEditorReady(page, 35000);
       if (editorState?.kind !== "ready" && editorState?.kind !== "opening") {
         throw new Error("Heart konnte den Produkt-Editor im Menue nicht sichtbar oeffnen.");
       }

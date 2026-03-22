@@ -26,12 +26,12 @@ export async function runReleasePack({
 
   await emitStatus("Release-Gate / Business", "running", "Heart prueft die Business-Rolle mit Social, Menue und Discovery.");
   await runScoped("release-business", createScopedPage, async (page) => {
-    await runBusinessPack({ page, env, heart, personas, emitStatus });
+    await runBusinessPack({ page, env, heart, personas, emitStatus, createScopedPage });
   });
 
   await emitStatus("Release-Gate / User", "running", "Heart prueft die Nutzer-Rolle mit Social und Bestellung.");
   await runScoped("release-user", createScopedPage, async (page) => {
-    await runUserPack({ page, env, heart, personas, emitStatus });
+    await runUserPack({ page, env, heart, personas, emitStatus, createScopedPage });
   });
 
   await emitStatus("Release-Gate / Gast", "running", "Heart prueft den Gast- und QR-Bestellweg.");

@@ -1,6 +1,7 @@
 import path from "node:path";
 import {
   buildUrl,
+  clickFirstVisible,
   clickIfPresent,
   ensureElementVisible,
   fillIfPresent,
@@ -24,7 +25,9 @@ import {
 const SOCIAL_TABS = getSocialDefaultTabs();
 const PUBLIC_PROFILE_READY_SELECTORS = [
   "[data-public-profile-follow]",
+  "#profileFollowBtn",
   "[data-open-chat=\"profile\"]",
+  "#profileChatBtn",
   "[data-business-top-tab]",
   "[data-profile-top-tab]"
 ];
@@ -60,6 +63,13 @@ function uniqueSelectors(...values) {
   });
 }
 
+function splitSelectorList(value = "") {
+  return String(value || "")
+    .split(",")
+    .map((entry) => asText(entry))
+    .filter(Boolean);
+}
+
 function chooseFirstText(...values) {
   for (const value of values) {
     const safeValue = asText(value);
@@ -92,6 +102,33 @@ function parseRestaurantIdFromUrl(url = "") {
     );
   } catch {
     return "";
+  }
+}
+
+function isSupportedProfileUrl(url = "") {
+  const safeUrl = asText(url);
+  return !!safeUrl && (!!parseRestaurantIdFromUrl(safeUrl) || !!parseHandleFromUrl(safeUrl));
+}
+
+function buildProfileUrlFromIdentity(baseUrl = "", {
+  handle = "",
+  restaurantId = ""
+} = {}) {
+  const safeBaseUrl = asText(baseUrl);
+  const safeRestaurantId = asText(restaurantId);
+  const safeHandle = asText(handle).replace(/^@+/, "");
+  if (!safeBaseUrl || (!safeRestaurantId && !safeHandle)) return "";
+  try {
+    const url = new URL(safeBaseUrl);
+    url.searchParams.set("tab", "profile");
+    if (safeRestaurantId) {
+      url.searchParams.set("r", safeRestaurantId);
+      return url.toString();
+    }
+    url.searchParams.set("handle", safeHandle);
+    return url.toString();
+  } catch {
+    return safeBaseUrl;
   }
 }
 
@@ -166,13 +203,31 @@ async function clickMatchingSearchResult(page, selectors = [], queries = []) {
 
 function resolveSocialTargetProfileUrl(env = {}, persona = {}, preferredUrl = "") {
   const socialConfig = env.packConfig?.actions?.social || {};
+  const configPersonas = env.packConfig?.personas || {};
   if (persona?.key === "business") {
-    return "";
+    const userPersona = configPersonas.user || {};
+    return chooseFirstText(
+      isSupportedProfileUrl(preferredUrl) ? preferredUrl : "",
+      isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : "",
+      buildProfileUrlFromIdentity(persona.baseUrl, {
+        handle: chooseFirstText(
+          socialConfig.userTargetProfile?.query,
+          userPersona.handle,
+          userPersona.displayName
+        ),
+        restaurantId: userPersona.restaurantId
+      })
+    );
   }
+  const businessPersona = configPersonas.business || {};
   return chooseFirstText(
-    parseRestaurantIdFromUrl(preferredUrl) ? preferredUrl : "",
-    parseRestaurantIdFromUrl(socialConfig.businessProfile?.url) ? socialConfig.businessProfile.url : "",
-    parseRestaurantIdFromUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : ""
+    isSupportedProfileUrl(preferredUrl) ? preferredUrl : "",
+    isSupportedProfileUrl(socialConfig.businessProfile?.url) ? socialConfig.businessProfile.url : "",
+    isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : "",
+    buildProfileUrlFromIdentity(persona.baseUrl, {
+      handle: businessPersona.handle,
+      restaurantId: businessPersona.restaurantId
+    })
   );
 }
 
@@ -226,7 +281,7 @@ async function openSocialTargetProfile(page, env, heart, persona, {
 } = {}) {
   const targetContext = resolveSocialTargetProfileContext(env, persona, preferredUrl);
   const directUrl = asText(targetContext.url);
-  const allowDirectUrl = !!parseRestaurantIdFromUrl(directUrl);
+  const allowDirectUrl = isSupportedProfileUrl(directUrl);
   if (allowDirectUrl) {
     await openPageAndWait(page, directUrl, "body", heart, {
       title: title || `${persona.label} / Open profile target`,
@@ -603,6 +658,13 @@ async function runLikeAction(page, selector = "") {
   throw new Error("Heart konnte keinen sichtbaren Like-Button stabil in den Zustand \"liked\" bringen.");
 }
 
+async function createSyntheticPostUpload(page, env, persona) {
+  const safePersona = asText(persona?.key, "user");
+  const filePath = path.resolve(env.artifactDir, `heart-post-upload-${safePersona}-${Date.now()}.png`);
+  await page.screenshot({ path: filePath, fullPage: false });
+  return filePath;
+}
+
 async function runConfiguredSocialMutation({
   page,
   env,
@@ -725,7 +787,14 @@ export async function runSocialSurfaceChecks({ page, env, heart, persona } = {})
   }, "Chat konnte nicht geoeffnet werden");
 }
 
-export async function runSocialInteractionChecks({ page, env, heart, persona, includePostCreate = false } = {}) {
+export async function runSocialInteractionChecks({
+  page,
+  env,
+  heart,
+  persona,
+  includePostCreate = false,
+  includeLikeAction = true
+} = {}) {
   const socialConfig = env.packConfig?.actions?.social || {};
   const followTargetUrl = resolveSocialTargetProfileUrl(env, persona, socialConfig.follow?.url);
 
@@ -748,8 +817,13 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
         title: `${persona.label} / Open follow target`,
         preferredUrl: followTargetUrl
       });
-      await ensureElementVisible(page, socialConfig.follow.triggerSelector, 15000);
-      await ensureFollowActive(page, socialConfig.follow.triggerSelector, 15000);
+      const followTriggerSelector = chooseFirstText(
+        socialConfig.follow.triggerSelector,
+        "[data-public-profile-follow]",
+        "#profileFollowBtn"
+      );
+      await ensureElementVisible(page, followTriggerSelector, 20000);
+      await ensureFollowActive(page, followTriggerSelector, 20000);
       heart.passModule("profile", "Follow wurde erfolgreich ausgefuehrt.", {
         action: "follow",
         persona: persona.key,
@@ -758,31 +832,38 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
     }
   });
 
-  await runConfiguredSocialMutation({
-    page,
-    env,
-    heart,
-    persona,
-    moduleKey: "feed",
-    actionLabel: "Like action",
-    config: socialConfig.like,
-    requiredKeys: ["url", "triggerSelector"],
-    perform: async () => {
-      await openPageAndWait(page, socialConfig.like.url, "body", heart, {
-        title: `${persona.label} / Open like target`,
-        moduleKey: "feed",
-        area: "feed",
-        persona: persona.key
-      });
-      await ensureElementVisible(page, socialConfig.like.triggerSelector, 15000);
-      await runLikeAction(page, socialConfig.like.triggerSelector);
-      heart.passModule("feed", "Like wurde erfolgreich ausgefuehrt.", {
-        action: "like",
-        persona: persona.key,
-        area: "feed"
-      });
-    }
-  });
+  if (includeLikeAction) {
+    await runConfiguredSocialMutation({
+      page,
+      env,
+      heart,
+      persona,
+      moduleKey: "feed",
+      actionLabel: "Like action",
+      config: socialConfig.like,
+      requiredKeys: ["url", "triggerSelector"],
+      perform: async () => {
+        await openPageAndWait(page, socialConfig.like.url, "body", heart, {
+          title: `${persona.label} / Open like target`,
+          moduleKey: "feed",
+          area: "feed",
+          persona: persona.key
+        });
+        const likeTriggerSelector = chooseFirstText(
+          socialConfig.like.triggerSelector,
+          "[data-feed-post-like]",
+          "[data-post-like-btn]"
+        );
+        await ensureElementVisible(page, likeTriggerSelector, 20000);
+        await runLikeAction(page, likeTriggerSelector);
+        heart.passModule("feed", "Like wurde erfolgreich ausgefuehrt.", {
+          action: "like",
+          persona: persona.key,
+          area: "feed"
+        });
+      }
+    });
+  }
 
   await runConfiguredSocialMutation({
     page,
@@ -853,21 +934,33 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
           area: "feed",
           persona: persona.key
         });
-        if (socialConfig.postCreate.openSelector) {
-          await clickIfPresent(page, socialConfig.postCreate.openSelector);
-        }
-        await waitForAnySelector(page, [
+        const uploadComposerSelectors = [
           socialConfig.postCreate.fileInputSelector || "#uploadFileInput",
+          "#uploadFileInput",
           "#uploadFileTrigger",
-          socialConfig.postCreate.inputSelector || "#uploadCaption"
-        ], 20000);
+          socialConfig.postCreate.inputSelector || "#uploadCaption",
+          socialConfig.postCreate.submitSelector || "#uploadPostBtn"
+        ];
+        const uploadComposerVisible = await findVisibleSelector(page, uploadComposerSelectors);
+        if (!uploadComposerVisible && socialConfig.postCreate.openSelector) {
+          const openedComposer = await clickFirstVisible(
+            page,
+            splitSelectorList(socialConfig.postCreate.openSelector),
+            10000
+          );
+          if (!openedComposer) {
+            throw new Error("Heart konnte den Feed-Post-Composer nicht sichtbar oeffnen.");
+          }
+        }
+        await waitForAnySelector(page, uploadComposerSelectors, 30000);
         const postText = replaceRunTokens(
           socialConfig.postCreate.messageTemplate || "TEST_RUN_<runId>_POST_1",
           env
         );
-        const filePath = path.isAbsolute(String(socialConfig.postCreate.filePath || "").trim())
+        const fallbackFilePath = path.isAbsolute(String(socialConfig.postCreate.filePath || "").trim())
           ? String(socialConfig.postCreate.filePath || "").trim()
           : path.resolve(env.rootDir, String(socialConfig.postCreate.filePath || "apps/mnyra-heart/assets/icon-192.png").trim());
+        const filePath = await createSyntheticPostUpload(page, env, persona).catch(() => fallbackFilePath);
         const fileSelected = await setInputFilesIfPresent(
           page,
           socialConfig.postCreate.fileInputSelector || "#uploadFileInput",
@@ -913,12 +1006,13 @@ export async function runSocialInteractionChecks({ page, env, heart, persona, in
   }
 }
 
-export async function runUserSocialMutationChecks({ page, env, heart, persona } = {}) {
+export async function runUserSocialMutationChecks({ page, env, heart, persona, includeLikeAction = true } = {}) {
   await runSocialInteractionChecks({
     page,
     env,
     heart,
     persona,
-    includePostCreate: true
+    includePostCreate: true,
+    includeLikeAction
   });
 }
