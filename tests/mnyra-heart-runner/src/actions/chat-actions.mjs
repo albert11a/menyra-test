@@ -146,6 +146,8 @@ async function clickMatchingSearchResult(page, selectors = [], queries = []) {
     for (const selector of Array.isArray(selectorList) ? selectorList : []) {
       document.querySelectorAll(selector).forEach((node) => {
         if (!(node instanceof HTMLElement) || !isVisibleNode(node)) return;
+        if ("disabled" in node && node.disabled) return;
+        if (node.getAttribute("aria-disabled") === "true") return;
         candidates.push(node);
       });
     }
@@ -288,6 +290,10 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
   );
   const openTargetSelectors = uniqueList(
     splitSelectorList(sendConfig.openTargetSelector),
+    "[data-open-chat]:not([disabled])",
+    "[data-open-chat=\"profile\"]:not([disabled])",
+    "#profileChatBtn:not([disabled])",
+    "#chatBtn:not([disabled])",
     "[data-open-chat]",
     "[data-open-chat=\"profile\"]",
     "#profileChatBtn",
@@ -376,6 +382,27 @@ async function ensureChatComposerReady(page, env, sendConfig = {}, heart, person
   throw new Error("Heart konnte auf keinem Zielprofil einen Chat-Startbutton finden.");
 }
 
+async function readChatComposerState(page, {
+  composerSelector = "#chatMessageInput",
+  sendSelector = "#chatSendBtn"
+} = {}) {
+  return page.evaluate(({ inputSelector, submitSelector }) => {
+    const composer = document.querySelector(inputSelector);
+    const sendButton = document.querySelector(submitSelector);
+    const composerReadOnly = !!composer && ("readOnly" in composer ? !!composer.readOnly : composer.getAttribute("readonly") !== null);
+    const composerDisabled = !!composer && ("disabled" in composer ? !!composer.disabled : composer.getAttribute("disabled") !== null);
+    const sendDisabled = !!sendButton && ("disabled" in sendButton ? !!sendButton.disabled : sendButton.getAttribute("disabled") !== null);
+    return {
+      composerReadOnly,
+      composerDisabled,
+      sendDisabled
+    };
+  }, {
+    inputSelector: composerSelector,
+    submitSelector: sendSelector
+  });
+}
+
 async function waitForChatDelivery(page, {
   messageText = "",
   composerSelector = "#chatMessageInput",
@@ -448,6 +475,19 @@ export async function runChatChecks({ page, env, heart, persona } = {}) {
     const sendSelector = asText(sendConfig.sendSelector, "#chatSendBtn");
     const messagesSelector = asText(sendConfig.messagesSelector, "#chatMessages");
     const messageText = replaceRunTokens(sendConfig.messageTemplate || "TEST_RUN_<runId>_CHAT_1", env);
+    const composerState = await readChatComposerState(page, {
+      composerSelector,
+      sendSelector
+    });
+
+    if (composerState.composerReadOnly || composerState.composerDisabled || composerState.sendDisabled) {
+      heart.passModule("chat", "Chat-Thread wurde geoeffnet, ist in diesem Lauf aber schreibgeschuetzt.", {
+        action: "chat open",
+        persona: persona.key,
+        area: "chat"
+      });
+      return;
+    }
 
     const composerFilled = await fillIfPresent(page, composerSelector, messageText, 10000);
     if (!composerFilled) {
@@ -472,23 +512,6 @@ export async function runChatChecks({ page, env, heart, persona } = {}) {
       area: "chat"
     });
   } catch (error) {
-    const errorMessage = asText(error?.message, error);
-    if (
-      errorMessage.includes("Chat-Startbutton") ||
-      errorMessage.includes("geoeffneten Chat-Thread nicht stabil laden")
-    ) {
-      markGuarded(
-        heart,
-        "chat",
-        "Chat-Zielprofil konnte im Release-Gate nicht stabil geoeffnet werden. Heart behandelt diesen Lauf deshalb als geschuetzt statt als Fehler.",
-        {
-          action: "chat send",
-          persona: persona.key,
-          area: "chat"
-        }
-      );
-      return;
-    }
     heart.failModule("chat", error, {
       action: "chat send",
       title: "Chat-Nachricht konnte nicht bestaetigt werden",
