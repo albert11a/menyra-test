@@ -459,12 +459,14 @@ function normalizeHeartPackConfig(packConfig = {}, {
   const stableBusinessProfileUrl = restaurantId
     ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "profile")
     : asText(next.actions.social?.businessProfile?.url);
-  const stableBusinessMenuUrl = restaurantId
+  const publicBusinessMenuUrl = restaurantId
     ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "menu")
-    : buildUrl(socialBaseUrl, { tab: "menu" });
-  const stableBusinessFocusUrl = restaurantId
+    : "";
+  const publicBusinessFocusUrl = restaurantId
     ? buildRestaurantProfileUrl(socialBaseUrl, restaurantId, "focus")
-    : buildUrl(socialBaseUrl, { tab: "focus" });
+    : "";
+  const stableBusinessMenuUrl = buildUrl(socialBaseUrl, { tab: "menu" });
+  const stableBusinessFocusUrl = buildUrl(socialBaseUrl, { tab: "focus" });
   const stableUploadUrl = buildUrl(socialBaseUrl, { tab: "upload" });
   const stableBusinessChatUid = asText(personas.business?.uid);
   const stableUserChatUid = asText(personas.user?.uid);
@@ -656,13 +658,25 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(productCreate.openSelector) || asText(productCreate.openSelector) === "[data-product-create-open]") {
     productCreate.openSelector = "[data-menu-add-food], [data-menu-add-drink], [data-menu-add-special], [data-menu-add]";
   }
-  if (!asText(next.actions.business.menu?.url) || asText(next.actions.business.menu.url) === buildUrl(socialBaseUrl, { tab: "menu" })) {
+  if (
+    !asText(next.actions.business.menu?.url)
+    || asText(next.actions.business.menu.url) === buildUrl(socialBaseUrl, { tab: "menu" })
+    || asText(next.actions.business.menu.url) === publicBusinessMenuUrl
+  ) {
     next.actions.business.menu.url = stableBusinessMenuUrl;
   }
-  if (!asText(next.actions.business.focus?.url) || asText(next.actions.business.focus.url) === buildUrl(socialBaseUrl, { tab: "focus" })) {
+  if (
+    !asText(next.actions.business.focus?.url)
+    || asText(next.actions.business.focus.url) === buildUrl(socialBaseUrl, { tab: "focus" })
+    || asText(next.actions.business.focus.url) === publicBusinessFocusUrl
+  ) {
     next.actions.business.focus.url = stableBusinessFocusUrl;
   }
-  if (!asText(productCreate.url) || asText(productCreate.url) === buildUrl(socialBaseUrl, { tab: "menu" })) {
+  if (
+    !asText(productCreate.url)
+    || asText(productCreate.url) === buildUrl(socialBaseUrl, { tab: "menu" })
+    || asText(productCreate.url) === publicBusinessMenuUrl
+  ) {
     productCreate.url = stableBusinessMenuUrl;
   }
   if (!asText(productCreate.nameSelector) || asText(productCreate.nameSelector) === "[data-product-name-input]") {
@@ -675,7 +689,11 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(productEdit.openSelector) || asText(productEdit.openSelector) === "[data-product-edit-open]") {
     productEdit.openSelector = "[data-menu-edit]";
   }
-  if (!asText(productEdit.url) || asText(productEdit.url) === buildUrl(socialBaseUrl, { tab: "menu" })) {
+  if (
+    !asText(productEdit.url)
+    || asText(productEdit.url) === buildUrl(socialBaseUrl, { tab: "menu" })
+    || asText(productEdit.url) === publicBusinessMenuUrl
+  ) {
     productEdit.url = stableBusinessMenuUrl;
   }
   if (!asText(productEdit.inputSelector) || asText(productEdit.inputSelector) === "[data-product-name-input]") {
@@ -688,7 +706,11 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(productDelete.openSelector) || asText(productDelete.openSelector) === "[data-product-delete-open]") {
     productDelete.openSelector = "[data-menu-delete]";
   }
-  if (!asText(productDelete.url) || asText(productDelete.url) === buildUrl(socialBaseUrl, { tab: "menu" })) {
+  if (
+    !asText(productDelete.url)
+    || asText(productDelete.url) === buildUrl(socialBaseUrl, { tab: "menu" })
+    || asText(productDelete.url) === publicBusinessMenuUrl
+  ) {
     productDelete.url = stableBusinessMenuUrl;
   }
   if (!asText(productDelete.confirmSelector) || asText(productDelete.confirmSelector) === "[data-product-delete-confirm]") {

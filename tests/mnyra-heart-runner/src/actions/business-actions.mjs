@@ -41,13 +41,7 @@ function getBusinessProductNames(env = {}) {
 }
 
 async function openBusinessMenuAdmin(page, heart, persona, url, title) {
-  await openPageAndWait(page, url, "body", heart, {
-    title,
-    moduleKey: "menu",
-    area: "menu",
-    persona: persona.key
-  });
-  const menuState = await page.waitForFunction(() => {
+  const readMenuState = async (timeout = 30000) => page.waitForFunction(() => {
     const isVisibleNode = (node) => {
       if (!(node instanceof HTMLElement)) return false;
       const style = window.getComputedStyle(node);
@@ -69,6 +63,12 @@ async function openBusinessMenuAdmin(page, heart, persona, url, title) {
     ) {
       return { kind: "ready" };
     }
+    if (
+      hasVisibleSelector("[data-menu-open]")
+      || hasVisibleSelector("[data-business-top-tab='menu']")
+    ) {
+      return { kind: "public_menu" };
+    }
     const bodyText = String(document.body?.innerText || "");
     if (bodyText.includes("Bitte zuerst dein Business im Account auswaehlen.")) {
       return { kind: "missing_business" };
@@ -83,9 +83,28 @@ async function openBusinessMenuAdmin(page, heart, persona, url, title) {
       return { kind: "waiter_only" };
     }
     return false;
-  }, { timeout: 30000 }).then((handle) => handle.jsonValue());
+  }, { timeout }).then((handle) => handle.jsonValue());
+
+  await openPageAndWait(page, url, "body", heart, {
+    title,
+    moduleKey: "menu",
+    area: "menu",
+    persona: persona.key
+  });
+
+  let menuState = await readMenuState(12000);
+  if (menuState?.kind === "public_menu") {
+    await openSocialTab(page, persona, heart, SOCIAL_TABS.menu, {
+      moduleKey: "menu",
+      note: "Heart hat vom oeffentlichen Menue in den Business-Editor gewechselt."
+    });
+    menuState = await readMenuState(30000);
+  }
 
   if (menuState?.kind === "ready") return;
+  if (menuState?.kind === "public_menu") {
+    throw new Error("Heart ist im Menue in der oeffentlichen Business-Ansicht statt im Betreiber-Editor gelandet.");
+  }
   if (menuState?.kind === "missing_business") {
     throw new Error("Heart ist mit einem Konto eingeloggt, das in Menyra Social noch kein aktives Business im Account geladen hat.");
   }
