@@ -68,8 +68,6 @@ import {
   createEmptyMenuDetailState,
   createEmptyTableQrState
 } from "./core/common/state-factories.js";
-import { createRestaurantIdentityRuntimeController } from "./core/common/restaurant-identity-runtime-controller.js";
-import { createStoryFeedRuntimeController } from "./core/stories/story-feed-runtime-controller.js";
 import {
   normalizeInitialTab,
   normalizeAuthMode
@@ -80,7 +78,6 @@ import {
 } from "./core/auth/auth-startup-state-utils.js";
 import { createPendingRouteStartupState } from "./core/auth/pending-route-startup-state.js";
 import { bootstrapAuthenticatedSessionCore } from "./core/auth/auth-user-bootstrap-utils.js";
-import { createAuthProfileResolutionRuntimeController } from "./core/auth/auth-profile-resolution-runtime.js";
 import {
   clearQueryParamsFromCurrentUrlCore,
   resolveRouteStateFromTargetUrlCore,
@@ -88,24 +85,23 @@ import {
 } from "./core/push/push-route-query-utils.js";
 import { createShellDomRuntimeController } from "./core/app-shell/shell-dom-runtime-controller.js";
 import { createSessionRuntimeCluster } from "./core/app-shell/session-runtime-cluster.js";
-import { startAppStartupBootstrap } from "./core/app-shell/app-startup-bootstrap.js";
+import { startAppStartupRuntimeCluster } from "./core/app-shell/app-startup-runtime-cluster.js";
 import { createSessionDataRuntimeCluster } from "./core/app-shell/session-data-runtime-cluster.js";
 import { createBridgeShellRuntimeCluster } from "./core/app-shell/bridge-shell-runtime-cluster.js";
+import { createProfileBusinessMenuRuntimeCluster } from "./core/app-shell/profile-business-menu-runtime-cluster.js";
+import { createProfileIdentityRuntimeCluster } from "./core/app-shell/profile-identity-runtime-cluster.js";
+import { createShellUiRuntimeCluster } from "./core/app-shell/shell-ui-runtime-cluster.js";
+import { createFeedVisibilityRuntimeCluster } from "./core/feed/feed-visibility-runtime-cluster.js";
 import { createFocusRuntimeController } from "./core/menu/focus-runtime-controller.js";
 import { createMenuPublicRuntimeController } from "./core/menu/menu-public-runtime-controller.js";
 import { createTableQrRuntimeController } from "./core/menu/table-qr-runtime-controller.js";
 import { createMediaUploadRuntimeCluster } from "./core/media/media-upload-runtime-cluster.js";
 import { createOrdersRuntimeController } from "./core/orders/orders-runtime-controller.js";
-import { renderOrdersViewCore } from "./core/orders/orders-render-utils.js";
-import { createProfileMenuFocusRenderController } from "./core/profile/profile-menu-focus-render-controller.js";
-import { createPublicProfileRuntimeController } from "./core/profile/public-profile-runtime-controller.js";
-import { createSelfProfileRuntimeController } from "./core/profile/self-profile-runtime-controller.js";
 import { createSocialEngagementRuntimeController } from "./core/profile/social-engagement-runtime-controller.js";
 import { createSocialEngagementSupportRuntimeController } from "./core/profile/social-engagement-support-runtime-controller.js";
-import { projectPostCollectionThroughEntityMap } from "./core/profile/post-entity-registry-utils.js";
-import { createCeoCrmCountRuntimeController } from "./core/crm/ceo-crm-count-runtime-controller.js";
-import { createCrmRuntimeCluster } from "./core/crm/crm-runtime-cluster.js";
-import { createBusinessAccountsRuntimeController } from "./core/business-accounts/business-accounts-runtime-controller.js";
+import { createCrmLeadGeoSupportRuntime } from "./core/crm/crm-lead-geo-support-runtime.js";
+import { createCrmCeoScopeSupportRuntime } from "./core/crm/crm-ceo-scope-support-runtime.js";
+import { createCrmDomainRuntimeCluster } from "./core/crm/crm-domain-runtime-cluster.js";
 import { createChatRuntimeCluster } from "./core/chat/chat-runtime-cluster.js";
 import {
   markNotificationReadInListCore,
@@ -146,14 +142,13 @@ import {
   shouldHandlePushOpenTargetCore
 } from "./core/push/push-open-target-message-utils.js";
 import {
-  normalizePendingPostIdCore,
-  findPostInLocalSourcesCore,
-  resolveNotificationCommentHighlightIdCore
-} from "./core/notifications/post-notification-open-utils.js";
-import {
   normalizeUserPostDocCore,
   normalizeRestaurantPostDocCore
 } from "./core/feed/post-doc-normalize-utils.js";
+import {
+  normalizePendingPostIdCore,
+  findPostInLocalSourcesCore
+} from "./core/notifications/post-notification-open-utils.js";
 import {
   readNotificationPostLookupCore,
   shouldFetchUserNotificationPostCore,
@@ -170,15 +165,6 @@ import {
   isGuestSessionCore,
   sanitizeTabForSessionCore
 } from "./core/auth/session-tab-guards.js";
-import {
-  loadLogoCacheCore,
-  scheduleLogoCacheWriteCore,
-  loadAvatarCacheCore,
-  scheduleAvatarCacheWriteCore,
-  resolveRestaurantLogoCore,
-  resolveUserAvatarCore,
-  resolveShellAvatarUrlCore
-} from "./core/media/avatar-logo-cache.js";
 import {
   saveMenuLayoutToStorageCore,
   getMenuLayoutThemeCore,
@@ -213,10 +199,6 @@ import {
   matchesRestaurantIdentityCore as matchesRestaurantIdentity
 } from "./core/profile/restaurant-identity-utils.js";
 import {
-  createLeadScopeMapCore,
-  createCustomerScopeMapCore,
-  normalizeLeadScopeKeyCore,
-  normalizeCustomerScopeKeyCore,
   createEmptyLeadsStateCore,
   createEmptyCustomersStateCore
 } from "./core/crm/crm-scope-state-utils.js";
@@ -234,44 +216,18 @@ import {
   canAccessRestaurantOrdersCore
 } from "./core/profile/profile-display-utils.js";
 import {
-  renderMenuItemModalCore,
-  renderMenuDetailModalCore
-} from "./core/menu/menu-modal-render-utils.js";
-import { saveMenuItemFromModalCore } from "./core/menu/menu-save-utils.js";
-import { deleteMenuItemByIdCore } from "./core/menu/menu-delete-utils.js";
-import {
-  renderCustomerModalCore,
-  renderFocusModalCore
-} from "./core/menu/customer-focus-modal-render-utils.js";
-import {
-  renderChatModalCore,
-  renderProfileModalCore,
-  renderLikesModalCore,
-  renderPostModalCore
-} from "./core/overlays/overlay-basic-render-utils.js";
-import {
   ensureOverlayRootCore,
   ensureModalEscapeHandlerCore,
   syncModalOpenUiStateCore
 } from "./core/overlays/overlay-root-ui-utils.js";
-import { renderMainCore } from "./core/ui/main-shell-render-utils.js";
-import {
-  renderNotificationsViewCore,
-  renderNotificationsListCore
-} from "./core/notifications/notifications-render-utils.js";
-import {
-  renderCrmLazyLoadingViewCore,
-  renderCeoGuardCore
-} from "./core/crm/crm-shared-render-utils.js";
+import { renderCeoGuardCore } from "./core/crm/crm-shared-render-utils.js";
 import { bindOverlayEventsCore } from "./core/overlays/overlay-bind-orchestrator-utils.js";
 import { renderOverlaysCore } from "./core/overlays/overlay-render-orchestrator-utils.js";
-import { renderLeadModalCore } from "./core/leads/lead-modal-render-utils.js";
 import { saveLeadFromModalCore } from "./core/leads/lead-save-utils.js";
 import { deleteLeadFromModalCore } from "./core/leads/lead-delete-utils.js";
 import { saveCustomerFromModalCore } from "./core/crm/customer-save-utils.js";
 import { convertLeadToCustomerCore } from "./core/leads/lead-convert-utils.js";
 import { saveCeoStaffFromViewCore } from "./core/crm/staff-save-utils.js";
-import { renderSettingsViewCore } from "./core/ui/settings-render-utils.js";
 import { escapeHtmlCore as escapeHtml } from "./core/common/html-utils.js";
 import {
   clampCropPercentCore,
@@ -282,17 +238,13 @@ import {
 } from "./core/media/crop-utils.js";
 import { formatPriceCore as formatPrice, parsePriceValueCore as parsePriceValue } from "./core/common/price-utils.js";
 import { normalizeRestaurantTypeCore } from "./core/profile/restaurant-type-utils.js";
+import { normalizeLeadTypeKeyCore as normalizeLeadTypeKey } from "./core/leads/lead-type-utils.js";
 import { buildShopVariantKeyCore } from "./core/shop/shop-variant-utils.js";
 import {
   normalizeOptionListCore as normalizeOptionList,
   normalizeMenuTypeCore as normalizeMenuType
 } from "./core/menu/menu-input-utils.js";
 import { normalizeMenuItemDocCore as normalizeMenuItemDoc } from "./core/menu/menu-doc-normalize-utils.js";
-import {
-  normalizeLeadCountryCore,
-  buildLeadAccountEmailCore as buildLeadAccountEmail,
-  inferLeadCountryFromTextCore
-} from "./core/leads/lead-country-utils.js";
 import { normalizeShopCartStateCore } from "./core/shop/shop-cart-state-utils.js";
 import {
   getShopCartProfileContextCore,
@@ -301,68 +253,12 @@ import {
   getShopCartTotalCore
 } from "./core/shop/shop-cart-access-utils.js";
 import {
-  getMenuRestaurantForProfileCore,
-  ensureMenuDataForProfileCore,
-  ensureFocusDataForProfileCore
-} from "./core/profile/profile-menu-focus-utils.js";
-import {
   getBusinessCatalogModeCore,
   getBusinessCatalogLabelCore,
   isShopCatalogProfileCore,
   isRestaurantCafeProfileCore
 } from "./core/menu/catalog-mode-utils.js";
 import { getBusinessProfileTypeCore } from "./core/profile/business-profile-type-utils.js";
-import {
-  createDefaultLeadPricingCore,
-  normalizeLeadPricingCore
-} from "./core/leads/lead-pricing-utils.js";
-import {
-  normalizeLeadSettingsCore,
-  getLeadSettingsConfigCore,
-  getLeadCountryCenterCore,
-  buildLeadContactNameCore as buildLeadContactName,
-  getLeadMonthlyPriceCore,
-  getLeadPriceForCycleCore
-} from "./core/leads/lead-settings-utils.js";
-import {
-  normalizeLeadStatusKeyCore as normalizeLeadStatusKey,
-  leadStatusLabelCore,
-  customerStatusLabelCore,
-  isCustomerRestaurantCore,
-  leadTypeLabelCore,
-  resolveCustomerTypeCore
-} from "./core/leads/lead-taxonomy-utils.js";
-import { normalizeLeadTypeKeyCore as normalizeLeadTypeKey } from "./core/leads/lead-type-utils.js";
-import {
-  hasLeadLocationCoordsCore as hasLeadLocationCoords,
-  toFiniteCoordNumberCore as toFiniteCoordNumber,
-  normalizeCoordPairCore,
-  preferStableCoordsCore,
-  resolveCoordsFromShapeCore,
-  resolveCoordsFromEntityCore
-} from "./core/map/geo-coord-utils.js";
-import {
-  olcNormalizeLongitudeCore as olcNormalizeLongitude,
-  olcClipLatitudeCore as olcClipLatitude,
-  sanitizePlusCodeCore as sanitizePlusCode,
-  extractPlusCodeFromTextCore,
-  olcDecodeValueCore as olcDecodeValue,
-  isLikelyFullPlusCodeCore,
-  isLikelyShortPlusCodeCore,
-  olcDecodeFullPlusCodeCore,
-  olcEncodePairPrefixCore,
-  olcRecoverShortCodeCore,
-  resolvePlusCodeReferenceCoordsCore,
-  geocodeReferenceSearchCore,
-  parsePlusCodeFromAddressInputCore,
-  parseCoordsFromAddressInputCore,
-  parseCoordsFromAddressInputAsyncCore
-} from "./core/map/plus-code-utils.js";
-import {
-  createLeadLocationCore as createLeadLocation,
-  normalizeLeadLocationsCore,
-  getPrimaryLeadLocationCore
-} from "./core/leads/lead-location-utils.js";
 import {
   isRestaurantMarkedDeletedCore,
   forceHiddenEmailLocalPartCore,
@@ -372,20 +268,6 @@ import {
   isForceHiddenBusinessEntityCore,
   isPublicBusinessRecordCore
 } from "./core/profile/business-visibility-utils.js";
-import {
-  isCeoUserCore,
-  isAlbertCeoUserCore,
-  hasGlobalCeoAccessCore,
-  getCeoGpsOverrideCore
-} from "./core/crm/ceo-access-utils.js";
-import {
-  parseCoordNumberCore as parseCoordNumber,
-  uniqueStringListCore as uniqueStringList,
-  normalizeCeoCountryCore,
-  normalizeCeoPathCore,
-  buildCeoNameCore as buildCeoName
-} from "./core/crm/ceo-normalize-utils.js";
-import { getCurrentCeoMetaCore } from "./core/crm/ceo-meta-utils.js";
 import {
   computeLatestTimestampCore,
   saveFeedPostsCore
@@ -519,10 +401,6 @@ import {
   bindLeadInlineCreateEventsCore
 } from "./core/app-events/app-events-crm-staff-bind-utils.js";
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
-import {
-  loadAuthProfileCore
-} from "./core/auth/tab-auth-load-utils.js";
-
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
 const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
@@ -818,14 +696,6 @@ function schedulePerfWarmMark() {
 
 applyRuntimePerfMode();
 
-function createLeadScopeMap(factory = () => null) {
-  return createLeadScopeMapCore(factory);
-}
-
-function createCustomerScopeMap(factory = () => null) {
-  return createCustomerScopeMapCore(factory);
-}
-
 function createEmptyLeadsState() {
   return createEmptyLeadsStateCore({
     pageSize: CRM_PAGE_SIZE
@@ -1073,18 +943,21 @@ let dataLoaded = {
 };
 let shellRuntimeController = null;
 let shellDomRuntimeController = null;
-let profileMenuFocusRenderController = null;
 let sessionDataRuntimeController = null;
 let socialEngagementRuntimeController = null;
 let socialEngagementSupportRuntimeController = null;
-let ceoCrmCountRuntimeController = null;
 let crmRuntimeController = null;
-let businessAccountsRuntimeController = null;
 let chatRuntimeController = null;
 let menuPublicRuntimeController = null;
 let focusRuntimeController = null;
 let tableQrRuntimeController = null;
 let mediaUploadRuntimeController = null;
+let bridgeShellRuntimeCluster = null;
+let getFollowRuntimeController = null;
+let getPushRuntimeController = null;
+let getNotificationsRuntimeController = null;
+let getNotificationSupportRuntimeController = null;
+let getSessionTabLifecycleRuntimeController = null;
 let lastAppHtml = "";
 let lastRenderMode = "";
 let lastRenderedMainTab = "";
@@ -1099,6 +972,175 @@ let storiesRowSignature = "";
 let authInitialized = false;
 let authBootstrapSnapshot = null;
 let selfProfileRuntimeController = null;
+
+const shellUiRuntimeCluster = createShellUiRuntimeCluster({
+  state,
+  constants: {
+    placeholderImage: PLACEHOLDER_IMAGE,
+    leadTypeOrder: LEAD_TYPE_ORDER,
+    leadTypeLabels: LEAD_TYPE_LABELS,
+    leadStatusOrder: LEAD_STATUS_ORDER,
+    leadStatusLabels: LEAD_STATUS_LABELS
+  },
+  browserApi: {
+    documentObj: typeof document === "undefined" ? null : document
+  },
+  runtimeGetters: {
+    getShellDomRuntimeControllerFn: () => shellDomRuntimeController,
+    getMediaUploadRuntimeControllerFn: () => mediaUploadRuntimeController,
+    getChatRuntimeControllerFn: () => chatRuntimeController,
+    getShellRuntimeControllerFn: () => shellRuntimeController,
+    getSessionDataRuntimeControllerFn: () => sessionDataRuntimeController,
+    getBridgeBindingsFn: () => bridgeShellRuntimeCluster?.bridgeBindings || null,
+    getSocialEngagementSupportRuntimeControllerFn: () => getSocialEngagementSupportRuntimeController()
+  },
+  helperApi: {
+    iconFn: icon,
+    escapeHtmlFn: escapeHtml,
+    getOptimizedImageUrlFn: getOptimizedImageUrl,
+    isPlaceholderUrlFn: isPlaceholderUrl,
+    formatRelativeFn: formatRelative,
+    toDateSafeFn: toDateSafe,
+    formatCountFn: formatCount,
+    formatPriceFn: formatPrice,
+    parsePriceValueFn: parsePriceValue,
+    getFirebaseStorageUrlFn: getFirebaseStorageUrl,
+    isDirectImageUrlFn: (...args) => isDirectImageUrl(...args),
+    getMenuItemObjectPositionFn: getMenuItemObjectPosition,
+    logoFitClassFn: logoFitClass
+  },
+  profileApi: {
+    isFollowingProfileFn: (...args) => (
+      typeof getFollowRuntimeController === "function"
+        ? getFollowRuntimeController().isFollowingProfile(...args)
+        : false
+    ),
+    resolveUserAvatarFn: (...args) => resolveUserAvatar(...args),
+    resolveNotificationAvatarFn: (...args) => resolveNotificationAvatar(...args),
+    resolveLikeAvatarFn: (...args) => resolveLikeAvatar(...args),
+    resolveCustomerTypeFn: (...args) => resolveCustomerType(...args),
+    normalizeLeadStatusKeyFn: (...args) => normalizeLeadStatusKey(...args),
+    normalizeLeadLocationsFn: (...args) => normalizeLeadLocations(...args),
+    hasLeadLocationCoordsFn: (...args) => hasLeadLocationCoords(...args),
+    isShopCatalogProfileFn: (...args) => isShopCatalogProfile(...args),
+    getBusinessProfileTypeFn: (...args) => getBusinessProfileType(...args),
+    getCartCountForRestaurantFn: (...args) => getCartCountForRestaurant(...args),
+    isLocalBusinessProfileFn: (...args) => isLocalBusinessProfile(...args),
+    isCeoUserFn: (...args) => isCeoUser(...args),
+    canAccessRestaurantOrdersFn: (...args) => canAccessRestaurantOrders(...args)
+  },
+  menuApi: {
+    normalizeMenuTypeFn: normalizeMenuType,
+    getMenuModalCropFn: (...args) => getMenuModalCrop(...args),
+    getMenuItemImagesFn: (...args) => getMenuItemImages(...args),
+    getMenuDetailRestaurantIdFn: (...args) => getMenuDetailRestaurantId(...args),
+    getMenuDetailCatalogProfileFn: (...args) => getMenuDetailCatalogProfile(...args),
+    canAddToShopCartFn: (...args) => canAddToShopCart(...args),
+    getMenuItemSocialIdFn: (...args) => getMenuItemSocialId(...args),
+    menuItemMetaKeyFn: (...args) => menuItemMetaKey(...args),
+    ensureMenuItemMetaFn: (...args) => ensureMenuItemMeta(...args),
+    resolveMenuItemCountsFn: (...args) => resolveMenuItemCounts(...args),
+    getFocusModalCropFn: (...args) => getFocusModalCrop(...args),
+    normalizeMenuItemDocFn: normalizeMenuItemDoc,
+    normalizeOptionListFn: normalizeOptionList,
+    syncMenuCachesFn: (...args) => syncMenuCaches(...args),
+    publishMenuToPublicFn: (...args) => publishMenuToPublic(...args)
+  },
+  socialApi: {
+    ensurePostMetaFn: (...args) => ensurePostMeta(...args),
+    resolvePostCountsFn: (...args) => resolvePostCounts(...args),
+    ensureCommentShapeFn: (...args) => ensureCommentShape(...args),
+    currentUserBadgeFn: (...args) => currentUserBadge(...args),
+    formatDateLabelFn: (...args) => formatDateLabel(...args),
+    findPostByIdFn: (...args) => findPostById(...args)
+  },
+  mainApi: {
+    renderPublicProfileViewFn: (...args) => renderPublicProfileView(...args),
+    renderProfileViewFn: (...args) => renderProfileView(...args),
+    renderMenuAdminViewFn: (...args) => renderMenuAdminView(...args),
+    renderBusinessAccountsViewFn: (...args) => renderBusinessAccountsView(...args),
+    renderLeadsViewFn: (...args) => renderLeadsView(...args),
+    renderStaffViewFn: (...args) => renderStaffView(...args),
+    renderCustomersViewFn: (...args) => renderCustomersView(...args),
+    bindBusinessAccountsEventsFn: (...args) => bindBusinessAccountsEvents(...args)
+  },
+  notificationApi: {
+    resolveNotificationAvatarFn: (...args) => resolveNotificationAvatar(...args)
+  },
+  uploadApi: {
+    uploadCompressedImageFn: (...args) => uploadCompressedImage(...args)
+  },
+  actionApi: {
+    confirmFn: typeof confirm === "function" ? confirm : () => false,
+    alertFn: typeof alert === "function" ? alert : () => {},
+    docFn: doc,
+    collectionFn: collection,
+    db,
+    deleteDocFn: deleteDoc,
+    setDocFn: setDoc,
+    serverTimestampFn: serverTimestamp
+  }
+});
+const {
+  renderAuthScreen,
+  renderDrawer,
+  renderRoleSwitchLinks,
+  updateShellDom,
+  updateDrawerDom,
+  updateNotificationBadges,
+  updateNotificationsDom,
+  bindNotificationsDelegation,
+  handleNotificationsUpdate,
+  renderCommentItem,
+  renderPostComments,
+  renderMenuCommentItem,
+  renderMenuDetailComments,
+  updatePostModalMeta,
+  updatePostModalCountsOnly,
+  updatePostModalCommentsOnly,
+  updateMenuDetailMeta,
+  updateMenuDetailCountsOnly,
+  updateMenuDetailCommentsOnly,
+  updateCommentLikeButton,
+  renderChatModal,
+  renderProfileModal,
+  renderPostModal,
+  renderLikesModal,
+  renderLeadModal,
+  renderCustomerModal,
+  renderMenuItemModal,
+  renderMenuDetailModal,
+  renderFocusModal,
+  renderSettingsView,
+  renderNotificationsList,
+  renderNotificationsView,
+  renderCrmLazyLoadingView,
+  renderOrdersView,
+  renderUploadView,
+  renderChatMessagesPanel,
+  renderChatPendingAttachments,
+  renderChatListPanel,
+  renderChatView,
+  renderHeaderActionButton,
+  renderHeader,
+  renderBusinessTopTabs,
+  renderMain,
+  bindImageFallbacks,
+  render,
+  bindAuthEvents,
+  bindCrmAutoLoadObserver,
+  bindAppEvents,
+  bindSearchEvents,
+  handleUploadPost,
+  loadRestaurants,
+  loadFeedPosts,
+  loadUserPosts,
+  loadBusinessPosts,
+  loadFocusForRestaurant,
+  loadMenuForRestaurant,
+  saveMenuItemFromModal,
+  deleteMenuItemById
+} = shellUiRuntimeCluster;
 
 function suspendRender() {
   renderSuspended += 1;
@@ -1167,39 +1209,274 @@ const {
   setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
   pendingRouteState
 });
-ceoCrmCountRuntimeController = createCeoCrmCountRuntimeController({
+const {
+  normalizeLeadCountry,
+  createDefaultLeadPricing,
+  normalizeLeadPricing,
+  normalizeLeadSettings,
+  getLeadSettingsConfig,
+  getLeadCountryCenter,
+  getLeadMonthlyPrice,
+  getLeadPriceForCycle,
+  buildLeadAccountEmail,
+  buildLeadContactName,
+  inferLeadCountryFromText,
+  normalizeLeadStatusKey,
+  leadStatusLabel,
+  leadTypeLabel,
+  resolveCustomerType,
+  customerStatusLabel,
+  isCustomerRestaurant,
+  hasLeadLocationCoords,
+  createLeadLocation,
+  normalizeCoordPair,
+  preferStableCoords,
+  resolveCoordsFromShape,
+  resolveCoordsFromEntity,
+  extractPlusCodeFromText,
+  isLikelyFullPlusCode,
+  isLikelyShortPlusCode,
+  olcDecodeFullPlusCode,
+  olcEncodePairPrefix,
+  olcRecoverShortCode,
+  resolvePlusCodeReferenceCoords,
+  geocodeReferenceSearch,
+  parsePlusCodeFromAddressInput,
+  parseCoordsFromAddressInputAsync,
+  parseCoordsFromAddressInput,
+  normalizeLeadLocations,
+  getPrimaryLeadLocation
+} = createCrmLeadGeoSupportRuntime({
   state,
-  db,
-  collection,
-  query,
-  where,
-  getDocs,
-  getDoc,
-  doc,
-  setDoc,
-  increment,
-  serverTimestamp,
-  documentId,
+  constants: {
+    ceoCountries: CEO_COUNTRIES,
+    defaultPassword: LEAD_SOCIAL_DEFAULT_PASSWORD,
+    defaultCountry: LEAD_SETTINGS_DEFAULT_COUNTRY,
+    countryCenters: LEAD_COUNTRY_CENTERS,
+    defaultCenter: PRISHTINA_COORDS,
+    leadTypeOrder: LEAD_TYPE_ORDER,
+    leadTypeLabels: LEAD_TYPE_LABELS,
+    leadStatusLabels: LEAD_STATUS_LABELS
+  },
+  utilityApi: {
+    normalizeSearchKeyFn: normalizeSearchKey,
+    fetchFn: typeof fetch === "function" ? fetch : null
+  }
+});
+const {
+  createLeadScopeMap,
+  createCustomerScopeMap,
+  normalizeLeadScopeKey,
+  normalizeCustomerScopeKey,
   uniqueStringList,
-  normalizeCeoPath,
-  normalizeHandle,
-  normalizeCeoCountry,
   buildCeoName,
-  parseCoordNumber,
+  normalizeCeoCountry,
+  normalizeCeoPath,
   getCurrentCeoMeta,
   isCeoUser,
+  isAlbertCeoUser,
   hasGlobalCeoAccess,
-  saveUserProfileToStorage,
-  render,
-  toDateSafe,
-  normalizeLeadDoc,
-  normalizeLeadStatusKey,
-  isCustomerRestaurant,
-  escapeHtml,
+  getCeoGpsOverride,
+  readLeadScopeCache,
+  writeLeadScopeCache,
+  readCustomerScopeCache,
+  writeCustomerScopeCache,
+  normalizeCeoStaffRecord,
+  canViewCeoRecord,
+  hydrateStaffRecordsFromUserProfiles,
+  canCurrentCeoSeeRow,
+  isCurrentCeoOwnRow,
+  createEmptyCeoCrmCounts,
+  sanitizeCeoCrmCounts,
+  hasStoredCeoCrmCounts,
+  resolveKnownScopeCountLabel,
+  renderCeoScopeTabs,
+  renderOwnershipPills,
+  buildCeoCreatorMeta,
+  resolveStoredCeoCreatorMeta,
+  buildLeadCrmContribution,
+  buildCustomerCrmContribution,
+  accumulateCeoCrmDelta,
+  applyCeoCrmCountDeltas,
+  ensureCeoCrmCountsLoaded,
+  getCeoCrmCountsPromise,
+  syncCeoDirectoryProfilePatch,
+  pickCountValue
+} = createCrmCeoScopeSupportRuntime({
+  state,
   dataLoaded,
-  applyKnownLeadOwnershipOverrideFn: (...args) => applyKnownLeadOwnershipOverride(...args),
-  isHiddenLegacyCeoEmailFn: (...args) => isHiddenLegacyCeoEmail(...args)
+  constants: {
+    ceoCountries: CEO_COUNTRIES,
+    crmPagesTtlMs: CACHE_TTL_MS.crmPages,
+    albertCeoUid: ALBERT_CEO_UID,
+    albertCeoAliases: ALBERT_CEO_ALIASES,
+    albertCeoEmails: ALBERT_CEO_EMAILS
+  },
+  firebaseApi: {
+    db,
+    collectionFn: collection,
+    queryFn: query,
+    whereFn: where,
+    getDocsFn: getDocs,
+    getDocFn: getDoc,
+    docFn: doc,
+    setDocFn: setDoc,
+    incrementFn: increment,
+    serverTimestampFn: serverTimestamp,
+    documentIdFn: documentId
+  },
+  renderApi: {
+    renderFn: render,
+    toDateSafeFn: toDateSafe,
+    escapeHtmlFn: escapeHtml
+  },
+  storageApi: {
+    readCacheFn: readCache,
+    writeCacheFn: writeCache,
+    leadPageCacheKeyFn: leadPageCacheKey,
+    customerPageCacheKeyFn: customerPageCacheKey,
+    saveUserProfileToStorageFn: saveUserProfileToStorage
+  },
+  profileApi: {
+    normalizeRoleListFn: normalizeRoleList,
+    normalizeEmailValueFn: normalizeEmailValue,
+    normalizeHandleFn: normalizeHandle
+  },
+  leadApi: {
+    normalizeLeadStatusKeyFn: normalizeLeadStatusKey,
+    isCustomerRestaurantFn: isCustomerRestaurant
+  },
+  crmApi: {
+    normalizeLeadDocFn: (...args) => crmRuntimeController?.normalizeLeadDoc?.(...args) || (args[0] || {}),
+    applyKnownLeadOwnershipOverrideFn: (...args) => crmRuntimeController?.applyKnownLeadOwnershipOverride?.(...args) || (args[0] || {}),
+    isHiddenLegacyCeoEmailFn: (...args) => crmRuntimeController?.isHiddenLegacyCeoEmail?.(...args) || false
+  }
 });
+const feedVisibilityRuntimeCluster = createFeedVisibilityRuntimeCluster({
+  state,
+  firebaseApi: {
+    db,
+    collectionFn: collection,
+    queryFn: query,
+    orderByFn: orderBy,
+    limitFn: limit,
+    getDocsFn: getDocs
+  },
+  constants: {
+    fastLimits: FAST_LIMITS
+  },
+  visibilityApi: {
+    isForceHiddenUidFn: isForceHiddenUid,
+    isForceHiddenHandleFn: isForceHiddenHandle,
+    isForceHiddenBusinessEntityFn: isForceHiddenBusinessEntity,
+    isPublicBusinessRecordFn: isPublicBusinessRecord
+  },
+  utilityApi: {
+    formatRelativeFn: formatRelative,
+    toDateSafeFn: toDateSafe
+  }
+});
+const {
+  canShowFeedRestaurantId,
+  normalizeFeedPost,
+  buildStoriesRowSignature,
+  loadUserPostsForUser
+} = feedVisibilityRuntimeCluster;
+
+const profileIdentityRuntimeCluster = createProfileIdentityRuntimeCluster({
+  state,
+  firebaseApi: {
+    db,
+    collectionFn: collection,
+    collectionGroupFn: collectionGroup,
+    queryFn: query,
+    whereFn: where,
+    orderByFn: orderBy,
+    limitFn: limit,
+    docFn: doc,
+    getDocFn: getDoc,
+    getDocFromServerFn: getDocFromServer,
+    getDocsFn: getDocs,
+    onSnapshotFn: onSnapshot,
+    setDocFn: setDoc,
+    serverTimestampFn: serverTimestamp,
+    updateProfileFn: updateProfile
+  },
+  browserApi: {
+    documentObj: typeof document === "undefined" ? null : document,
+    windowObj: typeof window === "undefined" ? null : window,
+    queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null
+  },
+  storageApi: {
+    safeStorageObj: safeStorage,
+    logoCacheKey: STORAGE_KEYS.logoCache,
+    avatarKey,
+    readCacheFn: readCache,
+    writeCacheFn: writeCache,
+    cacheKeys: CACHE_KEYS,
+    cacheTtlMs: CACHE_TTL_MS
+  },
+  constants: {
+    brandUi: BRAND_UI,
+    fastMode: FAST_MODE,
+    fastLimits: FAST_LIMITS,
+    placeholderImage: PLACEHOLDER_IMAGE,
+    commentAvatarRemoteFetchEnabled: COMMENT_AVATAR_REMOTE_FETCH_ENABLED,
+    roleSwitchOrder: ROLE_SWITCH_ORDER
+  },
+  renderApi: {
+    renderFn: render,
+    updateShellDomFn: updateShellDom,
+    updateFeedDomFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.updateFeedDom?.(...args) || false,
+    refreshSearchViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.refreshSearchView?.(...args) || false,
+    getLastRenderModeFn: () => lastRenderMode,
+    buildRestaurantLocationsFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.buildRestaurantLocations?.(...args) || []
+  },
+  profileApi: {
+    resolvePreferredHandleFn: resolvePreferredHandle,
+    pickCountValueFn: pickCountValue,
+    normalizeRestaurantTypeFn: normalizeRestaurantType,
+    normalizeHandleFn: normalizeHandle,
+    sanitizeDisplayNameFn: sanitizeDisplayName,
+    isPublicBusinessRecordFn: isPublicBusinessRecord,
+    matchesRestaurantIdentityFn: matchesRestaurantIdentity,
+    normalizeEmailValueFn: normalizeEmailValue,
+    normalizeRoleListFn: normalizeRoleList,
+    normalizeLeadLocationsFn: normalizeLeadLocations,
+    getPrimaryLeadLocationFn: getPrimaryLeadLocation,
+    hasLeadLocationCoordsFn: hasLeadLocationCoords,
+    resolveCustomerTypeFn: resolveCustomerType,
+    resolveRestaurantStatusFromLeadFn: (leadStatus, currentStatus = "") => crmRuntimeController?.resolveRestaurantStatusFromLead?.(leadStatus, currentStatus) ?? String(leadStatus || currentStatus || "").trim(),
+    ensureRestaurantPublicMetaFn: async (...args) => await crmRuntimeController?.ensureRestaurantPublicMeta?.(...args),
+    isRestaurantMarkedDeletedFn: isRestaurantMarkedDeleted,
+    saveUserProfileToStorageFn: saveUserProfileToStorage,
+    writeAuthBootstrapSnapshotFn: writeAuthBootstrapSnapshot,
+    saveSettingsFn: saveSettings,
+    getOptimizedImageUrlFn: getOptimizedImageUrl,
+    isPlaceholderUrlFn: isPlaceholderUrl,
+    uploadCompressedImageFn: uploadCompressedImage,
+    ensureUserProfileFn: ensureUserProfile,
+    ensurePostMetaFn: ensurePostMeta,
+    resolveUserByHandleFn: resolveUserByHandle,
+    syncCeoDirectoryProfilePatchFn: syncCeoDirectoryProfilePatch,
+    normalizeLeadSettingsFn: normalizeLeadSettings,
+    normalizeCeoCountryFn: normalizeCeoCountry,
+    normalizeCeoPathFn: normalizeCeoPath,
+    hasStoredCeoCrmCountsFn: hasStoredCeoCrmCounts,
+    sanitizeCeoCrmCountsFn: sanitizeCeoCrmCounts,
+    isLocalBusinessProfileFn: isLocalBusinessProfile,
+    isCeoUserFn: isCeoUser,
+    getVerifiedMapLocationFn: (...args) => crmRuntimeController?.getVerifiedMapLocation?.(...args) || null,
+    getCeoGpsOverrideFn: getCeoGpsOverride,
+    canShowFeedRestaurantIdFn: canShowFeedRestaurantId,
+    escapeSelectorFn: escapeSelector,
+    toDateSafeFn: toDateSafe
+  },
+  storyApi: {
+    getStorySystemController: () => bridgeShellRuntimeCluster?.storySystemController || null
+  }
+});
+selfProfileRuntimeController = profileIdentityRuntimeCluster.selfProfileRuntimeController;
 const {
   getProfileViewUnsub,
   setProfileViewUnsub,
@@ -1208,29 +1485,7 @@ const {
   normalizeExternalProfile,
   normalizeExternalUserProfile,
   fetchBusinessProfileDoc,
-  loadBusinessPostsForRestaurant
-} = createPublicProfileRuntimeController({
-  state,
-  db,
-  docFn: doc,
-  collectionFn: collection,
-  queryFn: query,
-  orderByFn: orderBy,
-  limitFn: limit,
-  getDocFn: getDoc,
-  getDocsFn: getDocs,
-  onSnapshotFn: onSnapshot,
-  render,
-  brandUi: BRAND_UI,
-  fastLimits: FAST_LIMITS,
-  resolvePreferredHandle,
-  pickCountValue,
-  normalizeRestaurantType,
-  normalizeHandle,
-  sanitizeDisplayName,
-  isPublicBusinessRecord
-});
-const {
+  loadBusinessPostsForRestaurant,
   collectFeedHydrationIds,
   queueStoryIdentityHydration,
   hydrateRestaurantsByIds,
@@ -1238,25 +1493,7 @@ const {
   rebuildBusinessLocations,
   stopRestaurantMetaListeners,
   ensureFeedRestaurantMetaListeners,
-  enrichRestaurantsWithPublicMeta
-} = createRestaurantIdentityRuntimeController({
-  state,
-  db,
-  docFn: doc,
-  getDocFn: getDoc,
-  normalizeRestaurantType,
-  isGenericStoryBusinessLabel: (...args) => isGenericStoryBusinessLabel(...args),
-  queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
-  buildRestaurantLocationsFn: (...args) => buildRestaurantLocations(...args),
-  resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args),
-  isPublicBusinessRecordFn: (...args) => isPublicBusinessRecord(...args),
-  syncFeedPostLogos: (...args) => syncFeedPostLogos(...args),
-  refreshFeedStories: (...args) => refreshFeedStories(...args),
-  render,
-  updateFeedDom: (...args) => updateFeedDom(...args),
-  getLastRenderMode: () => lastRenderMode
-});
-const {
+  enrichRestaurantsWithPublicMeta,
   buildStoriesSignature,
   isGenericStoryBusinessLabel,
   sanitizeStoryBusinessName,
@@ -1271,36 +1508,7 @@ const {
   updateFeedLogoNodes,
   updateStoryLogoNodes,
   updateStoryMetaNodes,
-  buildStoriesFromFeed
-} = createStoryFeedRuntimeController({
-  state,
-  db,
-  readCacheFn: readCache,
-  writeCacheFn: writeCache,
-  cacheKeys: CACHE_KEYS,
-  cacheTtlMs: CACHE_TTL_MS,
-  fastMode: FAST_MODE,
-  fastLimits: FAST_LIMITS,
-  collectionGroupFn: collectionGroup,
-  getDocsFn: getDocs,
-  queryFn: query,
-  whereFn: where,
-  orderByFn: orderBy,
-  limitFn: limit,
-  mapStorySnapshotRowsToFeedStoriesFn: (...args) => storySystemController.mapStorySnapshotRowsToFeedStories(...args),
-  canShowFeedRestaurantIdFn: (...args) => canShowFeedRestaurantId(...args),
-  queueStoryIdentityHydrationFn: (...args) => queueStoryIdentityHydration(...args),
-  queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
-  updateFeedDomFn: (...args) => updateFeedDom(...args),
-  renderFn: render,
-  getLastRenderModeFn: () => lastRenderMode,
-  resolveRestaurantLogoFn: (...args) => resolveRestaurantLogo(...args),
-  isPlaceholderUrlFn: (...args) => isPlaceholderUrl(...args),
-  escapeSelectorFn: (...args) => escapeSelector(...args),
-  documentObj: typeof document === "undefined" ? null : document,
-  toDateSafeFn: toDateSafe
-});
-const {
+  buildStoriesFromFeed,
   findRestaurantByUid,
   findRestaurantByEmail,
   resolveLeadByUid,
@@ -1308,38 +1516,7 @@ const {
   findRestaurantByLeadId,
   ensureRestaurantForLead,
   resolveRestaurantForAuthUser,
-  resolveRoleSwitchTargets
-} = createAuthProfileResolutionRuntimeController({
-  state,
-  db,
-  collectionFn: collection,
-  queryFn: query,
-  whereFn: where,
-  limitFn: limit,
-  docFn: doc,
-  getDocFn: getDoc,
-  getDocsFn: getDocs,
-  setDocFn: setDoc,
-  serverTimestampFn: serverTimestamp,
-  mergeRestaurants,
-  matchesRestaurantIdentity,
-  normalizeEmailValue,
-  normalizeRoleList,
-  normalizeLeadLocations,
-  getPrimaryLeadLocation,
-  hasLeadLocationCoords,
-  resolveCustomerType,
-  resolveRestaurantStatusFromLead,
-  ensureRestaurantPublicMeta,
-  isRestaurantMarkedDeleted,
-  roleSwitchOrder: ROLE_SWITCH_ORDER,
-  render,
-  updateShellDom,
-  updateFeedDom: (...args) => updateFeedDom(...args),
-  refreshSearchView: (...args) => refreshSearchView(...args),
-  getLastRenderMode: () => lastRenderMode
-});
-const {
+  resolveRoleSwitchTargets,
   commentAvatarCache,
   commentAvatarPending,
   userSearchAvatarCache,
@@ -1371,74 +1548,12 @@ const {
   currentUserBadge,
   uploadAvatar,
   saveAccountSettings,
+  persistPrivateAccountSetting,
   loadUserProfile,
   loadBusinessProfile,
-  loadBusinessStaffProfile
-} = (selfProfileRuntimeController = createSelfProfileRuntimeController({
-  state,
-  db,
-  documentObj: typeof document === "undefined" ? null : document,
-  windowObj: typeof window === "undefined" ? null : window,
-  safeStorage,
-  logoCacheKey: STORAGE_KEYS.logoCache,
-  avatarKey,
-  commentAvatarRemoteFetchEnabled: COMMENT_AVATAR_REMOTE_FETCH_ENABLED,
-  placeholderImage: PLACEHOLDER_IMAGE,
-  getOptimizedImageUrl,
-  isPlaceholderUrl,
-  loadLogoCacheCoreFn: loadLogoCacheCore,
-  scheduleLogoCacheWriteCoreFn: scheduleLogoCacheWriteCore,
-  loadAvatarCacheCoreFn: loadAvatarCacheCore,
-  scheduleAvatarCacheWriteCoreFn: scheduleAvatarCacheWriteCore,
-  resolveRestaurantLogoCoreFn: resolveRestaurantLogoCore,
-  resolveUserAvatarCoreFn: resolveUserAvatarCore,
-  resolveShellAvatarUrlCoreFn: resolveShellAvatarUrlCore,
-  collectionFn: collection,
-  queryFn: query,
-  whereFn: where,
-  limitFn: limit,
-  docFn: doc,
-  getDocFn: getDoc,
-  getDocFromServerFn: getDocFromServer,
-  getDocsFn: getDocs,
-  onSnapshotFn: onSnapshot,
-  setDocFn: setDoc,
-  serverTimestampFn: serverTimestamp,
-  updateProfileFn: updateProfile,
-  uploadCompressedImageFn: uploadCompressedImage,
-  ensureUserProfileFn: ensureUserProfile,
-  ensurePostMetaFn: ensurePostMeta,
-  resolveUserByHandleFn: resolveUserByHandle,
-  ensureRestaurantPublicMetaFn: ensureRestaurantPublicMeta,
-  syncCeoDirectoryProfilePatchFn: syncCeoDirectoryProfilePatch,
-  resolveRestaurantForAuthUserFn: resolveRestaurantForAuthUser,
-  saveUserProfileToStorage,
-  writeAuthBootstrapSnapshot,
-  syncPrivateSettingFromProfile,
-  mergeRestaurants,
-  rebuildBusinessLocations,
-  render,
-  updateShellDom,
-  updateFeedDom: (...args) => updateFeedDom(...args),
-  refreshSearchView: (...args) => refreshSearchView(...args),
-  getLastRenderMode: () => lastRenderMode,
-  normalizeHandle,
-  normalizeRoleList,
-  resolvePreferredHandle,
-  normalizeRestaurantType,
-  normalizeLeadSettings,
-  normalizeCeoCountry,
-  normalizeCeoPath,
-  hasStoredCeoCrmCounts,
-  sanitizeCeoCrmCounts,
-  pickCountValue,
-  sanitizeDisplayName,
-  isLocalBusinessProfile,
-  isCeoUser,
-  getVerifiedMapLocation,
-  getCeoGpsOverride,
-  isRestaurantMarkedDeleted
-}));
+  loadBusinessStaffProfile,
+  loadAuthProfile
+} = profileIdentityRuntimeCluster;
 socialEngagementSupportRuntimeController = createSocialEngagementSupportRuntimeController({
   state,
   db,
@@ -1642,6 +1757,220 @@ const {
   getLastRenderModeFn: () => lastRenderMode
 });
 
+const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
+  stateDeps: { state, dataLoaded },
+  constants: {
+    LEAD_SOCIAL_DEFAULT_PASSWORD,
+    LEAD_SETTINGS_DEFAULT_COUNTRY,
+    CEO_COUNTRIES,
+    LEAD_TYPE_ORDER,
+    LEAD_TYPE_LABELS,
+    LEAD_STATUS_ORDER,
+    LEAD_STATUS_LABELS,
+    PLACEHOLDER_IMAGE,
+    CRM_LAZY_RENDERERS_MODULE_URL,
+    BUILD_INFO_ENDPOINT_URL,
+    enqueueMicrotaskCore,
+    PRISHTINA_COORDS,
+    CRM_PAGE_SIZE,
+    CACHE_KEYS,
+    HIDDEN_LEGACY_CEO_EMAILS,
+    MILAN_OWNED_LEAD_EMAILS,
+    MILAN_OWNED_LEAD_BUSINESSES,
+    ALBERT_OWNED_LEAD_EMAILS,
+    ALBERT_OWNED_LEAD_BUSINESSES
+  },
+  renderApi: {
+    icon,
+    escapeHtml,
+    render,
+    renderOverlays: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderOverlays?.(...args),
+    renderCrmLazyLoadingView,
+    renderCeoGuardCore,
+    getOptimizedImageUrl,
+    isPlaceholderUrl,
+    ensureLeafletLoaded: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.ensureLeafletLoaded?.(...args),
+    alert: typeof alert === "function" ? alert : () => {},
+    confirm: typeof confirm === "function" ? confirm : () => false
+  },
+  leadApi: {
+    getLeadSettingsConfig,
+    resolveCustomerType,
+    normalizeSearchKey,
+    normalizeLeadStatusKey,
+    normalizeLeadScopeKey,
+    normalizeCustomerScopeKey,
+    createLeadScopeMap,
+    createCustomerScopeMap,
+    leadStatusLabel,
+    leadTypeLabel,
+    customerStatusLabel,
+    isCustomerRestaurant,
+    toDateSafe,
+    getLeadCountryCenter,
+    getLeadMonthlyPrice,
+    buildLeadAccountEmail,
+    normalizeLeadCountry,
+    buildLeadContactName,
+    normalizeHandle,
+    inferLeadCountryFromText,
+    getLeadPriceForCycle,
+    normalizeLeadSettings,
+    normalizeRestaurantType,
+    uniqueStringList,
+    findRestaurantByUid,
+    findRestaurantByEmail,
+    normalizeEmailValue
+  },
+  geoApi: {
+    normalizeLeadLocations,
+    hasLeadLocationCoords,
+    extractPlusCodeFromText,
+    isLikelyShortPlusCode,
+    parseCoordsFromAddressInputAsync,
+    createLeadLocation,
+    getPrimaryLeadLocation,
+    resolveCoordsFromEntity,
+    preferStableCoords,
+    normalizeCoordPair,
+    parseCoordsFromAddressInput
+  },
+  firebaseApi: {
+    setDoc,
+    doc,
+    db,
+    serverTimestamp,
+    collection,
+    query,
+    where,
+    limit,
+    getDocs,
+    getDoc,
+    deleteDoc
+  },
+  authApi: {
+    getApps,
+    initializeApp,
+    app,
+    getAuth,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    signOut
+  },
+  cacheApi: {
+    saveUserProfileToStorage,
+    mergeRestaurants,
+    rebuildBusinessLocations,
+    readLeadScopeCache,
+    writeLeadScopeCache,
+    readCustomerScopeCache,
+    writeCustomerScopeCache,
+    menuCache,
+    menuCacheKey,
+    focusCache,
+    focusCacheKey,
+    businessPostsKey,
+    writeCache,
+    saveFeedPosts,
+    readCache,
+    buildStoriesSignature,
+    setFeedStoriesSignature: (next) => setFeedStoriesSignature(next)
+  },
+  ceoApi: {
+    isCeoUser,
+    sanitizeCeoCrmCounts,
+    hasStoredCeoCrmCounts,
+    resolveKnownScopeCountLabel,
+    getCurrentCeoMeta,
+    normalizeCeoCountry,
+    getCeoGpsOverride,
+    normalizeCeoPath,
+    hasGlobalCeoAccess,
+    canCurrentCeoSeeRow,
+    isCurrentCeoOwnRow,
+    ensureCeoCrmCountsLoaded,
+    getCeoCrmCountsPromise,
+    normalizeCeoStaffRecord,
+    canViewCeoRecord,
+    hydrateStaffRecordsFromUserProfiles,
+    buildCeoName,
+    createEmptyCeoCrmCounts,
+    buildLeadCrmContribution,
+    buildCustomerCrmContribution,
+    resolveStoredCeoCreatorMeta,
+    accumulateCeoCrmDelta,
+    applyCeoCrmCountDeltas,
+    normalizeRoleList,
+    isAlbertCeoUser,
+    buildCeoCreatorMeta,
+    renderCeoScopeTabs,
+    renderOwnershipPills
+  },
+  modalApi: {
+    saveCeoStaffFromViewCore,
+    uploadCompressedImage,
+    saveLeadFromModalCore,
+    deleteLeadFromModalCore,
+    saveCustomerFromModalCore,
+    convertLeadToCustomerCore,
+    closeLeadModal: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.closeLeadModal?.(...args),
+    closeCustomerModal: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.closeCustomerModal?.(...args)
+  }
+});
+crmRuntimeController = crmDomainRuntimeCluster.crmRuntimeController;
+const {
+  queueCrmLazyRenderersPrefetch,
+  renderLeadsView,
+  isLeadInlineCreateView,
+  renderLeadEditorUi,
+  refineLeadLocationAddressIndex,
+  renderLeadSettingsView,
+  renderLeadCreationView,
+  resetLeadDraft,
+  createLeadDraftState,
+  openLeadCreator,
+  openLeadSettingsView,
+  closeLeadSubview,
+  saveLeadSettings,
+  getLeadPlusCodeReference,
+  hydrateLeadGeoFieldsFromCoords,
+  syncLeadDerivedFields,
+  renderCustomersView,
+  renderStaffEditorView,
+  renderStaffView,
+  ensureLocationPickerModal,
+  bindLocationPickerEvents,
+  openLocationPicker,
+  closeLocationPicker,
+  confirmLocation,
+  getVerifiedMapLocation,
+  clearVerifiedMapLocation,
+  createAuthUser,
+  ensureRestaurantPublicMeta,
+  normalizeLeadDoc,
+  normalizeLeadFromRestaurant,
+  resolveRestaurantStatusFromLead,
+  loadLeads,
+  loadCustomers,
+  isHiddenLegacyCeoEmail,
+  applyKnownLeadOwnershipOverride,
+  getStaffFormEmail,
+  syncStaffDerivedEmailField,
+  openStaffEditor,
+  closeStaffEditor,
+  syncStaffFormFromDom,
+  loadCeoStaff,
+  saveCeoStaffFromView,
+  deleteCeoStaffFromView,
+  syncLeadModalDraftFromForm,
+  addLeadModalLocationRow,
+  removeLeadModalLocationRow,
+  saveLeadFromModal,
+  deleteLeadFromModal,
+  saveCustomerFromModal,
+  convertLeadToCustomer
+} = crmDomainRuntimeCluster;
+
 function saveMenuLayoutToStorage(layout = state.menuLayout) {
   saveMenuLayoutToStorageCore({
     safeStorage,
@@ -1695,98 +2024,6 @@ function resolveHeaderBranding() {
   };
 }
 
-function normalizeLeadCountry(value) {
-  return normalizeLeadCountryCore(value, {
-    allowedCountries: CEO_COUNTRIES,
-    fallbackCountry: LEAD_SETTINGS_DEFAULT_COUNTRY
-  });
-}
-
-function createDefaultLeadPricing() {
-  return createDefaultLeadPricingCore({
-    leadTypeOrder: LEAD_TYPE_ORDER
-  });
-}
-
-function normalizeLeadPricing(raw = {}) {
-  return normalizeLeadPricingCore(raw, {
-    leadTypeOrder: LEAD_TYPE_ORDER
-  });
-}
-
-function normalizeLeadSettings(raw = {}) {
-  return normalizeLeadSettingsCore(raw, {
-    defaultPassword: LEAD_SOCIAL_DEFAULT_PASSWORD,
-    defaultCountry: LEAD_SETTINGS_DEFAULT_COUNTRY,
-    normalizeLeadCountryFn: normalizeLeadCountry,
-    normalizeLeadPricingFn: normalizeLeadPricing
-  });
-}
-
-function getLeadSettingsConfig() {
-  return getLeadSettingsConfigCore(state.userProfile, {
-    normalizeLeadSettingsFn: normalizeLeadSettings
-  });
-}
-
-function getLeadCountryCenter(country = LEAD_SETTINGS_DEFAULT_COUNTRY) {
-  return getLeadCountryCenterCore(country, {
-    normalizeLeadCountryFn: normalizeLeadCountry,
-    countryCenters: LEAD_COUNTRY_CENTERS,
-    defaultCountry: LEAD_SETTINGS_DEFAULT_COUNTRY,
-    defaultCenter: PRISHTINA_COORDS
-  });
-}
-
-function getLeadMonthlyPrice(type = "", config = getLeadSettingsConfig()) {
-  return getLeadMonthlyPriceCore(type, config, {
-    normalizeLeadPricingFn: normalizeLeadPricing,
-    resolveCustomerTypeFn: resolveCustomerType
-  });
-}
-
-function getLeadPriceForCycle(type = "", cycle = "monthly", config = getLeadSettingsConfig()) {
-  return getLeadPriceForCycleCore(type, cycle, config, {
-    getLeadMonthlyPriceFn: getLeadMonthlyPrice
-  });
-}
-
-function inferLeadCountryFromText(text = "", fallbackCountry = "") {
-  return inferLeadCountryFromTextCore(text, fallbackCountry || getLeadSettingsConfig().defaultCountry, {
-    normalizeSearchKeyFn: normalizeSearchKey,
-    normalizeLeadCountryFn: normalizeLeadCountry
-  });
-}
-
-function isCeoUser() {
-  return isCeoUserCore(state, {
-    normalizeRoleListFn: normalizeRoleList
-  });
-}
-
-function isAlbertCeoUser() {
-  return isAlbertCeoUserCore(state, {
-    normalizeEmailValueFn: normalizeEmailValue,
-    isHiddenLegacyCeoEmailFn: isHiddenLegacyCeoEmail,
-    normalizeHandleFn: normalizeHandle,
-    albertCeoAliases: ALBERT_CEO_ALIASES,
-    albertCeoEmails: ALBERT_CEO_EMAILS
-  });
-}
-
-function hasGlobalCeoAccess(profile = state.userProfile, user = state.user) {
-  return hasGlobalCeoAccessCore(profile, user, {
-    albertCeoUid: ALBERT_CEO_UID,
-    isAlbertCeoUserFn: isAlbertCeoUser
-  });
-}
-
-function getCeoGpsOverride(profile = state.userProfile) {
-  return getCeoGpsOverrideCore(profile, {
-    isCeoUserFn: isCeoUser
-  });
-}
-
 function isRestaurantMarkedDeleted(rest = {}) {
   return isRestaurantMarkedDeletedCore(rest, {
     normalizeLeadStatusKeyFn: normalizeLeadStatusKey
@@ -1834,171 +2071,6 @@ function isPublicBusinessRecord(rest = {}) {
   return isPublicBusinessRecordCore(rest, {
     isRestaurantMarkedDeletedFn: isRestaurantMarkedDeleted,
     isForceHiddenBusinessEntityFn: isForceHiddenBusinessEntity
-  });
-}
-
-function leadStatusLabel(value) {
-  return leadStatusLabelCore(value, {
-    normalizeLeadStatusKeyFn: normalizeLeadStatusKey,
-    leadStatusLabels: LEAD_STATUS_LABELS
-  });
-}
-
-function leadTypeLabel(value) {
-  return leadTypeLabelCore(value, {
-    normalizeLeadTypeKeyFn: normalizeLeadTypeKey,
-    leadTypeLabels: LEAD_TYPE_LABELS
-  });
-}
-
-function resolveCustomerType(value) {
-  return resolveCustomerTypeCore(value, {
-    normalizeLeadTypeKeyFn: normalizeLeadTypeKey
-  });
-}
-
-function normalizeCoordPair(latValue, lngValue) {
-  return normalizeCoordPairCore(latValue, lngValue, {
-    toFiniteCoordNumberFn: toFiniteCoordNumber
-  });
-}
-
-function preferStableCoords(candidate, reference) {
-  return preferStableCoordsCore(candidate, reference, {
-    normalizeCoordPairFn: normalizeCoordPair
-  });
-}
-
-function resolveCoordsFromShape(shape) {
-  return resolveCoordsFromShapeCore(shape, {
-    normalizeCoordPairFn: normalizeCoordPair
-  });
-}
-
-function resolveCoordsFromEntity(entity) {
-  return resolveCoordsFromEntityCore(entity, {
-    normalizeCoordPairFn: normalizeCoordPair,
-    resolveCoordsFromShapeFn: resolveCoordsFromShape
-  });
-}
-
-function extractPlusCodeFromText(text) {
-  return extractPlusCodeFromTextCore(text, {
-    sanitizePlusCodeFn: sanitizePlusCode
-  });
-}
-
-function isLikelyFullPlusCode(code) {
-  return isLikelyFullPlusCodeCore(code, {
-    sanitizePlusCodeFn: sanitizePlusCode
-  });
-}
-
-function isLikelyShortPlusCode(code) {
-  return isLikelyShortPlusCodeCore(code, {
-    sanitizePlusCodeFn: sanitizePlusCode
-  });
-}
-
-function olcDecodeFullPlusCode(code) {
-  return olcDecodeFullPlusCodeCore(code, {
-    isLikelyFullPlusCodeFn: isLikelyFullPlusCode,
-    sanitizePlusCodeFn: sanitizePlusCode,
-    olcDecodeValueFn: olcDecodeValue,
-    normalizeCoordPairFn: normalizeCoordPair
-  });
-}
-
-function olcEncodePairPrefix(latValue, lngValue, prefixLength) {
-  return olcEncodePairPrefixCore(latValue, lngValue, prefixLength, {
-    olcClipLatitudeFn: olcClipLatitude,
-    olcNormalizeLongitudeFn: olcNormalizeLongitude
-  });
-}
-
-function olcRecoverShortCode(shortCode, refLat, refLng) {
-  return olcRecoverShortCodeCore(shortCode, refLat, refLng, {
-    isLikelyShortPlusCodeFn: isLikelyShortPlusCode,
-    sanitizePlusCodeFn: sanitizePlusCode,
-    olcClipLatitudeFn: olcClipLatitude,
-    olcNormalizeLongitudeFn: olcNormalizeLongitude,
-    olcEncodePairPrefixFn: olcEncodePairPrefix,
-    olcDecodeFullPlusCodeFn: olcDecodeFullPlusCode,
-    normalizeCoordPairFn: normalizeCoordPair
-  });
-}
-
-function resolvePlusCodeReferenceCoords(value = "", refCoords = null) {
-  return resolvePlusCodeReferenceCoordsCore(value, refCoords, {
-    normalizeCoordPairFn: normalizeCoordPair,
-    extractPlusCodeFromTextFn: extractPlusCodeFromText,
-    inferLeadCountryFromTextFn: inferLeadCountryFromText,
-    getLeadCountryCenterFn: getLeadCountryCenter
-  });
-}
-
-async function geocodeReferenceSearch(text = "") {
-  return geocodeReferenceSearchCore(text, {
-    normalizeSearchKeyFn: normalizeSearchKey,
-    normalizeCoordPairFn: normalizeCoordPair,
-    fetchFn: fetch
-  });
-}
-
-function parsePlusCodeFromAddressInput(value, refCoords = null) {
-  return parsePlusCodeFromAddressInputCore(value, refCoords, {
-    extractPlusCodeFromTextFn: extractPlusCodeFromText,
-    isLikelyFullPlusCodeFn: isLikelyFullPlusCode,
-    olcDecodeFullPlusCodeFn: olcDecodeFullPlusCode,
-    isLikelyShortPlusCodeFn: isLikelyShortPlusCode,
-    resolvePlusCodeReferenceCoordsFn: resolvePlusCodeReferenceCoords,
-    olcRecoverShortCodeFn: olcRecoverShortCode
-  });
-}
-
-async function parseCoordsFromAddressInputAsync(value, refCoords = null) {
-  return parseCoordsFromAddressInputAsyncCore(value, refCoords, {
-    parseCoordsFromAddressInputFn: parseCoordsFromAddressInput,
-    extractPlusCodeFromTextFn: extractPlusCodeFromText,
-    isLikelyShortPlusCodeFn: isLikelyShortPlusCode,
-    geocodeReferenceSearchFn: geocodeReferenceSearch,
-    olcRecoverShortCodeFn: olcRecoverShortCode
-  });
-}
-
-function parseCoordsFromAddressInput(value, refCoords = null) {
-  return parseCoordsFromAddressInputCore(value, refCoords, {
-    parsePlusCodeFromAddressInputFn: parsePlusCodeFromAddressInput,
-    toFiniteCoordNumberFn: toFiniteCoordNumber,
-    normalizeCoordPairFn: normalizeCoordPair
-  });
-}
-
-function normalizeLeadLocations(locations, fallbackAddress = "", fallbackCoords = null) {
-  return normalizeLeadLocationsCore(locations, fallbackAddress, fallbackCoords, {
-    resolveCoordsFromEntityFn: resolveCoordsFromEntity,
-    createLeadLocationFn: createLeadLocation,
-    hasLeadLocationCoordsFn: hasLeadLocationCoords
-  });
-}
-
-function getPrimaryLeadLocation(locations) {
-  return getPrimaryLeadLocationCore(locations, {
-    normalizeLeadLocationsFn: normalizeLeadLocations,
-    hasLeadLocationCoordsFn: hasLeadLocationCoords,
-    createLeadLocationFn: createLeadLocation
-  });
-}
-
-function customerStatusLabel(value) {
-  return customerStatusLabelCore(value, {
-    normalizeLeadStatusKeyFn: normalizeLeadStatusKey
-  });
-}
-
-function isCustomerRestaurant(rest = {}) {
-  return isCustomerRestaurantCore(rest, {
-    normalizeLeadStatusKeyFn: normalizeLeadStatusKey
   });
 }
 
@@ -2229,13 +2301,6 @@ function normalizeFollowHandle(value) {
   return normalizeFollowHandleCore(value, {
     normalizeHandleFn: normalizeHandle
   });
-}
-
-function syncPrivateSettingFromProfile(value) {
-  const nextValue = !!value;
-  if (state.settings.privateAccount === nextValue) return;
-  state.settings = { ...state.settings, privateAccount: nextValue };
-  saveSettings(state.settings);
 }
 
 function getFollowDocId(targetType, targetId, handle) {
@@ -2473,34 +2538,6 @@ function writeCache(key, data, meta = null) {
   } catch {}
 }
 
-function readLeadScopeCache(uid, scope) {
-  const safeUid = String(uid || "").trim();
-  const safeScope = normalizeLeadScopeKey(scope);
-  if (!safeUid) return null;
-  return readCache(leadPageCacheKey(safeUid, safeScope), CACHE_TTL_MS.crmPages);
-}
-
-function writeLeadScopeCache(uid, scope, rows, meta = {}) {
-  const safeUid = String(uid || "").trim();
-  const safeScope = normalizeLeadScopeKey(scope);
-  if (!safeUid || !Array.isArray(rows)) return;
-  writeCache(leadPageCacheKey(safeUid, safeScope), rows, meta);
-}
-
-function readCustomerScopeCache(uid, scope) {
-  const safeUid = String(uid || "").trim();
-  const safeScope = normalizeCustomerScopeKey(scope);
-  if (!safeUid) return null;
-  return readCache(customerPageCacheKey(safeUid, safeScope), CACHE_TTL_MS.crmPages);
-}
-
-function writeCustomerScopeCache(uid, scope, rows, meta = {}) {
-  const safeUid = String(uid || "").trim();
-  const safeScope = normalizeCustomerScopeKey(scope);
-  if (!safeUid || !Array.isArray(rows)) return;
-  writeCache(customerPageCacheKey(safeUid, safeScope), rows, meta);
-}
-
 function computeLatestTimestamp(posts) {
   return computeLatestTimestampCore({
     posts,
@@ -2565,130 +2602,6 @@ function resolvePreferredHandle(profile, fallbackName = "") {
     normalizeHandleFn: normalizeHandle,
     isGenericHandleFn: isGenericHandle
   });
-}
-
-function normalizeCeoCountry(value) {
-  return normalizeCeoCountryCore(value, {
-    allowedCountries: CEO_COUNTRIES
-  });
-}
-
-function normalizeCeoPath(value, fallback = []) {
-  return normalizeCeoPathCore(value, fallback, {
-    uniqueStringListFn: uniqueStringList
-  });
-}
-
-function getCurrentCeoMeta(profile = state.userProfile, user = state.user) {
-  return getCurrentCeoMetaCore(profile, user, {
-    normalizeCeoPathFn: normalizeCeoPath,
-    hasGlobalCeoAccessFn: hasGlobalCeoAccess,
-    uniqueStringListFn: uniqueStringList
-  });
-}
-
-function normalizeCeoStaffRecord(record = {}, userRecord = {}) {
-  return ceoCrmCountRuntimeController.normalizeCeoStaffRecord(record, userRecord);
-}
-
-async function hydrateStaffRecordsFromUserProfiles(items = [], { syncDirectory = false } = {}) {
-  return ceoCrmCountRuntimeController.hydrateStaffRecordsFromUserProfiles(items, { syncDirectory });
-}
-
-function canViewCeoRecord(record = {}) {
-  return ceoCrmCountRuntimeController.canViewCeoRecord(record);
-}
-
-function canCurrentCeoSeeRow(row = {}) {
-  return ceoCrmCountRuntimeController.canCurrentCeoSeeRow(row);
-}
-
-function isCurrentCeoOwnRow(row = {}) {
-  return ceoCrmCountRuntimeController.isCurrentCeoOwnRow(row);
-}
-
-function normalizeLeadScopeKey(value) {
-  return normalizeLeadScopeKeyCore(value);
-}
-
-function normalizeCustomerScopeKey(value) {
-  return normalizeCustomerScopeKeyCore(value);
-}
-
-function resolveKnownScopeCountLabel(count = 0, isExact = false, isLoaded = false) {
-  return ceoCrmCountRuntimeController.resolveKnownScopeCountLabel(count, isExact, isLoaded);
-}
-
-function renderCeoScopeTabs({
-  idPrefix = "ceoScope",
-  active = "own",
-  ownLabel = "Meine",
-  ownCount = 0,
-  staffLabel = "Staff",
-  staffCount = 0,
-  tabs = null
-} = {}) {
-  return ceoCrmCountRuntimeController.renderCeoScopeTabs({
-    idPrefix,
-    active,
-    ownLabel,
-    ownCount,
-    staffLabel,
-    staffCount,
-    tabs
-  });
-}
-
-function renderOwnershipPills(row = {}, { hideOwn = false } = {}) {
-  return ceoCrmCountRuntimeController.renderOwnershipPills(row, { hideOwn });
-}
-
-function buildCeoCreatorMeta(profile = state.userProfile, user = state.user) {
-  return ceoCrmCountRuntimeController.buildCeoCreatorMeta(profile, user);
-}
-
-function resolveStoredCeoCreatorMeta(...sources) {
-  return ceoCrmCountRuntimeController.resolveStoredCeoCreatorMeta(...sources);
-}
-
-function createEmptyCeoCrmCounts() {
-  return ceoCrmCountRuntimeController.createEmptyCeoCrmCounts();
-}
-
-function sanitizeCeoCrmCounts(raw = {}) {
-  return ceoCrmCountRuntimeController.sanitizeCeoCrmCounts(raw);
-}
-
-function hasStoredCeoCrmCounts(raw = {}) {
-  return ceoCrmCountRuntimeController.hasStoredCeoCrmCounts(raw);
-}
-
-function buildLeadCrmContribution(lead = null) {
-  return ceoCrmCountRuntimeController.buildLeadCrmContribution(lead);
-}
-
-function buildCustomerCrmContribution(customer = null) {
-  return ceoCrmCountRuntimeController.buildCustomerCrmContribution(customer);
-}
-
-function accumulateCeoCrmDelta(deltaMap, contribution, sign = 1) {
-  return ceoCrmCountRuntimeController.accumulateCeoCrmDelta(deltaMap, contribution, sign);
-}
-
-async function applyCeoCrmCountDeltas(deltaMap) {
-  return ceoCrmCountRuntimeController.applyCeoCrmCountDeltas(deltaMap);
-}
-
-async function ensureCeoCrmCountsLoaded({ force = false } = {}) {
-  return ceoCrmCountRuntimeController.ensureCeoCrmCountsLoaded({ force });
-}
-
-function pickCountValue(...values) {
-  return ceoCrmCountRuntimeController.pickCountValue(...values);
-}
-
-async function syncCeoDirectoryProfilePatch(patch = {}) {
-  return ceoCrmCountRuntimeController.syncCeoDirectoryProfilePatch(patch);
 }
 
 function normalizeRoleList(value) {
@@ -2913,41 +2826,6 @@ async function addMenuItemComment(text) {
 async function toggleCommentLike(postId, commentId, replyId) {
   return socialEngagementRuntimeController.toggleCommentLike(...arguments);
 }
-function renderAuthScreen() {
-  return getShellDomRuntimeController().renderAuthScreen();
-}
-
-function renderDrawer() {
-  return getShellDomRuntimeController().renderDrawer();
-}
-
-function renderRoleSwitchLinks() {
-  return getShellDomRuntimeController().renderRoleSwitchLinks();
-}
-
-function updateShellDom() {
-  return getShellDomRuntimeController().updateShellDom();
-}
-
-function updateDrawerDom() {
-  return getShellDomRuntimeController().updateDrawerDom();
-}
-
-function updateNotificationBadges() {
-  return getShellDomRuntimeController().updateNotificationBadges();
-}
-
-function updateNotificationsDom() {
-  return getShellDomRuntimeController().updateNotificationsDom();
-}
-
-function bindNotificationsDelegation() {
-  return getShellDomRuntimeController().bindNotificationsDelegation();
-}
-
-function handleNotificationsUpdate(items) {
-  return getShellDomRuntimeController().handleNotificationsUpdate(items);
-}
 
 function updateMenuCardCountNodes(itemId, counts = { likes: 0, comments: 0 }) {
   return getSocialEngagementSupportRuntimeController().updateMenuCardCountNodes(...arguments);
@@ -3031,81 +2909,92 @@ async function loadPostLikesForModal(postId) {
   return socialEngagementRuntimeController.loadPostLikesForModal(...arguments);
 }
 
-function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
-  return profileMenuFocusRenderController.renderProfilePostCardFancy(item, isGrid, allowMenu);
-}
-
-function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
-  return profileMenuFocusRenderController.renderProfilePostsFancy(posts, viewMode, allowMenu);
-}
-
-function renderProfileCheckins() {
-  return profileMenuFocusRenderController.renderProfileCheckins();
-}
-
-function renderProfileTabs() {
-  return profileMenuFocusRenderController.renderProfileTabs();
-}
-
-function renderProfileViewControls() {
-  return profileMenuFocusRenderController.renderProfileViewControls();
-}
-
-function renderPublicProfileView() {
-  return profileMenuFocusRenderController.renderPublicProfileView();
-}
-
-function renderMenuFilterRow() {
-  return profileMenuFocusRenderController.renderMenuFilterRow();
-}
-
-function renderMenuLayoutSection() {
-  return profileMenuFocusRenderController.renderMenuLayoutSection();
-}
-
-function renderMenuItemCard(item, { mode = "profile" } = {}) {
-  return profileMenuFocusRenderController.renderMenuItemCard(item, { mode });
-}
-
-function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } = {}) {
-  return profileMenuFocusRenderController.renderMenuItemCardStacked(item, { mode, variant });
-}
-
-function renderMenuDrinkGrid(items, { mode = "profile" } = {}) {
-  return profileMenuFocusRenderController.renderMenuDrinkGrid(items, { mode });
-}
-
-function renderMenuFoodList(items, { mode = "profile" } = {}) {
-  return profileMenuFocusRenderController.renderMenuFoodList(items, { mode });
-}
-
-function renderMenuList(items, { mode = "profile" } = {}) {
-  return profileMenuFocusRenderController.renderMenuList(items, { mode });
-}
-
-function renderFocusAdminSection(restaurantId) {
-  return profileMenuFocusRenderController.renderFocusAdminSection(restaurantId);
-}
-
-function renderFocusCarousel(profile) {
-  return profileMenuFocusRenderController.renderFocusCarousel(profile);
-}
-
-function renderMenuQrCard({ label, url, caption }) {
-  return profileMenuFocusRenderController.renderMenuQrCard({ label, url, caption });
-}
-
-function renderMenuAdminView() {
-  return profileMenuFocusRenderController.renderMenuAdminView();
-}
-
-function renderProfileMenuView(profile) {
-  return profileMenuFocusRenderController.renderProfileMenuView(profile);
-}
-
-function renderProfileView() {
-  return profileMenuFocusRenderController.renderProfileView();
-}
+const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluster({
+  state,
+  businessAccountsDeps: {
+    state,
+    icon,
+    escapeHtml,
+    db,
+    auth,
+    collection,
+    getDocs,
+    getDoc,
+    doc,
+    setDoc,
+    serverTimestamp,
+    createAuthUser,
+    signOut,
+    saveUserProfileToStorage,
+    render,
+    getRestaurantMetaById,
+    isBusinessOwnerProfile,
+    isPlaceholderUrl,
+    getOptimizedImageUrl,
+    PLACEHOLDER_IMAGE
+  },
+  profileMenuDeps: {
+    state,
+    resolvePostCountsFn: socialEngagementSupportRuntimeController.resolvePostCounts,
+    escapeHtmlFn: escapeHtml,
+    getOptimizedImageUrlFn: getOptimizedImageUrl,
+    iconFn: icon,
+    isLocalBusinessProfileFn: isLocalBusinessProfile,
+    isCeoUserFn: isCeoUser,
+    normalizeHandleFn: normalizeHandle,
+    logoFitClassFn: logoFitClass,
+    formatCountFn: formatCount,
+    ensureTableQrStateForProfileFn: ensureTableQrStateForProfile,
+    isShopCatalogProfileFn: isShopCatalogProfile,
+    getBusinessCatalogLabelFn: getBusinessCatalogLabel,
+    normalizeMenuTypeFn: normalizeMenuType,
+    primeMenuItemCountsFn: primeMenuItemCounts,
+    getMenuLayoutThemeFn: getMenuLayoutTheme,
+    menuLayoutColors: MENU_LAYOUT_COLORS,
+    resolveMenuItemHeroFn: resolveMenuItemHero,
+    isPlaceholderUrlFn: isPlaceholderUrl,
+    placeholderImage: PLACEHOLDER_IMAGE,
+    getFirebaseStorageUrlFn: getFirebaseStorageUrl,
+    isDirectImageUrlFn: isDirectImageUrl,
+    formatPriceFn: formatPrice,
+    getMenuItemImagesFn: getMenuItemImages,
+    getMenuItemObjectPositionFn: getMenuItemObjectPosition,
+    getMenuItemSocialIdFn: socialEngagementSupportRuntimeController.getMenuItemSocialId,
+    menuItemMetaKeyFn: socialEngagementSupportRuntimeController.menuItemMetaKey,
+    ensureMenuItemMetaFn: socialEngagementSupportRuntimeController.ensureMenuItemMeta,
+    resolveMenuItemCountsFn: socialEngagementSupportRuntimeController.resolveMenuItemCounts,
+    getFocusStateForRestaurantFn: getFocusStateForRestaurant,
+    getTableQrStateForRestaurantFn: getTableQrStateForRestaurant,
+    getFocusItemObjectPositionFn: getFocusItemObjectPosition,
+    getFocusCardClassFn: getFocusCardClass,
+    getFocusIndexFn: getFocusIndex,
+    isRestaurantCafeProfileFn: isRestaurantCafeProfile,
+    getBusinessProfileTypeFn: getBusinessProfileType,
+    getRestaurantMetaByIdFn: getRestaurantMetaById,
+    buildUrlFn: buildUrl,
+    normalizeSearchKeyFn: normalizeSearchKey,
+    normalizeFollowHandleFn: normalizeFollowHandle
+  },
+  dataLoaders: {
+    loadMenuForRestaurantFn: (...args) => loadMenuForRestaurant(...args),
+    loadFocusForRestaurantFn: (...args) => loadFocusForRestaurant(...args)
+  },
+  bridgeBindingsApi: {
+    renderProfileShopCartViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderProfileShopCartView?.(...args) || "",
+    renderProfileShopFavoritesViewFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderProfileShopFavoritesView?.(...args) || "",
+    renderShopProductListFn: (...args) => bridgeShellRuntimeCluster?.bridgeBindings?.renderShopProductList?.(...args) || ""
+  }
+});
+const {
+  ensureMenuDataForProfile,
+  ensureFocusDataForProfile,
+  loadBusinessAccounts,
+  renderBusinessAccountsView,
+  bindBusinessAccountsEvents,
+  renderPublicProfileView,
+  renderMenuAdminView,
+  renderProfileView
+} = profileBusinessMenuRuntimeCluster;
 
 sessionDataRuntimeController = createSessionDataRuntimeCluster({
   stateDeps: { state, dataLoaded },
@@ -3313,39 +3202,53 @@ socialEngagementRuntimeController = createSocialEngagementRuntimeController({
   }
 });
 
-const bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
+bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
   state,
   constants: { BRAND_UI, FAST_MODE, LEAFLET_JS_URL, LEAFLET_CSS_URL, SEARCH_LIMITS, PLACEHOLDER_IMAGE, NOTIFICATIONS_LIVE_LIMIT },
   browserApi: {
     documentObj: typeof document === "undefined" ? null : document,
     windowObj: typeof window === "undefined" ? null : window,
     navigatorObj: typeof navigator === "undefined" ? null : navigator,
-    appEl, confirmFn: confirm, alertFn: alert,
+    appEl,
+    confirmFn: confirm,
+    alertFn: alert,
     queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null
   },
   stateApi: {
     getPushActivationIssue: () => getPushRuntimeController().getPushActivationIssue(),
-    getPendingState: pendingRouteState.getPendingState, setPendingState: pendingRouteState.patchPendingState,
+    getPendingState: pendingRouteState.getPendingState,
+    setPendingState: pendingRouteState.patchPendingState,
     getPushOpenMessageBound: () => getPushRuntimeController().isPushOpenMessageBound(),
     markPushOpenMessageBound: () => getPushRuntimeController().markPushOpenMessageBound(),
-    getStoriesRowSignature: () => storiesRowSignature, setStoriesRowSignature: (next) => { storiesRowSignature = next; },
-    getOverlayCache: () => overlayCache, isModalEscapeBound: () => modalEscapeBound,
+    getStoriesRowSignature: () => storiesRowSignature,
+    setStoriesRowSignature: (next) => { storiesRowSignature = next; },
+    getOverlayCache: () => overlayCache,
+    isModalEscapeBound: () => modalEscapeBound,
     setModalEscapeBound: (value) => { modalEscapeBound = !!value; },
-    isMenuDetailCloseBound: () => menuDetailCloseBound, setMenuDetailCloseBound: (next) => { menuDetailCloseBound = !!next; },
-    getLastMenuOpenGestureKey: () => lastMenuOpenGestureKey, setLastMenuOpenGestureKey: (next) => { lastMenuOpenGestureKey = next; },
-    getLastMenuOpenGestureAt: () => lastMenuOpenGestureAt, setLastMenuOpenGestureAt: (next) => { lastMenuOpenGestureAt = next; },
+    isMenuDetailCloseBound: () => menuDetailCloseBound,
+    setMenuDetailCloseBound: (next) => { menuDetailCloseBound = !!next; },
+    getLastMenuOpenGestureKey: () => lastMenuOpenGestureKey,
+    setLastMenuOpenGestureKey: (next) => { lastMenuOpenGestureKey = next; },
+    getLastMenuOpenGestureAt: () => lastMenuOpenGestureAt,
+    setLastMenuOpenGestureAt: (next) => { lastMenuOpenGestureAt = next; },
     setPendingCommentHighlight: (value) => { pendingCommentHighlight = value; },
-    getRenderSuspended: () => renderSuspended, setRenderQueued: (next) => { renderQueued = !!next; },
-    getLastAppHtml: () => lastAppHtml, setLastAppHtml: (next) => { lastAppHtml = next; },
-    getLastRenderMode: () => lastRenderMode, setLastRenderMode: (next) => { lastRenderMode = next; },
+    getRenderSuspended: () => renderSuspended,
+    setRenderQueued: (next) => { renderQueued = !!next; },
+    getLastAppHtml: () => lastAppHtml,
+    setLastAppHtml: (next) => { lastAppHtml = next; },
+    getLastRenderMode: () => lastRenderMode,
+    setLastRenderMode: (next) => { lastRenderMode = next; },
     getLastRenderedMainTab: () => lastRenderedMainTab,
     setLastRenderedMainTab: (next) => { lastRenderedMainTab = next; },
     getCrmAutoLoadObserver: () => crmAutoLoadObserver,
     setCrmAutoLoadObserver: (next) => { crmAutoLoadObserver = next; },
-    getAuthInitialized: () => authInitialized, getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
-    getUserAvatarCache, getProfileMenuBound: () => profileMenuBound,
+    getAuthInitialized: () => authInitialized,
+    getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
+    getUserAvatarCache,
+    getProfileMenuBound: () => profileMenuBound,
     setProfileMenuBound: (next) => { profileMenuBound = !!next; },
-    getProfileViewUnsub, setProfileViewUnsub
+    getProfileViewUnsub,
+    setProfileViewUnsub
   },
   firebaseApi: { collection, query, orderBy, startAt, endAt, where, limit, getDoc, getDocs, onSnapshot, setDoc, doc, serverTimestamp, db },
   notificationsApi: {
@@ -3363,112 +3266,303 @@ const bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     openNotificationTarget
   },
   profileApi: {
-    isLocalBusinessProfile, getRestaurantMetaById, ensureMenuDataForProfile, ensureFocusDataForProfile,
-    normalizeExternalProfile, showPublicProfile, fetchBusinessProfileDoc, normalizeExternalUserProfile,
-    openGuestAuthPrompt, userProfileCache, hasPendingFollowRequest, resolveUserByHandle,
-    resolveRestaurantLogo, getChatUnreadCount, resolveHeaderBranding, isRestaurantCafeProfile, getBusinessCatalogLabel,
-    isShopCatalogProfile, getCartCountForRestaurant, saveUserProfileToStorage,
-    persistPrivateAccountSetting, uploadAvatar, resolveSearchUserAvatarDisplay,
-    getSelfAvatarUrl, isCeoUser, getCeoGpsOverride, isGuestSession
+    isLocalBusinessProfile,
+    getRestaurantMetaById,
+    ensureMenuDataForProfile,
+    ensureFocusDataForProfile,
+    normalizeExternalProfile,
+    showPublicProfile,
+    fetchBusinessProfileDoc,
+    normalizeExternalUserProfile,
+    openGuestAuthPrompt,
+    userProfileCache,
+    hasPendingFollowRequest,
+    resolveUserByHandle,
+    resolveRestaurantLogo,
+    getChatUnreadCount,
+    resolveHeaderBranding,
+    isRestaurantCafeProfile,
+    getBusinessCatalogLabel,
+    isShopCatalogProfile,
+    getCartCountForRestaurant,
+    saveUserProfileToStorage,
+    persistPrivateAccountSetting,
+    uploadAvatar,
+    resolveSearchUserAvatarDisplay,
+    getSelfAvatarUrl,
+    isCeoUser,
+    getCeoGpsOverride,
+    isGuestSession
   },
   routeApi: {
-    clearQueryParamsFromCurrentUrlCore, resolveRouteStateFromTargetUrlCore, resolveInitialRouteState,
-    normalizeInitialTab, normalizeAuthMode, applyPendingRouteStateCore,
-    normalizePendingNotificationIdCore, findNotificationByIdCore, prependNotificationByIdCore,
-    normalizePendingPostIdCore, findPostInLocalSourcesCore, normalizePendingChatUidCore,
-    isSelfPendingChatTargetCore, isChatThreadAlreadyOpenCore, getChatThreadId, getChatThreadById,
-    buildChatRouteTargetProfileCore, normalizePendingProfileRestaurantIdCore,
-    isPendingProfileAlreadyOpenCore, normalizeProfileTopTabFromRouteCore,
-    parsePushOpenTargetPayloadCore, shouldHandlePushOpenTargetCore,
-    applyPendingInitialRouteState, isPushOpenTargetMessageCore
+    clearQueryParamsFromCurrentUrlCore,
+    resolveRouteStateFromTargetUrlCore,
+    resolveInitialRouteState,
+    normalizeInitialTab,
+    normalizeAuthMode,
+    applyPendingRouteStateCore,
+    normalizePendingNotificationIdCore,
+    findNotificationByIdCore,
+    prependNotificationByIdCore,
+    normalizePendingPostIdCore,
+    findPostInLocalSourcesCore,
+    normalizePendingChatUidCore,
+    isSelfPendingChatTargetCore,
+    isChatThreadAlreadyOpenCore,
+    getChatThreadId,
+    getChatThreadById,
+    buildChatRouteTargetProfileCore,
+    normalizePendingProfileRestaurantIdCore,
+    isPendingProfileAlreadyOpenCore,
+    normalizeProfileTopTabFromRouteCore,
+    parsePushOpenTargetPayloadCore,
+    shouldHandlePushOpenTargetCore,
+    applyPendingInitialRouteState,
+    isPushOpenTargetMessageCore
   },
   feedApi: {
-    render, hydrateRestaurantsByIds, loadBusinessPostsForRestaurant, loadUserPostsForUser,
-    findPostById, fetchPostForNotification, getMenuItemImages, resolveMenuItemHero,
-    loadFavoriteMenuItems, buildStoriesFromFeed, updateStoryLogoNodes, updateStoryMetaNodes,
-    resolveStoryRenderIdentity, updateFeedLogoNodes, updatePostCountNodes,
-    ensureFeedRestaurantMetaListeners, preloadFeedHeroImages
+    render,
+    hydrateRestaurantsByIds,
+    loadBusinessPostsForRestaurant,
+    loadUserPostsForUser,
+    findPostById,
+    fetchPostForNotification,
+    getMenuItemImages,
+    resolveMenuItemHero,
+    loadFavoriteMenuItems,
+    buildStoriesFromFeed,
+    updateStoryLogoNodes,
+    updateStoryMetaNodes,
+    resolveStoryRenderIdentity,
+    updateFeedLogoNodes,
+    updatePostCountNodes,
+    ensureFeedRestaurantMetaListeners,
+    preloadFeedHeroImages
   },
   utilityApi: {
-    normalizeSearchKey, formatRelative, toDateSafe, getOptimizedImageUrl, isPlaceholderUrl,
-    getFirebaseStorageUrl, isDirectImageUrl, formatPrice, escapeHtml, getMenuItemObjectPosition,
-    icon, buildUrl, getGeo, normalizeRestaurantType, normalizeSearchQuery, scoreSearchMatch,
-    sanitizeDisplayName, normalizeHandle, escapeSelector, logoFitClass, renderAuthScreen,
-    sanitizeTabForSession, focusSearchInput, focusInputById, captureChatInputFocusState,
-    restoreChatInputFocusState, updateNotificationBadges, updateFocusRotation, ensureAuthLocalPersistence
+    normalizeSearchKey,
+    formatRelative,
+    toDateSafe,
+    getOptimizedImageUrl,
+    isPlaceholderUrl,
+    getFirebaseStorageUrl,
+    isDirectImageUrl,
+    formatPrice,
+    escapeHtml,
+    getMenuItemObjectPosition,
+    icon,
+    buildUrl,
+    getGeo,
+    normalizeRestaurantType,
+    normalizeSearchQuery,
+    scoreSearchMatch,
+    sanitizeDisplayName,
+    normalizeHandle,
+    escapeSelector,
+    logoFitClass,
+    renderAuthScreen,
+    sanitizeTabForSession,
+    focusSearchInput,
+    focusInputById,
+    captureChatInputFocusState,
+    restoreChatInputFocusState,
+    updateNotificationBadges,
+    updateFocusRotation,
+    ensureAuthLocalPersistence
   },
   shopApi: {
-    createEmptyFavoriteMenuItemsState, getShopCartProfileContextCore, getShopCartTotalCore,
-    parsePriceValue, canAddToShopCart, normalizeShopCartState, buildShopVariantKey,
-    clampCropPercent, createEmptyShopCart, saveShopCartToStorage
+    createEmptyFavoriteMenuItemsState,
+    getShopCartProfileContextCore,
+    getShopCartTotalCore,
+    parsePriceValue,
+    canAddToShopCart,
+    normalizeShopCartState,
+    buildShopVariantKey,
+    clampCropPercent,
+    createEmptyShopCart,
+    saveShopCartToStorage
   },
   storyApi: { buildStoriesRowSignature },
   visibilityApi: {
-    normalizeLeadLocations, resolveCoordsFromEntity, normalizeCoordPair, preferStableCoords,
-    isPublicBusinessRecord, isForceHiddenBusinessEntity, isForceHiddenHandle, isForceHiddenEmail
+    normalizeLeadLocations,
+    resolveCoordsFromEntity,
+    normalizeCoordPair,
+    preferStableCoords,
+    isPublicBusinessRecord,
+    isForceHiddenBusinessEntity,
+    isForceHiddenHandle,
+    isForceHiddenEmail
   },
   chatApi: {
-    normalizeChatOpenProfileCore, upsertChatThread, markChatThreadAsRead,
-    buildChatModalStateOnOpenCore, syncChatThreadSummary, syncRemoteChatReadState,
-    startActiveChatMessagesListener, stopActiveChatMessagesListener,
-    buildClosedChatModalStateCore, sendChatMessage, scrollChatMessagesToBottom
+    normalizeChatOpenProfileCore,
+    upsertChatThread,
+    markChatThreadAsRead,
+    buildChatModalStateOnOpenCore,
+    syncChatThreadSummary,
+    syncRemoteChatReadState,
+    startActiveChatMessagesListener,
+    stopActiveChatMessagesListener,
+    buildClosedChatModalStateCore,
+    sendChatMessage,
+    scrollChatMessagesToBottom
   },
   socialApi: {
-    ensurePostMeta, attachPostMetaListeners, loadPostMetaFromFirebase, updatePostModalMeta,
-    stopPostMetaListeners, toggleFollow, togglePostLike, loadPostLikesForModal,
-    addComment, toggleCommentLike, autosizeTextarea, addMenuItemComment, applyCommentAvatarCache
+    ensurePostMeta,
+    attachPostMetaListeners,
+    loadPostMetaFromFirebase,
+    updatePostModalMeta,
+    stopPostMetaListeners,
+    toggleFollow,
+    togglePostLike,
+    loadPostLikesForModal,
+    addComment,
+    toggleCommentLike,
+    autosizeTextarea,
+    addMenuItemComment,
+    applyCommentAvatarCache
   },
   menuApi: {
-    getFocusItemCrop, createLeadDraftState, resetLeadDraft, getMenuItemCrop,
-    createEmptyMenuDetailState, attachMenuItemMetaListeners, loadMenuItemMetaFromFirebase,
-    updateMenuDetailMeta, stopMenuItemMetaListeners, saveMenuItemFromModal,
-    syncMenuModalCropPreview, getMenuDetailCatalogProfile, toggleMenuItemLike,
-    saveFocusItemFromModal, syncFocusModalCropPreview
+    getFocusItemCrop,
+    createLeadDraftState,
+    resetLeadDraft,
+    getMenuItemCrop,
+    createEmptyMenuDetailState,
+    attachMenuItemMetaListeners,
+    loadMenuItemMetaFromFirebase,
+    updateMenuDetailMeta,
+    stopMenuItemMetaListeners,
+    saveMenuItemFromModal,
+    syncMenuModalCropPreview,
+    getMenuDetailCatalogProfile,
+    toggleMenuItemLike,
+    saveFocusItemFromModal,
+    syncFocusModalCropPreview
   },
   overlayApi: {
-    ensureOverlayRootCore, ensureModalEscapeHandlerCore, syncModalOpenUiStateCore,
-    renderOverlaysCore, renderProfileModal, renderChatModal, renderPostModal, renderLikesModal,
-    renderMenuItemModal, renderMenuDetailModal, renderFocusModal, renderLeadModal,
-    renderCustomerModal, bindOverlayEventsCore, bindProfileOverlayEventsCore,
-    bindChatOverlayEventsCore, bindPostOverlayEventsCore, bindLikesOverlayEventsCore,
-    bindMenuOverlayEventsCore, bindMenuDetailOverlayEventsCore, bindFocusOverlayEventsCore,
-    bindLeadOverlayEventsCore, bindCustomerOverlayEventsCore, bindImageFallbacks
+    ensureOverlayRootCore,
+    ensureModalEscapeHandlerCore,
+    syncModalOpenUiStateCore,
+    renderOverlaysCore,
+    renderProfileModal,
+    renderChatModal,
+    renderPostModal,
+    renderLikesModal,
+    renderMenuItemModal,
+    renderMenuDetailModal,
+    renderFocusModal,
+    renderLeadModal,
+    renderCustomerModal,
+    bindOverlayEventsCore,
+    bindProfileOverlayEventsCore,
+    bindChatOverlayEventsCore,
+    bindPostOverlayEventsCore,
+    bindLikesOverlayEventsCore,
+    bindMenuOverlayEventsCore,
+    bindMenuDetailOverlayEventsCore,
+    bindFocusOverlayEventsCore,
+    bindLeadOverlayEventsCore,
+    bindCustomerOverlayEventsCore,
+    bindImageFallbacks
   },
   leadApi: {
-    saveLeadFromModal, convertLeadToCustomer, addLeadModalLocationRow, removeLeadModalLocationRow,
-    syncLeadModalDraftFromForm, openLocationPicker, createLeadLocation, parseCoordsFromAddressInput,
-    getLeadPlusCodeReference, hasLeadLocationCoords, getPrimaryLeadLocation,
-    refineLeadLocationAddressIndex, saveCustomerFromModal, hydrateLeadGeoFieldsFromCoords
+    saveLeadFromModal,
+    convertLeadToCustomer,
+    addLeadModalLocationRow,
+    removeLeadModalLocationRow,
+    syncLeadModalDraftFromForm,
+    openLocationPicker,
+    createLeadLocation,
+    parseCoordsFromAddressInput,
+    getLeadPlusCodeReference,
+    hasLeadLocationCoords,
+    getPrimaryLeadLocation,
+    refineLeadLocationAddressIndex,
+    saveCustomerFromModal,
+    hydrateLeadGeoFieldsFromCoords
   },
   shellApi: {
-    setState, renderMain, signInWithEmailAndPassword, auth, ensureUserProfile,
-    createUserWithEmailAndPassword, updateProfile, normalizeLeadScopeKey, loadLeads,
-    normalizeCustomerScopeKey, loadCustomers, loadCeoStaff, bindAppEventsMainCore,
-    bindAppShellEventsCore, signOut, clearAuthBootstrapSnapshot, safeStorage,
-    profileKey, avatarKey, notificationsKey, pushSeenKey, pushTokenMetaKey,
-    followingKey, chatIndexKey, STORAGE_KEYS, resetUserScopedState,
-    bindAppMenuFocusEventsCore, saveMenuLayoutToStorage, deleteMenuItemById,
-    submitShopCheckout, saveTableQrConfig, menuCache, menuCacheKey,
-    focusCache, focusCacheKey, saveMenuStatusBadgeVisible, saveFocusEnabled,
-    deleteFocusItemById, setFocusIndex, toggleProfilePostMenu, toggleProfilePostWidth,
-    deleteProfilePost, setProfileMenuOpen, bindNotificationsDelegation,
-    bindAppSettingsProfileEventsCore, saveAccountSettings, clearVerifiedMapLocation,
+    setState,
+    renderMain,
+    signInWithEmailAndPassword,
+    auth,
+    ensureUserProfile,
+    createUserWithEmailAndPassword,
+    updateProfile,
+    normalizeLeadScopeKey,
+    loadLeads,
+    normalizeCustomerScopeKey,
+    loadCustomers,
+    loadCeoStaff,
+    bindAppEventsMainCore,
+    bindAppShellEventsCore,
+    signOut,
+    clearAuthBootstrapSnapshot,
+    safeStorage,
+    profileKey,
+    avatarKey,
+    notificationsKey,
+    pushSeenKey,
+    pushTokenMetaKey,
+    followingKey,
+    chatIndexKey,
+    STORAGE_KEYS,
+    resetUserScopedState,
+    bindAppMenuFocusEventsCore,
+    saveMenuLayoutToStorage,
+    deleteMenuItemById,
+    submitShopCheckout,
+    saveTableQrConfig,
+    menuCache,
+    menuCacheKey,
+    focusCache,
+    focusCacheKey,
+    saveMenuStatusBadgeVisible,
+    saveFocusEnabled,
+    deleteFocusItemById,
+    setFocusIndex,
+    toggleProfilePostMenu,
+    toggleProfilePostWidth,
+    deleteProfilePost,
+    setProfileMenuOpen,
+    bindNotificationsDelegation,
+    bindAppSettingsProfileEventsCore,
+    saveAccountSettings,
+    clearVerifiedMapLocation,
     syncNotificationsPushRuntime: async (...args) => await getNotificationsRuntimeController().syncNotificationsPushRuntime(...args),
     saveSettings,
     disablePushDeviceRegistration: async (...args) => await getPushRuntimeController().disablePushDeviceRegistration(...args),
     getPushActivationIssueMessage: () => getPushRuntimeController().getPushActivationIssueMessage(),
-    bindAppChatUploadEventsCore, deleteChatThreadById, setChatThreadArchivedById,
-    toggleChatMessageSaved, toggleChatMessageLiked, removePendingChatAttachment,
-    addChatAttachments, handleUploadPost, bindCrmStaffEventsCore, openLeadCreator,
-    openLeadSettingsView, closeLeadSubview, saveLeadSettings, isLeadInlineCreateView,
-    bindLeadInlineCreateEventsCore, deleteLeadFromModal, syncLeadDerivedFields,
-    closeStaffEditor, openStaffEditor, syncStaffDerivedEmailField,
-    normalizeCeoCountry, syncStaffFormFromDom, saveCeoStaffFromView, deleteCeoStaffFromView
+    bindAppChatUploadEventsCore,
+    deleteChatThreadById,
+    setChatThreadArchivedById,
+    toggleChatMessageSaved,
+    toggleChatMessageLiked,
+    removePendingChatAttachment,
+    addChatAttachments,
+    handleUploadPost,
+    bindCrmStaffEventsCore,
+    openLeadCreator,
+    openLeadSettingsView,
+    closeLeadSubview,
+    saveLeadSettings,
+    isLeadInlineCreateView,
+    bindLeadInlineCreateEventsCore,
+    deleteLeadFromModal,
+    syncLeadDerivedFields,
+    closeStaffEditor,
+    openStaffEditor,
+    syncStaffDerivedEmailField,
+    normalizeCeoCountry,
+    syncStaffFormFromDom,
+    saveCeoStaffFromView,
+    deleteCeoStaffFromView
   }
 });
 
 const storySystemController = bridgeShellRuntimeCluster.storySystemController;
 const openProfileFromUser = bridgeShellRuntimeCluster.openProfileFromUser;
+const routeOpenApi = bridgeShellRuntimeCluster.routeOpenApi;
+const createShellRuntimeController = bridgeShellRuntimeCluster.createShellRuntimeController;
 const {
   openChatWithProfile,
   openPostModal,
@@ -3595,245 +3689,7 @@ chatRuntimeController = createChatRuntimeCluster({
   }
 });
 
-crmRuntimeController = createCrmRuntimeCluster({
-  stateDeps: { state, dataLoaded },
-  constants: {
-    LEAD_SOCIAL_DEFAULT_PASSWORD,
-    LEAD_SETTINGS_DEFAULT_COUNTRY,
-    CEO_COUNTRIES,
-    LEAD_TYPE_ORDER,
-    LEAD_TYPE_LABELS,
-    LEAD_STATUS_ORDER,
-    LEAD_STATUS_LABELS,
-    PLACEHOLDER_IMAGE,
-    CRM_LAZY_RENDERERS_MODULE_URL,
-    BUILD_INFO_ENDPOINT_URL,
-    enqueueMicrotaskCore,
-    PRISHTINA_COORDS,
-    CRM_PAGE_SIZE,
-    CACHE_KEYS,
-    HIDDEN_LEGACY_CEO_EMAILS,
-    MILAN_OWNED_LEAD_EMAILS,
-    MILAN_OWNED_LEAD_BUSINESSES,
-    ALBERT_OWNED_LEAD_EMAILS,
-    ALBERT_OWNED_LEAD_BUSINESSES
-  },
-  renderApi: {
-    icon,
-    escapeHtml,
-    render,
-    renderOverlays,
-    renderCrmLazyLoadingView,
-    renderCeoGuardCore,
-    renderCeoScopeTabs,
-    renderOwnershipPills,
-    getOptimizedImageUrl,
-    isPlaceholderUrl,
-    ensureLeafletLoaded,
-    alert: typeof alert === "function" ? alert : () => {},
-    confirm: typeof confirm === "function" ? confirm : () => false
-  },
-  leadApi: {
-    getLeadSettingsConfig,
-    resolveCustomerType,
-    normalizeSearchKey,
-    normalizeLeadStatusKey,
-    normalizeLeadScopeKey,
-    normalizeCustomerScopeKey,
-    createLeadScopeMap,
-    createCustomerScopeMap,
-    leadStatusLabel,
-    leadTypeLabel,
-    customerStatusLabel,
-    isCustomerRestaurant,
-    toDateSafe,
-    getLeadCountryCenter,
-    getLeadMonthlyPrice,
-    buildLeadAccountEmail,
-    normalizeLeadCountry,
-    buildLeadContactName,
-    normalizeHandle,
-    inferLeadCountryFromText,
-    getLeadPriceForCycle,
-    normalizeLeadSettings,
-    normalizeRestaurantType,
-    uniqueStringList,
-    findRestaurantByUid,
-    findRestaurantByEmail,
-    normalizeEmailValue
-  },
-  geoApi: {
-    normalizeLeadLocations,
-    hasLeadLocationCoords,
-    extractPlusCodeFromText,
-    isLikelyShortPlusCode,
-    parseCoordsFromAddressInputAsync,
-    createLeadLocation,
-    getPrimaryLeadLocation,
-    resolveCoordsFromEntity,
-    preferStableCoords,
-    normalizeCoordPair,
-    parseCoordsFromAddressInput
-  },
-  firebaseApi: {
-    setDoc,
-    doc,
-    db,
-    serverTimestamp,
-    collection,
-    query,
-    where,
-    limit,
-    getDocs,
-    getDoc,
-    deleteDoc
-  },
-  authApi: {
-    getApps,
-    initializeApp,
-    app,
-    getAuth,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut
-  },
-  cacheApi: {
-    saveUserProfileToStorage,
-    mergeRestaurants,
-    rebuildBusinessLocations,
-    readLeadScopeCache,
-    writeLeadScopeCache,
-    readCustomerScopeCache,
-    writeCustomerScopeCache,
-    menuCache,
-    menuCacheKey,
-    focusCache,
-    focusCacheKey,
-    businessPostsKey,
-    writeCache,
-    saveFeedPosts,
-    readCache,
-    buildStoriesSignature,
-    setFeedStoriesSignature: (next) => setFeedStoriesSignature(next)
-  },
-  ceoApi: {
-    isCeoUser,
-    sanitizeCeoCrmCounts,
-    hasStoredCeoCrmCounts,
-    resolveKnownScopeCountLabel,
-    getCurrentCeoMeta,
-    normalizeCeoCountry,
-    getCeoGpsOverride,
-    normalizeCeoPath,
-    hasGlobalCeoAccess,
-    canCurrentCeoSeeRow,
-    isCurrentCeoOwnRow,
-    ensureCeoCrmCountsLoaded,
-    getCeoCrmCountsPromise: () => ceoCrmCountRuntimeController?.getCeoCrmCountsPromise() || null,
-    normalizeCeoStaffRecord,
-    canViewCeoRecord,
-    hydrateStaffRecordsFromUserProfiles,
-    buildCeoName,
-    createEmptyCeoCrmCounts,
-    buildLeadCrmContribution,
-    buildCustomerCrmContribution,
-    resolveStoredCeoCreatorMeta,
-    accumulateCeoCrmDelta,
-    applyCeoCrmCountDeltas,
-    normalizeRoleList,
-    isAlbertCeoUser,
-    buildCeoCreatorMeta
-  },
-  modalApi: {
-    saveCeoStaffFromViewCore,
-    uploadCompressedImage,
-    saveLeadFromModalCore,
-    deleteLeadFromModalCore,
-    saveCustomerFromModalCore,
-    convertLeadToCustomerCore,
-    closeLeadModal,
-    closeCustomerModal
-  }
-});
-
-businessAccountsRuntimeController = createBusinessAccountsRuntimeController({
-  state,
-  icon,
-  escapeHtml,
-  db,
-  auth,
-  collection,
-  getDocs,
-  getDoc,
-  doc,
-  setDoc,
-  serverTimestamp,
-  createAuthUser,
-  signOut,
-  saveUserProfileToStorage,
-  render,
-  getRestaurantMetaById,
-  isBusinessOwnerProfile,
-  isPlaceholderUrl,
-  getOptimizedImageUrl,
-  PLACEHOLDER_IMAGE
-});
-
-profileMenuFocusRenderController = createProfileMenuFocusRenderController({
-  state,
-  resolvePostCountsFn: socialEngagementSupportRuntimeController.resolvePostCounts,
-  escapeHtmlFn: escapeHtml,
-  getOptimizedImageUrlFn: getOptimizedImageUrl,
-  iconFn: icon,
-  isLocalBusinessProfileFn: isLocalBusinessProfile,
-  isCeoUserFn: isCeoUser,
-  normalizeHandleFn: normalizeHandle,
-  logoFitClassFn: logoFitClass,
-  formatCountFn: formatCount,
-  renderProfileShopCartViewFn: renderProfileShopCartView,
-  renderProfileShopFavoritesViewFn: renderProfileShopFavoritesView,
-  ensureMenuDataForProfileFn: ensureMenuDataForProfile,
-  ensureFocusDataForProfileFn: ensureFocusDataForProfile,
-  ensureTableQrStateForProfileFn: ensureTableQrStateForProfile,
-  isShopCatalogProfileFn: isShopCatalogProfile,
-  getBusinessCatalogLabelFn: getBusinessCatalogLabel,
-  normalizeMenuTypeFn: normalizeMenuType,
-  primeMenuItemCountsFn: primeMenuItemCounts,
-  renderShopProductListFn: renderShopProductList,
-  getMenuLayoutThemeFn: getMenuLayoutTheme,
-  menuLayoutColors: MENU_LAYOUT_COLORS,
-  resolveMenuItemHeroFn: resolveMenuItemHero,
-  isPlaceholderUrlFn: isPlaceholderUrl,
-  placeholderImage: PLACEHOLDER_IMAGE,
-  getFirebaseStorageUrlFn: getFirebaseStorageUrl,
-  isDirectImageUrlFn: isDirectImageUrl,
-  formatPriceFn: formatPrice,
-  getMenuItemImagesFn: getMenuItemImages,
-  getMenuItemObjectPositionFn: getMenuItemObjectPosition,
-  getMenuItemSocialIdFn: socialEngagementSupportRuntimeController.getMenuItemSocialId,
-  menuItemMetaKeyFn: socialEngagementSupportRuntimeController.menuItemMetaKey,
-  ensureMenuItemMetaFn: socialEngagementSupportRuntimeController.ensureMenuItemMeta,
-  resolveMenuItemCountsFn: socialEngagementSupportRuntimeController.resolveMenuItemCounts,
-  getFocusStateForRestaurantFn: getFocusStateForRestaurant,
-  getTableQrStateForRestaurantFn: getTableQrStateForRestaurant,
-  getFocusItemObjectPositionFn: getFocusItemObjectPosition,
-  getFocusCardClassFn: getFocusCardClass,
-  getFocusIndexFn: getFocusIndex,
-  isRestaurantCafeProfileFn: isRestaurantCafeProfile,
-  getBusinessProfileTypeFn: getBusinessProfileType,
-  getRestaurantMetaByIdFn: getRestaurantMetaById,
-  buildUrlFn: buildUrl,
-  normalizeSearchKeyFn: normalizeSearchKey,
-  normalizeFollowHandleFn: normalizeFollowHandle
-});
-
-const {
-  getFollowRuntimeController,
-  getPushRuntimeController,
-  getNotificationsRuntimeController,
-  getNotificationSupportRuntimeController,
-  getSessionTabLifecycleRuntimeController
-} = createSessionRuntimeCluster({
+const sessionRuntimeClusterGetters = createSessionRuntimeCluster({
   config: {
     app,
     fastMode: FAST_MODE,
@@ -3936,8 +3792,13 @@ const {
     }
   }
 });
+getFollowRuntimeController = sessionRuntimeClusterGetters.getFollowRuntimeController;
+getPushRuntimeController = sessionRuntimeClusterGetters.getPushRuntimeController;
+getNotificationsRuntimeController = sessionRuntimeClusterGetters.getNotificationsRuntimeController;
+getNotificationSupportRuntimeController = sessionRuntimeClusterGetters.getNotificationSupportRuntimeController;
+getSessionTabLifecycleRuntimeController = sessionRuntimeClusterGetters.getSessionTabLifecycleRuntimeController;
 
-shellRuntimeController = bridgeShellRuntimeCluster.createShellRuntimeController();
+shellRuntimeController = createShellRuntimeController();
 
 async function pushUserNotification(targetUid, payload) {
   return await getNotificationSupportRuntimeController().pushUserNotification(...arguments);
@@ -3999,17 +3860,6 @@ async function toggleFollow(handle, target = {}) {
   return chatRuntimeController.toggleFollow(handle, target);
 }
 
-function renderChatModal() {
-  return renderChatModalCore({
-    state,
-    getOptimizedImageUrl,
-    escapeHtml,
-    icon,
-    formatRelative,
-    toDateSafe
-  });
-}
-
 function isFollowingProfile(profile = {}) {
   return getFollowRuntimeController().isFollowingProfile(...arguments);
 }
@@ -4021,322 +3871,11 @@ function ensureAuthLocalPersistence() {
   return authPersistenceReady;
 }
 
-function renderProfileModal() {
-  return renderProfileModalCore({
-    state,
-    isFollowingProfile,
-    getOptimizedImageUrl,
-    formatCount,
-    escapeHtml,
-    icon
-  });
-}
-
-function renderCommentItem(postId, comment, parentId = "") {
-  return getSocialEngagementSupportRuntimeController().renderCommentItem(...arguments);
-}
-
-function renderPostComments(comments) {
-  return getSocialEngagementSupportRuntimeController().renderPostComments(...arguments);
-}
-
-function renderMenuCommentItem(comment) {
-  return getSocialEngagementSupportRuntimeController().renderMenuCommentItem(...arguments);
-}
-
-function renderMenuDetailComments(comments) {
-  return getSocialEngagementSupportRuntimeController().renderMenuDetailComments(...arguments);
-}
-
-function renderPostModal() {
-  return renderPostModalCore({
-    state,
-    ensurePostMeta,
-    resolvePostCounts,
-    getOptimizedImageUrl,
-    ensureCommentShape,
-    currentUserBadge,
-    renderPostComments,
-    formatDateLabel,
-    escapeHtml,
-    icon
-  });
-}
-
-function renderLikesModal() {
-  return renderLikesModalCore({
-    state,
-    ensurePostMeta,
-    findPostById,
-    resolveLikeAvatar,
-    escapeHtml,
-    icon
-  });
-}
-
-function renderLeadModal() {
-  return renderLeadModalCore({
-    state,
-    getOptimizedImageUrl,
-    PLACEHOLDER_IMAGE,
-    resolveCustomerType,
-    normalizeLeadStatusKey,
-    normalizeLeadLocations,
-    hasLeadLocationCoords,
-    LEAD_TYPE_ORDER,
-    LEAD_TYPE_LABELS,
-    LEAD_STATUS_ORDER,
-    LEAD_STATUS_LABELS,
-    escapeHtml,
-    icon
-  });
-}
-
-function renderCustomerModal() {
-  return renderCustomerModalCore({
-    state,
-    getOptimizedImageUrl,
-    PLACEHOLDER_IMAGE,
-    resolveCustomerType,
-    normalizeLeadStatusKey,
-    LEAD_TYPE_ORDER,
-    LEAD_TYPE_LABELS,
-    LEAD_STATUS_ORDER,
-    LEAD_STATUS_LABELS,
-    escapeHtml,
-    icon
-  });
-}
-
-function renderMenuItemModal() {
-  return renderMenuItemModalCore({
-    state,
-    isShopCatalogProfile,
-    getBusinessProfileType,
-    getOptimizedImageUrl,
-    PLACEHOLDER_IMAGE,
-    isPlaceholderUrl,
-    normalizeMenuType,
-    getMenuModalCrop,
-    escapeHtml,
-    icon
-  });
-}
-
-function renderMenuDetailModal() {
-  return renderMenuDetailModalCore({
-    state,
-    getMenuItemImages,
-    getOptimizedImageUrl,
-    isPlaceholderUrl,
-    PLACEHOLDER_IMAGE,
-    getFirebaseStorageUrl,
-    isDirectImageUrl,
-    formatPrice,
-    getMenuDetailRestaurantId,
-    getMenuDetailCatalogProfile,
-    isShopCatalogProfile,
-    normalizeMenuType,
-    canAddToShopCart,
-    getMenuItemSocialId,
-    menuItemMetaKey,
-    ensureMenuItemMeta,
-    resolveMenuItemCounts,
-    currentUserBadge,
-    ensureCommentShape,
-    getCartCountForRestaurant,
-    renderMenuDetailComments,
-    formatCount,
-    getMenuItemObjectPosition,
-    escapeHtml,
-    icon
-  });
-}
-
-function renderFocusModal() {
-  return renderFocusModalCore({
-    state,
-    getOptimizedImageUrl,
-    isPlaceholderUrl,
-    PLACEHOLDER_IMAGE,
-    getFocusModalCrop,
-    escapeHtml,
-    icon
-  });
-}
-
-
-function updatePostModalMeta() {
-  return getSocialEngagementSupportRuntimeController().updatePostModalMeta(...arguments);
-}
-
-function updatePostModalCountsOnly() {
-  return getSocialEngagementSupportRuntimeController().updatePostModalCountsOnly(...arguments);
-}
-
-function updatePostModalCommentsOnly() {
-  return getSocialEngagementSupportRuntimeController().updatePostModalCommentsOnly(...arguments);
-}
-
-function updateMenuDetailMeta() {
-  return getSocialEngagementSupportRuntimeController().updateMenuDetailMeta(...arguments);
-}
-
-function updateMenuDetailCountsOnly() {
-  return getSocialEngagementSupportRuntimeController().updateMenuDetailCountsOnly(...arguments);
-}
-
-function updateMenuDetailCommentsOnly() {
-  return getSocialEngagementSupportRuntimeController().updateMenuDetailCommentsOnly(...arguments);
-}
-
-function updateCommentLikeButton(postId, commentId, replyId, likeCount) {
-  return getSocialEngagementSupportRuntimeController().updateCommentLikeButton(...arguments);
-}
-
-function renderSettingsView() {
-  return renderSettingsViewCore({
-    state,
-    icon,
-    escapeHtml,
-    logoFitClass,
-    isLocalBusinessProfile,
-    isCeoUser,
-    resolveUserAvatar,
-    PLACEHOLDER_IMAGE
-  });
-}
-
-function renderNotificationsView() {
-  return renderNotificationsViewCore({
-    state,
-    renderNotificationsListFn: renderNotificationsList
-  });
-}
-
-function renderNotificationsList(items) {
-  return renderNotificationsListCore({
-    items,
-    escapeHtml,
-    resolveNotificationAvatar,
-    icon
-  });
-}
-
-function renderCrmLazyLoadingView(label = "CRM laden...") {
-  return renderCrmLazyLoadingViewCore({
-    label,
-    icon,
-    escapeHtml
-  });
-}
-
-function queueCrmLazyRenderersPrefetch() {
-  return crmRuntimeController.queueCrmLazyRenderersPrefetch();
-}
-
-function renderLeadsView() {
-  return crmRuntimeController.renderLeadsView();
-}
-
-function isLeadInlineCreateView() {
-  return crmRuntimeController.isLeadInlineCreateView();
-}
-
-function renderLeadEditorUi() {
-  return crmRuntimeController.renderLeadEditorUi();
-}
-
-async function refineLeadLocationAddressIndex(index, value, { hydratePrimary = false } = {}) {
-  return crmRuntimeController.refineLeadLocationAddressIndex(index, value, { hydratePrimary });
-}
-
-function renderLeadSettingsView() {
-  return crmRuntimeController.renderLeadSettingsView();
-}
-
-function renderLeadCreationView() {
-  return crmRuntimeController.renderLeadCreationView();
-}
-
-function resetLeadDraft() {
-  return crmRuntimeController.resetLeadDraft();
-}
-
-function createLeadDraftState(mode = "create", lead = null) {
-  return crmRuntimeController.createLeadDraftState(mode, lead);
-}
-
-function openLeadCreator() {
-  return crmRuntimeController.openLeadCreator();
-}
-
-function openLeadSettingsView() {
-  return crmRuntimeController.openLeadSettingsView();
-}
-
-function closeLeadSubview() {
-  return crmRuntimeController.closeLeadSubview();
-}
-
-async function saveLeadSettings() {
-  return crmRuntimeController.saveLeadSettings();
-}
-
-function getLeadPlusCodeReference(value = "") {
-  return crmRuntimeController.getLeadPlusCodeReference(value);
-}
-
-async function hydrateLeadGeoFieldsFromCoords(coords, { sourceInputId = "" } = {}) {
-  return crmRuntimeController.hydrateLeadGeoFieldsFromCoords(coords, { sourceInputId });
-}
-
-function syncLeadDerivedFields() {
-  return crmRuntimeController.syncLeadDerivedFields();
-}
-
-function renderCustomersView() {
-  return crmRuntimeController.renderCustomersView();
-}
-
-function renderStaffEditorView() {
-  return crmRuntimeController.renderStaffEditorView();
-}
-
-function renderStaffView() {
-  return crmRuntimeController.renderStaffView();
-}
-
-function renderBusinessAccountsView() {
-  return businessAccountsRuntimeController.renderBusinessAccountsView();
-}
-
-function renderOrdersView() {
-  return renderOrdersViewCore({
-    state,
-    isLocalBusinessProfileFn: isLocalBusinessProfile,
-    canAccessRestaurantOrdersFn: canAccessRestaurantOrders,
-    escapeHtmlFn: escapeHtml,
-    getOptimizedImageUrlFn: getOptimizedImageUrl,
-    formatPriceFn: formatPrice,
-    parsePriceValueFn: parsePriceValue,
-    formatRelativeFn: formatRelative,
-    toDateSafeFn: toDateSafe
-  });
-}
-
 function getSocialEngagementSupportRuntimeController() {
   if (!socialEngagementSupportRuntimeController) {
     throw new Error("socialEngagementSupportRuntimeController not initialized");
   }
   return socialEngagementSupportRuntimeController;
-}
-
-function getShellDomRuntimeController() {
-  if (!shellDomRuntimeController) {
-    throw new Error("shellDomRuntimeController not initialized");
-  }
-  return shellDomRuntimeController;
 }
 
 function getMediaUploadRuntimeController() {
@@ -4346,512 +3885,79 @@ function getMediaUploadRuntimeController() {
   return mediaUploadRuntimeController;
 }
 
-function renderUploadView() {
-  return getMediaUploadRuntimeController().renderUploadView();
-}
-
-function renderChatMessagesPanel({
-  messages,
-  blockedByOwner,
-  mutedActive,
-  muteUntilLabel,
-  partnerName
-} = {}) {
-  return chatRuntimeController.renderChatMessagesPanel({
-    messages,
-    blockedByOwner,
-    mutedActive,
-    muteUntilLabel,
-    partnerName
-  });
-}
-
-function renderChatPendingAttachments(pendingAttachments) {
-  return chatRuntimeController.renderChatPendingAttachments(pendingAttachments);
-}
-
-function renderChatListPanel({
-  scope = "inbox",
-  inboxThreads = [],
-  archivedThreads = [],
-  visibleThreads = [],
-  chatThreadMenuId = state.chatThreadMenuId
-} = {}) {
-  return chatRuntimeController.renderChatListPanel({
-    scope,
-    inboxThreads,
-    archivedThreads,
-    visibleThreads,
-    chatThreadMenuId
-  });
-}
-
-function renderChatView() {
-  return chatRuntimeController.renderChatView();
-}
-
-function renderHeaderActionButton(avatarUrl, avatarFit) {
-  return shellRuntimeController.renderHeaderActionButton(avatarUrl, avatarFit);
-}
-
-function renderHeader() {
-  return shellRuntimeController.renderHeader();
-}
-
-function renderBusinessTopTabs() {
-  return shellRuntimeController.renderBusinessTopTabs();
-}
-
-function renderMain() {
-  return renderMainCore({
-    state,
-    renderFeedViewFn: renderFeedView,
-    renderChatViewFn: renderChatView,
-    renderSearchViewFn: renderSearchView,
-    renderMapViewFn: renderMapView,
-    renderPublicProfileViewFn: renderPublicProfileView,
-    renderProfileViewFn: renderProfileView,
-    renderMenuAdminViewFn: renderMenuAdminView,
-    renderOrdersViewFn: renderOrdersView,
-    renderLeadsViewFn: renderLeadsView,
-    renderStaffViewFn: renderStaffView,
-    renderCustomersViewFn: renderCustomersView,
-    renderBusinessAccountsViewFn: renderBusinessAccountsView,
-    renderSettingsViewFn: renderSettingsView,
-    renderNotificationsViewFn: renderNotificationsView,
-    renderUploadViewFn: renderUploadView,
-    renderDrawerFn: renderDrawer,
-    renderHeaderFn: renderHeader,
-    renderBusinessTopTabsFn: renderBusinessTopTabs
-  });
-}
-
-function bindImageFallbacks(root = document) {
-  return shellRuntimeController.bindImageFallbacks(root);
-}
-
-function render() {
-  const result = shellRuntimeController.render();
-  if (businessAccountsRuntimeController) {
-    businessAccountsRuntimeController.bindBusinessAccountsEvents(typeof document === "undefined" ? null : document);
-  }
-  return result;
-}
-
-function bindAuthEvents() {
-  return shellRuntimeController.bindAuthEvents();
-}
-
-function bindCrmAutoLoadObserver() {
-  return shellRuntimeController.bindCrmAutoLoadObserver();
-}
-
-function bindAppEvents() {
-  return shellRuntimeController.bindAppEvents();
-}
-
-function bindSearchEvents() {
-  return shellRuntimeController.bindSearchEvents();
-}
-
 async function uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType }) {
   return getMediaUploadRuntimeController().uploadCompressedImage(file, ownerId, { maxSize, quality, mimeType });
 }
 
-function ensureLocationPickerModal() {
-  return crmRuntimeController.ensureLocationPickerModal();
-}
-
-function bindLocationPickerEvents() {
-  return crmRuntimeController.bindLocationPickerEvents();
-}
-
-async function openLocationPicker({ addressInputId = "settingsAddress", coordsDisplayId = "coordsDisplay", context = "settings" } = {}) {
-  return crmRuntimeController.openLocationPicker({ addressInputId, coordsDisplayId, context });
-}
-
-function closeLocationPicker() {
-  return crmRuntimeController.closeLocationPicker();
-}
-
-async function confirmLocation() {
-  return crmRuntimeController.confirmLocation();
-}
-
-function getVerifiedMapLocation() {
-  return crmRuntimeController.getVerifiedMapLocation();
-}
-
-function clearVerifiedMapLocation() {
-  return crmRuntimeController.clearVerifiedMapLocation();
-}
-
-async function persistPrivateAccountSetting(value) {
-  if (!state.user?.uid) return;
-  try {
-    await setDoc(doc(db, "users", state.user.uid), {
-      privateAccount: !!value,
-      updatedAt: serverTimestamp()
-    }, { merge: true });
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-async function handleUploadPost() {
-  return getMediaUploadRuntimeController().handleUploadPost();
-}
-
-async function loadAuthProfile(user, { force = false } = {}) {
-  return loadAuthProfileCore({
-    user,
-    force,
-    state,
-    normalizeRoleList,
-    isRestaurantMarkedDeleted,
-    resolveRestaurantForAuthUser,
-    resolveLeadByUid,
-    findRestaurantByLeadId,
-    ensureRestaurantForLead,
-    resolveLeadByEmail,
-    getDoc,
-    doc,
-    db,
-    serverTimestamp,
-    setDoc,
-    loadBusinessProfile,
-    loadBusinessStaffProfile,
-    loadUserProfile
-  });
-}
-
-async function loadRestaurants({ force = false } = {}) {
-  return sessionDataRuntimeController.loadRestaurants(...arguments);
-}
-
-function canShowFeedRestaurantId(restaurantId) {
-  const rid = String(restaurantId || "").trim();
-  if (!rid) return true;
-  const ownRestaurantId = String(state.userProfile?.restaurantId || "").trim();
-  if (ownRestaurantId && rid === ownRestaurantId) return true;
-  if (isForceHiddenUid(rid) || isForceHiddenHandle(rid)) return false;
-  const restaurant = state.restaurants.find((row) => String(row?.id || "") === rid) || null;
-  if (!restaurant) return true;
-  return isPublicBusinessRecord(restaurant);
-}
-
-function normalizeFeedPost(row) {
-  const restaurantId = String(row.rid || row.restaurantId || "").trim();
-  if (isForceHiddenBusinessEntity({ id: restaurantId, restaurantId, ...row })) return null;
-  if (!canShowFeedRestaurantId(restaurantId)) return null;
-  const restaurant = state.restaurants.find((r) => r.id === restaurantId) || {};
-  const thumb = row.thumbUrl || row.mediaUrl || row.media?.[0]?.thumbUrl || row.media?.[0]?.url || "";
-  const rowLogo = row.logoUrl || row.logo || row.logoURL || "";
-  const caption = row.caption || row.captionShort || "";
-  return {
-    id: row.id,
-    restaurantId,
-    business: row.businessName || row.restaurantName || restaurant.name || restaurant.restaurantName || "Business",
-    logo: restaurant.logoUrl || restaurant.logo || rowLogo || "",
-    location: row.city || restaurant.city || "Prishtina",
-    content: caption,
-    image: thumb || "",
-    likes: row.likesCount || "0",
-    comments: row.commentsCount || "0",
-    time: formatRelative(toDateSafe(row.createdAt)),
-    createdAt: row.createdAt,
-    category: row.postType || "food",
-    isLive: row.isLive || false,
-    ownerType: "restaurant",
-    ownerId: restaurantId
-  };
-}
-
-function buildStoriesRowSignature(items) {
-  return buildStoriesSignature(items || []);
-}
-
-async function loadFeedPosts({ force = false } = {}) {
-  return sessionDataRuntimeController.loadFeedPosts(...arguments);
-}
-
-async function loadUserPostsForUser(uid) {
-  if (!uid) return [];
-  try {
-    const ref = collection(db, "users", uid, "posts");
-    let snap = null;
-    try {
-      snap = await getDocs(query(ref, orderBy("createdAt", "desc"), limit(FAST_LIMITS.profilePosts || FAST_LIMITS.userPosts)));
-    } catch (err) {
-      snap = await getDocs(ref);
+startAppStartupRuntimeCluster({
+  loadPersistedFn: loadPersisted,
+  startupDeps: {
+    publicBootstrapDeps: {
+      state,
+      windowObj: typeof window === "undefined" ? null : window,
+      fetchFn: typeof fetch === "function" ? fetch : null,
+      abortControllerCtor: typeof AbortController === "function" ? AbortController : null,
+      defaultPublicBootstrapEndpoint: DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT,
+      publicBootstrapEvent: PUBLIC_BOOTSTRAP_EVENT,
+      normalizeRestaurantType,
+      toDateSafe,
+      formatRelative,
+      mergeRestaurants,
+      writeCache,
+      readCache,
+      cacheKeys: CACHE_KEYS,
+      rebuildBusinessLocations,
+      saveFeedPosts,
+      normalizeStoryItemsForDisplay,
+      buildStoriesSignature,
+      setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
+      queueStoryIdentityHydration,
+      syncFeedPostLogos,
+      updateFeedDom,
+      render,
+      reportCriticalRuntimeFailure,
+      getLastRenderMode: () => lastRenderMode,
+      fastLimits: FAST_LIMITS
+    },
+    startupPrepDeps: {
+      windowObj: typeof window === "undefined" ? null : window
+    },
+    routeOpenDeps: {
+      pendingRouteState,
+      routeOpenApi,
+      renderFallback: render
+    },
+    authStartupDeps: {
+      state,
+      auth,
+      onAuthStateChangedFn: onAuthStateChanged,
+      windowObj: typeof window === "undefined" ? null : window,
+      queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
+      setTimeoutFn: typeof setTimeout === "function" ? setTimeout : null,
+      setAuthInitialized: (next) => { authInitialized = !!next; },
+      setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
+      readAuthBootstrapSnapshot,
+      writeAuthBootstrapSnapshot,
+      clearAuthBootstrapSnapshot,
+      applyAuthBootstrapSnapshot,
+      applyPersistedAuthProfileHints,
+      bindPushOpenTargetMessageHandler: routeOpenApi.bindPushOpenTargetMessageHandler,
+      loadUserScopedPersisted,
+      loadGuestScopedPersisted,
+      applyPendingInitialRouteState,
+      resetUserScopedState,
+      render,
+      schedulePerfWarmMark,
+      ensureTabData: (...args) => getSessionTabLifecycleRuntimeController().ensureTabData(...args),
+      sanitizeTabForSession,
+      stopLiveListeners: (...args) => getSessionTabLifecycleRuntimeController().stopLiveListeners(...args),
+      suspendRender,
+      resumeRender,
+      reportCriticalRuntimeFailure,
+      runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user)
     }
-    const rows = [];
-    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-    return projectPostCollectionThroughEntityMap(state, rows
-      .map((row) => ({
-        id: row.id,
-        url: row.url || row.mediaUrl || row.media?.[0]?.url || "",
-        type: row.type || "square",
-        title: "",
-        caption: row.caption || "",
-        createdAt: row.createdAt,
-        likes: row.likesCount ?? row.likes ?? 0,
-        comments: row.commentsCount ?? row.comments ?? 0,
-        isVideo: row.media?.[0]?.type === "video",
-        ownerType: "user",
-        ownerId: uid
-      }))
-      .filter((row) => row.url));
-  } catch (err) {
-    console.error(err);
-    return [];
-  }
-}
-
-async function loadUserPosts({ force = false } = {}) {
-  return sessionDataRuntimeController.loadUserPosts(...arguments);
-}
-
-async function loadBusinessPosts({ force = false } = {}) {
-  return sessionDataRuntimeController.loadBusinessPosts(...arguments);
-}
-
-async function loadFocusForRestaurant(restaurantId, { force = false } = {}) {
-  return sessionDataRuntimeController.loadFocusForRestaurant(...arguments);
-}
-
-async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
-  return sessionDataRuntimeController.loadMenuForRestaurant(...arguments);
-}
-
-function getMenuRestaurantForProfile(profile) {
-  return getMenuRestaurantForProfileCore(profile);
-}
-
-function ensureMenuDataForProfile(profile = state.profileView?.profile || state.userProfile) {
-  ensureMenuDataForProfileCore(profile, {
-    getMenuRestaurantForProfileFn: getMenuRestaurantForProfile,
-    loadMenuForRestaurantFn: loadMenuForRestaurant
-  });
-}
-
-function ensureFocusDataForProfile(profile = state.profileView?.profile || state.userProfile) {
-  ensureFocusDataForProfileCore(profile, {
-    getMenuRestaurantForProfileFn: getMenuRestaurantForProfile,
-    loadFocusForRestaurantFn: loadFocusForRestaurant
-  });
-}
-
-// --- CRM: Leads & Customers (CEO) ---
-async function createAuthUser(email, password) {
-  return crmRuntimeController.createAuthUser(email, password);
-}
-
-async function ensureRestaurantPublicMeta(restaurantId, base) {
-  return crmRuntimeController.ensureRestaurantPublicMeta(restaurantId, base);
-}
-
-function normalizeLeadDoc(docSnap) {
-  return crmRuntimeController.normalizeLeadDoc(docSnap);
-}
-
-function normalizeLeadFromRestaurant(rest) {
-  return crmRuntimeController.normalizeLeadFromRestaurant(rest);
-}
-
-function resolveRestaurantStatusFromLead(leadStatus, currentStatus = "") {
-  return crmRuntimeController.resolveRestaurantStatusFromLead(leadStatus, currentStatus);
-}
-
-async function loadLeads({ scope = state.leads.scope, grow = false } = {}) {
-  return crmRuntimeController.loadLeads({ scope, grow });
-}
-
-async function loadCustomers({ scope = state.customers.scope, grow = false } = {}) {
-  return crmRuntimeController.loadCustomers({ scope, grow });
-}
-
-function isHiddenLegacyCeoEmail(email = "") {
-  return crmRuntimeController.isHiddenLegacyCeoEmail(email);
-}
-
-function applyKnownLeadOwnershipOverride(entity = {}) {
-  return crmRuntimeController.applyKnownLeadOwnershipOverride(entity);
-}
-
-function getStaffFormEmail(form = state.staff.form, { preferStored = false } = {}) {
-  return crmRuntimeController.getStaffFormEmail(form, { preferStored });
-}
-
-function syncStaffDerivedEmailField() {
-  return crmRuntimeController.syncStaffDerivedEmailField();
-}
-
-function openStaffEditor(mode = "create", entry = null) {
-  return crmRuntimeController.openStaffEditor(mode, entry);
-}
-
-function closeStaffEditor(status = "") {
-  return crmRuntimeController.closeStaffEditor(status);
-}
-
-function syncStaffFormFromDom() {
-  return crmRuntimeController.syncStaffFormFromDom();
-}
-
-async function loadCeoStaff({ grow = false } = {}) {
-  return crmRuntimeController.loadCeoStaff({ grow });
-}
-
-async function loadBusinessAccounts({ force = false } = {}) {
-  return businessAccountsRuntimeController.loadBusinessAccounts({ force });
-}
-
-async function saveCeoStaffFromView() {
-  return crmRuntimeController.saveCeoStaffFromView();
-}
-
-async function deleteCeoStaffFromView() {
-  return crmRuntimeController.deleteCeoStaffFromView();
-}
-
-function syncLeadModalDraftFromForm() {
-  return crmRuntimeController.syncLeadModalDraftFromForm();
-}
-
-function addLeadModalLocationRow() {
-  return crmRuntimeController.addLeadModalLocationRow();
-}
-
-function removeLeadModalLocationRow(index) {
-  return crmRuntimeController.removeLeadModalLocationRow(index);
-}
-
-async function saveLeadFromModal() {
-  return crmRuntimeController.saveLeadFromModal();
-}
-
-async function deleteLeadFromModal() {
-  return crmRuntimeController.deleteLeadFromModal();
-}
-
-async function saveCustomerFromModal() {
-  return crmRuntimeController.saveCustomerFromModal();
-}
-
-async function convertLeadToCustomer(leadId) {
-  return crmRuntimeController.convertLeadToCustomer(leadId);
-}
-
-async function saveMenuItemFromModal() {
-  return saveMenuItemFromModalCore({
-    state,
-    documentObj: typeof document !== "undefined" ? document : null,
-    isShopCatalogProfile,
-    getBusinessProfileType,
-    renderOverlays,
-    normalizeOptionList,
-    getMenuModalCrop,
-    uploadCompressedImage,
-    doc,
-    collection,
-    db,
-    normalizeMenuType,
-    serverTimestamp,
-    setDoc,
-    normalizeMenuItemDoc,
-    syncMenuCaches,
-    publishMenuToPublic,
-    closeMenuModal,
-    render
-  });
-}
-
-async function deleteMenuItemById(itemId) {
-  return deleteMenuItemByIdCore({
-    itemId,
-    state,
-    confirmFn: confirm,
-    doc,
-    db,
-    deleteDoc,
-    syncMenuCaches,
-    publishMenuToPublic,
-    render,
-    alertFn: alert
-  });
-}
-
-loadPersisted();
-startAppStartupBootstrap({
-  publicBootstrapDeps: {
-    state,
-    windowObj: typeof window === "undefined" ? null : window,
-    fetchFn: typeof fetch === "function" ? fetch : null,
-    abortControllerCtor: typeof AbortController === "function" ? AbortController : null,
-    defaultPublicBootstrapEndpoint: DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT,
-    publicBootstrapEvent: PUBLIC_BOOTSTRAP_EVENT,
-    normalizeRestaurantType,
-    toDateSafe,
-    formatRelative,
-    mergeRestaurants,
-    writeCache,
-    readCache,
-    cacheKeys: CACHE_KEYS,
-    rebuildBusinessLocations,
-    saveFeedPosts,
-    normalizeStoryItemsForDisplay,
-    buildStoriesSignature,
-    setFeedStoriesSignature: (next) => setFeedStoriesSignature(next),
-    queueStoryIdentityHydration,
-    syncFeedPostLogos,
-    updateFeedDom,
-    render,
-    reportCriticalRuntimeFailure,
-    getLastRenderMode: () => lastRenderMode,
-    fastLimits: FAST_LIMITS
   },
-  startupPrepDeps: {
+  browserApi: {
     windowObj: typeof window === "undefined" ? null : window
-  },
-  routeOpenDeps: {
-    pendingRouteState,
-    routeOpenApi: bridgeShellRuntimeCluster.routeOpenApi,
-    renderFallback: render
-  },
-  authStartupDeps: {
-    state,
-    auth,
-    onAuthStateChangedFn: onAuthStateChanged,
-    windowObj: typeof window === "undefined" ? null : window,
-    queueMicrotaskFn: typeof queueMicrotask === "function" ? queueMicrotask : null,
-    setTimeoutFn: typeof setTimeout === "function" ? setTimeout : null,
-    setAuthInitialized: (next) => { authInitialized = !!next; },
-    setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
-    readAuthBootstrapSnapshot,
-    writeAuthBootstrapSnapshot,
-    clearAuthBootstrapSnapshot,
-    applyAuthBootstrapSnapshot,
-    applyPersistedAuthProfileHints,
-    bindPushOpenTargetMessageHandler: bridgeShellRuntimeCluster.routeOpenApi.bindPushOpenTargetMessageHandler,
-    loadUserScopedPersisted,
-    loadGuestScopedPersisted,
-    applyPendingInitialRouteState,
-    resetUserScopedState,
-    render,
-    schedulePerfWarmMark,
-    ensureTabData: (...args) => getSessionTabLifecycleRuntimeController().ensureTabData(...args),
-    sanitizeTabForSession,
-    stopLiveListeners: (...args) => getSessionTabLifecycleRuntimeController().stopLiveListeners(...args),
-    suspendRender,
-    resumeRender,
-    reportCriticalRuntimeFailure,
-    runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user)
-  }
-});
-
-window.addEventListener("load", () => {
-  if (window.lucide?.createIcons) {
-    window.lucide.createIcons();
   }
 });
