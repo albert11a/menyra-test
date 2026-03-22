@@ -53,6 +53,7 @@ export function createAuthStartupStateHelpers({
       activeTab: state.activeTab,
       user: state.user,
       hasProfileView: !!state.profileView,
+      profileTopTab: state.profileTopTab,
       pendingInitialTab: readPendingInitialTab(),
       pendingAuthMode: readPendingAuthMode(),
       authMode: state.auth?.mode,

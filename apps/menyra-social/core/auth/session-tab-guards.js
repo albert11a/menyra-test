@@ -19,6 +19,7 @@ export function applyPendingInitialRouteStateCore({
   activeTab = "feed",
   user = null,
   hasProfileView = false,
+  profileTopTab = "",
   pendingInitialTab = "",
   pendingAuthMode = "",
   authMode = "",
@@ -30,13 +31,21 @@ export function applyPendingInitialRouteStateCore({
   let nextAuthMode = String(authMode || "");
   let nextAuthOpen = !!authOpen;
   const isGuest = isGuestSessionCore(user);
+  const safeProfileTopTab = String(profileTopTab || "").trim();
 
   if (nextPendingInitialTab) {
     const requestedTab = nextPendingInitialTab;
-    const sanitizedRequestedTab = sanitizeTabForSessionCore(requestedTab, { user, hasProfileView });
-    if (!isGuest || sanitizedRequestedTab === requestedTab) {
-      nextActiveTab = sanitizedRequestedTab;
+    const routeAlreadyOpen = hasProfileView
+      && nextActiveTab === "profile"
+      && (requestedTab === "profile" || safeProfileTopTab === requestedTab);
+    if (routeAlreadyOpen) {
       nextPendingInitialTab = "";
+    } else {
+      const sanitizedRequestedTab = sanitizeTabForSessionCore(requestedTab, { user, hasProfileView });
+      if (!isGuest || sanitizedRequestedTab === requestedTab) {
+        nextActiveTab = sanitizedRequestedTab;
+        nextPendingInitialTab = "";
+      }
     }
   }
   if (!user && nextPendingAuthMode) {
