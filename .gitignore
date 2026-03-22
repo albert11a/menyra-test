@@ -13,3 +13,4 @@ firebase-debug.*.log
 # Runner artifacts
 tests/mnyra-heart-runner/artifacts/
 tests/mnyra-heart-runner/tmp-*.png
+tmp/
