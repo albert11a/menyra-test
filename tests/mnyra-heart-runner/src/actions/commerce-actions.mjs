@@ -5,7 +5,7 @@ import {
   waitForAnySelector,
   waitForUiOutcome
 } from "../helpers/social-app.mjs";
-import { hasRequiredConfig, markGuarded, markNotConfigured, markSkipped } from "./common-actions.mjs";
+import { hasRequiredConfig, markGuarded, markNotConfigured } from "./common-actions.mjs";
 
 function mutationReady(env) {
   return !!env.allowLiveMutations && !!env.syntheticIsolationKey;
@@ -286,6 +286,88 @@ async function submitOrder(page, orderConfig = {}, guestConfig = {}) {
   return outcome;
 }
 
+async function readVisibleCartQuantity(page) {
+  return page.evaluate(() => {
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const plusButtons = Array.from(document.querySelectorAll("[data-cart-qty][data-cart-delta='1']"));
+    const plusButton = plusButtons.find((entry) => isVisibleNode(entry));
+    if (!(plusButton instanceof HTMLElement)) return null;
+    const cartKey = String(plusButton.getAttribute("data-cart-qty") || "").trim();
+    const quantityNode = plusButton.parentElement?.querySelector("span");
+    const quantityText = String(quantityNode?.textContent || "").replace(/[^\d-]+/g, "");
+    const quantity = Number.parseInt(quantityText, 10);
+    return {
+      cartKey,
+      quantity: Number.isFinite(quantity) ? quantity : 0
+    };
+  });
+}
+
+async function waitForCartQuantity(page, cartKey = "", expectedQuantity = 0, timeout = 10000) {
+  const safeCartKey = asText(cartKey);
+  if (!safeCartKey) return false;
+  const handle = await page.waitForFunction((payload) => {
+    const isVisibleNode = (node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      const style = window.getComputedStyle(node);
+      if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
+        return false;
+      }
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    };
+    const cartKey = String(payload?.cartKey || "").trim();
+    const expectedQuantity = Number(payload?.expectedQuantity || 0);
+    if (!cartKey) return false;
+    const plusButtons = Array.from(document.querySelectorAll("[data-cart-qty][data-cart-delta='1']"));
+    const plusButton = plusButtons.find((entry) => isVisibleNode(entry) && String(entry.getAttribute("data-cart-qty") || "").trim() === cartKey);
+    if (!(plusButton instanceof HTMLElement)) return false;
+    const quantityNode = plusButton.parentElement?.querySelector("span");
+    const quantityText = String(quantityNode?.textContent || "").replace(/[^\d-]+/g, "");
+    const quantity = Number.parseInt(quantityText, 10);
+    return Number.isFinite(quantity) && quantity === expectedQuantity;
+  }, {
+    cartKey: safeCartKey,
+    expectedQuantity
+  }, { timeout });
+  return !!await handle.jsonValue();
+}
+
+async function updateCartQuantity(page, timeout = 12000) {
+  const before = await readVisibleCartQuantity(page);
+  if (!before?.cartKey || before.quantity <= 0) {
+    throw new Error("Heart konnte im Warenkorb keine sichtbare Mengensteuerung finden.");
+  }
+  const plusSelector = `[data-cart-qty="${before.cartKey}"][data-cart-delta='1']`;
+  const minusSelector = `[data-cart-qty="${before.cartKey}"][data-cart-delta='-1']`;
+  const increased = await clickFirstVisibleLocator(page, [plusSelector], 5000)
+    || await clickFirstVisible(page, [plusSelector], 5000);
+  if (!increased) {
+    throw new Error("Heart konnte den Plus-Button im Warenkorb nicht klicken.");
+  }
+  const incremented = await waitForCartQuantity(page, before.cartKey, before.quantity + 1, timeout).catch(() => false);
+  if (!incremented) {
+    throw new Error("Heart konnte die erhoehte Warenkorbmenge nicht bestaetigen.");
+  }
+  const decreased = await clickFirstVisibleLocator(page, [minusSelector], 5000)
+    || await clickFirstVisible(page, [minusSelector], 5000);
+  if (!decreased) {
+    throw new Error("Heart konnte den Minus-Button im Warenkorb nicht klicken.");
+  }
+  const restored = await waitForCartQuantity(page, before.cartKey, before.quantity, timeout).catch(() => false);
+  if (!restored) {
+    throw new Error("Heart konnte die zurueckgesetzte Warenkorbmenge nicht bestaetigen.");
+  }
+}
+
 async function runCommerceMutation({
   page,
   env,
@@ -395,9 +477,29 @@ export async function runCartAndOrderChecks({ page, env, heart, persona } = {}) 
     }
   });
 
-  markSkipped(heart, "cart", "Mengen-Aenderung im Warenkorb wird im Heart-Runner noch nicht separat gefahren.", {
-    action: "cart quantity update",
-    persona: persona.key,
-    area: "cart"
+  await runCommerceMutation({
+    page,
+    env,
+    heart,
+    persona,
+    moduleKey: "cart",
+    actionLabel: "Cart quantity update",
+    config: cartConfig,
+    requiredKeys: ["url"],
+    perform: async () => {
+      await openPageAndWait(page, cartConfig.url, "body", heart, {
+        title: `${persona.label} / Open cart quantity flow`,
+        moduleKey: "cart",
+        area: "cart",
+        persona: persona.key
+      });
+      await ensureCartReady(page, cartConfig, guestQrConfig);
+      await updateCartQuantity(page);
+      heart.passModule("cart", "Warenkorb-Mengenanpassung wurde erfolgreich geprueft.", {
+        action: "cart quantity update",
+        persona: persona.key,
+        area: "cart"
+      });
+    }
   });
 }
