@@ -145,6 +145,42 @@ async function resolveMenuActionItemId(page, itemText = "", actionAttribute = ""
   });
 }
 
+async function waitForMenuActionItemId(page, itemText = "", actionAttribute = "", timeout = 20000) {
+  const safeItemText = asText(itemText);
+  const safeActionAttribute = asText(actionAttribute);
+  if (!safeItemText || !safeActionAttribute) return "";
+  const handle = await page.waitForFunction((payload) => {
+    const itemLabel = String(payload?.itemText || "").trim();
+    const attr = String(payload?.actionAttribute || "").trim();
+    if (!itemLabel || !attr) return false;
+    const buttons = Array.from(document.querySelectorAll(`[${attr}]`));
+    for (const button of buttons) {
+      let node = button;
+      while (node && node !== document.body) {
+        const text = String(node.textContent || "").replace(/\s+/g, " ").trim();
+        if (text.includes(itemLabel)) {
+          return button.getAttribute(attr) || "";
+        }
+        node = node.parentElement;
+      }
+    }
+    return false;
+  }, {
+    itemText: safeItemText,
+    actionAttribute: safeActionAttribute
+  }, { timeout });
+  return asText(await handle.jsonValue());
+}
+
+async function resolveFirstMenuActionItemId(page, actionAttribute = "") {
+  const safeActionAttribute = asText(actionAttribute);
+  if (!safeActionAttribute) return "";
+  return page.evaluate((attr) => {
+    const button = document.querySelector(`[${attr}]`);
+    return button?.getAttribute?.(attr) || "";
+  }, safeActionAttribute);
+}
+
 async function clickMenuActionByItemId(page, actionAttribute = "", itemId = "") {
   const safeItemId = asText(itemId);
   const safeActionAttribute = asText(actionAttribute);
@@ -458,11 +494,16 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
         );
         await openBusinessMenuAdmin(page, heart, persona, businessConfig.productEdit.url, "Business / Open product edit flow");
         await searchBusinessMenu(page, productNames.original);
-        const itemId = await resolveMenuActionItemId(page, productNames.original, "data-menu-edit");
-        if (!itemId) {
+        await waitForMenuItemByText(page, productNames.original, 20000);
+        await waitForAnySelector(page, ["[data-menu-edit]"], 10000).catch(() => "");
+        const itemId = await waitForMenuActionItemId(page, productNames.original, "data-menu-edit", 15000)
+          .catch(() => resolveMenuActionItemId(page, productNames.original, "data-menu-edit"))
+          .catch(() => "");
+        const fallbackItemId = itemId || await resolveFirstMenuActionItemId(page, "data-menu-edit");
+        if (!fallbackItemId) {
           throw new Error("Heart konnte das eben erstellte Testprodukt zum Bearbeiten nicht finden.");
         }
-        const clickedEdit = await clickMenuActionByItemId(page, "data-menu-edit", itemId);
+        const clickedEdit = await clickMenuActionByItemId(page, "data-menu-edit", fallbackItemId);
         if (!clickedEdit) {
           throw new Error("Heart konnte die Bearbeiten-Aktion fuer das Testprodukt nicht ausloesen.");
         }
@@ -509,11 +550,16 @@ export async function runBusinessMutationChecks({ page, env, heart, persona } = 
         const targetName = editResult.ok ? productNames.edited : productNames.original;
         await openBusinessMenuAdmin(page, heart, persona, businessConfig.productDelete.url, "Business / Open product delete flow");
         await searchBusinessMenu(page, targetName);
-        const itemId = await resolveMenuActionItemId(page, targetName, "data-menu-delete");
-        if (!itemId) {
+        await waitForMenuItemByText(page, targetName, 20000);
+        await waitForAnySelector(page, ["[data-menu-delete]"], 10000).catch(() => "");
+        const itemId = await waitForMenuActionItemId(page, targetName, "data-menu-delete", 15000)
+          .catch(() => resolveMenuActionItemId(page, targetName, "data-menu-delete"))
+          .catch(() => "");
+        const fallbackItemId = itemId || await resolveFirstMenuActionItemId(page, "data-menu-delete");
+        if (!fallbackItemId) {
           throw new Error("Heart konnte das Testprodukt zum Loeschen nicht finden.");
         }
-        const clickedDelete = await clickMenuActionByItemId(page, "data-menu-delete", itemId);
+        const clickedDelete = await clickMenuActionByItemId(page, "data-menu-delete", fallbackItemId);
         if (!clickedDelete) {
           throw new Error("Heart konnte die Loeschen-Aktion fuer das Testprodukt nicht ausloesen.");
         }

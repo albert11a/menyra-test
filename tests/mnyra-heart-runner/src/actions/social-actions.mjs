@@ -132,6 +132,35 @@ function buildProfileUrlFromIdentity(baseUrl = "", {
   }
 }
 
+function normalizeSocialAppUrl(baseUrl = "", url = "") {
+  const safeBaseUrl = asText(baseUrl);
+  const safeUrl = asText(url);
+  if (!safeBaseUrl || !safeUrl) return safeUrl;
+  try {
+    const base = new URL(safeBaseUrl);
+    const target = new URL(safeUrl, safeBaseUrl);
+    const normalizedBasePath = String(base.pathname || "").replace(/\/+$/, "").toLowerCase();
+    const normalizedTargetPath = String(target.pathname || "").replace(/\/+$/, "").toLowerCase();
+    if (normalizedBasePath && normalizedBasePath === normalizedTargetPath) {
+      target.protocol = base.protocol;
+      target.host = base.host;
+    }
+    return target.toString();
+  } catch {
+    return safeUrl;
+  }
+}
+
+function normalizeProfileUrlForPersona(baseUrl = "", url = "") {
+  const safeUrl = asText(url);
+  if (!safeUrl) return "";
+  const normalizedProfileUrl = buildProfileUrlFromIdentity(baseUrl, {
+    handle: parseHandleFromUrl(safeUrl),
+    restaurantId: parseRestaurantIdFromUrl(safeUrl)
+  });
+  return normalizedProfileUrl || normalizeSocialAppUrl(baseUrl, safeUrl);
+}
+
 function buildSearchQueries(...values) {
   const baseQueries = uniqueSelectors(...values);
   const expandedQueries = [];
@@ -204,11 +233,16 @@ async function clickMatchingSearchResult(page, selectors = [], queries = []) {
 function resolveSocialTargetProfileUrl(env = {}, persona = {}, preferredUrl = "") {
   const socialConfig = env.packConfig?.actions?.social || {};
   const configPersonas = env.packConfig?.personas || {};
+  const normalizeTargetUrl = (value = "") => {
+    const safeValue = asText(value);
+    if (!safeValue || !isSupportedProfileUrl(safeValue)) return "";
+    return normalizeProfileUrlForPersona(persona.baseUrl, safeValue);
+  };
   if (persona?.key === "business") {
     const userPersona = configPersonas.user || {};
     return chooseFirstText(
-      isSupportedProfileUrl(preferredUrl) ? preferredUrl : "",
-      isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : "",
+      normalizeTargetUrl(preferredUrl),
+      normalizeTargetUrl(socialConfig.userTargetProfile?.url),
       buildProfileUrlFromIdentity(persona.baseUrl, {
         handle: chooseFirstText(
           socialConfig.userTargetProfile?.query,
@@ -221,9 +255,9 @@ function resolveSocialTargetProfileUrl(env = {}, persona = {}, preferredUrl = ""
   }
   const businessPersona = configPersonas.business || {};
   return chooseFirstText(
-    isSupportedProfileUrl(preferredUrl) ? preferredUrl : "",
-    isSupportedProfileUrl(socialConfig.businessProfile?.url) ? socialConfig.businessProfile.url : "",
-    isSupportedProfileUrl(socialConfig.userTargetProfile?.url) ? socialConfig.userTargetProfile.url : "",
+    normalizeTargetUrl(preferredUrl),
+    normalizeTargetUrl(socialConfig.businessProfile?.url),
+    normalizeTargetUrl(socialConfig.userTargetProfile?.url),
     buildProfileUrlFromIdentity(persona.baseUrl, {
       handle: businessPersona.handle,
       restaurantId: businessPersona.restaurantId
@@ -298,7 +332,10 @@ async function openSocialTargetProfile(page, env, heart, persona, {
   }
 
   const searchConfig = env.packConfig?.actions?.discovery?.search || {};
-  const searchUrl = asText(searchConfig.url, buildUrl(persona.baseUrl, { tab: "search" }));
+  const searchUrl = normalizeSocialAppUrl(
+    persona.baseUrl,
+    asText(searchConfig.url, buildUrl(persona.baseUrl, { tab: "search" }))
+  );
   const searchInputSelector = asText(searchConfig.inputSelector, "#searchInput");
   const searchQueries = buildSearchQueries(
     targetContext.queries,
@@ -370,23 +407,23 @@ async function readFollowState(page, selector) {
 async function clickVisibleFollowButton(page, selector, timeout = 8000) {
   const deadline = Date.now() + Math.max(250, Number(timeout) || 0);
   while (Date.now() < deadline) {
-    const clicked = await page.evaluate((followSelector) => {
-      const isVisibleNode = (node) => {
-        if (!(node instanceof HTMLElement)) return false;
-        const style = window.getComputedStyle(node);
-        if (style.display === "none" || style.visibility === "hidden" || Number(style.opacity || "1") === 0) {
-          return false;
-        }
-        const rect = node.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-      };
-      const nodes = Array.from(document.querySelectorAll(followSelector));
-      const button = nodes.find((entry) => isVisibleNode(entry));
-      if (!(button instanceof HTMLElement)) return false;
-      button.click();
-      return true;
-    }, selector);
-    if (clicked) return true;
+    const locator = page.locator(selector);
+    const count = await locator.count().catch(() => 0);
+    for (let index = 0; index < count; index += 1) {
+      const button = locator.nth(index);
+      const isVisible = await button.isVisible().catch(() => false);
+      if (!isVisible) continue;
+      const isDisabled = await button.isDisabled().catch(() => false);
+      if (isDisabled) continue;
+      try {
+        await button.click({ timeout: 1500, force: true });
+        return true;
+      } catch {}
+      try {
+        await button.dispatchEvent("click");
+        return true;
+      } catch {}
+    }
     await page.waitForTimeout(120).catch(() => undefined);
   }
   return false;
@@ -934,6 +971,10 @@ export async function runSocialInteractionChecks({
           area: "feed",
           persona: persona.key
         });
+        const uploadChooserSelectors = [
+          "[data-upload-mode=\"feed\"]",
+          "[data-upload-mode=\"story\"]"
+        ];
         const uploadComposerSelectors = [
           socialConfig.postCreate.fileInputSelector || "#uploadFileInput",
           "#uploadFileInput",
@@ -941,8 +982,11 @@ export async function runSocialInteractionChecks({
           socialConfig.postCreate.inputSelector || "#uploadCaption",
           socialConfig.postCreate.submitSelector || "#uploadPostBtn"
         ];
-        const uploadComposerVisible = await findVisibleSelector(page, uploadComposerSelectors);
-        if (!uploadComposerVisible && socialConfig.postCreate.openSelector) {
+        const initialUploadSelector = await findVisibleSelector(page, [
+          ...uploadChooserSelectors,
+          ...uploadComposerSelectors
+        ]);
+        if (!initialUploadSelector && socialConfig.postCreate.openSelector) {
           const openedComposer = await clickFirstVisible(
             page,
             splitSelectorList(socialConfig.postCreate.openSelector),
@@ -950,6 +994,19 @@ export async function runSocialInteractionChecks({
           );
           if (!openedComposer) {
             throw new Error("Heart konnte den Feed-Post-Composer nicht sichtbar oeffnen.");
+          }
+        }
+        const visibleUploadSelector = initialUploadSelector || await waitForAnySelector(page, [
+          ...uploadChooserSelectors,
+          ...uploadComposerSelectors
+        ], 30000);
+        if (
+          uploadChooserSelectors.includes(visibleUploadSelector)
+          || await findVisibleSelector(page, uploadChooserSelectors)
+        ) {
+          const openedFeedMode = await clickFirstVisible(page, ["[data-upload-mode=\"feed\"]"], 10000);
+          if (!openedFeedMode) {
+            throw new Error("Heart konnte im Upload-Chooser keinen Feed-Post starten.");
           }
         }
         await waitForAnySelector(page, uploadComposerSelectors, 30000);

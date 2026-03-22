@@ -2,6 +2,7 @@ import {
   clickFirstVisible,
   findVisibleSelector,
   openPageAndWait,
+  waitForAnySelector,
   waitForUiOutcome
 } from "../helpers/social-app.mjs";
 import { hasRequiredConfig, markGuarded, markNotConfigured, markSkipped } from "./common-actions.mjs";
@@ -39,6 +40,18 @@ function describeSignals(values = []) {
   return uniqueList(values).join(" / ");
 }
 
+async function waitForCartSurfaceReady(page, cartConfig = {}, timeout = 20000) {
+  return waitForAnySelector(page, uniqueList(
+    cartConfig.menuVisibleSelector,
+    cartConfig.openSelector,
+    cartConfig.triggerSelector,
+    cartConfig.verifySelector,
+    "[data-menu-open]",
+    "[data-cart-checkout]",
+    "#menuDetailAddToCartBtn"
+  ), timeout);
+}
+
 async function ensureCartReady(page, cartConfig = {}) {
   const cartReadySelectors = uniqueList(
     cartConfig.verifySelector,
@@ -52,11 +65,26 @@ async function ensureCartReady(page, cartConfig = {}) {
     "Tischbestellung absenden",
     "wurde zum Warenkorb hinzugefuegt"
   );
+  await waitForCartSurfaceReady(page, cartConfig, 20000).catch(() => "");
   const existingCartSelector = await findVisibleSelector(page, cartReadySelectors);
+  if (existingCartSelector) {
+    return {
+      usedExistingCart: true,
+      existingCartSelector
+    };
+  }
   const openedSelector = await clickFirstVisible(page, [
     cartConfig.openSelector,
     "[data-menu-open]"
   ], 8000);
+  if (openedSelector) {
+    await waitForAnySelector(page, uniqueList(
+      cartConfig.triggerSelector,
+      "#menuDetailAddToCartBtn",
+      cartConfig.verifySelector,
+      "[data-cart-checkout]"
+    ), 15000).catch(() => "");
+  }
   const addedSelector = await clickFirstVisible(page, [
     cartConfig.triggerSelector,
     "#menuDetailAddToCartBtn"

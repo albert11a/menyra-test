@@ -72,6 +72,25 @@ function buildUrl(baseUrl = "", params = {}) {
   }
 }
 
+function rebaseUrlToBase(baseUrl = "", targetUrl = "") {
+  const safeBaseUrl = asText(baseUrl);
+  const safeTargetUrl = asText(targetUrl);
+  if (!safeBaseUrl || !safeTargetUrl) return safeTargetUrl;
+  try {
+    const base = new URL(safeBaseUrl);
+    const target = new URL(safeTargetUrl, safeBaseUrl);
+    const normalizedBasePath = String(base.pathname || "").replace(/\/+$/, "").toLowerCase();
+    const normalizedTargetPath = String(target.pathname || "").replace(/\/+$/, "").toLowerCase();
+    if (normalizedBasePath && normalizedBasePath === normalizedTargetPath) {
+      target.protocol = base.protocol;
+      target.host = base.host;
+    }
+    return target.toString();
+  } catch {
+    return safeTargetUrl;
+  }
+}
+
 function buildGuestRouteUrl(socialBaseUrl = "", restaurantId = "") {
   return buildUrl(socialBaseUrl, {
     tab: "menu",
@@ -722,6 +741,28 @@ function normalizeHeartPackConfig(packConfig = {}, {
   if (!asText(journey.modalCloseSelector) || asText(journey.modalCloseSelector) === "[data-modal-close]") {
     journey.modalCloseSelector = "#postModalClose, #menuModalClose";
   }
+
+  socialBusinessProfile.url = rebaseUrlToBase(socialBaseUrl, socialBusinessProfile.url);
+  socialUserTargetProfile.url = rebaseUrlToBase(socialBaseUrl, socialUserTargetProfile.url);
+  socialFollow.url = rebaseUrlToBase(socialBaseUrl, socialFollow.url);
+  socialLike.url = rebaseUrlToBase(socialBaseUrl, socialLike.url);
+  socialCommentCreate.url = rebaseUrlToBase(socialBaseUrl, socialCommentCreate.url);
+  socialPostCreate.url = rebaseUrlToBase(socialBaseUrl, socialPostCreate.url);
+  chatSend.url = rebaseUrlToBase(socialBaseUrl, chatSend.url);
+  chatSend.threadUrl = rebaseUrlToBase(socialBaseUrl, chatSend.threadUrl);
+  chatSend.userThreadUrl = rebaseUrlToBase(socialBaseUrl, chatSend.userThreadUrl);
+  chatSend.targetProfileUrl = rebaseUrlToBase(socialBaseUrl, chatSend.targetProfileUrl);
+  chatSend.userTargetProfileUrl = rebaseUrlToBase(socialBaseUrl, chatSend.userTargetProfileUrl);
+  discoverySearch.url = rebaseUrlToBase(socialBaseUrl, discoverySearch.url);
+  discoveryMap.url = rebaseUrlToBase(socialBaseUrl, discoveryMap.url);
+  next.actions.business.menu.url = rebaseUrlToBase(socialBaseUrl, next.actions.business.menu.url);
+  next.actions.business.focus.url = rebaseUrlToBase(socialBaseUrl, next.actions.business.focus.url);
+  productCreate.url = rebaseUrlToBase(socialBaseUrl, productCreate.url);
+  productEdit.url = rebaseUrlToBase(socialBaseUrl, productEdit.url);
+  productDelete.url = rebaseUrlToBase(socialBaseUrl, productDelete.url);
+  commerceCart.url = rebaseUrlToBase(socialBaseUrl, commerceCart.url);
+  commerceOrder.url = rebaseUrlToBase(socialBaseUrl, commerceOrder.url);
+  guestQrMenu.url = rebaseUrlToBase(socialBaseUrl, guestQrMenu.url);
 
   return next;
 }
