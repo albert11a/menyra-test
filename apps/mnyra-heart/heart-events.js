@@ -88,6 +88,10 @@ export function bindHeartEvents({
       });
       return;
     }
+    if (action === "clear-setup-restaurant") {
+      await operations.clearSetupRestaurant?.();
+      return;
+    }
     if (action === "provision-setup-personas") {
       await operations.provisionSetupPersonas?.(target.getAttribute("data-personas"));
       return;

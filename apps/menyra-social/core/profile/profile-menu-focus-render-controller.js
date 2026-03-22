@@ -898,9 +898,14 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile" } = {}) {
     return true;
   });
 
-  const contentItems = allItems.filter((item) => resolveMenuCardStyle(item) !== "testfirst_focus" && !isMenuItemHidden(item));
-  const drinkTypeItems = contentItems.filter((item) => resolveMenuDisplaySection(item) === "drink");
-  const foodTypeItems = contentItems.filter((item) => resolveMenuDisplaySection(item) !== "drink");
+  const visibleItems = allItems.filter((item) => !isMenuItemHidden(item));
+  const contentItems = visibleItems.filter((item) => resolveMenuCardStyle(item) !== "testfirst_focus");
+  // Some legacy restaurant menus tag every entry as focus. In that case we must
+  // still render a real menu body instead of leaving the tab visually empty.
+  const projectedContentItems = contentItems.length ? contentItems : visibleItems;
+  const displayFocusItems = contentItems.length ? focusItems : [];
+  const drinkTypeItems = projectedContentItems.filter((item) => resolveMenuDisplaySection(item) === "drink");
+  const foodTypeItems = projectedContentItems.filter((item) => resolveMenuDisplaySection(item) !== "drink");
 
   const splitTypeBuckets = (typeItems = []) => {
     const gridItems = [];
@@ -954,7 +959,7 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile" } = {}) {
 
   return `
     <div>
-      ${renderTestfirstFocusSection(profile, focusItems, { mode })}
+      ${renderTestfirstFocusSection(profile, displayFocusItems, { mode })}
       <div id="menu-section" class="mt-5">
         ${renderTypeBlock("drink", drinkBucket)}
         ${renderTypeBlock("food", foodBucket)}

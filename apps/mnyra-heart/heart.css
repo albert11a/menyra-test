@@ -2437,6 +2437,17 @@ body {
   height: 18px;
 }
 
+.heart-setup-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  width: 100%;
+}
+
+.heart-setup-form-actions .heart-button {
+  flex: 1 1 220px;
+}
+
 .heart-setup-tool-card__actions {
   justify-content: space-between;
   margin-top: auto;

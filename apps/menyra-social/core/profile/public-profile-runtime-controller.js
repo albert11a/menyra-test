@@ -51,6 +51,23 @@ export function createPublicProfileRuntimeController({
     profileViewUnsub = null;
   }
 
+  function isSameVisibleProfile(currentProfile = null, nextProfile = null) {
+    if (!currentProfile || !nextProfile) return false;
+    const currentRestaurantId = String(currentProfile?.restaurantId || "").trim();
+    const nextRestaurantId = String(nextProfile?.restaurantId || "").trim();
+    if (currentRestaurantId && nextRestaurantId) {
+      return currentRestaurantId === nextRestaurantId;
+    }
+    const currentUid = String(currentProfile?.uid || "").trim();
+    const nextUid = String(nextProfile?.uid || "").trim();
+    if (currentUid && nextUid) {
+      return currentUid === nextUid;
+    }
+    const currentHandle = normalizeHandle(currentProfile?.handle || currentProfile?.name || "");
+    const nextHandle = normalizeHandle(nextProfile?.handle || nextProfile?.name || "");
+    return !!currentHandle && currentHandle === nextHandle;
+  }
+
   function attachProfileViewListener(profile) {
     stopProfileViewListener();
     if (!profile || !makeDocRef || !onSnapshotSafe || !db) return;
@@ -91,6 +108,11 @@ export function createPublicProfileRuntimeController({
     const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
     const projectedPosts = projectPostCollectionThroughEntityMap(state, posts || profile.posts || []);
     const nextProfile = profile ? { ...profile, posts: projectedPosts } : profile;
+    const sameVisibleProfile = isSameVisibleProfile(state?.profileView?.profile || null, nextProfile);
+    const explicitTopTab = String(topTab || "").trim();
+    const preservedTopTab = sameVisibleProfile
+      ? String(state?.profileTopTab || "").trim()
+      : "";
     state.profileView = {
       profile: nextProfile,
       posts: projectedPosts,
@@ -100,7 +122,7 @@ export function createPublicProfileRuntimeController({
     state.profileModal = { open: false, profile: null };
     state.profileContentTab = "posts";
     state.profileTopTab = profile?.restaurantId
-      ? (topTab || "profile")
+      ? (explicitTopTab || preservedTopTab || "profile")
       : "profile";
     state.profileViewMode = "grid";
     state.profilePostMenuId = null;

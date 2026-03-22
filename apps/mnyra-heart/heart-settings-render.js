@@ -106,9 +106,16 @@ function renderRestaurantSearch(setupState = {}) {
           <span>Schreibmodus fuer echte Tests aktivieren</span>
         </label>
         <p class="heart-setup-inline-note">Heart nutzt dieses Restaurant als dauerhaftes Business-Ziel fuer Karte, Suche, Menue, QR und Bestellungen.</p>
-        <button class="heart-button heart-button--primary" type="submit" ${setupState.pendingAction === "save-setup" ? "disabled" : ""}>
-          ${setupState.pendingAction === "save-setup" ? "Speichert..." : "Einrichtung speichern"}
-        </button>
+        <div class="heart-setup-form-actions">
+          <button class="heart-button heart-button--primary" type="submit" ${setupState.pendingAction === "save-setup" ? "disabled" : ""}>
+            ${setupState.pendingAction === "save-setup" ? "Speichert..." : "Einrichtung speichern"}
+          </button>
+          ${setupData.restaurantId || setupData.restaurantName || setupData.guestRouteUrl ? `
+            <button class="heart-button heart-button--secondary" type="button" data-action="clear-setup-restaurant" ${setupState.pendingAction === "save-setup" ? "disabled" : ""}>
+              Verbindung loesen
+            </button>
+          ` : ""}
+        </div>
       </form>
     </section>
   `;

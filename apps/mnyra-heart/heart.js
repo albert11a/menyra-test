@@ -404,6 +404,30 @@ async function saveSetup(values = {}) {
   }
 }
 
+async function clearSetupRestaurant() {
+  const currentSetup = store.getState().setup.data || {};
+  const hasSetupBinding = !!String(
+    currentSetup.restaurantId
+    || currentSetup.restaurantName
+    || currentSetup.guestRouteUrl
+  ).trim();
+  if (!hasSetupBinding) return;
+  if (typeof window !== "undefined" && typeof window.confirm === "function") {
+    const confirmed = window.confirm("Heart-Verbindung zum aktuell gesetzten Restaurant wirklich loesen?");
+    if (!confirmed) return;
+  }
+  await saveSetup({
+    restaurantId: "",
+    restaurantName: "",
+    restaurantHandle: "",
+    restaurantQuery: "",
+    guestRouteUrl: "",
+    allowLiveMutations: false
+  });
+  actions.setSetupSearchResults([], "");
+  setToast("Einrichtung geloest", "Das aktive Heart-Restaurant wurde entfernt. Zielkonten bleiben bestehen.", "warning");
+}
+
 async function searchSetupRestaurants(query = "") {
   actions.setSetupSearchLoading(query);
   try {
@@ -550,6 +574,9 @@ const operations = {
       ...payload,
       allowLiveMutations: store.getState().setup.data?.allowLiveMutations !== false
     });
+  },
+  async clearSetupRestaurant() {
+    await clearSetupRestaurant();
   },
   async provisionSetupPersonas(value) {
     await provisionSetupPersonas(value);
