@@ -15,24 +15,15 @@ export function renderLeadSettingsView(ctx = {}) {
     icon,
     escapeHtml,
     getLeadSettingsConfig,
-    LEAD_SOCIAL_DEFAULT_PASSWORD,
     CEO_COUNTRIES,
     LEAD_TYPE_ORDER,
     LEAD_TYPE_LABELS
   } = ctx;
   const config = getLeadSettingsConfig();
-  const explicitPassword = String(state.userProfile?.leadSettings?.defaultPassword || "").trim();
-  const passwordValue = explicitPassword && explicitPassword !== LEAD_SOCIAL_DEFAULT_PASSWORD
-    ? explicitPassword
-    : "";
   return `
     <div id="leadSettingsView" class="p-6 animate-in slide-in-from-right-10 duration-500 pb-24">
       <div class="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm">
         <div class="space-y-4">
-          <div>
-            <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Lead Passwort Standard</label>
-            <input id="leadSettingsPassword" type="text" value="${escapeHtml(passwordValue)}" placeholder="Hier eingeben" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-          </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Standard Standort Land</label>
             <div class="relative mt-2">
@@ -156,7 +147,7 @@ export function renderLeadCreationView(ctx = {}) {
           </div>
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort</label>
-            <input id="leadPassword" type="text" value="${escapeHtml(lead.password || settings.defaultPassword || "")}" readonly class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold text-slate-500 border-none outline-none" />
+            <input id="leadPassword" type="password" value="${escapeHtml(lead.password || "")}" placeholder="leer = kein Login wird erstellt" class="w-full mt-2 px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
           </div>
         </div>
         <div class="mt-6 p-5 rounded-[2rem] bg-slate-50 border border-slate-100 space-y-4">

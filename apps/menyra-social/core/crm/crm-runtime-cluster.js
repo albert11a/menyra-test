@@ -23,7 +23,6 @@ export function createCrmRuntimeCluster({
     renderCrmLazyLoadingView: renderApi.renderCrmLazyLoadingView,
     renderCeoGuardCore: renderApi.renderCeoGuardCore,
     getLeadSettingsConfig: leadApi.getLeadSettingsConfig,
-    LEAD_SOCIAL_DEFAULT_PASSWORD: constants.LEAD_SOCIAL_DEFAULT_PASSWORD,
     LEAD_SETTINGS_DEFAULT_COUNTRY: constants.LEAD_SETTINGS_DEFAULT_COUNTRY,
     CEO_COUNTRIES: constants.CEO_COUNTRIES,
     LEAD_TYPE_ORDER: constants.LEAD_TYPE_ORDER,

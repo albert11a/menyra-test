@@ -9,7 +9,6 @@ export function createCrmRuntimeController(deps = {}) {
     renderCrmLazyLoadingView,
     renderCeoGuardCore,
     getLeadSettingsConfig,
-    LEAD_SOCIAL_DEFAULT_PASSWORD,
     LEAD_SETTINGS_DEFAULT_COUNTRY,
     CEO_COUNTRIES,
     LEAD_TYPE_ORDER,
@@ -448,7 +447,6 @@ function getCrmLazyRendererContext() {
     renderLeadCreationView,
     renderStaffEditorView,
     getLeadSettingsConfig,
-    LEAD_SOCIAL_DEFAULT_PASSWORD,
     CEO_COUNTRIES,
     LEAD_TYPE_ORDER,
     LEAD_TYPE_LABELS,
@@ -676,7 +674,7 @@ function createLeadDraftState(mode = "create", lead = null) {
     googleMaps: lead?.googleMaps || rest?.googleMaps || "",
     logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || "",
     email: lead?.email || lead?.socialEmail || buildLeadAccountEmail(businessName),
-    password: lead?.password || settings.defaultPassword,
+    password: "",
     country,
     zipCode: lead?.zipCode || rest?.zipCode || "",
     contactFirstName: lead?.contactFirstName || rest?.contactFirstName || "",
@@ -732,7 +730,6 @@ function closeLeadSubview() {
 
 async function saveLeadSettings() {
   if (!state.user) return;
-  const password = String(document.getElementById("leadSettingsPassword")?.value || "").trim();
   const defaultCountry = normalizeLeadCountry(document.getElementById("leadSettingsDefaultCountry")?.value || LEAD_SETTINGS_DEFAULT_COUNTRY);
   const pricing = LEAD_TYPE_ORDER.reduce((acc, key) => {
     const raw = Number(document.getElementById(`leadPrice_${key}`)?.value);
@@ -746,7 +743,7 @@ async function saveLeadSettings() {
 
   try {
     const leadSettings = normalizeLeadSettings({
-      defaultPassword: password || LEAD_SOCIAL_DEFAULT_PASSWORD,
+      defaultPassword: "",
       defaultCountry,
       pricing
     });
@@ -854,19 +851,16 @@ function syncLeadDerivedFields() {
   const type = resolveCustomerType(document.getElementById("leadCustomerType")?.value || state.leadModal?.lead?.customerType || "cafe");
   const cycle = document.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
   const email = buildLeadAccountEmail(businessName);
-  const password = settings.defaultPassword;
   const monthly = getLeadMonthlyPrice(type, settings);
   const total = getLeadPriceForCycle(type, cycle, settings);
   const yearly = monthly * 12;
 
   const emailInput = document.getElementById("leadEmail");
-  const passwordInput = document.getElementById("leadPassword");
   const monthlyInput = document.getElementById("leadMonthlyPrice");
   const yearlyInput = document.getElementById("leadAnnualPrice");
   const priceInput = document.getElementById("leadPriceValue");
 
   if (emailInput) emailInput.value = email;
-  if (passwordInput) passwordInput.value = password;
   if (monthlyInput) monthlyInput.value = monthly ? `${monthly.toFixed(2)} EUR / Monat` : "0.00 EUR / Monat";
   if (yearlyInput) yearlyInput.value = yearly ? `${yearly.toFixed(2)} EUR / Jahr` : "0.00 EUR / Jahr";
   if (priceInput) priceInput.value = total ? `${total.toFixed(2)} EUR` : "0.00 EUR";
@@ -877,7 +871,6 @@ function syncLeadDerivedFields() {
       businessName,
       customerType: type,
       email,
-      password,
       billingCycle: cycle,
       monthlyPrice: monthly,
       yearlyPrice: yearly
@@ -2102,7 +2095,7 @@ function syncLeadModalDraftFromForm() {
   lead.tiktok = readText("leadTiktok") || lead.tiktok || "";
   lead.googleMaps = readText("leadGoogleMaps") || lead.googleMaps || "";
   lead.email = readText("leadEmail") || lead.email || "";
-  lead.password = readValue("leadPassword") || lead.password || getLeadSettingsConfig().defaultPassword;
+  lead.password = readValue("leadPassword");
   lead.country = normalizeLeadCountry(readValue("leadCountry") || lead.country || "");
   lead.city = readText("leadCity") || lead.city || "";
   lead.zipCode = readText("leadZipCode") || lead.zipCode || "";
@@ -2168,7 +2161,6 @@ async function saveLeadFromModal() {
     setDoc,
     ensureRestaurantPublicMeta,
     createAuthUser,
-    LEAD_SOCIAL_DEFAULT_PASSWORD,
     buildLeadCrmContribution,
     buildCustomerCrmContribution,
     resolveRestaurantStatusFromLead,
@@ -2506,8 +2498,6 @@ async function convertLeadToCustomer(leadId) {
     db,
     setDoc,
     ensureRestaurantPublicMeta,
-    createAuthUser,
-    LEAD_SOCIAL_DEFAULT_PASSWORD,
     accumulateCeoCrmDelta,
     buildCustomerCrmContribution,
     applyCeoCrmCountDeltas,

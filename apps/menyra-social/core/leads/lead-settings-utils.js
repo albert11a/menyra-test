@@ -1,5 +1,4 @@
 export function normalizeLeadSettingsCore(raw = {}, {
-  defaultPassword = "",
   defaultCountry = "",
   normalizeLeadCountryFn,
   normalizeLeadPricingFn
@@ -12,7 +11,7 @@ export function normalizeLeadSettingsCore(raw = {}, {
     : ((value) => value || {});
   const input = raw && typeof raw === "object" ? raw : {};
   return {
-    defaultPassword: String(input.defaultPassword || defaultPassword || "").trim() || defaultPassword,
+    defaultPassword: "",
     defaultCountry: normalizeCountry(input.defaultCountry || input.locationCountry || defaultCountry),
     pricing: normalizePricing(input.pricing || input.typePricing || {})
   };

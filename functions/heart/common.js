@@ -3,6 +3,7 @@
 const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const crypto = require("crypto");
+const { buildHttpLogContext, logFunctionWarn } = require("../logging");
 
 const ALBERT_CEO_UID = "aklBkkIuZ7Nrpx266TJn63rrxX62";
 const ALBERT_CEO_ALIASES = Object.freeze(["alberthoti", "albert_hoti"]);
@@ -228,6 +229,7 @@ async function verifyCeoRequest(req, res, db, {
   methods = ["GET"],
   allowWebhookSecret = false
 } = {}) {
+  const logContext = buildHttpLogContext(req, { area: "heart-auth" });
   sendCors(res, req, `${methods.join(",")},OPTIONS`);
   if (req.method === "OPTIONS") {
     res.status(204).send("");
@@ -251,9 +253,10 @@ async function verifyCeoRequest(req, res, db, {
 
   const bearerToken = parseBearerToken(req);
   if (!bearerToken) {
-    console.warn("[heart-auth] missing bearer token", {
-      path: asText(req.path || req.originalUrl || req.url),
-      method: asText(req.method),
+    logFunctionWarn("heart.auth.request", {
+      ...logContext,
+      status: "unauthorized",
+      reason: "missing_bearer_token",
       hasAuthorizationHeader: !!asText(req.get("authorization")),
       hasHeartAuthorizationHeader: !!asText(req.get("x-heart-authorization"))
     });
@@ -265,9 +268,10 @@ async function verifyCeoRequest(req, res, db, {
   try {
     decodedToken = await admin.auth().verifyIdToken(bearerToken, true);
   } catch {
-    console.warn("[heart-auth] invalid bearer token", {
-      path: asText(req.path || req.originalUrl || req.url),
-      method: asText(req.method)
+    logFunctionWarn("heart.auth.request", {
+      ...logContext,
+      status: "unauthorized",
+      reason: "invalid_bearer_token"
     });
     res.status(401).json({ ok: false, error: "Unauthorized" });
     return { ok: false, handled: true };
@@ -286,9 +290,10 @@ async function verifyCeoRequest(req, res, db, {
     displayName: asText(decodedToken?.name || decodedToken?.displayName)
   };
   if (!canAccessHeartAsCeo(user, profile || {})) {
-    console.warn("[heart-auth] ceo access denied", {
-      path: asText(req.path || req.originalUrl || req.url),
-      method: asText(req.method),
+    logFunctionWarn("heart.auth.request", {
+      ...logContext,
+      status: "forbidden",
+      reason: "ceo_access_required",
       uid,
       email: asText(user.email),
       roles: normalizeRoleList(profile?.roles || profile?.role || "")

@@ -86,7 +86,6 @@ export function createCrmLeadGeoSupportRuntime({
 
   function normalizeLeadSettings(raw = {}) {
     return normalizeLeadSettingsCore(raw, {
-      defaultPassword: constants.defaultPassword || "",
       defaultCountry: constants.defaultCountry || "",
       normalizeLeadCountryFn: normalizeLeadCountry,
       normalizeLeadPricingFn: normalizeLeadPricing

@@ -1,4 +1,5 @@
 import { app as sharedApp } from "/shared/firebase-config.js?v=2026-03-10-startup-1";
+import { createRuntimeErrorReporter } from "/shared/runtime-error-reporter.js?v=2026-03-23-runtime-errors-1";
 import {
   getApps,
   initializeApp
@@ -83,9 +84,24 @@ const statusToneClasses = {
     badge: "bg-zinc-800/50 text-zinc-500 border-zinc-700/50"
   }
 };
+const waiterRuntimeErrorReporter = createRuntimeErrorReporter({
+  appName: "waiter",
+  windowObj: typeof window === "undefined" ? null : window,
+  maxItems: 120
+});
+waiterRuntimeErrorReporter.captureConsoleErrors();
+waiterRuntimeErrorReporter.bindGlobalErrorHandlers();
 let waiterApp = null;
 let waiterAuth = null;
 let waiterDb = null;
+
+function reportWaiterRuntimeFailure(scope = "", err = null, { level = "error", silent = false, extra = null } = {}) {
+  waiterRuntimeErrorReporter.report(
+    String(scope || "runtime").trim() || "runtime",
+    err || new Error("Operation failed"),
+    { level, silent, extra }
+  );
+}
 
 function getWaiterFirebaseApp() {
   if (waiterApp) return waiterApp;
@@ -654,7 +670,7 @@ async function ensureServiceWorkerRegistration() {
     serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration(WAITER_SW_SCOPE)
       .then((existing) => existing || navigator.serviceWorker.register(WAITER_SW_URL, { scope: WAITER_SW_SCOPE }))
       .catch((err) => {
-        console.error(err);
+        reportWaiterRuntimeFailure("service-worker-registration", err);
         return null;
       });
   }
@@ -722,7 +738,7 @@ async function syncPushDeviceToken({ requestPermission = false } = {}) {
     state.push.enabled = true;
     state.push.error = "";
   } catch (err) {
-    console.error(err);
+    reportWaiterRuntimeFailure("push-token-sync", err);
     state.push.enabled = false;
     state.push.error = err?.message || "Push konnte nicht aktiviert werden.";
   } finally {
@@ -792,7 +808,7 @@ async function disableWaiterPushDevices(uid = "") {
       await Promise.allSettled(writes);
     }
   } catch (err) {
-    console.error(err);
+    reportWaiterRuntimeFailure("push-device-disable", err);
   }
 }
 
@@ -846,7 +862,7 @@ function startOrdersListener() {
       render();
       maybeOpenHighlightedOrder();
     }, (err) => {
-      console.error(err);
+      reportWaiterRuntimeFailure("orders-listener", err);
       if (!usingFallback) {
         usingFallback = true;
         subscribe(fallbackQuery);
@@ -1061,7 +1077,7 @@ async function handleAuthChanged(user) {
     startOrdersListener();
     await disableWaiterPushDevices(user.uid);
   } catch (err) {
-    console.error(err);
+    reportWaiterRuntimeFailure("session-load", err);
     state.sessionLoading = false;
     writeCachedAccess(user.uid, null);
     state.sessionError = err?.message || "Session konnte nicht geladen werden.";
@@ -1422,7 +1438,7 @@ async function updateOrderStatus(orderId, nextStatus) {
       updatedAtClient: new Date().toISOString()
     });
   } catch (err) {
-    console.error(err);
+    reportWaiterRuntimeFailure("order-status-update", err);
     showToast(err?.message || "Status konnte nicht aktualisiert werden.");
   } finally {
     state.savingOrderIds.delete(id);
@@ -1446,7 +1462,7 @@ async function handleLoginSubmit(event) {
   try {
     await signInWithEmailAndPassword(auth, email, password);
   } catch (err) {
-    console.error(err);
+    reportWaiterRuntimeFailure("waiter-login", err);
     state.loginError = err?.message || "Login fehlgeschlagen.";
   } finally {
     if (!auth.currentUser && !state.user) {
@@ -1460,7 +1476,7 @@ async function handleLogout() {
   try {
     await signOut(auth);
   } catch (err) {
-    console.error(err);
+    reportWaiterRuntimeFailure("waiter-logout", err);
   }
 }
 

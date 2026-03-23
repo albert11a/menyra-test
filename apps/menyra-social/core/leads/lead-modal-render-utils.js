@@ -103,7 +103,7 @@ export function renderLeadModalCore({
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Passwort (optional)</label>
-          <input id="leadPassword" type="password" value="" placeholder="leer = Standardpasswort" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+          <input id="leadPassword" type="password" value="" placeholder="leer = kein Login wird erstellt" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">City</label>

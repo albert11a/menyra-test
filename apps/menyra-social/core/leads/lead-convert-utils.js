@@ -14,8 +14,6 @@ export async function convertLeadToCustomerCore({
   db,
   setDoc,
   ensureRestaurantPublicMeta,
-  createAuthUser,
-  LEAD_SOCIAL_DEFAULT_PASSWORD,
   accumulateCeoCrmDelta,
   buildCustomerCrmContribution,
   applyCeoCrmCountDeltas,
@@ -92,19 +90,8 @@ export async function convertLeadToCustomerCore({
     }
     await ensureRestaurantPublicMeta(restaurantId, restPayload);
 
-    let socialUid = lead.socialUid || "";
-    let socialEmail = lead.socialEmail || lead.email || "";
-    let loginError = "";
-    if (!socialUid && socialEmail) {
-      try {
-        const user = await createAuthUser(socialEmail, LEAD_SOCIAL_DEFAULT_PASSWORD);
-        if (user?.uid) {
-          socialUid = user.uid;
-        }
-      } catch (err) {
-        loginError = err?.message || "Login fehlgeschlagen.";
-      }
-    }
+    const socialUid = lead.socialUid || "";
+    const socialEmail = lead.socialEmail || lead.email || "";
     if (restaurantId) {
       const ownerPatch = {};
       if (socialUid) ownerPatch.ownerUid = socialUid;
@@ -135,9 +122,6 @@ export async function convertLeadToCustomerCore({
     rebuildBusinessLocations();
     refreshCustomersFromRestaurants();
     render();
-    if (loginError) {
-      alertFn(`Kunde aktiviert. Login fehlgeschlagen: ${loginError}`);
-    }
     return true;
   } catch (err) {
     console.error(err);

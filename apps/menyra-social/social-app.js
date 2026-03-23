@@ -1,6 +1,7 @@
 import { auth, db, app } from "/shared/firebase-config.js?v=2026-03-10-startup-1";
 import { BUNNY_EDGE_BASE, MEDIA_TICKET_ENDPOINT } from "/shared/bunny-edge.js";
 import { BRAND_UI } from "/shared/brand-ui.js";
+import { createRuntimeErrorReporter } from "/shared/runtime-error-reporter.js?v=2026-03-23-runtime-errors-1";
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
 import {
   signInWithEmailAndPassword,
@@ -478,7 +479,6 @@ const COMMENT_AVATAR_REMOTE_FETCH_ENABLED = false;
 const DETAIL_COMMENTS_LIMIT = 8;
 const DETAIL_LIKES_LIMIT = 12;
 
-const LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992";
 const LEAD_STATUS_ORDER = ["registered", "contacted", "testphase", "kunde", "no_interest"];
 const LEAD_STATUS_LABELS = {
   registered: "Registriert",
@@ -651,6 +651,13 @@ const FEED_PRELOAD_LIMIT = PERF_CONSTRAINED ? 1 : 3;
 const FEED_PRELOAD_ATTR = "data-menyrasocial-feed-preload";
 const FEED_META_LISTEN_LIMIT = 20;
 const CRM_PAGE_SIZE = 20;
+const socialRuntimeErrorReporter = createRuntimeErrorReporter({
+  appName: "social",
+  windowObj: typeof window === "undefined" ? null : window,
+  maxItems: 160
+});
+socialRuntimeErrorReporter.captureConsoleErrors();
+socialRuntimeErrorReporter.bindGlobalErrorHandlers();
 
 function reportCriticalRuntimeFailure(scope = "", err = null, { suppressAbort = false } = {}) {
   const safeScope = String(scope || "runtime").trim() || "runtime";
@@ -658,11 +665,11 @@ function reportCriticalRuntimeFailure(scope = "", err = null, { suppressAbort = 
   const message = String(err?.message || "").trim();
   const isAbort = name === "AbortError" || /abort/i.test(message);
   if (suppressAbort && isAbort) return;
-  if (err) {
-    console.warn(`[mnyra][${safeScope}]`, err);
-    return;
-  }
-  console.warn(`[mnyra][${safeScope}] operation failed`);
+  socialRuntimeErrorReporter.report(
+    safeScope,
+    err || new Error("Operation failed"),
+    { level: "warn" }
+  );
 }
 
 function applyRuntimePerfMode() {
@@ -1250,7 +1257,6 @@ const {
   state,
   constants: {
     ceoCountries: CEO_COUNTRIES,
-    defaultPassword: LEAD_SOCIAL_DEFAULT_PASSWORD,
     defaultCountry: LEAD_SETTINGS_DEFAULT_COUNTRY,
     countryCenters: LEAD_COUNTRY_CENTERS,
     defaultCenter: PRISHTINA_COORDS,
@@ -1760,7 +1766,6 @@ const {
 const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
   stateDeps: { state, dataLoaded },
   constants: {
-    LEAD_SOCIAL_DEFAULT_PASSWORD,
     LEAD_SETTINGS_DEFAULT_COUNTRY,
     CEO_COUNTRIES,
     LEAD_TYPE_ORDER,
@@ -2814,7 +2819,7 @@ async function reorderMenuItemFromAdmin(sourceItemId, targetItemId) {
     }
     await publishMenuToPublic(restaurantId, orderedItems);
   } catch (err) {
-    console.error(err);
+    reportCriticalRuntimeFailure("menu-reorder", err);
   }
 }
 if (typeof window !== "undefined") {

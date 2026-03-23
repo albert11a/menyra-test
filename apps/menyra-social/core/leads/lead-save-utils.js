@@ -22,7 +22,6 @@ export async function saveLeadFromModalCore({
   setDoc,
   ensureRestaurantPublicMeta,
   createAuthUser,
-  LEAD_SOCIAL_DEFAULT_PASSWORD,
   buildLeadCrmContribution,
   buildCustomerCrmContribution,
   resolveRestaurantStatusFromLead,
@@ -47,7 +46,7 @@ export async function saveLeadFromModalCore({
   const isInlineCreateView = typeof isLeadInlineCreateView === "function" ? isLeadInlineCreateView : (() => false);
   const getSettings = typeof getLeadSettingsConfig === "function"
     ? getLeadSettingsConfig
-    : (() => ({ defaultPassword: "", defaultCountry: "" }));
+    : (() => ({ defaultCountry: "" }));
   const syncDraftFromForm = typeof syncLeadModalDraftFromForm === "function" ? syncLeadModalDraftFromForm : (() => {});
   const resolveType = typeof resolveCustomerType === "function" ? resolveCustomerType : ((value) => String(value || "cafe"));
   const buildContactName = typeof buildLeadContactName === "function"
@@ -83,7 +82,6 @@ export async function saveLeadFromModalCore({
     ? ensureRestaurantPublicMeta
     : (async () => {});
   const createUser = typeof createAuthUser === "function" ? createAuthUser : (async () => null);
-  const leadDefaultPassword = String(LEAD_SOCIAL_DEFAULT_PASSWORD || "");
   const buildLeadContribution = typeof buildLeadCrmContribution === "function"
     ? buildLeadCrmContribution
     : (() => null);
@@ -141,7 +139,7 @@ export async function saveLeadFromModalCore({
   const tiktok = docObj.getElementById("leadTiktok")?.value?.trim() || lead.tiktok || "";
   const googleMaps = docObj.getElementById("leadGoogleMaps")?.value?.trim() || lead.googleMaps || "";
   const emailInput = docObj.getElementById("leadEmail")?.value?.trim() || (isInlineCreate ? buildEmail(businessName) : "");
-  const passwordInput = docObj.getElementById("leadPassword")?.value || (isInlineCreate ? settings.defaultPassword : "");
+  const passwordInput = String(docObj.getElementById("leadPassword")?.value || "").trim();
   const country = normalizeCountry(docObj.getElementById("leadCountry")?.value || lead.country || settings.defaultCountry);
   const city = docObj.getElementById("leadCity")?.value?.trim() || "";
   const addressInputValue = docObj.getElementById("leadAddress")?.value?.trim() || "";
@@ -262,10 +260,9 @@ export async function saveLeadFromModalCore({
     let socialEmail = lead.socialEmail || "";
     const loginEmail = emailInput || socialEmail || "";
     let loginError = "";
-    if (!socialUid && loginEmail) {
+    if (!socialUid && loginEmail && passwordInput) {
       try {
-        const password = passwordInput || leadDefaultPassword;
-        const user = await createUser(loginEmail, password);
+        const user = await createUser(loginEmail, passwordInput);
         if (user?.uid) {
           socialUid = user.uid;
           socialEmail = loginEmail;

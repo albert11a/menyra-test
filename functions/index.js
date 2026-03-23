@@ -4,7 +4,14 @@ const admin = require("firebase-admin");
 const functions = require("firebase-functions");
 const Busboy = require("busboy");
 const crypto = require("crypto");
-const withCors = require("cors")({ origin: true });
+const {
+  buildHttpLogContext,
+  buildCallableLogContext,
+  buildEventLogContext,
+  logFunctionInfo,
+  logFunctionWarn,
+  logFunctionError
+} = require("./logging");
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -360,6 +367,55 @@ function resolveBunnyImagesCdnHost() {
   return resolveBunnyConfigValue("images_cdn_host", "BUNNY_IMAGES_CDN_HOST");
 }
 
+function isTruthyFlag(value) {
+  return /^(1|true|yes|on)$/i.test(asText(value));
+}
+
+function isLegacyMediaEndpointEnabled() {
+  const cfg = resolveRuntimeConfig();
+  return isTruthyFlag(
+    process.env.ENABLE_LEGACY_MEDIA_ENDPOINTS
+    || cfg?.media?.enable_legacy_media_endpoints
+    || cfg?.mnyra?.enable_legacy_media_endpoints
+  );
+}
+
+async function verifyRequestUserFromBearerToken(req, flow, logContext = {}) {
+  const bearerToken = parseBearerToken(req);
+  if (!bearerToken) {
+    logFunctionWarn(flow, {
+      ...logContext,
+      status: "unauthorized",
+      reason: "missing_bearer_token"
+    });
+    return { ok: false, status: 401, error: "Unauthorized" };
+  }
+
+  let decodedToken = null;
+  try {
+    decodedToken = await admin.auth().verifyIdToken(bearerToken, true);
+  } catch {
+    logFunctionWarn(flow, {
+      ...logContext,
+      status: "unauthorized",
+      reason: "invalid_bearer_token"
+    });
+    return { ok: false, status: 401, error: "Unauthorized" };
+  }
+
+  const uid = asText(decodedToken?.uid);
+  if (!uid) {
+    logFunctionWarn(flow, {
+      ...logContext,
+      status: "unauthorized",
+      reason: "missing_uid"
+    });
+    return { ok: false, status: 401, error: "Unauthorized" };
+  }
+
+  return { ok: true, uid };
+}
+
 async function createBunnyStreamVideo({ title = "" } = {}) {
   const streamApiKey = resolveBunnyStreamApiKey();
   const streamLibraryId = resolveBunnyStreamLibraryId();
@@ -441,120 +497,277 @@ async function canUserManageOwnerId(uid, ownerId, { allowSelfOwner = false } = {
   return false;
 }
 
-exports.getStreamUploadSignature = functions.https.onCall(async (data) => {
-  const restaurantId = asText(data?.restaurantId);
+exports.getStreamUploadSignature = functions.https.onCall(async (data, context) => {
+  const restaurantId = normalizeMediaOwnerId(data?.restaurantId || "");
   const title = asText(data?.title);
+  const flow = "legacy.media.stream.callable";
+  const logContext = buildCallableLogContext(context, {
+    endpoint: "getStreamUploadSignature",
+    restaurantId
+  });
+
   if (!restaurantId) {
+    logFunctionWarn(flow, {
+      ...logContext,
+      status: "invalid_argument",
+      reason: "restaurant_id_missing"
+    });
     throw new functions.https.HttpsError("invalid-argument", "restaurantId is required");
   }
+  if (!isLegacyMediaEndpointEnabled()) {
+    logFunctionWarn(flow, {
+      ...logContext,
+      status: "disabled"
+    });
+    throw new functions.https.HttpsError(
+      "failed-precondition",
+      "Legacy media endpoint disabled. Use issueMediaActionTicket."
+    );
+  }
 
-  const streamApiKey = resolveBunnyStreamApiKey();
-  const streamLibraryId = resolveBunnyStreamLibraryId();
-  requireEnvValue("BUNNY_STREAM_API_KEY", streamApiKey);
+  const uid = asText(context?.auth?.uid);
+  if (!uid) {
+    logFunctionWarn(flow, {
+      ...logContext,
+      status: "unauthorized",
+      reason: "missing_auth"
+    });
+    throw new functions.https.HttpsError("unauthenticated", "Authentication required");
+  }
 
-  const videoId = await createBunnyStreamVideo({ title: title || "Story Video" });
-  const expiration = Math.floor(Date.now() / 1000) + (60 * 60);
-  const signature = sha256Hex(`${streamLibraryId}${streamApiKey}${expiration}${videoId}`);
+  const authorized = await canUserManageOwnerId(uid, restaurantId, { allowSelfOwner: false });
+  if (!authorized) {
+    logFunctionWarn(flow, {
+      ...logContext,
+      status: "forbidden",
+      userId: uid
+    });
+    throw new functions.https.HttpsError("permission-denied", "Forbidden");
+  }
 
-  return {
-    videoId,
-    tusEndpoint: "https://video.bunnycdn.com/tusupload",
-    tusHeaders: {
-      AuthorizationSignature: signature,
-      AuthorizationExpire: String(expiration),
-      LibraryId: String(streamLibraryId),
-      VideoId: String(videoId)
-    },
-    streamCdnHost: resolveBunnyStreamCdnHost() || null
-  };
+  try {
+    const streamApiKey = resolveBunnyStreamApiKey();
+    const streamLibraryId = resolveBunnyStreamLibraryId();
+    requireEnvValue("BUNNY_STREAM_API_KEY", streamApiKey);
+
+    const videoId = await createBunnyStreamVideo({ title: title || "Story Video" });
+    const expiration = Math.floor(Date.now() / 1000) + (60 * 60);
+    const signature = sha256Hex(`${streamLibraryId}${streamApiKey}${expiration}${videoId}`);
+
+    logFunctionInfo(flow, {
+      ...logContext,
+      status: "issued",
+      userId: uid,
+      videoId
+    });
+
+    return {
+      videoId,
+      tusEndpoint: "https://video.bunnycdn.com/tusupload",
+      tusHeaders: {
+        AuthorizationSignature: signature,
+        AuthorizationExpire: String(expiration),
+        LibraryId: String(streamLibraryId),
+        VideoId: String(videoId)
+      },
+      streamCdnHost: resolveBunnyStreamCdnHost() || null
+    };
+  } catch (error) {
+    logFunctionError(flow, error, {
+      ...logContext,
+      status: "failed",
+      userId: uid
+    });
+    throw new functions.https.HttpsError("internal", "Legacy upload signature failed");
+  }
 });
 
-exports.getStreamUploadSignatureHttp = functions.https.onRequest((req, res) => {
-  withCors(req, res, async () => {
-    try {
-      if (req.method === "OPTIONS") {
-        res.status(204).send("");
-        return;
-      }
-      if (req.method !== "POST") {
-        res.status(405).json({ error: "Method not allowed" });
-        return;
-      }
-
-      const restaurantId = asText(req.body?.restaurantId);
-      const title = asText(req.body?.title);
-      if (!restaurantId) {
-        res.status(400).json({ error: "restaurantId is required" });
-        return;
-      }
-
-      const streamApiKey = resolveBunnyStreamApiKey();
-      const streamLibraryId = resolveBunnyStreamLibraryId();
-      requireEnvValue("BUNNY_STREAM_API_KEY", streamApiKey);
-
-      const videoId = await createBunnyStreamVideo({ title: title || "Story Video" });
-      const expiration = Math.floor(Date.now() / 1000) + (60 * 60);
-      const signature = sha256Hex(`${streamLibraryId}${streamApiKey}${expiration}${videoId}`);
-
-      res.status(200).json({
-        videoId,
-        tusEndpoint: "https://video.bunnycdn.com/tusupload",
-        tusHeaders: {
-          AuthorizationSignature: signature,
-          AuthorizationExpire: String(expiration),
-          LibraryId: String(streamLibraryId),
-          VideoId: String(videoId)
-        },
-        streamCdnHost: resolveBunnyStreamCdnHost() || null
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: String(error?.message || error) });
-    }
+exports.getStreamUploadSignatureHttp = functions.https.onRequest(async (req, res) => {
+  const flow = "legacy.media.stream.http";
+  const baseLogContext = buildHttpLogContext(req, {
+    endpoint: "getStreamUploadSignatureHttp"
   });
+  sendMediaCors(res, req);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    logFunctionWarn(flow, {
+      ...baseLogContext,
+      status: "method_not_allowed"
+    });
+    res.status(405).json({ ok: false, error: "Method not allowed" });
+    return;
+  }
+  if (!isLegacyMediaEndpointEnabled()) {
+    logFunctionWarn(flow, {
+      ...baseLogContext,
+      status: "disabled"
+    });
+    res.status(410).json({ ok: false, error: "Legacy media endpoint disabled. Use issueMediaActionTicket." });
+    return;
+  }
+
+  try {
+    const body = parseRequestJson(req);
+    const restaurantId = normalizeMediaOwnerId(body.restaurantId || "");
+    const title = asText(body.title);
+    const logContext = {
+      ...baseLogContext,
+      restaurantId
+    };
+    if (!restaurantId) {
+      logFunctionWarn(flow, {
+        ...logContext,
+        status: "invalid_argument",
+        reason: "restaurant_id_missing"
+      });
+      res.status(400).json({ ok: false, error: "restaurantId is required" });
+      return;
+    }
+
+    const verifiedUser = await verifyRequestUserFromBearerToken(req, flow, logContext);
+    if (!verifiedUser.ok) {
+      res.status(verifiedUser.status).json({ ok: false, error: verifiedUser.error });
+      return;
+    }
+
+    const authorized = await canUserManageOwnerId(verifiedUser.uid, restaurantId, { allowSelfOwner: false });
+    if (!authorized) {
+      logFunctionWarn(flow, {
+        ...logContext,
+        status: "forbidden",
+        userId: verifiedUser.uid
+      });
+      res.status(403).json({ ok: false, error: "Forbidden" });
+      return;
+    }
+
+    const streamApiKey = resolveBunnyStreamApiKey();
+    const streamLibraryId = resolveBunnyStreamLibraryId();
+    requireEnvValue("BUNNY_STREAM_API_KEY", streamApiKey);
+
+    const videoId = await createBunnyStreamVideo({ title: title || "Story Video" });
+    const expiration = Math.floor(Date.now() / 1000) + (60 * 60);
+    const signature = sha256Hex(`${streamLibraryId}${streamApiKey}${expiration}${videoId}`);
+
+    logFunctionInfo(flow, {
+      ...logContext,
+      status: "issued",
+      userId: verifiedUser.uid,
+      videoId
+    });
+
+    res.status(200).json({
+      ok: true,
+      videoId,
+      tusEndpoint: "https://video.bunnycdn.com/tusupload",
+      tusHeaders: {
+        AuthorizationSignature: signature,
+        AuthorizationExpire: String(expiration),
+        LibraryId: String(streamLibraryId),
+        VideoId: String(videoId)
+      },
+      streamCdnHost: resolveBunnyStreamCdnHost() || null
+    });
+  } catch (error) {
+    logFunctionError(flow, error, {
+      ...baseLogContext,
+      status: "failed"
+    });
+    res.status(500).json({ ok: false, error: String(error?.message || error) });
+  }
 });
 
-exports.uploadStoryImage = functions.https.onRequest((req, res) => {
-  withCors(req, res, async () => {
-    try {
-      if (req.method !== "POST") {
-        res.status(405).send("Method not allowed");
-        return;
+exports.uploadStoryImage = functions.https.onRequest(async (req, res) => {
+  const flow = "legacy.media.story.upload";
+  const baseLogContext = buildHttpLogContext(req, {
+    endpoint: "uploadStoryImage"
+  });
+  sendMediaCors(res, req);
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    logFunctionWarn(flow, {
+      ...baseLogContext,
+      status: "method_not_allowed"
+    });
+    res.status(405).json({ ok: false, error: "Method not allowed" });
+    return;
+  }
+  if (!isLegacyMediaEndpointEnabled()) {
+    logFunctionWarn(flow, {
+      ...baseLogContext,
+      status: "disabled"
+    });
+    res.status(410).json({ ok: false, error: "Legacy media endpoint disabled. Use issueMediaActionTicket." });
+    return;
+  }
+
+  try {
+    const verifiedUser = await verifyRequestUserFromBearerToken(req, flow, baseLogContext);
+    if (!verifiedUser.ok) {
+      res.status(verifiedUser.status).json({ ok: false, error: verifiedUser.error });
+      return;
+    }
+
+    const storageZone = resolveBunnyStorageZone();
+    const storageAccessKey = resolveBunnyStorageAccessKey();
+    const storageHost = resolveBunnyStorageHost();
+    const imagesCdnHost = resolveBunnyImagesCdnHost();
+    requireEnvValue("BUNNY_STORAGE_ZONE", storageZone);
+    requireEnvValue("BUNNY_STORAGE_ACCESS_KEY", storageAccessKey);
+    requireEnvValue("BUNNY_IMAGES_CDN_HOST", imagesCdnHost);
+
+    const busboy = Busboy({
+      headers: req.headers,
+      limits: { files: 1, fileSize: 12 * 1024 * 1024 }
+    });
+
+    let restaurantId = "";
+    let fileName = "image";
+    let fileMime = "application/octet-stream";
+    const fileBuffers = [];
+
+    busboy.on("field", (name, value) => {
+      if (name === "restaurantId") {
+        restaurantId = normalizeMediaOwnerId(value);
       }
+    });
 
-      const storageZone = resolveBunnyStorageZone();
-      const storageAccessKey = resolveBunnyStorageAccessKey();
-      const storageHost = resolveBunnyStorageHost();
-      const imagesCdnHost = resolveBunnyImagesCdnHost();
-      requireEnvValue("BUNNY_STORAGE_ZONE", storageZone);
-      requireEnvValue("BUNNY_STORAGE_ACCESS_KEY", storageAccessKey);
-      requireEnvValue("BUNNY_IMAGES_CDN_HOST", imagesCdnHost);
+    busboy.on("file", (_name, file, info) => {
+      fileName = asText(info?.filename, "image");
+      fileMime = asText(info?.mimeType, "application/octet-stream");
+      file.on("data", (chunk) => fileBuffers.push(chunk));
+    });
 
-      const busboy = Busboy({
-        headers: req.headers,
-        limits: { files: 1, fileSize: 12 * 1024 * 1024 }
-      });
-
-      let restaurantId = "";
-      let fileName = "image";
-      let fileMime = "application/octet-stream";
-      const fileBuffers = [];
-
-      busboy.on("field", (name, value) => {
-        if (name === "restaurantId") {
-          restaurantId = asText(value);
-        }
-      });
-
-      busboy.on("file", (_name, file, info) => {
-        fileName = asText(info?.filename, "image");
-        fileMime = asText(info?.mimeType, "application/octet-stream");
-        file.on("data", (chunk) => fileBuffers.push(chunk));
-      });
-
-      busboy.on("finish", async () => {
+    busboy.on("finish", async () => {
+      const logContext = {
+        ...baseLogContext,
+        restaurantId
+      };
+      try {
         if (!restaurantId) {
-          res.status(400).send("restaurantId required");
+          logFunctionWarn(flow, {
+            ...logContext,
+            status: "invalid_argument",
+            reason: "restaurant_id_missing"
+          });
+          res.status(400).json({ ok: false, error: "restaurantId required" });
+          return;
+        }
+
+        const authorized = await canUserManageOwnerId(verifiedUser.uid, restaurantId, { allowSelfOwner: false });
+        if (!authorized) {
+          logFunctionWarn(flow, {
+            ...logContext,
+            status: "forbidden",
+            userId: verifiedUser.uid
+          });
+          res.status(403).json({ ok: false, error: "Forbidden" });
           return;
         }
 
@@ -564,7 +777,12 @@ exports.uploadStoryImage = functions.https.onRequest((req, res) => {
         const body = Buffer.concat(fileBuffers);
 
         if (!body.length) {
-          res.status(400).send("No file received");
+          logFunctionWarn(flow, {
+            ...logContext,
+            status: "invalid_argument",
+            reason: "missing_file"
+          });
+          res.status(400).json({ ok: false, error: "No file received" });
           return;
         }
 
@@ -579,26 +797,59 @@ exports.uploadStoryImage = functions.https.onRequest((req, res) => {
 
         if (!uploadResponse.ok) {
           const text = await uploadResponse.text().catch(() => "");
-          res.status(502).send(`Bunny upload failed (${uploadResponse.status}): ${text}`);
+          logFunctionWarn(flow, {
+            ...logContext,
+            status: "upstream_failed",
+            userId: verifiedUser.uid,
+            upstreamStatus: uploadResponse.status
+          });
+          res.status(502).json({ ok: false, error: `Bunny upload failed (${uploadResponse.status}): ${text}` });
           return;
         }
 
+        logFunctionInfo(flow, {
+          ...logContext,
+          status: "uploaded",
+          userId: verifiedUser.uid,
+          path
+        });
+
         res.status(200).json({
+          ok: true,
           url: `https://${imagesCdnHost}/${path}`,
           path
         });
-      });
+      } catch (error) {
+        logFunctionError(flow, error, {
+          ...logContext,
+          status: "failed",
+          userId: verifiedUser.uid
+        });
+        if (!res.headersSent) {
+          res.status(500).json({ ok: false, error: String(error?.message || error) });
+        }
+      }
+    });
 
-      busboy.on("error", (error) => {
-        res.status(400).send(String(error?.message || error));
+    busboy.on("error", (error) => {
+      logFunctionError(flow, error, {
+        ...baseLogContext,
+        status: "invalid_request",
+        userId: verifiedUser.uid
       });
+      if (!res.headersSent) {
+        res.status(400).json({ ok: false, error: String(error?.message || error) });
+      }
+    });
 
-      req.pipe(busboy);
-    } catch (error) {
-      console.error(error);
-      res.status(500).send(String(error?.message || error));
-    }
-  });
+    req.pipe(busboy);
+  } catch (error) {
+    logFunctionError(flow, error, {
+      ...baseLogContext,
+      status: "failed"
+    });
+    res.status(500).json({ ok: false, error: String(error?.message || error) });
+  }
 });
 
 async function queryActiveFeed(limitCount = 14) {
@@ -630,131 +881,201 @@ async function queryActiveStories(limitCount = 12) {
 exports.issueMediaActionTicket = functions
   .region("us-central1")
   .https.onRequest(async (req, res) => {
+    const flow = "media.ticket.issue";
+    const baseLogContext = buildHttpLogContext(req, {
+      endpoint: "issueMediaActionTicket"
+    });
     sendMediaCors(res, req);
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
     }
     if (req.method !== "POST") {
+      logFunctionWarn(flow, {
+        ...baseLogContext,
+        status: "method_not_allowed"
+      });
       res.status(405).json({ ok: false, error: "Method not allowed" });
       return;
     }
 
-    const secret = resolveMediaActionTicketSecret();
-    if (!secret) {
-      res.status(500).json({ ok: false, error: "Media ticket secret missing" });
-      return;
-    }
-
-    const bearerToken = parseBearerToken(req);
-    if (!bearerToken) {
-      res.status(401).json({ ok: false, error: "Unauthorized" });
-      return;
-    }
-
-    let decodedToken = null;
     try {
-      decodedToken = await admin.auth().verifyIdToken(bearerToken, true);
-    } catch {
-      res.status(401).json({ ok: false, error: "Unauthorized" });
-      return;
+      const secret = resolveMediaActionTicketSecret();
+      if (!secret) {
+        logFunctionWarn(flow, {
+          ...baseLogContext,
+          status: "misconfigured",
+          reason: "missing_ticket_secret"
+        });
+        res.status(500).json({ ok: false, error: "Media ticket secret missing" });
+        return;
+      }
+
+      const verifiedUser = await verifyRequestUserFromBearerToken(req, flow, baseLogContext);
+      if (!verifiedUser.ok) {
+        res.status(verifiedUser.status).json({ ok: false, error: verifiedUser.error });
+        return;
+      }
+      const uid = verifiedUser.uid;
+
+      const body = parseRequestJson(req);
+      const action = asText(body.action).toLowerCase();
+      const scopedLogContext = {
+        ...baseLogContext,
+        userId: uid,
+        action
+      };
+      if (!MEDIA_ACTIONS.has(action)) {
+        logFunctionWarn(flow, {
+          ...scopedLogContext,
+          status: "invalid_argument",
+          reason: "invalid_action"
+        });
+        res.status(400).json({ ok: false, error: "Invalid action" });
+        return;
+      }
+
+      let ownerId = normalizeMediaOwnerId(body.restaurantId || "");
+      let videoId = "";
+      const isImageUpload = action === "image_upload";
+      const isStoryUpload = action === "story_upload";
+      const isStoryDelete = action === "story_delete";
+
+      if (isImageUpload || isStoryUpload) {
+        if (!ownerId) {
+          logFunctionWarn(flow, {
+            ...scopedLogContext,
+            status: "invalid_argument",
+            reason: "restaurant_id_missing"
+          });
+          res.status(400).json({ ok: false, error: "restaurantId required" });
+          return;
+        }
+        if (isStoryUpload && ownerId === normalizeMediaOwnerId(uid)) {
+          logFunctionWarn(flow, {
+            ...scopedLogContext,
+            status: "forbidden",
+            restaurantId: ownerId,
+            reason: "story_upload_requires_business_owner"
+          });
+          res.status(403).json({ ok: false, error: "Story upload requires business owner id" });
+          return;
+        }
+        const authorized = await canUserManageOwnerId(uid, ownerId, { allowSelfOwner: isImageUpload });
+        if (!authorized) {
+          logFunctionWarn(flow, {
+            ...scopedLogContext,
+            status: "forbidden",
+            restaurantId: ownerId
+          });
+          res.status(403).json({ ok: false, error: "Forbidden" });
+          return;
+        }
+      }
+
+      if (isStoryDelete) {
+        videoId = normalizeMediaVideoId(body.videoId || "");
+        if (!videoId) {
+          logFunctionWarn(flow, {
+            ...scopedLogContext,
+            status: "invalid_argument",
+            reason: "video_id_missing"
+          });
+          res.status(400).json({ ok: false, error: "videoId required" });
+          return;
+        }
+        const storyOwnerId = resolveStoryOwnerIdFromVideoKey(videoId);
+        if (!storyOwnerId) {
+          logFunctionWarn(flow, {
+            ...scopedLogContext,
+            status: "invalid_argument",
+            reason: "invalid_video_id"
+          });
+          res.status(400).json({ ok: false, error: "Invalid videoId" });
+          return;
+        }
+        if (ownerId && ownerId !== storyOwnerId) {
+          logFunctionWarn(flow, {
+            ...scopedLogContext,
+            status: "forbidden",
+            restaurantId: ownerId,
+            reason: "story_owner_mismatch"
+          });
+          res.status(403).json({ ok: false, error: "Forbidden" });
+          return;
+        }
+        ownerId = storyOwnerId;
+        const authorized = await canUserManageOwnerId(uid, ownerId, { allowSelfOwner: false });
+        if (!authorized) {
+          logFunctionWarn(flow, {
+            ...scopedLogContext,
+            status: "forbidden",
+            restaurantId: ownerId
+          });
+          res.status(403).json({ ok: false, error: "Forbidden" });
+          return;
+        }
+      }
+
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      const ttlSeconds = resolveMediaTicketTtlSeconds();
+      const payload = {
+        v: MEDIA_TICKET_VERSION,
+        action,
+        uid,
+        ownerId,
+        videoId: videoId || "",
+        iat: nowSeconds,
+        exp: nowSeconds + ttlSeconds,
+        nonce: crypto.randomBytes(12).toString("base64url")
+      };
+      const ticket = createMediaActionTicket(payload, secret);
+
+      logFunctionInfo(flow, {
+        ...scopedLogContext,
+        status: "issued",
+        restaurantId: ownerId,
+        videoId: videoId || ""
+      });
+
+      res.status(200).json({
+        ok: true,
+        ticket,
+        expiresAt: payload.exp * 1000,
+        action,
+        restaurantId: ownerId,
+        constraints: {
+          maxImageMb: Number(process.env.MAX_IMAGE_MB || 15) || 15,
+          maxStoryMb: Number(process.env.MAX_STORY_MB || 50) || 50,
+          ttlSeconds
+        }
+      });
+    } catch (error) {
+      logFunctionError(flow, error, {
+        ...baseLogContext,
+        status: "failed"
+      });
+      res.status(500).json({ ok: false, error: "Media ticket request failed" });
     }
-
-    const uid = asText(decodedToken?.uid);
-    if (!uid) {
-      res.status(401).json({ ok: false, error: "Unauthorized" });
-      return;
-    }
-
-    const body = parseRequestJson(req);
-    const action = asText(body.action).toLowerCase();
-    if (!MEDIA_ACTIONS.has(action)) {
-      res.status(400).json({ ok: false, error: "Invalid action" });
-      return;
-    }
-
-    let ownerId = normalizeMediaOwnerId(body.restaurantId || "");
-    let videoId = "";
-    const isImageUpload = action === "image_upload";
-    const isStoryUpload = action === "story_upload";
-    const isStoryDelete = action === "story_delete";
-
-    if (isImageUpload || isStoryUpload) {
-      if (!ownerId) {
-        res.status(400).json({ ok: false, error: "restaurantId required" });
-        return;
-      }
-      if (isStoryUpload && ownerId === normalizeMediaOwnerId(uid)) {
-        res.status(403).json({ ok: false, error: "Story upload requires business owner id" });
-        return;
-      }
-      const authorized = await canUserManageOwnerId(uid, ownerId, { allowSelfOwner: isImageUpload });
-      if (!authorized) {
-        res.status(403).json({ ok: false, error: "Forbidden" });
-        return;
-      }
-    }
-
-    if (isStoryDelete) {
-      videoId = normalizeMediaVideoId(body.videoId || "");
-      if (!videoId) {
-        res.status(400).json({ ok: false, error: "videoId required" });
-        return;
-      }
-      const storyOwnerId = resolveStoryOwnerIdFromVideoKey(videoId);
-      if (!storyOwnerId) {
-        res.status(400).json({ ok: false, error: "Invalid videoId" });
-        return;
-      }
-      if (ownerId && ownerId !== storyOwnerId) {
-        res.status(403).json({ ok: false, error: "Forbidden" });
-        return;
-      }
-      ownerId = storyOwnerId;
-      const authorized = await canUserManageOwnerId(uid, ownerId, { allowSelfOwner: false });
-      if (!authorized) {
-        res.status(403).json({ ok: false, error: "Forbidden" });
-        return;
-      }
-    }
-
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    const ttlSeconds = resolveMediaTicketTtlSeconds();
-    const payload = {
-      v: MEDIA_TICKET_VERSION,
-      action,
-      uid,
-      ownerId,
-      videoId: videoId || "",
-      iat: nowSeconds,
-      exp: nowSeconds + ttlSeconds,
-      nonce: crypto.randomBytes(12).toString("base64url")
-    };
-    const ticket = createMediaActionTicket(payload, secret);
-
-    res.status(200).json({
-      ok: true,
-      ticket,
-      expiresAt: payload.exp * 1000,
-      action,
-      restaurantId: ownerId,
-      constraints: {
-        maxImageMb: Number(process.env.MAX_IMAGE_MB || 15) || 15,
-        maxStoryMb: Number(process.env.MAX_STORY_MB || 50) || 50,
-        ttlSeconds
-      }
-    });
   });
 
 exports.socialBootstrapFeed = functions
   .region("us-central1")
   .https.onRequest(async (req, res) => {
+    const flow = "social.bootstrap.feed";
+    const logContext = buildHttpLogContext(req, {
+      endpoint: "socialBootstrapFeed"
+    });
     sendCors(res, req);
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
     }
     if (req.method !== "GET") {
+      logFunctionWarn(flow, {
+        ...logContext,
+        status: "method_not_allowed"
+      });
       res.status(405).json({ ok: false, error: "Method not allowed" });
       return;
     }
@@ -848,6 +1169,13 @@ exports.socialBootstrapFeed = functions
         }));
 
       res.set("Cache-Control", "public, max-age=30, s-maxage=90, stale-while-revalidate=180");
+      logFunctionInfo(flow, {
+        ...logContext,
+        status: "served",
+        restaurants: restaurants.length,
+        feedPosts: feedPosts.length,
+        stories: stories.length
+      });
       res.status(200).json({
         ok: true,
         ts: Date.now(),
@@ -858,6 +1186,10 @@ exports.socialBootstrapFeed = functions
         }
       });
     } catch (err) {
+      logFunctionError(flow, err, {
+        ...logContext,
+        status: "failed"
+      });
       res.status(500).json({
         ok: false,
         error: asText(err?.message, "Bootstrap fetch failed")
@@ -871,99 +1203,111 @@ exports.sendWebPushOnNotificationCreate = functions
   .onCreate(async (snap, context) => {
     if (!snap?.exists) return;
 
-    const data = snap.data() || {};
-    if (data.silent === true) return;
-
     const userId = asText(context.params?.userId);
     const notificationId = asText(context.params?.notificationId || snap.id);
-    if (!userId || !notificationId) return;
-
-    const devicesSnap = await db
-      .collection("users")
-      .doc(userId)
-      .collection("devices")
-      .where("enabled", "==", true)
-      .limit(30)
-      .get();
-
-    if (devicesSnap.empty) return;
-
-    const tokenRefs = new Map();
-    devicesSnap.forEach((docSnap) => {
-      const token = asText(docSnap.get("token"));
-      if (!token) return;
-      if (!tokenRefs.has(token)) tokenRefs.set(token, []);
-      tokenRefs.get(token).push(docSnap.ref);
-    });
-
-    const tokens = Array.from(tokenRefs.keys());
-    if (!tokens.length) return;
-
-    const title = resolveNotificationTitle(data);
-    const body = resolveNotificationBody(data);
-    const link = addNotificationQuery(resolveNotificationLink(data), notificationId);
-    const clientLink = addNotificationQueryToClientLink(resolveNotificationClientLink(data), notificationId);
-    const icon = asText(data.avatar || data.img, DEFAULT_ICON);
-
-    const response = await admin.messaging().sendEachForMulticast({
-      tokens,
-      notification: { title, body },
-      data: {
-        notificationId,
-        userId,
-        type: asText(data.type),
-        userUid: asText(data.userUid || data.uid),
-        ownerType: asText(data.ownerType),
-        ownerId: asText(data.ownerId),
-        postId: asText(data.postId),
-        commentId: asText(data.commentId),
-        link: clientLink
-      },
-      webpush: {
-        fcmOptions: {
-          link
-        },
-        notification: {
-          title,
-          body,
-          icon,
-          badge: icon,
-          silent: false,
-          vibrate: [180, 90, 180],
-          renotify: true,
-          tag: `menyra_notif_${notificationId}`
-        }
-      }
-    });
-
-    const cleanupWrites = [];
-    response.responses.forEach((item, index) => {
-      if (item.success) return;
-      const errorCode = asText(item.error?.code);
-      if (!INVALID_TOKEN_CODES.has(errorCode)) return;
-      const token = tokens[index];
-      const refs = tokenRefs.get(token) || [];
-      refs.forEach((ref) => {
-        cleanupWrites.push(ref.set({
-          enabled: false,
-          token: "",
-          lastErrorCode: errorCode,
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }));
-      });
-    });
-
-    if (cleanupWrites.length) {
-      await Promise.allSettled(cleanupWrites);
-    }
-
-    console.log("sendWebPushOnNotificationCreate", {
+    const logContext = buildEventLogContext(context, {
       userId,
-      notificationId,
-      tokens: tokens.length,
-      success: response.successCount,
-      failed: response.failureCount
+      notificationId
     });
+
+    try {
+      const data = snap.data() || {};
+      if (data.silent === true) return;
+      if (!userId || !notificationId) return;
+
+      const devicesSnap = await db
+        .collection("users")
+        .doc(userId)
+        .collection("devices")
+        .where("enabled", "==", true)
+        .limit(30)
+        .get();
+
+      if (devicesSnap.empty) return;
+
+      const tokenRefs = new Map();
+      devicesSnap.forEach((docSnap) => {
+        const token = asText(docSnap.get("token"));
+        if (!token) return;
+        if (!tokenRefs.has(token)) tokenRefs.set(token, []);
+        tokenRefs.get(token).push(docSnap.ref);
+      });
+
+      const tokens = Array.from(tokenRefs.keys());
+      if (!tokens.length) return;
+
+      const title = resolveNotificationTitle(data);
+      const body = resolveNotificationBody(data);
+      const link = addNotificationQuery(resolveNotificationLink(data), notificationId);
+      const clientLink = addNotificationQueryToClientLink(resolveNotificationClientLink(data), notificationId);
+      const icon = asText(data.avatar || data.img, DEFAULT_ICON);
+
+      const response = await admin.messaging().sendEachForMulticast({
+        tokens,
+        notification: { title, body },
+        data: {
+          notificationId,
+          userId,
+          type: asText(data.type),
+          userUid: asText(data.userUid || data.uid),
+          ownerType: asText(data.ownerType),
+          ownerId: asText(data.ownerId),
+          postId: asText(data.postId),
+          commentId: asText(data.commentId),
+          link: clientLink
+        },
+        webpush: {
+          fcmOptions: {
+            link
+          },
+          notification: {
+            title,
+            body,
+            icon,
+            badge: icon,
+            silent: false,
+            vibrate: [180, 90, 180],
+            renotify: true,
+            tag: `menyra_notif_${notificationId}`
+          }
+        }
+      });
+
+      const cleanupWrites = [];
+      response.responses.forEach((item, index) => {
+        if (item.success) return;
+        const errorCode = asText(item.error?.code);
+        if (!INVALID_TOKEN_CODES.has(errorCode)) return;
+        const token = tokens[index];
+        const refs = tokenRefs.get(token) || [];
+        refs.forEach((ref) => {
+          cleanupWrites.push(ref.set({
+            enabled: false,
+            token: "",
+            lastErrorCode: errorCode,
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
+          }, { merge: true }));
+        });
+      });
+
+      if (cleanupWrites.length) {
+        await Promise.allSettled(cleanupWrites);
+      }
+
+      logFunctionInfo("push.notification.dispatch", {
+        ...logContext,
+        status: "completed",
+        tokens: tokens.length,
+        success: response.successCount,
+        failed: response.failureCount
+      });
+    } catch (error) {
+      logFunctionError("push.notification.dispatch", error, {
+        ...logContext,
+        status: "failed"
+      });
+      throw error;
+    }
   });
 
 exports.notifyWaiterOnRestaurantOrderCreate = functions
@@ -974,53 +1318,66 @@ exports.notifyWaiterOnRestaurantOrderCreate = functions
 
     const restaurantId = asText(context.params?.restaurantId);
     const orderId = asText(context.params?.orderId || snap.id);
-    if (!restaurantId || !orderId) return;
-
-    const orderData = snap.data() || {};
-    const [restaurantSnap, staffDocs] = await Promise.all([
-      db.collection("restaurants").doc(restaurantId).get(),
-      loadWaiterStaffRecipients(restaurantId)
-    ]);
-
-    const restaurantData = restaurantSnap.exists ? (restaurantSnap.data() || {}) : {};
-    const recipients = new Set();
-    const ownerUid = asText(restaurantData.ownerUid);
-    if (ownerUid) recipients.add(ownerUid);
-
-    staffDocs.forEach((docSnap) => {
-      if (!hasActiveWaiterAccess(docSnap.data() || {})) return;
-      const uid = asText(docSnap.id);
-      if (uid) recipients.add(uid);
-    });
-
-    if (!recipients.size) return;
-
-    const payload = buildRestaurantOrderNotificationPayload({
+    const logContext = buildEventLogContext(context, {
       restaurantId,
-      orderId,
-      orderData,
-      restaurantData
+      orderId
     });
 
-    const writes = Array.from(recipients).map((uid) => (
-      db
-        .collection("users")
-        .doc(uid)
-        .collection("notifications")
-        .doc(`restaurant_order_${orderId}`)
-        .set({
-          ...payload,
-          userUid: uid
-        }, { merge: true })
-    ));
+    try {
+      if (!restaurantId || !orderId) return;
 
-    await Promise.allSettled(writes);
+      const orderData = snap.data() || {};
+      const [restaurantSnap, staffDocs] = await Promise.all([
+        db.collection("restaurants").doc(restaurantId).get(),
+        loadWaiterStaffRecipients(restaurantId)
+      ]);
 
-    console.log("notifyWaiterOnRestaurantOrderCreate", {
-      restaurantId,
-      orderId,
-      recipients: recipients.size
-    });
+      const restaurantData = restaurantSnap.exists ? (restaurantSnap.data() || {}) : {};
+      const recipients = new Set();
+      const ownerUid = asText(restaurantData.ownerUid);
+      if (ownerUid) recipients.add(ownerUid);
+
+      staffDocs.forEach((docSnap) => {
+        if (!hasActiveWaiterAccess(docSnap.data() || {})) return;
+        const uid = asText(docSnap.id);
+        if (uid) recipients.add(uid);
+      });
+
+      if (!recipients.size) return;
+
+      const payload = buildRestaurantOrderNotificationPayload({
+        restaurantId,
+        orderId,
+        orderData,
+        restaurantData
+      });
+
+      const writes = Array.from(recipients).map((uid) => (
+        db
+          .collection("users")
+          .doc(uid)
+          .collection("notifications")
+          .doc(`restaurant_order_${orderId}`)
+          .set({
+            ...payload,
+            userUid: uid
+          }, { merge: true })
+      ));
+
+      await Promise.allSettled(writes);
+
+      logFunctionInfo("waiter.order.notification", {
+        ...logContext,
+        status: "completed",
+        recipients: recipients.size
+      });
+    } catch (error) {
+      logFunctionError("waiter.order.notification", error, {
+        ...logContext,
+        status: "failed"
+      });
+      throw error;
+    }
   });
 
 const { migrateEmailsToMnyra } = require("./email-domain-migration");
