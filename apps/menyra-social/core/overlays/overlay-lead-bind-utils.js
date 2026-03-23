@@ -77,6 +77,7 @@ export function bindLeadOverlayEventsCore({
   const leadLogoTrigger = doc.getElementById("leadLogoTrigger");
   const leadLogoInput = doc.getElementById("leadLogoInput");
   const leadLogoUrl = doc.getElementById("leadLogoUrl");
+  const leadPassword = doc.getElementById("leadPassword");
 
   bindModalDismiss(leadOverlay, closeLeadModal, { selfOnly: true });
   bindModalDismiss(leadClose, closeLeadModal);
@@ -119,6 +120,14 @@ export function bindLeadOverlayEventsCore({
       const val = leadLogoUrl.value.trim();
       const img = doc.getElementById("leadLogoPreview");
       if (img) img.setAttribute("src", val || placeholderImage);
+    });
+  }
+  if (leadPassword) {
+    leadPassword.addEventListener("input", () => {
+      state.leadModal.lead = {
+        ...(state.leadModal.lead || {}),
+        password: String(leadPassword.value || "")
+      };
     });
   }
   doc.querySelectorAll("[data-lead-location-add]").forEach((btn) => {

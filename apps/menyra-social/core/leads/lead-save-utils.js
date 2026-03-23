@@ -119,6 +119,32 @@ export async function saveLeadFromModalCore({
     : ((message) => {
       if (typeof alert === "function") alert(message);
     });
+  const normalizeCreatorPath = (path = [], fallback = []) => {
+    const base = Array.isArray(path) ? path : [];
+    const extra = Array.isArray(fallback) ? fallback : [fallback];
+    return Array.from(new Set([...base, ...extra].map((entry) => String(entry || "").trim()).filter(Boolean)));
+  };
+  const buildCurrentCreatorMeta = () => {
+    const user = state?.user || {};
+    const profile = state?.userProfile || {};
+    const createdByUid = String(user.uid || profile.uid || "").trim();
+    const createdByName = String(profile.name || user.displayName || user.email || "").trim();
+    const createdByHandle = String(profile.handle || "").trim();
+    const ceoRootUid = String(profile.ceoRootUid || createdByUid).trim() || createdByUid;
+    const ceoRootName = String(profile.ceoRootName || createdByName).trim() || createdByName;
+    const ceoParentUid = String(profile.ceoParentUid || profile.parentCeoUid || "").trim();
+    const ceoPath = normalizeCreatorPath(profile.ceoPath, [ceoRootUid, ceoParentUid, createdByUid]);
+    return {
+      createdByUid,
+      createdByRole: String(profile.createdByRole || profile.role || "ceo").trim() || "ceo",
+      createdByName,
+      createdByHandle,
+      ceoRootUid,
+      ceoRootName,
+      ceoParentUid,
+      ceoPath
+    };
+  };
 
   const lead = state.leadModal.lead || {};
   const isInlineCreate = isInlineCreateView();
@@ -205,7 +231,25 @@ export async function saveLeadFromModalCore({
     const prevLeadContribution = lead?.id ? buildLeadContribution(lead) : null;
     const prevCustomerContribution = existingRest ? buildCustomerContribution(existingRest) : null;
     const restaurantStatus = resolveRestStatus(statusValue, existingRest?.status || "");
-    const creatorMeta = resolveCreatorMeta(lead, existingRest);
+    const currentCreatorMeta = buildCurrentCreatorMeta();
+    const storedCreatorMeta = resolveCreatorMeta(lead, existingRest) || {};
+    const creatorMeta = lead?.id
+      ? {
+          createdByUid: String(storedCreatorMeta.createdByUid || currentCreatorMeta.createdByUid || "").trim(),
+          createdByRole: String(storedCreatorMeta.createdByRole || currentCreatorMeta.createdByRole || "ceo").trim() || "ceo",
+          createdByName: String(storedCreatorMeta.createdByName || currentCreatorMeta.createdByName || "").trim(),
+          createdByHandle: String(storedCreatorMeta.createdByHandle || currentCreatorMeta.createdByHandle || "").trim(),
+          ceoRootUid: String(storedCreatorMeta.ceoRootUid || currentCreatorMeta.ceoRootUid || currentCreatorMeta.createdByUid || "").trim(),
+          ceoRootName: String(storedCreatorMeta.ceoRootName || currentCreatorMeta.ceoRootName || currentCreatorMeta.createdByName || "").trim(),
+          ceoParentUid: String(storedCreatorMeta.ceoParentUid || currentCreatorMeta.ceoParentUid || "").trim(),
+          ceoPath: normalizeCreatorPath(storedCreatorMeta.ceoPath, [
+            ...(Array.isArray(currentCreatorMeta.ceoPath) ? currentCreatorMeta.ceoPath : []),
+            storedCreatorMeta.ceoRootUid || currentCreatorMeta.ceoRootUid || "",
+            storedCreatorMeta.ceoParentUid || currentCreatorMeta.ceoParentUid || "",
+            storedCreatorMeta.createdByUid || currentCreatorMeta.createdByUid || ""
+          ])
+        }
+      : currentCreatorMeta;
     const monthlyPrice = getMonthlyPrice(customerType, settings);
     const yearlyPrice = monthlyPrice * 12;
     const activePrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;

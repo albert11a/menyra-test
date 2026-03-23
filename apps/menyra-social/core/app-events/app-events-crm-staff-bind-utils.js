@@ -71,10 +71,19 @@ export function bindLeadInlineCreateEventsCore({
   }
 
   const leadInlineSaveBtn = doc.getElementById("leadInlineSaveBtn");
+  const leadPasswordInput = doc.getElementById("leadPassword");
   if (leadInlineSaveBtn) {
     leadInlineSaveBtn.addEventListener("click", () => {
       if (state.leadModal.loading || !saveLeadFromModal) return;
       void saveLeadFromModal();
+    });
+  }
+  if (leadPasswordInput) {
+    leadPasswordInput.addEventListener("input", () => {
+      state.leadModal.lead = {
+        ...(state.leadModal.lead || {}),
+        password: String(leadPasswordInput.value || "")
+      };
     });
   }
   const leadLogoTrigger = doc.getElementById("leadLogoTrigger");
