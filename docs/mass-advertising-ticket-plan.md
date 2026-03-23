@@ -13,11 +13,12 @@ Ziel:
 
 ## Aktueller Umsetzungsstand
 
-- `01-05` sind im Repo umgesetzt.
-- Stand der Umsetzung: Commit `91f99cd` auf `main`.
-- Bereits geliefert: Lead-Standardpasswort entfernt, Legacy-Media-Endpoints gehaertet, kritische Write-Flow-Inventarisierung, strukturierte Function-Logs, Frontend-Runtime-Fehleradapter fuer Social und Waiter.
-- Noch offen: `06-30`
-- Naechster sinnvoller Block: `06`, `07`, `10`, `11`, `12`
+- `01-05` sind auf `main` gepusht.
+- `06` ist im lokalen Repo umgesetzt und noch nicht committed.
+- Letzter gepushter Stand fuer den Block: Commit `91f99cd` auf `main`.
+- Bereits geliefert: Lead-Standardpasswort entfernt, Legacy-Media-Endpoints gehaertet, kritische Write-Flow-Inventarisierung, strukturierte Function-Logs, Frontend-Runtime-Fehleradapter fuer Social und Waiter, Alarm-Matrix und Incident-Modell.
+- Noch offen: `07-30`
+- Naechster sinnvoller Block: `07`, `10`, `11`, `12`
 
 ## Vorbemerkung zu "machbar" und "Credits"
 
@@ -173,6 +174,7 @@ Geschaetzter Aufwand:
 
 #### Ticket 06 - Alarm-Matrix und Incident-Modell festziehen
 
+- Status: `erledigt` am `2026-03-23`
 - Outcome: definierte Alarmtypen fuer Order save fail, waiter notify fail, login spike, Function 5xx, Kosten-/Read-Spike.
 - Scope: Doku plus Heart-Incident-Modell falls genutzt
 - Owner: `Codex`
