@@ -30,8 +30,8 @@ Wichtiger Hinweis:
 ## Fortschrittsupdate seit der Erstbewertung
 
 - Die Erstbewertung dieses Dokuments war die Ausgangsbasis fuer den Betriebsreife-Plan.
-- Seitdem sind die Tickets `01-06` im Repo umgesetzt worden.
-- Bereits verbessert: Lead-Standardpasswort entfernt, Legacy-Media-Endpoints standardmaessig gesperrt bzw. zusaetzlich authentifiziert, kritische Write-Flows inventarisiert, strukturierte Function-Logs eingefuehrt, zentraler Runtime-Fehleradapter fuer Social und Waiter angelegt, Alarm-Matrix fuer Heart/Functions/Runtime festgezogen.
+- Seitdem sind die Tickets `01-07` im Repo umgesetzt worden.
+- Bereits verbessert: Lead-Standardpasswort entfernt, Legacy-Media-Endpoints standardmaessig gesperrt bzw. zusaetzlich authentifiziert, kritische Write-Flows inventarisiert, strukturierte Function-Logs eingefuehrt, zentraler Runtime-Fehleradapter fuer Social und Waiter angelegt, Alarm-Matrix fuer Heart/Functions/Runtime festgezogen, Monitoring-/Logging-Runbook als Betreiberablauf dokumentiert.
 - Weiter offen und fuer Massenwerbung weiterhin blockierend: Cloud-Alarme, Restore/Backups, Missbrauchsschutz, serverseitige Order-Idempotenz, Lasttests, Kosten- und Performance-Budgets.
 
 ## Harte Gesamteinschaetzung

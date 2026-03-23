@@ -13,12 +13,12 @@ Ziel:
 
 ## Aktueller Umsetzungsstand
 
-- `01-05` sind auf `main` gepusht.
-- `06` ist im lokalen Repo umgesetzt und noch nicht committed.
-- Letzter gepushter Stand fuer den Block: Commit `91f99cd` auf `main`.
-- Bereits geliefert: Lead-Standardpasswort entfernt, Legacy-Media-Endpoints gehaertet, kritische Write-Flow-Inventarisierung, strukturierte Function-Logs, Frontend-Runtime-Fehleradapter fuer Social und Waiter, Alarm-Matrix und Incident-Modell.
-- Noch offen: `07-30`
-- Naechster sinnvoller Block: `07`, `10`, `11`, `12`
+- `01-06` sind auf `main` gepusht.
+- `07` ist im lokalen Repo umgesetzt und noch nicht committed.
+- Letzter gepushter Stand fuer den Block: Commit `73bdf67` auf `main`.
+- Bereits geliefert: Lead-Standardpasswort entfernt, Legacy-Media-Endpoints gehaertet, kritische Write-Flow-Inventarisierung, strukturierte Function-Logs, Frontend-Runtime-Fehleradapter fuer Social und Waiter, Alarm-Matrix und Incident-Modell, Monitoring-/Logging-Runbook.
+- Noch offen: `08-30`
+- Naechster sinnvoller Block: `10`, `11`, `12`
 
 ## Vorbemerkung zu "machbar" und "Credits"
 
@@ -183,6 +183,7 @@ Geschaetzter Aufwand:
 
 #### Ticket 07 - Monitoring- und Logging-Runbook schreiben
 
+- Status: `erledigt` am `2026-03-23`
 - Outcome: klares Runbook fuer Logging, Error Reporting, Alarme und Eskalation.
 - Scope: `docs/`
 - Owner: `Codex`

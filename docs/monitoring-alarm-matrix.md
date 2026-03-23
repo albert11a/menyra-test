@@ -119,6 +119,6 @@ Diese Matrix ist bewusst repo-seitig formuliert. Fuer echte Produktion fehlen no
 
 ## Naechste direkte Folgeschritte
 
-1. `Ticket 07`: Logging-/Monitoring-Runbook mit Eskalation und Betreiberablauf schreiben.
-2. `Ticket 08`: GCP/Vercel/Billing-Alarme gegen diese Matrix live schalten.
+1. `Ticket 08`: GCP/Vercel/Billing-Alarme gegen diese Matrix live schalten.
+2. `Ticket 10`: Backup-Strategie und Restore-Pfade betriebsfaehig dokumentieren.
 3. `Ticket 14`: serverseitige Order-Idempotenz schaffen, damit `Order save fail` sauber messbar und wiederholbar wird.
