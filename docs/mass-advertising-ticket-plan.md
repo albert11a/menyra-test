@@ -11,6 +11,14 @@ Ziel:
 - realistische Aufwandsschaetzung
 - sichtbar machen, was ich direkt im Repo uebernehmen kann und wo du echte Infra-/Cloud-Zugriffe brauchst
 
+## Aktueller Umsetzungsstand
+
+- `01-05` sind im Repo umgesetzt.
+- Stand der Umsetzung: Commit `91f99cd` auf `main`.
+- Bereits geliefert: Lead-Standardpasswort entfernt, Legacy-Media-Endpoints gehaertet, kritische Write-Flow-Inventarisierung, strukturierte Function-Logs, Frontend-Runtime-Fehleradapter fuer Social und Waiter.
+- Noch offen: `06-30`
+- Naechster sinnvoller Block: `06`, `07`, `10`, `11`, `12`
+
 ## Vorbemerkung zu "machbar" und "Credits"
 
 Ja, das ist bei euch machbar.
@@ -120,6 +128,7 @@ Geschaetzter Aufwand:
 
 #### Ticket 01 - Lead-Standardpasswort entfernen
 
+- Status: `erledigt` am `2026-03-23`
 - Outcome: `LEAD_SOCIAL_DEFAULT_PASSWORD` ist komplett aus Produktivpfaden entfernt.
 - Scope: `apps/menyra-social/social-app.js`, `core/crm/*`, `core/leads/*`, `_shared/crm-lazy-renderers.js`
 - Owner: `Codex`
@@ -128,6 +137,7 @@ Geschaetzter Aufwand:
 
 #### Ticket 02 - Legacy-Media-Endpoints schliessen oder absichern
 
+- Status: `erledigt` am `2026-03-23`
 - Outcome: `getStreamUploadSignature`, `getStreamUploadSignatureHttp` und `uploadStoryImage` sind entweder deaktiviert oder sauber abgesichert.
 - Scope: `functions/index.js`, beteiligte Client-Pfade
 - Owner: `Codex`
@@ -136,6 +146,7 @@ Geschaetzter Aufwand:
 
 #### Ticket 03 - Kritische Schreibpfade inventarisieren
 
+- Status: `erledigt` am `2026-03-23`
 - Outcome: komplette Liste aller kritischen Write-Flows mit Pfad, Risiko, Idempotenz-Status und Alarmbedarf.
 - Scope: Doku unter `docs/`
 - Owner: `Codex`
@@ -144,6 +155,7 @@ Geschaetzter Aufwand:
 
 #### Ticket 04 - Strukturierte Function-Logs einfuehren
 
+- Status: `erledigt` am `2026-03-23`
 - Outcome: wichtige Functions loggen einheitlich `flow`, `requestId`, `restaurantId`, `userId`, `status`, `errorCode`.
 - Scope: `functions/index.js`, `functions/heart/*`, ggf. gemeinsame Helper
 - Owner: `Codex`
@@ -152,6 +164,7 @@ Geschaetzter Aufwand:
 
 #### Ticket 05 - Frontend-Fehleradapter fuer Social und Waiter
 
+- Status: `erledigt` am `2026-03-23`
 - Outcome: Social und Waiter haben einen zentralen Runtime-Fehleradapter statt verteilter `console.error`-Only-Behandlung.
 - Scope: `apps/menyra-social/*`, `apps/waiter/*`
 - Owner: `Codex`

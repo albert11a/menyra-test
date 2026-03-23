@@ -27,6 +27,13 @@ Wichtiger Hinweis:
 - Externe Cloud-Konfigurationen, Alarme, Dashboards oder Backup-Jobs, die nur im Google-/Vercel-UI existieren, sind hier nicht belegbar.
 - Wo etwas nicht im Repo sichtbar ist, wird es als "nicht belegt" behandelt.
 
+## Fortschrittsupdate seit der Erstbewertung
+
+- Die Erstbewertung dieses Dokuments war die Ausgangsbasis fuer den Betriebsreife-Plan.
+- Seitdem sind die Tickets `01-05` im Repo umgesetzt worden.
+- Bereits verbessert: Lead-Standardpasswort entfernt, Legacy-Media-Endpoints standardmaessig gesperrt bzw. zusaetzlich authentifiziert, kritische Write-Flows inventarisiert, strukturierte Function-Logs eingefuehrt, zentraler Runtime-Fehleradapter fuer Social und Waiter angelegt.
+- Weiter offen und fuer Massenwerbung weiterhin blockierend: Cloud-Alarme, Restore/Backups, Missbrauchsschutz, serverseitige Order-Idempotenz, Lasttests, Kosten- und Performance-Budgets.
+
 ## Harte Gesamteinschaetzung
 
 Die Produktbasis ist stark genug, um weiter auszubauen. Die Betriebsreife fuer Massenwerbung ist es noch nicht.
@@ -86,11 +93,11 @@ Der groesste Hebel ist nicht ein neues Feature, sondern Betriebsdisziplin:
 
 ## Kritische Befunde
 
-1. Produktives Monitoring ist im Repo nicht ausreichend sichtbar.
+1. Produktives Monitoring ist trotz erster Repo-Haertung noch nicht ausreichend sichtbar.
 
-- Social und Waiter enden an vielen Stellen in `console.error(...)` oder `console.warn(...)`.
-- `apps/menyra-social/social-app.js` hat mit `reportCriticalRuntimeFailure(...)` nur ein `console.warn`.
-- `functions/heart/providers.js` zeigt einen `Sentry Adapter` explizit als Platzhalter.
+- Social und Waiter haben jetzt einen zentralen Runtime-Fehleradapter, aber noch keine belegte produktive Weiterleitung in ein echtes Alerting-/Incident-System.
+- Functions haben jetzt erste strukturierte Logs, aber keine im Repo belegte Cloud-Alarmkette fuer Orders, Login-Fehlerrate, Function-500er oder Kostenanstiege.
+- `functions/heart/providers.js` zeigt einen `Sentry Adapter` weiterhin nur als Platzhalter.
 
 2. Backup und Restore sind nicht belegt.
 
@@ -103,17 +110,16 @@ Der groesste Hebel ist nicht ein neues Feature, sondern Betriebsdisziplin:
 - Im Repo ist kein App-Check-, CAPTCHA- oder Rate-Limit-Pfad sichtbar.
 - Fuer Login, Upload-Tickets, öffentliche HTTP-Functions und bestellnahe Pfade ist das vor Massenwerbung zu schwach.
 
-4. Es gibt offen erreichbare Legacy-HTTP-Endpoints mit zu wenig Schutz.
+4. Legacy-HTTP-Endpoints sind verbessert, aber noch nicht final bereinigt.
 
 - `functions/index.js` exportiert `getStreamUploadSignature`, `getStreamUploadSignatureHttp` und `uploadStoryImage`.
-- Diese Pfade pruefen in der sichtbaren Implementierung keine CEO-/Owner-/App-Check- oder echte User-Berechtigung.
-- Auch wenn der aktuelle Client offenbar den neueren Ticket-Pfad nutzt, bleiben alte Cloud-Functions damit ein Angriffs-, Abuse- und Kostenrisiko.
+- Diese Pfade sind jetzt standardmaessig deaktivierbar und zusaetzlich mit Auth-/Restaurant-Berechtigung gehaertet.
+- Der Rest-Risiko-Punkt bleibt: clientseitige Alt-Abhaengigkeiten muessen weiter auditiert und die Legacy-Pfade spaeter ganz entfernt oder sauber operationalisiert werden.
 
-5. Ein hartcodiertes Standardpasswort ist weiter im Code.
+5. Das hartcodierte Lead-Standardpasswort ist im aktuellen Repo-Stand entfernt.
 
-- `apps/menyra-social/social-app.js` setzt `LEAD_SOCIAL_DEFAULT_PASSWORD = "Alberthoti1992"`.
-- Das wird in CRM-/Lead-Pfaden weiter verwendet.
-- Das ist fuer Produktion und skalierte Neukundenakquise nicht akzeptabel.
+- Neue Lead-/CRM-Pfade erzeugen kein stilles Default-Login mehr.
+- Offene Folgearbeit bleibt nur dort, wo historische Daten oder bereits angelegte Accounts ausserhalb des sichtbaren Repo-Stands geprueft werden muessen.
 
 6. Idempotenz ist bei Kernschreibpfaden unzureichend.
 
@@ -128,11 +134,12 @@ Der groesste Hebel ist nicht ein neues Feature, sondern Betriebsdisziplin:
 - `firestore.rules` erlaubt Counter-Only-Updates fuer diese Felder.
 - Das ist funktional okay, aber bei starkem Traffic ein Hotspot- und Drift-Risiko.
 
-8. Functions sind nur teilweise gehaertet.
+8. Functions sind teilweise gehaertet, aber operativ noch nicht fertig.
 
 - Der Hauptbestand in `functions/index.js` ist Gen1-Stil (`functions.https.onRequest`, Firestore Trigger).
 - Sichtbare `runWith(...)`-Konfiguration gibt es praktisch nur fuer `email-domain-migration.js`.
-- Strukturierte Logs, Korrelation-IDs, Timeouts und saubere Fehlerklassifikation fehlen in den Hauptpfaden weitgehend.
+- Strukturierte Logs und erste Korrelation-Kontexte sind jetzt in kritischen Pfaden vorhanden.
+- Timeouts, breitere Fehlerklassifikation, Missbrauchsschutz und konsequente Haertung aller Hauptpfade fehlen weiterhin.
 
 9. Zahlen fuer Kosten und Last fehlen.
 
