@@ -158,12 +158,65 @@ export function createSocialEngagementRuntimeController({
   const autosizeTextarea = autosizeTextareaFn;
   const pendingPostLikeIds = new Set();
   const pendingCommentLikeKeys = new Set();
+  const postMetaLoadInFlight = new Map();
+  const menuItemMetaLoadInFlight = new Map();
+  const META_LIKES_SOFT_REFRESH_MS = 10000;
+  const META_COMMENTS_SOFT_REFRESH_MS = 15000;
+  const META_VIEWER_LIKE_SOFT_REFRESH_MS = 10000;
 
   const favoriteMenuItemDocId = favoriteMenuItemDocIdFn;
   const buildFavoriteMenuItemPayload = buildFavoriteMenuItemPayloadFn;
   const getMenuItemSocialDocRef = getMenuItemSocialDocRefFn;
   const getMenuItemSocialId = getMenuItemSocialIdFn;
   const menuItemMetaKey = menuItemMetaKeyFn;
+
+  function ensureMetaLoadState(meta) {
+    if (!meta || typeof meta !== "object") {
+      return {
+        commentsHydrated: false,
+        likesHydrated: false,
+        userLikeHydratedUid: "",
+        commentsFetchedAt: 0,
+        likesFetchedAt: 0,
+        viewerLikeFetchedAt: 0
+      };
+    }
+    let loadState = meta.__loadState;
+    if (!loadState || typeof loadState !== "object") {
+      loadState = {
+        commentsHydrated: false,
+        likesHydrated: false,
+        userLikeHydratedUid: "",
+        commentsFetchedAt: 0,
+        likesFetchedAt: 0,
+        viewerLikeFetchedAt: 0
+      };
+      try {
+        Object.defineProperty(meta, "__loadState", {
+          value: loadState,
+          writable: true,
+          configurable: true,
+          enumerable: false
+        });
+      } catch (_err) {
+        meta.__loadState = loadState;
+      }
+      return loadState;
+    }
+    if (typeof loadState.commentsHydrated !== "boolean") loadState.commentsHydrated = false;
+    if (typeof loadState.likesHydrated !== "boolean") loadState.likesHydrated = false;
+    if (typeof loadState.userLikeHydratedUid !== "string") loadState.userLikeHydratedUid = "";
+    if (!Number.isFinite(Number(loadState.commentsFetchedAt))) loadState.commentsFetchedAt = 0;
+    if (!Number.isFinite(Number(loadState.likesFetchedAt))) loadState.likesFetchedAt = 0;
+    if (!Number.isFinite(Number(loadState.viewerLikeFetchedAt))) loadState.viewerLikeFetchedAt = 0;
+    return loadState;
+  }
+
+  function isFreshMetaTimestamp(timestamp, maxAgeMs) {
+    const ts = Number(timestamp) || 0;
+    if (!ts || !maxAgeMs) return false;
+    return Date.now() - ts <= maxAgeMs;
+  }
 
   function findPostById(postId) {
     const modalPost = state.postModal?.post;
@@ -241,52 +294,91 @@ export function createSocialEngagementRuntimeController({
     const postId = String(post?.id || "");
     if (!postRef || !postId) return { likes: [], comments: [] };
     const meta = ensurePostMeta(postId);
+    const loadState = ensureMetaLoadState(meta);
     const userUid = String(state.user?.uid || "");
-    if (includeLikes) {
-      try {
-        const likesSnap = await getDocs(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(detailLikesLimit)));
-        meta.likes = likesSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-      } catch (err) {
-        console.error(err);
-      }
-    } else if (userUid) {
-      try {
-        const likeSnap = await getDoc(doc(collection(postRef, "likes"), userUid));
-        const retainedLikes = (Array.isArray(meta.likes) ? meta.likes : []).filter((row) => String(row?.uid || "") !== userUid);
-        meta.likes = likeSnap.exists()
-          ? [{ id: likeSnap.id, ...likeSnap.data() }, ...retainedLikes]
-          : retainedLikes;
-      } catch (err) {
-        console.error(err);
-      }
+    const hasLikesCache = !includeLikes || (loadState.likesHydrated && Array.isArray(meta.likes));
+    const hasCommentsCache = !includeComments || (loadState.commentsHydrated && Array.isArray(meta.comments));
+    const hasViewerLikeCache = includeLikes || !userUid || loadState.userLikeHydratedUid === userUid;
+    const likesFresh = !includeLikes || (hasLikesCache && isFreshMetaTimestamp(loadState.likesFetchedAt, META_LIKES_SOFT_REFRESH_MS));
+    const commentsFresh = !includeComments || (hasCommentsCache && isFreshMetaTimestamp(loadState.commentsFetchedAt, META_COMMENTS_SOFT_REFRESH_MS));
+    const viewerLikeFresh = includeLikes
+      || !userUid
+      || (hasViewerLikeCache && isFreshMetaTimestamp(loadState.viewerLikeFetchedAt, META_VIEWER_LIKE_SOFT_REFRESH_MS));
+    const shouldLoadLikes = includeLikes && (!hasLikesCache || !likesFresh);
+    const shouldProbeViewerLike = !includeLikes && !!userUid && (!hasViewerLikeCache || !viewerLikeFresh);
+    const shouldLoadComments = includeComments && (!hasCommentsCache || !commentsFresh);
+    if (!shouldLoadLikes && !shouldProbeViewerLike && !shouldLoadComments) {
+      state.postMeta[postId] = meta;
+      return meta;
     }
-    if (includeComments) {
-      try {
-        const commentsSnap = await getDocs(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(detailCommentsLimit)));
-        const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-        const byId = new Map();
-        const top = [];
-        rows.forEach((row) => {
-          const item = ensureCommentShape(row);
-          byId.set(item.id, item);
-        });
-        rows.forEach((row) => {
-          const item = byId.get(row.id);
-          const parentId = row.parentId || null;
-          if (parentId && byId.has(parentId)) {
-            const parent = byId.get(parentId);
-            parent.replies = [item, ...(parent.replies || [])];
-          } else if (item) {
-            top.push(item);
-          }
-        });
-        meta.comments = top;
-      } catch (err) {
-        console.error(err);
-      }
+
+    const loadKey = `${postId}|likes:${shouldLoadLikes ? 1 : 0}|viewer:${shouldProbeViewerLike ? 1 : 0}|comments:${shouldLoadComments ? 1 : 0}|user:${userUid}`;
+    if (postMetaLoadInFlight.has(loadKey)) {
+      return postMetaLoadInFlight.get(loadKey);
     }
-    state.postMeta[postId] = meta;
-    return meta;
+
+    const loadPromise = (async () => {
+      if (shouldLoadLikes) {
+        try {
+          const likesSnap = await getDocs(query(collection(postRef, "likes"), orderBy("createdAt", "desc"), limit(detailLikesLimit)));
+          meta.likes = likesSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+          loadState.likesHydrated = true;
+          loadState.likesFetchedAt = Date.now();
+        } catch (err) {
+          console.error(err);
+        }
+      } else if (shouldProbeViewerLike) {
+        try {
+          const likeSnap = await getDoc(doc(collection(postRef, "likes"), userUid));
+          const retainedLikes = (Array.isArray(meta.likes) ? meta.likes : []).filter((row) => String(row?.uid || "") !== userUid);
+          meta.likes = likeSnap.exists()
+            ? [{ id: likeSnap.id, ...likeSnap.data() }, ...retainedLikes]
+            : retainedLikes;
+          loadState.userLikeHydratedUid = userUid;
+          loadState.viewerLikeFetchedAt = Date.now();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      if (shouldLoadComments) {
+        try {
+          const commentsSnap = await getDocs(query(collection(postRef, "comments"), orderBy("createdAt", "desc"), limit(detailCommentsLimit)));
+          const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+          const byId = new Map();
+          const top = [];
+          rows.forEach((row) => {
+            const item = ensureCommentShape(row);
+            byId.set(item.id, item);
+          });
+          rows.forEach((row) => {
+            const item = byId.get(row.id);
+            const parentId = row.parentId || null;
+            if (parentId && byId.has(parentId)) {
+              const parent = byId.get(parentId);
+              parent.replies = [item, ...(parent.replies || [])];
+            } else if (item) {
+              top.push(item);
+            }
+          });
+          meta.comments = top;
+          loadState.commentsHydrated = true;
+          loadState.commentsFetchedAt = Date.now();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+
+      state.postMeta[postId] = meta;
+      return meta;
+    })();
+
+    postMetaLoadInFlight.set(loadKey, loadPromise);
+    try {
+      return await loadPromise;
+    } finally {
+      postMetaLoadInFlight.delete(loadKey);
+    }
   }
 
   async function loadPostLikesForModal(postId) {
@@ -406,6 +498,16 @@ export function createSocialEngagementRuntimeController({
       openGuestAuthPrompt("Bitte registrieren oder einloggen, um Kommentare zu schreiben.");
       return;
     }
+    const submitPostId = String(postId || "");
+    const startedPostModalId = state.postModal.open && state.postModal.post
+      ? String(state.postModal.post.id || "")
+      : "";
+    const isSamePostModalContext = () => (
+      !!startedPostModalId
+      && startedPostModalId === submitPostId
+      && !!state.postModal.open
+      && String(state.postModal.post?.id || "") === startedPostModalId
+    );
     const key = `${postId}|${state.user.uid || ""}|${trimmed}`;
     const now = Date.now();
     if (key === getLastCommentKeyFn() && now - getLastCommentAtFn() < 1500) return;
@@ -463,7 +565,9 @@ export function createSocialEngagementRuntimeController({
       console.error(err);
       setLastCommentKeyFn("");
       setLastCommentAtFn(0);
-      state.postModal.sending = false;
+      if (isSamePostModalContext()) {
+        state.postModal.sending = false;
+      }
       return;
     }
     try {
@@ -502,22 +606,24 @@ export function createSocialEngagementRuntimeController({
       } else {
         meta.comments = [newComment, ...(meta.comments || [])];
       }
+      const loadState = ensureMetaLoadState(meta);
+      if (loadState.commentsHydrated) {
+        loadState.commentsFetchedAt = Date.now();
+      }
       state.postMeta[postId] = meta;
     }
-    state.postModal.commentText = "";
-    const commentInput = docObj?.getElementById("postCommentInput");
-    if (commentInput) commentInput.value = "";
-    state.postModal.replyTo = null;
-    if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+    if (isSamePostModalContext()) {
+      state.postModal.commentText = "";
+      const commentInput = docObj?.getElementById("postCommentInput");
+      if (commentInput) commentInput.value = "";
+      state.postModal.replyTo = null;
       updatePostModalMeta();
       if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
       const postComments = docObj?.getElementById("postModalComments");
       if (postComments) hydrateCommentAvatars(postComments, { postId: postId });
-    } else {
-      renderOverlays();
+      state.postModal.sending = false;
     }
     refreshSelfCommentAvatars();
-    state.postModal.sending = false;
     const ownerUid = await resolvePostOwnerUid(post);
     if (ownerUid && ownerUid !== state.user.uid) {
       try {
@@ -586,6 +692,12 @@ export function createSocialEngagementRuntimeController({
       } else {
         meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
       }
+      const loadState = ensureMetaLoadState(meta);
+      loadState.userLikeHydratedUid = String(user.uid || "");
+      loadState.viewerLikeFetchedAt = Date.now();
+      if (loadState.likesHydrated) {
+        loadState.likesFetchedAt = Date.now();
+      }
       state.postMeta[postId] = meta;
       void reconcilePostCountsFromRemote(post, {
         fallbackLikes: likeBaseBeforeWrite + delta
@@ -622,12 +734,57 @@ export function createSocialEngagementRuntimeController({
     }
   }
 
-  async function toggleMenuItemLike() {
+  function resolveMenuItemTargetContext(target = null) {
+    if (target && typeof target === "object" && target.ref && target.key && target.itemId) {
+      const ref = target.ref;
+      const key = String(target.key || "").trim();
+      const restaurantId = String(target.restaurantId || "").trim();
+      const itemId = String(target.itemId || "").trim();
+      const item = target.item || null;
+      if (ref && key && restaurantId && itemId) {
+        return { ref, key, restaurantId, itemId, item };
+      }
+    }
+    if (!target) return getMenuDetailContext();
+    const targetObj = typeof target === "object" ? target : {};
+    const itemCandidate = targetObj.item && typeof targetObj.item === "object"
+      ? targetObj.item
+      : target;
+    const item = itemCandidate && typeof itemCandidate === "object" ? itemCandidate : null;
+    if (!item) return null;
+    const restaurantId = String(
+      targetObj.restaurantId
+      || targetObj.rid
+      || item.restaurantId
+      || state.menu.restaurantId
+      || state.profileView?.profile?.restaurantId
+      || state.userProfile.restaurantId
+      || ""
+    ).trim();
+    const itemId = String(
+      targetObj.itemId
+      || getMenuItemSocialId(item)
+      || ""
+    ).trim();
+    if (!restaurantId || !itemId) return null;
+    const key = menuItemMetaKey(restaurantId, itemId);
+    const ref = getMenuItemSocialDocRef(item, restaurantId);
+    if (!ref || !key) return null;
+    return { ref, key, restaurantId, itemId, item };
+  }
+
+  function isActiveMenuDetailContext(ctx) {
+    if (!ctx) return false;
+    const activeCtx = getMenuDetailContext();
+    return !!activeCtx && String(activeCtx.key || "") === String(ctx.key || "");
+  }
+
+  async function toggleMenuItemLike(target = null) {
     if (!state.user) {
       openGuestAuthPrompt("Bitte registrieren oder einloggen, um Produkte zu liken.");
       return;
     }
-    const ctx = getMenuDetailContext();
+    const ctx = resolveMenuItemTargetContext(target);
     if (!ctx) return;
     const { ref, key, item, restaurantId, itemId } = ctx;
     const user = currentUserBadge();
@@ -664,11 +821,19 @@ export function createSocialEngagementRuntimeController({
       } else {
         meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
       }
+      const loadState = ensureMetaLoadState(meta);
+      loadState.userLikeHydratedUid = String(user.uid || "");
+      loadState.viewerLikeFetchedAt = Date.now();
+      if (loadState.likesHydrated) {
+        loadState.likesFetchedAt = Date.now();
+      }
       meta.counts = meta.counts || { likes: 0, comments: 0 };
       meta.counts.likes = Math.max(0, (Number(meta.counts.likes) || 0) + delta);
       state.menuItemMeta[key] = meta;
       updateFavoriteMenuItemsLocal(item, restaurantId, { remove: delta < 0 });
-      updateMenuDetailCountsOnly();
+      if (isActiveMenuDetailContext(ctx)) {
+        updateMenuDetailCountsOnly();
+      }
       updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
     } catch (err) {
       console.error(err);
@@ -685,6 +850,11 @@ export function createSocialEngagementRuntimeController({
     const ctx = getMenuDetailContext();
     if (!ctx) return;
     const { ref, key } = ctx;
+    const startedMenuDetailKey = String(key || "");
+    const isSameMenuDetailContext = () => {
+      const activeCtx = getMenuDetailContext();
+      return !!startedMenuDetailKey && !!activeCtx && String(activeCtx.key || "") === startedMenuDetailKey;
+    };
     const dedupeKey = `${key}|${state.user.uid || ""}|${trimmed}`;
     const now = Date.now();
     if (dedupeKey === getLastMenuCommentKeyFn() && now - getLastMenuCommentAtFn() < 1500) return;
@@ -725,8 +895,10 @@ export function createSocialEngagementRuntimeController({
       console.error(err);
       setLastMenuCommentKeyFn("");
       setLastMenuCommentAtFn(0);
-      state.menuDetail.sending = false;
-      updateMenuDetailCommentsOnly();
+      if (isSameMenuDetailContext()) {
+        state.menuDetail.sending = false;
+        updateMenuDetailCommentsOnly();
+      }
       return;
     }
     const meta = ensureMenuItemMeta(key);
@@ -736,17 +908,23 @@ export function createSocialEngagementRuntimeController({
       createdAt: new Date().toISOString()
     });
     meta.comments = [newComment, ...(meta.comments || [])];
+    const loadState = ensureMetaLoadState(meta);
+    if (loadState.commentsHydrated) {
+      loadState.commentsFetchedAt = Date.now();
+    }
     meta.counts = meta.counts || { likes: 0, comments: 0 };
     meta.counts.comments = Math.max(0, (Number(meta.counts.comments) || 0) + 1);
     state.menuItemMeta[key] = meta;
-    state.menuDetail.commentText = "";
-    const input = docObj?.getElementById("menuDetailCommentInput");
-    if (input) {
-      input.value = "";
-      autosizeTextarea(input, { minHeight: 52, maxHeight: 160 });
+    if (isSameMenuDetailContext()) {
+      state.menuDetail.commentText = "";
+      const input = docObj?.getElementById("menuDetailCommentInput");
+      if (input) {
+        input.value = "";
+        autosizeTextarea(input, { minHeight: 52, maxHeight: 160 });
+      }
+      state.menuDetail.sending = false;
+      updateMenuDetailMeta();
     }
-    state.menuDetail.sending = false;
-    updateMenuDetailMeta();
     updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
     if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
     refreshSelfCommentAvatars();
@@ -894,27 +1072,59 @@ export function createSocialEngagementRuntimeController({
     if (!ref || !rid || !itemId) return;
     const key = menuItemMetaKey(rid, itemId);
     const meta = ensureMenuItemMeta(key);
+    const loadState = ensureMetaLoadState(meta);
     const userUid = String(state.user?.uid || "");
-    if (userUid) {
-      try {
-        const likeSnap = await getDoc(doc(collection(ref, "likes"), userUid));
-        const retainedLikes = (Array.isArray(meta.likes) ? meta.likes : []).filter((row) => String(row?.uid || "") !== userUid);
-        meta.likes = likeSnap.exists()
-          ? [{ id: likeSnap.id, ...likeSnap.data() }, ...retainedLikes]
-          : retainedLikes;
-      } catch (err) {
-        console.error(err);
+    const hasCommentsCache = loadState.commentsHydrated && Array.isArray(meta.comments);
+    const hasViewerLikeCache = !userUid || loadState.userLikeHydratedUid === userUid;
+    const commentsFresh = hasCommentsCache && isFreshMetaTimestamp(loadState.commentsFetchedAt, META_COMMENTS_SOFT_REFRESH_MS);
+    const viewerLikeFresh = !userUid || (hasViewerLikeCache && isFreshMetaTimestamp(loadState.viewerLikeFetchedAt, META_VIEWER_LIKE_SOFT_REFRESH_MS));
+    const shouldProbeViewerLike = !!userUid && (!hasViewerLikeCache || !viewerLikeFresh);
+    const shouldLoadComments = !hasCommentsCache || !commentsFresh;
+    if (!shouldProbeViewerLike && !shouldLoadComments) {
+      state.menuItemMeta[key] = meta;
+      return meta;
+    }
+
+    const loadKey = `${key}|viewer:${shouldProbeViewerLike ? 1 : 0}|comments:${shouldLoadComments ? 1 : 0}|user:${userUid}`;
+    if (menuItemMetaLoadInFlight.has(loadKey)) {
+      return menuItemMetaLoadInFlight.get(loadKey);
+    }
+
+    const loadPromise = (async () => {
+      if (shouldProbeViewerLike) {
+        try {
+          const likeSnap = await getDoc(doc(collection(ref, "likes"), userUid));
+          const retainedLikes = (Array.isArray(meta.likes) ? meta.likes : []).filter((row) => String(row?.uid || "") !== userUid);
+          meta.likes = likeSnap.exists()
+            ? [{ id: likeSnap.id, ...likeSnap.data() }, ...retainedLikes]
+            : retainedLikes;
+          loadState.userLikeHydratedUid = userUid;
+          loadState.viewerLikeFetchedAt = Date.now();
+        } catch (err) {
+          console.error(err);
+        }
       }
-    }
+      if (shouldLoadComments) {
+        try {
+          const commentsSnap = await getDocs(query(collection(ref, "comments"), orderBy("createdAt", "desc"), limit(detailCommentsLimit)));
+          const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+          meta.comments = rows.filter((row) => !row.parentId).map((row) => ensureCommentShape(row));
+          loadState.commentsHydrated = true;
+          loadState.commentsFetchedAt = Date.now();
+        } catch (err) {
+          console.error(err);
+        }
+      }
+      state.menuItemMeta[key] = meta;
+      return meta;
+    })();
+
+    menuItemMetaLoadInFlight.set(loadKey, loadPromise);
     try {
-      const commentsSnap = await getDocs(query(collection(ref, "comments"), orderBy("createdAt", "desc"), limit(detailCommentsLimit)));
-      const rows = commentsSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
-      meta.comments = rows.filter((row) => !row.parentId).map((row) => ensureCommentShape(row));
-    } catch (err) {
-      console.error(err);
+      return await loadPromise;
+    } finally {
+      menuItemMetaLoadInFlight.delete(loadKey);
     }
-    state.menuItemMeta[key] = meta;
-    return meta;
   }
 
   return {

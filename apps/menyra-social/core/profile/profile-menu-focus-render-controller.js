@@ -72,7 +72,10 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   const aspectClass = isGrid
     ? (isWide ? "aspect-[1.8/1]" : "aspect-[4/5]")
     : "aspect-[4/5]";
-  const imageUrl = getOptimizedImageUrl(item.url, isWide ? "large" : "medium");
+  const imageUrl = getOptimizedImageUrl(item.url, isWide ? "large" : "medium", {
+    stableKey: postId ? `profile-post:${postId}` : "",
+    variantGroup: "post-detail"
+  });
   const width = isWide ? 800 : 400;
   const height = isWide ? 400 : 500;
   return `
@@ -451,7 +454,15 @@ function renderMenuLayoutSection() {
 
 function renderMenuItemCard(item, { mode = "profile" } = {}) {
   const rawImg = resolveMenuItemHero(item);
-  const imgSrc = getOptimizedImageUrl(rawImg, "thumb");
+  const menuDetailStableKey = mode === "profile"
+    ? getMenuDetailImageStableKey(item, { index: 0 })
+    : "";
+  const imgSrc = getOptimizedImageUrl(rawImg, "thumb", mode === "profile"
+    ? {
+      variantGroup: "menu-detail",
+      stableKey: menuDetailStableKey
+    }
+    : null);
   const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
   const firebaseFallback = getFirebaseStorageUrl(rawImg);
   const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
@@ -516,7 +527,19 @@ function renderMenuItemCard(item, { mode = "profile" } = {}) {
 
 function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } = {}) {
   const rawImg = resolveMenuItemHero(item);
-  const imgSrc = getOptimizedImageUrl(rawImg, variant === "drink" ? "thumb" : "large");
+  const menuDetailStableKey = mode === "profile"
+    ? getMenuDetailImageStableKey(item, { index: 0 })
+    : "";
+  const imgSrc = getOptimizedImageUrl(
+    rawImg,
+    variant === "drink" ? "thumb" : "large",
+    mode === "profile"
+      ? {
+        variantGroup: "menu-detail",
+        stableKey: menuDetailStableKey
+      }
+      : null
+  );
   const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
   const firebaseFallback = getFirebaseStorageUrl(rawImg);
   const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
@@ -601,6 +624,23 @@ function getMenuCardSocialMeta(item) {
   };
 }
 
+function getMenuDetailImageStableKey(item, { index = 0 } = {}) {
+  const restaurantId = String(
+    state.menu.restaurantId
+    || state.profileView?.profile?.restaurantId
+    || state.userProfile.restaurantId
+    || item?.restaurantId
+    || ""
+  ).trim();
+  const itemId = String(item?.id || getMenuItemSocialId(item) || "").trim();
+  if (!restaurantId || !itemId) return "";
+  const numericIndex = Number(index);
+  const safeIndex = Number.isFinite(numericIndex)
+    ? Math.max(0, Math.floor(numericIndex))
+    : 0;
+  return `menu-detail:${restaurantId}:${itemId}:${safeIndex}`;
+}
+
 function getMenuCardGalleryImages(item) {
   const list = typeof getMenuItemImages === "function" ? getMenuItemImages(item) : [];
   const gallery = Array.isArray(list) ? list.filter(Boolean) : [];
@@ -664,7 +704,15 @@ function renderTestfirstFocusSection(profile, focusItems = [], { mode = "profile
 
 function renderTestfirstDrinkGridCard(item, { mode = "profile" } = {}) {
   const rawImg = resolveMenuItemHero(item);
-  const imgSrc = getOptimizedImageUrl(rawImg, "thumb");
+  const menuDetailStableKey = mode === "profile"
+    ? getMenuDetailImageStableKey(item, { index: 0 })
+    : "";
+  const imgSrc = getOptimizedImageUrl(rawImg, "thumb", mode === "profile"
+    ? {
+      variantGroup: "menu-detail",
+      stableKey: menuDetailStableKey
+    }
+    : null);
   const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
   const firebaseFallback = getFirebaseStorageUrl(rawImg);
   const fallbackImg = isDirectImageUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;

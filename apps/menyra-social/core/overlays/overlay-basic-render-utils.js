@@ -255,7 +255,9 @@ export function renderPostModalCore({
   const counts = resolveCounts(post);
   const caption = post.caption || post.title || "";
   const rawImageUrl = post.url || post.image || "";
-  const imageUrl = getImage(rawImageUrl, "large");
+  const imageUrl = getImage(rawImageUrl, "large", {
+    stableKey: post?.id ? `post-modal:${String(post.id)}` : ""
+  });
   const comments = (meta.comments || []).map(ensureComment);
   const userBadge = getUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);

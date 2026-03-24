@@ -2741,33 +2741,24 @@ async function toggleMenuItemLike() {
 async function toggleMenuItemLikeFromCard(itemId, restaurantId = "") {
   const safeItemId = String(itemId || "").trim();
   if (!safeItemId) return;
-  const item = (state.menu.items || []).find((entry) => String(entry?.id || "") === safeItemId);
+  const menuItems = Array.isArray(state.menu.items) ? state.menu.items : [];
+  const favoriteItems = Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [];
+  const item = menuItems.find((entry) => String(entry?.id || "") === safeItemId)
+    || favoriteItems.find((entry) => String(entry?.id || entry?.itemId || "") === safeItemId);
   if (!item) return;
-  const previousDetail = state.menuDetail;
-  state.menuDetail = {
-    open: true,
+  const resolvedRestaurantId = String(
+    restaurantId
+    || item.restaurantId
+    || state.menu.restaurantId
+    || state.profileView?.profile?.restaurantId
+    || state.userProfile.restaurantId
+    || ""
+  ).trim();
+  if (!resolvedRestaurantId) return;
+  await toggleMenuItemLike({
     item,
-    index: 0,
-    restaurantId: String(
-      restaurantId
-      || item.restaurantId
-      || state.menu.restaurantId
-      || state.profileView?.profile?.restaurantId
-      || state.userProfile.restaurantId
-      || ""
-    ).trim(),
-    selectedSize: Array.isArray(item?.sizes) && item.sizes.length ? String(item.sizes[0]) : "",
-    selectedColor: Array.isArray(item?.colors) && item.colors.length ? String(item.colors[0]) : "",
-    footerView: "cart",
-    commentText: "",
-    loading: false,
-    sending: false
-  };
-  try {
-    await toggleMenuItemLike();
-  } finally {
-    state.menuDetail = previousDetail;
-  }
+    restaurantId: resolvedRestaurantId
+  });
 }
 if (typeof window !== "undefined") {
   window.__MENYRA_TOGGLE_MENU_ITEM_LIKE_FROM_CARD__ = toggleMenuItemLikeFromCard;
@@ -3793,6 +3784,18 @@ const sessionRuntimeClusterGetters = createSessionRuntimeCluster({
       if (modalCommentsUnsub) {
         modalCommentsUnsub();
         modalCommentsUnsub = null;
+      }
+      if (menuDetailDocUnsub) {
+        menuDetailDocUnsub();
+        menuDetailDocUnsub = null;
+      }
+      if (menuDetailLikesUnsub) {
+        menuDetailLikesUnsub();
+        menuDetailLikesUnsub = null;
+      }
+      if (menuDetailCommentsUnsub) {
+        menuDetailCommentsUnsub();
+        menuDetailCommentsUnsub = null;
       }
     }
   }

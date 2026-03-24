@@ -628,13 +628,19 @@ export function renderMenuDetailModalCore({
   const images = getImages(item);
   const maxIndex = images.length ? images.length - 1 : 0;
   const safeIndex = Math.max(0, Math.min(state.menuDetail.index || 0, maxIndex));
+  const restaurantId = getRestaurantId(item);
+  const detailImageKey = item?.id
+    ? `menu-detail:${String(restaurantId || "")}:${String(item.id)}:${safeIndex}`
+    : "";
   const rawImg = images[safeIndex] || "";
-  const imgSrc = getOptimizedImage(rawImg, "large");
+  const imgSrc = getOptimizedImage(rawImg, "large", {
+    stableKey: detailImageKey,
+    variantGroup: "menu-detail"
+  });
   const safeImg = isPlaceholder(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
   const firebaseFallback = getStorageUrl(rawImg);
   const fallbackImg = isDirectUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const priceLabel = formatPriceLabel(item.price);
-  const restaurantId = getRestaurantId(item);
   const catalogProfile = getCatalogProfile(item);
   const typeLabel = isShopCatalog(catalogProfile)
     ? (normalizeType(item.type) === "drink" ? "Variante" : "Produkt")

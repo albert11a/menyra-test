@@ -17,6 +17,9 @@ const IMAGE_SIZE_PRESETS = {
   medium: { width: 768, quality: 76, fit: "cover" },
   large: { width: 1280, quality: 80, fit: "cover" }
 };
+const LAST_GOOD_IMAGE_BY_KEY = new Map();
+const LAST_GOOD_IMAGE_MAX_ENTRIES = 500;
+const LAST_GOOD_IMAGE_TTL_MS = 6000;
 
 export function isPlaceholderUrl(url) {
   if (!url) return true;
@@ -72,54 +75,112 @@ function addEdgeImageParams(url, size = "large") {
 }
 
 export function getOptimizedImageUrl(path, size = "large") {
-  const sizeKey = normalizeSizeKey(size);
+  const options = arguments.length > 2 && arguments[2] && typeof arguments[2] === "object"
+    ? arguments[2]
+    : null;
+  let stableKey = "";
+  const variantGroup = options ? String(options.variantGroup || "").trim().toLowerCase() : "";
+  if (options) {
+    stableKey = String(options.stableKey || "").trim();
+  }
+  const normalizedSizeKey = normalizeSizeKey(size);
+  let sizeKey = normalizedSizeKey;
+  if (variantGroup === "menu-detail" && (normalizedSizeKey === "thumb" || normalizedSizeKey === "medium")) {
+    sizeKey = "large";
+  } else if (variantGroup === "post-detail" && normalizedSizeKey === "medium") {
+    sizeKey = "large";
+  }
   const buildFirebaseUrl = (bucket, objectPath) => {
     const safePath = encodeURIComponent(String(objectPath || "").replace(/^\/+/, ""));
     if (!bucket || !safePath) return "";
     return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${safePath}?alt=media`;
   };
+  const getCachedStableImage = () => {
+    if (!stableKey) return "";
+    const entry = LAST_GOOD_IMAGE_BY_KEY.get(stableKey);
+    if (!entry || typeof entry !== "object") return "";
+    const url = String(entry.url || "").trim();
+    const at = Number(entry.at) || 0;
+    if (!url || !at || Date.now() - at > LAST_GOOD_IMAGE_TTL_MS) {
+      LAST_GOOD_IMAGE_BY_KEY.delete(stableKey);
+      return "";
+    }
+    return url;
+  };
+  const rememberStableImage = (url) => {
+    if (!stableKey || !url || isPlaceholderUrl(url)) return;
+    LAST_GOOD_IMAGE_BY_KEY.set(stableKey, { url, at: Date.now() });
+    if (LAST_GOOD_IMAGE_BY_KEY.size <= LAST_GOOD_IMAGE_MAX_ENTRIES) return;
+    let oldestKey = "";
+    let oldestAt = Infinity;
+    LAST_GOOD_IMAGE_BY_KEY.forEach((entry, key) => {
+      const at = Number(entry?.at) || 0;
+      if (at < oldestAt) {
+        oldestAt = at;
+        oldestKey = key;
+      }
+    });
+    if (oldestKey) LAST_GOOD_IMAGE_BY_KEY.delete(oldestKey);
+  };
+  const fallbackToStable = (fallbackValue = PLACEHOLDER_IMAGE) => {
+    const cached = getCachedStableImage();
+    return cached || fallbackValue;
+  };
 
   if (!path || typeof path !== "string") {
-    return PLACEHOLDER_IMAGE;
+    return fallbackToStable();
   }
   const trimmed = path.trim();
   const lowered = trimmed.toLowerCase();
   if (!trimmed || lowered === "undefined" || lowered === "null" || lowered === "data") {
-    return PLACEHOLDER_IMAGE;
+    return fallbackToStable();
   }
   if (lowered.startsWith("data:") || lowered.startsWith("blob:")) {
-    return trimmed;
+    if (!isPlaceholderUrl(trimmed)) rememberStableImage(trimmed);
+    return isPlaceholderUrl(trimmed) ? fallbackToStable(trimmed) : trimmed;
   }
 
   if (lowered.startsWith("gs://")) {
     const match = trimmed.match(/^gs:\/\/([^/]+)\/(.+)$/);
     if (match) {
       const firebaseUrl = buildFirebaseUrl(match[1], match[2]);
-      if (firebaseUrl) return firebaseUrl;
+      if (firebaseUrl) {
+        rememberStableImage(firebaseUrl);
+        return firebaseUrl;
+      }
     }
   }
 
   if (trimmed.includes(".workers.dev/media/")) {
-    return addEdgeImageParams(trimmed, sizeKey);
+    const resolved = addEdgeImageParams(trimmed, sizeKey);
+    rememberStableImage(resolved);
+    return resolved;
   }
 
   const stripMediaPrefix = (value) => value.startsWith("media/") ? value.slice(6) : value;
 
   if (trimmed.includes("cdn.menyra.com") || trimmed.includes("r2.dev") || trimmed.includes("digitaloceanspaces")) {
     const key = trimmed.split("/").slice(3).join("/");
-    return addEdgeImageParams(CDN_BASE + stripMediaPrefix(key), sizeKey);
+    const resolved = addEdgeImageParams(CDN_BASE + stripMediaPrefix(key), sizeKey);
+    rememberStableImage(resolved);
+    return resolved;
   }
 
   const r2Match = trimmed.match(/https?:\/\/pub-[a-zA-Z0-9]+\.r2\.dev\/(.*)/);
   if (r2Match && r2Match[1]) {
-    return addEdgeImageParams(CDN_BASE + stripMediaPrefix(r2Match[1]), sizeKey);
+    const resolved = addEdgeImageParams(CDN_BASE + stripMediaPrefix(r2Match[1]), sizeKey);
+    rememberStableImage(resolved);
+    return resolved;
   }
 
   if (/^https?:\/\//i.test(trimmed)) {
+    rememberStableImage(trimmed);
     return trimmed;
   }
 
   // Handle bare keys
   const cleanedPath = trimmed.replace(/^\//, "");
-  return addEdgeImageParams(CDN_BASE + stripMediaPrefix(cleanedPath), sizeKey);
+  const resolved = addEdgeImageParams(CDN_BASE + stripMediaPrefix(cleanedPath), sizeKey);
+  rememberStableImage(resolved);
+  return resolved;
 }

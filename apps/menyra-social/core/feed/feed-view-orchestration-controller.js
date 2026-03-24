@@ -342,7 +342,9 @@ export function createFeedViewOrchestrationController({
     const restaurant = state.restaurants.find((r) => r.id === (post.restaurantId || post.ownerId)) || {};
     const logoSource = restaurant.logoUrl || restaurant.logo || post.logo || "";
     const logoUrl = resolveRestaurantLogoFn(post.restaurantId || post.ownerId, logoSource, "avatar");
-    const imageUrl = getOptimizedImageUrlFn(post.image, "large");
+    const imageUrl = getOptimizedImageUrlFn(post.image, "large", {
+      stableKey: postId ? `feed-hero:${postId}` : ""
+    });
     return `
     <div class="group feed-card" ${feedAttr}>
       <div class="flex items-center justify-between mb-5 px-2">
