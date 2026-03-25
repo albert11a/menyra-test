@@ -354,15 +354,15 @@ export function createAppShellRuntimeController(deps = {}) {
       subtitleClass: isCompact ? "text-[8px]" : "text-[9px]",
       actionButtonClass: isCompact ? "w-9 h-9" : "w-10 h-10",
       actionIconClass: isCompact ? "w-4 h-4" : "w-5 h-5",
-      drawerPaddingClass: isCompact ? "p-1.5 -ml-1.5" : "p-2 -ml-2",
+      drawerButtonClass: isCompact ? "w-9 h-9 -ml-1.5" : "w-10 h-10 -ml-2",
       drawerIconClass: isCompact ? "w-5 h-5" : "w-6 h-6",
       headerPaddingClass: isTight ? "px-4" : "px-5",
       headerGapClass: isTight ? "gap-2" : "gap-3",
       leftGroupPaddingClass: isTight ? "pr-2" : "pr-3",
       categoryTrackClass: isCompact ? "h-9" : "h-10",
       categoryChipClass: isCompact
-        ? "shrink-0 h-9 box-border px-3.5 inline-flex items-center justify-center whitespace-nowrap rounded-full border text-[10px] font-black uppercase tracking-[0.16em] leading-none transition-all duration-300"
-        : "shrink-0 h-10 box-border px-4 inline-flex items-center justify-center whitespace-nowrap rounded-full border text-[11px] font-black uppercase tracking-[0.18em] leading-none transition-all duration-300"
+        ? "shrink-0 h-full box-border px-3.5 inline-flex items-center justify-center whitespace-nowrap rounded-full border text-[10px] font-black uppercase tracking-[0.16em] leading-none transition-all duration-300"
+        : "shrink-0 h-full box-border px-4 inline-flex items-center justify-center whitespace-nowrap rounded-full border text-[11px] font-black uppercase tracking-[0.18em] leading-none transition-all duration-300"
     };
   }
 
@@ -396,7 +396,7 @@ export function createAppShellRuntimeController(deps = {}) {
     }
     return `
       <div class="relative flex-1 min-w-0 pr-1">
-        <div class="${viewportUi.categoryTrackClass} flex items-stretch gap-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
+        <div class="${viewportUi.categoryTrackClass} flex items-center gap-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
           ${categories.map((category, index) => `
             <button
               type="button"
@@ -471,7 +471,7 @@ export function createAppShellRuntimeController(deps = {}) {
           <div id="smart-header-top" class="smart-header-top">
             <div class="${viewportUi.headerPaddingClass} h-16 flex items-center ${menuHeaderActive ? viewportUi.headerGapClass : `justify-between ${viewportUi.headerGapClass}`}">
               <div class="flex ${menuHeaderActive ? "shrink-0" : "flex-1 min-w-0"} items-center ${viewportUi.headerGapClass} ${viewportUi.leftGroupPaddingClass}">
-                <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="text-slate-700 hover:bg-slate-100 ${viewportUi.drawerPaddingClass} rounded-full transition-colors active:scale-95 flex items-center justify-center shrink-0">
+                <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="text-slate-700 hover:bg-slate-100 ${viewportUi.drawerButtonClass} rounded-full transition-colors active:scale-95 flex items-center justify-center shrink-0">
                   ${icon("menu", viewportUi.drawerIconClass)}
                 </button>
                 ${menuHeaderActive ? "" : renderBusinessHeaderCenter(activeProfile)}

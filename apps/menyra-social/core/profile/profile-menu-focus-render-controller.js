@@ -491,7 +491,7 @@ function renderMenuItemsWithCategoryAnchors(items = [], renderItem, seenCategori
     const anchorAttrs = shouldAnchorCategory
       ? ` data-menu-category-anchor="${escapeHtml(categoryToken)}"`
       : "";
-    return `<div${anchorAttrs}>${renderItem(item)}</div>`;
+    return `<div${anchorAttrs} class="h-full">${renderItem(item)}</div>`;
   }).join("");
 }
 
@@ -690,12 +690,12 @@ function renderMenuItemCardStacked(item, { mode = "profile", variant = "food" } 
   `;
   const isDrink = variant === "drink";
   return `
-    <div ${wrapperAttrs} class="w-full ${isDrink ? "p-3 rounded-[1.6rem]" : "p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all ${mode === "profile" ? "cursor-pointer" : ""}">
+    <div ${wrapperAttrs} class="w-full ${isDrink ? "h-full p-3 rounded-[1.6rem] flex flex-col" : "p-4 rounded-[2rem]"} bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-full ${isDrink ? "h-28 rounded-[1.4rem]" : "h-44 rounded-[1.8rem]"} overflow-hidden bg-slate-100">
         <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover" style="object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
       </div>
       ${isDrink ? `
-        <div class="mt-3">
+        <div class="mt-3 flex flex-1 flex-col">
           <p class="text-sm font-black text-slate-900 leading-snug">${escapeHtml(item.name || "Produkt")}</p>
           <p class="text-xs font-black text-slate-700 mt-1">${escapeHtml(priceLabel)}</p>
           ${countsRow}
@@ -848,7 +848,7 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile" } = {}) {
     : "";
   const { itemId, counts, isLiked } = getMenuCardSocialMeta(item);
   return `
-    <div ${wrapperAttrs} class="bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative ${mode === "profile" ? "cursor-pointer" : ""}">
+    <div ${wrapperAttrs} class="h-full bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
         <img src="${escapeHtml(safeImg)}" data-fallback-src="${escapeHtml(fallbackImg)}" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 select-none pointer-events-none" draggable="false" style="width:100%;height:100%;object-fit:cover;object-position:${getMenuItemObjectPosition(item)};" loading="lazy" decoding="async" />
         <button
@@ -1109,7 +1109,7 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile" } = {}) {
       <section class="menu-type-block relative" data-menu-type-block="${escapeHtml(menuType)}">
         ${bucket.gridItems.length ? `
           <div class="menu-category-section pb-6 pt-4" data-menu-type="${escapeHtml(menuType)}">
-            <div class="grid grid-cols-2 gap-3 px-5">
+            <div class="grid grid-cols-2 auto-rows-fr gap-3 px-5">
               ${renderMenuItemsWithCategoryAnchors(bucket.gridItems, (item) => renderGridCard(item), anchoredCategories)}
             </div>
           </div>
@@ -1147,13 +1147,13 @@ function renderMenuDrinkGrid(items, { mode = "profile", useTestfirstCardUi = fal
   if (!items.length) return "";
   if (useTestfirstCardUi) {
     return `
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 auto-rows-fr gap-3">
         ${renderMenuItemsWithCategoryAnchors(items, (item) => renderTestfirstDrinkGridCard(item, { mode }), seenCategories)}
       </div>
     `;
   }
   return `
-    <div class="grid grid-cols-2 gap-4">
+    <div class="grid grid-cols-2 auto-rows-fr gap-4">
       ${renderMenuItemsWithCategoryAnchors(items, (item) => renderMenuItemCardStacked(item, { mode, variant: "drink" }), seenCategories)}
     </div>
   `;
