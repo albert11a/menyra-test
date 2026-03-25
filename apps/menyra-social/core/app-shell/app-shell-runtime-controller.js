@@ -361,8 +361,8 @@ export function createAppShellRuntimeController(deps = {}) {
       leftGroupPaddingClass: isTight ? "pr-2" : "pr-3",
       categoryTrackClass: isCompact ? "h-9" : "h-10",
       categoryChipClass: isCompact
-        ? "shrink-0 h-full box-border px-3.5 inline-flex items-center justify-center whitespace-nowrap rounded-full border text-[10px] font-black uppercase tracking-[0.16em] leading-none transition-all duration-300"
-        : "shrink-0 h-full box-border px-4 inline-flex items-center justify-center whitespace-nowrap rounded-full border text-[11px] font-black uppercase tracking-[0.18em] leading-none transition-all duration-300"
+        ? "shrink-0 min-w-0 max-w-[7.5rem] h-7 box-border px-2.5 inline-flex items-center justify-center overflow-hidden rounded-full border text-[9px] font-black leading-none transition-all duration-300"
+        : "shrink-0 min-w-0 max-w-[8.5rem] h-8 box-border px-3 inline-flex items-center justify-center overflow-hidden rounded-full border text-[10px] font-black leading-none transition-all duration-300"
     };
   }
 
@@ -404,7 +404,7 @@ export function createAppShellRuntimeController(deps = {}) {
               ${category.disabled ? "disabled" : ""}
               class="${viewportUi.categoryChipClass} ${index === 0 ? "bg-slate-900 text-white border-slate-900 shadow-[0_10px_24px_-16px_rgba(15,23,42,0.55)]" : "bg-white/80 text-slate-500 border-slate-200"} ${category.disabled ? "opacity-50 cursor-default" : "active:scale-[0.97]"}"
             >
-              ${escapeHtml(category.label)}
+              <span class="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap">${escapeHtml(category.label)}</span>
             </button>
           `).join("")}
         </div>
