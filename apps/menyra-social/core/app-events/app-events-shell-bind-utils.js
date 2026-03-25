@@ -60,6 +60,58 @@ export function bindAppShellEventsCore({
   const openProfileViewFromBusiness = typeof openProfileViewFromBusinessFn === "function"
     ? openProfileViewFromBusinessFn
     : null;
+  const getActiveProfile = () => state.profileView?.profile || state.userProfile || {};
+  const isBusinessProfile = (profile = getActiveProfile()) => {
+    const restaurantId = String(profile?.restaurantId || "").trim();
+    if (restaurantId) return true;
+    return String(profile?.role || "").trim().toLowerCase() === "business";
+  };
+  const isBusinessProfileView = () => state.activeTab === "profile" && isBusinessProfile();
+  const scrollWindowToTop = (smooth = false) => {
+    if (!doc?.defaultView?.scrollTo) return;
+    if (!smooth) {
+      doc.defaultView.scrollTo(0, 0);
+      return;
+    }
+    try {
+      doc.defaultView.scrollTo({ top: 0, behavior: "smooth" });
+    } catch {
+      doc.defaultView.scrollTo(0, 0);
+    }
+  };
+  const businessMenuCategoryBaseClass = "shrink-0 px-4 py-2.5 rounded-full border text-[11px] font-black uppercase tracking-[0.18em] transition-all duration-300";
+  const businessMenuCategoryActiveClass = "bg-slate-900 text-white border-slate-900 shadow-[0_10px_24px_-16px_rgba(15,23,42,0.55)]";
+  const businessMenuCategoryInactiveClass = "bg-white/80 text-slate-500 border-slate-200";
+
+  const syncBusinessMenuCategoryUi = (nextCategory = "") => {
+    const buttons = Array.from(doc.querySelectorAll("[data-business-menu-category]"));
+    if (!buttons.length) return;
+    const fallbackCategory = buttons[0]?.dataset?.businessMenuCategory || "";
+    const activeCategory = String(nextCategory || fallbackCategory).trim().toLowerCase();
+    buttons.forEach((button) => {
+      const category = String(button.dataset.businessMenuCategory || "").trim().toLowerCase();
+      const isActive = !!activeCategory && category === activeCategory;
+      button.className = `${businessMenuCategoryBaseClass} ${isActive ? businessMenuCategoryActiveClass : businessMenuCategoryInactiveClass}${button.disabled ? " opacity-50 cursor-default" : " active:scale-[0.97]"}`;
+    });
+  };
+
+  const scrollBusinessMenuToCategory = (category = "") => {
+    const targetCategory = String(category || "").trim().toLowerCase();
+    if (!targetCategory) return;
+    const target = doc.querySelector(`[data-menu-category-anchor="${targetCategory}"]`)
+      || doc.querySelector(`[data-menu-type-block="${targetCategory}"]`)
+      || doc.querySelector(`[data-menu-type="${targetCategory}"]`);
+    if (!(target instanceof HTMLElement) || !doc.defaultView?.scrollTo) return;
+    const headerTop = doc.getElementById("smart-header-top");
+    const headerHeight = Math.max(0, Math.round(headerTop?.getBoundingClientRect?.().height || 0));
+    const targetTop = target.getBoundingClientRect().top + Math.max(0, Number(doc.defaultView.scrollY || 0));
+    const nextTop = Math.max(0, Math.round(targetTop - headerHeight - 18));
+    try {
+      doc.defaultView.scrollTo({ top: nextTop, behavior: "smooth" });
+    } catch {
+      doc.defaultView.scrollTo(0, nextTop);
+    }
+  };
 
   const drawerToggle = doc.getElementById("drawerToggle");
   const drawerOverlay = doc.getElementById("drawerOverlay");
@@ -155,10 +207,33 @@ export function bindAppShellEventsCore({
 
   doc.querySelectorAll("[data-profile-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const tab = btn.dataset.profileTab;
+      const tab = String(btn.dataset.profileTab || "").trim().toLowerCase();
       if (!tab) return;
       state.profileContentTab = tab;
+      if (isBusinessProfileView()) {
+        state.profileTopTab = tab === "menu" ? "menu" : "profile";
+        if (tab === "menu") {
+          ensureMenuDataForProfile();
+          ensureFocusDataForProfile();
+        }
+        scrollWindowToTop(true);
+      }
       render();
+      if (tab === "menu") {
+        syncBusinessMenuCategoryUi();
+      }
+    });
+  });
+
+  doc.querySelectorAll("[data-business-profile-home]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!isBusinessProfileView()) return;
+      state.activeTab = "profile";
+      state.profileTopTab = "profile";
+      state.profileContentTab = "posts";
+      state.drawerOpen = false;
+      render();
+      scrollWindowToTop(true);
     });
   });
 
@@ -170,7 +245,11 @@ export function bindAppShellEventsCore({
       return;
     }
     if (forceProfile) state.activeTab = "profile";
+    const shouldRouteMenuThroughContentTab = nextTab === "menu" && isBusinessProfileView();
     state.profileTopTab = nextTab;
+    if (shouldRouteMenuThroughContentTab) {
+      state.profileContentTab = "menu";
+    }
     state.drawerOpen = false;
     if (nextTab === "menu" || nextTab === "favorites" || nextTab === "cart") {
       ensureMenuDataForProfile();
@@ -186,6 +265,9 @@ export function bindAppShellEventsCore({
       }
     }
     render();
+    if (shouldRouteMenuThroughContentTab) {
+      syncBusinessMenuCategoryUi();
+    }
   };
 
   const openSmartHeaderCart = () => {
@@ -239,6 +321,15 @@ export function bindAppShellEventsCore({
     });
   });
 
+  doc.querySelectorAll("[data-business-menu-category]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const category = String(btn.dataset.businessMenuCategory || "").trim().toLowerCase();
+      if (!category) return;
+      syncBusinessMenuCategoryUi(category);
+      scrollBusinessMenuToCategory(category);
+    });
+  });
+
   doc.querySelectorAll("[data-profile-view]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const mode = btn.dataset.profileView;
@@ -247,4 +338,6 @@ export function bindAppShellEventsCore({
       render();
     });
   });
+
+  syncBusinessMenuCategoryUi();
 }

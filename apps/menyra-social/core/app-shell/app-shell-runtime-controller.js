@@ -265,6 +265,183 @@ export function createAppShellRuntimeController(deps = {}) {
     return !!String(state.activeTab || "").trim() && !isStaffFormView && !isLeadsSubView && !isChatThreadOpen;
   }
 
+  function getActiveHeaderProfile() {
+    return state.profileView?.profile || state.userProfile || {};
+  }
+
+  function isBusinessHeaderProfile(profile = getActiveHeaderProfile()) {
+    const restaurantId = String(profile?.restaurantId || "").trim();
+    if (restaurantId) return true;
+    return String(profile?.role || "").trim().toLowerCase() === "business";
+  }
+
+  function resolveBusinessHeaderTopTab(profile = getActiveHeaderProfile()) {
+    if (!isBusinessHeaderProfile(profile)) return "profile";
+    const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+    if (requestedTopTab === "cart" || requestedTopTab === "favorites") {
+      return requestedTopTab;
+    }
+    return "profile";
+  }
+
+  function resolveBusinessHeaderContentTab(profile = getActiveHeaderProfile()) {
+    if (!isBusinessHeaderProfile(profile)) return "posts";
+    const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+    if (requestedTopTab === "menu") return "menu";
+    const requestedContentTab = String(state.profileContentTab || "").trim().toLowerCase();
+    if (requestedContentTab === "media" || requestedContentTab === "menu" || requestedContentTab === "posts") {
+      return requestedContentTab;
+    }
+    return "posts";
+  }
+
+  function isBusinessProfileHeaderContext(profile = getActiveHeaderProfile()) {
+    return state.activeTab === "profile" && isBusinessHeaderProfile(profile);
+  }
+
+  function isBusinessMenuHeaderContext(profile = getActiveHeaderProfile()) {
+    if (!isBusinessProfileHeaderContext(profile)) return false;
+    if (resolveBusinessHeaderTopTab(profile) !== "profile") return false;
+    return resolveBusinessHeaderContentTab(profile) === "menu";
+  }
+
+  function isMenuItemVisibleForHeader(item = {}) {
+    const visibility = String(item?.menuVisibility || "").trim().toLowerCase();
+    return item?.menuHidden !== true && visibility !== "hidden";
+  }
+
+  function resolveHeaderMenuCategoryLabel(item = {}) {
+    return String(item?.category || "Sonstiges").trim() || "Sonstiges";
+  }
+
+  function normalizeHeaderMenuCategoryToken(value = "") {
+    const raw = String(value || "").trim().toLowerCase();
+    if (!raw) return "";
+    const folded = typeof raw.normalize === "function"
+      ? raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      : raw;
+    return folded.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  }
+
+  function getBusinessHeaderMenuCategories(profile = getActiveHeaderProfile()) {
+    const restaurantId = String(profile?.restaurantId || "").trim();
+    if (!restaurantId || !isRestaurantCafeProfile(profile)) return [];
+    const sameRestaurant = state.menu.restaurantId === restaurantId;
+    const items = sameRestaurant && Array.isArray(state.menu?.items)
+      ? state.menu.items.filter((item) => isMenuItemVisibleForHeader(item))
+      : [];
+    const seenCategories = new Set();
+    const categories = [];
+    items.forEach((item) => {
+      const label = resolveHeaderMenuCategoryLabel(item);
+      const id = normalizeHeaderMenuCategoryToken(label);
+      if (!id || seenCategories.has(id)) return;
+      seenCategories.add(id);
+      categories.push({ id, label });
+    });
+    return categories;
+  }
+
+  function resolveBusinessHeaderViewportUi() {
+    const viewportWidth = Math.max(
+      0,
+      Number(win?.innerWidth || doc?.documentElement?.clientWidth || 0)
+    );
+    const isCompact = viewportWidth > 0 && viewportWidth <= 390;
+    const isTight = viewportWidth > 0 && viewportWidth <= 360;
+    return {
+      titleClass: isCompact ? "text-[1.35rem]" : "text-2xl",
+      subtitleClass: isCompact ? "text-[8px]" : "text-[9px]",
+      actionButtonClass: isCompact ? "w-9 h-9" : "w-10 h-10",
+      actionIconClass: isCompact ? "w-4 h-4" : "w-5 h-5",
+      drawerPaddingClass: isCompact ? "p-1.5 -ml-1.5" : "p-2 -ml-2",
+      drawerIconClass: isCompact ? "w-5 h-5" : "w-6 h-6",
+      headerPaddingClass: isTight ? "px-4" : "px-5",
+      headerGapClass: isTight ? "gap-2" : "gap-3",
+      leftGroupPaddingClass: isTight ? "pr-2" : "pr-3",
+      categoryChipClass: isCompact
+        ? "shrink-0 px-3.5 py-2 rounded-full border text-[10px] font-black uppercase tracking-[0.16em] transition-all duration-300"
+        : "shrink-0 px-4 py-2.5 rounded-full border text-[11px] font-black uppercase tracking-[0.18em] transition-all duration-300"
+    };
+  }
+
+  function renderBusinessHeaderCenter(profile = getActiveHeaderProfile()) {
+    const viewportUi = resolveBusinessHeaderViewportUi();
+    const businessName = String(profile?.name || profile?.restaurantName || profile?.businessName || "Business").trim() || "Business";
+    const businessNameParts = businessName.split(/\s+/).filter(Boolean);
+    const rawBusinessTitle = String(businessNameParts[0] || businessName).trim();
+    const businessTitle = rawBusinessTitle && rawBusinessTitle.length <= 5
+      ? rawBusinessTitle.toUpperCase()
+      : rawBusinessTitle;
+    const businessSubtitle = businessNameParts.length > 1
+      ? businessNameParts[1]
+      : "Social";
+    const renderBusinessName = () => `
+      <button type="button" data-business-profile-home="true" class="min-w-0 max-w-full text-left active:opacity-90 transition-opacity">
+        <div class="flex items-baseline gap-1.5 min-w-0 max-w-full">
+          <div class="flex-1 min-w-0 pr-2">
+            <h1 class="block min-w-0 overflow-hidden text-ellipsis whitespace-nowrap pr-[3px] ${viewportUi.titleClass} font-black italic tracking-tighter leading-none text-slate-900">${escapeHtml(businessTitle)}</h1>
+          </div>
+          <span class="min-w-0 max-w-[96px] overflow-hidden text-ellipsis whitespace-nowrap pl-0.5 ${viewportUi.subtitleClass} font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">${escapeHtml(businessSubtitle)}</span>
+        </div>
+      </button>
+    `;
+    if (!isBusinessMenuHeaderContext(profile)) {
+      return renderBusinessName();
+    }
+    const categories = getBusinessHeaderMenuCategories(profile);
+    if (!categories.length) {
+      return renderBusinessName();
+    }
+    return `
+      <div class="relative flex-1 min-w-0 pr-1">
+        <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
+          ${categories.map((category, index) => `
+            <button
+              type="button"
+              data-business-menu-category="${escapeHtml(category.id)}"
+              ${category.disabled ? "disabled" : ""}
+              class="${viewportUi.categoryChipClass} ${index === 0 ? "bg-slate-900 text-white border-slate-900 shadow-[0_10px_24px_-16px_rgba(15,23,42,0.55)]" : "bg-white/80 text-slate-500 border-slate-200"} ${category.disabled ? "opacity-50 cursor-default" : "active:scale-[0.97]"}"
+            >
+              ${escapeHtml(category.label)}
+            </button>
+          `).join("")}
+        </div>
+      </div>
+    `;
+  }
+
+  function renderBusinessHeaderActions(profile = getActiveHeaderProfile()) {
+    const viewportUi = resolveBusinessHeaderViewportUi();
+    const guestSession = isGuestSession();
+    const menuActive = isBusinessMenuHeaderContext(profile);
+    const cartCount = Array.isArray(state.shopCart?.items)
+      ? state.shopCart.items.reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0)
+      : 0;
+    const secondaryActionClass = `${viewportUi.actionButtonClass} shrink-0 flex items-center justify-center rounded-full transition-colors active:scale-95 hover:bg-slate-100`;
+    const primaryActionClass = `${secondaryActionClass} text-slate-900`;
+    return `
+      <div class="flex shrink-0 items-center gap-1 text-slate-600">
+        <button type="button" class="${secondaryActionClass}">
+          ${icon("globe", viewportUi.actionIconClass)}
+        </button>
+        <button type="button" data-action="cart" class="smart-header-cart-btn ${primaryActionClass}">
+          ${icon("shopping-bag", viewportUi.actionIconClass)}
+          ${cartCount > 0 ? `<span class="smart-header-cart-badge">${escapeHtml(cartCount > 99 ? "99+" : String(cartCount))}</span>` : ""}
+        </button>
+        ${menuActive ? `
+          <button type="button" data-action="kellner" title="Call Waiter" class="${primaryActionClass}">
+            ${icon("bell", viewportUi.actionIconClass)}
+          </button>
+        ` : `
+          <button type="button" ${guestSession ? 'data-auth-open="true"' : 'data-nav="profile"'} class="${primaryActionClass}">
+            ${icon("user", viewportUi.actionIconClass)}
+          </button>
+        `}
+      </div>
+    `;
+  }
+
   function shouldShowSmartHeaderTabs() {
     const overlayIsolationActive = !!state.profileModal?.open
       || !!state.postModal?.open
@@ -284,17 +461,31 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function renderSmartHeader() {
-    const showTabs = shouldShowSmartHeaderTabs();
+    const activeProfile = getActiveHeaderProfile();
+    if (isBusinessProfileHeaderContext(activeProfile)) {
+      const viewportUi = resolveBusinessHeaderViewportUi();
+      const menuHeaderActive = isBusinessMenuHeaderContext(activeProfile);
+      return `
+        <div class="smart-header-shell">
+          <div id="smart-header-top" class="smart-header-top">
+            <div class="${viewportUi.headerPaddingClass} h-16 flex items-center ${menuHeaderActive ? viewportUi.headerGapClass : `justify-between ${viewportUi.headerGapClass}`}">
+              <div class="flex ${menuHeaderActive ? "shrink-0" : "flex-1 min-w-0"} items-center ${viewportUi.headerGapClass} ${viewportUi.leftGroupPaddingClass}">
+                <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="text-slate-700 hover:bg-slate-100 ${viewportUi.drawerPaddingClass} rounded-full transition-colors active:scale-95 flex items-center justify-center shrink-0">
+                  ${icon("menu", viewportUi.drawerIconClass)}
+                </button>
+                ${menuHeaderActive ? "" : renderBusinessHeaderCenter(activeProfile)}
+              </div>
+              ${menuHeaderActive ? renderBusinessHeaderCenter(activeProfile) : ""}
+              ${renderBusinessHeaderActions(activeProfile)}
+            </div>
+          </div>
+        </div>
+      `;
+    }
     const cartCount = Array.isArray(state.shopCart?.items)
       ? state.shopCart.items.reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0)
       : 0;
-    const activeTopTab = String(state.profileTopTab || "").trim().toLowerCase();
-    const isMenu = activeTopTab === "menu";
-    const isProfile = activeTopTab === "profile";
     const guestSession = isGuestSession();
-    const tabBase = "smart-header-tab";
-    const activeTab = "smart-header-tab--active";
-    const inactiveTab = "smart-header-tab--inactive";
 
     return `
       <div class="smart-header-shell">
@@ -323,17 +514,6 @@ export function createAppShellRuntimeController(deps = {}) {
             </div>
           </div>
         </div>
-        ${showTabs ? `
-          <div id="smart-tabs" class="smart-header-tabs">
-            <div class="px-5 flex items-center justify-between">
-              <button type="button" data-business-top-tab="profile" class="${tabBase} ${isProfile ? activeTab : inactiveTab}">Profil</button>
-              <button type="button" data-business-top-tab="menu" class="${tabBase} ${isMenu ? activeTab : inactiveTab}">Menue</button>
-              <button type="button" data-action="kellner" class="smart-header-action active:scale-95">
-                Call Waiter
-              </button>
-            </div>
-          </div>
-        ` : ""}
       </div>
     `;
   }
@@ -454,49 +634,7 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function renderBusinessTopTabs() {
-    if (shouldUseSmartHeader()) return "";
-    if (!shouldShowBusinessTopTabs()) return "";
-    const profile = state.profileView?.profile || state.userProfile;
-    const catalogLabel = getBusinessCatalogLabel(profile);
-    const isShop = isShopCatalogProfile(profile);
-    const profileRestaurantId = String(profile?.restaurantId || "").trim();
-    const menuAccessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
-    const isQrMenuAccess = !isShop && menuAccessSource === "qr";
-    const canUseCartTab = isShop || isQrMenuAccess;
-    const base = "flex-1 py-3 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2";
-    const activeTop = state.profileTopTab || "profile";
-    const isProfileActive = activeTop === "profile";
-    const isMenuActive = activeTop === "menu";
-    const isCartActive = activeTop === "cart";
-    const cartCount = canUseCartTab ? getCartCountForRestaurant(profileRestaurantId || "") : 0;
-    const spacingClass = "pb-3";
-    const tabsInnerHtml = `
-      <div data-business-top-tabs="true" class="px-6 pt-1 ${spacingClass}">
-        <div class="bg-white p-1.5 rounded-[2rem] border border-slate-100 shadow-sm flex items-center gap-1">
-          <button type="button" data-profile-top-tab="profile" class="${base} ${isProfileActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-            Profil
-          </button>
-          <button type="button" data-profile-top-tab="menu" class="${base} ${isMenuActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-            ${catalogLabel}
-          </button>
-          ${canUseCartTab ? `
-            <button type="button" data-profile-top-tab="cart" class="${base} relative ${isCartActive ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
-              ${icon("shopping-cart", "w-4 h-4")}
-              ${cartCount ? `<span class="absolute top-1 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[9px] font-black flex items-center justify-center">${cartCount > 9 ? "9+" : cartCount}</span>` : ""}
-            </button>
-          ` : `
-            <button type="button" disabled class="${base} text-slate-300 cursor-not-allowed">
-              Reviews
-            </button>
-          `}
-        </div>
-      </div>
-    `;
-    return `
-    <div data-business-top-tabs-wrap="true" class="business-top-tabs-sticky">
-      ${tabsInnerHtml}
-    </div>
-  `;
+    return "";
   }
 
   function bindImageFallbacks(root = doc) {

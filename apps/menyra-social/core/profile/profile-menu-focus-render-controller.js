@@ -226,16 +226,61 @@ function renderProfileCheckins() {
   `;
 }
 
-function renderProfileTabs() {
+function isBusinessProfileEntity(profile = {}) {
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  if (restaurantId) return true;
+  return String(profile?.role || "").trim().toLowerCase() === "business";
+}
+
+function resolveProfileContentTabForRendering(profile = {}) {
+  const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+  const requestedContentTab = String(state.profileContentTab || "").trim().toLowerCase();
+  if (isBusinessProfileEntity(profile)) {
+    if (requestedTopTab === "menu") return "menu";
+    if (requestedContentTab === "media" || requestedContentTab === "menu" || requestedContentTab === "posts") {
+      return requestedContentTab;
+    }
+    return "posts";
+  }
+  if (requestedContentTab === "media" || requestedContentTab === "checkins") {
+    return requestedContentTab;
+  }
+  return "posts";
+}
+
+function resolveProfilePrimaryTopTab(profile = {}) {
+  const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+  if (isBusinessProfileEntity(profile)) {
+    if (requestedTopTab === "cart" || requestedTopTab === "favorites") {
+      return requestedTopTab;
+    }
+    return "profile";
+  }
+  if (requestedTopTab === "favorites" && String(state.user?.uid || "").trim()) {
+    return "favorites";
+  }
+  return "profile";
+}
+
+function renderProfileTabs(profile = state.profileView?.profile || state.userProfile) {
+  const isBusinessProfile = isBusinessProfileEntity(profile);
+  const activeTab = resolveProfileContentTabForRendering(profile);
+  const tabs = isBusinessProfile
+    ? [
+      { id: "posts", label: "Beitraege" },
+      { id: "menu", label: "Menue" },
+      { id: "media", label: "Medien" }
+    ]
+    : [
+      { id: "posts", label: "Beitraege" },
+      { id: "media", label: "Medien" },
+      { id: "checkins", label: "Check-ins" }
+    ];
   return `
     <div class="px-6 mb-6 mt-4">
       <div class="bg-white/60 p-1.5 rounded-[2rem] border border-white/50 shadow-sm flex items-center relative backdrop-blur-sm">
-        ${[
-          { id: "posts", label: "Beitraege" },
-          { id: "media", label: "Medien" },
-          { id: "checkins", label: "Check-ins" }
-        ].map((tab) => `
-          <button data-profile-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${state.profileContentTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
+        ${tabs.map((tab) => `
+          <button data-profile-tab="${tab.id}" class="flex-1 py-3.5 rounded-[1.5rem] text-[11px] font-bold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-2 ${activeTab === tab.id ? "bg-white text-slate-900 shadow-[0_4px_12px_-2px_rgba(0,0,0,0.08),0_2px_6px_-1px_rgba(0,0,0,0.04)] scale-[1.02]" : "text-slate-400 hover:text-slate-600"}">
             ${tab.label}
           </button>
         `).join("")}
@@ -244,8 +289,9 @@ function renderProfileTabs() {
   `;
 }
 
-function renderProfileViewControls() {
-  if (state.profileContentTab === "checkins") return "";
+function renderProfileViewControls(profile = state.profileView?.profile || state.userProfile) {
+  const activeTab = resolveProfileContentTabForRendering(profile);
+  if (activeTab === "checkins" || activeTab === "menu") return "";
   return `
     <div class="flex items-center justify-between px-8 mb-6">
       <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest pl-2">Ansicht</span>
@@ -273,21 +319,17 @@ function renderPublicProfileView() {
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
-  const isMediaTab = state.profileContentTab === "media";
-  const isCheckinTab = state.profileContentTab === "checkins";
+  const isBusinessProfile = isBusinessProfileEntity(profile);
+  const activeContentTab = resolveProfileContentTabForRendering(profile);
+  const isMediaTab = activeContentTab === "media";
+  const isMenuTab = activeContentTab === "menu";
+  const isCheckinTab = activeContentTab === "checkins";
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(!!profile.restaurantId);
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
-  const requestedTopTab = state.profileTopTab || "profile";
-  const hasRegisteredUser = !!String(state.user?.uid || "").trim();
-  let topTab = "profile";
-  if (profile.restaurantId) {
-    topTab = requestedTopTab;
-  } else if (requestedTopTab === "favorites" && hasRegisteredUser) {
-    topTab = "favorites";
-  }
-  const topPaddingClass = profile.restaurantId ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
+  const topTab = resolveProfilePrimaryTopTab(profile);
+  const topPaddingClass = isBusinessProfile ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
   const followTone = isFollowing
     ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200"
@@ -349,10 +391,12 @@ function renderPublicProfileView() {
       </div>
 
       ${!isLocked ? `
-        ${renderProfileTabs()}
-        ${renderProfileViewControls()}
+        ${renderProfileTabs(profile)}
+        ${renderProfileViewControls(profile)}
 
-        ${isCheckinTab ? `
+        ${isMenuTab ? `
+          ${renderProfileMenuView(profile)}
+        ` : isCheckinTab ? `
           ${renderProfileCheckins()}
         ` : `
           <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
@@ -373,7 +417,7 @@ function renderPublicProfileView() {
       ` : `
         ${topTab === "cart"
           ? renderProfileShopCartView(profile)
-          : (topTab === "favorites" ? renderProfileShopFavoritesView(profile) : renderProfileMenuView(profile))}
+          : (topTab === "favorites" ? renderProfileShopFavoritesView(profile) : "")}
       `}
     </div>
   `;
@@ -422,6 +466,33 @@ function resolveMenuDisplaySection(item = {}) {
   if (raw === "drink") return "drink";
   if (raw === "food") return "food";
   return normalizeMenuType(item?.type || "food") === "drink" ? "drink" : "food";
+}
+
+function resolveMenuCategoryLabel(item = {}) {
+  return String(item?.category || "Sonstiges").trim() || "Sonstiges";
+}
+
+function normalizeMenuCategoryToken(value = "") {
+  const raw = String(value || "").trim().toLowerCase();
+  if (!raw) return "";
+  const folded = typeof raw.normalize === "function"
+    ? raw.normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    : raw;
+  return folded.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function renderMenuItemsWithCategoryAnchors(items = [], renderItem, seenCategories = null) {
+  const categoryTracker = seenCategories instanceof Set ? seenCategories : new Set();
+  return items.map((item) => {
+    const categoryLabel = resolveMenuCategoryLabel(item);
+    const categoryToken = normalizeMenuCategoryToken(categoryLabel);
+    const shouldAnchorCategory = !!categoryToken && !categoryTracker.has(categoryToken);
+    if (shouldAnchorCategory) categoryTracker.add(categoryToken);
+    const anchorAttrs = shouldAnchorCategory
+      ? ` data-menu-category-anchor="${escapeHtml(categoryToken)}"`
+      : "";
+    return `<div${anchorAttrs}>${renderItem(item)}</div>`;
+  }).join("");
 }
 
 function resolveSpecialCardSize(item = {}) {
@@ -1031,6 +1102,7 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile" } = {}) {
       : renderTestfirstDrinkGridCard(item, { mode });
   };
 
+  const anchoredCategories = new Set();
   const renderTypeBlock = (menuType, bucket) => {
     if (!bucket.gridItems.length && !bucket.foodItems.length) return "";
     return `
@@ -1038,18 +1110,18 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile" } = {}) {
         ${bucket.gridItems.length ? `
           <div class="menu-category-section pb-6 pt-4" data-menu-type="${escapeHtml(menuType)}">
             <div class="grid grid-cols-2 gap-3 px-5">
-              ${bucket.gridItems.map((item) => renderGridCard(item)).join("")}
+              ${renderMenuItemsWithCategoryAnchors(bucket.gridItems, (item) => renderGridCard(item), anchoredCategories)}
             </div>
           </div>
         ` : ""}
         ${bucket.foodItems.length ? `
           <div class="menu-category-section pb-6 pt-4" data-menu-type="${escapeHtml(menuType)}">
             <div class="px-5">
-              ${bucket.foodItems.map((item) => {
+              ${renderMenuItemsWithCategoryAnchors(bucket.foodItems, (item) => {
                 const style = resolveMenuCardStyle(item);
                 if (style === "testfirst_special") return renderTestfirstSpecialCard(item, { mode, size: "food" });
                 return renderTestfirstFoodCard(item, { mode });
-              }).join("")}
+              }, anchoredCategories)}
             </div>
           </div>
         ` : ""}
@@ -1071,39 +1143,39 @@ function renderTestfirstMenuContent(profile, items, { mode = "profile" } = {}) {
   `;
 }
 
-function renderMenuDrinkGrid(items, { mode = "profile", useTestfirstCardUi = false } = {}) {
+function renderMenuDrinkGrid(items, { mode = "profile", useTestfirstCardUi = false, seenCategories = null } = {}) {
   if (!items.length) return "";
   if (useTestfirstCardUi) {
     return `
       <div class="grid grid-cols-2 gap-3">
-        ${items.map((item) => renderTestfirstDrinkGridCard(item, { mode })).join("")}
+        ${renderMenuItemsWithCategoryAnchors(items, (item) => renderTestfirstDrinkGridCard(item, { mode }), seenCategories)}
       </div>
     `;
   }
   return `
     <div class="grid grid-cols-2 gap-4">
-      ${items.map((item) => renderMenuItemCardStacked(item, { mode, variant: "drink" })).join("")}
+      ${renderMenuItemsWithCategoryAnchors(items, (item) => renderMenuItemCardStacked(item, { mode, variant: "drink" }), seenCategories)}
     </div>
   `;
 }
 
-function renderMenuFoodList(items, { mode = "profile", useTestfirstCardUi = false } = {}) {
+function renderMenuFoodList(items, { mode = "profile", useTestfirstCardUi = false, seenCategories = null } = {}) {
   if (!items.length) return "";
   if (useTestfirstCardUi) {
     return `
       <div>
-        ${items.map((item) => {
+        ${renderMenuItemsWithCategoryAnchors(items, (item) => {
           if (resolveMenuCardStyle(item) === "testfirst_special" && resolveSpecialCardSize(item) === "food") {
             return renderTestfirstSpecialCard(item, { mode, size: "food" });
           }
           return renderTestfirstFoodCard(item, { mode });
-        }).join("")}
+        }, seenCategories)}
       </div>
     `;
   }
   return `
     <div class="space-y-4">
-      ${items.map((item) => renderMenuItemCardStacked(item, { mode, variant: "food" })).join("")}
+      ${renderMenuItemsWithCategoryAnchors(items, (item) => renderMenuItemCardStacked(item, { mode, variant: "food" }), seenCategories)}
     </div>
   `;
 }
@@ -1588,6 +1660,7 @@ function renderProfileMenuView(profile) {
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const useTestfirstCardUi = isTestfirstMenuProfile(profile);
   const hasItems = items.length > 0;
+  const anchoredCategories = new Set();
   if (hasItems && restaurantId) {
     primeMenuItemCounts(items, restaurantId);
     maybeHydrateMenuCardViewerLikes(items, restaurantId);
@@ -1626,20 +1699,24 @@ function renderProfileMenuView(profile) {
             ${renderShopProductList(items, { profile })}
           ` : `
             ${drinkItems.length ? `
-              <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+              <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="drink">
                 <div class="flex items-center justify-between mb-4">
                   <h3 class="text-lg font-black italic tracking-tighter">Getraenke</h3>
                 </div>
-                ${renderMenuDrinkGrid(drinkItems, { mode: "profile", useTestfirstCardUi })}
-              </div>
+                <div data-menu-type="drink">
+                  ${renderMenuDrinkGrid(drinkItems, { mode: "profile", useTestfirstCardUi, seenCategories: anchoredCategories })}
+                </div>
+              </section>
             ` : ""}
             ${foodItems.length ? `
-              <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
+              <section class="menu-type-block bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm" data-menu-type-block="food">
                 <div class="flex items-center justify-between mb-4">
                   <h3 class="text-lg font-black italic tracking-tighter">Speisen</h3>
                 </div>
-                ${renderMenuFoodList(foodItems, { mode: "profile", useTestfirstCardUi })}
-              </div>
+                <div data-menu-type="food">
+                  ${renderMenuFoodList(foodItems, { mode: "profile", useTestfirstCardUi, seenCategories: anchoredCategories })}
+                </div>
+              </section>
             ` : ""}
           `}
         `}
@@ -1656,20 +1733,15 @@ function renderProfileView() {
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
   const bioHtml = safeBio || "Noch keine Bio.";
-  const isMediaTab = state.profileContentTab === "media";
-  const isCheckinTab = state.profileContentTab === "checkins";
+  const activeContentTab = resolveProfileContentTabForRendering(profile);
+  const isMediaTab = activeContentTab === "media";
+  const isMenuTab = activeContentTab === "menu";
+  const isCheckinTab = activeContentTab === "checkins";
   const filteredPosts = isMediaTab ? posts.filter((p) => p.isVideo) : posts;
   const avatarUrl = getOptimizedImageUrl(profile.avatar, "avatar");
   const avatarFit = logoFitClass(isBusiness);
-  const requestedTopTab = state.profileTopTab || "profile";
-  const hasRegisteredUser = !!String(state.user?.uid || "").trim();
-  let topTab = "profile";
-  if (profile.restaurantId) {
-    topTab = requestedTopTab;
-  } else if (requestedTopTab === "favorites" && hasRegisteredUser) {
-    topTab = "favorites";
-  }
-  const topPaddingClass = profile.restaurantId ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
+  const topTab = resolveProfilePrimaryTopTab(profile);
+  const topPaddingClass = isBusiness ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
   return `
     <div class="app-main-content-safe">
       ${topTab === "profile" ? `
@@ -1722,16 +1794,18 @@ function renderProfileView() {
         </div>
       </div>
 
-      ${renderProfileTabs()}
-      ${renderProfileViewControls()}
+      ${renderProfileTabs(profile)}
+      ${renderProfileViewControls(profile)}
 
-      ${isCheckinTab ? `
+      ${isMenuTab ? `
+        ${renderProfileMenuView(profile)}
+      ` : isCheckinTab ? `
         ${renderProfileCheckins()}
       ` : `
         <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
           ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
         </div>
-        ${state.profileContentTab === "posts" ? `
+        ${activeContentTab === "posts" ? `
           <div class="px-6 mt-8 mb-4">
             <button data-nav="upload" class="w-full py-5 rounded-[2rem] bg-slate-900 text-white font-black text-xs uppercase tracking-[0.2em] shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-95 transition-all flex items-center justify-center gap-3 group relative overflow-hidden">
               <span class="relative z-10 flex items-center gap-2">
@@ -1745,7 +1819,7 @@ function renderProfileView() {
       ` : `
         ${topTab === "cart"
           ? renderProfileShopCartView(profile)
-          : (topTab === "favorites" ? renderProfileShopFavoritesView(profile) : renderProfileMenuView(profile))}
+          : (topTab === "favorites" ? renderProfileShopFavoritesView(profile) : "")}
       `}
     </div>
   `;
