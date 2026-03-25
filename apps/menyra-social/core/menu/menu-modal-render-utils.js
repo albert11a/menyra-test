@@ -691,6 +691,19 @@ export function renderMenuDetailModalCore({
   const counts = resolveCounts(meta);
   const userBadge = getUserBadge();
   const isLiked = meta.likes?.some((row) => row.uid === userBadge.uid || row.handle === userBadge.handle);
+  const favoriteItems = Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [];
+  const isFavorited = favoriteItems.some((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    const entryRestaurantId = String(entry.restaurantId || "").trim();
+    if (restaurantId && entryRestaurantId && entryRestaurantId !== restaurantId) return false;
+    const entryItemIds = [
+      entry.itemId,
+      entry.menuSocialId,
+      entry.menuItemId,
+      entry.id
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+    return !!itemId && entryItemIds.includes(itemId);
+  });
   const comments = (meta.comments || []).map(ensureComment);
   const canSocial = !!restaurantId && !!itemId;
   const canInteract = canSocial && !!state.user;
@@ -725,7 +738,7 @@ export function renderMenuDetailModalCore({
             ${shopCartCount ? `<span class="inline-flex min-w-[20px] h-5 px-1.5 rounded-full bg-white/14 border border-white/20 text-white text-[9px] font-black items-center justify-center leading-none">${shopCartCount > 99 ? "99+" : shopCartCount}</span>` : ""}
           </button>
           ${canUseFavorites ? `
-            <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="Favoriten" title="Favoriten" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isLiked ? "bg-slate-900 text-white border-slate-900" : "bg-slate-100 text-slate-700 border-slate-200"}">
+            <button type="button" id="menuDetailHeaderFavoritesBtn" aria-label="Favoriten" title="Favoriten" class="w-11 h-11 rounded-2xl border flex items-center justify-center active:scale-95 ${isFavorited ? "bg-slate-900 text-white border-slate-900" : "bg-slate-100 text-slate-700 border-slate-200"}">
               ${iconFn("bookmark", "w-4 h-4")}
             </button>
           ` : ""}

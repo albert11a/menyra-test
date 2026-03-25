@@ -177,9 +177,18 @@ export function createAppShellRuntimeController(deps = {}) {
   } = deps;
   let businessTopTabsPinSyncCleanup = null;
   let smartHeaderLastScrollY = 0;
+  let smartHeaderToggleAnchorY = 0;
   let smartHeaderVisible = true;
   let smartHeaderScrollListener = null;
   let smartHeaderResizeListener = null;
+  let smartHeaderBoundTopEl = null;
+  let smartHeaderBoundTabsEl = null;
+  let smartHeaderIgnoreScrollUntilTs = 0;
+  const SMART_HEADER_TOP_RESET_PX = 50;
+  const SMART_HEADER_HIDE_DELTA_PX = 18;
+  const SMART_HEADER_SHOW_DELTA_PX = 14;
+  const SMART_HEADER_SCROLL_JITTER_PX = 2;
+  const SMART_HEADER_REBIND_GUARD_MS = 180;
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
 
@@ -527,20 +536,39 @@ export function createAppShellRuntimeController(deps = {}) {
     rootStyle?.removeProperty("--smart-header-total-height");
   }
 
+  function armSmartHeaderScrollGuard(durationMs = SMART_HEADER_REBIND_GUARD_MS) {
+    const nextDuration = Math.max(0, Number(durationMs) || 0);
+    smartHeaderIgnoreScrollUntilTs = Math.max(smartHeaderIgnoreScrollUntilTs, Date.now() + nextDuration);
+  }
+
   function syncSmartHeaderMetrics() {
     if (!doc) return;
     const rootStyle = doc.documentElement?.style;
-    if (!rootStyle) return;
+    if (!rootStyle) return false;
     const topEl = doc.getElementById("smart-header-top");
     const tabsEl = doc.getElementById("smart-tabs");
     const topHeight = topEl ? Math.max(0, Math.round(topEl.getBoundingClientRect().height)) : 0;
     const tabsHeight = tabsEl ? Math.max(0, Math.round(tabsEl.getBoundingClientRect().height)) : 0;
-    rootStyle.setProperty("--smart-header-top-height", `${topHeight}px`);
-    rootStyle.setProperty("--smart-header-tabs-height", `${tabsHeight}px`);
-    rootStyle.setProperty("--smart-header-total-height", `${topHeight + tabsHeight}px`);
+    const nextTopHeight = `${topHeight}px`;
+    const nextTabsHeight = `${tabsHeight}px`;
+    const nextTotalHeight = `${topHeight + tabsHeight}px`;
+    let changed = false;
+    if (rootStyle.getPropertyValue("--smart-header-top-height").trim() !== nextTopHeight) {
+      rootStyle.setProperty("--smart-header-top-height", nextTopHeight);
+      changed = true;
+    }
+    if (rootStyle.getPropertyValue("--smart-header-tabs-height").trim() !== nextTabsHeight) {
+      rootStyle.setProperty("--smart-header-tabs-height", nextTabsHeight);
+      changed = true;
+    }
+    if (rootStyle.getPropertyValue("--smart-header-total-height").trim() !== nextTotalHeight) {
+      rootStyle.setProperty("--smart-header-total-height", nextTotalHeight);
+      changed = true;
+    }
+    return changed;
   }
 
-  function stopSmartHeaderVisibilitySync() {
+  function stopSmartHeaderVisibilitySync({ resetState = true } = {}) {
     if (win && typeof smartHeaderScrollListener === "function") {
       win.removeEventListener("scroll", smartHeaderScrollListener);
     }
@@ -550,9 +578,15 @@ export function createAppShellRuntimeController(deps = {}) {
     }
     smartHeaderScrollListener = null;
     smartHeaderResizeListener = null;
-    smartHeaderLastScrollY = 0;
-    smartHeaderVisible = true;
-    resetSmartHeaderMetrics();
+    smartHeaderBoundTopEl = null;
+    smartHeaderBoundTabsEl = null;
+    if (resetState) {
+      smartHeaderLastScrollY = 0;
+      smartHeaderToggleAnchorY = 0;
+      smartHeaderVisible = true;
+      smartHeaderIgnoreScrollUntilTs = 0;
+    }
+    if (resetState) resetSmartHeaderMetrics();
   }
 
   function initSmartHeaderVisibilitySync() {
@@ -560,37 +594,84 @@ export function createAppShellRuntimeController(deps = {}) {
     const topEl = doc.getElementById("smart-header-top");
     const tabs = doc.getElementById("smart-tabs");
     if (!topEl) {
-      stopSmartHeaderVisibilitySync();
+      stopSmartHeaderVisibilitySync({ resetState: true });
       return;
     }
 
-    stopSmartHeaderVisibilitySync();
+    const hasExistingBinding = typeof smartHeaderResizeListener === "function"
+      && smartHeaderBoundTopEl === topEl
+      && smartHeaderBoundTabsEl === (tabs || null)
+      && (tabs ? typeof smartHeaderScrollListener === "function" : true);
+    if (hasExistingBinding) {
+      if (syncSmartHeaderMetrics()) {
+        smartHeaderLastScrollY = Math.max(0, Number(win.scrollY || 0));
+        smartHeaderToggleAnchorY = smartHeaderLastScrollY;
+        armSmartHeaderScrollGuard();
+      }
+      return;
+    }
+
+    const hadScrollHistory = smartHeaderToggleAnchorY > 0 || smartHeaderLastScrollY > 0 || smartHeaderVisible === false;
+    const previousVisible = smartHeaderVisible;
+    stopSmartHeaderVisibilitySync({ resetState: false });
     syncSmartHeaderMetrics();
     smartHeaderLastScrollY = Math.max(0, Number(win.scrollY || 0));
-    smartHeaderVisible = true;
+    smartHeaderToggleAnchorY = smartHeaderLastScrollY;
+    if (smartHeaderLastScrollY <= SMART_HEADER_TOP_RESET_PX) {
+      smartHeaderVisible = true;
+    } else if (!hadScrollHistory) {
+      smartHeaderVisible = false;
+    } else {
+      smartHeaderVisible = previousVisible;
+    }
+    smartHeaderBoundTopEl = topEl;
+    smartHeaderBoundTabsEl = tabs || null;
     smartHeaderResizeListener = () => {
-      syncSmartHeaderMetrics();
+      if (syncSmartHeaderMetrics()) {
+        smartHeaderLastScrollY = Math.max(0, Number(win.scrollY || 0));
+        smartHeaderToggleAnchorY = smartHeaderLastScrollY;
+        armSmartHeaderScrollGuard();
+      }
     };
     win.addEventListener("resize", smartHeaderResizeListener, { passive: true });
     win.visualViewport?.addEventListener?.("resize", smartHeaderResizeListener, { passive: true });
     if (!tabs) return;
-    tabs.classList.remove("smart-header-tabs--hidden");
+    tabs.classList.toggle("smart-header-tabs--hidden", !smartHeaderVisible);
+    armSmartHeaderScrollGuard();
 
     const handleScroll = () => {
       const currentScrollY = Math.max(0, Number(win.scrollY || 0));
-      if (currentScrollY <= 50) {
+      if (Date.now() < smartHeaderIgnoreScrollUntilTs) {
+        smartHeaderLastScrollY = currentScrollY;
+        smartHeaderToggleAnchorY = currentScrollY;
+        return;
+      }
+      const deltaY = currentScrollY - smartHeaderLastScrollY;
+      if (Math.abs(deltaY) < SMART_HEADER_SCROLL_JITTER_PX) return;
+      if (currentScrollY <= SMART_HEADER_TOP_RESET_PX) {
         tabs.classList.remove("smart-header-tabs--hidden");
         smartHeaderVisible = true;
         smartHeaderLastScrollY = currentScrollY;
+        smartHeaderToggleAnchorY = currentScrollY;
         return;
       }
 
-      if (currentScrollY > smartHeaderLastScrollY && smartHeaderVisible) {
-        tabs.classList.add("smart-header-tabs--hidden");
-        smartHeaderVisible = false;
-      } else if (currentScrollY < smartHeaderLastScrollY && !smartHeaderVisible) {
-        tabs.classList.remove("smart-header-tabs--hidden");
-        smartHeaderVisible = true;
+      if (deltaY > 0) {
+        if (smartHeaderVisible && (currentScrollY - smartHeaderToggleAnchorY) >= SMART_HEADER_HIDE_DELTA_PX) {
+          tabs.classList.add("smart-header-tabs--hidden");
+          smartHeaderVisible = false;
+          smartHeaderToggleAnchorY = currentScrollY;
+        } else if (!smartHeaderVisible) {
+          smartHeaderToggleAnchorY = currentScrollY;
+        }
+      } else if (deltaY < 0) {
+        if (!smartHeaderVisible && (smartHeaderToggleAnchorY - currentScrollY) >= SMART_HEADER_SHOW_DELTA_PX) {
+          tabs.classList.remove("smart-header-tabs--hidden");
+          smartHeaderVisible = true;
+          smartHeaderToggleAnchorY = currentScrollY;
+        } else if (smartHeaderVisible) {
+          smartHeaderToggleAnchorY = currentScrollY;
+        }
       }
 
       smartHeaderLastScrollY = currentScrollY;
@@ -687,10 +768,16 @@ export function createAppShellRuntimeController(deps = {}) {
         && prevLastRenderMode === "main"
         && state.activeTab === prevLastRenderedMainTab
         && !isChatThreadOpen;
+      const preserveWindowScroll = preserveMainScroll
+        && shouldShowSmartHeaderTabs()
+        && !!win
+        && typeof win.scrollTo === "function";
       const reuseFeed = preserveMainScroll && state.activeTab === "feed"
         ? doc?.getElementById("feedView")
         : null;
       const prevScrollTop = preserveMainScroll ? doc?.querySelector("main")?.scrollTop ?? 0 : 0;
+      const prevWindowScrollY = preserveWindowScroll ? Math.max(0, Number(win.scrollY || 0)) : 0;
+      if (preserveWindowScroll) armSmartHeaderScrollGuard();
       if (appEl) {
         appEl.innerHTML = nextHtml;
         appEl.removeAttribute("aria-busy");
@@ -714,6 +801,12 @@ export function createAppShellRuntimeController(deps = {}) {
       } else if (preserveMainScroll) {
         const nextMain = doc?.querySelector("main");
         if (nextMain) nextMain.scrollTop = prevScrollTop;
+      }
+      if (preserveWindowScroll) {
+        armSmartHeaderScrollGuard();
+        if (Math.abs(Math.max(0, Number(win.scrollY || 0)) - prevWindowScrollY) >= 1) {
+          win.scrollTo(Number(win.scrollX || 0), prevWindowScrollY);
+        }
       }
       if (win?.lucide?.createIcons) win.lucide.createIcons();
       if (state.activeTab === "search" && state.search.keepFocus) {

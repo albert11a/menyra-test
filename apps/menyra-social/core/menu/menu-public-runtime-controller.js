@@ -226,13 +226,89 @@ export function createMenuPublicRuntimeController({
       }));
   }
 
+  function decodeUriComponentSafe(value = "") {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  }
+
+  function toStableToken(value = "") {
+    const normalized = foldMenuText(value).trim();
+    if (!normalized) return "";
+    return normalized
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 48);
+  }
+
+  function buildFallbackMenuItemId(item, idx = 0) {
+    const parts = [
+      toStableToken(item?.name || ""),
+      toStableToken(item?.category || ""),
+      toStableToken(item?.price ?? ""),
+      toStableToken(item?.type || item?.menuSection || "")
+    ].filter(Boolean);
+    const base = parts.join("__").slice(0, 120);
+    if (base) return base;
+    return `item_${Math.max(0, Number(idx) || 0)}`;
+  }
+
+  function normalizeMenuItemIdentity(item, restaurantId = "", idx = 0) {
+    const safeRestaurantId = String(restaurantId || item?.restaurantId || "").trim();
+    const explicitId = String(
+      item?.id
+      || item?.itemId
+      || item?.menuItemId
+      || item?.productId
+      || ""
+    ).trim();
+    const resolvedId = explicitId || buildFallbackMenuItemId(item, idx);
+    const images = getMenuItemImages(item);
+    return {
+      ...(item || {}),
+      id: resolvedId,
+      restaurantId: safeRestaurantId || String(item?.restaurantId || "").trim(),
+      orderIndex: normalizeOrderIndex(item?.orderIndex, idx),
+      imageUrl: String(item?.imageUrl || images[0] || "").trim(),
+      imageUrls: images,
+      crossSellItemIds: normalizeCrossSellItemIds(
+        item?.crossSellItemIds || item?.crossSellIds || item?.crossSell || item?.crossSelling,
+        { excludeId: resolvedId }
+      )
+    };
+  }
+
+  function normalizeMenuItemsForRestaurant(items = [], restaurantId = "") {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const ordered = sortMenuItemsByOrder(Array.isArray(items) ? items : []);
+    const seenIds = new Map();
+    return ordered.map((item, idx) => {
+      const normalized = normalizeMenuItemIdentity(item, safeRestaurantId, idx);
+      const baseId = String(normalized?.id || `item_${idx}`).trim() || `item_${idx}`;
+      const hitCount = seenIds.get(baseId) || 0;
+      seenIds.set(baseId, hitCount + 1);
+      const uniqueId = hitCount > 0 ? `${baseId}__${hitCount + 1}` : baseId;
+      return {
+        ...normalized,
+        id: uniqueId
+      };
+    });
+  }
+
   function normalizeFavoriteMenuItemDoc(data, docId = "") {
     const payload = data || {};
     const itemId = String(payload?.itemId || "").trim();
+    const decodedItemId = decodeUriComponentSafe(itemId);
     const item = normalizeMenuItemDoc(payload, itemId || docId || `favorite_${Date.now()}`);
     return {
       ...item,
-      id: itemId || item.id,
+      id: decodedItemId || itemId || item.id,
+      itemId: itemId || String(item?.itemId || "").trim(),
+      menuSocialId: itemId || String(item?.itemId || "").trim(),
       favoriteId: docId || favoriteMenuItemDocId(payload?.restaurantId, itemId),
       restaurantId: String(payload?.restaurantId || "").trim(),
       restaurantName: String(payload?.restaurantName || "").trim(),
@@ -324,7 +400,7 @@ export function createMenuPublicRuntimeController({
     try {
       const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId, "public", "menu"));
       if (!snap.exists()) return [];
-      return sortMenuItemsByOrder(coerceMenuItemsFromData(snap.data() || {}));
+      return normalizeMenuItemsForRestaurant(coerceMenuItemsFromData(snap.data() || {}), safeRestaurantId);
     } catch (err) {
       console.error(err);
       return [];
@@ -337,7 +413,7 @@ export function createMenuPublicRuntimeController({
     try {
       const snap = await getDoc(makeDocRef(db, "restaurants", safeRestaurantId));
       if (!snap.exists()) return [];
-      return sortMenuItemsByOrder(coerceMenuItemsFromData(snap.data() || {}));
+      return normalizeMenuItemsForRestaurant(coerceMenuItemsFromData(snap.data() || {}), safeRestaurantId);
     } catch (err) {
       console.error(err);
       return [];
@@ -349,7 +425,8 @@ export function createMenuPublicRuntimeController({
     if (!safeRestaurantId || !collection || !getDocs || !db) return [];
     try {
       const snap = await getDocs(collection(db, "restaurants", safeRestaurantId, "menuItems"));
-      return sortMenuItemsByOrder(snap.docs.map((docSnap) => normalizeMenuItemDoc(docSnap.data(), docSnap.id)));
+      const list = snap.docs.map((docSnap) => normalizeMenuItemDoc(docSnap.data(), docSnap.id));
+      return normalizeMenuItemsForRestaurant(list, safeRestaurantId);
     } catch (err) {
       console.error(err);
       return [];
@@ -555,7 +632,7 @@ export function createMenuPublicRuntimeController({
   async function publishMenuToPublic(restaurantId, items) {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId || !makeDocRef || !setDoc || !db) return;
-    const orderedItems = sortMenuItemsByOrder(items || []);
+    const orderedItems = normalizeMenuItemsForRestaurant(items || [], safeRestaurantId);
     const payload = {
       items: orderedItems.map((item, index) => ({
         id: item.id || "",
@@ -622,7 +699,10 @@ export function createMenuPublicRuntimeController({
       ]);
       const fallbackItems = collectionItems.length ? collectionItems : legacyItems;
       if (!fallbackItems.length) return publicItems;
-      return fillMenuImagesFromFallback(publicItems, fallbackItems);
+      return normalizeMenuItemsForRestaurant(
+        fillMenuImagesFromFallback(publicItems, fallbackItems),
+        safeRestaurantId
+      );
     }
     const collectionItems = await loadMenuItemsFromCollection(safeRestaurantId);
     if (collectionItems.length) {
@@ -650,19 +730,21 @@ export function createMenuPublicRuntimeController({
   }
 
   function syncMenuCaches(restaurantId, items, { statusBadgeVisible = state?.menu?.statusBadgeVisible } = {}) {
-    const list = sortMenuItemsByOrder(items);
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return;
+    const list = normalizeMenuItemsForRestaurant(items, safeRestaurantId);
     const nextStatusBadgeVisible = resolveMenuStatusBadgeVisible(statusBadgeVisible);
-    menuCacheMap.set(menuCacheKey(restaurantId, "collection"), {
+    menuCacheMap.set(menuCacheKey(safeRestaurantId, "collection"), {
       items: list,
       statusBadgeVisible: nextStatusBadgeVisible,
       ts: Date.now()
     });
-    menuCacheMap.set(menuCacheKey(restaurantId, "hybrid"), {
+    menuCacheMap.set(menuCacheKey(safeRestaurantId, "hybrid"), {
       items: list,
       statusBadgeVisible: nextStatusBadgeVisible,
       ts: Date.now()
     });
-    if (state?.menu?.restaurantId === restaurantId) {
+    if (state?.menu?.restaurantId === safeRestaurantId) {
       state.menu = {
         ...state.menu,
         items: list,

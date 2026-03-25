@@ -2741,13 +2741,31 @@ async function toggleMenuItemLike() {
 async function toggleMenuItemLikeFromCard(itemId, restaurantId = "") {
   const safeItemId = String(itemId || "").trim();
   if (!safeItemId) return;
+  const safeRestaurantId = String(restaurantId || "").trim();
   const menuItems = Array.isArray(state.menu.items) ? state.menu.items : [];
   const favoriteItems = Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [];
-  const item = menuItems.find((entry) => String(entry?.id || "") === safeItemId)
-    || favoriteItems.find((entry) => String(entry?.id || entry?.itemId || "") === safeItemId);
+  const matchesItemId = (entry) => {
+    const ids = [
+      entry?.id,
+      entry?.itemId,
+      entry?.menuItemId,
+      entry?.menuSocialId
+    ];
+    return ids.some((value) => String(value || "").trim() === safeItemId);
+  };
+  const matchesRestaurant = (entry) => {
+    if (!safeRestaurantId) return true;
+    return String(entry?.restaurantId || "").trim() === safeRestaurantId;
+  };
+  const findItem = (list) => {
+    if (!Array.isArray(list)) return null;
+    return list.find((entry) => matchesItemId(entry) && matchesRestaurant(entry))
+      || list.find((entry) => matchesItemId(entry));
+  };
+  const item = findItem(menuItems) || findItem(favoriteItems);
   if (!item) return;
   const resolvedRestaurantId = String(
-    restaurantId
+    safeRestaurantId
     || item.restaurantId
     || state.menu.restaurantId
     || state.profileView?.profile?.restaurantId
@@ -2841,6 +2859,12 @@ function attachMenuItemMetaListeners(item, restaurantId) {
 }
 async function loadMenuItemMetaFromFirebase(item, restaurantId) {
   return socialEngagementRuntimeController.loadMenuItemMetaFromFirebase(...arguments);
+}
+async function hydrateMenuCardViewerLikes(items, restaurantId = "") {
+  if (!socialEngagementRuntimeController || typeof socialEngagementRuntimeController.hydrateMenuCardViewerLikes !== "function") {
+    return;
+  }
+  return socialEngagementRuntimeController.hydrateMenuCardViewerLikes(...arguments);
 }
 function findProfilePostCardNode(postId) {
   return getSocialEngagementSupportRuntimeController().findProfilePostCardNode(...arguments);
@@ -2945,6 +2969,7 @@ const profileBusinessMenuRuntimeCluster = createProfileBusinessMenuRuntimeCluste
     getBusinessCatalogLabelFn: getBusinessCatalogLabel,
     normalizeMenuTypeFn: normalizeMenuType,
     primeMenuItemCountsFn: primeMenuItemCounts,
+    hydrateMenuCardViewerLikesFn: hydrateMenuCardViewerLikes,
     getMenuLayoutThemeFn: getMenuLayoutTheme,
     menuLayoutColors: MENU_LAYOUT_COLORS,
     resolveMenuItemHeroFn: resolveMenuItemHero,
@@ -3131,6 +3156,7 @@ socialEngagementRuntimeController = createSocialEngagementRuntimeController({
   updatePostCountNodesFn: socialEngagementSupportRuntimeController.updatePostCountNodes,
   updatePostCachesFn: socialEngagementSupportRuntimeController.updatePostCaches,
   updateMenuCardCountNodesFn: socialEngagementSupportRuntimeController.updateMenuCardCountNodes,
+  updateMenuCardLikeButtonsFn: socialEngagementSupportRuntimeController.updateMenuCardLikeButtons,
   updatePostModalMetaFn: socialEngagementSupportRuntimeController.updatePostModalMeta,
   updatePostModalCountsOnlyFn: socialEngagementSupportRuntimeController.updatePostModalCountsOnly,
   updateMenuDetailCountsOnlyFn: socialEngagementSupportRuntimeController.updateMenuDetailCountsOnly,

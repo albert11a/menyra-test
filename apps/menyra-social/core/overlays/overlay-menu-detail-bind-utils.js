@@ -156,7 +156,7 @@ export function bindMenuDetailOverlayEventsCore({
         return;
       }
       if (!toggleMenuItemLike) return;
-      void toggleMenuItemLike();
+      void toggleMenuItemLike({ favoriteOnly: true });
     });
   }
 
@@ -168,7 +168,7 @@ export function bindMenuDetailOverlayEventsCore({
         return;
       }
       if (!toggleMenuItemLike) return;
-      void toggleMenuItemLike();
+      void toggleMenuItemLike({ favoriteOnly: true });
     });
   }
 

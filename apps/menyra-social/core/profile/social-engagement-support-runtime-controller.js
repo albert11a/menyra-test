@@ -292,6 +292,19 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
     });
   }
 
+  function updateMenuCardLikeButtons(itemId, isLiked = false) {
+    if (!itemId || !docObj) return;
+    const safeId = escapeSelector(itemId);
+    const supportsHover = !!docObj.defaultView?.matchMedia?.("(hover: hover)")?.matches;
+    docObj.querySelectorAll(`[data-menu-card-like="${safeId}"]`).forEach((btn) => {
+      btn.classList.toggle("text-rose-500", !!isLiked);
+      btn.classList.toggle("text-slate-300", !isLiked);
+      btn.classList.toggle("hover:text-rose-500", !isLiked && supportsHover);
+      btn.dataset.menuCardLiked = isLiked ? "1" : "0";
+      btn.setAttribute("aria-pressed", isLiked ? "true" : "false");
+    });
+  }
+
   function primeMenuItemCounts(items, restaurantId) {
     if (!restaurantId) return;
     const list = Array.isArray(items) ? items : [];
@@ -795,6 +808,7 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
     updateMenuDetailCountsOnly,
     updateMenuDetailCommentsOnly,
     updateCommentLikeButton,
+    updateMenuCardLikeButtons,
     updateMenuCardCountNodes,
     findProfilePostCardNode,
     findProfilePostToggleButton,

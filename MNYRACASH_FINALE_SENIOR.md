@@ -937,49 +937,109 @@ This document is intended to be detailed enough that a senior engineer can take 
 
 ## 6. EXECUTION STATUS
 
-### Schritt 1
+### STEP 1
 - Status: DONE
-- Umsetzung: Meta-Read-Druck für Post/MenuDetail reduziert; Initial-Ladevorgänge vs. Reopen sauberer getrennt.
-- Betroffene Dateien:
+- Kurzbeschreibung:
+  - Post/MenuDetail Meta-Reads dedupliziert
+  - Hydration-/Load-State eingeführt
+  - redundante Initial-Reads reduziert
+- Betroffene Hauptdateien:
   - `apps/menyra-social/core/profile/social-engagement-runtime-controller.js`
-- Manuell geprüft: Post A/B Reopen-Sequenzen, MenuDetail A/B Reopen-Sequenzen, schnelle Wechsel unter langsamem Netz.
+- Manuell geprüft:
+  - Post A/B Reopen-Sequenzen
+  - MenuDetail A/B Reopen-Sequenzen
+  - schnelle Wechsel unter langsamem Netz
 
-### Schritt 2
+### STEP 2
 - Status: DONE
-- Umsetzung: Unnötige Likes-/Comment-Refetches reduziert; vorhandener State wird gezielter genutzt.
-- Betroffene Dateien:
+- Kurzbeschreibung:
+  - Likes-/Kommentar-Refetching auf Soft-Refresh/Freshness-Strategie umgestellt
+  - Reopen desselben Targets verursacht keine blinden Voll-Refetches mehr
+- Betroffene Hauptdateien:
   - `apps/menyra-social/core/profile/social-engagement-runtime-controller.js`
-- Manuell geprüft: Likes-Modal mehrfach öffnen, Kommentarlisten reopen, Target-Wechsel A/B inkl. langsamem Netz.
+- Manuell geprüft:
+  - Likes-Modal mehrfach für dasselbe Target geöffnet
+  - Kommentarlisten geschlossen/wieder geöffnet
+  - A/B-Target-Wechsel unter langsamem Netz
 
-### Schritt 3
+### STEP 3
 - Status: DONE
-- Umsetzung: Primärer Bild-Flash-Pfad reduziert; transienter Placeholder-Rückfall bei bekannten gültigen Quellen entschärft.
-- Betroffene Dateien:
+- Kurzbeschreibung:
+  - primären Bild-Flash-Pfad reduziert
+  - last-good-src/stable image behavior für sichtbare Hauptpfade stabilisiert
+- Betroffene Hauptdateien:
   - `apps/menyra-social/_shared/image-resolver.js`
-  - `apps/menyra-social/core/feed/feed-view-orchestration-controller.js`
-  - `apps/menyra-social/core/overlays/overlay-basic-render-utils.js`
   - `apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`
-- Manuell geprüft: Feed -> Post -> zurück, Profil-/Story-/Menü-Bildpfade, Wiederholungen unter langsamem Netz.
+  - `apps/menyra-social/social-app.js`
+- Manuell geprüft:
+  - Feed -> Post -> zurück
+  - wiederholtes Öffnen von Feed-/Profil-/Story-/Menü-Bildern
+  - Wiederholung unter langsamerem Netz
 
-### Schritt 4
+### STEP 4
 - Status: DONE
-- Umsetzung: Sekundäre Bild-Neuladevorgänge/Variant-Churn im Menü-/Profil-Kontext stabilisiert; Rückwechselpfad nach MenuDetail-Close beruhigt.
-- Betroffene Dateien:
+- Kurzbeschreibung:
+  - unnötige Variant-/Image-Churn-Pfade reduziert
+  - Karte/Detail konsistenter in Bildvariantennutzung
+- Betroffene Hauptdateien:
   - `apps/menyra-social/_shared/image-resolver.js`
   - `apps/menyra-social/core/menu/menu-modal-render-utils.js`
   - `apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`
-  - `apps/menyra-social/core/overlays/overlay-orchestration-controller.js`
-- Manuell geprüft: Menükarte -> Detail -> zurück (mehrfach), A/B Produktwechsel, Kontrolltests Feed/Post.
+  - `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js`
+- Manuell geprüft:
+  - Menükarte -> Detail -> zurück, mehrfach hintereinander
+  - Produkt A/B Detailwechsel
+  - Kontrolltests für Feed/Post
 
-### Schritt 5
+### STEP 5
 - Status: DONE
-- Umsetzung: Verbleibende globale Modal-/Context-Konflikte reduziert; Card-Aktionen von implizitem Global-State auf expliziten Zielkontext umgestellt.
-- Betroffene Dateien:
+- Kurzbeschreibung:
+  - globale Modal-/Context-Kopplungen reduziert
+  - Fake-Context-Mutation entfernt
+  - Card-Aktionen stärker an expliziten Target-Context gebunden
+- Betroffene Hauptdateien:
   - `apps/menyra-social/social-app.js`
   - `apps/menyra-social/core/profile/social-engagement-runtime-controller.js`
-- Manuell geprüft: schnelle Target-Wechsel A -> B -> A, Card-Likes während Kontextwechsel, Open/Close-Serien inkl. Likes-Modal-Wechsel.
+- Manuell geprüft:
+  - Post/MenuDetail A -> B -> A
+  - Likes-Modal während Zielwechsel
+  - schnelle Open/Close-Serien
 
-### Open observations for later planned steps
-- Im Menü wirkt es gelegentlich so, als würden Kartenbilder kurz ohne Nutzeraktion neu gerendert / leicht grau erscheinen.
-- Diese Beobachtung ist kein neuer Schritt.
-- Sie bleibt für spätere Prüfung in Schritt 7 und/oder Schritt 12 vorgemerkt.
+### STEP 6
+- Status: DONE
+- Kurzbeschreibung:
+  - Counts/Likes/Kommentare über Feed/Modal/Detail/Karte besser synchronisiert
+  - MenuDetail-Kommentarcount-Race behoben
+- Betroffene Hauptdateien:
+  - `apps/menyra-social/core/profile/social-engagement-runtime-controller.js`
+  - `apps/menyra-social/social-app.js`
+- Manuell geprüft:
+  - Feed Like -> Modal
+  - Modal Like/Kommentar -> Feed/Karte
+  - MenuDetail Kommentarcount inkl. Reopen und A/B-Wechsel
+
+### STEP 7
+- Status: DONE
+- Kurzbeschreibung:
+  - Menü/Product Detail/Favorites/Cart-Flows gehärtet
+  - Produktidentität/Restaurant-Kontext vereinheitlicht
+  - Favorit vs Like sauber getrennt
+  - Card-Herz-/Unlike-/Rehydration stabilisiert
+  - Sticky-/Menu-Repaint-Restursachen im Business-Profil-Menü-View entschärft
+- Betroffene Hauptdateien:
+  - `apps/menyra-social/core/menu/menu-public-runtime-controller.js`
+  - `apps/menyra-social/core/profile/profile-menu-focus-render-controller.js`
+  - `apps/menyra-social/core/profile/social-engagement-runtime-controller.js`
+  - `apps/menyra-social/core/profile/social-engagement-support-runtime-controller.js`
+  - `apps/menyra-social/core/app-shell/app-shell-runtime-controller.js`
+  - `apps/menyra-social/core/menu/focus-runtime-controller.js`
+  - `apps/menyra-social/social-app.js`
+- Manuell geprüft:
+  - Produktdetail mehrfach öffnen/schließen
+  - Herz Like/Unlike direkt auf der Menü-Card
+  - Favorit im Modal getrennt von Like
+  - Restaurant A -> B -> A
+  - Menü-Sticky/Scroll-Repaint unter normalem und langsamem Netz
+
+### Open observations for later follow-up
+- Weiterführende Tradeoffs, offene Beobachtungen und spätere Prüfpunkte sind in `STABILIZATION_NOTES_STEP1_7.md` dokumentiert.

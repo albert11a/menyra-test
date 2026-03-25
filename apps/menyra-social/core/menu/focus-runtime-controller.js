@@ -200,6 +200,10 @@ export function createFocusRuntimeController({
     return true;
   }
 
+  function hasRenderableFocusCarousel() {
+    return !!docObj?.getElementById?.("focusCarousel");
+  }
+
   function setFocusIndex(nextIndex) {
     const items = getActiveFocusItems();
     if (!items.length || !state) return;
@@ -210,9 +214,7 @@ export function createFocusRuntimeController({
     if (idx >= max) idx = 0;
     if (idx === state.focus.index) return;
     state.focus.index = idx;
-    if (!updateFocusCarouselDom()) {
-      renderFn();
-    }
+    if (hasRenderableFocusCarousel()) updateFocusCarouselDom();
   }
 
   function clearFocusRotation() {
@@ -233,6 +235,7 @@ export function createFocusRuntimeController({
     if (!isRestaurantCafeProfile(profile)) return false;
     if (state?.focus?.enabled === false) return false;
     if (state?.focus?.restaurantId !== restaurantId) return false;
+    if (!hasRenderableFocusCarousel()) return false;
     return getActiveFocusItems().length > 1;
   }
 

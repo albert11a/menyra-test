@@ -37,6 +37,21 @@ export function updateMenuDetailCountsOnlyCore({
   const counts = resolveMenuItemCounts(meta);
   const userBadge = currentUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
+  const favoriteItems = Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [];
+  const isFavorited = favoriteItems.some((entry) => {
+    if (!entry || typeof entry !== "object") return false;
+    const entryRestaurantId = String(entry.restaurantId || "").trim();
+    const ctxRestaurantId = String(ctx.restaurantId || "").trim();
+    if (ctxRestaurantId && entryRestaurantId && entryRestaurantId !== ctxRestaurantId) return false;
+    const entryItemIds = [
+      entry.itemId,
+      entry.menuSocialId,
+      entry.menuItemId,
+      entry.id
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+    const targetItemId = String(ctx.itemId || "").trim();
+    return !!targetItemId && entryItemIds.includes(targetItemId);
+  });
 
   const likeBtn = doc.getElementById("menuDetailLikeBtn");
   if (likeBtn) {
@@ -46,12 +61,12 @@ export function updateMenuDetailCountsOnlyCore({
   }
   const headerFavBtn = doc.getElementById("menuDetailHeaderFavoritesBtn");
   if (headerFavBtn) {
-    headerFavBtn.classList.toggle("bg-slate-900", !!isLiked);
-    headerFavBtn.classList.toggle("text-white", !!isLiked);
-    headerFavBtn.classList.toggle("border-slate-900", !!isLiked);
-    headerFavBtn.classList.toggle("bg-slate-100", !isLiked);
-    headerFavBtn.classList.toggle("text-slate-700", !isLiked);
-    headerFavBtn.classList.toggle("border-slate-200", !isLiked);
+    headerFavBtn.classList.toggle("bg-slate-900", !!isFavorited);
+    headerFavBtn.classList.toggle("text-white", !!isFavorited);
+    headerFavBtn.classList.toggle("border-slate-900", !!isFavorited);
+    headerFavBtn.classList.toggle("bg-slate-100", !isFavorited);
+    headerFavBtn.classList.toggle("text-slate-700", !isFavorited);
+    headerFavBtn.classList.toggle("border-slate-200", !isFavorited);
   }
   const likesCount = doc.getElementById("menuDetailLikesCount");
   if (likesCount) likesCount.textContent = `${formatCount(counts.likes)} Likes`;

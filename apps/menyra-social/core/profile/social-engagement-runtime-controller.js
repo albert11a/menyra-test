@@ -38,6 +38,7 @@ export function createSocialEngagementRuntimeController({
   updatePostCountNodesFn = () => {},
   updatePostCachesFn = () => {},
   updateMenuCardCountNodesFn = () => {},
+  updateMenuCardLikeButtonsFn = () => {},
   updatePostModalMetaFn = () => {},
   updatePostModalCountsOnlyFn = () => {},
   updateMenuDetailCountsOnlyFn = () => {},
@@ -98,6 +99,7 @@ export function createSocialEngagementRuntimeController({
     stopMenuItemMetaListeners: noop,
     attachMenuItemMetaListeners: noop,
     loadMenuItemMetaFromFirebase: async () => null,
+    hydrateMenuCardViewerLikes: asyncNoop,
     getPostDocRef: () => null,
     getFeedDocRef: () => null,
     resolveRestaurantOwnerUid: async () => "",
@@ -135,6 +137,7 @@ export function createSocialEngagementRuntimeController({
   const updatePostCountNodes = updatePostCountNodesFn;
   const updatePostCaches = updatePostCachesFn;
   const updateMenuCardCountNodes = updateMenuCardCountNodesFn;
+  const updateMenuCardLikeButtons = updateMenuCardLikeButtonsFn;
   const updatePostModalMeta = updatePostModalMetaFn;
   const updatePostModalCountsOnly = updatePostModalCountsOnlyFn;
   const updateMenuDetailCountsOnly = updateMenuDetailCountsOnlyFn;
@@ -388,6 +391,7 @@ export function createSocialEngagementRuntimeController({
     const postRef = getPostDocRef(post);
     if (!postRef) return [];
     const meta = await loadPostMetaFromFirebase(post, { includeLikes: true, includeComments: false });
+    updatePostCountNodes(post);
     if (state.likesModal.open && String(state.likesModal.postId || "") === targetId) {
       renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
     } else if (state.postModal.open && String(state.postModal.post?.id || "") === targetId) {
@@ -704,10 +708,18 @@ export function createSocialEngagementRuntimeController({
       }).catch((err) => {
         console.error(err);
       });
-      if (state.postModal.open && state.postModal.post && String(state.postModal.post.id) === String(postId)) {
+      const isSamePostModalContext = state.postModal.open
+        && state.postModal.post
+        && String(state.postModal.post.id) === String(postId);
+      const isSameLikesModalContext = state.likesModal.open
+        && String(state.likesModal.postId || "") === String(postId);
+      if (isSamePostModalContext) {
         updatePostModalCountsOnly();
       } else {
         renderOverlays();
+      }
+      if (isSameLikesModalContext) {
+        renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
       }
       if (delta > 0) {
         const ownerUid = await resolvePostOwnerUid(post);
@@ -779,26 +791,99 @@ export function createSocialEngagementRuntimeController({
     return !!activeCtx && String(activeCtx.key || "") === String(ctx.key || "");
   }
 
-  async function toggleMenuItemLike(target = null) {
+  function isMenuItemLikedByUser(meta, userUid = "", userHandle = "") {
+    const safeUid = String(userUid || "").trim();
+    const safeHandle = normalizeHandle(userHandle);
+    const rows = Array.isArray(meta?.likes) ? meta.likes : [];
+    return rows.some((row) => {
+      const rowUid = String(row?.uid || "").trim();
+      if (safeUid && rowUid && rowUid === safeUid) return true;
+      const rowHandle = normalizeHandle(row?.handle || "");
+      return !!safeHandle && !!rowHandle && rowHandle === safeHandle;
+    });
+  }
+
+  function removeViewerLikeRows(rows, userUid = "", userHandle = "") {
+    const safeUid = String(userUid || "").trim();
+    const safeHandle = normalizeHandle(userHandle);
+    const list = Array.isArray(rows) ? rows : [];
+    return list.filter((row) => {
+      const rowUid = String(row?.uid || "").trim();
+      if (safeUid && rowUid && rowUid === safeUid) return false;
+      const rowHandle = normalizeHandle(row?.handle || "");
+      if (safeHandle && rowHandle && rowHandle === safeHandle) return false;
+      return true;
+    });
+  }
+
+  async function toggleMenuItemFavorite(ctx) {
     if (!state.user) {
-      openGuestAuthPrompt("Bitte registrieren oder einloggen, um Produkte zu liken.");
+      openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
       return;
     }
-    const ctx = resolveMenuItemTargetContext(target);
     if (!ctx) return;
-    const { ref, key, item, restaurantId, itemId } = ctx;
+    const { restaurantId, itemId, item } = ctx;
+    const user = currentUserBadge();
+    if (!user.uid) return;
+    const favoriteId = favoriteMenuItemDocId(restaurantId, itemId);
+    if (!favoriteId) return;
+    const favoriteRef = doc(db, "users", user.uid, "menuFavorites", favoriteId);
+    let removeFavorite = false;
+    try {
+      await runTransaction(db, async (tx) => {
+        const favoriteSnap = await tx.get(favoriteRef);
+        if (favoriteSnap.exists()) {
+          tx.delete(favoriteRef);
+          removeFavorite = true;
+          return;
+        }
+        tx.set(
+          favoriteRef,
+          buildFavoriteMenuItemPayload(item, restaurantId, { includeServerTimestamp: true }),
+          { merge: true }
+        );
+        removeFavorite = false;
+      });
+      updateFavoriteMenuItemsLocal(item, restaurantId, { remove: removeFavorite });
+      if (isActiveMenuDetailContext(ctx)) {
+        updateMenuDetailCountsOnly();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+
+  async function toggleMenuItemLike(target = null) {
+    const targetObj = target && typeof target === "object" ? target : null;
+    const favoriteOnly = !!targetObj && (
+      targetObj.favoriteOnly === true
+      || String(targetObj.action || "").trim().toLowerCase() === "favorite"
+    );
+    if (!state.user) {
+      openGuestAuthPrompt(
+        favoriteOnly
+          ? "Bitte registrieren oder einloggen, um Favoriten zu nutzen."
+          : "Bitte registrieren oder einloggen, um Produkte zu liken."
+      );
+      return;
+    }
+    const ctx = resolveMenuItemTargetContext(favoriteOnly ? null : target);
+    if (!ctx) return;
+    if (favoriteOnly) {
+      await toggleMenuItemFavorite(ctx);
+      return;
+    }
+    const { ref, key, item, itemId } = ctx;
     const user = currentUserBadge();
     if (!user.uid) return;
     const likeId = user.uid;
     const likeRef = doc(collection(ref, "likes"), likeId);
-    const favoriteRef = doc(db, "users", user.uid, "menuFavorites", favoriteMenuItemDocId(restaurantId, itemId));
     let delta = 0;
     try {
       await runTransaction(db, async (tx) => {
         const likeSnap = await tx.get(likeRef);
         if (likeSnap.exists()) {
           tx.delete(likeRef);
-          tx.delete(favoriteRef);
           delta = -1;
         } else {
           tx.set(likeRef, {
@@ -808,18 +893,17 @@ export function createSocialEngagementRuntimeController({
             avatar: user.avatar,
             createdAt: serverTimestamp()
           });
-          tx.set(favoriteRef, buildFavoriteMenuItemPayload(item, restaurantId, { includeServerTimestamp: true }), { merge: true });
           delta = 1;
         }
         tx.set(ref, { likesCount: increment(delta) }, { merge: true });
       });
       if (!delta) return;
       const meta = ensureMenuItemMeta(key);
+      const retainedLikes = removeViewerLikeRows(meta.likes, user.uid, user.handle);
       if (delta < 0) {
-        const idx = meta.likes.findIndex((item) => item.uid === user.uid || item.handle === user.handle);
-        if (idx >= 0) meta.likes.splice(idx, 1);
+        meta.likes = retainedLikes;
       } else {
-        meta.likes.unshift({ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar });
+        meta.likes = [{ uid: user.uid, name: user.name, handle: user.handle, avatar: user.avatar }, ...retainedLikes];
       }
       const loadState = ensureMetaLoadState(meta);
       loadState.userLikeHydratedUid = String(user.uid || "");
@@ -830,10 +914,11 @@ export function createSocialEngagementRuntimeController({
       meta.counts = meta.counts || { likes: 0, comments: 0 };
       meta.counts.likes = Math.max(0, (Number(meta.counts.likes) || 0) + delta);
       state.menuItemMeta[key] = meta;
-      updateFavoriteMenuItemsLocal(item, restaurantId, { remove: delta < 0 });
       if (isActiveMenuDetailContext(ctx)) {
         updateMenuDetailCountsOnly();
       }
+      const cardItemId = String(item?.id || itemId || "").trim();
+      updateMenuCardLikeButtons(cardItemId, isMenuItemLikedByUser(meta, user.uid, user.handle || ""));
       updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
     } catch (err) {
       console.error(err);
@@ -850,6 +935,8 @@ export function createSocialEngagementRuntimeController({
     const ctx = getMenuDetailContext();
     if (!ctx) return;
     const { ref, key } = ctx;
+    const meta = ensureMenuItemMeta(key);
+    const countsBeforeSubmit = resolveMenuItemCounts(meta);
     const startedMenuDetailKey = String(key || "");
     const isSameMenuDetailContext = () => {
       const activeCtx = getMenuDetailContext();
@@ -901,19 +988,27 @@ export function createSocialEngagementRuntimeController({
       }
       return;
     }
-    const meta = ensureMenuItemMeta(key);
     const newComment = ensureCommentShape({
       id: commentRef.id,
       ...payload,
       createdAt: new Date().toISOString()
     });
-    meta.comments = [newComment, ...(meta.comments || [])];
+    meta.comments = [
+      newComment,
+      ...(meta.comments || []).filter((entry) => String(entry?.id || "") !== String(newComment.id || ""))
+    ];
     const loadState = ensureMetaLoadState(meta);
     if (loadState.commentsHydrated) {
       loadState.commentsFetchedAt = Date.now();
     }
     meta.counts = meta.counts || { likes: 0, comments: 0 };
-    meta.counts.comments = Math.max(0, (Number(meta.counts.comments) || 0) + 1);
+    const optimisticCommentCount = Math.max(
+      0,
+      (Number(countsBeforeSubmit.comments) || 0) + 1,
+      Number(meta.counts.comments) || 0,
+      meta.comments.length
+    );
+    meta.counts.comments = optimisticCommentCount;
     state.menuItemMeta[key] = meta;
     if (isSameMenuDetailContext()) {
       state.menuDetail.commentText = "";
@@ -1048,10 +1143,10 @@ export function createSocialEngagementRuntimeController({
       const itemId = getMenuItemSocialId(item);
       const rid = restaurantId || state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "";
       if (!ref || !rid || !itemId) return null;
-      return { ref, key: menuItemMetaKey(rid, itemId) };
+      return { ref, key: menuItemMetaKey(rid, itemId), itemId };
     })();
     if (!ctx) return;
-    const { ref, key } = ctx;
+    const { ref, key, itemId } = ctx;
     setMenuDetailDocUnsubFn(onSnapshot(ref, (docSnap) => {
       if (!docSnap.exists()) return;
       const data = docSnap.data() || {};
@@ -1061,11 +1156,13 @@ export function createSocialEngagementRuntimeController({
         comments: Number(data.commentsCount ?? data.comments ?? meta.comments?.length ?? 0) || 0
       };
       state.menuItemMeta[key] = meta;
+      updateMenuCardCountNodes(itemId, resolveMenuItemCounts(meta));
       updateMenuDetailCountsOnly();
     }));
   }
 
-  async function loadMenuItemMetaFromFirebase(item, restaurantId) {
+  async function loadMenuItemMetaFromFirebase(item, restaurantId, options = {}) {
+    const includeComments = options?.includeComments !== false;
     const ref = getMenuItemSocialDocRef(item, restaurantId);
     const rid = restaurantId || state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "";
     const itemId = getMenuItemSocialId(item);
@@ -1074,12 +1171,13 @@ export function createSocialEngagementRuntimeController({
     const meta = ensureMenuItemMeta(key);
     const loadState = ensureMetaLoadState(meta);
     const userUid = String(state.user?.uid || "");
-    const hasCommentsCache = loadState.commentsHydrated && Array.isArray(meta.comments);
+    const hasCommentsCache = !includeComments || (loadState.commentsHydrated && Array.isArray(meta.comments));
     const hasViewerLikeCache = !userUid || loadState.userLikeHydratedUid === userUid;
-    const commentsFresh = hasCommentsCache && isFreshMetaTimestamp(loadState.commentsFetchedAt, META_COMMENTS_SOFT_REFRESH_MS);
+    const commentsFresh = !includeComments
+      || (hasCommentsCache && isFreshMetaTimestamp(loadState.commentsFetchedAt, META_COMMENTS_SOFT_REFRESH_MS));
     const viewerLikeFresh = !userUid || (hasViewerLikeCache && isFreshMetaTimestamp(loadState.viewerLikeFetchedAt, META_VIEWER_LIKE_SOFT_REFRESH_MS));
     const shouldProbeViewerLike = !!userUid && (!hasViewerLikeCache || !viewerLikeFresh);
-    const shouldLoadComments = !hasCommentsCache || !commentsFresh;
+    const shouldLoadComments = includeComments && (!hasCommentsCache || !commentsFresh);
     if (!shouldProbeViewerLike && !shouldLoadComments) {
       state.menuItemMeta[key] = meta;
       return meta;
@@ -1094,7 +1192,7 @@ export function createSocialEngagementRuntimeController({
       if (shouldProbeViewerLike) {
         try {
           const likeSnap = await getDoc(doc(collection(ref, "likes"), userUid));
-          const retainedLikes = (Array.isArray(meta.likes) ? meta.likes : []).filter((row) => String(row?.uid || "") !== userUid);
+          const retainedLikes = removeViewerLikeRows(meta.likes, userUid, state.user?.handle || "");
           meta.likes = likeSnap.exists()
             ? [{ id: likeSnap.id, ...likeSnap.data() }, ...retainedLikes]
             : retainedLikes;
@@ -1116,6 +1214,9 @@ export function createSocialEngagementRuntimeController({
         }
       }
       state.menuItemMeta[key] = meta;
+      const isLiked = isMenuItemLikedByUser(meta, userUid, state.user?.handle || "");
+      updateMenuCardLikeButtons(String(item?.id || itemId || "").trim(), isLiked);
+      updateMenuCardCountNodes(itemId, resolveMenuItemCounts(meta));
       return meta;
     })();
 
@@ -1125,6 +1226,38 @@ export function createSocialEngagementRuntimeController({
     } finally {
       menuItemMetaLoadInFlight.delete(loadKey);
     }
+  }
+
+  async function hydrateMenuCardViewerLikes(items = [], restaurantId = "") {
+    const userUid = String(state.user?.uid || "").trim();
+    if (!userUid) return;
+    const list = Array.isArray(items) ? items : [];
+    if (!list.length) return;
+    const rid = String(
+      restaurantId
+      || state.menu.restaurantId
+      || state.profileView?.profile?.restaurantId
+      || state.userProfile.restaurantId
+      || ""
+    ).trim();
+    if (!rid) return;
+    const seen = new Set();
+    const jobs = [];
+    list.forEach((item) => {
+      const socialId = String(getMenuItemSocialId(item) || "").trim();
+      if (!socialId) return;
+      const dedupeKey = `${rid}::${socialId}`;
+      if (seen.has(dedupeKey)) return;
+      seen.add(dedupeKey);
+      jobs.push(loadMenuItemMetaFromFirebase(item, rid, { includeComments: false }));
+    });
+    if (!jobs.length) return;
+    const settled = await Promise.allSettled(jobs);
+    settled.forEach((row) => {
+      if (row.status === "rejected") {
+        console.error(row.reason);
+      }
+    });
   }
 
   return {
@@ -1139,6 +1272,7 @@ export function createSocialEngagementRuntimeController({
     stopMenuItemMetaListeners,
     attachMenuItemMetaListeners,
     loadMenuItemMetaFromFirebase,
+    hydrateMenuCardViewerLikes,
     getPostDocRef,
     getFeedDocRef,
     resolveRestaurantOwnerUid,

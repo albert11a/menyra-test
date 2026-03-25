@@ -22,6 +22,9 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const getBusinessCatalogLabel = deps.getBusinessCatalogLabelFn;
   const normalizeMenuType = deps.normalizeMenuTypeFn;
   const primeMenuItemCounts = deps.primeMenuItemCountsFn;
+  const hydrateMenuCardViewerLikes = typeof deps.hydrateMenuCardViewerLikesFn === "function"
+    ? deps.hydrateMenuCardViewerLikesFn
+    : (() => Promise.resolve());
   const renderShopProductList = deps.renderShopProductListFn;
   const getMenuLayoutTheme = deps.getMenuLayoutThemeFn;
   const MENU_LAYOUT_COLORS = deps.menuLayoutColors;
@@ -50,6 +53,48 @@ export function createProfileMenuFocusRenderController(deps = {}) {
   const buildUrl = deps.buildUrlFn;
   const normalizeSearchKey = deps.normalizeSearchKeyFn;
   const normalizeFollowHandle = deps.normalizeFollowHandleFn;
+  const menuCardViewerLikeHydrationState = {
+    key: "",
+    inFlightKey: ""
+  };
+
+function buildMenuCardViewerLikeHydrationKey(items = [], restaurantId = "", userUid = "") {
+  const rid = String(restaurantId || "").trim();
+  const uid = String(userUid || "").trim();
+  if (!rid || !uid) return "";
+  const list = Array.isArray(items) ? items : [];
+  if (!list.length) return `${rid}|${uid}|empty`;
+  const ids = [];
+  list.forEach((item) => {
+    const resolvedId = String(getMenuItemSocialId(item) || item?.id || "").trim();
+    if (resolvedId) ids.push(resolvedId);
+  });
+  if (!ids.length) return `${rid}|${uid}|empty`;
+  ids.sort();
+  return `${rid}|${uid}|${ids.join(",")}`;
+}
+
+function maybeHydrateMenuCardViewerLikes(items = [], restaurantId = "") {
+  const userUid = String(state.user?.uid || "").trim();
+  const key = buildMenuCardViewerLikeHydrationKey(items, restaurantId, userUid);
+  if (!key) return;
+  if (menuCardViewerLikeHydrationState.inFlightKey === key) return;
+  if (menuCardViewerLikeHydrationState.key === key) {
+    return;
+  }
+  menuCardViewerLikeHydrationState.key = key;
+  menuCardViewerLikeHydrationState.inFlightKey = key;
+  void hydrateMenuCardViewerLikes(items, restaurantId).catch((err) => {
+    console.error(err);
+    if (menuCardViewerLikeHydrationState.key === key) {
+      menuCardViewerLikeHydrationState.key = "";
+    }
+  }).finally(() => {
+    if (menuCardViewerLikeHydrationState.inFlightKey === key) {
+      menuCardViewerLikeHydrationState.inFlightKey = "";
+    }
+  });
+}
 
 function isFollowingProfile(profile = {}) {
   const uid = String(profile?.uid || "").trim();
@@ -610,26 +655,36 @@ function isTestfirstMenuProfile(profile = {}) {
 }
 
 function getMenuCardSocialMeta(item) {
-  const restaurantId = state.menu.restaurantId
+  const restaurantId = item?.restaurantId
+    || state.menu.restaurantId
     || state.profileView?.profile?.restaurantId
     || state.userProfile.restaurantId
     || "";
   const itemId = getMenuItemSocialId(item);
   const metaKey = menuItemMetaKey(restaurantId, itemId);
   const meta = metaKey ? ensureMenuItemMeta(metaKey) : { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+  const userUid = String(state.user?.uid || "").trim();
+  const userHandle = String(state.user?.handle || "").trim().toLowerCase();
+  const isLiked = !!meta.likes?.some((row) => {
+    const rowUid = String(row?.uid || "").trim();
+    if (userUid && rowUid && rowUid === userUid) return true;
+    const rowHandle = String(row?.handle || "").trim().toLowerCase();
+    return !!userHandle && !!rowHandle && rowHandle === userHandle;
+  });
   return {
     itemId,
     meta,
-    counts: resolveMenuItemCounts(meta)
+    counts: resolveMenuItemCounts(meta),
+    isLiked
   };
 }
 
 function getMenuDetailImageStableKey(item, { index = 0 } = {}) {
   const restaurantId = String(
-    state.menu.restaurantId
+    item?.restaurantId
+    || state.menu.restaurantId
     || state.profileView?.profile?.restaurantId
     || state.userProfile.restaurantId
-    || item?.restaurantId
     || ""
   ).trim();
   const itemId = String(item?.id || getMenuItemSocialId(item) || "").trim();
@@ -720,7 +775,7 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile" } = {}) {
   const wrapperAttrs = mode === "profile"
     ? `data-menu-open="${escapeHtml(item.id)}" role="button"`
     : "";
-  const { itemId, counts } = getMenuCardSocialMeta(item);
+  const { itemId, counts, isLiked } = getMenuCardSocialMeta(item);
   return `
     <div ${wrapperAttrs} class="bg-white p-2.5 rounded-[1.8rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.03)] flex flex-col group relative ${mode === "profile" ? "cursor-pointer" : ""}">
       <div class="w-full aspect-square rounded-[1.4rem] overflow-hidden bg-slate-100 mb-3 relative">
@@ -728,8 +783,9 @@ function renderTestfirstDrinkGridCard(item, { mode = "profile" } = {}) {
         <button
           type="button"
           data-menu-card-like="${escapeHtml(item.id)}"
-          class="absolute top-2 right-2 w-7 h-7 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:scale-110 transition-all shadow-sm z-10"
+          class="absolute top-2 right-2 w-7 h-7 backdrop-blur-md rounded-full border border-white/80 bg-white/90 flex items-center justify-center transition-colors shadow-sm z-10 ${isLiked ? "text-rose-500" : "text-slate-300 hover:text-rose-500"}"
           aria-label="Like"
+          aria-pressed="${isLiked ? "true" : "false"}"
         >
           ${icon("heart", "w-3.5 h-3.5 fill-current opacity-80")}
         </button>
@@ -819,18 +875,9 @@ function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
   const slides = rawSlides.filter(Boolean);
   const displaySlides = slides.length ? slides.slice(0, 12) : [""];
   const hasSlider = displaySlides.length > 1;
-  const { itemId, counts } = getMenuCardSocialMeta(item);
-  const likesValue = Math.max(
-    Number.isFinite(Number(counts.likes)) ? Number(counts.likes) : 0,
-    Number(item.likesCount || item.likes || 0)
-  );
-  const commentsValue = Math.max(
-    Number.isFinite(Number(counts.comments)) ? Number(counts.comments) : 0,
-    Number(item.commentsCount || item.comments || 0)
-  );
-  const likesLabel = formatCount(Math.max(0, likesValue || 0));
-  const commentsLabel = formatCount(Math.max(0, commentsValue || 0));
-  const showSocialChip = (likesValue || commentsValue) > 0 || mode === "profile";
+  const { itemId, counts, isLiked } = getMenuCardSocialMeta(item);
+  const likesLabel = formatCount(Math.max(0, Number(counts.likes) || 0));
+  const commentsLabel = formatCount(Math.max(0, Number(counts.comments) || 0));
   return `
     <div ${wrapperAttrs} class="bg-white p-3.5 rounded-[2.2rem] border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] mb-5 group relative ${mode === "profile" ? "cursor-pointer" : ""}" style="padding:14px;border-radius:2.2rem;margin-bottom:20px;box-sizing:border-box;">
       <div class="w-full aspect-[16/9] rounded-[1.8rem] overflow-hidden bg-slate-100 mb-4 relative" style="aspect-ratio:16 / 9;border-radius:1.8rem;margin-bottom:16px;">
@@ -841,7 +888,15 @@ function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
             style="scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;overscroll-behavior-y:auto;"
           >
             ${displaySlides.map((image, index) => {
-              const imgSrc = getOptimizedImageUrl(image || "", "large");
+              const menuDetailStableKey = mode === "profile"
+                ? getMenuDetailImageStableKey(item, { index })
+                : "";
+              const imgSrc = getOptimizedImageUrl(image || "", "large", mode === "profile"
+                ? {
+                  variantGroup: "menu-detail",
+                  stableKey: menuDetailStableKey
+                }
+                : null);
               const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
               const firebaseFallback = getFirebaseStorageUrl(image || "");
               const fallbackImg = isDirectImageUrl(image || "") && image !== safeImg ? image : firebaseFallback;
@@ -853,8 +908,16 @@ function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
             }).join("")}
           </div>
         ` : `
-          ${displaySlides.map((image) => {
-            const imgSrc = getOptimizedImageUrl(image || "", "large");
+          ${displaySlides.map((image, index) => {
+            const menuDetailStableKey = mode === "profile"
+              ? getMenuDetailImageStableKey(item, { index })
+              : "";
+            const imgSrc = getOptimizedImageUrl(image || "", "large", mode === "profile"
+              ? {
+                variantGroup: "menu-detail",
+                stableKey: menuDetailStableKey
+              }
+              : null);
             const safeImg = isPlaceholderUrl(imgSrc) ? PLACEHOLDER_IMAGE : imgSrc;
             const firebaseFallback = getFirebaseStorageUrl(image || "");
             const fallbackImg = isDirectImageUrl(image || "") && image !== safeImg ? image : firebaseFallback;
@@ -868,8 +931,9 @@ function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
         <button
           type="button"
           data-menu-card-like="${escapeHtml(item.id)}"
-          class="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-md rounded-full flex items-center justify-center text-slate-300 hover:text-rose-500 hover:scale-110 transition-all shadow-sm z-10"
+          class="absolute top-3 right-3 w-9 h-9 backdrop-blur-md rounded-full border border-white/80 bg-white/90 flex items-center justify-center transition-colors shadow-sm z-10 ${isLiked ? "text-rose-500" : "text-slate-300 hover:text-rose-500"}"
           aria-label="Like"
+          aria-pressed="${isLiked ? "true" : "false"}"
         >
           ${icon("heart", "w-4 h-4 fill-current opacity-80")}
         </button>
@@ -895,19 +959,10 @@ function renderTestfirstFoodCard(item, { mode = "profile" } = {}) {
         <p class="text-[14px] text-slate-500 line-clamp-2 leading-relaxed mb-4" style="margin-bottom:16px;">${escapeHtml(item.description || "")}</p>
         <div class="flex items-center justify-between border-t border-slate-50 pt-4 pb-1" style="padding-top:16px;padding-bottom:4px;">
           <div class="flex items-center gap-2">
-            ${showSocialChip ? `
-              <div class="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-500 rounded-xl text-[12px] font-bold">
-                ${icon("heart", "w-3.5 h-3.5 fill-rose-500")}
-                <span data-menu-like-count="${escapeHtml(itemId)}">${escapeHtml(likesLabel)}</span>
-                <span class="text-slate-300">/</span>
-                <span data-menu-comment-count="${escapeHtml(itemId)}">${escapeHtml(commentsLabel)}</span>
-              </div>
-            ` : `
-              <div class="hidden">
-                <span data-menu-like-count="${escapeHtml(itemId)}">${escapeHtml(likesLabel)}</span>
-                <span data-menu-comment-count="${escapeHtml(itemId)}">${escapeHtml(commentsLabel)}</span>
-              </div>
-            `}
+            <div class="hidden">
+              <span data-menu-like-count="${escapeHtml(itemId)}">${escapeHtml(likesLabel)}</span>
+              <span data-menu-comment-count="${escapeHtml(itemId)}">${escapeHtml(commentsLabel)}</span>
+            </div>
           </div>
           <button type="button" class="bg-slate-900 text-white pl-4 pr-2 py-2 rounded-2xl text-[13px] font-bold shadow-md hover:bg-indigo-600 transition-colors flex items-center gap-2 active:scale-95" style="padding-left:16px;padding-right:8px;padding-top:8px;padding-bottom:8px;">
             <span>Hinzufuegen</span>
@@ -1535,6 +1590,7 @@ function renderProfileMenuView(profile) {
   const hasItems = items.length > 0;
   if (hasItems && restaurantId) {
     primeMenuItemCounts(items, restaurantId);
+    maybeHydrateMenuCardViewerLikes(items, restaurantId);
   }
   if (useTestfirstCardUi) {
     return `

@@ -83,8 +83,9 @@ export function createShopViewCartOrchestrationController({
           : Number(stockValue);
         const stock = parsedStock === null || !Number.isFinite(parsedStock) ? null : Math.max(0, parsedStock);
         const thumbImages = images.slice(1, 4);
-        const restaurantAttr = source === "favorites" && item.restaurantId
-          ? ` data-menu-open-restaurant="${escapeHtmlFn(item.restaurantId)}"`
+        const itemRestaurantId = String(item?.restaurantId || "").trim();
+        const restaurantAttr = itemRestaurantId
+          ? ` data-menu-open-restaurant="${escapeHtmlFn(itemRestaurantId)}"`
           : "";
         return `
           <article data-menu-open="${escapeHtmlFn(item.id)}" data-menu-open-source="${escapeHtmlFn(source)}"${restaurantAttr} role="button" tabindex="0" class="min-w-0 p-3 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col" style="touch-action:pan-y;">
@@ -213,6 +214,34 @@ export function createShopViewCartOrchestrationController({
     return getShopCartTotalCoreFn(state.shopCart.items || [], {
       parsePriceValueFn
     });
+  }
+
+  function resolveCartContextForItem(item, profile = getCurrentShopProfile()) {
+    const baseContext = getShopCartProfileContext(profile);
+    const itemRestaurantId = String(item?.restaurantId || "").trim();
+    if (!itemRestaurantId || itemRestaurantId === String(baseContext.restaurantId || "").trim()) {
+      return baseContext;
+    }
+    const restaurant = getRestaurantMetaByIdFn(itemRestaurantId) || {};
+    return {
+      ...baseContext,
+      restaurantId: itemRestaurantId,
+      businessName: String(
+        restaurant?.name
+        || restaurant?.restaurantName
+        || baseContext.businessName
+        || "Shop"
+      ).trim() || "Shop",
+      businessAvatar: String(
+        restaurant?.logoUrl
+        || restaurant?.logo
+        || baseContext.businessAvatar
+        || ""
+      ).trim(),
+      tableNumber: 0,
+      tableLabel: "",
+      serviceMode: ""
+    };
   }
 
   function renderProfileShopCartView(profile = state.profileView?.profile || state.userProfile) {
@@ -357,8 +386,16 @@ export function createShopViewCartOrchestrationController({
   function addMenuItemToShopCart(item, profile = getCurrentShopProfile(), options = {}) {
     const forceAdd = options?.forceAdd === true;
     if (!item || (!forceAdd && !canAddToShopCartFn(profile))) return;
-    const context = getShopCartProfileContext(profile);
+    const context = resolveCartContextForItem(item, profile);
     if (!context.restaurantId) return;
+    const resolvedItemId = String(
+      item?.id
+      || item?.itemId
+      || item?.menuItemId
+      || item?.productId
+      || ""
+    ).trim();
+    if (!resolvedItemId) return;
     const currentRestaurantId = String(state.shopCart?.restaurantId || "").trim();
     if (currentRestaurantId && currentRestaurantId !== context.restaurantId) {
       const shouldReplace = confirmFn("Dein Warenkorb enthaelt Produkte von einem anderen Shop. Ersetzen?");
@@ -368,11 +405,11 @@ export function createShopViewCartOrchestrationController({
     const nextCart = normalizeShopCartStateFn(state.shopCart);
     const selectedSize = String(options?.size || "").trim();
     const selectedColor = String(options?.color || "").trim();
-    const cartKey = buildShopVariantKeyFn(item.id, { size: selectedSize, color: selectedColor });
+    const cartKey = buildShopVariantKeyFn(resolvedItemId, { size: selectedSize, color: selectedColor });
     const existingIndex = nextCart.items.findIndex((entry) => String(entry.cartKey || entry.itemId) === cartKey);
     const entry = {
-      id: String(item.id || "").trim(),
-      itemId: String(item.id || "").trim(),
+      id: resolvedItemId,
+      itemId: resolvedItemId,
       cartKey,
       name: String(item.name || "Produkt").trim() || "Produkt",
       price: String(item.price ?? "").trim(),
