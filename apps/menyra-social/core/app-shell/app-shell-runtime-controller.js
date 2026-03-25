@@ -359,9 +359,10 @@ export function createAppShellRuntimeController(deps = {}) {
       headerPaddingClass: isTight ? "px-4" : "px-5",
       headerGapClass: isTight ? "gap-2" : "gap-3",
       leftGroupPaddingClass: isTight ? "pr-2" : "pr-3",
+      categoryTrackClass: isCompact ? "h-9" : "h-10",
       categoryChipClass: isCompact
-        ? "shrink-0 px-3.5 py-2 rounded-full border text-[10px] font-black uppercase tracking-[0.16em] transition-all duration-300"
-        : "shrink-0 px-4 py-2.5 rounded-full border text-[11px] font-black uppercase tracking-[0.18em] transition-all duration-300"
+        ? "shrink-0 h-9 box-border px-3.5 inline-flex items-center justify-center whitespace-nowrap rounded-full border text-[10px] font-black uppercase tracking-[0.16em] leading-none transition-all duration-300"
+        : "shrink-0 h-10 box-border px-4 inline-flex items-center justify-center whitespace-nowrap rounded-full border text-[11px] font-black uppercase tracking-[0.18em] leading-none transition-all duration-300"
     };
   }
 
@@ -395,7 +396,7 @@ export function createAppShellRuntimeController(deps = {}) {
     }
     return `
       <div class="relative flex-1 min-w-0 pr-1">
-        <div class="flex items-center gap-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
+        <div class="${viewportUi.categoryTrackClass} flex items-stretch gap-2 overflow-x-auto hide-scrollbar whitespace-nowrap">
           ${categories.map((category, index) => `
             <button
               type="button"
