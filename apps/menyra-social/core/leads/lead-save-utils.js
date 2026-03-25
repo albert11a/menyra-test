@@ -218,15 +218,6 @@ export async function saveLeadFromModalCore({
       restaurantId = restRef.id;
     }
 
-    let logoUrl = logoUrlInput || state.leadModal.logoPreview || lead.logoUrl || "";
-    if (state.leadModal.logoFile) {
-      const { cdnUrl } = await uploadImage(
-        state.leadModal.logoFile,
-        restaurantId || state.user.uid,
-        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
-      );
-      logoUrl = cdnUrl || logoUrl;
-    }
     const existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
     const prevLeadContribution = lead?.id ? buildLeadContribution(lead) : null;
     const prevCustomerContribution = existingRest ? buildCustomerContribution(existingRest) : null;
@@ -253,6 +244,35 @@ export async function saveLeadFromModalCore({
     const monthlyPrice = getMonthlyPrice(customerType, settings);
     const yearlyPrice = monthlyPrice * 12;
     const activePrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
+    const shouldSeedRestaurantBeforeLogoUpload = !!restRef && !!state.leadModal.logoFile;
+    if (shouldSeedRestaurantBeforeLogoUpload) {
+      await setDoc(restRef, {
+        name: businessName,
+        restaurantName: businessName,
+        type: customerType,
+        country,
+        city,
+        address,
+        zipCode,
+        ownerName: contactName || "",
+        ownerEmail: emailInput || "",
+        status: restaurantStatus,
+        locations: locationPayload,
+        ...creatorMeta,
+        createdAt: getTimestamp(),
+        updatedAt: getTimestamp()
+      });
+    }
+
+    let logoUrl = logoUrlInput || state.leadModal.logoPreview || lead.logoUrl || "";
+    if (state.leadModal.logoFile) {
+      const { cdnUrl } = await uploadImage(
+        state.leadModal.logoFile,
+        restaurantId || state.user.uid,
+        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
+      );
+      logoUrl = cdnUrl || logoUrl;
+    }
     const restPayload = {
       name: businessName,
       restaurantName: businessName,
@@ -291,10 +311,14 @@ export async function saveLeadFromModalCore({
     }
 
     if (restRef) {
-      await setDoc(restRef, {
-        ...restPayload,
-        createdAt: getTimestamp()
-      });
+      if (shouldSeedRestaurantBeforeLogoUpload) {
+        await setDoc(restRef, restPayload, { merge: true });
+      } else {
+        await setDoc(restRef, {
+          ...restPayload,
+          createdAt: getTimestamp()
+        });
+      }
     } else {
       await setDoc(doc(db, "restaurants", restaurantId), restPayload, { merge: true });
     }
