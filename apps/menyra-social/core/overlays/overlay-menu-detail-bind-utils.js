@@ -96,20 +96,15 @@ export function bindMenuDetailOverlayEventsCore({
   const menuDetailHeroPreview = doc.getElementById("menuDetailHeroPreview");
   const menuDetailSheet = menuDetailHeroImage?.closest?.(".modal-sheet") || null;
   const revealMenuDetailHeroImage = () => {
+    if (menuDetailHeroPreview) {
+      menuDetailHeroPreview.remove();
+    }
     if (menuDetailHeroImage) {
       menuDetailHeroImage.classList.remove("opacity-0");
       menuDetailHeroImage.dataset.menuDetailHeroReady = "1";
     }
     if (menuDetailSheet?.dataset?.modalHeroHandoff === "pending") {
       delete menuDetailSheet.dataset.modalHeroHandoff;
-    }
-    if (menuDetailHeroPreview) {
-      menuDetailHeroPreview.classList.add("opacity-0");
-      win?.setTimeout?.(() => {
-        if (menuDetailHeroPreview.isConnected) {
-          menuDetailHeroPreview.remove();
-        }
-      }, 160);
     }
     if (state?.menuDetail && typeof state.menuDetail === "object") {
       state.menuDetail.previewImageSrc = "";

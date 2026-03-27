@@ -160,20 +160,15 @@ export function bindPostOverlayEventsCore({
   const postModalHeroPreview = doc.getElementById("postModalHeroPreview");
   const postModalSheet = postModalHeroImage?.closest?.(".modal-sheet") || null;
   const revealPostModalHeroImage = () => {
+    if (postModalHeroPreview) {
+      postModalHeroPreview.remove();
+    }
     if (postModalHeroImage) {
       postModalHeroImage.classList.remove("opacity-0");
       postModalHeroImage.dataset.postModalHeroReady = "1";
     }
     if (postModalSheet?.dataset?.modalHeroHandoff === "pending") {
       delete postModalSheet.dataset.modalHeroHandoff;
-    }
-    if (postModalHeroPreview) {
-      postModalHeroPreview.classList.add("opacity-0");
-      win?.setTimeout?.(() => {
-        if (postModalHeroPreview.isConnected) {
-          postModalHeroPreview.remove();
-        }
-      }, 160);
     }
     if (state?.postModal && typeof state.postModal === "object") {
       state.postModal.previewImageSrc = "";

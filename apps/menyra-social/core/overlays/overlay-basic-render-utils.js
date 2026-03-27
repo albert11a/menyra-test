@@ -283,8 +283,8 @@ export function renderPostModalCore({
               </div>
 
               <div class="modal-handoff-hero relative rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                ${useHeroPreview ? `<img id="postModalHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-[22rem] object-cover pointer-events-none select-none transition-opacity duration-150" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
-                <img id="postModalHeroImage" src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover ${useHeroPreview ? "opacity-0" : ""} transition-opacity duration-150" loading="eager" fetchpriority="high" decoding="sync" />
+                ${useHeroPreview ? `<img id="postModalHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-[22rem] object-cover pointer-events-none select-none" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
+                <img id="postModalHeroImage" src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover ${useHeroPreview ? "opacity-0" : ""}" loading="eager" fetchpriority="high" decoding="sync" />
               </div>
 
               <div class="modal-handoff-chrome">
