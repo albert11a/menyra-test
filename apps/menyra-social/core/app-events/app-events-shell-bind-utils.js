@@ -67,6 +67,35 @@ export function bindAppShellEventsCore({
     return String(profile?.role || "").trim().toLowerCase() === "business";
   };
   const isBusinessProfileView = () => state.activeTab === "profile" && isBusinessProfile();
+  const normalizeBusinessMenuCategory = (value = "") => String(value || "").trim().toLowerCase();
+  const getRenderedProfileContentTab = (profile = getActiveProfile()) => {
+    const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+    const requestedContentTab = String(state.profileContentTab || "").trim().toLowerCase();
+    if (isBusinessProfile(profile)) {
+      if (requestedTopTab === "menu") return "menu";
+      if (requestedContentTab === "media" || requestedContentTab === "menu" || requestedContentTab === "posts") {
+        return requestedContentTab;
+      }
+      return "posts";
+    }
+    if (requestedContentTab === "media" || requestedContentTab === "checkins") {
+      return requestedContentTab;
+    }
+    return "posts";
+  };
+  const getRenderedProfilePrimaryTopTab = (profile = getActiveProfile()) => {
+    const requestedTopTab = String(state.profileTopTab || "").trim().toLowerCase();
+    if (isBusinessProfile(profile)) {
+      if (requestedTopTab === "cart" || requestedTopTab === "favorites") {
+        return requestedTopTab;
+      }
+      return "profile";
+    }
+    if (requestedTopTab === "favorites" && String(state.user?.uid || "").trim()) {
+      return "favorites";
+    }
+    return "profile";
+  };
   const scrollWindowToTop = (smooth = false) => {
     if (!doc?.defaultView?.scrollTo) return;
     if (!smooth) {
@@ -78,6 +107,20 @@ export function bindAppShellEventsCore({
     } catch {
       doc.defaultView.scrollTo(0, 0);
     }
+  };
+  const scrollWindowToTopForRender = () => {
+    // Full re-renders race with smooth scrolling and can restore the old Y offset.
+    scrollWindowToTop(false);
+  };
+  const getStoredBusinessMenuCategory = () => normalizeBusinessMenuCategory(doc?.documentElement?.dataset?.businessMenuCategory || "");
+  const setStoredBusinessMenuCategory = (nextCategory = "") => {
+    if (!doc?.documentElement?.dataset) return;
+    const normalized = normalizeBusinessMenuCategory(nextCategory);
+    if (normalized) {
+      doc.documentElement.dataset.businessMenuCategory = normalized;
+      return;
+    }
+    delete doc.documentElement.dataset.businessMenuCategory;
   };
   const resolveBusinessMenuCategoryBaseClass = () => {
     const viewportWidth = Math.max(
@@ -91,15 +134,61 @@ export function bindAppShellEventsCore({
   };
   const businessMenuCategoryActiveClass = "bg-slate-900 text-white border-slate-900 shadow-[0_10px_24px_-16px_rgba(15,23,42,0.55)]";
   const businessMenuCategoryInactiveClass = "bg-white/80 text-slate-500 border-slate-200";
+  const getVisibleBusinessMenuCategory = () => {
+    const buttons = Array.from(doc.querySelectorAll("[data-business-menu-category]"));
+    if (!buttons.length) return "";
+    const available = new Set(
+      buttons
+        .map((button) => normalizeBusinessMenuCategory(button.dataset.businessMenuCategory || ""))
+        .filter(Boolean)
+    );
+    const headerTop = doc.getElementById("smart-header-top");
+    const headerHeight = Math.max(0, Math.round(headerTop?.getBoundingClientRect?.().height || 0));
+    const anchors = Array.from(doc.querySelectorAll("[data-menu-category-anchor]"));
+    let currentCategory = "";
+    let currentTop = Number.NEGATIVE_INFINITY;
+    anchors.forEach((anchor) => {
+      const category = normalizeBusinessMenuCategory(anchor.getAttribute("data-menu-category-anchor") || "");
+      if (!category || !available.has(category)) return;
+      const top = Math.round(anchor.getBoundingClientRect().top - headerHeight);
+      if (top <= 24 && top > currentTop) {
+        currentTop = top;
+        currentCategory = category;
+      }
+    });
+    if (currentCategory) return currentCategory;
+    const firstAhead = anchors.find((anchor) => {
+      const category = normalizeBusinessMenuCategory(anchor.getAttribute("data-menu-category-anchor") || "");
+      if (!category || !available.has(category)) return false;
+      const top = Math.round(anchor.getBoundingClientRect().top - headerHeight);
+      return top > 24;
+    });
+    if (firstAhead) {
+      return normalizeBusinessMenuCategory(firstAhead.getAttribute("data-menu-category-anchor") || "");
+    }
+    return "";
+  };
 
   const syncBusinessMenuCategoryUi = (nextCategory = "") => {
     const buttons = Array.from(doc.querySelectorAll("[data-business-menu-category]"));
     if (!buttons.length) return;
     const businessMenuCategoryBaseClass = resolveBusinessMenuCategoryBaseClass();
+    const available = new Set(
+      buttons
+        .map((button) => normalizeBusinessMenuCategory(button.dataset.businessMenuCategory || ""))
+        .filter(Boolean)
+    );
     const fallbackCategory = buttons[0]?.dataset?.businessMenuCategory || "";
-    const activeCategory = String(nextCategory || fallbackCategory).trim().toLowerCase();
+    const explicitCategory = normalizeBusinessMenuCategory(nextCategory);
+    const storedCategory = getStoredBusinessMenuCategory();
+    const visibleCategory = getVisibleBusinessMenuCategory();
+    const activeCategory = explicitCategory
+      || (storedCategory && available.has(storedCategory) ? storedCategory : "")
+      || (visibleCategory && available.has(visibleCategory) ? visibleCategory : "")
+      || normalizeBusinessMenuCategory(fallbackCategory);
+    setStoredBusinessMenuCategory(activeCategory);
     buttons.forEach((button) => {
-      const category = String(button.dataset.businessMenuCategory || "").trim().toLowerCase();
+      const category = normalizeBusinessMenuCategory(button.dataset.businessMenuCategory || "");
       const isActive = !!activeCategory && category === activeCategory;
       button.className = `${businessMenuCategoryBaseClass} ${isActive ? businessMenuCategoryActiveClass : businessMenuCategoryInactiveClass}${button.disabled ? " opacity-50 cursor-default" : " active:scale-[0.97]"}`;
     });
@@ -217,16 +306,24 @@ export function bindAppShellEventsCore({
 
   doc.querySelectorAll("[data-profile-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const profile = getActiveProfile();
       const tab = String(btn.dataset.profileTab || "").trim().toLowerCase();
       if (!tab) return;
+      const currentTab = getRenderedProfileContentTab(profile);
+      if (tab === currentTab) {
+        if (tab === "menu") syncBusinessMenuCategoryUi();
+        return;
+      }
       state.profileContentTab = tab;
-      if (isBusinessProfileView()) {
+      if (isBusinessProfile(profile) && state.activeTab === "profile") {
         state.profileTopTab = tab === "menu" ? "menu" : "profile";
         if (tab === "menu") {
           ensureMenuDataForProfile();
           ensureFocusDataForProfile();
+        } else {
+          setStoredBusinessMenuCategory("");
         }
-        scrollWindowToTop(true);
+        scrollWindowToTopForRender();
       }
       render();
       if (tab === "menu") {
@@ -238,12 +335,23 @@ export function bindAppShellEventsCore({
   doc.querySelectorAll("[data-business-profile-home]").forEach((btn) => {
     btn.addEventListener("click", () => {
       if (!isBusinessProfileView()) return;
+      const profile = getActiveProfile();
+      const alreadyHome = state.activeTab === "profile"
+        && getRenderedProfilePrimaryTopTab(profile) === "profile"
+        && getRenderedProfileContentTab(profile) === "posts"
+        && !state.drawerOpen;
+      if (alreadyHome) {
+        setStoredBusinessMenuCategory("");
+        scrollWindowToTop(false);
+        return;
+      }
       state.activeTab = "profile";
       state.profileTopTab = "profile";
       state.profileContentTab = "posts";
       state.drawerOpen = false;
+      setStoredBusinessMenuCategory("");
+      scrollWindowToTopForRender();
       render();
-      scrollWindowToTop(true);
     });
   });
 
@@ -254,11 +362,28 @@ export function bindAppShellEventsCore({
       openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
       return;
     }
+    const profile = getActiveProfile();
+    const nextTabKey = nextTab.toLowerCase();
     if (forceProfile) state.activeTab = "profile";
-    const shouldRouteMenuThroughContentTab = nextTab === "menu" && isBusinessProfileView();
+    const shouldRouteMenuThroughContentTab = nextTabKey === "menu" && state.activeTab === "profile" && isBusinessProfile(profile);
+    const alreadyOnBusinessMenu = shouldRouteMenuThroughContentTab
+      && getRenderedProfilePrimaryTopTab(profile) === "profile"
+      && getRenderedProfileContentTab(profile) === "menu"
+      && !state.drawerOpen;
+    const alreadyOnRawTopTab = !shouldRouteMenuThroughContentTab
+      && nextTabKey === String(state.profileTopTab || "").trim().toLowerCase()
+      && !state.drawerOpen
+      && (!forceProfile || state.activeTab === "profile");
+    if (alreadyOnBusinessMenu || alreadyOnRawTopTab) {
+      if (smoothTop) scrollWindowToTopForRender();
+      if (shouldRouteMenuThroughContentTab) syncBusinessMenuCategoryUi();
+      return;
+    }
     state.profileTopTab = nextTab;
     if (shouldRouteMenuThroughContentTab) {
       state.profileContentTab = "menu";
+    } else if (nextTabKey !== "menu") {
+      setStoredBusinessMenuCategory("");
     }
     state.drawerOpen = false;
     if (nextTab === "menu" || nextTab === "favorites" || nextTab === "cart") {
@@ -268,11 +393,7 @@ export function bindAppShellEventsCore({
       ensureFocusDataForProfile();
     }
     if (smoothTop && doc?.defaultView?.scrollTo) {
-      try {
-        doc.defaultView.scrollTo({ top: 0, behavior: "smooth" });
-      } catch {
-        doc.defaultView.scrollTo(0, 0);
-      }
+      scrollWindowToTopForRender();
     }
     render();
     if (shouldRouteMenuThroughContentTab) {
@@ -333,8 +454,9 @@ export function bindAppShellEventsCore({
 
   doc.querySelectorAll("[data-business-menu-category]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const category = String(btn.dataset.businessMenuCategory || "").trim().toLowerCase();
+      const category = normalizeBusinessMenuCategory(btn.dataset.businessMenuCategory || "");
       if (!category) return;
+      setStoredBusinessMenuCategory(category);
       syncBusinessMenuCategoryUi(category);
       scrollBusinessMenuToCategory(category);
     });
@@ -344,6 +466,7 @@ export function bindAppShellEventsCore({
     btn.addEventListener("click", () => {
       const mode = btn.dataset.profileView;
       if (!mode) return;
+      if (state.profileViewMode === mode) return;
       state.profileViewMode = mode;
       render();
     });

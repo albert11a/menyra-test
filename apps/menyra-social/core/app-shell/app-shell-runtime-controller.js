@@ -305,6 +305,14 @@ export function createAppShellRuntimeController(deps = {}) {
     return resolveBusinessHeaderContentTab(profile) === "menu";
   }
 
+  function getBusinessMenuRenderRoot(root = doc) {
+    return root?.querySelector?.("[data-business-menu-render-root='true']") || null;
+  }
+
+  function getBusinessMenuRenderReuseKey(node = null) {
+    return String(node?.getAttribute?.("data-business-menu-reuse-key") || "").trim();
+  }
+
   function isMenuItemVisibleForHeader(item = {}) {
     const visibility = String(item?.menuVisibility || "").trim().toLowerCase();
     return item?.menuHidden !== true && visibility !== "hidden";
@@ -914,6 +922,10 @@ export function createAppShellRuntimeController(deps = {}) {
       const reuseFeed = preserveMainScroll && state.activeTab === "feed"
         ? doc?.getElementById("feedView")
         : null;
+      const reuseBusinessMenu = preserveMainScroll && isBusinessMenuHeaderContext(getActiveHeaderProfile())
+        ? getBusinessMenuRenderRoot(doc)
+        : null;
+      const reuseBusinessMenuKey = getBusinessMenuRenderReuseKey(reuseBusinessMenu);
       const prevScrollTop = preserveMainScroll ? doc?.querySelector("main")?.scrollTop ?? 0 : 0;
       const prevWindowScrollY = preserveWindowScroll ? Math.max(0, Number(win.scrollY || 0)) : 0;
       if (preserveWindowScroll) armSmartHeaderScrollGuard();
@@ -937,6 +949,14 @@ export function createAppShellRuntimeController(deps = {}) {
         const nextMain = doc?.querySelector("main");
         if (nextMain) nextMain.scrollTop = prevScrollTop;
         updateFeedDomFn();
+      } else if (reuseBusinessMenu && reuseBusinessMenuKey) {
+        const nextBusinessMenu = getBusinessMenuRenderRoot(doc);
+        const nextBusinessMenuKey = getBusinessMenuRenderReuseKey(nextBusinessMenu);
+        if (nextBusinessMenu && nextBusinessMenuKey === reuseBusinessMenuKey && reuseBusinessMenu !== nextBusinessMenu) {
+          nextBusinessMenu.replaceWith(reuseBusinessMenu);
+        }
+        const nextMain = doc?.querySelector("main");
+        if (nextMain) nextMain.scrollTop = prevScrollTop;
       } else if (preserveMainScroll) {
         const nextMain = doc?.querySelector("main");
         if (nextMain) nextMain.scrollTop = prevScrollTop;

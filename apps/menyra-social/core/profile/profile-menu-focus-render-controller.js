@@ -495,6 +495,75 @@ function renderMenuItemsWithCategoryAnchors(items = [], renderItem, seenCategori
   }).join("");
 }
 
+function updateRenderHash(hash, value = "") {
+  let next = Number(hash) >>> 0;
+  const text = String(value || "");
+  for (let i = 0; i < text.length; i += 1) {
+    next ^= text.charCodeAt(i);
+    next = Math.imul(next, 16777619) >>> 0;
+  }
+  return next >>> 0;
+}
+
+function buildRenderListSignature(items = [], serializeEntry = (item, idx) => `${item?.id || idx}`) {
+  const list = Array.isArray(items) ? items : [];
+  let hash = 2166136261;
+  list.forEach((item, idx) => {
+    hash = updateRenderHash(hash, serializeEntry(item, idx));
+    hash = updateRenderHash(hash, "|");
+  });
+  hash = updateRenderHash(hash, `#${list.length}`);
+  return (hash >>> 0).toString(36);
+}
+
+function buildBusinessMenuRenderReuseKey(profile, {
+  items = [],
+  isLoading = false,
+  error = "",
+  useTestfirstCardUi = false
+} = {}) {
+  const restaurantId = String(profile?.restaurantId || "").trim();
+  const sameFocusRestaurant = String(state.focus?.restaurantId || "").trim() === restaurantId;
+  const focusItems = sameFocusRestaurant && Array.isArray(state.focus?.items) ? state.focus.items : [];
+  const menuSignature = buildRenderListSignature(items, (item, idx) => [
+    item?.id || item?.itemId || idx,
+    item?.orderIndex ?? idx,
+    item?.imageUrl || item?.image || item?.avatar || "",
+    item?.category || "",
+    item?.menuVisibility || "",
+    item?.menuHidden === true ? 1 : 0
+  ].join(":"));
+  const focusSignature = buildRenderListSignature(focusItems, (item, idx) => [
+    item?.id || idx,
+    item?.title || "",
+    item?.imageUrl || "",
+    item?.active === false ? 0 : 1
+  ].join(":"));
+  const restaurantCartId = String(state.shopCart?.restaurantId || "").trim();
+  const cartQuantity = restaurantCartId === restaurantId
+    ? (Array.isArray(state.shopCart?.items)
+      ? state.shopCart.items.reduce((sum, item) => sum + Math.max(0, Number(item?.quantity || 0) || 0), 0)
+      : 0)
+    : 0;
+  const favoriteCount = Array.isArray(state.favoriteMenuItems?.items)
+    ? state.favoriteMenuItems.items.filter((item) => String(item?.restaurantId || "").trim() === restaurantId).length
+    : 0;
+  return [
+    restaurantId,
+    useTestfirstCardUi ? "testfirst" : "classic",
+    isLoading ? "loading" : "ready",
+    error ? "error" : "ok",
+    String(state.menu?.restaurantId || "").trim(),
+    String(state.menu?.source || "").trim(),
+    state.focus?.enabled === false ? "focus-off" : "focus-on",
+    sameFocusRestaurant && state.focus?.loading ? "focus-loading" : "focus-ready",
+    `menu:${menuSignature}`,
+    `focus:${focusSignature}`,
+    `cart:${cartQuantity}`,
+    `fav:${favoriteCount}`
+  ].join("|");
+}
+
 function resolveSpecialCardSize(item = {}) {
   return String(item?.specialSize || item?.specialCardSize || "").trim().toLowerCase() === "food"
     ? "food"
@@ -1661,13 +1730,20 @@ function renderProfileMenuView(profile) {
   const useTestfirstCardUi = isTestfirstMenuProfile(profile);
   const hasItems = items.length > 0;
   const anchoredCategories = new Set();
+  const renderReuseKey = buildBusinessMenuRenderReuseKey(profile, {
+    items,
+    isLoading,
+    error,
+    useTestfirstCardUi
+  });
+  const rootAttrs = ` data-business-menu-render-root="true" data-business-menu-restaurant="${escapeHtml(restaurantId)}" data-business-menu-reuse-key="${escapeHtml(renderReuseKey)}"`;
   if (hasItems && restaurantId) {
     primeMenuItemCounts(items, restaurantId);
     maybeHydrateMenuCardViewerLikes(items, restaurantId);
   }
   if (useTestfirstCardUi) {
     return `
-      <div class="app-main-content-safe">
+      <div${rootAttrs} class="app-main-content-safe">
         ${isLoading ? `
           <div class="px-5 pt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtml(catalogLabel)} wird geladen...</div>
         ` : `
@@ -1681,7 +1757,7 @@ function renderProfileMenuView(profile) {
     `;
   }
   return `
-    <div class="px-5 app-main-content-safe space-y-5">
+    <div${rootAttrs} class="px-5 app-main-content-safe space-y-5">
       ${renderFocusCarousel(profile)}
       ${isLoading ? `
         <div class="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm">
