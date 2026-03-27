@@ -402,6 +402,12 @@ export function createOverlayOrchestrationController({
     if (!item) return;
     stopMenuItemMetaListenersFn();
     const previewImageSrc = String(options?.previewImageSrc || "").trim();
+    const detailImages = getMenuItemImagesFn(item).filter(Boolean);
+    const maxInitialIndex = detailImages.length ? detailImages.length - 1 : 0;
+    const rawInitialIndex = Number(options?.initialIndex);
+    const initialIndex = Number.isFinite(rawInitialIndex)
+      ? Math.max(0, Math.min(maxInitialIndex, Math.floor(rawInitialIndex)))
+      : 0;
     const restaurantId = String(
       restaurantIdOverride
       || item?.restaurantId
@@ -413,7 +419,7 @@ export function createOverlayOrchestrationController({
     state.menuDetail = {
       open: true,
       item,
-      index: 0,
+      index: initialIndex,
       restaurantId,
       selectedSize: Array.isArray(item?.sizes) && item.sizes.length ? String(item.sizes[0]) : "",
       selectedColor: Array.isArray(item?.colors) && item.colors.length ? String(item.colors[0]) : "",
@@ -468,18 +474,145 @@ export function createOverlayOrchestrationController({
     state.menuDetail[key] = String(value || "").trim();
   }
 
-  function openMenuDetailFromTrigger(trigger) {
+  function isPlaceholderImageSrc(src = "") {
+    const normalized = String(src || "").trim();
+    if (!normalized) return true;
+    if (normalized.toLowerCase().startsWith("data:image/svg+xml")) return true;
+    return !!placeholderImage && normalized === placeholderImage;
+  }
+
+  function resolvePreviewImageSrc(imageEl) {
+    if (!imageEl) return "";
+    const candidates = [
+      imageEl.currentSrc,
+      imageEl.getAttribute?.("src"),
+      imageEl.dataset?.fallbackSrc
+    ];
+    for (const candidate of candidates) {
+      const normalized = String(candidate || "").trim();
+      if (!normalized || isPlaceholderImageSrc(normalized)) continue;
+      return normalized;
+    }
+    return "";
+  }
+
+  function resolveMenuCardPreviewFromTrigger(trigger) {
+    if (!trigger) {
+      return {
+        imageEl: null,
+        index: 0
+      };
+    }
+    const track = trigger.querySelector?.("[data-menu-card-gallery-track]") || null;
+    if (track) {
+      const slides = Array.from(track.querySelectorAll("[data-menu-card-gallery-slide]"));
+      const slideCount = slides.length;
+      const measuredWidth = Number(track.clientWidth || track.getBoundingClientRect?.().width || 0);
+      const rawIndex = measuredWidth > 0
+        ? Math.round(Number(track.scrollLeft || 0) / measuredWidth)
+        : 0;
+      const index = slideCount
+        ? Math.max(0, Math.min(slideCount - 1, rawIndex))
+        : 0;
+      const currentSlide = slides[index] || slides[0] || null;
+      const currentImageEl = currentSlide?.querySelector?.("img") || null;
+      if (currentImageEl) {
+        return {
+          imageEl: currentImageEl,
+          index
+        };
+      }
+    }
+    const imageCandidates = Array.from(trigger.querySelectorAll?.("img") || []);
+    const loadedCandidate = imageCandidates.find((imageEl) => {
+      const src = resolvePreviewImageSrc(imageEl);
+      return !!src && imageEl.complete && Number(imageEl.naturalWidth || 0) > 0;
+    });
+    return {
+      imageEl: loadedCandidate || imageCandidates[0] || null,
+      index: 0
+    };
+  }
+
+  async function ensurePreviewImageReady(imageEl, src) {
+    const safeSrc = String(src || "").trim();
+    if (isPlaceholderImageSrc(safeSrc)) return;
+    const win = getWindowObjFn();
+    const decodeImageElement = async (target) => {
+      if (!target || typeof target.decode !== "function") return;
+      try {
+        await target.decode();
+      } catch {}
+    };
+    const waitForExistingImage = async (target) => {
+      if (!target || typeof target.addEventListener !== "function") return false;
+      if (target.complete && Number(target.naturalWidth || 0) > 0) {
+        await decodeImageElement(target);
+        return true;
+      }
+      await new Promise((resolve) => {
+        let settled = false;
+        const finish = () => {
+          if (settled) return;
+          settled = true;
+          cleanup();
+          resolve();
+        };
+        const cleanup = () => {
+          target.removeEventListener("load", finish);
+          target.removeEventListener("error", finish);
+          if (timeoutId && typeof win?.clearTimeout === "function") {
+            win.clearTimeout(timeoutId);
+          }
+        };
+        const timeoutId = typeof win?.setTimeout === "function" ? win.setTimeout(finish, 240) : null;
+        target.addEventListener("load", finish, { once: true });
+        target.addEventListener("error", finish, { once: true });
+      });
+      if (target.complete && Number(target.naturalWidth || 0) > 0) {
+        await decodeImageElement(target);
+        return true;
+      }
+      return false;
+    };
+    if (await waitForExistingImage(imageEl)) return;
+    const ImageCtor = win?.Image || (typeof Image === "function" ? Image : null);
+    if (!ImageCtor) return;
+    await new Promise((resolve) => {
+      const preload = new ImageCtor();
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+        resolve();
+      };
+      const cleanup = () => {
+        preload.onload = null;
+        preload.onerror = null;
+        if (timeoutId && typeof win?.clearTimeout === "function") {
+          win.clearTimeout(timeoutId);
+        }
+      };
+      const timeoutId = typeof win?.setTimeout === "function" ? win.setTimeout(finish, 240) : null;
+      try {
+        preload.decoding = "sync";
+      } catch {}
+      preload.onload = finish;
+      preload.onerror = finish;
+      preload.src = safeSrc;
+      if (preload.complete && Number(preload.naturalWidth || 0) > 0) finish();
+    });
+  }
+
+  async function openMenuDetailFromTrigger(trigger) {
     const itemId = trigger?.dataset?.menuOpen || "";
     if (!itemId) return;
-    const previewImage = trigger?.querySelector?.("img");
-    const previewImageSrc = String(
-      previewImage?.currentSrc
-      || previewImage?.getAttribute?.("src")
-      || ""
-    ).trim();
-    const safePreviewImageSrc = previewImageSrc.toLowerCase().startsWith("data:image/svg+xml")
-      ? ""
-      : previewImageSrc;
+    const { imageEl: previewImage, index: previewIndex } = resolveMenuCardPreviewFromTrigger(trigger);
+    const safePreviewImageSrc = resolvePreviewImageSrc(previewImage);
+    if (safePreviewImageSrc) {
+      await ensurePreviewImageReady(previewImage, safePreviewImageSrc);
+    }
     const source = trigger?.dataset?.menuOpenSource || "menu";
     const sourceItems = source === "favorites"
       ? (Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [])
@@ -503,7 +636,8 @@ export function createOverlayOrchestrationController({
         || state.userProfile.restaurantId
         || "",
       {
-        previewImageSrc: safePreviewImageSrc
+        previewImageSrc: safePreviewImageSrc,
+        initialIndex: previewIndex
       }
     );
   }
@@ -518,7 +652,7 @@ export function createOverlayOrchestrationController({
     if (key && key === getLastMenuOpenGestureKeyFn() && now - getLastMenuOpenGestureAtFn() < 700) return;
     setLastMenuOpenGestureKeyFn(key);
     setLastMenuOpenGestureAtFn(now);
-    openMenuDetailFromTrigger(trigger);
+    void openMenuDetailFromTrigger(trigger);
   }
 
   function ensureOverlayRoot() {

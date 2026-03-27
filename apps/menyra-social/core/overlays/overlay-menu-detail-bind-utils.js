@@ -111,12 +111,22 @@ export function bindMenuDetailOverlayEventsCore({
       state.menuDetail.previewImageSrc = "";
     }
   };
-  if (menuDetailHeroImage) {
-    if (menuDetailHeroImage.complete && Number(menuDetailHeroImage.naturalWidth || 0) > 0) {
+  const queueMenuDetailHeroReveal = () => {
+    const finalizeReveal = () => {
       win?.requestAnimationFrame?.(() => revealMenuDetailHeroImage());
       if (!win?.requestAnimationFrame) win?.setTimeout?.(() => revealMenuDetailHeroImage(), 0);
+    };
+    if (!menuDetailHeroImage || typeof menuDetailHeroImage.decode !== "function") {
+      finalizeReveal();
+      return;
+    }
+    menuDetailHeroImage.decode().catch(() => {}).finally(finalizeReveal);
+  };
+  if (menuDetailHeroImage) {
+    if (menuDetailHeroImage.complete && Number(menuDetailHeroImage.naturalWidth || 0) > 0) {
+      queueMenuDetailHeroReveal();
     } else {
-      menuDetailHeroImage.addEventListener("load", revealMenuDetailHeroImage, { once: true });
+      menuDetailHeroImage.addEventListener("load", queueMenuDetailHeroReveal, { once: true });
       menuDetailHeroImage.addEventListener("error", () => {
         const fallbackSrc = String(menuDetailHeroImage.dataset.fallbackSrc || "").trim();
         const currentSrc = String(
@@ -125,7 +135,7 @@ export function bindMenuDetailOverlayEventsCore({
           || ""
         ).trim();
         if (!fallbackSrc || currentSrc === fallbackSrc) {
-          revealMenuDetailHeroImage();
+          queueMenuDetailHeroReveal();
         }
       }, { once: true });
     }

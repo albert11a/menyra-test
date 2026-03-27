@@ -767,8 +767,8 @@ export function renderMenuDetailModalCore({
     ? `
       <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
         <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y; aspect-ratio:4 / 5;">
-          ${useHeroPreview ? `<img id="menuDetailHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-full object-cover pointer-events-none select-none transition-opacity duration-150" style="object-position:${getObjectPosition(item)};" />` : ""}
-          <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${useHeroPreview ? "opacity-0" : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" />
+          ${useHeroPreview ? `<img id="menuDetailHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-full object-cover pointer-events-none select-none transition-opacity duration-150" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
+          <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${useHeroPreview ? "opacity-0" : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />
           ${images.length > 1 ? `
             <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
               ${iconFn("chevron-left", "w-4 h-4")}
@@ -838,8 +838,8 @@ export function renderMenuDetailModalCore({
     : `
       <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 bg-white/98">
         <div class="relative h-56 rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
-          ${useHeroPreview ? `<img id="menuDetailHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-full object-cover pointer-events-none select-none transition-opacity duration-150" style="object-position:${getObjectPosition(item)};" />` : ""}
-          <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${useHeroPreview ? "opacity-0" : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" />
+          ${useHeroPreview ? `<img id="menuDetailHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-full object-cover pointer-events-none select-none transition-opacity duration-150" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
+          <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${useHeroPreview ? "opacity-0" : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />
           ${images.length > 1 ? `
             <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
               ${iconFn("chevron-left", "w-4 h-4")}
