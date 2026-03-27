@@ -11,6 +11,64 @@ function ensureChildNode(parent, documentObj, id, className = "") {
 
 const OVERLAY_CHROME_COLOR = "#ffffff";
 const APP_CHROME_COLOR = "#f8fafc";
+const OVERLAY_ROOT_Z_INDEX = "200";
+let modalScrollLockState = {
+  active: false,
+  scrollX: 0,
+  scrollY: 0,
+  bodyStyles: null
+};
+
+function lockModalScroll(doc, win) {
+  if (!doc?.body || !win || modalScrollLockState.active) return;
+  const bodyStyle = doc.body.style;
+  modalScrollLockState = {
+    active: true,
+    scrollX: Math.max(0, Number(win.scrollX || win.pageXOffset || 0)),
+    scrollY: Math.max(0, Number(win.scrollY || win.pageYOffset || doc.documentElement.scrollTop || 0)),
+    bodyStyles: {
+      position: bodyStyle.position,
+      top: bodyStyle.top,
+      left: bodyStyle.left,
+      right: bodyStyle.right,
+      width: bodyStyle.width,
+      overflow: bodyStyle.overflow
+    }
+  };
+  bodyStyle.position = "fixed";
+  bodyStyle.top = `${-modalScrollLockState.scrollY}px`;
+  bodyStyle.left = `${-modalScrollLockState.scrollX}px`;
+  bodyStyle.right = "0";
+  bodyStyle.width = "100%";
+  bodyStyle.overflow = "hidden";
+}
+
+function unlockModalScroll(doc, win) {
+  if (!doc?.body || !modalScrollLockState.active) return;
+  const {
+    scrollX,
+    scrollY,
+    bodyStyles
+  } = modalScrollLockState;
+  const bodyStyle = doc.body.style;
+  bodyStyle.position = bodyStyles?.position || "";
+  bodyStyle.top = bodyStyles?.top || "";
+  bodyStyle.left = bodyStyles?.left || "";
+  bodyStyle.right = bodyStyles?.right || "";
+  bodyStyle.width = bodyStyles?.width || "";
+  bodyStyle.overflow = bodyStyles?.overflow || "";
+  modalScrollLockState = {
+    active: false,
+    scrollX: 0,
+    scrollY: 0,
+    bodyStyles: null
+  };
+  if (!win?.scrollTo) return;
+  const currentX = Math.max(0, Number(win.scrollX || win.pageXOffset || 0));
+  const currentY = Math.max(0, Number(win.scrollY || win.pageYOffset || doc.documentElement.scrollTop || 0));
+  if (Math.abs(currentX - scrollX) < 1 && Math.abs(currentY - scrollY) < 1) return;
+  win.scrollTo(scrollX, scrollY);
+}
 
 function syncThemeColorMeta(doc, nextColor) {
   if (!doc?.head) return null;
@@ -41,6 +99,9 @@ export function ensureOverlayRootCore({ documentObj } = {}) {
     root.id = "overlayRoot";
     doc.body.appendChild(root);
   }
+  root.style.position = "relative";
+  root.style.zIndex = OVERLAY_ROOT_Z_INDEX;
+  root.style.isolation = "isolate";
   ensureChildNode(root, doc, "modalUnderlay", "fixed inset-0 bg-white z-[60] hidden pointer-events-none");
   ensureChildNode(root, doc, "profileOverlayRoot");
   ensureChildNode(root, doc, "chatOverlayRoot");
@@ -77,10 +138,12 @@ export function ensureModalEscapeHandlerCore({
 
 export function syncModalOpenUiStateCore({
   documentObj,
+  windowObj,
   isAnyModalOpenFn,
   ensureModalEscapeHandlerFn
 } = {}) {
   const doc = documentObj || null;
+  const win = windowObj || null;
   if (!doc) return;
   const isAnyModalOpen = typeof isAnyModalOpenFn === "function"
     ? isAnyModalOpenFn
@@ -91,10 +154,13 @@ export function syncModalOpenUiStateCore({
 
   const anyModalOpen = !!isAnyModalOpen();
   const underlay = doc.getElementById("modalUnderlay");
-  if (underlay) underlay.classList.toggle("hidden", !anyModalOpen);
+  if (underlay) underlay.classList.add("hidden");
   doc.documentElement.classList.toggle("modal-open", anyModalOpen);
   doc.body.classList.toggle("modal-open", anyModalOpen);
-  if (!anyModalOpen) {
+  if (anyModalOpen) {
+    lockModalScroll(doc, win);
+  } else {
+    unlockModalScroll(doc, win);
     doc.documentElement.classList.remove("menu-detail-comment-focus");
     doc.body.classList.remove("menu-detail-comment-focus");
     doc.documentElement.style.removeProperty("--menu-detail-footer-gap");
