@@ -541,6 +541,7 @@ export function createOverlayOrchestrationController({
   function syncModalOpenUiState() {
     return syncModalOpenUiStateCoreFn({
       documentObj: getDocumentObjFn(),
+      windowObj: getWindowObjFn(),
       isAnyModalOpenFn: isAnyModalOpen,
       ensureModalEscapeHandlerFn: ensureModalEscapeHandler
     });
