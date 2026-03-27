@@ -239,8 +239,17 @@ export function createOverlayOrchestrationController({
     );
   }
 
-  async function openPostModal(post) {
+  async function openPostModal(post, options = {}) {
     if (!post) return;
+    const previewImageEl = options?.previewImageEl || null;
+    const previewImageSrc = String(
+      options?.previewImageSrc
+      || resolvePreviewImageSrc(previewImageEl)
+      || ""
+    ).trim();
+    if (previewImageSrc) {
+      await ensurePreviewImageReady(previewImageEl, previewImageSrc);
+    }
     ensurePostMetaFn(post.id);
     state.profileModal = { open: false, profile: null };
     state.postModal = {
@@ -248,6 +257,7 @@ export function createOverlayOrchestrationController({
       post,
       commentText: "",
       replyTo: null,
+      previewImageSrc,
       loading: true,
       animate: true,
       sending: false
@@ -265,7 +275,7 @@ export function createOverlayOrchestrationController({
   }
 
   function closePostModal() {
-    state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
+    state.postModal = { open: false, post: null, commentText: "", replyTo: null, previewImageSrc: "", loading: false, animate: false, sending: false };
     state.likesModal = { open: false, postId: "", animate: false };
     setPendingCommentHighlightFn("");
     stopPostMetaListenersFn();

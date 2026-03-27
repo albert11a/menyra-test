@@ -577,7 +577,17 @@ export function createFeedViewOrchestrationController({
         const postId = commentBtn.dataset.feedPostComment || "";
         const post = findFeedPostById(postId);
         if (post) {
-          void Promise.resolve(openPostModalFn(post)).then(() => {
+          const feedCard = commentBtn.closest("[data-feed-id]");
+          const previewImage = feedCard?.querySelector?.(`[data-img-key="feed-hero:${postId}"]`) || null;
+          const previewImageSrc = String(
+            previewImage?.currentSrc
+            || previewImage?.getAttribute?.("src")
+            || ""
+          ).trim();
+          void Promise.resolve(openPostModalFn(post, {
+            previewImageEl: previewImage,
+            previewImageSrc
+          })).then(() => {
             focusPostCommentComposer();
           });
         }

@@ -258,6 +258,8 @@ export function renderPostModalCore({
   const imageUrl = getImage(rawImageUrl, "large", {
     stableKey: post?.id ? `post-modal:${String(post.id)}` : ""
   });
+  const previewImgSrc = String(state.postModal?.previewImageSrc || "").trim();
+  const useHeroPreview = !!previewImgSrc && !previewImgSrc.toLowerCase().startsWith("data:image/svg+xml");
   const comments = (meta.comments || []).map(ensureComment);
   const userBadge = getUserBadge();
   const isLiked = meta.likes?.some((item) => item.uid === userBadge.uid || item.handle === userBadge.handle);
@@ -279,8 +281,9 @@ export function renderPostModalCore({
                 <button id="postModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${iconFn("x", "w-4 h-4")}</button>
               </div>
 
-              <div class="rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
-                <img src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover" />
+              <div class="relative rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
+                ${useHeroPreview ? `<img id="postModalHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-[22rem] object-cover pointer-events-none select-none transition-opacity duration-150" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
+                <img id="postModalHeroImage" src="${esc(imageUrl)}" data-img-key="post-modal:${esc(post.id)}" class="w-full h-[22rem] object-cover ${useHeroPreview ? "opacity-0" : ""} transition-opacity duration-150" loading="eager" fetchpriority="high" decoding="sync" />
               </div>
 
               ${caption ? `

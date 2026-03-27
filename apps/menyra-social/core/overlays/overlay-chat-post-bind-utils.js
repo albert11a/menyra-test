@@ -156,6 +156,45 @@ export function bindPostOverlayEventsCore({
   bindModalDismiss(postModalOverlay, closePostModal, { selfOnly: true });
   bindModalDismiss(postModalClose, closePostModal);
 
+  const postModalHeroImage = doc.getElementById("postModalHeroImage");
+  const postModalHeroPreview = doc.getElementById("postModalHeroPreview");
+  const revealPostModalHeroImage = () => {
+    if (postModalHeroImage) {
+      postModalHeroImage.classList.remove("opacity-0");
+      postModalHeroImage.dataset.postModalHeroReady = "1";
+    }
+    if (postModalHeroPreview) {
+      postModalHeroPreview.classList.add("opacity-0");
+      win?.setTimeout?.(() => {
+        if (postModalHeroPreview.isConnected) {
+          postModalHeroPreview.remove();
+        }
+      }, 160);
+    }
+    if (state?.postModal && typeof state.postModal === "object") {
+      state.postModal.previewImageSrc = "";
+    }
+  };
+  const queuePostModalHeroReveal = () => {
+    const finalizeReveal = () => {
+      win?.requestAnimationFrame?.(() => revealPostModalHeroImage());
+      if (!win?.requestAnimationFrame) win?.setTimeout?.(() => revealPostModalHeroImage(), 0);
+    };
+    if (!postModalHeroImage || typeof postModalHeroImage.decode !== "function") {
+      finalizeReveal();
+      return;
+    }
+    postModalHeroImage.decode().catch(() => {}).finally(finalizeReveal);
+  };
+  if (postModalHeroImage) {
+    if (postModalHeroImage.complete && Number(postModalHeroImage.naturalWidth || 0) > 0) {
+      queuePostModalHeroReveal();
+    } else {
+      postModalHeroImage.addEventListener("load", queuePostModalHeroReveal, { once: true });
+      postModalHeroImage.addEventListener("error", queuePostModalHeroReveal, { once: true });
+    }
+  }
+
   const postLikeBtn = doc.getElementById("postLikeBtn");
   if (postLikeBtn) {
     postLikeBtn.addEventListener("click", () => {
