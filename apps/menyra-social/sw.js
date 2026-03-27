@@ -1,8 +1,8 @@
-const CACHE_NAME = "mnyra-social-cache-v6-auto-update";
+const CACHE_NAME = "mnyra-social-cache-v7-business-menu-main-sync-01";
 const CACHE_PREFIX = "mnyra-social-cache-";
 const APP_SCOPE = "/apps/menyra-social/";
 const APP_SHELL_URL = "/apps/menyra-social/index.html";
-const BETA_UPDATE_CHANNEL = "beta-auto-update-v1";
+const BETA_UPDATE_CHANNEL = "beta-auto-update-v2";
 const EXTERNAL_STATIC_HOSTS = new Set([
   "www.gstatic.com",
   "fonts.googleapis.com",

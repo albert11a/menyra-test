@@ -8,7 +8,7 @@ function log(...args) {
   // console.log("[PWA]", ...args);
 }
 
-const BETA_UPDATE_CHANNEL = "beta-auto-update-v1";
+const BETA_UPDATE_CHANNEL = "beta-auto-update-v2";
 const SOCIAL_SW_URL_BASE = "/apps/menyra-social/sw.js";
 const SOCIAL_SW_SCOPE = "/apps/menyra-social/";
 const SW_UPDATE_CHECK_INTERVAL_MS = 3 * 60 * 1000;
