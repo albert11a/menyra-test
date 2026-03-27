@@ -398,9 +398,10 @@ export function createOverlayOrchestrationController({
     renderOverlays({ updateMenu: true });
   }
 
-  async function openMenuDetail(item, restaurantIdOverride = "") {
+  async function openMenuDetail(item, restaurantIdOverride = "", options = {}) {
     if (!item) return;
     stopMenuItemMetaListenersFn();
+    const previewImageSrc = String(options?.previewImageSrc || "").trim();
     const restaurantId = String(
       restaurantIdOverride
       || item?.restaurantId
@@ -419,6 +420,7 @@ export function createOverlayOrchestrationController({
       infoTab: "info",
       footerView: "cart",
       commentText: "",
+      previewImageSrc,
       loading: true,
       sending: false
     };
@@ -469,6 +471,15 @@ export function createOverlayOrchestrationController({
   function openMenuDetailFromTrigger(trigger) {
     const itemId = trigger?.dataset?.menuOpen || "";
     if (!itemId) return;
+    const previewImage = trigger?.querySelector?.("img");
+    const previewImageSrc = String(
+      previewImage?.currentSrc
+      || previewImage?.getAttribute?.("src")
+      || ""
+    ).trim();
+    const safePreviewImageSrc = previewImageSrc.toLowerCase().startsWith("data:image/svg+xml")
+      ? ""
+      : previewImageSrc;
     const source = trigger?.dataset?.menuOpenSource || "menu";
     const sourceItems = source === "favorites"
       ? (Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [])
@@ -490,7 +501,10 @@ export function createOverlayOrchestrationController({
         || state.menu.restaurantId
         || state.profileView?.profile?.restaurantId
         || state.userProfile.restaurantId
-        || ""
+        || "",
+      {
+        previewImageSrc: safePreviewImageSrc
+      }
     );
   }
 

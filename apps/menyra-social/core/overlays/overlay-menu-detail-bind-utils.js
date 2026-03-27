@@ -92,6 +92,45 @@ export function bindMenuDetailOverlayEventsCore({
   bindModalDismiss(menuDetailOverlay, closeMenuDetail, { selfOnly: true });
   bindModalDismiss(menuDetailClose, closeMenuDetail);
 
+  const menuDetailHeroImage = doc.getElementById("menuDetailHeroImage");
+  const menuDetailHeroPreview = doc.getElementById("menuDetailHeroPreview");
+  const revealMenuDetailHeroImage = () => {
+    if (menuDetailHeroImage) {
+      menuDetailHeroImage.classList.remove("opacity-0");
+      menuDetailHeroImage.dataset.menuDetailHeroReady = "1";
+    }
+    if (menuDetailHeroPreview) {
+      menuDetailHeroPreview.classList.add("opacity-0");
+      win?.setTimeout?.(() => {
+        if (menuDetailHeroPreview.isConnected) {
+          menuDetailHeroPreview.remove();
+        }
+      }, 160);
+    }
+    if (state?.menuDetail && typeof state.menuDetail === "object") {
+      state.menuDetail.previewImageSrc = "";
+    }
+  };
+  if (menuDetailHeroImage) {
+    if (menuDetailHeroImage.complete && Number(menuDetailHeroImage.naturalWidth || 0) > 0) {
+      win?.requestAnimationFrame?.(() => revealMenuDetailHeroImage());
+      if (!win?.requestAnimationFrame) win?.setTimeout?.(() => revealMenuDetailHeroImage(), 0);
+    } else {
+      menuDetailHeroImage.addEventListener("load", revealMenuDetailHeroImage, { once: true });
+      menuDetailHeroImage.addEventListener("error", () => {
+        const fallbackSrc = String(menuDetailHeroImage.dataset.fallbackSrc || "").trim();
+        const currentSrc = String(
+          menuDetailHeroImage.currentSrc
+          || menuDetailHeroImage.getAttribute("src")
+          || ""
+        ).trim();
+        if (!fallbackSrc || currentSrc === fallbackSrc) {
+          revealMenuDetailHeroImage();
+        }
+      }, { once: true });
+    }
+  }
+
   const handleAddToCart = () => {
     stopKeyboardGapTracking();
     const item = state.menuDetail.item;
