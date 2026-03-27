@@ -158,10 +158,14 @@ export function bindPostOverlayEventsCore({
 
   const postModalHeroImage = doc.getElementById("postModalHeroImage");
   const postModalHeroPreview = doc.getElementById("postModalHeroPreview");
+  const postModalSheet = postModalHeroImage?.closest?.(".modal-sheet") || null;
   const revealPostModalHeroImage = () => {
     if (postModalHeroImage) {
       postModalHeroImage.classList.remove("opacity-0");
       postModalHeroImage.dataset.postModalHeroReady = "1";
+    }
+    if (postModalSheet?.dataset?.modalHeroHandoff === "pending") {
+      delete postModalSheet.dataset.modalHeroHandoff;
     }
     if (postModalHeroPreview) {
       postModalHeroPreview.classList.add("opacity-0");

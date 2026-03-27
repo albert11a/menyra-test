@@ -642,6 +642,7 @@ export function renderMenuDetailModalCore({
   const fallbackImg = isDirectUrl(rawImg) && rawImg !== safeImg ? rawImg : firebaseFallback;
   const previewImgSrc = String(state.menuDetail?.previewImageSrc || "").trim();
   const useHeroPreview = !!previewImgSrc && !isPlaceholder(previewImgSrc);
+  const handoffSheetAttr = useHeroPreview ? ` data-modal-hero-handoff="pending"` : "";
   const priceLabel = formatPriceLabel(item.price);
   const catalogProfile = getCatalogProfile(item);
   const typeLabel = isShopCatalog(catalogProfile)
@@ -732,7 +733,7 @@ export function renderMenuDetailModalCore({
   ].join(" ");
   const headerHtml = isShop
     ? `
-      <div class="menu-detail-modal-header flex items-center justify-between gap-3 px-7 pt-7 pb-4 border-b border-slate-100 bg-white">
+      <div class="menu-detail-modal-header modal-handoff-chrome flex items-center justify-between gap-3 px-7 pt-7 pb-4 border-b border-slate-100 bg-white">
         <div class="flex items-center gap-2 min-w-0">
           <button type="button" id="menuDetailHeaderCartBtn" class="inline-flex items-center gap-2 px-4 h-11 rounded-2xl bg-slate-900 text-white text-[10px] font-black shadow-sm active:scale-95 ${canAddToCartNow && !soldOut ? "" : "opacity-50 pointer-events-none"}">
             ${iconFn("shopping-cart", "w-4 h-4")}
@@ -751,7 +752,7 @@ export function renderMenuDetailModalCore({
       </div>
     `
     : `
-      <div class="menu-detail-modal-header flex items-center justify-between gap-4 px-7 pt-7 pb-5 border-b border-slate-100 bg-white">
+      <div class="menu-detail-modal-header modal-handoff-chrome flex items-center justify-between gap-4 px-7 pt-7 pb-5 border-b border-slate-100 bg-white">
         <div class="min-w-0 flex items-center flex-1">
           <div class="min-w-0">
             <h3 id="${titleId}" class="text-[1.05rem] leading-tight font-black tracking-tight text-slate-900 truncate">${esc(item.name || "Produkt")}</h3>
@@ -765,19 +766,20 @@ export function renderMenuDetailModalCore({
     `;
   const bodyHtml = isShop
     ? `
-      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
-        <div class="relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y; aspect-ratio:4 / 5;">
+      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll modal-handoff-scroll px-7 py-6 space-y-5 bg-gradient-to-b from-slate-50 via-white to-slate-50">
+        <div class="modal-handoff-hero relative rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y; aspect-ratio:4 / 5;">
           ${useHeroPreview ? `<img id="menuDetailHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-full object-cover pointer-events-none select-none transition-opacity duration-150" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
           <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${useHeroPreview ? "opacity-0" : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />
           ${images.length > 1 ? `
-            <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            <button type="button" data-menu-gallery-nav="prev" class="modal-handoff-chrome absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
               ${iconFn("chevron-left", "w-4 h-4")}
             </button>
-            <button type="button" data-menu-gallery-nav="next" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            <button type="button" data-menu-gallery-nav="next" class="modal-handoff-chrome absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
               ${iconFn("chevron-right", "w-4 h-4")}
             </button>
           ` : ""}
         </div>
+        <div class="modal-handoff-chrome">
         ${images.length > 1 ? `
           <div class="flex items-center justify-center gap-2">
             ${images.map((_, idx) => `
@@ -833,22 +835,24 @@ export function renderMenuDetailModalCore({
         <div id="menuDetailComments" class="space-y-4" style="margin-top:3rem;">
           ${renderComments(comments)}
         </div>
+        </div>
       </div>
     `
     : `
-      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-7 py-6 bg-white/98">
-        <div class="relative h-56 rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
+      <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll modal-handoff-scroll px-7 py-6 bg-white/98">
+        <div class="modal-handoff-hero relative h-56 rounded-[2.8rem] overflow-hidden border border-slate-100 bg-slate-50 shadow-sm" data-menu-gallery style="touch-action: pan-y;">
           ${useHeroPreview ? `<img id="menuDetailHeroPreview" src="${esc(previewImgSrc)}" class="absolute inset-0 w-full h-full object-cover pointer-events-none select-none transition-opacity duration-150" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />` : ""}
           <img id="menuDetailHeroImage" src="${esc(safeImg)}" data-fallback-src="${esc(fallbackImg)}" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-150 ${useHeroPreview ? "opacity-0" : ""}" style="object-position:${getObjectPosition(item)};" loading="eager" fetchpriority="high" decoding="sync" />
           ${images.length > 1 ? `
-            <button type="button" data-menu-gallery-nav="prev" class="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            <button type="button" data-menu-gallery-nav="prev" class="modal-handoff-chrome absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
               ${iconFn("chevron-left", "w-4 h-4")}
             </button>
-            <button type="button" data-menu-gallery-nav="next" class="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
+            <button type="button" data-menu-gallery-nav="next" class="modal-handoff-chrome absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 shadow text-slate-600 flex items-center justify-center">
               ${iconFn("chevron-right", "w-4 h-4")}
             </button>
           ` : ""}
         </div>
+        <div class="modal-handoff-chrome">
         ${images.length > 1 ? `
           <div class="flex items-center justify-center gap-2">
             ${images.map((_, idx) => `
@@ -897,6 +901,7 @@ export function renderMenuDetailModalCore({
         <div id="menuDetailComments" class="space-y-4" style="margin-top:3rem;">
           ${renderComments(comments)}
         </div>
+        </div>
       </div>
     `;
   const footerPrimaryActionHtml = showWoltAction
@@ -938,7 +943,7 @@ export function renderMenuDetailModalCore({
       ? iconFn("bookmark", "w-5 h-5")
       : iconFn("shopping-bag", "w-5 h-5"));
   const footerHtml = `
-    <div class="px-7 pb-6 pt-4 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe relative z-10">
+    <div class="modal-handoff-chrome px-7 pb-6 pt-4 border-t border-slate-100 bg-white/98 backdrop-blur-sm modal-footer-safe relative z-10">
       <div id="footer-cart-view" class="flex gap-3 items-center w-full transition-all duration-300 ${isCommentFooter ? "hidden opacity-0" : ""}">
         <button type="button" id="menuDetailFooterCommentToggle" class="w-[52px] h-[52px] shrink-0 rounded-[1.65rem] bg-slate-100 text-slate-600 flex items-center justify-center hover:bg-slate-200 transition-all active:scale-95 relative" title="Kommentare verfassen">
           ${iconFn("message-square", "w-5 h-5")}
@@ -967,7 +972,7 @@ export function renderMenuDetailModalCore({
     <div class="fixed inset-0 z-[75] modal-overlay">
       <div id="menuDetailOverlay" data-menu-detail-close="true" class="absolute inset-0 bg-black/60"></div>
       <div class="modal-frame menu-detail-modal-frame">
-        <div class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border-x border-b border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet menu-detail-modal-sheet">
+        <div${handoffSheetAttr} class="bg-white rounded-t-[3.2rem] shadow-[0_-24px_80px_rgba(15,23,42,0.22)] border-x border-b border-slate-100 ${animClass} flex flex-col modal-sheet-88 overflow-hidden modal-sheet menu-detail-modal-sheet">
           ${headerHtml}
           ${bodyHtml}
           ${footerHtml}

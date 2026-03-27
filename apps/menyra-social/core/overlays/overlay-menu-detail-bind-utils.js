@@ -94,10 +94,14 @@ export function bindMenuDetailOverlayEventsCore({
 
   const menuDetailHeroImage = doc.getElementById("menuDetailHeroImage");
   const menuDetailHeroPreview = doc.getElementById("menuDetailHeroPreview");
+  const menuDetailSheet = menuDetailHeroImage?.closest?.(".modal-sheet") || null;
   const revealMenuDetailHeroImage = () => {
     if (menuDetailHeroImage) {
       menuDetailHeroImage.classList.remove("opacity-0");
       menuDetailHeroImage.dataset.menuDetailHeroReady = "1";
+    }
+    if (menuDetailSheet?.dataset?.modalHeroHandoff === "pending") {
+      delete menuDetailSheet.dataset.modalHeroHandoff;
     }
     if (menuDetailHeroPreview) {
       menuDetailHeroPreview.classList.add("opacity-0");

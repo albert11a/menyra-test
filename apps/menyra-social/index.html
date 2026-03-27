@@ -409,6 +409,27 @@
     .modal-sheet-88 {
       height: 100% !important;
     }
+    .modal-handoff-chrome {
+      transition: opacity 140ms ease;
+    }
+    .modal-sheet[data-modal-hero-handoff="pending"] {
+      background: transparent !important;
+      border-color: transparent !important;
+      box-shadow: none !important;
+    }
+    .modal-sheet[data-modal-hero-handoff="pending"] .modal-handoff-scroll {
+      background: transparent !important;
+    }
+    .modal-sheet[data-modal-hero-handoff="pending"] .modal-handoff-chrome {
+      opacity: 0 !important;
+      pointer-events: none !important;
+      user-select: none !important;
+    }
+    .modal-sheet[data-modal-hero-handoff="pending"] .modal-handoff-hero {
+      background: transparent !important;
+      border-color: transparent !important;
+      box-shadow: none !important;
+    }
     .modal-footer-safe {
       padding-bottom: calc(var(--safe-area-bottom) + 1rem) !important;
     }
