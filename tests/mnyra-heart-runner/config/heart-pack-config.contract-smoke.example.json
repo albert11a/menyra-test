@@ -1,0 +1,111 @@
+{
+  "runtime": {
+    "targetEnvironment": "local",
+    "firebaseProjectAlias": "local",
+    "useEmulators": true,
+    "allowProdLikeTargets": false,
+    "socialBaseUrl": "http://127.0.0.1:4173/apps/menyra-social/index.html",
+    "waiterBaseUrl": "http://127.0.0.1:4173/waiter/"
+  },
+  "personas": {
+    "business": {
+      "app": "social",
+      "baseUrl": "http://127.0.0.1:4173/apps/menyra-social/index.html",
+      "uid": "mnyra-heart-seed-u-business-alpha",
+      "email": "heart+seed-business-alpha@mnyra.test",
+      "password": "HeartSeed!Biz01",
+      "handle": "seedbizalpha",
+      "displayName": "Seed Business Alpha",
+      "role": "business",
+      "restaurantId": "mnyra-heart-seed-r-alpha",
+      "managed": true
+    },
+    "user": {
+      "app": "social",
+      "baseUrl": "http://127.0.0.1:4173/apps/menyra-social/index.html",
+      "uid": "mnyra-heart-seed-u-user-alpha",
+      "email": "heart+seed-user-alpha@mnyra.test",
+      "password": "HeartSeed!User01",
+      "handle": "seeduseralpha",
+      "displayName": "Seed User Alpha",
+      "role": "user",
+      "managed": true
+    },
+    "guest": {
+      "app": "social",
+      "baseUrl": "http://127.0.0.1:4173/apps/menyra-social/index.html",
+      "guestRouteUrl": "http://127.0.0.1:4173/apps/menyra-social/index.html?tab=menu&src=qr&r=mnyra-heart-seed-r-alpha&table=12&tableNumber=12"
+    }
+  },
+  "actions": {
+    "social": {
+      "like": {
+        "url": "http://127.0.0.1:4173/apps/menyra-social/index.html?tab=feed",
+        "triggerSelector": "[data-feed-post-like=\"mnyra-heart-seed-post-alpha-2\"]",
+        "countSelector": "[data-post-like-count=\"mnyra-heart-seed-post-alpha-2\"]"
+      },
+      "commentCreate": {
+        "url": "http://127.0.0.1:4173/apps/menyra-social/index.html?tab=feed",
+        "openComposerSelector": "[data-feed-post-comment=\"mnyra-heart-seed-post-alpha-2\"]",
+        "inputSelector": "#postCommentInput",
+        "submitSelector": "#postCommentSend",
+        "verifySelector": "#postModalComments",
+        "messageTemplate": "TEST_RUN_<runId>_COMMENT_1"
+      }
+    },
+    "commerce": {
+      "cart": {
+        "url": "http://127.0.0.1:4173/apps/menyra-social/index.html?tab=menu&src=qr&r=mnyra-heart-seed-r-alpha&table=12&tableNumber=12",
+        "openSelector": "[data-menu-open]",
+        "triggerSelector": "#menuDetailAddToCartBtn",
+        "verifySelector": "[data-cart-checkout], [data-cart-qty]"
+      },
+      "order": {
+        "url": "http://127.0.0.1:4173/apps/menyra-social/index.html?tab=menu&src=qr&r=mnyra-heart-seed-r-alpha&table=12&tableNumber=12",
+        "openSelector": "[data-cart-checkout='open']",
+        "triggerSelector": "[data-cart-checkout='submit']",
+        "successTexts": [
+          "Bestellung gesendet",
+          "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+        ]
+      }
+    },
+    "guest": {
+      "qrMenu": {
+        "url": "http://127.0.0.1:4173/apps/menyra-social/index.html?tab=menu&src=qr&r=mnyra-heart-seed-r-alpha&table=12&tableNumber=12",
+        "menuVisibleSelector": "[data-menu-open], [data-cart-checkout], #menuDetailAddToCartBtn",
+        "productOpenSelector": "[data-menu-open]",
+        "addToCartSelector": "#menuDetailAddToCartBtn",
+        "cartVisibleSelector": "[data-cart-checkout], [data-cart-qty]",
+        "orderOpenSelector": "[data-cart-checkout='open']",
+        "orderTriggerSelector": "[data-cart-checkout='submit']",
+        "orderSuccessTexts": [
+          "Bestellung gesendet",
+          "Ihre Bestellung wird zubereitet und in Kuerze serviert."
+        ]
+      }
+    }
+  },
+  "contract": {
+    "testWorldId": "mnyra-phase1-testworld",
+    "fixturePath": "../phase1-testworld/fixtures/phase1-testworld.fixture.cjs",
+    "firestore": {
+      "projectAlias": "local",
+      "host": "127.0.0.1",
+      "port": 8080
+    },
+    "social": {
+      "restaurantId": "mnyra-heart-seed-r-alpha",
+      "postId": "mnyra-heart-seed-post-alpha-2"
+    },
+    "notifications": {
+      "targetNotificationId": "mnyra-heart-seed-notif-comment-alpha-1",
+      "expectedPostId": "mnyra-heart-seed-post-alpha-1",
+      "expectedCommentText": "TEST_SEED_COMMENT_ALPHA_1"
+    },
+    "commerce": {
+      "restaurantId": "mnyra-heart-seed-r-alpha",
+      "expectedTableNumber": 12
+    }
+  }
+}

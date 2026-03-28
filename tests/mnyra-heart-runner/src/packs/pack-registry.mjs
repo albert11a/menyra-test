@@ -4,6 +4,7 @@ import {
 } from "../../../../shared/heart-pack-catalog.js";
 import { runBusinessPack } from "./business-pack.mjs";
 import { runCeoPack } from "./ceo-pack.mjs";
+import { runContractSmokePack } from "./contract-smoke-pack.mjs";
 import { runGuardPack } from "./guard-pack.mjs";
 import { runHealthPack } from "./health-pack.mjs";
 import { runFullPlatformPack } from "./full-platform-pack.mjs";
@@ -19,6 +20,7 @@ const RUNNERS = Object.freeze({
   "guard-pack": runGuardPack,
   "release-pack": runReleasePack,
   "health-pack": runHealthPack,
+  "contract-smoke-pack": runContractSmokePack,
   smoke: runSmokePack,
   "ceo-pack": runCeoPack,
   "business-pack": runBusinessPack,

@@ -178,6 +178,15 @@
     body.modal-open {
       overflow: hidden;
       overscroll-behavior: none;
+      background: var(--app-surface) !important;
+    }
+    html.modal-open .business-top-tabs-sticky,
+    body.modal-open .business-top-tabs-sticky {
+      background: var(--app-surface) !important;
+    }
+    html.modal-open .business-top-tabs-sticky--pinned::before,
+    body.modal-open .business-top-tabs-sticky--pinned::before {
+      background: var(--app-surface) !important;
     }
     html.menu-detail-comment-focus,
     body.menu-detail-comment-focus {
@@ -584,9 +593,11 @@
   <script>
     (() => {
       const BOOTSTRAP_EVENT = "menyra-social-bootstrap";
+      const host = String(window.location?.hostname || "").trim().toLowerCase();
+      const isLocalHost = host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "0.0.0.0";
       const ENDPOINT = String(
         window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__
-        || "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed"
+        || (isLocalHost ? "" : "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed")
       ).trim();
       if (!ENDPOINT) return;
       const fetchBootstrap = async () => {

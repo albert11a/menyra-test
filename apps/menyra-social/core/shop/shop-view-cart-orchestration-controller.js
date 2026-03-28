@@ -34,7 +34,9 @@ export function createShopViewCartOrchestrationController({
     checkoutOpen: false,
     form: { name: "", phone: "", city: "", address: "", tableNumber: 0, tableLabel: "" },
     status: "",
-    loading: false
+    loading: false,
+    submitAttemptId: "",
+    submitAttemptFingerprint: ""
   }),
   saveShopCartToStorageFn = () => {},
   renderFn = () => {},
@@ -216,6 +218,13 @@ export function createShopViewCartOrchestrationController({
     });
   }
 
+  function resetCheckoutAttemptState(cart = null) {
+    if (!cart || typeof cart !== "object") return cart;
+    cart.submitAttemptId = "";
+    cart.submitAttemptFingerprint = "";
+    return cart;
+  }
+
   function resolveCartContextForItem(item, profile = getCurrentShopProfile()) {
     const baseContext = getShopCartProfileContext(profile);
     const itemRestaurantId = String(item?.restaurantId || "").trim();
@@ -254,6 +263,7 @@ export function createShopViewCartOrchestrationController({
     const isTableService = cartMatches && String(state.shopCart.serviceMode || "") === "table" && tableNumber > 0;
     const hospitalityCheckout = isHospitalityCheckout(profile);
     const directOrderFlow = isTableService || hospitalityCheckout;
+    const checkoutLocked = !!state.shopCart.loading;
     const confirmation = cartMatches && !items.length && String(state.shopCart?.confirmation?.restaurantId || "") === context.restaurantId
       ? state.shopCart.confirmation
       : null;
@@ -299,9 +309,9 @@ export function createShopViewCartOrchestrationController({
                   <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">${escapeHtmlFn(formatPriceFn(item.price))}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                  <button data-cart-qty="${escapeHtmlFn(item.cartKey || item.itemId)}" data-cart-delta="-1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${iconFn("minus", "w-3 h-3")}</button>
+                  <button data-cart-qty="${escapeHtmlFn(item.cartKey || item.itemId)}" data-cart-delta="-1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center ${checkoutLocked ? "opacity-60 pointer-events-none" : ""}" ${checkoutLocked ? "disabled" : ""}>${iconFn("minus", "w-3 h-3")}</button>
                   <span class="w-6 text-center text-sm font-black text-slate-900">${escapeHtmlFn(item.quantity)}</span>
-                  <button data-cart-qty="${escapeHtmlFn(item.cartKey || item.itemId)}" data-cart-delta="1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center">${iconFn("plus", "w-3 h-3")}</button>
+                  <button data-cart-qty="${escapeHtmlFn(item.cartKey || item.itemId)}" data-cart-delta="1" class="w-8 h-8 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center ${checkoutLocked ? "opacity-60 pointer-events-none" : ""}" ${checkoutLocked ? "disabled" : ""}>${iconFn("plus", "w-3 h-3")}</button>
                 </div>
               </div>
             `).join("")}
@@ -309,8 +319,8 @@ export function createShopViewCartOrchestrationController({
               <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Gesamt</span>
               <span class="text-lg font-black text-slate-900">${escapeHtmlFn(formatPriceFn(total))}</span>
             </div>
-            <button data-cart-checkout="${directOrderFlow ? "submit" : "open"}" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200/60 active:scale-95 ${state.shopCart.loading ? "opacity-70 pointer-events-none" : ""}">
-              ${state.shopCart.loading ? "Bestellung wird gesendet..." : (directOrderFlow ? (isTableService ? "Tischbestellung absenden" : "Bestellung absenden") : "Checkout starten")}
+            <button data-cart-checkout="${directOrderFlow ? "submit" : "open"}" class="w-full py-4 rounded-[1.8rem] bg-slate-900 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-slate-200/60 active:scale-95 ${checkoutLocked ? "opacity-70 pointer-events-none" : ""}" ${checkoutLocked ? "disabled" : ""}>
+              ${checkoutLocked ? "Bestellung wird gesendet..." : (directOrderFlow ? (isTableService ? "Tischbestellung absenden" : "Bestellung absenden") : "Checkout starten")}
             </button>
             ${directOrderFlow ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${isTableService ? "Direkt fuer deinen Tisch" : "Direkt ohne weitere Angaben"}</p>` : ""}
             ${state.shopCart.status && !state.shopCart.checkoutOpen ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest text-slate-400">${escapeHtmlFn(state.shopCart.status)}</p>` : ""}
@@ -344,16 +354,16 @@ export function createShopViewCartOrchestrationController({
                 <p class="text-sm font-bold text-slate-700 mt-2">Fuer ${escapeHtmlFn(context.businessName || "dieses Lokal")} sind keine Namen oder Telefonnummern noetig. Bestellung direkt absenden.</p>
               </div>
             ` : `
-              <input data-cart-field="name" type="text" value="${escapeHtmlFn(state.shopCart.form.name || "")}" placeholder="Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              <input data-cart-field="phone" type="text" value="${escapeHtmlFn(state.shopCart.form.phone || "")}" placeholder="Tel Nummer" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              <input data-cart-field="city" type="text" value="${escapeHtmlFn(state.shopCart.form.city || "")}" placeholder="Qyteti" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-              <textarea data-cart-field="address" rows="3" placeholder="Adresa" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none">${escapeHtmlFn(state.shopCart.form.address || "")}</textarea>
+              <input data-cart-field="name" type="text" value="${escapeHtmlFn(state.shopCart.form.name || "")}" placeholder="Name" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-60" ${checkoutLocked ? "disabled" : ""} />
+              <input data-cart-field="phone" type="text" value="${escapeHtmlFn(state.shopCart.form.phone || "")}" placeholder="Tel Nummer" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-60" ${checkoutLocked ? "disabled" : ""} />
+              <input data-cart-field="city" type="text" value="${escapeHtmlFn(state.shopCart.form.city || "")}" placeholder="Qyteti" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 disabled:opacity-60" ${checkoutLocked ? "disabled" : ""} />
+              <textarea data-cart-field="address" rows="3" placeholder="Adresa" class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100 resize-none disabled:opacity-60" ${checkoutLocked ? "disabled" : ""}>${escapeHtmlFn(state.shopCart.form.address || "")}</textarea>
             `}
           </div>
-          <button data-cart-checkout="submit" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-95" ${state.shopCart.loading ? "disabled" : ""}>
-            ${state.shopCart.loading ? "Senden..." : (isTableService ? "Tischbestellung absenden" : "Bestellung absenden")}
+          <button data-cart-checkout="submit" class="w-full py-4 rounded-[1.8rem] bg-indigo-600 text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-xl shadow-indigo-500/20 active:scale-95" ${checkoutLocked ? "disabled" : ""}>
+            ${checkoutLocked ? "Senden..." : (isTableService ? "Tischbestellung absenden" : "Bestellung absenden")}
           </button>
-          ${state.shopCart.status ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest ${state.shopCart.loading ? "text-slate-400" : "text-slate-500"}">${escapeHtmlFn(state.shopCart.status)}</p>` : ""}
+          ${state.shopCart.status ? `<p class="text-center text-[10px] font-bold uppercase tracking-widest ${checkoutLocked ? "text-slate-400" : "text-slate-500"}">${escapeHtmlFn(state.shopCart.status)}</p>` : ""}
         </div>
       ` : ""}
     </div>
@@ -378,13 +388,16 @@ export function createShopViewCartOrchestrationController({
       },
       tableNumber,
       tableLabel,
-      serviceMode
+      serviceMode,
+      submitAttemptId: "",
+      submitAttemptFingerprint: ""
     };
     saveShopCartToStorageFn();
   }
 
   function addMenuItemToShopCart(item, profile = getCurrentShopProfile(), options = {}) {
     const forceAdd = options?.forceAdd === true;
+    if (state.shopCart?.loading) return;
     if (!item || (!forceAdd && !canAddToShopCartFn(profile))) return;
     const context = resolveCartContextForItem(item, profile);
     if (!context.restaurantId) return;
@@ -403,6 +416,7 @@ export function createShopViewCartOrchestrationController({
       clearShopCart({ keepForm: true });
     }
     const nextCart = normalizeShopCartStateFn(state.shopCart);
+    resetCheckoutAttemptState(nextCart);
     const selectedSize = String(options?.size || "").trim();
     const selectedColor = String(options?.color || "").trim();
     const cartKey = buildShopVariantKeyFn(resolvedItemId, { size: selectedSize, color: selectedColor });
@@ -414,6 +428,7 @@ export function createShopViewCartOrchestrationController({
       name: String(item.name || "Produkt").trim() || "Produkt",
       price: String(item.price ?? "").trim(),
       quantity: 1,
+      restaurantId: context.restaurantId,
       imageUrl: String(resolveMenuItemHeroFn(item) || "").trim(),
       category: String(item.category || "").trim(),
       selectedSize,
@@ -448,8 +463,10 @@ export function createShopViewCartOrchestrationController({
 
   function updateShopCartQuantity(itemId, delta) {
     const safeId = String(itemId || "").trim();
+    if (state.shopCart?.loading) return;
     if (!safeId) return;
     const nextCart = normalizeShopCartStateFn(state.shopCart);
+    resetCheckoutAttemptState(nextCart);
     nextCart.items = nextCart.items
       .map((entry) => (
         String(entry.cartKey || entry.itemId) === safeId
@@ -469,6 +486,7 @@ export function createShopViewCartOrchestrationController({
 
   function openShopCheckout() {
     const nextCart = normalizeShopCartStateFn(state.shopCart);
+    if (nextCart.loading) return;
     if (!nextCart.items.length) return;
     const isTableService = String(nextCart.serviceMode || "").trim().toLowerCase() === "table" && Number(nextCart.tableNumber || 0) > 0;
     nextCart.checkoutOpen = true;
@@ -489,7 +507,9 @@ export function createShopViewCartOrchestrationController({
   function updateShopCheckoutField(field, value) {
     if (!field) return;
     const nextCart = normalizeShopCartStateFn(state.shopCart);
+    if (nextCart.loading) return;
     if (!(field in nextCart.form)) return;
+    resetCheckoutAttemptState(nextCart);
     nextCart.form[field] = String(value || "");
     nextCart.status = "";
     state.shopCart = nextCart;

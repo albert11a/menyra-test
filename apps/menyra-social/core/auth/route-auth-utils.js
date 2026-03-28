@@ -12,6 +12,7 @@ export function normalizeInitialTab(value) {
   const allowed = new Set([
     "feed",
     "chat",
+    "notifications",
     "search",
     "map",
     "profile",

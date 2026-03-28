@@ -1,54 +1,54 @@
 {
   "runtime": {
-    "targetEnvironment": "local",
-    "firebaseProjectAlias": "local",
-    "useEmulators": true,
+    "targetEnvironment": "preview",
+    "firebaseProjectAlias": "isolated",
+    "useEmulators": false,
     "allowProdLikeTargets": false,
-    "socialBaseUrl": "http://127.0.0.1:4173/social/",
-    "waiterBaseUrl": "http://127.0.0.1:4173/waiter/"
+    "socialBaseUrl": "https://menyra-test.vercel.app/social/",
+    "waiterBaseUrl": "https://menyra-test.vercel.app/waiter/"
   },
   "personas": {
     "ceo": {
       "app": "social",
-      "baseUrl": "http://127.0.0.1:4173/social/"
+      "baseUrl": "https://menyra-test.vercel.app/social/"
     },
     "business": {
       "app": "social",
-      "baseUrl": "http://127.0.0.1:4173/social/"
+      "baseUrl": "https://menyra-test.vercel.app/social/"
     },
     "staff": {
       "app": "waiter",
-      "baseUrl": "http://127.0.0.1:4173/waiter/"
+      "baseUrl": "https://menyra-test.vercel.app/waiter/"
     },
     "user": {
       "app": "social",
-      "baseUrl": "http://127.0.0.1:4173/social/"
+      "baseUrl": "https://menyra-test.vercel.app/social/"
     },
     "guest": {
       "app": "social",
-      "guestRouteUrl": "http://127.0.0.1:4173/social/?tab=menu&src=qr&r=RESTAURANT_ID"
+      "guestRouteUrl": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID"
     }
   },
   "actions": {
     "social": {
       "businessProfile": {
-        "url": "http://127.0.0.1:4173/social/?tab=profile&handle=testbusiness"
+        "url": "https://menyra-test.vercel.app/social/?tab=profile&handle=testbusiness"
       },
       "userTargetProfile": {
-        "url": "http://127.0.0.1:4173/social/?tab=profile&handle=testuser"
+        "url": "https://menyra-test.vercel.app/social/?tab=profile&handle=testuser"
       },
       "follow": {
-        "url": "http://127.0.0.1:4173/social/?tab=profile&handle=testuser",
+        "url": "https://menyra-test.vercel.app/social/?tab=profile&handle=testuser",
         "triggerSelector": "[data-public-profile-follow]",
         "verifySelector": "[data-public-profile-follow] svg"
       },
       "like": {
-        "url": "http://127.0.0.1:4173/social/?tab=feed",
+        "url": "https://menyra-test.vercel.app/social/?tab=feed",
         "triggerSelector": "[data-feed-post-like], [data-post-like-btn], #postLikeBtn",
         "countSelector": "[data-post-like-count], #postLikesBtn"
       },
       "commentCreate": {
-        "url": "http://127.0.0.1:4173/social/?tab=feed",
+        "url": "https://menyra-test.vercel.app/social/?tab=feed",
         "openComposerSelector": "[data-feed-post-comment]",
         "inputSelector": "#postCommentInput",
         "submitSelector": "#postCommentSend",
@@ -56,7 +56,7 @@
         "verifyText": "TEST_RUN_<runId>_COMMENT_1"
       },
       "postCreate": {
-        "url": "http://127.0.0.1:4173/social/?tab=feed",
+        "url": "https://menyra-test.vercel.app/social/?tab=feed",
         "openSelector": "[data-nav='upload'][data-upload-intent='feed'], [data-nav='upload'][data-upload-intent='chooser']",
         "fileInputSelector": "#uploadFileInput",
         "filePath": "apps/mnyra-heart/assets/icon-192.png",
@@ -67,13 +67,13 @@
     },
     "business": {
       "menu": {
-        "url": "http://127.0.0.1:4173/social/?tab=menu"
+        "url": "https://menyra-test.vercel.app/social/?tab=menu"
       },
       "focus": {
-        "url": "http://127.0.0.1:4173/social/?tab=focus"
+        "url": "https://menyra-test.vercel.app/social/?tab=focus"
       },
       "productCreate": {
-        "url": "http://127.0.0.1:4173/social/?tab=menu",
+        "url": "https://menyra-test.vercel.app/social/?tab=menu",
         "openSelector": "[data-menu-add], [data-menu-add-food]",
         "nameSelector": "#menuItemName",
         "saveSelector": "#menuModalSave",
@@ -82,14 +82,14 @@
     },
     "commerce": {
       "cart": {
-        "url": "http://127.0.0.1:4173/social/?tab=menu&src=qr&r=RESTAURANT_ID",
+        "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
         "openSelector": "[data-menu-open]",
         "triggerSelector": "#menuDetailAddToCartBtn",
         "verifySelector": "[data-cart-checkout], [data-cart-qty]",
         "removalSelector": "[data-cart-qty][data-cart-delta='-1']"
       },
       "order": {
-        "url": "http://127.0.0.1:4173/social/?tab=menu&src=qr&r=RESTAURANT_ID",
+        "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
         "openSelector": "[data-cart-checkout='open']",
         "triggerSelector": "[data-cart-checkout='submit']",
         "successText": "Bestellung gesendet",
@@ -104,8 +104,8 @@
     },
     "chat": {
       "send": {
-        "url": "http://127.0.0.1:4173/social/?tab=chat",
-        "targetProfileUrl": "http://127.0.0.1:4173/social/?tab=profile&handle=testuser",
+        "url": "https://menyra-test.vercel.app/social/?tab=chat",
+        "targetProfileUrl": "https://menyra-test.vercel.app/social/?tab=profile&handle=testuser",
         "composerSelector": "#chatMessageInput",
         "sendSelector": "#chatSendBtn",
         "threadViewSelector": "#chatThreadView",
@@ -118,7 +118,7 @@
     },
     "crm": {
       "leadCreate": {
-        "url": "http://127.0.0.1:4173/social/?tab=leads",
+        "url": "https://menyra-test.vercel.app/social/?tab=leads",
         "openSelector": "#newLeadBtn",
         "nameSelector": "#leadBusinessName",
         "emailSelector": "#leadEmail",
@@ -128,7 +128,7 @@
     },
     "guest": {
       "qrMenu": {
-        "url": "http://127.0.0.1:4173/social/?tab=menu&src=qr&r=RESTAURANT_ID",
+        "url": "https://menyra-test.vercel.app/social/?tab=menu&src=qr&r=RESTAURANT_ID",
         "menuVisibleSelector": "[data-menu-open], [data-cart-checkout], #menuDetailAddToCartBtn",
         "productOpenSelector": "[data-menu-open]",
         "addToCartSelector": "#menuDetailAddToCartBtn",
@@ -150,7 +150,7 @@
     },
     "staff": {
       "waiter": {
-        "url": "http://127.0.0.1:4173/waiter/",
+        "url": "https://menyra-test.vercel.app/waiter/",
         "orderVisibleSelector": "main, [data-tab], [data-order-action], #logoutBtn",
         "statusActionSelector": "[data-order-action='angenommen']"
       }

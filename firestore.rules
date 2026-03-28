@@ -640,7 +640,12 @@ service cloud.firestore {
     match /leads/{leadId} {
       allow read: if canAccessCeoScopedData(resource.data);
       allow create: if canAccessCeoScopedData(request.resource.data);
-      allow update: if canAccessCeoScopedData(resource.data) && canAccessCeoScopedData(request.resource.data);
+      allow update: if canAccessCeoScopedData(resource.data)
+        && canAccessCeoScopedData(request.resource.data)
+        && request.resource.data.createdByUid == resource.data.createdByUid
+        && request.resource.data.ceoRootUid == resource.data.ceoRootUid
+        && request.resource.data.ceoParentUid == resource.data.ceoParentUid
+        && request.resource.data.ceoPath == resource.data.ceoPath;
       allow delete: if canAccessCeoScopedData(resource.data);
     }
 

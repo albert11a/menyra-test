@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "smoke": "node ./src/run-pack.mjs smoke",
+    "contract-smoke": "node ./src/run-pack.mjs contract-smoke-pack",
     "synthetic": "node ./src/run-pack.mjs full-platform-pack",
     "ceo-pack": "node ./src/run-pack.mjs ceo-pack",
     "business-pack": "node ./src/run-pack.mjs business-pack",

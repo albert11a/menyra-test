@@ -1,9 +1,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-function asText(value, fallback = "") {
+const DEFAULT_LOCAL_SOCIAL_BASE_URL = "http://127.0.0.1:4173/social/";
+const DEFAULT_LOCAL_WAITER_BASE_URL = "http://127.0.0.1:4173/waiter/";
+const DEFAULT_FIREBASE_PROJECT_ALIAS = "local";
+
+function asText(value, fallback = "", ...restFallbacks) {
   const text = String(value || "").trim();
-  return text || fallback;
+  if (text) return text;
+  return [fallback, ...restFallbacks]
+    .map((entry) => String(entry || "").trim())
+    .find(Boolean) || "";
 }
 
 function asBoolean(value, fallback = false) {
@@ -63,30 +70,88 @@ function parseJsonEnv(value = "") {
   }
 }
 
-function buildLegacyPackConfig(envMap = {}) {
+function detectTargetKind(url = "") {
+  const safeUrl = asText(url);
+  if (!safeUrl) return "unset";
+  try {
+    const host = String(new URL(safeUrl).hostname || "").trim().toLowerCase();
+    if (!host) return "custom";
+    if (host === "localhost" || host === "127.0.0.1" || host.endsWith(".local")) return "local";
+    if (host.endsWith(".vercel.app")) return "preview";
+    if (host.endsWith(".mnyra.com") || host.endsWith(".menyra.com")) return "production";
+    return "custom";
+  } catch {
+    return "custom";
+  }
+}
+
+function deriveTargetEnvironment({ socialBaseUrl = "", waiterBaseUrl = "", envHint = "" } = {}) {
+  const safeHint = asText(envHint).toLowerCase();
+  if (safeHint) return safeHint;
+  const kinds = [detectTargetKind(socialBaseUrl), detectTargetKind(waiterBaseUrl)].filter((kind) => kind !== "unset");
+  if (!kinds.length) return "custom";
+  if (kinds.includes("production")) return "production";
+  if (kinds.includes("preview")) return "preview";
+  if (kinds.includes("custom")) return "custom";
+  return "local";
+}
+
+function isProdLikeTarget(url = "") {
+  return detectTargetKind(url) === "production";
+}
+
+function buildLegacyPackConfig(envMap = {}, runtimeConfig = {}) {
+  const socialBaseUrl = asText(
+    envMap.MNYRA_SOCIAL_BASE_URL,
+    runtimeConfig.socialBaseUrl,
+    DEFAULT_LOCAL_SOCIAL_BASE_URL
+  );
+  const waiterBaseUrl = asText(
+    envMap.MNYRA_WAITER_BASE_URL || envMap.MNYRA_STAFF_BASE_URL,
+    runtimeConfig.waiterBaseUrl,
+    DEFAULT_LOCAL_WAITER_BASE_URL
+  );
   return {
+    runtime: {
+      targetEnvironment: asText(envMap.MNYRA_HEART_TARGET_ENV, runtimeConfig.targetEnvironment),
+      firebaseProjectAlias: asText(
+        envMap.MNYRA_FIREBASE_PROJECT_ALIAS,
+        runtimeConfig.firebaseProjectAlias,
+        DEFAULT_FIREBASE_PROJECT_ALIAS
+      ),
+      useEmulators: asBoolean(
+        envMap.MNYRA_USE_FIREBASE_EMULATORS,
+        asBoolean(runtimeConfig.useEmulators, true)
+      ),
+      allowProdLikeTargets: asBoolean(
+        envMap.MNYRA_HEART_ALLOW_PROD_TARGETS,
+        asBoolean(runtimeConfig.allowProdLikeTargets, false)
+      ),
+      socialBaseUrl,
+      waiterBaseUrl
+    },
     personas: {
       ceo: {
         app: "social",
-        baseUrl: asText(envMap.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
+        baseUrl: socialBaseUrl,
         email: asText(envMap.MNYRA_CEO_EMAIL),
         password: asText(envMap.MNYRA_CEO_PASSWORD)
       },
       business: {
         app: "social",
-        baseUrl: asText(envMap.MNYRA_BUSINESS_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
+        baseUrl: asText(envMap.MNYRA_BUSINESS_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, socialBaseUrl),
         email: asText(envMap.MNYRA_BUSINESS_EMAIL),
         password: asText(envMap.MNYRA_BUSINESS_PASSWORD)
       },
       user: {
         app: "social",
-        baseUrl: asText(envMap.MNYRA_USER_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
+        baseUrl: asText(envMap.MNYRA_USER_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, socialBaseUrl),
         email: asText(envMap.MNYRA_USER_EMAIL),
         password: asText(envMap.MNYRA_USER_PASSWORD)
       },
       guest: {
         app: "social",
-        baseUrl: asText(envMap.MNYRA_GUEST_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
+        baseUrl: asText(envMap.MNYRA_GUEST_BASE_URL || envMap.MNYRA_SOCIAL_BASE_URL, socialBaseUrl),
         guestRouteUrl: asText(envMap.MNYRA_GUEST_QR_URL || envMap.MNYRA_GUEST_MENU_URL)
       }
     },
@@ -211,7 +276,7 @@ function buildLegacyPackConfig(envMap = {}) {
       },
       staff: {
         waiter: {
-          url: asText(envMap.MNYRA_STAFF_BASE_URL, "https://menyra-test.vercel.app/waiter/"),
+          url: asText(envMap.MNYRA_STAFF_BASE_URL || envMap.MNYRA_WAITER_BASE_URL, waiterBaseUrl),
           orderVisibleSelector: asText(envMap.MNYRA_STAFF_ORDER_VISIBLE_SELECTOR),
           statusActionSelector: asText(envMap.MNYRA_STAFF_STATUS_ACTION_SELECTOR),
           verifySelector: asText(envMap.MNYRA_STAFF_STATUS_VERIFY_SELECTOR),
@@ -234,8 +299,58 @@ export async function getRunnerEnv(mode = "smoke") {
 
   const fileConfig = await readOptionalJsonFile(process.env.MNYRA_HEART_PACK_CONFIG_FILE, rootDir);
   const envConfig = parseJsonEnv(process.env.MNYRA_HEART_PACK_CONFIG_JSON);
-  const legacyConfig = buildLegacyPackConfig(process.env);
+  const runtimeConfig = mergeRecords(fileConfig.runtime || {}, envConfig.runtime || {});
+  const legacyConfig = buildLegacyPackConfig(process.env, runtimeConfig);
   const runnerConfig = mergeRecords(legacyConfig, mergeRecords(fileConfig, envConfig));
+  const mergedRuntimeConfig = mergeRecords(legacyConfig.runtime || {}, runnerConfig.runtime || {});
+  const socialBaseUrl = asText(
+    process.env.MNYRA_SOCIAL_BASE_URL,
+    mergedRuntimeConfig.socialBaseUrl,
+    runnerConfig?.personas?.ceo?.baseUrl,
+    DEFAULT_LOCAL_SOCIAL_BASE_URL
+  );
+  const waiterBaseUrl = asText(
+    process.env.MNYRA_WAITER_BASE_URL || process.env.MNYRA_STAFF_BASE_URL,
+    mergedRuntimeConfig.waiterBaseUrl,
+    runnerConfig?.personas?.staff?.baseUrl,
+    DEFAULT_LOCAL_WAITER_BASE_URL
+  );
+  const allowLiveMutations = asBoolean(process.env.MNYRA_ALLOW_LIVE_MUTATIONS, false);
+  const targetEnvironment = deriveTargetEnvironment({
+    envHint: asText(process.env.MNYRA_HEART_TARGET_ENV, mergedRuntimeConfig.targetEnvironment),
+    socialBaseUrl,
+    waiterBaseUrl
+  });
+  const firebaseProjectAlias = asText(
+    process.env.MNYRA_FIREBASE_PROJECT_ALIAS,
+    mergedRuntimeConfig.firebaseProjectAlias,
+    DEFAULT_FIREBASE_PROJECT_ALIAS
+  );
+  const useEmulators = asBoolean(
+    process.env.MNYRA_USE_FIREBASE_EMULATORS,
+    asBoolean(mergedRuntimeConfig.useEmulators, targetEnvironment === "local")
+  );
+  const allowProdLikeTargets = asBoolean(
+    process.env.MNYRA_HEART_ALLOW_PROD_TARGETS,
+    asBoolean(mergedRuntimeConfig.allowProdLikeTargets, false)
+  );
+  if (!allowProdLikeTargets && allowLiveMutations && (
+    isProdLikeTarget(socialBaseUrl) || isProdLikeTarget(waiterBaseUrl)
+  )) {
+    throw new Error(
+      "Refusing to run Heart live mutations against production-like targets. " +
+      "Use isolated/local targets or set MNYRA_HEART_ALLOW_PROD_TARGETS=true deliberately."
+    );
+  }
+  runnerConfig.runtime = {
+    ...(runnerConfig.runtime || {}),
+    targetEnvironment,
+    firebaseProjectAlias,
+    useEmulators,
+    allowProdLikeTargets,
+    socialBaseUrl,
+    waiterBaseUrl
+  };
 
   return {
     mode,
@@ -243,12 +358,16 @@ export async function getRunnerEnv(mode = "smoke") {
     artifactDir,
     outputFile,
     runId: asText(process.env.HEART_RUN_ID, `heart_${mode}_${createRunStamp()}`),
-    socialBaseUrl: asText(process.env.MNYRA_SOCIAL_BASE_URL, "https://www.mnyra.com/social/"),
-    waiterBaseUrl: asText(process.env.MNYRA_WAITER_BASE_URL || process.env.MNYRA_STAFF_BASE_URL, "https://www.mnyra.com/waiter/"),
+    socialBaseUrl,
+    waiterBaseUrl,
+    targetEnvironment,
+    firebaseProjectAlias,
+    useEmulators,
+    allowProdLikeTargets,
     ceoEmail: asText(process.env.MNYRA_CEO_EMAIL),
     ceoPassword: asText(process.env.MNYRA_CEO_PASSWORD),
     headless: asBoolean(process.env.MNYRA_HEART_HEADLESS, true),
-    allowLiveMutations: asBoolean(process.env.MNYRA_ALLOW_LIVE_MUTATIONS, false),
+    allowLiveMutations,
     syntheticIsolationKey: asText(process.env.MNYRA_SYNTHETIC_ISOLATION_KEY),
     syntheticPrefix: asText(process.env.MNYRA_SYNTHETIC_PREFIX, `mnyra-heart-synth-${createRunStamp()}`),
     heartStatusUrl: asText(process.env.HEART_STATUS_URL),

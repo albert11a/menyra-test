@@ -626,18 +626,33 @@ const SEARCH_LIMITS = {
   businesses: PERF_CONSTRAINED ? 10 : 12
 };
 const FAST_MODE = true;
+const RUNTIME_HOST = typeof window !== "undefined"
+  ? String(window.location?.hostname || "").trim().toLowerCase()
+  : "";
+const IS_LOCAL_RUNTIME = ["127.0.0.1", "localhost", "::1", "0.0.0.0"].includes(RUNTIME_HOST);
+const CACHE_NAMESPACE = [
+  IS_LOCAL_RUNTIME ? "local" : "",
+  String(app?.options?.projectId || "").trim()
+].filter(Boolean).join("::");
+const withCacheNamespace = (key = "") => {
+  const safeKey = String(key || "").trim();
+  if (!safeKey) return "";
+  return CACHE_NAMESPACE ? `${safeKey}::${CACHE_NAMESPACE}` : safeKey;
+};
 const CACHE_KEYS = {
-  feed: "menyra_social_feed_cache_v1",
-  restaurants: "menyra_social_restaurants_cache_v1",
-  stories: "menyra_social_stories_cache_v1"
+  feed: withCacheNamespace("menyra_social_feed_cache_v1"),
+  restaurants: withCacheNamespace("menyra_social_restaurants_cache_v1"),
+  stories: withCacheNamespace("menyra_social_stories_cache_v1")
 };
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
-const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
-const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v2::${uid}` : "");
-const businessPostsKey = (rid) => (rid ? `menyra_social_business_posts_cache_v2::${rid}` : "");
-const staffCacheKey = (uid) => (uid ? `menyra_social_staff_cache_v1::${uid}` : "");
-const leadPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_leads_cache_v1::${uid}::${scope}` : "");
-const customerPageCacheKey = (uid, scope) => (uid && scope ? `menyra_social_customers_cache_v1::${uid}::${scope}` : "");
+const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = IS_LOCAL_RUNTIME
+  ? ""
+  : "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
+const userPostsKey = (uid) => (uid ? `${withCacheNamespace("menyra_social_user_posts_cache_v2")}::${uid}` : "");
+const businessPostsKey = (rid) => (rid ? `${withCacheNamespace("menyra_social_business_posts_cache_v2")}::${rid}` : "");
+const staffCacheKey = (uid) => (uid ? `${withCacheNamespace("menyra_social_staff_cache_v1")}::${uid}` : "");
+const leadPageCacheKey = (uid, scope) => (uid && scope ? `${withCacheNamespace("menyra_social_leads_cache_v1")}::${uid}::${scope}` : "");
+const customerPageCacheKey = (uid, scope) => (uid && scope ? `${withCacheNamespace("menyra_social_customers_cache_v1")}::${uid}::${scope}` : "");
 const CACHE_TTL_MS = {
   feed: 10 * 60 * 1000,
   posts: 10 * 60 * 1000,
@@ -1185,6 +1200,59 @@ function openGuestAuthPrompt(message = "Bitte registrieren oder einloggen, um di
   state.auth.open = true;
   state.drawerOpen = false;
   render();
+  return true;
+}
+
+function normalizeRouteMenuAccessSource(value = "") {
+  const safeValue = String(value || "").trim().toLowerCase();
+  if (
+    safeValue === "qr"
+    || safeValue === "qrcode"
+    || safeValue === "qr-code"
+    || safeValue === "menuqr"
+    || safeValue === "menu-qr"
+    || safeValue === "scanqr"
+    || safeValue === "scan-qr"
+  ) {
+    return "qr";
+  }
+  return "";
+}
+
+function normalizeRouteTableNumber(value = 0) {
+  const parsed = Number(value || 0);
+  if (!Number.isFinite(parsed) || parsed <= 0) return 0;
+  return Math.max(0, Math.floor(parsed));
+}
+
+function isPendingProfileAlreadyOpenForRoute({
+  pendingProfileRestaurantId = "",
+  currentProfileRestaurantId = ""
+} = {}) {
+  const pendingId = normalizePendingProfileRestaurantIdCore(pendingProfileRestaurantId);
+  const currentId = String(
+    currentProfileRestaurantId
+    || state?.profileView?.profile?.restaurantId
+    || ""
+  ).trim();
+  if (!pendingId || !currentId || pendingId !== currentId) return false;
+
+  const pending = pendingRouteState.getPendingState?.() || {};
+  const desiredTopTab = normalizeProfileTopTabFromRouteCore(pending.pendingProfileTopTab || "") || "profile";
+  const currentTopTab = normalizeProfileTopTabFromRouteCore(state?.profileTopTab || "") || "profile";
+  if (desiredTopTab !== currentTopTab) return false;
+  if (desiredTopTab !== "menu") return true;
+
+  const desiredAccessSource = normalizeRouteMenuAccessSource(pending.pendingProfileAccessSource || "");
+  const currentAccessSource = normalizeRouteMenuAccessSource(state?.profileView?.menuAccessSource || "");
+  if (desiredAccessSource !== currentAccessSource) return false;
+
+  if (desiredAccessSource === "qr") {
+    const desiredTableNumber = normalizeRouteTableNumber(pending.pendingProfileTableNumber || 0);
+    const currentTableNumber = normalizeRouteTableNumber(state?.profileView?.tableNumber || 0);
+    if (desiredTableNumber !== currentTableNumber) return false;
+  }
+
   return true;
 }
 
@@ -1747,6 +1815,7 @@ const {
   limitFn: limit,
   onSnapshotFn: onSnapshot,
   writeBatchFn: writeBatch,
+  runTransactionFn: runTransaction,
   serverTimestampFn: serverTimestamp,
   normalizeShopCartStateFn: normalizeShopCartState,
   isLocalBusinessProfileFn: isLocalBusinessProfile,
@@ -3335,7 +3404,7 @@ bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
     getChatThreadById,
     buildChatRouteTargetProfileCore,
     normalizePendingProfileRestaurantIdCore,
-    isPendingProfileAlreadyOpenCore,
+    isPendingProfileAlreadyOpenCore: isPendingProfileAlreadyOpenForRoute,
     normalizeProfileTopTabFromRouteCore,
     parsePushOpenTargetPayloadCore,
     shouldHandlePushOpenTargetCore,
@@ -3607,6 +3676,49 @@ const {
   closeMenuModal
 } = bridgeShellRuntimeCluster.bridgeBindings;
 
+function getOpenPostModalId() {
+  if (!state?.postModal?.open || !state?.postModal?.post) return "";
+  return String(state.postModal.post.id || "").trim();
+}
+
+async function openCanonicalPostModal(post, options = {}) {
+  const postId = String(post?.id || "").trim();
+  if (!postId) return false;
+  if (getOpenPostModalId() === postId) return true;
+  await openPostModal(post, options);
+  return true;
+}
+
+function getOpenChatTargetId() {
+  if (!state?.chatModal?.open || !state?.chatModal?.profile) return "";
+  return String(getChatThreadId(state.chatModal.profile) || state.chatModal.profile?.uid || "").trim();
+}
+
+function openCanonicalChatWithProfile(profile = {}) {
+  const targetId = String(getChatThreadId(profile) || profile?.uid || "").trim();
+  if (!targetId) return false;
+  if (getOpenChatTargetId() === targetId) return true;
+  openChatWithProfile(profile);
+  return true;
+}
+
+function getOpenUserProfileUid() {
+  if (state?.profileModal?.open && state.profileModal.profile && !String(state.profileModal.profile.restaurantId || "").trim()) {
+    return String(state.profileModal.profile.uid || "").trim();
+  }
+  if (state?.activeTab === "profile" && state?.profileView?.profile && !String(state.profileView.profile.restaurantId || "").trim()) {
+    return String(state.profileView.profile.uid || "").trim();
+  }
+  return "";
+}
+
+async function openCanonicalUserProfile(input = {}) {
+  const targetUid = String(typeof input === "string" ? input : (input?.uid || "")).trim();
+  if (targetUid && getOpenUserProfileUid() === targetUid) return true;
+  await openProfileFromUser(input);
+  return true;
+}
+
 mediaUploadRuntimeController = createMediaUploadRuntimeCluster({
   stateDeps: {
     state,
@@ -3677,9 +3789,9 @@ chatRuntimeController = createChatRuntimeCluster({
     updateNotificationBadges,
     saveNotifications,
     updateNotificationsDom,
-    openPostModal,
-    openChatWithProfile,
-    openProfileFromUser,
+    openPostModal: openCanonicalPostModal,
+    openChatWithProfile: openCanonicalChatWithProfile,
+    openProfileFromUser: openCanonicalUserProfile,
     openGuestAuthPrompt
   },
   followApi: {

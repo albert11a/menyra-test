@@ -63,7 +63,7 @@ async function main() {
     runId: env.runId,
     mode: pack.mode,
     pack,
-    environment: "production",
+    environment: env.targetEnvironment || "custom",
     startedBy: env.ceoEmail || "automation"
   });
   heart.attachGithub({
@@ -79,6 +79,10 @@ async function main() {
   heart.setRunFlags({
     allowLiveMutations: !!env.allowLiveMutations,
     syntheticIsolationConfigured: !!env.syntheticIsolationKey,
+    targetEnvironment: env.targetEnvironment || "custom",
+    firebaseProjectAlias: env.firebaseProjectAlias || "",
+    useEmulators: !!env.useEmulators,
+    allowProdLikeTargets: !!env.allowProdLikeTargets,
     requestedPackKey,
     resolvedPackKey: pack.key,
     personas: Object.fromEntries(

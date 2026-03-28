@@ -652,7 +652,7 @@ async function waitForLikeInteraction(page, {
   );
 }
 
-async function runLikeAction(page, selector = "") {
+export async function runLikeAction(page, selector = "") {
   const candidates = await collectVisibleLikeCandidates(page, selector);
   if (!candidates.length) {
     throw new Error("Heart konnte keinen sichtbaren Like-Button im Feed finden.");
