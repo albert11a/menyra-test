@@ -25,6 +25,17 @@ export function createStorySystemController({
   serverTimestampFn = null,
   db = null
 } = {}) {
+  const allowedUploadPhases = new Set([
+    "idle",
+    "ready",
+    "validating",
+    "uploading",
+    "persisting",
+    "reconciling",
+    "failed",
+    "done"
+  ]);
+
   function normalizeUploadIntent(value = "", { fallback = "feed" } = {}) {
     const normalizedFallback = ["feed", "story", "chooser"].includes(String(fallback || "").trim().toLowerCase())
       ? String(fallback || "").trim().toLowerCase()
@@ -36,8 +47,43 @@ export function createStorySystemController({
     return normalizedFallback;
   }
 
-  function buildUploadStateForIntent(intent = "", currentUpload = {}) {
+  function normalizeUploadPhase(value = "", { fallback = "idle" } = {}) {
+    const normalizedFallback = allowedUploadPhases.has(String(fallback || "").trim().toLowerCase())
+      ? String(fallback || "").trim().toLowerCase()
+      : "idle";
+    const normalizedValue = String(value || "").trim().toLowerCase();
+    return allowedUploadPhases.has(normalizedValue) ? normalizedValue : normalizedFallback;
+  }
+
+  function buildUploadState(currentUpload = {}, { fallbackMode = "feed" } = {}) {
     const base = currentUpload && typeof currentUpload === "object" ? currentUpload : {};
+    const normalizedMode = normalizeUploadIntent(base.mode, { fallback: fallbackMode });
+    const file = base.file || null;
+    const preview = String(base.preview || "").trim();
+    const caption = String(base.caption || "");
+    const hasSelectedFile = !!file;
+    let phase = String(base.phase || "").trim().toLowerCase();
+    if (!phase) {
+      phase = hasSelectedFile ? "ready" : "idle";
+    }
+    phase = normalizeUploadPhase(phase, { fallback: hasSelectedFile ? "ready" : "idle" });
+    if (!hasSelectedFile && phase !== "idle") {
+      phase = "idle";
+    }
+    return {
+      preview,
+      caption,
+      file,
+      status: String(base.status || ""),
+      mode: normalizedMode,
+      phase,
+      activeAttemptId: String(base.activeAttemptId || "").trim(),
+      activeAttemptFingerprint: String(base.activeAttemptFingerprint || "").trim()
+    };
+  }
+
+  function buildUploadStateForIntent(intent = "", currentUpload = {}) {
+    const base = buildUploadState(currentUpload, { fallbackMode: intent || "feed" });
     const normalizedIntent = normalizeUploadIntent(intent, { fallback: "feed" });
     if (normalizedIntent === "chooser") {
       return {
@@ -45,7 +91,10 @@ export function createStorySystemController({
         caption: "",
         file: null,
         status: "",
-        mode: "chooser"
+        mode: "chooser",
+        phase: "idle",
+        activeAttemptId: "",
+        activeAttemptFingerprint: ""
       };
     }
     return {
@@ -53,7 +102,75 @@ export function createStorySystemController({
       caption: base.caption || "",
       file: base.file || null,
       status: "",
-      mode: normalizedIntent
+      mode: normalizedIntent,
+      phase: base.file ? "ready" : "idle",
+      activeAttemptId: "",
+      activeAttemptFingerprint: ""
+    };
+  }
+
+  function validateUploadContext({
+    profile = null,
+    user = null,
+    uploadMode = "",
+    restaurantId = ""
+  } = {}) {
+    const normalizedMode = normalizeUploadIntent(uploadMode, { fallback: "feed" });
+    const safeRestaurantId = String(restaurantId || profile?.restaurantId || "").trim();
+    const isBusiness = isLocalBusinessProfileFn(profile || {});
+    const isStoryMode = normalizedMode === "story";
+    if (!user || !String(user.uid || "").trim()) {
+      return {
+        ok: false,
+        error: "Bitte zuerst anmelden.",
+        uploadMode: normalizedMode,
+        isBusiness,
+        isStoryMode,
+        restaurantId: safeRestaurantId,
+        ownerId: ""
+      };
+    }
+    if (normalizedMode === "chooser") {
+      return {
+        ok: false,
+        error: "Bitte zuerst Story oder Feed waehlen.",
+        uploadMode: normalizedMode,
+        isBusiness,
+        isStoryMode,
+        restaurantId: safeRestaurantId,
+        ownerId: ""
+      };
+    }
+    if (isBusiness && !safeRestaurantId) {
+      return {
+        ok: false,
+        error: "Bitte Business im Account waehlen.",
+        uploadMode: normalizedMode,
+        isBusiness,
+        isStoryMode,
+        restaurantId: safeRestaurantId,
+        ownerId: ""
+      };
+    }
+    if (isStoryMode && (!isBusiness || !safeRestaurantId)) {
+      return {
+        ok: false,
+        error: "Story Upload nur mit Business Profil moeglich.",
+        uploadMode: normalizedMode,
+        isBusiness,
+        isStoryMode,
+        restaurantId: safeRestaurantId,
+        ownerId: ""
+      };
+    }
+    return {
+      ok: true,
+      error: "",
+      uploadMode: normalizedMode,
+      isBusiness,
+      isStoryMode,
+      restaurantId: safeRestaurantId,
+      ownerId: isBusiness ? safeRestaurantId : String(user.uid || "").trim()
     };
   }
 
@@ -92,7 +209,8 @@ export function createStorySystemController({
     caption = "",
     mediaUrl = "",
     mediaType = "image",
-    createdByUid = ""
+    createdByUid = "",
+    storyId = ""
   } = {}) {
     if (!db || typeof collectionFn !== "function" || typeof docFn !== "function" || typeof setDocFn !== "function" || typeof serverTimestampFn !== "function") {
       throw new Error("Story Runtime nicht bereit.");
@@ -100,7 +218,10 @@ export function createStorySystemController({
     const rid = String(restaurantId || "").trim();
     const media = String(mediaUrl || "").trim();
     if (!rid || !media) throw new Error("Story Daten unvollstaendig.");
-    const postRef = docFn(collectionFn(db, "restaurants", rid, "stories"));
+    const explicitStoryId = String(storyId || "").trim();
+    const postRef = explicitStoryId
+      ? docFn(collectionFn(db, "restaurants", rid, "stories"), explicitStoryId)
+      : docFn(collectionFn(db, "restaurants", rid, "stories"));
     const nowTs = serverTimestampFn();
     const kind = String(mediaType || "image").trim().toLowerCase() === "video" ? "video" : "image";
     await setDocFn(postRef, {
@@ -226,7 +347,10 @@ export function createStorySystemController({
 
   return {
     normalizeUploadIntent,
+    normalizeUploadPhase,
+    buildUploadState,
     buildUploadStateForIntent,
+    validateUploadContext,
     buildStoryViewerUrl,
     isBusinessStoryPostEligible,
     renderUploadChooserView,

@@ -513,6 +513,14 @@ export function createSessionDataRuntimeController({
     state.postMeta = {};
     state.userPosts = [];
     state.businessPosts = [];
+    state.drawerOpen = false;
+    state.settingsView = "main";
+    state.profileBackTab = "feed";
+    state.profileViewMode = "grid";
+    state.profileTopTab = "profile";
+    state.profileContentTab = "posts";
+    state.profileCheckins = [];
+    state.profilePostMenuId = null;
     state.profileView = null;
     state.profileModal = { open: false, profile: null };
     state.chatSettingsOpen = false;
@@ -521,9 +529,51 @@ export function createSessionDataRuntimeController({
     state.chatModal = { open: false, profile: null, messages: [], draft: "", attachments: [] };
     state.postModal = { open: false, post: null, commentText: "", replyTo: null, loading: false, animate: false, sending: false };
     state.likesModal = { open: false, postId: "", animate: false };
+    state.menu = {
+      restaurantId: "",
+      items: [],
+      loading: false,
+      error: "",
+      filter: "all",
+      query: "",
+      source: "hybrid",
+      statusBadgeVisible: true
+    };
+    state.menuModal = {
+      open: false,
+      mode: "create",
+      item: null,
+      status: "",
+      loading: false,
+      imageUrlDraft: "",
+      cropX: 50,
+      cropY: 50,
+      imageFiles: [],
+      imagePreviews: [],
+      existingImages: []
+    };
     state.menuDetail = createEmptyMenuDetailStateFn();
     state.menuItemMeta = {};
     requestedMenuItemCounts.clear();
+    state.focus = {
+      restaurantId: "",
+      items: [],
+      loading: false,
+      enabled: true,
+      error: "",
+      index: 0
+    };
+    state.focusModal = {
+      open: false,
+      mode: "create",
+      item: null,
+      status: "",
+      loading: false,
+      cropX: 50,
+      cropY: 50,
+      imageFile: null,
+      imagePreview: ""
+    };
     state.leads = createEmptyLeadsStateFn();
     state.customers = createEmptyCustomersStateFn();
     state.staff = {
@@ -594,6 +644,22 @@ export function createSessionDataRuntimeController({
     state.orders = createEmptyOrdersStateFn();
     state.favoriteMenuItems = createEmptyFavoriteMenuItemsStateFn();
     state.notifications = [];
+    state.upload = {
+      preview: "",
+      caption: "",
+      file: null,
+      status: "",
+      mode: "feed"
+    };
+    state.search = {
+      query: "",
+      filter: "all",
+      userResults: [],
+      businessResults: [],
+      loading: false,
+      error: "",
+      keepFocus: false
+    };
     state.roleSwitchRoles = [];
     state.roleSwitchRestaurantId = "";
     state.userProfile = { ...defaultProfile };

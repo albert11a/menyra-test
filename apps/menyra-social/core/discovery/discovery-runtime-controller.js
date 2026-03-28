@@ -494,9 +494,16 @@ function mapLocate() {
 function updateSearchLogoNodes(biz) {
   if (!biz?.id) return;
   const bizId = escapeSelector(biz.id);
-  const restaurant = state.restaurants.find((r) => r.id === biz.id) || {};
+  const restaurantId = String(biz.restaurantId || "").trim();
+  const restaurant = restaurantId
+    ? (state.restaurants.find((r) => r.id === restaurantId) || {})
+    : {};
   const logoSource = restaurant.logoUrl || restaurant.logo || biz.logo || biz.image || "";
-  const logoUrl = resolveRestaurantLogo(biz.id, logoSource, "avatar");
+  const logoUrl = restaurantId
+    ? resolveRestaurantLogo(restaurantId, logoSource, "avatar")
+    : ((logoSource && !isPlaceholderUrl(logoSource))
+        ? getOptimizedImageUrl(logoSource, "avatar")
+        : PLACEHOLDER_IMAGE);
   document.querySelectorAll(`[data-search-logo="${bizId}"]`).forEach((img) => {
     if (!(img instanceof HTMLImageElement)) return;
     if (img.getAttribute("src") !== logoUrl) img.setAttribute("src", logoUrl);
@@ -545,11 +552,15 @@ function updateSearchUserNodes(user) {
 
 function normalizeBusinessResult(rest) {
   if (!isPublicBusinessRecord(rest)) return null;
+  const restaurantId = String(rest.id || rest.restaurantId || "").trim();
   const name = rest.name || rest.restaurantName || "Business";
+  const city = rest.city || rest.location || rest.address || "Prishtina";
+  const resultKey = restaurantId || `fallback:${normalizeSearchKey(name)}:${normalizeSearchKey(city)}`;
   return {
-    id: rest.id || rest.restaurantId || "",
+    id: resultKey,
+    restaurantId,
     name,
-    city: rest.city || rest.location || rest.address || "Prishtina",
+    city,
     logo: rest.logoUrl || rest.logo || rest.image || ""
   };
 }
@@ -557,26 +568,29 @@ function normalizeBusinessResult(rest) {
 function buildBusinessResultsFromFeed(posts) {
   const map = new Map();
   posts.forEach((post) => {
-    const id = post.restaurantId || post.ownerId || "";
-    const key = id || String(post.business || "").toLowerCase();
+    const restaurantId = String(post.restaurantId || "").trim();
+    const name = post.business || post.restaurantName || "Business";
+    const city = post.location || post.city || "Prishtina";
+    const key = restaurantId || `fallback:${normalizeSearchKey(name)}:${normalizeSearchKey(city)}`;
     if (!key || map.has(key)) return;
     if (isForceHiddenBusinessEntity({
-      id: id || key,
-      restaurantId: id || key,
+      id: key,
+      restaurantId,
       ownerId: post.ownerId || "",
       ownerUid: post.ownerUid || "",
       handle: post.handle || "",
-      businessName: post.business || "",
-      restaurantName: post.restaurantName || "",
+      businessName: name,
+      restaurantName: post.restaurantName || name,
       ownerEmail: post.ownerEmail || "",
       email: post.email || ""
     })) {
       return;
     }
     map.set(key, {
-      id: id || key,
-      name: post.business || "Business",
-      city: post.location || "Prishtina",
+      id: key,
+      restaurantId,
+      name,
+      city,
       logo: post.logo || ""
     });
   });
@@ -779,14 +793,14 @@ async function searchRemote(queryRaw) {
   const token = ++searchToken;
   state.search.loading = true;
   state.search.error = "";
-  if (!refreshSearchView()) render();
+  requestSearchUiRefresh();
   await Promise.all([
     searchUsersRemote(queryRaw, token),
     searchBusinessesRemote(queryRaw, token)
   ]);
   if (token === searchToken) {
     state.search.loading = false;
-    if (!refreshSearchView()) render();
+    requestSearchUiRefresh();
   }
 }
 
@@ -804,17 +818,17 @@ function handleSearchInput(value) {
     state.search.userResults = [];
     state.search.loading = false;
     state.search.error = "";
-    if (!refreshSearchView()) render();
+    requestSearchUiRefresh();
     return;
   }
   if (queryKey.length < 3) {
     state.search.userResults = [];
     state.search.loading = false;
     state.search.error = "";
-    if (!refreshSearchView()) render();
+    requestSearchUiRefresh();
     return;
   }
-  if (!refreshSearchView()) render();
+  requestSearchUiRefresh();
   searchTimer = window.setTimeout(() => {
     void searchRemote(raw);
   }, 450);
@@ -918,10 +932,15 @@ function renderSearchUserItem(user) {
 
 function renderSearchBusinessItem(biz) {
   const name = biz.name || "Business";
-  const logoUrl = resolveRestaurantLogo(biz.id, biz.logo, "avatar");
+  const restaurantId = String(biz.restaurantId || "").trim();
+  const logoUrl = restaurantId
+    ? resolveRestaurantLogo(restaurantId, biz.logo, "avatar")
+    : ((biz.logo && !isPlaceholderUrl(biz.logo))
+        ? getOptimizedImageUrl(biz.logo, "avatar")
+        : PLACEHOLDER_IMAGE);
   const logoAttr = biz.id ? `data-search-logo="${escapeHtml(biz.id)}"` : "";
   return `
-    <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
+    <button data-search-business="${escapeHtml(biz.id)}" data-search-business-id="${escapeHtml(restaurantId)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
       <img src="${escapeHtml(logoUrl)}" ${logoAttr} data-img-key="search-biz:${escapeHtml(biz.id)}" class="w-12 h-12 rounded-2xl object-contain bg-white" />
       <div class="flex-1 min-w-0">
         <p data-search-business-name class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
@@ -1120,6 +1139,15 @@ function refreshSearchView() {
   return false;
 }
 
+function requestSearchUiRefresh() {
+  if (refreshSearchView()) return true;
+  if (state.activeTab === "search" && getLastRenderMode() === "main") {
+    render();
+    return true;
+  }
+  return false;
+}
+
 function patchSearchUserList(users) {
   const usersList = document.getElementById("searchUsersList");
   if (!usersList) return false;
@@ -1174,6 +1202,7 @@ function patchSearchUserList(users) {
     updateSearchDom,
     patchSearchBusinessList,
     refreshSearchView,
+    requestSearchUiRefresh,
     patchSearchUserList
   };
 }

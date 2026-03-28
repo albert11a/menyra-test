@@ -74,6 +74,7 @@ export async function saveCeoStaffFromViewCore({
     : ((value) => (value && typeof value === "object" ? value : {}));
 
   if (!setDocSafe || !docSafe || !db) return;
+  if (state.staff?.saving || state.staff?.deleting) return;
 
   syncForm();
   const form = state.staff.form || {};
@@ -81,6 +82,11 @@ export async function saveCeoStaffFromViewCore({
   const existingEntry = isEditing
     ? (state.staff.items || []).find((item) => String(item.uid || "") === String(state.staff.editorUid || ""))
     : null;
+  if (isEditing && !existingEntry) {
+    state.staff.status = "CEO Staff ist nicht mehr im aktuellen Scope.";
+    rerender();
+    return;
+  }
   const firstName = String(form.firstName || "").trim();
   const lastName = String(form.lastName || "").trim();
   const email = getEmail(form, { preferStored: isEditing });

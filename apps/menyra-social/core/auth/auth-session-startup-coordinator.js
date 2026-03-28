@@ -48,6 +48,24 @@ export function createAuthSessionStartupCoordinator({
   let authTransitionSeq = 0;
   let authStateListenerBound = false;
   let renderRequested = false;
+  let lastPersistedScopeKey = "";
+
+  function buildPersistedScopeKey(user = null) {
+    const uid = String(user?.uid || "").trim();
+    return uid ? `user:${uid}` : "guest";
+  }
+
+  function hydratePersistedScope(user = null, { force = false } = {}) {
+    const scopeKey = buildPersistedScopeKey(user);
+    if (!force && scopeKey === lastPersistedScopeKey) return false;
+    if (user?.uid) {
+      loadUserScopedPersisted(user);
+    } else {
+      loadGuestScopedPersisted();
+    }
+    lastPersistedScopeKey = scopeKey;
+    return true;
+  }
 
   function requestRender() {
     if (renderRequested) return;
@@ -104,7 +122,7 @@ export function createAuthSessionStartupCoordinator({
       }
       setAuthInitialized(false);
       if (state?.user) {
-        loadUserScopedPersisted(state.user);
+        hydratePersistedScope(state.user, { force: true });
         writeAuthBootstrapSnapshot();
         lastAuthUid = state.user.uid || "";
       } else {
@@ -112,6 +130,8 @@ export function createAuthSessionStartupCoordinator({
         const snapshotUid = appliedSnapshot ? String(snapshot?.uid || "").trim() : "";
         if (snapshotUid) {
           applyPersistedAuthProfileHints(snapshotUid);
+        } else {
+          hydratePersistedScope(null, { force: true });
         }
         lastAuthUid = snapshotUid;
       }
@@ -153,7 +173,7 @@ export function createAuthSessionStartupCoordinator({
       if (state?.auth) {
         state.auth.open = false;
       }
-      loadUserScopedPersisted(user);
+      hydratePersistedScope(user);
       writeAuthBootstrapSnapshot();
       const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
       if (pendingRouteFlags.hasAny) {
@@ -209,7 +229,7 @@ export function createAuthSessionStartupCoordinator({
         state.auth.open = false;
         state.auth.loading = false;
       }
-      loadGuestScopedPersisted();
+      hydratePersistedScope(null);
       if (state) {
         state.activeTab = sanitizeTabForSession(state.activeTab, { hasProfileView: !!state.profileView });
       }
