@@ -178,6 +178,7 @@
     body.modal-open {
       overflow: hidden;
       overscroll-behavior: none;
+      background: var(--app-surface) !important;
     }
     html.menu-detail-comment-focus,
     body.menu-detail-comment-focus {
@@ -404,6 +405,21 @@
       padding-right: var(--safe-area-right);
       box-sizing: border-box;
     }
+    .modal-frame::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--safe-area-top);
+      background: var(--app-surface);
+      pointer-events: none;
+      z-index: 0;
+    }
+    .modal-frame > .modal-sheet {
+      position: relative;
+      z-index: 1;
+    }
     .modal-sheet-85 {
       height: 100% !important;
     }
@@ -417,17 +433,6 @@
       background: transparent !important;
       border-color: transparent !important;
       box-shadow: none !important;
-    }
-    .modal-sheet[data-modal-hero-handoff="pending"]::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: var(--safe-area-top);
-      background: var(--app-surface);
-      pointer-events: none;
-      z-index: 1;
     }
     .modal-sheet[data-modal-hero-handoff="pending"] .modal-handoff-scroll {
       background: transparent !important;
