@@ -112,7 +112,10 @@ export function createRestaurantIdentityRuntimeController({
       const nextIds = Array.from(pendingStoryIdentityHydrationIds);
       pendingStoryIdentityHydrationIds.clear();
       if (!nextIds.length) return;
-      void hydrateRestaurantsByIds(nextIds, { max: nextIds.length });
+      void hydrateRestaurantsByIds(nextIds, {
+        max: nextIds.length,
+        skipBusinessLocationsRebuild: String(state?.activeTab || "").trim().toLowerCase() !== "map"
+      });
     });
   }
 
@@ -194,7 +197,7 @@ export function createRestaurantIdentityRuntimeController({
     });
   }
 
-  async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
+  async function hydrateRestaurantsByIds(restaurantIds, { max = 24, skipBusinessLocationsRebuild = false } = {}) {
     if (!Array.isArray(restaurantIds) || restaurantIds.length === 0) return;
     const uniqueIds = Array.from(new Set(restaurantIds.filter(Boolean)));
     if (!uniqueIds.length) return;
@@ -267,7 +270,9 @@ export function createRestaurantIdentityRuntimeController({
 
     if (loaded.length) {
       state.restaurants = mergeRestaurants(state.restaurants, loaded);
-      rebuildBusinessLocations();
+      if (!skipBusinessLocationsRebuild) {
+        rebuildBusinessLocations();
+      }
       const feedUpdated = syncFeedPostLogos();
       const storiesUpdated = state?.stories?.length ? false : refreshFeedStories({ force: true });
       if ((feedUpdated || storiesUpdated) && state?.activeTab === "feed" && getLastRenderMode() === "main") {

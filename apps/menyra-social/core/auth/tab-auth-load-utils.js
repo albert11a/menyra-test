@@ -175,11 +175,11 @@ export function ensureTabDataCore({
     return nextPromise;
   };
 
-  const needsRestaurants = tab === "map" || tab === "search" || tab === "orders" || (!FAST_MODE && tab === "feed");
+  const needsRestaurants = tab === "map";
   if (needsRestaurants && !dataLoaded.restaurants) {
     dataLoaded.restaurants = true;
     scheduleIdleSafe(() => {
-      loadRestaurantsSafe().catch((err) => console.error(err));
+      loadRestaurantsSafe({ scope: "map" }).catch((err) => console.error(err));
     });
   }
 
