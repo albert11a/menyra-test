@@ -199,6 +199,7 @@
     body.modal-open #overlayRoot > * { pointer-events: auto; visibility: visible; }
     .modal-overlay { position: fixed; inset: 0; }
     .modal-sheet {
+      position: relative;
       height: 100% !important;
       max-height: 100% !important;
       box-sizing: border-box;
@@ -416,6 +417,17 @@
       background: transparent !important;
       border-color: transparent !important;
       box-shadow: none !important;
+    }
+    .modal-sheet[data-modal-hero-handoff="pending"]::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--safe-area-top);
+      background: var(--app-surface);
+      pointer-events: none;
+      z-index: 1;
     }
     .modal-sheet[data-modal-hero-handoff="pending"] .modal-handoff-scroll {
       background: transparent !important;

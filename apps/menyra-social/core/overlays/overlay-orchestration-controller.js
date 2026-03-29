@@ -247,9 +247,6 @@ export function createOverlayOrchestrationController({
       || resolvePreviewImageSrc(previewImageEl)
       || ""
     ).trim();
-    if (previewImageSrc) {
-      await ensurePreviewImageReady(previewImageEl, previewImageSrc);
-    }
     ensurePostMetaFn(post.id);
     state.profileModal = { open: false, profile: null };
     state.postModal = {
@@ -544,85 +541,11 @@ export function createOverlayOrchestrationController({
     };
   }
 
-  async function ensurePreviewImageReady(imageEl, src) {
-    const safeSrc = String(src || "").trim();
-    if (isPlaceholderImageSrc(safeSrc)) return;
-    const win = getWindowObjFn();
-    const decodeImageElement = async (target) => {
-      if (!target || typeof target.decode !== "function") return;
-      try {
-        await target.decode();
-      } catch {}
-    };
-    const waitForExistingImage = async (target) => {
-      if (!target || typeof target.addEventListener !== "function") return false;
-      if (target.complete && Number(target.naturalWidth || 0) > 0) {
-        await decodeImageElement(target);
-        return true;
-      }
-      await new Promise((resolve) => {
-        let settled = false;
-        const finish = () => {
-          if (settled) return;
-          settled = true;
-          cleanup();
-          resolve();
-        };
-        const cleanup = () => {
-          target.removeEventListener("load", finish);
-          target.removeEventListener("error", finish);
-          if (timeoutId && typeof win?.clearTimeout === "function") {
-            win.clearTimeout(timeoutId);
-          }
-        };
-        const timeoutId = typeof win?.setTimeout === "function" ? win.setTimeout(finish, 240) : null;
-        target.addEventListener("load", finish, { once: true });
-        target.addEventListener("error", finish, { once: true });
-      });
-      if (target.complete && Number(target.naturalWidth || 0) > 0) {
-        await decodeImageElement(target);
-        return true;
-      }
-      return false;
-    };
-    if (await waitForExistingImage(imageEl)) return;
-    const ImageCtor = win?.Image || (typeof Image === "function" ? Image : null);
-    if (!ImageCtor) return;
-    await new Promise((resolve) => {
-      const preload = new ImageCtor();
-      let settled = false;
-      const finish = () => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve();
-      };
-      const cleanup = () => {
-        preload.onload = null;
-        preload.onerror = null;
-        if (timeoutId && typeof win?.clearTimeout === "function") {
-          win.clearTimeout(timeoutId);
-        }
-      };
-      const timeoutId = typeof win?.setTimeout === "function" ? win.setTimeout(finish, 240) : null;
-      try {
-        preload.decoding = "sync";
-      } catch {}
-      preload.onload = finish;
-      preload.onerror = finish;
-      preload.src = safeSrc;
-      if (preload.complete && Number(preload.naturalWidth || 0) > 0) finish();
-    });
-  }
-
   async function openMenuDetailFromTrigger(trigger) {
     const itemId = trigger?.dataset?.menuOpen || "";
     if (!itemId) return;
     const { imageEl: previewImage, index: previewIndex } = resolveMenuCardPreviewFromTrigger(trigger);
     const safePreviewImageSrc = resolvePreviewImageSrc(previewImage);
-    if (safePreviewImageSrc) {
-      await ensurePreviewImageReady(previewImage, safePreviewImageSrc);
-    }
     const source = trigger?.dataset?.menuOpenSource || "menu";
     const sourceItems = source === "favorites"
       ? (Array.isArray(state.favoriteMenuItems?.items) ? state.favoriteMenuItems.items : [])
