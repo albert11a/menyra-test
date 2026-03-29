@@ -439,26 +439,9 @@ export function createStoryFeedRuntimeController({
   }
 
   function buildStoriesFromFeed(posts) {
-    if (!Array.isArray(posts)) return [];
-    const map = new Map();
-    posts.forEach((post) => {
-      const rid = String(post?.restaurantId || post?.ownerId || "").trim();
-      if (!rid || map.has(rid) || !canShowFeedRestaurantId(rid)) return;
-      const renderIdentity = resolveStoryRenderIdentity({
-        restaurantId: rid,
-        name: post.business || post.restaurantName || "",
-        img: post.logo || "",
-        isLive: false
-      });
-      map.set(rid, {
-        id: rid,
-        restaurantId: rid,
-        name: sanitizeStoryBusinessName(renderIdentity.storyLabel || ""),
-        img: String(renderIdentity.logoSource || "").trim(),
-        isLive: false
-      });
-    });
-    return Array.from(map.values()).slice(0, fastLimits.stories);
+    void posts;
+    // Feed posts are not a valid surrogate for real stories.
+    return [];
   }
 
   function setFeedStoriesSignature(next) {

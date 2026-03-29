@@ -629,7 +629,7 @@ const FAST_MODE = true;
 const CACHE_KEYS = {
   feed: "menyra_social_feed_cache_v1",
   restaurants: "menyra_social_restaurants_cache_v1",
-  stories: "menyra_social_stories_cache_v1"
+  stories: "menyra_social_stories_cache_v2"
 };
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
 const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
