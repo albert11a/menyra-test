@@ -224,6 +224,76 @@ function toMillis(value) {
   return 0;
 }
 
+function toFiniteLocationNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
+  if (typeof value === "string") {
+    const parsed = Number(value.trim().replace(",", "."));
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function readBootstrapLocationCoords(entry = {}) {
+  const coords = entry?.coords && typeof entry.coords === "object" ? entry.coords : {};
+  const geo = entry?.geo && typeof entry.geo === "object" ? entry.geo : {};
+  return {
+    lat: toFiniteLocationNumber(
+      entry?.lat
+      ?? entry?.latitude
+      ?? entry?.gpsLat
+      ?? coords?.lat
+      ?? coords?.latitude
+      ?? geo?.lat
+      ?? geo?.latitude
+    ),
+    lng: toFiniteLocationNumber(
+      entry?.lng
+      ?? entry?.lon
+      ?? entry?.longitude
+      ?? entry?.gpsLng
+      ?? coords?.lng
+      ?? coords?.longitude
+      ?? coords?.lon
+      ?? geo?.lng
+      ?? geo?.longitude
+      ?? geo?.lon
+    )
+  };
+}
+
+function normalizeBootstrapLocationEntries(entries = []) {
+  return (Array.isArray(entries) ? entries : [])
+    .map((entry) => {
+      const address = asText(entry?.address || entry?.label || entry?.name);
+      const coords = readBootstrapLocationCoords(entry);
+      if (!(address || (coords.lat !== null && coords.lng !== null))) return null;
+      const normalized = {};
+      if (address) normalized.address = address;
+      if (coords.lat !== null) normalized.lat = coords.lat;
+      if (coords.lng !== null) normalized.lng = coords.lng;
+      return normalized;
+    })
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function buildBootstrapRestaurantLocationPatch(data = {}) {
+  const patch = {};
+  const address = asText(data?.address || data?.streetAddress || data?.fullAddress);
+  const location = asText(data?.location || data?.city);
+  const coords = readBootstrapLocationCoords(data);
+  const locations = normalizeBootstrapLocationEntries(data?.locations);
+
+  if (address) patch.address = address;
+  if (location) patch.location = location;
+  if (coords.lat !== null) patch.lat = coords.lat;
+  if (coords.lng !== null) patch.lng = coords.lng;
+  if (locations.length) patch.locations = locations;
+
+  return patch;
+}
+
 function normalizeStoryName(value) {
   const text = asText(value);
   if (!text) return "";
@@ -878,6 +948,223 @@ async function queryActiveStories(limitCount = 12) {
   }
 }
 
+function foldMenuText(value = "") {
+  try {
+    return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  } catch {
+    return String(value || "").toLowerCase();
+  }
+}
+
+function inferMenuTypeHint(value = "") {
+  const raw = foldMenuText(value).trim();
+  if (!raw) return "";
+  if (raw.includes("drink") || raw.includes("beverage") || raw.includes("getraenk") || raw.includes("getranke") || raw.includes("getraenke")) return "drink";
+  if (raw.includes("kafe") || raw.includes("cafe") || raw.includes("coffee") || raw.includes("tea") || raw.includes("pije")) return "drink";
+  if (raw.includes("speise") || raw.includes("speisen") || raw.includes("food")) return "food";
+  return "";
+}
+
+function coerceBootstrapMenuItemsFromData(data = null) {
+  const items = [];
+  const seen = new Set();
+
+  const addItems = (list, typeHint = "", categoryHint = "") => {
+    if (!Array.isArray(list)) return;
+    list.forEach((raw, idx) => {
+      const obj = typeof raw === "string" ? { name: raw } : raw;
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+      const next = { ...obj };
+      if (categoryHint && !next.category && !next.categoryName && !next.cat) {
+        next.category = categoryHint;
+      }
+      if (typeHint && !next.type && !next.menuType && !next.kind && !next.section && !next.group) {
+        next.type = typeHint;
+      }
+      const baseKey = asText(next.id || next._id || next.menuItemId || next.name || next.title || next.product);
+      const key = baseKey
+        ? `${baseKey}|${next.price ?? ""}|${next.category || ""}`
+        : `idx_${items.length}_${idx}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      items.push(next);
+    });
+  };
+
+  const addBuckets = (obj) => {
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) return;
+    Object.entries(obj).forEach(([key, value]) => {
+      if (!Array.isArray(value)) return;
+      addItems(value, inferMenuTypeHint(key), key);
+    });
+  };
+
+  if (!data) return items;
+  if (Array.isArray(data)) {
+    addItems(data);
+    return items;
+  }
+
+  addItems(data.items);
+  addItems(data.menuItems);
+  addItems(data.menu);
+  addItems(data.speisekarte);
+  addItems(data.food || data.foodItems || data.speisen || data.speise, "food");
+  addItems(data.drinks || data.drinkItems || data.getraenke || data.getranke || data.beverages, "drink");
+
+  if (data.menu && typeof data.menu === "object" && !Array.isArray(data.menu)) {
+    const menu = data.menu;
+    addItems(menu.items);
+    addItems(menu.menuItems);
+    addItems(menu.speisekarte);
+    addItems(menu.food || menu.foodItems || menu.speisen || menu.speise, "food");
+    addItems(menu.drinks || menu.drinkItems || menu.getraenke || menu.getranke || menu.beverages, "drink");
+    addBuckets(menu);
+  }
+
+  if (Array.isArray(data.categories)) {
+    data.categories.forEach((category) => {
+      if (!category || typeof category !== "object") return;
+      const categoryName = category.name || category.title || category.category || "";
+      const typeHint = inferMenuTypeHint(category.type || categoryName);
+      addItems(category.items || category.products || category.list, typeHint, categoryName);
+    });
+  }
+
+  addBuckets(data);
+  return items;
+}
+
+function resolveBootstrapMenuStatusBadgeVisible(data = {}) {
+  if (typeof data?.menuStatusBadgeVisible === "boolean") return data.menuStatusBadgeVisible;
+  if (typeof data?.menuAvailabilityBadgeVisible === "boolean") return data.menuAvailabilityBadgeVisible;
+  return true;
+}
+
+function normalizeBootstrapFocusItems(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item, idx) => {
+      if (!item || typeof item !== "object" || Array.isArray(item)) return null;
+      return {
+        id: asText(item.id || item._id || `focus_${idx}`, `focus_${idx}`),
+        title: asText(item.title || item.name, "Sot ne Fokus"),
+        text: asText(item.text || item.desc || item.description),
+        imageUrl: asText(item.imageUrl || item.image || item.photoUrl),
+        cropX: Number.isFinite(Number(item.cropX)) ? Number(item.cropX) : 50,
+        cropY: Number.isFinite(Number(item.cropY)) ? Number(item.cropY) : 50,
+        active: item.active !== false
+      };
+    })
+    .filter(Boolean);
+}
+
+async function loadRestaurantBootstrapPosts(restaurantId = "", limitCount = 24) {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return [];
+  try {
+    const ref = db.collection("restaurants").doc(safeRestaurantId).collection("socialPosts");
+    let snap = null;
+    try {
+      snap = await ref.orderBy("createdAt", "desc").limit(limitCount).get();
+    } catch {
+      snap = await ref.get();
+    }
+    const rows = [];
+    snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+    return rows
+      .filter((row) => asText(row.status, "active").toLowerCase() === "active")
+      .map((row) => {
+        const mediaRow = Array.isArray(row.media) && row.media.length ? row.media[0] : null;
+        return {
+          id: asText(row.id),
+          restaurantId: safeRestaurantId,
+          url: asText(mediaRow?.url || row.mediaUrl || row.url),
+          type: asText(row.type, "square"),
+          title: "",
+          caption: asText(row.caption),
+          createdAt: toMillis(row.createdAt),
+          likes: Number(row.likesCount || row.likes || 0) || 0,
+          comments: Number(row.commentsCount || row.comments || 0) || 0,
+          isVideo: mediaRow?.type === "video",
+          ownerType: "restaurant",
+          ownerId: safeRestaurantId
+        };
+      })
+      .filter((row) => row.id && row.url)
+      .slice(0, limitCount);
+  } catch {
+    return [];
+  }
+}
+
+async function loadRestaurantBootstrapMenuBundle(restaurantId = "", restaurantData = {}) {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return { items: [], source: "hybrid", statusBadgeVisible: true };
+  const [metaSnap, publicMenuSnap] = await Promise.all([
+    db.collection("restaurants").doc(safeRestaurantId).collection("public").doc("meta").get().catch(() => null),
+    db.collection("restaurants").doc(safeRestaurantId).collection("public").doc("menu").get().catch(() => null)
+  ]);
+  let items = publicMenuSnap?.exists ? coerceBootstrapMenuItemsFromData(publicMenuSnap.data() || {}) : [];
+  let source = items.length ? "public" : "hybrid";
+  if (!items.length) {
+    try {
+      const collectionSnap = await db.collection("restaurants").doc(safeRestaurantId).collection("menuItems").get();
+      items = collectionSnap.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }));
+      if (items.length) source = "collection";
+    } catch {}
+  }
+  if (!items.length) {
+    items = coerceBootstrapMenuItemsFromData(restaurantData || {});
+    if (items.length) source = "legacy";
+  }
+  return {
+    items,
+    source,
+    statusBadgeVisible: resolveBootstrapMenuStatusBadgeVisible(metaSnap?.exists ? (metaSnap.data() || {}) : {})
+  };
+}
+
+async function loadRestaurantBootstrapFocusBundle(restaurantId = "") {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return { items: [], enabled: true };
+  const [metaSnap, offersSnap] = await Promise.all([
+    db.collection("restaurants").doc(safeRestaurantId).collection("public").doc("meta").get().catch(() => null),
+    db.collection("restaurants").doc(safeRestaurantId).collection("public").doc("offers").get().catch(() => null)
+  ]);
+  const metaData = metaSnap?.exists ? (metaSnap.data() || {}) : {};
+  const offersData = offersSnap?.exists ? (offersSnap.data() || {}) : {};
+  return {
+    items: normalizeBootstrapFocusItems(offersData.items),
+    enabled: typeof metaData.offersEnabled === "boolean" ? metaData.offersEnabled : true
+  };
+}
+
+async function loadRestaurantBootstrapBundle(restaurantId = "", {
+  includeMenu = false,
+  includeFocus = false,
+  postLimit = 24
+} = {}) {
+  const safeRestaurantId = asText(restaurantId);
+  if (!safeRestaurantId) return null;
+  const restaurantSnap = await db.collection("restaurants").doc(safeRestaurantId).get().catch(() => null);
+  if (!restaurantSnap?.exists) return null;
+  const restaurantData = restaurantSnap.data() || {};
+  const [posts, menu, focus] = await Promise.all([
+    loadRestaurantBootstrapPosts(safeRestaurantId, postLimit),
+    includeMenu ? loadRestaurantBootstrapMenuBundle(safeRestaurantId, restaurantData) : Promise.resolve(null),
+    includeFocus ? loadRestaurantBootstrapFocusBundle(safeRestaurantId) : Promise.resolve(null)
+  ]);
+  return {
+    restaurant: {
+      id: safeRestaurantId,
+      ...restaurantData
+    },
+    posts,
+    ...(menu ? { menu } : {}),
+    ...(focus ? { focus } : {})
+  };
+}
+
 exports.issueMediaActionTicket = functions
   .region("us-central1")
   .https.onRequest(async (req, res) => {
@@ -1081,25 +1368,58 @@ exports.socialBootstrapFeed = functions
     }
 
     try {
-      const [restaurantsSnap, feedSnap, storiesSnap] = await Promise.all([
-        db.collection("restaurants").limit(120).get(),
-        queryActiveFeed(16),
-        queryActiveStories(16)
+      const targetRestaurantId = asText(
+        req.query?.r
+        || req.query?.restaurant
+        || req.query?.restaurantId
+        || req.query?.rid
+        || req.query?.businessId
+      );
+      const queryTab = asText(req.query?.tab || req.query?.top || req.query?.view).toLowerCase();
+      const querySource = asText(
+        req.query?.src
+        || req.query?.source
+        || req.query?.menuSource
+        || req.query?.menuAccessSource
+        || req.query?.access
+      ).toLowerCase();
+      const qrFlag = asText(req.query?.qr || req.query?.isQr || req.query?.menuQr).toLowerCase();
+      const isQrRoute = querySource === "qr" || ["1", "true", "yes", "qr"].includes(qrFlag);
+      const includeBusinessMenuBundle = !!targetRestaurantId && (queryTab === "menu" || isQrRoute);
+      const bootstrapRestaurantLimit = targetRestaurantId ? 0 : 120;
+      const bootstrapFeedLimit = targetRestaurantId ? 8 : 16;
+      const bootstrapStoryLimit = targetRestaurantId ? 8 : 16;
+
+      const [restaurantsSnap, feedSnap, storiesSnap, businessBundle] = await Promise.all([
+        bootstrapRestaurantLimit > 0
+          ? db.collection("restaurants").limit(bootstrapRestaurantLimit).get()
+          : Promise.resolve(null),
+        queryActiveFeed(bootstrapFeedLimit),
+        queryActiveStories(bootstrapStoryLimit),
+        targetRestaurantId
+          ? loadRestaurantBootstrapBundle(targetRestaurantId, {
+              includeMenu: includeBusinessMenuBundle,
+              includeFocus: includeBusinessMenuBundle,
+              postLimit: 24
+            }).catch(() => null)
+          : Promise.resolve(null)
       ]);
 
       const restaurants = [];
       const restaurantMap = new Map();
-      restaurantsSnap.forEach((docSnap) => {
+      restaurantsSnap?.forEach((docSnap) => {
         const data = docSnap.data() || {};
         const id = asText(docSnap.id);
         if (!id) return;
+        const locationPatch = buildBootstrapRestaurantLocationPatch(data);
         const rest = {
           id,
           name: asText(data.name || data.restaurantName || data.displayName),
           restaurantName: asText(data.restaurantName || data.name),
           logoUrl: asText(data.logoUrl || data.logo || data.logoURL),
           city: asText(data.city),
-          type: asText(data.type || data.customerType || data.category || data.kind || data.restaurantType)
+          type: asText(data.type || data.customerType || data.category || data.kind || data.restaurantType),
+          ...locationPatch
         };
         restaurants.push(rest);
         restaurantMap.set(id, rest);
@@ -1117,7 +1437,7 @@ exports.socialBootstrapFeed = functions
           restaurantId: rid,
           business: asText(data.businessName || data.restaurantName || rest.name || rest.restaurantName, "Business"),
           logo: asText(rest.logoUrl || rest.logo || data.logoUrl || data.logo || data.logoURL),
-          location: asText(data.city || rest.city, "Prishtina"),
+          location: asText(data.city || rest.city || rest.location, "Prishtina"),
           content: asText(data.caption || data.captionShort),
           image: asText(data.thumbUrl || data.mediaUrl || mediaRow?.thumbUrl || mediaRow?.url || data.imageUrl || data.url),
           likes: Number(data.likesCount || data.likes || 0) || 0,
@@ -1159,7 +1479,7 @@ exports.socialBootstrapFeed = functions
 
       const stories = Array.from(storiesByRestaurant.values())
         .sort((a, b) => Number(b.createdAt || 0) - Number(a.createdAt || 0))
-        .slice(0, 12)
+        .slice(0, bootstrapStoryLimit)
         .map((row) => ({
           id: row.id,
           restaurantId: row.restaurantId,
@@ -1174,15 +1494,18 @@ exports.socialBootstrapFeed = functions
         status: "served",
         restaurants: restaurants.length,
         feedPosts: feedPosts.length,
-        stories: stories.length
+        stories: stories.length,
+        targetRestaurantId,
+        businessBundle: !!businessBundle
       });
       res.status(200).json({
         ok: true,
         ts: Date.now(),
         data: {
-          restaurants: restaurants.slice(0, 120),
-          feedPosts: feedPosts.slice(0, 16),
-          stories
+          restaurants,
+          feedPosts: feedPosts.slice(0, bootstrapFeedLimit),
+          stories,
+          ...(businessBundle ? { businessBundle } : {})
         }
       });
     } catch (err) {

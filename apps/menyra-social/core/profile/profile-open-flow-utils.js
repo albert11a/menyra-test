@@ -13,6 +13,7 @@ export function createProfileOpenFlowControllerCore({
   loadBusinessPostsForRestaurant,
   normalizeExternalUserProfile,
   openGuestAuthPrompt,
+  businessProfileCache,
   userProfileCache,
   hasPendingFollowRequest,
   fetchUserDocByUid,
@@ -58,6 +59,9 @@ export function createProfileOpenFlowControllerCore({
   const openGuestAuth = typeof openGuestAuthPrompt === "function"
     ? openGuestAuthPrompt
     : (() => false);
+  const businessProfileCacheMap = businessProfileCache instanceof Map
+    ? businessProfileCache
+    : new Map();
   const userProfileCacheMap = userProfileCache instanceof Map
     ? userProfileCache
     : new Map();
@@ -73,6 +77,28 @@ export function createProfileOpenFlowControllerCore({
   const loadUserPosts = typeof loadUserPostsForUser === "function"
     ? loadUserPostsForUser
     : (() => Promise.resolve([]));
+  let businessOpenRequestToken = 0;
+
+  const cloneBusinessProfile = (profile) => (
+    profile && typeof profile === "object"
+      ? {
+          ...profile,
+          posts: Array.isArray(profile.posts) ? profile.posts.slice() : []
+        }
+      : null
+  );
+
+  const cacheBusinessProfile = (restaurantId, profile) => {
+    const safeRestaurantId = String(restaurantId || profile?.restaurantId || "").trim();
+    if (!safeRestaurantId || !profile || typeof profile !== "object") return;
+    businessProfileCacheMap.set(safeRestaurantId, cloneBusinessProfile(profile));
+  };
+
+  const readCachedBusinessProfile = (restaurantId) => {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    if (!safeRestaurantId) return null;
+    return cloneBusinessProfile(businessProfileCacheMap.get(safeRestaurantId));
+  };
 
   const isOwnBusinessTarget = ({ restaurantId = "", name = "" } = {}) => {
     if (!isLocalBusiness(state?.userProfile)) return false;
@@ -113,8 +139,8 @@ export function createProfileOpenFlowControllerCore({
   const openProfileViewFromBusiness = async (input, { showBack = true, topTab, menuAccessSource = "", tableNumber = 0 } = {}) => {
     try {
       const safeName = String(typeof input === "string" ? input : input?.name || "").trim();
-      const restaurantId = typeof input === "string" ? "" : (input?.id || "");
-      if (!safeName && !restaurantId) return;
+      const explicitRestaurantId = typeof input === "string" ? "" : (input?.id || "");
+      if (!safeName && !explicitRestaurantId) return;
       const safeMenuAccessSource = String(menuAccessSource || "").trim().toLowerCase();
       const safeTableNumber = Math.max(0, Number(tableNumber || 0) || 0);
       const isMenuTopTab = String(topTab || "").trim().toLowerCase() === "menu";
@@ -123,20 +149,25 @@ export function createProfileOpenFlowControllerCore({
       // never the owner editor tab, even when the target is the own business account.
       const isDeeplinkMenuOpen = isMenuTopTab && !showBack;
 
-      if (!isDeeplinkMenuOpen && !isQrMenuOpen && isOwnBusinessTarget({ restaurantId, name: safeName })) {
+      const rest = explicitRestaurantId
+        ? (state.restaurants.find((r) => r.id === explicitRestaurantId) || { id: explicitRestaurantId })
+        : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
+      const restaurantId = String(explicitRestaurantId || rest?.id || "").trim();
+
+      if (!isDeeplinkMenuOpen && !isQrMenuOpen && isOwnBusinessTarget({
+        restaurantId,
+        name: safeName || rest?.name || rest?.restaurantName || ""
+      })) {
         openOwnBusinessProfile({ showBack, topTab });
         return;
       }
 
-      if (restaurantId) {
-        void hydrateRestaurants([restaurantId], { max: 1 });
-      }
+      const requestToken = ++businessOpenRequestToken;
+      const cachedProfile = readCachedBusinessProfile(restaurantId);
 
-      const rest = restaurantId
-        ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
-        : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
-
-      const fallbackPosts = state.feedPosts
+      const fallbackPosts = restaurantId
+        ? []
+        : state.feedPosts
         .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
         .map((p, idx) => ({
           id: p.id || `feed_${idx}`,
@@ -150,12 +181,20 @@ export function createProfileOpenFlowControllerCore({
           ownerId: restaurantId || p.restaurantId || ""
         }));
 
-      const placeholderProfile = normalizeBusinessProfile({
+      const placeholderProfile = cachedProfile || normalizeBusinessProfile({
         profileDoc: null,
         restaurant: rest,
         fallbackName: safeName || rest.name || rest.restaurantName || "Business",
         posts: fallbackPosts
       });
+      if (restaurantId && !Array.isArray(placeholderProfile.posts)) {
+        placeholderProfile.posts = [];
+      }
+      if (restaurantId && !placeholderProfile.posts?.length && placeholderProfile.postsLoading !== false) {
+        placeholderProfile.postsLoading = true;
+      } else {
+        placeholderProfile.postsLoading = false;
+      }
 
       showPublicProfileView(placeholderProfile, placeholderProfile.posts, {
         showBack,
@@ -164,17 +203,36 @@ export function createProfileOpenFlowControllerCore({
         tableNumber: safeTableNumber
       });
 
-      const [profileSnap, posts] = await Promise.all([
+      if (isMenuTopTab && placeholderProfile?.restaurantId) {
+        ensureMenuData(placeholderProfile);
+        ensureFocusData(placeholderProfile);
+      }
+
+      const hydratedRestaurantPromise = restaurantId
+        ? Promise.resolve(hydrateRestaurants([restaurantId], { max: 1, requireLocation: true }))
+          .catch(() => null)
+          .then(() => state.restaurants.find((row) => row.id === restaurantId) || rest)
+        : Promise.resolve(rest);
+      const postsPromise = !restaurantId
+        ? Promise.resolve(fallbackPosts)
+        : Promise.resolve(loadBusinessPosts(restaurantId)).catch(() => fallbackPosts);
+
+      const [profileSnap, hydratedRestaurant] = await Promise.all([
         fetchBusinessProfile({ restaurantId, restaurant: rest }),
-        restaurantId ? loadBusinessPosts(restaurantId) : Promise.resolve(fallbackPosts)
+        hydratedRestaurantPromise
       ]);
 
+      if (requestToken !== businessOpenRequestToken) return;
       const resolved = normalizeBusinessProfile({
         profileDoc: profileSnap,
-        restaurant: rest,
+        restaurant: hydratedRestaurant || rest,
         fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-        posts: posts && posts.length ? posts : fallbackPosts
+        posts: placeholderProfile.posts
       });
+      if (restaurantId) {
+        resolved.postsLoading = true;
+      }
+      cacheBusinessProfile(restaurantId, resolved);
 
       if (state.activeTab !== "profile") return;
       if (restaurantId && state.profileView?.profile?.restaurantId !== restaurantId) return;
@@ -184,6 +242,28 @@ export function createProfileOpenFlowControllerCore({
         menuAccessSource: safeMenuAccessSource,
         tableNumber: safeTableNumber
       });
+
+      void postsPromise.then((loadedPosts) => {
+        if (requestToken !== businessOpenRequestToken) return;
+        const finalPosts = Array.isArray(loadedPosts) ? loadedPosts : fallbackPosts;
+        const currentProfile = state.profileView?.profile || null;
+        if (state.activeTab !== "profile") return;
+        if (restaurantId && currentProfile?.restaurantId !== restaurantId) return;
+        const finalProfile = normalizeBusinessProfile({
+          profileDoc: profileSnap,
+          restaurant: hydratedRestaurant || rest,
+          fallbackName: safeName || rest.name || rest.restaurantName || "Business",
+          posts: finalPosts
+        });
+        finalProfile.postsLoading = false;
+        cacheBusinessProfile(restaurantId, finalProfile);
+        showPublicProfileView(finalProfile, finalProfile.posts, {
+          showBack,
+          topTab,
+          menuAccessSource: safeMenuAccessSource,
+          tableNumber: safeTableNumber
+        });
+      }).catch(() => null);
     } catch (err) {
       console.error(err);
     }

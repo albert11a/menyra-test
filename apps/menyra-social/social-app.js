@@ -628,7 +628,7 @@ const SEARCH_LIMITS = {
 const FAST_MODE = true;
 const CACHE_KEYS = {
   feed: "menyra_social_feed_cache_v1",
-  restaurants: "menyra_social_restaurants_cache_v1",
+  restaurants: "menyra_social_restaurants_cache_v2",
   stories: "menyra_social_stories_cache_v2"
 };
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
@@ -724,8 +724,14 @@ const state = {
   selectedBusiness: null,
   isLoading: false,
   feedPosts: [],
+  feedLoading: false,
+  feedReady: false,
+  feedError: "",
   postEntityMap: new Map(),
   restaurants: [],
+  restaurantsLoading: false,
+  restaurantsReady: false,
+  restaurantsError: "",
   restaurantMap: new Map(),
   businessLocations: [],
   stories: [],
@@ -2276,6 +2282,15 @@ function setState(patch) {
     patch.activeTab = sanitizeTabForSession(patch.activeTab, {
       hasProfileView: !!state.profileView
     });
+  }
+  if (
+    patch?.activeTab === "feed"
+    && !state.feedReady
+    && !state.feedLoading
+    && !state.feedPosts.length
+  ) {
+    state.feedLoading = true;
+    state.feedError = "";
   }
   Object.assign(state, patch);
   if (drawerOnly && lastRenderMode === "main") {
@@ -3951,6 +3966,13 @@ startAppStartupRuntimeCluster({
       render,
       reportCriticalRuntimeFailure,
       getLastRenderMode: () => lastRenderMode,
+      normalizeBusinessProfile: normalizeExternalProfile,
+      businessProfileCache,
+      menuCache,
+      focusCache,
+      menuCacheKey,
+      focusCacheKey,
+      syncMenuCaches,
       fastLimits: FAST_LIMITS
     },
     startupPrepDeps: {
@@ -3988,7 +4010,16 @@ startAppStartupRuntimeCluster({
       suspendRender,
       resumeRender,
       reportCriticalRuntimeFailure,
-      runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user)
+      runBootstrapUser: (user) => sessionDataRuntimeController.bootstrapUser(user),
+      prefetchFeedPosts: (...args) => loadFeedPosts(...args),
+      prefetchRestaurants: async ({ force = false } = {}) => {
+        if (!dataLoaded.restaurants) dataLoaded.restaurants = true;
+        const loaded = await loadRestaurants({ force });
+        if (!loaded) {
+          dataLoaded.restaurants = false;
+        }
+        return loaded;
+      }
     }
   },
   browserApi: {

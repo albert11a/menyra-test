@@ -1,3 +1,4 @@
+import { hasRestaurantLocationTruth } from "../common/restaurant-identity-runtime-controller.js";
 import { projectPostCollectionThroughEntityMap } from "./post-entity-registry-utils.js";
 
 export function createPublicProfileRuntimeController({
@@ -84,14 +85,34 @@ export function createPublicProfileRuntimeController({
       const viewProfile = state?.profileView?.profile;
       if (!viewProfile) return;
       if (profile.restaurantId) {
-        viewProfile.followers = data.followersCount ?? viewProfile.followers;
-        viewProfile.following = data.followingCount ?? viewProfile.following;
+        viewProfile.followers = pickCountValue(
+          data.followersCount,
+          data.followers,
+          data.fansCount,
+          data.fans,
+          viewProfile.followers
+        );
+        viewProfile.following = pickCountValue(
+          data.followingCount,
+          data.following,
+          viewProfile.following
+        );
         viewProfile.avatar = data.logoUrl || data.logo || viewProfile.avatar;
         viewProfile.name = data.name || data.restaurantName || viewProfile.name;
         viewProfile.location = data.city || viewProfile.location;
       } else {
-        viewProfile.followers = data.followersCount ?? viewProfile.followers;
-        viewProfile.following = data.followingCount ?? viewProfile.following;
+        viewProfile.followers = pickCountValue(
+          data.followersCount,
+          data.followers,
+          data.fansCount,
+          data.fans,
+          viewProfile.followers
+        );
+        viewProfile.following = pickCountValue(
+          data.followingCount,
+          data.following,
+          viewProfile.following
+        );
         viewProfile.privateAccount = !!data.privateAccount;
         viewProfile.avatar = data.avatarUrl || data.avatar || viewProfile.avatar;
         viewProfile.name = data.displayName || viewProfile.name;
@@ -205,12 +226,14 @@ export function createPublicProfileRuntimeController({
 
   async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
     const rest = restaurant || (restaurantId ? state?.restaurants?.find?.((row) => row.id === restaurantId) : null) || null;
-    if (rest?.id) {
-      if (!isPublicBusinessRecord(rest)) return null;
-      return { id: rest.id, data: rest };
-    }
+    if (rest?.id && !isPublicBusinessRecord(rest)) return null;
     const restId = restaurantId || rest?.id || "";
-    if (!restId || !makeDocRef || !db) return null;
+    if (!restId || !makeDocRef || !db) {
+      if (rest?.id && hasRestaurantLocationTruth(rest)) {
+        return { id: rest.id, data: rest };
+      }
+      return null;
+    }
     try {
       const snap = await getDocSafe(makeDocRef(db, "restaurants", restId));
       if (snap.exists()) {
@@ -219,6 +242,9 @@ export function createPublicProfileRuntimeController({
         return { id: snap.id, data };
       }
     } catch {}
+    if (rest?.id && hasRestaurantLocationTruth(rest)) {
+      return { id: rest.id, data: rest };
+    }
     return null;
   }
 

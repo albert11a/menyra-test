@@ -766,8 +766,6 @@ export function createSelfProfileRuntimeController({
       logoUrl: state.userProfile?.avatar || "",
       city: state.userProfile?.location || "",
       address: state.userProfile?.address || "",
-      followersCount: state.userProfile?.followers ?? 0,
-      followingCount: state.userProfile?.following ?? 0,
       phone: state.userProfile?.phone || "",
       instagram: state.userProfile?.instagram || "",
       roles: state.userProfile?.roles || ["owner"],
@@ -1171,19 +1169,6 @@ export function createSelfProfileRuntimeController({
             profileSeed.description = fallbackBio;
           }
         }
-        if (!hasCountValue(profileSeed.followersCount, profileSeed.followers, profileSeed.fansCount, profileSeed.fans)) {
-          const ownerFollowers = pickCountValue(
-            resolvedOwnerData.followersCount,
-            resolvedOwnerData.followers,
-            resolvedOwnerData.fansCount,
-            resolvedOwnerData.fans
-          );
-          if (ownerFollowers > 0) profileSeed.followersCount = ownerFollowers;
-        }
-        if (!hasCountValue(profileSeed.followingCount, profileSeed.following)) {
-          const ownerFollowing = pickCountValue(resolvedOwnerData.followingCount, resolvedOwnerData.following);
-          if (ownerFollowing > 0) profileSeed.followingCount = ownerFollowing;
-        }
         if (!String(profileSeed.city || "").trim()) {
           const ownerCity = String(resolvedOwnerData.city || "").trim();
           if (ownerCity) profileSeed.city = ownerCity;
@@ -1200,12 +1185,6 @@ export function createSelfProfileRuntimeController({
     const normalizedResolved = getOptimizedImageUrl(normalized.avatar || "", "avatar");
     if ((!normalized.avatar || isPlaceholderUrl(normalizedResolved)) && prevAvatar) {
       normalized.avatar = prevAvatar;
-    }
-    if (!hasCountValue(profileSeed.followingCount, profileSeed.following)) {
-      normalized.following = state.userProfile?.following ?? normalized.following;
-    }
-    if (!hasCountValue(profileSeed.followersCount, profileSeed.followers, profileSeed.fansCount, profileSeed.fans)) {
-      normalized.followers = state.userProfile?.followers ?? normalized.followers;
     }
     state.userProfile = normalized;
     state.userProfile.uid = user.uid;

@@ -390,6 +390,27 @@ export function createFeedViewOrchestrationController({
   }
 
   function renderFeedList(feedPosts) {
+    if (!feedPosts.length && state.feedLoading) {
+      return `
+        <div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">
+          Feed wird geladen
+        </div>
+      `;
+    }
+    if (!feedPosts.length && state.feedError) {
+      return `
+        <div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">
+          ${escapeHtmlFn(state.feedError)}
+        </div>
+      `;
+    }
+    if (!feedPosts.length && !state.feedReady) {
+      return `
+        <div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">
+          Feed wird vorbereitet
+        </div>
+      `;
+    }
     if (!feedPosts.length) {
       return `<div class="text-center py-20 text-slate-400 font-bold text-xs uppercase">Keine Posts vorhanden</div>`;
     }

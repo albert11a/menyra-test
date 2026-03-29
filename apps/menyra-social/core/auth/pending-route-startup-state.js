@@ -72,6 +72,10 @@ export function createPendingRouteStartupState() {
     return pendingState.pendingNotificationId;
   }
 
+  function getPendingProfileRestaurantId() {
+    return pendingState.pendingProfileRestaurantId;
+  }
+
   function getPendingPostId() {
     return pendingState.pendingPostId;
   }
@@ -88,6 +92,7 @@ export function createPendingRouteStartupState() {
     setPendingInitialTab,
     getPendingAuthMode,
     setPendingAuthMode,
+    getPendingProfileRestaurantId,
     getPendingNotificationId,
     getPendingPostId,
     getPendingChatUid

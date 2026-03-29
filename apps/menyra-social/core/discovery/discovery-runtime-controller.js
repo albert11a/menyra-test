@@ -14,7 +14,6 @@ export function createDiscoveryRuntimeController(deps = {}) {
   const normalizeLeadLocations = deps.normalizeLeadLocationsFn;
   const resolveCoordsFromEntity = deps.resolveCoordsFromEntityFn;
   const normalizeCoordPair = deps.normalizeCoordPairFn;
-  const preferStableCoords = deps.preferStableCoordsFn;
   const isPlaceholderUrl = deps.isPlaceholderUrlFn;
   const escapeHtml = deps.escapeHtmlFn;
   const isPublicBusinessRecord = deps.isPublicBusinessRecordFn;
@@ -116,10 +115,6 @@ async function ensureLeafletLoaded() {
   return leafletLoadPromise;
 }
 
-function hashValue(input) {
-  return Array.from(String(input || "")).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-}
-
 function getRestaurantLocations(rest) {
   const geo = getGeo(rest) || {};
   return normalizeLeadLocations(rest?.locations || [], rest?.address || rest?.city || "", {
@@ -130,22 +125,12 @@ function getRestaurantLocations(rest) {
 
 function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0) {
   const geo = getGeo(rest);
-  const baseLat = 42.6629;
-  const baseLng = 21.1655;
-  const hash = hashValue(`${rest.id || rest.name || idx}:${locationIndex}`);
-
   const row = location || {};
   const rowCoords = resolveCoordsFromEntity(row);
   const restCoords = resolveCoordsFromEntity(rest)
     || normalizeCoordPair(rest?.lat ?? geo?.lat, rest?.lng ?? geo?.lng);
-  const normalizedCoords = preferStableCoords(rowCoords, restCoords);
-  let lat = normalizedCoords?.lat ?? null;
-  let lng = normalizedCoords?.lng ?? null;
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    lat = baseLat + (((hash % 200) - 100) * 0.0025);
-    lng = baseLng + ((((hash >> 3) % 200) - 100) * 0.003);
-  }
+  const normalizedCoords = rowCoords || (!location ? restCoords : null);
+  if (!normalizedCoords) return null;
 
   return {
     id: rest.id,
@@ -153,9 +138,9 @@ function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0
     locationIndex,
     name: rest.name || rest.restaurantName || "Business",
     type: rest.type || "food",
-    lat,
-    lng,
-    address: row.address || rest.address || rest.city || "Prishtina",
+    lat: normalizedCoords.lat,
+    lng: normalizedCoords.lng,
+    address: row.address || row.label || row.name || rest.address || rest.city || "",
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.8,
     img: rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || "",
@@ -167,9 +152,12 @@ function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0
 function buildRestaurantLocations(rest, idx) {
   const locations = getRestaurantLocations(rest);
   if (!locations.length) {
-    return [normalizeBusinessLocation(rest, idx, null, 0)];
+    const singleLocation = normalizeBusinessLocation(rest, idx, null, 0);
+    return singleLocation ? [singleLocation] : [];
   }
-  return locations.map((location, locationIndex) => normalizeBusinessLocation(rest, idx, location, locationIndex));
+  return locations
+    .map((location, locationIndex) => normalizeBusinessLocation(rest, idx, location, locationIndex))
+    .filter(Boolean);
 }
 
 function cleanupLeaflet() {
@@ -241,7 +229,12 @@ function isDiscoverableMapBusiness(location = {}) {
   return typeKey !== "ecommerce";
 }
 
+function isMapRestaurantDatasetReady() {
+  return state?.restaurantsReady === true;
+}
+
 function getDiscoverableMapLocations(locations = state.businessLocations) {
+  if (!isMapRestaurantDatasetReady()) return [];
   return (Array.isArray(locations) ? locations : []).filter(isDiscoverableMapBusiness);
 }
 
@@ -598,7 +591,7 @@ function buildBusinessResultsFromFeed(posts) {
 }
 
 function buildLocalBusinessResults(queryKey) {
-  const list = state.restaurants.length
+  const list = state.restaurantsReady && state.restaurants.length
     ? state.restaurants.map(normalizeBusinessResult).filter(Boolean)
     : buildBusinessResultsFromFeed(state.feedPosts);
   const localKey = normalizeSearchKey(state.userProfile.location || "");
@@ -880,6 +873,11 @@ function renderMapView() {
   const mapInfoLabel = leafletLoadFailed
     ? "Karte konnte nicht geladen werden."
     : (leafletLoadPromise ? "Karte wird geladen ..." : "Karte wird vorbereitet ...");
+  const mapDataLabel = state?.restaurantsError
+    ? state.restaurantsError
+    : (state?.restaurantsLoading
+        ? "Alle Standorte werden geladen ..."
+        : (!state?.restaurantsReady ? "Standorte werden vorbereitet ..." : ""));
   return `
     <div class="p-5 pb-8 h-full flex flex-col relative animate-in fade-in duration-700">
       <div class="mb-4 px-2 flex justify-between items-end">
@@ -892,6 +890,7 @@ function renderMapView() {
       <div class="relative flex-1 bg-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200/50 min-h-[500px]">
         <div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>
         ${hasLeaflet ? "" : `<div class="absolute inset-0 z-20 flex items-center justify-center opacity-40 text-slate-500 text-xs font-black uppercase tracking-widest">${escapeHtml(mapInfoLabel)}</div>`}
+        ${mapDataLabel ? `<div class="absolute inset-x-6 bottom-24 z-20 flex justify-center"><div class="inline-flex items-center gap-2 rounded-2xl bg-white/92 px-4 py-3 text-[11px] font-black uppercase tracking-[0.22em] text-slate-600 shadow-lg border border-white/40">${escapeHtml(mapDataLabel)}</div></div>` : ""}
         
         <div class="absolute top-5 left-4 right-4 z-30">
           <div id="mapNoticeSlot" class="mb-3">${renderMapNotice()}</div>

@@ -1,4 +1,5 @@
 import { clearPostEntityMap, projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
+import { buildRestaurantIdentitySignature } from "../common/restaurant-identity-runtime-controller.js";
 import {
   markAuthStartupTrace,
   summarizeAuthProfile
@@ -128,6 +129,8 @@ export function createSessionDataRuntimeController({
   let storiesRefreshForce = false;
   let storiesRefreshUi = false;
   let renderRequested = false;
+  let focusRequestToken = 0;
+  let menuRequestToken = 0;
 
   if (!state || !dataLoaded) {
     return {
@@ -160,6 +163,9 @@ export function createSessionDataRuntimeController({
     let needsRestaurantMetaHydration = false;
     if (restaurantsCache?.data?.length) {
       state.restaurants = restaurantsCache.data;
+      state.restaurantsReady = true;
+      state.restaurantsLoading = false;
+      state.restaurantsError = "";
       needsRestaurantMetaHydration = restaurantsCache.data.some((rest) => {
         const logo = String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
         const name = String(rest?.name || rest?.restaurantName || rest?.displayName || "").trim().toLowerCase();
@@ -171,6 +177,9 @@ export function createSessionDataRuntimeController({
     let cachedHydrationIds = [];
     if (feedCache?.data?.length) {
       state.feedPosts = projectPostCollectionThroughEntityMap(state, feedCache.data);
+      state.feedReady = true;
+      state.feedLoading = false;
+      state.feedError = "";
       cachedHydrationIds = collectFeedHydrationIdsFn(state.feedPosts, { max: 6 });
     }
 
@@ -503,6 +512,8 @@ export function createSessionDataRuntimeController({
   }
 
   function resetUserScopedState() {
+    focusRequestToken += 1;
+    menuRequestToken += 1;
     stopActiveChatMessagesListenerFn();
     stopRestaurantMetaListenersFn();
     stopMenuItemMetaListenersFn();
@@ -684,14 +695,7 @@ export function createSessionDataRuntimeController({
   }
 
   async function loadRestaurants({ force = false } = {}) {
-    const buildRestaurantIdentitySignature = (items = []) => (Array.isArray(items) ? items : [])
-      .map((rest) => {
-        const id = String(rest?.id || "").trim();
-        const name = String(rest?.name || rest?.restaurantName || rest?.displayName || "").trim();
-        const logo = String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
-        return `${id}|${name}|${logo}`;
-      })
-      .join(",");
+    if (state.restaurantsLoading && !force) return false;
     const refreshRestaurantDependentViews = () => {
       rebuildBusinessLocationsFn();
       if (getLastRenderModeFn() === "main") updateShellDomFn();
@@ -718,6 +722,9 @@ export function createSessionDataRuntimeController({
       if (!Array.isArray(list)) return;
       if (shouldWriteCache) writeCacheFn(cacheKeys.restaurants, list);
       state.restaurants = list;
+      state.restaurantsReady = true;
+      state.restaurantsLoading = false;
+      state.restaurantsError = "";
       refreshRestaurantDependentViews();
     };
     const reconcileRestaurantMeta = (seed = [], { shouldWriteCache = false } = {}) => {
@@ -750,18 +757,32 @@ export function createSessionDataRuntimeController({
               });
           });
         }
-        return;
+        return true;
       }
     }
-    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return;
+    if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return false;
+    state.restaurantsLoading = true;
+    state.restaurantsError = "";
+    if (state.activeTab === "map" && !state.restaurantsReady) {
+      requestRender();
+    }
     try {
       const snap = await getDocsFn(queryFn(collectionFn(db, "restaurants")));
       const rawList = [];
       snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
       applyRestaurants(rawList, { shouldWriteCache: true });
       reconcileRestaurantMeta(rawList, { shouldWriteCache: true });
+      return true;
     } catch (err) {
       console.error(err);
+      state.restaurantsLoading = false;
+      if (!state.restaurantsReady) {
+        state.restaurantsError = "Standorte laden fehlgeschlagen.";
+        if (state.activeTab === "map") {
+          requestRender();
+        }
+      }
+      return false;
     }
   }
 
@@ -772,6 +793,9 @@ export function createSessionDataRuntimeController({
       if (wasEmpty) {
         state.feedPosts = projectPostCollectionThroughEntityMap(state, cached.data);
       }
+      state.feedReady = true;
+      state.feedLoading = false;
+      state.feedError = "";
       syncFeedPostLogosFn();
       const storiesUpdated = state.stories.length ? false : refreshFeedStoriesFn({ force: wasEmpty });
       scheduleStoriesRefresh({ force, refreshUi: state.activeTab === "feed" });
@@ -792,6 +816,11 @@ export function createSessionDataRuntimeController({
     }
 
     if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof limitFn !== "function" || typeof getDocsFn !== "function") return;
+    state.feedLoading = true;
+    state.feedError = "";
+    if (state.activeTab === "feed") {
+      requestRender();
+    }
     try {
       const ref = collectionFn(db, "socialFeed");
       let snap = null;
@@ -816,6 +845,9 @@ export function createSessionDataRuntimeController({
 
       const feedChanged = havePostCollectionsChanged(state.feedPosts, next);
       state.feedPosts = projectPostCollectionThroughEntityMap(state, next);
+      state.feedLoading = false;
+      state.feedReady = true;
+      state.feedError = "";
       const storiesChanged = state.stories.length ? false : refreshFeedStoriesFn({ posts: next });
       scheduleStoriesRefresh({ force, refreshUi: state.activeTab === "feed" });
       preloadFeedHeroImagesFn(next);
@@ -834,6 +866,11 @@ export function createSessionDataRuntimeController({
       }
     } catch (err) {
       console.error(err);
+      state.feedLoading = false;
+      state.feedError = state.feedPosts.length ? "" : "Feed laden fehlgeschlagen.";
+      if (state.activeTab === "feed") {
+        requestRender();
+      }
     }
   }
 
@@ -945,34 +982,71 @@ export function createSessionDataRuntimeController({
   }
 
   async function loadFocusForRestaurant(restaurantId, { force = false } = {}) {
+    focusRequestToken += 1;
+    const requestToken = focusRequestToken;
     if (!restaurantId) {
       state.focus = { ...state.focus, restaurantId: "", items: [], loading: false, error: "" };
       return;
     }
     const cacheKey = focusCacheKeyFn(restaurantId);
     const cached = focusCacheMap.get(cacheKey);
-    if (cached && cached.items?.length && !force) {
-      state.focus = { ...state.focus, restaurantId, items: cached.items, enabled: cached.enabled, loading: false, error: "", index: 0 };
-      return;
+    const hasCachedItems = !!(cached && Array.isArray(cached.items) && cached.items.length);
+    if (cached && Array.isArray(cached.items) && !force) {
+      state.focus = {
+        ...state.focus,
+        restaurantId,
+        items: cached.items,
+        enabled: cached.enabled,
+        loading: false,
+        error: "",
+        index: 0
+      };
+      if (
+        (
+          (
+            state.activeTab === "profile"
+            && state.profileTopTab === "menu"
+            && String(state.profileView?.profile?.restaurantId || state.userProfile?.restaurantId || "").trim() === String(restaurantId || "").trim()
+          )
+          || (
+            state.activeTab === "menu"
+            && String(state.userProfile?.restaurantId || "").trim() === String(restaurantId || "").trim()
+          )
+        )
+      ) {
+        requestRender();
+      }
+      if (!cached.bootstrap) return;
+      if (hasCachedItems) {
+        // Keep the visible focus content stable while refreshing bootstrap data in the background.
+      } else {
+        state.focus = { ...state.focus, restaurantId, loading: true, error: "" };
+        requestRender();
+      }
+    } else {
+      state.focus = { ...state.focus, restaurantId, loading: true, error: "" };
+      requestRender();
     }
-    state.focus = { ...state.focus, restaurantId, loading: true, error: "" };
-    requestRender();
     try {
       const [items, enabled] = await Promise.all([
         loadFocusItemsFn(restaurantId),
         loadFocusMetaFn(restaurantId)
       ]);
+      if (requestToken !== focusRequestToken) return;
       focusCacheMap.set(cacheKey, { items, enabled, ts: Date.now() });
       state.focus = { ...state.focus, restaurantId, items, enabled, loading: false, error: "", index: 0 };
       requestRender();
     } catch (err) {
       console.error(err);
+      if (requestToken !== focusRequestToken) return;
       state.focus = { ...state.focus, restaurantId, items: [], loading: false, error: "Fokus laden fehlgeschlagen." };
       requestRender();
     }
   }
 
   async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
+    menuRequestToken += 1;
+    const requestToken = menuRequestToken;
     if (!restaurantId) {
       stopMenuMetaListener();
       state.menu = {
@@ -989,23 +1063,44 @@ export function createSessionDataRuntimeController({
     startMenuMetaListener(restaurantId);
     const cacheKey = menuCacheKeyFn(restaurantId, source);
     const cached = menuCacheMap.get(cacheKey);
-    if (cached && cached.items?.length && !force) {
+    const hasCachedItems = !!(cached && Array.isArray(cached.items) && cached.items.length);
+    if (cached && Array.isArray(cached.items) && !force) {
       const cachedNeedsImages = cached.items.some((it) => !hasMenuItemImagesFn(it));
-      if (!cachedNeedsImages) {
-        state.menu = {
-          ...state.menu,
-          restaurantId,
-          items: cached.items,
-          loading: false,
-          error: "",
-          source,
-          statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
-        };
+      state.menu = {
+        ...state.menu,
+        restaurantId,
+        items: cached.items,
+        loading: false,
+        error: "",
+        source,
+        statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
+      };
+      if (
+        (
+          (
+            state.activeTab === "profile"
+            && state.profileTopTab === "menu"
+            && String(state.profileView?.profile?.restaurantId || state.userProfile?.restaurantId || "").trim() === String(restaurantId || "").trim()
+          )
+          || (
+            state.activeTab === "menu"
+            && String(state.userProfile?.restaurantId || "").trim() === String(restaurantId || "").trim()
+          )
+        )
+      ) {
+        requestRender();
+      }
+      if (!cached.bootstrap && !cachedNeedsImages) {
         return;
       }
+      if (!(cached.bootstrap && hasCachedItems && !cachedNeedsImages)) {
+        state.menu = { ...state.menu, restaurantId, loading: true, error: "", source };
+        requestRender();
+      }
+    } else {
+      state.menu = { ...state.menu, restaurantId, loading: true, error: "", source };
+      requestRender();
     }
-    state.menu = { ...state.menu, restaurantId, loading: true, error: "", source };
-    requestRender();
     try {
       let items = [];
       let statusBadgeVisible = true;
@@ -1030,11 +1125,13 @@ export function createSessionDataRuntimeController({
       } catch (err) {
         console.error(err);
       }
+      if (requestToken !== menuRequestToken) return;
       menuCacheMap.set(cacheKey, { items, statusBadgeVisible, ts: Date.now() });
       state.menu = { ...state.menu, restaurantId, items, loading: false, error: "", source, statusBadgeVisible };
       requestRender();
     } catch (err) {
       console.error(err);
+      if (requestToken !== menuRequestToken) return;
       state.menu = {
         ...state.menu,
         restaurantId,

@@ -36,6 +36,8 @@ export function createAuthSessionStartupCoordinator({
   resumeRender = () => {},
   reportCriticalRuntimeFailure = () => {},
   runBootstrapUser = async () => false,
+  prefetchFeedPosts = async () => {},
+  prefetchRestaurants = async () => {},
   postLoginRouteOpenCoordinator = null
 } = {}) {
   const queueMicrotaskSafe = typeof queueMicrotaskFn === "function"
@@ -102,6 +104,7 @@ export function createAuthSessionStartupCoordinator({
   } = {}) {
     suspendRender();
     try {
+      const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
       const snapshot = readAuthBootstrapSnapshot();
       setAuthBootstrapSnapshot(snapshot);
       bindPushOpenTargetMessageHandler();
@@ -122,6 +125,19 @@ export function createAuthSessionStartupCoordinator({
         lastAuthUid = snapshotUid;
       }
       applyPendingInitialRouteState();
+      if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
+        const startBootstrapFetch = () => {
+          void fetchPublicBootstrapPayload({
+            force: false,
+            timeoutMs: pendingRouteFlags.hasPendingProfileRoute ? 4500 : 1200
+          });
+        };
+        if (pendingRouteFlags.hasPendingProfileRoute) {
+          startBootstrapFetch();
+        } else {
+          queueMicrotaskSafe(startBootstrapFetch);
+        }
+      }
       // Open pending deep-link profile routes immediately (also for guest sessions),
       // so QR menu links do not flash feed before routing to the restaurant menu.
       const routeOpenResult = postLoginRouteOpen.openNonBlockingRoutes();
@@ -129,12 +145,14 @@ export function createAuthSessionStartupCoordinator({
       if (!openedProfileRoute || !state?.profileView?.profile) {
         requestRender();
       }
-      schedulePerfWarmMark();
-      if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
+      if (pendingRouteFlags.hasPendingProfileRoute) {
         queueMicrotaskSafe(() => {
-          void fetchPublicBootstrapPayload({ force: false, timeoutMs: 1200 });
+          void Promise.resolve(prefetchRestaurants({ force: false })).catch((err) => {
+            reportCriticalRuntimeFailure("startup.prefetchRestaurants.pendingProfile", err);
+          });
         });
       }
+      schedulePerfWarmMark();
       if (!state?.user) {
         scheduleGuestTabEnsure();
       }
@@ -183,6 +201,14 @@ export function createAuthSessionStartupCoordinator({
         try {
           await bootstrapUser(user, { transitionSeq });
           if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+          if (pendingRouteFlags.hasPendingProfileRoute) {
+            void Promise.resolve(prefetchFeedPosts({ force: false })).catch((err) => {
+              reportCriticalRuntimeFailure("auth.prefetchFeedPosts.pendingProfile", err);
+            });
+            void Promise.resolve(prefetchRestaurants({ force: false })).catch((err) => {
+              reportCriticalRuntimeFailure("auth.prefetchRestaurants.pendingProfile", err);
+            });
+          }
           if (shouldBlockForPendingRoutes) {
             await postLoginRouteOpen.openPendingRoutes();
           } else {

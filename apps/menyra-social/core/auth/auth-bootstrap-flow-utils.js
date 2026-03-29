@@ -9,17 +9,20 @@ export function shouldResetUserScopedStateCore({
 }
 
 export function resolvePendingAuthRouteFlagsCore({
+  pendingProfileRestaurantId = "",
   pendingNotificationId = "",
   pendingPostId = "",
   pendingChatUid = ""
 } = {}) {
+  const hasPendingProfileRoute = !!String(pendingProfileRestaurantId || "").trim();
   const hasPendingNotificationQuery = !!String(pendingNotificationId || "").trim();
   const hasPendingPostQuery = !!String(pendingPostId || "").trim();
   const hasPendingChatQuery = !!String(pendingChatUid || "").trim();
   return {
+    hasPendingProfileRoute,
     hasPendingNotificationQuery,
     hasPendingPostQuery,
     hasPendingChatQuery,
-    hasAny: hasPendingNotificationQuery || hasPendingPostQuery || hasPendingChatQuery
+    hasAny: hasPendingProfileRoute || hasPendingNotificationQuery || hasPendingPostQuery || hasPendingChatQuery
   };
 }

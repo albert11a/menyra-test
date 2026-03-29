@@ -165,9 +165,19 @@ function renderProfilePostCardFancy(item, isGrid, allowMenu = true) {
   `;
 }
 
-function renderProfilePostsFancy(posts, viewMode, allowMenu = true) {
+function renderProfilePostsFancy(posts, viewMode, allowMenu = true, { loading = false } = {}) {
   const isGrid = viewMode === "grid";
   if (!posts.length) {
+    if (loading) {
+      return `
+        <div class="col-span-2 py-20 text-center">
+          <div class="w-20 h-20 rounded-[2.2rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm border border-slate-50 animate-pulse">
+            ${icon("loader-circle", "w-8 h-8 animate-spin")}
+          </div>
+          <div class="text-[11px] font-black uppercase tracking-[0.3em] text-slate-400">Beitraege werden geladen</div>
+        </div>
+      `;
+    }
     return `
       <div class="col-span-2 py-24 text-center">
         <div class="w-24 h-24 rounded-[2.5rem] bg-gradient-to-tr from-slate-100 to-white mx-auto flex items-center justify-center text-slate-300 mb-6 shadow-sm rotate-6 border border-slate-50">
@@ -405,7 +415,7 @@ function renderPublicProfileView() {
           ${renderProfileCheckins()}
         ` : `
           <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
-            ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false)}
+            ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, false, { loading: !!profile.postsLoading })}
           </div>
         `}
       ` : `
@@ -1827,7 +1837,7 @@ function renderProfileView() {
         ${renderProfileCheckins()}
       ` : `
         <div class="${state.profileViewMode === "grid" ? "grid grid-cols-2 gap-4 px-6 grid-flow-dense" : "flex flex-col gap-8 px-6"}">
-          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode)}
+          ${renderProfilePostsFancy(filteredPosts, state.profileViewMode, true, { loading: !!profile.postsLoading })}
         </div>
         ${activeContentTab === "posts" ? `
           <div class="px-6 mt-8 mb-4">

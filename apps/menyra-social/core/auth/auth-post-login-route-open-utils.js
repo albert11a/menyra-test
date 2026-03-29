@@ -23,11 +23,11 @@ export async function runPostLoginPendingRouteOpenFlowCore({
     ? renderFallback
     : (() => {});
 
-  openProfile();
+  const openedProfile = !!openProfile();
   const openedNotification = await openNotification();
   const openedPost = await openPost();
   const openedChat = openChat();
-  if (!openedNotification && !openedPost && !openedChat) render();
+  if (!openedProfile && !openedNotification && !openedPost && !openedChat) render();
 }
 
 export function runPostLoginNonBlockingRouteOpenFlowCore({
@@ -60,6 +60,7 @@ export function createPostLoginRouteOpenCoordinator({
   pendingRouteState = null,
   routeOpenApi = null,
   renderFallback = () => {},
+  getPendingProfileRestaurantId = () => "",
   getPendingNotificationId = () => "",
   getPendingPostId = () => "",
   getPendingChatUid = () => "",
@@ -68,6 +69,9 @@ export function createPostLoginRouteOpenCoordinator({
   openPostFromQuery = async () => false,
   openChatFromQuery = () => false
 } = {}) {
+  const readPendingProfileRestaurantId = typeof pendingRouteState?.getPendingProfileRestaurantId === "function"
+    ? pendingRouteState.getPendingProfileRestaurantId
+    : (typeof getPendingProfileRestaurantId === "function" ? getPendingProfileRestaurantId : (() => ""));
   const readPendingNotificationId = typeof pendingRouteState?.getPendingNotificationId === "function"
     ? pendingRouteState.getPendingNotificationId
     : (typeof getPendingNotificationId === "function" ? getPendingNotificationId : (() => ""));
@@ -92,6 +96,7 @@ export function createPostLoginRouteOpenCoordinator({
 
   function resolvePendingRouteFlags() {
     return resolvePendingAuthRouteFlagsCore({
+      pendingProfileRestaurantId: readPendingProfileRestaurantId(),
       pendingNotificationId: readPendingNotificationId(),
       pendingPostId: readPendingPostId(),
       pendingChatUid: readPendingChatUid()

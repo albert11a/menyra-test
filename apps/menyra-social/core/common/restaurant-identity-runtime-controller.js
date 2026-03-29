@@ -1,3 +1,127 @@
+function toFiniteLocationNumber(value) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function readRestaurantAddress(entry = {}) {
+  return String(
+    entry?.address
+    || entry?.streetAddress
+    || entry?.fullAddress
+    || ""
+  ).trim();
+}
+
+function readLocationEntryAddress(entry = {}) {
+  return String(entry?.address || entry?.label || entry?.name || "").trim();
+}
+
+function readLocationEntryCoords(entry = {}) {
+  const coords = entry?.coords && typeof entry.coords === "object" ? entry.coords : {};
+  const geo = entry?.geo && typeof entry.geo === "object" ? entry.geo : {};
+  return {
+    lat: toFiniteLocationNumber(
+      entry?.lat
+      ?? entry?.latitude
+      ?? entry?.gpsLat
+      ?? coords?.lat
+      ?? coords?.latitude
+      ?? geo?.lat
+      ?? geo?.latitude
+    ),
+    lng: toFiniteLocationNumber(
+      entry?.lng
+      ?? entry?.lon
+      ?? entry?.longitude
+      ?? entry?.gpsLng
+      ?? coords?.lng
+      ?? coords?.longitude
+      ?? coords?.lon
+      ?? geo?.lng
+      ?? geo?.longitude
+      ?? geo?.lon
+    )
+  };
+}
+
+function normalizeRestaurantLocationEntries(entries = []) {
+  return (Array.isArray(entries) ? entries : [])
+    .map((entry) => {
+      const address = readLocationEntryAddress(entry);
+      const coords = readLocationEntryCoords(entry);
+      if (!(address || (coords.lat !== null && coords.lng !== null))) return null;
+      const normalized = {};
+      if (address) normalized.address = address;
+      if (coords.lat !== null) normalized.lat = coords.lat;
+      if (coords.lng !== null) normalized.lng = coords.lng;
+      return normalized;
+    })
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+export function hasRestaurantLocationTruth(restaurant = {}) {
+  if (!restaurant || typeof restaurant !== "object") return false;
+  if (readRestaurantAddress(restaurant)) return true;
+  const coords = readLocationEntryCoords(restaurant);
+  if (coords.lat !== null && coords.lng !== null) return true;
+  return normalizeRestaurantLocationEntries(restaurant.locations).length > 0;
+}
+
+export function buildRestaurantLocationPatch(restaurant = {}) {
+  const patch = {};
+  const address = readRestaurantAddress(restaurant);
+  const location = String(restaurant?.location || "").trim();
+  const coords = readLocationEntryCoords(restaurant);
+  const locations = normalizeRestaurantLocationEntries(restaurant.locations);
+  const hasCoords = coords.lat !== null && coords.lng !== null;
+
+  if (address) patch.address = address;
+  if (location) patch.location = location;
+  if (coords.lat !== null) patch.lat = coords.lat;
+  if (coords.lng !== null) patch.lng = coords.lng;
+  if (locations.length) patch.locations = locations;
+  if (hasCoords) {
+    patch.coords = { lat: coords.lat, lng: coords.lng };
+    patch.geo = { lat: coords.lat, lng: coords.lng };
+  }
+
+  return patch;
+}
+
+function serializeRestaurantLocationEntry(entry = {}) {
+  return [
+    String(entry?.address || "").trim(),
+    Number.isFinite(Number(entry?.lat)) ? Number(entry.lat) : "",
+    Number.isFinite(Number(entry?.lng)) ? Number(entry.lng) : ""
+  ].join("::");
+}
+
+export function buildRestaurantIdentitySignature(restaurants = []) {
+  return (Array.isArray(restaurants) ? restaurants : [])
+    .map((rest) => {
+      const patch = buildRestaurantLocationPatch(rest);
+      const coords = patch.coords && typeof patch.coords === "object" ? patch.coords : {};
+      const locations = Array.isArray(patch.locations)
+        ? patch.locations.map((entry) => serializeRestaurantLocationEntry(entry)).join("^")
+        : "";
+      return [
+        String(rest?.id || "").trim(),
+        String(rest?.name || rest?.restaurantName || rest?.displayName || rest?.businessName || "").trim(),
+        String(rest?.restaurantName || "").trim(),
+        String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim(),
+        String(rest?.city || "").trim(),
+        String(rest?.type || rest?.customerType || rest?.category || rest?.kind || rest?.restaurantType || "").trim(),
+        String(patch.address || "").trim(),
+        String(patch.location || "").trim(),
+        Number.isFinite(Number(coords?.lat)) ? Number(coords.lat) : "",
+        Number.isFinite(Number(coords?.lng)) ? Number(coords.lng) : "",
+        locations
+      ].join("|");
+    })
+    .join(",");
+}
+
 export function createRestaurantIdentityRuntimeController({
   state = null,
   db = null,
@@ -194,7 +318,7 @@ export function createRestaurantIdentityRuntimeController({
     });
   }
 
-  async function hydrateRestaurantsByIds(restaurantIds, { max = 24 } = {}) {
+  async function hydrateRestaurantsByIds(restaurantIds, { max = 24, requireLocation = false } = {}) {
     if (!Array.isArray(restaurantIds) || restaurantIds.length === 0) return;
     const uniqueIds = Array.from(new Set(restaurantIds.filter(Boolean)));
     if (!uniqueIds.length) return;
@@ -212,7 +336,8 @@ export function createRestaurantIdentityRuntimeController({
       const logo = String(stored.logoUrl || stored.logo || stored.logoURL || "").trim();
       const hasUsableName = !!name && !isGenericStoryBusinessLabel(name);
       const hasUsableLogo = !!logo;
-      return !(hasUsableName && hasUsableLogo);
+      const hasLocationTruth = hasRestaurantLocationTruth(stored);
+      return !(hasUsableName && hasUsableLogo) || (requireLocation && !hasLocationTruth);
     }).slice(0, max);
     if (missing.length === 0 || !makeDocRef || !db) return;
 
@@ -228,7 +353,8 @@ export function createRestaurantIdentityRuntimeController({
         let restData = stored;
         const currentName = metaData.name || metaData.restaurantName || stored.name || stored.restaurantName || "";
         const currentLogo = metaData.logoUrl || metaData.logo || stored.logoUrl || stored.logo || stored.logoURL || "";
-        if (!currentName || !currentLogo) {
+        const needsFullRestaurantDoc = requireLocation && !hasRestaurantLocationTruth(stored);
+        if (!currentName || !currentLogo || needsFullRestaurantDoc) {
           try {
             const restSnap = await getDocSafe(makeDocRef(db, "restaurants", rid));
             if (restSnap.exists()) {
@@ -250,14 +376,16 @@ export function createRestaurantIdentityRuntimeController({
           || restData.restaurantType
           || ""
         );
-        if (!(name || logoUrl || city || type)) return null;
+        const locationPatch = buildRestaurantLocationPatch(restData);
+        if (!(name || logoUrl || city || type || hasRestaurantLocationTruth(restData))) return null;
         return {
           id: rid,
           name,
           restaurantName: restData.restaurantName || "",
           logoUrl,
           city,
-          ...(type ? { type, customerType: type } : {})
+          ...(type ? { type, customerType: type } : {}),
+          ...locationPatch
         };
       } catch (err) {
         console.warn("hydrateRestaurantsByIds failed for", rid, err);
