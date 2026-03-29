@@ -36,18 +36,6 @@ const HEART_PACKS = Object.freeze([
     summary: "Regelmaessiger Gesundheitscheck fuer Business, User, Gast und CEO. Gedacht fuer wiederkehrende pruefende Laeufe pro Tag."
   },
   {
-    key: "contract-smoke-pack",
-    hidden: true,
-    label: "Contract-Smoke starten",
-    title: "Contract-Smoke",
-    mode: "contract",
-    workflowMode: "synthetic",
-    level: "level_2",
-    personas: ["user", "business", "guest"],
-    areas: ["feed", "notifications", "cart", "orders"],
-    summary: "Kleiner harter Vertragskern fuer Likes / Kommentare, Notifications sowie QR-Cart / Checkout gegen die isolierte Testwelt."
-  },
-  {
     key: "smoke",
     label: "CEO-Kontrolllauf starten",
     title: "CEO-Kontrolllauf",
@@ -170,9 +158,7 @@ const HEART_PACK_ALIASES = Object.freeze({
   user: "user-pack",
   guest: "guest-pack",
   mutation: "mutation-pack",
-  journey: "journey-pack",
-  contract: "contract-smoke-pack",
-  "contract-smoke": "contract-smoke-pack"
+  journey: "journey-pack"
 });
 
 const HEART_VISIBLE_PACK_ORDER = Object.freeze([

@@ -1,8 +1,5 @@
 {
   "projects": {
-    "default": "demo-mnyra-phase1",
-    "local": "demo-mnyra-phase1",
-    "isolated": "testmnyramatrix",
-    "prod": "menyra-c0e68"
+    "default": "menyra-c0e68"
   }
 }

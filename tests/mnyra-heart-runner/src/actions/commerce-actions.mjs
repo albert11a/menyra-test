@@ -130,7 +130,7 @@ async function ensureCartMenuTabVisible(page, cartConfig = {}, guestConfig = {})
   return openedMenuTab;
 }
 
-export async function ensureCartReady(page, cartConfig = {}, guestConfig = {}) {
+async function ensureCartReady(page, cartConfig = {}, guestConfig = {}) {
   const cartReadySelectors = uniqueList(
     guestConfig.cartVisibleSelector,
     cartConfig.verifySelector,
@@ -229,7 +229,7 @@ export async function ensureCartReady(page, cartConfig = {}, guestConfig = {}) {
   };
 }
 
-export async function submitOrder(page, orderConfig = {}, guestConfig = {}) {
+async function submitOrder(page, orderConfig = {}, guestConfig = {}) {
   const submitSelectors = uniqueList(
     orderConfig.triggerSelector,
     guestConfig.orderTriggerSelector,

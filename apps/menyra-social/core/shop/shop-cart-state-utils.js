@@ -31,7 +31,6 @@ export function normalizeShopCartStateCore(raw, {
   const items = (Array.isArray(source.items) ? source.items : []).map((item) => ({
     id: String(item?.id || item?.itemId || "").trim(),
     itemId: String(item?.itemId || item?.id || "").trim(),
-    restaurantId: String(item?.restaurantId || source.restaurantId || "").trim(),
     cartKey: String(
       item?.cartKey
       || buildVariant(item?.itemId || item?.id || "", {
@@ -68,8 +67,6 @@ export function normalizeShopCartStateCore(raw, {
       tableLabel: String(source.form?.tableLabel || source.tableLabel || "").trim()
     },
     status: String(source.status || "").trim(),
-    loading: !!source.loading,
-    submitAttemptId: String(source.submitAttemptId || "").trim(),
-    submitAttemptFingerprint: String(source.submitAttemptFingerprint || "").trim()
+    loading: !!source.loading
   };
 }
