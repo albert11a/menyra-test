@@ -1,4 +1,8 @@
 import { clearPostEntityMap, projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
+import {
+  markAuthStartupTrace,
+  summarizeAuthProfile
+} from "../auth/auth-startup-trace-utils.js";
 
 export function createSessionDataRuntimeController({
   state = null,
@@ -477,6 +481,11 @@ export function createSessionDataRuntimeController({
       };
     }));
     saveChatThreadIndexFn(state.chatThreads);
+    markAuthStartupTrace(state, "auth.persisted.session.loaded", summarizeAuthProfile(state?.userProfile, {
+      source: "storage",
+      notificationsCached: Array.isArray(state?.notifications) ? state.notifications.length : 0,
+      chatThreadsCached: Array.isArray(state?.chatThreads) ? state.chatThreads.length : 0
+    }));
   }
 
   function loadGuestScopedPersisted() {
@@ -974,6 +983,10 @@ export function createSessionDataRuntimeController({
   }
 
   async function bootstrapUser(user) {
+    markAuthStartupTrace(state, "auth.bootstrap.begin", {
+      uid: String(user?.uid || "").trim(),
+      activeTab: state?.activeTab || ""
+    });
     await bootstrapAuthenticatedSessionCoreFn({
       user,
       loadAuthProfile: (currentUser) => loadAuthProfileFn(currentUser),
@@ -998,6 +1011,9 @@ export function createSessionDataRuntimeController({
       ensureTabData: (tab) => ensureTabDataFn(tab),
       activeTab: () => state.activeTab
     });
+    markAuthStartupTrace(state, "auth.bootstrap.blocking.complete", summarizeAuthProfile(state?.userProfile, {
+      activeTab: state?.activeTab || ""
+    }));
   }
 
   return {

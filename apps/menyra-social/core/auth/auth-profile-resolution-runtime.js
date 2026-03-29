@@ -1,3 +1,8 @@
+import {
+  markAuthStartupTrace,
+  summarizeAuthProfile
+} from "./auth-startup-trace-utils.js";
+
 export function createAuthProfileResolutionRuntimeController({
   state = null,
   db = null,
@@ -389,14 +394,19 @@ export function createAuthProfileResolutionRuntimeController({
     const roles = new Set();
     const profile = state.userProfile || {};
     const profileRoles = normalizeRoles(profile.roles || profile.role || "");
+    const profileRoleKey = String(profile.role || "").trim().toLowerCase();
+    const sourceUserRoleKey = String(profile.sourceUserRole || "").trim().toLowerCase();
     let ownerRestaurantId = profile.restaurantId || "";
 
+    if (profileRoleKey === "ceo") roles.add("ceo");
+    if (profileRoleKey === "staff" || sourceUserRoleKey === "staff") roles.add("staff");
+    if (profileRoleKey === "business") roles.add("owner");
     if (profileRoles.includes("ceo")) roles.add("ceo");
     if (profileRoles.includes("staff")) roles.add("staff");
     if (profileRoles.includes("owner")) roles.add("owner");
-    if (String(profile.role || "").toLowerCase() === "business") roles.add("owner");
+    if (sourceUserRoleKey === "staff") roles.add("staff");
 
-    const needsRemoteRoleCheck = !profileRoles.length;
+    const needsRemoteRoleCheck = !roles.size && !profileRoles.length;
     if (needsRemoteRoleCheck && makeDocRef && getDoc && db) {
       const [ceoSnap, staffSnap] = await Promise.all([
         getDoc(makeDocRef(db, "superadmins", user.uid)).catch(() => null),
@@ -432,6 +442,11 @@ export function createAuthProfileResolutionRuntimeController({
 
     state.roleSwitchRoles = roleOrder.filter((role) => roles.has(role));
     state.roleSwitchRestaurantId = ownerRestaurantId || profile.restaurantId || "";
+    markAuthStartupTrace(state, "auth.role.scope.resolved", summarizeAuthProfile(profile, {
+      roleSwitchRoles: state.roleSwitchRoles.slice(),
+      roleSwitchRestaurantId: state.roleSwitchRestaurantId || "",
+      usedRemoteRoleCheck: needsRemoteRoleCheck
+    }));
     refreshRoleSwitchUi();
   }
 

@@ -1,3 +1,9 @@
+import {
+  beginAuthStartupTrace,
+  finishAuthStartupTrace,
+  markAuthStartupTrace
+} from "../auth/auth-startup-trace-utils.js";
+
 export function createAppShellRuntimeController(deps = {}) {
   const {
     state,
@@ -1015,13 +1021,22 @@ export function createAppShellRuntimeController(deps = {}) {
         const email = doc?.getElementById("authEmail")?.value?.trim() || "";
         const password = doc?.getElementById("authPassword")?.value || "";
         const name = doc?.getElementById("authName")?.value?.trim() || "";
+        const authMode = String(state?.auth?.mode || "login").trim() || "login";
 
         state.auth.loading = true;
         state.auth.error = "";
+        beginAuthStartupTrace(state, "auth.login.submit", {
+          mode: authMode,
+          hasName: !!name,
+          activeTab: state?.activeTab || ""
+        });
         render();
 
         try {
           await ensureAuthLocalPersistenceFn();
+          markAuthStartupTrace(state, "auth.persistence.ready", {
+            mode: authMode
+          });
           if (state.auth.mode === "login") {
             await signInWithEmailAndPasswordFn(auth, email, password);
           } else {
@@ -1044,8 +1059,15 @@ export function createAppShellRuntimeController(deps = {}) {
               updatedAt: serverTimestampFn()
             }, { merge: true });
           }
+          markAuthStartupTrace(state, "auth.credentials.accepted", {
+            mode: authMode
+          });
         } catch (err) {
           state.auth.error = err?.message || "Login fehlgeschlagen.";
+          finishAuthStartupTrace(state, "auth.login.failed", {
+            mode: authMode,
+            message: state.auth.error
+          });
         } finally {
           if (!auth?.currentUser) {
             state.auth.loading = false;

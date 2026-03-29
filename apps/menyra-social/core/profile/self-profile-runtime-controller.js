@@ -1,3 +1,8 @@
+import {
+  markAuthStartupTrace,
+  summarizeAuthProfile
+} from "../auth/auth-startup-trace-utils.js";
+
 export function createSelfProfileRuntimeController({
   state = null,
   db = null,
@@ -1108,9 +1113,12 @@ export function createSelfProfileRuntimeController({
     }
   }
 
-  async function loadUserProfile(user, { force = false } = {}) {
+  async function loadUserProfile(user, { force = false, seedData = null } = {}) {
     if (!user) return;
-    const ensured = await ensureUserProfile(user, { city: "Prishtina" });
+    const hasSeedData = seedData && typeof seedData === "object" && Object.keys(seedData).length > 0;
+    const ensured = hasSeedData
+      ? seedData
+      : await ensureUserProfile(user, { city: "Prishtina" });
     void force;
     const data = ensured && typeof ensured === "object" ? ensured : {};
     const prevAvatar = state.userProfile?.avatar || "";
@@ -1129,42 +1137,59 @@ export function createSelfProfileRuntimeController({
       primeSelfAvatarCache(resolvedAvatar);
     }
     refreshProfileUi();
+    markAuthStartupTrace(state, "auth.profile.user.ready", summarizeAuthProfile(state.userProfile, {
+      source: hasSeedData ? "seedData" : "ensureUserProfile"
+    }));
     return normalized;
   }
 
-  async function loadBusinessProfile(user, { restaurant = null, force = false } = {}) {
+  async function loadBusinessProfile(user, {
+    restaurant = null,
+    force = false,
+    ownerData = null
+  } = {}) {
     if (!user || !makeDocRef || !db) return;
     const rest = restaurant || await resolveRestaurantForAuthUser(user, { preferCached: !force });
     if (!rest || isRestaurantMarkedDeleted(rest)) {
-      await loadUserProfile(user, { force });
+      await loadUserProfile(user, { force, seedData: ownerData });
       return;
     }
     let profileSeed = { ...rest };
     try {
-      const ownerSnap = await getDoc(makeDocRef(db, "users", user.uid));
-      if (ownerSnap.exists()) {
-        const ownerData = ownerSnap.data() || {};
+      const hasOwnerSeed = ownerData && typeof ownerData === "object" && Object.keys(ownerData).length > 0;
+      const resolvedOwnerData = hasOwnerSeed
+        ? ownerData
+        : await (async () => {
+          const ownerSnap = await getDoc(makeDocRef(db, "users", user.uid));
+          return ownerSnap.exists() ? (ownerSnap.data() || {}) : {};
+        })();
+      if (resolvedOwnerData && Object.keys(resolvedOwnerData).length) {
         if (!String(profileSeed.bio || profileSeed.description || profileSeed.about || "").trim()) {
-          const fallbackBio = String(ownerData.bio || "").trim();
+          const fallbackBio = String(resolvedOwnerData.bio || "").trim();
           if (fallbackBio) {
             profileSeed.bio = fallbackBio;
             profileSeed.description = fallbackBio;
           }
         }
         if (!hasCountValue(profileSeed.followersCount, profileSeed.followers, profileSeed.fansCount, profileSeed.fans)) {
-          const ownerFollowers = pickCountValue(ownerData.followersCount, ownerData.followers, ownerData.fansCount, ownerData.fans);
+          const ownerFollowers = pickCountValue(
+            resolvedOwnerData.followersCount,
+            resolvedOwnerData.followers,
+            resolvedOwnerData.fansCount,
+            resolvedOwnerData.fans
+          );
           if (ownerFollowers > 0) profileSeed.followersCount = ownerFollowers;
         }
         if (!hasCountValue(profileSeed.followingCount, profileSeed.following)) {
-          const ownerFollowing = pickCountValue(ownerData.followingCount, ownerData.following);
+          const ownerFollowing = pickCountValue(resolvedOwnerData.followingCount, resolvedOwnerData.following);
           if (ownerFollowing > 0) profileSeed.followingCount = ownerFollowing;
         }
         if (!String(profileSeed.city || "").trim()) {
-          const ownerCity = String(ownerData.city || "").trim();
+          const ownerCity = String(resolvedOwnerData.city || "").trim();
           if (ownerCity) profileSeed.city = ownerCity;
         }
         if (!String(profileSeed.logoUrl || profileSeed.logo || "").trim()) {
-          const ownerAvatar = String(ownerData.avatarUrl || ownerData.avatar || "").trim();
+          const ownerAvatar = String(resolvedOwnerData.avatarUrl || resolvedOwnerData.avatar || "").trim();
           if (ownerAvatar) profileSeed.logoUrl = ownerAvatar;
         }
       }
@@ -1211,6 +1236,9 @@ export function createSelfProfileRuntimeController({
       rebuildBusinessLocations();
     }
     refreshProfileUi();
+    markAuthStartupTrace(state, "auth.profile.business.ready", summarizeAuthProfile(state.userProfile, {
+      source: "restaurant"
+    }));
   }
 
   async function loadBusinessStaffProfile(user, { restaurant = null, staffData = null, force = false } = {}) {
@@ -1269,6 +1297,9 @@ export function createSelfProfileRuntimeController({
     state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...rest }]);
     rebuildBusinessLocations();
     refreshProfileUi();
+    markAuthStartupTrace(state, "auth.profile.staff.ready", summarizeAuthProfile(state.userProfile, {
+      source: "staffWorkspace"
+    }));
   }
 
   return {

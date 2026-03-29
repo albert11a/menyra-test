@@ -1,3 +1,8 @@
+import {
+  markAuthStartupTrace,
+  summarizeAuthProfile
+} from "./auth-startup-trace-utils.js";
+
 function reportAuthFlowWarning(scope = "", err = null) {
   const safeScope = String(scope || "auth-flow").trim() || "auth-flow";
   if (err) {
@@ -304,9 +309,26 @@ export async function loadAuthProfileCore({
     }
   } catch {}
   const authUserRole = String(authUserData?.role || "").trim().toLowerCase();
+  const authUserRoles = normalizeRoles(authUserData?.roles || authUserData?.role || "");
   const authPermissions = authUserData?.permissions && typeof authUserData.permissions === "object"
     ? authUserData.permissions
     : {};
+  const explicitRestaurantId = String(authUserData?.restaurantId || "").trim();
+  const hasCeoScopeHint = authUserRole === "ceo"
+    || authUserRoles.includes("ceo")
+    || !!String(authUserData?.ceoParentUid || authUserData?.ceoRootUid || "").trim()
+    || (Array.isArray(authUserData?.ceoPath) && authUserData.ceoPath.length > 0);
+  const hasExplicitBusinessSignal = authUserRole === "business"
+    || authUserRoles.includes("owner")
+    || !!explicitRestaurantId;
+  const hasExplicitUserSignal = authUserRole === "user";
+  markAuthStartupTrace(state, "auth.userDoc.loaded", {
+    role: authUserRole || "",
+    roles: authUserRoles,
+    restaurantId: explicitRestaurantId,
+    hasCeoScopeHint,
+    hasExplicitBusinessSignal
+  });
   const isStaffAccount = authUserRole === "staff"
     || !!String(
       authUserData?.staffRestaurantId
@@ -325,7 +347,6 @@ export async function loadAuthProfileCore({
     } catch {}
     return null;
   };
-  const explicitRestaurantId = String(authUserData?.restaurantId || "").trim();
   if (!isStaffAccount && (authUserRole === "business" || explicitRestaurantId)) {
     let explicitRestaurant = await getRestaurantById(explicitRestaurantId);
     if (!explicitRestaurant) {
@@ -344,7 +365,11 @@ export async function loadAuthProfileCore({
           reportAuthFlowWarning("auth-profile.ownerRestaurant.patch", err);
         }
       }
-      await loadBusinessProfile(user, { restaurant: explicitRestaurant, force });
+      await loadBusinessProfile(user, {
+        restaurant: explicitRestaurant,
+        force,
+        ownerData: authUserData
+      });
       return;
     }
   }
@@ -415,7 +440,7 @@ export async function loadAuthProfileCore({
       }
     }
 
-    const profile = await loadUserProfile(user, { force });
+    const profile = await loadUserProfile(user, { force, seedData: authUserData });
     if (profile && state?.userProfile) {
       if (!staffActive) {
         state.userProfile.socialAccessMode = "blocked";
@@ -443,6 +468,13 @@ export async function loadAuthProfileCore({
         return;
       }
     }
+    return;
+  }
+  if (!hasExplicitBusinessSignal && (hasExplicitUserSignal || hasCeoScopeHint)) {
+    const profile = await loadUserProfile(user, { force, seedData: authUserData });
+    markAuthStartupTrace(state, "auth.profile.fastPath.nonBusiness", summarizeAuthProfile(profile, {
+      source: "userDoc"
+    }));
     return;
   }
   const profileHint = state.userProfile || {};
@@ -590,7 +622,7 @@ export async function loadAuthProfileCore({
     });
   };
   if (hasTrustedNonBusinessHint && !force) {
-    const profile = await loadUserProfile(user, { force });
+    const profile = await loadUserProfile(user, { force, seedData: authUserData });
     const normalizedRoles = normalizeRoles(profile?.roles || profile?.role || "");
     const normalizedRoleKey = String(profile?.role || "").toLowerCase();
     const hasBusinessProfile = !!String(profile?.restaurantId || "").trim() || normalizedRoleKey === "business" || normalizedRoles.includes("owner");
@@ -599,12 +631,20 @@ export async function loadAuthProfileCore({
         ? state.restaurants.find((row) => matchesOwnerIdentity(row))
         : null;
       if (cachedOwned) {
-        await loadBusinessProfile(user, { restaurant: cachedOwned, force: true });
+        await loadBusinessProfile(user, {
+          restaurant: cachedOwned,
+          force: true,
+          ownerData: authUserData
+        });
         return;
       }
       const quickRest = await resolveBusinessRestaurant({ preferCached: true, includeFallback: false });
       if (quickRest) {
-        await loadBusinessProfile(user, { restaurant: quickRest, force: true });
+        await loadBusinessProfile(user, {
+          restaurant: quickRest,
+          force: true,
+          ownerData: authUserData
+        });
         return;
       }
       scheduleBackgroundBusinessReconcile();
@@ -613,8 +653,12 @@ export async function loadAuthProfileCore({
   }
   const rest = await resolveBusinessRestaurant({ preferCached: !force, includeFallback: true });
   if (rest) {
-    await loadBusinessProfile(user, { restaurant: rest, force });
+    await loadBusinessProfile(user, {
+      restaurant: rest,
+      force,
+      ownerData: authUserData
+    });
     return;
   }
-  await loadUserProfile(user, { force });
+  await loadUserProfile(user, { force, seedData: authUserData });
 }

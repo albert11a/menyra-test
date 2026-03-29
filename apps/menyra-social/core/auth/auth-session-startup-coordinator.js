@@ -1,5 +1,11 @@
 import { shouldResetUserScopedStateCore } from "./auth-bootstrap-flow-utils.js";
 import { createPostLoginRouteOpenCoordinator } from "./auth-post-login-route-open-utils.js";
+import {
+  clearAuthStartupTrace,
+  finishAuthStartupTrace,
+  markAuthStartupTrace,
+  summarizeAuthProfile
+} from "./auth-startup-trace-utils.js";
 
 export function createAuthSessionStartupCoordinator({
   state = null,
@@ -138,7 +144,6 @@ export function createAuthSessionStartupCoordinator({
   }
 
   function handleAuthStateChanged(user) {
-    setAuthInitialized(true);
     const transitionSeq = ++authTransitionSeq;
     const nextUid = user?.uid || "";
     const prevUid = lastAuthUid;
@@ -150,55 +155,66 @@ export function createAuthSessionStartupCoordinator({
     }
     applyPendingInitialRouteState();
     if (user) {
+      setAuthInitialized(false);
+      markAuthStartupTrace(state, "auth.state.confirmed", {
+        uid: nextUid,
+        previousUid: prevUid || "",
+        activeTab: state?.activeTab || ""
+      });
       if (state?.auth) {
         state.auth.open = false;
       }
       loadUserScopedPersisted(user);
+      markAuthStartupTrace(state, "auth.persisted.profile.ready", summarizeAuthProfile(state?.userProfile, {
+        source: "storage"
+      }));
       writeAuthBootstrapSnapshot();
       const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
-      if (pendingRouteFlags.hasAny) {
-        suspendRender();
-        void (async () => {
-          try {
-            await bootstrapUser(user, { transitionSeq });
-            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+      suspendRender();
+      void (async () => {
+        try {
+          await bootstrapUser(user, { transitionSeq });
+          if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+          if (pendingRouteFlags.hasAny) {
             await postLoginRouteOpen.openPendingRoutes();
-            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+          } else {
+            postLoginRouteOpen.openNonBlockingRoutes();
+          }
+          if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
+          if (state?.auth) {
+            state.auth.loading = false;
+          }
+          setAuthInitialized(true);
+          const shellSummary = summarizeAuthProfile(state?.userProfile, {
+            activeTab: state?.activeTab || "",
+            hasPendingRoutes: pendingRouteFlags.hasAny === true
+          });
+          markAuthStartupTrace(state, "auth.shell.ready", shellSummary);
+          requestRender();
+          finishAuthStartupTrace(state, "auth.startup.complete", shellSummary);
+        } catch (err) {
+          const scope = pendingRouteFlags.hasAny
+            ? "auth.bootstrapUser.pendingRoutes"
+            : "auth.bootstrapUser.standard";
+          reportCriticalRuntimeFailure(scope, err);
+          if (isCurrentAuthTransition(transitionSeq, nextUid)) {
             if (state?.auth) {
               state.auth.loading = false;
             }
+            setAuthInitialized(true);
+            finishAuthStartupTrace(state, "auth.startup.failed", {
+              uid: nextUid,
+              message: err?.message || "bootstrap failed"
+            });
             requestRender();
-          } catch (err) {
-            reportCriticalRuntimeFailure("auth.bootstrapUser.pendingRoutes", err);
-            if (isCurrentAuthTransition(transitionSeq, nextUid)) {
-              if (state?.auth) {
-                state.auth.loading = false;
-              }
-              requestRender();
-            }
-          } finally {
-            resumeRender();
           }
-        })();
-      } else {
-        if (state?.auth) {
-          state.auth.loading = false;
+        } finally {
+          resumeRender();
         }
-        requestRender();
-        void bootstrapUser(user, { transitionSeq })
-          .then(() => {
-            if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-            postLoginRouteOpen.openNonBlockingRoutes();
-            requestRender();
-          })
-          .catch((err) => {
-            reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
-            if (isCurrentAuthTransition(transitionSeq, nextUid)) {
-              requestRender();
-            }
-          });
-      }
+      })();
     } else {
+      clearAuthStartupTrace(state);
+      setAuthInitialized(true);
       clearAuthBootstrapSnapshot();
       if (state) {
         state.roleSwitchRoles = [];
