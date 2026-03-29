@@ -252,11 +252,11 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
   }
 
   function ensureMenuItemMeta(key) {
-    if (!key) return { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+    if (!key) return { likes: [], comments: [], counts: { likes: null, comments: null } };
     if (!state.menuItemMeta[key]) {
-      state.menuItemMeta[key] = { likes: [], comments: [], counts: { likes: 0, comments: 0 } };
+      state.menuItemMeta[key] = { likes: [], comments: [], counts: { likes: null, comments: null } };
     } else if (!state.menuItemMeta[key].counts) {
-      state.menuItemMeta[key].counts = { likes: 0, comments: 0 };
+      state.menuItemMeta[key].counts = { likes: null, comments: null };
     }
     return state.menuItemMeta[key];
   }
@@ -266,8 +266,8 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
     const rawComments = Number.isFinite(Number(meta?.counts?.comments)) ? Number(meta.counts.comments) : null;
     const likeFromList = meta?.likes?.length ?? 0;
     const commentFromList = meta?.comments?.length ?? 0;
-    const likes = Math.max(rawLikes ?? 0, likeFromList);
-    const comments = Math.max(rawComments ?? 0, commentFromList);
+    const likes = rawLikes === null ? Math.max(0, likeFromList) : Math.max(0, rawLikes);
+    const comments = rawComments === null ? Math.max(0, commentFromList) : Math.max(0, rawComments);
     return { likes, comments };
   }
 
@@ -314,9 +314,15 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
       const key = menuItemMetaKey(restaurantId, itemId);
       if (!key) return;
       const meta = ensureMenuItemMeta(key);
+      const hasLikeCount = Number.isFinite(Number(item?.likesCount)) || Number.isFinite(Number(item?.likes));
+      const hasCommentCount = Number.isFinite(Number(item?.commentsCount)) || Number.isFinite(Number(item?.comments));
       meta.counts = {
-        likes: Number(item?.likesCount ?? item?.likes ?? meta.counts?.likes ?? 0) || 0,
-        comments: Number(item?.commentsCount ?? item?.comments ?? meta.counts?.comments ?? 0) || 0
+        likes: hasLikeCount
+          ? (Number(item?.likesCount ?? item?.likes) || 0)
+          : (Number.isFinite(Number(meta?.counts?.likes)) ? Number(meta.counts.likes) : null),
+        comments: hasCommentCount
+          ? (Number(item?.commentsCount ?? item?.comments) || 0)
+          : (Number.isFinite(Number(meta?.counts?.comments)) ? Number(meta.counts.comments) : null)
       };
       state.menuItemMeta[key] = meta;
       updateMenuCardCountNodes(itemId, resolveMenuItemCounts(meta));

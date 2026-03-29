@@ -31,7 +31,7 @@ export function createSocialEngagementRuntimeController({
   openGuestAuthPromptFn = () => {},
   currentUserBadgeFn = () => ({ uid: "", name: "User", handle: "user", avatar: "" }),
   ensurePostMetaFn = () => ({ likes: [], comments: [] }),
-  ensureMenuItemMetaFn = () => ({ likes: [], comments: [], counts: { likes: 0, comments: 0 } }),
+  ensureMenuItemMetaFn = () => ({ likes: [], comments: [], counts: { likes: null, comments: null } }),
   resolveMenuItemCountsFn = () => ({ likes: 0, comments: 0 }),
   getMenuDetailContextFn = () => null,
   ensureCommentShapeFn = (comment) => comment,
@@ -166,6 +166,7 @@ export function createSocialEngagementRuntimeController({
   const META_LIKES_SOFT_REFRESH_MS = 10000;
   const META_COMMENTS_SOFT_REFRESH_MS = 15000;
   const META_VIEWER_LIKE_SOFT_REFRESH_MS = 10000;
+  const META_COUNTS_SOFT_REFRESH_MS = 15000;
 
   const favoriteMenuItemDocId = favoriteMenuItemDocIdFn;
   const buildFavoriteMenuItemPayload = buildFavoriteMenuItemPayloadFn;
@@ -178,9 +179,11 @@ export function createSocialEngagementRuntimeController({
       return {
         commentsHydrated: false,
         likesHydrated: false,
+        countsHydrated: false,
         userLikeHydratedUid: "",
         commentsFetchedAt: 0,
         likesFetchedAt: 0,
+        countsFetchedAt: 0,
         viewerLikeFetchedAt: 0
       };
     }
@@ -189,9 +192,11 @@ export function createSocialEngagementRuntimeController({
       loadState = {
         commentsHydrated: false,
         likesHydrated: false,
+        countsHydrated: false,
         userLikeHydratedUid: "",
         commentsFetchedAt: 0,
         likesFetchedAt: 0,
+        countsFetchedAt: 0,
         viewerLikeFetchedAt: 0
       };
       try {
@@ -208,9 +213,11 @@ export function createSocialEngagementRuntimeController({
     }
     if (typeof loadState.commentsHydrated !== "boolean") loadState.commentsHydrated = false;
     if (typeof loadState.likesHydrated !== "boolean") loadState.likesHydrated = false;
+    if (typeof loadState.countsHydrated !== "boolean") loadState.countsHydrated = false;
     if (typeof loadState.userLikeHydratedUid !== "string") loadState.userLikeHydratedUid = "";
     if (!Number.isFinite(Number(loadState.commentsFetchedAt))) loadState.commentsFetchedAt = 0;
     if (!Number.isFinite(Number(loadState.likesFetchedAt))) loadState.likesFetchedAt = 0;
+    if (!Number.isFinite(Number(loadState.countsFetchedAt))) loadState.countsFetchedAt = 0;
     if (!Number.isFinite(Number(loadState.viewerLikeFetchedAt))) loadState.viewerLikeFetchedAt = 0;
     return loadState;
   }
@@ -816,6 +823,67 @@ export function createSocialEngagementRuntimeController({
     });
   }
 
+  function applyMenuItemCounts(key, { likes = null, comments = null } = {}, { markFetched = false } = {}) {
+    if (!key) return null;
+    const meta = ensureMenuItemMeta(key);
+    meta.counts = meta.counts && typeof meta.counts === "object"
+      ? meta.counts
+      : { likes: null, comments: null };
+    if (likes !== null) {
+      meta.counts.likes = Math.max(0, Number(likes) || 0);
+    }
+    if (comments !== null) {
+      meta.counts.comments = Math.max(0, Number(comments) || 0);
+    }
+    const loadState = ensureMetaLoadState(meta);
+    loadState.countsHydrated = !!markFetched;
+    loadState.countsFetchedAt = markFetched ? Date.now() : 0;
+    state.menuItemMeta[key] = meta;
+    return meta;
+  }
+
+  function syncMenuItemCountViews(ctx, meta = null) {
+    if (!ctx?.key || !ctx?.itemId) return;
+    const targetMeta = meta || ensureMenuItemMeta(ctx.key);
+    updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(targetMeta));
+    if (isActiveMenuDetailContext(ctx)) {
+      updateMenuDetailCountsOnly();
+    }
+  }
+
+  async function reconcileMenuItemCountsFromRemote(ctx, { fallbackLikes = null, fallbackComments = null } = {}) {
+    if (!ctx?.ref || !ctx?.key || !ctx?.itemId) return;
+    if (fallbackLikes !== null || fallbackComments !== null) {
+      const fallbackMeta = applyMenuItemCounts(
+        ctx.key,
+        { likes: fallbackLikes, comments: fallbackComments },
+        { markFetched: false }
+      );
+      syncMenuItemCountViews(ctx, fallbackMeta);
+    }
+    let nextLikes = fallbackLikes;
+    let nextComments = fallbackComments;
+    try {
+      const snap = await getDoc(ctx.ref);
+      if (snap.exists()) {
+        const data = snap.data() || {};
+        nextLikes = Number(data.likesCount ?? data.likes ?? nextLikes ?? 0) || 0;
+        nextComments = Number(data.commentsCount ?? data.comments ?? nextComments ?? 0) || 0;
+      } else {
+        nextLikes = nextLikes === null ? 0 : nextLikes;
+        nextComments = nextComments === null ? 0 : nextComments;
+      }
+    } catch (err) {
+      console.error(err);
+    }
+    const reconciledMeta = applyMenuItemCounts(
+      ctx.key,
+      { likes: nextLikes, comments: nextComments },
+      { markFetched: true }
+    );
+    syncMenuItemCountViews(ctx, reconciledMeta);
+  }
+
   async function toggleMenuItemFavorite(ctx) {
     if (!state.user) {
       openGuestAuthPrompt("Bitte registrieren oder einloggen, um Favoriten zu nutzen.");
@@ -878,6 +946,7 @@ export function createSocialEngagementRuntimeController({
     if (!user.uid) return;
     const likeId = user.uid;
     const likeRef = doc(collection(ref, "likes"), likeId);
+    const countsBeforeWrite = resolveMenuItemCounts(ensureMenuItemMeta(key));
     let delta = 0;
     try {
       await runTransaction(db, async (tx) => {
@@ -911,15 +980,21 @@ export function createSocialEngagementRuntimeController({
       if (loadState.likesHydrated) {
         loadState.likesFetchedAt = Date.now();
       }
-      meta.counts = meta.counts || { likes: 0, comments: 0 };
-      meta.counts.likes = Math.max(0, (Number(meta.counts.likes) || 0) + delta);
+      meta.counts = meta.counts && typeof meta.counts === "object"
+        ? meta.counts
+        : { likes: null, comments: null };
+      meta.counts.likes = Math.max(0, (Number(countsBeforeWrite.likes) || 0) + delta);
+      loadState.countsHydrated = false;
+      loadState.countsFetchedAt = 0;
       state.menuItemMeta[key] = meta;
-      if (isActiveMenuDetailContext(ctx)) {
-        updateMenuDetailCountsOnly();
-      }
       const cardItemId = String(item?.id || itemId || "").trim();
       updateMenuCardLikeButtons(cardItemId, isMenuItemLikedByUser(meta, user.uid, user.handle || ""));
-      updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
+      syncMenuItemCountViews(ctx, meta);
+      void reconcileMenuItemCountsFromRemote(ctx, {
+        fallbackLikes: Number(meta.counts.likes) || 0
+      }).catch((err) => {
+        console.error(err);
+      });
     } catch (err) {
       console.error(err);
     }
@@ -1001,14 +1076,12 @@ export function createSocialEngagementRuntimeController({
     if (loadState.commentsHydrated) {
       loadState.commentsFetchedAt = Date.now();
     }
-    meta.counts = meta.counts || { likes: 0, comments: 0 };
-    const optimisticCommentCount = Math.max(
-      0,
-      (Number(countsBeforeSubmit.comments) || 0) + 1,
-      Number(meta.counts.comments) || 0,
-      meta.comments.length
-    );
-    meta.counts.comments = optimisticCommentCount;
+    meta.counts = meta.counts && typeof meta.counts === "object"
+      ? meta.counts
+      : { likes: null, comments: null };
+    meta.counts.comments = Math.max(0, (Number(countsBeforeSubmit.comments) || 0) + 1);
+    loadState.countsHydrated = false;
+    loadState.countsFetchedAt = 0;
     state.menuItemMeta[key] = meta;
     if (isSameMenuDetailContext()) {
       state.menuDetail.commentText = "";
@@ -1020,7 +1093,12 @@ export function createSocialEngagementRuntimeController({
       state.menuDetail.sending = false;
       updateMenuDetailMeta();
     }
-    updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
+    syncMenuItemCountViews(ctx, meta);
+    void reconcileMenuItemCountsFromRemote(ctx, {
+      fallbackComments: Number(meta.counts.comments) || 0
+    }).catch((err) => {
+      console.error(err);
+    });
     if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
     refreshSelfCommentAvatars();
   }
@@ -1148,13 +1226,15 @@ export function createSocialEngagementRuntimeController({
     if (!ctx) return;
     const { ref, key, itemId } = ctx;
     setMenuDetailDocUnsubFn(onSnapshot(ref, (docSnap) => {
-      if (!docSnap.exists()) return;
-      const data = docSnap.data() || {};
       const meta = ensureMenuItemMeta(key);
+      const loadState = ensureMetaLoadState(meta);
+      const data = docSnap.exists() ? (docSnap.data() || {}) : {};
       meta.counts = {
-        likes: Number(data.likesCount ?? data.likes ?? meta.likes?.length ?? 0) || 0,
-        comments: Number(data.commentsCount ?? data.comments ?? meta.comments?.length ?? 0) || 0
+        likes: Number(data.likesCount ?? data.likes ?? 0) || 0,
+        comments: Number(data.commentsCount ?? data.comments ?? 0) || 0
       };
+      loadState.countsHydrated = true;
+      loadState.countsFetchedAt = Date.now();
       state.menuItemMeta[key] = meta;
       updateMenuCardCountNodes(itemId, resolveMenuItemCounts(meta));
       updateMenuDetailCountsOnly();
@@ -1162,6 +1242,7 @@ export function createSocialEngagementRuntimeController({
   }
 
   async function loadMenuItemMetaFromFirebase(item, restaurantId, options = {}) {
+    const includeCounts = options?.includeCounts !== false;
     const includeComments = options?.includeComments !== false;
     const ref = getMenuItemSocialDocRef(item, restaurantId);
     const rid = restaurantId || state.menu.restaurantId || state.profileView?.profile?.restaurantId || state.userProfile.restaurantId || "";
@@ -1171,24 +1252,41 @@ export function createSocialEngagementRuntimeController({
     const meta = ensureMenuItemMeta(key);
     const loadState = ensureMetaLoadState(meta);
     const userUid = String(state.user?.uid || "");
+    const countsFresh = !includeCounts
+      || (loadState.countsHydrated && isFreshMetaTimestamp(loadState.countsFetchedAt, META_COUNTS_SOFT_REFRESH_MS));
     const hasCommentsCache = !includeComments || (loadState.commentsHydrated && Array.isArray(meta.comments));
     const hasViewerLikeCache = !userUid || loadState.userLikeHydratedUid === userUid;
     const commentsFresh = !includeComments
       || (hasCommentsCache && isFreshMetaTimestamp(loadState.commentsFetchedAt, META_COMMENTS_SOFT_REFRESH_MS));
     const viewerLikeFresh = !userUid || (hasViewerLikeCache && isFreshMetaTimestamp(loadState.viewerLikeFetchedAt, META_VIEWER_LIKE_SOFT_REFRESH_MS));
+    const shouldLoadCounts = includeCounts && !countsFresh;
     const shouldProbeViewerLike = !!userUid && (!hasViewerLikeCache || !viewerLikeFresh);
     const shouldLoadComments = includeComments && (!hasCommentsCache || !commentsFresh);
-    if (!shouldProbeViewerLike && !shouldLoadComments) {
+    if (!shouldLoadCounts && !shouldProbeViewerLike && !shouldLoadComments) {
       state.menuItemMeta[key] = meta;
       return meta;
     }
 
-    const loadKey = `${key}|viewer:${shouldProbeViewerLike ? 1 : 0}|comments:${shouldLoadComments ? 1 : 0}|user:${userUid}`;
+    const loadKey = `${key}|counts:${shouldLoadCounts ? 1 : 0}|viewer:${shouldProbeViewerLike ? 1 : 0}|comments:${shouldLoadComments ? 1 : 0}|user:${userUid}`;
     if (menuItemMetaLoadInFlight.has(loadKey)) {
       return menuItemMetaLoadInFlight.get(loadKey);
     }
 
     const loadPromise = (async () => {
+      if (shouldLoadCounts) {
+        try {
+          const countsSnap = await getDoc(ref);
+          const data = countsSnap.exists() ? (countsSnap.data() || {}) : {};
+          meta.counts = {
+            likes: Number(data.likesCount ?? data.likes ?? 0) || 0,
+            comments: Number(data.commentsCount ?? data.comments ?? 0) || 0
+          };
+          loadState.countsHydrated = true;
+          loadState.countsFetchedAt = Date.now();
+        } catch (err) {
+          console.error(err);
+        }
+      }
       if (shouldProbeViewerLike) {
         try {
           const likeSnap = await getDoc(doc(collection(ref, "likes"), userUid));
