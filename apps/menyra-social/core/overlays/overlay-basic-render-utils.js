@@ -93,7 +93,9 @@ export function renderProfileModalCore({
   const p = state.profileModal.profile;
   const following = isFollowing(p);
   const hasPendingFollowRequest = !!p.pendingFollowRequest && !following;
+  const isFollowActionPending = !!p.followActionPending;
   const isLocked = !!p.privateAccount && p.uid && String(p.uid) !== String(state.user?.uid || "") && !following;
+  const followBusyLabel = following ? "Updating..." : (isLocked ? "Requesting..." : "Following...");
   const typeLabel = p.restaurantId ? "Business" : "User";
   const avatarUrl = getImage(p.avatar, "avatar");
   return `
@@ -116,8 +118,8 @@ export function renderProfileModalCore({
                 <button id="profileChatBtn" data-chat-uid="${esc(p.uid || "")}" data-chat-handle="${esc(p.handle || "")}" data-chat-name="${esc(p.name || "")}" data-chat-avatar="${esc(p.avatar || "")}" ${isLocked ? "disabled" : ""} class="w-11 h-11 rounded-2xl border border-slate-200 ${isLocked ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-white text-slate-700"} flex items-center justify-center">
                   ${iconFn("message-circle", "w-4 h-4")}
                 </button>
-                <button id="profileFollowBtn" data-handle="${esc(p.handle)}" data-target-type="${esc(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${esc(p.restaurantId || p.uid || "")}" data-target-name="${esc(p.name || "")}" data-target-avatar="${esc(p.avatar || "")}" ${hasPendingFollowRequest ? "disabled" : ""} class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${following ? "bg-slate-100 text-slate-700" : (hasPendingFollowRequest ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20")} ${hasPendingFollowRequest ? "cursor-default" : ""}">
-                  ${following ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"))}
+                <button id="profileFollowBtn" data-handle="${esc(p.handle)}" data-target-type="${esc(p.restaurantId ? "restaurant" : (p.uid ? "user" : ""))}" data-target-id="${esc(p.restaurantId || p.uid || "")}" data-target-name="${esc(p.name || "")}" data-target-avatar="${esc(p.avatar || "")}" ${(hasPendingFollowRequest || isFollowActionPending) ? "disabled" : ""} class="px-5 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest active:scale-95 transition-transform ${isFollowActionPending ? "bg-slate-100 text-slate-500 border border-slate-200 cursor-default" : (following ? "bg-slate-100 text-slate-700" : (hasPendingFollowRequest ? "bg-amber-50 text-amber-700 border border-amber-200" : "bg-indigo-600 text-white shadow-xl shadow-indigo-500/20"))} ${(hasPendingFollowRequest || isFollowActionPending) ? "cursor-default" : ""}">
+                  ${isFollowActionPending ? followBusyLabel : (following ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow")))}
                 </button>
               </div>
             </div>

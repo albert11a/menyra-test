@@ -90,6 +90,15 @@ function syncThemeColor(documentObj) {
   syncThemeColorMeta(doc, nextColor);
 }
 
+function syncModalChromeSurface(documentObj) {
+  const doc = documentObj || null;
+  if (!doc?.documentElement || !doc.body) return;
+  const useSurface = doc.documentElement.classList.contains("modal-open");
+  const nextColor = useSurface ? OVERLAY_CHROME_COLOR : "";
+  doc.documentElement.style.backgroundColor = nextColor;
+  doc.body.style.backgroundColor = nextColor;
+}
+
 export function ensureOverlayRootCore({ documentObj } = {}) {
   const doc = documentObj || null;
   if (!doc) return null;
@@ -165,6 +174,7 @@ export function syncModalOpenUiStateCore({
     doc.body.classList.remove("menu-detail-comment-focus");
     doc.documentElement.style.removeProperty("--menu-detail-footer-gap");
   }
+  syncModalChromeSurface(doc);
   syncThemeColor(doc);
   if (anyModalOpen) ensureModalEscapeHandler();
 }

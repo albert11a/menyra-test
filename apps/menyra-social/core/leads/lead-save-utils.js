@@ -41,6 +41,7 @@ export async function saveLeadFromModalCore({
   alertFn
 } = {}) {
   if (!state || !state.user) return;
+  if (state.leadModal?.loading || state.leadModal?.deleting) return;
   const docObj = documentObj || (typeof document !== "undefined" ? document : null);
   if (!docObj || typeof doc !== "function" || typeof collection !== "function" || typeof setDoc !== "function" || !db) return;
   const isInlineCreateView = typeof isLeadInlineCreateView === "function" ? isLeadInlineCreateView : (() => false);
@@ -219,6 +220,10 @@ export async function saveLeadFromModalCore({
     }
 
     const existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
+    const existingRestaurantLeadId = String(existingRest?.leadId || "").trim();
+    if (restaurantId && lead?.id && existingRestaurantLeadId && existingRestaurantLeadId !== String(lead.id || "").trim()) {
+      throw new Error("Verknuepftes Restaurant passt nicht mehr zu diesem Lead.");
+    }
     const prevLeadContribution = lead?.id ? buildLeadContribution(lead) : null;
     const prevCustomerContribution = existingRest ? buildCustomerContribution(existingRest) : null;
     const restaurantStatus = resolveRestStatus(statusValue, existingRest?.status || "");

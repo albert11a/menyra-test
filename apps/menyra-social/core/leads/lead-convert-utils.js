@@ -25,14 +25,41 @@ export async function convertLeadToCustomerCore({
   alertFn
 } = {}) {
   if (!state || !state.user || !leadId) return false;
-  const lead = state.leads.items.find((item) => String(item.id) === String(leadId));
+  if (state.leadModal?.loading || state.leadModal?.deleting) return false;
+  const visibleLead = Array.isArray(state.leads?.items)
+    ? state.leads.items.find((item) => String(item?.id || "") === String(leadId))
+    : null;
+  const modalLead = String(state.leadModal?.lead?.id || "") === String(leadId)
+    ? state.leadModal.lead
+    : null;
+  const lead = visibleLead ? { ...(modalLead || {}), ...visibleLead } : modalLead;
   if (!lead) return false;
-  if (!confirmFn("Lead als Kunde aktivieren?")) return false;
+  const confirmAction = typeof confirmFn === "function"
+    ? confirmFn
+    : (typeof confirm === "function" ? confirm : null);
+  const notify = typeof alertFn === "function"
+    ? alertFn
+    : ((message) => {
+      if (typeof alert === "function") alert(message);
+    });
+  if (!confirmAction || !confirmAction("Lead als Kunde aktivieren?")) return false;
+
+  const modalMatchesTarget = String(state.leadModal?.lead?.id || "") === String(leadId);
+  if (modalMatchesTarget) {
+    state.leadModal.loading = true;
+    state.leadModal.actionsOpen = false;
+    state.leadModal.status = "Lead wird zu Kunde umgewandelt...";
+    render();
+  }
 
   try {
     const prevLeadContribution = buildLeadCrmContribution(lead);
     let restaurantId = lead.restaurantId || "";
     let existingRest = restaurantId ? state.restaurants.find((r) => String(r.id) === String(restaurantId)) : null;
+    const existingRestaurantLeadId = String(existingRest?.leadId || "").trim();
+    if (restaurantId && existingRestaurantLeadId && existingRestaurantLeadId !== String(lead.id || "").trim()) {
+      throw new Error("Verknuepftes Restaurant passt nicht mehr zu diesem Lead.");
+    }
     const businessName = lead.businessName || "Neuer Kunde";
     const type = resolveCustomerType(lead.customerType || "cafe");
     const creatorMeta = resolveStoredCeoCreatorMeta(lead, existingRest);
@@ -121,11 +148,20 @@ export async function convertLeadToCustomerCore({
     state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...(existingRest || {}), ...restPayload, status: "active" }]);
     rebuildBusinessLocations();
     refreshCustomersFromRestaurants();
+    if (modalMatchesTarget) {
+      state.leadModal.loading = false;
+      state.leadModal.status = "";
+    }
     render();
     return true;
   } catch (err) {
     console.error(err);
-    alertFn(err?.message || "Umwandlung fehlgeschlagen.");
+    if (modalMatchesTarget) {
+      state.leadModal.loading = false;
+      state.leadModal.status = err?.message || "Umwandlung fehlgeschlagen.";
+      render();
+    }
+    notify(err?.message || "Umwandlung fehlgeschlagen.");
     return false;
   }
 }
