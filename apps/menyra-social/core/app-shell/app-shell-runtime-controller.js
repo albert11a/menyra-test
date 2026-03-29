@@ -1297,13 +1297,10 @@ export function createAppShellRuntimeController(deps = {}) {
 
       const bizBtn = target.closest("[data-search-business]");
       if (bizBtn) {
-        const restaurantId = String(bizBtn.dataset.searchBusinessId || "").trim();
-        const businessName = String(bizBtn.dataset.searchName || "").trim();
-        if (!restaurantId && !businessName) return;
-        void openProfileViewFromBusinessFn({
-          id: restaurantId,
-          name: businessName
-        }, { showBack: true });
+        openProfileViewFromBusinessFn({
+          id: bizBtn.dataset.searchBusiness || "",
+          name: bizBtn.dataset.searchName || ""
+        }, { showBack: false });
       }
     });
 

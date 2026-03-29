@@ -59,13 +59,7 @@ export async function deleteLeadFromModalCore({
     return false;
   }
 
-  if (state.leadModal?.loading || state.leadModal?.deleting) return false;
-
-  const modalLead = state.leadModal?.lead || {};
-  const visibleLead = Array.isArray(state.leads?.items)
-    ? state.leads.items.find((item) => String(item?.id || "") === String(modalLead?.id || ""))
-    : null;
-  const lead = visibleLead ? { ...modalLead, ...visibleLead } : modalLead;
+  const lead = state.leadModal?.lead || {};
   const leadId = String(lead.id || "").trim();
   if (!leadId) return false;
 
@@ -81,36 +75,14 @@ export async function deleteLeadFromModalCore({
 
   try {
     const linkedRestaurant = await resolveRestaurantLinkedToLead(lead);
-    const explicitRestaurantId = String(lead.restaurantId || "").trim();
-    const cachedExplicitRestaurant = explicitRestaurantId
-      ? (Array.isArray(state.restaurants)
-          ? state.restaurants.find((row) => String(row?.id || "") === explicitRestaurantId) || null
-          : null)
-      : null;
-    const explicitRestaurantLeadId = String(cachedExplicitRestaurant?.leadId || "").trim();
-    if (explicitRestaurantId && explicitRestaurantLeadId && explicitRestaurantLeadId !== leadId) {
-      state.leadModal.deleting = false;
-      state.leadModal.status = "Verknuepftes Restaurant passt nicht mehr zu diesem Lead.";
-      renderLeadEditorUi();
-      return false;
-    }
-    const linkedRestaurantId = String(linkedRestaurant?.id || "").trim();
-    const fallbackLeadId = String(linkedRestaurant?.leadId || "").trim();
-    const trustedRestaurantId = explicitRestaurantId
-      || ((linkedRestaurantId && fallbackLeadId === leadId) ? linkedRestaurantId : "");
-    const trustedRestaurant = trustedRestaurantId
-      ? (linkedRestaurantId === trustedRestaurantId
-          ? { id: trustedRestaurantId, ...linkedRestaurant }
-          : ({ id: trustedRestaurantId, ...(cachedExplicitRestaurant || {}) }))
-      : null;
-    if (linkedRestaurantId && linkedRestaurantId === trustedRestaurantId && linkedRestaurant?.id) {
+    if (linkedRestaurant?.id) {
       state.restaurants = mergeRestaurants(state.restaurants, [{ id: linkedRestaurant.id, ...linkedRestaurant }]);
     }
-    const identityPayload = collectLeadIdentityPayload(lead, trustedRestaurant);
-    const restaurantId = String(identityPayload.restaurantId || trustedRestaurantId || "").trim();
+    const identityPayload = collectLeadIdentityPayload(lead, linkedRestaurant);
+    const restaurantId = String(identityPayload.restaurantId || "").trim();
     const prevLeadContribution = buildLeadCrmContribution(lead);
-    const prevCustomerContribution = trustedRestaurant?.id
-      ? buildCustomerCrmContribution({ id: trustedRestaurant.id, ...trustedRestaurant })
+    const prevCustomerContribution = linkedRestaurant?.id
+      ? buildCustomerCrmContribution({ id: linkedRestaurant.id, ...linkedRestaurant })
       : null;
 
     await deleteDoc(doc(db, "leads", leadId));

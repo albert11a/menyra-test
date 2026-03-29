@@ -58,36 +58,6 @@ function buildNotificationTargetUrl(rawUrl, notificationId) {
   }
 }
 
-function parseTargetUrl(rawUrl) {
-  try {
-    return new URL(String(rawUrl || "").trim() || APP_SCOPE, self.location.origin);
-  } catch {
-    return null;
-  }
-}
-
-function isAppShellTargetUrl(url) {
-  const parsed = url instanceof URL ? url : parseTargetUrl(url);
-  if (!parsed || parsed.origin !== self.location.origin) return false;
-  const path = String(parsed.pathname || "");
-  return path === APP_SCOPE || path === APP_SHELL_URL || path === "/apps/menyra-social";
-}
-
-function isStoryTargetUrl(url) {
-  const parsed = url instanceof URL ? url : parseTargetUrl(url);
-  if (!parsed || parsed.origin !== self.location.origin) return false;
-  return String(parsed.pathname || "").startsWith("/apps/menyra-social/story/");
-}
-
-function isSameTargetUrl(left, right) {
-  const leftUrl = left instanceof URL ? left : parseTargetUrl(left);
-  const rightUrl = right instanceof URL ? right : parseTargetUrl(right);
-  if (!leftUrl || !rightUrl) return false;
-  return leftUrl.origin === rightUrl.origin
-    && leftUrl.pathname === rightUrl.pathname
-    && leftUrl.search === rightUrl.search;
-}
-
 self.addEventListener("push", (event) => {
   const payload = (() => {
     try {
@@ -128,12 +98,9 @@ self.addEventListener("notificationclick", (event) => {
   const data = event.notification?.data || {};
   const notificationId = String(data.notificationId || data.notifId || "").trim();
   const targetUrl = buildNotificationTargetUrl(data.url || data.link || APP_SCOPE, notificationId);
-  const parsedTargetUrl = parseTargetUrl(targetUrl);
-  const shouldRouteThroughAppMessage = isAppShellTargetUrl(parsedTargetUrl) && !isStoryTargetUrl(parsedTargetUrl);
 
   event.waitUntil((async () => {
     const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-    const exactTargetClient = clientsList.find((client) => isSameTargetUrl(client.url, parsedTargetUrl));
     const socialClient = clientsList.find((client) => {
       try {
         const parsed = new URL(client.url);
@@ -143,35 +110,18 @@ self.addEventListener("notificationclick", (event) => {
       }
     });
 
-    if (exactTargetClient && "focus" in exactTargetClient) {
-      try {
-        await exactTargetClient.focus();
-        return;
-      } catch {}
-    }
-
     if (socialClient && "focus" in socialClient) {
       try {
         await socialClient.focus();
       } catch {}
-      if ("navigate" in socialClient) {
-        if (!shouldRouteThroughAppMessage) {
-          try {
-            await socialClient.navigate(targetUrl);
-            return;
-          } catch {}
-        }
-      }
-      if (shouldRouteThroughAppMessage) {
-        try {
-          socialClient.postMessage({
-            type: "OPEN_NOTIFICATION_TARGET",
-            notificationId,
-            url: targetUrl
-          });
-          return;
-        } catch {}
-      }
+      try {
+        socialClient.postMessage({
+          type: "OPEN_NOTIFICATION_TARGET",
+          notificationId,
+          url: targetUrl
+        });
+        return;
+      } catch {}
       if ("navigate" in socialClient) {
         try {
           await socialClient.navigate(targetUrl);

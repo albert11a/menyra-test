@@ -315,7 +315,6 @@ function renderPublicProfileView() {
   const isFollowing = isFollowingProfile(profile);
   const isLocked = !!profile.privateAccount && profile.uid && String(profile.uid) !== String(state.user?.uid || "") && !isFollowing;
   const hasPendingFollowRequest = !!profile.pendingFollowRequest && !isFollowing;
-  const isFollowActionPending = !!profile.followActionPending;
   const typeLabel = profile.restaurantId ? "Business" : "User";
   const handle = String(profile.handle || normalizeHandle(profile.name || "user")).replace(/^@/, "");
   const safeBio = escapeHtml(profile.bio || "").replace(/\n/g, "<br>");
@@ -331,16 +330,12 @@ function renderPublicProfileView() {
   const avatarKey = profile.uid || profile.restaurantId || handle || "public";
   const topTab = resolveProfilePrimaryTopTab(profile);
   const topPaddingClass = isBusinessProfile ? (topTab === "profile" ? "pt-2" : "pt-4") : "pt-10";
-  const followLabel = isFollowActionPending
-    ? (isFollowing ? "Updating..." : (isLocked ? "Requesting..." : "Following..."))
-    : (isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow")));
-  const followTone = isFollowActionPending
-    ? "bg-slate-100 text-slate-500 shadow-none border border-slate-200"
-    : (isFollowing
-      ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200"
-      : (hasPendingFollowRequest
+  const followLabel = isFollowing ? "Following" : (hasPendingFollowRequest ? "Requested" : (isLocked ? "Request" : "Follow"));
+  const followTone = isFollowing
+    ? "bg-slate-100 text-slate-600 shadow-none border border-slate-200"
+    : (hasPendingFollowRequest
       ? "bg-amber-50 text-amber-700 shadow-none border border-amber-200"
-      : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent"));
+      : "bg-gradient-to-r from-slate-900 to-slate-800 text-white border border-transparent");
   return `
     <div class="app-main-content-safe">
       ${topTab === "profile" ? `
@@ -381,7 +376,7 @@ function renderPublicProfileView() {
             </div>
 
             <div class="flex gap-4">
-              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" ${(hasPendingFollowRequest || isFollowActionPending) ? "disabled" : ""} class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${followTone} ${(hasPendingFollowRequest || isFollowActionPending) ? "opacity-90 cursor-default" : ""}">
+              <button data-public-profile-follow="${escapeHtml(profile.handle)}" data-target-type="${escapeHtml(profile.restaurantId ? "restaurant" : (profile.uid ? "user" : ""))}" data-target-id="${escapeHtml(profile.restaurantId || profile.uid || "")}" data-target-name="${escapeHtml(profile.name || "")}" data-target-avatar="${escapeHtml(profile.avatar || "")}" ${hasPendingFollowRequest ? "disabled" : ""} class="flex-1 h-[56px] rounded-[1.2rem] font-bold text-xs uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(15,23,42,0.25)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden ${followTone} ${hasPendingFollowRequest ? "opacity-90 cursor-default" : ""}">
                 <span class="relative z-10 flex items-center gap-2">
                   ${isFollowing ? icon("check", "w-4 h-4") : ""}
                   ${followLabel}

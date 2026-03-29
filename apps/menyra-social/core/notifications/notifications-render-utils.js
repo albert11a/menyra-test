@@ -23,7 +23,7 @@ export function renderNotificationsListCore({
         <p class="text-[9px] text-slate-400 font-bold uppercase mt-1">${esc(n.time)}</p>
       </div>
       <div class="flex items-center gap-2">
-        ${n.type === "follow_request" ? `<button data-follow-request-accept="${esc(n.id)}" ${n.acceptPending ? "disabled" : ""} class="px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest active:scale-95 ${n.acceptPending ? "bg-slate-200 text-slate-500 cursor-default" : "bg-slate-900 text-white"}">${n.acceptPending ? "Accepting..." : "Accept"}</button>` : ""}
+        ${n.type === "follow_request" ? `<button data-follow-request-accept="${esc(n.id)}" class="px-3 py-2 rounded-xl bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest active:scale-95">Accept</button>` : ""}
         ${!n.read ? "<div class=\"w-2 h-2 bg-indigo-500 rounded-full\"></div>" : ""}
         <button data-notif-delete="${n.id}" class="p-2 text-slate-300 hover:text-rose-500">${iconFn("trash-2", "w-4 h-4")}</button>
       </div>

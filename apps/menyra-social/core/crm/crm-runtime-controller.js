@@ -2014,7 +2014,7 @@ async function saveCeoStaffFromView() {
 }
 
 async function deleteCeoStaffFromView() {
-  if (!state.user || !isCeoUser() || state.staff?.saving || state.staff?.deleting) return;
+  if (!state.user || !isCeoUser()) return;
   const uid = String(state.staff.editorUid || "").trim();
   if (!uid) return;
   if (uid === String(state.user.uid || "")) {
@@ -2023,11 +2023,6 @@ async function deleteCeoStaffFromView() {
     return;
   }
   const entry = (state.staff.items || []).find((item) => String(item.uid || "") === uid);
-  if (!entry) {
-    state.staff.status = "CEO Staff ist nicht mehr im aktuellen Scope.";
-    render();
-    return;
-  }
   const label = entry?.name || "diesen CEO";
   if (!confirm(`Willst du ${label} wirklich loeschen?`)) return;
 

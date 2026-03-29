@@ -276,99 +276,10 @@ export function createChatRuntimeController(deps = {}) {
     ? deps.setTimeoutFn
     : ((fn, ms) => setTimeout(fn, ms));
 
+  let chatSendDispatchLock = false;
   let chatThreadsUnsub = null;
   let chatMessagesUnsub = null;
-  let activeChatMessagesListenerToken = 0;
-  let chatThreadActionPendingId = "";
-  let chatAttachmentsPendingThreadId = "";
-  let chatAttachmentsPendingModalState = null;
-  let chatSendPendingThreadId = "";
-  let chatSendPendingModalState = null;
   const pendingFollowTargetKeys = new Set();
-
-  function getActiveChatModalThreadId(chatModal = state.chatModal) {
-    return getChatThreadId(chatModal?.profile);
-  }
-
-  function isSameActiveChatModalContext({
-    modalState = null,
-    threadId = ""
-  } = {}) {
-    const safeThreadId = String(threadId || "").trim();
-    if (!modalState || !safeThreadId) return false;
-    if (state.chatModal !== modalState) return false;
-    if (!state.chatModal?.open) return false;
-    return getActiveChatModalThreadId(state.chatModal) === safeThreadId;
-  }
-
-  function isChatComposerSending(threadId = getActiveChatModalThreadId()) {
-    const safeThreadId = String(threadId || "").trim();
-    return !!safeThreadId && chatSendPendingThreadId === safeThreadId;
-  }
-
-  function isChatComposerAttachmentPending(threadId = getActiveChatModalThreadId()) {
-    const safeThreadId = String(threadId || "").trim();
-    return !!safeThreadId && chatAttachmentsPendingThreadId === safeThreadId;
-  }
-
-  function matchesFollowTargetProfile(profileLike = null, {
-    targetId = "",
-    handle = ""
-  } = {}) {
-    if (!profileLike) return false;
-    const safeTargetId = String(targetId || "").trim();
-    const safeHandle = normalizeFollowHandle(handle || "");
-    const profileRestaurantId = String(profileLike.restaurantId || "").trim();
-    const profileUid = String(profileLike.uid || "").trim();
-    const profileHandle = normalizeFollowHandle(profileLike.handle || "");
-    if (safeTargetId && (profileRestaurantId === safeTargetId || profileUid === safeTargetId)) return true;
-    return !!(safeHandle && profileHandle === safeHandle);
-  }
-
-  function setFollowTargetPendingState({
-    targetId = "",
-    handle = "",
-    pending = false
-  } = {}) {
-    const updateProfile = (profileLike = null) => {
-      if (!matchesFollowTargetProfile(profileLike, { targetId, handle })) return;
-      if (pending) {
-        profileLike.followActionPending = true;
-      } else {
-        delete profileLike.followActionPending;
-      }
-    };
-    updateProfile(state.profileModal?.profile || null);
-    updateProfile(state.profileView?.profile || null);
-    businessProfileCache.forEach((cached) => updateProfile(cached));
-  }
-
-  function renderFollowUiState() {
-    if (state.profileModal.open && !state.profileView) {
-      renderOverlays();
-      return;
-    }
-    render();
-  }
-
-  function updateNotificationAcceptPending(notificationId, pending = false) {
-    const safeNotificationId = String(notificationId || "").trim();
-    if (!safeNotificationId) return null;
-    const notif = Array.isArray(state.notifications)
-      ? state.notifications.find((item) => String(item?.id || "") === safeNotificationId) || null
-      : null;
-    if (!notif) return null;
-    if (pending) {
-      notif.acceptPending = true;
-    } else {
-      delete notif.acceptPending;
-    }
-    const updated = updateNotificationsDom();
-    if (!updated && state.activeTab === "notifications") {
-      render();
-    }
-    return notif;
-  }
 
   function saveChatThreadIndex(threads) {
     saveChatThreadIndexCore({
@@ -481,8 +392,6 @@ export function createChatRuntimeController(deps = {}) {
       threadId
     });
     if (!safeThreadId || !ownerUid) return;
-    if (chatThreadActionPendingId === safeThreadId) return;
-    chatThreadActionPendingId = safeThreadId;
     state.chatThreadMenuId = "";
     upsertChatThread(thread || buildFallbackChatThreadProfileCore(safeThreadId), {
       archivedByOwner: !!archived
@@ -494,11 +403,6 @@ export function createChatRuntimeController(deps = {}) {
       await setDoc(threadRef, { archivedByOwner: !!archived }, { merge: true });
     } catch (err) {
       console.error(err);
-    } finally {
-      if (chatThreadActionPendingId === safeThreadId) {
-        chatThreadActionPendingId = "";
-        render();
-      }
     }
   }
 
@@ -510,13 +414,11 @@ export function createChatRuntimeController(deps = {}) {
     });
     const ownerUid = String(state.user?.uid || "").trim();
     if (!safeThreadId || !ownerUid) return;
-    if (chatThreadActionPendingId === safeThreadId) return;
     const windowObj = getWindowObj();
     const confirmed = windowObj && typeof windowObj.confirm === "function"
       ? windowObj.confirm("Diesen Chat wirklich loeschen?")
       : true;
     if (!confirmed) return;
-    chatThreadActionPendingId = safeThreadId;
 
     if (shouldCloseChatModalForThreadCore({
       chatModal: state.chatModal,
@@ -543,11 +445,6 @@ export function createChatRuntimeController(deps = {}) {
       await deleteDoc(threadRef);
     } catch (err) {
       console.error(err);
-    } finally {
-      if (chatThreadActionPendingId === safeThreadId) {
-        chatThreadActionPendingId = "";
-        render();
-      }
     }
   }
 
@@ -728,7 +625,6 @@ export function createChatRuntimeController(deps = {}) {
   }
 
   function stopActiveChatMessagesListener() {
-    activeChatMessagesListenerToken += 1;
     if (chatMessagesUnsub) {
       chatMessagesUnsub();
       chatMessagesUnsub = null;
@@ -803,16 +699,12 @@ export function createChatRuntimeController(deps = {}) {
 
   function startActiveChatMessagesListener(profile = state.chatModal.profile) {
     stopActiveChatMessagesListener();
-    const modalState = state.chatModal;
     const ownerUid = String(state.user?.uid || "").trim();
     const threadId = getChatThreadId(profile);
     const ref = chatMessagesCollectionRef(ownerUid, threadId);
     if (!ref) return;
-    const listenerToken = activeChatMessagesListenerToken;
     const messageQuery = query(ref, orderBy("createdAtClient", "desc"), limit(CHAT_MESSAGE_READ_LIMIT));
     chatMessagesUnsub = onSnapshot(messageQuery, (snap) => {
-      if (listenerToken !== activeChatMessagesListenerToken) return;
-      if (!isSameActiveChatModalContext({ modalState, threadId })) return;
       if (shouldIgnoreChatMessagesSnapshotCore({
         chatModalOpen: !!state.chatModal.open,
         activeModalThreadId: getChatThreadId(state.chatModal.profile),
@@ -1000,45 +892,24 @@ export function createChatRuntimeController(deps = {}) {
   async function addChatAttachments(fileList) {
     const files = Array.from(fileList || []).filter(Boolean);
     if (!files.length) return;
-    const modalState = state.chatModal;
-    const threadId = getActiveChatModalThreadId(modalState);
-    if (!modalState?.open || !modalState?.profile || !threadId) return;
-    if (isChatComposerAttachmentPending(threadId) || isChatComposerSending(threadId)) return;
-    const existing = Array.isArray(modalState.attachments) ? modalState.attachments : [];
+    const existing = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments : [];
     const slotsLeft = Math.max(0, 4 - existing.length);
     if (!slotsLeft) return;
-    chatAttachmentsPendingThreadId = threadId;
-    chatAttachmentsPendingModalState = modalState;
+    const nextAttachments = await buildNextChatAttachmentsCore({
+      fileList: files.slice(0, slotsLeft),
+      existingAttachments: existing,
+      maxAttachments: 4,
+      buildInlineChatAttachment: (file, isImage) => buildInlineChatAttachment(file, isImage),
+      nowMsFn: () => Date.now(),
+      randomFn: () => Math.random()
+    });
+    state.chatModal.attachments = nextAttachments;
     render();
-    try {
-      const nextAttachments = await buildNextChatAttachmentsCore({
-        fileList: files.slice(0, slotsLeft),
-        existingAttachments: existing,
-        maxAttachments: 4,
-        buildInlineChatAttachment: (file, isImage) => buildInlineChatAttachment(file, isImage),
-        nowMsFn: () => Date.now(),
-        randomFn: () => Math.random()
-      });
-      if (!isSameActiveChatModalContext({ modalState, threadId })) return;
-      if (chatAttachmentsPendingModalState !== modalState) return;
-      state.chatModal.attachments = nextAttachments;
-      render();
-    } finally {
-      if (chatAttachmentsPendingThreadId === threadId && chatAttachmentsPendingModalState === modalState) {
-        chatAttachmentsPendingThreadId = "";
-        chatAttachmentsPendingModalState = null;
-        if (isSameActiveChatModalContext({ modalState, threadId })) {
-          render();
-        }
-      }
-    }
   }
 
   function removePendingChatAttachment(attachmentId) {
     const safeId = String(attachmentId || "");
     if (!safeId) return;
-    const threadId = getActiveChatModalThreadId();
-    if (isChatComposerAttachmentPending(threadId) || isChatComposerSending(threadId)) return;
     state.chatModal.attachments = removePendingChatAttachmentCore({
       attachments: state.chatModal.attachments,
       attachmentId: safeId
@@ -1086,60 +957,50 @@ export function createChatRuntimeController(deps = {}) {
 
   async function sendChatMessage() {
     if (!state.chatModal.open || !state.chatModal.profile) return;
-    const modalState = state.chatModal;
-    const threadId = getActiveChatModalThreadId(modalState);
-    if (!threadId) return;
-    if (isChatComposerSending(threadId) || isChatComposerAttachmentPending(threadId)) return;
-    chatSendPendingThreadId = threadId;
-    chatSendPendingModalState = modalState;
+    if (chatSendDispatchLock) return;
+    chatSendDispatchLock = true;
+    queueMicrotaskFn(() => {
+      chatSendDispatchLock = false;
+    });
+    if (isActiveChatThreadBlocked()) {
+      alertFn("Dieser Chat ist blockiert. Entblocke ihn in der Chat-Uebersicht.");
+      return;
+    }
+    const documentObj = getDocumentObj();
+    const input = documentObj ? documentObj.getElementById("chatMessageInput") : null;
+    const sendPayload = resolveChatSendPayloadCore({
+      inputValue: input?.value,
+      draft: state.chatModal.draft,
+      attachments: state.chatModal.attachments
+    });
+    if (!sendPayload.canSend) return;
+    const createdAt = new Date().toISOString();
+    const localUpdate = buildChatSendLocalUpdateCore({
+      currentMessages: state.chatModal.messages,
+      text: sendPayload.text,
+      attachments: sendPayload.attachments,
+      createdAt,
+      createOutgoingChatMessage: ({ text, attachments, createdAt }) => createOutgoingChatMessageCore({
+        text,
+        attachments,
+        createdAt,
+        nowMsFn: () => Date.now(),
+        randomFn: () => Math.random()
+      }),
+      pruneChatMessages: (messages) => pruneChatMessages(messages),
+      buildChatPreviewText: (entry) => buildChatPreviewText(entry),
+      getChatMessageTimestamp: (entry) => getChatMessageTimestamp(entry)
+    });
+    state.chatModal.messages = localUpdate.nextMessages;
+    state.chatModal.draft = "";
+    state.chatModal.attachments = [];
+    saveChatThreadMessages(state.chatModal.profile, state.chatModal.messages);
+    upsertChatThread(state.chatModal.profile, localUpdate.threadPatch);
     render();
     try {
-      if (isActiveChatThreadBlocked()) {
-        alertFn("Dieser Chat ist blockiert. Entblocke ihn in der Chat-Uebersicht.");
-        return;
-      }
-      const documentObj = getDocumentObj();
-      const input = documentObj ? documentObj.getElementById("chatMessageInput") : null;
-      const sendPayload = resolveChatSendPayloadCore({
-        inputValue: input?.value,
-        draft: state.chatModal.draft,
-        attachments: state.chatModal.attachments
-      });
-      if (!sendPayload.canSend) return;
-      const createdAt = new Date().toISOString();
-      const localUpdate = buildChatSendLocalUpdateCore({
-        currentMessages: state.chatModal.messages,
-        text: sendPayload.text,
-        attachments: sendPayload.attachments,
-        createdAt,
-        createOutgoingChatMessage: ({ text, attachments, createdAt }) => createOutgoingChatMessageCore({
-          text,
-          attachments,
-          createdAt,
-          nowMsFn: () => Date.now(),
-          randomFn: () => Math.random()
-        }),
-        pruneChatMessages: (messages) => pruneChatMessages(messages),
-        buildChatPreviewText: (entry) => buildChatPreviewText(entry),
-        getChatMessageTimestamp: (entry) => getChatMessageTimestamp(entry)
-      });
-      state.chatModal.messages = localUpdate.nextMessages;
-      state.chatModal.draft = "";
-      state.chatModal.attachments = [];
-      saveChatThreadMessages(state.chatModal.profile, state.chatModal.messages);
-      upsertChatThread(state.chatModal.profile, localUpdate.threadPatch);
-      render();
       await syncChatMessageToRemote(localUpdate.outgoingMessage, state.chatModal.profile);
     } catch (err) {
       console.error(err);
-    } finally {
-      if (chatSendPendingThreadId === threadId && chatSendPendingModalState === modalState) {
-        chatSendPendingThreadId = "";
-        chatSendPendingModalState = null;
-        if (isSameActiveChatModalContext({ modalState, threadId })) {
-          render();
-        }
-      }
     }
   }
 
@@ -1156,11 +1017,11 @@ export function createChatRuntimeController(deps = {}) {
   }
 
   async function sendFollowRequest(handle, target = {}) {
-    if (!state.user) return false;
+    if (!state.user) return;
     const safeHandle = normalizeFollowHandle(handle);
     const targetUid = String(target.id || target.uid || "").trim();
-    if (!safeHandle || !targetUid || targetUid === String(state.user.uid)) return false;
-    if (state.followingHandles.includes(safeHandle) || state.pendingFollowRequests.includes(safeHandle)) return false;
+    if (!safeHandle || !targetUid || targetUid === String(state.user.uid)) return;
+    if (state.followingHandles.includes(safeHandle) || state.pendingFollowRequests.includes(safeHandle)) return;
     try {
       const actor = currentUserBadge();
       await setDoc(doc(db, "users", targetUid, "followRequests", state.user.uid), buildFollowRequestDocPayloadCore({
@@ -1180,12 +1041,9 @@ export function createChatRuntimeController(deps = {}) {
       if (state.profileView?.profile?.uid === targetUid) {
         state.profileView.profile.pendingFollowRequest = true;
       }
-      renderFollowUiState();
-      return true;
+      render();
     } catch (err) {
       console.error(err);
-      alertFn("Folgeanfrage fehlgeschlagen. Bitte erneut versuchen.");
-      return false;
     }
   }
 
@@ -1193,10 +1051,8 @@ export function createChatRuntimeController(deps = {}) {
     if (!state.user?.uid || !notificationId) return;
     const notif = state.notifications.find((item) => item.id === notificationId);
     if (!notif || notif.type !== "follow_request") return;
-    if (notif.acceptPending) return;
     const requesterUid = String(notif.userUid || "").trim();
     if (!requesterUid || requesterUid === String(state.user.uid)) return;
-    updateNotificationAcceptPending(notificationId, true);
 
     const actor = currentUserBadge();
     const targetHandle = normalizeFollowHandle(state.userProfile.handle || actor.handle || normalizeHandle(state.userProfile.name || "user"));
@@ -1231,8 +1087,6 @@ export function createChatRuntimeController(deps = {}) {
       await pushUserNotification(requesterUid, buildFollowAcceptedNotificationPayloadCore({ actor }));
     } catch (err) {
       console.error(err);
-      updateNotificationAcceptPending(notificationId, false);
-      alertFn("Anfrage konnte nicht angenommen werden. Bitte erneut versuchen.");
     }
   }
 
@@ -1319,50 +1173,9 @@ export function createChatRuntimeController(deps = {}) {
     });
   }
 
-  function isPostModalAlreadyOpen(postId = "") {
-    const safePostId = String(postId || "").trim();
-    if (!safePostId || !state?.postModal?.open || !state?.postModal?.post) return false;
-    return String(state.postModal.post.id || "").trim() === safePostId;
-  }
-
-  function isNotificationChatAlreadyOpen(notif = {}) {
-    const target = buildNotificationChatTargetCore(notif);
-    return isChatThreadAlreadyOpenCore({
-      chatModalOpen: !!state?.chatModal?.open,
-      currentThreadId: getChatThreadId(state?.chatModal?.profile),
-      targetUid: String(target?.uid || "").trim()
-    });
-  }
-
-  function isNotificationUserProfileAlreadyOpen(notif = {}) {
-    const target = buildNotificationProfileTargetCore(notif);
-    const targetUid = String(target?.uid || "").trim();
-    if (!targetUid) return false;
-    const activeProfile = state?.profileModal?.open
-      ? state?.profileModal?.profile
-      : state?.profileView?.profile;
-    if (!activeProfile || String(activeProfile?.restaurantId || "").trim()) return false;
-    return String(activeProfile?.uid || "").trim() === targetUid;
-  }
-
   async function openPostFromNotification(notif) {
-    const lookup = readNotificationPostLookupCore(notif);
-    const postId = normalizePendingPostIdCore(lookup.postId || notif?.postId);
+    const postId = normalizePendingPostIdCore(notif.postId);
     if (!postId) return;
-    const highlightId = resolveNotificationCommentHighlightIdCore({
-      notificationType: notif.type,
-      commentId: notif.commentId
-    });
-    if (highlightId) {
-      setPendingCommentHighlight(highlightId);
-    }
-    if (isPostModalAlreadyOpen(postId)) {
-      const pendingCommentHighlight = getPendingCommentHighlight();
-      if (pendingCommentHighlight && highlightCommentInModal(pendingCommentHighlight)) {
-        setPendingCommentHighlight("");
-      }
-      return true;
-    }
     let post = findPostInLocalSourcesCore({
       postId,
       findPostById: (id) => findPostById(id),
@@ -1373,7 +1186,14 @@ export function createChatRuntimeController(deps = {}) {
     }
     if (!post) {
       setPendingCommentHighlight("");
-      return false;
+      return;
+    }
+    const highlightId = resolveNotificationCommentHighlightIdCore({
+      notificationType: notif.type,
+      commentId: notif.commentId
+    });
+    if (highlightId) {
+      setPendingCommentHighlight(highlightId);
     }
     await openPostModal(post);
     const pendingCommentHighlight = getPendingCommentHighlight();
@@ -1382,7 +1202,6 @@ export function createChatRuntimeController(deps = {}) {
         setPendingCommentHighlight("");
       }
     }
-    return true;
   }
 
   async function openNotificationTarget(id) {
@@ -1402,19 +1221,16 @@ export function createChatRuntimeController(deps = {}) {
       );
     }
     if (isChatNotificationTypeCore(notif.type)) {
-      if (isNotificationChatAlreadyOpen(notif)) return true;
       openChatWithProfile(buildNotificationChatTargetCore(notif));
-      return true;
+      return;
     }
     if (isFollowNotificationTypeCore(notif.type)) {
-      if (isNotificationUserProfileAlreadyOpen(notif)) return true;
       openProfileFromUser(buildNotificationProfileTargetCore(notif));
-      return true;
+      return;
     }
     if (isPostNotificationTypeCore(notif.type)) {
-      return await openPostFromNotification(notif);
+      await openPostFromNotification(notif);
     }
-    return false;
   }
 
   async function resolveUserByHandle(handle) {
@@ -1475,12 +1291,6 @@ export function createChatRuntimeController(deps = {}) {
     const followTargetKey = `${String(targetType || "handle").trim()}:${safeTargetId || safeHandle}`;
     if (pendingFollowTargetKeys.has(followTargetKey)) return;
     pendingFollowTargetKeys.add(followTargetKey);
-    setFollowTargetPendingState({
-      targetId: safeTargetId,
-      handle: safeHandle,
-      pending: true
-    });
-    renderFollowUiState();
     let targetIsPrivate = false;
     if (!isUnfollow && targetType === "user" && targetId) {
       if (state.profileView?.profile?.uid === targetId) {
@@ -1504,12 +1314,6 @@ export function createChatRuntimeController(deps = {}) {
         return;
       } finally {
         pendingFollowTargetKeys.delete(followTargetKey);
-        setFollowTargetPendingState({
-          targetId: safeTargetId,
-          handle: safeHandle,
-          pending: false
-        });
-        renderFollowUiState();
       }
     }
 
@@ -1591,36 +1395,42 @@ export function createChatRuntimeController(deps = {}) {
 
       const profileModal = state.profileModal.profile;
       const profileView = state.profileView?.profile || null;
+      const matchesTargetProfile = (profileLike = null) => {
+        if (!profileLike) return false;
+        const profileRestaurantId = String(profileLike.restaurantId || "").trim();
+        const profileUid = String(profileLike.uid || "").trim();
+        const profileHandle = normalizeFollowHandle(profileLike.handle || "");
+        if (safeTargetId && (profileRestaurantId === safeTargetId || profileUid === safeTargetId)) return true;
+        return !!(safeHandle && profileHandle === safeHandle);
+      };
       const updatedProfiles = new Set();
       const updateUniqueProfile = (profileLike = null) => {
         if (!profileLike || updatedProfiles.has(profileLike)) return;
         updatedProfiles.add(profileLike);
         applyFollowerDelta(profileLike);
       };
-      if (matchesFollowTargetProfile(profileModal, { targetId: safeTargetId, handle: safeHandle })) {
+      if (matchesTargetProfile(profileModal)) {
         updateUniqueProfile(profileModal);
       }
-      if (matchesFollowTargetProfile(profileView, { targetId: safeTargetId, handle: safeHandle })) {
+      if (matchesTargetProfile(profileView)) {
         updateUniqueProfile(profileView);
       }
 
       businessProfileCache.forEach((cached) => {
-        if (!matchesFollowTargetProfile(cached, { targetId: safeTargetId, handle: safeHandle })) return;
+        if (!matchesTargetProfile(cached)) return;
         updateUniqueProfile(cached);
       });
     } catch (err) {
       console.error(err);
-      alertFn(isUnfollow ? "Entfolgen fehlgeschlagen. Bitte erneut versuchen." : "Folgen fehlgeschlagen. Bitte erneut versuchen.");
     } finally {
       pendingFollowTargetKeys.delete(followTargetKey);
-      setFollowTargetPendingState({
-        targetId: safeTargetId,
-        handle: safeHandle,
-        pending: false
-      });
     }
 
-    renderFollowUiState();
+    if (state.profileModal.open && !state.profileView) {
+      renderOverlays();
+    } else {
+      render();
+    }
   }
 
   function renderChatMessagesPanel({
@@ -1694,12 +1504,6 @@ export function createChatRuntimeController(deps = {}) {
     const pendingAttachments = Array.isArray(state.chatModal.attachments) ? state.chatModal.attachments : [];
     const activeThread = getActiveChatThreadSummary(partner);
     const blockedByOwner = !!activeThread?.blockedByOwner;
-    const activeThreadId = getChatThreadId(partner);
-    const attachmentsPending = isChatComposerAttachmentPending(activeThreadId);
-    const sendingPending = isChatComposerSending(activeThreadId);
-    const attachDisabled = blockedByOwner || attachmentsPending || sendingPending;
-    const inputReadonly = blockedByOwner || sendingPending;
-    const sendDisabled = blockedByOwner || attachmentsPending || sendingPending;
     const muteUntilMs = Number(activeThread?.muteUntilMs || 0) || 0;
     const mutedActive = muteUntilMs > Date.now();
     const muteUntilLabel = mutedActive ? formatRelative(new Date(muteUntilMs)) : "";
@@ -1719,11 +1523,11 @@ export function createChatRuntimeController(deps = {}) {
           ${renderChatPendingAttachments(pendingAttachments)}
           <input type="file" id="chatAttachmentInput" class="hidden" multiple />
           <div class="flex items-end gap-3">
-            <button id="chatAttachmentTrigger" ${attachDisabled ? "disabled" : ""} class="w-[52px] h-[52px] shrink-0 rounded-2xl ${attachDisabled ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-slate-100 text-slate-600 active:scale-95"} flex items-center justify-center">
+            <button id="chatAttachmentTrigger" ${blockedByOwner ? "disabled" : ""} class="w-[52px] h-[52px] shrink-0 rounded-2xl ${blockedByOwner ? "bg-slate-100 text-slate-300 cursor-not-allowed" : "bg-slate-100 text-slate-600 active:scale-95"} flex items-center justify-center">
               ${icon("plus", "w-5 h-5")}
             </button>
-            <textarea id="chatMessageInput" rows="1" ${inputReadonly ? "readonly" : ""} placeholder="${blockedByOwner ? "Chat ist blockiert" : "Nachricht..."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none max-h-28">${escapeHtml(state.chatModal.draft || "")}</textarea>
-            <button id="chatSendBtn" ${sendDisabled ? "disabled" : ""} class="px-5 h-[52px] rounded-2xl ${sendDisabled ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white active:scale-95"} font-black text-[10px] uppercase tracking-widest">${sendingPending ? "Senden..." : "Send"}</button>
+            <textarea id="chatMessageInput" rows="1" ${blockedByOwner ? "readonly" : ""} placeholder="${blockedByOwner ? "Chat ist blockiert" : "Nachricht..."}" class="flex-1 p-4 rounded-2xl border border-slate-100 bg-slate-50 text-sm font-medium outline-none resize-none max-h-28">${escapeHtml(state.chatModal.draft || "")}</textarea>
+            <button id="chatSendBtn" ${blockedByOwner ? "disabled" : ""} class="px-5 h-[52px] rounded-2xl ${blockedByOwner ? "bg-slate-200 text-slate-400 cursor-not-allowed" : "bg-slate-900 text-white active:scale-95"} font-black text-[10px] uppercase tracking-widest">Send</button>
           </div>
         </div>
       </div>
