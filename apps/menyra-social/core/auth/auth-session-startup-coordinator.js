@@ -170,12 +170,20 @@ export function createAuthSessionStartupCoordinator({
       }));
       writeAuthBootstrapSnapshot();
       const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
-      suspendRender();
+      const shouldBlockForPendingRoutes = pendingRouteFlags.hasAny === true;
+      if (shouldBlockForPendingRoutes) {
+        suspendRender();
+      } else {
+        if (state?.auth) {
+          state.auth.loading = false;
+        }
+        requestRender();
+      }
       void (async () => {
         try {
           await bootstrapUser(user, { transitionSeq });
           if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
-          if (pendingRouteFlags.hasAny) {
+          if (shouldBlockForPendingRoutes) {
             await postLoginRouteOpen.openPendingRoutes();
           } else {
             postLoginRouteOpen.openNonBlockingRoutes();
@@ -193,7 +201,7 @@ export function createAuthSessionStartupCoordinator({
           requestRender();
           finishAuthStartupTrace(state, "auth.startup.complete", shellSummary);
         } catch (err) {
-          const scope = pendingRouteFlags.hasAny
+          const scope = shouldBlockForPendingRoutes
             ? "auth.bootstrapUser.pendingRoutes"
             : "auth.bootstrapUser.standard";
           reportCriticalRuntimeFailure(scope, err);
@@ -209,7 +217,9 @@ export function createAuthSessionStartupCoordinator({
             requestRender();
           }
         } finally {
-          resumeRender();
+          if (shouldBlockForPendingRoutes) {
+            resumeRender();
+          }
         }
       })();
     } else {
