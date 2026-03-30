@@ -209,7 +209,7 @@ export function createStorySystemController({
       );
       const logoSource = hasKnownRestaurantIdentity
         ? (canonicalLogo || "")
-        : (sourceLogo || media);
+        : sourceLogo;
       storyMap.set(restaurantId, {
         id: restaurantId,
         restaurantId,

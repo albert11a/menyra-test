@@ -1144,10 +1144,9 @@ exports.socialBootstrapFeed = functions
         const sourceName = normalizeStoryName(data.businessName || data.restaurantName || "");
         const canonicalLogo = asText(rest.logoUrl || rest.logo || rest.logoURL);
         const sourceLogo = asText(data.logoUrl || data.logo);
-        const media = asText(data.imageUrl || data.mediaUrl || data.videoUrl || data.embedUrl || data.url);
         const name = canonicalName || sourceName;
-        const img = canonicalLogo || sourceLogo || media;
-        if (!name || !img) return;
+        const img = canonicalLogo || sourceLogo;
+        if (!name) return;
         storiesByRestaurant.set(rid, {
           id: rid,
           restaurantId: rid,

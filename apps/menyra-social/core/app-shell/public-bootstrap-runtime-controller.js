@@ -87,7 +87,7 @@ function normalizePublicBootstrapStories(rows = []) {
       if (!restaurantId) return null;
       const nameRaw = String(row?.name || row?.businessName || row?.restaurantName || "").trim();
       const name = isGenericBusinessBootstrapLabel(nameRaw) ? "" : nameRaw;
-      const img = String(row?.img || row?.logo || row?.logoUrl || row?.mediaUrl || row?.imageUrl || "").trim();
+      const img = String(row?.img || row?.logo || row?.logoUrl || "").trim();
       return {
         id: restaurantId,
         restaurantId,

@@ -284,8 +284,7 @@ export function createFeedViewOrchestrationController({
     const storyUrl = buildStoryViewerUrlFn(storyRestaurantId);
     const storyLabel = String(identity.storyLabel || "").trim() || "Restaurant";
     const logoSource = String(identity.logoSource || "").trim();
-    const allowCacheFallback = !identity.hasCanonicalRestaurant || !logoSource;
-    const imgUrl = resolveRestaurantLogoFn(storyRestaurantId, logoSource, "thumb", allowCacheFallback);
+    const imgUrl = resolveRestaurantLogoFn(storyRestaurantId, logoSource, "thumb", false);
     const storyId = storyRestaurantId ? escapeHtmlFn(storyRestaurantId) : "";
     const storyAttr = storyId ? `data-story-logo="${storyId}"` : "";
     const storyKeyAttr = storyId ? `data-img-key="story-logo:${storyId}"` : "";

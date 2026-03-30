@@ -140,7 +140,7 @@ export function createStoryFeedRuntimeController({
         || feedRow?.name
         || ""
       ),
-      logo: String(feedRow?.logo || feedRow?.image || "").trim()
+      logo: String(feedRow?.logo || "").trim()
     };
   }
 
@@ -472,13 +472,11 @@ export function createStoryFeedRuntimeController({
     const renderIdentity = resolveStoryRenderIdentity(story);
     if (!renderIdentity.storyRestaurantId) return;
     const storyId = escapeSelector(renderIdentity.storyRestaurantId);
-    const hasLogoSource = !!String(renderIdentity.logoSource || "").trim();
-    const allowCacheFallback = !renderIdentity.hasCanonicalRestaurant || !hasLogoSource;
     const logoUrl = resolveRestaurantLogo(
       renderIdentity.storyRestaurantId,
       renderIdentity.logoSource || "",
       "thumb",
-      allowCacheFallback
+      false
     );
     doc.querySelectorAll(`[data-story-logo="${storyId}"]`).forEach((img) => {
       if (HtmlImageElementCtor && !(img instanceof HtmlImageElementCtor)) return;
