@@ -86,7 +86,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" sizes="512x512" href="/apps/menyra-social/assets/icon-512.png" />
   <link rel="apple-touch-icon" sizes="192x192" href="/apps/menyra-social/assets/icon-192.png" />
-  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-30-perf-sw-cache-01">
+  <link rel="modulepreload" href="/apps/menyra-social/social-app.js?v=2026-03-30-perf-sw-cache-02">
   <link rel="preload" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01" as="style">
   <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
   <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js" crossorigin>
@@ -584,7 +584,15 @@
   <script>
     (() => {
       const BOOTSTRAP_EVENT = "menyra-social-bootstrap";
-      const BOOTSTRAP_TIMEOUT_MS = 2200;
+      const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
+      const effectiveType = String(connection?.effectiveType || "").trim().toLowerCase();
+      const downlink = Number(connection?.downlink || 0);
+      const rtt = Number(connection?.rtt || 0);
+      const constrainedNetwork = !!connection?.saveData
+        || ["slow-2g", "2g", "3g"].includes(effectiveType)
+        || (Number.isFinite(downlink) && downlink > 0 && downlink <= 1.5)
+        || (Number.isFinite(rtt) && rtt >= 450);
+      const BOOTSTRAP_TIMEOUT_MS = constrainedNetwork ? 3800 : 2200;
       const ENDPOINT = String(
         window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__
         || "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed"
@@ -623,7 +631,7 @@
       });
     })();
   </script>
-  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-30-perf-sw-cache-01"></script>
+  <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-30-perf-sw-cache-02"></script>
   <script>
     (() => {
       const loadLucide = () => {

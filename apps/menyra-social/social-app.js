@@ -2587,7 +2587,7 @@ function preloadFeedHeroImages(feedPosts, { limit = FEED_PRELOAD_LIMIT } = {}) {
   const wildcard = `[${FEED_PRELOAD_ATTR}]`;
   head.querySelectorAll(wildcard).forEach((node) => node.remove());
   feedPosts.slice(0, limit).forEach((post, index) => {
-    const imageUrl = getOptimizedImageUrl(post.image, "large");
+    const imageUrl = getOptimizedImageUrl(post.image, "medium");
     if (!imageUrl) return;
     const link = document.createElement("link");
     link.rel = "preload";
