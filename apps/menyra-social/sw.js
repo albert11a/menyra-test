@@ -1,14 +1,32 @@
-const CACHE_NAME = "mnyra-social-cache-v7-business-menu-main-sync-01";
 const CACHE_PREFIX = "mnyra-social-cache-";
 const APP_SCOPE = "/apps/menyra-social/";
 const APP_SHELL_URL = "/apps/menyra-social/index.html";
-const BETA_UPDATE_CHANNEL = "beta-auto-update-v2";
+const BETA_UPDATE_CHANNEL_BASE = "beta-auto-update-v2";
 const EXTERNAL_STATIC_HOSTS = new Set([
   "www.gstatic.com",
   "fonts.googleapis.com",
   "fonts.gstatic.com",
   "unpkg.com"
 ]);
+
+function sanitizeCacheToken(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function resolveSwVersionToken() {
+  try {
+    const parsed = new URL(self.location.href);
+    const token = sanitizeCacheToken(parsed.searchParams.get("v"));
+    if (token) return token;
+  } catch {}
+  return "legacy";
+}
+
+const SW_VERSION_TOKEN = resolveSwVersionToken();
+const CACHE_NAME = `${CACHE_PREFIX}${SW_VERSION_TOKEN}`;
+const BETA_UPDATE_CHANNEL = `${BETA_UPDATE_CHANNEL_BASE}::${SW_VERSION_TOKEN}`;
 
 async function broadcastToClients(payload) {
   const clientsList = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -170,19 +188,17 @@ async function staleWhileRevalidate(request) {
   return network || cached || new Response("", { status: 504, statusText: "Fetch failed" });
 }
 
-async function networkFirst(request, { bypassHttpCache = false } = {}) {
+async function cacheFirst(request) {
   const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+  if (cached) return cached;
   try {
-    const networkReq = bypassHttpCache
-      ? new Request(request, { cache: "no-cache" })
-      : request;
-    const response = await fetch(networkReq);
+    const response = await fetch(request);
     if (response && (response.ok || response.type === "opaque")) {
       cache.put(request, response.clone()).catch(() => null);
     }
     return response;
   } catch {
-    const cached = await cache.match(request);
     return cached || new Response("", { status: 504, statusText: "Network failed" });
   }
 }
@@ -224,10 +240,10 @@ self.addEventListener("fetch", (event) => {
 
   if (inScope && isCodeAsset) {
     if (hasVersionToken) {
-      event.respondWith(staleWhileRevalidate(req));
+      event.respondWith(cacheFirst(req));
       return;
     }
-    event.respondWith(networkFirst(req, { bypassHttpCache: true }));
+    event.respondWith(staleWhileRevalidate(req));
     return;
   }
 
