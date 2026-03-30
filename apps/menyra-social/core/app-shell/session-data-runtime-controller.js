@@ -121,6 +121,8 @@ export function createSessionDataRuntimeController({
   let menuMetaRestaurantId = "";
   let restaurantsFreshReconcileQueued = false;
   let feedFreshReconcileQueued = false;
+  let restaurantsNetworkLoadPromise = null;
+  let feedNetworkLoadPromise = null;
   let storiesRefreshQueued = false;
   let storiesRefreshForce = false;
   let storiesRefreshUi = false;
@@ -680,15 +682,24 @@ export function createSessionDataRuntimeController({
       }
     }
     if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof getDocsFn !== "function") return;
-    try {
-      const snap = await getDocsFn(queryFn(collectionFn(db, "restaurants")));
-      const rawList = [];
-      snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
-      applyRestaurants(rawList, { shouldWriteCache: true });
-      reconcileRestaurantMeta(rawList, { shouldWriteCache: true });
-    } catch (err) {
-      console.error(err);
+    if (restaurantsNetworkLoadPromise) {
+      await restaurantsNetworkLoadPromise;
+      return;
     }
+    restaurantsNetworkLoadPromise = (async () => {
+      try {
+        const snap = await getDocsFn(queryFn(collectionFn(db, "restaurants")));
+        const rawList = [];
+        snap.forEach((docSnap) => rawList.push({ id: docSnap.id, ...docSnap.data() }));
+        applyRestaurants(rawList, { shouldWriteCache: true });
+        reconcileRestaurantMeta(rawList, { shouldWriteCache: true });
+      } catch (err) {
+        console.error(err);
+      }
+    })().finally(() => {
+      restaurantsNetworkLoadPromise = null;
+    });
+    await restaurantsNetworkLoadPromise;
   }
 
   async function loadFeedPosts({ force = false } = {}) {
@@ -729,49 +740,58 @@ export function createSessionDataRuntimeController({
     }
 
     if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof limitFn !== "function" || typeof getDocsFn !== "function") return;
-    try {
-      const ref = collectionFn(db, "socialFeed");
-      let snap = null;
-      try {
-        snap = await getDocsFn(queryFn(ref, whereFn("status", "==", "active"), orderByFn("createdAt", "desc"), limitFn(fastLimits.feed)));
-      } catch (err) {
-        snap = await getDocsFn(queryFn(ref, limitFn(fastLimits.feedFallback)));
-      }
-      const rows = [];
-      snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
-      const hydrationIds = collectFeedHydrationIdsFn(rows, { max: 8 });
-      if (hydrationIds.length) {
-        void hydrateRestaurantsByIdsFn(hydrationIds, { max: hydrationIds.length });
-      }
-      const next = rows
-        .filter((row) => (row.status || "active") === "active")
-        .map((row) => normalizeFeedPostFn(row))
-        .filter(Boolean)
-        .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-      const cachedFeed = readCacheFn(cacheKeys.feed);
-      saveFeedPostsFn(next, { lastDeltaCheck: cachedFeed?.meta?.lastDeltaCheck || 0 });
-
-      const feedChanged = havePostCollectionsChanged(state.feedPosts, next);
-      state.feedPosts = projectPostCollectionThroughEntityMap(state, next);
-      const storiesChanged = state.stories.length ? false : refreshFeedStoriesFn({ posts: next });
-      scheduleStoriesRefresh({ force, refreshUi: state.activeTab === "feed" });
-      preloadFeedHeroImagesFn(next);
-      if (!feedChanged && !storiesChanged) return;
-      const inMain = getLastRenderModeFn() === "main";
-      const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
-      if (updatedFeed) return;
-      const updatedSearch = state.activeTab === "search" && inMain && refreshSearchViewFn();
-      if (updatedSearch) return;
-      if (!inMain) {
-        requestRender();
-        return;
-      }
-      if (state.activeTab === "feed" || state.activeTab === "search") {
-        requestRender();
-      }
-    } catch (err) {
-      console.error(err);
+    if (feedNetworkLoadPromise) {
+      await feedNetworkLoadPromise;
+      return;
     }
+    feedNetworkLoadPromise = (async () => {
+      try {
+        const ref = collectionFn(db, "socialFeed");
+        let snap = null;
+        try {
+          snap = await getDocsFn(queryFn(ref, whereFn("status", "==", "active"), orderByFn("createdAt", "desc"), limitFn(fastLimits.feed)));
+        } catch (err) {
+          snap = await getDocsFn(queryFn(ref, limitFn(fastLimits.feedFallback)));
+        }
+        const rows = [];
+        snap.forEach((docSnap) => rows.push({ id: docSnap.id, ...docSnap.data() }));
+        const hydrationIds = collectFeedHydrationIdsFn(rows, { max: 8 });
+        if (hydrationIds.length) {
+          void hydrateRestaurantsByIdsFn(hydrationIds, { max: hydrationIds.length });
+        }
+        const next = rows
+          .filter((row) => (row.status || "active") === "active")
+          .map((row) => normalizeFeedPostFn(row))
+          .filter(Boolean)
+          .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
+        const cachedFeed = readCacheFn(cacheKeys.feed);
+        saveFeedPostsFn(next, { lastDeltaCheck: cachedFeed?.meta?.lastDeltaCheck || 0 });
+
+        const feedChanged = havePostCollectionsChanged(state.feedPosts, next);
+        state.feedPosts = projectPostCollectionThroughEntityMap(state, next);
+        const storiesChanged = state.stories.length ? false : refreshFeedStoriesFn({ posts: next });
+        scheduleStoriesRefresh({ force, refreshUi: state.activeTab === "feed" });
+        preloadFeedHeroImagesFn(next);
+        if (!feedChanged && !storiesChanged) return;
+        const inMain = getLastRenderModeFn() === "main";
+        const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
+        if (updatedFeed) return;
+        const updatedSearch = state.activeTab === "search" && inMain && refreshSearchViewFn();
+        if (updatedSearch) return;
+        if (!inMain) {
+          requestRender();
+          return;
+        }
+        if (state.activeTab === "feed" || state.activeTab === "search") {
+          requestRender();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    })().finally(() => {
+      feedNetworkLoadPromise = null;
+    });
+    await feedNetworkLoadPromise;
   }
 
   async function loadUserPosts({ force = false } = {}) {

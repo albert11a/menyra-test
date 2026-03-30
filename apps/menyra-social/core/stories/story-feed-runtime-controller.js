@@ -65,6 +65,7 @@ export function createStoryFeedRuntimeController({
   const HtmlElementCtor = typeof HTMLElement === "function" ? HTMLElement : null;
   let feedStoriesSignature = "";
   let storiesFreshReconcileQueued = false;
+  let storiesNetworkLoadPromise = null;
 
   function buildStoriesSignature(storyItems = []) {
     return buildStoriesSignatureCore(storyItems);
@@ -339,75 +340,99 @@ export function createStoryFeedRuntimeController({
     }
 
     if (!db || !collectionGroup || !getDocs || !query || !limit) return false;
+    if (storiesNetworkLoadPromise) return storiesNetworkLoadPromise;
 
-    try {
-      const storiesRef = collectionGroup(db, "stories");
-      let snap = null;
+    const request = (async () => {
       try {
-        snap = await getDocs(query(
-          storiesRef,
-          where("status", "==", "active"),
-          orderBy("createdAt", "desc"),
-          limit(fastLimits.storiesFallback)
-        ));
-      } catch {
+        const storiesRef = collectionGroup(db, "stories");
+        let snap = null;
         try {
           snap = await getDocs(query(
             storiesRef,
+            where("status", "==", "active"),
             orderBy("createdAt", "desc"),
             limit(fastLimits.storiesFallback)
           ));
         } catch {
-          snap = await getDocs(query(storiesRef, limit(fastLimits.storiesFallback)));
+          try {
+            snap = await getDocs(query(
+              storiesRef,
+              orderBy("createdAt", "desc"),
+              limit(fastLimits.storiesFallback)
+            ));
+          } catch {
+            snap = await getDocs(query(storiesRef, limit(fastLimits.storiesFallback)));
+          }
         }
-      }
-      const docSnaps = [];
-      snap.forEach((docSnap) => docSnaps.push(docSnap));
-      const previousStories = Array.isArray(state?.stories) ? state.stories : [];
-      let nextStories = normalizeStoryItemsForDisplay(
-        mapStorySnapshotRowsToFeedStories({
-          docSnaps,
-          restaurants: state?.restaurants,
-          canShowFeedRestaurantIdFn: canShowFeedRestaurantId,
-          maxItems: fastLimits.stories,
-          toDateSafeFn
-        })
-      );
-      nextStories = stabilizeStoryOrder(nextStories, previousStories);
-      const ownRestaurantId = String(state?.userProfile?.restaurantId || "").trim();
-      const pendingOwnStoryRestaurantId = String(state?.__pendingOwnStoryRestaurantId || "").trim();
-      const pendingOwnStoryUntil = Number(state?.__pendingOwnStoryUntil || 0);
-      if (pendingOwnStoryRestaurantId) {
-        const pendingExpired = !Number.isFinite(pendingOwnStoryUntil) || pendingOwnStoryUntil <= Date.now();
-        const pendingOwnStoryMismatch = !!ownRestaurantId && pendingOwnStoryRestaurantId !== ownRestaurantId;
-        if (pendingOwnStoryMismatch || pendingExpired) {
-          state.__pendingOwnStoryRestaurantId = "";
-          state.__pendingOwnStoryUntil = 0;
-        } else {
-          const hasPendingOwnStory = nextStories.some(
-            (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
-          );
-          if (hasPendingOwnStory) {
+        const docSnaps = [];
+        snap.forEach((docSnap) => docSnaps.push(docSnap));
+        const previousStories = Array.isArray(state?.stories) ? state.stories : [];
+        let nextStories = normalizeStoryItemsForDisplay(
+          mapStorySnapshotRowsToFeedStories({
+            docSnaps,
+            restaurants: state?.restaurants,
+            canShowFeedRestaurantIdFn: canShowFeedRestaurantId,
+            maxItems: fastLimits.stories,
+            toDateSafeFn
+          })
+        );
+        nextStories = stabilizeStoryOrder(nextStories, previousStories);
+        const ownRestaurantId = String(state?.userProfile?.restaurantId || "").trim();
+        const pendingOwnStoryRestaurantId = String(state?.__pendingOwnStoryRestaurantId || "").trim();
+        const pendingOwnStoryUntil = Number(state?.__pendingOwnStoryUntil || 0);
+        if (pendingOwnStoryRestaurantId) {
+          const pendingExpired = !Number.isFinite(pendingOwnStoryUntil) || pendingOwnStoryUntil <= Date.now();
+          const pendingOwnStoryMismatch = !!ownRestaurantId && pendingOwnStoryRestaurantId !== ownRestaurantId;
+          if (pendingOwnStoryMismatch || pendingExpired) {
             state.__pendingOwnStoryRestaurantId = "";
             state.__pendingOwnStoryUntil = 0;
           } else {
-            const pendingFromState = normalizeStoryItemForDisplay(
-              (state?.stories || []).find(
-                (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
-              ) || {}
+            const hasPendingOwnStory = nextStories.some(
+              (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
             );
-            if (pendingFromState) {
-              nextStories = [pendingFromState, ...nextStories].slice(0, fastLimits.stories);
+            if (hasPendingOwnStory) {
+              state.__pendingOwnStoryRestaurantId = "";
+              state.__pendingOwnStoryUntil = 0;
+            } else {
+              const pendingFromState = normalizeStoryItemForDisplay(
+                (state?.stories || []).find(
+                  (item) => String(item?.restaurantId || item?.id || "").trim() === pendingOwnStoryRestaurantId
+                ) || {}
+              );
+              if (pendingFromState) {
+                nextStories = [pendingFromState, ...nextStories].slice(0, fastLimits.stories);
+              }
             }
           }
         }
-      }
-      const shouldRefreshUi = !!refreshUi || state?.activeTab === "feed";
-      if (!nextStories.length) {
-        if (!state?.stories?.length) return false;
-        state.stories = [];
-        feedStoriesSignature = "";
-        writeCache(cacheKeys.stories, []);
+        const shouldRefreshUi = !!refreshUi || state?.activeTab === "feed";
+        if (!nextStories.length) {
+          if (!state?.stories?.length) return false;
+          state.stories = [];
+          feedStoriesSignature = "";
+          writeCache(cacheKeys.stories, []);
+          if (shouldRefreshUi) {
+            const inMain = getLastRenderMode() === "main";
+            const updatedFeed = state?.activeTab === "feed" && inMain && updateFeedDom();
+            if (!updatedFeed && state?.activeTab === "feed") {
+              render();
+            }
+          }
+          return true;
+        }
+
+        const prevSignature = buildStoriesSignature(state?.stories);
+        const nextSignature = buildStoriesSignature(nextStories);
+        if (prevSignature === nextSignature) {
+          feedStoriesSignature = nextSignature;
+          return true;
+        }
+
+        state.stories = nextStories;
+        feedStoriesSignature = nextSignature;
+        writeCache(cacheKeys.stories, nextStories);
+        queueStoryIdentityHydration(nextStories, { max: fastLimits.storyIdentityHydration });
+
         if (shouldRefreshUi) {
           const inMain = getLastRenderMode() === "main";
           const updatedFeed = state?.activeTab === "feed" && inMain && updateFeedDom();
@@ -416,32 +441,18 @@ export function createStoryFeedRuntimeController({
           }
         }
         return true;
+      } catch (err) {
+        console.error(err);
+        return false;
       }
-
-      const prevSignature = buildStoriesSignature(state?.stories);
-      const nextSignature = buildStoriesSignature(nextStories);
-      if (prevSignature === nextSignature) {
-        feedStoriesSignature = nextSignature;
-        return true;
+    })();
+    const settledRequest = request.finally(() => {
+      if (storiesNetworkLoadPromise === settledRequest) {
+        storiesNetworkLoadPromise = null;
       }
-
-      state.stories = nextStories;
-      feedStoriesSignature = nextSignature;
-      writeCache(cacheKeys.stories, nextStories);
-      queueStoryIdentityHydration(nextStories, { max: fastLimits.storyIdentityHydration });
-
-      if (shouldRefreshUi) {
-        const inMain = getLastRenderMode() === "main";
-        const updatedFeed = state?.activeTab === "feed" && inMain && updateFeedDom();
-        if (!updatedFeed && state?.activeTab === "feed") {
-          render();
-        }
-      }
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
+    });
+    storiesNetworkLoadPromise = settledRequest;
+    return settledRequest;
   }
 
   function updateFeedLogoNodes(post) {
