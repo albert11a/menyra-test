@@ -103,10 +103,10 @@ export function createFeedViewOrchestrationController({
     const ownFallbackName = ownStory ? sanitizeStoryBusinessName(state.userProfile?.name || "") : "";
     const ownFallbackLogo = ownStory ? String(state.userProfile?.avatar || "").trim() : "";
     const storyLabel = hasCanonicalRestaurant
-      ? (canonicalName || "")
-      : (ownFallbackName || sourceName || "");
+      ? (canonicalName || sourceName || ownFallbackName || "")
+      : (ownFallbackName || sourceName || canonicalName || "");
     const logoSource = hasCanonicalRestaurant
-      ? (canonicalLogo || "")
+      ? (canonicalLogo || String(story?.img || story?.logo || story?.logoUrl || "").trim())
       : (ownFallbackLogo || String(story?.img || story?.logo || story?.logoUrl || "").trim());
     return {
       storyRestaurantId,
@@ -282,9 +282,9 @@ export function createFeedViewOrchestrationController({
     if (!storyRestaurantId) return "";
     const borderClass = identity.borderClass;
     const storyUrl = buildStoryViewerUrlFn(storyRestaurantId);
-    const storyLabel = String(identity.storyLabel || "").trim();
+    const storyLabel = String(identity.storyLabel || "").trim() || "Restaurant";
     const logoSource = String(identity.logoSource || "").trim();
-    const allowCacheFallback = !identity.hasCanonicalRestaurant;
+    const allowCacheFallback = !identity.hasCanonicalRestaurant || !logoSource;
     const imgUrl = resolveRestaurantLogoFn(storyRestaurantId, logoSource, "thumb", allowCacheFallback);
     const storyId = storyRestaurantId ? escapeHtmlFn(storyRestaurantId) : "";
     const storyAttr = storyId ? `data-story-logo="${storyId}"` : "";

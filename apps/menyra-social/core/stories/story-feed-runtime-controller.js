@@ -202,6 +202,37 @@ export function createStoryFeedRuntimeController({
       .filter(Boolean);
   }
 
+  function stabilizeStoryOrder(nextStories = [], previousStories = []) {
+    const prevRows = Array.isArray(previousStories) ? previousStories : [];
+    if (!prevRows.length || !Array.isArray(nextStories) || !nextStories.length) {
+      return Array.isArray(nextStories) ? nextStories : [];
+    }
+    const previousOrder = new Map();
+    prevRows.forEach((item, index) => {
+      const id = String(item?.restaurantId || item?.id || "").trim();
+      if (!id || previousOrder.has(id)) return;
+      previousOrder.set(id, index);
+    });
+    const originalOrder = new Map();
+    nextStories.forEach((item, index) => {
+      const id = String(item?.restaurantId || item?.id || "").trim();
+      if (!id || originalOrder.has(id)) return;
+      originalOrder.set(id, index);
+    });
+    return [...nextStories].sort((a, b) => {
+      const aId = String(a?.restaurantId || a?.id || "").trim();
+      const bId = String(b?.restaurantId || b?.id || "").trim();
+      const aPrev = previousOrder.get(aId);
+      const bPrev = previousOrder.get(bId);
+      const aKnown = Number.isInteger(aPrev);
+      const bKnown = Number.isInteger(bPrev);
+      if (aKnown && bKnown) return aPrev - bPrev;
+      if (aKnown) return -1;
+      if (bKnown) return 1;
+      return (originalOrder.get(aId) ?? 0) - (originalOrder.get(bId) ?? 0);
+    });
+  }
+
   function syncPersistedStories() {
     if (Array.isArray(state?.stories) && state.stories.length) {
       const nextStories = normalizeStoryItemsForDisplay(state.stories);
@@ -332,6 +363,7 @@ export function createStoryFeedRuntimeController({
       }
       const docSnaps = [];
       snap.forEach((docSnap) => docSnaps.push(docSnap));
+      const previousStories = Array.isArray(state?.stories) ? state.stories : [];
       let nextStories = normalizeStoryItemsForDisplay(
         mapStorySnapshotRowsToFeedStories({
           docSnaps,
@@ -341,6 +373,7 @@ export function createStoryFeedRuntimeController({
           toDateSafeFn
         })
       );
+      nextStories = stabilizeStoryOrder(nextStories, previousStories);
       const ownRestaurantId = String(state?.userProfile?.restaurantId || "").trim();
       const pendingOwnStoryRestaurantId = String(state?.__pendingOwnStoryRestaurantId || "").trim();
       const pendingOwnStoryUntil = Number(state?.__pendingOwnStoryUntil || 0);
@@ -428,7 +461,8 @@ export function createStoryFeedRuntimeController({
     const renderIdentity = resolveStoryRenderIdentity(story);
     if (!renderIdentity.storyRestaurantId) return;
     const storyId = escapeSelector(renderIdentity.storyRestaurantId);
-    const allowCacheFallback = !renderIdentity.hasCanonicalRestaurant;
+    const hasLogoSource = !!String(renderIdentity.logoSource || "").trim();
+    const allowCacheFallback = !renderIdentity.hasCanonicalRestaurant || !hasLogoSource;
     const logoUrl = resolveRestaurantLogo(
       renderIdentity.storyRestaurantId,
       renderIdentity.logoSource || "",
@@ -446,7 +480,7 @@ export function createStoryFeedRuntimeController({
     const renderIdentity = resolveStoryRenderIdentity(story);
     if (!renderIdentity.storyRestaurantId) return;
     const storyId = escapeSelector(renderIdentity.storyRestaurantId);
-    const label = sanitizeStoryBusinessName(renderIdentity.storyLabel || "");
+    const label = sanitizeStoryBusinessName(renderIdentity.storyLabel || "") || "Restaurant";
     const live = !!story?.isLive;
     doc.querySelectorAll(`[data-story-border="${storyId}"]`).forEach((el) => {
       if (HtmlElementCtor && !(el instanceof HtmlElementCtor)) return;
