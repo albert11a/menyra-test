@@ -64,6 +64,39 @@ export function createAuthSessionStartupCoordinator({
     return String(state?.user?.uid || "").trim() === String(expectedUid || "").trim();
   }
 
+  function hasMeaningfulProfileHint(profile = null) {
+    if (!profile || typeof profile !== "object") return false;
+    const role = String(profile.role || "").trim().toLowerCase();
+    const roles = Array.isArray(profile.roles) ? profile.roles : [];
+    return !!(
+      String(profile.name || "").trim()
+      || String(profile.handle || "").trim()
+      || String(profile.restaurantId || "").trim()
+      || String(profile.staffRestaurantId || "").trim()
+      || String(profile.waiterRestaurantId || "").trim()
+      || String(profile.sourceUserRole || "").trim()
+      || (role && role !== "user")
+      || roles.length
+    );
+  }
+
+  function primeFastAuthProfileHints(user, snapshot = null) {
+    const uid = String(user?.uid || "").trim();
+    if (!uid) return false;
+    let changed = false;
+    const authSnapshot = snapshot && typeof snapshot === "object" ? snapshot : readAuthBootstrapSnapshot();
+    const snapshotUid = String(authSnapshot?.uid || "").trim();
+    if (snapshotUid && snapshotUid === uid) {
+      if (applyAuthBootstrapSnapshot(authSnapshot)) {
+        changed = true;
+      }
+    }
+    if (applyPersistedAuthProfileHints(uid)) {
+      changed = true;
+    }
+    return changed;
+  }
+
   async function bootstrapUser(user, { transitionSeq = 0 } = {}) {
     const expectedUid = String(user?.uid || "").trim();
     if (!expectedUid) return false;
@@ -104,9 +137,13 @@ export function createAuthSessionStartupCoordinator({
       }
       setAuthInitialized(false);
       if (state?.user) {
-        loadUserScopedPersisted(state.user);
-        writeAuthBootstrapSnapshot();
-        lastAuthUid = state.user.uid || "";
+        const currentUser = state.user;
+        loadUserScopedPersisted(currentUser);
+        primeFastAuthProfileHints(currentUser, snapshot);
+        if (hasMeaningfulProfileHint(state?.userProfile)) {
+          writeAuthBootstrapSnapshot();
+        }
+        lastAuthUid = currentUser.uid || "";
       } else {
         const appliedSnapshot = applyAuthBootstrapSnapshot(snapshot);
         const snapshotUid = appliedSnapshot ? String(snapshot?.uid || "").trim() : "";
@@ -160,7 +197,7 @@ export function createAuthSessionStartupCoordinator({
         state.auth.open = false;
       }
       loadUserScopedPersisted(user);
-      writeAuthBootstrapSnapshot();
+      primeFastAuthProfileHints(user);
       const pendingRouteFlags = postLoginRouteOpen.resolvePendingRouteFlags();
       if (pendingRouteFlags.hasAny) {
         suspendRender();
@@ -195,13 +232,9 @@ export function createAuthSessionStartupCoordinator({
           .then(() => {
             if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
             postLoginRouteOpen.openNonBlockingRoutes();
-            requestRender();
           })
           .catch((err) => {
             reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
-            if (isCurrentAuthTransition(transitionSeq, nextUid)) {
-              requestRender();
-            }
           });
       }
     } else {
