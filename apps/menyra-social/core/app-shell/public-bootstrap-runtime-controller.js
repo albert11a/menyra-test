@@ -146,6 +146,79 @@ export function createPublicBootstrapRuntimeController({
     });
   }
 
+  function toMillisSafe(value) {
+    const parsed = toDateSafe(value);
+    if (parsed && typeof parsed.getTime === "function") {
+      const millis = parsed.getTime();
+      if (Number.isFinite(millis)) return millis;
+    }
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+  }
+
+  function buildFeedBootstrapSignature(items = []) {
+    return (Array.isArray(items) ? items : [])
+      .map((item) => {
+        const id = String(item?.id || "").trim();
+        const createdAt = toMillisSafe(item?.createdAt);
+        const image = String(item?.image || "").trim();
+        const logo = String(item?.logo || "").trim();
+        return `${id}|${createdAt}|${image}|${logo}`;
+      })
+      .join(",");
+  }
+
+  function buildStoryBootstrapSignature(items = []) {
+    return (Array.isArray(items) ? items : [])
+      .map((item) => {
+        const restaurantId = String(item?.restaurantId || item?.id || "").trim();
+        const name = String(item?.name || "").trim();
+        const img = String(item?.img || item?.logo || "").trim();
+        const isLive = item?.isLive ? "1" : "0";
+        return `${restaurantId}|${name}|${img}|${isLive}`;
+      })
+      .join(",");
+  }
+
+  function mergeBootstrapFeedPosts(existing = [], incoming = []) {
+    const byId = new Map();
+    (Array.isArray(existing) ? existing : []).forEach((row) => {
+      const id = String(row?.id || "").trim();
+      if (!id) return;
+      byId.set(id, row);
+    });
+    (Array.isArray(incoming) ? incoming : []).forEach((row) => {
+      const id = String(row?.id || "").trim();
+      if (!id) return;
+      byId.set(id, row);
+    });
+    return Array.from(byId.values())
+      .sort((a, b) => toMillisSafe(b?.createdAt) - toMillisSafe(a?.createdAt));
+  }
+
+  function mergeBootstrapStories(existing = [], incoming = []) {
+    const byRestaurant = new Map();
+    (Array.isArray(incoming) ? incoming : []).forEach((row) => {
+      const id = String(row?.restaurantId || row?.id || "").trim();
+      if (!id) return;
+      byRestaurant.set(id, row);
+    });
+    (Array.isArray(existing) ? existing : []).forEach((row) => {
+      const id = String(row?.restaurantId || row?.id || "").trim();
+      if (!id || byRestaurant.has(id)) return;
+      byRestaurant.set(id, row);
+    });
+    return Array.from(byRestaurant.values());
+  }
+
+  function resolveBootstrapTimeoutMs(timeoutMs) {
+    const requested = Number(timeoutMs);
+    if (Number.isFinite(requested) && requested > 0) return requested;
+    const fromWindow = Number(win?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
+    if (Number.isFinite(fromWindow) && fromWindow > 0) return fromWindow;
+    return 2200;
+  }
+
   function applyPublicBootstrapPayload(payload, { refreshUi = false } = {}) {
     if (!payload || typeof payload !== "object" || !state) return false;
     const incomingRestaurants = normalizePublicBootstrapRestaurants(payload.restaurants, {
@@ -170,21 +243,36 @@ export function createPublicBootstrapRuntimeController({
       }
     }
 
-    if (incomingFeedPosts.length && !state.feedPosts.length) {
-      state.feedPosts = projectPostCollectionThroughEntityMap(state, incomingFeedPosts);
-      const existingFeedMeta = readCache(cacheKeys.feed)?.meta || {};
-      saveFeedPosts(state.feedPosts, {
-        lastDeltaCheck: Number(existingFeedMeta?.lastDeltaCheck || 0) || 0
-      });
-      changed = true;
+    if (incomingFeedPosts.length) {
+      const existingFeedPosts = Array.isArray(state.feedPosts) ? state.feedPosts : [];
+      const mergedFeedPosts = projectPostCollectionThroughEntityMap(
+        state,
+        mergeBootstrapFeedPosts(existingFeedPosts, incomingFeedPosts)
+      );
+      const prevFeedSignature = buildFeedBootstrapSignature(existingFeedPosts);
+      const nextFeedSignature = buildFeedBootstrapSignature(mergedFeedPosts);
+      if (nextFeedSignature !== prevFeedSignature) {
+        state.feedPosts = mergedFeedPosts;
+        const existingFeedMeta = readCache(cacheKeys.feed)?.meta || {};
+        saveFeedPosts(state.feedPosts, {
+          lastDeltaCheck: Number(existingFeedMeta?.lastDeltaCheck || 0) || 0
+        });
+        changed = true;
+      }
     }
 
-    if (incomingStories.length && !state.stories.length) {
-      const normalizedStories = normalizeStoryItemsForDisplay(incomingStories);
-      if (normalizedStories.length) {
-        state.stories = normalizedStories;
-        setFeedStoriesSignature(buildStoriesSignature(normalizedStories));
-        writeCache(cacheKeys.stories, normalizedStories);
+    if (incomingStories.length) {
+      const existingStories = Array.isArray(state.stories) ? state.stories : [];
+      const normalizedIncomingStories = normalizeStoryItemsForDisplay(incomingStories);
+      const mergedStories = normalizeStoryItemsForDisplay(
+        mergeBootstrapStories(existingStories, normalizedIncomingStories)
+      );
+      const prevStorySignature = buildStoryBootstrapSignature(existingStories);
+      const nextStorySignature = buildStoryBootstrapSignature(mergedStories);
+      if (mergedStories.length && nextStorySignature !== prevStorySignature) {
+        state.stories = mergedStories;
+        setFeedStoriesSignature(buildStoriesSignature(mergedStories));
+        writeCache(cacheKeys.stories, mergedStories);
         changed = true;
       }
     }
@@ -196,10 +284,10 @@ export function createPublicBootstrapRuntimeController({
       queueStoryIdentityHydration(state.stories, { max: fastLimits.storyIdentityHydration });
     }
 
-    if (changed && refreshUi) {
+    if (changed) {
       const inMain = getLastRenderMode() === "main";
       const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDom();
-      if (!updatedFeed && (state.activeTab === "feed" || !inMain)) {
+      if (!updatedFeed) {
         requestRender();
       }
     }
@@ -214,15 +302,35 @@ export function createPublicBootstrapRuntimeController({
     return defaultPublicBootstrapEndpoint;
   }
 
-  function fetchPublicBootstrapPayload({ force = false, timeoutMs = 1200 } = {}) {
+  function applyWindowBootstrapPayload() {
+    const inlinePayload = win?.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__;
+    if (!inlinePayload || typeof inlinePayload !== "object") return false;
+    return applyPublicBootstrapPayload(inlinePayload, { refreshUi: state?.activeTab === "feed" });
+  }
+
+  async function awaitWindowBootstrapPayload() {
+    const pending = win?.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__;
+    if (!pending || typeof pending.then !== "function") return false;
+    try {
+      await pending;
+    } catch {}
+    return applyWindowBootstrapPayload();
+  }
+
+  function fetchPublicBootstrapPayload({ force = false, timeoutMs = null } = {}) {
     if (publicBootstrapFetchPromise && !force) return publicBootstrapFetchPromise;
+    if (!force && applyWindowBootstrapPayload()) return Promise.resolve(true);
+    if (!force && win?.__MENYRA_SOCIAL_BOOTSTRAP_PROMISE__) {
+      return Promise.resolve(awaitWindowBootstrapPayload());
+    }
     if (!fetchRequest) return Promise.resolve(false);
     const endpoint = getPublicBootstrapEndpoint();
     if (!endpoint) return Promise.resolve(false);
+    const effectiveTimeoutMs = resolveBootstrapTimeoutMs(timeoutMs);
     const request = (async () => {
       const controller = AbortControllerCtor ? new AbortControllerCtor() : null;
       const timeoutId = win && typeof win.setTimeout === "function"
-        ? win.setTimeout(() => controller?.abort(), timeoutMs)
+        ? win.setTimeout(() => controller?.abort(), effectiveTimeoutMs)
         : null;
       try {
         const response = await fetchRequest(endpoint, {
@@ -236,6 +344,9 @@ export function createPublicBootstrapRuntimeController({
         const json = await response.json().catch(() => null);
         const data = json && typeof json === "object" ? json.data : null;
         if (!data || typeof data !== "object") return false;
+        if (win) {
+          win.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__ = data;
+        }
         return applyPublicBootstrapPayload(data, { refreshUi: state?.activeTab === "feed" });
       } catch (err) {
         reportCriticalRuntimeFailure("startup.publicBootstrapFetch", err, { suppressAbort: true });

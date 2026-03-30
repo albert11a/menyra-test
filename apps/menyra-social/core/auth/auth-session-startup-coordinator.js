@@ -125,8 +125,14 @@ export function createAuthSessionStartupCoordinator({
       }
       schedulePerfWarmMark();
       if (!hasInlineBootstrapPayload && !hasWindowBootstrapPromise) {
+        const bootstrapTimeoutMs = Number(windowObj?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
         queueMicrotaskSafe(() => {
-          void fetchPublicBootstrapPayload({ force: false, timeoutMs: 1200 });
+          void fetchPublicBootstrapPayload({
+            force: false,
+            timeoutMs: Number.isFinite(bootstrapTimeoutMs) && bootstrapTimeoutMs > 0
+              ? bootstrapTimeoutMs
+              : null
+          });
         });
       }
       if (!state?.user) {

@@ -584,14 +584,16 @@
   <script>
     (() => {
       const BOOTSTRAP_EVENT = "menyra-social-bootstrap";
+      const BOOTSTRAP_TIMEOUT_MS = 2200;
       const ENDPOINT = String(
         window.__MENYRA_SOCIAL_BOOTSTRAP_ENDPOINT__
         || "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed"
       ).trim();
+      window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ = BOOTSTRAP_TIMEOUT_MS;
       if (!ENDPOINT) return;
       const fetchBootstrap = async () => {
         const controller = ("AbortController" in window) ? new AbortController() : null;
-        const timer = window.setTimeout(() => controller?.abort(), 1200);
+        const timer = window.setTimeout(() => controller?.abort(), BOOTSTRAP_TIMEOUT_MS);
         try {
           const response = await fetch(ENDPOINT, {
             method: "GET",

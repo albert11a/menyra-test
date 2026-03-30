@@ -120,6 +120,7 @@ export function createSessionDataRuntimeController({
   let menuMetaUnsub = null;
   let menuMetaRestaurantId = "";
   let restaurantsFreshReconcileQueued = false;
+  let feedFreshReconcileQueued = false;
   let storiesRefreshQueued = false;
   let storiesRefreshForce = false;
   let storiesRefreshUi = false;
@@ -713,7 +714,18 @@ export function createSessionDataRuntimeController({
         }
       }
       preloadFeedHeroImagesFn(state.feedPosts);
-      if (cached.fresh && !force) return;
+      if (cached.fresh && !force) {
+        if (!feedFreshReconcileQueued) {
+          feedFreshReconcileQueued = true;
+          queueMicrotask(() => {
+            void loadFeedPosts({ force: true })
+              .finally(() => {
+                feedFreshReconcileQueued = false;
+              });
+          });
+        }
+        return;
+      }
     }
 
     if (!db || typeof collectionFn !== "function" || typeof queryFn !== "function" || typeof limitFn !== "function" || typeof getDocsFn !== "function") return;

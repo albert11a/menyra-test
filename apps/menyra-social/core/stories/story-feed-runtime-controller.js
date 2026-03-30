@@ -125,6 +125,24 @@ export function createStoryFeedRuntimeController({
     };
   }
 
+  function resolveStoryFeedFallback(restaurantId = "") {
+    const rid = String(restaurantId || "").trim();
+    if (!rid) return { name: "", logo: "" };
+    const feedRow = (state?.feedPosts || []).find((post) => (
+      String(post?.restaurantId || post?.ownerId || "").trim() === rid
+    )) || null;
+    if (!feedRow) return { name: "", logo: "" };
+    return {
+      name: sanitizeStoryBusinessName(
+        feedRow?.business
+        || feedRow?.restaurantName
+        || feedRow?.name
+        || ""
+      ),
+      logo: String(feedRow?.logo || feedRow?.image || "").trim()
+    };
+  }
+
   function resolveStoryRenderIdentity(story = {}) {
     const storyRestaurantId = String(story?.restaurantId || story?.id || story?.rid || "").trim();
     if (!storyRestaurantId) {
@@ -137,21 +155,23 @@ export function createStoryFeedRuntimeController({
       };
     }
     const identity = resolveStoryBusinessIdentity(storyRestaurantId);
+    const feedFallback = resolveStoryFeedFallback(storyRestaurantId);
     const sourceName = sanitizeStoryBusinessName(
       story?.name
       || story?.businessName
       || story?.restaurantName
       || story?.business
+      || feedFallback.name
       || ""
     );
-    const sourceLogo = String(story?.img || story?.logo || story?.logoUrl || "").trim();
+    const sourceLogo = String(story?.img || story?.logo || story?.logoUrl || feedFallback.logo || "").trim();
     const canonicalName = sanitizeStoryBusinessName(identity.name || "");
     const canonicalLogo = String(identity.avatar || "").trim();
     const storyLabel = identity.hasCanonicalRestaurant
-      ? (canonicalName || sourceName || "")
-      : sanitizeStoryBusinessName(identity.name || sourceName || "");
+      ? (canonicalName || sourceName || "Restaurant")
+      : sanitizeStoryBusinessName(identity.name || sourceName || "Restaurant");
     const logoSource = identity.hasCanonicalRestaurant
-      ? canonicalLogo
+      ? (canonicalLogo || sourceLogo || "")
       : String(identity.avatar || sourceLogo || "").trim();
     return {
       storyRestaurantId,
