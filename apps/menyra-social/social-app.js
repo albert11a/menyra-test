@@ -39,6 +39,10 @@ import {
   waitForPendingWrites
 } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
 import {
+  getFunctions,
+  httpsCallable
+} from "https://www.gstatic.com/firebasejs/11.0.0/firebase-functions.js";
+import {
   ensureUserProfile,
   formatRelative,
   getGeo,
@@ -3749,7 +3753,9 @@ const sessionRuntimeClusterGetters = createSessionRuntimeCluster({
     onSnapshotFn: onSnapshot,
     docFn: doc,
     setDocFn: setDoc,
-    serverTimestampFn: serverTimestamp
+    serverTimestampFn: serverTimestamp,
+    functionsObj: getFunctions(app, "us-central1"),
+    httpsCallableFn: httpsCallable
   },
   storageApi: {
     safeStorageObj: safeStorage,

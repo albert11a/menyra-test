@@ -1030,10 +1030,14 @@ export function createChatRuntimeController(deps = {}) {
         targetHandle: safeHandle,
         serverTimestampValue: serverTimestamp()
       }), { merge: true });
-      await setDoc(doc(db, "users", targetUid, "notifications", `follow_request_${state.user.uid}`), buildFollowRequestNotificationPayloadCore({
-        actor,
-        serverTimestampValue: serverTimestamp()
-      }), { merge: true });
+      await pushUserNotificationWithId(
+        targetUid,
+        `follow_request_${state.user.uid}`,
+        buildFollowRequestNotificationPayloadCore({
+          actor,
+          serverTimestampValue: serverTimestamp()
+        })
+      );
       state.pendingFollowRequests = Array.from(new Set([safeHandle, ...state.pendingFollowRequests]));
       if (state.profileModal.profile?.uid === targetUid) {
         state.profileModal.profile.pendingFollowRequest = true;

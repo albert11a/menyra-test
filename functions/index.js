@@ -25,6 +25,27 @@ const INVALID_TOKEN_CODES = new Set([
   "messaging/registration-token-not-registered",
   "messaging/invalid-registration-token"
 ]);
+const CLIENT_NOTIFICATION_ALLOWED_TYPES = new Set([
+  "chat_message",
+  "follow",
+  "follow_request",
+  "follow_accepted",
+  "like",
+  "comment"
+]);
+const PUSH_NOTIFICATION_ALLOWED_TYPES = new Set([
+  "chat_message",
+  "follow",
+  "follow_request",
+  "follow_accepted",
+  "like",
+  "comment",
+  "restaurant_order"
+]);
+const NOTIFICATION_TEXT_MAX_CHARS = 280;
+const NOTIFICATION_SHORT_TEXT_MAX_CHARS = 120;
+const NOTIFICATION_LINK_MAX_CHARS = 1024;
+const NOTIFICATION_DOC_ID_MAX_CHARS = 180;
 const MEDIA_TICKET_VERSION = 1;
 const MEDIA_ACTIONS = new Set(["image_upload", "story_upload", "story_delete"]);
 const MEDIA_TICKET_DEFAULT_TTL_SECONDS = 120;
@@ -179,6 +200,9 @@ function buildRestaurantOrderNotificationPayload({
     orderId: asText(orderId),
     itemCount,
     read: false,
+    serverAuth: true,
+    source: "server",
+    createdByUid: "system",
     link: buildRestaurantOrderWaiterLink(restaurantId, orderId),
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
@@ -208,6 +232,375 @@ function addNotificationQueryToClientLink(link, notificationId) {
   if (/[?&]notif=/.test(safeLink)) return safeLink;
   const glue = safeLink.includes("?") ? "&" : "?";
   return `${safeLink}${glue}notif=${encodeURIComponent(safeNotificationId)}`;
+}
+
+function clampText(value, maxChars) {
+  return asText(value).slice(0, Math.max(1, Number(maxChars) || 1));
+}
+
+function normalizeNotificationType(value) {
+  return asText(value).toLowerCase();
+}
+
+function sanitizeNotificationDocId(notificationId = "", fallbackId = "") {
+  const candidate = asText(notificationId, fallbackId);
+  if (!candidate) return "";
+  const safe = candidate
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .slice(0, NOTIFICATION_DOC_ID_MAX_CHARS);
+  return asText(safe);
+}
+
+function sanitizeNotificationIdSegment(value = "", maxChars = 72) {
+  return asText(value)
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .slice(0, Math.max(8, Number(maxChars) || 8));
+}
+
+function resolvePostDocRef(ownerType = "", ownerId = "", postId = "") {
+  const safeOwnerType = normalizeNotificationType(ownerType);
+  const safeOwnerId = asText(ownerId);
+  const safePostId = asText(postId);
+  if (!safeOwnerId || !safePostId) return null;
+  if (safeOwnerType === "user") {
+    return db.collection("users").doc(safeOwnerId).collection("posts").doc(safePostId);
+  }
+  if (safeOwnerType === "restaurant") {
+    return db.collection("restaurants").doc(safeOwnerId).collection("socialPosts").doc(safePostId);
+  }
+  return null;
+}
+
+async function assertPostNotificationTargetOwnership({
+  ownerType = "",
+  ownerId = "",
+  targetUid = ""
+} = {}) {
+  const safeOwnerType = normalizeNotificationType(ownerType);
+  const safeOwnerId = asText(ownerId);
+  const safeTargetUid = asText(targetUid);
+  if (!safeOwnerType || !safeOwnerId || !safeTargetUid) {
+    throw new functions.https.HttpsError("permission-denied", "Post notification target is invalid.");
+  }
+  if (safeOwnerType === "user") {
+    if (safeOwnerId !== safeTargetUid) {
+      throw new functions.https.HttpsError("permission-denied", "Post notification target mismatch.");
+    }
+    return;
+  }
+  if (safeOwnerType === "restaurant") {
+    const restaurantSnap = await db.collection("restaurants").doc(safeOwnerId).get();
+    if (!restaurantSnap.exists) {
+      throw new functions.https.HttpsError("permission-denied", "Restaurant notification owner not found.");
+    }
+    const restaurantData = restaurantSnap.data() || {};
+    const ownerUid = asText(restaurantData.ownerUid || restaurantData.uid || restaurantData.userUid);
+    if (!ownerUid || ownerUid !== safeTargetUid) {
+      throw new functions.https.HttpsError("permission-denied", "Restaurant notification target mismatch.");
+    }
+    return;
+  }
+  throw new functions.https.HttpsError("permission-denied", "Unsupported post notification owner type.");
+}
+
+function resolveChatMessageIdFromNotification({
+  notificationId = "",
+  actorUid = "",
+  payload = {}
+} = {}) {
+  const payloadMessageId = asText(payload?.messageId || payload?.chatMessageId);
+  if (payloadMessageId) return payloadMessageId;
+  const safeActorUid = asText(actorUid);
+  const safeNotificationId = asText(notificationId);
+  if (!safeActorUid || !safeNotificationId) return "";
+  const prefix = `chat_${safeActorUid}_`;
+  if (!safeNotificationId.startsWith(prefix)) return "";
+  return asText(safeNotificationId.slice(prefix.length));
+}
+
+function buildExpectedNotificationId({
+  type = "",
+  actorUid = "",
+  notificationId = "",
+  payload = {}
+} = {}) {
+  const safeType = normalizeNotificationType(type);
+  const safeActorUid = sanitizeNotificationIdSegment(actorUid);
+  if (!safeType || !safeActorUid) return "";
+
+  if (safeType === "follow_request") {
+    return sanitizeNotificationDocId(`follow_request_${safeActorUid}`);
+  }
+  if (safeType === "follow") {
+    return sanitizeNotificationDocId(`follow_${safeActorUid}`);
+  }
+  if (safeType === "follow_accepted") {
+    return sanitizeNotificationDocId(`follow_accepted_${safeActorUid}`);
+  }
+  if (safeType === "like") {
+    const ownerType = sanitizeNotificationIdSegment(normalizeNotificationType(payload?.ownerType), 24);
+    const ownerId = sanitizeNotificationIdSegment(payload?.ownerId);
+    const postId = sanitizeNotificationIdSegment(payload?.postId);
+    if (!ownerType || !ownerId || !postId) return "";
+    return sanitizeNotificationDocId(`like_${safeActorUid}_${ownerType}_${ownerId}_${postId}`);
+  }
+  if (safeType === "comment") {
+    const ownerType = sanitizeNotificationIdSegment(normalizeNotificationType(payload?.ownerType), 24);
+    const ownerId = sanitizeNotificationIdSegment(payload?.ownerId);
+    const postId = sanitizeNotificationIdSegment(payload?.postId);
+    const commentId = sanitizeNotificationIdSegment(payload?.commentId);
+    if (!ownerType || !ownerId || !postId || !commentId) return "";
+    return sanitizeNotificationDocId(`comment_${safeActorUid}_${ownerType}_${ownerId}_${postId}_${commentId}`);
+  }
+  if (safeType === "chat_message") {
+    const messageId = sanitizeNotificationIdSegment(resolveChatMessageIdFromNotification({
+      notificationId,
+      actorUid,
+      payload
+    }));
+    if (!messageId) return "";
+    return sanitizeNotificationDocId(`chat_${safeActorUid}_${messageId}`);
+  }
+  return "";
+}
+
+function buildServerAuthNotificationPayload({
+  type = "",
+  actorUid = "",
+  targetUid = "",
+  payload = {}
+} = {}) {
+  const safeType = normalizeNotificationType(type);
+  const safeActorUid = asText(actorUid);
+  const safeTargetUid = asText(targetUid);
+  const safePayload = payload && typeof payload === "object" ? payload : {};
+  const safeOwnerType = normalizeNotificationType(safePayload.ownerType);
+  const safeOwnerId = asText(safePayload.ownerId);
+  const safePostId = asText(safePayload.postId);
+  const safeCommentId = asText(safePayload.commentId);
+  const safeRestaurantId = asText(safePayload.restaurantId);
+  const safeMessageId = asText(safePayload.messageId || safePayload.chatMessageId);
+  const safeUrl = clampText(safePayload.url, NOTIFICATION_LINK_MAX_CHARS);
+  const safeLink = clampText(safePayload.link || safeUrl, NOTIFICATION_LINK_MAX_CHARS);
+  const safeAvatar = clampText(safePayload.avatar || safePayload.img, NOTIFICATION_LINK_MAX_CHARS);
+  const safeText = clampText(safePayload.text || safePayload.body, NOTIFICATION_TEXT_MAX_CHARS);
+  const safeBody = clampText(safePayload.body || safePayload.text, NOTIFICATION_TEXT_MAX_CHARS);
+
+  return {
+    type: safeType,
+    user: clampText(safePayload.user, NOTIFICATION_SHORT_TEXT_MAX_CHARS),
+    userHandle: clampText(safePayload.userHandle || safePayload.senderHandle, NOTIFICATION_SHORT_TEXT_MAX_CHARS),
+    userUid: safeActorUid,
+    avatar: safeAvatar,
+    img: safeAvatar,
+    text: safeText,
+    body: safeBody,
+    ownerType: safeOwnerType,
+    ownerId: safeOwnerId,
+    postId: safePostId,
+    commentId: safeCommentId,
+    restaurantId: safeRestaurantId,
+    messageId: safeMessageId,
+    link: safeLink,
+    url: safeUrl || safeLink,
+    read: false,
+    silent: safePayload.silent === true,
+    serverAuth: true,
+    source: "server",
+    createdByUid: safeActorUid,
+    targetUid: safeTargetUid,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp()
+  };
+}
+
+async function assertFollowRequestNotificationAllowed({
+  actorUid = "",
+  targetUid = ""
+} = {}) {
+  if (!actorUid || !targetUid || actorUid === targetUid) {
+    throw new functions.https.HttpsError("permission-denied", "Invalid follow request notification target.");
+  }
+  const followRequestRef = db
+    .collection("users")
+    .doc(targetUid)
+    .collection("followRequests")
+    .doc(actorUid);
+  const followRequestSnap = await followRequestRef.get();
+  if (!followRequestSnap.exists) {
+    throw new functions.https.HttpsError("permission-denied", "Follow request notification not authorized.");
+  }
+  const requestData = followRequestSnap.data() || {};
+  if (asText(requestData.requesterUid) && asText(requestData.requesterUid) !== actorUid) {
+    throw new functions.https.HttpsError("permission-denied", "Follow request actor mismatch.");
+  }
+}
+
+async function assertFollowAcceptedNotificationAllowed({
+  actorUid = "",
+  targetUid = ""
+} = {}) {
+  if (!actorUid || !targetUid || actorUid === targetUid) {
+    throw new functions.https.HttpsError("permission-denied", "Invalid follow accepted notification target.");
+  }
+  const followDocId = `user_${actorUid}`;
+  const followRef = db
+    .collection("users")
+    .doc(targetUid)
+    .collection("following")
+    .doc(followDocId);
+  const followSnap = await followRef.get();
+  if (!followSnap.exists) {
+    throw new functions.https.HttpsError("permission-denied", "Follow accepted notification not authorized.");
+  }
+}
+
+async function assertFollowNotificationAllowed({
+  actorUid = "",
+  targetUid = ""
+} = {}) {
+  if (!actorUid || !targetUid || actorUid === targetUid) {
+    throw new functions.https.HttpsError("permission-denied", "Invalid follow notification target.");
+  }
+  const followDocId = `user_${targetUid}`;
+  const followRef = db
+    .collection("users")
+    .doc(actorUid)
+    .collection("following")
+    .doc(followDocId);
+  const followSnap = await followRef.get();
+  if (!followSnap.exists) {
+    throw new functions.https.HttpsError("permission-denied", "Follow notification not authorized.");
+  }
+  const followData = followSnap.data() || {};
+  if (asText(followData.targetType) && asText(followData.targetType) !== "user") {
+    throw new functions.https.HttpsError("permission-denied", "Follow notification target type mismatch.");
+  }
+  if (asText(followData.targetId) && asText(followData.targetId) !== targetUid) {
+    throw new functions.https.HttpsError("permission-denied", "Follow notification target mismatch.");
+  }
+}
+
+async function assertPostLikeNotificationAllowed({
+  actorUid = "",
+  targetUid = "",
+  payload = {}
+} = {}) {
+  const postRef = resolvePostDocRef(payload.ownerType, payload.ownerId, payload.postId);
+  if (!postRef) {
+    throw new functions.https.HttpsError("invalid-argument", "Like notification requires valid post ownership.");
+  }
+  await assertPostNotificationTargetOwnership({
+    ownerType: payload.ownerType,
+    ownerId: payload.ownerId,
+    targetUid
+  });
+  const likeRef = postRef.collection("likes").doc(actorUid);
+  const likeSnap = await likeRef.get();
+  if (!likeSnap.exists) {
+    throw new functions.https.HttpsError("permission-denied", "Like notification not authorized.");
+  }
+  const likeData = likeSnap.data() || {};
+  if (asText(likeData.uid) && asText(likeData.uid) !== actorUid) {
+    throw new functions.https.HttpsError("permission-denied", "Like actor mismatch.");
+  }
+}
+
+async function assertCommentNotificationAllowed({
+  actorUid = "",
+  targetUid = "",
+  payload = {}
+} = {}) {
+  const postRef = resolvePostDocRef(payload.ownerType, payload.ownerId, payload.postId);
+  const commentId = asText(payload.commentId);
+  if (!postRef || !commentId) {
+    throw new functions.https.HttpsError("invalid-argument", "Comment notification requires valid post/comment identifiers.");
+  }
+  await assertPostNotificationTargetOwnership({
+    ownerType: payload.ownerType,
+    ownerId: payload.ownerId,
+    targetUid
+  });
+  const commentRef = postRef.collection("comments").doc(commentId);
+  const commentSnap = await commentRef.get();
+  if (!commentSnap.exists) {
+    throw new functions.https.HttpsError("permission-denied", "Comment notification not authorized.");
+  }
+  const commentData = commentSnap.data() || {};
+  if (asText(commentData.uid) !== actorUid) {
+    throw new functions.https.HttpsError("permission-denied", "Comment actor mismatch.");
+  }
+}
+
+async function assertChatMessageNotificationAllowed({
+  actorUid = "",
+  targetUid = "",
+  notificationId = "",
+  payload = {}
+} = {}) {
+  if (!actorUid || !targetUid || actorUid === targetUid) {
+    throw new functions.https.HttpsError("permission-denied", "Invalid chat notification target.");
+  }
+  const messageId = resolveChatMessageIdFromNotification({
+    notificationId,
+    actorUid,
+    payload
+  });
+  if (!messageId) {
+    throw new functions.https.HttpsError("invalid-argument", "Chat notification requires a message identifier.");
+  }
+  const messageRef = db
+    .collection("users")
+    .doc(targetUid)
+    .collection("chatThreads")
+    .doc(actorUid)
+    .collection("messages")
+    .doc(messageId);
+  const messageSnap = await messageRef.get();
+  if (!messageSnap.exists) {
+    throw new functions.https.HttpsError("permission-denied", "Chat notification not authorized.");
+  }
+  const messageData = messageSnap.data() || {};
+  if (asText(messageData.senderUid) !== actorUid) {
+    throw new functions.https.HttpsError("permission-denied", "Chat sender mismatch.");
+  }
+}
+
+async function assertClientNotificationWriteAllowed({
+  type = "",
+  actorUid = "",
+  targetUid = "",
+  notificationId = "",
+  payload = {}
+} = {}) {
+  const safeType = normalizeNotificationType(type);
+  switch (safeType) {
+    case "follow":
+      await assertFollowNotificationAllowed({ actorUid, targetUid });
+      return;
+    case "follow_request":
+      await assertFollowRequestNotificationAllowed({ actorUid, targetUid });
+      return;
+    case "follow_accepted":
+      await assertFollowAcceptedNotificationAllowed({ actorUid, targetUid });
+      return;
+    case "like":
+      await assertPostLikeNotificationAllowed({ actorUid, targetUid, payload });
+      return;
+    case "comment":
+      await assertCommentNotificationAllowed({ actorUid, targetUid, payload });
+      return;
+    case "chat_message":
+      await assertChatMessageNotificationAllowed({
+        actorUid,
+        targetUid,
+        notificationId,
+        payload
+      });
+      return;
+    default:
+      throw new functions.https.HttpsError("invalid-argument", "Unsupported notification type.");
+  }
 }
 
 function toMillis(value) {
@@ -1197,6 +1590,126 @@ exports.socialBootstrapFeed = functions
     }
   });
 
+exports.writeUserNotification = functions
+  .region("us-central1")
+  .https.onCall(async (data, context) => {
+    const flow = "notification.write.callable";
+    const actorUid = asText(context?.auth?.uid);
+    const targetUid = asText(data?.targetUid);
+    const requestedNotificationId = asText(data?.notificationId);
+    const payload = data?.payload && typeof data.payload === "object" ? data.payload : {};
+    const type = normalizeNotificationType(payload.type);
+    const logContext = buildCallableLogContext(context, {
+      endpoint: "writeUserNotification",
+      actorUid,
+      targetUid,
+      notificationId: requestedNotificationId,
+      type
+    });
+
+    if (!actorUid) {
+      logFunctionWarn(flow, {
+        ...logContext,
+        status: "unauthenticated"
+      });
+      throw new functions.https.HttpsError("unauthenticated", "Authentication required.");
+    }
+
+    if (!targetUid) {
+      logFunctionWarn(flow, {
+        ...logContext,
+        status: "invalid_argument",
+        reason: "target_uid_missing"
+      });
+      throw new functions.https.HttpsError("invalid-argument", "targetUid is required.");
+    }
+
+    if (!CLIENT_NOTIFICATION_ALLOWED_TYPES.has(type)) {
+      logFunctionWarn(flow, {
+        ...logContext,
+        status: "invalid_argument",
+        reason: "unsupported_type"
+      });
+      throw new functions.https.HttpsError("invalid-argument", "Unsupported notification type.");
+    }
+
+    if (asText(payload.userUid) && asText(payload.userUid) !== actorUid) {
+      logFunctionWarn(flow, {
+        ...logContext,
+        status: "permission_denied",
+        reason: "payload_actor_mismatch"
+      });
+      throw new functions.https.HttpsError("permission-denied", "Notification actor mismatch.");
+    }
+
+    try {
+      await assertClientNotificationWriteAllowed({
+        type,
+        actorUid,
+        targetUid,
+        notificationId: requestedNotificationId,
+        payload
+      });
+
+      const expectedNotificationId = buildExpectedNotificationId({
+        type,
+        actorUid,
+        notificationId: requestedNotificationId,
+        payload
+      });
+      if (!expectedNotificationId) {
+        throw new functions.https.HttpsError("invalid-argument", "Invalid notification identifier.");
+      }
+      if (requestedNotificationId) {
+        const safeRequestedNotificationId = sanitizeNotificationDocId(requestedNotificationId);
+        if (safeRequestedNotificationId !== expectedNotificationId) {
+          throw new functions.https.HttpsError("permission-denied", "Notification identifier mismatch.");
+        }
+      }
+      const notificationId = expectedNotificationId;
+
+      const writePayload = buildServerAuthNotificationPayload({
+        type,
+        actorUid,
+        targetUid,
+        payload
+      });
+
+      await db
+        .collection("users")
+        .doc(targetUid)
+        .collection("notifications")
+        .doc(notificationId)
+        .set(writePayload, { merge: true });
+
+      logFunctionInfo(flow, {
+        ...logContext,
+        status: "written",
+        notificationId
+      });
+
+      return {
+        ok: true,
+        notificationId
+      };
+    } catch (error) {
+      if (error instanceof functions.https.HttpsError) {
+        logFunctionWarn(flow, {
+          ...logContext,
+          status: "blocked",
+          code: asText(error.code),
+          reason: asText(error.message)
+        });
+        throw error;
+      }
+      logFunctionError(flow, error, {
+        ...logContext,
+        status: "failed"
+      });
+      throw new functions.https.HttpsError("internal", "Notification write failed.");
+    }
+  });
+
 exports.sendWebPushOnNotificationCreate = functions
   .region("us-central1")
   .firestore.document("users/{userId}/notifications/{notificationId}")
@@ -1214,6 +1727,22 @@ exports.sendWebPushOnNotificationCreate = functions
       const data = snap.data() || {};
       if (data.silent === true) return;
       if (!userId || !notificationId) return;
+      if (data.serverAuth !== true) {
+        logFunctionWarn("push.notification.dispatch", {
+          ...logContext,
+          status: "ignored_untrusted_notification"
+        });
+        return;
+      }
+      const type = normalizeNotificationType(data.type);
+      if (!PUSH_NOTIFICATION_ALLOWED_TYPES.has(type)) {
+        logFunctionWarn("push.notification.dispatch", {
+          ...logContext,
+          status: "ignored_unsupported_type",
+          type
+        });
+        return;
+      }
 
       const devicesSnap = await db
         .collection("users")

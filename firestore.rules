@@ -425,10 +425,7 @@ service cloud.firestore {
 
       match /notifications/{notificationId} {
         allow get, list: if isSelf(userId);
-        allow create: if signedIn() && (
-          isSelf(userId)
-          || (request.resource.data.userUid is string && request.resource.data.userUid == authUid())
-        );
+        allow create: if false;
         allow update, delete: if isSelf(userId);
       }
 

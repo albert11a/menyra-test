@@ -1,11 +1,9 @@
 import {
-  buildNotificationWritePayloadCore,
   normalizeNotificationWriteIdsCore
 } from "./notification-write-utils.js";
 
 export function createNotificationSupportRuntimeController(deps = {}) {
   const state = deps.state;
-  const db = deps.db || null;
   const safeStorage = deps.safeStorageObj || {
     getItem: () => null,
     setItem: () => {},
@@ -14,12 +12,11 @@ export function createNotificationSupportRuntimeController(deps = {}) {
   const notificationsKey = typeof deps.notificationsKeyFn === "function"
     ? deps.notificationsKeyFn
     : (() => "");
-  const collection = typeof deps.collectionFn === "function" ? deps.collectionFn : null;
-  const doc = typeof deps.docFn === "function" ? deps.docFn : null;
-  const setDoc = typeof deps.setDocFn === "function" ? deps.setDocFn : (async () => {});
-  const serverTimestamp = typeof deps.serverTimestampFn === "function"
-    ? deps.serverTimestampFn
-    : (() => null);
+  const functionsObj = deps.functionsObj || null;
+  const httpsCallable = typeof deps.httpsCallableFn === "function" ? deps.httpsCallableFn : null;
+  let writeUserNotification = typeof deps.writeUserNotificationFn === "function"
+    ? deps.writeUserNotificationFn
+    : null;
 
   if (!state) {
     return {
@@ -35,21 +32,39 @@ export function createNotificationSupportRuntimeController(deps = {}) {
     safeStorage.setItem(notificationsKey(uid), JSON.stringify(notifications));
   }
 
+  function getWriteUserNotification() {
+    if (typeof writeUserNotification === "function") return writeUserNotification;
+    if (!functionsObj || !httpsCallable) return null;
+    const callable = httpsCallable(functionsObj, "writeUserNotification");
+    writeUserNotification = async (input = {}) => {
+      const result = await callable(input);
+      return result?.data || null;
+    };
+    return writeUserNotification;
+  }
+
   async function pushUserNotification(targetUid, payload) {
-    if (!targetUid || !db || !collection || !doc) return;
+    const normalized = normalizeNotificationWriteIdsCore({
+      targetUid
+    });
+    const safeTargetUid = normalized.targetUid;
+    if (!safeTargetUid) return;
+    const writer = getWriteUserNotification();
+    if (!writer) return;
     try {
-      const ref = doc(collection(db, "users", targetUid, "notifications"));
-      await setDoc(ref, buildNotificationWritePayloadCore({
+      await writer({
+        targetUid: safeTargetUid,
         payload,
-        serverTimestampValue: serverTimestamp()
-      }));
+        notificationId: ""
+      });
     } catch (err) {
       console.error(err);
     }
   }
 
   async function pushUserNotificationWithId(targetUid, notificationId, payload) {
-    if (!db || !doc) return;
+    const writer = getWriteUserNotification();
+    if (!writer) return;
     const normalized = normalizeNotificationWriteIdsCore({
       targetUid,
       notificationId
@@ -58,14 +73,11 @@ export function createNotificationSupportRuntimeController(deps = {}) {
     const safeNotificationId = normalized.notificationId;
     if (!safeTargetUid || !safeNotificationId) return;
     try {
-      await setDoc(
-        doc(db, "users", safeTargetUid, "notifications", safeNotificationId),
-        buildNotificationWritePayloadCore({
-          payload,
-          serverTimestampValue: serverTimestamp()
-        }),
-        { merge: true }
-      );
+      await writer({
+        targetUid: safeTargetUid,
+        notificationId: safeNotificationId,
+        payload
+      });
     } catch (err) {
       console.error(err);
     }
