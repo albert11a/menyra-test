@@ -366,6 +366,31 @@ export function createSessionDataRuntimeController({
       state.userProfile = { ...defaultProfile };
     }
     state.userProfile.uid = uid;
+    const authDisplayName = String(user.displayName || "").trim();
+    const authEmail = String(user.email || "").trim();
+    const fallbackAuthName = authDisplayName
+      || (authEmail.includes("@")
+        ? authEmail.split("@")[0].replace(/[._-]+/g, " ").trim()
+        : authEmail)
+      || "";
+    const currentName = String(state.userProfile.name || "").trim();
+    const normalizedCurrentName = currentName.toLowerCase();
+    if ((!currentName || normalizedCurrentName === "user" || normalizedCurrentName === "business") && fallbackAuthName) {
+      state.userProfile.name = fallbackAuthName;
+    }
+    const currentHandle = String(state.userProfile.handle || "").trim();
+    if (!currentHandle) {
+      const handleSeed = String(authEmail.split("@")[0] || fallbackAuthName || "").trim();
+      if (handleSeed) {
+        state.userProfile.handle = normalizeFollowHandleFn(handleSeed);
+      }
+    }
+    if (!String(state.userProfile.email || "").trim() && authEmail) {
+      state.userProfile.email = authEmail;
+    }
+    if (!String(state.userProfile.avatar || "").trim() && String(user.photoURL || "").trim()) {
+      state.userProfile.avatar = String(user.photoURL || "").trim();
+    }
 
     setUserAvatarCacheFn("");
     setLastShellAvatarUrlFn("");

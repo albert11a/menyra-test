@@ -314,6 +314,10 @@ export async function loadAuthProfileCore({
       || authUserData?.businessOwnerUid
       || ""
     ).trim();
+  const explicitRestaurantId = String(authUserData?.restaurantId || "").trim();
+  const canFastPathNonBusiness = !isStaffAccount
+    && !explicitRestaurantId
+    && (authUserRole === "user" || authUserRole === "ceo");
   const getRestaurantById = async (restaurantId = "") => {
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return null;
@@ -325,7 +329,24 @@ export async function loadAuthProfileCore({
     } catch {}
     return null;
   };
-  const explicitRestaurantId = String(authUserData?.restaurantId || "").trim();
+  if (canFastPathNonBusiness && !force) {
+    const profile = await loadUserProfile(user, { force: false });
+    if (profile && state?.userProfile) {
+      if (!String(state.userProfile.sourceUserRole || "").trim()) {
+        state.userProfile.sourceUserRole = authUserRole;
+      }
+      if (!String(state.userProfile.role || "").trim()) {
+        state.userProfile.role = authUserRole;
+      }
+      const normalizedProfileRoles = normalizeRoles(state.userProfile.roles || state.userProfile.role || "");
+      if (authUserRole === "ceo" && !normalizedProfileRoles.includes("ceo")) {
+        state.userProfile.roles = Array.from(new Set([...normalizedProfileRoles, "ceo"]));
+      } else if (!Array.isArray(state.userProfile.roles)) {
+        state.userProfile.roles = normalizedProfileRoles;
+      }
+    }
+    return;
+  }
   if (!isStaffAccount && (authUserRole === "business" || explicitRestaurantId)) {
     let explicitRestaurant = await getRestaurantById(explicitRestaurantId);
     if (!explicitRestaurant) {

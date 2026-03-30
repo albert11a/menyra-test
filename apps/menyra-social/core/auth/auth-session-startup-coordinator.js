@@ -80,6 +80,22 @@ export function createAuthSessionStartupCoordinator({
     );
   }
 
+  function buildAuthProfileRenderSignature(profile = null) {
+    if (!profile || typeof profile !== "object") return "";
+    const roles = Array.isArray(profile.roles) ? profile.roles : [];
+    return [
+      String(profile.name || "").trim(),
+      String(profile.handle || "").trim().toLowerCase(),
+      String(profile.role || "").trim().toLowerCase(),
+      roles.map((entry) => String(entry || "").trim().toLowerCase()).filter(Boolean).sort().join("|"),
+      String(profile.restaurantId || "").trim(),
+      String(profile.staffRestaurantId || "").trim(),
+      String(profile.waiterRestaurantId || "").trim(),
+      String(profile.sourceUserRole || "").trim().toLowerCase(),
+      String(profile.socialAccessMode || "").trim().toLowerCase()
+    ].join("::");
+  }
+
   function primeFastAuthProfileHints(user, snapshot = null) {
     const uid = String(user?.uid || "").trim();
     if (!uid) return false;
@@ -228,13 +244,21 @@ export function createAuthSessionStartupCoordinator({
           state.auth.loading = false;
         }
         requestRender();
+        const profileSignatureBeforeBootstrap = buildAuthProfileRenderSignature(state?.userProfile);
         void bootstrapUser(user, { transitionSeq })
           .then(() => {
             if (!isCurrentAuthTransition(transitionSeq, nextUid)) return;
             postLoginRouteOpen.openNonBlockingRoutes();
+            const profileSignatureAfterBootstrap = buildAuthProfileRenderSignature(state?.userProfile);
+            if (profileSignatureAfterBootstrap !== profileSignatureBeforeBootstrap) {
+              requestRender();
+            }
           })
           .catch((err) => {
             reportCriticalRuntimeFailure("auth.bootstrapUser.standard", err);
+            if (isCurrentAuthTransition(transitionSeq, nextUid)) {
+              requestRender();
+            }
           });
       }
     } else {
