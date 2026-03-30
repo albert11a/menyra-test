@@ -11,6 +11,7 @@ export function createStoryFeedRuntimeController({
   cacheKeys = {},
   cacheTtlMs = {},
   fastMode = false,
+  allowFeedDerivedStoryFallback = false,
   fastLimits = {},
   collectionGroupFn = null,
   getDocsFn = null,
@@ -252,6 +253,7 @@ export function createStoryFeedRuntimeController({
       posts,
       force,
       fastMode,
+      allowFeedFallback: !!allowFeedDerivedStoryFallback,
       buildStoriesFromFeed,
       currentSignature: feedStoriesSignature
     });

@@ -490,8 +490,7 @@ export function createFeedViewOrchestrationController({
     const feedPosts = state.feedPosts
       .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
       .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-    const storySeed = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeedFn(feedPosts) : state.stories);
-    const stories = (Array.isArray(storySeed) ? storySeed : []).filter((story) => isRenderableStory(story));
+    const stories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
     const storiesRow = doc.getElementById("storiesRow");
     const nextSig = `${buildStoriesRowSignatureFn(stories)}|upload:${shouldShowStoryUploadSlot() ? "1" : "0"}`;
     if (storiesRow) {
@@ -523,8 +522,7 @@ export function createFeedViewOrchestrationController({
     const feedPosts = state.feedPosts
       .filter((p) => state.feedCategory === "all" || p.category === state.feedCategory)
       .sort((a, b) => (toDateSafeFn(b.createdAt)?.getTime() || 0) - (toDateSafeFn(a.createdAt)?.getTime() || 0));
-    const storySeed = state.stories.length ? state.stories : (FAST_MODE ? buildStoriesFromFeedFn(feedPosts) : state.stories);
-    const stories = (Array.isArray(storySeed) ? storySeed : []).filter((story) => isRenderableStory(story));
+    const stories = (Array.isArray(state.stories) ? state.stories : []).filter((story) => isRenderableStory(story));
     return `
     <div id="feedView">
       <div id="storiesRow" class="flex gap-4 overflow-x-auto px-8 pt-4 pb-8 no-scrollbar">

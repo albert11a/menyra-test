@@ -202,6 +202,7 @@ export function createProfileIdentityRuntimeCluster({
     cacheKeys: storageApi.cacheKeys || {},
     cacheTtlMs: storageApi.cacheTtlMs || {},
     fastMode: !!constants.fastMode,
+    allowFeedDerivedStoryFallback: false,
     fastLimits: constants.fastLimits || {},
     collectionGroupFn: firebaseApi.collectionGroupFn || null,
     getDocsFn: firebaseApi.getDocsFn || null,
