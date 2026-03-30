@@ -6,7 +6,14 @@ function isGenericBusinessBootstrapLabel(value = "") {
 
 function buildRestaurantBootstrapSignature(restaurants = []) {
   return (Array.isArray(restaurants) ? restaurants : [])
-    .map((rest) => `${String(rest?.id || "").trim()}|${String(rest?.name || rest?.restaurantName || "").trim()}|${String(rest?.logoUrl || rest?.logo || "").trim()}`)
+    .map((rest) => {
+      const id = String(rest?.id || "").trim();
+      const name = String(rest?.name || rest?.restaurantName || "").trim();
+      const logo = String(rest?.logoUrl || rest?.logo || "").trim();
+      const city = String(rest?.city || rest?.address || "").trim();
+      const type = String(rest?.type || rest?.customerType || rest?.restaurantType || "").trim();
+      return `${id}|${name}|${logo}|${city}|${type}`;
+    })
     .join(",");
 }
 
@@ -42,6 +49,29 @@ function normalizePublicBootstrapRestaurants(restaurants = [], { normalizeRestau
     .filter(Boolean);
 }
 
+function mergeBootstrapRestaurantPreview(existing = [], incoming = []) {
+  const byId = new Map();
+  (Array.isArray(existing) ? existing : []).forEach((row) => {
+    const id = String(row?.id || "").trim();
+    if (!id) return;
+    byId.set(id, row);
+  });
+  (Array.isArray(incoming) ? incoming : []).forEach((row) => {
+    const id = String(row?.id || "").trim();
+    if (!id) return;
+    const previous = byId.get(id) || {};
+    byId.set(id, {
+      ...previous,
+      ...row,
+      id,
+      __truthSource: "bootstrap-preview",
+      __truthPartial: true,
+      __isPreview: true
+    });
+  });
+  return Array.from(byId.values());
+}
+
 function normalizePublicBootstrapFeedPosts(rows = [], {
   toDateSafe = () => null,
   formatRelative = () => ""
@@ -63,7 +93,7 @@ function normalizePublicBootstrapFeedPosts(rows = [], {
         restaurantId,
         business: business || "Business",
         logo: String(row?.logo || row?.logoUrl || row?.logoURL || "").trim(),
-        location: String(row?.location || row?.city || "Prishtina").trim() || "Prishtina",
+        location: String(row?.location || row?.city || "").trim(),
         content: String(row?.content || row?.caption || row?.captionShort || "").trim(),
         image,
         likes: Number.isFinite(Number(row?.likes)) ? Number(row.likes) : (Number.isFinite(Number(row?.likesCount)) ? Number(row.likesCount) : 0),
@@ -221,6 +251,9 @@ export function createPublicBootstrapRuntimeController({
 
   function applyPublicBootstrapPayload(payload, { refreshUi = false } = {}) {
     if (!payload || typeof payload !== "object" || !state) return false;
+    void refreshUi;
+    void mergeRestaurants;
+    void rebuildBusinessLocations;
     const incomingRestaurants = normalizePublicBootstrapRestaurants(payload.restaurants, {
       normalizeRestaurantType
     });
@@ -230,16 +263,21 @@ export function createPublicBootstrapRuntimeController({
     });
     const incomingStories = normalizePublicBootstrapStories(payload.stories);
     let changed = false;
+    let previewChanged = false;
 
     if (incomingRestaurants.length) {
-      const prevSignature = buildRestaurantBootstrapSignature(state.restaurants);
-      const mergedRestaurants = mergeRestaurants(state.restaurants, incomingRestaurants);
-      const nextSignature = buildRestaurantBootstrapSignature(mergedRestaurants);
+      const existingPreview = Array.isArray(state.bootstrapRestaurantPreview)
+        ? state.bootstrapRestaurantPreview
+        : [];
+      const mergedPreview = mergeBootstrapRestaurantPreview(existingPreview, incomingRestaurants);
+      const prevSignature = buildRestaurantBootstrapSignature(existingPreview);
+      const nextSignature = buildRestaurantBootstrapSignature(mergedPreview);
       if (nextSignature !== prevSignature) {
-        state.restaurants = mergedRestaurants;
-        writeCache(cacheKeys.restaurants, mergedRestaurants);
-        rebuildBusinessLocations();
-        changed = true;
+        state.bootstrapRestaurantPreview = mergedPreview;
+        if (cacheKeys?.restaurantsPreview) {
+          writeCache(cacheKeys.restaurantsPreview, mergedPreview);
+        }
+        previewChanged = true;
       }
     }
 
@@ -291,7 +329,7 @@ export function createPublicBootstrapRuntimeController({
         requestRender();
       }
     }
-    return changed;
+    return changed || previewChanged;
   }
 
   function getPublicBootstrapEndpoint() {

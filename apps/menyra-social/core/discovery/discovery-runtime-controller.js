@@ -61,6 +61,7 @@ export function createDiscoveryRuntimeController(deps = {}) {
   let mapNoticeTimer = null;
   const DISCOVERY_MAP_DEFAULT_CENTER = [42.6629, 21.1655];
   const DISCOVERY_MAP_MAX_ZOOM = 19;
+  const LOCATION_UNVERIFIED_LABEL = "Standort nicht verifiziert";
 
 function getLeafletFocusZoom() {
   if (leafletMap && typeof leafletMap.getMaxZoom === "function") {
@@ -116,10 +117,6 @@ async function ensureLeafletLoaded() {
   return leafletLoadPromise;
 }
 
-function hashValue(input) {
-  return Array.from(String(input || "")).reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-}
-
 function getRestaurantLocations(rest) {
   const geo = getGeo(rest) || {};
   return normalizeLeadLocations(rest?.locations || [], rest?.address || rest?.city || "", {
@@ -128,24 +125,20 @@ function getRestaurantLocations(rest) {
   });
 }
 
+function hasUsableMapCoords(value = {}) {
+  return !!normalizeCoordPair(value?.lat, value?.lng);
+}
+
 function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0) {
   const geo = getGeo(rest);
-  const baseLat = 42.6629;
-  const baseLng = 21.1655;
-  const hash = hashValue(`${rest.id || rest.name || idx}:${locationIndex}`);
-
   const row = location || {};
   const rowCoords = resolveCoordsFromEntity(row);
   const restCoords = resolveCoordsFromEntity(rest)
     || normalizeCoordPair(rest?.lat ?? geo?.lat, rest?.lng ?? geo?.lng);
-  const normalizedCoords = preferStableCoords(rowCoords, restCoords);
-  let lat = normalizedCoords?.lat ?? null;
-  let lng = normalizedCoords?.lng ?? null;
-
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    lat = baseLat + (((hash % 200) - 100) * 0.0025);
-    lng = baseLng + ((((hash >> 3) % 200) - 100) * 0.003);
-  }
+  const preferred = preferStableCoords(rowCoords, restCoords);
+  const normalizedCoords = preferred ? normalizeCoordPair(preferred.lat, preferred.lng) : null;
+  const city = String(row.city || rest.city || "").trim();
+  const address = String(row.address || rest.address || city || LOCATION_UNVERIFIED_LABEL).trim() || LOCATION_UNVERIFIED_LABEL;
 
   return {
     id: rest.id,
@@ -153,23 +146,26 @@ function normalizeBusinessLocation(rest, idx, location = null, locationIndex = 0
     locationIndex,
     name: rest.name || rest.restaurantName || "Business",
     type: rest.type || "food",
-    lat,
-    lng,
-    address: row.address || rest.address || rest.city || "Prishtina",
+    lat: normalizedCoords?.lat ?? null,
+    lng: normalizedCoords?.lng ?? null,
+    city,
+    address,
     hours: rest.hours || rest.openHours || "08:00 - 23:00",
     rating: rest.rating || rest.score || 4.8,
     img: rest.logoUrl || rest.logo || rest.heroUrl || rest.coverUrl || "",
     desc: rest.description || rest.bio || `Offizielles Lokal auf ${BRAND_UI.upper}.`,
+    hasVerifiedCoords: !!normalizedCoords,
+    locationStatus: normalizedCoords ? "verified" : "unknown",
     raw: rest
   };
 }
 
 function buildRestaurantLocations(rest, idx) {
   const locations = getRestaurantLocations(rest);
-  if (!locations.length) {
-    return [normalizeBusinessLocation(rest, idx, null, 0)];
-  }
-  return locations.map((location, locationIndex) => normalizeBusinessLocation(rest, idx, location, locationIndex));
+  const sourceRows = locations.length ? locations : [null];
+  return sourceRows
+    .map((location, locationIndex) => normalizeBusinessLocation(rest, idx, location, locationIndex))
+    .filter((entry) => entry?.hasVerifiedCoords === true);
 }
 
 function cleanupLeaflet() {
@@ -241,8 +237,62 @@ function isDiscoverableMapBusiness(location = {}) {
   return typeKey !== "ecommerce";
 }
 
+function isDiscoverableRestaurant(rest = {}) {
+  if (!isPublicBusinessRecord(rest)) return false;
+  const typeKey = normalizeRestaurantType(
+    rest?.type
+    || rest?.customerType
+    || rest?.category
+    || rest?.kind
+    || rest?.restaurantType
+    || ""
+  );
+  return typeKey !== "ecommerce";
+}
+
 function getDiscoverableMapLocations(locations = state.businessLocations) {
-  return (Array.isArray(locations) ? locations : []).filter(isDiscoverableMapBusiness);
+  return (Array.isArray(locations) ? locations : []).filter((location) => (
+    isDiscoverableMapBusiness(location) && hasUsableMapCoords(location)
+  ));
+}
+
+function formatBusinessLocationLabel(value = "") {
+  const label = String(value || "").trim();
+  return label || LOCATION_UNVERIFIED_LABEL;
+}
+
+function renderMapTruthState() {
+  const discoverableRestaurants = (Array.isArray(state.restaurants) ? state.restaurants : [])
+    .filter((rest) => isDiscoverableRestaurant(rest));
+  if (!discoverableRestaurants.length) return "";
+  const mappedLocations = getDiscoverableMapLocations(state.businessLocations);
+  const mappedBusinessIds = new Set(
+    mappedLocations
+      .map((entry) => String(entry?.id || "").trim())
+      .filter(Boolean)
+  );
+  const withoutCoordsCount = discoverableRestaurants.reduce((acc, rest) => {
+    const id = String(rest?.id || "").trim();
+    if (!id || mappedBusinessIds.has(id)) return acc;
+    return acc + 1;
+  }, 0);
+  if (!mappedLocations.length) {
+    return `
+      <div class="inline-flex max-w-full items-center gap-2 rounded-2xl bg-amber-50 border border-amber-200/80 shadow-sm px-4 py-3 text-[11px] font-bold text-amber-900">
+        ${icon("map-pin-off", "w-4 h-4 text-amber-600 flex-shrink-0")}
+        <span class="min-w-0">Keine verifizierten Standorte verfuegbar. Orte ohne Koordinaten werden nicht auf der Karte gezeigt.</span>
+      </div>
+    `;
+  }
+  if (withoutCoordsCount > 0) {
+    return `
+      <div class="inline-flex max-w-full items-center gap-2 rounded-2xl bg-slate-100/90 border border-slate-200/80 shadow-sm px-4 py-3 text-[11px] font-bold text-slate-700">
+        ${icon("info", "w-4 h-4 text-slate-500 flex-shrink-0")}
+        <span class="min-w-0">${withoutCoordsCount} Restaurant(s) ohne verifizierte Koordinaten sind ausgeblendet.</span>
+      </div>
+    `;
+  }
+  return "";
 }
 
 function renderMapNotice() {
@@ -297,7 +347,10 @@ function setMapNotice(message = "", { durationMs = 4200 } = {}) {
 function updateMapSheet() {
   const slot = document.getElementById("mapSheetSlot");
   if (!slot) return;
-  if (state.selectedBusiness && !isDiscoverableMapBusiness(state.selectedBusiness)) {
+  if (state.selectedBusiness && (
+    !isDiscoverableMapBusiness(state.selectedBusiness)
+    || !hasUsableMapCoords(state.selectedBusiness)
+  )) {
     state.selectedBusiness = null;
   }
   slot.innerHTML = state.selectedBusiness ? renderMapSheet(state.selectedBusiness) : "";
@@ -507,7 +560,7 @@ function updateSearchBusinessNodes(biz) {
   if (!biz?.id) return;
   const bizId = escapeSelector(biz.id);
   const name = biz.name || "Business";
-  const city = biz.city || "Prishtina";
+  const city = formatBusinessLocationLabel(biz.city);
   document.querySelectorAll(`[data-search-business="${bizId}"]`).forEach((el) => {
     if (!(el instanceof HTMLElement)) return;
     el.dataset.searchName = name;
@@ -549,7 +602,7 @@ function normalizeBusinessResult(rest) {
   return {
     id: rest.id || rest.restaurantId || "",
     name,
-    city: rest.city || rest.location || rest.address || "Prishtina",
+    city: String(rest.city || rest.location || rest.address || "").trim(),
     logo: rest.logoUrl || rest.logo || rest.image || ""
   };
 }
@@ -576,7 +629,7 @@ function buildBusinessResultsFromFeed(posts) {
     map.set(key, {
       id: id || key,
       name: post.business || "Business",
-      city: post.location || "Prishtina",
+      city: String(post.location || post.city || "").trim(),
       logo: post.logo || ""
     });
   });
@@ -621,7 +674,7 @@ function normalizeUserSearchResult(doc) {
     handle,
     email,
     avatar: data.avatarUrl || data.avatar || '',
-    location: data.city || "Prishtina",
+    location: String(data.city || data.location || "").trim(),
     followers: data.followersCount ?? data.followers ?? 0,
     following: data.followingCount ?? data.following ?? 0,
     role: data.role || "user",
@@ -866,6 +919,7 @@ function renderMapView() {
   const mapInfoLabel = leafletLoadFailed
     ? "Karte konnte nicht geladen werden."
     : (leafletLoadPromise ? "Karte wird geladen ..." : "Karte wird vorbereitet ...");
+  const mapTruthState = renderMapTruthState();
   return `
     <div class="p-5 pb-8 h-full flex flex-col relative animate-in fade-in duration-700">
       <div class="mb-4 px-2 flex justify-between items-end">
@@ -874,6 +928,7 @@ function renderMapView() {
           <p class="text-slate-400 text-xs font-bold uppercase tracking-widest mt-1 italic">Entdecke Lokale</p>
         </div>
       </div>
+      ${mapTruthState ? `<div class="mb-3 px-2">${mapTruthState}</div>` : ""}
 
       <div class="relative flex-1 bg-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200/50 min-h-[500px]">
         <div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>
@@ -919,13 +974,14 @@ function renderSearchUserItem(user) {
 function renderSearchBusinessItem(biz) {
   const name = biz.name || "Business";
   const logoUrl = resolveRestaurantLogo(biz.id, biz.logo, "avatar");
+  const cityLabel = formatBusinessLocationLabel(biz.city);
   const logoAttr = biz.id ? `data-search-logo="${escapeHtml(biz.id)}"` : "";
   return `
     <button data-search-business="${escapeHtml(biz.id)}" data-search-name="${escapeHtml(name)}" class="w-full flex items-center gap-4 p-4 rounded-[2rem] bg-white border border-slate-100 shadow-sm hover:shadow-md transition-all text-left">
       <img src="${escapeHtml(logoUrl)}" ${logoAttr} data-img-key="search-biz:${escapeHtml(biz.id)}" class="w-12 h-12 rounded-2xl object-contain bg-white" />
       <div class="flex-1 min-w-0">
         <p data-search-business-name class="text-sm font-black text-slate-900 truncate">${escapeHtml(name)}</p>
-        <p data-search-business-city class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(biz.city)}</p>
+        <p data-search-business-city class="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">${escapeHtml(cityLabel)}</p>
       </div>
       <span class="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Business</span>
     </button>

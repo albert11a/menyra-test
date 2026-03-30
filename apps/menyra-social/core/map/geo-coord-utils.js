@@ -29,18 +29,92 @@ export function normalizeCoordPairCore(latValue, lngValue, {
   return null;
 }
 
+function toTimestampMillis(value) {
+  if (!value && value !== 0) return 0;
+  if (value instanceof Date) {
+    const millis = value.getTime();
+    return Number.isFinite(millis) ? millis : 0;
+  }
+  if (typeof value?.toMillis === "function") {
+    const millis = Number(value.toMillis());
+    return Number.isFinite(millis) ? millis : 0;
+  }
+  if (typeof value?.seconds === "number") {
+    const seconds = Number(value.seconds);
+    const nanos = Number(value.nanoseconds || 0);
+    if (Number.isFinite(seconds) && Number.isFinite(nanos)) {
+      return (seconds * 1000) + Math.floor(nanos / 1000000);
+    }
+  }
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 1000000000000) return numeric;
+  const parsed = Date.parse(String(value));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function withCoordMeta(coords, source = null) {
+  if (!coords || !source || typeof source !== "object") return coords;
+  const next = { ...coords };
+  const metaFields = [
+    "verified",
+    "isVerified",
+    "verifiedAt",
+    "updatedAt",
+    "updated_at",
+    "accuracy",
+    "accuracyMeters",
+    "horizontalAccuracy",
+    "confidence",
+    "confidenceScore",
+    "source"
+  ];
+  metaFields.forEach((field) => {
+    const value = source?.[field];
+    if (value === undefined || value === null || value === "") return;
+    next[field] = value;
+  });
+  return next;
+}
+
+function extractCoordTrustScoreCore(value = {}) {
+  if (!value || typeof value !== "object") return 0;
+  let score = 0;
+  if (value.verified === true || value.isVerified === true) {
+    score += 2;
+  }
+  const verifiedAtMs = toTimestampMillis(value.verifiedAt);
+  if (verifiedAtMs > 0) score += 2;
+  const updatedAtMs = Math.max(
+    toTimestampMillis(value.updatedAt),
+    toTimestampMillis(value.updated_at)
+  );
+  if (updatedAtMs > 0) score += 1;
+  const confidence = Number(value.confidence ?? value.confidenceScore);
+  if (Number.isFinite(confidence)) {
+    if (confidence >= 0.95) score += 2;
+    else if (confidence >= 0.8) score += 1;
+  }
+  const accuracy = Number(value.accuracy ?? value.accuracyMeters ?? value.horizontalAccuracy);
+  if (Number.isFinite(accuracy) && accuracy > 0 && accuracy <= 200) score += 1;
+  return score;
+}
+
 export function preferStableCoordsCore(candidate, reference, {
   normalizeCoordPairFn
 } = {}) {
   const normalizeCoordPair = typeof normalizeCoordPairFn === "function"
     ? normalizeCoordPairFn
     : normalizeCoordPairCore;
-  const direct = candidate ? normalizeCoordPair(candidate.lat, candidate.lng) : null;
-  const ref = reference ? normalizeCoordPair(reference.lat, reference.lng) : null;
+  const direct = candidate ? withCoordMeta(normalizeCoordPair(candidate.lat, candidate.lng), candidate) : null;
+  const ref = reference ? withCoordMeta(normalizeCoordPair(reference.lat, reference.lng), reference) : null;
   if (!direct) return ref;
   if (!ref) return direct;
+  const candidateTrust = extractCoordTrustScoreCore(candidate);
+  const referenceTrust = extractCoordTrustScoreCore(reference);
+  if (candidateTrust > referenceTrust) return direct;
+  if (referenceTrust > candidateTrust + 1) return ref;
   const isExtremeOutlier = Math.abs(direct.lat - ref.lat) > 1.5 || Math.abs(direct.lng - ref.lng) > 1.5;
-  return isExtremeOutlier ? ref : direct;
+  return (isExtremeOutlier && referenceTrust > candidateTrust) ? ref : direct;
 }
 
 export function resolveCoordsFromShapeCore(shape, {
@@ -50,12 +124,12 @@ export function resolveCoordsFromShapeCore(shape, {
     ? normalizeCoordPairFn
     : normalizeCoordPairCore;
   if (!shape || typeof shape !== "object") return null;
-  return normalizeCoordPair(shape.lat, shape.lng)
-    || normalizeCoordPair(shape.latitude, shape.longitude)
-    || normalizeCoordPair(shape.lat, shape.lon)
-    || normalizeCoordPair(shape.latitude, shape.lon)
-    || normalizeCoordPair(shape._lat, shape._long)
-    || normalizeCoordPair(shape._latitude, shape._longitude);
+  return withCoordMeta(normalizeCoordPair(shape.lat, shape.lng), shape)
+    || withCoordMeta(normalizeCoordPair(shape.latitude, shape.longitude), shape)
+    || withCoordMeta(normalizeCoordPair(shape.lat, shape.lon), shape)
+    || withCoordMeta(normalizeCoordPair(shape.latitude, shape.lon), shape)
+    || withCoordMeta(normalizeCoordPair(shape._lat, shape._long), shape)
+    || withCoordMeta(normalizeCoordPair(shape._latitude, shape._longitude), shape);
 }
 
 export function resolveCoordsFromEntityCore(entity, {
@@ -69,11 +143,11 @@ export function resolveCoordsFromEntityCore(entity, {
     ? resolveCoordsFromShapeFn
     : ((value) => resolveCoordsFromShapeCore(value, { normalizeCoordPairFn: normalizeCoordPair }));
   if (!entity || typeof entity !== "object") return null;
-  return normalizeCoordPair(entity.gpsLat, entity.gpsLng)
-    || normalizeCoordPair(entity.lat, entity.lng)
-    || normalizeCoordPair(entity.latitude, entity.longitude)
-    || normalizeCoordPair(entity.lat, entity.lon)
-    || normalizeCoordPair(entity.latitude, entity.lon)
+  return withCoordMeta(normalizeCoordPair(entity.gpsLat, entity.gpsLng), entity)
+    || withCoordMeta(normalizeCoordPair(entity.lat, entity.lng), entity)
+    || withCoordMeta(normalizeCoordPair(entity.latitude, entity.longitude), entity)
+    || withCoordMeta(normalizeCoordPair(entity.lat, entity.lon), entity)
+    || withCoordMeta(normalizeCoordPair(entity.latitude, entity.lon), entity)
     || resolveCoordsFromShape(entity.geo)
     || resolveCoordsFromShape(entity.coords)
     || resolveCoordsFromShape(entity.gps)

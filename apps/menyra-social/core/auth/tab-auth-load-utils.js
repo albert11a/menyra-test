@@ -170,8 +170,8 @@ export function ensureTabDataCore({
     return nextPromise;
   };
 
-  const needsRestaurants = tab === "map" || tab === "search" || tab === "orders" || (!FAST_MODE && tab === "feed");
-  if (needsRestaurants && !dataLoaded.restaurants) {
+  const shouldPrimeRestaurantTruth = !dataLoaded.restaurants;
+  if (shouldPrimeRestaurantTruth) {
     dataLoaded.restaurants = true;
     scheduleIdleSafe(() => {
       loadRestaurantsSafe().catch((err) => console.error(err));

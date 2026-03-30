@@ -1,4 +1,8 @@
 import { clearPostEntityMap, projectPostCollectionThroughEntityMap } from "../profile/post-entity-registry-utils.js";
+import {
+  buildRestaurantTruthSignatureCore,
+  isBootstrapRestaurantPreviewRecordCore
+} from "../common/restaurant-identity-runtime-controller.js";
 
 export function createSessionDataRuntimeController({
   state = null,
@@ -130,6 +134,75 @@ export function createSessionDataRuntimeController({
   let storiesRefreshUi = false;
   let renderRequested = false;
 
+  function isGenericBusinessLabel(value = "") {
+    return String(value || "").trim().toLowerCase() === "business";
+  }
+
+  function hasRestaurantCoords(record = {}) {
+    if (!record || typeof record !== "object") return false;
+    const pairs = [
+      [record.lat, record.lng],
+      [record.latitude, record.longitude],
+      [record.gpsLat, record.gpsLng],
+      [record.geo?.lat, record.geo?.lng],
+      [record.geo?.latitude, record.geo?.longitude],
+      [record.coords?.lat, record.coords?.lng],
+      [record.coords?.latitude, record.coords?.longitude],
+      [record.location?.lat, record.location?.lng]
+    ];
+    for (const [latRaw, lngRaw] of pairs) {
+      const lat = Number(latRaw);
+      const lng = Number(lngRaw);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      if (Math.abs(lat) < 0.000001 && Math.abs(lng) < 0.000001) continue;
+      if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return true;
+      if (Math.abs(lat) <= 180 && Math.abs(lng) <= 90) return true;
+    }
+    return false;
+  }
+
+  function isRestaurantTruthIncomplete(record = {}) {
+    if (!record || typeof record !== "object") return true;
+    if (isBootstrapRestaurantPreviewRecordCore(record)) return true;
+    const name = String(
+      record.name
+      || record.restaurantName
+      || record.displayName
+      || record.businessName
+      || ""
+    ).trim();
+    const logo = String(record.logoUrl || record.logo || record.logoURL || "").trim();
+    const cityOrAddress = String(record.city || record.address || record.location || "").trim();
+    const type = String(
+      record.type
+      || record.customerType
+      || record.category
+      || record.kind
+      || record.restaurantType
+      || ""
+    ).trim();
+    const hasName = !!name && !isGenericBusinessLabel(name);
+    const hasLogo = !!logo;
+    const hasLocation = !!cityOrAddress || hasRestaurantCoords(record);
+    const hasType = !!type;
+    return !(hasName && hasLogo && hasType && hasLocation);
+  }
+
+  function filterCanonicalRestaurants(items = []) {
+    if (!Array.isArray(items)) return [];
+    const next = [];
+    const seen = new Set();
+    items.forEach((row) => {
+      if (!row || typeof row !== "object") return;
+      const id = String(row.id || row.restaurantId || "").trim();
+      if (!id || seen.has(id)) return;
+      if (isBootstrapRestaurantPreviewRecordCore(row)) return;
+      seen.add(id);
+      next.push({ ...row, id });
+    });
+    return next;
+  }
+
   if (!state || !dataLoaded) {
     return {
       loadPersisted: () => {},
@@ -160,12 +233,11 @@ export function createSessionDataRuntimeController({
     const restaurantsCache = readCacheFn(cacheKeys.restaurants);
     let needsRestaurantMetaHydration = false;
     if (restaurantsCache?.data?.length) {
-      state.restaurants = restaurantsCache.data;
-      needsRestaurantMetaHydration = restaurantsCache.data.some((rest) => {
-        const logo = String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
-        const name = String(rest?.name || rest?.restaurantName || rest?.displayName || "").trim().toLowerCase();
-        return !logo || !name || name === "business";
-      });
+      const canonicalCachedRestaurants = filterCanonicalRestaurants(restaurantsCache.data);
+      if (canonicalCachedRestaurants.length) {
+        state.restaurants = canonicalCachedRestaurants;
+        needsRestaurantMetaHydration = canonicalCachedRestaurants.some((rest) => isRestaurantTruthIncomplete(rest));
+      }
     }
 
     const feedCache = readCacheFn(cacheKeys.feed);
@@ -200,13 +272,15 @@ export function createSessionDataRuntimeController({
       if (needsRestaurantMetaHydration) {
         void Promise.resolve(enrichRestaurantsWithPublicMetaFn(state.restaurants))
           .then((list) => {
-            state.restaurants = list;
+            const canonicalList = filterCanonicalRestaurants(list);
+            if (!canonicalList.length) return;
+            state.restaurants = canonicalList;
             rebuildBusinessLocationsFn();
             const feedChanged = syncFeedPostLogosFn();
             const storiesChanged = state.stories.length
               ? false
               : refreshFeedStoriesFn({ posts: state.feedPosts, force: true });
-            writeCacheFn(cacheKeys.restaurants, list);
+            writeCacheFn(cacheKeys.restaurants, canonicalList);
             if (feedChanged || storiesChanged) {
               const inMain = getLastRenderModeFn() === "main";
               const updatedFeed = state.activeTab === "feed" && inMain && updateFeedDomFn();
@@ -546,6 +620,7 @@ export function createSessionDataRuntimeController({
     clearPostEntityMap(state);
     state.feedPosts = projectPostCollectionThroughEntityMap(state, state.feedPosts);
     state.postMeta = {};
+    state.bootstrapRestaurantPreview = [];
     state.userPosts = [];
     state.businessPosts = [];
     state.profileView = null;
@@ -644,14 +719,7 @@ export function createSessionDataRuntimeController({
   }
 
   async function loadRestaurants({ force = false } = {}) {
-    const buildRestaurantIdentitySignature = (items = []) => (Array.isArray(items) ? items : [])
-      .map((rest) => {
-        const id = String(rest?.id || "").trim();
-        const name = String(rest?.name || rest?.restaurantName || rest?.displayName || "").trim();
-        const logo = String(rest?.logoUrl || rest?.logo || rest?.logoURL || "").trim();
-        return `${id}|${name}|${logo}`;
-      })
-      .join(",");
+    const buildRestaurantIdentitySignature = (items = []) => buildRestaurantTruthSignatureCore(items);
     const refreshRestaurantDependentViews = () => {
       rebuildBusinessLocationsFn();
       if (getLastRenderModeFn() === "main") updateShellDomFn();
@@ -676,20 +744,30 @@ export function createSessionDataRuntimeController({
     };
     const applyRestaurants = (list = [], { shouldWriteCache = false } = {}) => {
       if (!Array.isArray(list)) return;
-      if (shouldWriteCache) writeCacheFn(cacheKeys.restaurants, list);
-      state.restaurants = list;
+      const canonicalList = filterCanonicalRestaurants(list);
+      if (shouldWriteCache) writeCacheFn(cacheKeys.restaurants, canonicalList);
+      state.restaurants = canonicalList;
+      if (canonicalList.length && Array.isArray(state.bootstrapRestaurantPreview) && state.bootstrapRestaurantPreview.length) {
+        state.bootstrapRestaurantPreview = [];
+        if (cacheKeys?.restaurantsPreview) {
+          writeCacheFn(cacheKeys.restaurantsPreview, []);
+        }
+      }
       refreshRestaurantDependentViews();
     };
     const reconcileRestaurantMeta = (seed = [], { shouldWriteCache = false } = {}) => {
       if (!Array.isArray(seed) || !seed.length) return;
-      const seedSignature = buildRestaurantIdentitySignature(seed);
-      void Promise.resolve(enrichRestaurantsWithPublicMetaFn(seed))
+      const canonicalSeed = filterCanonicalRestaurants(seed);
+      if (!canonicalSeed.length) return;
+      const seedSignature = buildRestaurantIdentitySignature(canonicalSeed);
+      void Promise.resolve(enrichRestaurantsWithPublicMetaFn(canonicalSeed))
         .then((enriched) => {
-          if (!Array.isArray(enriched) || !enriched.length) return;
-          const nextSignature = buildRestaurantIdentitySignature(enriched);
+          const canonicalEnriched = filterCanonicalRestaurants(enriched);
+          if (!canonicalEnriched.length) return;
+          const nextSignature = buildRestaurantIdentitySignature(canonicalEnriched);
           if (nextSignature === seedSignature) return;
           if (nextSignature === buildRestaurantIdentitySignature(state.restaurants)) return;
-          applyRestaurants(enriched, { shouldWriteCache });
+          applyRestaurants(canonicalEnriched, { shouldWriteCache });
         })
         .catch(() => null);
     };

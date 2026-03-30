@@ -636,6 +636,7 @@ const FAST_MODE = true;
 const CACHE_KEYS = {
   feed: "menyra_social_feed_cache_v1",
   restaurants: "menyra_social_restaurants_cache_v1",
+  restaurantsPreview: "menyra_social_restaurants_preview_cache_v1",
   stories: "menyra_social_stories_cache_v1"
 };
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
@@ -733,6 +734,7 @@ const state = {
   feedPosts: [],
   postEntityMap: new Map(),
   restaurants: [],
+  bootstrapRestaurantPreview: [],
   restaurantMap: new Map(),
   businessLocations: [],
   stories: [],
