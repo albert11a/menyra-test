@@ -123,6 +123,8 @@ export function createSessionDataRuntimeController({
   let feedFreshReconcileQueued = false;
   let restaurantsNetworkLoadPromise = null;
   let feedNetworkLoadPromise = null;
+  const menuNetworkLoadPromises = new Map();
+  const menuFreshReconcileQueuedKeys = new Set();
   let storiesRefreshQueued = false;
   let storiesRefreshForce = false;
   let storiesRefreshUi = false;
@@ -225,7 +227,7 @@ export function createSessionDataRuntimeController({
     storiesRefreshUi = storiesRefreshUi || !!refreshUi;
     if (storiesRefreshQueued) return;
     storiesRefreshQueued = true;
-    scheduleIdleFn(() => {
+    const runRefresh = () => {
       const nextForce = storiesRefreshForce;
       const nextRefreshUi = storiesRefreshUi;
       storiesRefreshQueued = false;
@@ -235,7 +237,12 @@ export function createSessionDataRuntimeController({
         force: nextForce,
         refreshUi: nextRefreshUi
       })).catch(() => null);
-    });
+    };
+    if (refreshUi) {
+      queueMicrotask(runRefresh);
+      return;
+    }
+    scheduleIdleFn(runRefresh);
   }
 
   function serializePostSignatureValue(value) {
@@ -930,7 +937,9 @@ export function createSessionDataRuntimeController({
   }
 
   async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
-    if (!restaurantId) {
+    const safeRestaurantId = String(restaurantId || "").trim();
+    const safeSource = String(source || "hybrid").trim().toLowerCase() === "collection" ? "collection" : "hybrid";
+    if (!safeRestaurantId) {
       stopMenuMetaListener();
       state.menu = {
         ...state.menu,
@@ -938,71 +947,112 @@ export function createSessionDataRuntimeController({
         items: [],
         loading: false,
         error: "",
-        source,
+        source: safeSource,
         statusBadgeVisible: true
       };
       return;
     }
-    startMenuMetaListener(restaurantId);
-    const cacheKey = menuCacheKeyFn(restaurantId, source);
+    startMenuMetaListener(safeRestaurantId);
+    const cacheKey = menuCacheKeyFn(safeRestaurantId, safeSource);
     const cached = menuCacheMap.get(cacheKey);
     if (cached && cached.items?.length && !force) {
-      const cachedNeedsImages = cached.items.some((it) => !hasMenuItemImagesFn(it));
-      if (!cachedNeedsImages) {
-        state.menu = {
-          ...state.menu,
-          restaurantId,
-          items: cached.items,
-          loading: false,
-          error: "",
-          source,
-          statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
-        };
-        return;
+      state.menu = {
+        ...state.menu,
+        restaurantId: safeRestaurantId,
+        items: cached.items,
+        loading: false,
+        error: "",
+        source: safeSource,
+        statusBadgeVisible: typeof cached.statusBadgeVisible === "boolean" ? cached.statusBadgeVisible : true
+      };
+      requestRender();
+      if (!menuFreshReconcileQueuedKeys.has(cacheKey)) {
+        menuFreshReconcileQueuedKeys.add(cacheKey);
+        queueMicrotask(() => {
+          void loadMenuForRestaurant(safeRestaurantId, { force: true, source: safeSource })
+            .finally(() => {
+              menuFreshReconcileQueuedKeys.delete(cacheKey);
+            });
+        });
       }
+      return;
     }
-    state.menu = { ...state.menu, restaurantId, loading: true, error: "", source };
+    const inFlight = menuNetworkLoadPromises.get(cacheKey);
+    if (inFlight) {
+      await inFlight;
+      return;
+    }
+    const keepCurrentItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items);
+    state.menu = {
+      ...state.menu,
+      restaurantId: safeRestaurantId,
+      items: keepCurrentItems ? state.menu.items : [],
+      loading: true,
+      error: "",
+      source: safeSource
+    };
     requestRender();
-    try {
-      let items = [];
-      let statusBadgeVisible = true;
-      if (source === "collection") {
-        items = await loadMenuItemsFromCollectionFn(restaurantId);
-        const needsImages = items.some((it) => !hasMenuItemImagesFn(it));
-        if (needsImages) {
-          const publicItems = await loadPublicMenuItemsFn(restaurantId);
-          const fallbackItems = publicItems.length ? publicItems : await loadLegacyMenuItemsFn(restaurantId);
-          if (fallbackItems.length) {
-            items = fillMenuImagesFromFallbackFn(items, fallbackItems);
-          }
-        }
-      } else {
-        items = await loadMenuHybridFn(restaurantId);
-      }
+    const request = (async () => {
       try {
-        const meta = await loadMenuMetaFn(restaurantId);
+        let items = [];
+        let statusBadgeVisible = true;
+        const metaPromise = Promise.resolve(loadMenuMetaFn(safeRestaurantId))
+          .catch((err) => {
+            console.error(err);
+            return { statusBadgeVisible: true };
+          });
+        if (safeSource === "collection") {
+          items = await loadMenuItemsFromCollectionFn(safeRestaurantId);
+          const needsImages = items.some((it) => !hasMenuItemImagesFn(it));
+          if (needsImages) {
+            const [publicItems, legacyItems] = await Promise.all([
+              loadPublicMenuItemsFn(safeRestaurantId),
+              loadLegacyMenuItemsFn(safeRestaurantId)
+            ]);
+            const fallbackItems = publicItems.length ? publicItems : legacyItems;
+            if (fallbackItems.length) {
+              items = fillMenuImagesFromFallbackFn(items, fallbackItems);
+            }
+          }
+        } else {
+          items = await loadMenuHybridFn(safeRestaurantId);
+        }
+        const meta = await metaPromise;
         if (typeof meta?.statusBadgeVisible === "boolean") {
           statusBadgeVisible = meta.statusBadgeVisible;
         }
+        menuCacheMap.set(cacheKey, { items, statusBadgeVisible, ts: Date.now() });
+        state.menu = {
+          ...state.menu,
+          restaurantId: safeRestaurantId,
+          items,
+          loading: false,
+          error: "",
+          source: safeSource,
+          statusBadgeVisible
+        };
+        requestRender();
       } catch (err) {
         console.error(err);
+        const fallbackItems = state.menu.restaurantId === safeRestaurantId && Array.isArray(state.menu.items)
+          ? state.menu.items
+          : [];
+        state.menu = {
+          ...state.menu,
+          restaurantId: safeRestaurantId,
+          items: fallbackItems,
+          loading: false,
+          error: "Menu laden fehlgeschlagen.",
+          source: safeSource,
+          statusBadgeVisible: true
+        };
+        requestRender();
+      } finally {
+        menuNetworkLoadPromises.delete(cacheKey);
       }
-      menuCacheMap.set(cacheKey, { items, statusBadgeVisible, ts: Date.now() });
-      state.menu = { ...state.menu, restaurantId, items, loading: false, error: "", source, statusBadgeVisible };
-      requestRender();
-    } catch (err) {
-      console.error(err);
-      state.menu = {
-        ...state.menu,
-        restaurantId,
-        items: [],
-        loading: false,
-        error: "Menu laden fehlgeschlagen.",
-        source,
-        statusBadgeVisible: true
-      };
-      requestRender();
-    }
+    })();
+    menuNetworkLoadPromises.set(cacheKey, request);
+    await request;
   }
 
   async function bootstrapUser(user) {

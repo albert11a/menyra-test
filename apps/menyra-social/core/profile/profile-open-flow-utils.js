@@ -135,6 +135,11 @@ export function createProfileOpenFlowControllerCore({
       const rest = restaurantId
         ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
         : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
+      const targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
+      if (isMenuTopTab && targetMenuRestaurantId) {
+        ensureMenuData({ restaurantId: targetMenuRestaurantId });
+        ensureFocusData({ restaurantId: targetMenuRestaurantId });
+      }
 
       const fallbackPosts = state.feedPosts
         .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))

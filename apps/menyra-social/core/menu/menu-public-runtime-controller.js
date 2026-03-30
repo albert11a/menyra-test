@@ -704,22 +704,20 @@ export function createMenuPublicRuntimeController({
         safeRestaurantId
       );
     }
-    const collectionItems = await loadMenuItemsFromCollection(safeRestaurantId);
+    const [collectionItems, legacyItems] = await Promise.all([
+      loadMenuItemsFromCollection(safeRestaurantId),
+      loadLegacyMenuItems(safeRestaurantId)
+    ]);
     if (collectionItems.length) {
-      try {
-        await publishMenuToPublic(safeRestaurantId, collectionItems);
-      } catch (err) {
+      void publishMenuToPublic(safeRestaurantId, collectionItems).catch((err) => {
         console.error(err);
-      }
+      });
       return collectionItems;
     }
-    const legacyItems = await loadLegacyMenuItems(safeRestaurantId);
     if (legacyItems.length) {
-      try {
-        await publishMenuToPublic(safeRestaurantId, legacyItems);
-      } catch (err) {
+      void publishMenuToPublic(safeRestaurantId, legacyItems).catch((err) => {
         console.error(err);
-      }
+      });
       return legacyItems;
     }
     return [];
