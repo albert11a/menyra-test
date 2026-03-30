@@ -607,10 +607,13 @@ const PERF_LOW_MEMORY = Number.isFinite(PERF_DEVICE_MEMORY) && PERF_DEVICE_MEMOR
 const PERF_LOW_CPU = Number.isFinite(PERF_CPU_CORES) && PERF_CPU_CORES > 0 && PERF_CPU_CORES <= 4;
 const PERF_WARM_VISIT = String(safeStorage.getItem(PERF_WARM_KEY) || "").trim() === "1";
 const PERF_CONSTRAINED = PERF_SLOW_NETWORK || PERF_SAVE_DATA || PERF_LOW_MEMORY || PERF_LOW_CPU || !PERF_WARM_VISIT;
+const FEED_TRUTH_LIMIT = 20;
+const FEED_FALLBACK_TRUTH_LIMIT = 40;
+const FEED_DELTA_TRUTH_LIMIT = 8;
 const FAST_LIMITS = {
-  feed: PERF_CONSTRAINED ? 10 : 20,
-  feedFallback: PERF_CONSTRAINED ? 14 : 40,
-  feedDelta: PERF_CONSTRAINED ? 6 : 8,
+  feed: FEED_TRUTH_LIMIT,
+  feedFallback: FEED_FALLBACK_TRUTH_LIMIT,
+  feedDelta: FEED_DELTA_TRUTH_LIMIT,
   userPosts: PERF_CONSTRAINED ? 12 : 24,
   businessPosts: PERF_CONSTRAINED ? 12 : 24,
   profilePosts: PERF_CONSTRAINED ? 24 : 36,
@@ -647,7 +650,7 @@ const CACHE_TTL_MS = {
   crmPages: 90 * 1000
 };
 const FEED_DELTA_MIN_MS = 15 * 60 * 1000;
-const FEED_PRELOAD_LIMIT = PERF_CONSTRAINED ? 1 : 3;
+const FEED_PRELOAD_LIMIT = 3;
 const FEED_PRELOAD_ATTR = "data-menyrasocial-feed-preload";
 const FEED_META_LISTEN_LIMIT = 20;
 const CRM_PAGE_SIZE = 20;

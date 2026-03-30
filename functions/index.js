@@ -1081,9 +1081,10 @@ exports.socialBootstrapFeed = functions
     }
 
     try {
+      const FEED_BOOTSTRAP_LIMIT = 20;
       const [restaurantsSnap, feedSnap, storiesSnap] = await Promise.all([
         db.collection("restaurants").limit(120).get(),
-        queryActiveFeed(16),
+        queryActiveFeed(FEED_BOOTSTRAP_LIMIT),
         queryActiveStories(16)
       ]);
 
@@ -1181,7 +1182,7 @@ exports.socialBootstrapFeed = functions
         ts: Date.now(),
         data: {
           restaurants: restaurants.slice(0, 120),
-          feedPosts: feedPosts.slice(0, 16),
+          feedPosts: feedPosts.slice(0, FEED_BOOTSTRAP_LIMIT),
           stories
         }
       });

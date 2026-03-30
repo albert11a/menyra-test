@@ -292,7 +292,7 @@ export function createFeedViewOrchestrationController({
     const storyBorderAttr = storyId ? `data-story-border="${storyId}"` : "";
     const storyNameAttr = storyId ? `data-story-name="${storyId}"` : "";
     const storyItemAttr = storyId ? `data-story-item="${storyId}"` : "";
-    const eager = index === 0;
+    const eager = index < 4;
     const imgAttrs = eager
       ? `loading="eager" fetchpriority="high"`
       : `loading="lazy" fetchpriority="low"`;
@@ -332,7 +332,7 @@ export function createFeedViewOrchestrationController({
     const logoAttr = postId ? `data-feed-logo="${escapeHtmlFn(postId)}"` : "";
     const logoKeyAttr = postId ? `data-img-key="feed-logo:${escapeHtmlFn(postId)}"` : "";
     const heroKeyAttr = postId ? `data-img-key="feed-hero:${escapeHtmlFn(postId)}"` : "";
-    const eager = index === 0;
+    const eager = index < 2;
     const heroAttrs = eager
       ? `loading="eager" fetchpriority="high"`
       : `loading="lazy" fetchpriority="low"`;
