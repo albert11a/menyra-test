@@ -1,12 +1,32 @@
-const CACHE_NAME = "mnyra-waiter-cache-v2";
 const CACHE_PREFIX = "mnyra-waiter-cache-";
 const APP_SCOPE = "/waiter/";
 const APP_ASSET_SCOPE = "/apps/waiter/";
 const APP_SHELL_URL = "/waiter/";
 const EXTERNAL_STATIC_HOSTS = new Set([
   "www.gstatic.com",
+  "cdn.jsdelivr.net",
   "unpkg.com"
 ]);
+const NAVIGATION_FETCH_TIMEOUT_MS = 3600;
+const RUNTIME_FETCH_TIMEOUT_MS = 4200;
+
+function sanitizeCacheToken(value) {
+  return String(value || "")
+    .trim()
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
+function resolveSwVersionToken() {
+  try {
+    const parsed = new URL(self.location.href);
+    const token = sanitizeCacheToken(parsed.searchParams.get("v"));
+    if (token) return token;
+  } catch {}
+  return "legacy";
+}
+
+const SW_VERSION_TOKEN = resolveSwVersionToken();
+const CACHE_NAME = `${CACHE_PREFIX}${SW_VERSION_TOKEN}`;
 
 self.addEventListener("install", () => {
   self.skipWaiting();
@@ -128,10 +148,22 @@ function isExternalStaticRequest(url, request) {
   return ["script", "style", "font", "image"].includes(request.destination);
 }
 
+async function fetchWithTimeout(request, timeoutMs = RUNTIME_FETCH_TIMEOUT_MS) {
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timer = controller
+    ? setTimeout(() => controller.abort(), Math.max(1, Number(timeoutMs) || RUNTIME_FETCH_TIMEOUT_MS))
+    : null;
+  try {
+    return await fetch(request, controller ? { signal: controller.signal } : undefined);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
-  const networkPromise = fetch(request)
+  const networkPromise = fetchWithTimeout(request)
     .then(async (response) => {
       if (response && (response.ok || response.type === "opaque")) {
         try {
@@ -153,7 +185,10 @@ async function staleWhileRevalidate(request) {
 async function networkFirst(request) {
   const cache = await caches.open(CACHE_NAME);
   try {
-    const response = await fetch(new Request(request, { cache: "no-cache" }));
+    const response = await fetchWithTimeout(
+      new Request(request, { cache: "no-cache" }),
+      NAVIGATION_FETCH_TIMEOUT_MS
+    );
     if (response && (response.ok || response.type === "opaque")) {
       cache.put(request, response.clone()).catch(() => null);
     }
@@ -184,7 +219,10 @@ self.addEventListener("fetch", (event) => {
   if (isNavigation && inScope) {
     event.respondWith((async () => {
       try {
-        const response = await fetch(new Request(req, { cache: "no-cache" }));
+        const response = await fetchWithTimeout(
+          new Request(req, { cache: "no-cache" }),
+          NAVIGATION_FETCH_TIMEOUT_MS
+        );
         const cache = await caches.open(CACHE_NAME);
         cache.put(APP_SHELL_URL, response.clone()).catch(() => null);
         return response;

@@ -10,6 +10,22 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <script>
     (() => {
+      window.__MENYRA_SOCIAL_DEGRADED__ = window.__MENYRA_SOCIAL_DEGRADED__ || {};
+      window.__MENYRA_SOCIAL_SET_DEGRADED__ = (kind, payload = {}) => {
+        const safeKind = String(kind || "").trim().toLowerCase();
+        if (!safeKind) return;
+        const next = {
+          active: payload?.active === true,
+          message: String(payload?.message || "").trim()
+        };
+        window.__MENYRA_SOCIAL_DEGRADED__[safeKind] = next;
+        window.dispatchEvent(new CustomEvent("menyra-social-vendor-degraded", {
+          detail: { kind: safeKind, ...next }
+        }));
+      };
+      try {
+        window.performance?.mark?.("mnyra.social.cold_guest.start");
+      } catch {}
       const LIGHT_UI_COLOR = "#f8fafc";
       const resolveUiChromeColor = () => {
         try {
@@ -81,6 +97,8 @@
   <link rel="dns-prefetch" href="//firestore.googleapis.com">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="dns-prefetch" href="//unpkg.com">
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,700;0,800;1,800&display=swap" rel="stylesheet">
@@ -584,6 +602,9 @@
   <script>
     (() => {
       const BOOTSTRAP_EVENT = "menyra-social-bootstrap";
+      const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
+        ? window.__MENYRA_SOCIAL_SET_DEGRADED__
+        : () => {};
       const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection || null;
       const effectiveType = String(connection?.effectiveType || "").trim().toLowerCase();
       const downlink = Number(connection?.downlink || 0);
@@ -598,7 +619,13 @@
         || "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed"
       ).trim();
       window.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ = BOOTSTRAP_TIMEOUT_MS;
-      if (!ENDPOINT) return;
+      if (!ENDPOINT) {
+        setDegraded("bootstrap", {
+          active: true,
+          message: "Schnellstart-Endpunkt fehlt. App laedt ohne Bootstrap-Preview."
+        });
+        return;
+      }
       const fetchBootstrap = async () => {
         const controller = ("AbortController" in window) ? new AbortController() : null;
         const timer = window.setTimeout(() => controller?.abort(), BOOTSTRAP_TIMEOUT_MS);
@@ -610,14 +637,32 @@
             cache: "no-store",
             signal: controller?.signal
           });
-          if (!response.ok) return;
+          if (!response.ok) {
+            setDegraded("bootstrap", {
+              active: true,
+              message: "Schnellstart momentan nicht erreichbar. App startet direkt mit Live-Load."
+            });
+            return;
+          }
           const payload = await response.json();
           const data = payload && typeof payload === "object" ? payload.data : null;
-          if (!data || typeof data !== "object") return;
+          if (!data || typeof data !== "object") {
+            setDegraded("bootstrap", {
+              active: true,
+              message: "Schnellstart lieferte unvollstaendige Daten. App nutzt nur Live-Load."
+            });
+            return;
+          }
+          setDegraded("bootstrap", { active: false, message: "" });
           window.__MENYRA_SOCIAL_BOOTSTRAP_PAYLOAD__ = data;
           window.dispatchEvent(new CustomEvent(BOOTSTRAP_EVENT, { detail: data }));
           return data;
-        } catch {}
+        } catch {
+          setDegraded("bootstrap", {
+            active: true,
+            message: "Schnellstart aktuell nicht verfuegbar. App laedt ohne Bootstrap-Preview."
+          });
+        }
         finally {
           window.clearTimeout(timer);
         }
@@ -634,25 +679,92 @@
   <script type="module" fetchpriority="high" src="/apps/menyra-social/social-app.js?v=2026-03-30-perf-sw-cache-02"></script>
   <script>
     (() => {
+      const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
+        ? window.__MENYRA_SOCIAL_SET_DEGRADED__
+        : () => {};
       const loadLucide = () => {
         if (window.lucide?.createIcons) {
+          setDegraded("icons", { active: false, message: "" });
           window.lucide.createIcons();
           return;
         }
         const existing = document.querySelector('script[data-menyrasocial-lucide="1"]');
         if (existing) return;
-        const script = document.createElement("script");
-        script.async = true;
-        script.src = "https://unpkg.com/lucide@latest/dist/umd/lucide.min.js";
-        script.dataset.menyrasocialLucide = "1";
-        script.addEventListener("load", () => {
-          try {
-            window.lucide?.createIcons?.();
-          } catch {}
-        }, { once: true });
-        (document.head || document.documentElement).appendChild(script);
+        const sources = [
+          "https://cdn.jsdelivr.net/npm/lucide@0.468.0/dist/umd/lucide.min.js",
+          "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"
+        ];
+        const loadFromSource = (index = 0) => {
+          if (index >= sources.length) {
+            setDegraded("icons", {
+              active: true,
+              message: "Icon-CDN nicht erreichbar. UI zeigt reduzierte Icon-Darstellung."
+            });
+            return;
+          }
+          const script = document.createElement("script");
+          script.async = true;
+          script.src = sources[index];
+          script.dataset.menyrasocialLucide = "1";
+          script.addEventListener("load", () => {
+            if (window.lucide?.createIcons) {
+              setDegraded("icons", { active: false, message: "" });
+              try {
+                window.lucide.createIcons();
+              } catch {}
+              return;
+            }
+            script.remove();
+            loadFromSource(index + 1);
+          }, { once: true });
+          script.addEventListener("error", () => {
+            script.remove();
+            loadFromSource(index + 1);
+          }, { once: true });
+          (document.head || document.documentElement).appendChild(script);
+        };
+        loadFromSource(0);
       };
       loadLucide();
+    })();
+  </script>
+  <script>
+    (() => {
+      const setDegraded = typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function"
+        ? window.__MENYRA_SOCIAL_SET_DEGRADED__
+        : () => {};
+      if (!document.fonts?.load) {
+        setDegraded("fonts", {
+          active: true,
+          message: "Webfont-API nicht verfuegbar. App nutzt Systemschrift."
+        });
+        return;
+      }
+      const timeoutMs = 2800;
+      let timeoutId = null;
+      const timeoutPromise = new Promise((resolve) => {
+        timeoutId = window.setTimeout(() => resolve(false), timeoutMs);
+      });
+      Promise.race([
+        document.fonts.load('1em "Plus Jakarta Sans"').then(() => true).catch(() => false),
+        timeoutPromise
+      ]).then((loaded) => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        if (loaded) {
+          setDegraded("fonts", { active: false, message: "" });
+          return;
+        }
+        setDegraded("fonts", {
+          active: true,
+          message: "Font-CDN nicht erreichbar. App nutzt Systemschrift."
+        });
+      }).catch(() => {
+        if (timeoutId) window.clearTimeout(timeoutId);
+        setDegraded("fonts", {
+          active: true,
+          message: "Font-CDN nicht erreichbar. App nutzt Systemschrift."
+        });
+      });
     })();
   </script>
   <script>

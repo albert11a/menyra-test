@@ -408,8 +408,10 @@ import {
 import { bindAppEventsCore as bindAppEventsMainCore } from "./core/app-events/app-events-main-bind-utils.js";
 const appEl = document.getElementById("app");
 const FIREBASE_MESSAGING_MODULE_URL = "https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging.js";
-const LEAFLET_JS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-const LEAFLET_CSS_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+const LEAFLET_JS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
+const LEAFLET_CSS_URL = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
+const LEAFLET_JS_FALLBACK_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+const LEAFLET_CSS_FALLBACK_URL = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
 
 const DEFAULT_PROFILE = {
   name: "",
@@ -641,6 +643,198 @@ const CACHE_KEYS = {
 };
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
 const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
+const SOCIAL_VENDOR_DEGRADED_EVENT = "menyra-social-vendor-degraded";
+const SOCIAL_RUNTIME_BUDGETS_MS = Object.freeze({
+  cold_guest_landing: 2200,
+  profile_open: 850,
+  menu_open: 950,
+  add_to_cart: 280,
+  chat_send: 800
+});
+const socialRuntimeBudgetMarks = new Map();
+let runtimeDegradedBridgeBound = false;
+let runtimeMediaProbeBound = false;
+let requestRuntimeUiRefresh = () => {};
+
+function supportsSocialBudgetPerf() {
+  return typeof performance !== "undefined"
+    && typeof performance.mark === "function"
+    && typeof performance.measure === "function";
+}
+
+function buildSocialBudgetMarkName(key = "", phase = "start") {
+  const safeKey = String(key || "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+  const safePhase = String(phase || "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+  return `mnyra.social.budget.${safeKey}.${safePhase}`;
+}
+
+function startSocialBudgetTrace(key = "", { markName = "" } = {}) {
+  if (!supportsSocialBudgetPerf()) return "";
+  const safeKey = String(key || "").trim();
+  if (!safeKey) return "";
+  const resolvedMarkName = String(markName || buildSocialBudgetMarkName(safeKey, "start")).trim();
+  if (!resolvedMarkName) return "";
+  try {
+    performance.mark(resolvedMarkName);
+    socialRuntimeBudgetMarks.set(safeKey, resolvedMarkName);
+    return resolvedMarkName;
+  } catch {
+    return "";
+  }
+}
+
+function finishSocialBudgetTrace(key = "", { startMarkName = "" } = {}) {
+  if (!supportsSocialBudgetPerf()) return null;
+  const safeKey = String(key || "").trim();
+  if (!safeKey) return null;
+  const resolvedStartMarkName = String(startMarkName || socialRuntimeBudgetMarks.get(safeKey) || "").trim();
+  if (!resolvedStartMarkName) return null;
+  const endMarkName = buildSocialBudgetMarkName(safeKey, "end");
+  try {
+    performance.mark(endMarkName);
+    const measureName = `mnyra.social.budget.${safeKey}`;
+    performance.measure(measureName, resolvedStartMarkName, endMarkName);
+    const entries = performance.getEntriesByName(measureName);
+    const lastEntry = entries.length ? entries[entries.length - 1] : null;
+    const durationMs = Number(lastEntry?.duration || 0) || 0;
+    const budgetMs = Number(SOCIAL_RUNTIME_BUDGETS_MS[safeKey] || 0) || 0;
+    const withinBudget = budgetMs > 0 ? durationMs <= budgetMs : true;
+    if (!state.runtimeBudgets || typeof state.runtimeBudgets !== "object") {
+      state.runtimeBudgets = {};
+    }
+    state.runtimeBudgets[safeKey] = {
+      durationMs,
+      budgetMs,
+      withinBudget,
+      measuredAt: Date.now()
+    };
+    if (!withinBudget) {
+      console.warn(`[mnyra][budget] ${safeKey} ${Math.round(durationMs)}ms > ${budgetMs}ms`);
+    }
+    return durationMs;
+  } catch {
+    return null;
+  } finally {
+    socialRuntimeBudgetMarks.delete(safeKey);
+    try {
+      performance.clearMarks(resolvedStartMarkName);
+      performance.clearMarks(endMarkName);
+    } catch {}
+  }
+}
+
+function finishSocialBudgetTraceSoon(key = "", options = {}) {
+  const safeKey = String(key || "").trim();
+  if (!safeKey) return;
+  const done = () => {
+    finishSocialBudgetTrace(safeKey, options);
+  };
+  if (typeof queueMicrotask === "function") {
+    queueMicrotask(done);
+    return;
+  }
+  if (typeof window !== "undefined" && typeof window.setTimeout === "function") {
+    window.setTimeout(done, 0);
+    return;
+  }
+  done();
+}
+
+function normalizeRuntimeDegradedKind(kind = "") {
+  const safeKind = String(kind || "").trim().toLowerCase();
+  if (safeKind === "leaflet" || safeKind === "tiles" || safeKind === "map") return "map";
+  if (safeKind === "font" || safeKind === "fonts") return "fonts";
+  if (safeKind === "icon" || safeKind === "icons" || safeKind === "lucide") return "icons";
+  if (safeKind === "bootstrap") return "bootstrap";
+  if (safeKind === "media" || safeKind === "media_edge" || safeKind === "edge") return "media";
+  if (safeKind === "push") return "push";
+  return "";
+}
+
+function setRuntimeDegradedFlag(kind = "", { active = false, message = "" } = {}) {
+  const safeKind = normalizeRuntimeDegradedKind(kind);
+  if (!safeKind) return false;
+  const nextMessage = active ? String(message || "").trim() : "";
+  if (!state.runtimeDegraded || typeof state.runtimeDegraded !== "object") {
+    state.runtimeDegraded = {
+      bootstrap: "",
+      map: "",
+      media: "",
+      push: "",
+      icons: "",
+      fonts: ""
+    };
+  }
+  const currentMessage = String(state.runtimeDegraded[safeKind] || "").trim();
+  if (currentMessage === nextMessage) return false;
+  state.runtimeDegraded = {
+    ...state.runtimeDegraded,
+    [safeKind]: nextMessage
+  };
+  requestRuntimeUiRefresh();
+  return true;
+}
+
+function hydrateRuntimeDegradedFromWindow() {
+  if (typeof window === "undefined") return;
+  const source = window.__MENYRA_SOCIAL_DEGRADED__;
+  if (!source || typeof source !== "object") return;
+  Object.entries(source).forEach(([kind, rawValue]) => {
+    const normalizedKind = normalizeRuntimeDegradedKind(kind);
+    if (!normalizedKind) return;
+    const payload = rawValue && typeof rawValue === "object" ? rawValue : {};
+    setRuntimeDegradedFlag(normalizedKind, {
+      active: payload.active === true,
+      message: String(payload.message || "").trim()
+    });
+  });
+}
+
+function bindRuntimeDegradedBridge() {
+  if (runtimeDegradedBridgeBound || typeof window === "undefined") return;
+  runtimeDegradedBridgeBound = true;
+  window.addEventListener(SOCIAL_VENDOR_DEGRADED_EVENT, (event) => {
+    const detail = event?.detail && typeof event.detail === "object" ? event.detail : {};
+    setRuntimeDegradedFlag(detail.kind, {
+      active: detail.active === true,
+      message: String(detail.message || "").trim()
+    });
+  });
+}
+
+function scheduleMediaEdgeProbe() {
+  if (runtimeMediaProbeBound || typeof window === "undefined" || typeof fetch !== "function") return;
+  runtimeMediaProbeBound = true;
+  const probe = async () => {
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const timeout = window.setTimeout(() => controller?.abort(), 2600);
+    try {
+      const url = `${String(BUNNY_EDGE_BASE || "").replace(/\/+$/, "")}/?health=${Date.now()}`;
+      await fetch(url, {
+        method: "GET",
+        mode: "no-cors",
+        cache: "no-store",
+        credentials: "omit",
+        signal: controller?.signal
+      });
+      setRuntimeDegradedFlag("media", { active: false });
+    } catch {
+      setRuntimeDegradedFlag("media", {
+        active: true,
+        message: "Media-Edge aktuell nicht erreichbar. Bilder/Uploads koennen reduziert sein."
+      });
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  };
+  if ("requestIdleCallback" in window) {
+    window.requestIdleCallback(() => { void probe(); }, { timeout: 4200 });
+  } else {
+    window.setTimeout(() => { void probe(); }, 1600);
+  }
+  window.addEventListener("online", () => { void probe(); });
+}
+
 const userPostsKey = (uid) => (uid ? `menyra_social_user_posts_cache_v2::${uid}` : "");
 const businessPostsKey = (rid) => (rid ? `menyra_social_business_posts_cache_v2::${rid}` : "");
 const staffCacheKey = (uid) => (uid ? `menyra_social_staff_cache_v1::${uid}` : "");
@@ -928,6 +1122,15 @@ const state = {
     loading: false,
     error: "",
     open: false
+  },
+  runtimeBudgets: {},
+  runtimeDegraded: {
+    bootstrap: "",
+    map: "",
+    media: "",
+    push: "",
+    icons: "",
+    fonts: ""
   }
 };
 
@@ -1157,6 +1360,12 @@ const {
   saveMenuItemFromModal,
   deleteMenuItemById
 } = shellUiRuntimeCluster;
+requestRuntimeUiRefresh = () => {
+  render();
+};
+bindRuntimeDegradedBridge();
+hydrateRuntimeDegradedFromWindow();
+scheduleMediaEdgeProbe();
 
 function suspendRender() {
   renderSuspended += 1;
@@ -2290,6 +2499,18 @@ function setState(patch) {
   const prevTab = state.activeTab;
   const keys = Object.keys(patch || {});
   const drawerOnly = keys.length === 1 && keys[0] === "drawerOpen";
+  const notificationsOnly = keys.length === 1 && keys[0] === "notifications";
+  const profileTabOpen = patch && patch.activeTab === "profile" && patch.activeTab !== prevTab;
+  const menuOpenRequested = patch && (
+    patch.profileTopTab === "menu"
+    || patch.profileContentTab === "menu"
+  );
+  if (profileTabOpen) {
+    startSocialBudgetTrace("profile_open");
+  }
+  if (menuOpenRequested) {
+    startSocialBudgetTrace("menu_open");
+  }
   if (patch && Object.prototype.hasOwnProperty.call(patch, "activeTab")) {
     patch.activeTab = sanitizeTabForSession(patch.activeTab, {
       hasProfileView: !!state.profileView
@@ -2298,9 +2519,20 @@ function setState(patch) {
   Object.assign(state, patch);
   if (drawerOnly && lastRenderMode === "main") {
     updateDrawerDom();
+    if (profileTabOpen) finishSocialBudgetTraceSoon("profile_open");
+    if (menuOpenRequested) finishSocialBudgetTraceSoon("menu_open");
+    return;
+  }
+  if (notificationsOnly && lastRenderMode === "main") {
+    updateNotificationsDom();
+    updateNotificationBadges();
+    if (profileTabOpen) finishSocialBudgetTraceSoon("profile_open");
+    if (menuOpenRequested) finishSocialBudgetTraceSoon("menu_open");
     return;
   }
   render();
+  if (profileTabOpen) finishSocialBudgetTraceSoon("profile_open");
+  if (menuOpenRequested) finishSocialBudgetTraceSoon("menu_open");
   if (patch.activeTab && patch.activeTab !== prevTab) {
     queueMicrotask(() => {
       void getSessionTabLifecycleRuntimeController().ensureTabData(state.activeTab);
@@ -2535,7 +2767,12 @@ function toggleChatMessageLiked(messageId) {
 }
 
 async function sendChatMessage() {
-  return chatRuntimeController.sendChatMessage();
+  startSocialBudgetTrace("chat_send");
+  try {
+    return await chatRuntimeController.sendChatMessage();
+  } finally {
+    finishSocialBudgetTrace("chat_send");
+  }
 }
 
 function readCache(key, ttlMs) {
@@ -3244,7 +3481,17 @@ socialEngagementRuntimeController = createSocialEngagementRuntimeController({
 
 bridgeShellRuntimeCluster = createBridgeShellRuntimeCluster({
   state,
-  constants: { BRAND_UI, FAST_MODE, LEAFLET_JS_URL, LEAFLET_CSS_URL, SEARCH_LIMITS, PLACEHOLDER_IMAGE, NOTIFICATIONS_LIVE_LIMIT },
+  constants: {
+    BRAND_UI,
+    FAST_MODE,
+    LEAFLET_JS_URL,
+    LEAFLET_CSS_URL,
+    LEAFLET_JS_FALLBACK_URL,
+    LEAFLET_CSS_FALLBACK_URL,
+    SEARCH_LIMITS,
+    PLACEHOLDER_IMAGE,
+    NOTIFICATIONS_LIVE_LIMIT
+  },
   browserApi: {
     documentObj: typeof document === "undefined" ? null : document,
     windowObj: typeof window === "undefined" ? null : window,

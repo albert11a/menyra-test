@@ -5,8 +5,11 @@ export function createDiscoveryRuntimeController(deps = {}) {
 
   const state = deps.state;
   const BRAND_UI = deps.brandUi;
-  const LEAFLET_JS_URL = deps.LEAFLET_JS_URL || "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
-  const LEAFLET_CSS_URL = deps.LEAFLET_CSS_URL || "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+  const LEAFLET_JS_URL = deps.LEAFLET_JS_URL || "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
+  const LEAFLET_CSS_URL = deps.LEAFLET_CSS_URL || "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
+  const LEAFLET_JS_FALLBACK_URL = deps.LEAFLET_JS_FALLBACK_URL || "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+  const LEAFLET_CSS_FALLBACK_URL = deps.LEAFLET_CSS_FALLBACK_URL || "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+  const VENDOR_DEGRADED_EVENT = "menyra-social-vendor-degraded";
   const SEARCH_LIMITS = deps.searchLimits || { users: 10, businesses: 12 };
   const PLACEHOLDER_IMAGE = deps.placeholderImage;
 
@@ -62,6 +65,20 @@ export function createDiscoveryRuntimeController(deps = {}) {
   const DISCOVERY_MAP_DEFAULT_CENTER = [42.6629, 21.1655];
   const DISCOVERY_MAP_MAX_ZOOM = 19;
   const LOCATION_UNVERIFIED_LABEL = "Standort nicht verifiziert";
+  const MAP_TILES_DEGRADED_NOTICE = "Kartenkacheln konnten nicht geladen werden. Es werden nur verifizierte Daten gezeigt.";
+
+function emitVendorDegraded(kind = "map", active = false, message = "") {
+  if (!window || typeof window.dispatchEvent !== "function") return;
+  try {
+    window.dispatchEvent(new CustomEvent(VENDOR_DEGRADED_EVENT, {
+      detail: {
+        kind,
+        active: active === true,
+        message: String(message || "").trim()
+      }
+    }));
+  } catch {}
+}
 
 function getLeafletFocusZoom() {
   if (leafletMap && typeof leafletMap.getMaxZoom === "function") {
@@ -85,32 +102,84 @@ function focusLeafletMap(lat, lng, options = {}) {
 function ensureLeafletStylesheet() {
   if (typeof document === "undefined") return;
   if (document.querySelector('link[data-leaflet-css="1"]')) return;
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = LEAFLET_CSS_URL;
-  link.dataset.leafletCss = "1";
-  document.head.appendChild(link);
+  const sources = Array.from(new Set([
+    LEAFLET_CSS_URL,
+    LEAFLET_CSS_FALLBACK_URL
+  ].map((value) => String(value || "").trim()).filter(Boolean)));
+  if (!sources.length) return;
+  let sourceIndex = 0;
+  const mountStylesheet = () => {
+    const href = sources[sourceIndex];
+    if (!href) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.dataset.leafletCss = "1";
+    link.addEventListener("load", () => {
+      emitVendorDegraded("map", false, "");
+    }, { once: true });
+    link.addEventListener("error", () => {
+      link.remove();
+      sourceIndex += 1;
+      if (sourceIndex < sources.length) {
+        mountStylesheet();
+        return;
+      }
+      emitVendorDegraded("map", true, "Karten-Stylesheet konnte nicht geladen werden.");
+    }, { once: true });
+    document.head.appendChild(link);
+  };
+  mountStylesheet();
 }
 
 async function ensureLeafletLoaded() {
-  if (window.L) return true;
+  if (window.L) {
+    emitVendorDegraded("map", false, "");
+    return true;
+  }
   if (leafletLoadFailed) return false;
   if (leafletLoadPromise) return leafletLoadPromise;
   ensureLeafletStylesheet();
   leafletLoadPromise = new Promise((resolve) => {
-    const script = document.createElement("script");
-    script.src = LEAFLET_JS_URL;
-    script.async = true;
-    script.dataset.leafletJs = "1";
-    script.onload = () => {
-      leafletLoadFailed = !window.L;
-      resolve(!!window.L);
-    };
-    script.onerror = () => {
+    const sources = Array.from(new Set([
+      LEAFLET_JS_URL,
+      LEAFLET_JS_FALLBACK_URL
+    ].map((value) => String(value || "").trim()).filter(Boolean)));
+    if (!sources.length) {
       leafletLoadFailed = true;
+      emitVendorDegraded("map", true, "Kartenbibliothek ist nicht konfiguriert.");
       resolve(false);
+      return;
+    }
+    const loadScriptAt = (index = 0) => {
+      const src = sources[index];
+      if (!src) {
+        leafletLoadFailed = true;
+        emitVendorDegraded("map", true, "Kartenbibliothek konnte nicht geladen werden.");
+        resolve(false);
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.dataset.leafletJs = "1";
+      script.onload = () => {
+        leafletLoadFailed = !window.L;
+        if (window.L) {
+          emitVendorDegraded("map", false, "");
+          resolve(true);
+          return;
+        }
+        script.remove();
+        loadScriptAt(index + 1);
+      };
+      script.onerror = () => {
+        script.remove();
+        loadScriptAt(index + 1);
+      };
+      document.head.appendChild(script);
     };
-    document.head.appendChild(script);
+    loadScriptAt(0);
   }).finally(() => {
     leafletLoadPromise = null;
   });
@@ -404,7 +473,12 @@ function initLeafletIfNeeded() {
   if (!el) return;
   if (!window.L) {
     void ensureLeafletLoaded().then((loaded) => {
-      if (!loaded || state.activeTab !== "map") return;
+      if (!loaded) {
+        setMapNotice("Kartenbibliothek nicht verfuegbar. Karte bleibt im reduzierten Modus.");
+        emitVendorDegraded("map", true, "Kartenbibliothek nicht verfuegbar. Karte im reduzierten Modus.");
+        return;
+      }
+      if (state.activeTab !== "map") return;
       initLeafletIfNeeded();
       render();
     });
@@ -423,7 +497,20 @@ function initLeafletIfNeeded() {
   }
 
   leafletMap = window.L.map(el, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_MAX_ZOOM);
-  window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", { maxZoom: DISCOVERY_MAP_MAX_ZOOM }).addTo(leafletMap);
+  const baseLayer = window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+    maxZoom: DISCOVERY_MAP_MAX_ZOOM
+  });
+  baseLayer.on("tileerror", () => {
+    setMapNotice(MAP_TILES_DEGRADED_NOTICE);
+    emitVendorDegraded("map", true, "Kartenkacheln nicht erreichbar. Karte zeigt reduzierten Zustand.");
+  });
+  baseLayer.on("load", () => {
+    if (String(mapNotice || "").trim() === MAP_TILES_DEGRADED_NOTICE) {
+      clearMapNotice();
+    }
+    emitVendorDegraded("map", false, "");
+  });
+  baseLayer.addTo(leafletMap);
   try {
     leafletMap.whenReady(() => {
       scheduleLeafletRefresh(3);

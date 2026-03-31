@@ -6,8 +6,11 @@ const EXTERNAL_STATIC_HOSTS = new Set([
   "www.gstatic.com",
   "fonts.googleapis.com",
   "fonts.gstatic.com",
+  "cdn.jsdelivr.net",
   "unpkg.com"
 ]);
+const NAVIGATION_FETCH_TIMEOUT_MS = 3600;
+const RUNTIME_FETCH_TIMEOUT_MS = 4200;
 
 function sanitizeCacheToken(value) {
   return String(value || "")
@@ -166,10 +169,22 @@ function isExternalStaticRequest(url, request) {
   return ["script", "style", "font", "image"].includes(request.destination);
 }
 
+async function fetchWithTimeout(request, timeoutMs = RUNTIME_FETCH_TIMEOUT_MS) {
+  const controller = typeof AbortController === "function" ? new AbortController() : null;
+  const timer = controller
+    ? setTimeout(() => controller.abort(), Math.max(1, Number(timeoutMs) || RUNTIME_FETCH_TIMEOUT_MS))
+    : null;
+  try {
+    return await fetch(request, controller ? { signal: controller.signal } : undefined);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 async function staleWhileRevalidate(request) {
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
-  const networkPromise = fetch(request)
+  const networkPromise = fetchWithTimeout(request)
     .then(async (response) => {
       if (response && (response.ok || response.type === "opaque")) {
         try {
@@ -193,7 +208,7 @@ async function cacheFirst(request) {
   const cached = await cache.match(request);
   if (cached) return cached;
   try {
-    const response = await fetch(request);
+    const response = await fetchWithTimeout(request);
     if (response && (response.ok || response.type === "opaque")) {
       cache.put(request, response.clone()).catch(() => null);
     }
@@ -226,7 +241,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith((async () => {
       try {
         const navReq = new Request(req, { cache: "no-cache" });
-        const networkResp = await fetch(navReq);
+        const networkResp = await fetchWithTimeout(navReq, NAVIGATION_FETCH_TIMEOUT_MS);
         const cache = await caches.open(CACHE_NAME);
         cache.put(APP_SHELL_URL, networkResp.clone()).catch(() => null);
         return networkResp;
@@ -260,7 +275,7 @@ self.addEventListener("fetch", (event) => {
   if (inScope) {
     event.respondWith((async () => {
       try {
-        const networkResp = await fetch(req);
+        const networkResp = await fetchWithTimeout(req);
         if (networkResp && networkResp.ok) {
           const cache = await caches.open(CACHE_NAME);
           cache.put(req, networkResp.clone()).catch(() => null);

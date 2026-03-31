@@ -14,6 +14,13 @@ const SOCIAL_SW_SCOPE = "/apps/menyra-social/";
 const SW_UPDATE_CHECK_INTERVAL_MS = 3 * 60 * 1000;
 
 let swUpdateTimer = null;
+const setVendorDegraded = (kind, payload = {}) => {
+  try {
+    if (typeof window.__MENYRA_SOCIAL_SET_DEGRADED__ === "function") {
+      window.__MENYRA_SOCIAL_SET_DEGRADED__(kind, payload);
+    }
+  } catch {}
+};
 
 function readSocialAppVersionToken() {
   try {
@@ -57,7 +64,13 @@ function scheduleSwUpdateChecks(reg) {
 }
 
 async function registerSW() {
-  if (!('serviceWorker' in navigator)) return;
+  if (!('serviceWorker' in navigator)) {
+    setVendorDegraded("push", {
+      active: true,
+      message: "Service Worker wird nicht unterstuetzt. Push bleibt deaktiviert."
+    });
+    return;
+  }
 
   try {
     const swUrl = buildSocialSwUrl();
@@ -66,6 +79,7 @@ async function registerSW() {
       scope: SOCIAL_SW_SCOPE,
       updateViaCache: "none"
     });
+    setVendorDegraded("push", { active: false, message: "" });
     document.documentElement.dataset.pwaUpdateChannel = updateChannel;
     log('registered', reg);
     scheduleSwUpdateChecks(reg);
@@ -96,6 +110,10 @@ async function registerSW() {
     });
   } catch (err) {
     console.warn('[PWA] SW registration failed', err);
+    setVendorDegraded("push", {
+      active: true,
+      message: "Service Worker Registrierung fehlgeschlagen. Push kann ausfallen."
+    });
   }
 }
 

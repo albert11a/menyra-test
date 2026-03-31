@@ -44,9 +44,14 @@ const APP_ROOT = document.getElementById("app");
 const WAITER_FIREBASE_APP_NAME = "menyra-waiter";
 const WAITER_SW_URL = "/waiter/sw.js";
 const WAITER_SW_SCOPE = "/waiter/";
+const WAITER_SW_UPDATE_CHECK_INTERVAL_MS = 3 * 60 * 1000;
+const WAITER_RUNTIME_BUDGETS_MS = Object.freeze({
+  waiter_order_refresh: 700
+});
 const DEVICE_ID_KEY = "mnyra_waiter_device_id_v1";
 const ACCESS_CACHE_KEY_PREFIX = "mnyra_waiter_access_v1:";
 const FCM_WEB_PUSH_VAPID_KEY = "BERxbC5-yX8miGIVaFJGAapzd0-jL0D9HQf3swOJiKZcAJsAO_FoC-8v7DCCcDgmfgkKcMVd0X6VVq8zD2hePqk";
+const waiterRuntimeBudgetMarks = new Map();
 const moneyFormatter = new Intl.NumberFormat("de-AT", {
   style: "currency",
   currency: "EUR"
@@ -177,6 +182,11 @@ const state = {
     permission: typeof Notification === "undefined" ? "denied" : Notification.permission,
     enabled: false,
     error: ""
+  },
+  runtimeBudgets: {},
+  vendorDegraded: {
+    ui: "",
+    push: ""
   }
 };
 
@@ -204,6 +214,7 @@ let toastExitTimer = null;
 let ordersInitialized = false;
 let seenOrderIds = new Set();
 let serviceWorkerRegistrationPromise = null;
+let waiterSwUpdateTimer = null;
 let foregroundMessageCleanup = null;
 let alertAudioContext = null;
 let alertAudioUnlockBound = false;
@@ -219,6 +230,148 @@ function escapeHtml(value = "") {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function supportsWaiterPerformanceBudget() {
+  return typeof performance !== "undefined"
+    && typeof performance.mark === "function"
+    && typeof performance.measure === "function";
+}
+
+function buildWaiterBudgetMarkName(key = "", phase = "start") {
+  const safeKey = String(key || "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+  const safePhase = String(phase || "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+  return `mnyra.waiter.budget.${safeKey}.${safePhase}`;
+}
+
+function startWaiterBudgetTrace(key = "") {
+  if (!supportsWaiterPerformanceBudget()) return "";
+  const safeKey = asText(key);
+  if (!safeKey) return "";
+  const markName = buildWaiterBudgetMarkName(safeKey, "start");
+  try {
+    performance.mark(markName);
+    waiterRuntimeBudgetMarks.set(safeKey, markName);
+    return markName;
+  } catch {
+    return "";
+  }
+}
+
+function finishWaiterBudgetTrace(key = "", { startMarkName = "" } = {}) {
+  if (!supportsWaiterPerformanceBudget()) return null;
+  const safeKey = asText(key);
+  if (!safeKey) return null;
+  const resolvedStartMarkName = asText(startMarkName || waiterRuntimeBudgetMarks.get(safeKey));
+  if (!resolvedStartMarkName) return null;
+  const endMarkName = buildWaiterBudgetMarkName(safeKey, "end");
+  try {
+    performance.mark(endMarkName);
+    const measureName = `mnyra.waiter.budget.${safeKey}`;
+    performance.measure(measureName, resolvedStartMarkName, endMarkName);
+    const entries = performance.getEntriesByName(measureName);
+    const lastEntry = entries.length ? entries[entries.length - 1] : null;
+    const durationMs = Number(lastEntry?.duration || 0) || 0;
+    const budgetMs = Number(WAITER_RUNTIME_BUDGETS_MS[safeKey] || 0) || 0;
+    const withinBudget = budgetMs > 0 ? durationMs <= budgetMs : true;
+    state.runtimeBudgets[safeKey] = {
+      durationMs,
+      budgetMs,
+      withinBudget,
+      measuredAt: Date.now()
+    };
+    if (!withinBudget) {
+      console.warn(`[mnyra][budget] waiter ${safeKey} ${Math.round(durationMs)}ms > ${budgetMs}ms`);
+    }
+    return durationMs;
+  } catch {
+    return null;
+  } finally {
+    waiterRuntimeBudgetMarks.delete(safeKey);
+    try {
+      performance.clearMarks(resolvedStartMarkName);
+      performance.clearMarks(endMarkName);
+    } catch {}
+  }
+}
+
+function setWaiterVendorDegraded(kind = "", message = "") {
+  const safeKind = asText(kind).toLowerCase();
+  if (!safeKind) return false;
+  const normalized = String(message || "").trim();
+  if (String(state.vendorDegraded?.[safeKind] || "") === normalized) return false;
+  state.vendorDegraded = {
+    ...state.vendorDegraded,
+    [safeKind]: normalized
+  };
+  return true;
+}
+
+function isTailwindRuntimeReady() {
+  if (!document?.body || typeof getComputedStyle !== "function") return true;
+  const probe = document.createElement("div");
+  probe.className = "hidden";
+  probe.style.position = "absolute";
+  probe.style.visibility = "hidden";
+  document.body.appendChild(probe);
+  const ready = getComputedStyle(probe).display === "none";
+  probe.remove();
+  return ready;
+}
+
+function syncTailwindRuntimeState() {
+  const utilitiesReady = isTailwindRuntimeReady();
+  if (!utilitiesReady) {
+    return setWaiterVendorDegraded(
+      "ui",
+      "Tailwind-Runtime fehlt. Waiter nutzt einen reduzierten stabilen Modus."
+    );
+  }
+  const cdnReady = typeof window === "undefined"
+    ? true
+    : window.__MENYRA_WAITER_TAILWIND_READY__ !== false;
+  if (!cdnReady) {
+    return setWaiterVendorDegraded(
+      "ui",
+      "Tailwind-CDN nicht erreichbar. Lokale Fallback-Styles sind aktiv."
+    );
+  }
+  return setWaiterVendorDegraded("ui", "") ? true : false;
+}
+
+function readWaiterAppVersionToken() {
+  try {
+    const moduleScript = document.querySelector('script[type="module"][src*="/apps/waiter/waiter-app.js"]');
+    const src = asText(moduleScript?.getAttribute?.("src"));
+    if (!src) return "";
+    const parsed = new URL(src, window.location.origin);
+    return asText(parsed.searchParams.get("v"));
+  } catch {
+    return "";
+  }
+}
+
+function buildWaiterSwUrl() {
+  const versionToken = readWaiterAppVersionToken();
+  if (!versionToken) return WAITER_SW_URL;
+  const separator = WAITER_SW_URL.includes("?") ? "&" : "?";
+  return `${WAITER_SW_URL}${separator}v=${encodeURIComponent(versionToken)}`;
+}
+
+function scheduleWaiterSwUpdateChecks(registration = null) {
+  const reg = registration;
+  if (!reg || typeof reg.update !== "function") return;
+  const runUpdate = () => reg.update().catch(() => null);
+  runUpdate();
+  if (waiterSwUpdateTimer) window.clearInterval(waiterSwUpdateTimer);
+  waiterSwUpdateTimer = window.setInterval(() => {
+    if (document.visibilityState !== "visible") return;
+    runUpdate();
+  }, WAITER_SW_UPDATE_CHECK_INTERVAL_MS);
+  window.addEventListener("online", runUpdate);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") runUpdate();
+  });
 }
 
 function toDate(value) {
@@ -667,10 +820,19 @@ function parseForegroundNotificationPayload(payload = {}) {
 async function ensureServiceWorkerRegistration() {
   if (!("serviceWorker" in navigator)) return null;
   if (!serviceWorkerRegistrationPromise) {
+    const swUrl = buildWaiterSwUrl();
     serviceWorkerRegistrationPromise = navigator.serviceWorker.getRegistration(WAITER_SW_SCOPE)
-      .then((existing) => existing || navigator.serviceWorker.register(WAITER_SW_URL, { scope: WAITER_SW_SCOPE }))
+      .then((existing) => existing || navigator.serviceWorker.register(swUrl, {
+        scope: WAITER_SW_SCOPE,
+        updateViaCache: "none"
+      }))
+      .then((registration) => {
+        scheduleWaiterSwUpdateChecks(registration);
+        return registration;
+      })
       .catch((err) => {
         reportWaiterRuntimeFailure("service-worker-registration", err);
+        setWaiterVendorDegraded("push", "Service Worker Registrierung fehlgeschlagen. Push bleibt deaktiviert.");
         return null;
       });
   }
@@ -697,6 +859,7 @@ async function syncPushDeviceToken({ requestPermission = false } = {}) {
   state.push.supported = supported && window.isSecureContext && "serviceWorker" in navigator;
   state.push.permission = typeof Notification === "undefined" ? "denied" : Notification.permission;
   if (!state.push.supported) {
+    setWaiterVendorDegraded("push", "Push ist in diesem Browser/Modus nicht verfuegbar.");
     render();
     return;
   }
@@ -708,6 +871,7 @@ async function syncPushDeviceToken({ requestPermission = false } = {}) {
 
   if (state.push.permission !== "granted") {
     state.push.enabled = false;
+    setWaiterVendorDegraded("push", "Push-Berechtigung fehlt. Live-Benachrichtigungen sind deaktiviert.");
     render();
     return;
   }
@@ -737,10 +901,12 @@ async function syncPushDeviceToken({ requestPermission = false } = {}) {
     }, { merge: true });
     state.push.enabled = true;
     state.push.error = "";
+    setWaiterVendorDegraded("push", "");
   } catch (err) {
     reportWaiterRuntimeFailure("push-token-sync", err);
     state.push.enabled = false;
     state.push.error = err?.message || "Push konnte nicht aktiviert werden.";
+    setWaiterVendorDegraded("push", "Push-Service derzeit nicht erreichbar. Bestelltoasts bleiben lokal.");
   } finally {
     state.push.loading = false;
     render();
@@ -841,6 +1007,7 @@ function startOrdersListener() {
 
   const subscribe = (refQuery) => {
     ordersUnsub = onSnapshot(refQuery, (snapshot) => {
+      startWaiterBudgetTrace("waiter_order_refresh");
       const nextOrders = snapshot.docs.map((docSnap) => normalizeOrderDoc(docSnap));
       nextOrders.sort((a, b) => (toDate(b.createdAt)?.getTime() || 0) - (toDate(a.createdAt)?.getTime() || 0));
       if (ordersInitialized) {
@@ -861,6 +1028,7 @@ function startOrdersListener() {
       state.ordersLoaded = true;
       render();
       maybeOpenHighlightedOrder();
+      finishWaiterBudgetTrace("waiter_order_refresh");
     }, (err) => {
       reportWaiterRuntimeFailure("orders-listener", err);
       if (!usingFallback) {
@@ -1293,7 +1461,43 @@ function renderToast() {
 }
 
 function renderNotificationBanner() {
-  return "";
+  const notices = [];
+  if (asText(state.vendorDegraded?.ui)) {
+    notices.push(asText(state.vendorDegraded.ui));
+  }
+  if (asText(state.vendorDegraded?.push)) {
+    notices.push(asText(state.vendorDegraded.push));
+  }
+  if (!notices.length) return "";
+  return `
+    <div class="px-6 pb-3">
+      ${notices.map((message) => `
+        <div class="rounded-2xl border border-amber-700/40 bg-amber-950/30 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-amber-300">
+          ${escapeHtml(message)}
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderVendorDegradedView() {
+  return `
+    <div style="min-height:100dvh; background:#000; color:#fff; display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;">
+      <div style="width:min(520px,100%); border:1px solid rgba(161,161,170,0.35); border-radius:20px; padding:24px; background:rgba(24,24,27,0.92);">
+        <p style="margin:0; font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:#fbbf24; font-weight:800;">Degraded Mode</p>
+        <h1 style="margin:10px 0 0; font-size:26px; line-height:1.1; font-weight:900;">Waiter UI Vendor nicht verfuegbar</h1>
+        <p style="margin:14px 0 0; color:#d4d4d8; font-size:14px; line-height:1.5;">
+          ${escapeHtml(asText(state.vendorDegraded?.ui) || "Tailwind-Runtime konnte nicht geladen werden. Die App bleibt stabil im reduzierten Modus.")}
+        </p>
+        <p style="margin:10px 0 0; color:#a1a1aa; font-size:12px; line-height:1.5;">
+          Kernfunktionen sind voruebergehend eingeschraenkt, bis die Runtime-Abhaengigkeit wieder erreichbar ist.
+        </p>
+        <button type="button" data-retry-ui="true" style="margin-top:18px; width:100%; height:46px; border-radius:14px; border:1px solid rgba(255,255,255,0.32); background:#fff; color:#000; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer;">
+          Neu laden
+        </button>
+      </div>
+    </div>
+  `;
 }
 
 function renderLoginView() {
@@ -1410,7 +1614,12 @@ function renderLoadingView() {
 }
 
 function render() {
+  syncTailwindRuntimeState();
   syncPageSurface();
+  if (!isTailwindRuntimeReady()) {
+    APP_ROOT.innerHTML = renderVendorDegradedView();
+    return;
+  }
   if (!state.authReady) {
     APP_ROOT.innerHTML = renderLoadingView();
     return;
@@ -1495,6 +1704,10 @@ APP_ROOT.addEventListener("submit", (event) => {
 APP_ROOT.addEventListener("click", (event) => {
   const target = event.target;
   if (!(target instanceof Element)) return;
+  if (target.closest("[data-retry-ui]")) {
+    window.location.reload();
+    return;
+  }
   if (target.closest("#logoutBtn, #accessLogoutBtn")) {
     void handleLogout();
     return;
@@ -1551,6 +1764,12 @@ async function bootstrap() {
     await setPersistence(auth, browserLocalPersistence);
   } catch {}
   bindAlertToneUnlock();
+  if (typeof window !== "undefined") {
+    window.addEventListener("online", () => {
+      const changed = syncTailwindRuntimeState();
+      if (changed) render();
+    });
+  }
   void ensureServiceWorkerRegistration();
   onAuthStateChanged(auth, (user) => {
     void handleAuthChanged(user);

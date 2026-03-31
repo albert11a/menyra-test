@@ -10,7 +10,13 @@
   <link rel="apple-touch-icon" sizes="180x180" href="/apps/waiter/assets/apple-touch-icon.png?v=2026-03-19-waiter-fast-7">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="/apps/menyra-social/styles/tailwind.generated.css?v=2026-03-27-business-menu-main-sync-01">
+  <script>
+    window.__MENYRA_WAITER_TAILWIND_READY__ = false;
+  </script>
+  <script src="https://cdn.tailwindcss.com" onload="window.__MENYRA_WAITER_TAILWIND_READY__=true" onerror="window.__MENYRA_WAITER_TAILWIND_READY__=false"></script>
   <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

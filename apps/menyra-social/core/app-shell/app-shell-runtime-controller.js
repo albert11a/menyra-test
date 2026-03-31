@@ -191,6 +191,221 @@ export function createAppShellRuntimeController(deps = {}) {
   const SMART_HEADER_REBIND_GUARD_MS = 180;
   const doc = documentObj || (typeof document === "undefined" ? null : document);
   const win = windowObj || (typeof window === "undefined" ? null : window);
+  const RUNTIME_BUDGETS_MS = Object.freeze({
+    cold_guest_landing: 2200,
+    profile_open: 850,
+    menu_open: 950,
+    add_to_cart: 280,
+    chat_send: 800
+  });
+  const runtimePerfMarks = new Map();
+  let firstGuestLandingMeasured = false;
+  let lastOverlayRenderSignature = "";
+  let lastNotificationBadgeSignature = "";
+  let lastMapRuntimeSignature = "";
+  let lastHeaderRuntimeMode = "";
+  let lastRuntimeDegradedBannerSignature = "";
+
+  function supportsRuntimePerf() {
+    return typeof performance !== "undefined"
+      && typeof performance.mark === "function"
+      && typeof performance.measure === "function";
+  }
+
+  function buildRuntimePerfMarkName(key = "", phase = "start") {
+    const safeKey = String(key || "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    const safePhase = String(phase || "").trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+    return `mnyra.social.shellbudget.${safeKey}.${safePhase}`;
+  }
+
+  function startRuntimeBudgetTrace(key = "") {
+    if (!supportsRuntimePerf()) return "";
+    const safeKey = String(key || "").trim();
+    if (!safeKey) return "";
+    const markName = buildRuntimePerfMarkName(safeKey, "start");
+    try {
+      performance.mark(markName);
+      runtimePerfMarks.set(safeKey, markName);
+      return markName;
+    } catch {
+      return "";
+    }
+  }
+
+  function finishRuntimeBudgetTrace(key = "", { startMarkName = "" } = {}) {
+    if (!supportsRuntimePerf()) return null;
+    const safeKey = String(key || "").trim();
+    if (!safeKey) return null;
+    const endMarkName = buildRuntimePerfMarkName(safeKey, "end");
+    const resolvedStartMarkName = String(
+      startMarkName
+      || runtimePerfMarks.get(safeKey)
+      || ""
+    ).trim();
+    if (!resolvedStartMarkName) return null;
+    try {
+      performance.mark(endMarkName);
+      const measureName = `mnyra.social.shellbudget.${safeKey}`;
+      performance.measure(measureName, resolvedStartMarkName, endMarkName);
+      const entries = performance.getEntriesByName(measureName);
+      const lastEntry = entries.length ? entries[entries.length - 1] : null;
+      const durationMs = Number(lastEntry?.duration || 0) || 0;
+      const budgetMs = Number(RUNTIME_BUDGETS_MS[safeKey] || 0) || 0;
+      const withinBudget = budgetMs > 0 ? durationMs <= budgetMs : true;
+      if (!state.runtimeBudgets || typeof state.runtimeBudgets !== "object") {
+        state.runtimeBudgets = {};
+      }
+      state.runtimeBudgets[safeKey] = {
+        durationMs,
+        budgetMs,
+        withinBudget,
+        measuredAt: Date.now()
+      };
+      if (!withinBudget) {
+        console.warn(`[mnyra][budget] ${safeKey} ${Math.round(durationMs)}ms > ${budgetMs}ms`);
+      }
+      return durationMs;
+    } catch {
+      return null;
+    } finally {
+      runtimePerfMarks.delete(safeKey);
+      try {
+        performance.clearMarks(resolvedStartMarkName);
+        performance.clearMarks(endMarkName);
+      } catch {}
+    }
+  }
+
+  function finalizeRuntimeBudgetTraceSoon(key = "", options = {}) {
+    const safeKey = String(key || "").trim();
+    if (!safeKey) return;
+    const finalize = () => {
+      finishRuntimeBudgetTrace(safeKey, options);
+    };
+    if (typeof queueMicrotaskFn === "function") {
+      queueMicrotaskFn(finalize);
+      return;
+    }
+    if (typeof win?.setTimeout === "function") {
+      win.setTimeout(finalize, 0);
+      return;
+    }
+    finalize();
+  }
+
+  function runBudgetWrapped(key = "", task = () => {}, { startMarkName = "" } = {}) {
+    const safeKey = String(key || "").trim();
+    if (!safeKey || typeof task !== "function") {
+      return task();
+    }
+    startRuntimeBudgetTrace(safeKey);
+    try {
+      const result = task();
+      if (result && typeof result.then === "function") {
+        return result.finally(() => {
+          finishRuntimeBudgetTrace(safeKey, { startMarkName });
+        });
+      }
+      finalizeRuntimeBudgetTraceSoon(safeKey, { startMarkName });
+      return result;
+    } catch (err) {
+      finishRuntimeBudgetTrace(safeKey, { startMarkName });
+      throw err;
+    }
+  }
+
+  function buildOverlayRenderSignature() {
+    return [
+      state.profileModal?.open ? "1" : "0",
+      state.postModal?.open ? "1" : "0",
+      state.likesModal?.open ? "1" : "0",
+      state.menuModal?.open ? "1" : "0",
+      state.menuDetail?.open ? "1" : "0",
+      state.focusModal?.open ? "1" : "0",
+      state.leadModal?.open ? "1" : "0",
+      state.customerModal?.open ? "1" : "0",
+      state.chatModal?.open ? "1" : "0",
+      String(state.postModal?.post?.id || ""),
+      String(state.menuDetail?.item?.id || state.menuDetail?.id || ""),
+      String(state.chatModal?.profile?.uid || state.chatModal?.profile?.id || "")
+    ].join("|");
+  }
+
+  function buildNotificationBadgeSignature() {
+    const notifications = Array.isArray(state.notifications) ? state.notifications : [];
+    const unreadNotifications = notifications.reduce((sum, item) => sum + (item?.read ? 0 : 1), 0);
+    const unreadChat = Number(getChatUnreadCount?.() || 0) || 0;
+    return [
+      notifications.length,
+      unreadNotifications,
+      Array.isArray(state.chatThreads) ? state.chatThreads.length : 0,
+      unreadChat,
+      String(state.activeTab || "")
+    ].join("|");
+  }
+
+  function buildMapRuntimeSignature(mode = "") {
+    if (mode !== "main") return "off";
+    if (state.activeTab !== "map") return `inactive:${String(state.activeTab || "")}`;
+    const selectedBusiness = state.selectedBusiness || {};
+    const selectedKey = String(
+      selectedBusiness.markerKey
+      || selectedBusiness.id
+      || ""
+    ).trim();
+    const locationCount = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
+    return `map:${locationCount}:${selectedKey}`;
+  }
+
+  function resolveRuntimeDegradedMessages() {
+    const messages = [];
+    const degraded = state.runtimeDegraded && typeof state.runtimeDegraded === "object"
+      ? state.runtimeDegraded
+      : {};
+    const vendorOrder = ["bootstrap", "map", "media", "icons", "fonts"];
+    vendorOrder.forEach((key) => {
+      const message = String(degraded?.[key] || "").trim();
+      if (message) messages.push(message);
+    });
+    return messages.slice(0, 3);
+  }
+
+  function syncRuntimeDegradedBanner({ force = false } = {}) {
+    if (!doc?.body) return;
+    const messages = resolveRuntimeDegradedMessages();
+    const nextSignature = messages.join("|");
+    if (!force && nextSignature === lastRuntimeDegradedBannerSignature) return;
+    lastRuntimeDegradedBannerSignature = nextSignature;
+    let banner = doc.getElementById("mnyraRuntimeDegradedBanner");
+    if (!messages.length) {
+      if (banner) banner.remove();
+      return;
+    }
+    if (!banner) {
+      banner = doc.createElement("div");
+      banner.id = "mnyraRuntimeDegradedBanner";
+      banner.setAttribute("role", "status");
+      banner.setAttribute("aria-live", "polite");
+      banner.style.position = "fixed";
+      banner.style.left = "50%";
+      banner.style.top = "max(8px, calc(var(--safe-area-top, 0px) + 8px))";
+      banner.style.transform = "translateX(-50%)";
+      banner.style.maxWidth = "min(560px, calc(100vw - 20px))";
+      banner.style.zIndex = "130";
+      banner.style.padding = "8px 12px";
+      banner.style.borderRadius = "14px";
+      banner.style.background = "rgba(15, 23, 42, 0.92)";
+      banner.style.border = "1px solid rgba(148, 163, 184, 0.35)";
+      banner.style.color = "#f8fafc";
+      banner.style.fontSize = "11px";
+      banner.style.fontWeight = "800";
+      banner.style.letterSpacing = "0.02em";
+      banner.style.pointerEvents = "none";
+      banner.style.boxShadow = "0 12px 28px -18px rgba(15, 23, 42, 0.65)";
+      doc.body.appendChild(banner);
+    }
+    banner.textContent = messages.join(" | ");
+  }
 
   function cleanupLegacyDrawerDocumentState() {
     if (!doc) return;
@@ -965,28 +1180,53 @@ export function createAppShellRuntimeController(deps = {}) {
       else setLastRenderedMainTab("");
     }
 
-    if (shouldUseSmartHeader()) {
-      stopBusinessTopTabsPinSync();
-      initSmartHeaderVisibilitySync();
-    } else {
-      stopSmartHeaderVisibilitySync();
-      bindBusinessTopTabsPinSync();
+    const nextHeaderRuntimeMode = shouldUseSmartHeader() ? "smart" : "business-tabs";
+    if (changed || nextHeaderRuntimeMode !== lastHeaderRuntimeMode) {
+      if (nextHeaderRuntimeMode === "smart") {
+        stopBusinessTopTabsPinSync();
+        initSmartHeaderVisibilitySync();
+      } else {
+        stopSmartHeaderVisibilitySync();
+        bindBusinessTopTabsPinSync();
+      }
+      lastHeaderRuntimeMode = nextHeaderRuntimeMode;
     }
 
-    renderOverlaysFn();
+    const nextOverlayRenderSignature = buildOverlayRenderSignature();
+    if (changed || nextOverlayRenderSignature !== lastOverlayRenderSignature) {
+      renderOverlaysFn();
+      lastOverlayRenderSignature = nextOverlayRenderSignature;
+    }
     if (mode === "main" || getLastRenderMode() === "main") {
-      updateNotificationBadgesFn();
+      const nextNotificationBadgeSignature = buildNotificationBadgeSignature();
+      if (changed || nextNotificationBadgeSignature !== lastNotificationBadgeSignature) {
+        updateNotificationBadgesFn();
+        lastNotificationBadgeSignature = nextNotificationBadgeSignature;
+      }
     }
     updateFocusRotationFn();
 
-    if (mode === "main" && state.activeTab === "map") {
-      win?.setTimeout(() => {
-        initLeafletIfNeededFn();
-        updateMapSheetFn();
-      }, 0);
-    } else {
-      cleanupLeafletFn();
+    const nextMapRuntimeSignature = buildMapRuntimeSignature(mode);
+    if (nextMapRuntimeSignature !== lastMapRuntimeSignature) {
+      if (mode === "main" && state.activeTab === "map") {
+        win?.setTimeout(() => {
+          initLeafletIfNeededFn();
+          updateMapSheetFn();
+        }, 0);
+      } else {
+        cleanupLeafletFn();
+      }
+      lastMapRuntimeSignature = nextMapRuntimeSignature;
     }
+
+    if (!firstGuestLandingMeasured && mode === "main" && !state.user) {
+      firstGuestLandingMeasured = true;
+      finishRuntimeBudgetTrace("cold_guest_landing", {
+        startMarkName: "mnyra.social.cold_guest.start"
+      });
+    }
+
+    syncRuntimeDegradedBanner({ force: changed });
   }
 
   function bindAuthEvents() {
@@ -1128,14 +1368,14 @@ export function createAppShellRuntimeController(deps = {}) {
       openGuestAuthPromptFn,
       normalizeAuthModeFn,
       renderFn: render,
-      ensureMenuDataForProfileFn,
+      ensureMenuDataForProfileFn: (...args) => runBudgetWrapped("menu_open", () => ensureMenuDataForProfileFn(...args)),
       ensureFocusDataForProfileFn,
       bindAppMenuFocusEventsCoreFn,
       saveMenuLayoutToStorageFn,
       openMenuModalFn,
       deleteMenuItemByIdFn,
       triggerMenuDetailOpenFromGestureFn,
-      updateShopCartQuantityFn,
+      updateShopCartQuantityFn: (...args) => runBudgetWrapped("add_to_cart", () => updateShopCartQuantityFn(...args)),
       openShopCheckoutFn,
       submitShopCheckoutFn,
       updateShopCheckoutFieldFn,
@@ -1171,7 +1411,7 @@ export function createAppShellRuntimeController(deps = {}) {
       saveUserProfileToStorageFn,
       persistPrivateAccountSettingFn,
       uploadAvatarFn,
-      openProfileViewFromBusinessFn,
+      openProfileViewFromBusinessFn: (...args) => runBudgetWrapped("profile_open", () => openProfileViewFromBusinessFn(...args)),
       findPostByIdFn,
       openPostModalFn,
       getProfileViewUnsubFn: () => getProfileViewUnsub(),
@@ -1285,13 +1525,13 @@ export function createAppShellRuntimeController(deps = {}) {
           openGuestAuthPromptFn("Bitte einloggen, um User-Profile zu sehen.");
           return;
         }
-        openProfileFromUserFn({
+        runBudgetWrapped("profile_open", () => openProfileFromUserFn({
           uid: userBtn.dataset.searchUser || "",
           handle: userBtn.dataset.searchHandle || "",
           name: userBtn.dataset.searchName || "",
           avatar: userBtn.dataset.searchAvatar || "",
           location: userBtn.dataset.searchLocation || ""
-        });
+        }));
         return;
       }
 

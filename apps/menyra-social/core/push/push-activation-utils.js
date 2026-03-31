@@ -16,7 +16,7 @@ export function buildPushActivationIssueCore({
 }
 
 export function getPushActivationIssueMessageCore(issue = "") {
-  return String(issue || "").trim() || "Unbekannter Fehler bei der Push-Initialisierung.";
+  return String(issue || "").trim();
 }
 
 export function mapPushActivationErrorCore(stage = "", err = null) {
