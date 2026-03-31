@@ -1145,6 +1145,12 @@ export function createAppShellRuntimeController(deps = {}) {
       const reuseFeed = preserveMainScroll && state.activeTab === "feed"
         ? doc?.getElementById("feedView")
         : null;
+      const reuseLeafletMapCanvas = preserveMainScroll && state.activeTab === "map"
+        ? doc?.getElementById("leafletMap")
+        : null;
+      const preservedMapSearchQuery = preserveMainScroll && state.activeTab === "map"
+        ? String(doc?.getElementById("mapSearchInput")?.value || "")
+        : "";
       const prevScrollTop = preserveMainScroll ? doc?.querySelector("main")?.scrollTop ?? 0 : 0;
       const prevWindowScrollY = preserveWindowScroll ? Math.max(0, Number(win.scrollY || 0)) : 0;
       if (preserveWindowScroll) armSmartHeaderScrollGuard();
@@ -1160,6 +1166,12 @@ export function createAppShellRuntimeController(deps = {}) {
         bindAppEvents();
         bindFeedDelegationFn();
       }
+      if (reuseLeafletMapCanvas) {
+        const nextLeafletMapCanvas = doc?.getElementById("leafletMap");
+        if (nextLeafletMapCanvas && reuseLeafletMapCanvas !== nextLeafletMapCanvas) {
+          nextLeafletMapCanvas.replaceWith(reuseLeafletMapCanvas);
+        }
+      }
       if (reuseFeed) {
         const nextFeed = doc?.getElementById("feedView");
         if (nextFeed && reuseFeed !== nextFeed) {
@@ -1171,6 +1183,12 @@ export function createAppShellRuntimeController(deps = {}) {
       } else if (preserveMainScroll) {
         const nextMain = doc?.querySelector("main");
         if (nextMain) nextMain.scrollTop = prevScrollTop;
+      }
+      if (preservedMapSearchQuery && state.activeTab === "map") {
+        const nextMapSearchInput = doc?.getElementById("mapSearchInput");
+        if (nextMapSearchInput && nextMapSearchInput.value !== preservedMapSearchQuery) {
+          nextMapSearchInput.value = preservedMapSearchQuery;
+        }
       }
       if (preserveWindowScroll) {
         armSmartHeaderScrollGuard();
@@ -1224,7 +1242,9 @@ export function createAppShellRuntimeController(deps = {}) {
 
     const nextMapRuntimeSignature = buildMapRuntimeSignature(mode);
     if (mode === "main" && state.activeTab === "map") {
-      scheduleMapRuntimeRefresh();
+      if (changed || nextMapRuntimeSignature !== lastMapRuntimeSignature) {
+        scheduleMapRuntimeRefresh();
+      }
       lastMapRuntimeSignature = nextMapRuntimeSignature;
     } else if (nextMapRuntimeSignature !== lastMapRuntimeSignature) {
       cleanupLeafletFn();

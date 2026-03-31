@@ -60,15 +60,29 @@ export function createDiscoveryRuntimeController(deps = {}) {
   let leafletWarmupScheduled = false;
   let leafletMap = null;
   let leafletBizMarkers = [];
+  let leafletBizMarkerMap = new Map();
   let leafletUserMarker = null;
+  let leafletTileFallbackActive = false;
+  let mapSearchFilterTimer = null;
+  let mapSearchLastPanKey = "";
   let mapNotice = "";
   let mapNoticeTimer = null;
   const DISCOVERY_MAP_DEFAULT_CENTER = [42.6629, 21.1655];
   const DISCOVERY_MAP_DEFAULT_ZOOM = 14;
   const DISCOVERY_MAP_MAX_ZOOM = 19;
+  const DISCOVERY_MAP_FOCUS_ZOOM = Math.max(13, Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapFocusZoom || 16) || 16));
   const LEAFLET_SOURCE_TIMEOUT_MS = Math.max(1600, Number(deps.leafletSourceTimeoutMs || 2600) || 2600);
+  const LEAFLET_TILE_PRIMARY_URL = String(
+    deps.leafletTilePrimaryUrl
+    || "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+  ).trim();
+  const LEAFLET_TILE_FALLBACK_URL = String(
+    deps.leafletTileFallbackUrl
+    || "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  ).trim();
   const LOCATION_UNVERIFIED_LABEL = "Standort nicht verifiziert";
   const MAP_TILES_DEGRADED_NOTICE = "Kartenkacheln konnten nicht geladen werden. Es werden nur verifizierte Daten gezeigt.";
+  const MAP_TILES_FALLBACK_NOTICE = "Primaere Kartenkacheln langsam. Fallback-Karte aktiv.";
 
 function emitVendorDegraded(kind = "map", active = false, message = "") {
   if (!window || typeof window.dispatchEvent !== "function") return;
@@ -86,9 +100,11 @@ function emitVendorDegraded(kind = "map", active = false, message = "") {
 function getLeafletFocusZoom() {
   if (leafletMap && typeof leafletMap.getMaxZoom === "function") {
     const maxZoom = Number(leafletMap.getMaxZoom());
-    if (Number.isFinite(maxZoom) && maxZoom > 0) return maxZoom;
+    if (Number.isFinite(maxZoom) && maxZoom > 0) {
+      return Math.min(maxZoom, DISCOVERY_MAP_FOCUS_ZOOM);
+    }
   }
-  return DISCOVERY_MAP_MAX_ZOOM;
+  return DISCOVERY_MAP_FOCUS_ZOOM;
 }
 
 function focusLeafletMap(lat, lng, options = {}) {
@@ -293,7 +309,14 @@ function cleanupLeaflet() {
   } catch {}
   leafletMap = null;
   leafletBizMarkers = [];
+  leafletBizMarkerMap = new Map();
   leafletUserMarker = null;
+  leafletTileFallbackActive = false;
+  mapSearchLastPanKey = "";
+  if (mapSearchFilterTimer) {
+    clearTimeout(mapSearchFilterTimer);
+    mapSearchFilterTimer = null;
+  }
 }
 
 function isLeafletMapMountedOn(element) {
@@ -322,13 +345,26 @@ function scheduleLeafletRefresh(retries = 3) {
   run(Math.max(0, Number(retries) || 0));
 }
 
-function makeBizDivIcon(b) {
-  const selected = state.selectedBusiness || {};
-  const selectedKey = String(selected.markerKey || "");
-  const isSelected = selectedKey
-    ? selectedKey === String(b.markerKey || "")
-    : (String(selected.id || "") === String(b.id || "")
-      && Number(selected.locationIndex || 0) === Number(b.locationIndex || 0));
+function resolveLeafletMarkerKey(location = {}, fallbackIndex = 0) {
+  const markerKey = String(location?.markerKey || "").trim();
+  if (markerKey) return markerKey;
+  const id = String(location?.id || "biz").trim() || "biz";
+  const locationIndex = Number.isFinite(Number(location?.locationIndex))
+    ? Number(location.locationIndex)
+    : Number(fallbackIndex || 0);
+  return `${id}:${locationIndex}`;
+}
+
+function buildMarkerVisualSignature(location = {}, { selected = false } = {}) {
+  const coords = normalizeCoordPair(location?.lat, location?.lng);
+  const lat = coords ? Number(coords.lat).toFixed(6) : "";
+  const lng = coords ? Number(coords.lng).toFixed(6) : "";
+  const image = String(location?.img || "").trim();
+  return `${resolveLeafletMarkerKey(location)}|${lat}|${lng}|${image}|${selected ? "1" : "0"}`;
+}
+
+function makeBizDivIcon(b, { selected = false } = {}) {
+  const isSelected = selected === true;
   const safeImg = b.img && !isPlaceholderUrl(b.img) ? escapeHtml(b.img) : PLACEHOLDER_IMAGE;
   const html = `
     <div class="relative flex flex-col items-center justify-center transition-all duration-300 ${isSelected ? 'scale-110 z-[500]' : 'hover:scale-105 z-[400]'}">
@@ -339,6 +375,18 @@ function makeBizDivIcon(b) {
     </div>
   `;
   return window.L.divIcon({ className: "custom-div-icon", html, iconSize: [48, 58], iconAnchor: [24, 58] });
+}
+
+function updateLeafletMarkerVisual(marker, { selected = false, force = false } = {}) {
+  if (!marker || !window.L) return;
+  const business = marker.__biz || {};
+  const nextSignature = buildMarkerVisualSignature(business, { selected });
+  if (!force && marker.__visualSignature === nextSignature) return;
+  try {
+    marker.setIcon(makeBizDivIcon(business, { selected }));
+    marker.setZIndexOffset(selected ? 1600 : 600);
+  } catch {}
+  marker.__visualSignature = nextSignature;
 }
 
 function isDiscoverableMapBusiness(location = {}) {
@@ -482,7 +530,7 @@ function bindMapSheetEvents() {
   if (mapCloseBtn) {
     mapCloseBtn.addEventListener("click", () => {
       state.selectedBusiness = null;
-      renderLeafletMarkers(state.businessLocations);
+      renderCurrentMapMarkerSet();
       updateMapSheet();
     });
   }
@@ -510,6 +558,17 @@ function bindMapSheetEvents() {
         });
       });
     }
+  });
+}
+
+function createLeafletTileLayer(urlTemplate = LEAFLET_TILE_PRIMARY_URL) {
+  return window.L.tileLayer(urlTemplate, {
+    maxZoom: DISCOVERY_MAP_MAX_ZOOM,
+    keepBuffer: 8,
+    updateWhenIdle: false,
+    updateWhenZooming: false,
+    subdomains: "abcd",
+    crossOrigin: true
   });
 }
 
@@ -546,28 +605,54 @@ function initLeafletIfNeeded() {
     return;
   }
 
-  leafletMap = window.L.map(el, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_DEFAULT_ZOOM);
-  const baseLayer = window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
-    maxZoom: DISCOVERY_MAP_MAX_ZOOM
-  });
-  baseLayer.on("tileerror", () => {
-    setMapNotice(MAP_TILES_DEGRADED_NOTICE);
-    emitVendorDegraded("map", true, "Kartenkacheln nicht erreichbar. Karte zeigt reduzierten Zustand.");
-  });
-  baseLayer.on("load", () => {
-    if (String(mapNotice || "").trim() === MAP_TILES_DEGRADED_NOTICE) {
+  leafletMap = window.L.map(el, {
+    zoomControl: false,
+    attributionControl: false,
+    preferCanvas: true,
+    fadeAnimation: true,
+    zoomAnimation: true,
+    markerZoomAnimation: true
+  }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_DEFAULT_ZOOM);
+  const primaryLayer = createLeafletTileLayer(LEAFLET_TILE_PRIMARY_URL);
+  const onTileLoad = () => {
+    const currentNotice = String(mapNotice || "").trim();
+    if (currentNotice === MAP_TILES_DEGRADED_NOTICE || currentNotice === MAP_TILES_FALLBACK_NOTICE) {
       clearMapNotice();
     }
     emitVendorDegraded("map", false, "");
-  });
-  baseLayer.addTo(leafletMap);
+  };
+  const onPrimaryTileError = () => {
+    if (
+      !leafletTileFallbackActive
+      && LEAFLET_TILE_FALLBACK_URL
+      && LEAFLET_TILE_FALLBACK_URL !== LEAFLET_TILE_PRIMARY_URL
+    ) {
+      leafletTileFallbackActive = true;
+      setMapNotice(MAP_TILES_FALLBACK_NOTICE);
+      emitVendorDegraded("map", true, "Primaere Kartenkacheln nicht erreichbar. Fallback aktiv.");
+      try { leafletMap.removeLayer(primaryLayer); } catch {}
+      const fallbackLayer = createLeafletTileLayer(LEAFLET_TILE_FALLBACK_URL);
+      fallbackLayer.on("tileerror", () => {
+        setMapNotice(MAP_TILES_DEGRADED_NOTICE);
+        emitVendorDegraded("map", true, "Kartenkacheln nicht erreichbar. Karte zeigt reduzierten Zustand.");
+      });
+      fallbackLayer.on("load", onTileLoad);
+      fallbackLayer.addTo(leafletMap);
+      return;
+    }
+    setMapNotice(MAP_TILES_DEGRADED_NOTICE);
+    emitVendorDegraded("map", true, "Kartenkacheln nicht erreichbar. Karte zeigt reduzierten Zustand.");
+  };
+  primaryLayer.on("tileerror", onPrimaryTileError);
+  primaryLayer.on("load", onTileLoad);
+  primaryLayer.addTo(leafletMap);
   try {
     leafletMap.whenReady(() => {
       scheduleLeafletRefresh(3);
     });
   } catch {}
 
-  renderLeafletMarkers(getDiscoverableMapLocations(state.businessLocations));
+  renderCurrentMapMarkerSet();
   updateMapSheet();
   if (window.lucide?.createIcons) window.lucide.createIcons();
   mapLocate();
@@ -575,57 +660,142 @@ function initLeafletIfNeeded() {
   scheduleLeafletRefresh(3);
 }
 
+function getSelectedMapMarkerKey() {
+  const selected = state.selectedBusiness || {};
+  const hasSelectionIdentity = !!String(selected?.markerKey || selected?.id || "").trim();
+  if (!hasSelectionIdentity) return "";
+  return resolveLeafletMarkerKey(selected);
+}
+
+function getActiveMapSearchQuery() {
+  const searchInput = document.getElementById("mapSearchInput");
+  return String(searchInput?.value || "").trim().toLowerCase();
+}
+
 function renderLeafletMarkers(locations) {
   if (!leafletMap || !window.L) return;
   const visibleLocations = getDiscoverableMapLocations(locations);
-  leafletBizMarkers.forEach(marker => { try { leafletMap.removeLayer(marker); } catch {} });
-  const nextMarkers = [];
-  visibleLocations.forEach((entry) => {
+  const selectedMarkerKey = getSelectedMapMarkerKey();
+  const nextEntries = new Map();
+  visibleLocations.forEach((entry, index) => {
     const coords = normalizeCoordPair(entry?.lat, entry?.lng);
     if (!coords) return;
-    const b = (coords.lat === entry.lat && coords.lng === entry.lng)
-      ? entry
-      : { ...entry, lat: coords.lat, lng: coords.lng };
-    try {
-      const marker = window.L.marker([b.lat, b.lng], { icon: makeBizDivIcon(b) }).addTo(leafletMap);
-      marker.__biz = b;
-      marker.on("click", () => {
-        state.selectedBusiness = b;
-        renderLeafletMarkers(visibleLocations);
-        updateMapSheet();
-        focusLeafletMap(b.lat, b.lng);
-      });
-      nextMarkers.push(marker);
-    } catch (err) {
-      console.warn("Skipping invalid map marker", b?.id || "", err);
-    }
+    const markerKey = resolveLeafletMarkerKey(entry, index);
+    const normalized = {
+      ...entry,
+      markerKey,
+      lat: coords.lat,
+      lng: coords.lng
+    };
+    nextEntries.set(markerKey, normalized);
   });
-  leafletBizMarkers = nextMarkers;
+
+  leafletBizMarkerMap.forEach((marker, markerKey) => {
+    if (nextEntries.has(markerKey)) return;
+    try { leafletMap.removeLayer(marker); } catch {}
+    leafletBizMarkerMap.delete(markerKey);
+  });
+
+  nextEntries.forEach((entry, markerKey) => {
+    let marker = leafletBizMarkerMap.get(markerKey) || null;
+    if (!marker) {
+      try {
+        marker = window.L.marker([entry.lat, entry.lng]).addTo(leafletMap);
+      } catch (err) {
+        console.warn("Skipping invalid map marker", entry?.id || "", err);
+        return;
+      }
+      marker.__markerKey = markerKey;
+      marker.on("click", () => {
+        const selectedEntry = marker?.__biz || null;
+        if (!selectedEntry) return;
+        state.selectedBusiness = selectedEntry;
+        renderCurrentMapMarkerSet();
+        updateMapSheet();
+        focusLeafletMap(selectedEntry.lat, selectedEntry.lng, { duration: 0.28 });
+      });
+      leafletBizMarkerMap.set(markerKey, marker);
+    }
+
+    marker.__biz = entry;
+    marker.__markerKey = markerKey;
+    try {
+      const markerLatLng = marker.getLatLng?.() || null;
+      const markerLat = Number(markerLatLng?.lat || 0);
+      const markerLng = Number(markerLatLng?.lng || 0);
+      if (!markerLatLng || Math.abs(markerLat - entry.lat) > 0.000001 || Math.abs(markerLng - entry.lng) > 0.000001) {
+        marker.setLatLng([entry.lat, entry.lng]);
+      }
+    } catch {}
+    updateLeafletMarkerVisual(marker, { selected: markerKey === selectedMarkerKey });
+  });
+
+  if (selectedMarkerKey && !leafletBizMarkerMap.has(selectedMarkerKey)) {
+    state.selectedBusiness = null;
+  }
+  leafletBizMarkers = Array.from(leafletBizMarkerMap.values());
 }
 
 function filterMapLocationsByQuery(query) {
   const key = String(query || "").toLowerCase().trim();
   const baseLocations = getDiscoverableMapLocations(state.businessLocations);
   if (!key) return baseLocations;
-  return baseLocations.filter(b =>
-    b.name.toLowerCase().includes(key) || (b.address || b.city || "").toLowerCase().includes(key)
-  );
+  return baseLocations.filter((location) => (
+    String(location?.name || "").toLowerCase().includes(key)
+    || String(location?.address || location?.city || "").toLowerCase().includes(key)
+  ));
+}
+
+function renderCurrentMapMarkerSet({
+  query = getActiveMapSearchQuery(),
+  panToFirst = false
+} = {}) {
+  const normalizedQuery = String(query || "").toLowerCase().trim();
+  const filtered = filterMapLocationsByQuery(normalizedQuery);
+  renderLeafletMarkers(filtered);
+  if (panToFirst && filtered.length > 0 && normalizedQuery.length > 2) {
+    const first = filtered[0];
+    const markerKey = resolveLeafletMarkerKey(first);
+    if (markerKey && markerKey !== mapSearchLastPanKey) {
+      mapSearchLastPanKey = markerKey;
+      focusLeafletMap(first.lat, first.lng, { zoom: Math.max(DISCOVERY_MAP_DEFAULT_ZOOM + 1, 15), duration: 0.3 });
+    }
+  }
+  if (!normalizedQuery) {
+    mapSearchLastPanKey = "";
+  }
+  return filtered;
 }
 
 function bindMapSearchInput() {
   const searchInput = document.getElementById("mapSearchInput");
-  if (!searchInput || searchInput.dataset.bound === "true") return;
-  searchInput.addEventListener("input", (e) => {
-    const query = e.target.value.toLowerCase();
-    const filtered = filterMapLocationsByQuery(query);
-    renderLeafletMarkers(filtered);
-    state.selectedBusiness = null;
-    updateMapSheet();
-    if (filtered.length > 0 && query.length > 2) {
-      try { leafletMap.panTo([filtered[0].lat, filtered[0].lng], { animate: true, duration: 0.5 }); } catch {}
+  if (!searchInput) return;
+  const applyFilter = ({ panToFirst = false } = {}) => {
+    renderCurrentMapMarkerSet({
+      query: searchInput.value,
+      panToFirst
+    });
+    if (state.selectedBusiness && !leafletBizMarkerMap.has(getSelectedMapMarkerKey())) {
+      state.selectedBusiness = null;
     }
-  });
-  searchInput.dataset.bound = "true";
+    updateMapSheet();
+  };
+  if (searchInput.dataset.bound !== "true") {
+    searchInput.addEventListener("input", () => {
+      const queryLength = String(searchInput.value || "").trim().length;
+      if (mapSearchFilterTimer) {
+        clearTimeout(mapSearchFilterTimer);
+      }
+      mapSearchFilterTimer = window.setTimeout(() => {
+        mapSearchFilterTimer = null;
+        applyFilter({ panToFirst: queryLength > 2 });
+      }, 120);
+    });
+    searchInput.dataset.bound = "true";
+  }
+  if (String(searchInput.value || "").trim()) {
+    applyFilter({ panToFirst: false });
+  }
 }
 
 function setUserMarker(lat, lng, label = "Deine Position") {
@@ -677,7 +847,7 @@ function mapLocate() {
       }
     },
     () => setMapNotice("Standort konnte nicht abgerufen werden. Bitte Berechtigung pruefen."),
-    { enableHighAccuracy: true, timeout: 8000, maximumAge: 10000 }
+    { enableHighAccuracy: false, timeout: 5500, maximumAge: 60000 }
   );
 }
 
