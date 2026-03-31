@@ -14,7 +14,6 @@ const EDGE_HOST = (() => {
 const IMAGE_SIZE_PRESETS = {
   avatar: { width: 96, quality: 72, fit: "contain" },
   thumb: { width: 160, quality: 72, fit: "cover" },
-  header: { width: 420, quality: 88, fit: "contain" },
   medium: { width: 768, quality: 76, fit: "cover" },
   large: { width: 1280, quality: 80, fit: "cover" }
 };
@@ -50,7 +49,7 @@ export function getFirebaseStorageUrl(path) {
 
 function normalizeSizeKey(size = "large") {
   const key = String(size || "").trim().toLowerCase();
-  if (key === "avatar" || key === "thumb" || key === "header" || key === "medium" || key === "large") return key;
+  if (key === "avatar" || key === "thumb" || key === "medium" || key === "large") return key;
   return "large";
 }
 

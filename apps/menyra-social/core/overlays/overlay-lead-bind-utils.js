@@ -77,9 +77,6 @@ export function bindLeadOverlayEventsCore({
   const leadLogoTrigger = doc.getElementById("leadLogoTrigger");
   const leadLogoInput = doc.getElementById("leadLogoInput");
   const leadLogoUrl = doc.getElementById("leadLogoUrl");
-  const leadHeaderLogoTrigger = doc.getElementById("leadHeaderLogoTrigger");
-  const leadHeaderLogoInput = doc.getElementById("leadHeaderLogoInput");
-  const leadHeaderLogoUrl = doc.getElementById("leadHeaderLogoUrl");
   const leadPassword = doc.getElementById("leadPassword");
 
   bindModalDismiss(leadOverlay, closeLeadModal, { selfOnly: true });
@@ -122,31 +119,6 @@ export function bindLeadOverlayEventsCore({
     leadLogoUrl.addEventListener("input", () => {
       const val = leadLogoUrl.value.trim();
       const img = doc.getElementById("leadLogoPreview");
-      if (img) img.setAttribute("src", val || placeholderImage);
-    });
-  }
-  if (leadHeaderLogoTrigger && leadHeaderLogoInput) {
-    leadHeaderLogoTrigger.addEventListener("click", () => leadHeaderLogoInput.click());
-  }
-  if (leadHeaderLogoInput) {
-    leadHeaderLogoInput.addEventListener("change", (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      state.leadModal.headerLogoFile = file;
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const preview = String(reader.result || "");
-        state.leadModal.headerLogoPreview = preview;
-        const img = doc.getElementById("leadHeaderLogoPreview");
-        if (img && preview) img.setAttribute("src", preview);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-  if (leadHeaderLogoUrl) {
-    leadHeaderLogoUrl.addEventListener("input", () => {
-      const val = leadHeaderLogoUrl.value.trim();
-      const img = doc.getElementById("leadHeaderLogoPreview");
       if (img) img.setAttribute("src", val || placeholderImage);
     });
   }

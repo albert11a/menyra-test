@@ -87,8 +87,6 @@ export function createPublicProfileRuntimeController({
         viewProfile.followers = data.followersCount ?? viewProfile.followers;
         viewProfile.following = data.followingCount ?? viewProfile.following;
         viewProfile.avatar = data.logoUrl || data.logo || viewProfile.avatar;
-        viewProfile.headerLogoUrl = data.headerLogoUrl || data.headerLogo || viewProfile.headerLogoUrl || "";
-        viewProfile.headerLogo = viewProfile.headerLogoUrl || data.headerLogo || viewProfile.headerLogo || "";
         viewProfile.name = data.name || data.restaurantName || viewProfile.name;
         viewProfile.location = data.city || viewProfile.location;
       } else {
@@ -172,8 +170,6 @@ export function createPublicProfileRuntimeController({
       uid: data?.uid || rest?.ownerUid || profileDoc?.id || "",
       bio: data?.bio || data?.description || rest?.description || rest?.bio || rest?.about || `Offizieller Account auf ${brandSocialName}.`,
       avatar: data?.avatarUrl || data?.avatar || rest?.logoUrl || rest?.logo || "",
-      headerLogoUrl: data?.headerLogoUrl || data?.headerLogo || rest?.headerLogoUrl || rest?.headerLogo || "",
-      headerLogo: data?.headerLogo || data?.headerLogoUrl || rest?.headerLogo || rest?.headerLogoUrl || "",
       location: data?.city || rest?.city || "Kosovo",
       followers,
       following,
@@ -197,8 +193,6 @@ export function createPublicProfileRuntimeController({
       uid: userDoc?.id || data?.uid || fallback?.uid || "",
       bio: data?.bio || data?.description || fallback?.bio || "",
       avatar: data?.avatarUrl || data?.avatar || fallback?.avatar || "",
-      headerLogoUrl: data?.headerLogoUrl || data?.headerLogo || fallback?.headerLogoUrl || fallback?.headerLogo || "",
-      headerLogo: data?.headerLogo || data?.headerLogoUrl || fallback?.headerLogo || fallback?.headerLogoUrl || "",
       location: data?.city || fallback?.location || "Prishtina",
       followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans, fallback?.followers),
       following: pickCountValue(data?.followingCount, data?.following, fallback?.following),

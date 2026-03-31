@@ -639,8 +639,6 @@ function resetLeadDraft() {
     actionsOpen: false,
     logoFile: null,
     logoPreview: "",
-    headerLogoFile: null,
-    headerLogoPreview: "",
     coords: null,
     locations: []
   };
@@ -675,7 +673,6 @@ function createLeadDraftState(mode = "create", lead = null) {
     tiktok: lead?.tiktok || rest?.tiktok || "",
     googleMaps: lead?.googleMaps || rest?.googleMaps || "",
     logoUrl: lead?.logoUrl || rest?.logoUrl || rest?.logo || "",
-    headerLogoUrl: lead?.headerLogoUrl || lead?.headerLogo || rest?.headerLogoUrl || rest?.headerLogo || "",
     email: lead?.email || lead?.socialEmail || buildLeadAccountEmail(businessName),
     password: "",
     country,
@@ -700,8 +697,6 @@ function createLeadDraftState(mode = "create", lead = null) {
     actionsOpen: false,
     logoFile: null,
     logoPreview: merged.logoUrl || "",
-    headerLogoFile: null,
-    headerLogoPreview: merged.headerLogoUrl || "",
     coords: hasLeadLocationCoords(primary)
       ? { lat: primary.lat, lng: primary.lng }
       : (coords || getLeadCountryCenter(country)),
@@ -1187,8 +1182,6 @@ async function ensureRestaurantPublicMeta(restaurantId, base) {
     city: base?.city || "",
     logoUrl: base?.logoUrl || base?.logo || "",
     logo: base?.logo || "",
-    headerLogoUrl: base?.headerLogoUrl || base?.headerLogo || "",
-    headerLogo: base?.headerLogo || "",
     updatedAt: serverTimestamp()
   };
   await setDoc(doc(db, "restaurants", restaurantId, "public", "meta"), payload, { merge: true });
@@ -1222,7 +1215,6 @@ function normalizeLeadDoc(docSnap) {
     gpsLng: Number.isFinite(Number(fallbackLng)) ? Number(fallbackLng) : null,
     locations,
     logoUrl: data.logoUrl || data.logo || data.imageUrl || "",
-    headerLogoUrl: data.headerLogoUrl || data.headerLogo || "",
     note: data.note || "",
     status,
     restaurantId: data.restaurantId || data.restaurant || "",
@@ -1264,7 +1256,6 @@ function normalizeLeadFromRestaurant(rest) {
     city: data.city || "",
     address: locations[0]?.address || data.address || "",
     logoUrl: data.logoUrl || data.logo || "",
-    headerLogoUrl: data.headerLogoUrl || data.headerLogo || "",
     note: "",
     status,
     restaurantId: data.id,
@@ -2110,7 +2101,6 @@ function syncLeadModalDraftFromForm() {
   lead.zipCode = readText("leadZipCode") || lead.zipCode || "";
   lead.address = readText("leadAddress") || lead.address || "";
   lead.logoUrl = readText("leadLogoUrl") || lead.logoUrl || "";
-  lead.headerLogoUrl = readText("leadHeaderLogoUrl") || lead.headerLogoUrl || lead.headerLogo || "";
   lead.note = readText("leadNote") || lead.note || "";
   lead.billingCycle = readValue("leadBillingCycle") === "yearly" ? "yearly" : (lead.billingCycle || "monthly");
   lead.status = normalizeLeadStatusKey(readValue("leadStatus") || lead.status || "registered") || "registered";

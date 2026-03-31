@@ -644,7 +644,6 @@ const CACHE_KEYS = {
 const PUBLIC_BOOTSTRAP_EVENT = "menyra-social-bootstrap";
 const DEFAULT_PUBLIC_BOOTSTRAP_ENDPOINT = "https://us-central1-menyra-c0e68.cloudfunctions.net/socialBootstrapFeed";
 const SOCIAL_VENDOR_DEGRADED_EVENT = "menyra-social-vendor-degraded";
-const DEFAULT_HEADER_WORDMARK_URL = "/apps/menyra-social/assets/icon-512.png";
 const SOCIAL_RUNTIME_BUDGETS_MS = Object.freeze({
   cold_guest_landing: 2200,
   profile_open: 850,
@@ -1070,8 +1069,6 @@ const state = {
     actionsOpen: false,
     logoFile: null,
     logoPreview: "",
-    headerLogoFile: null,
-    headerLogoPreview: "",
     coords: null,
     locations: []
   },
@@ -1082,9 +1079,7 @@ const state = {
     status: "",
     loading: false,
     logoFile: null,
-    logoPreview: "",
-    headerLogoFile: null,
-    headerLogoPreview: ""
+    logoPreview: ""
   },
   settings: { ...DEFAULT_SETTINGS },
   menuLayout: { ...DEFAULT_MENU_LAYOUT },
@@ -2253,55 +2248,11 @@ function getRestaurantMetaById(restaurantId) {
 }
 
 function resolveHeaderBranding() {
-  const activeProfile = state.profileView?.profile || state.userProfile || {};
-  const activeRestaurantId = String(activeProfile?.restaurantId || state.userProfile?.restaurantId || "").trim();
-  const activeRole = String(activeProfile?.role || state.userProfile?.role || "").trim().toLowerCase();
-  const isBusinessContext = !!activeRestaurantId || activeRole === "business";
-  const leadDraftHeaderLogo = state.leadModal?.open
-    ? String(
-      state.leadModal.headerLogoPreview
-      || state.leadModal.lead?.headerLogoUrl
-      || state.leadModal.lead?.headerLogo
-      || ""
-    ).trim()
-    : "";
-  const customerDraftHeaderLogo = state.customerModal?.open
-    ? String(
-      state.customerModal.headerLogoPreview
-      || state.customerModal.customer?.headerLogoUrl
-      || state.customerModal.customer?.headerLogo
-      || ""
-    ).trim()
-    : "";
-  const persistedBusinessHeaderLogo = String(
-    activeProfile?.headerLogoUrl
-    || activeProfile?.headerLogo
-    || state.userProfile?.headerLogoUrl
-    || state.userProfile?.headerLogo
-    || ""
-  ).trim();
-  const headerWordmarkRaw = leadDraftHeaderLogo || customerDraftHeaderLogo || persistedBusinessHeaderLogo;
-  const optimizedHeaderWordmark = headerWordmarkRaw
-    ? getOptimizedImageUrl(headerWordmarkRaw, "header")
-    : "";
-  const hasBusinessWordmark = !!optimizedHeaderWordmark && !isPlaceholderUrl(optimizedHeaderWordmark);
-  const businessTitle = String(
-    activeProfile?.name
-    || activeProfile?.restaurantName
-    || activeProfile?.businessName
-    || state.leadModal?.lead?.businessName
-    || state.customerModal?.customer?.name
-    || BRAND_UI.upper
-  ).trim() || BRAND_UI.upper;
-  const hasWordmarkLogo = hasBusinessWordmark || !isBusinessContext;
   return {
-    title: isBusinessContext ? businessTitle : BRAND_UI.upper,
+    title: BRAND_UI.upper,
     subtitle: "Social",
     logoUrl: resolveShellAvatarUrl(),
-    isBusinessLogo: isLocalBusinessProfile(state.userProfile),
-    wordmarkUrl: hasBusinessWordmark ? optimizedHeaderWordmark : (!isBusinessContext ? DEFAULT_HEADER_WORDMARK_URL : ""),
-    wordmarkAlt: hasBusinessWordmark ? businessTitle : (isBusinessContext ? businessTitle : BRAND_UI.social),
-    hasWordmarkLogo
+    isBusinessLogo: isLocalBusinessProfile(state.userProfile)
   };
 }
 

@@ -15,8 +15,6 @@ export function renderCustomerModalCore({
   const customer = state.customerModal.customer || {};
   const logoRaw = state.customerModal.logoPreview || customer.logoUrl || customer.logo || "";
   const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
-  const headerLogoRaw = state.customerModal.headerLogoPreview || customer.headerLogoUrl || customer.headerLogo || "";
-  const headerLogoUrl = headerLogoRaw ? getOptimizedImageUrl(headerLogoRaw, "header") : PLACEHOLDER_IMAGE;
   const status = state.customerModal.status || "";
   const typeKey = resolveCustomerType(customer.type || customer.customerType || "cafe");
   const customerStatus = normalizeLeadStatusKey(customer.status || "kunde") || "kunde";
@@ -37,21 +35,12 @@ export function renderCustomerModalCore({
   const bodyHtml = `
     <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
       <input type="file" id="customerLogoInput" class="hidden" accept="image/*" />
-      <input type="file" id="customerHeaderLogoInput" class="hidden" accept="image/*" />
       <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
         <img id="customerLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
       </div>
       <button id="customerLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
         Logo hochladen
       </button>
-      <div class="rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50 p-3 space-y-3">
-        <div class="rounded-[1.6rem] overflow-hidden border border-slate-100 bg-white px-4 py-3">
-          <img id="customerHeaderLogoPreview" src="${escapeHtml(headerLogoUrl)}" class="w-full h-20 object-contain" />
-        </div>
-        <button id="customerHeaderLogoTrigger" class="w-full py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest">
-          Header Logo hochladen
-        </button>
-      </div>
 
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
         <div>
@@ -97,10 +86,6 @@ export function renderCustomerModalCore({
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
           <input id="customerLogoUrl" type="text" value="${escapeHtml(customer.logoUrl || customer.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
-        </div>
-        <div>
-          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Header Logo URL (optional)</label>
-          <input id="customerHeaderLogoUrl" type="text" value="${escapeHtml(customer.headerLogoUrl || customer.headerLogo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>

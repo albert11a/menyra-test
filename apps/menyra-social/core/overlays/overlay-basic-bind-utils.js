@@ -104,9 +104,6 @@ export function bindCustomerOverlayEventsCore({
   const customerLogoTrigger = doc.getElementById("customerLogoTrigger");
   const customerLogoInput = doc.getElementById("customerLogoInput");
   const customerLogoUrl = doc.getElementById("customerLogoUrl");
-  const customerHeaderLogoTrigger = doc.getElementById("customerHeaderLogoTrigger");
-  const customerHeaderLogoInput = doc.getElementById("customerHeaderLogoInput");
-  const customerHeaderLogoUrl = doc.getElementById("customerHeaderLogoUrl");
 
   bindModalDismiss(customerOverlay, closeCustomerModal, { selfOnly: true });
   bindModalDismiss(customerClose, closeCustomerModal);
@@ -139,31 +136,6 @@ export function bindCustomerOverlayEventsCore({
     customerLogoUrl.addEventListener("input", () => {
       const val = customerLogoUrl.value.trim();
       const img = doc.getElementById("customerLogoPreview");
-      if (img) img.setAttribute("src", val || placeholderImage);
-    });
-  }
-  if (customerHeaderLogoTrigger && customerHeaderLogoInput) {
-    customerHeaderLogoTrigger.addEventListener("click", () => customerHeaderLogoInput.click());
-  }
-  if (customerHeaderLogoInput) {
-    customerHeaderLogoInput.addEventListener("change", (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      state.customerModal.headerLogoFile = file;
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const preview = String(reader.result || "");
-        state.customerModal.headerLogoPreview = preview;
-        const img = doc.getElementById("customerHeaderLogoPreview");
-        if (img && preview) img.setAttribute("src", preview);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-  if (customerHeaderLogoUrl) {
-    customerHeaderLogoUrl.addEventListener("input", () => {
-      const val = customerHeaderLogoUrl.value.trim();
-      const img = doc.getElementById("customerHeaderLogoPreview");
       if (img) img.setAttribute("src", val || placeholderImage);
     });
   }

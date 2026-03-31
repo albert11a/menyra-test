@@ -88,9 +88,6 @@ export function bindLeadInlineCreateEventsCore({
   }
   const leadLogoTrigger = doc.getElementById("leadLogoTrigger");
   const leadLogoInput = doc.getElementById("leadLogoInput");
-  const leadHeaderLogoTrigger = doc.getElementById("leadHeaderLogoTrigger");
-  const leadHeaderLogoInput = doc.getElementById("leadHeaderLogoInput");
-  const leadHeaderLogoUrl = doc.getElementById("leadHeaderLogoUrl");
   if (leadLogoTrigger && leadLogoInput) {
     leadLogoTrigger.addEventListener("click", () => leadLogoInput.click());
   }
@@ -107,33 +104,6 @@ export function bindLeadInlineCreateEventsCore({
         if (img && preview) img.setAttribute("src", preview);
       };
       reader.readAsDataURL(file);
-    });
-  }
-  if (leadHeaderLogoTrigger && leadHeaderLogoInput) {
-    leadHeaderLogoTrigger.addEventListener("click", () => leadHeaderLogoInput.click());
-  }
-  if (leadHeaderLogoInput) {
-    leadHeaderLogoInput.addEventListener("change", (e) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      state.leadModal.headerLogoFile = file;
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const preview = String(reader.result || "");
-        state.leadModal.headerLogoPreview = preview;
-        const img = doc.getElementById("leadHeaderLogoPreview");
-        if (img && preview) img.setAttribute("src", preview);
-      };
-      reader.readAsDataURL(file);
-    });
-  }
-  if (leadHeaderLogoUrl) {
-    leadHeaderLogoUrl.addEventListener("input", () => {
-      const nextUrl = String(leadHeaderLogoUrl.value || "").trim();
-      const img = doc.getElementById("leadHeaderLogoPreview");
-      if (!img) return;
-      const fallback = img.getAttribute("src") || "";
-      img.setAttribute("src", nextUrl || fallback);
     });
   }
 

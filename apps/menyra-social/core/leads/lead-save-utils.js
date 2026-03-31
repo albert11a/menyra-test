@@ -171,7 +171,6 @@ export async function saveLeadFromModalCore({
   const addressInputValue = docObj.getElementById("leadAddress")?.value?.trim() || "";
   const zipCode = docObj.getElementById("leadZipCode")?.value?.trim() || lead.zipCode || "";
   const logoUrlInput = docObj.getElementById("leadLogoUrl")?.value?.trim() || "";
-  const headerLogoUrlInput = docObj.getElementById("leadHeaderLogoUrl")?.value?.trim() || "";
   const note = docObj.getElementById("leadNote")?.value?.trim() || "";
   const billingCycle = docObj.getElementById("leadBillingCycle")?.value === "yearly" ? "yearly" : "monthly";
   const statusValue = docObj.getElementById("leadStatus")?.value || lead.status || "registered";
@@ -245,7 +244,7 @@ export async function saveLeadFromModalCore({
     const monthlyPrice = getMonthlyPrice(customerType, settings);
     const yearlyPrice = monthlyPrice * 12;
     const activePrice = billingCycle === "yearly" ? yearlyPrice : monthlyPrice;
-    const shouldSeedRestaurantBeforeLogoUpload = !!restRef && (!!state.leadModal.logoFile || !!state.leadModal.headerLogoFile);
+    const shouldSeedRestaurantBeforeLogoUpload = !!restRef && !!state.leadModal.logoFile;
     if (shouldSeedRestaurantBeforeLogoUpload) {
       await setDoc(restRef, {
         name: businessName,
@@ -270,22 +269,9 @@ export async function saveLeadFromModalCore({
       const { cdnUrl } = await uploadImage(
         state.leadModal.logoFile,
         restaurantId || state.user.uid,
-        { maxSize: 1024, quality: 0.9, mimeType: "image/jpeg" }
+        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
       );
       logoUrl = cdnUrl || logoUrl;
-    }
-    let headerLogoUrl = headerLogoUrlInput
-      || state.leadModal.headerLogoPreview
-      || lead.headerLogoUrl
-      || lead.headerLogo
-      || "";
-    if (state.leadModal.headerLogoFile) {
-      const { cdnUrl } = await uploadImage(
-        state.leadModal.headerLogoFile,
-        restaurantId || state.user.uid,
-        { maxSize: 1400, quality: 0.92, mimeType: "image/jpeg" }
-      );
-      headerLogoUrl = cdnUrl || headerLogoUrl;
     }
     const restPayload = {
       name: businessName,
@@ -311,8 +297,6 @@ export async function saveLeadFromModalCore({
       price: activePrice,
       logoUrl,
       logo: logoUrl,
-      headerLogoUrl,
-      headerLogo: headerLogoUrl,
       status: restaurantStatus,
       leadId: lead.id || "",
       locations: locationPayload,
@@ -386,8 +370,6 @@ export async function saveLeadFromModalCore({
       zipCode,
       locations: locationPayload,
       logoUrl,
-      headerLogoUrl,
-      headerLogo: headerLogoUrl,
       note,
       contactFirstName,
       contactLastName,

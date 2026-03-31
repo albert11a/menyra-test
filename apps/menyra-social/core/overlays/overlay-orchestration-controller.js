@@ -348,9 +348,7 @@ export function createOverlayOrchestrationController({
       status: "",
       loading: false,
       logoFile: null,
-      logoPreview: customer.logoUrl || customer.logo || "",
-      headerLogoFile: null,
-      headerLogoPreview: customer.headerLogoUrl || customer.headerLogo || ""
+      logoPreview: customer.logoUrl || customer.logo || ""
     };
     renderOverlays({ updateCustomer: true });
   }
@@ -367,9 +365,7 @@ export function createOverlayOrchestrationController({
       status: "",
       loading: false,
       logoFile: null,
-      logoPreview: "",
-      headerLogoFile: null,
-      headerLogoPreview: ""
+      logoPreview: ""
     };
     syncModalOpenUiState();
     renderOverlays({ updateCustomer: true });
