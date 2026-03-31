@@ -57,13 +57,16 @@ export function createDiscoveryRuntimeController(deps = {}) {
 
   let leafletLoadPromise = null;
   let leafletLoadFailed = false;
+  let leafletWarmupScheduled = false;
   let leafletMap = null;
   let leafletBizMarkers = [];
   let leafletUserMarker = null;
   let mapNotice = "";
   let mapNoticeTimer = null;
   const DISCOVERY_MAP_DEFAULT_CENTER = [42.6629, 21.1655];
+  const DISCOVERY_MAP_DEFAULT_ZOOM = 14;
   const DISCOVERY_MAP_MAX_ZOOM = 19;
+  const LEAFLET_SOURCE_TIMEOUT_MS = Math.max(1600, Number(deps.leafletSourceTimeoutMs || 2600) || 2600);
   const LOCATION_UNVERIFIED_LABEL = "Standort nicht verifiziert";
   const MAP_TILES_DEGRADED_NOTICE = "Kartenkacheln konnten nicht geladen werden. Es werden nur verifizierte Daten gezeigt.";
 
@@ -139,6 +142,11 @@ async function ensureLeafletLoaded() {
   }
   if (leafletLoadFailed) return false;
   if (leafletLoadPromise) return leafletLoadPromise;
+  if (!document?.head) {
+    leafletLoadFailed = true;
+    emitVendorDegraded("map", true, "Kartenbibliothek konnte nicht initialisiert werden.");
+    return false;
+  }
   ensureLeafletStylesheet();
   leafletLoadPromise = new Promise((resolve) => {
     const sources = Array.from(new Set([
@@ -163,20 +171,48 @@ async function ensureLeafletLoaded() {
       script.src = src;
       script.async = true;
       script.dataset.leafletJs = "1";
-      script.onload = () => {
-        leafletLoadFailed = !window.L;
-        if (window.L) {
+      let timeoutId = null;
+      let settled = false;
+      const clearListeners = () => {
+        script.removeEventListener("load", handleLoad);
+        script.removeEventListener("error", handleError);
+      };
+      const finalize = ({ loaded = false, keepScript = false } = {}) => {
+        if (settled) return;
+        settled = true;
+        if (timeoutId) window.clearTimeout(timeoutId);
+        clearListeners();
+        if (!keepScript) {
+          try { script.remove(); } catch {}
+        }
+        if (loaded) {
+          leafletLoadFailed = false;
           emitVendorDegraded("map", false, "");
           resolve(true);
+        }
+      };
+      const handleLoad = () => {
+        if (window.L) {
+          finalize({ loaded: true, keepScript: true });
           return;
         }
-        script.remove();
+        finalize({ loaded: false, keepScript: false });
         loadScriptAt(index + 1);
       };
-      script.onerror = () => {
-        script.remove();
+      const handleError = () => {
+        finalize({ loaded: false, keepScript: false });
         loadScriptAt(index + 1);
       };
+      script.addEventListener("load", handleLoad, { once: true });
+      script.addEventListener("error", handleError, { once: true });
+      timeoutId = window.setTimeout(() => {
+        if (window.L) {
+          finalize({ loaded: true, keepScript: true });
+          return;
+        }
+        finalize({ loaded: false, keepScript: false });
+        loadScriptAt(index + 1);
+      }, LEAFLET_SOURCE_TIMEOUT_MS);
       document.head.appendChild(script);
     };
     loadScriptAt(0);
@@ -184,6 +220,20 @@ async function ensureLeafletLoaded() {
     leafletLoadPromise = null;
   });
   return leafletLoadPromise;
+}
+
+function scheduleLeafletWarmup() {
+  if (leafletWarmupScheduled || !window) return;
+  leafletWarmupScheduled = true;
+  const warmup = () => {
+    if (state.activeTab === "map" || window.L || leafletLoadFailed) return;
+    void ensureLeafletLoaded();
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(warmup, { timeout: 1800 });
+    return;
+  }
+  window.setTimeout(warmup, 900);
 }
 
 function getRestaurantLocations(rest) {
@@ -496,7 +546,7 @@ function initLeafletIfNeeded() {
     return;
   }
 
-  leafletMap = window.L.map(el, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_MAX_ZOOM);
+  leafletMap = window.L.map(el, { zoomControl: false, attributionControl: false, preferCanvas: true }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_DEFAULT_ZOOM);
   const baseLayer = window.L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
     maxZoom: DISCOVERY_MAP_MAX_ZOOM
   });
@@ -1292,6 +1342,14 @@ function patchSearchUserList(users) {
   usersList.replaceChildren(fragment);
   users.forEach(updateSearchUserNodes);
   return true;
+}
+
+if (window) {
+  if (document?.readyState === "complete" || document?.readyState === "interactive") {
+    scheduleLeafletWarmup();
+  } else if (typeof window.addEventListener === "function") {
+    window.addEventListener("load", scheduleLeafletWarmup, { once: true });
+  }
 }
 
   return {

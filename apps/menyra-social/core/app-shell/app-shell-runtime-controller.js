@@ -203,6 +203,7 @@ export function createAppShellRuntimeController(deps = {}) {
   let lastOverlayRenderSignature = "";
   let lastNotificationBadgeSignature = "";
   let lastMapRuntimeSignature = "";
+  let mapRefreshQueued = false;
   let lastHeaderRuntimeMode = "";
   let lastRuntimeDegradedBannerSignature = "";
 
@@ -355,6 +356,21 @@ export function createAppShellRuntimeController(deps = {}) {
     ).trim();
     const locationCount = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
     return `map:${locationCount}:${selectedKey}`;
+  }
+
+  function scheduleMapRuntimeRefresh() {
+    if (mapRefreshQueued) return;
+    mapRefreshQueued = true;
+    const run = () => {
+      mapRefreshQueued = false;
+      initLeafletIfNeededFn();
+      updateMapSheetFn();
+    };
+    if (typeof win?.setTimeout === "function") {
+      win.setTimeout(run, 0);
+      return;
+    }
+    run();
   }
 
   function resolveRuntimeDegradedMessages() {
@@ -1207,15 +1223,11 @@ export function createAppShellRuntimeController(deps = {}) {
     updateFocusRotationFn();
 
     const nextMapRuntimeSignature = buildMapRuntimeSignature(mode);
-    if (nextMapRuntimeSignature !== lastMapRuntimeSignature) {
-      if (mode === "main" && state.activeTab === "map") {
-        win?.setTimeout(() => {
-          initLeafletIfNeededFn();
-          updateMapSheetFn();
-        }, 0);
-      } else {
-        cleanupLeafletFn();
-      }
+    if (mode === "main" && state.activeTab === "map") {
+      scheduleMapRuntimeRefresh();
+      lastMapRuntimeSignature = nextMapRuntimeSignature;
+    } else if (nextMapRuntimeSignature !== lastMapRuntimeSignature) {
+      cleanupLeafletFn();
       lastMapRuntimeSignature = nextMapRuntimeSignature;
     }
 
