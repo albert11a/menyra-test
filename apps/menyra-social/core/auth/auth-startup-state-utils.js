@@ -26,6 +26,7 @@ export function createAuthStartupStateHelpers({
   setPendingInitialTab = () => {},
   getPendingAuthMode = () => "",
   setPendingAuthMode = () => {},
+  getGuestScopeUid = () => undefined,
   now = () => Date.now()
 } = {}) {
   const resolveProfileKey = typeof profileKey === "function" ? profileKey : ((uid) => uid);
@@ -46,6 +47,7 @@ export function createAuthStartupStateHelpers({
   const writePendingAuthMode = typeof pendingRouteState?.setPendingAuthMode === "function"
     ? pendingRouteState.setPendingAuthMode
     : (typeof setPendingAuthMode === "function" ? setPendingAuthMode : (() => {}));
+  const readGuestScopeUid = typeof getGuestScopeUid === "function" ? getGuestScopeUid : (() => undefined);
 
   function applyPendingInitialRouteState() {
     if (!state) return;
@@ -53,6 +55,7 @@ export function createAuthStartupStateHelpers({
       activeTab: state.activeTab,
       user: state.user,
       hasProfileView: !!state.profileView,
+      guestScopeUid: readGuestScopeUid(),
       profileTopTab: state.profileTopTab,
       pendingInitialTab: readPendingInitialTab(),
       pendingAuthMode: readPendingAuthMode(),

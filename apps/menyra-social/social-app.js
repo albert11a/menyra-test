@@ -64,7 +64,7 @@ import {
   pushSeenKey,
   pushTokenMetaKey,
   pushDeviceIdKey,
-  GUEST_SCOPE_UID
+  getGuestScopeUid
 } from "./_shared/social-storage.js";
 import {
   createEmptyShopCart,
@@ -1184,7 +1184,11 @@ function isGuestSession() {
 }
 
 function sanitizeTabForSession(tab, { hasProfileView = !!state.profileView } = {}) {
-  return sanitizeTabForSessionCore(tab, { user: state.user, hasProfileView });
+  return sanitizeTabForSessionCore(tab, {
+    user: state.user,
+    hasProfileView,
+    guestScopeUid: getGuestScopeUid()
+  });
 }
 
 function openGuestAuthPrompt(message = "Bitte registrieren oder einloggen, um diese Funktion zu nutzen.") {
@@ -1223,6 +1227,7 @@ const {
   },
   getAuthBootstrapSnapshot: () => authBootstrapSnapshot,
   setAuthBootstrapSnapshot: (next) => { authBootstrapSnapshot = next; },
+  getGuestScopeUid: () => getGuestScopeUid(),
   pendingRouteState
 });
 const {
@@ -1771,7 +1776,9 @@ const {
   clearShopCartFn: (...args) => clearShopCart(...args),
   renderFn: render,
   getLastRenderModeFn: () => lastRenderMode,
-  safeStorageObj: safeStorage
+  safeStorageObj: safeStorage,
+  guestScopeUid: getGuestScopeUid(),
+  resolveGuestScopeUidFn: () => getGuestScopeUid()
 });
 
 const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({
@@ -2140,7 +2147,7 @@ function normalizeShopCartState(raw) {
   });
 }
 
-function saveShopCartToStorage(uid = state.user?.uid || GUEST_SCOPE_UID) {
+function saveShopCartToStorage(uid = state.user?.uid || getGuestScopeUid()) {
   const key = shopCartKey(uid);
   if (!key) return;
   try {
@@ -3036,7 +3043,7 @@ sessionDataRuntimeController = createSessionDataRuntimeCluster({
     DEFAULT_PROFILE,
     CACHE_KEYS,
     STORAGE_KEYS,
-    GUEST_SCOPE_UID,
+    GUEST_SCOPE_UID: getGuestScopeUid(),
     CRM_PAGE_SIZE,
     CEO_COUNTRIES,
     CACHE_TTL_MS,

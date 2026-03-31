@@ -200,6 +200,21 @@ export function createSessionDataRuntimeController({
     return next;
   }
 
+  const LEGACY_GLOBAL_GUEST_SCOPE_UID = "guest";
+  const resolveGuestScopeUid = () => String(guestScopeUid || "").trim();
+  const pruneLegacyGlobalGuestCartStorage = (currentGuestScopeUid = resolveGuestScopeUid()) => {
+    const safeGuestScopeUid = String(currentGuestScopeUid || "").trim();
+    if (!safeGuestScopeUid || safeGuestScopeUid === LEGACY_GLOBAL_GUEST_SCOPE_UID) return;
+    const legacyScopedKey = shopCartKeyFn(LEGACY_GLOBAL_GUEST_SCOPE_UID);
+    const currentScopedKey = shopCartKeyFn(safeGuestScopeUid);
+    if (legacyScopedKey && legacyScopedKey !== currentScopedKey) {
+      safeStorage.removeItem(legacyScopedKey);
+    }
+    if (storageKeys?.shopCart && storageKeys.shopCart !== currentScopedKey) {
+      safeStorage.removeItem(storageKeys.shopCart);
+    }
+  };
+
   if (!state || !dataLoaded) {
     return {
       loadPersisted: () => {},
@@ -586,7 +601,14 @@ export function createSessionDataRuntimeController({
   }
 
   function loadGuestScopedPersisted() {
-    const scopedCart = safeStorage.getItem(shopCartKeyFn(guestScopeUid));
+    const currentGuestScopeUid = resolveGuestScopeUid();
+    if (!currentGuestScopeUid) {
+      state.shopCart = createEmptyShopCartFn();
+      state.orders = createEmptyOrdersStateFn();
+      return;
+    }
+    pruneLegacyGlobalGuestCartStorage(currentGuestScopeUid);
+    const scopedCart = safeStorage.getItem(shopCartKeyFn(currentGuestScopeUid));
     if (scopedCart) {
       try {
         state.shopCart = normalizeShopCartStateFn(JSON.parse(scopedCart));

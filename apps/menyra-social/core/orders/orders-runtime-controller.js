@@ -29,7 +29,10 @@ export function createOrdersRuntimeController({
   clearShopCartFn = () => {},
   renderFn = () => {},
   getLastRenderModeFn = () => "",
-  safeStorageObj = null
+  safeStorageObj = null,
+  guestScopeUid = "",
+  resolveGuestScopeUidFn = null,
+  legacyGuestScopeUid = "guest"
 } = {}) {
   const collection = typeof collectionFn === "function" ? collectionFn : null;
   const makeDocRef = typeof docFn === "function" ? docFn : null;
@@ -76,6 +79,10 @@ export function createOrdersRuntimeController({
   const getLastRenderMode = typeof getLastRenderModeFn === "function"
     ? getLastRenderModeFn
     : (() => "");
+  const resolveGuestScopeUid = typeof resolveGuestScopeUidFn === "function"
+    ? (() => String(resolveGuestScopeUidFn() || guestScopeUid || "").trim())
+    : (() => String(guestScopeUid || "").trim());
+  const legacyGuestScope = String(legacyGuestScopeUid || "guest").trim() || "guest";
   const safeStorage = safeStorageObj && typeof safeStorageObj.getItem === "function" && typeof safeStorageObj.setItem === "function"
     ? safeStorageObj
     : (typeof globalThis !== "undefined" && globalThis.localStorage
@@ -87,10 +94,36 @@ export function createOrdersRuntimeController({
       });
   const GUEST_ORDER_SESSION_KEY = "menyra_orders_guest_session_v1";
   const GUEST_ORDER_LOOKUP_INDEX_KEY = "menyra_orders_guest_lookup_index_v1";
+  const LEGACY_GUEST_ORDER_STORAGE_KEYS = Object.freeze([
+    GUEST_ORDER_SESSION_KEY,
+    GUEST_ORDER_LOOKUP_INDEX_KEY
+  ]);
   const GUEST_ORDER_LOOKUP_INDEX_LIMIT = 24;
   let ordersUnsub = null;
   let ordersListenerKey = "";
   let guestRecoveryLoadSeq = 0;
+
+  function resolveActiveGuestScopeUid() {
+    return String(resolveGuestScopeUid() || guestScopeUid || "").trim();
+  }
+
+  function buildGuestScopedStorageKey(baseKey, currentGuestScopeUid = resolveActiveGuestScopeUid()) {
+    const safeBaseKey = String(baseKey || "").trim();
+    const safeGuestScopeUid = String(currentGuestScopeUid || "").trim();
+    if (!safeBaseKey || !safeGuestScopeUid) return "";
+    return `${safeBaseKey}::${safeGuestScopeUid}`;
+  }
+
+  function pruneLegacyGlobalGuestOrderStorage(currentGuestScopeUid = resolveActiveGuestScopeUid()) {
+    const safeGuestScopeUid = String(currentGuestScopeUid || "").trim();
+    if (!safeGuestScopeUid || safeGuestScopeUid === legacyGuestScope) return;
+    LEGACY_GUEST_ORDER_STORAGE_KEYS.forEach((baseKey) => {
+      const safeBaseKey = String(baseKey || "").trim();
+      if (!safeBaseKey) return;
+      safeStorage.removeItem(safeBaseKey);
+      safeStorage.removeItem(`${safeBaseKey}::${legacyGuestScope}`);
+    });
+  }
 
   function readJsonFromStorage(key, fallback = null) {
     const safeKey = String(key || "").trim();
@@ -127,11 +160,14 @@ export function createOrdersRuntimeController({
     return `${tokenPrefix}_${randomPart}`;
   }
 
-  function ensureGuestOrderSessionId() {
-    const existing = String(readJsonFromStorage(GUEST_ORDER_SESSION_KEY, "") || "").trim();
+  function ensureGuestOrderSessionId(currentGuestScopeUid = resolveActiveGuestScopeUid()) {
+    const scopedSessionKey = buildGuestScopedStorageKey(GUEST_ORDER_SESSION_KEY, currentGuestScopeUid);
+    if (!scopedSessionKey) return "";
+    pruneLegacyGlobalGuestOrderStorage(currentGuestScopeUid);
+    const existing = String(readJsonFromStorage(scopedSessionKey, "") || "").trim();
     if (existing) return existing;
     const next = createOpaqueOrderToken("guest");
-    writeJsonToStorage(GUEST_ORDER_SESSION_KEY, next);
+    writeJsonToStorage(scopedSessionKey, next);
     return next;
   }
 
@@ -149,8 +185,11 @@ export function createOrdersRuntimeController({
     };
   }
 
-  function readGuestLookupEntries() {
-    const parsed = readJsonFromStorage(GUEST_ORDER_LOOKUP_INDEX_KEY, []);
+  function readGuestLookupEntries(currentGuestScopeUid = resolveActiveGuestScopeUid()) {
+    const scopedLookupIndexKey = buildGuestScopedStorageKey(GUEST_ORDER_LOOKUP_INDEX_KEY, currentGuestScopeUid);
+    if (!scopedLookupIndexKey) return [];
+    pruneLegacyGlobalGuestOrderStorage(currentGuestScopeUid);
+    const parsed = readJsonFromStorage(scopedLookupIndexKey, []);
     if (!Array.isArray(parsed)) return [];
     return parsed
       .map((entry) => normalizeGuestLookupEntry(entry))
@@ -159,28 +198,33 @@ export function createOrdersRuntimeController({
       .slice(0, GUEST_ORDER_LOOKUP_INDEX_LIMIT);
   }
 
-  function writeGuestLookupEntries(entries = []) {
+  function writeGuestLookupEntries(entries = [], currentGuestScopeUid = resolveActiveGuestScopeUid()) {
+    const scopedLookupIndexKey = buildGuestScopedStorageKey(GUEST_ORDER_LOOKUP_INDEX_KEY, currentGuestScopeUid);
+    if (!scopedLookupIndexKey) return [];
+    pruneLegacyGlobalGuestOrderStorage(currentGuestScopeUid);
     const normalized = (Array.isArray(entries) ? entries : [])
       .map((entry) => normalizeGuestLookupEntry(entry))
       .filter(Boolean)
       .sort((a, b) => (Number(b.createdAt || 0) || 0) - (Number(a.createdAt || 0) || 0))
       .slice(0, GUEST_ORDER_LOOKUP_INDEX_LIMIT);
-    writeJsonToStorage(GUEST_ORDER_LOOKUP_INDEX_KEY, normalized);
+    writeJsonToStorage(scopedLookupIndexKey, normalized);
     return normalized;
   }
 
-  function rememberGuestLookupEntry(entry = {}) {
+  function rememberGuestLookupEntry(entry = {}, currentGuestScopeUid = resolveActiveGuestScopeUid()) {
     const normalized = normalizeGuestLookupEntry(entry);
     if (!normalized) return;
-    const existing = readGuestLookupEntries();
+    const existing = readGuestLookupEntries(currentGuestScopeUid);
     const deduped = existing.filter((row) => (
       !(row.lookupToken === normalized.lookupToken && row.restaurantId === normalized.restaurantId)
     ));
-    writeGuestLookupEntries([normalized, ...deduped]);
+    writeGuestLookupEntries([normalized, ...deduped], currentGuestScopeUid);
   }
 
-  async function loadGuestRecoveredOrdersFromLookup() {
-    const entries = readGuestLookupEntries();
+  async function loadGuestRecoveredOrdersFromLookup(currentGuestScopeUid = resolveActiveGuestScopeUid()) {
+    const safeGuestScopeUid = String(currentGuestScopeUid || "").trim();
+    if (!safeGuestScopeUid) return [];
+    const entries = readGuestLookupEntries(safeGuestScopeUid);
     if (!entries.length || !makeDocRef || !getDoc || !db) {
       return [];
     }
@@ -202,7 +246,11 @@ export function createOrdersRuntimeController({
     return items;
   }
 
-  async function syncGuestRecoveredOrders({ loading = true } = {}) {
+  async function syncGuestRecoveredOrders({
+    loading = true,
+    guestScopeUidOverride = resolveActiveGuestScopeUid()
+  } = {}) {
+    const safeGuestScopeUid = String(guestScopeUidOverride || "").trim();
     const requestSeq = ++guestRecoveryLoadSeq;
     if (state) {
       state.orders = {
@@ -213,7 +261,20 @@ export function createOrdersRuntimeController({
     }
     renderOrdersTabIfActive();
     try {
-      const items = await loadGuestRecoveredOrdersFromLookup();
+      if (!safeGuestScopeUid) {
+        if (requestSeq !== guestRecoveryLoadSeq) return;
+        if (state) {
+          state.orders = {
+            ...state.orders,
+            items: [],
+            loading: false,
+            error: ""
+          };
+        }
+        renderOrdersTabIfVisible();
+        return;
+      }
+      const items = await loadGuestRecoveredOrdersFromLookup(safeGuestScopeUid);
       if (requestSeq !== guestRecoveryLoadSeq) return;
       if (state) {
         state.orders = {
@@ -289,9 +350,10 @@ export function createOrdersRuntimeController({
   function startOrdersListener(user = state?.user) {
     const uid = String(user?.uid || "").trim();
     if (!uid) {
+      const currentGuestScopeUid = resolveActiveGuestScopeUid();
       stopOrdersListener();
-      ordersListenerKey = "guest";
-      void syncGuestRecoveredOrders({ loading: true });
+      ordersListenerKey = currentGuestScopeUid ? `guest:${currentGuestScopeUid}` : "guest:none";
+      void syncGuestRecoveredOrders({ loading: true, guestScopeUidOverride: currentGuestScopeUid });
       return;
     }
     if (!collection || !query || !orderBy || !limit || !onSnapshot || !db) return;
@@ -345,7 +407,32 @@ export function createOrdersRuntimeController({
     if (!collection || !makeDocRef || !writeBatch || !db) return;
 
     const hasUser = !!String(state?.user?.uid || "").trim();
-    const guestSessionId = hasUser ? "" : ensureGuestOrderSessionId();
+    const currentGuestScopeUid = hasUser ? "" : resolveActiveGuestScopeUid();
+    if (!hasUser && !currentGuestScopeUid) {
+      if (state) {
+        state.shopCart = {
+          ...cart,
+          loading: false,
+          checkoutOpen: true,
+          status: "Guest-Session konnte nicht initialisiert werden."
+        };
+      }
+      renderFn();
+      return;
+    }
+    const guestSessionId = hasUser ? "" : ensureGuestOrderSessionId(currentGuestScopeUid);
+    if (!hasUser && !guestSessionId) {
+      if (state) {
+        state.shopCart = {
+          ...cart,
+          loading: false,
+          checkoutOpen: true,
+          status: "Guest-Session konnte nicht initialisiert werden."
+        };
+      }
+      renderFn();
+      return;
+    }
     const guestLookupToken = hasUser ? "" : createOpaqueOrderToken("order");
     const tableNumber = Math.max(0, Number(cart.tableNumber || cart.form?.tableNumber || 0) || 0);
     const isTableService = String(cart.serviceMode || "").trim().toLowerCase() === "table" && tableNumber > 0;
@@ -421,6 +508,7 @@ export function createOrdersRuntimeController({
       total: getShopCartTotal(cart.items),
       status: "Neu",
       orderSource: "canonical",
+      guestScopeUid: hasUser ? "" : currentGuestScopeUid,
       guestSessionId,
       guestLookupToken,
       orderLookupToken: guestLookupToken,
@@ -444,7 +532,7 @@ export function createOrdersRuntimeController({
           orderId,
           lookupToken: guestLookupToken,
           createdAt: Date.now()
-        });
+        }, currentGuestScopeUid);
         const guestOrder = normalizeOrderDoc(payload, orderId);
         state.orders = {
           ...state.orders,
@@ -452,7 +540,7 @@ export function createOrdersRuntimeController({
           error: "",
           items: [guestOrder, ...(Array.isArray(state.orders?.items) ? state.orders.items : [])]
         };
-        void syncGuestRecoveredOrders({ loading: false });
+        void syncGuestRecoveredOrders({ loading: false, guestScopeUidOverride: currentGuestScopeUid });
       }
       const showHospitalityConfirmation = isTableService || isHospitalityOrder;
       clearShopCart({ keepForm: true });

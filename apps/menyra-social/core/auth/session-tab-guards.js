@@ -4,12 +4,19 @@ export function isGuestSessionCore(user = null) {
   return !user;
 }
 
+export function hasGuestScopeForSessionCore(guestScopeUid) {
+  if (guestScopeUid === undefined) return true;
+  return !!String(guestScopeUid || "").trim();
+}
+
 export function sanitizeTabForSessionCore(tab, {
   user = null,
-  hasProfileView = false
+  hasProfileView = false,
+  guestScopeUid = undefined
 } = {}) {
   const next = String(tab || "").trim() || "feed";
   if (!isGuestSessionCore(user)) return next;
+  if (!hasGuestScopeForSessionCore(guestScopeUid)) return "feed";
   if (!GUEST_ALLOWED_TABS.has(next)) return "feed";
   if (next === "profile" && !hasProfileView) return "feed";
   return next;
@@ -19,6 +26,7 @@ export function applyPendingInitialRouteStateCore({
   activeTab = "feed",
   user = null,
   hasProfileView = false,
+  guestScopeUid = undefined,
   profileTopTab = "",
   pendingInitialTab = "",
   pendingAuthMode = "",
@@ -41,7 +49,7 @@ export function applyPendingInitialRouteStateCore({
     if (routeAlreadyOpen) {
       nextPendingInitialTab = "";
     } else {
-      const sanitizedRequestedTab = sanitizeTabForSessionCore(requestedTab, { user, hasProfileView });
+      const sanitizedRequestedTab = sanitizeTabForSessionCore(requestedTab, { user, hasProfileView, guestScopeUid });
       if (!isGuest || sanitizedRequestedTab === requestedTab) {
         nextActiveTab = sanitizedRequestedTab;
         nextPendingInitialTab = "";
@@ -53,7 +61,7 @@ export function applyPendingInitialRouteStateCore({
     nextAuthOpen = true;
     nextPendingAuthMode = "";
   }
-  nextActiveTab = sanitizeTabForSessionCore(nextActiveTab, { user, hasProfileView });
+  nextActiveTab = sanitizeTabForSessionCore(nextActiveTab, { user, hasProfileView, guestScopeUid });
 
   return {
     activeTab: nextActiveTab,
