@@ -9,6 +9,7 @@ export function createOrdersRuntimeController({
   db = null,
   collectionFn = null,
   docFn = null,
+  getDocFn = null,
   queryFn = null,
   orderByFn = null,
   limitFn = null,
@@ -27,10 +28,12 @@ export function createOrdersRuntimeController({
   saveShopCartToStorageFn = () => {},
   clearShopCartFn = () => {},
   renderFn = () => {},
-  getLastRenderModeFn = () => ""
+  getLastRenderModeFn = () => "",
+  safeStorageObj = null
 } = {}) {
   const collection = typeof collectionFn === "function" ? collectionFn : null;
   const makeDocRef = typeof docFn === "function" ? docFn : null;
+  const getDoc = typeof getDocFn === "function" ? getDocFn : null;
   const query = typeof queryFn === "function" ? queryFn : null;
   const orderBy = typeof orderByFn === "function" ? orderByFn : null;
   const limit = typeof limitFn === "function" ? limitFn : null;
@@ -73,8 +76,167 @@ export function createOrdersRuntimeController({
   const getLastRenderMode = typeof getLastRenderModeFn === "function"
     ? getLastRenderModeFn
     : (() => "");
+  const safeStorage = safeStorageObj && typeof safeStorageObj.getItem === "function" && typeof safeStorageObj.setItem === "function"
+    ? safeStorageObj
+    : (typeof globalThis !== "undefined" && globalThis.localStorage
+      ? globalThis.localStorage
+      : {
+        getItem: () => null,
+        setItem: () => {},
+        removeItem: () => {}
+      });
+  const GUEST_ORDER_SESSION_KEY = "menyra_orders_guest_session_v1";
+  const GUEST_ORDER_LOOKUP_INDEX_KEY = "menyra_orders_guest_lookup_index_v1";
+  const GUEST_ORDER_LOOKUP_INDEX_LIMIT = 24;
   let ordersUnsub = null;
   let ordersListenerKey = "";
+  let guestRecoveryLoadSeq = 0;
+
+  function readJsonFromStorage(key, fallback = null) {
+    const safeKey = String(key || "").trim();
+    if (!safeKey) return fallback;
+    try {
+      const raw = safeStorage.getItem(safeKey);
+      if (!raw) return fallback;
+      return JSON.parse(raw);
+    } catch {
+      return fallback;
+    }
+  }
+
+  function writeJsonToStorage(key, value) {
+    const safeKey = String(key || "").trim();
+    if (!safeKey) return;
+    try {
+      safeStorage.setItem(safeKey, JSON.stringify(value));
+    } catch {}
+  }
+
+  function createOpaqueOrderToken(prefix = "tok") {
+    const tokenPrefix = String(prefix || "tok").trim().toLowerCase() || "tok";
+    const randomPart = (() => {
+      try {
+        if (globalThis?.crypto?.getRandomValues) {
+          const bytes = new Uint8Array(12);
+          globalThis.crypto.getRandomValues(bytes);
+          return Array.from(bytes).map((value) => value.toString(16).padStart(2, "0")).join("");
+        }
+      } catch {}
+      return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
+    })();
+    return `${tokenPrefix}_${randomPart}`;
+  }
+
+  function ensureGuestOrderSessionId() {
+    const existing = String(readJsonFromStorage(GUEST_ORDER_SESSION_KEY, "") || "").trim();
+    if (existing) return existing;
+    const next = createOpaqueOrderToken("guest");
+    writeJsonToStorage(GUEST_ORDER_SESSION_KEY, next);
+    return next;
+  }
+
+  function normalizeGuestLookupEntry(entry = {}) {
+    const restaurantId = String(entry.restaurantId || "").trim();
+    const orderId = String(entry.orderId || "").trim();
+    const lookupToken = String(entry.lookupToken || "").trim();
+    const createdAt = Math.max(0, Number(entry.createdAt || 0) || 0);
+    if (!restaurantId || !orderId || !lookupToken) return null;
+    return {
+      restaurantId,
+      orderId,
+      lookupToken,
+      createdAt: createdAt || Date.now()
+    };
+  }
+
+  function readGuestLookupEntries() {
+    const parsed = readJsonFromStorage(GUEST_ORDER_LOOKUP_INDEX_KEY, []);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((entry) => normalizeGuestLookupEntry(entry))
+      .filter(Boolean)
+      .sort((a, b) => (Number(b.createdAt || 0) || 0) - (Number(a.createdAt || 0) || 0))
+      .slice(0, GUEST_ORDER_LOOKUP_INDEX_LIMIT);
+  }
+
+  function writeGuestLookupEntries(entries = []) {
+    const normalized = (Array.isArray(entries) ? entries : [])
+      .map((entry) => normalizeGuestLookupEntry(entry))
+      .filter(Boolean)
+      .sort((a, b) => (Number(b.createdAt || 0) || 0) - (Number(a.createdAt || 0) || 0))
+      .slice(0, GUEST_ORDER_LOOKUP_INDEX_LIMIT);
+    writeJsonToStorage(GUEST_ORDER_LOOKUP_INDEX_KEY, normalized);
+    return normalized;
+  }
+
+  function rememberGuestLookupEntry(entry = {}) {
+    const normalized = normalizeGuestLookupEntry(entry);
+    if (!normalized) return;
+    const existing = readGuestLookupEntries();
+    const deduped = existing.filter((row) => (
+      !(row.lookupToken === normalized.lookupToken && row.restaurantId === normalized.restaurantId)
+    ));
+    writeGuestLookupEntries([normalized, ...deduped]);
+  }
+
+  async function loadGuestRecoveredOrdersFromLookup() {
+    const entries = readGuestLookupEntries();
+    if (!entries.length || !makeDocRef || !getDoc || !db) {
+      return [];
+    }
+    const settled = await Promise.allSettled(entries.map(async (entry) => {
+      const snap = await getDoc(makeDocRef(db, "restaurants", entry.restaurantId, "orderLookup", entry.lookupToken));
+      if (!snap?.exists?.()) return null;
+      const data = snap.data() || {};
+      return normalizeOrderDoc(data, data.id || entry.orderId);
+    }));
+    const items = settled
+      .filter((result) => result.status === "fulfilled")
+      .map((result) => result.value)
+      .filter((entry) => entry && entry.id && entry.restaurantId);
+    items.sort((a, b) => {
+      const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime() || 0;
+      const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime() || 0;
+      return bTime - aTime;
+    });
+    return items;
+  }
+
+  async function syncGuestRecoveredOrders({ loading = true } = {}) {
+    const requestSeq = ++guestRecoveryLoadSeq;
+    if (state) {
+      state.orders = {
+        ...state.orders,
+        loading: loading === true,
+        error: loading === true ? "" : state.orders?.error || ""
+      };
+    }
+    renderOrdersTabIfActive();
+    try {
+      const items = await loadGuestRecoveredOrdersFromLookup();
+      if (requestSeq !== guestRecoveryLoadSeq) return;
+      if (state) {
+        state.orders = {
+          ...state.orders,
+          items,
+          loading: false,
+          error: ""
+        };
+      }
+      renderOrdersTabIfVisible();
+    } catch (err) {
+      console.error(err);
+      if (requestSeq !== guestRecoveryLoadSeq) return;
+      if (state) {
+        state.orders = {
+          ...state.orders,
+          loading: false,
+          error: "Bestellungen konnten nicht wiederhergestellt werden."
+        };
+      }
+      renderOrdersTabIfVisible();
+    }
+  }
 
   function normalizeOrderItem(item) {
     return normalizeOrderItemCore(item, {
@@ -116,6 +278,7 @@ export function createOrdersRuntimeController({
   }
 
   function stopOrdersListener() {
+    guestRecoveryLoadSeq += 1;
     if (ordersUnsub) {
       ordersUnsub();
       ordersUnsub = null;
@@ -127,6 +290,8 @@ export function createOrdersRuntimeController({
     const uid = String(user?.uid || "").trim();
     if (!uid) {
       stopOrdersListener();
+      ordersListenerKey = "guest";
+      void syncGuestRecoveredOrders({ loading: true });
       return;
     }
     if (!collection || !query || !orderBy || !limit || !onSnapshot || !db) return;
@@ -180,6 +345,8 @@ export function createOrdersRuntimeController({
     if (!collection || !makeDocRef || !writeBatch || !db) return;
 
     const hasUser = !!String(state?.user?.uid || "").trim();
+    const guestSessionId = hasUser ? "" : ensureGuestOrderSessionId();
+    const guestLookupToken = hasUser ? "" : createOpaqueOrderToken("order");
     const tableNumber = Math.max(0, Number(cart.tableNumber || cart.form?.tableNumber || 0) || 0);
     const isTableService = String(cart.serviceMode || "").trim().toLowerCase() === "table" && tableNumber > 0;
     const isHospitalityOrder = ["restaurant", "cafe", "fastfood"].includes(resolveCartBusinessType(cart));
@@ -253,6 +420,10 @@ export function createOrdersRuntimeController({
       itemCount: cart.items.reduce((sum, item) => sum + item.quantity, 0),
       total: getShopCartTotal(cart.items),
       status: "Neu",
+      orderSource: "canonical",
+      guestSessionId,
+      guestLookupToken,
+      orderLookupToken: guestLookupToken,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       createdAtClient: nowIso,
@@ -266,11 +437,14 @@ export function createOrdersRuntimeController({
     try {
       const batch = writeBatch(db);
       batch.set(orderRef, payload, { merge: true });
-      if (hasUser) {
-        batch.set(makeDocRef(db, "users", state.user.uid, "orders", orderId), payload, { merge: true });
-      }
       await batch.commit();
       if (!hasUser && state) {
+        rememberGuestLookupEntry({
+          restaurantId: cart.restaurantId,
+          orderId,
+          lookupToken: guestLookupToken,
+          createdAt: Date.now()
+        });
         const guestOrder = normalizeOrderDoc(payload, orderId);
         state.orders = {
           ...state.orders,
@@ -278,6 +452,7 @@ export function createOrdersRuntimeController({
           error: "",
           items: [guestOrder, ...(Array.isArray(state.orders?.items) ? state.orders.items : [])]
         };
+        void syncGuestRecoveredOrders({ loading: false });
       }
       const showHospitalityConfirmation = isTableService || isHospitalityOrder;
       clearShopCart({ keepForm: true });

@@ -1751,6 +1751,7 @@ const {
   db,
   collectionFn: collection,
   docFn: doc,
+  getDocFn: getDoc,
   queryFn: query,
   orderByFn: orderBy,
   limitFn: limit,
@@ -1769,7 +1770,8 @@ const {
   saveShopCartToStorageFn: saveShopCartToStorage,
   clearShopCartFn: (...args) => clearShopCart(...args),
   renderFn: render,
-  getLastRenderModeFn: () => lastRenderMode
+  getLastRenderModeFn: () => lastRenderMode,
+  safeStorageObj: safeStorage
 });
 
 const crmDomainRuntimeCluster = createCrmDomainRuntimeCluster({

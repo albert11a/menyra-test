@@ -35,8 +35,54 @@ function buildNotificationTargetUrl(rawUrl) {
   }
 }
 
+function parsePushPayload(event) {
+  let payload = {};
+  if (event?.data) {
+    try {
+      payload = event.data.json() || {};
+    } catch {
+      const text = String(event.data.text?.() || "").trim();
+      payload = text ? { notification: { body: text } } : {};
+    }
+  }
+  const notification = payload.notification && typeof payload.notification === "object"
+    ? payload.notification
+    : {};
+  const data = payload.data && typeof payload.data === "object"
+    ? payload.data
+    : {};
+  const title = String(notification.title || data.title || "Neue Bestellung").trim() || "Neue Bestellung";
+  const body = String(notification.body || data.body || "Neue Bestellung eingegangen").trim() || "Neue Bestellung eingegangen";
+  const rawUrl = data.link || data.url || notification.click_action || payload?.fcmOptions?.link || APP_SCOPE;
+  const icon = String(notification.icon || notification.image || "/apps/waiter/assets/logo-square.png").trim()
+    || "/apps/waiter/assets/logo-square.png";
+  const tagSeed = String(notification.tag || data.notificationId || data.orderId || Date.now()).trim();
+  return {
+    title,
+    body,
+    icon,
+    tag: `waiter_${tagSeed}`,
+    targetUrl: buildNotificationTargetUrl(rawUrl),
+    data
+  };
+}
+
 self.addEventListener("push", (event) => {
-  event.waitUntil(Promise.resolve());
+  const parsed = parsePushPayload(event);
+  event.waitUntil(
+    self.registration.showNotification(parsed.title, {
+      body: parsed.body,
+      icon: parsed.icon,
+      badge: parsed.icon,
+      tag: parsed.tag,
+      renotify: true,
+      vibrate: [180, 90, 180],
+      data: {
+        ...parsed.data,
+        url: parsed.targetUrl
+      }
+    })
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {

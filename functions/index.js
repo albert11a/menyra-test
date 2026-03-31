@@ -209,6 +209,66 @@ function buildRestaurantOrderNotificationPayload({
   };
 }
 
+function normalizeCanonicalOrderStatusKey(value = "") {
+  const key = asText(value).toLowerCase();
+  if (!key || key === "neu" || key === "new" || key === "bestellung" || key === "pending" || key === "open") {
+    return "bestellung";
+  }
+  if (key === "angenommen" || key === "accepted" || key === "arbeit" || key === "in_progress") {
+    return "angenommen";
+  }
+  if (key === "fertig" || key === "ready" || key === "serviert" || key === "served") {
+    return "fertig";
+  }
+  if (key === "archiv" || key === "archived" || key === "done" || key === "completed") {
+    return "archiv";
+  }
+  return "bestellung";
+}
+
+function buildCanonicalOrderProjection({
+  restaurantId = "",
+  orderId = "",
+  orderData = {}
+} = {}) {
+  const safeRestaurantId = asText(restaurantId);
+  const safeOrderId = asText(orderId);
+  const source = orderData && typeof orderData === "object" ? orderData : {};
+  const guestLookupToken = asText(source.guestLookupToken || source.orderLookupToken);
+  const guestSessionId = asText(source.guestSessionId);
+  const statusRaw = asText(source.status || "Neu", "Neu");
+  return {
+    id: safeOrderId,
+    restaurantId: safeRestaurantId || asText(source.restaurantId),
+    businessName: asText(source.businessName),
+    businessAvatar: asText(source.businessAvatar),
+    buyerUid: asText(source.buyerUid),
+    buyerName: asText(source.buyerName),
+    buyerHandle: asText(source.buyerHandle),
+    buyerAvatar: asText(source.buyerAvatar),
+    contact: source.contact && typeof source.contact === "object" ? source.contact : {},
+    tableNumber: Number(source.tableNumber || source.contact?.tableNumber || 0) || 0,
+    tableLabel: asText(source.tableLabel || source.contact?.tableLabel),
+    items: Array.isArray(source.items) ? source.items : [],
+    itemCount: Number(source.itemCount || 0) || 0,
+    total: Number(source.total || 0) || 0,
+    status: statusRaw,
+    statusKey: normalizeCanonicalOrderStatusKey(statusRaw),
+    guestSessionId,
+    guestLookupToken,
+    orderLookupToken: guestLookupToken,
+    createdAt: source.createdAt || source.createdAtClient || null,
+    updatedAt: source.updatedAt || source.updatedAtClient || source.createdAt || null,
+    createdAtClient: asText(source.createdAtClient),
+    updatedAtClient: asText(source.updatedAtClient),
+    canonicalPath: safeRestaurantId && safeOrderId
+      ? `restaurants/${safeRestaurantId}/orders/${safeOrderId}`
+      : "",
+    mirroredAt: admin.firestore.FieldValue.serverTimestamp(),
+    source: "server"
+  };
+}
+
 function addNotificationQuery(link, notificationId) {
   const safeNotificationId = asText(notificationId);
   if (!safeNotificationId) return asText(link, DEFAULT_SOCIAL_URL);
@@ -1832,6 +1892,92 @@ exports.sendWebPushOnNotificationCreate = functions
       });
     } catch (error) {
       logFunctionError("push.notification.dispatch", error, {
+        ...logContext,
+        status: "failed"
+      });
+      throw error;
+    }
+  });
+
+exports.syncOrderMirrorsOnRestaurantOrderWrite = functions
+  .region("us-central1")
+  .firestore.document("restaurants/{restaurantId}/orders/{orderId}")
+  .onWrite(async (change, context) => {
+    const restaurantId = asText(context.params?.restaurantId);
+    const orderId = asText(context.params?.orderId);
+    const logContext = buildEventLogContext(context, {
+      restaurantId,
+      orderId
+    });
+    try {
+      if (!restaurantId || !orderId) return;
+      const beforeData = change.before?.exists ? (change.before.data() || {}) : null;
+      const afterData = change.after?.exists ? (change.after.data() || {}) : null;
+      const beforeBuyerUid = asText(beforeData?.buyerUid);
+      const afterBuyerUid = asText(afterData?.buyerUid);
+      const beforeLookupToken = asText(beforeData?.guestLookupToken || beforeData?.orderLookupToken);
+      const afterLookupToken = asText(afterData?.guestLookupToken || afterData?.orderLookupToken);
+      const writes = [];
+
+      if (beforeBuyerUid && (!afterData || beforeBuyerUid !== afterBuyerUid)) {
+        writes.push(
+          db.collection("users").doc(beforeBuyerUid).collection("orders").doc(orderId).delete().catch(() => null)
+        );
+      }
+      if (beforeLookupToken && (!afterData || beforeLookupToken !== afterLookupToken)) {
+        writes.push(
+          db.collection("restaurants").doc(restaurantId).collection("orderLookup").doc(beforeLookupToken).delete().catch(() => null)
+        );
+      }
+
+      if (afterData) {
+        const projection = buildCanonicalOrderProjection({
+          restaurantId,
+          orderId,
+          orderData: afterData
+        });
+        if (afterBuyerUid) {
+          writes.push(
+            db
+              .collection("users")
+              .doc(afterBuyerUid)
+              .collection("orders")
+              .doc(orderId)
+              .set({
+                ...projection,
+                mirrorType: "user_order"
+              }, { merge: true })
+          );
+        }
+        if (afterLookupToken) {
+          writes.push(
+            db
+              .collection("restaurants")
+              .doc(restaurantId)
+              .collection("orderLookup")
+              .doc(afterLookupToken)
+              .set({
+                ...projection,
+                lookupToken: afterLookupToken,
+                mirrorType: "guest_order_lookup"
+              }, { merge: true })
+          );
+        }
+      }
+
+      if (!writes.length) return;
+      const settled = await Promise.allSettled(writes);
+      const failed = settled.find((result) => result.status === "rejected");
+      if (failed?.status === "rejected") {
+        throw failed.reason;
+      }
+      logFunctionInfo("orders.mirror.sync", {
+        ...logContext,
+        status: "completed",
+        writes: writes.length
+      });
+    } catch (error) {
+      logFunctionError("orders.mirror.sync", error, {
         ...logContext,
         status: "failed"
       });

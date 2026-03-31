@@ -1075,7 +1075,12 @@ async function handleAuthChanged(user) {
       return;
     }
     startOrdersListener();
-    await disableWaiterPushDevices(user.uid);
+    void bindForegroundMessaging().catch((err) => {
+      reportWaiterRuntimeFailure("foreground-messaging-bind", err, { level: "warn" });
+    });
+    void syncPushDeviceToken({ requestPermission: true }).catch((err) => {
+      reportWaiterRuntimeFailure("push-token-sync.after-login", err, { level: "warn" });
+    });
   } catch (err) {
     reportWaiterRuntimeFailure("session-load", err);
     state.sessionLoading = false;

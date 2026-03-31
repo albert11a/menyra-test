@@ -512,7 +512,8 @@ service cloud.firestore {
       }
 
       match /orders/{orderId} {
-        allow get, list, create, update, delete: if isSelf(userId);
+        allow get, list: if isSelf(userId);
+        allow create, update, delete: if false;
       }
 
       match /menuFavorites/{favoriteId} {
@@ -609,6 +610,12 @@ service cloud.firestore {
         allow list: if canAccessRestaurantOrdersDoc(restaurantId);
         allow create: if validOrderCreateForRestaurant(restaurantId);
         allow update, delete: if canAccessRestaurantOrdersDoc(restaurantId);
+      }
+
+      match /orderLookup/{lookupToken} {
+        allow get: if true;
+        allow list: if canAccessRestaurantOrdersDoc(restaurantId);
+        allow create, update, delete: if false;
       }
 
       match /staff/{staffUid} {

@@ -106,7 +106,7 @@ export function ensureTabDataCore({
   } else {
     stopChatThreads();
   }
-  if (hasUser && tab === "orders") {
+  if (tab === "orders") {
     startOrders(state.user);
   } else {
     stopOrders();
