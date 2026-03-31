@@ -87,6 +87,8 @@ export function renderLeadCreationView(ctx = {}) {
   const settings = getLeadSettingsConfig();
   const logoRaw = state.leadModal.logoPreview || lead.logoUrl || "";
   const logoUrl = logoRaw ? getOptimizedImageUrl(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const headerLogoRaw = state.leadModal.headerLogoPreview || lead.headerLogoUrl || lead.headerLogo || "";
+  const headerLogoUrl = headerLogoRaw ? getOptimizedImageUrl(headerLogoRaw, "header") : PLACEHOLDER_IMAGE;
   const isEdit = state.leadModal.mode === "edit" && !!lead.id;
   const actionsOpen = !!state.leadModal.actionsOpen;
   const deleting = !!state.leadModal.deleting;
@@ -123,10 +125,17 @@ export function renderLeadCreationView(ctx = {}) {
           ` : ""}
         </div>
         <input type="file" id="leadLogoInput" class="hidden" accept="image/*" />
+        <input type="file" id="leadHeaderLogoInput" class="hidden" accept="image/*" />
         <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
           <img id="leadLogoPreview" src="${escapeHtml(logoUrl)}" class="w-full h-44 object-contain bg-white" />
         </div>
         <button id="leadLogoTrigger" type="button" class="w-full mt-4 py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">Logo hochladen</button>
+        <div class="mt-4 rounded-[2rem] border border-slate-100 bg-slate-50 p-3 space-y-3">
+          <div class="rounded-[1.6rem] overflow-hidden border border-slate-100 bg-white px-4 py-3">
+            <img id="leadHeaderLogoPreview" src="${escapeHtml(headerLogoUrl)}" class="w-full h-20 object-contain" />
+          </div>
+          <button id="leadHeaderLogoTrigger" type="button" class="w-full py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest">Header Logo hochladen</button>
+        </div>
         <div class="mt-5 space-y-4">
           <div>
             <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Typ</label>
@@ -265,6 +274,7 @@ export function renderLeadCreationView(ctx = {}) {
           </div>
         </div>
         <input id="leadLogoUrl" type="hidden" value="${escapeHtml(lead.logoUrl || "")}" />
+        <input id="leadHeaderLogoUrl" type="hidden" value="${escapeHtml(lead.headerLogoUrl || lead.headerLogo || "")}" />
         <input id="leadStatus" type="hidden" value="${escapeHtml(lead.status || "registered")}" />
         <input id="leadContactName" type="hidden" value="${escapeHtml(buildLeadContactName(lead.contactFirstName, lead.contactLastName, lead.contactName || ""))}" />
         <div class="mt-6 text-center text-[10px] font-bold uppercase tracking-widest text-slate-500">${escapeHtml(state.leadModal.status || "")}</div>

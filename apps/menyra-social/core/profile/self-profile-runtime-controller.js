@@ -573,6 +573,8 @@ export function createSelfProfileRuntimeController({
       handle: data?.handle || normalizeHandle(displayName),
       bio: data?.bio || data?.description || "",
       avatar: data?.avatarUrl || data?.avatar || user?.photoURL || "",
+      headerLogoUrl: data?.headerLogoUrl || data?.headerLogo || "",
+      headerLogo: data?.headerLogo || data?.headerLogoUrl || "",
       location: data?.city || "Prishtina",
       address: data?.address || "",
       followers: pickCountValue(data?.followersCount, data?.followers, data?.fansCount, data?.fans),
@@ -663,6 +665,8 @@ export function createSelfProfileRuntimeController({
       handle: handle || normalizeHandle(displayName),
       bio: rest?.bio || rest?.description || rest?.about || "",
       avatar: rest?.logoUrl || rest?.logo || "",
+      headerLogoUrl: rest?.headerLogoUrl || rest?.headerLogo || "",
+      headerLogo: rest?.headerLogo || rest?.headerLogoUrl || "",
       location: rest?.city || "Prishtina",
       address: rest?.address || "",
       followers: pickCountValue(rest?.followersCount, rest?.followers, rest?.fansCount, rest?.fans),
@@ -759,6 +763,8 @@ export function createSelfProfileRuntimeController({
       bio: state.userProfile?.bio || "",
       description: state.userProfile?.bio || "",
       logoUrl: state.userProfile?.avatar || "",
+      headerLogoUrl: state.userProfile?.headerLogoUrl || state.userProfile?.headerLogo || "",
+      headerLogo: state.userProfile?.headerLogo || state.userProfile?.headerLogoUrl || "",
       city: state.userProfile?.location || "",
       address: state.userProfile?.address || "",
       followersCount: state.userProfile?.followers ?? 0,
@@ -1027,7 +1033,9 @@ export function createSelfProfileRuntimeController({
           type: rest.type || rest.customerType || "cafe",
           city,
           logoUrl: rest.logoUrl || rest.logo || "",
-          logo: rest.logo || rest.logoUrl || ""
+          logo: rest.logo || rest.logoUrl || "",
+          headerLogoUrl: rest.headerLogoUrl || rest.headerLogo || state.userProfile?.headerLogoUrl || state.userProfile?.headerLogo || "",
+          headerLogo: rest.headerLogo || rest.headerLogoUrl || state.userProfile?.headerLogo || state.userProfile?.headerLogoUrl || ""
         });
         state.restaurants = mergeRestaurants(state.restaurants, [{ id: restaurantId, ...rest, ...restPayload }]);
         rebuildBusinessLocations();

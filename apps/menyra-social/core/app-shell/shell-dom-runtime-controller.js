@@ -30,7 +30,15 @@ export function createShellDomRuntimeController({
   getBusinessCatalogLabel = () => "Menu",
   resolveUserAvatar = (value = "") => String(value || "").trim(),
   resolveShellAvatarUrl = () => "",
-  resolveHeaderBranding = () => ({ title: "", subtitle: "", logoUrl: "", isBusinessLogo: false }),
+  resolveHeaderBranding = () => ({
+    title: "",
+    subtitle: "",
+    logoUrl: "",
+    isBusinessLogo: false,
+    wordmarkUrl: "",
+    wordmarkAlt: "",
+    hasWordmarkLogo: false
+  }),
   logoFitClass = () => "object-cover",
   roleLabel = (value = "") => String(value || "").trim(),
   buildRoleSwitchUrl = () => "",
@@ -253,6 +261,7 @@ export function createShellDomRuntimeController({
       || isRestaurantCafeProfile(state?.userProfile);
     const isRegisteredUser = !!String(state?.user?.uid || "").trim();
     const showCeoTabs = isCeoUser();
+    const hasWordmarkLogo = branding?.hasWordmarkLogo === true && !!String(branding?.wordmarkUrl || "").trim();
     const headerAvatar = doc?.getElementById("headerAvatar");
     if (headerAvatar) {
       const current = headerAvatar.getAttribute("src") || "";
@@ -266,6 +275,9 @@ export function createShellDomRuntimeController({
       headerTitle.textContent = branding.title;
     }
     if (headerTitle) {
+      headerTitle.classList.toggle("hidden", hasWordmarkLogo);
+    }
+    if (headerTitle) {
       headerTitle.classList.remove("font-elegant", "font-semibold", "tracking-wide");
       headerTitle.classList.add("font-black", "italic", "tracking-tighter");
     }
@@ -276,6 +288,19 @@ export function createShellDomRuntimeController({
       }
       headerSubtitle.classList.toggle("hidden", !branding.subtitle);
     }
+    const headerWordmarkUrl = String(branding?.wordmarkUrl || "").trim();
+    const headerWordmarkAlt = String(branding?.wordmarkAlt || branding?.title || brandUi?.social || brandUi?.upper || "Logo").trim();
+    doc?.querySelectorAll?.("img[data-header-wordmark='true']")?.forEach((imgNode) => {
+      if (!(imgNode instanceof HTMLImageElement)) return;
+      if (!headerWordmarkUrl) return;
+      const currentSrc = imgNode.getAttribute("src") || "";
+      if (currentSrc !== headerWordmarkUrl) {
+        imgNode.setAttribute("src", headerWordmarkUrl);
+      }
+      if (headerWordmarkAlt && imgNode.getAttribute("alt") !== headerWordmarkAlt) {
+        imgNode.setAttribute("alt", headerWordmarkAlt);
+      }
+    });
     const drawerAvatar = doc?.getElementById("drawerAvatar");
     if (drawerAvatar) {
       const current = drawerAvatar.getAttribute("src") || "";

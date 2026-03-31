@@ -70,6 +70,7 @@ export async function saveCustomerFromModalCore({
   const city = docObj.getElementById("customerCity")?.value?.trim() || "";
   const address = docObj.getElementById("customerAddress")?.value?.trim() || "";
   const logoUrlInput = docObj.getElementById("customerLogoUrl")?.value?.trim() || "";
+  const headerLogoUrlInput = docObj.getElementById("customerHeaderLogoUrl")?.value?.trim() || "";
   const statusValue = docObj.getElementById("customerStatus")?.value || customer.status || "kunde";
 
   if (!name) {
@@ -89,9 +90,22 @@ export async function saveCustomerFromModalCore({
       const { cdnUrl } = await uploadCompressedImage(
         state.customerModal.logoFile,
         customer.id,
-        { maxSize: 512, quality: 0.82, mimeType: "image/jpeg" }
+        { maxSize: 1024, quality: 0.9, mimeType: "image/jpeg" }
       );
       logoUrl = cdnUrl || logoUrl;
+    }
+    let headerLogoUrl = headerLogoUrlInput
+      || state.customerModal.headerLogoPreview
+      || customer.headerLogoUrl
+      || customer.headerLogo
+      || "";
+    if (state.customerModal.headerLogoFile) {
+      const { cdnUrl } = await uploadCompressedImage(
+        state.customerModal.headerLogoFile,
+        customer.id,
+        { maxSize: 1400, quality: 0.92, mimeType: "image/jpeg" }
+      );
+      headerLogoUrl = cdnUrl || headerLogoUrl;
     }
 
     const statusKey = normalizeLeadStatusKey(statusValue) || "kunde";
@@ -109,6 +123,8 @@ export async function saveCustomerFromModalCore({
       address,
       logoUrl,
       logo: logoUrl,
+      headerLogoUrl,
+      headerLogo: headerLogoUrl,
       status: restaurantStatus,
       updatedAt: serverTimestamp()
     };
@@ -137,6 +153,8 @@ export async function saveCustomerFromModalCore({
         city,
         address,
         logoUrl,
+        headerLogoUrl,
+        headerLogo: headerLogoUrl,
         status: statusKey,
         restaurantId: customer.id,
         updatedAt: serverTimestamp(),

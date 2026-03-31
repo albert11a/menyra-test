@@ -701,8 +701,32 @@ export function createSessionDataRuntimeController({
         active: true
       }
     };
-    state.leadModal = { open: false, mode: "create", lead: null, status: "", loading: false, deleting: false, actionsOpen: false, logoFile: null, logoPreview: "", coords: null, locations: [] };
-    state.customerModal = { open: false, mode: "edit", customer: null, status: "", loading: false, logoFile: null, logoPreview: "" };
+    state.leadModal = {
+      open: false,
+      mode: "create",
+      lead: null,
+      status: "",
+      loading: false,
+      deleting: false,
+      actionsOpen: false,
+      logoFile: null,
+      logoPreview: "",
+      headerLogoFile: null,
+      headerLogoPreview: "",
+      coords: null,
+      locations: []
+    };
+    state.customerModal = {
+      open: false,
+      mode: "edit",
+      customer: null,
+      status: "",
+      loading: false,
+      logoFile: null,
+      logoPreview: "",
+      headerLogoFile: null,
+      headerLogoPreview: ""
+    };
     state.selectedBusiness = null;
     state.tableQr = {
       restaurantId: "",

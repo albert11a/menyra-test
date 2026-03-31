@@ -489,6 +489,45 @@ export function createAppShellRuntimeController(deps = {}) {
   `;
   }
 
+  function resolveHeaderWordmarkBranding(branding = resolveHeaderBranding()) {
+    const safeBranding = branding && typeof branding === "object" ? branding : {};
+    const title = String(safeBranding.title || BRAND_UI.upper || "").trim() || BRAND_UI.upper;
+    const subtitle = String(safeBranding.subtitle || "").trim();
+    const wordmarkUrl = String(safeBranding.wordmarkUrl || "").trim();
+    const hasWordmarkLogo = safeBranding.hasWordmarkLogo === true && !!wordmarkUrl;
+    const wordmarkAlt = String(safeBranding.wordmarkAlt || title || BRAND_UI.social || BRAND_UI.upper || "Logo").trim()
+      || BRAND_UI.upper
+      || "Logo";
+    return {
+      title,
+      subtitle,
+      wordmarkUrl,
+      hasWordmarkLogo,
+      wordmarkAlt
+    };
+  }
+
+  function renderHeaderWordmarkImage(
+    wordmark = resolveHeaderWordmarkBranding(),
+    { imageId = "headerWordmarkImage", imageKey = "header:wordmark" } = {}
+  ) {
+    return `
+      <span class="header-wordmark">
+        <img
+          id="${escapeHtml(imageId)}"
+          data-header-wordmark="true"
+          data-img-key="${escapeHtml(imageKey)}"
+          src="${escapeHtml(wordmark.wordmarkUrl)}"
+          data-fallback-src="/apps/menyra-social/assets/icon-192.png"
+          alt="${escapeHtml(wordmark.wordmarkAlt)}"
+          class="header-wordmark__img"
+          decoding="async"
+          loading="eager"
+        />
+      </span>
+    `;
+  }
+
   function shouldUseSmartHeader() {
     const isStaffFormView = state.activeTab === "staff" && state.staff?.view === "form";
     const isLeadsSubView = state.activeTab === "leads" && (state.leads?.view === "create" || state.leads?.view === "settings");
@@ -597,8 +636,9 @@ export function createAppShellRuntimeController(deps = {}) {
     };
   }
 
-  function renderBusinessHeaderCenter(profile = getActiveHeaderProfile()) {
+  function renderBusinessHeaderCenter(profile = getActiveHeaderProfile(), branding = resolveHeaderBranding()) {
     const viewportUi = resolveBusinessHeaderViewportUi();
+    const wordmark = resolveHeaderWordmarkBranding(branding);
     const businessName = String(profile?.name || profile?.restaurantName || profile?.businessName || "Business").trim() || "Business";
     const businessNameParts = businessName.split(/\s+/).filter(Boolean);
     const rawBusinessTitle = String(businessNameParts[0] || businessName).trim();
@@ -618,12 +658,27 @@ export function createAppShellRuntimeController(deps = {}) {
         </div>
       </button>
     `;
+    const renderBusinessWordmark = () => `
+      <button type="button" data-business-profile-home="true" class="min-w-0 max-w-full text-left active:opacity-90 transition-opacity">
+        ${renderHeaderWordmarkImage(
+          {
+            ...wordmark,
+            wordmarkAlt: businessName || wordmark.wordmarkAlt
+          },
+          {
+            imageId: "businessHeaderWordmarkImage",
+            imageKey: "header:wordmark:business"
+          }
+        )}
+      </button>
+    `;
+    const renderBusinessIdentity = () => (wordmark.hasWordmarkLogo ? renderBusinessWordmark() : renderBusinessName());
     if (!isBusinessMenuHeaderContext(profile)) {
-      return renderBusinessName();
+      return renderBusinessIdentity();
     }
     const categories = getBusinessHeaderMenuCategories(profile);
     if (!categories.length) {
-      return renderBusinessName();
+      return renderBusinessIdentity();
     }
     return `
       <div class="relative flex-1 min-w-0 pr-1">
@@ -693,6 +748,8 @@ export function createAppShellRuntimeController(deps = {}) {
   }
 
   function renderSmartHeader() {
+    const branding = resolveHeaderBranding();
+    const wordmark = resolveHeaderWordmarkBranding(branding);
     const activeProfile = getActiveHeaderProfile();
     if (isBusinessProfileHeaderContext(activeProfile)) {
       const viewportUi = resolveBusinessHeaderViewportUi();
@@ -705,9 +762,9 @@ export function createAppShellRuntimeController(deps = {}) {
                 <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="text-slate-700 hover:bg-slate-100 ${viewportUi.drawerButtonClass} rounded-full transition-colors active:scale-95 flex items-center justify-center shrink-0">
                   ${icon("menu", viewportUi.drawerIconClass)}
                 </button>
-                ${menuHeaderActive ? "" : renderBusinessHeaderCenter(activeProfile)}
+                ${menuHeaderActive ? "" : renderBusinessHeaderCenter(activeProfile, branding)}
               </div>
-              ${menuHeaderActive ? renderBusinessHeaderCenter(activeProfile) : ""}
+              ${menuHeaderActive ? renderBusinessHeaderCenter(activeProfile, branding) : ""}
               ${renderBusinessHeaderActions(activeProfile)}
             </div>
           </div>
@@ -727,9 +784,19 @@ export function createAppShellRuntimeController(deps = {}) {
               <button id="drawerToggle" data-header-badge-anchor="true" type="button" class="text-slate-700 hover:bg-slate-100 p-2 -ml-2 rounded-full transition-colors active:scale-95 flex items-center justify-center">
                 ${icon("menu", "w-6 h-6")}
               </button>
-              <div class="flex items-baseline gap-1.5 cursor-pointer" data-nav="feed">
-                <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">MNYRA</h1>
-                <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">Social</span>
+              <div class="min-w-0 cursor-pointer" data-nav="feed">
+                ${wordmark.hasWordmarkLogo
+                  ? renderHeaderWordmarkImage(wordmark, {
+                    imageId: "smartHeaderWordmarkImage",
+                    imageKey: "header:wordmark:smart"
+                  })
+                  : `
+                    <div class="flex items-baseline gap-1.5">
+                      <h1 class="text-2xl font-black italic tracking-tighter leading-none text-slate-900">${escapeHtml(wordmark.title || BRAND_UI.upper)}</h1>
+                      <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.25em] mb-[1px]">${escapeHtml(wordmark.subtitle || "Social")}</span>
+                    </div>
+                  `
+                }
               </div>
             </div>
             <div class="flex items-center gap-1.5 text-slate-600">
@@ -759,6 +826,7 @@ export function createAppShellRuntimeController(deps = {}) {
     const headerUnread = unread + chatUnread;
     const badge = headerUnread > 9 ? "9+" : String(headerUnread || "");
     const branding = resolveHeaderBranding();
+    const wordmark = resolveHeaderWordmarkBranding(branding);
     const avatarUrl = branding.logoUrl;
     const avatarFit = logoFitClass(branding.isBusinessLogo);
     const titleClass = "text-2xl font-black italic tracking-tighter leading-none text-slate-900 max-w-[220px] mx-auto truncate";
@@ -770,7 +838,13 @@ export function createAppShellRuntimeController(deps = {}) {
           ${icon("arrow-left", "w-5 h-5")}
         </button>
         <div class="text-center">
-          <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
+          ${wordmark.hasWordmarkLogo
+            ? renderHeaderWordmarkImage(wordmark, {
+              imageId: "staffHeaderWordmarkImage",
+              imageKey: "header:wordmark:staff"
+            })
+            : `<h1 class="${titleClass}">${escapeHtml(wordmark.title || BRAND_UI.upper)}</h1>`
+          }
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">CEO Creation</span>
         </div>
         ${renderHeaderActionButton(avatarUrl, avatarFit)}
@@ -785,7 +859,13 @@ export function createAppShellRuntimeController(deps = {}) {
           ${icon("arrow-left", "w-5 h-5")}
         </button>
         <div class="text-center">
-          <h1 class="${titleClass}">${BRAND_UI.upper}</h1>
+          ${wordmark.hasWordmarkLogo
+            ? renderHeaderWordmarkImage(wordmark, {
+              imageId: "leadHeaderWordmarkImage",
+              imageKey: "header:wordmark:lead"
+            })
+            : `<h1 class="${titleClass}">${escapeHtml(wordmark.title || BRAND_UI.upper)}</h1>`
+          }
           <span class="text-[9px] font-black text-indigo-600 uppercase tracking-[0.3em] block">${isSettingsView ? "Leads Settings" : "Leads Creation"}</span>
         </div>
         ${renderHeaderActionButton(avatarUrl, avatarFit)}
@@ -837,9 +917,16 @@ export function createAppShellRuntimeController(deps = {}) {
         <div class="w-5 h-0.5 rounded-full bg-slate-900"></div>
         ${headerUnread ? `<span data-unread-badge="header" class="absolute -top-1 -right-1 min-w-[20px] h-5 px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-lg">${badge}</span>` : ""}
       </button>
-      <div class="text-center cursor-pointer" data-nav="feed">
-        <h1 id="headerTitle" class="${titleClass}">${escapeHtml(branding.title)}</h1>
-        <span id="headerSubtitle" class="${subtitleClass}">${escapeHtml(branding.subtitle)}</span>
+      <div class="text-center cursor-pointer min-w-0" data-nav="feed">
+        ${wordmark.hasWordmarkLogo
+          ? renderHeaderWordmarkImage(wordmark, {
+            imageId: "headerWordmarkImage",
+            imageKey: "header:wordmark"
+          })
+          : ""
+        }
+        <h1 id="headerTitle" class="${titleClass}${wordmark.hasWordmarkLogo ? " hidden" : ""}">${escapeHtml(wordmark.title || branding.title)}</h1>
+        <span id="headerSubtitle" class="${subtitleClass}">${escapeHtml(wordmark.subtitle || branding.subtitle)}</span>
       </div>
       ${renderHeaderActionButton(avatarUrl, avatarFit)}
     </header>

@@ -40,6 +40,8 @@ export function renderLeadModalCore({
   const isEdit = state.leadModal.mode === "edit";
   const logoRaw = state.leadModal.logoPreview || lead.logoUrl || lead.logo || lead.imageUrl || "";
   const logoUrl = logoRaw ? getOptimizedImage(logoRaw, "avatar") : PLACEHOLDER_IMAGE;
+  const headerLogoRaw = state.leadModal.headerLogoPreview || lead.headerLogoUrl || lead.headerLogo || "";
+  const headerLogoUrl = headerLogoRaw ? getOptimizedImage(headerLogoRaw, "header") : PLACEHOLDER_IMAGE;
   const status = state.leadModal.status || "";
   const customerType = resolveCustomer(lead.customerType || "cafe");
   const leadEmail = lead.socialEmail || lead.email || "";
@@ -63,12 +65,21 @@ export function renderLeadModalCore({
   const bodyHtml = `
     <div class="flex-1 overflow-y-auto no-scrollbar modal-scroll px-6 py-5 space-y-4">
       <input type="file" id="leadLogoInput" class="hidden" accept="image/*" />
+      <input type="file" id="leadHeaderLogoInput" class="hidden" accept="image/*" />
       <div class="rounded-[2.5rem] overflow-hidden border border-slate-100 bg-slate-50">
         <img id="leadLogoPreview" src="${esc(logoUrl)}" class="w-full h-44 object-contain bg-white" />
       </div>
       <button id="leadLogoTrigger" class="w-full py-3 rounded-2xl bg-slate-900 text-white text-[10px] font-black uppercase tracking-widest">
         Logo hochladen
       </button>
+      <div class="rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50 p-3 space-y-3">
+        <div class="rounded-[1.6rem] overflow-hidden border border-slate-100 bg-white px-4 py-3">
+          <img id="leadHeaderLogoPreview" src="${esc(headerLogoUrl)}" class="w-full h-20 object-contain" />
+        </div>
+        <button id="leadHeaderLogoTrigger" class="w-full py-3 rounded-2xl bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest">
+          Header Logo hochladen
+        </button>
+      </div>
 
       <div class="p-5 rounded-[2rem] border border-slate-100 bg-white space-y-4">
         <div>
@@ -149,6 +160,10 @@ export function renderLeadModalCore({
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Logo URL (optional)</label>
           <input id="leadLogoUrl" type="text" value="${esc(lead.logoUrl || lead.logo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
+        </div>
+        <div>
+          <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Header Logo URL (optional)</label>
+          <input id="leadHeaderLogoUrl" type="text" value="${esc(lead.headerLogoUrl || lead.headerLogo || "")}" placeholder="https://..." class="w-full px-5 py-4 bg-slate-50 rounded-2xl text-sm font-bold border-none outline-none focus:ring-2 focus:ring-indigo-100" />
         </div>
         <div>
           <label class="text-[10px] font-black text-slate-400 uppercase ml-2">Status</label>
