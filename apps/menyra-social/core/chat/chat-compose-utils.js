@@ -88,6 +88,8 @@ export function createOutgoingChatMessageCore({
     liked: false,
     saved: false,
     read: true,
-    createdAt: safeCreatedAt
+    createdAt: safeCreatedAt,
+    deliveryStatus: "pending",
+    syncError: ""
   };
 }

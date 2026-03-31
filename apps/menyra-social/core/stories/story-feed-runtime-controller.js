@@ -81,6 +81,16 @@ export function createStoryFeedRuntimeController({
     return isGenericStoryBusinessLabel(label) ? "" : label;
   }
 
+  function normalizeStoryTruthSource(item = {}) {
+    const source = String(
+      item?.truthSource
+      || item?.storyTruthSource
+      || item?.storyTruth
+      || ""
+    ).trim().toLowerCase();
+    return source === "feed-fallback" ? "feed-fallback" : "canonical";
+  }
+
   function resolveStoryBusinessIdentity(restaurantId = "") {
     const rid = String(restaurantId || "").trim();
     if (!rid) {
@@ -146,13 +156,18 @@ export function createStoryFeedRuntimeController({
 
   function resolveStoryRenderIdentity(story = {}) {
     const storyRestaurantId = String(story?.restaurantId || story?.id || story?.rid || "").trim();
+    const truthSource = normalizeStoryTruthSource(story);
+    const isFeedFallbackStory = truthSource === "feed-fallback";
     if (!storyRestaurantId) {
       return {
         storyRestaurantId: "",
         hasCanonicalRestaurant: false,
         storyLabel: "",
         logoSource: "",
-        borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
+        borderClass: story?.isLive
+          ? "border-red-500 animate-pulse"
+          : (isFeedFallbackStory ? "border-amber-300 border-dashed" : "border-slate-200"),
+        truthSource
       };
     }
     const identity = resolveStoryBusinessIdentity(storyRestaurantId);
@@ -179,7 +194,10 @@ export function createStoryFeedRuntimeController({
       hasCanonicalRestaurant: !!identity.hasCanonicalRestaurant,
       storyLabel,
       logoSource,
-      borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
+      borderClass: story?.isLive
+        ? "border-red-500 animate-pulse"
+        : (isFeedFallbackStory ? "border-amber-300 border-dashed" : "border-slate-200"),
+      truthSource
     };
   }
 
@@ -193,7 +211,8 @@ export function createStoryFeedRuntimeController({
       restaurantId,
       name: sanitizeStoryBusinessName(identity.storyLabel || ""),
       img: String(identity.logoSource || "").trim(),
-      isLive: !!item?.isLive
+      isLive: !!item?.isLive,
+      truthSource: identity.truthSource
     };
   }
 
@@ -491,11 +510,14 @@ export function createStoryFeedRuntimeController({
     const storyId = escapeSelector(renderIdentity.storyRestaurantId);
     const label = sanitizeStoryBusinessName(renderIdentity.storyLabel || "") || "Restaurant";
     const live = !!story?.isLive;
+    const isFeedFallbackStory = String(renderIdentity.truthSource || "").trim().toLowerCase() === "feed-fallback";
     doc.querySelectorAll(`[data-story-border="${storyId}"]`).forEach((el) => {
       if (HtmlElementCtor && !(el instanceof HtmlElementCtor)) return;
       el.classList.toggle("border-red-500", live);
       el.classList.toggle("animate-pulse", live);
-      el.classList.toggle("border-slate-200", !live);
+      el.classList.toggle("border-slate-200", !live && !isFeedFallbackStory);
+      el.classList.toggle("border-amber-300", !live && isFeedFallbackStory);
+      el.classList.toggle("border-dashed", !live && isFeedFallbackStory);
     });
     doc.querySelectorAll(`[data-story-name="${storyId}"]`).forEach((el) => {
       if (HtmlElementCtor && !(el instanceof HtmlElementCtor)) return;
@@ -520,7 +542,8 @@ export function createStoryFeedRuntimeController({
         restaurantId: rid,
         name: sanitizeStoryBusinessName(renderIdentity.storyLabel || ""),
         img: String(renderIdentity.logoSource || "").trim(),
-        isLive: false
+        isLive: false,
+        truthSource: "feed-fallback"
       });
     });
     return Array.from(map.values()).slice(0, fastLimits.stories);

@@ -64,7 +64,9 @@ export function buildChatRemotePayloadBundleCore({
     read: true,
     senderUid: safeSenderUid,
     createdAt: ts(),
-    createdAtClient
+    createdAtClient,
+    deliveryStatus: "sent",
+    syncError: ""
   };
   const recipientThreadPayloadBase = {
     uid: safeSenderUid,
@@ -89,7 +91,9 @@ export function buildChatRemotePayloadBundleCore({
     senderName: String(senderProfile?.name || "User").trim() || "User",
     senderAvatar: String(senderProfile?.avatar || "").trim(),
     createdAt: ts(),
-    createdAtClient
+    createdAtClient,
+    deliveryStatus: "sent",
+    syncError: ""
   };
   return {
     senderThreadPayload,

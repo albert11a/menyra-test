@@ -45,30 +45,104 @@ export function createFeedVisibilityRuntimeCluster({
     return isPublicBusinessRecord(restaurant);
   }
 
+  function toTimestampMs(value) {
+    if (!value) return 0;
+    try {
+      if (typeof value?.toDate === "function") {
+        return value.toDate()?.getTime?.() || 0;
+      }
+      if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+      if (value instanceof Date) return value.getTime() || 0;
+      const parsed = toDateSafe(value);
+      return parsed?.getTime?.() || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function resolveCanonicalPostById(postId = "", restaurantId = "") {
+    const safePostId = String(postId || "").trim();
+    if (!safePostId || !(state?.postEntityMap instanceof Map) || !state.postEntityMap.size) return null;
+    const targetRestaurantId = String(restaurantId || "").trim();
+    let best = null;
+    let bestScore = -1;
+    state.postEntityMap.forEach((candidate) => {
+      if (!candidate || String(candidate?.id || "").trim() !== safePostId) return;
+      const candidateRestaurantId = String(
+        candidate?.restaurantId
+        || (candidate?.ownerType === "restaurant" ? candidate?.ownerId : "")
+        || candidate?.rid
+        || ""
+      ).trim();
+      const sameRestaurantBonus = targetRestaurantId && candidateRestaurantId === targetRestaurantId ? 1000000 : 0;
+      const contentScore = [
+        candidate?.caption,
+        candidate?.content,
+        candidate?.url,
+        candidate?.image,
+        candidate?.title
+      ].reduce((sum, entry) => (String(entry || "").trim() ? sum + 1 : sum), 0);
+      const freshnessScore = Math.max(
+        toTimestampMs(candidate?.updatedAt),
+        toTimestampMs(candidate?.updatedAtClient),
+        toTimestampMs(candidate?.createdAtClient),
+        toTimestampMs(candidate?.createdAt)
+      );
+      const score = sameRestaurantBonus + freshnessScore + (contentScore * 10);
+      if (!best || score > bestScore) {
+        best = candidate;
+        bestScore = score;
+      }
+    });
+    return best;
+  }
+
   function normalizeFeedPost(row = {}) {
     const restaurantId = String(row?.rid || row?.restaurantId || "").trim();
     if (isForceHiddenBusinessEntity({ id: restaurantId, restaurantId, ...(row || {}) })) return null;
     if (!canShowFeedRestaurantId(restaurantId)) return null;
+    const canonicalPost = resolveCanonicalPostById(row?.id, restaurantId);
     const restaurant = (state?.restaurants || []).find((entry) => entry?.id === restaurantId) || {};
     const thumb = row?.thumbUrl || row?.mediaUrl || row?.media?.[0]?.thumbUrl || row?.media?.[0]?.url || "";
     const rowLogo = row?.logoUrl || row?.logo || row?.logoURL || "";
-    const caption = row?.caption || row?.captionShort || "";
+    const caption = String(
+      canonicalPost?.content
+      || canonicalPost?.caption
+      || row?.caption
+      || row?.content
+      || row?.captionShort
+      || ""
+    ).trim();
+    const image = String(
+      canonicalPost?.image
+      || canonicalPost?.url
+      || row?.imageUrl
+      || thumb
+      || ""
+    ).trim();
+    const postId = String(row?.id || canonicalPost?.id || "").trim();
     return {
-      id: row?.id,
+      id: postId,
       restaurantId,
       business: row?.businessName || row?.restaurantName || restaurant?.name || restaurant?.restaurantName || "Business",
       logo: restaurant?.logoUrl || restaurant?.logo || rowLogo || "",
-      location: row?.city || restaurant?.city || "Prishtina",
+      location: row?.city || restaurant?.city || "",
       content: caption,
-      image: thumb || "",
-      likes: row?.likesCount || "0",
-      comments: row?.commentsCount || "0",
-      time: formatRelative(toDateSafe(row?.createdAt)),
-      createdAt: row?.createdAt,
+      image,
+      likes: Number(row?.likesCount ?? row?.likes ?? canonicalPost?.likes ?? 0) || 0,
+      comments: Number(row?.commentsCount ?? row?.comments ?? canonicalPost?.comments ?? 0) || 0,
+      time: formatRelative(toDateSafe(canonicalPost?.createdAt || row?.createdAt)),
+      createdAt: canonicalPost?.createdAt || row?.createdAt,
+      updatedAt: row?.updatedAt || canonicalPost?.updatedAt || canonicalPost?.updatedAtClient || row?.createdAt,
       category: row?.postType || "food",
       isLive: row?.isLive || false,
       ownerType: "restaurant",
-      ownerId: restaurantId
+      ownerId: restaurantId,
+      truthSource: "feed-projection",
+      canonicalPath: String(
+        row?.canonicalPath
+        || (restaurantId && postId ? `restaurants/${restaurantId}/socialPosts/${postId}` : "")
+      ).trim()
     };
   }
 

@@ -205,20 +205,21 @@ export function createPublicProfileRuntimeController({
 
   async function fetchBusinessProfileDoc({ restaurantId, restaurant }) {
     const rest = restaurant || (restaurantId ? state?.restaurants?.find?.((row) => row.id === restaurantId) : null) || null;
+    const restId = restaurantId || rest?.id || "";
+    if (restId && makeDocRef && db) {
+      try {
+        const snap = await getDocSafe(makeDocRef(db, "restaurants", restId));
+        if (snap.exists()) {
+          const data = snap.data() || {};
+          if (!isPublicBusinessRecord({ id: snap.id, ...data })) return null;
+          return { id: snap.id, data };
+        }
+      } catch {}
+    }
     if (rest?.id) {
       if (!isPublicBusinessRecord(rest)) return null;
       return { id: rest.id, data: rest };
     }
-    const restId = restaurantId || rest?.id || "";
-    if (!restId || !makeDocRef || !db) return null;
-    try {
-      const snap = await getDocSafe(makeDocRef(db, "restaurants", restId));
-      if (snap.exists()) {
-        const data = snap.data() || {};
-        if (!isPublicBusinessRecord({ id: snap.id, ...data })) return null;
-        return { id: snap.id, data };
-      }
-    } catch {}
     return null;
   }
 

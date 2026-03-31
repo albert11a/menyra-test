@@ -1140,35 +1140,6 @@ export function createSelfProfileRuntimeController({
       return;
     }
     let profileSeed = { ...rest };
-    try {
-      const ownerSnap = await getDoc(makeDocRef(db, "users", user.uid));
-      if (ownerSnap.exists()) {
-        const ownerData = ownerSnap.data() || {};
-        if (!String(profileSeed.bio || profileSeed.description || profileSeed.about || "").trim()) {
-          const fallbackBio = String(ownerData.bio || "").trim();
-          if (fallbackBio) {
-            profileSeed.bio = fallbackBio;
-            profileSeed.description = fallbackBio;
-          }
-        }
-        if (!hasCountValue(profileSeed.followersCount, profileSeed.followers, profileSeed.fansCount, profileSeed.fans)) {
-          const ownerFollowers = pickCountValue(ownerData.followersCount, ownerData.followers, ownerData.fansCount, ownerData.fans);
-          if (ownerFollowers > 0) profileSeed.followersCount = ownerFollowers;
-        }
-        if (!hasCountValue(profileSeed.followingCount, profileSeed.following)) {
-          const ownerFollowing = pickCountValue(ownerData.followingCount, ownerData.following);
-          if (ownerFollowing > 0) profileSeed.followingCount = ownerFollowing;
-        }
-        if (!String(profileSeed.city || "").trim()) {
-          const ownerCity = String(ownerData.city || "").trim();
-          if (ownerCity) profileSeed.city = ownerCity;
-        }
-        if (!String(profileSeed.logoUrl || profileSeed.logo || "").trim()) {
-          const ownerAvatar = String(ownerData.avatarUrl || ownerData.avatar || "").trim();
-          if (ownerAvatar) profileSeed.logoUrl = ownerAvatar;
-        }
-      }
-    } catch {}
     const prevAvatar = state.userProfile?.avatar || "";
     const normalized = normalizeBusinessProfile(profileSeed, user);
     normalized.uid = user.uid;

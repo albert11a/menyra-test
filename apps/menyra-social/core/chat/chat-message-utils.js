@@ -44,6 +44,17 @@ export function sanitizeChatAttachmentsForSyncCore({
   });
 }
 
+export function normalizeChatDeliveryStatusCore(status = "", fallback = "sent") {
+  const normalizedFallback = String(fallback || "").trim().toLowerCase() === "failed"
+    ? "failed"
+    : (String(fallback || "").trim().toLowerCase() === "pending" ? "pending" : "sent");
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "pending" || normalized === "failed" || normalized === "sent") {
+    return normalized;
+  }
+  return normalizedFallback;
+}
+
 export function normalizeChatMessageRecordCore({
   messageId,
   data = {},
@@ -62,6 +73,10 @@ export function normalizeChatMessageRecordCore({
     ? isChatInlineDataUrl
     : (() => false);
   const limit = Math.max(1, Number(maxAttachments) || 4);
+  const deliveryStatus = normalizeChatDeliveryStatusCore(
+    source.deliveryStatus || source.delivery_state || local.deliveryStatus || "",
+    "sent"
+  );
   const mergedAttachments = (sourceAttachments.length ? sourceAttachments : localAttachments).slice(0, limit).map((attachment, index) => {
     const safeAttachmentId = String(attachment?.id || `att_${index}`).trim() || `att_${index}`;
     const localAttachment = localAttachmentMap.get(safeAttachmentId) || {};
@@ -85,7 +100,11 @@ export function normalizeChatMessageRecordCore({
     liked: typeof local.liked === "boolean" ? local.liked : !!source.liked,
     saved: typeof local.saved === "boolean" ? local.saved : !!source.saved,
     read: !!source.read,
-    createdAt: source.createdAt || source.createdAtClient || local.createdAt || new Date().toISOString()
+    createdAt: source.createdAt || source.createdAtClient || local.createdAt || new Date().toISOString(),
+    deliveryStatus,
+    syncError: deliveryStatus === "failed"
+      ? String(source.syncError || local.syncError || "").trim()
+      : ""
   };
 }
 

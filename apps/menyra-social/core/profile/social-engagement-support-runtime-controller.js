@@ -403,6 +403,105 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
     return buildCatalogProfileForRestaurant(restaurantId, item || {});
   }
 
+  function toTimestampMs(value) {
+    if (!value) return 0;
+    try {
+      if (typeof value?.toDate === "function") return value.toDate()?.getTime?.() || 0;
+      if (value instanceof Date) return value.getTime() || 0;
+      if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+      return toDateSafe(value)?.getTime?.() || 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function getPostTruthScore(post = {}) {
+    if (!post || typeof post !== "object") return 0;
+    const freshnessScore = Math.max(
+      toTimestampMs(post.updatedAt),
+      toTimestampMs(post.updatedAtClient),
+      toTimestampMs(post.createdAtClient),
+      toTimestampMs(post.createdAt)
+    );
+    const contentScore = [
+      post.content,
+      post.caption,
+      post.url,
+      post.image,
+      post.title,
+      post.business,
+      post.logo
+    ].reduce((sum, value) => (String(value || "").trim() ? sum + 1 : sum), 0);
+    const ownerScore = post.ownerType && post.ownerId ? 100 : 0;
+    return freshnessScore + (contentScore * 10) + ownerScore;
+  }
+
+  function collectPostTargets(postId) {
+    const safePostId = String(postId || "").trim();
+    if (!safePostId) return [];
+    const unique = new Set();
+    const targets = [];
+    const push = (candidate) => {
+      if (!candidate || String(candidate?.id || "").trim() !== safePostId || unique.has(candidate)) return;
+      unique.add(candidate);
+      targets.push(candidate);
+    };
+    push(state.postModal?.post);
+    [
+      state.userPosts,
+      state.businessPosts,
+      state.feedPosts,
+      state.profileView?.posts,
+      state.profileModal?.profile?.posts
+    ].forEach((list) => {
+      if (!Array.isArray(list)) return;
+      list.forEach((candidate) => push(candidate));
+    });
+    return targets;
+  }
+
+  function pickCanonicalPostCandidate(postId, preferred = null) {
+    const candidates = [...collectPostTargets(postId)];
+    if (preferred && String(preferred?.id || "").trim() === String(postId || "").trim()) {
+      candidates.push(preferred);
+    }
+    if (!candidates.length) return null;
+    return candidates
+      .slice()
+      .sort((a, b) => getPostTruthScore(b) - getPostTruthScore(a))[0];
+  }
+
+  function mergePostTruthIntoTarget(target, canonical) {
+    if (!target || !canonical) return;
+    const canonicalCaption = String(canonical.caption || canonical.content || "").trim();
+    const canonicalContent = String(canonical.content || canonical.caption || "").trim();
+    const canonicalUrl = String(canonical.url || canonical.image || "").trim();
+    const canonicalImage = String(canonical.image || canonical.url || "").trim();
+    if (canonical.ownerType && canonical.ownerId) {
+      target.ownerType = canonical.ownerType;
+      target.ownerId = canonical.ownerId;
+    }
+    if (canonical.restaurantId) target.restaurantId = canonical.restaurantId;
+    if (canonical.uid) target.uid = canonical.uid;
+    if (canonical.userId) target.userId = canonical.userId;
+    if (canonicalCaption) target.caption = canonicalCaption;
+    if (canonicalContent) target.content = canonicalContent;
+    if (canonicalUrl) target.url = canonicalUrl;
+    if (canonicalImage) target.image = canonicalImage;
+    if (String(canonical.title || "").trim()) target.title = canonical.title;
+    if (String(canonical.type || "").trim()) target.type = canonical.type;
+    if (String(canonical.category || "").trim()) target.category = canonical.category;
+    if (String(canonical.business || "").trim()) target.business = canonical.business;
+    if (String(canonical.logo || "").trim()) target.logo = canonical.logo;
+    if (String(canonical.location || "").trim()) target.location = canonical.location;
+    if (canonical.createdAt) target.createdAt = canonical.createdAt;
+    if (canonical.updatedAt) target.updatedAt = canonical.updatedAt;
+    if (canonical.updatedAtClient) target.updatedAtClient = canonical.updatedAtClient;
+    target.likes = Math.max(0, Number(canonical.likes ?? target.likes ?? 0) || 0);
+    target.comments = Math.max(0, Number(canonical.comments ?? target.comments ?? 0) || 0);
+    target.isVideo = !!(canonical.isVideo ?? target.isVideo);
+  }
+
   function resolvePostCounts(post) {
     const likeCount = typeof post.likes === "number" ? post.likes : Number(post.likes) || 0;
     const commentCount = typeof post.comments === "number" ? post.comments : Number(post.comments) || 0;
@@ -433,6 +532,11 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
   function updatePostCaches(post) {
     if (!post?.id) return;
     const postId = String(post.id);
+    const canonical = pickCanonicalPostCandidate(postId, post) || post;
+    collectPostTargets(postId).forEach((target) => mergePostTruthIntoTarget(target, canonical));
+    if (state.postModal?.post && String(state.postModal.post.id || "").trim() === postId) {
+      mergePostTruthIntoTarget(state.postModal.post, canonical);
+    }
     const inUser = state.userPosts.some((item) => String(item.id) === postId);
     const inBusiness = state.businessPosts.some((item) => String(item.id) === postId);
     const inFeed = state.feedPosts.some((item) => String(item.id) === postId);
@@ -447,16 +551,15 @@ export function createSocialEngagementSupportRuntimeController(deps = {}) {
   }
 
   function findPostById(postId) {
-    const modalPost = state.postModal?.post;
-    if (modalPost && String(modalPost.id) === String(postId)) return modalPost;
-    const all = [...state.userPosts, ...state.businessPosts, ...state.feedPosts];
-    const found = all.find((item) => String(item.id) === String(postId));
-    if (found) return found;
-    const viewPosts = state.profileView?.posts || [];
-    const viewFound = viewPosts.find((item) => String(item.id) === String(postId));
-    if (viewFound) return viewFound;
-    const modalPosts = state.profileModal.profile?.posts || [];
-    return modalPosts.find((item) => String(item.id) === String(postId)) || null;
+    const safePostId = String(postId || "").trim();
+    if (!safePostId) return null;
+    const canonical = pickCanonicalPostCandidate(safePostId);
+    if (!canonical) return null;
+    collectPostTargets(safePostId).forEach((target) => mergePostTruthIntoTarget(target, canonical));
+    if (state.postModal?.post && String(state.postModal.post.id || "").trim() === safePostId) {
+      mergePostTruthIntoTarget(state.postModal.post, canonical);
+    }
+    return canonical;
   }
 
   function ensureCommentShape(comment) {

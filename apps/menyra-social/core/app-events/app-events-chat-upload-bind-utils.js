@@ -141,6 +141,14 @@ export function bindAppChatUploadEventsCore({
     });
   });
 
+  doc.querySelectorAll("[data-chat-retry]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const id = String(btn.dataset.chatRetry || "").trim();
+      if (!id) return;
+      sendChatMessage({ retryMessageId: id });
+    });
+  });
+
   doc.querySelectorAll("[data-chat-remove-attachment]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const id = btn.dataset.chatRemoveAttachment || "";

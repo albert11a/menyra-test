@@ -135,34 +135,31 @@ export function createProfileOpenFlowControllerCore({
       const rest = restaurantId
         ? (state.restaurants.find((r) => r.id === restaurantId) || { id: restaurantId })
         : (state.restaurants.find((r) => (r.name || r.restaurantName || "") === safeName) || {});
-      const targetMenuRestaurantId = String(restaurantId || rest?.id || "").trim();
+      const targetRestaurantId = String(restaurantId || rest?.id || "").trim();
+      const targetMenuRestaurantId = targetRestaurantId;
       if (isMenuTopTab && targetMenuRestaurantId) {
         ensureMenuData({ restaurantId: targetMenuRestaurantId });
         ensureFocusData({ restaurantId: targetMenuRestaurantId });
       }
 
-      const fallbackPosts = state.feedPosts
-        .filter((p) => (restaurantId ? p.restaurantId === restaurantId : p.business === safeName))
-        .map((p, idx) => ({
-          id: p.id || `feed_${idx}`,
-          url: p.image,
-          type: p.type || "square",
-          caption: p.content || "",
-          createdAt: p.createdAt,
-          likes: p.likes ?? 0,
-          comments: p.comments ?? 0,
-          ownerType: "restaurant",
-          ownerId: restaurantId || p.restaurantId || ""
-        }));
+      const loadingProfile = {
+        name: safeName || "Business",
+        handle: "",
+        uid: "",
+        bio: "Profil wird geladen...",
+        avatar: "",
+        location: "",
+        followers: 0,
+        following: 0,
+        privateAccount: false,
+        role: "business",
+        restaurantId: targetRestaurantId,
+        pendingFollowRequest: false,
+        posts: [],
+        truthState: "loading"
+      };
 
-      const placeholderProfile = normalizeBusinessProfile({
-        profileDoc: null,
-        restaurant: rest,
-        fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-        posts: fallbackPosts
-      });
-
-      showPublicProfileView(placeholderProfile, placeholderProfile.posts, {
+      showPublicProfileView(loadingProfile, [], {
         showBack,
         topTab,
         menuAccessSource: safeMenuAccessSource,
@@ -170,19 +167,19 @@ export function createProfileOpenFlowControllerCore({
       });
 
       const [profileSnap, posts] = await Promise.all([
-        fetchBusinessProfile({ restaurantId, restaurant: rest }),
-        restaurantId ? loadBusinessPosts(restaurantId) : Promise.resolve(fallbackPosts)
+        fetchBusinessProfile({ restaurantId: targetRestaurantId, restaurant: rest }),
+        targetRestaurantId ? loadBusinessPosts(targetRestaurantId) : Promise.resolve([])
       ]);
 
       const resolved = normalizeBusinessProfile({
         profileDoc: profileSnap,
         restaurant: rest,
         fallbackName: safeName || rest.name || rest.restaurantName || "Business",
-        posts: posts && posts.length ? posts : fallbackPosts
+        posts: Array.isArray(posts) ? posts : []
       });
 
       if (state.activeTab !== "profile") return;
-      if (restaurantId && state.profileView?.profile?.restaurantId !== restaurantId) return;
+      if (targetRestaurantId && state.profileView?.profile?.restaurantId !== targetRestaurantId) return;
       showPublicProfileView(resolved, resolved.posts, {
         showBack,
         topTab,

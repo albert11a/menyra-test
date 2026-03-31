@@ -16,6 +16,45 @@ export function renderChatMessagesPanelCore({
   const toDate = typeof toDateSafe === "function" ? toDateSafe : (() => null);
   const list = Array.isArray(messages) ? messages : [];
   const nowDate = new Date(Number(nowMs || Date.now()) || Date.now());
+  const normalizeDeliveryStatus = (value, fallback = "sent") => {
+    const fallbackStatus = String(fallback || "").trim().toLowerCase();
+    const safeFallback = fallbackStatus === "failed" || fallbackStatus === "pending"
+      ? fallbackStatus
+      : "sent";
+    const normalized = String(value || "").trim().toLowerCase();
+    if (normalized === "pending" || normalized === "failed" || normalized === "sent") {
+      return normalized;
+    }
+    return safeFallback;
+  };
+  const resolveDeliveryMeta = (message = {}) => {
+    if (String(message?.from || "") !== "self") {
+      return { status: "", label: "", textClass: "", retry: false };
+    }
+    const status = normalizeDeliveryStatus(message?.deliveryStatus, "sent");
+    if (status === "pending") {
+      return {
+        status,
+        label: "Sende...",
+        textClass: "text-amber-500",
+        retry: false
+      };
+    }
+    if (status === "failed") {
+      return {
+        status,
+        label: "Fehlgeschlagen",
+        textClass: "text-rose-500",
+        retry: true
+      };
+    }
+    return {
+      status,
+      label: "Gesendet",
+      textClass: "text-emerald-500",
+      retry: false
+    };
+  };
 
   return `
     ${blockedByOwner ? `
@@ -28,7 +67,9 @@ export function renderChatMessagesPanelCore({
         Ruhemodus bis ${esc(muteUntilLabel)}
       </div>
     ` : ""}
-    ${list.length ? list.map((message) => `
+    ${list.length ? list.map((message) => {
+      const delivery = resolveDeliveryMeta(message);
+      return `
       <div class="flex ${message.from === "self" ? "justify-end" : "justify-start"}">
         <div class="max-w-[84%]">
           <div class="rounded-[1.6rem] px-4 py-3 ${message.from === "self" ? "bg-slate-900 text-white" : "bg-white text-slate-700 border border-slate-100"}">
@@ -71,11 +112,22 @@ export function renderChatMessagesPanelCore({
             <div class="text-[9px] font-bold uppercase tracking-widest ${message.from === "self" ? "text-slate-400" : "text-slate-300"}">
               ${message.saved ? "Gespeichert" : "24h"}
             </div>
+            ${delivery.label ? `
+              <div class="text-[9px] font-black uppercase tracking-widest ${delivery.textClass}">
+                ${esc(delivery.label)}
+              </div>
+            ` : ""}
+            ${delivery.retry ? `
+              <button data-chat-retry="${esc(message.id)}" class="h-7 px-2 rounded-full border border-rose-200 bg-rose-50 text-rose-600 text-[9px] font-black uppercase tracking-widest">
+                Retry
+              </button>
+            ` : ""}
           </div>
           <div class="text-[9px] font-bold uppercase tracking-widest mt-2 ${message.from === "self" ? "text-slate-300" : "text-slate-400"}">${esc(formatRel(toDate(message.createdAt) || nowDate))}</div>
         </div>
       </div>
-    `).join("") : `
+    `;
+    }).join("") : `
       <div class="h-full min-h-[40vh] flex items-center justify-center text-center">
         <div>
           <div class="w-14 h-14 rounded-[1.4rem] bg-white border border-slate-100 text-slate-400 mx-auto flex items-center justify-center mb-4">

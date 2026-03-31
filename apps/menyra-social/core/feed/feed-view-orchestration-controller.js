@@ -71,15 +71,45 @@ export function createFeedViewOrchestrationController({
     if (!label) return "";
     return label.toLowerCase() === "business" ? "" : label;
   };
+  const normalizeStoryTruthSource = (story = {}) => {
+    const source = String(
+      story?.truthSource
+      || story?.storyTruthSource
+      || story?.storyTruth
+      || ""
+    ).trim().toLowerCase();
+    return source === "feed-fallback" ? "feed-fallback" : "canonical";
+  };
+  const buildStoryRenderSignature = (story = {}) => {
+    const truthSource = normalizeStoryTruthSource(story);
+    return [
+      String(story?.restaurantId || story?.id || "").trim(),
+      truthSource,
+      story?.isLive ? "1" : "0"
+    ].join("|");
+  };
+  const buildFeedRenderSignature = (post = {}) => ([
+    String(post?.id || "").trim(),
+    String(post?.business || "").trim(),
+    String(post?.location || "").trim(),
+    String(post?.content || post?.caption || "").trim(),
+    String(post?.image || post?.url || "").trim(),
+    post?.isLive ? "1" : "0"
+  ].join("|"));
   const resolveStoryRenderIdentityLocal = (story = {}) => {
     const storyRestaurantId = String(story?.restaurantId || "").trim();
+    const truthSource = normalizeStoryTruthSource(story);
+    const isFeedFallbackStory = truthSource === "feed-fallback";
     if (!storyRestaurantId) {
       return {
         storyRestaurantId: "",
         hasCanonicalRestaurant: false,
         storyLabel: "",
         logoSource: "",
-        borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
+        borderClass: story?.isLive
+          ? "border-red-500 animate-pulse"
+          : (isFeedFallbackStory ? "border-amber-300 border-dashed" : "border-slate-200"),
+        truthSource
       };
     }
     const restaurant = state.restaurants.find((r) => String(r?.id || "").trim() === storyRestaurantId) || null;
@@ -113,7 +143,10 @@ export function createFeedViewOrchestrationController({
       hasCanonicalRestaurant,
       storyLabel,
       logoSource,
-      borderClass: story?.isLive ? "border-red-500 animate-pulse" : "border-slate-200"
+      borderClass: story?.isLive
+        ? "border-red-500 animate-pulse"
+        : (isFeedFallbackStory ? "border-amber-300 border-dashed" : "border-slate-200"),
+      truthSource
     };
   };
   const resolveStoryRenderIdentity = typeof resolveStoryRenderIdentityFn === "function"
@@ -280,8 +313,12 @@ export function createFeedViewOrchestrationController({
     const identity = resolveStoryRenderIdentity(story);
     const storyRestaurantId = identity.storyRestaurantId;
     if (!storyRestaurantId) return "";
-    const borderClass = identity.borderClass;
-    const storyUrl = buildStoryViewerUrlFn(storyRestaurantId);
+    const storyTruthSource = String(identity.truthSource || "canonical").trim().toLowerCase();
+    const isFeedFallbackStory = storyTruthSource === "feed-fallback";
+    const borderClass = identity.borderClass || "border-slate-200";
+    const storyUrl = isFeedFallbackStory
+      ? buildUrlFn("apps/menyra-social/index.html", { r: storyRestaurantId, tab: "profile", source: "story-fallback" })
+      : buildStoryViewerUrlFn(storyRestaurantId);
     const storyLabel = String(identity.storyLabel || "").trim() || "Restaurant";
     const logoSource = String(identity.logoSource || "").trim();
     const imgUrl = resolveRestaurantLogoFn(storyRestaurantId, logoSource, "thumb", false);
@@ -291,16 +328,21 @@ export function createFeedViewOrchestrationController({
     const storyBorderAttr = storyId ? `data-story-border="${storyId}"` : "";
     const storyNameAttr = storyId ? `data-story-name="${storyId}"` : "";
     const storyItemAttr = storyId ? `data-story-item="${storyId}"` : "";
+    const storyTruthAttr = `data-story-truth="${escapeHtmlFn(storyTruthSource)}"`;
+    const storyRenderAttr = `data-story-render-sig="${escapeHtmlFn(buildStoryRenderSignature(story))}"`;
     const eager = index < 4;
     const imgAttrs = eager
       ? `loading="eager" fetchpriority="high"`
       : `loading="lazy" fetchpriority="low"`;
     return `
-    <a href="${storyUrl}" ${storyItemAttr} data-story-url="${escapeHtmlFn(storyUrl)}" class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
+    <a href="${storyUrl}" ${storyItemAttr} data-story-url="${escapeHtmlFn(storyUrl)}" ${storyTruthAttr} ${storyRenderAttr} class="flex-shrink-0 flex flex-col items-center gap-2 group cursor-pointer">
       <div class="w-20 h-20 rounded-[2.2rem] p-0.5 border-2 ${borderClass} bg-slate-200" ${storyBorderAttr}>
         <img src="${escapeHtmlFn(imgUrl)}" ${imgAttrs} decoding="async" width="80" height="80" ${storyAttr} ${storyKeyAttr} class="w-full h-full rounded-[1.8rem] object-contain bg-white group-hover:scale-105 transition-transform" />
       </div>
-      <span class="text-[9px] font-bold tracking-tighter text-slate-800" ${storyNameAttr}>${escapeHtmlFn(storyLabel)}</span>
+      <div class="flex flex-col items-center gap-0.5">
+        <span class="text-[9px] font-bold tracking-tighter text-slate-800" ${storyNameAttr}>${escapeHtmlFn(storyLabel)}</span>
+        ${isFeedFallbackStory ? `<span class="text-[8px] font-black uppercase tracking-widest text-amber-600">Feed</span>` : ""}
+      </div>
     </a>
   `;
   }
@@ -331,6 +373,7 @@ export function createFeedViewOrchestrationController({
     const logoAttr = postId ? `data-feed-logo="${escapeHtmlFn(postId)}"` : "";
     const logoKeyAttr = postId ? `data-img-key="feed-logo:${escapeHtmlFn(postId)}"` : "";
     const heroKeyAttr = postId ? `data-img-key="feed-hero:${escapeHtmlFn(postId)}"` : "";
+    const feedRenderAttr = `data-feed-render-sig="${escapeHtmlFn(buildFeedRenderSignature(post))}"`;
     const eager = index < 2;
     const heroAttrs = eager
       ? `loading="eager" fetchpriority="high"`
@@ -345,7 +388,7 @@ export function createFeedViewOrchestrationController({
       stableKey: postId ? `feed-hero:${postId}` : ""
     });
     return `
-    <div class="group feed-card" ${feedAttr}>
+    <div class="group feed-card" ${feedAttr} ${feedRenderAttr}>
       <div class="flex items-center justify-between mb-5 px-2">
         <button data-profile-business="${escapeHtmlFn(post.business)}" data-profile-id="${escapeHtmlFn(post.restaurantId || "")}" class="flex items-center gap-3 text-left">
           <div class="w-12 h-12 rounded-2xl shadow-xl flex items-center justify-center border border-slate-50 italic overflow-hidden bg-slate-200">
@@ -406,7 +449,20 @@ export function createFeedViewOrchestrationController({
     const currentIds = existingItems.map((el) => el.dataset.feedId || "");
     const nextIds = feedPosts.map((post) => String(post.id || ""));
     if (currentIds.join("|") === nextIds.join("|")) {
+      feedPosts.forEach((post, index) => {
+        const existing = existingItems[index];
+        if (!existing) return;
+        const nextSignature = buildFeedRenderSignature(post);
+        const currentSignature = String(existing.getAttribute("data-feed-render-sig") || "").trim();
+        if (currentSignature === nextSignature) return;
+        const tpl = doc.createElement("template");
+        tpl.innerHTML = renderFeedItem(post, index);
+        const nextNode = tpl.content.firstElementChild;
+        if (!nextNode) return;
+        existing.replaceWith(nextNode);
+      });
       feedPosts.forEach(updatePostCountNodesFn);
+      feedPosts.forEach(updateFeedLogoNodesFn);
       return true;
     }
     const existingMap = new Map();
@@ -451,7 +507,9 @@ export function createFeedViewOrchestrationController({
     stories.forEach((story) => {
       const id = String(story.restaurantId || "");
       const existing = id ? existingMap.get(id) : null;
-      if (existing) {
+      const nextSignature = buildStoryRenderSignature(story);
+      const currentSignature = String(existing?.getAttribute?.("data-story-render-sig") || "").trim();
+      if (existing && currentSignature === nextSignature) {
         existingMap.delete(id);
         fragment.appendChild(existing);
       } else {
@@ -542,6 +600,8 @@ export function createFeedViewOrchestrationController({
       if (!(target instanceof Element)) return;
       const storyLink = target.closest("[data-story-item]");
       if (!(storyLink instanceof Element)) return;
+      const storyTruth = String(storyLink.getAttribute("data-story-truth") || "").trim().toLowerCase();
+      if (storyTruth === "feed-fallback") return;
       warmStoryViewer(
         storyLink.getAttribute("data-story-item") || "",
         storyLink.getAttribute("data-story-url") || storyLink.getAttribute("href") || ""

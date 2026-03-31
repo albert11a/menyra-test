@@ -134,6 +134,27 @@ export function createStoryViewerRuntimeController({
     }
   }
 
+  function isFeedFallbackSource() {
+    const source = String(getParam("source") || getParam("src") || "").trim().toLowerCase();
+    return source === "story-fallback" || source === "feed-fallback";
+  }
+
+  function applyEmptyStateCopy(emptyState, fromFeedFallback = false) {
+    if (!emptyState || typeof emptyState.querySelector !== "function") return;
+    const titleNode = emptyState.querySelector(".emptyTitle");
+    const descNode = emptyState.querySelector(".emptyDesc");
+    const iconNode = emptyState.querySelector(".emptyIcon");
+    if (!fromFeedFallback) {
+      if (titleNode) titleNode.textContent = "Keine Stories";
+      if (descNode) descNode.textContent = "Aktive Stories werden hier angezeigt.";
+      if (iconNode) iconNode.textContent = "📹";
+      return;
+    }
+    if (titleNode) titleNode.textContent = "Keine veroeffentlichten Stories";
+    if (descNode) descNode.textContent = "Du bist aus dem Feed-Fallback gekommen. Oeffne das Profil fuer Posts.";
+    if (iconNode) iconNode.textContent = "🧭";
+  }
+
   async function loadRestaurantMeta(restaurantId) {
     if (!db || typeof docFn !== "function" || typeof getDocFn !== "function") return null;
     const rid = String(restaurantId || "").trim();
@@ -765,10 +786,12 @@ export function createStoryViewerRuntimeController({
   async function start() {
     if (!doc || !win) return;
     const rid = getParam("r");
+    const fromFeedFallback = isFeedFallbackSource();
     const reelsContainer = doc.getElementById("reelsContainer");
     const loadingState = doc.getElementById("loadingState");
     const emptyState = doc.getElementById("emptyState");
     hideStandaloneTopbar();
+    applyEmptyStateCopy(emptyState, fromFeedFallback);
 
     if (!rid || !reelsContainer || !loadingState || !emptyState) {
       if (loadingState) loadingState.style.display = "none";

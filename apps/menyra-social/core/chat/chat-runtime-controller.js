@@ -35,7 +35,8 @@ import {
   readFileAsDataUrlCore,
   buildInlineChatAttachmentCore,
   loadChatThreadMessagesCore,
-  saveChatThreadMessagesCore
+  saveChatThreadMessagesCore,
+  normalizeChatDeliveryStatusCore
 } from "./chat-message-utils.js";
 import {
   buildChatThreadPatchFromMessagesCore,
@@ -570,6 +571,31 @@ export function createChatRuntimeController(deps = {}) {
     return buildChatPreviewTextCore(message);
   }
 
+  function normalizeChatDeliveryStatus(status, fallback = "sent") {
+    return normalizeChatDeliveryStatusCore(status, fallback);
+  }
+
+  function mergeRemoteAndUnsyncedLocalMessages(remoteMessages = [], localSeed = []) {
+    const remoteList = Array.isArray(remoteMessages) ? remoteMessages : [];
+    const localList = Array.isArray(localSeed) ? localSeed : [];
+    if (!localList.length) return remoteList;
+    const remoteIds = new Set(
+      remoteList
+        .map((message) => String(message?.id || "").trim())
+        .filter(Boolean)
+    );
+    const unsyncedLocal = localList.filter((message) => {
+      const messageId = String(message?.id || "").trim();
+      if (!messageId || remoteIds.has(messageId)) return false;
+      if (String(message?.from || "").trim().toLowerCase() !== "self") return false;
+      const deliveryStatus = normalizeChatDeliveryStatus(message?.deliveryStatus, "sent");
+      return deliveryStatus === "pending" || deliveryStatus === "failed";
+    });
+    if (!unsyncedLocal.length) return remoteList;
+    return [...remoteList, ...unsyncedLocal]
+      .sort((a, b) => getChatMessageTimestamp(a) - getChatMessageTimestamp(b));
+  }
+
   function loadLegacyChatThreadMessages(threadId) {
     return loadLegacyChatThreadMessagesCore({
       threadId,
@@ -733,9 +759,10 @@ export function createChatRuntimeController(deps = {}) {
         normalizeChatMessageRecord: (messageId, data = {}, map = new Map()) => normalizeChatMessageRecord(messageId, data, map),
         getChatMessageTimestamp: (message) => getChatMessageTimestamp(message)
       });
+      const mergedMessages = mergeRemoteAndUnsyncedLocalMessages(remoteMessages, localSeed);
       const nextMessages = resolveChatMessagesAfterSnapshotCore({
         profile,
-        remoteMessages,
+        remoteMessages: mergedMessages,
         hasUnreadIncomingRemoteMessages: (messages) => hasUnreadIncomingRemoteMessagesCore(messages),
         markChatThreadAsRead: (threadProfile, messages) => markChatThreadAsRead(threadProfile, messages),
         syncRemoteChatReadState: (threadProfile, messages) => void syncRemoteChatReadState(threadProfile, messages),
@@ -767,7 +794,9 @@ export function createChatRuntimeController(deps = {}) {
     const partnerUid = String(partnerProfile?.uid || "").trim();
     const senderThreadId = getChatThreadId(partnerProfile);
     const recipientThreadId = senderUid;
-    if (!senderUid || !partnerUid || !senderThreadId || !recipientThreadId || senderUid === partnerUid) return;
+    if (!senderUid || !partnerUid || !senderThreadId || !recipientThreadId || senderUid === partnerUid) {
+      throw new Error("chat_sync_context_invalid");
+    }
 
     const syncContext = buildChatMessageSyncContextCore({
       message,
@@ -782,7 +811,9 @@ export function createChatRuntimeController(deps = {}) {
     const senderMessageRef = chatMessageDocRef(senderUid, senderThreadId, message?.id);
     const recipientThreadRef = chatThreadDocRef(partnerUid, recipientThreadId);
     const recipientMessageRef = chatMessageDocRef(partnerUid, recipientThreadId, message?.id);
-    if (!senderThreadRef || !senderMessageRef || !recipientThreadRef || !recipientMessageRef) return;
+    if (!senderThreadRef || !senderMessageRef || !recipientThreadRef || !recipientMessageRef) {
+      throw new Error("chat_sync_ref_invalid");
+    }
 
     const payloads = buildChatRemotePayloadBundleCore({
       message,
@@ -826,9 +857,13 @@ export function createChatRuntimeController(deps = {}) {
         nowMs: Date.now(),
         encodeURIComponentFn: (value) => encodeURIComponent(value)
       });
-      await pushUserNotificationWithId(partnerUid, notification.notificationId, {
-        ...notification.payload
-      });
+      try {
+        await pushUserNotificationWithId(partnerUid, notification.notificationId, {
+          ...notification.payload
+        });
+      } catch (err) {
+        console.warn("[mnyra][chat.notification.push_failed]", err);
+      }
     }
   }
 
@@ -955,7 +990,43 @@ export function createChatRuntimeController(deps = {}) {
     }
   }
 
-  async function sendChatMessage() {
+  function setChatMessageDeliveryStatus(messageId, deliveryStatus = "sent", syncError = "") {
+    const safeMessageId = String(messageId || "").trim();
+    if (!safeMessageId) return false;
+    const nextStatus = normalizeChatDeliveryStatus(deliveryStatus, "sent");
+    const nextSyncError = nextStatus === "failed"
+      ? String(syncError || "").trim()
+      : "";
+    let changed = false;
+    updateCurrentChatMessages((messages) => (Array.isArray(messages) ? messages : []).map((message) => {
+      if (String(message?.id || "").trim() !== safeMessageId) return message;
+      const currentStatus = normalizeChatDeliveryStatus(message?.deliveryStatus, "sent");
+      const currentSyncError = String(message?.syncError || "").trim();
+      if (currentStatus === nextStatus && currentSyncError === nextSyncError) {
+        return message;
+      }
+      changed = true;
+      return {
+        ...message,
+        deliveryStatus: nextStatus,
+        syncError: nextSyncError
+      };
+    }));
+    return changed;
+  }
+
+  function getRetryableFailedChatMessage(messageId) {
+    const safeMessageId = String(messageId || "").trim();
+    if (!safeMessageId) return null;
+    const list = Array.isArray(state.chatModal.messages) ? state.chatModal.messages : [];
+    const message = list.find((entry) => String(entry?.id || "").trim() === safeMessageId) || null;
+    if (!message) return null;
+    if (String(message?.from || "").trim().toLowerCase() !== "self") return null;
+    if (normalizeChatDeliveryStatus(message?.deliveryStatus, "sent") !== "failed") return null;
+    return message;
+  }
+
+  async function sendChatMessage(options = {}) {
     if (!state.chatModal.open || !state.chatModal.profile) return;
     if (chatSendDispatchLock) return;
     chatSendDispatchLock = true;
@@ -964,6 +1035,43 @@ export function createChatRuntimeController(deps = {}) {
     });
     if (isActiveChatThreadBlocked()) {
       alertFn("Dieser Chat ist blockiert. Entblocke ihn in der Chat-Uebersicht.");
+      return;
+    }
+    const retryMessageId = String(options?.retryMessageId || "").trim();
+    if (retryMessageId) {
+      const retryTarget = getRetryableFailedChatMessage(retryMessageId);
+      if (!retryTarget) return;
+      const retryText = String(retryTarget.text || "");
+      const retryAttachments = Array.isArray(retryTarget.attachments)
+        ? retryTarget.attachments.map((attachment) => ({ ...attachment }))
+        : [];
+      if (!retryText.trim() && !retryAttachments.length) return;
+      setChatMessageDeliveryStatus(retryTarget.id, "pending", "");
+      render();
+      try {
+        await syncChatMessageToRemote({
+          ...retryTarget,
+          text: retryText,
+          attachments: retryAttachments,
+          deliveryStatus: "pending",
+          syncError: ""
+        }, state.chatModal.profile);
+        setChatMessageDeliveryStatus(retryTarget.id, "sent", "");
+        render();
+        void persistCurrentChatMessagePatch(retryTarget.id, {
+          deliveryStatus: "sent",
+          syncError: ""
+        });
+      } catch (err) {
+        console.error(err);
+        const syncError = String(err?.message || err || "").trim();
+        setChatMessageDeliveryStatus(retryTarget.id, "failed", syncError);
+        render();
+        void persistCurrentChatMessagePatch(retryTarget.id, {
+          deliveryStatus: "failed",
+          syncError
+        });
+      }
       return;
     }
     const documentObj = getDocumentObj();
@@ -999,8 +1107,21 @@ export function createChatRuntimeController(deps = {}) {
     render();
     try {
       await syncChatMessageToRemote(localUpdate.outgoingMessage, state.chatModal.profile);
+      setChatMessageDeliveryStatus(localUpdate.outgoingMessage?.id, "sent", "");
+      render();
+      void persistCurrentChatMessagePatch(localUpdate.outgoingMessage?.id, {
+        deliveryStatus: "sent",
+        syncError: ""
+      });
     } catch (err) {
       console.error(err);
+      const syncError = String(err?.message || err || "").trim();
+      setChatMessageDeliveryStatus(localUpdate.outgoingMessage?.id, "failed", syncError);
+      render();
+      void persistCurrentChatMessagePatch(localUpdate.outgoingMessage?.id, {
+        deliveryStatus: "failed",
+        syncError
+      });
     }
   }
 

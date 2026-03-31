@@ -246,6 +246,7 @@ export function createMediaUploadRuntimeController({
     const base = (state?.restaurants || []).find((row) => String(row?.id || "") === String(restaurantId)) || {};
     const postRef = makeDocRef(collection(db, "restaurants", restaurantId, "socialPosts"));
     const postId = postRef.id;
+    const nowIso = new Date().toISOString();
     const payload = {
       postType: "food",
       caption,
@@ -256,6 +257,9 @@ export function createMediaUploadRuntimeController({
       }],
       city: base.city || "Prishtina",
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdAtClient: nowIso,
+      updatedAtClient: nowIso,
       createdByUid: state?.user?.uid || "",
       likesCount: 0,
       commentsCount: 0,
@@ -266,13 +270,20 @@ export function createMediaUploadRuntimeController({
       postType: payload.postType,
       city: payload.city,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      createdAtClient: nowIso,
+      updatedAtClient: nowIso,
+      caption: String(caption || ""),
+      content: String(caption || ""),
       captionShort: String(caption || "").slice(0, 90),
+      mediaUrl: mediaUrl,
       thumbUrl: mediaType === "image" ? mediaUrl : "",
       mediaType,
       likesCount: 0,
       commentsCount: 0,
       status: "active",
-      businessName: base.name || base.restaurantName || ""
+      businessName: base.name || base.restaurantName || "",
+      canonicalPath: `restaurants/${restaurantId}/socialPosts/${postId}`
     };
     await setDoc(postRef, payload);
     await setDoc(makeDocRef(db, "socialFeed", postId), feedPayload, { merge: true });

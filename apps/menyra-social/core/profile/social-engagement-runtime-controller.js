@@ -221,17 +221,68 @@ export function createSocialEngagementRuntimeController({
     return Date.now() - ts <= maxAgeMs;
   }
 
+  function toTimestampMs(value) {
+    if (!value) return 0;
+    try {
+      if (typeof value?.toDate === "function") return value.toDate()?.getTime?.() || 0;
+      if (value instanceof Date) return value.getTime() || 0;
+      if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+      const parsed = new Date(value);
+      return Number.isFinite(parsed.getTime()) ? parsed.getTime() : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  function getPostTruthScore(post = {}) {
+    if (!post || typeof post !== "object") return 0;
+    const freshness = Math.max(
+      toTimestampMs(post.updatedAt),
+      toTimestampMs(post.updatedAtClient),
+      toTimestampMs(post.createdAtClient),
+      toTimestampMs(post.createdAt)
+    );
+    const content = [
+      post.content,
+      post.caption,
+      post.url,
+      post.image,
+      post.title
+    ].reduce((sum, value) => (String(value || "").trim() ? sum + 1 : sum), 0);
+    const owner = post.ownerType && post.ownerId ? 100 : 0;
+    return freshness + (content * 10) + owner;
+  }
+
+  function collectPostCandidates(postId = "") {
+    const safePostId = String(postId || "").trim();
+    if (!safePostId) return [];
+    const list = [];
+    const seen = new Set();
+    const push = (candidate) => {
+      if (!candidate || String(candidate?.id || "").trim() !== safePostId || seen.has(candidate)) return;
+      seen.add(candidate);
+      list.push(candidate);
+    };
+    push(state.postModal?.post);
+    [
+      state.userPosts,
+      state.businessPosts,
+      state.feedPosts,
+      state.profileView?.posts,
+      state.profileModal?.profile?.posts
+    ].forEach((rows) => {
+      if (!Array.isArray(rows)) return;
+      rows.forEach((candidate) => push(candidate));
+    });
+    return list;
+  }
+
   function findPostById(postId) {
-    const modalPost = state.postModal?.post;
-    if (modalPost && String(modalPost.id) === String(postId)) return modalPost;
-    const all = [...state.userPosts, ...state.businessPosts, ...state.feedPosts];
-    const found = all.find((item) => String(item.id) === String(postId));
-    if (found) return found;
-    const viewPosts = state.profileView?.posts || [];
-    const viewFound = viewPosts.find((item) => String(item.id) === String(postId));
-    if (viewFound) return viewFound;
-    const modalPosts = state.profileModal.profile?.posts || [];
-    return modalPosts.find((item) => String(item.id) === String(postId)) || null;
+    const candidates = collectPostCandidates(postId);
+    if (!candidates.length) return null;
+    return candidates
+      .slice()
+      .sort((a, b) => getPostTruthScore(b) - getPostTruthScore(a))[0] || null;
   }
 
   function getPostDocRef(post) {
