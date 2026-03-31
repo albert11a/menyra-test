@@ -666,8 +666,10 @@ export function renderMenuDetailModalCore({
   const selectedSize = sizes.length ? (String(state.menuDetail.selectedSize || sizes[0]).trim() || String(sizes[0])) : "";
   const selectedColor = colors.length ? (String(state.menuDetail.selectedColor || colors[0]).trim() || String(colors[0])) : "";
   const menuAccessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
+  const isMenuTopTab = String(state.profileTopTab || "").trim().toLowerCase() === "menu";
   const hasQrMenuAccess = !isShop
     && isFoodOrDrink
+    && isMenuTopTab
     && menuAccessSource === "qr";
   const canAddToCartNow = isShop ? canAddToCart(catalogProfile) : hasQrMenuAccess;
   const woltUrl = normalizeExternalUrl(item.woltUrl || item.woltLink || "");

@@ -303,16 +303,17 @@ export function createDeeplinkFlowControllerCore({
       || safeAccessSource === "menu-qr"
       || safeAccessSource === "scanqr"
       || safeAccessSource === "scan-qr";
-    const nextAccessSource = nextTab === "menu" && (isQrLikeAccessSource || !safeAccessSource)
+    const nextAccessSource = nextTab === "menu" && isQrLikeAccessSource
       ? "qr"
       : "";
+    const resolvedTableNumber = nextAccessSource === "qr" ? nextTableNumber : 0;
     openBusinessProfile(
       { id: safeRestaurantId },
       {
         showBack: false,
         topTab: nextTab,
         menuAccessSource: nextAccessSource,
-        tableNumber: nextTableNumber
+        tableNumber: resolvedTableNumber
       }
     );
     return true;

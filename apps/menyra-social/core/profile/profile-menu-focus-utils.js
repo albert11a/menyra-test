@@ -15,7 +15,7 @@ export function ensureMenuDataForProfileCore(profile = {}, {
   if (!loadMenuForRestaurant) return;
   const restaurantId = getMenuRestaurantForProfile(profile);
   if (!restaurantId) return;
-  void loadMenuForRestaurant(restaurantId, { source: "hybrid" });
+  void loadMenuForRestaurant(restaurantId, { source: "public" });
 }
 
 export function ensureFocusDataForProfileCore(profile = {}, {

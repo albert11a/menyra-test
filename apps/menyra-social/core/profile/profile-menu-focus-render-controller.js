@@ -1496,7 +1496,7 @@ function renderTableQrAdminSection({
     const url = buildUrl("apps/menyra-social/index.html", {
       r: restaurantId,
       tab: "menu",
-      src: "qr",
+      source: "qr",
       table: tableNumber
     });
     return renderMenuQrCard({
@@ -1557,15 +1557,17 @@ function renderMenuAdminView() {
   const restaurant = restaurantId ? getRestaurantMetaById(restaurantId) : null;
   const restaurantName = restaurant?.name || restaurant?.restaurantName || profile.name || "Business";
   const sameRestaurant = restaurantId && state.menu.restaurantId === restaurantId;
-  const isLoading = restaurantId && (state.menu.loading || !sameRestaurant);
-  const rawItems = sameRestaurant
+  const menuSource = String(state.menu.source || "").trim().toLowerCase();
+  const hasAuthoringMenuTruth = !!sameRestaurant && menuSource === "collection";
+  const isLoading = restaurantId && (state.menu.loading || !hasAuthoringMenuTruth);
+  const rawItems = hasAuthoringMenuTruth
     ? getFilteredMenuItems(state.menu.items, { filter: state.menu.filter, query: state.menu.query })
     : [];
   const items = sortMenuItemsByOrder(rawItems);
   const countLabel = formatCount(items.length);
   const profileUrl = restaurantId ? buildUrl("apps/menyra-social/index.html", { r: restaurantId }) : "";
   const menuUrl = restaurantId
-    ? buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "menu", src: "qr" })
+    ? buildUrl("apps/menyra-social/index.html", { r: restaurantId, tab: "menu", source: "qr" })
     : "";
 
   if (restaurantId && isEligible && !state.focus.loading && state.focus.restaurantId !== restaurantId) {
@@ -1660,21 +1662,23 @@ function renderProfileMenuView(profile) {
       </div>
     `;
   }
-  if (!state.menu.loading && state.menu.restaurantId !== restaurantId) {
+  const isSameRestaurant = state.menu.restaurantId === restaurantId;
+  const menuSource = String(state.menu.source || "").trim().toLowerCase();
+  const hasPublicMenuTruth = isSameRestaurant && menuSource === "public";
+  if (!state.menu.loading && !hasPublicMenuTruth) {
     ensureMenuDataForProfile(profile);
   }
   if (!state.focus.loading && state.focus.restaurantId !== restaurantId) {
     ensureFocusDataForProfile(profile);
   }
-  const isSameRestaurant = state.menu.restaurantId === restaurantId;
-  const isLoading = state.menu.loading || !isSameRestaurant;
-  const items = isSameRestaurant
+  const isLoading = state.menu.loading || !hasPublicMenuTruth;
+  const items = hasPublicMenuTruth
     ? sortMenuItemsByOrder(getFilteredMenuItems(state.menu.items, { filter: "all", query: "" }))
       .filter((item) => !isMenuItemHidden(item))
     : [];
   const isShop = isShopCatalogProfile(profile);
   const catalogLabel = getBusinessCatalogLabel(profile);
-  const error = isSameRestaurant ? state.menu.error : "";
+  const error = hasPublicMenuTruth ? state.menu.error : "";
   const drinkItems = items.filter((item) => resolveMenuDisplaySection(item) === "drink");
   const foodItems = items.filter((item) => resolveMenuDisplaySection(item) !== "drink");
   const useTestfirstCardUi = isTestfirstMenuProfile(profile);

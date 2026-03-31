@@ -778,7 +778,7 @@ const state = {
     error: "",
     filter: "all",
     query: "",
-    source: "hybrid",
+    source: "public",
     statusBadgeVisible: true
   },
   menuModal: {

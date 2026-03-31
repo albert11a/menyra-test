@@ -688,43 +688,22 @@ export function createMenuPublicRuntimeController({
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return [];
     const publicItems = await loadPublicMenuItems(safeRestaurantId);
-    if (publicItems.length) {
-      const needsImages = publicItems.some((item) => !hasMenuItemImages(item));
-      const needsWoltData = publicItems.some((item) => isFoodOrDrinkMenuItem(item) && !hasMenuItemWoltUrl(item));
-      const needsCrossSellData = publicItems.some((item) => isFoodOrDrinkMenuItem(item) && !hasMenuItemCrossSell(item));
-      if (!needsImages && !needsWoltData && !needsCrossSellData) return publicItems;
-      const [collectionItems, legacyItems] = await Promise.all([
-        loadMenuItemsFromCollection(safeRestaurantId),
-        loadLegacyMenuItems(safeRestaurantId)
-      ]);
-      const fallbackItems = collectionItems.length ? collectionItems : legacyItems;
-      if (!fallbackItems.length) return publicItems;
-      return normalizeMenuItemsForRestaurant(
-        fillMenuImagesFromFallback(publicItems, fallbackItems),
-        safeRestaurantId
-      );
-    }
+    if (publicItems.length) return publicItems;
     const [collectionItems, legacyItems] = await Promise.all([
       loadMenuItemsFromCollection(safeRestaurantId),
       loadLegacyMenuItems(safeRestaurantId)
     ]);
     if (collectionItems.length) {
-      void publishMenuToPublic(safeRestaurantId, collectionItems).catch((err) => {
-        console.error(err);
-      });
       return collectionItems;
     }
     if (legacyItems.length) {
-      void publishMenuToPublic(safeRestaurantId, legacyItems).catch((err) => {
-        console.error(err);
-      });
       return legacyItems;
     }
     return [];
   }
 
   function menuCacheKey(restaurantId, source) {
-    return `${restaurantId || ""}::${source || "hybrid"}`;
+    return `${restaurantId || ""}::${source || "public"}`;
   }
 
   function syncMenuCaches(restaurantId, items, { statusBadgeVisible = state?.menu?.statusBadgeVisible } = {}) {
@@ -737,7 +716,12 @@ export function createMenuPublicRuntimeController({
       statusBadgeVisible: nextStatusBadgeVisible,
       ts: Date.now()
     });
-    menuCacheMap.set(menuCacheKey(safeRestaurantId, "hybrid"), {
+    menuCacheMap.set(menuCacheKey(safeRestaurantId, "public"), {
+      items: list,
+      statusBadgeVisible: nextStatusBadgeVisible,
+      ts: Date.now()
+    });
+    menuCacheMap.set(menuCacheKey(safeRestaurantId, "migration"), {
       items: list,
       statusBadgeVisible: nextStatusBadgeVisible,
       ts: Date.now()

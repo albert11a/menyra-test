@@ -99,11 +99,8 @@ export function createSessionDataRuntimeController({
   loadFocusItemsFn = async () => [],
   loadFocusMetaFn = async () => true,
   loadMenuMetaFn = async () => ({ statusBadgeVisible: true }),
-  hasMenuItemImagesFn = () => false,
   loadMenuItemsFromCollectionFn = async () => [],
   loadPublicMenuItemsFn = async () => [],
-  loadLegacyMenuItemsFn = async () => [],
-  fillMenuImagesFromFallbackFn = (items = []) => items,
   loadMenuHybridFn = async () => []
 } = {}) {
   const safeStorage = safeStorageObj || {
@@ -381,7 +378,7 @@ export function createSessionDataRuntimeController({
     const safeRestaurantId = String(restaurantId || "").trim();
     if (!safeRestaurantId) return;
     const nextVisible = resolveMenuStatusBadgeVisible(visible, true);
-    ["collection", "hybrid"].forEach((source) => {
+    ["collection", "public", "migration"].forEach((source) => {
       const cacheKey = menuCacheKeyFn(safeRestaurantId, source);
       if (!cacheKey) return;
       const cached = menuCacheMap.get(cacheKey);
@@ -1039,9 +1036,12 @@ export function createSessionDataRuntimeController({
     }
   }
 
-  async function loadMenuForRestaurant(restaurantId, { force = false, source = "hybrid" } = {}) {
+  async function loadMenuForRestaurant(restaurantId, { force = false, source = "public" } = {}) {
     const safeRestaurantId = String(restaurantId || "").trim();
-    const safeSource = String(source || "hybrid").trim().toLowerCase() === "collection" ? "collection" : "hybrid";
+    const sourceRaw = String(source || "public").trim().toLowerCase();
+    const safeSource = sourceRaw === "collection"
+      ? "collection"
+      : (sourceRaw === "migration" ? "migration" : "public");
     if (!safeRestaurantId) {
       stopMenuMetaListener();
       state.menu = {
@@ -1106,19 +1106,10 @@ export function createSessionDataRuntimeController({
           });
         if (safeSource === "collection") {
           items = await loadMenuItemsFromCollectionFn(safeRestaurantId);
-          const needsImages = items.some((it) => !hasMenuItemImagesFn(it));
-          if (needsImages) {
-            const [publicItems, legacyItems] = await Promise.all([
-              loadPublicMenuItemsFn(safeRestaurantId),
-              loadLegacyMenuItemsFn(safeRestaurantId)
-            ]);
-            const fallbackItems = publicItems.length ? publicItems : legacyItems;
-            if (fallbackItems.length) {
-              items = fillMenuImagesFromFallbackFn(items, fallbackItems);
-            }
-          }
-        } else {
+        } else if (safeSource === "migration") {
           items = await loadMenuHybridFn(safeRestaurantId);
+        } else {
+          items = await loadPublicMenuItemsFn(safeRestaurantId);
         }
         const meta = await metaPromise;
         if (typeof meta?.statusBadgeVisible === "boolean") {

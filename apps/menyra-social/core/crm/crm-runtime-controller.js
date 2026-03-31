@@ -2379,7 +2379,8 @@ async function purgeRestaurantSocialPresence(restaurantId) {
 
   writeCache(businessPostsKey(rid), []);
   menuCache.delete(menuCacheKey(rid, "collection"));
-  menuCache.delete(menuCacheKey(rid, "hybrid"));
+  menuCache.delete(menuCacheKey(rid, "public"));
+  menuCache.delete(menuCacheKey(rid, "migration"));
   focusCache.delete(focusCacheKey(rid));
 }
 

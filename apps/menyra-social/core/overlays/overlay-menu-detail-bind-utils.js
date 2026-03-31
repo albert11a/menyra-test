@@ -77,7 +77,8 @@ export function bindMenuDetailOverlayEventsCore({
     const type = String(safeItem.type || "").trim().toLowerCase();
     if (type && type !== "food" && type !== "drink") return false;
     const accessSource = String(state.profileView?.menuAccessSource || "").trim().toLowerCase();
-    if (accessSource !== "qr") return false;
+    const isMenuTopTab = String(state.profileTopTab || "").trim().toLowerCase() === "menu";
+    if (accessSource !== "qr" || !isMenuTopTab) return false;
     return true;
   };
   const cleanupKeyboardGap = () => {
