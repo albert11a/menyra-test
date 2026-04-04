@@ -87,6 +87,7 @@ function syncThemeColor(documentObj) {
   if (!doc) return;
   const useSurface = doc.documentElement.classList.contains("modal-open");
   const nextColor = useSurface ? OVERLAY_CHROME_COLOR : APP_CHROME_COLOR;
+  doc.documentElement.style.setProperty("--modal-safe-area-color", nextColor);
   syncThemeColorMeta(doc, nextColor);
 }
 
