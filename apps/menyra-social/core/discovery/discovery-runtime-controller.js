@@ -69,6 +69,7 @@ export function createDiscoveryRuntimeController(deps = {}) {
   let mapCategoryFilter = "restaurants";
   let mapViewportSyncTimer = null;
   let mapViewportSyncSignature = "";
+  let mapUseLiteMarkers = false;
   let mapNotice = "";
   let mapNoticeTimer = null;
   const MAP_CATEGORY_FILTERS = Object.freeze({
@@ -77,6 +78,8 @@ export function createDiscoveryRuntimeController(deps = {}) {
     bars: "bars"
   });
   const DISCOVERY_MAP_DEFAULT_CENTER = [42.6629, 21.1655];
+  const DISCOVERY_MAP_ENABLE_MOBILE_LITE_MARKERS = deps.discoveryMapEnableMobileLiteMarkers !== false;
+  const DISCOVERY_MAP_FORCE_MOBILE_LITE_MARKERS = deps.discoveryMapForceMobileLiteMarkers === true;
   const DISCOVERY_MAP_MAX_ZOOM = 19;
   const DISCOVERY_MAP_DEFAULT_ZOOM = Math.max(
     12,
@@ -129,6 +132,22 @@ function focusLeafletMap(lat, lng, options = {}) {
   try {
     leafletMap.setView([coords.lat, coords.lng], zoom, { animate: true, duration });
   } catch {}
+}
+
+function shouldUseLiteMapMarkers() {
+  if (DISCOVERY_MAP_FORCE_MOBILE_LITE_MARKERS) return true;
+  if (!DISCOVERY_MAP_ENABLE_MOBILE_LITE_MARKERS) return false;
+  const viewportWidth = Number(window?.innerWidth || 0);
+  const coarsePointer = !!window?.matchMedia?.("(pointer: coarse)")?.matches;
+  const reducedMotion = !!window?.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  const deviceMemory = Number(navigator?.deviceMemory || 0);
+  const hardwareConcurrency = Number(navigator?.hardwareConcurrency || 0);
+  const lowHardware = (
+    (Number.isFinite(deviceMemory) && deviceMemory > 0 && deviceMemory <= 4)
+    || (Number.isFinite(hardwareConcurrency) && hardwareConcurrency > 0 && hardwareConcurrency <= 4)
+  );
+  const smallViewport = viewportWidth > 0 && viewportWidth <= 900;
+  return coarsePointer && (smallViewport || lowHardware || reducedMotion);
 }
 
 function normalizeMapCategoryFilter(value = "") {
@@ -230,7 +249,7 @@ function buildMapViewportSyncSignature() {
   const lng = center ? Number(center.lng).toFixed(4) : "";
   const query = getActiveMapSearchQuery();
   const locationsLength = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
-  return `${lat}|${lng}|${mapCategoryFilter}|${query}|${locationsLength}`;
+  return `${lat}|${lng}|${mapCategoryFilter}|${query}|${locationsLength}|${mapUseLiteMarkers ? "lite" : "full"}`;
 }
 
 function scheduleMapViewportMarkerRefresh(delayMs = 90) {
@@ -455,6 +474,7 @@ function cleanupLeaflet() {
     mapViewportSyncTimer = null;
   }
   mapViewportSyncSignature = "";
+  mapUseLiteMarkers = false;
 }
 
 function isLeafletMapMountedOn(element) {
@@ -498,7 +518,7 @@ function buildMarkerVisualSignature(location = {}, { selected = false } = {}) {
   const lat = coords ? Number(coords.lat).toFixed(6) : "";
   const lng = coords ? Number(coords.lng).toFixed(6) : "";
   const image = String(location?.img || "").trim();
-  return `${resolveLeafletMarkerKey(location)}|${lat}|${lng}|${image}|${selected ? "1" : "0"}`;
+  return `${resolveLeafletMarkerKey(location)}|${lat}|${lng}|${image}|${selected ? "1" : "0"}|${mapUseLiteMarkers ? "lite" : "full"}`;
 }
 
 function makeBizDivIcon(b, { selected = false } = {}) {
@@ -515,14 +535,30 @@ function makeBizDivIcon(b, { selected = false } = {}) {
   return window.L.divIcon({ className: "custom-div-icon", html, iconSize: [48, 58], iconAnchor: [24, 58] });
 }
 
+function getLiteMapMarkerStyle({ selected = false } = {}) {
+  const isSelected = selected === true;
+  return {
+    radius: isSelected ? 10 : 7,
+    color: isSelected ? "#111827" : "#ffffff",
+    weight: isSelected ? 2.5 : 2,
+    fillColor: isSelected ? "#4f46e5" : "#0f172a",
+    fillOpacity: isSelected ? 0.95 : 0.82
+  };
+}
+
 function updateLeafletMarkerVisual(marker, { selected = false, force = false } = {}) {
   if (!marker || !window.L) return;
   const business = marker.__biz || {};
   const nextSignature = buildMarkerVisualSignature(business, { selected });
   if (!force && marker.__visualSignature === nextSignature) return;
   try {
-    marker.setIcon(makeBizDivIcon(business, { selected }));
-    marker.setZIndexOffset(selected ? 1600 : 600);
+    if (marker.__liteMode) {
+      marker.setStyle?.(getLiteMapMarkerStyle({ selected }));
+      if (selected) marker.bringToFront?.();
+    } else {
+      marker.setIcon(makeBizDivIcon(business, { selected }));
+      marker.setZIndexOffset(selected ? 1600 : 600);
+    }
   } catch {}
   marker.__visualSignature = nextSignature;
 }
@@ -834,6 +870,16 @@ function getActiveMapSearchQuery() {
 
 function renderLeafletMarkers(locations) {
   if (!leafletMap || !window.L) return;
+  const nextLiteMode = shouldUseLiteMapMarkers();
+  const liteModeChanged = nextLiteMode !== mapUseLiteMarkers;
+  mapUseLiteMarkers = nextLiteMode;
+  if (liteModeChanged && leafletBizMarkerMap.size) {
+    leafletBizMarkerMap.forEach((marker) => {
+      try { leafletMap.removeLayer(marker); } catch {}
+    });
+    leafletBizMarkerMap.clear();
+  }
+  const useLiteMarkers = mapUseLiteMarkers;
   const visibleLocations = getDiscoverableMapLocations(locations);
   const selectedMarkerKey = getSelectedMapMarkerKey();
   const nextEntries = new Map();
@@ -858,13 +904,21 @@ function renderLeafletMarkers(locations) {
 
   nextEntries.forEach((entry, markerKey) => {
     let marker = leafletBizMarkerMap.get(markerKey) || null;
+    if (marker && marker.__liteMode !== useLiteMarkers) {
+      try { leafletMap.removeLayer(marker); } catch {}
+      leafletBizMarkerMap.delete(markerKey);
+      marker = null;
+    }
     if (!marker) {
       try {
-        marker = window.L.marker([entry.lat, entry.lng]).addTo(leafletMap);
+        marker = useLiteMarkers
+          ? window.L.circleMarker([entry.lat, entry.lng], getLiteMapMarkerStyle({ selected: false })).addTo(leafletMap)
+          : window.L.marker([entry.lat, entry.lng]).addTo(leafletMap);
       } catch (err) {
         console.warn("Skipping invalid map marker", entry?.id || "", err);
         return;
       }
+      marker.__liteMode = useLiteMarkers;
       marker.__markerKey = markerKey;
       marker.on("click", () => {
         const selectedEntry = marker?.__biz || null;
@@ -879,6 +933,7 @@ function renderLeafletMarkers(locations) {
 
     marker.__biz = entry;
     marker.__markerKey = markerKey;
+    marker.__liteMode = useLiteMarkers;
     try {
       const markerLatLng = marker.getLatLng?.() || null;
       const markerLat = Number(markerLatLng?.lat || 0);
