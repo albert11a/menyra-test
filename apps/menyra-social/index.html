@@ -161,7 +161,6 @@
       --safe-area-bottom: 0px;
       --safe-area-left: 0px;
       --menu-detail-footer-gap: 0px;
-      --modal-safe-area-color: #ffffff;
       --app-bg: #f8fafc;
       --app-surface: #ffffff;
       --smart-header-theme-color: rgb(248 250 252 / 0.9);
@@ -199,18 +198,6 @@
     body.modal-open {
       overflow: hidden;
       overscroll-behavior: none;
-      background: var(--modal-safe-area-color, var(--app-surface)) !important;
-    }
-    body.modal-open::before {
-      content: "";
-      position: fixed;
-      left: 0;
-      right: 0;
-      top: 0;
-      height: var(--safe-area-top);
-      background: var(--modal-safe-area-color, var(--app-surface));
-      pointer-events: none;
-      z-index: 205;
     }
     html.menu-detail-comment-focus,
     body.menu-detail-comment-focus {
