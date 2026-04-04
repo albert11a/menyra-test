@@ -80,9 +80,12 @@ export function createDiscoveryRuntimeController(deps = {}) {
   const DISCOVERY_MAP_MAX_ZOOM = 19;
   const DISCOVERY_MAP_DEFAULT_ZOOM = Math.max(
     14,
-    Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapDefaultZoom || 16) || 16)
+    Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapDefaultZoom || DISCOVERY_MAP_MAX_ZOOM) || DISCOVERY_MAP_MAX_ZOOM)
   );
-  const DISCOVERY_MAP_FOCUS_ZOOM = Math.max(13, Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapFocusZoom || 16) || 16));
+  const DISCOVERY_MAP_FOCUS_ZOOM = Math.max(
+    14,
+    Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapFocusZoom || DISCOVERY_MAP_MAX_ZOOM) || DISCOVERY_MAP_MAX_ZOOM)
+  );
   const DISCOVERY_MAP_RADIUS_METERS = Math.max(200, Number(deps.discoveryMapRadiusMeters || 1000) || 1000);
   const LEAFLET_SOURCE_TIMEOUT_MS = Math.max(1600, Number(deps.leafletSourceTimeoutMs || 2600) || 2600);
   const LEAFLET_TILE_PRIMARY_URL = String(
@@ -226,8 +229,8 @@ function filterLocationsWithinRadius(locations = []) {
 
 function buildMapViewportSyncSignature() {
   const center = resolveMapCenterCoords();
-  const lat = center ? Number(center.lat).toFixed(4) : "";
-  const lng = center ? Number(center.lng).toFixed(4) : "";
+  const lat = center ? Number(center.lat).toFixed(3) : "";
+  const lng = center ? Number(center.lng).toFixed(3) : "";
   const query = getActiveMapSearchQuery();
   const locationsLength = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
   return `${lat}|${lng}|${mapCategoryFilter}|${query}|${locationsLength}`;
@@ -703,10 +706,10 @@ function createLeafletTileLayer(urlTemplate = LEAFLET_TILE_PRIMARY_URL) {
   const isMobileViewport = Number(window?.innerWidth || 0) > 0 && Number(window?.innerWidth || 0) <= 900;
   return window.L.tileLayer(urlTemplate, {
     maxZoom: DISCOVERY_MAP_MAX_ZOOM,
-    keepBuffer: isMobileViewport ? 18 : 12,
-    updateWhenIdle: false,
-    updateWhenZooming: true,
-    updateInterval: isMobileViewport ? 70 : 100,
+    keepBuffer: isMobileViewport ? 24 : 14,
+    updateWhenIdle: true,
+    updateWhenZooming: false,
+    updateInterval: isMobileViewport ? 120 : 140,
     subdomains: "abcd",
     crossOrigin: true,
     noWrap: false
@@ -754,8 +757,8 @@ function initLeafletIfNeeded() {
     zoomControl: false,
     attributionControl: false,
     preferCanvas: true,
-    fadeAnimation: false,
-    zoomAnimation: false,
+    fadeAnimation: true,
+    zoomAnimation: true,
     markerZoomAnimation: false
   }).setView(resolveInitialMapCenter(), DISCOVERY_MAP_DEFAULT_ZOOM);
   const primaryLayer = createLeafletTileLayer(LEAFLET_TILE_PRIMARY_URL);
@@ -791,7 +794,7 @@ function initLeafletIfNeeded() {
   primaryLayer.on("tileerror", onPrimaryTileError);
   primaryLayer.on("load", onTileLoad);
   primaryLayer.addTo(leafletMap);
-  leafletMap.on("moveend", () => scheduleMapViewportMarkerRefresh(90));
+  leafletMap.on("moveend", () => scheduleMapViewportMarkerRefresh(150));
   try {
     leafletMap.whenReady(() => {
       scheduleLeafletRefresh(3);
@@ -805,7 +808,7 @@ function initLeafletIfNeeded() {
   bindMapSearchInput();
   bindMapCategoryTabs();
   scheduleLeafletRefresh(3);
-  scheduleMapViewportMarkerRefresh(80);
+  scheduleMapViewportMarkerRefresh(140);
 }
 
 function getSelectedMapMarkerKey() {
@@ -863,12 +866,11 @@ function renderLeafletMarkers(locations) {
         state.selectedBusiness = selectedEntry;
         renderCurrentMapMarkerSet();
         updateMapSheet();
-        const currentZoom = Number(leafletMap?.getZoom?.() || 0);
-        const targetZoom = Math.max(
-          Number.isFinite(currentZoom) ? currentZoom : 0,
-          getLeafletFocusZoom()
-        );
-        focusLeafletMap(selectedEntry.lat, selectedEntry.lng, { zoom: targetZoom, duration: 0.28 });
+        const currentZoom = Number(leafletMap?.getZoom?.() || DISCOVERY_MAP_DEFAULT_ZOOM);
+        focusLeafletMap(selectedEntry.lat, selectedEntry.lng, {
+          zoom: Number.isFinite(currentZoom) ? currentZoom : DISCOVERY_MAP_DEFAULT_ZOOM,
+          duration: 0.28
+        });
       });
       leafletBizMarkerMap.set(markerKey, marker);
     }
@@ -916,7 +918,10 @@ function renderCurrentMapMarkerSet({
     const markerKey = resolveLeafletMarkerKey(first);
     if (markerKey && markerKey !== mapSearchLastPanKey) {
       mapSearchLastPanKey = markerKey;
-      focusLeafletMap(first.lat, first.lng, { zoom: Math.max(DISCOVERY_MAP_DEFAULT_ZOOM + 1, 15), duration: 0.3 });
+      focusLeafletMap(first.lat, first.lng, {
+        zoom: Math.min(DISCOVERY_MAP_MAX_ZOOM, Math.max(DISCOVERY_MAP_DEFAULT_ZOOM, 15)),
+        duration: 0.3
+      });
     }
   }
   if (!normalizedQuery) {
