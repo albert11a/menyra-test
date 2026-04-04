@@ -65,8 +65,14 @@ export function createDiscoveryRuntimeController(deps = {}) {
   let leafletTileFallbackActive = false;
   let mapSearchFilterTimer = null;
   let mapSearchLastPanKey = "";
+  let mapCategoryFilter = "restaurants";
   let mapNotice = "";
   let mapNoticeTimer = null;
+  const MAP_CATEGORY_FILTERS = Object.freeze({
+    restaurants: "restaurants",
+    cafes: "cafes",
+    bars: "bars"
+  });
   const DISCOVERY_MAP_DEFAULT_CENTER = [42.6629, 21.1655];
   const DISCOVERY_MAP_DEFAULT_ZOOM = 14;
   const DISCOVERY_MAP_MAX_ZOOM = 19;
@@ -116,6 +122,44 @@ function focusLeafletMap(lat, lng, options = {}) {
   try {
     leafletMap.setView([coords.lat, coords.lng], zoom, { animate: true, duration });
   } catch {}
+}
+
+function normalizeMapCategoryFilter(value = "") {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === MAP_CATEGORY_FILTERS.cafes) return MAP_CATEGORY_FILTERS.cafes;
+  if (normalized === MAP_CATEGORY_FILTERS.bars) return MAP_CATEGORY_FILTERS.bars;
+  return MAP_CATEGORY_FILTERS.restaurants;
+}
+
+function buildLocationTypeHints(location = {}) {
+  const row = location?.raw || {};
+  const values = [
+    location?.type,
+    location?.name,
+    row?.type,
+    row?.customerType,
+    row?.category,
+    row?.kind,
+    row?.restaurantType
+  ];
+  const normalizedHints = values
+    .map((value) => normalizeRestaurantType(value))
+    .filter(Boolean);
+  const literalHints = values
+    .map((value) => String(value || "").trim().toLowerCase())
+    .filter(Boolean);
+  return [...normalizedHints, ...literalHints];
+}
+
+function resolveMapCategoryFilterForLocation(location = {}) {
+  const hint = buildLocationTypeHints(location).join(" ");
+  if (/\b(cafe|café|coffee|espresso|kaffee)\b/.test(hint)) return MAP_CATEGORY_FILTERS.cafes;
+  if (/\b(bar|pub|lounge|club|cocktail|bier|beer|wein|wine)\b/.test(hint)) return MAP_CATEGORY_FILTERS.bars;
+  return MAP_CATEGORY_FILTERS.restaurants;
+}
+
+function locationMatchesMapCategory(location = {}) {
+  return resolveMapCategoryFilterForLocation(location) === mapCategoryFilter;
 }
 
 function ensureLeafletStylesheet() {
@@ -580,6 +624,7 @@ function initLeafletIfNeeded() {
 
   const el = document.getElementById("leafletMap");
   if (!el) return;
+  bindMapCategoryTabs();
   if (!window.L) {
     void ensureLeafletLoaded().then((loaded) => {
       if (!loaded) {
@@ -602,6 +647,7 @@ function initLeafletIfNeeded() {
     try { leafletMap.invalidateSize(); } catch {}
     scheduleLeafletRefresh(2);
     bindMapSearchInput();
+    bindMapCategoryTabs();
     return;
   }
 
@@ -657,6 +703,7 @@ function initLeafletIfNeeded() {
   if (window.lucide?.createIcons) window.lucide.createIcons();
   mapLocate();
   bindMapSearchInput();
+  bindMapCategoryTabs();
   scheduleLeafletRefresh(3);
 }
 
@@ -738,7 +785,8 @@ function renderLeafletMarkers(locations) {
 
 function filterMapLocationsByQuery(query) {
   const key = String(query || "").toLowerCase().trim();
-  const baseLocations = getDiscoverableMapLocations(state.businessLocations);
+  const baseLocations = getDiscoverableMapLocations(state.businessLocations)
+    .filter((location) => locationMatchesMapCategory(location));
   if (!key) return baseLocations;
   return baseLocations.filter((location) => (
     String(location?.name || "").toLowerCase().includes(key)
@@ -765,6 +813,42 @@ function renderCurrentMapMarkerSet({
     mapSearchLastPanKey = "";
   }
   return filtered;
+}
+
+function updateMapCategoryTabsDom() {
+  const buttons = document.querySelectorAll("[data-map-category]");
+  if (!buttons.length) return false;
+  buttons.forEach((button) => {
+    if (!(button instanceof HTMLElement)) return;
+    const isActive = normalizeMapCategoryFilter(button.dataset.mapCategory || "") === mapCategoryFilter;
+    button.classList.toggle("bg-slate-900", isActive);
+    button.classList.toggle("text-white", isActive);
+    button.classList.toggle("border-slate-900", isActive);
+    button.classList.toggle("shadow-sm", isActive);
+    button.classList.toggle("bg-white/90", !isActive);
+    button.classList.toggle("text-slate-600", !isActive);
+    button.classList.toggle("border-slate-200", !isActive);
+  });
+  return true;
+}
+
+function bindMapCategoryTabs() {
+  const buttons = document.querySelectorAll("[data-map-category]");
+  if (!buttons.length) return;
+  buttons.forEach((button) => {
+    if (!(button instanceof HTMLElement)) return;
+    if (button.dataset.mapCategoryBound === "1") return;
+    button.dataset.mapCategoryBound = "1";
+    button.addEventListener("click", () => {
+      const nextFilter = normalizeMapCategoryFilter(button.dataset.mapCategory || "");
+      if (nextFilter === mapCategoryFilter) return;
+      mapCategoryFilter = nextFilter;
+      updateMapCategoryTabsDom();
+      renderCurrentMapMarkerSet();
+      updateMapSheet();
+    });
+  });
+  updateMapCategoryTabsDom();
 }
 
 function bindMapSearchInput() {
@@ -1227,6 +1311,7 @@ function renderMapView() {
     ? "Karte konnte nicht geladen werden."
     : (leafletLoadPromise ? "Karte wird geladen ..." : "Karte wird vorbereitet ...");
   const mapTruthState = renderMapTruthState();
+  const isCategoryActive = (value) => normalizeMapCategoryFilter(value) === mapCategoryFilter;
   return `
     <div class="p-5 pb-8 h-full flex flex-col relative animate-in fade-in duration-700">
       <div class="mb-4 px-2 flex justify-between items-end">
@@ -1246,6 +1331,20 @@ function renderMapView() {
           <div class="relative group shadow-lg rounded-2xl">
             ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}
             <input id="mapSearchInput" type="text" placeholder="Stadt, Lokal suchen..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all" />
+          </div>
+          <div class="mt-2 grid grid-cols-3 gap-1.5">
+            <button type="button" data-map-category="restaurants" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("restaurants") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white/90 text-slate-600 border-slate-200"}">
+              ${icon("utensils-crossed", "w-3.5 h-3.5")}
+              <span>Restaurants</span>
+            </button>
+            <button type="button" data-map-category="cafes" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("cafes") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white/90 text-slate-600 border-slate-200"}">
+              ${icon("coffee", "w-3.5 h-3.5")}
+              <span>Cafes</span>
+            </button>
+            <button type="button" data-map-category="bars" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("bars") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white/90 text-slate-600 border-slate-200"}">
+              ${icon("martini", "w-3.5 h-3.5")}
+              <span>Bars</span>
+            </button>
           </div>
         </div>
 
