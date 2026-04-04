@@ -65,28 +65,12 @@ export function createDiscoveryRuntimeController(deps = {}) {
   let leafletTileFallbackActive = false;
   let mapSearchFilterTimer = null;
   let mapSearchLastPanKey = "";
-  let mapSearchQuery = "";
-  let mapCategoryFilter = "restaurants";
-  let mapViewportSyncTimer = null;
-  let mapViewportSyncSignature = "";
   let mapNotice = "";
   let mapNoticeTimer = null;
-  const MAP_CATEGORY_FILTERS = Object.freeze({
-    restaurants: "restaurants",
-    cafes: "cafes",
-    bars: "bars"
-  });
   const DISCOVERY_MAP_DEFAULT_CENTER = [42.6629, 21.1655];
+  const DISCOVERY_MAP_DEFAULT_ZOOM = 14;
   const DISCOVERY_MAP_MAX_ZOOM = 19;
-  const DISCOVERY_MAP_DEFAULT_ZOOM = Math.max(
-    14,
-    Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapDefaultZoom || DISCOVERY_MAP_MAX_ZOOM) || DISCOVERY_MAP_MAX_ZOOM)
-  );
-  const DISCOVERY_MAP_FOCUS_ZOOM = Math.max(
-    14,
-    Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapFocusZoom || DISCOVERY_MAP_MAX_ZOOM) || DISCOVERY_MAP_MAX_ZOOM)
-  );
-  const DISCOVERY_MAP_RADIUS_METERS = Math.max(200, Number(deps.discoveryMapRadiusMeters || 1000) || 1000);
+  const DISCOVERY_MAP_FOCUS_ZOOM = Math.max(13, Math.min(DISCOVERY_MAP_MAX_ZOOM, Number(deps.discoveryMapFocusZoom || 16) || 16));
   const LEAFLET_SOURCE_TIMEOUT_MS = Math.max(1600, Number(deps.leafletSourceTimeoutMs || 2600) || 2600);
   const LEAFLET_TILE_PRIMARY_URL = String(
     deps.leafletTilePrimaryUrl
@@ -132,126 +116,6 @@ function focusLeafletMap(lat, lng, options = {}) {
   try {
     leafletMap.setView([coords.lat, coords.lng], zoom, { animate: true, duration });
   } catch {}
-}
-
-function normalizeMapCategoryFilter(value = "") {
-  const normalized = String(value || "").trim().toLowerCase();
-  if (normalized === MAP_CATEGORY_FILTERS.cafes) return MAP_CATEGORY_FILTERS.cafes;
-  if (normalized === MAP_CATEGORY_FILTERS.bars) return MAP_CATEGORY_FILTERS.bars;
-  return MAP_CATEGORY_FILTERS.restaurants;
-}
-
-function buildLocationTypeHints(location = {}) {
-  const row = location?.raw || {};
-  const values = [
-    location?.type,
-    location?.name,
-    row?.type,
-    row?.customerType,
-    row?.category,
-    row?.kind,
-    row?.restaurantType
-  ];
-  const normalizedHints = values
-    .map((value) => normalizeRestaurantType(value))
-    .filter(Boolean);
-  const literalHints = values
-    .map((value) => String(value || "").trim().toLowerCase())
-    .filter(Boolean);
-  return [...normalizedHints, ...literalHints];
-}
-
-function resolveMapCategoryFilterForLocation(location = {}) {
-  const hint = buildLocationTypeHints(location).join(" ");
-  if (/\b(cafe|café|coffee|espresso|kaffee)\b/.test(hint)) return MAP_CATEGORY_FILTERS.cafes;
-  if (/\b(bar|pub|lounge|club|cocktail|bier|beer|wein|wine)\b/.test(hint)) return MAP_CATEGORY_FILTERS.bars;
-  return MAP_CATEGORY_FILTERS.restaurants;
-}
-
-function locationMatchesMapCategory(location = {}) {
-  return resolveMapCategoryFilterForLocation(location) === mapCategoryFilter;
-}
-
-function toRadians(value = 0) {
-  return (Number(value) || 0) * Math.PI / 180;
-}
-
-function distanceBetweenCoordsMeters(aLat, aLng, bLat, bLng) {
-  const from = normalizeCoordPair(aLat, aLng);
-  const to = normalizeCoordPair(bLat, bLng);
-  if (!from || !to) return Infinity;
-  const earthRadius = 6371000;
-  const dLat = toRadians(to.lat - from.lat);
-  const dLng = toRadians(to.lng - from.lng);
-  const lat1 = toRadians(from.lat);
-  const lat2 = toRadians(to.lat);
-  const sinDLat = Math.sin(dLat / 2);
-  const sinDLng = Math.sin(dLng / 2);
-  const a = (sinDLat * sinDLat) + (Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return earthRadius * c;
-}
-
-function resolveMapCenterCoords() {
-  if (leafletMap && typeof leafletMap.getCenter === "function") {
-    const center = leafletMap.getCenter();
-    const normalized = normalizeCoordPair(center?.lat, center?.lng);
-    if (normalized) return normalized;
-  }
-  const selected = normalizeCoordPair(state.selectedBusiness?.lat, state.selectedBusiness?.lng);
-  if (selected) return selected;
-  const userCoords = normalizeCoordPair(state.userProfile?.lat, state.userProfile?.lng);
-  if (userCoords) return userCoords;
-  return null;
-}
-
-function resolveInitialMapCenter() {
-  const selected = normalizeCoordPair(state.selectedBusiness?.lat, state.selectedBusiness?.lng);
-  if (selected) return [selected.lat, selected.lng];
-  const userCoords = normalizeCoordPair(state.userProfile?.lat, state.userProfile?.lng);
-  if (userCoords) return [userCoords.lat, userCoords.lng];
-  const firstLocation = getDiscoverableMapLocations(state.businessLocations)[0] || null;
-  const firstCoords = normalizeCoordPair(firstLocation?.lat, firstLocation?.lng);
-  if (firstCoords) return [firstCoords.lat, firstCoords.lng];
-  return DISCOVERY_MAP_DEFAULT_CENTER;
-}
-
-function filterLocationsWithinRadius(locations = []) {
-  const list = Array.isArray(locations) ? locations : [];
-  const center = resolveMapCenterCoords();
-  if (!center || !leafletMap) return list;
-  return list.filter((location) => {
-    const coords = normalizeCoordPair(location?.lat, location?.lng);
-    if (!coords) return false;
-    return distanceBetweenCoordsMeters(center.lat, center.lng, coords.lat, coords.lng) <= DISCOVERY_MAP_RADIUS_METERS;
-  });
-}
-
-function buildMapViewportSyncSignature() {
-  const center = resolveMapCenterCoords();
-  const lat = center ? Number(center.lat).toFixed(3) : "";
-  const lng = center ? Number(center.lng).toFixed(3) : "";
-  const query = getActiveMapSearchQuery();
-  const locationsLength = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
-  return `${lat}|${lng}|${mapCategoryFilter}|${query}|${locationsLength}`;
-}
-
-function scheduleMapViewportMarkerRefresh(delayMs = 90) {
-  if (!window || state.activeTab !== "map") return;
-  if (mapViewportSyncTimer) {
-    window.clearTimeout(mapViewportSyncTimer);
-  }
-  mapViewportSyncTimer = window.setTimeout(() => {
-    mapViewportSyncTimer = null;
-    const nextSignature = buildMapViewportSyncSignature();
-    if (nextSignature && nextSignature === mapViewportSyncSignature) return;
-    mapViewportSyncSignature = nextSignature;
-    const filtered = renderCurrentMapMarkerSet({ query: getActiveMapSearchQuery() });
-    if (!filtered.some((entry) => resolveLeafletMarkerKey(entry) === getSelectedMapMarkerKey())) {
-      state.selectedBusiness = null;
-    }
-    updateMapSheet();
-  }, Math.max(0, Number(delayMs) || 0));
 }
 
 function ensureLeafletStylesheet() {
@@ -453,11 +317,6 @@ function cleanupLeaflet() {
     clearTimeout(mapSearchFilterTimer);
     mapSearchFilterTimer = null;
   }
-  if (mapViewportSyncTimer) {
-    clearTimeout(mapViewportSyncTimer);
-    mapViewportSyncTimer = null;
-  }
-  mapViewportSyncSignature = "";
 }
 
 function isLeafletMapMountedOn(element) {
@@ -703,16 +562,13 @@ function bindMapSheetEvents() {
 }
 
 function createLeafletTileLayer(urlTemplate = LEAFLET_TILE_PRIMARY_URL) {
-  const isMobileViewport = Number(window?.innerWidth || 0) > 0 && Number(window?.innerWidth || 0) <= 900;
   return window.L.tileLayer(urlTemplate, {
     maxZoom: DISCOVERY_MAP_MAX_ZOOM,
-    keepBuffer: isMobileViewport ? 24 : 14,
-    updateWhenIdle: true,
+    keepBuffer: 8,
+    updateWhenIdle: false,
     updateWhenZooming: false,
-    updateInterval: isMobileViewport ? 120 : 140,
     subdomains: "abcd",
-    crossOrigin: true,
-    noWrap: false
+    crossOrigin: true
   });
 }
 
@@ -724,8 +580,6 @@ function initLeafletIfNeeded() {
 
   const el = document.getElementById("leafletMap");
   if (!el) return;
-  bindMapSearchInput();
-  bindMapCategoryTabs();
   if (!window.L) {
     void ensureLeafletLoaded().then((loaded) => {
       if (!loaded) {
@@ -748,8 +602,6 @@ function initLeafletIfNeeded() {
     try { leafletMap.invalidateSize(); } catch {}
     scheduleLeafletRefresh(2);
     bindMapSearchInput();
-    bindMapCategoryTabs();
-    scheduleMapViewportMarkerRefresh(40);
     return;
   }
 
@@ -759,8 +611,8 @@ function initLeafletIfNeeded() {
     preferCanvas: true,
     fadeAnimation: true,
     zoomAnimation: true,
-    markerZoomAnimation: false
-  }).setView(resolveInitialMapCenter(), DISCOVERY_MAP_DEFAULT_ZOOM);
+    markerZoomAnimation: true
+  }).setView(DISCOVERY_MAP_DEFAULT_CENTER, DISCOVERY_MAP_DEFAULT_ZOOM);
   const primaryLayer = createLeafletTileLayer(LEAFLET_TILE_PRIMARY_URL);
   const onTileLoad = () => {
     const currentNotice = String(mapNotice || "").trim();
@@ -794,7 +646,6 @@ function initLeafletIfNeeded() {
   primaryLayer.on("tileerror", onPrimaryTileError);
   primaryLayer.on("load", onTileLoad);
   primaryLayer.addTo(leafletMap);
-  leafletMap.on("moveend", () => scheduleMapViewportMarkerRefresh(150));
   try {
     leafletMap.whenReady(() => {
       scheduleLeafletRefresh(3);
@@ -806,9 +657,7 @@ function initLeafletIfNeeded() {
   if (window.lucide?.createIcons) window.lucide.createIcons();
   mapLocate();
   bindMapSearchInput();
-  bindMapCategoryTabs();
   scheduleLeafletRefresh(3);
-  scheduleMapViewportMarkerRefresh(140);
 }
 
 function getSelectedMapMarkerKey() {
@@ -820,10 +669,7 @@ function getSelectedMapMarkerKey() {
 
 function getActiveMapSearchQuery() {
   const searchInput = document.getElementById("mapSearchInput");
-  if (searchInput) {
-    mapSearchQuery = String(searchInput.value || "");
-  }
-  return String(searchInput?.value ?? mapSearchQuery).trim().toLowerCase();
+  return String(searchInput?.value || "").trim().toLowerCase();
 }
 
 function renderLeafletMarkers(locations) {
@@ -866,11 +712,7 @@ function renderLeafletMarkers(locations) {
         state.selectedBusiness = selectedEntry;
         renderCurrentMapMarkerSet();
         updateMapSheet();
-        const currentZoom = Number(leafletMap?.getZoom?.() || DISCOVERY_MAP_DEFAULT_ZOOM);
-        focusLeafletMap(selectedEntry.lat, selectedEntry.lng, {
-          zoom: Number.isFinite(currentZoom) ? currentZoom : DISCOVERY_MAP_DEFAULT_ZOOM,
-          duration: 0.28
-        });
+        focusLeafletMap(selectedEntry.lat, selectedEntry.lng, { duration: 0.28 });
       });
       leafletBizMarkerMap.set(markerKey, marker);
     }
@@ -896,13 +738,12 @@ function renderLeafletMarkers(locations) {
 
 function filterMapLocationsByQuery(query) {
   const key = String(query || "").toLowerCase().trim();
-  const discoverable = getDiscoverableMapLocations(state.businessLocations);
-  const categoryFiltered = discoverable.filter((location) => locationMatchesMapCategory(location));
-  const queryFiltered = key ? categoryFiltered.filter((location) => (
+  const baseLocations = getDiscoverableMapLocations(state.businessLocations);
+  if (!key) return baseLocations;
+  return baseLocations.filter((location) => (
     String(location?.name || "").toLowerCase().includes(key)
     || String(location?.address || location?.city || "").toLowerCase().includes(key)
-  )) : categoryFiltered;
-  return filterLocationsWithinRadius(queryFiltered);
+  ));
 }
 
 function renderCurrentMapMarkerSet({
@@ -910,7 +751,6 @@ function renderCurrentMapMarkerSet({
   panToFirst = false
 } = {}) {
   const normalizedQuery = String(query || "").toLowerCase().trim();
-  mapSearchQuery = String(query || "");
   const filtered = filterMapLocationsByQuery(normalizedQuery);
   renderLeafletMarkers(filtered);
   if (panToFirst && filtered.length > 0 && normalizedQuery.length > 2) {
@@ -918,10 +758,7 @@ function renderCurrentMapMarkerSet({
     const markerKey = resolveLeafletMarkerKey(first);
     if (markerKey && markerKey !== mapSearchLastPanKey) {
       mapSearchLastPanKey = markerKey;
-      focusLeafletMap(first.lat, first.lng, {
-        zoom: Math.min(DISCOVERY_MAP_MAX_ZOOM, Math.max(DISCOVERY_MAP_DEFAULT_ZOOM, 15)),
-        duration: 0.3
-      });
+      focusLeafletMap(first.lat, first.lng, { zoom: Math.max(DISCOVERY_MAP_DEFAULT_ZOOM + 1, 15), duration: 0.3 });
     }
   }
   if (!normalizedQuery) {
@@ -930,49 +767,10 @@ function renderCurrentMapMarkerSet({
   return filtered;
 }
 
-function updateMapCategoryTabsDom() {
-  const buttons = document.querySelectorAll("[data-map-category]");
-  if (!buttons.length) return false;
-  buttons.forEach((button) => {
-    if (!(button instanceof HTMLElement)) return;
-    const isActive = normalizeMapCategoryFilter(button.dataset.mapCategory || "") === mapCategoryFilter;
-    button.classList.toggle("bg-slate-900", isActive);
-    button.classList.toggle("text-white", isActive);
-    button.classList.toggle("border-slate-900", isActive);
-    button.classList.toggle("shadow-sm", isActive);
-    button.classList.toggle("bg-white/90", !isActive);
-    button.classList.toggle("text-slate-600", !isActive);
-    button.classList.toggle("border-slate-200", !isActive);
-  });
-  return true;
-}
-
-function bindMapCategoryTabs() {
-  const buttons = document.querySelectorAll("[data-map-category]");
-  if (!buttons.length) return;
-  buttons.forEach((button) => {
-    if (!(button instanceof HTMLElement)) return;
-    if (button.dataset.mapCategoryBound === "1") return;
-    button.dataset.mapCategoryBound = "1";
-    button.addEventListener("click", () => {
-      const nextFilter = normalizeMapCategoryFilter(button.dataset.mapCategory || "");
-      if (nextFilter === mapCategoryFilter) return;
-      mapCategoryFilter = nextFilter;
-      updateMapCategoryTabsDom();
-      scheduleMapViewportMarkerRefresh(30);
-    });
-  });
-  updateMapCategoryTabsDom();
-}
-
 function bindMapSearchInput() {
   const searchInput = document.getElementById("mapSearchInput");
   if (!searchInput) return;
-  if (document.activeElement !== searchInput && searchInput.value !== mapSearchQuery) {
-    searchInput.value = mapSearchQuery;
-  }
   const applyFilter = ({ panToFirst = false } = {}) => {
-    mapSearchQuery = String(searchInput.value || "");
     renderCurrentMapMarkerSet({
       query: searchInput.value,
       panToFirst
@@ -984,7 +782,6 @@ function bindMapSearchInput() {
   };
   if (searchInput.dataset.bound !== "true") {
     searchInput.addEventListener("input", () => {
-      mapSearchQuery = String(searchInput.value || "");
       const queryLength = String(searchInput.value || "").trim().length;
       if (mapSearchFilterTimer) {
         clearTimeout(mapSearchFilterTimer);
@@ -996,7 +793,9 @@ function bindMapSearchInput() {
     });
     searchInput.dataset.bound = "true";
   }
-  applyFilter({ panToFirst: false });
+  if (String(searchInput.value || "").trim()) {
+    applyFilter({ panToFirst: false });
+  }
 }
 
 function setUserMarker(lat, lng, label = "Deine Position") {
@@ -1428,8 +1227,6 @@ function renderMapView() {
     ? "Karte konnte nicht geladen werden."
     : (leafletLoadPromise ? "Karte wird geladen ..." : "Karte wird vorbereitet ...");
   const mapTruthState = renderMapTruthState();
-  const isCategoryActive = (value) => normalizeMapCategoryFilter(value) === mapCategoryFilter;
-  const mapShellHeightStyle = "min-height:clamp(420px, calc(100svh - (var(--safe-area-top) + var(--safe-area-bottom) + 12rem)), 940px);";
   return `
     <div class="p-5 pb-8 h-full flex flex-col relative animate-in fade-in duration-700">
       <div class="mb-4 px-2 flex justify-between items-end">
@@ -1440,29 +1237,15 @@ function renderMapView() {
       </div>
       ${mapTruthState ? `<div class="mb-3 px-2">${mapTruthState}</div>` : ""}
 
-      <div class="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200 bg-white" style="${mapShellHeightStyle}">
-        <div id="leafletMap" class="absolute inset-0 z-10" style="background:#ffffff;"></div>
-        ${hasLeaflet ? "" : `<div class="absolute inset-0 z-20 flex items-center justify-center text-slate-500 text-xs font-black uppercase tracking-widest backdrop-blur-sm">${escapeHtml(mapInfoLabel)}</div>`}
+      <div class="relative flex-1 bg-slate-200 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200/50 min-h-[500px]">
+        <div id="leafletMap" class="absolute inset-0 z-10 bg-slate-200"></div>
+        ${hasLeaflet ? "" : `<div class="absolute inset-0 z-20 flex items-center justify-center opacity-40 text-slate-500 text-xs font-black uppercase tracking-widest">${escapeHtml(mapInfoLabel)}</div>`}
         
         <div class="absolute top-5 left-4 right-4 z-30">
           <div id="mapNoticeSlot" class="mb-3">${renderMapNotice()}</div>
           <div class="relative group shadow-lg rounded-2xl">
             ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}
-            <input id="mapSearchInput" type="text" value="${escapeHtml(mapSearchQuery)}" placeholder="Stadt, Lokal suchen..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all" />
-          </div>
-          <div class="mt-2 grid grid-cols-3 gap-1.5">
-            <button type="button" data-map-category="restaurants" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("restaurants") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white/90 text-slate-600 border-slate-200"}">
-              ${icon("utensils-crossed", "w-3.5 h-3.5")}
-              <span>Restaurants</span>
-            </button>
-            <button type="button" data-map-category="cafes" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("cafes") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white/90 text-slate-600 border-slate-200"}">
-              ${icon("coffee", "w-3.5 h-3.5")}
-              <span>Cafes</span>
-            </button>
-            <button type="button" data-map-category="bars" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("bars") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white/90 text-slate-600 border-slate-200"}">
-              ${icon("martini", "w-3.5 h-3.5")}
-              <span>Bars</span>
-            </button>
+            <input id="mapSearchInput" type="text" placeholder="Stadt, Lokal suchen..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all" />
           </div>
         </div>
 
