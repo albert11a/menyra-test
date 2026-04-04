@@ -9,8 +9,8 @@ const EXTERNAL_STATIC_HOSTS = new Set([
   "cdn.jsdelivr.net",
   "unpkg.com"
 ]);
-const NAVIGATION_FETCH_TIMEOUT_MS = 3600;
-const RUNTIME_FETCH_TIMEOUT_MS = 4200;
+const NAVIGATION_FETCH_TIMEOUT_MS = 6500;
+const RUNTIME_FETCH_TIMEOUT_MS = 5200;
 
 function sanitizeCacheToken(value) {
   return String(value || "")
@@ -40,8 +40,30 @@ async function broadcastToClients(payload) {
   });
 }
 
-self.addEventListener("install", () => {
-  self.skipWaiting();
+async function getCachedAppShellResponse() {
+  const primary = await caches.match(APP_SHELL_URL);
+  if (primary) return primary;
+  return await caches.match(APP_SCOPE);
+}
+
+async function precacheAppShell() {
+  const cache = await caches.open(CACHE_NAME);
+  try {
+    const shellRequest = new Request(APP_SHELL_URL, { cache: "reload" });
+    const shellResponse = await fetchWithTimeout(shellRequest, NAVIGATION_FETCH_TIMEOUT_MS);
+    if (!shellResponse || (!shellResponse.ok && shellResponse.type !== "opaque")) return;
+    const cloneForIndex = shellResponse.clone();
+    const cloneForScope = shellResponse.clone();
+    await cache.put(APP_SHELL_URL, cloneForIndex);
+    await cache.put(APP_SCOPE, cloneForScope);
+  } catch {}
+}
+
+self.addEventListener("install", (event) => {
+  event.waitUntil((async () => {
+    self.skipWaiting();
+    await precacheAppShell();
+  })());
 });
 
 self.addEventListener("activate", (event) => {
@@ -242,11 +264,17 @@ self.addEventListener("fetch", (event) => {
       try {
         const navReq = new Request(req, { cache: "no-cache" });
         const networkResp = await fetchWithTimeout(navReq, NAVIGATION_FETCH_TIMEOUT_MS);
+        if (!networkResp || (!networkResp.ok && networkResp.type !== "opaque")) {
+          throw new Error(`navigation-response-not-ok:${networkResp?.status || 0}`);
+        }
         const cache = await caches.open(CACHE_NAME);
-        cache.put(APP_SHELL_URL, networkResp.clone()).catch(() => null);
+        const cloneForIndex = networkResp.clone();
+        const cloneForScope = networkResp.clone();
+        cache.put(APP_SHELL_URL, cloneForIndex).catch(() => null);
+        cache.put(APP_SCOPE, cloneForScope).catch(() => null);
         return networkResp;
       } catch {
-        const cachedShell = await caches.match(APP_SHELL_URL);
+        const cachedShell = await getCachedAppShellResponse();
         return cachedShell || new Response("Offline", { status: 503, statusText: "Offline" });
       }
     })());

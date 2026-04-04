@@ -161,6 +161,7 @@ export function createSocialEngagementRuntimeController({
   const autosizeTextarea = autosizeTextareaFn;
   const pendingPostLikeIds = new Set();
   const pendingCommentLikeKeys = new Set();
+  const pendingMenuItemActionKeys = new Set();
   const postMetaLoadInFlight = new Map();
   const menuItemMetaLoadInFlight = new Map();
   const META_LIKES_SOFT_REFRESH_MS = 10000;
@@ -577,125 +578,126 @@ export function createSocialEngagementRuntimeController({
     }
     if (state.postModal.sending) return;
     state.postModal.sending = true;
-    const meta = ensurePostMeta(postId);
-    const commentBaseBeforeWrite = Number(post.comments) || 0;
-    const ensuredAvatar = await ensureSelfAvatarReady({ force: true });
-    const user = currentUserBadge();
-    const handleKey = normalizeHandle(user.handle || user.name || "");
-    const avatarCandidate = ensuredAvatar || user.avatar || "";
-    const finalAvatar = avatarCandidate && !isPlaceholderUrl(avatarCandidate) ? avatarCandidate : "";
-    if (finalAvatar) {
-      user.avatar = finalAvatar;
-      primeSelfAvatarCache(finalAvatar);
-      if (user.uid) avatarCache.set(user.uid, finalAvatar);
-      if (handleKey) avatarCache.set(handleKey, finalAvatar);
-    }
-    const commentRef = doc(collection(postRef, "comments"));
-    const payload = {
-      uid: user.uid || "",
-      author: user.name,
-      handle: user.handle,
-      avatarUrl: finalAvatar,
-      avatar: finalAvatar,
-      text: trimmed,
-      createdAt: serverTimestamp(),
-      parentId: replyTo || null,
-      likesCount: 0
-    };
     try {
-      const batch = writeBatch(db);
-      batch.set(commentRef, payload);
-      batch.update(postRef, { commentsCount: increment(1) });
-      const feedRef = getFeedDocRef(post);
-      if (feedRef) {
-        try {
-          const feedSnap = await getDoc(feedRef);
-          if (feedSnap.exists()) {
-            batch.update(feedRef, { commentsCount: increment(1) });
-          }
-        } catch {}
-      }
-      await batch.commit();
-    } catch (err) {
-      console.error(err);
-      setLastCommentKeyFn("");
-      setLastCommentAtFn(0);
-      if (isSamePostModalContext()) {
-        state.postModal.sending = false;
-      }
-      return;
-    }
-    try {
+      const meta = ensurePostMeta(postId);
+      const commentBaseBeforeWrite = Number(post.comments) || 0;
+      const ensuredAvatar = await ensureSelfAvatarReady({ force: true });
+      const user = currentUserBadge();
+      const handleKey = normalizeHandle(user.handle || user.name || "");
+      const avatarCandidate = ensuredAvatar || user.avatar || "";
+      const finalAvatar = avatarCandidate && !isPlaceholderUrl(avatarCandidate) ? avatarCandidate : "";
       if (finalAvatar) {
-        if (payload.uid) avatarCache.set(payload.uid, finalAvatar);
+        user.avatar = finalAvatar;
+        primeSelfAvatarCache(finalAvatar);
+        if (user.uid) avatarCache.set(user.uid, finalAvatar);
         if (handleKey) avatarCache.set(handleKey, finalAvatar);
-        scheduleCommentAvatarDomUpdate(payload.uid || "", handleKey, finalAvatar);
-        updateCommentAvatarNodesById(commentRef.id, finalAvatar);
-      } else {
-        scheduleCommentAvatarFetch({
-          uid: payload.uid || "",
-          handle: payload.handle || "",
-          author: payload.author || ""
-        });
       }
-    } catch {}
-    void reconcilePostCountsFromRemote(post, {
-      fallbackComments: commentBaseBeforeWrite + 1
-    }).catch((err) => {
-      console.error(err);
-    });
-    const hasLiveComments = typeof getModalCommentsUnsubFn() === "function";
-    if (!hasLiveComments) {
-      const newComment = ensureCommentShape({
-        id: commentRef.id,
-        ...payload,
-        createdAt: new Date().toISOString()
+      const commentRef = doc(collection(postRef, "comments"));
+      const payload = {
+        uid: user.uid || "",
+        author: user.name,
+        handle: user.handle,
+        avatarUrl: finalAvatar,
+        avatar: finalAvatar,
+        text: trimmed,
+        createdAt: serverTimestamp(),
+        parentId: replyTo || null,
+        likesCount: 0
+      };
+      try {
+        const batch = writeBatch(db);
+        batch.set(commentRef, payload);
+        batch.update(postRef, { commentsCount: increment(1) });
+        const feedRef = getFeedDocRef(post);
+        if (feedRef) {
+          try {
+            const feedSnap = await getDoc(feedRef);
+            if (feedSnap.exists()) {
+              batch.update(feedRef, { commentsCount: increment(1) });
+            }
+          } catch {}
+        }
+        await batch.commit();
+      } catch (err) {
+        console.error(err);
+        setLastCommentKeyFn("");
+        setLastCommentAtFn(0);
+        return;
+      }
+      try {
+        if (finalAvatar) {
+          if (payload.uid) avatarCache.set(payload.uid, finalAvatar);
+          if (handleKey) avatarCache.set(handleKey, finalAvatar);
+          scheduleCommentAvatarDomUpdate(payload.uid || "", handleKey, finalAvatar);
+          updateCommentAvatarNodesById(commentRef.id, finalAvatar);
+        } else {
+          scheduleCommentAvatarFetch({
+            uid: payload.uid || "",
+            handle: payload.handle || "",
+            author: payload.author || ""
+          });
+        }
+      } catch {}
+      void reconcilePostCountsFromRemote(post, {
+        fallbackComments: commentBaseBeforeWrite + 1
+      }).catch((err) => {
+        console.error(err);
       });
-      if (replyTo) {
-        const target = meta.comments.find((item) => item.id === replyTo);
-        if (target) {
-          target.replies = [newComment, ...(target.replies || [])];
+      const hasLiveComments = typeof getModalCommentsUnsubFn() === "function";
+      if (!hasLiveComments) {
+        const newComment = ensureCommentShape({
+          id: commentRef.id,
+          ...payload,
+          createdAt: new Date().toISOString()
+        });
+        if (replyTo) {
+          const target = meta.comments.find((item) => item.id === replyTo);
+          if (target) {
+            target.replies = [newComment, ...(target.replies || [])];
+          } else {
+            meta.comments = [newComment, ...(meta.comments || [])];
+          }
         } else {
           meta.comments = [newComment, ...(meta.comments || [])];
         }
-      } else {
-        meta.comments = [newComment, ...(meta.comments || [])];
+        const loadState = ensureMetaLoadState(meta);
+        if (loadState.commentsHydrated) {
+          loadState.commentsFetchedAt = Date.now();
+        }
+        state.postMeta[postId] = meta;
       }
-      const loadState = ensureMetaLoadState(meta);
-      if (loadState.commentsHydrated) {
-        loadState.commentsFetchedAt = Date.now();
+      if (isSamePostModalContext()) {
+        state.postModal.commentText = "";
+        const commentInput = docObj?.getElementById("postCommentInput");
+        if (commentInput) commentInput.value = "";
+        state.postModal.replyTo = null;
+        updatePostModalMeta();
+        if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
+        const postComments = docObj?.getElementById("postModalComments");
+        if (postComments) hydrateCommentAvatars(postComments, { postId: postId });
       }
-      state.postMeta[postId] = meta;
-    }
-    if (isSamePostModalContext()) {
-      state.postModal.commentText = "";
-      const commentInput = docObj?.getElementById("postCommentInput");
-      if (commentInput) commentInput.value = "";
-      state.postModal.replyTo = null;
-      updatePostModalMeta();
-      if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
-      const postComments = docObj?.getElementById("postModalComments");
-      if (postComments) hydrateCommentAvatars(postComments, { postId: postId });
+      refreshSelfCommentAvatars();
+      const commenterUid = String(user.uid || "");
+      void resolvePostOwnerUid(post)
+        .then((ownerUid) => {
+          if (!ownerUid || ownerUid === commenterUid) return null;
+          return pushUserNotification(ownerUid, {
+            type: "comment",
+            user: user.name,
+            userHandle: user.handle,
+            userUid: commenterUid,
+            avatar: payload.avatar,
+            text: "hat deinen Beitrag kommentiert",
+            postId: String(post.id || ""),
+            commentId: String(commentRef.id || ""),
+            ownerType: post.ownerType || "",
+            ownerId: post.ownerId || "",
+            restaurantId: post.restaurantId || ""
+          });
+        })
+        .catch(() => null);
+    } finally {
       state.postModal.sending = false;
-    }
-    refreshSelfCommentAvatars();
-    const ownerUid = await resolvePostOwnerUid(post);
-    if (ownerUid && ownerUid !== state.user.uid) {
-      try {
-        await pushUserNotification(ownerUid, {
-          type: "comment",
-          user: user.name,
-          userHandle: user.handle,
-          userUid: user.uid || "",
-          avatar: payload.avatar,
-          text: "hat deinen Beitrag kommentiert",
-          postId: String(post.id || ""),
-          commentId: String(commentRef.id || ""),
-          ownerType: post.ownerType || "",
-          ownerId: post.ownerId || "",
-          restaurantId: post.restaurantId || ""
-        });
-      } catch {}
     }
   }
 
@@ -773,21 +775,24 @@ export function createSocialEngagementRuntimeController({
         renderOverlays({ updateProfile: false, updatePost: false, updateLikes: true });
       }
       if (delta > 0) {
-        const ownerUid = await resolvePostOwnerUid(post);
-        if (ownerUid && ownerUid !== state.user.uid) {
-          await pushUserNotification(ownerUid, {
-            type: "like",
-            user: user.name,
-            userHandle: user.handle,
-            userUid: user.uid || "",
-            avatar: user.avatar,
-            text: "hat deinen Beitrag geliked",
-            postId: String(post.id || ""),
-            ownerType: post.ownerType || "",
-            ownerId: post.ownerId || "",
-            restaurantId: post.restaurantId || ""
-          });
-        }
+        const likerUid = String(user.uid || "");
+        void resolvePostOwnerUid(post)
+          .then((ownerUid) => {
+            if (!ownerUid || ownerUid === likerUid) return null;
+            return pushUserNotification(ownerUid, {
+              type: "like",
+              user: user.name,
+              userHandle: user.handle,
+              userUid: likerUid,
+              avatar: user.avatar,
+              text: "hat deinen Beitrag geliked",
+              postId: String(post.id || ""),
+              ownerType: post.ownerType || "",
+              ownerId: post.ownerId || "",
+              restaurantId: post.restaurantId || ""
+            });
+          })
+          .catch(() => null);
       }
       updateShellDom();
     } catch (err) {
@@ -878,6 +883,9 @@ export function createSocialEngagementRuntimeController({
     if (!user.uid) return;
     const favoriteId = favoriteMenuItemDocId(restaurantId, itemId);
     if (!favoriteId) return;
+    const pendingKey = `favorite::${String(ctx.key || `${restaurantId}::${itemId}`)}`;
+    if (pendingMenuItemActionKeys.has(pendingKey)) return;
+    pendingMenuItemActionKeys.add(pendingKey);
     const favoriteRef = doc(db, "users", user.uid, "menuFavorites", favoriteId);
     let removeFavorite = false;
     try {
@@ -901,6 +909,8 @@ export function createSocialEngagementRuntimeController({
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      pendingMenuItemActionKeys.delete(pendingKey);
     }
   }
 
@@ -927,6 +937,9 @@ export function createSocialEngagementRuntimeController({
     const { ref, key, item, itemId } = ctx;
     const user = currentUserBadge();
     if (!user.uid) return;
+    const pendingKey = `like::${key}`;
+    if (pendingMenuItemActionKeys.has(pendingKey)) return;
+    pendingMenuItemActionKeys.add(pendingKey);
     const likeId = user.uid;
     const likeRef = doc(collection(ref, "likes"), likeId);
     let delta = 0;
@@ -973,6 +986,8 @@ export function createSocialEngagementRuntimeController({
       updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
     } catch (err) {
       console.error(err);
+    } finally {
+      pendingMenuItemActionKeys.delete(pendingKey);
     }
   }
 
@@ -1001,79 +1016,83 @@ export function createSocialEngagementRuntimeController({
     if (state.menuDetail.sending) return;
     state.menuDetail.sending = true;
     updateMenuDetailCommentsOnly();
-    const ensuredAvatar = await ensureSelfAvatarReady({ force: true });
-    const user = currentUserBadge();
-    const handleKey = normalizeHandle(user.handle || user.name || "");
-    const avatarCandidate = ensuredAvatar || user.avatar || "";
-    const finalAvatar = avatarCandidate && !isPlaceholderUrl(avatarCandidate) ? avatarCandidate : "";
-    if (finalAvatar) {
-      user.avatar = finalAvatar;
-      primeSelfAvatarCache(finalAvatar);
-      if (user.uid) avatarCache.set(user.uid, finalAvatar);
-      if (handleKey) avatarCache.set(handleKey, finalAvatar);
-    }
-    const commentRef = doc(collection(ref, "comments"));
-    const payload = {
-      uid: user.uid || "",
-      author: user.name,
-      handle: user.handle,
-      avatarUrl: finalAvatar,
-      avatar: finalAvatar,
-      text: trimmed,
-      createdAt: serverTimestamp(),
-      parentId: null,
-      likesCount: 0
-    };
     try {
-      const batch = writeBatch(db);
-      batch.set(commentRef, payload);
-      batch.set(ref, { commentsCount: increment(1) }, { merge: true });
-      await batch.commit();
-    } catch (err) {
-      console.error(err);
-      setLastMenuCommentKeyFn("");
-      setLastMenuCommentAtFn(0);
+      const ensuredAvatar = await ensureSelfAvatarReady({ force: true });
+      const user = currentUserBadge();
+      const handleKey = normalizeHandle(user.handle || user.name || "");
+      const avatarCandidate = ensuredAvatar || user.avatar || "";
+      const finalAvatar = avatarCandidate && !isPlaceholderUrl(avatarCandidate) ? avatarCandidate : "";
+      if (finalAvatar) {
+        user.avatar = finalAvatar;
+        primeSelfAvatarCache(finalAvatar);
+        if (user.uid) avatarCache.set(user.uid, finalAvatar);
+        if (handleKey) avatarCache.set(handleKey, finalAvatar);
+      }
+      const commentRef = doc(collection(ref, "comments"));
+      const payload = {
+        uid: user.uid || "",
+        author: user.name,
+        handle: user.handle,
+        avatarUrl: finalAvatar,
+        avatar: finalAvatar,
+        text: trimmed,
+        createdAt: serverTimestamp(),
+        parentId: null,
+        likesCount: 0
+      };
+      try {
+        const batch = writeBatch(db);
+        batch.set(commentRef, payload);
+        batch.set(ref, { commentsCount: increment(1) }, { merge: true });
+        await batch.commit();
+      } catch (err) {
+        console.error(err);
+        setLastMenuCommentKeyFn("");
+        setLastMenuCommentAtFn(0);
+        if (isSameMenuDetailContext()) {
+          state.menuDetail.sending = false;
+          updateMenuDetailCommentsOnly();
+        }
+        return;
+      }
+      const newComment = ensureCommentShape({
+        id: commentRef.id,
+        ...payload,
+        createdAt: new Date().toISOString()
+      });
+      meta.comments = [
+        newComment,
+        ...(meta.comments || []).filter((entry) => String(entry?.id || "") !== String(newComment.id || ""))
+      ];
+      const loadState = ensureMetaLoadState(meta);
+      if (loadState.commentsHydrated) {
+        loadState.commentsFetchedAt = Date.now();
+      }
+      meta.counts = meta.counts || { likes: 0, comments: 0 };
+      const optimisticCommentCount = Math.max(
+        0,
+        (Number(countsBeforeSubmit.comments) || 0) + 1,
+        Number(meta.counts.comments) || 0,
+        meta.comments.length
+      );
+      meta.counts.comments = optimisticCommentCount;
+      state.menuItemMeta[key] = meta;
       if (isSameMenuDetailContext()) {
+        state.menuDetail.commentText = "";
+        const input = docObj?.getElementById("menuDetailCommentInput");
+        if (input) {
+          input.value = "";
+          autosizeTextarea(input, { minHeight: 52, maxHeight: 160 });
+        }
         state.menuDetail.sending = false;
-        updateMenuDetailCommentsOnly();
+        updateMenuDetailMeta();
       }
-      return;
-    }
-    const newComment = ensureCommentShape({
-      id: commentRef.id,
-      ...payload,
-      createdAt: new Date().toISOString()
-    });
-    meta.comments = [
-      newComment,
-      ...(meta.comments || []).filter((entry) => String(entry?.id || "") !== String(newComment.id || ""))
-    ];
-    const loadState = ensureMetaLoadState(meta);
-    if (loadState.commentsHydrated) {
-      loadState.commentsFetchedAt = Date.now();
-    }
-    meta.counts = meta.counts || { likes: 0, comments: 0 };
-    const optimisticCommentCount = Math.max(
-      0,
-      (Number(countsBeforeSubmit.comments) || 0) + 1,
-      Number(meta.counts.comments) || 0,
-      meta.comments.length
-    );
-    meta.counts.comments = optimisticCommentCount;
-    state.menuItemMeta[key] = meta;
-    if (isSameMenuDetailContext()) {
-      state.menuDetail.commentText = "";
-      const input = docObj?.getElementById("menuDetailCommentInput");
-      if (input) {
-        input.value = "";
-        autosizeTextarea(input, { minHeight: 52, maxHeight: 160 });
-      }
+      updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
+      if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
+      refreshSelfCommentAvatars();
+    } finally {
       state.menuDetail.sending = false;
-      updateMenuDetailMeta();
     }
-    updateMenuCardCountNodes(ctx.itemId, resolveMenuItemCounts(meta));
-    if (finalAvatar) scheduleCommentAvatarDomUpdate(user.uid || "", handleKey, finalAvatar);
-    refreshSelfCommentAvatars();
   }
 
   async function toggleCommentLike(postId, commentId, replyId) {

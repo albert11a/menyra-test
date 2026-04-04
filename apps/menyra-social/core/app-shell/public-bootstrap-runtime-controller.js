@@ -246,12 +246,11 @@ export function createPublicBootstrapRuntimeController({
     if (Number.isFinite(requested) && requested > 0) return requested;
     const fromWindow = Number(win?.__MENYRA_SOCIAL_BOOTSTRAP_TIMEOUT_MS__ || 0);
     if (Number.isFinite(fromWindow) && fromWindow > 0) return fromWindow;
-    return 2200;
+    return 3800;
   }
 
   function applyPublicBootstrapPayload(payload, { refreshUi = false } = {}) {
     if (!payload || typeof payload !== "object" || !state) return false;
-    void refreshUi;
     void mergeRestaurants;
     void rebuildBusinessLocations;
     const incomingRestaurants = normalizePublicBootstrapRestaurants(payload.restaurants, {
@@ -328,6 +327,8 @@ export function createPublicBootstrapRuntimeController({
       if (!updatedFeed) {
         requestRender();
       }
+    } else if (previewChanged && refreshUi) {
+      requestRender();
     }
     return changed || previewChanged;
   }
