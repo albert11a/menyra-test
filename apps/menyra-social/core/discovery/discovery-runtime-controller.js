@@ -68,6 +68,7 @@ export function createDiscoveryRuntimeController(deps = {}) {
   let mapSearchQuery = "";
   let mapCategoryFilter = "restaurants";
   let mapViewportSyncTimer = null;
+  let mapViewportSyncSignature = "";
   let mapNotice = "";
   let mapNoticeTimer = null;
   const MAP_CATEGORY_FILTERS = Object.freeze({
@@ -223,6 +224,15 @@ function filterLocationsWithinRadius(locations = []) {
   });
 }
 
+function buildMapViewportSyncSignature() {
+  const center = resolveMapCenterCoords();
+  const lat = center ? Number(center.lat).toFixed(4) : "";
+  const lng = center ? Number(center.lng).toFixed(4) : "";
+  const query = getActiveMapSearchQuery();
+  const locationsLength = Array.isArray(state.businessLocations) ? state.businessLocations.length : 0;
+  return `${lat}|${lng}|${mapCategoryFilter}|${query}|${locationsLength}`;
+}
+
 function scheduleMapViewportMarkerRefresh(delayMs = 90) {
   if (!window || state.activeTab !== "map") return;
   if (mapViewportSyncTimer) {
@@ -230,6 +240,9 @@ function scheduleMapViewportMarkerRefresh(delayMs = 90) {
   }
   mapViewportSyncTimer = window.setTimeout(() => {
     mapViewportSyncTimer = null;
+    const nextSignature = buildMapViewportSyncSignature();
+    if (nextSignature && nextSignature === mapViewportSyncSignature) return;
+    mapViewportSyncSignature = nextSignature;
     const filtered = renderCurrentMapMarkerSet({ query: getActiveMapSearchQuery() });
     if (!filtered.some((entry) => resolveLeafletMarkerKey(entry) === getSelectedMapMarkerKey())) {
       state.selectedBusiness = null;
@@ -441,6 +454,7 @@ function cleanupLeaflet() {
     clearTimeout(mapViewportSyncTimer);
     mapViewportSyncTimer = null;
   }
+  mapViewportSyncSignature = "";
 }
 
 function isLeafletMapMountedOn(element) {
@@ -686,14 +700,17 @@ function bindMapSheetEvents() {
 }
 
 function createLeafletTileLayer(urlTemplate = LEAFLET_TILE_PRIMARY_URL) {
+  const isMobileViewport = Number(window?.innerWidth || 0) > 0 && Number(window?.innerWidth || 0) <= 900;
   return window.L.tileLayer(urlTemplate, {
     maxZoom: DISCOVERY_MAP_MAX_ZOOM,
-    keepBuffer: 14,
-    updateWhenIdle: true,
-    updateWhenZooming: true,
+    keepBuffer: isMobileViewport ? 10 : 8,
+    updateWhenIdle: false,
+    updateWhenZooming: false,
+    updateInterval: isMobileViewport ? 80 : 120,
     subdomains: "abcd",
     crossOrigin: true,
-    noWrap: false
+    noWrap: false,
+    detectRetina: true
   });
 }
 
@@ -739,8 +756,16 @@ function initLeafletIfNeeded() {
     attributionControl: false,
     preferCanvas: true,
     fadeAnimation: false,
-    zoomAnimation: false,
-    markerZoomAnimation: false
+    zoomAnimation: true,
+    markerZoomAnimation: false,
+    zoomAnimationThreshold: 4,
+    inertia: true,
+    inertiaDeceleration: 2200,
+    inertiaMaxSpeed: 3200,
+    zoomSnap: 0.25,
+    zoomDelta: 0.5,
+    wheelDebounceTime: 20,
+    wheelPxPerZoomLevel: 90
   }).setView(resolveInitialMapCenter(), DISCOVERY_MAP_DEFAULT_ZOOM);
   const primaryLayer = createLeafletTileLayer(LEAFLET_TILE_PRIMARY_URL);
   const onTileLoad = () => {
@@ -775,8 +800,7 @@ function initLeafletIfNeeded() {
   primaryLayer.on("tileerror", onPrimaryTileError);
   primaryLayer.on("load", onTileLoad);
   primaryLayer.addTo(leafletMap);
-  leafletMap.on("moveend", () => scheduleMapViewportMarkerRefresh(80));
-  leafletMap.on("zoomend", () => scheduleMapViewportMarkerRefresh(80));
+  leafletMap.on("moveend", () => scheduleMapViewportMarkerRefresh(90));
   try {
     leafletMap.whenReady(() => {
       scheduleLeafletRefresh(3);
@@ -915,7 +939,7 @@ function updateMapCategoryTabsDom() {
     button.classList.toggle("text-white", isActive);
     button.classList.toggle("border-slate-900", isActive);
     button.classList.toggle("shadow-sm", isActive);
-    button.classList.toggle("bg-white/90", !isActive);
+    button.classList.toggle("bg-transparent", !isActive);
     button.classList.toggle("text-slate-600", !isActive);
     button.classList.toggle("border-slate-200", !isActive);
   });
@@ -1416,7 +1440,7 @@ function renderMapView() {
       ${mapTruthState ? `<div class="mb-3 px-2">${mapTruthState}</div>` : ""}
 
       <div class="relative flex-1 rounded-[2.5rem] overflow-hidden shadow-xl border border-slate-200 bg-white" style="${mapShellHeightStyle}">
-        <div id="leafletMap" class="absolute inset-0 z-10" style="background:linear-gradient(160deg, #f8fafc 0%, #eef2f7 55%, #e7edf5 100%);"></div>
+        <div id="leafletMap" class="absolute inset-0 z-10" style="background:#ffffff;"></div>
         ${hasLeaflet ? "" : `<div class="absolute inset-0 z-20 flex items-center justify-center text-slate-500 text-xs font-black uppercase tracking-widest backdrop-blur-sm">${escapeHtml(mapInfoLabel)}</div>`}
         
         <div class="absolute top-5 left-4 right-4 z-30">
@@ -1425,21 +1449,19 @@ function renderMapView() {
             ${icon("search", "absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400")}
             <input id="mapSearchInput" type="text" value="${escapeHtml(mapSearchQuery)}" placeholder="Stadt, Lokal suchen..." class="w-full h-14 rounded-2xl border border-white/20 bg-white/90 backdrop-blur-xl pl-12 pr-12 text-sm font-bold text-slate-800 outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500/50 transition-all" />
           </div>
-          <div class="mt-2 rounded-2xl bg-white/90 backdrop-blur-xl border border-white/40 shadow-md p-1.5">
-            <div class="grid grid-cols-3 gap-1.5">
-              <button type="button" data-map-category="restaurants" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("restaurants") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white/90 text-slate-600 border-slate-200"}">
-                ${icon("utensils-crossed", "w-3.5 h-3.5")}
-                <span>Restaurants</span>
-              </button>
-              <button type="button" data-map-category="cafes" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("cafes") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white/90 text-slate-600 border-slate-200"}">
-                ${icon("coffee", "w-3.5 h-3.5")}
-                <span>Cafes</span>
-              </button>
-              <button type="button" data-map-category="bars" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("bars") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-white/90 text-slate-600 border-slate-200"}">
-                ${icon("martini", "w-3.5 h-3.5")}
-                <span>Bars</span>
-              </button>
-            </div>
+          <div class="mt-2 grid grid-cols-3 gap-1.5">
+            <button type="button" data-map-category="restaurants" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("restaurants") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-transparent text-slate-600 border-slate-200"}">
+              ${icon("utensils-crossed", "w-3.5 h-3.5")}
+              <span>Restaurants</span>
+            </button>
+            <button type="button" data-map-category="cafes" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("cafes") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-transparent text-slate-600 border-slate-200"}">
+              ${icon("coffee", "w-3.5 h-3.5")}
+              <span>Cafes</span>
+            </button>
+            <button type="button" data-map-category="bars" class="h-10 rounded-xl border text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${isCategoryActive("bars") ? "bg-slate-900 text-white border-slate-900 shadow-sm" : "bg-transparent text-slate-600 border-slate-200"}">
+              ${icon("martini", "w-3.5 h-3.5")}
+              <span>Bars</span>
+            </button>
           </div>
         </div>
 
