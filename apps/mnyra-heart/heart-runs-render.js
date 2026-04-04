@@ -21,7 +21,7 @@ import {
 } from "./heart-ui-utils.js";
 
 const FALLBACK_PACK_ACTIONS = Object.freeze([
-  { id: "guard-pack", packKey: "guard-pack", action: "start-pack", label: "Aenderungs-Guard starten" },
+  { id: "guard-pack", packKey: "guard-pack", action: "start-pack", label: "UI-Sicherheitslauf starten" },
   { id: "release-pack", packKey: "release-pack", action: "start-pack", label: "Release-Gate starten" },
   { id: "health-pack", packKey: "health-pack", action: "start-pack", label: "Tageslauf starten" }
 ]);
@@ -47,8 +47,8 @@ const VISIBLE_PACK_ORDER = Object.freeze({
 const GUIDE_CONTENT = Object.freeze({
   "guard-pack": {
     eyebrow: "Vor Commit",
-    title: "Aenderungs-Guard",
-    summary: "Der schnelle Heart-Lauf fuer Code-Aenderungen. Er prueft CEO, Business, User und Gast auf Kernpfade, Discovery und mobile UI, ohne sich in tiefe Nebenpfade zu verlieren.",
+    title: "UI-Sicherheitslauf",
+    summary: "Der schnelle Heart-Lauf fuer Code-Aenderungen. Er prueft CEO, Business, User und Gast auf Kernpfade, Discovery und mobile UI, nur lesend und ohne Live-Schreibaktionen.",
     sections: [
       {
         icon: "shield",
@@ -68,7 +68,7 @@ const GUIDE_CONTENT = Object.freeze({
       {
         icon: "image",
         title: "Perfekt fuer vor dem Commit",
-        body: "Der Guard ist der erste Lauf, den du nach einer Aenderung starten solltest. Wenn der schon rot wird, brauchst du keinen teuren Volltest mehr."
+        body: "Der Guard ist der erste Lauf, den du nach einer Aenderung starten solltest. Er ist bewusst nur lesend, damit beim Starten nichts an Live-Daten veraendert wird."
       }
     ]
   },
@@ -85,7 +85,7 @@ const GUIDE_CONTENT = Object.freeze({
       {
         icon: "chart",
         title: "Business und User mit echten Aktionen",
-        body: "Business prueft Menue und Produktpfade, User prueft Social und Bestellung. Gast prueft den QR-Weg, CEO die Kontroll- und Navigationssicht."
+        body: "Business prueft Menue und Produktpfade, User prueft Social und Bestellung. Standardmaessig bleiben Schreibaktionen geschuetzt, solange kein expliziter Mutation-Run gestartet wird."
       },
       {
         icon: "scan",
@@ -117,7 +117,7 @@ const GUIDE_CONTENT = Object.freeze({
       {
         icon: "scan",
         title: "Kritische Kundenwege bleiben drin",
-        body: "Discovery, Menue, Warenkorb, Bestellung, Social-Interaktion, Chat und die mobile Huelle bleiben Teil des Tageslaufs."
+        body: "Discovery, Menue, Warenkorb, Bestellung, Social-Interaktion, Chat und die mobile Huelle bleiben Teil des Tageslaufs, standardmaessig nur lesend."
       },
       {
         icon: "triangle",

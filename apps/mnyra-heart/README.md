@@ -86,6 +86,11 @@ Secrets:
 Variables as needed for deeper smoke/synthetic UI actions:
 - `MNYRA_ALLOW_LIVE_MUTATIONS`
 - `MNYRA_HEART_PACK_CONFIG_JSON`
+- `MNYRA_HEART_RUNTIME_DIAGNOSTICS`
+- `MNYRA_HEART_COLD_START_WARN_MS`
+- `MNYRA_HEART_COLD_START_FAIL_MS`
+- `MNYRA_HEART_FCP_WARN_MS`
+- `MNYRA_HEART_FCP_FAIL_MS`
 - `MNYRA_BUSINESS_BASE_URL`
 - `MNYRA_STAFF_BASE_URL`
 - `MNYRA_USER_BASE_URL`
@@ -105,6 +110,9 @@ Location:
 - `tests/mnyra-heart-runner/`
 
 Packs:
+- `npm run guard-pack`
+- `npm run release-pack`
+- `npm run health-pack`
 - `npm run smoke`
 - `npm run ceo-pack`
 - `npm run business-pack`
@@ -117,6 +125,9 @@ Packs:
 - `npm run synthetic` -> alias for `full-platform-pack`
 
 Heart run controls:
+- `Start Change Guard`
+- `Start Release Gate`
+- `Start Daily Health`
 - `Start Smoke`
 - `Start CEO Test`
 - `Start Business Test`
@@ -129,8 +140,10 @@ Heart run controls:
 
 Safety model:
 - Live mutations are off by default
+- Heart Runs bleiben read-only; Live-Schreibaktionen sind nur fuer den expliziten `mutation-pack` freischaltbar
 - Full synthetic requires `MNYRA_ALLOW_LIVE_MUTATIONS=true` and `MNYRA_SYNTHETIC_ISOLATION_KEY`
 - Synthetic entities use clearly marked prefixes like `mnyra-heart-synth-*`
+- Runtime diagnostics are enabled by default (JS errors, request/http failures, cold start, FCP)
 - Runner reports explicitly differentiate:
   - `success`
   - `warning`

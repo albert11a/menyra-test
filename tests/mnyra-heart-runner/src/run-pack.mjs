@@ -3,7 +3,8 @@ import { chromium } from "playwright";
 import config from "../playwright.config.js";
 import { getRunnerEnv } from "./helpers/env.mjs";
 import { createHeartContext } from "./helpers/heart-context.mjs";
-import { captureArtifact } from "./helpers/social-app.mjs";
+import { captureArtifact, writeTextArtifact } from "./helpers/social-app.mjs";
+import { createRuntimeMonitor } from "./helpers/runtime-monitor.mjs";
 import { createPersonaRegistry } from "./personas/persona-registry.mjs";
 import { resolvePackRunner } from "./packs/pack-registry.mjs";
 import { writeHeartReport } from "./reporters/heart-json-reporter.mjs";
@@ -18,6 +19,15 @@ function asText(value, fallback = "") {
   const text = String(value || "").trim();
   return text || fallback;
 }
+
+function toSafeFileName(value, fallback = "artifact") {
+  const text = asText(value, fallback).replace(/[^a-z0-9_-]+/gi, "-").toLowerCase();
+  return text || fallback;
+}
+
+const EXPLICIT_MUTATION_PACKS = new Set([
+  "mutation-pack"
+]);
 
 function buildRunSnapshotPayload(report = {}) {
   return {
@@ -52,12 +62,17 @@ function buildRunSnapshotPayload(report = {}) {
 
 async function main() {
   const requestedPackKey = asText(process.argv[2], process.env.HEART_PACK_KEY || "smoke");
-  const env = await getRunnerEnv(requestedPackKey);
-  const personas = createPersonaRegistry(env);
+  let env = await getRunnerEnv(requestedPackKey);
   const {
     pack,
     runPack
   } = resolvePackRunner(requestedPackKey);
+  const liveMutationsAllowedForPack = EXPLICIT_MUTATION_PACKS.has(pack.key) && !!env.allowLiveMutations;
+  env = {
+    ...env,
+    allowLiveMutations: liveMutationsAllowedForPack
+  };
+  const personas = createPersonaRegistry(env);
 
   const heart = createHeartContext({
     runId: env.runId,
@@ -133,9 +148,21 @@ async function main() {
     heart.addArtifact({ label, kind, path: safePath });
   }
 
+  async function flushRuntimeDiagnostics(monitor, label = "runtime") {
+    if (!monitor) return;
+    const diagnostics = await monitor.flush().catch(() => null);
+    if (!diagnostics) return;
+    const fileName = `${toSafeFileName(label, "runtime")}-runtime-diagnostics.json`;
+    const filePath = await writeTextArtifact(env, fileName, `${JSON.stringify(diagnostics, null, 2)}\n`).catch(() => "");
+    if (filePath) {
+      await recordArtifact(`${label} Laufdiagnose`, "json", filePath);
+    }
+  }
+
   let browser;
   let browserContext;
   let page;
+  let rootRuntimeMonitor;
 
   async function createScopedPage(label = "scope") {
     const scopedContext = await browser.newContext({ viewport: config.viewport });
@@ -146,6 +173,12 @@ async function main() {
       snapshots: !!config.traceSnapshots
     });
     const scopedPage = await scopedContext.newPage();
+    const scopedRuntimeMonitor = createRuntimeMonitor({
+      page: scopedPage,
+      heart,
+      env,
+      scopeLabel: label
+    });
     return {
       page: scopedPage,
       async dispose() {
@@ -156,6 +189,7 @@ async function main() {
         const tracePath = path.resolve(env.artifactDir, `${label}-trace.zip`);
         await scopedContext.tracing.stop({ path: tracePath }).catch(() => undefined);
         await recordArtifact(`${label} Ablaufspur`, "trace", tracePath);
+        await flushRuntimeDiagnostics(scopedRuntimeMonitor, label);
         await scopedContext.close().catch(() => undefined);
       }
     };
@@ -174,6 +208,12 @@ async function main() {
       snapshots: !!config.traceSnapshots
     });
     page = await browserContext.newPage();
+    rootRuntimeMonitor = createRuntimeMonitor({
+      page,
+      heart,
+      env,
+      scopeLabel: pack.key
+    });
 
     await emitStatus(`${pack.title} laeuft`, "running", pack.summary);
     await runPack({
@@ -235,6 +275,7 @@ async function main() {
       if (finalScreenshot) {
         await recordArtifact(`${pack.title} Beweisbild`, "screenshot", finalScreenshot);
       }
+      await flushRuntimeDiagnostics(rootRuntimeMonitor, pack.key);
     }
     if (browserContext) {
       const tracePath = path.resolve(env.artifactDir, `${pack.key}-trace.zip`);

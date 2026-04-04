@@ -4,14 +4,14 @@
 const HEART_PACKS = Object.freeze([
   {
     key: "guard-pack",
-    label: "Aenderungs-Guard starten",
-    title: "Aenderungs-Guard",
+    label: "UI-Sicherheitslauf starten",
+    title: "UI-Sicherheitslauf",
     mode: "guard",
     workflowMode: "smoke",
     level: "level_1",
     personas: ["ceo", "business", "user", "guest"],
     areas: ["auth", "feed", "profile", "business", "menu", "chat", "search", "map", "pwa", "ui"],
-    summary: "Schneller Vor-Commit-Lauf fuer CEO, Business, User und Gast. Prueft Kernpfade, Discovery und mobiles Layout ohne unnötige Tiefe."
+    summary: "Schneller, rein lesender UI-Lauf fuer CEO, Business, User und Gast. Prueft Kernpfade, Discovery und mobiles Layout ohne Live-Schreibaktionen."
   },
   {
     key: "release-pack",
@@ -22,7 +22,7 @@ const HEART_PACKS = Object.freeze([
     level: "level_2",
     personas: ["ceo", "business", "user", "guest"],
     areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "search", "map", "pwa", "ui"],
-    summary: "Breiter Vor-Push-Lauf fuer CEO, Business, User und Gast mit Kernpfaden, Schreibaktionen, Discovery und Bestellung."
+    summary: "Breiter Vor-Push-Lauf fuer CEO, Business, User und Gast mit Kernpfaden, Discovery und Bestellung. Standardmaessig ohne Live-Schreibaktionen."
   },
   {
     key: "health-pack",
@@ -33,7 +33,7 @@ const HEART_PACKS = Object.freeze([
     level: "level_3",
     personas: ["business", "user", "guest", "ceo"],
     areas: ["auth", "feed", "profile", "business", "menu", "cart", "orders", "chat", "search", "map", "pwa", "ui"],
-    summary: "Regelmaessiger Gesundheitscheck fuer Business, User, Gast und CEO. Gedacht fuer wiederkehrende pruefende Laeufe pro Tag."
+    summary: "Regelmaessiger Gesundheitscheck fuer Business, User, Gast und CEO. Fuer wiederkehrende UI-Kontrolle, standardmaessig ohne Live-Schreibaktionen."
   },
   {
     key: "smoke",
@@ -144,6 +144,9 @@ const HEART_PACKS = Object.freeze([
 const HEART_PACK_ALIASES = Object.freeze({
   guard: "guard-pack",
   "change-guard": "guard-pack",
+  ui: "guard-pack",
+  "ui-pack": "guard-pack",
+  "ui-check": "guard-pack",
   release: "release-pack",
   gate: "release-pack",
   health: "health-pack",

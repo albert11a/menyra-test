@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "guard-pack": "node ./src/run-pack.mjs guard-pack",
+    "release-pack": "node ./src/run-pack.mjs release-pack",
+    "health-pack": "node ./src/run-pack.mjs health-pack",
     "smoke": "node ./src/run-pack.mjs smoke",
     "synthetic": "node ./src/run-pack.mjs full-platform-pack",
     "ceo-pack": "node ./src/run-pack.mjs ceo-pack",

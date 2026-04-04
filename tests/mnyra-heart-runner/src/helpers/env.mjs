@@ -12,6 +12,11 @@ function asBoolean(value, fallback = false) {
   return safe === "1" || safe === "true" || safe === "yes" || safe === "on";
 }
 
+function asNumber(value, fallback = 0) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 function splitCsv(value = "") {
   return asText(value)
     .split(",")
@@ -262,6 +267,18 @@ export async function getRunnerEnv(mode = "smoke") {
     githubRepository: asText(process.env.GITHUB_REPOSITORY),
     githubSha: asText(process.env.GITHUB_SHA),
     githubRefName: asText(process.env.GITHUB_REF_NAME),
+    runtimeQuality: {
+      enabled: asBoolean(process.env.MNYRA_HEART_RUNTIME_DIAGNOSTICS, true),
+      maxSamples: Math.max(1, Math.round(asNumber(process.env.MNYRA_HEART_RUNTIME_MAX_SAMPLES, 6))),
+      failOnPageErrors: asBoolean(process.env.MNYRA_HEART_FAIL_ON_PAGE_ERRORS, true),
+      failOnConsoleErrors: asBoolean(process.env.MNYRA_HEART_FAIL_ON_CONSOLE_ERRORS, false),
+      failOnRequestFailures: asBoolean(process.env.MNYRA_HEART_FAIL_ON_REQUEST_FAILURES, false),
+      failOnHttpErrors: asBoolean(process.env.MNYRA_HEART_FAIL_ON_HTTP_ERRORS, false),
+      coldStartWarnMs: Math.max(500, asNumber(process.env.MNYRA_HEART_COLD_START_WARN_MS, 5000)),
+      coldStartFailMs: Math.max(1000, asNumber(process.env.MNYRA_HEART_COLD_START_FAIL_MS, 12000)),
+      fcpWarnMs: Math.max(250, asNumber(process.env.MNYRA_HEART_FCP_WARN_MS, 3000)),
+      fcpFailMs: Math.max(500, asNumber(process.env.MNYRA_HEART_FCP_FAIL_MS, 7000))
+    },
     packConfig: runnerConfig
   };
 }
