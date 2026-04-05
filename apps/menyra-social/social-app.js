@@ -655,6 +655,14 @@ const socialRuntimeBudgetMarks = new Map();
 let runtimeDegradedBridgeBound = false;
 let runtimeMediaProbeBound = false;
 let requestRuntimeUiRefresh = () => {};
+let runtimeUiRefreshPending = false;
+const MEDIA_EDGE_HOST = (() => {
+  try {
+    return new URL(String(BUNNY_EDGE_BASE || "")).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+})();
 
 function supportsSocialBudgetPerf() {
   return typeof performance !== "undefined"
@@ -802,15 +810,45 @@ function bindRuntimeDegradedBridge() {
   });
 }
 
+function resolveMediaProbeUrl() {
+  if (typeof window === "undefined" || typeof document === "undefined") return "";
+  const seen = new Set();
+  const images = Array.from(document.querySelectorAll("img[src]"));
+  for (const image of images) {
+    const src = String(image?.getAttribute?.("src") || "").trim();
+    if (src) seen.add(src);
+    const currentSrc = String(image?.currentSrc || "").trim();
+    if (currentSrc) seen.add(currentSrc);
+  }
+  for (const raw of seen) {
+    try {
+      const parsed = new URL(raw, window.location.origin);
+      const host = String(parsed.hostname || "").toLowerCase();
+      const path = String(parsed.pathname || "");
+      const isWorkerHost = host.endsWith(".workers.dev");
+      const isKnownEdgeHost = !!MEDIA_EDGE_HOST && host === MEDIA_EDGE_HOST;
+      const isMediaPath = path.startsWith("/media/");
+      if (!isMediaPath) continue;
+      if (!isKnownEdgeHost && !isWorkerHost) continue;
+      return parsed.toString();
+    } catch {}
+  }
+  return "";
+}
+
 function scheduleMediaEdgeProbe() {
   if (runtimeMediaProbeBound || typeof window === "undefined" || typeof fetch !== "function") return;
   runtimeMediaProbeBound = true;
   const probe = async () => {
+    const probeUrl = resolveMediaProbeUrl();
+    if (!probeUrl) {
+      setRuntimeDegradedFlag("media", { active: false });
+      return;
+    }
     const controller = typeof AbortController === "function" ? new AbortController() : null;
     const timeout = window.setTimeout(() => controller?.abort(), 2600);
     try {
-      const url = `${String(BUNNY_EDGE_BASE || "").replace(/\/+$/, "")}/?health=${Date.now()}`;
-      await fetch(url, {
+      await fetch(probeUrl, {
         method: "GET",
         mode: "no-cors",
         cache: "no-store",
@@ -1361,6 +1399,11 @@ const {
   deleteMenuItemById
 } = shellUiRuntimeCluster;
 requestRuntimeUiRefresh = () => {
+  if (!shellRuntimeController) {
+    runtimeUiRefreshPending = true;
+    return;
+  }
+  runtimeUiRefreshPending = false;
   render();
 };
 bindRuntimeDegradedBridge();
@@ -4100,6 +4143,9 @@ getNotificationSupportRuntimeController = sessionRuntimeClusterGetters.getNotifi
 getSessionTabLifecycleRuntimeController = sessionRuntimeClusterGetters.getSessionTabLifecycleRuntimeController;
 
 shellRuntimeController = createShellRuntimeController();
+if (runtimeUiRefreshPending) {
+  requestRuntimeUiRefresh();
+}
 
 async function pushUserNotification(targetUid, payload) {
   return await getNotificationSupportRuntimeController().pushUserNotification(...arguments);
