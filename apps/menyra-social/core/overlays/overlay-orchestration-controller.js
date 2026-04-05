@@ -717,12 +717,12 @@ export function createOverlayOrchestrationController({
     if (!target || typeof handler !== "function") return;
     const onDismiss = (evt) => {
       if (selfOnly && evt.target !== target) return;
-      if (evt.type === "touchstart") evt.preventDefault();
+      if (evt.cancelable) evt.preventDefault();
+      evt.stopPropagation?.();
+      evt.stopImmediatePropagation?.();
       handler();
     };
     target.addEventListener("click", onDismiss);
-    target.addEventListener("pointerdown", onDismiss);
-    target.addEventListener("touchstart", onDismiss, { passive: false });
   }
 
   function bindOverlayEvents({

@@ -102,6 +102,20 @@ export function ensureOverlayRootCore({ documentObj } = {}) {
   root.style.position = "relative";
   root.style.zIndex = OVERLAY_ROOT_Z_INDEX;
   root.style.isolation = "isolate";
+  const safeAreaFill = ensureChildNode(
+    root,
+    doc,
+    "modalSafeAreaFill"
+  );
+  safeAreaFill.style.position = "fixed";
+  safeAreaFill.style.left = "0";
+  safeAreaFill.style.right = "0";
+  safeAreaFill.style.top = "0";
+  safeAreaFill.style.display = "none";
+  safeAreaFill.style.pointerEvents = "none";
+  safeAreaFill.style.height = "var(--safe-area-top)";
+  safeAreaFill.style.background = "var(--app-surface)";
+  safeAreaFill.style.zIndex = "120";
   ensureChildNode(root, doc, "modalUnderlay", "fixed inset-0 bg-white z-[60] hidden pointer-events-none");
   ensureChildNode(root, doc, "profileOverlayRoot");
   ensureChildNode(root, doc, "chatOverlayRoot");
@@ -155,12 +169,22 @@ export function syncModalOpenUiStateCore({
   const anyModalOpen = !!isAnyModalOpen();
   const underlay = doc.getElementById("modalUnderlay");
   if (underlay) underlay.classList.add("hidden");
+  const safeAreaFill = doc.getElementById("modalSafeAreaFill");
+  if (safeAreaFill) {
+    safeAreaFill.style.display = anyModalOpen ? "block" : "none";
+    safeAreaFill.style.height = "var(--safe-area-top)";
+    safeAreaFill.style.background = "var(--app-surface)";
+  }
   doc.documentElement.classList.toggle("modal-open", anyModalOpen);
   doc.body.classList.toggle("modal-open", anyModalOpen);
   if (anyModalOpen) {
     lockModalScroll(doc, win);
   } else {
     unlockModalScroll(doc, win);
+    delete doc.documentElement.dataset.postCommentFocus;
+    delete doc.documentElement.dataset.postFooterGap;
+    delete doc.documentElement.dataset.menuDetailCommentFocus;
+    delete doc.documentElement.dataset.menuDetailFooterGap;
     doc.documentElement.classList.remove("menu-detail-comment-focus");
     doc.body.classList.remove("menu-detail-comment-focus");
     doc.documentElement.style.removeProperty("--menu-detail-footer-gap");

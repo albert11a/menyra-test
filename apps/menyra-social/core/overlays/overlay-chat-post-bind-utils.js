@@ -95,14 +95,42 @@ export function bindPostOverlayEventsCore({
     ? toggleCommentLikeFn
     : (() => {});
   let stopKeyboardGapTracking = () => {};
+  const rootEl = doc.documentElement;
+  const POST_FOCUS_DATA_KEY = "postCommentFocus";
+  const POST_GAP_DATA_KEY = "postFooterGap";
+  const MENU_DETAIL_FOCUS_DATA_KEY = "menuDetailCommentFocus";
+  const MENU_DETAIL_GAP_DATA_KEY = "menuDetailFooterGap";
+  const readGapDataValue = (key) => {
+    const raw = Number(rootEl?.dataset?.[key] || 0);
+    return Number.isFinite(raw) && raw > 0 ? raw : 0;
+  };
+  const syncSharedKeyboardGapUi = () => {
+    const postActive = rootEl?.dataset?.[POST_FOCUS_DATA_KEY] === "1";
+    const menuDetailActive = rootEl?.dataset?.[MENU_DETAIL_FOCUS_DATA_KEY] === "1";
+    const anyActive = postActive || menuDetailActive;
+    rootEl.classList.toggle("menu-detail-comment-focus", anyActive);
+    doc.body?.classList?.toggle?.("menu-detail-comment-focus", anyActive);
+    if (!anyActive) {
+      rootEl.style.setProperty("--menu-detail-footer-gap", "0px");
+      return;
+    }
+    const nextGap = Math.max(
+      postActive ? readGapDataValue(POST_GAP_DATA_KEY) : 0,
+      menuDetailActive ? readGapDataValue(MENU_DETAIL_GAP_DATA_KEY) : 0
+    );
+    rootEl.style.setProperty("--menu-detail-footer-gap", `${nextGap}px`);
+  };
   const setKeyboardGapUiActive = (active) => {
     const next = !!active;
-    doc.documentElement.classList.toggle("menu-detail-comment-focus", next);
-    doc.body?.classList?.toggle?.("menu-detail-comment-focus", next);
+    if (next) rootEl.dataset[POST_FOCUS_DATA_KEY] = "1";
+    else delete rootEl.dataset[POST_FOCUS_DATA_KEY];
+    syncSharedKeyboardGapUi();
   };
   const setKeyboardGapSize = (value) => {
     const gap = Math.max(0, Number(value) || 0);
-    doc.documentElement.style.setProperty("--menu-detail-footer-gap", `${gap}px`);
+    if (gap > 0) rootEl.dataset[POST_GAP_DATA_KEY] = String(gap);
+    else delete rootEl.dataset[POST_GAP_DATA_KEY];
+    syncSharedKeyboardGapUi();
   };
   const startKeyboardGapTracking = (inputEl) => {
     stopKeyboardGapTracking();
@@ -223,14 +251,30 @@ export function bindPostOverlayEventsCore({
 
   const postCommentSend = doc.getElementById("postCommentSend");
   if (postCommentSend) {
-    postCommentSend.addEventListener("click", () => {
-      const postId = postCommentSend.dataset.postId;
+    let lastSubmitAt = 0;
+    const submitPostComment = (evt) => {
+      if (evt?.cancelable) evt.preventDefault();
+      evt?.stopPropagation?.();
+      const now = Date.now();
+      if (now - lastSubmitAt < 250) return;
+      const postId = String(
+        postCommentSend.dataset.postId
+        || state.postModal?.post?.id
+        || ""
+      ).trim();
       if (!postId) return;
       const inputEl = doc.getElementById("postCommentInput");
       const text = inputEl ? inputEl.value : state.postModal.commentText;
       if (!String(text || "").trim() || state.postModal.sending) return;
+      lastSubmitAt = now;
       state.postModal.commentText = text;
-      addComment(postId, text, state.postModal.replyTo);
+      void addComment(postId, text, state.postModal.replyTo);
+    };
+    if (typeof globalThis !== "undefined" && !!globalThis.PointerEvent) {
+      postCommentSend.addEventListener("pointerup", submitPostComment);
+    }
+    postCommentSend.addEventListener("click", (evt) => {
+      submitPostComment(evt);
     });
   }
 

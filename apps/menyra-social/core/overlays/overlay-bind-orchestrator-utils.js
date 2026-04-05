@@ -150,20 +150,9 @@ export function bindOverlayEventsCore({
   const closeCustomerModal = typeof closeCustomerModalFn === "function" ? closeCustomerModalFn : (() => {});
   const saveCustomerFromModal = typeof saveCustomerFromModalFn === "function" ? saveCustomerFromModalFn : (() => {});
   if (!doc || !bindModalDismiss) return;
+  void isMenuDetailCloseBound;
+  void setMenuDetailCloseBound;
 
-  if (!isMenuDetailCloseBound()) {
-    setMenuDetailCloseBound(true);
-    const closeHandler = (evt) => {
-      const target = evt.target?.closest?.("[data-menu-detail-close]");
-      if (!target) return;
-      if (!state?.menuDetail?.open) return;
-      evt.preventDefault();
-      closeMenuDetail();
-    };
-    doc.addEventListener("click", closeHandler, true);
-    doc.addEventListener("pointerdown", closeHandler, true);
-    doc.addEventListener("touchstart", closeHandler, { capture: true, passive: false });
-  }
   if (profileChanged) {
     bindProfileOverlayEvents({
       documentObj: doc,

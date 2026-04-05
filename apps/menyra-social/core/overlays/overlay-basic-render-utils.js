@@ -279,7 +279,7 @@ export function renderPostModalCore({
                   <h3 class="text-xl font-black italic tracking-tighter">${esc(formatDate(post.createdAt || new Date()))}</h3>
                   <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-1">Foto</p>
                 </div>
-                <button id="postModalClose" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${iconFn("x", "w-4 h-4")}</button>
+                <button id="postModalClose" type="button" class="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-500">${iconFn("x", "w-4 h-4")}</button>
               </div>
 
               <div class="modal-handoff-hero relative rounded-[2.5rem] overflow-hidden shadow-lg border border-slate-100">
@@ -318,7 +318,7 @@ export function renderPostModalCore({
             <div class="modal-handoff-chrome p-7 pt-4 border-t border-slate-100 bg-white modal-footer-safe">
               <div class="flex gap-3">
                 <textarea id="postCommentInput" placeholder="Schreib einen Kommentar..." class="flex-1 p-4 rounded-2xl border border-slate-100 bg-white text-sm font-medium outline-none resize-none" rows="2">${esc(state.postModal.commentText || "")}</textarea>
-                <button id="postCommentSend" data-post-id="${esc(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
+                <button id="postCommentSend" type="button" data-post-id="${esc(post.id)}" class="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-xl shadow-indigo-500/20">
                   ${iconFn("send", "w-4 h-4")}
                 </button>
               </div>

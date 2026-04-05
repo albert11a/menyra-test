@@ -296,14 +296,42 @@ export function bindMenuDetailOverlayEventsCore({
   const menuDetailFooterCommentToggle = doc.getElementById("menuDetailFooterCommentToggle");
   const menuDetailFooterCartToggle = doc.getElementById("menuDetailFooterCartToggle");
   let stopKeyboardGapTracking = () => {};
+  const rootEl = doc.documentElement;
+  const MENU_DETAIL_FOCUS_DATA_KEY = "menuDetailCommentFocus";
+  const MENU_DETAIL_GAP_DATA_KEY = "menuDetailFooterGap";
+  const POST_FOCUS_DATA_KEY = "postCommentFocus";
+  const POST_GAP_DATA_KEY = "postFooterGap";
+  const readGapDataValue = (key) => {
+    const raw = Number(rootEl?.dataset?.[key] || 0);
+    return Number.isFinite(raw) && raw > 0 ? raw : 0;
+  };
+  const syncSharedKeyboardGapUi = () => {
+    const menuDetailActive = rootEl?.dataset?.[MENU_DETAIL_FOCUS_DATA_KEY] === "1";
+    const postActive = rootEl?.dataset?.[POST_FOCUS_DATA_KEY] === "1";
+    const anyActive = menuDetailActive || postActive;
+    rootEl.classList.toggle("menu-detail-comment-focus", anyActive);
+    doc.body?.classList?.toggle?.("menu-detail-comment-focus", anyActive);
+    if (!anyActive) {
+      rootEl.style.setProperty("--menu-detail-footer-gap", "0px");
+      return;
+    }
+    const nextGap = Math.max(
+      menuDetailActive ? readGapDataValue(MENU_DETAIL_GAP_DATA_KEY) : 0,
+      postActive ? readGapDataValue(POST_GAP_DATA_KEY) : 0
+    );
+    rootEl.style.setProperty("--menu-detail-footer-gap", `${nextGap}px`);
+  };
   const setKeyboardGapUiActive = (active) => {
     const next = !!active;
-    doc.documentElement.classList.toggle("menu-detail-comment-focus", next);
-    doc.body?.classList?.toggle?.("menu-detail-comment-focus", next);
+    if (next) rootEl.dataset[MENU_DETAIL_FOCUS_DATA_KEY] = "1";
+    else delete rootEl.dataset[MENU_DETAIL_FOCUS_DATA_KEY];
+    syncSharedKeyboardGapUi();
   };
   const setKeyboardGapSize = (value) => {
     const gap = Math.max(0, Number(value) || 0);
-    doc.documentElement.style.setProperty("--menu-detail-footer-gap", `${gap}px`);
+    if (gap > 0) rootEl.dataset[MENU_DETAIL_GAP_DATA_KEY] = String(gap);
+    else delete rootEl.dataset[MENU_DETAIL_GAP_DATA_KEY];
+    syncSharedKeyboardGapUi();
   };
   const startKeyboardGapTracking = (inputEl) => {
     stopKeyboardGapTracking();
